@@ -1,15 +1,8 @@
 # @greypan/deps-reload
 
-> 一个监听 dist 构建产物变化并触发全量刷新的构建插件，提供 Vite 与 Webpack 双入口
+> 依赖构建产物变化时刷新页面。
 
-[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/deps-reload/README.md) | 简体中文
-
-## 功能
-
-- **全量刷新**：开发时依赖文件变更触发页面刷新
-- **可配置监听**：自定义文件扩展名和输出目录
-- **防抖刷新**：防止快速连续刷新
-- **Monorepo 友好**：监听本地子包构建产物
+[English](./README.md) | 简体中文
 
 ## 安装
 
@@ -27,7 +20,7 @@ yarn add @greypan/deps-reload
 bun add @greypan/deps-reload
 ```
 
-## 快速开始
+## Vite
 
 ```ts
 // vite.config.ts
@@ -46,11 +39,11 @@ export default defineConfig({
 })
 ```
 
-当 `packages/web-ui/dist` 中的文件变更时，浏览器会自动刷新。
+`packages/web-ui/dist` 中的文件变化时，浏览器会刷新页面。
+
+这个插件监听构建产物，不会把依赖指向源码，因此应用始终消费包的构建结果。
 
 ## Webpack
-
-Webpack 插件会将每个配置的输出目录加入 Webpack 的 watch dependencies。若要通过 Webpack Dev Server 获得同样的全量刷新行为，需要启用原生 live reload 并关闭 HMR：
 
 ```ts
 // webpack.config.ts
@@ -72,23 +65,23 @@ export default {
 }
 ```
 
-该插件不会将依赖 alias 到源码，app 始终消费包的构建产物。
+Webpack 插件会把每个输出目录加入 watch dependencies。要通过 Webpack Dev Server 获得整页刷新，请启用 live reload 并关闭 HMR。
 
 ## API
 
 ### `depsReload(deps)`
 
-创建用于监听依赖文件并触发全量刷新的 unplugin 实例。
+创建插件。
 
-| 参数   | 类型    | 默认值 | 说明             |
-| ------ | ------- | ------ | ---------------- |
-| `deps` | `Dep[]` | -      | 待监听的依赖列表 |
+| 参数   | 类型    | 说明             |
+| ------ | ------- | ---------------- |
+| `deps` | `Dep[]` | 待监听的依赖列表 |
 
 ### `Dep`
 
 | 属性         | 类型       | 默认值            | 说明                                      |
 | ------------ | ---------- | ----------------- | ----------------------------------------- |
-| `name`       | `string`   | -                 | 包名（用于 node_modules 路径）            |
-| `path`       | `string`   | -                 | 本地包根目录（用于 monorepo 或 npm link） |
-| `outputDir`  | `string`   | `'dist'`          | 相对 `path` 的构建输出目录                |
-| `extensions` | `string[]` | `['.js', '.css']` | 待监听的文件扩展名                        |
+| `name`       | `string`   | -                 | 包名，用于 node_modules 路径。            |
+| `path`       | `string`   | -                 | 本地包根目录，用于 monorepo 或 npm link。 |
+| `outputDir`  | `string`   | `'dist'`          | 相对 `path` 的构建输出目录。              |
+| `extensions` | `string[]` | `['.js', '.css']` | 待监听的文件扩展名。                      |

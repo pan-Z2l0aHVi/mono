@@ -1,16 +1,8 @@
 # @greypan/unplugin-web-components
 
-> Web Components 自动导入插件，支持 React、Vue 与 Vite HTML 入口
+> 在标签出现时自动导入 Web Components 的 Vite/Webpack 插件。
 
-[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/unplugin-web-components/README.md) | 简体中文
-
-## 功能
-
-- **自动导入**：在模板中检测到 Web Components 时自动添加导入
-- **双 tag 检测**：在模块源码中支持 kebab-case（`<web-ui-button>`）和 PascalCase（`<WebUiButton>`）
-- **样式注入**：可选的 CSS 文件导入
-- **Vite HTML 入口**：向 `index.html` 及其他 Vite HTML 构建入口注入组件导入
-- **入口点**：仅发布 `/vite` 与 `/webpack` 子路径导出
+[English](./README.md) | 简体中文
 
 ## 安装
 
@@ -45,17 +37,17 @@ export default defineConfig({
 })
 ```
 
-现在在 Vue 模板、React JSX/TSX 或 Vite HTML 入口中使用 `<web-ui-button>` 时，导入会自动添加：
+在 Vue 模板、React JSX/TSX 或 Vite HTML 入口中使用 `<web-ui-button>` 时，会自动加入对应导入。
 
 ```vue
-<!-- Vue：自动导入 -->
+<!-- Vue -->
 <template>
   <web-ui-button>点击我</web-ui-button>
 </template>
 ```
 
 ```tsx
-// React：自动导入
+// React
 function App() {
   return <web-ui-button>点击我</web-ui-button>
 }
@@ -63,10 +55,9 @@ function App() {
 
 ### Vite HTML 入口
 
-对于由 Vite 处理的 HTML 入口，插件会扫描标记，并在 `<head>` 前部注入一个 `<script type="module">`，为每个组件生成静态 import：
+对于由 Vite 处理的 HTML 入口，插件会注入一个模块脚本，为每个组件生成一条导入。
 
 ```html
-<!-- index.html -->
 <!doctype html>
 <html lang="zh-CN">
   <head>
@@ -80,7 +71,7 @@ function App() {
 </html>
 ```
 
-`sideEffects: true` 时注入的脚本大致如下：
+`sideEffects: true` 时，注入的脚本大致如下：
 
 ```html
 <script type="module">
@@ -88,31 +79,28 @@ function App() {
 </script>
 ```
 
-HTML 注入说明：
+HTML 注入规则：
 
-- HTML 中仅识别 kebab-case 自定义元素（`<web-ui-*>` → `web-ui-button`），大小写不敏感——HTML tag 名解析时统一小写化，`<WEB-UI-BUTTON>` 与 `<web-ui-Button>` 都按 `web-ui-button` 处理。驼峰命名（`<WebUiButton>`）不支持：解析器会将其归一到另一个 tag（`webuibutton`）。
-- 跳过 HTML 注释及 RAWTEXT/RCDATA 区域（`script`、`style`、`title`、`textarea`、`iframe`、`xmp`、`noembed`、`noframes`、`noscript`），其中的伪 tag 不会产生导入。未闭合区域通常视为延伸到文件末尾；由于正则扫描无法同时模拟注释与 RAWTEXT 的 tokenizer 状态，注释内未闭合的 `<script>`/`style` 伪 tag（如 `<!-- <script> --><web-ui-button>`）可能吞掉其后的真实 tag。带引号属性值同样跳过，等号两侧允许空白——`<div data-template = "<web-ui-button>">` 不会触发导入。
-- HTML 必须经 Vite 构建（`vite build`）。`public/` 中的文件按原样提供，直接双击打开的 HTML 不会被转换。
+- 只识别 kebab-case 自定义元素。HTML 标签名不区分大小写，因此 `<WEB-UI-BUTTON>` 和 `<web-ui-Button>` 都匹配 `web-ui-button`。`<WebUiButton>` 这样的驼峰名不匹配。
+- 注释、`script`、`style`、`title`、`textarea`、`iframe` 等原始文本区域中的标签会被忽略。
+- HTML 必须经过 Vite 构建。`public/` 中的文件和直接从磁盘打开的 HTML 不会被转换。
 
 ## API
 
 ### `unpluginWebComponents(options)`
 
-创建用于 Web Components 自动导入的 unplugin 实例。
-
-| 参数                  | 类型      | 默认值  | 说明                               |
-| --------------------- | --------- | ------- | ---------------------------------- |
-| `options.tagPrefix`   | `string`  | -       | 组件 tag 前缀（如 `'web-ui'`）     |
-| `options.packageName` | `string`  | -       | NPM 包名（如 `'@greypan/web-ui'`） |
-| `options.sideEffects` | `boolean` | `false` | 使用副作用导入（`import 'pkg'`）   |
-| `options.withStyle`   | `string`  | -       | 随组件导入的 CSS 文件              |
+| 参数                  | 类型      | 默认值  | 说明                                  |
+| --------------------- | --------- | ------- | ------------------------------------- |
+| `options.tagPrefix`   | `string`  | -       | 组件标签前缀，例如 `'web-ui'`。       |
+| `options.packageName` | `string`  | -       | npm 包名，例如 `'@greypan/web-ui'`。  |
+| `options.sideEffects` | `boolean` | `false` | 使用副作用导入，例如 `import 'pkg'`。 |
+| `options.withStyle`   | `string`  | -       | 随组件导入的 CSS 文件。               |
 
 ### 支持的打包器
 
 | 入口       | 模块转换                              | HTML 注入                      |
 | ---------- | ------------------------------------- | ------------------------------ |
 | `/vite`    | Vue（`.vue`）、React（`.tsx`/`.jsx`） | Vite HTML 入口（`index.html`） |
-| `/webpack` | Vue（`.vue`）、React（`.tsx`/`.jsx`） | —                              |
+| `/webpack` | Vue（`.vue`）、React（`.tsx`/`.jsx`） | -                              |
 
-- 仅发布 `/vite` 与 `/webpack` 子路径导出；不提供 Rollup、esbuild 入口。
-- HTML 注入是 Vite 专属能力。Webpack 适配器只做模块源码转换，不提供 HTML 注入——如需 Webpack HTML 注入，需单独集成 `HtmlWebpackPlugin`。
+只发布 `/vite` 和 `/webpack` 子路径。HTML 注入仅限 Vite。Webpack 适配器只转换模块源码，不注入 HTML。

@@ -1,14 +1,13 @@
 # @greypan/web-ui
 
-> 基于 Lit 的 Web Components，支持 React、Vue 和原生 HTML
+> 可用于 React、Vue 与普通 HTML 的 Web Components。
 
-[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/README.md) | 简体中文
+[English](./README.md) | 简体中文
 
 ## 演示
 
-[查看组件在 vue 中使用](https://pan-z2l0ahvi.github.io/mono/vue-web-ui-demo/)
-
-[查看组件在 react 中使用](https://pan-z2l0ahvi.github.io/mono/react-web-ui-demo/)
+- [Vue 演示](https://pan-z2l0ahvi.github.io/mono/vue-web-ui-demo/)
+- [React 演示](https://pan-z2l0ahvi.github.io/mono/react-web-ui-demo/)
 
 ## 安装
 
@@ -16,138 +15,91 @@
 npm install @greypan/web-ui
 ```
 
-`lit` 是必需的 peer dependency；`vue >= 3.5` 与 `@types/react >= 19` 是可选 peer，仅用于各自的
-框架类型适配。
+`lit` 是必需的 peer dependency。
+
+React 与 Vue 的类型适配是可选的，分别要求：
+
+- **React 19** 与 `@types/react >= 19`。React 19 会把 custom element 的 props 写成 DOM property，并通过 JSX 的 `on` 键绑定自定义事件。React 18 及更早版本只会写 attribute，对象、数组属性和自定义事件需要手动 `ref` 加 `addEventListener`。
+- **Vue 3.5 或更高版本**。Vue 3.5 在 `DefineComponent` 上保留 custom element 宿主类型，模板 ref、`$el`、命名 handler 和事件载荷都能直接解析到具体组件，无需 cast。更早版本会丢失宿主类型，适配层能力随之下降。
+
+版本要求来自 props 与事件。slot 不依赖框架版本：它是原生 Shadow DOM slot，在 React、Vue 和普通 HTML 中行为一致。
+
+更早的框架版本仍可把组件当作普通 custom element 使用：写 attribute，并用 `addEventListener` 监听事件，只是没有类型适配。
+
+每个适配器只需要在 `env.d.ts` 中全局引入一次类型。下方 React 与 Vue 章节给出具体引用方式和可导入的工具类型。
 
 ## 快速开始
 
 ```js
 import '@greypan/web-ui'
+// 或者只导入一个组件：
 // import '@greypan/web-ui/components/button'
 ```
 
-subpath 导入只注册它点名的那个组件，页面用到的每个 tag 都要单独导入。
+子路径导入只注册它点名的组件。页面用到的每个标签都要导入。
 
 ```html
-<web-ui-button variant="primary">点击我</web-ui-button> <web-ui-icon .icon="${lucidePlus}"></web-ui-icon>
+<web-ui-button variant="primary">点击我</web-ui-button> <web-ui-input placeholder="姓名"></web-ui-input>
 ```
 
-## Icons
+## CSS class
 
-`@greypan/web-ui/icons` 导出组件所用图标的 [Iconify](https://iconify.design/) 数据对象，消费方不需要
-额外的图标包或网络请求。命名是 camelCase 的 `<set><Name>`：`lucideSearch` 对应 `lucide:search`。
-
-```js
-import { lucideSearch } from '@greypan/web-ui/icons'
-```
-
-```html
-<web-ui-icon .icon="${lucideSearch}"></web-ui-icon>
-```
-
-`web-ui-icon` 通过 `icon` property（不是 attribute）接收 Iconify 对象，任何 Iconify 数据对象都可用，
-包括内置的或自己的。内置列表由 `icons.used.json` 生成；新增条目后运行
-`pnpm --filter @greypan/web-ui generate-icons` 即可扩展。
-
-## scrollbar
-
-滚动条使用原生 CSS。`web-ui-theme` 把 thumb 颜色暴露为 `--wui-scrollbar-handle`；自带滚动容器的组件
-（`select`、`autocomplete`、dropdown / context-menu panel、`dialog`、`drawer`、`toast`）在各自的
-shadow root 内通过 `scrollbar-color` 与 `scrollbar-width` 读取它。不需要 scrollbar 库，也不需要额外
-导入样式表。
-
-要让文档级滚动条也使用同一主题，在 `html` 上读同一个 token——最外层主题会把它镜像到 `documentElement`：
-
-```css
-html {
-  scrollbar-color: var(--wui-scrollbar-handle) transparent;
-  scrollbar-width: thin;
-}
-```
-
-- 上面这条规则作用于文档级滚动容器；组件内部的滚动容器在 shadow root 里用同一个 token 声明自己的
-  `scrollbar-color`，两处因此保持同色。
-- 原生 scrollbar 没有 hover / active 状态，token 只控制静止态的 thumb 颜色。
-- 刻意不用 `::-webkit-scrollbar`：声明它会让引擎放弃平台的覆盖式 scrollbar、固定占一条布局宽度，
-  而这些 scrollbar 不能占宽度。
-
-## Classes
-
-`@greypan/web-ui/classes.css` 汇总可复用的公共 class，组件内部与消费方共用同一份源码：
-`.wui-glass`（毛玻璃表面）与 `.wui-glow`（装饰性背景晕染）。
+`@greypan/web-ui/classes.css` 提供两个可复用 class，组件内部使用同一份样式。
 
 ```js
 import '@greypan/web-ui/classes.css'
 ```
 
-### .wui-glass
+### `.wui-glass`
 
-给任意容器加 `.wui-glass` 即可获得毛玻璃表面；组件内部（drawer body、dialog / toast、tooltip /
-popover、input 等）用的也是同一份样式。
+给任意容器加 `.wui-glass` 即可获得毛玻璃表面。
 
 ```html
 <div class="wui-glass">...</div>
 ```
 
-- 同时提供半透明底色、`backdrop-filter`（模糊 / 饱和 / 亮度）、元素自身的 inset 高光与投影，
-  以及用 `::before` 挖出的 1px 描边环：环的左上 / 右下受光、右上 / 左下背光，半径由
-  `--wui-glass-corner-radius` 控制。
-- 容器需要有确定的盒子尺寸和可被采样的背景。`.wui-glass` 只在宿主没有其他 `position` 时补
-  `position: relative`，并移除自身 border（描边由环承担）；圆角仍跟随宿主的 `border-radius`。
-- 非 pill 表面应把 `--wui-glass-corner-radius` 覆盖成与自身圆角同源的值，否则角部光影半径与
-  盒形不匹配。颜色 token 由主题给出浅 / 深两套默认值，优先覆盖 token 而不是重写 `backdrop-filter`。
+- 它提供半透明底色、`backdrop-filter` 的模糊、饱和与亮度、内高光与投影，以及用 `::before` 画出的 1px 描边环。
+- 容器需要有确定的尺寸和可被采样的背景。宿主没有其他 position 时，class 会补 `position: relative`，移除宿主边框，并跟随宿主的 `border-radius`。
+- 非 pill 表面应把 `--wui-glass-corner-radius` 设为与元素圆角一致的值。
 
-| token                          | 默认值                    | 说明                                                 |
-| ------------------------------ | ------------------------- | ---------------------------------------------------- |
-| `--wui-color-surface-glass`    | `rgb(250 250 250 / 0.34)` | 半透明底色；深色主题为 `rgb(44 44 46 / 0.42)`        |
-| `--wui-glass-blur`             | `4px`                     | `backdrop-filter` 模糊半径；设 `0px` 关闭            |
-| `--wui-glass-saturation`       | `160%`                    | 背景饱和度                                           |
-| `--wui-glass-brightness`       | `1.06`                    | 背景亮度；深色主题为 `1.02`                          |
-| `--wui-color-glass-highlight`  | `rgb(255 255 255 / 0.9)`  | 元素 inset 高光；深色主题为 `rgb(255 255 255 / 0.1)` |
-| `--wui-glass-corner-radius`    | `32px`                    | 描边环径向光影的半径                                 |
-| `--wui-color-glass-ring`       | `rgb(0 0 0 / 0.05)`       | 1px 环底色；深色主题为 `rgb(255 255 255 / 0.05)`     |
-| `--wui-color-glass-ring-sheen` | `rgb(255 255 255 / 0.5)`  | 受光角光泽；深色主题为 `rgb(255 255 255 / 0.2)`      |
-| `--wui-color-glass-ring-shade` | `rgb(0 0 0 / 0.03)`       | 背光角压暗；深色主题为 `rgb(0 0 0 / 0.5)`            |
-| `--wui-shadow-glass`           | 四层扩散阴影              | 元素投影；未设置时使用类内默认值                     |
+| Token                          | 默认值                    | 说明                                               |
+| ------------------------------ | ------------------------- | -------------------------------------------------- |
+| `--wui-color-surface-glass`    | `rgb(250 250 250 / 0.34)` | 半透明底色。深色主题为 `rgb(44 44 46 / 0.42)`。    |
+| `--wui-glass-blur`             | `4px`                     | 背景模糊半径。设 `0px` 关闭。                      |
+| `--wui-glass-saturation`       | `160%`                    | 背景饱和度。                                       |
+| `--wui-glass-brightness`       | `1.06`                    | 背景亮度。深色主题为 `1.02`。                      |
+| `--wui-color-glass-highlight`  | `rgb(255 255 255 / 0.9)`  | 内高光。深色主题为 `rgb(255 255 255 / 0.1)`。      |
+| `--wui-glass-corner-radius`    | `32px`                    | 描边环光影的半径。                                 |
+| `--wui-color-glass-ring`       | `rgb(0 0 0 / 0.05)`       | 描边环底色。深色主题为 `rgb(255 255 255 / 0.05)`。 |
+| `--wui-color-glass-ring-sheen` | `rgb(255 255 255 / 0.5)`  | 受光角光泽。深色主题为 `rgb(255 255 255 / 0.2)`。  |
+| `--wui-color-glass-ring-shade` | `rgb(0 0 0 / 0.03)`       | 背光角阴影。深色主题为 `rgb(0 0 0 / 0.5)`。        |
+| `--wui-shadow-glass`           | 四层扩散阴影              | 元素投影。未设置时使用 class 默认值。              |
 
-### .wui-glow
+### `.wui-glow`
 
-给任意容器加 `.wui-glow` 即可，不需要额外组件或 DOM；`web-ui-layout` 的 `header-glow` 与
-collapse 的 peek 边缘用的也是同一份样式。
+给任意容器加 `.wui-glow` 即可获得装饰性背景光晕。
 
 ```html
 <div class="wui-glow">...</div>
 ```
 
-- 渐变与模糊都是容器的背景层，内容始终位于其上方。容器需要有确定的盒子尺寸；`.wui-glow` 只在
-  宿主没有其他 `position` 时补 `position: relative`，并加 `isolation: isolate`。
-- 默认从容器顶部向下铺 `--wui-color-page` 渐变，再叠 `blur(4px)`；模糊层向下探出 24px 后收尾。
-  容器或祖先的 `overflow: hidden` 会裁掉这段尾巴。
-- 宿主是不透明背景时，渐变会叠在它上方，但模糊采样不到宿主背后的内容——只会模糊自身的纯色背景。
-  想要毛玻璃观感，宿主表面应保持半透明。
+- 渐变和模糊都是背景层，内容位于它们上方。
+- 容器需要有确定的尺寸。宿主没有其他 position 时，class 会补 `position: relative`，并加 `isolation: isolate`。
+- 默认从顶部绘制 `--wui-color-page` 渐变，并叠加 `blur(4px)`。模糊层向下延伸 24px 后淡出。祖先的 `overflow: hidden` 会裁掉这段。
+- 宿主背景不透明时，模糊无法采样宿主背后的内容。想要毛玻璃效果，宿主表面应保持半透明。
 
-| token                           | 默认值                                 | 说明                                        |
-| ------------------------------- | -------------------------------------- | ------------------------------------------- |
-| `--wui-glow-color`              | `var(--wui-color-page, #fff)`          | 渐变起点色                                  |
-| `--wui-glow-gradient-direction` | `to bottom`                            | `linear-gradient` 的方向                    |
-| `--wui-glow-gradient`           | 由起点色与方向生成的 `linear-gradient` | 完整 background-image；设 `none` 关闭渐变   |
-| `--wui-glow-blur`               | `4px`                                  | `backdrop-filter` 模糊半径；设 `0px` 关闭   |
-| `--wui-glow-overhang`           | `24px`                                 | 模糊层向容器下方探出的高度                  |
-| `--wui-glow-fade`               | `36px`                                 | 从全强度到透明的衰减总长，应不小于 overhang |
+| Token                           | 默认值                        | 说明                                      |
+| ------------------------------- | ----------------------------- | ----------------------------------------- |
+| `--wui-glow-color`              | `var(--wui-color-page, #fff)` | 渐变起点色。                              |
+| `--wui-glow-gradient-direction` | `to bottom`                   | `linear-gradient` 方向。                  |
+| `--wui-glow-gradient`           | 由起点色和方向生成            | 完整背景图。设 `none` 关闭。              |
+| `--wui-glow-blur`               | `4px`                         | 背景模糊半径。设 `0px` 关闭。             |
+| `--wui-glow-overhang`           | `24px`                        | 模糊层向容器下方延伸的高度。              |
+| `--wui-glow-fade`               | `36px`                        | 从全强度到透明的长度，不应小于 overhang。 |
 
 ## Vite
 
-`@greypan/web-ui/vite` 导出 `webUiOptimizeDeps`，即需要并进应用 `optimizeDeps.include` 的 web-ui 运行时
-依赖清单。
-
-web-ui 的组件从自己的 dist 里带出 `lit`、`@lit/context`、`@floating-ui/dom`。这些包不在应用的
-dependencies 里，Vite 从应用侧解析不到，写裸名会被静默跳过；扫描器直到请求模块时才发现它们，打印
-`optimized dependencies changed. reloading`，那次模块加载随之失败，报 `Failed to fetch dynamically
-imported module`。
-
-扫描器跟不进组件图时才需要这份清单，典型场景是路由或页面由虚拟模块加载，比如 file-based routing
-（`vue-router/vite`）或 `import.meta.glob`。启动入口静态 import 到每个组件模块的应用，组件图本来就在启动
-扫描里，不必列出。
+`@greypan/web-ui/vite` 导出 `webUiOptimizeDeps`，这是需要合并到 `optimizeDeps.include` 的运行时依赖列表。
 
 ```js
 import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
@@ -159,87 +111,148 @@ export default {
 }
 ```
 
-- 条目用 Vite 的 `<pkg> > <dep>` 解析写法，按 web-ui 的依赖树解析，而不是应用的。
-- 直接引用这个导出，不要抄条目，它跟随 web-ui 的运行时依赖。
-- 它只影响 dev 期的依赖预打包，构建不受影响。
-- 改过带清单的配置后清一次 `node_modules/.vite` 再启动。热缓存会把缺失的条目一直藏到 CI，而 CI 没有缓存。
+当 Vite 的依赖扫描器无法跟随组件图时需要这份列表，例如路由或页面通过虚拟模块加载，如 file-based routing 或 `import.meta.glob`。入口静态导入了所有组件模块的应用不需要它。
 
-## 框架集成
+- 条目使用 Vite 的 `<pkg> > <dep>` 解析形式，按 web-ui 的依赖树解析。
+- 引用这个导出，不要复制条目。
+- 它只影响开发期的依赖预打包，不影响构建。
+- 修改带这份列表的配置后，删除一次 `node_modules/.vite` 再重启。
 
-### 跨框架 API 约定
+## 框架接入
 
-`web-ui-*` 元素暴露三面 API，**DOM / JavaScript API 是事实来源**：Property 使用 camelCase，Attribute 使用
-kebab-case，Event 使用 kebab-case。
+### props、attribute、event 与 slot 的对应关系
 
-| 表面      | 命名       | 示例                                          |
-| --------- | ---------- | --------------------------------------------- |
-| Property  | camelCase  | `open`、`sidebarCollapsed`、`noScrollLock`    |
-| Attribute | kebab-case | `open`、`sidebar-collapsed`、`no-scroll-lock` |
-| Event     | kebab-case | `open-change`、`sidebar-collapsed-change`     |
+每个 `web-ui-*` 元素都暴露同样的四个面。
 
-- **布尔 Attribute** 遵循原生 HTML 存在语义：不存在 → `false`，存在 → `true`。框架绑定写入的
-  `disabled="false"` 是字符串 `"false"`，会被视为 true——**动态布尔必须绑定 Property**（camelCase），
-  才能把 `false` 写成真实 property。
-- **Vue**：动态绑定必须走 **Property**，使用 camelCase 属性名（`:sidebarCollapsed="x"`、`:open="x"`）。
-  kebab-case 绑定（`:sidebar-collapsed="x"`）会被写成字符串 attribute，无法表达 `false`，请使用 camelCase
-  property。`.prop` 修饰符只在 camelCase 属性名下有效（`:sidebarCollapsed.prop="x"`）。String/Number 值可
-  保留 kebab-case attribute（`:max-height="120"`）。带值控件（`web-ui-input`、`web-ui-select`、
-  `web-ui-autocomplete` 等）支持 `v-model`，编译为元素的 `value` property + `input` 事件。
-- **React**：React 19 对 custom element 的 props 直接写 DOM property，因此使用 camelCase props
-  （`open={open}`、`noScrollLock`、`value={value}`）。**不要把复杂数据（对象、数组）放进 attribute 字符串**，
-  一律绑定为 property。kebab-case JSX prop 在 custom element 上会写成 attribute。
+| 表面      | 命名                     | 用途                                                                |
+| --------- | ------------------------ | ------------------------------------------------------------------- |
+| Property  | camelCase                | 对象、数组、布尔值、数字，以及运行时读写值。                        |
+| Attribute | kebab-case               | 普通 HTML 中的声明式字符串值。                                      |
+| Event     | kebab-case               | 用户操作，例如 `open-change`，以及原生 `click`、`input`、`change`。 |
+| Slot      | 子元素上的 `slot="name"` | 把自有节点投影到默认或命名区域。                                    |
+
+原生事件是 composed 的，可以到达框架 handler。自定义事件在宿主元素上派发。程序化赋值不会触发自定义事件。
+
+Slot 是原生 Shadow DOM slot。你的节点留在 light DOM，由组件投影：
+
+- 普通子元素进入默认 slot。
+- 命名 slot 在子元素上写 `slot="name"`。
+- Vue 的 `v-slot` 或 React 的 render props 等框架 slot 语法不适用于 custom element。
+
+```html
+<web-ui-layout>
+  <div slot="header">Header</div>
+  <nav slot="sidebar">Sidebar</nav>
+  <main>Main content</main>
+</web-ui-layout>
+```
 
 ### React
 
-需要 `@types/react >= 19` 作为可选 peer 依赖。
+#### 接入
+
+**1. 安装运行时与工具**
+
+安装 React 19、`@types/react >= 19` 和 `@greypan/unplugin-web-components`。
+
+**2. 启用组件自动导入**
+
+在 `vite.config.ts` 中：
 
 ```ts
-// vite.config.ts
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
+import react from '@vitejs/plugin-react'
 
 export default {
-  plugins: [unpluginWebComponents({ tagPrefix: 'web-ui', packageName: '@greypan/web-ui', sideEffects: true })]
+  plugins: [unpluginWebComponents({ tagPrefix: 'web-ui', packageName: '@greypan/web-ui', sideEffects: true }), react()]
 }
-
-// env.d.ts
-import '@greypan/web-ui/types/react'
 ```
+
+把 `unpluginWebComponents` 放在 `react()` 之前，让标签检测看到原始源码。不使用插件时，手动导入用到的组件。
+
+**3. 全局引入类型**
+
+在 `env.d.ts` 中引入一次：
+
+```ts
+/// <reference types="@greypan/web-ui/types/react" />
+```
+
+确认 `env.d.ts` 在 TypeScript 配置的 `include` 中：`tsconfig.app.json`，或 `tsconfig.json` 中对应的条目。这个引用会全局增强 JSX intrinsic elements，所有文件都能获得 `web-ui-*` 标签、props、事件和 ref 类型，不需要逐个文件导入。
+
+#### props 与事件
+
+布尔值和非字符串值使用 camelCase property 名称。React 19 会把它们写成 DOM property。普通字符串可以继续用 attribute。
 
 ```tsx
 import '@greypan/web-ui'
 
+import { useState } from 'react'
+
 function App() {
+  const [open, setOpen] = useState(false)
+
   return (
     <>
       <web-ui-button variant="primary" onClick={() => alert('点击')}>
         button
       </web-ui-button>
-      <web-ui-input onInput={e => console.log(e.currentTarget.value)} />
+      <web-ui-input onInput={event => console.log(event.currentTarget.value)} />
+      <web-ui-dialog open={open} noScrollLock onopen-change={event => setOpen(event.detail.open)} />
     </>
   )
 }
 ```
 
-#### React 自定义元素事件与布尔属性
+- 自定义事件按 `on<event>` 原样书写，保留连字符：写 `onopen-change`，不是 `onOpenChange`。
+- 原生事件使用 React 名称：`onInput`、`onChange`、`onFocus`、`onBlur`。
+- 原生事件和自定义事件的 `currentTarget` 都是组件实例类型。
+- 不要写 `disabled="false"` 或 `open="false"`。attribute 存在就表示 `true`，应直接传布尔值。
 
-React 19 按 JSX 键名中的 `on` 后缀原样注册 Custom Element 事件。事件名大小写敏感：`open-change`
-必须绑定为 `onopen-change`，不能写成 `onOpenChange`。标准 `input`、`change`、`focus`、`blur`
-事件使用 React 惯用的 `onInput`、`onChange`、`onFocus`、`onBlur` handler——其 `currentTarget`
-类型为组件实例，value/checked 读取无需 cast；`target` 遵循 React SyntheticEvent 语义（`EventTarget`），
-不承诺为组件实例。kebab-case 自定义事件携带精确类型的 `CustomEvent` detail。
-布尔属性遵循原生 HTML 语义：属性缺失为 `false`，属性存在为 `true`。
+#### slot
+
+默认 slot 用普通子元素，命名 slot 用 `slot` attribute。
 
 ```tsx
-<web-ui-dialog
-  open={open}
-  noScrollLock
-  onopen-change={event => setOpen(event.detail.open)}
-/>
-<web-ui-select value={value} onChange={event => setValue(event.currentTarget.value)} />
+<web-ui-collapse open={open} onopen-change={event => setOpen(event.detail.open)}>
+  <button type="button">Show details</button>
+  <div slot="content">Details</div>
+</web-ui-collapse>
 ```
 
-当组件会把子元素移入自身的 Portal Shadow DOM（例如 `web-ui-dropdown` 的 menu item）时，React 根节点的
-合成 `onClick` 无法收到该子元素的事件。需要通过 `ref` 直接绑定原生事件：
+#### TypeScript 工具类型
+
+全局引用已经提供标签、props、事件和 ref 类型。需要在代码里显式命名这些类型时，使用包导出的工具类型。
+
+```tsx
+import type { WebUiDialog, WebUiEvent, WebUiEventName } from '@greypan/web-ui'
+import { useRef } from 'react'
+
+function onDialogOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
+  const open: boolean = event.detail.open
+  const host: WebUiDialog = event.currentTarget
+}
+
+const dialogRef = useRef<WebUiDialog>(null)
+const eventName: WebUiEventName<WebUiDialog> = 'open-change'
+```
+
+- `WebUiEvent<Component, EventName>` 用于命名 handler。事件名必须是该组件声明过的事件。
+- `WebUiEventName<Component>` 是该组件自定义事件名的联合类型，适合变量、映射表和泛型辅助函数。
+- `WebUiDialog` 等组件类既是运行时元素类，也是 `useRef` 的元素实例类型。
+- React 中 `event.currentTarget` 是组件实例；`event.target` 遵循 `SyntheticEvent` 语义，仍是 `EventTarget`。
+- 需要自己封装 React 组件时，`LitReactWrapper<Component>` 提供 props 类型。从 `@greypan/web-ui/types/react` 导入。
+
+```ts
+import type { WebUiDialog } from '@greypan/web-ui'
+import type { LitReactWrapper } from '@greypan/web-ui/types/react'
+
+type DialogProps = LitReactWrapper<WebUiDialog>
+```
+
+#### portal 内容
+
+组件把子元素移动到 portal shadow root 后，React 的合成 `onClick` 收不到该子元素的事件。请通过 `ref` 绑定原生监听器。
 
 ```tsx
 const itemRef = useRef<HTMLElement>(null)
@@ -255,12 +268,11 @@ useEffect(() => {
 <web-ui-dropdown-item ref={itemRef}>粘贴并关闭</web-ui-dropdown-item>
 ```
 
-在 `portal` 模式下，库会把 panel 内容物理移入 overlay Shadow DOM：
+`portal` 模式下，panel 内容会被移动到 overlay shadow root：
 
-- React 按记录的插入父节点执行删除，因此裸条件子元素（`{condition && <el/>}`）的节点一旦已迁移，在 panel 打开期间无法删除：commit 失败，且该节点可能在 panel 关闭时重新出现。
-- 请改为在稳定的包装元素内部做条件渲染——React 记录的插入父节点是包装元素，包装元素内部的增删在 panel 打开期间与开合周期内都保持可用（示例如下）。
-- panel 打开期间的裸条件新增（向宿主追加内容）不受影响，会自动迁入 panel。
-- 保持内容始终挂载、仅切换可见性仍是有效的回退方案。
+- 裸条件子元素（例如 `{condition && <el/>}`）的节点已经移动时，panel 打开期间无法删除它。
+- 把条件内容放进稳定的包装元素。React 会把包装元素记录为插入父节点，增删可以继续工作。
+- 保持内容挂载并切换可见性也是可用方案。
 
 ```tsx
 <web-ui-popover portal open={open} trigger="manual">
@@ -270,18 +282,18 @@ useEffect(() => {
 
 ### Vue
 
-需要 `vue >= 3.5` 作为可选 peer 依赖。
+#### 接入
 
-Portal panel 支持实时渲染：overlay 打开期间条件新增或删除的内容（`web-ui-select`、`web-ui-autocomplete`、
-`web-ui-popover`、`web-ui-tooltip`、`web-ui-dropdown`、`web-ui-context-menu` 内的 Vue `v-if`）会按模板序
-自动迁入打开中的 panel；关闭时所有内容按原锚点位置恢复，后续 patch 继续正常工作。边界：panel 打开期间对
-keyed `v-for` 列表做中段 splice 或重排不受支持——Vue 的 keyed children diff 会以已迁入 panel 的兄弟节点
-计算插入锚点，patch 失败且可能丢项；与编译路径无关（编译模板同样命中）。此类列表更新请在 panel 关闭后
-进行，或只做尾部追加/删除。
+**1. 安装运行时与工具**
+
+安装 Vue 3.5 或更高版本、`@greypan/unplugin-web-components` 和 `@vitejs/plugin-vue`。
+
+**2. 启用 custom element 与组件自动导入**
+
+在 `vite.config.ts` 中：
 
 ```ts
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
-// vite.config.ts
 import vue from '@vitejs/plugin-vue'
 
 export default {
@@ -292,22 +304,33 @@ export default {
     unpluginWebComponents({ tagPrefix: 'web-ui', packageName: '@greypan/web-ui', sideEffects: true })
   ]
 }
-
-// env.d.ts
-import '@greypan/web-ui/types/vue'
 ```
+
+`isCustomElement` 让 Vue 不再把 `web-ui-*` 当作未知 Vue 组件。unplugin 在标签出现时导入对应组件。不使用插件时，手动导入用到的组件。
+
+**3. 全局引入类型**
+
+在 `env.d.ts` 中引入一次：
+
+```ts
+/// <reference types="@greypan/web-ui/types/vue" />
+```
+
+确认 `env.d.ts` 在 TypeScript 配置的 `include` 中：`tsconfig.app.json`，或 `tsconfig.json` 中对应的条目。这个引用会把所有 `web-ui-*` 标签注册进 `GlobalComponents`，模板和模板 ref 都能获得类型，不需要逐个文件导入。
+
+#### props 与事件
+
+用 camelCase 名称绑定 property。Vue 会把未知的 kebab-case 绑定写成 attribute，而字符串 `"false"` 是真值。
 
 ```vue
 <template>
   <web-ui-button variant="primary" @click="handleClick">button</web-ui-button>
-  <web-ui-input v-model="value" />
+  <web-ui-input :value="value" @input="value = $event.target.value" />
   <web-ui-select :value="framework" @change="framework = $event.target.value" />
 </template>
 ```
 
-Boolean 属性必须用 **camelCase 属性名**绑定，而不是 kebab-case attribute。Vue 会把 attribute 绑定写成字符串，
-而布尔 attribute 遵循「存在即 true」的语义——所以 `:sidebar-collapsed="false"` 会写出字符串 `"false"`，被当作 true。
-改用 camelCase 属性名（`:sidebarCollapsed="false"`，或 `.prop` 修饰符）会让 Vue 直接写 DOM property：
+布尔 property 必须使用 camelCase 名称绑定。请写 `:sidebarCollapsed="false"` 或使用 `.prop` 修饰符，不要写 `:sidebar-collapsed="false"`。
 
 ```vue
 <web-ui-layout
@@ -320,108 +343,103 @@ Boolean 属性必须用 **camelCase 属性名**绑定，而不是 kebab-case att
 />
 ```
 
-Vue 事件类型零 cast：带值组件上的 `@input`/`@change` 解析到组件 emit，`$event.target` 即为组件实例，
-`value`/`checked` 直接读取；kebab-case 事件（如 `open-change`）的 `$event.detail` 保持 `CustomEvent` 载荷类型。
-命名 handler 用 `WebUiEvent<WebUiXxx, 'change'>` 标注；当变量或泛型表示事件名时，使用
-`WebUiEventName<WebUiXxx>`，它只接受该组件 `$events` 的 string key。未声明为 emit 的原生事件
-（`@click`/`@focus` 等）在任何 `web-ui-*` 元素上仍可绑定。
+Vue 事件类型不需要 cast。带值组件上的 `@input` 和 `@change` 解析到组件 emit，`$event.target` 就是组件实例。`open-change` 等 kebab-case 事件的 `$event.detail` 保留 `CustomEvent` 载荷类型。`@click`、`@focus` 等原生事件仍可绑定到任意 `web-ui-*` 元素。命名 handler 的写法见下方 TypeScript 工具类型。
+
+#### slot
+
+在子元素上写 `slot` attribute。Vue 的 `v-slot` 语法面向 Vue 组件，不适用于 custom element。
+
+```vue
+<web-ui-layout>
+  <div slot="header">Header</div>
+  <nav slot="sidebar">Sidebar</nav>
+  <main>Main content</main>
+</web-ui-layout>
+```
+
+#### TypeScript 工具类型
+
+全局引用已经把标签注册进 `GlobalComponents`，内联 `$event` 和模板 ref 都能直接获得类型，无需 cast。命名 handler 和可复用辅助函数使用包导出的工具类型。
+
+```vue
+<script setup lang="ts">
+import type { WebUiDialog, WebUiEvent, WebUiEventName } from '@greypan/web-ui'
+import { ref } from 'vue'
+
+function onDialogOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
+  const open: boolean = event.detail.open
+  const host: WebUiDialog = event.currentTarget
+}
+
+const dialogRef = ref<WebUiDialog>()
+const eventName: WebUiEventName<WebUiDialog> = 'open-change'
+</script>
+```
+
+- `WebUiEvent<Component, EventName>` 用于命名 handler，事件名必须是组件声明过的事件。
+- `WebUiEventName<Component>` 是该组件自定义事件名的联合类型，适合变量、映射表和泛型辅助函数。
+- `ref<WebUiDialog>()` 把模板 ref 标注为 custom element 实例。
+- 内联 handler 如 `@input="value = $event.target.value"` 已经能直接推导，无需 cast。
+- 需要自己封装 Vue 组件时，`LitVueWrapper<Component>` 提供 props 类型。从 `@greypan/web-ui/types/vue` 导入。
+
+```ts
+import type { WebUiDialog } from '@greypan/web-ui'
+import type { LitVueWrapper } from '@greypan/web-ui/types/vue'
+
+type DialogProps = LitVueWrapper<WebUiDialog>
+```
+
+#### portal 内容
+
+panel 打开期间新增或删除的内容会自动迁入 panel，关闭时回到原锚点。panel 打开期间对 keyed `v-for` 列表做重排或中段 splice 不受支持。请在 panel 关闭后更新，或只在列表尾部追加和删除。
+
+### Lit
+
+Portal panel 支持 Lit child part 的实时渲染。`web-ui-popover`、`web-ui-tooltip`、`web-ui-select`、`web-ui-autocomplete` 中的条件内容会移入打开的 panel。panel 打开期间删除和替换元素可用，关闭时内容回到原锚点。
+
+panel 打开期间对 `repeat()` 列表重排不受支持。请在 panel 关闭后重排。
+
+`web-ui-dropdown` 通过共享菜单 portal 管理条目。panel 打开期间新增条目可用。已经位于 panel 中的条目不支持删除和替换。`web-ui-context-menu` 不监听宿主侧插入，不在这些保证范围内。
 
 ### 属性与事件边界
 
-`web-ui-*` 元素是公开 DOM 边界。`id`、`class`、`style`、全局 HTML 属性和 `data-*` 保留在 Custom Element 宿主上，
-不会复制到 Shadow DOM。只有组件文档明确声明语义映射时，原生元素属性才会传递。例如 `web-ui-button` 会把 `type`
-映射到内部 button，且仅接受 `button`、`submit`、`reset`；非法值会回退为 `button`。
+`web-ui-*` 元素是公开 DOM 边界。`id`、`class`、`style`、全局 HTML attribute 和 `data-*` 留在自定义元素宿主上，不会复制到 shadow root。只有组件文档定义了映射时，才会暴露原生属性。例如 `web-ui-button` 把 `type` 映射到内部 button，只接受 `button`、`submit` 或 `reset`。
 
-ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而不是通配 `aria-*` 透传。组件拥有自己的 role 和交互状态。
-`click`、`input`、`change` 等浏览器 composed 原生事件仍是主要交互 API。`open-change` 等 kebab-case 自定义事件
-仅描述用户操作导致的组件状态变化；程序化赋值 property 不会触发它们。
+ARIA attribute 需要显式支持。使用组件文档中的 attribute，不要通配 `aria-*`。组件自己管理 role 和交互状态。`click`、`input`、`change` 等原生 composed 事件是主要交互 API。`open-change` 等 kebab-case 自定义事件只描述用户操作，程序化赋值不会触发。
 
-### Cursor 行为
+### 光标行为
 
-交互控件使用原生箭头光标，而不是手型光标；disabled 控件使用 `not-allowed`。Slider、Switch 和 Segmented 在
-hover 与按压反馈阶段保持箭头光标，仅在真实拖拽进行中切换为 `grabbing`。专用拖拽 drag bar 和 resize 控件保留各自
-的专用光标。Cursor 样式位于 Shadow DOM 内，应用层普通选择器无法覆盖。
+交互控件使用箭头光标。禁用控件使用 `not-allowed`。Slider、Switch 和 Segmented 只在拖拽时切换为 `grabbing`。光标样式位于 shadow root 内，文档级选择器无法覆盖。
 
-### 受控状态语义
+### 状态模型
 
-`web-ui-*` 元素没有单一的「受控」契约；按交互性质分成三套状态模型，各组件族取其一。不要假设不同组件上的
-`controlled` 含义相同。
+组件使用三种状态模型。不要假设 `controlled` 在每个组件上含义相同。
 
-**仅用户来源事件（所有 `open` 类组件：collapse、popover、dropdown、tooltip、dialog、drawer、back-top）。**
-`*-change` 事件（`open-change` 等）只在用户来源的切换时派发；程序化赋值（`el.open = true`）或命令式调用
-（`show()`、`close()`、`toggle()`）从不派发。组件**自管理**自己的 `open` 值，除非你在外部协调——你可以监听事件
-并写回自己的状态，但组件不要求、也不等待这个写回。
+- 开合类组件（collapse、popover、dropdown、tooltip、dialog、drawer、back-top）只在用户操作时发出 `*-change`。程序化赋值和命令式方法不会发出事件。除非外部协调，组件自己管理 `open`。
+- Dialog 和 drawer 支持 `controlled`。用户关闭操作只请求 `open=false`，组件保持打开，直到你写入 `open=false`。
+- 表单控件（input、textarea、input-number、select、checkbox、radio、switch、autocomplete）自己管理 value 或 checked。用户交互会立即翻转并派发原生 `input` 或 `change`。程序化写入会覆盖内部状态。因为值始终可读可写，所以没有 `controlled` prop。
 
-**请求-写回模式（仅 dialog 与 drawer 的 `controlled`）。**
-`controlled=true` 时，用户关闭操作（Escape、backdrop、内置关闭、拖拽释放）只*请求* `open=false`；组件不改自己的
-状态，保持打开，直到Consumer写回 `open=false`。这是模态确认语义——关 dialog/drawer 通常是需要Consumer批准的操作（未保存
-表单、需确认），与即时开合不同，不能由组件自行提交。只有这两个模态组件使用该模式；即时开合家族（collapse、popover、
-dropdown、tooltip）不需要它。
+如果 switch 或 checkbox 必须等服务端成功后才保持开启，请使用乐观更新。立即翻转，监听 `change`，请求期间设置 `loading`，失败时把 property 写回。
 
-**原生表单模型（input、textarea、input-number、select、checkbox、radio、switch、autocomplete）。**
-控件内部自管理 value/checked 状态；用户交互立即翻转，然后派发原生 `input`/`change` 事件。程序化赋值
-（`el.checked = true`）覆盖内部状态。这与原生 `<input type="checkbox">` 一致——**没有 `controlled` prop 是因为
-值总是可读可写**，React/Vue 层自备受控包装。
+### 表单控件
 
-若翻转的持久化需要外部往返（例如 switch 应只有 API 调用成功后保持开启），使用**乐观更新**路径：
+表单控件参与原生 `FormData`、约束校验、`form.reset()` 和浏览器表单状态恢复。重置默认值在首次连接并应用声明式 attribute 后捕获一次。后续 property 更新不会改变它。禁用的祖先 `fieldset` 会禁用交互和校验，但不会修改控件公开的 `disabled` property。checkbox 和 radio group 由 group 统一负责提交、重置和恢复。
 
-- 立即翻转，然后监听 `change`。
-- 请求期间设 `loading`，阻断后续交互并显示 spinner。
-- 失败后回写 property（`el.checked = false`）并提示 toast。
+`web-ui-button` 也是 form-associated，让宿主可以持有外层 form 并转发 `submit` 和 `reset`。它不向 `FormData` 贡献值。
 
-翻转先于批准的窗口被接受；不提供「批准前不翻转」的 `controlled` prop。
+## 组件
 
-### 表单关联控件
+每个组件都有文档页，包含 API 参考、行为说明和交互示例。下表是索引。
 
-所有表单控件均参与原生 `FormData`、约束校验、`form.reset()` 和浏览器表单状态恢复。控件会在**首次连接且声明式属性完成初始化后**捕获一次重置默认值；之后的运行时 property 更新不会改写该默认值。祖先 `fieldset` 的禁用状态会禁用交互和校验，但不会改写控件公开的 `disabled` 属性。对于 checkbox/radio group，父 group 是提交、重置和状态恢复的唯一所有者；被管理的子项不会独立提交或恢复状态。
-
-`web-ui-button` 同样声明为 form-associated，使宿主可以持有外层 form 的 form owner 并转发 `submit`/`reset` 激活；它不向 `FormData` 贡献值。
-
-## 所有组件
-
-每个组件都有自己的文档页，API 参考、行为说明和可交互示例都在 [`docs/`](https://github.com/pan-Z2l0aHVi/mono/tree/main/packages/web-ui/docs) 下。下面的表只是索引。
-
-| 分类                  | 组件                                                                                                                        |
-| --------------------- | --------------------------------------------------------------------------------------------------------------------------- |
-| **表单控件**          | [`<web-ui-input>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/input.CN.md)                         |
-|                       | [`<web-ui-textarea>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/textarea.CN.md)                   |
-|                       | [`<web-ui-editable-text>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/editable-text.CN.md)         |
-|                       | [`<web-ui-input-number>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/input-number.CN.md)           |
-|                       | [`<web-ui-select>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/select.CN.md)                       |
-|                       | [`<web-ui-autocomplete>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/autocomplete.CN.md)           |
-|                       | [`<web-ui-slider>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/slider.CN.md)                       |
-|                       | [`<web-ui-checkbox>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/checkbox.CN.md)                   |
-|                       | [`<web-ui-radio>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/radio.CN.md)                         |
-|                       | [`<web-ui-switch>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/switch.CN.md)                       |
-|                       | [`<web-ui-segmented>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/segmented.CN.md)                 |
-|                       | [`<web-ui-checkbox-group>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/checkbox-group.CN.md)       |
-|                       | [`<web-ui-radio-group>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/radio-group.CN.md)             |
-| **button**            | [`<web-ui-button>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/button.CN.md)                       |
-|                       | [`<web-ui-button-group>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/button-group.CN.md)           |
-| **overlay / 模态**    | [`<web-ui-dialog>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dialog.CN.md)                       |
-|                       | [`<web-ui-drawer>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/drawer.CN.md)                       |
-|                       | [`imagePreview()`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/image-preview.CN.md)                 |
-| **文档流 Disclosure** | [`<web-ui-collapse>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/collapse.CN.md)                   |
-| **浮动**              | [`<web-ui-popover>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/popover.CN.md)                     |
-|                       | [`<web-ui-tooltip>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/tooltip.CN.md)                     |
-|                       | [`<web-ui-context-menu>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/context-menu.CN.md)           |
-| **menu**              | [`<web-ui-dropdown>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dropdown.CN.md)                   |
-|                       | [`<web-ui-dropdown-item>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dropdown-item.CN.md)         |
-|                       | [`<web-ui-dropdown-divider>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dropdown-divider.CN.md)   |
-|                       | [`<web-ui-dropdown-header>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/dropdown-header.CN.md)     |
-| **数据展示**          | [`<web-ui-avatar>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/avatar.CN.md)                       |
-|                       | [`<web-ui-badge>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/badge.CN.md)                         |
-|                       | [`<web-ui-empty>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/empty.CN.md)                         |
-|                       | [`<web-ui-grouped-text>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/grouped-text.CN.md)           |
-|                       | [`<web-ui-middle-ellipsis>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/middle-ellipsis.CN.md)     |
-|                       | [`<web-ui-icon>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/icon.CN.md)                           |
-|                       | [`<web-ui-progress>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/progress.CN.md)                   |
-|                       | [`<web-ui-spinner>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/spinner.CN.md)                     |
-| **布局与工具**        | [`<web-ui-layout>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/layout.CN.md)                       |
-|                       | [`<web-ui-back-top>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/back-top.CN.md)                   |
-|                       | [`<web-ui-svg-draw-lines>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/svg-draw-lines.CN.md)       |
-|                       | [`<web-ui-theme>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/theme.CN.md)                         |
-| **通知**              | [`<web-ui-toast>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/toast.CN.md)                         |
-|                       | [`shake()`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/shake.CN.md)                                |
-| **子项**              | [`<web-ui-option>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/option.CN.md)                       |
-|                       | [`<web-ui-segmented-trigger>`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs/segmented-trigger.CN.md) |
+| 分类           | 组件                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                       |
+| -------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
+| 表单控件       | [`<web-ui-input>`](./docs/input.CN.md)、[`<web-ui-textarea>`](./docs/textarea.CN.md)、[`<web-ui-editable-text>`](./docs/editable-text.CN.md)、[`<web-ui-input-number>`](./docs/input-number.CN.md)、[`<web-ui-select>`](./docs/select.CN.md)、[`<web-ui-autocomplete>`](./docs/autocomplete.CN.md)、[`<web-ui-slider>`](./docs/slider.CN.md)、[`<web-ui-checkbox>`](./docs/checkbox.CN.md)、[`<web-ui-radio>`](./docs/radio.CN.md)、[`<web-ui-switch>`](./docs/switch.CN.md)、[`<web-ui-segmented>`](./docs/segmented.CN.md)、[`<web-ui-checkbox-group>`](./docs/checkbox-group.CN.md)、[`<web-ui-radio-group>`](./docs/radio-group.CN.md) |
+| 按钮           | [`<web-ui-button>`](./docs/button.CN.md)、[`<web-ui-button-group>`](./docs/button-group.CN.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                             |
+| Overlay 与模态 | [`<web-ui-dialog>`](./docs/dialog.CN.md)、[`<web-ui-drawer>`](./docs/drawer.CN.md)、[`imagePreview()`](./docs/image-preview.CN.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                         |
+| 文档流展开     | [`<web-ui-collapse>`](./docs/collapse.CN.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 浮动层         | [`<web-ui-popover>`](./docs/popover.CN.md)、[`<web-ui-tooltip>`](./docs/tooltip.CN.md)、[`<web-ui-context-menu>`](./docs/context-menu.CN.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                               |
+| 菜单           | [`<web-ui-dropdown>`](./docs/dropdown.CN.md)、[`<web-ui-dropdown-item>`](./docs/dropdown-item.CN.md)、[`<web-ui-dropdown-divider>`](./docs/dropdown-divider.CN.md)、[`<web-ui-dropdown-header>`](./docs/dropdown-header.CN.md)                                                                                                                                                                                                                                                                                                                                                                                                             |
+| 数据展示       | [`<web-ui-avatar>`](./docs/avatar.CN.md)、[`<web-ui-badge>`](./docs/badge.CN.md)、[`<web-ui-empty>`](./docs/empty.CN.md)、[`<web-ui-grouped-text>`](./docs/grouped-text.CN.md)、[`<web-ui-middle-ellipsis>`](./docs/middle-ellipsis.CN.md)、[`<web-ui-icon>`](./docs/icon.CN.md)、[`<web-ui-progress>`](./docs/progress.CN.md)、[`<web-ui-spinner>`](./docs/spinner.CN.md)                                                                                                                                                                                                                                                                 |
+| 布局与工具     | [`<web-ui-layout>`](./docs/layout.CN.md)、[`<web-ui-back-top>`](./docs/back-top.CN.md)、[`<web-ui-svg-draw-lines>`](./docs/svg-draw-lines.CN.md)、[`<web-ui-theme>`](./docs/theme.CN.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                   |
+| 通知           | [`<web-ui-toast>`](./docs/toast.CN.md)、[`shake()`](./docs/shake.CN.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                    |
+| 子项           | [`<web-ui-option>`](./docs/option.CN.md)、[`<web-ui-segmented-trigger>`](./docs/segmented-trigger.CN.md)                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                                   |

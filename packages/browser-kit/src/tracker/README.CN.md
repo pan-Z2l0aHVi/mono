@@ -1,34 +1,33 @@
 # Tracker
 
-数据埋点上报，支持批量聚合、页面错误收集、离线恢复和临终遗言。
+> 发送埋点事件，支持批量发送、重试、离线处理与页面错误收集。
 
 [English](./README.md) | 简体中文
 
-组合监听器插件后，实例提供幂等的 `stop()`，释放已组合的离线、页面退出与页面错误监听器。它不暂停、清空或冲刷 outbox；不再需要实例时由调用方释放。
-
 ## 概述
 
-Tracker 是一个基于插件架构的可组合埋点系统。它维护一个待传输 outbox，用来保存尚未被浏览器传输层接受的数据。
+Tracker 把一个事件发送到一个接口。待发送事件默认保存在 localStorage 中，并在下次创建 Tracker 时恢复。没有安装批量插件时，事件按入队顺序逐条发送。
 
-- **待传输 outbox**：默认持久化到 localStorage，并会在下次创建 Tracker 时恢复。
-- **有序常规 drain**：普通 `track()` 按入队顺序逐条发送。
-- **批量聚合**：收集事件，并在可配置的延迟后以数组形式发送。
-- **Beacon 分片**：超过配置的 `maxBatchKB` 时递归分片，默认阈值为 64 KB。
-- **离线恢复**：离线时暂停，浏览器重新联网后继续处理保留的事件。
-- **临终遗言**：页面离开或隐藏时 best-effort 刷新待发数据。
-- **自动降级**：必要时从 `sendBeacon()` 降级到带 `keepalive: true` 的 `fetch()`。
+可以按需组合这些插件：
 
-## 核心插件
+- 发送前聚合事件。
+- 浏览器离线时暂停。
+- 上报未捕获异常与未处理的 Promise rejection。
+- 页面隐藏或即将关闭时发送待处理事件。
+
+核心传输优先使用 `navigator.sendBeacon()`，失败时降级到带 `keepalive: true` 的 `fetch()`。`sendBeacon()` 返回 `true` 只表示浏览器接受了数据，不表示服务端已经收到。
+
+## 核心
 
 ### `defineTracker(options)`
 
-| 配置                 | 类型                                      | 默认值        | 说明                                                                               |
-| -------------------- | ----------------------------------------- | ------------- | ---------------------------------------------------------------------------------- |
-| `url`                | `string`                                  | -             | 埋点接口 URL                                                                       |
-| `transform`          | `(data: object) => object`                | 恒等函数      | 在序列化和计算字节大小前转换每条事件                                               |
-| `transport`          | `(item: object) => Promise<void> \| void` | Beacon 适配器 | 替换单条传输路径，接收 transform 后的载荷；返回的 Promise fulfilled 后条目才会移除 |
-| `disablePersistence` | `boolean`                                 | `false`       | 禁止读取和写入 localStorage 待传输 outbox                                          |
-| `persistenceKey`     | `string`                                  | `url` 的值    | localStorage outbox 的稳定键；多个独立 Tracker 必须使用不同的 key                  |
+| 参数                 | 类型                                      | 默认值   | 说明                                                          |
+| -------------------- | ----------------------------------------- | -------- | ------------------------------------------------------------- |
+| `url`                | `string`                                  | -        | 埋点接口 URL。                                                |
+| `transform`          | `(data: object) => object`                | 恒等函数 | 在序列化和计算大小前转换每条事件。                            |
+| `transport`          | `(item: object) => Promise<void> \| void` | Beacon   | 替换单条事件的发送方式。返回的 Promise resolve 后才移除事件。 |
+| `disablePersistence` | `boolean`                                 | `false`  | 不读写 localStorage 快照。                                    |
+| `persistenceKey`     | `string`                                  | `url` 值 | 稳定的 localStorage 键。多个独立 Tracker 必须使用不同的键。   |
 
 ```ts
 import { defineTracker } from '@greypan/browser-kit'
@@ -41,33 +40,35 @@ const tracker = defineTracker({
 tracker.track({ event: 'page_view', path: '/' })
 ```
 
-创建后的上下文提供以下方法：
+实例提供以下方法。
 
-| 方法          | 说明                                                                                     |
-| ------------- | ---------------------------------------------------------------------------------------- |
-| `track(data)` | 将一条事件加入队列；若 Tracker 未暂停且未被失败传输阻塞，则启动常规 drain。              |
-| `pause()`     | 停止常规 drain；后续上报数据仍会保留在待传输 outbox 中。                                 |
-| `resume()`    | 解除暂停/失败 gate，并调度重试保留条目。                                                 |
-| `flush()`     | 以 best-effort 方式发送所有尚未在途的条目；它会忽略暂停和失败 gate，但不会改变暂停状态。 |
+| 方法          | 说明                                                              |
+| ------------- | ----------------------------------------------------------------- |
+| `track(data)` | 加入一条事件并开始发送，除非 Tracker 已暂停或因持久化失败被阻塞。 |
+| `pause()`     | 停止发送。新事件仍保留在待发送快照中。                            |
+| `resume()`    | 解除暂停或失败阻塞，并重试保留的事件。                            |
+| `flush()`     | 发送尚未在途的事件。它忽略暂停和单条失败，但不会清除暂停状态。    |
 
-核心插件会先序列化转换后的事件，再尝试 `navigator.sendBeacon()`。若浏览器返回 `false` 或调用抛出异常，便降级为带 `keepalive: true` 的 `fetch()`。`sendBeacon()` 返回 `true` 只代表浏览器已接受数据并安排传输，不代表服务端已经收到数据。
+事件会一直保存在 localStorage 中，直到浏览器接受它们。`sendBeacon()` 和降级请求都失败时，事件继续保留。`flush()` 会重试调用时快照中的待处理和失败事件，不会重新启动已经在途的事件。
 
-条目会持续保存在 localStorage，直到浏览器传输层接受它们。若 Beacon 路径和 `fetch()` 降级请求都失败，条目会继续保留；`flush()` 也会重试调用时快照中的 pending 和 failed 条目，但不会重新启动已经在途的条目。除此之外，自动重试只会在调用 `resume()`、安装 `defineOfflineRestore()` 后触发 `online` 事件，或下次创建 Tracker 实例时发生。这是浏览器传输层 outbox，而不是等待服务端确认的投递队列。
+其他重试发生在三种时机：调用 `resume()`、安装 `defineOfflineRestore()` 后浏览器触发 `online`，或下次启动 Tracker 实例。
 
-`persistenceKey` 默认使用 `url`。同一页面中多个相互独立的 Tracker 如果复用同一个 key，会读取和覆盖同一份快照；应为每个独立实例提供不同且稳定的 key。localStorage 受限、配额耗尽或读写失败时，Tracker 会只告警一次，停止后续持久化并继续以内存模式发送；旧快照可能残留，因此下次初始化可能出现 at-least-once 重复发送。这个 fallback 不提供 exactly-once 保证。
+`persistenceKey` 默认使用 `url`。同一页面中的两个独立 Tracker 必须使用不同且稳定的键。localStorage 受限、已满或不可用时，Tracker 会提示一次，停止持久化并继续在内存中运行。旧快照可能导致下次启动时重复发送事件。
+
+Tracker 包含监听器插件时，`stop()` 会释放监听器。它不会暂停、清空或发送待处理事件。不再需要实例时调用它。
 
 ## 插件
 
 ### `defineBatchTrack(options?)`
 
-收集事件，并在延迟后以数组形式发送。
+收集事件，并在延迟后以数组发送。
 
-| 配置                | 类型     | 默认值 | 说明                                    |
-| ------------------- | -------- | ------ | --------------------------------------- |
-| `defaultBatchDelay` | `number` | `500`  | 默认批量延迟，单位为毫秒                |
-| `maxBatchKB`        | `number` | `64`   | 触发递归分片前的最大批次大小，单位为 KB |
+| 参数                | 类型     | 默认值 | 说明                                  |
+| ------------------- | -------- | ------ | ------------------------------------- |
+| `defaultBatchDelay` | `number` | `500`  | 默认批量延迟，单位为毫秒。            |
+| `maxBatchKB`        | `number` | `64`   | 递归拆分前的最大批次大小，单位为 KB。 |
 
-组合后的 `track(data, batchDelay?)` 支持逐次指定延迟。传入 `0` 或负数可跳过该事件的批量聚合。批次大于 `maxBatchKB` 时会递归分片；单条超大事件仍会作为一个条目发送，以保持其数据结构。
+组合后的 `track(data, batchDelay?)` 支持每次调用指定延迟。传 `0` 或负数时该事件不参与批量聚合。大于 `maxBatchKB` 的批次会被拆分。单条超大事件仍作为一个整体发送，以保持数据结构不变。
 
 ```ts
 import { defineBatchTrack, defineTracker } from '@greypan/browser-kit'
@@ -82,21 +83,21 @@ tracker.track({ event: 'scroll', position: 100 }, 0)
 
 ### `defineOfflineRestore()`
 
-浏览器离线时暂停 Tracker（包括初始化时已离线），并在收到 `online` 事件后调用 `resume()`。它不改变持久化策略：持久化属于核心 Tracker，可通过 `disablePersistence` 关闭。
+浏览器离线时暂停，包括 Tracker 启动时已经离线的情况，并在 `online` 事件后恢复。它不改变持久化行为，持久化由核心 Tracker 的 `disablePersistence` 控制。
 
 ### `definePageErrors(options?)`
 
-收集浏览器全局的 uncaught error 和 unhandled promise rejection，并通过组合后的 `track()` 上报。它不收集资源加载失败、console 消息或框架回调错误。
+收集未捕获异常和未处理的 Promise rejection，并通过组合后的 `track()` 发送。它不收集资源加载失败、console 消息或框架回调错误。
 
-| 配置               | 类型                       | 默认值      | 说明                                     |
-| ------------------ | -------------------------- | ----------- | ---------------------------------------- |
-| `maxErrors`        | `number`                   | `20`        | 插件实例生命周期内最多实际上报的事件数量 |
-| `dedupeWindowMs`   | `number`                   | `5000`      | 错误签名去重窗口；`≤ 0` 表示关闭去重     |
-| `maxMessageLength` | `number`                   | `1000`      | 上报 message 的最大长度                  |
-| `maxStackLength`   | `number`                   | `8000`      | 上报 stack 的最大长度                    |
-| `metadata`         | `object \| (() => object)` | `undefined` | 每次上报时求值的上下文；不能覆盖标准字段 |
+| 参数               | 类型                       | 默认值      | 说明                                        |
+| ------------------ | -------------------------- | ----------- | ------------------------------------------- |
+| `maxErrors`        | `number`                   | `20`        | 单个插件实例最多上报的事件数。              |
+| `dedupeWindowMs`   | `number`                   | `5000`      | 错误签名去重窗口。为 `0` 或负数时关闭去重。 |
+| `maxMessageLength` | `number`                   | `1000`      | 上报 message 的最大长度。                   |
+| `maxStackLength`   | `number`                   | `8000`      | 上报 stack 的最大长度。                     |
+| `metadata`         | `object \| (() => object)` | `undefined` | 每次上报的上下文，不能覆盖标准事件字段。    |
 
-事件会把标准化后的错误信息嵌套在 `error` 中，并且不保留原始 rejection reason：
+事件结构如下。
 
 ```ts
 {
@@ -114,9 +115,9 @@ tracker.track({ event: 'scroll', position: 100 }, 0)
 }
 ```
 
-message 和 stack 默认截断，但不做自动 PII 脱敏。metadata 回调抛异常或返回非 object 时，只丢弃 metadata，错误仍会上报。`make()` 自动安装监听器；`stop()` 移除监听器，不支持重新启动，也不会重置保护计数。
+message 和 stack 默认会截断，但不会自动脱敏个人信息。metadata 回调抛错或返回非对象时，只省略 metadata，错误仍会上报。
 
-metadata 属于业务数据：请保证其大小有界且可序列化。不建议在同一页面重复安装本插件；每个安装都会添加独立监听器并维护独立保护状态。
+`make()` 安装监听器。`stop()` 移除监听器，且不能重新开始收集。不要在同一页面重复安装这个插件，因为每次安装都会增加独立监听器和计数。
 
 ```ts
 import { definePageErrors, defineTracker } from '@greypan/browser-kit'
@@ -125,13 +126,12 @@ const tracker = defineTracker({ url: '/api/track' })
   .use(definePageErrors({ metadata: { app: 'demo' } }))
   .make()
 
-// HMR 或测试清理时可调用：
 tracker.stop()
 ```
 
 ### `defineLastWords()`
 
-在 `beforeunload`、`pagehide` 和文档因 `visibilitychange` 进入隐藏状态时调用组合后的 `flush()`。刷新返回 Promise，但退出路径只做异步 best-effort 尝试；不会等待服务端确认，持久化失败也不会阻塞页面退出。
+在 `beforeunload`、`pagehide` 以及 `visibilitychange` 让文档隐藏时调用组合后的 `flush()`。flush 返回 Promise，但页面退出路径只尽力发送。它不等待服务端响应，持久化失败也不会阻止页面关闭。
 
 ## 推荐组合
 
