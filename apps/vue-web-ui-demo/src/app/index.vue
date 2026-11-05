@@ -229,7 +229,7 @@ onMounted(async () => {
           slot="header"
           class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:w-[calc(100vw-60px)] mobile:gap-1.5 mobile:px-2 mobile:py-2"
         >
-          <web-ui-select trigger="icon" :value="themeMotion" aria-label="全局动效" @change="updateThemeMotion">
+          <web-ui-select variant="icon" :value="themeMotion" aria-label="全局动效" @change="updateThemeMotion">
             <web-ui-icon
               slot="trigger"
               :icon="
@@ -246,7 +246,7 @@ onMounted(async () => {
             <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
           <web-ui-select
-            trigger="icon"
+            variant="icon"
             :value="themeAppearance"
             placement="bottom"
             aria-label="全局主题"
@@ -263,7 +263,7 @@ onMounted(async () => {
             <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
           <web-ui-select
-            trigger="icon"
+            variant="icon"
             :value="currentLocale"
             :disabled="localePending"
             :aria-busy="localePending"

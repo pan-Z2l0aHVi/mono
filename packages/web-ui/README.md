@@ -275,7 +275,7 @@ In `portal` mode the library physically moves panel content into the overlay Sha
 - Keeping content mounted and toggling visibility remains a valid fallback.
 
 ```tsx
-<web-ui-popover portal open={open} trigger="manual">
+<web-ui-popover portal open={open} trigger="none">
   <div className="panel-body">{editing && <TagEditor />}</div>
 </web-ui-popover>
 ```
@@ -382,11 +382,14 @@ Cursor styles live inside Shadow DOM, so a plain document-level selector cannot 
 `web-ui-*` elements do not use a single "controlled" contract; three distinct state models exist, chosen per component
 family by the nature of the interaction. Do not assume `controlled` means the same thing across components.
 
-**User-originated events only (all `open`-style components: collapse, popover, dropdown, tooltip, dialog, drawer, back-top).**
-`*-change` events (`open-change`, etc.) fire only for user-originated toggles; assigning the property programmatically
-(`el.open = true`) or calling an imperative method (`show()`, `close()`, `toggle()`) never emits. Components self-manage
-their `open` value unless you coordinate externally. You may observe the event and write it back for your own state, but
-the component does not require or wait for that write-back.
+**Gesture overlays (tooltip, popover, dropdown, select, autocomplete).**
+Gestures and `show()` / `hide()` / `toggle()` all change the state and dispatch `open-change`; assigning `el.open`
+directly is silent. Components self-manage their `open` value unless you coordinate externally. You may observe the
+event and write it back to `open`, but the component does not require or wait for that write-back.
+
+**User-originated events only (collapse, dialog, drawer, back-top).**
+`*-change` events fire only for user-originated toggles; assigning the property programmatically (`el.open = true`) or
+calling an imperative method (`show()`, `close()`, `toggle()`) never emits.
 
 **Request-then-write-back (`controlled` on dialog and drawer only).**
 With `controlled`, user close actions (Escape, backdrop, built-in close, drag-release) only _request_ `open=false`; the

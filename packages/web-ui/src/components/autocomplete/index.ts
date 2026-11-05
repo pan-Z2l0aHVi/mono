@@ -10,14 +10,13 @@ import scrollbarStyle from '@/assets/scrollbar.css?inline'
 import glass from '@/classes/glass.css?inline'
 import type { WebUiOption } from '@/components/option'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
-import { normalizeLiteral } from '@/shared/normalize'
+import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import {
   createComboboxOpenController,
   createOptionListenerBinding,
   defineComboboxTrigger,
   defineOptionPortal,
-  handleComboboxFocusOut,
   nextWrappingIndex
 } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
@@ -29,13 +28,17 @@ import {
   type OverlayContainer,
   type OverlayPortal
 } from '@/shared/overlay/portal'
-import { isEventInsideHost } from '@/shared/overlay/trigger-gestures'
+import { defineTriggerController } from '@/shared/overlay/trigger-controller'
+import { isTriggerNone, normalizeTriggerSet } from '@/shared/overlay/trigger-props'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
 const FILTER_MODES = ['none', 'prefix', 'contains'] as const
 type FilterMode = (typeof FILTER_MODES)[number]
+
+/** 点击打开候选是默认手势；键入与方向键打开属于 combobox 的固有键盘行为。 */
+const DEFAULT_TRIGGERS = ['click'] as const
 
 // 自定义 trigger 与 select 同判据：必须留在宿主，不随 options 迁入 portal panel
 function isTriggerSlotNode(node: Node): node is Element {
@@ -104,6 +107,39 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._filter = normalizeLiteral(v, FILTER_MODES, 'contains')
     this.requestUpdate('filter', old)
   }
+
+  @property({ type: String, reflect: true })
+  get trigger(): string {
+    return this._triggerValue
+  }
+  set trigger(v: string) {
+    const old = this._triggerValue
+    this._triggerValue = normalizeTriggerSet(v, DEFAULT_TRIGGERS)
+    this.requestUpdate('trigger', old)
+  }
+  private _triggerValue: string = DEFAULT_TRIGGERS.join(',')
+
+  @property({ type: Number, attribute: 'show-delay' })
+  get showDelay(): number {
+    return this._showDelay
+  }
+  set showDelay(v: number) {
+    const old = this._showDelay
+    this._showDelay = normalizeNumber(v, 0, 5000, 200)
+    this.requestUpdate('showDelay', old)
+  }
+  private _showDelay = 200
+
+  @property({ type: Number, attribute: 'hide-delay' })
+  get hideDelay(): number {
+    return this._hideDelay
+  }
+  set hideDelay(v: number) {
+    const old = this._hideDelay
+    this._hideDelay = normalizeNumber(v, 0, 5000, 100)
+    this.requestUpdate('hideDelay', old)
+  }
+  private _hideDelay = 100
 
   // value 不反射 attribute，attribute 只参与首次声明式初始化。
   @state() private _value = ''
@@ -202,7 +238,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     },
     getFallbackTrigger: () => this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-input') ?? null,
     onInput: value => this._onTriggerInput(value),
-    onClick: () => this._onTriggerClick(),
+    onClick: event => this._onTriggerClick(event),
     onFocusIn: event => this._onTriggerFocusIn(event),
     onFocusOut: event => this._onTriggerFocusOut(event)
   })
@@ -213,7 +249,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
    * 声明而非询问。
    */
   private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => this._close(),
+    requestClose: () => this._triggerController.hide(),
     isConnected: () => this.isConnected
   })
   private readonly _panel = defineAnchoredPanel().make({
@@ -229,15 +265,56 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     }),
     isPortal: () => this.portal,
     createPortal: () => this._createPortal(),
-    openOverlay: this._overlay
+    openOverlay: this._overlay,
+    // `none` 在逻辑组合树里但不参与 Escape 归属：按键穿过它落到下层 overlay。
+    arbitration: () => this._triggerController.arbitration()
   })
+  // 手势路由、开合状态机与程序式入口在共享接线里；open 的 reactive 存储仍由本组件持有。
+  private readonly _triggerController = defineTriggerController({
+    host: this,
+    getTrigger: () => this.trigger,
+    isDisabled: () => this._isDisabled,
+    canOpen: () => !this.readonly,
+    getOpen: () => this._isOpen,
+    getShowDelay: () => this.showDelay,
+    getHideDelay: () => this.hideDelay,
+    hoverOpensInstantly: () => false,
+    isInsidePanel: event => !!this._panel.getHandle()?.containsEvent(event),
+    hasFocusWithin: () => this.matches(':focus-within') || !!this._panel.getHandle()?.hasFocusWithin(),
+    // 输入框点击只开不关；键入手势与方向键打开保持组件固有行为。
+    clickOpensOnly: true,
+    requestOpen: meta => this._open({ isKeyboardNavigation: meta.source === 'focus', notify: meta.notify }),
+    requestClose: meta => this._close({ notify: meta.notify })
+  })
+  private _openValue = false
+  private _panelKeepAliveDisposers: (() => void)[] = []
+  private _portalKeepAliveDisposer?: () => void
 
   get isOpen(): boolean {
     return this._isOpen
   }
 
+  /** 声明式开关：静默变更，不派发 `open-change`。 */
+  @property({ type: Boolean })
   get open(): boolean {
-    return this._isOpen
+    return this._openValue
+  }
+  set open(v: boolean) {
+    this._triggerController.applyDeclarativeOpen(Boolean(v))
+  }
+
+  /** 命令式打开：派发 `open-change`。`none` 下同样可用。 */
+  show(options?: { instant?: boolean }): void {
+    this._triggerController.show(options)
+  }
+
+  /** 命令式收起：派发 `open-change`。 */
+  hide(options?: { instant?: boolean }): void {
+    this._triggerController.hide(options)
+  }
+
+  toggle(options?: { instant?: boolean }): void {
+    this._triggerController.toggle(options)
   }
 
   /*
@@ -253,23 +330,6 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._trigger.blurTrigger()
   }
 
-  private _onClickOutside = (e: MouseEvent) => {
-    if (!this._isOpen) return
-
-    // 在监听器内部判定：composedPath() 在派发结束后会被清空。
-    const isInside = isEventInsideHost(this, e) || !!this._panel.getHandle()?.containsEvent(e)
-    if (!isInside) this._close()
-  }
-
-  private _onFocusOut = () => {
-    handleComboboxFocusOut(
-      this,
-      () => this._panel.getHandle(),
-      () => this._isOpen,
-      () => this._close()
-    )
-  }
-
   private _handlePanelPointerDown = (e: PointerEvent) => {
     // 非 option 区域不可聚焦；阻止 pointerdown 的默认聚焦行为，保持 combobox 焦点，
     // 使点击 empty state、滚动区和 panel padding 不会被 focusout 误判为外部交互。
@@ -281,9 +341,9 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._optionPortal.bindHost()
     // 宿主可能被上层 overlay portal 迁移（断开重连）：shadow 内的包装 div 仍在，重新绑定委托监听
     this._trigger.bind()
+    this._triggerController.connect()
     this.addEventListener('keydown', this._onKeydown)
-    this.addEventListener('focusout', this._onFocusOut)
-    document.addEventListener('click', this._onClickOutside)
+    this._bindLocalPanelKeepAlive()
   }
 
   private _onTriggerSlotChange = () => {
@@ -317,9 +377,12 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     super.disconnectedCallback()
     this._optionPortal.dispose()
     this._trigger.dispose()
+    this._triggerController.disconnect()
     this.removeEventListener('keydown', this._onKeydown)
-    this.removeEventListener('focusout', this._onFocusOut)
-    document.removeEventListener('click', this._onClickOutside)
+    for (const dispose of this._panelKeepAliveDisposers) dispose()
+    this._panelKeepAliveDisposers = []
+    this._portalKeepAliveDisposer?.()
+    this._portalKeepAliveDisposer = undefined
     this._options.forEach(this._unbindOption)
     this._close()
     this._syncScrollInteractionListeners()
@@ -332,9 +395,16 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
 
   override firstUpdated() {
     this._trigger.bind()
+    this._bindLocalPanelKeepAlive()
     requestAnimationFrame(() => {
       if (this.isConnected) this._optionPortal.scheduleRefresh()
     })
+    if (this._isOpen) this._openOverlay(true)
+  }
+
+  private _bindLocalPanelKeepAlive() {
+    const localPanel = this.shadowRoot?.querySelector<HTMLElement>('.autocomplete-overlay')
+    if (localPanel) this._panelKeepAliveDisposers.push(this._triggerController.bindPanelKeepAlive(localPanel))
   }
 
   override willUpdate() {
@@ -354,6 +424,10 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       requestAnimationFrame(() => this._reconfigureOverlay())
     if (changed.has('noScrollLock')) this._syncScrollLock()
     if (changed.has('placement')) this._panel.updatePosition()
+    if (changed.has('trigger')) {
+      this._triggerController.syncTriggerChange()
+      this._panel.syncArbitration()
+    }
     this.toggleAttribute('focused', this._focused)
     this._syncOpenAttribute()
     this._syncOverlayInert()
@@ -531,8 +605,10 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       case 'ArrowDown':
       case 'ArrowUp': {
         if (this._isOpen && this._trigger.isMultilineEdit(e)) break
+        // `none` 只接受程序式开关：关闭态下方向键不接管（光标/页面保持原生行为）。
+        if (!this._isOpen && isTriggerNone(this.trigger)) break
         e.preventDefault()
-        if (!this._isOpen) this._open(true)
+        if (!this._isOpen) this._open({ isKeyboardNavigation: true })
         else this._navigateActive(e.key === 'ArrowDown' ? 1 : -1)
         break
       }
@@ -649,12 +725,13 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._keyboardNavigationActive = false
     this._activeIndex = -1
     this._syncActiveOption()
-    this._open()
+    // `none` 只接受程序式开关：键入照常过滤，但不自动展开候选。
+    if (!isTriggerNone(this.trigger)) this._open()
   }
 
-  private _onTriggerClick = () => {
+  private _onTriggerClick = (event: MouseEvent) => {
     if (this._isDisabled || this.readonly) return
-    this._open()
+    this._triggerController.handleTriggerClick(event)
   }
 
   /*
@@ -691,6 +768,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     getIsOpen: () => this._isOpen,
     setIsOpen: open => {
       this._isOpen = open
+      this._openValue = open
     },
     dispatchOpenChange: () => this._dispatchOpenChange(),
     syncScrollLock: open => this._syncScrollLock(open),
@@ -716,17 +794,17 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     }
   })
 
-  private _open(isKeyboardNavigation = false) {
+  private _open(options: { isKeyboardNavigation?: boolean; notify?: boolean } = {}) {
     this._applyFilter()
     if (!this._hasMatchingOptions()) {
       if (this._isOpen) this._close()
       return
     }
-    this._openController.open(isKeyboardNavigation)
+    this._openController.open(options)
   }
 
-  private _close() {
-    this._openController.close()
+  private _close(options: { notify?: boolean } = {}) {
+    this._openController.close(options)
   }
 
   private _dispatchOpenChange() {
@@ -758,6 +836,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   }
 
   private _reconfigureOverlay() {
+    this._portalKeepAliveDisposer?.()
+    this._portalKeepAliveDisposer = undefined
     this._portal = undefined
     this._portalContent = undefined
     this._panel.reconfigure(this._isOpen)
@@ -792,6 +872,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     ])
     portal.panel.setAttribute('aria-hidden', 'true')
     portal.panel.addEventListener('pointerdown', this._handlePanelPointerDown)
+    this._portalKeepAliveDisposer?.()
+    this._portalKeepAliveDisposer = this._triggerController.bindPanelKeepAlive(portal.panel)
     const scroll = document.createElement('div')
     scroll.className = 'autocomplete-scroll wui-scroll'
     const content = document.createElement('div')

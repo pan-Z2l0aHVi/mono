@@ -49,18 +49,55 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('trigger 默认为 label，icon 生效，非法值回退', async () => {
+    it('variant 默认为 label，icon 生效，非法值回退', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
-      expect(el.trigger).toBe('label')
+      expect(el.variant).toBe('label')
 
-      el.trigger = 'icon'
+      el.variant = 'icon'
       await waitForUpdate(el)
-      expect(el.getAttribute('trigger')).toBe('icon')
+      expect(el.getAttribute('variant')).toBe('icon')
 
-      ;(el as any).trigger = 'popover'
+      ;(el as any).variant = 'popover'
       await waitForUpdate(el)
-      expect(el.trigger).toBe('label')
+      expect(el.variant).toBe('label')
+
+      cleanupElement(el)
+    })
+
+    it('trigger 默认为 click，集合规范化，未知 token 丢弃', async () => {
+      const el = createSelect(OPTIONS_HTML)
+      await waitForUpdate(el)
+      expect(el.trigger).toBe('click')
+
+      el.trigger = 'hover focus'
+      expect(el.trigger).toBe('hover,focus')
+
+      el.trigger = 'manual hover'
+      expect(el.trigger).toBe('hover')
+
+      el.trigger = 'none hover'
+      expect(el.trigger).toBe('none')
+
+      el.trigger = ['hover'] as unknown as string
+      await waitForUpdate(el)
+      expect(el.trigger).toBe('click')
+
+      cleanupElement(el)
+    })
+
+    it('none 下点击不打开，show() 仍可用', async () => {
+      const el = createSelect(OPTIONS_HTML, { trigger: 'none' })
+      await waitForUpdate(el)
+      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
+
+      trigger.click()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      el.show()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
     })

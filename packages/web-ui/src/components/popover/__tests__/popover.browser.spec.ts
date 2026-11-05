@@ -224,7 +224,7 @@ describe('WebUiPopover 组件（浏览器）', () => {
   it('focusout 落入嵌套子 portal panel 时不关闭父 popover', async () => {
     const parent = createPopover(`
       <button slot="trigger">Parent</button>
-      <web-ui-popover portal trigger="manual">
+      <web-ui-popover portal>
         <button slot="trigger">Child</button>
         <div>Child content</div>
       </web-ui-popover>

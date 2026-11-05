@@ -137,6 +137,50 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
+    it('trigger 默认为 click，集合规范化，未知 token 丢弃', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      await waitForUpdate(el)
+      expect(el.trigger).toBe('click')
+
+      el.trigger = 'hover focus'
+      expect(el.trigger).toBe('hover,focus')
+
+      el.trigger = 'manual hover'
+      expect(el.trigger).toBe('hover')
+
+      el.trigger = 'none hover'
+      expect(el.trigger).toBe('none')
+
+      el.trigger = ['hover'] as unknown as string
+      await waitForUpdate(el)
+      expect(el.trigger).toBe('click')
+
+      cleanupElement(el)
+    })
+
+    it('none 下点击、键入与方向键都不自动打开，show() 仍可用', async () => {
+      const el = createAutocomplete(OPTIONS_HTML, { trigger: 'none' })
+      await waitForUpdate(el)
+
+      clickTrigger(el)
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
+
+      typeText(el, 'ap')
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
+
+      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
+      await waitForUpdate(el)
+      expect(el.open).toBe(false)
+
+      el.show()
+      await waitForUpdate(el)
+      expect(el.open).toBe(true)
+
+      cleanupElement(el)
+    })
+
     it('初始 value attribute 作为默认值，属性变更不回写 attribute', async () => {
       const el = createAutocomplete(OPTIONS_HTML, { value: 'Apple' })
       await waitForUpdate(el)

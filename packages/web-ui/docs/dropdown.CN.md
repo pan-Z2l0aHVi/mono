@@ -144,9 +144,73 @@ export default function Demo() {
 </template>
 ```
 
+### Trigger modes
+
+`trigger` 是手势集合，用空格或逗号分隔，可写 `click`、`hover`、`focus`、`none`，默认 `click`。`hover` 由指针进出开合，指针从触发器移进面板不会收起；`focus` 在键盘聚焦（`:focus-visible`）时展开；手势可以并排写。
+
+`none` 不接受任何手势，也不参与点外面关闭、焦点离开和 Escape；只能由 `open` 属性或 `show()` / `hide()` 控制。`none` 与手势互斥：同时写时按 `none` 处理，并在开发期打印 warning。
+
+`show-delay` / `hide-delay` 只作用于 hover 来源的开合；点击、焦点与程序式调用都立即生效。
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <div className="flex flex-wrap items-center gap-3">
+        <web-ui-dropdown onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}>
+          <web-ui-button slot="trigger" variant="secondary">
+            点击菜单
+          </web-ui-button>
+          <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
+          <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+        </web-ui-dropdown>
+        <web-ui-dropdown trigger="hover focus" onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}>
+          <web-ui-button slot="trigger" variant="secondary">
+            悬停或聚焦
+          </web-ui-button>
+          <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
+          <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+        </web-ui-dropdown>
+      </div>
+      <output className="text-sm text-(--wui-color-text-secondary)">最近一次 detail.open = {last}</output>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <div class="flex flex-wrap items-center gap-3">
+      <web-ui-dropdown @open-change="last = $event.detail.open ? 'true' : 'false'">
+        <web-ui-button slot="trigger" variant="secondary">点击菜单</web-ui-button>
+        <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
+        <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+      </web-ui-dropdown>
+      <web-ui-dropdown trigger="hover focus" @open-change="last = $event.detail.open ? 'true' : 'false'">
+        <web-ui-button slot="trigger" variant="secondary">悬停或聚焦</web-ui-button>
+        <web-ui-dropdown-item>编辑</web-ui-dropdown-item>
+        <web-ui-dropdown-item>复制</web-ui-dropdown-item>
+      </web-ui-dropdown>
+    </div>
+    <output class="text-sm text-(--wui-color-text-secondary)">最近一次 detail.open = {{ last }}</output>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+
+const last = ref('—')
+</script>
+```
+
 ### Controlled open state
 
-`open` 由页面持有。外部按钮直接改它；触发器、Escape 与点外面通过 `open-change` 回写。点菜单项不会自动关闭，需要在项的原生 `click` 里回写。
+`open` 由页面持有。外部按钮直接改它（直接写 `open` 是静默的）；触发器、Escape 与点外面通过 `open-change` 回写。点菜单项不会自动关闭，需要在项的原生 `click` 里回写。
 
 ```tsx
 import type { WebUiDropdownItem } from '@greypan/web-ui'
@@ -308,7 +372,7 @@ export default function Demo() {
 
 ### Imperative
 
-`openMenu()` 打开菜单，`closeAll()` 关闭全部层级。两者都是命令式入口，不派发 `open-change`。`disabled` 会同时阻止触发器点击与 `openMenu()`。
+`show()` 打开菜单，`hide()` 关闭全部层级。两者都派发 `open-change`。`disabled` 会同时阻止触发器点击与 `show()`。
 
 ```tsx
 import type { WebUiDropdown } from '@greypan/web-ui'
@@ -320,11 +384,11 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <div className="flex flex-wrap items-center gap-3">
-        <web-ui-button variant="secondary" onClick={() => menu.current?.openMenu()}>
-          调用 openMenu()
+        <web-ui-button variant="secondary" onClick={() => menu.current?.show()}>
+          调用 show()
         </web-ui-button>
-        <web-ui-button variant="secondary" onClick={() => menu.current?.closeAll()}>
-          调用 closeAll()
+        <web-ui-button variant="secondary" onClick={() => menu.current?.hide()}>
+          调用 hide()
         </web-ui-button>
       </div>
 
@@ -356,8 +420,8 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <div class="flex flex-wrap items-center gap-3">
-      <web-ui-button variant="secondary" @click="menu?.openMenu()">调用 openMenu()</web-ui-button>
-      <web-ui-button variant="secondary" @click="menu?.closeAll()">调用 closeAll()</web-ui-button>
+      <web-ui-button variant="secondary" @click="menu?.show()">调用 show()</web-ui-button>
+      <web-ui-button variant="secondary" @click="menu?.hide()">调用 hide()</web-ui-button>
     </div>
 
     <div class="flex flex-wrap items-start gap-3">
@@ -390,20 +454,24 @@ const menu = useTemplateRef<WebUiDropdown>('menu')
 
 ### Props
 
-| 名称             | 说明                            | 类型        | 默认值           |
-| ---------------- | ------------------------------- | ----------- | ---------------- |
-| `open`           | 菜单可见性。                    | `boolean`   | `false`          |
-| `disabled`       | 禁用状态。                      | `boolean`   | `false`          |
-| `match-width`    | 面板宽度匹配触发器宽度。        | `boolean`   | `false`          |
-| `no-scroll-lock` | 打开时不锁定页面滚动。          | `boolean`   | `false`          |
-| `placement`      | 面板位置，默认 `bottom-start`。 | `Placement` | `'bottom-start'` |
-| `offset`         | 与触发器的距离（px）。          | `number`    | `4`              |
+| 名称             | 说明                                                                                      | 类型        | 默认值           |
+| ---------------- | ----------------------------------------------------------------------------------------- | ----------- | ---------------- |
+| `open`           | 菜单可见性。                                                                              | `boolean`   | `false`          |
+| `disabled`       | 禁用状态。                                                                                | `boolean`   | `false`          |
+| `match-width`    | 面板宽度匹配触发器宽度。                                                                  | `boolean`   | `false`          |
+| `no-scroll-lock` | 打开时不锁定页面滚动。                                                                    | `boolean`   | `false`          |
+| `placement`      | 面板位置，默认 `bottom-start`。                                                           | `Placement` | `'bottom-start'` |
+| `offset`         | 与触发器的距离（px）。                                                                    | `number`    | `4`              |
+| `trigger`        | 触发手势集合，空格或逗号分隔：`click`、`hover`、`focus`、`none`；读回为逗号分隔的规范串。 | `string`    | `'click'`        |
+| `show-delay`     | 悬停打开的延迟（毫秒）；只影响 hover 来源。                                               | `number`    | `200`            |
+| `hide-delay`     | 悬停收起的延迟（毫秒）；只影响 hover 来源。                                               | `number`    | `100`            |
+| `isOpen`         | 菜单当前是否打开（只读）。                                                                | `boolean`   | —                |
 
 ### Events
 
-| 名称          | 说明                                 |
-| ------------- | ------------------------------------ |
-| `open-change` | 菜单开合，`detail.open` 为当前状态。 |
+| 名称          | 说明                                                                                    |
+| ------------- | --------------------------------------------------------------------------------------- |
+| `open-change` | 手势或 `show()` / `hide()` 改变开合时派发，`detail.open` 是当前状态；写 `open` 不派发。 |
 
 ### Slots
 
@@ -413,14 +481,19 @@ const menu = useTemplateRef<WebUiDropdown>('menu')
 
 ### Methods
 
-| 名称         | 说明                                                         |
-| ------------ | ------------------------------------------------------------ |
-| `openMenu()` | 打开菜单；命令式打开不派发 `open-change`，并抑制首项的高亮。 |
-| `closeAll()` | 关闭全部层级；命令式关闭不派发 `open-change`。               |
+| 名称       | 说明                                              |
+| ---------- | ------------------------------------------------- |
+| `show()`   | 打开菜单并派发 `open-change`；`none` 下同样可用。 |
+| `hide()`   | 关闭全部层级并派发 `open-change`。                |
+| `toggle()` | 按当前 `open` 切换，并派发 `open-change`。        |
 
 ### 行为说明
 
 菜单项：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。子菜单在 `web-ui-dropdown-item` 上通过 `submenu` 属性启用。完整键盘导航支持。
+
+`hover` 由指针进出开合；指针从触发器移进面板不会收起，离开触发器与面板、且焦点不在其中时按 `hide-delay` 收起。`show-delay` / `hide-delay` 只作用于 hover 来源；点击、焦点与程序式调用都立即生效。Escape、点外面与失焦会收起所有非 `none` 的菜单，不取决于 `trigger` 是否包含 `click` 或 `focus`；`none` 不响应也不拦截它们。
+
+`open` 可以直接赋值；该写入是静默的，不派发 `open-change`。
 
 ### trigger ARIA
 

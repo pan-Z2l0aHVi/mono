@@ -4,7 +4,6 @@ import { customElement, property } from 'lit/decorators.js'
 
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import glass from '@/classes/glass.css?inline'
-import { UserChangeController } from '@/shared/events/user-change'
 import { findFocusTarget } from '@/shared/focus/tabbable'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
@@ -12,12 +11,12 @@ import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal, type OverlayContainer, type OverlayPortal } from '@/shared/overlay/portal'
-import { defineTriggerGestures } from '@/shared/overlay/trigger-gestures'
-import { hasTriggerMode, normalizeTriggerSet, type OverlayTriggerMode } from '@/shared/overlay/trigger-props'
+import { defineTriggerController } from '@/shared/overlay/trigger-controller'
+import { normalizeTriggerSet } from '@/shared/overlay/trigger-props'
 
 import style from './style.css?inline'
 
-/** 指针悬停与键盘聚焦是 tooltip 的常驻手势；`manual` 表示只由 `open` 控制。 */
+/** 指针悬停与键盘聚焦是 tooltip 的常驻手势；`none` 表示只由 `open` / `show()` / `hide()` 控制。 */
 const DEFAULT_TRIGGERS = ['hover', 'focus'] as const
 
 let visibleTooltipCount = 0
@@ -40,14 +39,14 @@ export class WebUiTooltip extends LitElement {
 
   @property({ type: String, reflect: true })
   get trigger(): string {
-    return this._trigger
+    return this._triggerValue
   }
-  set trigger(v: string | readonly OverlayTriggerMode[]) {
-    const old = this._trigger
-    this._trigger = normalizeTriggerSet(v, DEFAULT_TRIGGERS)
+  set trigger(v: string) {
+    const old = this._triggerValue
+    this._triggerValue = normalizeTriggerSet(v, DEFAULT_TRIGGERS)
     this.requestUpdate('trigger', old)
   }
-  private _trigger: string = DEFAULT_TRIGGERS.join(' ')
+  private _triggerValue: string = DEFAULT_TRIGGERS.join(',')
 
   @property({ type: Number, attribute: 'show-delay' })
   get showDelay(): number {
@@ -86,28 +85,36 @@ export class WebUiTooltip extends LitElement {
 
   @property({ type: String }) content = ''
 
-  @property({ type: Boolean, reflect: true }) open = false
+  @property({ type: Boolean, reflect: true })
+  get open(): boolean {
+    return this._openValue
+  }
+  set open(v: boolean) {
+    this._triggerController.applyDeclarativeOpen(Boolean(v))
+  }
+  private _openValue = false
   @property({ type: Boolean, reflect: true }) portal = false
   @property({ attribute: false }) overlayContainer?: OverlayContainer
 
   private _isCountedVisible = false
-  private readonly _userOpenChange = new UserChangeController()
   private _shouldOpenInstantly = true
+  private _pendingNotify: boolean | undefined
   private _portal?: OverlayPortal
   private readonly _panelId = `wui-tooltip-panel-${++tooltipIdCounter}`
-  // 手势事件路由、show/hide 计时与 outside-click 判定在共享接线里；open 状态仍由本组件持有。
-  private readonly _gestures = defineTriggerGestures({
+  // 手势路由、开合状态机与程序式入口在共享接线里；open 的 reactive 存储仍由本组件持有。
+  private readonly _triggerController = defineTriggerController({
     host: this,
-    hasMode: mode => hasTriggerMode(this.trigger, mode),
+    getTrigger: () => this.trigger,
     isDisabled: () => this.disabled,
-    isOpen: () => this.open,
-    hoverShowDelay: () => this.showDelay,
+    canOpen: () => true,
+    getOpen: () => this._openValue,
+    getShowDelay: () => this.showDelay,
+    getHideDelay: () => this.hideDelay,
     hoverOpensInstantly: () => visibleTooltipCount > 0,
-    hoverHideDelay: () => this.hideDelay,
-    cancelPendingHideOnFocusEnter: () => true,
     isInsidePanel: event => !!this._panel.getHandle()?.containsEvent(event),
-    requestOpen: (_source, { instant }) => this._show(instant),
-    requestClose: () => this._hide()
+    hasFocusWithin: () => this.matches(':focus-within') || !!this._panel.getHandle()?.hasFocusWithin(),
+    requestOpen: meta => this._applyOpen(meta.instant, meta.notify),
+    requestClose: meta => this._applyClose(meta.notify)
   })
   /*
    * 面板在 shadow DOM 里，而 trigger 的可聚焦元素可能在更内层的 shadow root：
@@ -117,12 +124,11 @@ export class WebUiTooltip extends LitElement {
    */
   private readonly _descriptionTargets = new Map<HTMLElement, string | null>()
   /**
-   * 实例作用域的帧事务入口。`requestClose` 是关闭入口的唯一接线：panel 的
-   * `arbitration: 'none'` 让 tooltip 在组合树里但永不成候选，因此这条**现在不会被
-   * 模块调用**。保留它是不想把「怎么关」藏起来，也让仲裁策略变化时依然成立。
+   * 实例作用域的帧事务入口。`requestClose` 是 Escape 的关闭入口：tooltip 默认是
+   * Escape 候选，`trigger="none"` 时由 panel 的仲裁策略退出候选。
    */
   private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => this._hide(),
+    requestClose: () => this._triggerController.hide(),
     isConnected: () => this.isConnected
   })
   private readonly _panel = defineAnchoredPanel().make({
@@ -136,24 +142,37 @@ export class WebUiTooltip extends LitElement {
     isPortal: () => this.portal,
     createPortal: () => this._createPortal(),
     openOverlay: this._overlay,
-    // tooltip 在逻辑组合树里（panel 迁移后仍要判对「谁在谁里面」），但从不作为 Escape
-    // 候选：按键穿过它落到下层 overlay。
-    arbitration: 'none'
+    // `none` 在逻辑组合树里但不参与 Escape 归属：按键穿过它落到下层 overlay。
+    arbitration: () => this._triggerController.arbitration()
   })
 
   get isOpen(): boolean {
     return this.open
   }
 
+  /** 命令式打开：派发 `open-change`。`none` 下同样可用。 */
+  show(options?: { instant?: boolean }): void {
+    this._triggerController.show(options)
+  }
+
+  /** 命令式收起：派发 `open-change`。 */
+  hide(options?: { instant?: boolean }): void {
+    this._triggerController.hide(options)
+  }
+
+  toggle(options?: { instant?: boolean }): void {
+    this._triggerController.toggle(options)
+  }
+
   override connectedCallback() {
     super.connectedCallback()
     this._overlay.resume()
-    this._gestures.connect()
+    this._triggerController.connect()
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this._gestures.disconnect()
+    this._triggerController.disconnect()
     // 停止帧调度；撤销登记由 _panel.dispose() 完成（handle 归它持有）。
     this._overlay.suspend()
     this._syncVisibleTooltipCount(false)
@@ -171,13 +190,16 @@ export class WebUiTooltip extends LitElement {
 
   protected override willUpdate(changed: Map<string, unknown>) {
     if (this.disabled && (changed.has('disabled') || changed.has('open'))) {
-      this._gestures.cancelPending()
-      this.open = false
+      this._triggerController.cancelPending()
+      if (this._openValue) this._applyClose(true)
     }
   }
 
   protected override updated(changed: Map<string, unknown>) {
-    if (changed.has('trigger')) this._gestures.syncTriggerChange()
+    if (changed.has('trigger')) {
+      this._triggerController.syncTriggerChange()
+      this._panel.syncArbitration()
+    }
     if (changed.has('portal') || changed.has('overlayContainer')) {
       // 同帧 open + reconfigure 可能重复建事务；invalidate 保证 reconfigure 是当前唯一帧回调。
       this._overlay.invalidate()
@@ -188,7 +210,7 @@ export class WebUiTooltip extends LitElement {
     if (changed.has('open')) {
       this._syncVisibleTooltipCount(this.open)
       if (this.open) {
-        this._gestures.cancelPending()
+        this._triggerController.cancelPending()
         this._openOverlay(this._shouldOpenInstantly)
         this._shouldOpenInstantly = true
         this._syncDescription()
@@ -197,7 +219,9 @@ export class WebUiTooltip extends LitElement {
         this._clearDescription()
         void this._closeOverlay()
       }
-      if (this._userOpenChange.consume()) this._dispatchChange(this.open)
+      const notify = this._pendingNotify
+      this._pendingNotify = undefined
+      if (notify) this._dispatchChange(this.open)
     }
     if (changed.has('content')) {
       this._syncPortalContent()
@@ -205,25 +229,19 @@ export class WebUiTooltip extends LitElement {
     }
   }
 
-  private _onTriggerClick = (event: MouseEvent) => {
-    if (this.disabled || !hasTriggerMode(this.trigger, 'click')) return
-    this._gestures.cancelPending()
-    // 键盘激活（detail 0）与聚焦同等对待：不播入场动画。
-    if (this.open) this._hide()
-    else this._show(event.detail === 0)
+  private _applyOpen(instant: boolean, notify: boolean) {
+    if (this._openValue) return
+    this._shouldOpenInstantly = instant
+    this._openValue = true
+    this._pendingNotify = notify
+    this.requestUpdate('open', false)
   }
 
-  private _show(isInstant = false) {
-    if (this.open) return
-    this._shouldOpenInstantly = isInstant
-    this._userOpenChange.mark()
-    this.open = true
-  }
-
-  private _hide() {
-    if (!this.open) return
-    this._userOpenChange.mark()
-    this.open = false
+  private _applyClose(notify: boolean) {
+    if (!this._openValue) return
+    this._openValue = false
+    this._pendingNotify = notify
+    this.requestUpdate('open', true)
   }
 
   private _openOverlay(isInstant = false) {
@@ -361,7 +379,7 @@ export class WebUiTooltip extends LitElement {
     return html`
       <div class="tooltip-anchor">
         <!-- 点击只挂在 trigger 包装层：panel 里的内容被点击不该把提示切走。 -->
-        <div class="tooltip-trigger" @click=${this._onTriggerClick}>
+        <div class="tooltip-trigger" @click=${this._triggerController.handleTriggerClick}>
           <slot @slotchange=${this._onTriggerSlotChange}></slot>
         </div>
         <div

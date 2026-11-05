@@ -310,7 +310,7 @@ export function Root() {
               slot="header"
               className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-[calc(100vw-60px)] mobile:gap-1.5 mobile:px-2 mobile:py-2"
             >
-              <web-ui-select trigger="icon" value={themeMotion} aria-label="全局动效" onChange={updateThemeMotion}>
+              <web-ui-select variant="icon" value={themeMotion} aria-label="全局动效" onChange={updateThemeMotion}>
                 <web-ui-icon
                   slot="trigger"
                   icon={
@@ -333,7 +333,7 @@ export function Root() {
                 </web-ui-option>
               </web-ui-select>
               <web-ui-select
-                trigger="icon"
+                variant="icon"
                 value={themeAppearance}
                 placement="bottom"
                 aria-label="全局主题"
@@ -358,7 +358,7 @@ export function Root() {
                 </web-ui-option>
               </web-ui-select>
               <web-ui-select
-                trigger="icon"
+                variant="icon"
                 value={locale}
                 disabled={localePending}
                 aria-busy={localePending ? 'true' : 'false'}

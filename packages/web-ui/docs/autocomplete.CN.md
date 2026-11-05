@@ -235,7 +235,79 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### Custom trigger
+### Trigger modes
+
+`trigger` 是手势集合，用空格或逗号分隔，可写 `click`、`hover`、`focus`、`none`，默认 `click`。输入框的点击只打开、不关闭；再次点击不会收起，关闭靠点外面、Escape 或 `hide()`。`hover` 由指针进出开合，`focus` 在键盘聚焦（`:focus-visible`）时展开；手势可以并排写。
+
+`none` 关掉所有自动打开：点击、键入、方向键、聚焦与悬停都不再展开面板，只能由 `open` 属性或 `show()` / `hide()` 控制。`none` 与手势互斥：同时写时按 `none` 处理，并在开发期打印 warning。
+
+`show-delay` / `hide-delay` 只作用于 hover 来源的开合；点击、键入、焦点与程序式调用都立即生效。
+
+```tsx
+import type { WebUiAutocomplete } from '@greypan/web-ui'
+import { useRef, useState } from 'react'
+
+export default function Demo() {
+  const field = useRef<WebUiAutocomplete>(null)
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex w-full max-w-md flex-col items-start gap-3">
+      <web-ui-autocomplete
+        ref={field}
+        trigger="none"
+        placeholder="none 模式"
+        aria-label="none 模式"
+        onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}
+      >
+        <web-ui-option value="bug" label="缺陷"></web-ui-option>
+        <web-ui-option value="feature" label="需求"></web-ui-option>
+      </web-ui-autocomplete>
+      <div className="flex flex-wrap items-center gap-2">
+        <web-ui-button size="28" variant="secondary" onClick={() => field.current?.show()}>
+          show()
+        </web-ui-button>
+        <web-ui-button size="28" variant="secondary" onClick={() => field.current?.hide()}>
+          hide()
+        </web-ui-button>
+        <output className="text-sm text-(--wui-color-text-secondary)">最近一次 detail.open = {last}</output>
+      </div>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex w-full max-w-md flex-col items-start gap-3">
+    <web-ui-autocomplete
+      ref="field"
+      trigger="none"
+      placeholder="none 模式"
+      aria-label="none 模式"
+      @open-change="last = $event.detail.open ? 'true' : 'false'"
+    >
+      <web-ui-option value="bug" label="缺陷"></web-ui-option>
+      <web-ui-option value="feature" label="需求"></web-ui-option>
+    </web-ui-autocomplete>
+    <div class="flex flex-wrap items-center gap-2">
+      <web-ui-button size="28" variant="secondary" @click="field?.show()">show()</web-ui-button>
+      <web-ui-button size="28" variant="secondary" @click="field?.hide()">hide()</web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)">最近一次 detail.open = {{ last }}</output>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { WebUiAutocomplete } from '@greypan/web-ui'
+import { ref, useTemplateRef } from 'vue'
+
+const field = useTemplateRef<WebUiAutocomplete>('field')
+const last = ref('—')
+</script>
+```
+
+### Custom trigger slot
 
 把可编辑组件放进 `trigger` 插槽即可替换默认输入框。多行触发器保留 Enter 换行语义，关闭面板改用 Escape 或失焦。`filter="none"` 让候选始终全量列出。`focus()` 落在 `web-ui-textarea` 内部的原生控件上。
 
@@ -289,7 +361,7 @@ const field = useTemplateRef<WebUiAutocomplete>('field')
 </script>
 ```
 
-### Allow custom value
+### Allow custom values
 
 开启 `allow-custom-value` 后，输入不在候选中的文本也能提交。按 Enter 时，输入原文作为自定义值提交，面板随之关闭，`change` 触发，`selected-value` 保持为空。过滤后没有候选时，面板不展开，Enter 仍可提交。
 
@@ -397,33 +469,38 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 ### Props
 
-| 名称                 | 说明                                                             | 类型                  | 默认值           |
-| -------------------- | ---------------------------------------------------------------- | --------------------- | ---------------- |
-| `placeholder`        | 输入框占位文本。                                                 | `string`              | `''`             |
-| `borderless`         | ghost 形态：移除边框、背景、背景模糊与阴影，保留内边距与焦点环。 | `boolean`             | `false`          |
-| `disabled`           | 禁用态，不可输入、不可展开下拉。                                 | `boolean`             | `false`          |
-| `readonly`           | 只读态：不可输入、不可展开下拉。                                 | `boolean`             | `false`          |
-| `required`           | 必填校验。                                                       | `boolean`             | `false`          |
-| `portal`             | 在主题的 overlay 容器中渲染下拉面板。                            | `boolean`             | `false`          |
-| `placement`          | 下拉面板位置，默认从触发器左下角向下展开。                       | `Placement`           | `'bottom-start'` |
-| `no-scroll-lock`     | 打开时不锁定页面滚动。                                           | `boolean`             | `false`          |
-| `allow-custom-value` | 允许 Enter 提交不在候选中的输入原文。                            | `boolean`             | `false`          |
-| `overlayContainer`   | 显式指定面板挂载的 overlay 容器（property，不是 attribute）。    | `OverlayContainer`    | —                |
-| `name`               | 表单字段名。                                                     | `string`              | `''`             |
-| `aria-label`         | 无障碍名称。                                                     | `string \| null`      | `null`           |
-| `aria-labelledby`    | 无障碍名称引用。                                                 | `string \| undefined` | —                |
-| `filter`             | 候选过滤模式：`contains`（默认）、`prefix` 或 `none`。           | `FilterMode`          | `'contains'`     |
-| `value`              | 当前输入文本，也是表单提交值。                                   | `string`              | `''`             |
+| 名称                 | 说明                                                                                      | 类型                  | 默认值           |
+| -------------------- | ----------------------------------------------------------------------------------------- | --------------------- | ---------------- |
+| `placeholder`        | 输入框占位文本。                                                                          | `string`              | `''`             |
+| `borderless`         | ghost 形态：移除边框、背景、背景模糊与阴影，保留内边距与焦点环。                          | `boolean`             | `false`          |
+| `disabled`           | 禁用态，不可输入、不可展开下拉。                                                          | `boolean`             | `false`          |
+| `readonly`           | 只读态：不可输入、不可展开下拉。                                                          | `boolean`             | `false`          |
+| `required`           | 必填校验。                                                                                | `boolean`             | `false`          |
+| `portal`             | 在主题的 overlay 容器中渲染下拉面板。                                                     | `boolean`             | `false`          |
+| `placement`          | 下拉面板位置，默认从触发器左下角向下展开。                                                | `Placement`           | `'bottom-start'` |
+| `no-scroll-lock`     | 打开时不锁定页面滚动。                                                                    | `boolean`             | `false`          |
+| `allow-custom-value` | 允许 Enter 提交不在候选中的输入原文。                                                     | `boolean`             | `false`          |
+| `overlayContainer`   | 显式指定面板挂载的 overlay 容器（property，不是 attribute）。                             | `OverlayContainer`    | —                |
+| `name`               | 表单字段名。                                                                              | `string`              | `''`             |
+| `aria-label`         | 无障碍名称。                                                                              | `string \| null`      | `null`           |
+| `aria-labelledby`    | 无障碍名称引用。                                                                          | `string \| undefined` | —                |
+| `filter`             | 候选过滤模式：`contains`（默认）、`prefix` 或 `none`。                                    | `FilterMode`          | `'contains'`     |
+| `value`              | 当前输入文本，也是表单提交值。                                                            | `string`              | `''`             |
+| `trigger`            | 触发手势集合，空格或逗号分隔：`click`、`hover`、`focus`、`none`；读回为逗号分隔的规范串。 | `string`              | `'click'`        |
+| `show-delay`         | 悬停打开的延迟（毫秒）；只影响 hover 来源。                                               | `number`              | `200`            |
+| `hide-delay`         | 悬停收起的延迟（毫秒）；只影响 hover 来源。                                               | `number`              | `100`            |
+| `open`               | 声明式开关；直接写入静默，不派发 `open-change`。                                          | `boolean`             | `false`          |
+| `isOpen`             | 当前是否打开（只读）。                                                                    | `boolean`             | —                |
 
 ### Events
 
-| 名称          | 说明                                     |
-| ------------- | ---------------------------------------- |
-| `input`       | 输入时触发，`value` 为当前文本。         |
-| `change`      | 选中候选或提交自定义值时触发。           |
-| `focus`       | 触发器获得焦点时触发。                   |
-| `blur`        | 触发器失去焦点时触发。                   |
-| `open-change` | 下拉面板开合，`detail.open` 为当前状态。 |
+| 名称          | 说明                                                                                    |
+| ------------- | --------------------------------------------------------------------------------------- |
+| `input`       | 输入时触发，`value` 为当前文本。                                                        |
+| `change`      | 选中候选或提交自定义值时触发。                                                          |
+| `focus`       | 触发器获得焦点时触发。                                                                  |
+| `blur`        | 触发器失去焦点时触发。                                                                  |
+| `open-change` | 手势或 `show()` / `hide()` 改变开合时派发，`detail.open` 是当前状态；写 `open` 不派发。 |
 
 ### Slots
 
@@ -434,10 +511,13 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 ### Methods
 
-| 名称      | 说明                                                                                                                                      |
-| --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
-| `focus()` | 聚焦当前触发器：`web-ui-input` / `web-ui-textarea` 触发器把焦点交给内部原生控件，没有自己的焦点重定向的自定义触发器则聚焦触发器元素自身。 |
-| `blur()`  | 让当前触发器失焦。                                                                                                                        |
+| 名称       | 说明                                                                                                                                      |
+| ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `focus()`  | 聚焦当前触发器：`web-ui-input` / `web-ui-textarea` 触发器把焦点交给内部原生控件，没有自己的焦点重定向的自定义触发器则聚焦触发器元素自身。 |
+| `blur()`   | 让当前触发器失焦。                                                                                                                        |
+| `show()`   | 打开面板并派发 `open-change`；`none` 下同样可用。                                                                                         |
+| `hide()`   | 关闭面板并派发 `open-change`；已关闭时不产生效果。                                                                                        |
+| `toggle()` | 按当前 `open` 切换，并派发 `open-change`。                                                                                                |
 
 ### 行为说明
 
@@ -447,11 +527,13 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 选择选项时，文本回填为该项的标签，`selected-value` 暴露该项的值。`change` 在选择提交时触发。
 
-支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
+支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航；`none` 下关闭态的 ArrowDown 不再自动打开面板。
+
+点击输入框只打开、不关闭；关闭由点外面、Escape、选择候选或 `hide()` 完成。`hover` 由指针进出开合，指针离开触发器与面板、且焦点不在其中时按 `hide-delay` 收起。`show-delay` / `hide-delay` 只作用于 hover 来源；点击、键入、焦点与程序式调用都立即生效。Escape、点外面与失焦会收起所有非 `none` 的面板，不取决于 `trigger` 是否包含 `click` 或 `focus`。
 
 启用 `portal` 的面板在创建时读取宿主上的这些变量值；更新宿主后需重新打开面板才会生效。
 
-### Trigger
+### Trigger slot
 
 默认触发器是一个 `web-ui-input`。
 

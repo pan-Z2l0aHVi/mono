@@ -4,24 +4,19 @@ import { customElement, property } from 'lit/decorators.js'
 
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import glass from '@/classes/glass.css?inline'
-import { UserChangeController } from '@/shared/events/user-change'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal, type OverlayContainer, type OverlayPortal } from '@/shared/overlay/portal'
-import { defineTriggerGestures } from '@/shared/overlay/trigger-gestures'
-import { hasTriggerMode, normalizeTriggerSet, type OverlayTriggerMode } from '@/shared/overlay/trigger-props'
+import { defineTriggerController } from '@/shared/overlay/trigger-controller'
+import { normalizeTriggerSet } from '@/shared/overlay/trigger-props'
 
 import style from './style.css?inline'
 
 /** 点击 trigger 开合，点 panel 外、失焦与 Escape 都能收。 */
 const DEFAULT_TRIGGERS = ['click'] as const
-
-/** hover 手势的固定节奏：popover 不暴露 delay 属性，tooltip 的可配置 delay 是它的策略分叉。 */
-const HOVER_SHOW_DELAY = 100
-const HOVER_HIDE_DELAY = 100
 
 let popoverIdCounter = 0
 
@@ -29,7 +24,14 @@ let popoverIdCounter = 0
 export class WebUiPopover extends LitElement {
   static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
 
-  @property({ type: Boolean, reflect: true }) open = false
+  @property({ type: Boolean, reflect: true })
+  get open(): boolean {
+    return this._openValue
+  }
+  set open(v: boolean) {
+    this._triggerController.applyDeclarativeOpen(Boolean(v))
+  }
+  private _openValue = false
   @property({ type: Boolean, reflect: true }) disabled = false
 
   @property({ type: String, reflect: true })
@@ -56,52 +58,56 @@ export class WebUiPopover extends LitElement {
 
   @property({ type: String, reflect: true })
   get trigger(): string {
-    return this._trigger
+    return this._triggerValue
   }
-  set trigger(v: string | readonly OverlayTriggerMode[]) {
-    const old = this._trigger
-    this._trigger = normalizeTriggerSet(v, DEFAULT_TRIGGERS)
+  set trigger(v: string) {
+    const old = this._triggerValue
+    this._triggerValue = normalizeTriggerSet(v, DEFAULT_TRIGGERS)
     this.requestUpdate('trigger', old)
   }
-  private _trigger: string = DEFAULT_TRIGGERS.join(' ')
+  private _triggerValue: string = DEFAULT_TRIGGERS.join(',')
+
+  @property({ type: Number, attribute: 'show-delay' })
+  get showDelay(): number {
+    return this._showDelay
+  }
+  set showDelay(v: number) {
+    const old = this._showDelay
+    this._showDelay = normalizeNumber(v, 0, 5000, 200)
+    this.requestUpdate('showDelay', old)
+  }
+  private _showDelay = 200
+
+  @property({ type: Number, attribute: 'hide-delay' })
+  get hideDelay(): number {
+    return this._hideDelay
+  }
+  set hideDelay(v: number) {
+    const old = this._hideDelay
+    this._hideDelay = normalizeNumber(v, 0, 5000, 100)
+    this.requestUpdate('hideDelay', old)
+  }
+  private _hideDelay = 100
 
   @property({ type: Boolean, reflect: true }) portal = false
   @property({ attribute: false }) overlayContainer?: OverlayContainer
 
-  private readonly _userOpenChange = new UserChangeController()
   private _shouldOpenInstantly = true
-  // 手势事件路由、show/hide 计时与 outside-click 判定在共享接线里；open 状态仍由本组件持有。
-  private readonly _gestures = defineTriggerGestures({
+  private _pendingNotify: boolean | undefined
+  // 手势路由、开合状态机与程序式入口在共享接线里；open 的 reactive 存储仍由本组件持有。
+  private readonly _triggerController = defineTriggerController({
     host: this,
-    hasMode: mode => hasTriggerMode(this.trigger, mode),
+    getTrigger: () => this.trigger,
     isDisabled: () => this.disabled,
-    isOpen: () => this.open,
-    hoverShowDelay: () => HOVER_SHOW_DELAY,
+    canOpen: () => true,
+    getOpen: () => this._openValue,
+    getShowDelay: () => this.showDelay,
+    getHideDelay: () => this.hideDelay,
     hoverOpensInstantly: () => false,
-    hoverHideDelay: () => HOVER_HIDE_DELAY,
-    cancelPendingHideOnFocusEnter: () => false,
     isInsidePanel: event => !!this._panel.getHandle()?.containsEvent(event),
-    requestOpen: (_source, { instant }) => {
-      this._shouldOpenInstantly = instant
-      if (this.open) return
-      this._userOpenChange.mark()
-      this.show()
-    },
-    requestClose: () => {
-      if (!this.open) return
-      this._userOpenChange.mark()
-      this.open = false
-    },
-    // click 与 focus 都随焦点离开收起；hover 与 manual 不收起（后者不接受自动开合）。
-    onFocusOut: () => {
-      if (!hasTriggerMode(this.trigger, 'click') && !hasTriggerMode(this.trigger, 'focus')) return
-      this._overlay.scheduleFrame(() => {
-        if (!this.matches(':focus-within') && !this._panel.getHandle()?.hasFocusWithin()) {
-          this._userOpenChange.mark()
-          this.open = false
-        }
-      })
-    }
+    hasFocusWithin: () => this.matches(':focus-within') || !!this._panel.getHandle()?.hasFocusWithin(),
+    requestOpen: meta => this._applyOpen(meta.instant, meta.notify),
+    requestClose: meta => this._applyClose(meta.notify)
   })
 
   private _panelId = `wui-popover-panel-${++popoverIdCounter}`
@@ -115,10 +121,7 @@ export class WebUiPopover extends LitElement {
    * 但不长于实例本身。
    */
   private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => {
-      this._userOpenChange.mark()
-      this.open = false
-    },
+    requestClose: () => this._triggerController.hide(),
     isConnected: () => this.isConnected
   })
   private readonly _panel = defineAnchoredPanel().make({
@@ -131,17 +134,47 @@ export class WebUiPopover extends LitElement {
     }),
     isPortal: () => this.portal,
     createPortal: () => this._createPortal(),
-    openOverlay: this._overlay
+    openOverlay: this._overlay,
+    arbitration: () => this._triggerController.arbitration()
   })
 
   get isOpen(): boolean {
     return this.open
   }
 
+  /** 命令式打开：派发 `open-change`。`none` 下同样可用。 */
+  show(options?: { instant?: boolean }): void {
+    this._triggerController.show(options)
+  }
+
+  /** 命令式收起：派发 `open-change`。 */
+  hide(options?: { instant?: boolean }): void {
+    this._triggerController.hide(options)
+  }
+
+  toggle(options?: { instant?: boolean }): void {
+    this._triggerController.toggle(options)
+  }
+
+  private _applyOpen(instant: boolean, notify: boolean) {
+    if (this._openValue) return
+    this._shouldOpenInstantly = instant
+    this._openValue = true
+    this._pendingNotify = notify
+    this.requestUpdate('open', false)
+  }
+
+  private _applyClose(notify: boolean) {
+    if (!this._openValue) return
+    this._openValue = false
+    this._pendingNotify = notify
+    this.requestUpdate('open', true)
+  }
+
   override connectedCallback() {
     super.connectedCallback()
     this._overlay.resume()
-    this._gestures.connect()
+    this._triggerController.connect()
     // 重连时 shadow DOM 与 panel 元素还在，但断连已撤销 keep-alive 登记，需要重新绑。
     this._bindLocalPanelKeepAlive()
   }
@@ -167,12 +200,12 @@ export class WebUiPopover extends LitElement {
 
   private _bindLocalPanelKeepAlive() {
     const localPanel = this.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
-    if (localPanel) this._panelKeepAliveDisposers.push(this._gestures.bindPanelKeepAlive(localPanel))
+    if (localPanel) this._panelKeepAliveDisposers.push(this._triggerController.bindPanelKeepAlive(localPanel))
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this._gestures.disconnect()
+    this._triggerController.disconnect()
     // 停止帧调度；撤销登记由 _panel.dispose() 完成（handle 归它持有）。
     this._overlay.suspend()
     for (const dispose of this._panelKeepAliveDisposers) dispose()
@@ -200,42 +233,21 @@ export class WebUiPopover extends LitElement {
         this._overlay.scheduleFrame(() => {
           this._openOverlay(isInstant)
         })
-        if (this._userOpenChange.consume()) this._dispatchChange(true)
         this._focusPanel()
       } else {
         this._overlay.invalidate()
         this._returnFocus()
         void this._closeOverlay()
-        if (this._userOpenChange.consume()) this._dispatchChange(false)
       }
+      const notify = this._pendingNotify
+      this._pendingNotify = undefined
+      if (notify) this._dispatchChange(this.open)
     }
 
-    if (changed.has('trigger')) this._gestures.syncTriggerChange()
-    this._syncOverlayInert()
-  }
-
-  show() {
-    if (this.disabled || this.open) return
-    this.open = true
-  }
-
-  close() {
-    if (!this.open) return
-    this.open = false
-  }
-
-  toggle() {
-    if (this.open) this.close()
-    else this.show()
-  }
-
-  /*
-   * `manual` trigger 的 popover 不由用户关闭，但仍是候选：Escape 被它吞掉（同时压掉
-   * 原生 cancel），只是不走关闭入口：Escape 不落到下层 overlay，不会把外层一起关掉。
-   * trigger 可在开启期间改写，所以走动态通道同步。
-   */
-  private _syncOverlayInert() {
-    this._panel.getHandle()?.setInert(hasTriggerMode(this.trigger, 'manual'))
+    if (changed.has('trigger')) {
+      this._triggerController.syncTriggerChange()
+      this._panel.syncArbitration()
+    }
   }
 
   private _openOverlay(isInstant = false) {
@@ -246,7 +258,6 @@ export class WebUiPopover extends LitElement {
      * 首个已开启 overlay 与从宿主上溯结果一致，多出的那次登记是冗余的。
      */
     this._panel.open(isInstant)
-    this._syncOverlayInert()
   }
 
   private _migratableContentNodes(nodes: Node[]): Node[] {
@@ -269,7 +280,7 @@ export class WebUiPopover extends LitElement {
     portal.panel.setAttribute('role', 'dialog')
     portal.panel.tabIndex = -1
     this._portalKeepAliveDisposer?.()
-    this._portalKeepAliveDisposer = this._gestures.bindPanelKeepAlive(portal.panel)
+    this._portalKeepAliveDisposer = this._triggerController.bindPanelKeepAlive(portal.panel)
     portal.moveContent(this._migratableContentNodes(Array.from(this.childNodes)))
     return portal
   }
@@ -281,14 +292,9 @@ export class WebUiPopover extends LitElement {
   private _reconfigureOverlay() {
     // portal 变更也会登记 rAF；宿主卸载后不得再通过 reconfigure 重建 panel。
     if (!this.isConnected) return
+    this._portalKeepAliveDisposer?.()
+    this._portalKeepAliveDisposer = undefined
     this._panel.reconfigure(this.open)
-    /*
-     * reconfigure 重新 claim = 新会话，inert 回到 false。这里的重推是**承重的**，不是
-     * 防御性备份：`reconfigure` 不触发 Lit 渲染，`updated()` 那次同步不会跟着来。
-     * 实测摘掉本行，「portal 变更后 Escape 仍不关闭」立刻转红（select / autocomplete 的
-     * 同类重推则被各自的渲染掩盖，摘掉仍绿）。
-     */
-    this._syncOverlayInert()
   }
 
   private _dispatchChange(open: boolean) {
@@ -327,16 +333,6 @@ export class WebUiPopover extends LitElement {
     return el instanceof HTMLElement ? el : null
   }
 
-  private _onTriggerClick = (event: MouseEvent) => {
-    if (this.disabled) return
-    this._gestures.cancelPending()
-    // manual 保留点击切换：它的语义是「不接受任何自动收起」，不是「不接受用户打开」。
-    if (!hasTriggerMode(this.trigger, 'click') && !hasTriggerMode(this.trigger, 'manual')) return
-    if (!this.open) this._shouldOpenInstantly = event.detail === 0
-    this._userOpenChange.mark()
-    this.toggle()
-  }
-
   override render() {
     return html`
       <div class="popover-anchor">
@@ -344,7 +340,7 @@ export class WebUiPopover extends LitElement {
           class="popover-trigger"
           aria-expanded=${String(this.open)}
           aria-controls=${this._panelId}
-          @click=${this._onTriggerClick}
+          @click=${this._triggerController.handleTriggerClick}
         >
           <slot name="trigger"></slot>
         </div>

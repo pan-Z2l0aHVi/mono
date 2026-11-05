@@ -42,9 +42,9 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(root.getByRole('combobox', { name: 'Global theme' }).length).toBe(1)
   })
 
-  it('icon trigger 保留右侧箭头，左侧 slot 保持图标尺寸', async () => {
+  it('variant="icon" 保留右侧箭头，左侧 slot 保持图标尺寸', async () => {
     const select = document.createElement('web-ui-select')
-    select.trigger = 'icon'
+    select.variant = 'icon'
     select.innerHTML = `
       <span slot="trigger">T</span>
       <web-ui-option value="a" label="A"></web-ui-option>
@@ -62,7 +62,7 @@ describe('WebUiSelect 组件（浏览器）', () => {
   it('placement="bottom" 把 panel 水平居中到 trigger', async () => {
     const select = document.createElement('web-ui-select')
     select.placement = 'bottom'
-    select.trigger = 'icon'
+    select.variant = 'icon'
     // 挂到视口中部：窄 trigger 上的居中 panel 会向两侧各溢出约 72px，贴边会触发 shift 夹取。
     select.style.position = 'fixed'
     select.style.left = '50vw'
@@ -93,7 +93,7 @@ describe('WebUiSelect 组件（浏览器）', () => {
 
   it('打开后修改 placement 会重新定位 panel', async () => {
     const select = document.createElement('web-ui-select')
-    select.trigger = 'icon'
+    select.variant = 'icon'
     // 同 placement="bottom" 用例：挂到视口中部，避免居中 panel 被视口边缘夹取。
     select.style.position = 'fixed'
     select.style.left = '50vw'

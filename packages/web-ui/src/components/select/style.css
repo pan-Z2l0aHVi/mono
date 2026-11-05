@@ -86,7 +86,7 @@
   color: var(--wui-color-text-secondary, #6a6a6a);
 }
 
-:host([trigger='icon']) .label {
+:host([variant='icon']) .label {
   overflow: visible;
   display: flex;
   flex: none;

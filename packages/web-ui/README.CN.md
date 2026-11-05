@@ -263,7 +263,7 @@ useEffect(() => {
 - 保持内容始终挂载、仅切换可见性仍是有效的回退方案。
 
 ```tsx
-<web-ui-popover portal open={open} trigger="manual">
+<web-ui-popover portal open={open} trigger="none">
   <div className="panel-body">{editing && <TagEditor />}</div>
 </web-ui-popover>
 ```
@@ -334,7 +334,7 @@ Vue 事件类型零 cast：带值组件上的 `@input`/`@change` 解析到组件
 
 ARIA 属性同样必须显式支持：使用组件文档化的命名属性，而不是通配 `aria-*` 透传。组件拥有自己的 role 和交互状态。
 `click`、`input`、`change` 等浏览器 composed 原生事件仍是主要交互 API。`open-change` 等 kebab-case 自定义事件
-仅描述用户操作导致的组件状态变化；程序化赋值 property 不会触发它们。
+在组件状态实际改变时派发；哪些来源算数由组件文档定义，声明式写 property 一律静默。
 
 ### Cursor 行为
 
@@ -347,10 +347,13 @@ hover 与按压反馈阶段保持箭头光标，仅在真实拖拽进行中切�
 `web-ui-*` 元素没有单一的「受控」契约；按交互性质分成三套状态模型，各组件族取其一。不要假设不同组件上的
 `controlled` 含义相同。
 
-**仅用户来源事件（所有 `open` 类组件：collapse、popover、dropdown、tooltip、dialog、drawer、back-top）。**
-`*-change` 事件（`open-change` 等）只在用户来源的切换时派发；程序化赋值（`el.open = true`）或命令式调用
-（`show()`、`close()`、`toggle()`）从不派发。组件**自管理**自己的 `open` 值，除非你在外部协调——你可以监听事件
-并写回自己的状态，但组件不要求、也不等待这个写回。
+**手势 overlay（tooltip、popover、dropdown、select、autocomplete）。**
+手势和 `show()` / `hide()` / `toggle()` 都会改变状态并派发 `open-change`；直接赋值 `el.open` 是静默的。
+组件**自管理**自己的 `open` 值，除非你在外部协调——你可以监听事件并写回 `open`，但组件不要求、也不等待这个写回。
+
+**仅用户来源事件（collapse、dialog、drawer、back-top）。**
+`*-change` 事件只在用户操作引起的切换时派发；程序化赋值（`el.open = true`）或命令式调用
+（`show()`、`close()`、`toggle()`）从不派发。
 
 **请求-写回模式（仅 dialog 与 drawer 的 `controlled`）。**
 `controlled=true` 时，用户关闭操作（Escape、backdrop、内置关闭、拖拽释放）只*请求* `open=false`；组件不改自己的

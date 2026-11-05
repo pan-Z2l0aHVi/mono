@@ -251,7 +251,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     submenuControl.focus()
     expect(submenuItem.shadowRoot?.activeElement).toBe(submenuControl)
 
-    menu.closeAll()
+    menu.hide()
     await menu.updateComplete
     rootPanel!.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'opacity', bubbles: true }))
     await waitFor(() => getMenuPanels().length === 0, 'Expected the dropdown and submenu to finish closing')
@@ -380,7 +380,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await menu.updateComplete
 
     previous.focus()
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     const panels = await waitForMenuPanels(1)
     expect(panels).toHaveLength(1)
@@ -404,7 +404,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const menu = createDropdown(TWO_ITEMS)
     await menu.updateComplete
 
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     const panels = await waitForMenuPanels(1)
     expect(panels).toHaveLength(1)
@@ -425,7 +425,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
   it('点击 menu panel 内的非焦点空白处不会关闭 menu', async () => {
     const menu = createDropdown(TWO_ITEMS)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     const panels = await waitForMenuPanels(1)
     expect(panels).toHaveLength(1)
@@ -453,7 +453,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     document.body.append(outside)
     await menu.updateComplete
 
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -479,7 +479,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     next.textContent = 'Next'
     document.body.append(next)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -516,7 +516,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const triggerButton = trigger.shadowRoot?.querySelector<HTMLButtonElement>('button')
     expect(triggerButton).toBeTruthy()
 
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -540,7 +540,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     next.textContent = 'Next'
     document.body.append(next)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -562,7 +562,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
     const menu = createDropdown(TWO_ITEMS)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -594,7 +594,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     editor.textContent = 'Edit text'
     document.body.append(editor)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -616,7 +616,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     next.textContent = 'Next'
     document.body.append(editor, next)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -649,7 +649,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const closedShadowHost = document.createElement(tagName)
     document.body.append(closedShadowHost)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -675,7 +675,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     checked.checked = true
     document.body.append(unchecked, checked)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -694,7 +694,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     next.textContent = 'Next'
     document.body.append(next)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     await waitForMenuPanels(1)
 
@@ -726,7 +726,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     svg.setAttribute('height', '32')
     document.body.append(svg)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -748,7 +748,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const following = document.createElement('button')
     document.body.append(shadowHost, following)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -768,7 +768,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const outside = document.createElement('button')
     document.body.append(outside)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     await waitForMenuPanels(1)
 
@@ -807,7 +807,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     next.textContent = 'Next'
     document.body.append(menu, next)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -843,7 +843,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     document.body.append(dialog, outside)
     dialog.showModal()
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     await waitFor(() => dialog.querySelectorAll('[role="menu"]').length === 1, 'modal 中的 menu panel 应挂载')
     expect(dialog.querySelectorAll('[role="menu"]')).toHaveLength(1)
@@ -869,7 +869,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     document.body.append(dialog)
     dialog.showModal()
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     await waitFor(() => dialog.querySelector('[role="menu"]') !== null, 'modal 中的 menu panel 应挂载')
     const panel = dialog.querySelector<HTMLElement>('[role="menu"]')!
@@ -908,7 +908,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     document.body.append(previous, menu, next)
     previous.focus()
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
     const item = requireItemIn(getMenuPanels()[0], 'root menu ')
@@ -946,7 +946,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const outside = document.createElement('button')
     document.body.append(outside)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -973,7 +973,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     next.textContent = 'Next'
     document.body.append(next)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -1006,7 +1006,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     next.textContent = 'Next'
     document.body.append(next)
     await menu.updateComplete
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     expect(await waitForMenuPanels(1)).toHaveLength(1)
 
@@ -1036,7 +1036,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const keyboardBg = bgOf(items[0]!)
     expect(keyboardBg, '键盘打开的首项应带上高亮').not.toBe(bgOf(items[1]!))
 
-    menu.closeAll()
+    menu.hide()
     await menu.updateComplete
     await waitFor(() => getMenuPanels().length === 0, 'Expected the dropdown to finish closing')
 
@@ -1328,7 +1328,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const menu = createDropdown(SUBMENU)
     await menu.updateComplete
 
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     await waitForFrame()
     await waitForFrame()
@@ -1341,11 +1341,11 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const submenuPanel = (await waitForMenuPanels(2))[1]
     expect(submenuPanel, 'submenu panel 应已挂载').toBeDefined()
 
-    menu.closeAll()
+    menu.hide()
     await menu.updateComplete
     await waitForFrame()
 
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     await waitForFrame()
     await menu.updateComplete
@@ -1361,7 +1361,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
   })
 
   /*
-   * 同源的第二个入口：`open` 属性路径不经过 `openMenu()`，claim 必须由复用分支自己补。
+   * 同源的第二个入口：`open` 属性路径不经过 `show()`，claim 必须由复用分支自己补。
    * 否则会出现「open === true + panel 可见 + handle 为 null」，且点 panel 内部立刻关闭整张 menu：
    * 同一组件两个公开入口一个正常、一个彻底无登记。
    */
@@ -1369,7 +1369,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const menu = createDropdown(SIMPLE)
     await menu.updateComplete
 
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     await waitForFrame()
     await waitForFrame()
@@ -1377,7 +1377,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     expect(rootPanel, '根 menu panel 应已挂载').toBeDefined()
     rootPanel!.style.transition = 'opacity 5s'
 
-    menu.closeAll()
+    menu.hide()
     await menu.updateComplete
     await waitForFrame()
 
@@ -1401,14 +1401,14 @@ describe('WebUiDropdown 组件（浏览器）', () => {
    * 只剩收尾栈还记得它——panel 仍在 DOM 里、仍在退场中。根重开时若只重挂当前集合，
    * 这块 panel 就落在根 handle 子树之外，点它内部照样把整张 menu 关掉。
    *
-   * 与上面两条的分工：那两条走 `closeAll()`，submenu 留在集合里；本条先用 ArrowLeft
+   * 与上面两条的分工：那两条走 `hide()`，submenu 留在集合里；本条先用 ArrowLeft
    * 把 submenu 推进收尾栈。两次重开都必须发生，缺一条循环即转红。
    */
   it('退场窗口内重开后，收尾中的 submenu panel 内点击不关闭整张 menu', async () => {
     const menu = createDropdown(SUBMENU)
     await menu.updateComplete
 
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     await waitForFrame()
     await waitForFrame()
@@ -1434,11 +1434,11 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     await waitForFrame()
     expect(getMenuPanels()).toHaveLength(2)
 
-    menu.closeAll()
+    menu.hide()
     await menu.updateComplete
     await waitForFrame()
 
-    menu.openMenu()
+    menu.show({ instant: true })
     await menu.updateComplete
     await waitForFrame()
     await menu.updateComplete

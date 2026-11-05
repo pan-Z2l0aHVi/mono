@@ -126,7 +126,7 @@ import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Custom trigger
+### Custom trigger slot
 
 `trigger` 插槽替换默认的标签文本；箭头与开合行为仍由组件提供。组件不会改写插槽内容的字体、颜色或尺寸。插槽内容由页面状态驱动，所以会跟着选择变化。
 
@@ -175,9 +175,81 @@ const lang = ref('en')
 </script>
 ```
 
+### Trigger modes
+
+`trigger` 是手势集合，用空格或逗号分隔，可写 `click`、`hover`、`focus`、`none`，默认 `click`。`hover` 由指针进出开合，`focus` 在键盘聚焦（`:focus-visible`）时展开；手势可以并排写。
+
+`none` 不接受任何手势，也不参与点外面关闭和 Escape；关闭态下的方向键、Space、Enter 与 typeahead 也不再自动展开，只能由 `open` 属性或 `show()` / `hide()` 控制。`none` 与手势互斥：同时写时按 `none` 处理，并在开发期打印 warning。
+
+`show-delay` / `hide-delay` 只作用于 hover 来源的开合；点击、焦点与程序式调用都立即生效。
+
+```tsx
+import type { WebUiSelect } from '@greypan/web-ui'
+import { useRef, useState } from 'react'
+
+export default function Demo() {
+  const picker = useRef<WebUiSelect>(null)
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-select
+        ref={picker}
+        trigger="none"
+        placeholder="none 模式"
+        aria-label="none 模式"
+        onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}
+      >
+        <web-ui-option value="a" label="选项 A"></web-ui-option>
+        <web-ui-option value="b" label="选项 B"></web-ui-option>
+      </web-ui-select>
+      <div className="flex flex-wrap items-center gap-2">
+        <web-ui-button size="28" variant="secondary" onClick={() => picker.current?.show()}>
+          show()
+        </web-ui-button>
+        <web-ui-button size="28" variant="secondary" onClick={() => picker.current?.hide()}>
+          hide()
+        </web-ui-button>
+        <output className="text-sm text-(--wui-color-text-secondary)">最近一次 detail.open = {last}</output>
+      </div>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-select
+      ref="picker"
+      trigger="none"
+      placeholder="none 模式"
+      aria-label="none 模式"
+      @open-change="last = $event.detail.open ? 'true' : 'false'"
+    >
+      <web-ui-option value="a" label="选项 A"></web-ui-option>
+      <web-ui-option value="b" label="选项 B"></web-ui-option>
+    </web-ui-select>
+    <div class="flex flex-wrap items-center gap-2">
+      <web-ui-button size="28" variant="secondary" @click="picker?.show()">show()</web-ui-button>
+      <web-ui-button size="28" variant="secondary" @click="picker?.hide()">hide()</web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)">最近一次 detail.open = {{ last }}</output>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { WebUiSelect } from '@greypan/web-ui'
+import { ref, useTemplateRef } from 'vue'
+
+const picker = useTemplateRef<WebUiSelect>('picker')
+const last = ref('—')
+</script>
+```
+
 ### Open-change notification
 
-`open-change` 只做通知，`detail.open` 是当前状态。select 的 `open` 是只读属性，没有可以回写的受控属性，页面跟着事件更新即可。
+`open-change` 只做通知，`detail.open` 是当前状态。手势和 `show()` / `hide()` 会派发它；直接写 `open` 是静默的，适合页面单方面控制面板。
 
 ```tsx
 import { useState } from 'react'
@@ -233,9 +305,9 @@ function onOpenChange(event: WebUiEvent<WebUiSelect, 'open-change'>) {
 </script>
 ```
 
-### Icon trigger
+### Icon variant
 
-`trigger="icon"` 保留右侧箭头，只把左侧内容换成图标，图标可以跟随选中值变化。触发器本身没有文本，所以需要给 select 写 `aria-label`。
+`variant="icon"` 保留右侧箭头，只把左侧内容换成图标，图标可以跟随选中值变化。触发器本身没有文本，所以需要给 select 写 `aria-label`。
 
 ```tsx
 import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
@@ -249,7 +321,7 @@ export default function Demo() {
 
   return (
     <web-ui-select
-      trigger="icon"
+      variant="icon"
       aria-label="View mode"
       value={view}
       onChange={event => {
@@ -268,7 +340,7 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-select trigger="icon" aria-label="View mode" :value="view" @change="pick($event.currentTarget.value)">
+  <web-ui-select variant="icon" aria-label="View mode" :value="view" @change="pick($event.currentTarget.value)">
     <web-ui-icon slot="trigger" :icon="ICONS[view]" :size="18"></web-ui-icon>
     <web-ui-option value="grid" label="Grid"></web-ui-option>
     <web-ui-option value="list" label="List"></web-ui-option>
@@ -425,34 +497,47 @@ export default function Demo() {
 
 ### Props
 
-| 名称               | 说明                                                                                     | 类型                | 默认值           |
-| ------------------ | ---------------------------------------------------------------------------------------- | ------------------- | ---------------- |
-| `placeholder`      | 未选中时显示的占位文本。                                                                 | `string`            | `''`             |
-| `trigger`          | 触发器外观：`label` 保留选中文本与箭头，`icon` 保留箭头并把 `trigger` 插槽作为左侧图标。 | `'label' \| 'icon'` | `'label'`        |
-| `disabled`         | 禁用状态。                                                                               | `boolean`           | `false`          |
-| `required`         | 必填校验。                                                                               | `boolean`           | `false`          |
-| `portal`           | 在主题的 overlay 容器中渲染下拉面板。                                                    | `boolean`           | `false`          |
-| `placement`        | 下拉面板位置，默认从触发器左下角向下展开。                                               | `Placement`         | `'bottom-start'` |
-| `no-scroll-lock`   | 打开时不锁定页面滚动。                                                                   | `boolean`           | `false`          |
-| `overlayContainer` | 显式指定面板挂载的 overlay 容器（property）。                                            | `OverlayContainer`  | —                |
-| `name`             | 表单字段名。                                                                             | `string`            | `''`             |
-| `aria-label`       | combobox 的可访问名称。                                                                  | `string \| null`    | `null`           |
-| `value`            | 选中值。                                                                                 | `string`            | `''`             |
+| 名称               | 说明                                                                                      | 类型                | 默认值           |
+| ------------------ | ----------------------------------------------------------------------------------------- | ------------------- | ---------------- |
+| `placeholder`      | 未选中时显示的占位文本。                                                                  | `string`            | `''`             |
+| `variant`          | 触发器外观：`label` 保留选中文本与箭头，`icon` 保留箭头并把 `trigger` 插槽作为左侧图标。  | `'label' \| 'icon'` | `'label'`        |
+| `trigger`          | 触发手势集合，空格或逗号分隔：`click`、`hover`、`focus`、`none`；读回为逗号分隔的规范串。 | `string`            | `'click'`        |
+| `show-delay`       | 悬停打开的延迟（毫秒）；只影响 hover 来源。                                               | `number`            | `200`            |
+| `hide-delay`       | 悬停收起的延迟（毫秒）；只影响 hover 来源。                                               | `number`            | `100`            |
+| `disabled`         | 禁用状态。                                                                                | `boolean`           | `false`          |
+| `required`         | 必填校验。                                                                                | `boolean`           | `false`          |
+| `portal`           | 在主题的 overlay 容器中渲染下拉面板。                                                     | `boolean`           | `false`          |
+| `placement`        | 下拉面板位置，默认从触发器左下角向下展开。                                                | `Placement`         | `'bottom-start'` |
+| `no-scroll-lock`   | 打开时不锁定页面滚动。                                                                    | `boolean`           | `false`          |
+| `overlayContainer` | 显式指定面板挂载的 overlay 容器（property）。                                             | `OverlayContainer`  | —                |
+| `name`             | 表单字段名。                                                                              | `string`            | `''`             |
+| `aria-label`       | combobox 的可访问名称。                                                                   | `string \| null`    | `null`           |
+| `value`            | 选中值。                                                                                  | `string`            | `''`             |
+| `open`             | 声明式开关；直接写入静默，不派发 `open-change`。                                          | `boolean`           | `false`          |
+| `isOpen`           | 当前是否打开（只读）。                                                                    | `boolean`           | —                |
 
 ### Events
 
-| 名称          | 说明                                     |
-| ------------- | ---------------------------------------- |
-| `input`       | 用户选中某项后触发，`value` 为新值。     |
-| `change`      | 与 `input` 成对派发，一次选择各一次。    |
-| `open-change` | 下拉面板开合，`detail.open` 为当前状态。 |
+| 名称          | 说明                                                                                    |
+| ------------- | --------------------------------------------------------------------------------------- |
+| `input`       | 用户选中某项后触发，`value` 为新值。                                                    |
+| `change`      | 与 `input` 成对派发，一次选择各一次。                                                   |
+| `open-change` | 手势或 `show()` / `hide()` 改变开合时派发，`detail.open` 是当前状态；写 `open` 不派发。 |
 
 ### Slots
 
 | 名称      | 说明                                                                                |
 | --------- | ----------------------------------------------------------------------------------- |
-| `trigger` | 自定义触发区域内容，替换默认标签；`trigger="icon"` 下它是左侧图标区，箭头仍在右侧。 |
+| `trigger` | 自定义触发区域内容，替换默认标签；`variant="icon"` 下它是左侧图标区，箭头仍在右侧。 |
 | `default` | 投影 `<web-ui-option>` 候选。                                                       |
+
+### Methods
+
+| 名称       | 说明                                                            |
+| ---------- | --------------------------------------------------------------- |
+| `show()`   | 打开面板并派发 `open-change`；`disabled` 或已打开时不产生效果。 |
+| `hide()`   | 关闭面板并派发 `open-change`；已关闭时不产生效果。              |
+| `toggle()` | 按当前 `open` 切换，并派发 `open-change`。                      |
 
 ### 行为说明
 
@@ -460,7 +545,9 @@ export default function Demo() {
 
 非 Portal 模式下，键盘导航时 `aria-activedescendant` 指向当前选项；Portal 模式下不设置此属性。
 
-关闭态的 Space / Enter / ArrowDown / ArrowUp 打开面板；展开态的 ArrowDown / ArrowUp、Home / End 与 typeahead 移动激活项，Enter / Space 选择并关闭，Escape 关闭。
+关闭态的 Space / Enter / ArrowDown / ArrowUp 打开面板；`none` 下这些按键不再自动展开。展开态的 ArrowDown / ArrowUp、Home / End 与 typeahead 移动激活项，Enter / Space 选择并关闭，Escape 关闭。
+
+`hover` 由指针进出开合；指针离开触发器与面板、且焦点不在其中时按 `hide-delay` 收起。`show-delay` / `hide-delay` 只作用于 hover 来源；点击、焦点与程序式调用都立即生效。Escape、点面板外与失焦会收起所有非 `none` 的层，不取决于 `trigger` 是否包含 `click` 或 `focus`。
 
 启用 `portal` 的面板在创建时读取宿主上的这些变量值；更新宿主后需重新打开面板才会生效。
 

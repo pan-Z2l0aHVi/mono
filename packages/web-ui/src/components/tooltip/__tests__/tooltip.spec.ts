@@ -55,20 +55,20 @@ describe('WebUiTooltip 组件', () => {
 
   describe('属性：trigger', () => {
     // 默认集合就是「悬停 + 键盘聚焦」，即指针与焦点两组的取值来源；这里只钉集合语义本身。
-    it('默认是 hover focus', async () => {
+    it('默认是 hover,focus', async () => {
       const el = createTooltip()
       await waitForUpdate(el)
 
-      expect(el.trigger).toBe('hover focus')
+      expect(el.trigger).toBe('hover,focus')
 
       cleanupElement(el)
     })
 
-    it('数组从 property 通道读回规范串，顺序按词表', () => {
+    it('非字符串取值回退到默认', () => {
       const el = createTooltip()
-      el.trigger = ['focus', 'hover']
+      el.trigger = ['focus', 'hover'] as unknown as string
 
-      expect(el.trigger).toBe('hover focus')
+      expect(el.trigger).toBe('hover,focus')
 
       cleanupElement(el)
     })
@@ -80,16 +80,16 @@ describe('WebUiTooltip 组件', () => {
       const unknown = createTooltip({ trigger: 'tap' })
 
       expect(partial.trigger).toBe('click')
-      expect(unknown.trigger).toBe('hover focus')
+      expect(unknown.trigger).toBe('hover,focus')
 
       cleanupElement(partial)
       cleanupElement(unknown)
     })
 
-    it('manual 覆盖其余手势', () => {
+    it('旧字面量 manual 视为未知 token，不生效', () => {
       const el = createTooltip({ trigger: 'hover manual' })
 
-      expect(el.trigger).toBe('manual')
+      expect(el.trigger).toBe('hover')
 
       cleanupElement(el)
     })
@@ -419,7 +419,7 @@ describe('WebUiTooltip 组件', () => {
       cleanupElement(el)
     })
 
-    it('click 集合下悬停与失焦都不参与开合', async () => {
+    it('click 集合下悬停不参与开合，失焦仍关闭', async () => {
       const el = createTooltip({ trigger: 'click', content: '提示' })
       await waitForUpdate(el)
 
@@ -431,9 +431,9 @@ describe('WebUiTooltip 组件', () => {
       el.open = true
       await waitForUpdate(el)
       el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersToNextFrame()
       await waitForUpdate(el)
-      expect(el.isOpen).toBe(true)
+      expect(el.isOpen).toBe(false)
 
       cleanupElement(el)
     })
@@ -450,8 +450,8 @@ describe('WebUiTooltip 组件', () => {
       cleanupElement(el)
     })
 
-    it('manual 集合下点击与悬停都不打开，open 仍可用', async () => {
-      const el = createTooltip({ trigger: 'manual', content: '提示' })
+    it('none 集合下点击与悬停都不打开，open 仍可用', async () => {
+      const el = createTooltip({ trigger: 'none', content: '提示' })
       await waitForUpdate(el)
 
       el.querySelector<HTMLElement>('button')?.click()
@@ -480,6 +480,7 @@ describe('WebUiTooltip 组件', () => {
       expect(el.isOpen).toBe(true)
 
       el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+      vi.advanceTimersToNextFrame()
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
 

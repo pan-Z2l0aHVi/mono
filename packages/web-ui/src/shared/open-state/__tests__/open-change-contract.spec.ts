@@ -11,47 +11,33 @@ import { getMenuPanels, queryA11y, spyEvents, waitForUpdate } from '@/shared/tes
 /**
  * `open-change` 的共享契约矩阵。
  *
- * `shared/open-state` 是 overlay 族 `open-change` 的唯一致出点，模块注释写明了它的
- * **notification 语义**：组件总是自行变更 `open`，事件只作通知（与 dialog / drawer /
- * layout 的 request 语义相对）。由此可得一条跨组件恒定的契约：
+ * 带 trigger 的 overlay 统一遵循两条通道：
  *
- * **程序式变更（属性或公开方法）静默；只有用户手势才派发 `open-change`，
- * 且 `detail.open` 是变更后的值。**
+ * - **声明式静默**：直接写 `open` 属性只改状态，不派发事件；消费者经属性回写即可闭环。
+ * - **命令式与手势通知**：`show()` / `hide()` 以及用户手势各派发一次，
+ *   `detail.open` 是变更后的值。
  *
- * 本矩阵把这条契约收敛到一处。各组件 spec 只保留自身特有的触发路径与边界，
- * 例如 popover 的「hover 重入不让后续命令式关闭派发残留事件」。
+ * 同值重复施加任一通道都不派发。context-menu 没有 trigger 与声明式 `open`，
+ * `openAt()` / `close()` 保持其文档契约（静默），只覆盖它的用户手势。
  */
 
 type Openable = HTMLElement & { updateComplete: Promise<unknown>; isOpen: boolean; open: boolean }
 
-interface OpenChangeSpec {
+/** 公开方法的类型收窄，避免在矩阵表里写长交叉类型。 */
+type Showable = { show: () => void; hide: () => void }
+type Anchorable = { openAt: (x: number, y: number) => void; close: () => void }
+
+interface TriggerOpenChangeSpec {
   name: string
   create: () => Openable
-  programOpen: (el: Openable) => void
-  programClose: (el: Openable) => void
+  declarativeOpen: (el: Openable) => void
+  declarativeClose: (el: Openable) => void
+  imperativeOpen: (el: Openable) => void
+  imperativeClose: (el: Openable) => void
   userOpen: (el: Openable) => void
   userClose: (el: Openable) => void
-  /**
-   * 再次以程序式施加**同一目标状态**（幂等通道），且**复用 `programOpen` 的同一入口**。
-   *
-   * 与 `programOpen` 的区别只在「值没有变化」：原 popover spec 的 `相同值不重复触发`
-   * 断言的就是这条 —— 冗余的同值写入既不该改变状态，也不该补发通知。
-   */
-  programRepeat: (el: Openable) => void
-  /**
-   * 当 `programOpen` 走的是公开**方法**（`show()` / `openMenu()`）时，属性面
-   * `el.open = true` 是与它并列的另一个程序式入口，需单独覆盖；`open` 即
-   * `programOpen` 的通道时省略。
-   */
-  programOpenByProperty?: (el: Openable) => void
-  /**
-   * 「已打开」的**可观察后果**（panel 已挂载且非 `hidden`），供属性面用例做状态断言。
-   *
-   * 属性面用例不能断言 `el.open`：它是 `@property({ reflect: true })` 的公开属性，
-   * 赋值后自读恒为 true（`isOpen` 也只是 `() => this.open` 的别名），断言它属同义反复、
-   * 对回归零保护。改断言 panel 真的被挂出来了。
-   */
-  openedConsequence?: (el: Openable) => boolean
+  /** 「已打开」的可观察后果（panel 已挂载且非 `hidden`）。 */
+  openedConsequence: (el: Openable) => boolean
 }
 
 function mount(tag: string, attrs: Record<string, string> = {}): Openable {
@@ -61,12 +47,7 @@ function mount(tag: string, attrs: Record<string, string> = {}): Openable {
   return el
 }
 
-/** 公开方法的类型收窄，避免在矩阵表里写长交叉类型。 */
-type Showable = { show: () => void; close: () => void }
-type Menuable = { openMenu: () => void; closeAll: () => void }
-type Anchorable = { openAt: (x: number, y: number) => void; close: () => void }
-
-const COVERS: ReadonlyArray<OpenChangeSpec> = [
+const COVERS: ReadonlyArray<TriggerOpenChangeSpec> = [
   {
     name: 'web-ui-popover',
     create: () => {
@@ -74,12 +55,12 @@ const COVERS: ReadonlyArray<OpenChangeSpec> = [
       el.innerHTML = '<button slot="trigger">T</button><div>C</div>'
       return el
     },
-    programOpen: el => (el as unknown as Showable).show(),
-    programClose: el => (el as unknown as Showable).close(),
+    declarativeOpen: el => (el.open = true),
+    declarativeClose: el => (el.open = false),
+    imperativeOpen: el => (el as unknown as Showable).show(),
+    imperativeClose: el => (el as unknown as Showable).hide(),
     userOpen: el => el.querySelector<HTMLElement>('[slot="trigger"]')?.click(),
     userClose: () => document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' })),
-    programRepeat: el => (el as unknown as Showable).show(),
-    programOpenByProperty: el => (el.open = true),
     openedConsequence: el => {
       const panel = queryA11y(el, '[role="dialog"]')
       return panel !== null && !panel.hasAttribute('hidden')
@@ -92,12 +73,16 @@ const COVERS: ReadonlyArray<OpenChangeSpec> = [
       el.innerHTML = '<button>T</button>'
       return el
     },
-    programOpen: el => (el.open = true),
-    programClose: el => (el.open = false),
+    declarativeOpen: el => (el.open = true),
+    declarativeClose: el => (el.open = false),
+    imperativeOpen: el => (el as unknown as Showable).show(),
+    imperativeClose: el => (el as unknown as Showable).hide(),
     userOpen: el => el.dispatchEvent(new PointerEvent('pointerenter')),
     userClose: el => el.dispatchEvent(new PointerEvent('pointerleave')),
-    // tooltip 的程序式入口本身就是 open 属性，属性面无需另立一列。
-    programRepeat: el => (el.open = true)
+    openedConsequence: el => {
+      const panel = queryA11y(el, '[role="tooltip"]')
+      return panel !== null && !panel.hasAttribute('hidden')
+    }
   },
   {
     name: 'web-ui-dropdown',
@@ -107,29 +92,13 @@ const COVERS: ReadonlyArray<OpenChangeSpec> = [
         '<button slot="trigger">M</button><web-ui-dropdown-item>a</web-ui-dropdown-item><web-ui-dropdown-item>b</web-ui-dropdown-item>'
       return el
     },
-    programOpen: el => (el as unknown as Menuable).openMenu(),
-    programClose: el => (el as unknown as Menuable).closeAll(),
+    declarativeOpen: el => (el.open = true),
+    declarativeClose: el => (el.open = false),
+    imperativeOpen: el => (el as unknown as Showable).show(),
+    imperativeClose: el => (el as unknown as Showable).hide(),
     userOpen: el => el.querySelector<HTMLElement>('[slot="trigger"]')?.click(),
     userClose: el => el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })),
-    programRepeat: el => (el as unknown as Menuable).openMenu(),
-    programOpenByProperty: el => (el.open = true),
     openedConsequence: () => getMenuPanels().length > 0
-  },
-  {
-    name: 'web-ui-context-menu',
-    create: () => {
-      const el = mount('web-ui-context-menu')
-      el.innerHTML =
-        '<web-ui-dropdown-item>编辑</web-ui-dropdown-item><web-ui-dropdown-item>复制</web-ui-dropdown-item>'
-      return el
-    },
-    programOpen: el => (el as unknown as Anchorable).openAt(100, 100),
-    programClose: el => (el as unknown as Anchorable).close(),
-    userOpen: el =>
-      el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 100, clientY: 100 })),
-    userClose: el => el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true })),
-    // context-menu 没有公开 `open` 属性（只有 openAt()/close()），同值通道即重复定位到同一坐标。
-    programRepeat: el => (el as unknown as Anchorable).openAt(100, 100)
   }
 ]
 
@@ -156,36 +125,67 @@ afterEach(() => {
   vi.useRealTimers()
 })
 
-describe('open-change 契约（notification 语义：程序式静默，用户手势通知）', () => {
+describe('open-change 契约（声明式静默，命令式与手势通知）', () => {
   for (const spec of COVERS) {
     describe(`${spec.name}`, () => {
-      it('程序式打开不派发 open-change', async () => {
+      it('声明式打开不派发 open-change', async () => {
         const el = spec.create()
         await settle(el)
         const [events, detach] = spyEvents<CustomEvent>(el, 'open-change')
 
-        spec.programOpen(el)
+        spec.declarativeOpen(el)
         await settle(el)
 
-        expect(el.isOpen, '程序式打开应生效').toBe(true)
-        expect(events, '程序式变更不是用户手势').toHaveLength(0)
+        expect(spec.openedConsequence(el)).toBe(true)
+        expect(events).toHaveLength(0)
 
         detach()
       })
 
-      it('程序式关闭不派发 open-change', async () => {
+      it('声明式关闭不派发 open-change', async () => {
         const el = spec.create()
         await settle(el)
-        spec.programOpen(el)
+        spec.declarativeOpen(el)
         await settle(el)
-        expect(el.isOpen).toBe(true)
+        expect(spec.openedConsequence(el)).toBe(true)
 
         const [events, detach] = spyEvents<CustomEvent>(el, 'open-change')
-        spec.programClose(el)
+        spec.declarativeClose(el)
         await settle(el)
 
-        expect(el.isOpen, '程序式关闭应生效').toBe(false)
-        expect(events, '程序式变更不是用户手势').toHaveLength(0)
+        expect(spec.openedConsequence(el)).toBe(false)
+        expect(events).toHaveLength(0)
+
+        detach()
+      })
+
+      it('命令式打开派发一次 open-change，detail.open 为 true', async () => {
+        const el = spec.create()
+        await settle(el)
+        const [events, detach] = spyEvents<CustomEvent>(el, 'open-change')
+
+        spec.imperativeOpen(el)
+        await settle(el)
+
+        expect(spec.openedConsequence(el)).toBe(true)
+        expect(events.map(event => event.detail?.open)).toEqual([true])
+
+        detach()
+      })
+
+      it('命令式关闭派发一次 open-change，detail.open 为 false', async () => {
+        const el = spec.create()
+        await settle(el)
+        spec.imperativeOpen(el)
+        await settle(el)
+        expect(spec.openedConsequence(el)).toBe(true)
+
+        const [events, detach] = spyEvents<CustomEvent>(el, 'open-change')
+        spec.imperativeClose(el)
+        await settle(el)
+
+        expect(spec.openedConsequence(el)).toBe(false)
+        expect(events.map(event => event.detail?.open)).toEqual([false])
 
         detach()
       })
@@ -193,15 +193,14 @@ describe('open-change 契约（notification 语义：程序式静默，用户手
       it('用户手势打开派发一次 open-change，detail.open 为 true', async () => {
         const el = spec.create()
         await settle(el)
-        expect(el.isOpen).toBe(false)
+        expect(spec.openedConsequence(el)).toBe(false)
 
         const [events, detach] = spyEvents<CustomEvent>(el, 'open-change')
         spec.userOpen(el)
         await settle(el)
 
-        expect(el.isOpen).toBe(true)
-        expect(events, '用户手势应通知一次').toHaveLength(1)
-        expect(events[0]?.detail?.open).toBe(true)
+        expect(spec.openedConsequence(el)).toBe(true)
+        expect(events.map(event => event.detail?.open)).toEqual([true])
 
         detach()
       })
@@ -211,63 +210,84 @@ describe('open-change 契约（notification 语义：程序式静默，用户手
         await settle(el)
         spec.userOpen(el)
         await settle(el)
-        expect(el.isOpen).toBe(true)
+        expect(spec.openedConsequence(el)).toBe(true)
 
         const [events, detach] = spyEvents<CustomEvent>(el, 'open-change')
         spec.userClose(el)
         await settle(el)
 
-        expect(el.isOpen).toBe(false)
-        expect(events, '用户手势应通知一次').toHaveLength(1)
-        expect(events[0]?.detail?.open).toBe(false)
+        expect(spec.openedConsequence(el)).toBe(false)
+        expect(events.map(event => event.detail?.open)).toEqual([false])
 
         detach()
       })
 
-      it('程序式重复施加同一目标状态（同一入口）不派发 open-change', async () => {
+      it('命令式重复施加同一目标状态不补发 open-change', async () => {
         const el = spec.create()
         await settle(el)
         const [events, detach] = spyEvents<CustomEvent>(el, 'open-change')
 
-        spec.programOpen(el)
+        spec.imperativeOpen(el)
         await settle(el)
-        expect(el.isOpen, '前置：程序式打开应已生效').toBe(true)
+        expect(spec.openedConsequence(el)).toBe(true)
+        const before = events.length
 
         // 以**同一入口**再次施加同一目标状态：状态不变，也不得补发通知。
-        // （context-menu 无公开 `open` 属性，其同值通道即重复定位到同一坐标。）
-        spec.programRepeat(el)
+        spec.imperativeOpen(el)
         await settle(el)
 
-        expect(el.isOpen, '重复施加同一目标状态不应改变状态').toBe(true)
-        expect(events, '程序式重复施加不是用户手势').toHaveLength(0)
+        expect(spec.openedConsequence(el)).toBe(true)
+        expect(events.length).toBe(before)
 
         detach()
       })
     })
   }
+})
 
-  // 属性面与公开方法面并列：`programOpen` 走方法的组件，`el.open = true` 这条入口要单独覆盖
-  // （原 popover spec 的 `程序打开不触发` 断言的正是属性面）。
-  for (const spec of COVERS.filter(candidate => candidate.programOpenByProperty !== undefined)) {
-    describe(`${spec.name}`, () => {
-      it('程序式属性变更（open 属性）不派发 open-change', async () => {
-        const openByProperty = spec.programOpenByProperty as (el: Openable) => void
-        const opened = spec.openedConsequence as (el: Openable) => boolean
-        const el = spec.create()
-        await settle(el)
-        const [events, detach] = spyEvents<CustomEvent>(el, 'open-change')
-
-        openByProperty(el)
-        await settle(el)
-
-        // 不断言 `el.open`（reflect 属性自读恒真）；断言 panel 真的挂出来且非 hidden。
-        expect(opened(el), '属性面程序式打开应真的挂出 panel').toBe(true)
-        expect(events, '程序式变更不是用户手势').toHaveLength(0)
-
-        detach()
-      })
-    })
+describe('open-change 契约：context-menu（无 trigger、无声明式 open）', () => {
+  const create = () => {
+    const el = mount('web-ui-context-menu')
+    el.innerHTML = '<web-ui-dropdown-item>编辑</web-ui-dropdown-item><web-ui-dropdown-item>复制</web-ui-dropdown-item>'
+    return el
   }
+  const opened = () => getMenuPanels().length > 0
+
+  it('openAt() / close() 按其文档保持静默', async () => {
+    const el = create()
+    await settle(el)
+    const [events, detach] = spyEvents<CustomEvent>(el, 'open-change')
+
+    ;(el as unknown as Anchorable).openAt(100, 100)
+    await settle(el)
+    expect(opened()).toBe(true)
+    expect(events).toHaveLength(0)
+
+    ;(el as unknown as Anchorable).close()
+    await settle(el)
+    expect(opened()).toBe(false)
+    expect(events).toHaveLength(0)
+
+    detach()
+  })
+
+  it('用户手势打开与关闭各派发一次 open-change', async () => {
+    const el = create()
+    await settle(el)
+    const [events, detach] = spyEvents<CustomEvent>(el, 'open-change')
+
+    el.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true, clientX: 100, clientY: 100 }))
+    await settle(el)
+    expect(opened()).toBe(true)
+    expect(events.map(event => event.detail?.open)).toEqual([true])
+
+    el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true }))
+    await settle(el)
+    expect(opened()).toBe(false)
+    expect(events.map(event => event.detail?.open)).toEqual([true, false])
+
+    detach()
+  })
 })
 
 // jsdom 未实现原生 dialog 的 modal 语义，这里局部补足 showModal/close 对 open 的影响。

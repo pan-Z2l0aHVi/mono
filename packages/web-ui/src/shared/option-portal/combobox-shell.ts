@@ -1,7 +1,6 @@
 import { definePlugin } from '@greypan/js-kit'
 
 import type { WebUiOption } from '@/components/option'
-import type { OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 
 /**
  * combobox 开合与 option 交互的共享骨架（select / autocomplete）。
@@ -36,16 +35,23 @@ export interface ComboboxOpenHooks {
   onAfterClose?(): void
 }
 
+export interface ComboboxOpenOptions {
+  /** 打开时的激活项初始化语义：true 取选中/首项，false 保留现状。 */
+  isKeyboardNavigation?: boolean
+  /** 是否派发 `open-change`；声明式写入传 false。 */
+  notify?: boolean
+}
+
 export interface ComboboxOpenController {
-  open(isKeyboardNavigation?: boolean): void
-  close(): void
+  open(options?: ComboboxOpenOptions): void
+  close(options?: ComboboxOpenOptions): void
 }
 
 export function createComboboxOpenController(hooks: ComboboxOpenHooks): ComboboxOpenController {
-  function open(isKeyboardNavigation = false) {
+  function open({ isKeyboardNavigation = false, notify = true }: ComboboxOpenOptions = {}) {
     if (hooks.canOpen() === false || hooks.getIsOpen()) return
     hooks.setIsOpen(true)
-    hooks.dispatchOpenChange()
+    if (notify) hooks.dispatchOpenChange()
     hooks.onOpen?.(isKeyboardNavigation)
     hooks.syncScrollLock(true)
     if (hooks.isPortal()) {
@@ -57,11 +63,11 @@ export function createComboboxOpenController(hooks: ComboboxOpenHooks): Combobox
     }
   }
 
-  function close() {
+  function close({ notify = true }: ComboboxOpenOptions = {}) {
     if (!hooks.getIsOpen()) return
     hooks.onBeforeClose?.()
     hooks.setIsOpen(false)
-    hooks.dispatchOpenChange()
+    if (notify) hooks.dispatchOpenChange()
     hooks.onAfterClose?.()
     hooks.syncScrollLock(false)
     hooks.closeOverlay()
@@ -90,7 +96,7 @@ export interface ComboboxTriggerHandlers {
   /** trigger 文本变化；value 取自 trigger host 的字符串 value 属性。 */
   onInput(value: string): void
   /** 点击 trigger 区域（含包装 div 自身留白）。 */
-  onClick(): void
+  onClick(event: MouseEvent): void
   onFocusIn(event: FocusEvent): void
   onFocusOut(event: FocusEvent): void
 }
@@ -160,7 +166,7 @@ export const defineComboboxTrigger = () =>
       if (isWithinTrigger(event, getTrigger())) event.stopPropagation()
     }
 
-    const onClick = () => source.onClick()
+    const onClick = (event: MouseEvent) => source.onClick(event)
     const onFocusIn = (event: FocusEvent) => source.onFocusIn(event)
     const onFocusOut = (event: FocusEvent) => source.onFocusOut(event)
 
@@ -223,24 +229,6 @@ export function createOptionListenerBinding(handlers: OptionListenerHandlers) {
     option.removeEventListener('option-update', handlers.onUpdate)
   }
   return { bind, unbind }
-}
-
-/**
- * focusout 关闭复核：焦点是否真的离开了宿主与 panel。
- * rAF 等待 click/pointerdown 相关的焦点迁移完成后再判定。
- */
-export function handleComboboxFocusOut(
-  host: HTMLElement,
-  getHandle: () => OpenOverlayHandle | null | undefined,
-  getIsOpen: () => boolean,
-  close: () => void
-): void {
-  requestAnimationFrame(() => {
-    const handle = getHandle()
-    if (getIsOpen() && !host.matches(':focus-within') && !handle?.hasFocusWithin()) {
-      close()
-    }
-  })
 }
 
 /**
