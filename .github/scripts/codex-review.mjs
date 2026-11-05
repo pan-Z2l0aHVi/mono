@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { commandError, run } from './lib/github.mjs'
+import { SPAWN_MAX_BUFFER, commandError, run } from './lib/github.mjs'
 import { CODEX_CONFIG_ENV, RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
 const BASE_BRANCH = 'main'
@@ -17,6 +17,11 @@ export const SEVERITIES = Object.freeze(['Block', 'Should fix', 'Nit'])
 
 // 顺序即诊断输出顺序，与 CI 拓扑断言共用同一份名单。密钥只判「有没有」，值从不写进快照、日志或 PR 评论。
 export const CONFIG_ENV = CODEX_CONFIG_ENV
+
+// 路径层面的批量 churn 过滤：md-to-meta 的 meta/codeblock 随 markdown 重建整批换名，
+// icons/generated 等入库产物同样只随 generator 变，塞进审查 diff 只会淹没真实改动。
+// 用 glob magic 让前导 **/ 同时覆盖嵌套与根级 generated/；review-scope.json 留痕便于审计。
+export const REVIEW_EXCLUDE_PATHSPECS = Object.freeze([':(exclude,glob)**/generated/**'])
 
 const FINDING_FIELDS = Object.freeze(['severity', 'file', 'line', 'problem', 'suggestion'])
 const SHA_PATTERN = /^[0-9a-f]{40,64}$/iu
@@ -91,7 +96,7 @@ export function resolveReviewRange({ baseSha, headSha, command = run }) {
     }
   }
   const mergeBaseSha = requireSha(command('git', ['merge-base', base, head]).trim(), 'merge base SHA')
-  const diff = command('git', ['diff', '--no-color', mergeBaseSha, head])
+  const diff = command('git', ['diff', '--no-color', mergeBaseSha, head, '--', ...REVIEW_EXCLUDE_PATHSPECS])
   return { baseSha: base, headSha: head, mergeBaseSha, diff }
 }
 
@@ -238,7 +243,7 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
 
 export function createGhReviewAdapter({ repository, spawn = spawnSync, cwd = process.cwd(), env = process.env }) {
   const gh = args => {
-    const result = spawn('gh', args, { encoding: 'utf8', cwd, env })
+    const result = spawn('gh', args, { encoding: 'utf8', cwd, env, maxBuffer: SPAWN_MAX_BUFFER })
     if (result.status !== 0) throw commandError('gh', args, result)
     return result.stdout ?? ''
   }
@@ -400,7 +405,9 @@ function commandPrepare() {
         base_sha: range.baseSha,
         head_sha: range.headSha,
         merge_base_sha: range.mergeBaseSha,
-        diff_bytes: Buffer.byteLength(range.diff)
+        diff_bytes: Buffer.byteLength(range.diff),
+        empty_diff: Buffer.byteLength(range.diff) === 0,
+        excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS
       },
       null,
       2
