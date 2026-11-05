@@ -19,3 +19,12 @@
 .gap {
   letter-spacing: var(--wui-grouped-text-gap, 0.25em);
 }
+
+/*
+ * 分隔符是生成内容，不是文本节点：`content: attr()` 从组元素自己的 attribute 取值，复制、页内查找
+ * 与双击选词读的都是文本节点的 data，一个字都多不出来。attribute 只挂在末组之外的组上，Lit 在
+ * `separator` 为空时把它整个摘掉——默认渲染与没有这个分支时逐节点相同。
+ */
+.group[data-separator]::after {
+  content: attr(data-separator);
+}

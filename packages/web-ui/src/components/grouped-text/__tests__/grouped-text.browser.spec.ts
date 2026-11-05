@@ -217,3 +217,46 @@ describe('web-ui-grouped-text 的间隙（浏览器）', () => {
     }
   })
 })
+
+/*
+ * separator 的真实渲染与选取。
+ *
+ * 生成内容 jsdom 看不见，只能在这里量它真的落出来了、落对位置；同一形态下再复核组件唯一的硬
+ * 需求——分隔符可见，但查找与选区拿到的仍逐字是原文。默认形态（不开分隔符）的这些行为由上面的
+ * 无分隔符用例顶住，这里不重复。
+ */
+describe('web-ui-grouped-text 的 separator（浏览器）', () => {
+  const SEPARATOR = '-'
+
+  /** 生成内容不在 DOM 里，唯一可观测面是计算样式的 `content`。 */
+  const afterContentOf = (node: Element): string => getComputedStyle(node, '::after').content
+
+  it('分隔符以生成内容落在末组之外的每组上，末组没有', async () => {
+    const el = mount({ value: CARD, groups: 'card', separator: SEPARATOR })
+    await el.updateComplete
+
+    const groups = groupsOf(el)
+    const last = groups.length - 1
+    expect(groups.length).toBeGreaterThan(1)
+    for (let index = 0; index < last; index += 1) {
+      expect(afterContentOf(groups[index]!), `第 ${index + 1} 组的分隔符`).toBe(`"${SEPARATOR}"`)
+    }
+    expect(afterContentOf(groups[last]!)).toBe('none')
+  })
+
+  /*
+   * 分隔符开着，查找与选区仍按原文走：生成内容不是文本节点，浏览器的搜索后端取不到它，
+   * 由它落成的真实选区也就多不出一个字。剪贴板读的是同一条选区文本。
+   */
+  it('开了分隔符后，页内查找与选区拿到的仍是原始连续串', async () => {
+    const el = mount({ value: CARD, groups: 'card', separator: SEPARATOR })
+    await el.updateComplete
+    clearSelection()
+
+    expect(window.find(CARD)).toBe(true)
+    expect(selectionText()).toBe(CARD)
+
+    expect(selectByFind('0212345')).toBe(true)
+    expect(selectionText()).toBe('0212345')
+  })
+})

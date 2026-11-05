@@ -1,4 +1,4 @@
-import { html, LitElement, unsafeCSS } from 'lit'
+import { html, LitElement, nothing, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import {
@@ -16,10 +16,16 @@ import style from './style.css?inline'
 /*
  * 两个形状各自写成一行：**模板里不许出现换行与缩进**。Lit 将标记之间的空白落成文本节点，
  * 而复制读的是文本节点的 data——组间多一个换行，剪贴板就多一个换行，组件唯一的硬需求当场失效。
+ *
+ * 分隔符走 `data-separator` attribute，由 `.group[data-separator]::after` 取 attr() 渲染成生成内容：
+ * 文本节点一个不多。它是末组之外每组一个；末组与整串自成一组时 Lit 摘掉空值 attribute，
+ * 渲染与没有分隔符时逐节点相同。
  */
-function renderRun(run: GroupedRun) {
+function renderRun(run: GroupedRun, separator: string) {
   if (run.gap === '') return html`<span class="group">${run.body}</span>`
-  return html`<span class="group">${run.body}<span class="gap">${run.gap}</span></span>`
+  return html`<span class="group" data-separator=${separator || nothing}
+    >${run.body}<span class="gap">${run.gap}</span></span
+  >`
 }
 
 /**
@@ -51,8 +57,14 @@ export class WebUiGroupedText extends LitElement {
    */
   @property({ converter: { fromAttribute: parseGroupsAttribute } }) groups?: GroupedTextGroupsInput
 
+  /**
+   * 组与组之间展示的分隔符（如 `'-'`、`'·'`）。只做展示：它以 `.group` 的生成内容渲染，不进文本
+   * 节点，因此选中复制、页内查找与双击选词拿到的仍是原始连续串。省略或空串时不渲染分隔符。
+   */
+  @property({ type: String }) separator = ''
+
   override render() {
-    return html`${groupedRuns(this.value, resolveGroups(this.groups)).map(renderRun)}`
+    return html`${groupedRuns(this.value, resolveGroups(this.groups)).map(run => renderRun(run, this.separator))}`
   }
 }
 
