@@ -1,8 +1,8 @@
 # Icon
 
-icon 用来渲染图标，输入是 Iconify 数据对象，`@greypan/web-ui/icons` 按图标集命名导出的就是这种对象。渲染结果是一个 `aria-hidden="true"` 的 `<svg>`，图标本身不提供可访问名称。
+icon 用来渲染图标，渲染结果是一个 `aria-hidden="true"` 的 `<svg>`，图标本身不提供可访问名称。输入是 Iconify 数据对象，不是图标名字：组件接受任意合法的 `IconifyIcon`，`body` 必填，是一段 SVG 内部标记；`width` / `height` / `left` / `top` 描述画布。手写的对象与包内资产渲染方式相同，不必先登记进 `@greypan/web-ui/icons`。
 
-`@greypan/web-ui/icons` 当前采用白名单按需生成机制：本 monorepo 实际用到的 icon 逐条登记在包根的 `icons.used.json`（`set:name` 格式），生成器只从这些条目提取资产，生成逐 icon 数据模块，并聚合出 `iconGallery` 全量清单。要追加新 icon，往 `icons.used.json` 加一条 `set:name` 再跑 `pnpm --filter @greypan/web-ui generate-icons`。集合范围今后可能扩展，但当前按需生成是为了控制包体；外部调用者若需要白名单之外的图标，组件本身接受任意 `IconifyIcon` 数据（见下方「Bring your own icon data」），不必等清单扩量。
+`@greypan/web-ui/icons` 按图标集命名导出这些对象，当前采用白名单按需生成：本 monorepo 实际用到的图标逐条登记在包根的 `icons.used.json`（`set:name` 格式），生成器只从这些条目提取资产，生成逐图标数据模块，并聚合出 `iconGallery` 全量清单。要追加新图标，往 `icons.used.json` 加一条 `set:name` 再跑 `pnpm --filter @greypan/web-ui generate-icons`；白名单之外的图标直接把 `IconifyIcon` 传给 `icon` 即可，不必等清单扩量。
 
 ## Samples
 
@@ -58,7 +58,7 @@ import { lucideFolderOpen, lucideSearch, lucideSettings } from '@greypan/web-ui/
 
 ### Bring your own icon data
 
-组件只接受一种输入形状：`IconifyIcon`。`body` 必填，是一段 SVG 内部标记；`width` / `height` / `left` / `top` 描述画布。手写的对象同样能渲染，图标不必先放进 `@greypan/web-ui/icons`。
+手写对象同样能渲染：`clock` 没有经过 `@greypan/web-ui/icons`，直接传给 `icon` 即可。
 
 ```tsx
 const clock = {
@@ -226,7 +226,7 @@ const spinning = ref(true)
 
 ### Combined with button
 
-按钮的 `prefix` / `suffix` 插槽用来放图标。图标与 label 排在同一条 flex 线上，共用 label 的文字颜色。纯图标按钮设置 `icon` 并写 `aria-label`：图标自身是 `aria-hidden`，按钮里没有其他可见内容时，可访问名称只能来自 `aria-label`。
+按钮的 `prefix` / `suffix` 插槽用来放图标。图标与标签文字排在同一条 flex 线上，共用标签的文字颜色。纯图标按钮设置 `icon` 并写 `aria-label`：图标自身是 `aria-hidden`，按钮里没有其他可见内容时，可访问名称只能来自 `aria-label`。
 
 ```tsx
 import { lucideChevronLeft, lucideDownload, lucideUpload } from '@greypan/web-ui/icons'
@@ -274,7 +274,7 @@ import { lucideChevronLeft, lucideDownload, lucideUpload } from '@greypan/web-ui
 
 ### Icon gallery
 
-`iconGallery` 把 `@greypan/web-ui/icons` 当前导出的全部 icon 聚合成一个 `Record<string, IconifyIcon>`，key 是与命名导出一致的 camelCase 名字。遍历它就是检索当前可用 icon 的完整列表；找到想要的 icon 后，用同名命名导入即可拿到同一个数据对象。
+`iconGallery` 是 `Record<string, IconifyIcon>`，key 与命名导出同名（camelCase），收录 `@greypan/web-ui/icons` 当前导出的全部图标。遍历它就是浏览当前可用图标的完整清单；找到后按同名命名导入，拿到的就是同一个数据对象。
 
 ```tsx
 import { iconGallery } from '@greypan/web-ui/icons'

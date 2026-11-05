@@ -1,8 +1,8 @@
 # Icon
 
-icon renders an icon from an Iconify data object; `@greypan/web-ui/icons` exports objects of this shape, named by icon set. The result is an `<svg>` with `aria-hidden="true"`, and the icon itself provides no accessible name.
+icon renders an icon; the result is an `<svg>` with `aria-hidden="true"`, and the icon itself provides no accessible name. The input is an Iconify data object, not an icon name: the component accepts any valid `IconifyIcon`, where `body` is required and holds a fragment of inner SVG markup, and `width` / `height` / `left` / `top` describe the canvas. A hand-built object renders the same way and does not have to be registered in `@greypan/web-ui/icons` first.
 
-`@greypan/web-ui/icons` currently uses a whitelist-based on-demand generation mechanism: the icons this monorepo actually uses are registered one entry per line in the package-root `icons.used.json` (`set:name` format), and the generator extracts assets only from those entries, producing one data module per icon plus an aggregated `iconGallery` listing. To add a new icon, append a `set:name` entry to `icons.used.json` and run `pnpm --filter @greypan/web-ui generate-icons`. The collection may expand over time, but on-demand generation is how the bundle stays small today; external callers who need an icon outside the whitelist can pass any `IconifyIcon` data to the component directly (see "Bring your own icon data" below) without waiting for the whitelist to grow.
+`@greypan/web-ui/icons` exports these objects named by icon set, currently through whitelist-based on-demand generation: the icons this monorepo actually uses are registered one entry per line in the package-root `icons.used.json` (`set:name` format), and the generator extracts assets only from those entries, producing one data module per icon plus an aggregated `iconGallery` listing. To add a new icon, append a `set:name` entry to `icons.used.json` and run `pnpm --filter @greypan/web-ui generate-icons`; an icon outside the whitelist can be passed to `icon` directly as `IconifyIcon` data without waiting for the whitelist to grow.
 
 ## Samples
 
@@ -58,7 +58,7 @@ import { lucideFolderOpen, lucideSearch, lucideSettings } from '@greypan/web-ui/
 
 ### Bring your own icon data
 
-The component accepts one input shape: `IconifyIcon`. `body` is required and holds a fragment of inner SVG markup; `width` / `height` / `left` / `top` describe the canvas. A hand-built object renders the same way, so the icon does not have to live in `@greypan/web-ui/icons` first.
+A hand-built object renders the same way: `clock` never goes through `@greypan/web-ui/icons` and is passed straight to `icon`.
 
 ```tsx
 const clock = {
@@ -274,7 +274,7 @@ import { lucideChevronLeft, lucideDownload, lucideUpload } from '@greypan/web-ui
 
 ### Icon gallery
 
-`iconGallery` aggregates every icon currently exported by `@greypan/web-ui/icons` into a single `Record<string, IconifyIcon>`, keyed by the same camelCase names as the named exports. Iterating it is how you browse the full list of icons available today; once you find one, a named import of the same name gives you the identical data object.
+`iconGallery` is a `Record<string, IconifyIcon>` keyed by the same camelCase names as the named exports, collecting every icon currently exported by `@greypan/web-ui/icons`. Iterating it is how you browse the full list of icons available today; once you find one, a named import of the same name gives you the identical data object.
 
 ```tsx
 import { iconGallery } from '@greypan/web-ui/icons'
