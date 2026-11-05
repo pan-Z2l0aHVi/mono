@@ -25,8 +25,8 @@
     "test-scripts": "node scripts/checks/test-scripts.mjs",
     "agent:env-doctor": "node scripts/maintenance/env-doctor.mjs",
     "agent:update-skills": "node scripts/maintenance/update-skills.mjs",
-    "dev:react-web-ui-demo": "turbo run dev --filter=@greypan/react-web-ui-demo...",
-    "dev:vue-web-ui-demo": "turbo run dev --filter=@greypan/vue-web-ui-demo...",
+    "dev:react-web-ui-demo": "turbo run dev --filter=@greypan/react-web-ui-demo... --concurrency=20",
+    "dev:vue-web-ui-demo": "turbo run dev --filter=@greypan/vue-web-ui-demo... --concurrency=20",
     "dev:interweave": "turbo run dev --filter=@greypan/interweave --filter=\"@greypan/interweave-frontend^...\""
   },
   "devDependencies": {
