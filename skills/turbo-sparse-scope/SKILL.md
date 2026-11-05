@@ -9,8 +9,9 @@ description: 按任务 scope 的仓库相对路径把当前 worktree 的 git spa
 
 实施 agent 在任务建账、三步准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`、`mise exec -- pnpm run build`）完成后、开始读代码或改代码之前执行。
 
-- 台账 `scope` 为空则跳过；非空则必须执行。不要把「加载无关包」留到实现过程中再说。
-- 收缩是否到位用 `--check <台账 scope>` 判定，不靠自述：非零退出意味着「scope 非空但工作区从没收缩」或「cone 与目标要求的闭包不一致」。
+- 台账 `scope` 为空且没有实现/验证必需的包外读取时跳过；否则必须执行。不要把「加载无关包」留到实现过程中再说。
+- 收缩是否到位用 `--check <目标>` 判定，不靠自述：目标是本 worktree 未结任务 `scope` 的并集，加上实现与验证必需的包外读取路径；非零退出意味着「目标非空但工作区从没收缩」或「cone 与目标要求的闭包不一致」。
+- 当前 cone 已覆盖时不必逐任务复查；新任务把读取面扩展到 cone 之外时，先 `--add` 对应包再继续。
 - `scope` 只含根路径时也合法：零个目标包，只保留根依赖闭包与根目录。
 - 不用于全仓影响面分析、全仓 gate，或尚未完成 install/build 的 worktree。
 
