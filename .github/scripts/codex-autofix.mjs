@@ -2,7 +2,7 @@ import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { reviewTarget } from './codex-review.mjs'
+import { readConfig, reviewTarget } from './codex-review.mjs'
 import { commandError, run } from './lib/github.mjs'
 import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
@@ -230,6 +230,17 @@ function commandPrepare() {
 
 function commandCapture() {
   const env = requireEnv(['CODEX_AUTOFIX_HEAD_SHA', 'RUNNER_TEMP'])
+  // 模型腿没跑成时工作区仍可能有零散改动；没有预检快照就不产出 patch，避免特权腿推一份来路不明的 diff。
+  if (!readConfig()) {
+    writeOutputs({
+      has_patch: 'false',
+      reject_reason: 'the Codex configuration preflight did not run',
+      changed_files: '',
+      patch_path: ''
+    })
+    console.log('no configuration snapshot; no autofix patch is published')
+    return
+  }
   const patchPath = path.join(env.RUNNER_TEMP, 'autofix.patch')
   const result = capturePatch({ headSha: env.CODEX_AUTOFIX_HEAD_SHA, patchPath, guarded: guardedMatcher() })
   writeOutputs({

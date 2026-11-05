@@ -5,23 +5,43 @@ import os from 'node:os'
 import path from 'node:path'
 
 import {
+  CONFIG_ENV,
+  CONFIG_FILE,
   CONCLUSION_MARKER,
   FINDINGS_ARTIFACT,
   createGhReviewAdapter,
   deriveConclusion,
   findPullForHead,
   findReusableRun,
+  inspectConfig,
   parseReviewFindings,
   readConclusion,
   renderConclusion,
   resolveReviewRange,
-  reviewTarget
+  reviewTarget,
+  withPermissionDiagnosis
 } from './codex-review.mjs'
 import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
 const headSha = 'a'.repeat(40)
 const otherSha = 'b'.repeat(40)
 const scriptPath = path.join(import.meta.dirname, 'codex-review.mjs')
+const configFingerprint = '0123456789abcdef'
+const configuredEnv = Object.fromEntries(CONFIG_ENV.map(name => [name, `value-for-${name}`]))
+
+function writeConfig(directory) {
+  fs.writeFileSync(
+    path.join(directory, CONFIG_FILE),
+    JSON.stringify({
+      endpoint: 'https://responses.example.test/v1/responses',
+      model: 'configured-model',
+      effort: 'configured-effort',
+      version: 'configured-version',
+      key_present: true,
+      fingerprint: configFingerprint
+    })
+  )
+}
 
 function finding(severity) {
   return {
@@ -42,7 +62,16 @@ function parsedConclusion(...severities) {
 }
 
 function metaOf(overrides = {}) {
-  return { head_sha: headSha, base_sha: otherSha, merge_base_sha: otherSha, model: 'claude-haiku-5-5', ...overrides }
+  return {
+    head_sha: headSha,
+    base_sha: otherSha,
+    merge_base_sha: otherSha,
+    model: 'configured-model',
+    effort: 'configured-effort',
+    config_fingerprint: configFingerprint,
+    status: 'reviewed',
+    ...overrides
+  }
 }
 
 function writeFixtures(directory, conclusion = conclusionOf('Block'), meta = metaOf()) {
@@ -162,21 +191,88 @@ for (const [label, value] of [
   assert.equal(stale.blocking, false, 'a Block that no longer describes the head must not gate the merge')
   assert.match(stale.reason, /head moved/)
 
+  // 缺产物、读失败、配置故障与调用故障都不能再静默放绿。
   for (const [label, input] of [
     ['missing artifact', { meta: null, findings: null, liveHeadSha: headSha, error: 'the review artifact is missing' }],
     ['gateway error', { meta: metaOf(), findings: null, liveHeadSha: headSha, error: 'gateway returned 502' }],
-    ['no findings', { meta: metaOf(), findings: null, liveHeadSha: headSha, error: '' }]
+    ['no findings', { meta: metaOf(), findings: null, liveHeadSha: headSha, error: '' }],
+    [
+      'config error',
+      {
+        meta: metaOf({ status: 'error', error_code: 'config_missing', error: 'missing CODEX_REVIEW_MODEL' }),
+        findings: null,
+        liveHeadSha: headSha,
+        error: ''
+      }
+    ]
   ]) {
     const status = deriveConclusion(input)
-    assert.equal(status.status, 'unreviewed', label)
-    assert.equal(status.blocking, false, label)
+    assert.equal(status.status, 'error', label)
+    assert.equal(status.blocking, true, label)
     assert.deepEqual(status.counts, { Block: 0, 'Should fix': 0, Nit: 0 }, label)
   }
+
+  const configError = deriveConclusion({
+    meta: metaOf({ status: 'error', error_code: 'config_missing', error: 'missing CODEX_REVIEW_MODEL' }),
+    findings: parsedConclusion('Block'),
+    liveHeadSha: headSha,
+    error: ''
+  })
+  assert.equal(configError.code, 'config_missing')
+  assert.equal(configError.blocking, true, 'an error outranks findings from an earlier run')
+
+  const notApplicable = deriveConclusion({
+    meta: null,
+    findings: null,
+    liveHeadSha: headSha,
+    error: 'the review artifact is missing',
+    notApplicable: true
+  })
+  assert.equal(notApplicable.status, 'not_applicable')
+  assert.equal(notApplicable.blocking, false)
+
+  const unreviewed = deriveConclusion({
+    meta: metaOf({ status: 'unreviewed', error: 'the review step produced no output file' }),
+    findings: null,
+    liveHeadSha: headSha,
+    error: ''
+  })
+  assert.equal(unreviewed.status, 'unreviewed')
+  assert.equal(unreviewed.blocking, false, 'a model that completed without output stays green')
+
+  const complete = inspectConfig(configuredEnv)
+  assert.equal(complete.present, true)
+  assert.deepEqual(complete.missing, [])
+  assert.equal(complete.config.key_present, true)
+  const incomplete = inspectConfig({ ...configuredEnv, CODEX_REVIEW_MODEL: '', CODEX_VERSION: ' ' })
+  assert.deepEqual(incomplete.missing, ['CODEX_REVIEW_MODEL', 'CODEX_VERSION'])
+  assert.equal(
+    inspectConfig({ ...configuredEnv, CODEX_REVIEW_MODEL: 'other-model' }).config.fingerprint ===
+      complete.config.fingerprint,
+    false,
+    'changing the model must change the fingerprint'
+  )
+  assert.equal(
+    JSON.stringify(complete.config).includes(configuredEnv.CODEX_REVIEW_API_KEY),
+    false,
+    'the config snapshot must never carry the API key value'
+  )
+  const padded = inspectConfig({
+    ...configuredEnv,
+    CODEX_REVIEW_MODEL: `  ${configuredEnv.CODEX_REVIEW_MODEL}  `
+  })
+  assert.equal(padded.config.model, configuredEnv.CODEX_REVIEW_MODEL)
+  assert.equal(
+    padded.config.fingerprint,
+    complete.config.fingerprint,
+    'whitespace padding must not look like a configuration change'
+  )
+  assert.equal(inspectConfig({ ...configuredEnv, CODEX_REVIEW_API_KEY: '   ' }).present, false)
 }
 
 {
   const parsed = parsedConclusion('Should fix', 'Block')
-  const meta = { ...metaOf(), summary: parsed.summary, findings: parsed.findings, effort: 'high', reused_from: '1234' }
+  const meta = { ...metaOf(), summary: parsed.summary, findings: parsed.findings, reused_from: '1234' }
   const body = renderConclusion({
     conclusion: deriveConclusion({ meta, findings: parsed, liveHeadSha: headSha, error: '' }),
     meta,
@@ -186,7 +282,8 @@ for (const [label, value] of [
   assert.match(body, /结论：\*\*已审查\*\*/)
   assert.match(body, /packages\/web-ui\/src\/button\.ts:12/)
   assert.match(body, /Block 1 · Should fix 1 · Nit 0/)
-  assert.match(body, /模型：`claude-haiku-5-5`/)
+  assert.match(body, /模型：`configured-model`/)
+  assert.match(body, /Block` 与 `error` 让/)
   assert.match(body, /run `1234`/)
   assert.ok(body.indexOf('**Block**') < body.indexOf('**Should fix**'), 'Block renders before Should fix')
   assert.deepEqual(
@@ -208,14 +305,30 @@ for (const [label, value] of [
   assert.ok(!escaped.includes('<script>'), 'model text must not inject HTML into the comment')
   assert.match(escaped, /scriptalert/)
 
+  const unreviewedMeta = { status: 'unreviewed', error: 'the review step produced no output file' }
   const unreviewed = renderConclusion({
-    conclusion: deriveConclusion({ meta: null, findings: null, liveHeadSha: headSha, error: 'no conclusion' }),
-    meta: null,
+    conclusion: deriveConclusion({ meta: unreviewedMeta, findings: null, liveHeadSha: headSha, error: '' }),
+    meta: unreviewedMeta,
     pullNumber: 54
   })
   assert.match(unreviewed, /sha=none status=unreviewed blocks=0/)
   assert.match(unreviewed, /结论：\*\*未审查\*\*/)
   assert.match(unreviewed, /没有可用发现/)
+
+  const failed = renderConclusion({
+    conclusion: deriveConclusion({
+      meta: metaOf({ status: 'error', error_code: 'config_missing', error: 'missing CODEX_REVIEW_MODEL' }),
+      findings: null,
+      liveHeadSha: headSha,
+      error: ''
+    }),
+    meta: metaOf({ status: 'error', error_code: 'config_missing', error: 'missing CODEX_REVIEW_MODEL' }),
+    pullNumber: 54
+  })
+  assert.match(failed, /status=error blocks=0/)
+  assert.match(failed, /结论：\*\*审查失败\*\*/)
+  assert.match(failed, /故障码：`config_missing`/)
+  assert.match(failed, /检查 GitHub 后台的 secrets\/variables/)
 }
 
 {
@@ -357,11 +470,12 @@ function runCli(command, { env = {}, conclusionDir }) {
   const result = spawnSync(process.execPath, [scriptPath, command], {
     encoding: 'utf8',
     env: {
-      ...process.env,
+      PATH: process.env.PATH,
       GITHUB_OUTPUT: outputPath,
       GITHUB_STEP_SUMMARY: summaryPath,
       GITHUB_REPOSITORY: 'owner/repo',
       GITHUB_REF: 'refs/pull/54/merge',
+      RUNNER_TEMP: conclusionDir,
       CODEX_REVIEW_CONCLUSION_DIR: conclusionDir,
       ...env
     }
@@ -380,9 +494,16 @@ function runCli(command, { env = {}, conclusionDir }) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-gate-'))
 
   const missing = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha }, conclusionDir: directory })
-  assert.equal(missing.result.status, 0, 'a missing conclusion is unreviewed, never a red gate')
-  assert.match(missing.summary, /Status: \*\*unreviewed\*\*/)
+  assert.equal(missing.result.status, 1, 'a missing conclusion is an error, never a silent green gate')
+  assert.match(missing.summary, /Status: \*\*error\*\*/)
   assert.match(missing.summary, /review artifact is missing/)
+
+  const skipped = runCli('gate', {
+    env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha, CODEX_REVIEW_NOT_APPLICABLE: 'true' },
+    conclusionDir: directory
+  })
+  assert.equal(skipped.result.status, 0, 'a skipped review job is not applicable, not a failure')
+  assert.match(skipped.summary, /Status: \*\*not_applicable\*\*/)
 
   writeFixtures(directory, conclusionOf('Block'), metaOf())
   const blocking = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha }, conclusionDir: directory })
@@ -412,9 +533,9 @@ function runCli(command, { env = {}, conclusionDir }) {
     CODEX_REVIEW_CONCLUSION_DIR: conclusionDir,
     CODEX_REVIEW_HEAD_SHA: headSha,
     CODEX_REVIEW_BASE_SHA: otherSha,
-    CODEX_REVIEW_MODEL: 'claude-haiku-5-5',
-    CODEX_REVIEW_EFFORT: 'high'
+    CODEX_REVIEW_STEP_OUTCOME: 'success'
   }
+  writeConfig(runnerTemp)
   fs.writeFileSync(
     path.join(runnerTemp, 'codex-final-message.json'),
     JSON.stringify({ summary: '有两处要改。', findings: [finding('Block'), finding('Should fix')] })
@@ -424,21 +545,42 @@ function runCli(command, { env = {}, conclusionDir }) {
   assert.equal(validated.outputs.blocks, '1')
   const persisted = readConclusion(conclusionDir)
   assert.equal(persisted.meta.head_sha, headSha)
-  assert.equal(persisted.meta.model, 'claude-haiku-5-5')
+  assert.equal(persisted.meta.model, 'configured-model')
+  assert.equal(persisted.meta.config_fingerprint, configFingerprint)
+  assert.equal(persisted.meta.status, 'reviewed')
   assert.equal(persisted.findings.counts['Should fix'], 1)
 
   fs.rmSync(path.join(runnerTemp, 'codex-final-message.json'))
   fs.rmSync(path.join(conclusionDir, 'review-findings.json'))
   fs.rmSync(path.join(conclusionDir, 'review-meta.json'))
   const broken = runCli('validate', { env: validateEnv, conclusionDir })
-  assert.equal(broken.result.status, 0, 'an unusable model output stays unreviewed instead of erroring out')
+  assert.equal(broken.result.status, 0, 'a model that completed without output stays unreviewed')
   assert.equal(broken.outputs.blocks, '0')
   assert.match(broken.outputs.reason, /no output file/)
   assert.equal(fs.existsSync(path.join(conclusionDir, 'review-findings.json')), false)
   const gateAfterBreak = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha }, conclusionDir })
   assert.equal(gateAfterBreak.result.status, 0)
-  assert.match(gateAfterBreak.summary, /no output file/)
+  assert.match(gateAfterBreak.summary, /Status: \*\*unreviewed\*\*/)
 
+  // 同一个「没有输出文件」，outcome=failure 说明 action 崩了，必须让 gate 变红。
+  const crashed = runCli('validate', {
+    env: { ...validateEnv, CODEX_REVIEW_STEP_OUTCOME: 'failure' },
+    conclusionDir
+  })
+  assert.equal(crashed.result.status, 0)
+  const gateAfterCrash = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha }, conclusionDir })
+  assert.equal(gateAfterCrash.result.status, 1, 'a crashed model action must not be masked by continue-on-error')
+  assert.match(gateAfterCrash.summary, /Status: \*\*error\*\*/)
+
+  // 没有配置快照时 validate 不能把 error 结论覆盖成 unreviewed。
+  fs.rmSync(path.join(runnerTemp, CONFIG_FILE))
+  const unconfigured = runCli('validate', { env: validateEnv, conclusionDir })
+  assert.equal(unconfigured.result.status, 0)
+  const gateUnconfigured = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha }, conclusionDir })
+  assert.equal(gateUnconfigured.result.status, 1)
+  assert.match(gateUnconfigured.summary, /Status: \*\*error\*\*/)
+
+  writeConfig(runnerTemp)
   fs.writeFileSync(
     path.join(runnerTemp, 'codex-final-message.json'),
     '{"summary":"ok","findings":[{"severity":"Blocker","file":"","line":0,"problem":"x","suggestion":"y"}]}'
@@ -450,8 +592,41 @@ function runCli(command, { env = {}, conclusionDir }) {
 }
 
 {
+  // preflight 是配置缺失的第一道也是唯一一道写 error 结论的地方。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-preflight-'))
+  const ready = runCli('preflight', { env: configuredEnv, conclusionDir: directory })
+  assert.equal(ready.result.status, 0, ready.result.stderr)
+  assert.equal(ready.outputs.configured, 'true')
+  assert.equal(ready.outputs.missing, '')
+  assert.ok(fs.existsSync(path.join(directory, CONFIG_FILE)))
+  assert.ok(
+    !fs.readFileSync(path.join(directory, CONFIG_FILE), 'utf8').includes('value-for-CODEX_REVIEW_API_KEY'),
+    'the config snapshot must never persist the API key'
+  )
+
+  fs.rmSync(path.join(directory, CONFIG_FILE))
+  const incomplete = runCli('preflight', {
+    env: { ...configuredEnv, CODEX_RESPONSES_ENDPOINT: '', CODEX_REVIEW_EFFORT: '' },
+    conclusionDir: directory
+  })
+  assert.equal(incomplete.result.status, 0, 'a missing configuration is a red gate, not a crashed step')
+  assert.equal(incomplete.outputs.configured, 'false')
+  assert.equal(incomplete.outputs.missing, 'CODEX_RESPONSES_ENDPOINT,CODEX_REVIEW_EFFORT')
+  assert.equal(fs.existsSync(path.join(directory, CONFIG_FILE)), false)
+  const meta = JSON.parse(fs.readFileSync(path.join(directory, 'review-meta.json'), 'utf8'))
+  assert.equal(meta.status, 'error')
+  assert.equal(meta.error_code, 'config_missing')
+  assert.deepEqual(meta.missing, ['CODEX_RESPONSES_ENDPOINT', 'CODEX_REVIEW_EFFORT'])
+  const gate = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha }, conclusionDir: directory })
+  assert.equal(gate.result.status, 1)
+  assert.match(gate.summary, /Status: \*\*error\*\*/)
+  fs.rmSync(directory, { recursive: true, force: true })
+}
+
+{
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-reuse-'))
   const reuseEnv = { CODEX_REVIEW_HEAD_SHA: headSha, CODEX_REVIEW_PRIOR_RUN_ID: '4321', RUNNER_TEMP: directory }
+  writeConfig(directory)
 
   writeFixtures(directory, conclusionOf('Nit'), metaOf())
   const reused = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
@@ -475,6 +650,129 @@ function runCli(command, { env = {}, conclusionDir }) {
   assert.equal(corrupt.result.status, 0, 'a corrupt conclusion degrades to a fresh model call')
   assert.equal(corrupt.outputs.reused, 'false')
   assert.match(corrupt.outputs.reason, /not valid JSON/)
+
+  writeFixtures(directory, conclusionOf('Nit'), metaOf({ config_fingerprint: 'another-configuration' }))
+  const reconfigured = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
+  assert.equal(reconfigured.outputs.reused, 'false')
+  assert.match(
+    reconfigured.outputs.reason,
+    /configuration changed/,
+    'a changed model or endpoint must force a fresh review'
+  )
+
+  writeFixtures(directory, conclusionOf('Nit'), metaOf({ status: 'error', error_code: 'config_missing' }))
+  const priorError = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
+  assert.equal(priorError.outputs.reused, 'false')
+  assert.match(priorError.outputs.reason, /no reviewable conclusion/, 'a failed prior run must never be reused')
+
+  fs.rmSync(path.join(directory, CONFIG_FILE))
+  writeFixtures(directory, conclusionOf('Nit'), metaOf())
+  const noConfig = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
+  assert.equal(noConfig.outputs.reused, 'false')
+  assert.match(noConfig.outputs.reason, /configuration snapshot is missing/)
+  fs.rmSync(directory, { recursive: true, force: true })
+}
+
+{
+  // 读写 PR 的 403 都必须带排查清单；诊断只认权限类错误，不能吞掉其它失败。
+  const call = withPermissionDiagnosis('54')
+  assert.equal(
+    call(() => 'ok'),
+    'ok'
+  )
+  for (const message of [
+    'gh api failed (exit 1): Resource not accessible by integration',
+    'gh api failed (exit 1): HTTP 403: forbidden',
+    'gh api failed (exit 1): 403 Forbidden'
+  ]) {
+    assert.throws(
+      () =>
+        call(() => {
+          throw new Error(message)
+        }),
+      /cannot access PR #54 or its comments/
+    )
+  }
+  // gh 会把 `-f body=<评论正文>` 拼进 error.message；正文里的 "403" 不能触发权限诊断。
+  for (const message of [
+    'gh api failed (exit 1): HTTP 500: upstream unavailable',
+    'gh api -X POST -f body=fix issue 403 repos/owner/repo/issues/54/comments failed (exit 1): HTTP 500'
+  ]) {
+    const other = new Error(message)
+    assert.throws(
+      () =>
+        call(() => {
+          throw other
+        }),
+      error => error === other,
+      'non-permission failures must surface unchanged'
+    )
+  }
+}
+
+{
+  // 端到端：把 gh 换成受控替身，分别让读评论、写评论、非权限调用失败。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-publish-'))
+  const bin = path.join(directory, 'bin')
+  fs.mkdirSync(bin)
+  const fakeGh = path.join(bin, 'gh')
+  fs.writeFileSync(
+    fakeGh,
+    `#!/bin/sh
+case "$*" in
+  *"-X POST"*)
+    if [ "$FAKE_GH_FAIL_AT" = "write" ] || [ "$FAKE_GH_FAIL_AT" = "server" ]; then
+      echo "gh: $FAKE_GH_ERROR" >&2
+      exit 1
+    fi
+    printf '%s\\n' '{"id":9001}'
+    ;;
+  *"/pulls/54")
+    printf '%s\\n' '{"number":54,"state":"open","base":{"ref":"main"},"head":{"ref":"feature","sha":"${headSha}","repo":{"full_name":"owner/repo"}}}'
+    ;;
+  *"/comments?per_page=100")
+    if [ "$FAKE_GH_FAIL_AT" = "read" ]; then
+      echo "gh: $FAKE_GH_ERROR" >&2
+      exit 1
+    fi
+    printf '%s\\n' '[]'
+    ;;
+  *)
+    echo "unexpected gh invocation: $*" >&2
+    exit 2
+    ;;
+esac
+`,
+    { mode: 0o755 }
+  )
+  writeFixtures(directory, conclusionOf('Nit'), metaOf())
+  const publishEnv = failAt => ({
+    PATH: `${bin}:${process.env.PATH}`,
+    CODEX_REVIEW_LIVE_HEAD_SHA: headSha,
+    FAKE_GH_FAIL_AT: failAt,
+    FAKE_GH_ERROR: 'Resource not accessible by integration (HTTP 403)'
+  })
+
+  const created = runCli('publish', { env: publishEnv('none'), conclusionDir: directory })
+  assert.equal(created.result.status, 0, created.result.stderr)
+  assert.match(created.result.stdout, /created conclusion comment 9001/)
+
+  for (const failAt of ['read', 'write']) {
+    const denied = runCli('publish', { env: publishEnv(failAt), conclusionDir: directory })
+    assert.equal(denied.result.status, 1, `${failAt} 403 must fail the publish step`)
+    assert.match(denied.result.stderr, /cannot access PR #54 or its comments/, failAt)
+    assert.match(denied.result.stderr, /pull-requests: write/, failAt)
+    assert.match(denied.result.stderr, /Workflow permissions/, failAt)
+    assert.match(denied.result.stderr, /organization policy/, failAt)
+  }
+
+  const serverError = runCli('publish', {
+    env: { ...publishEnv('server'), FAKE_GH_ERROR: 'HTTP 500: upstream unavailable' },
+    conclusionDir: directory
+  })
+  assert.equal(serverError.result.status, 1)
+  assert.match(serverError.result.stderr, /HTTP 500/, 'the original failure must still be visible')
+  assert.doesNotMatch(serverError.result.stderr, /cannot access PR #54/, 'a 500 is not a permission diagnosis')
   fs.rmSync(directory, { recursive: true, force: true })
 }
 

@@ -320,4 +320,34 @@ for (const file of [
   fs.rmSync(directory, { recursive: true, force: true })
 }
 
+{
+  // 预检没跑成时模型腿被跳过，工作区里的零散改动不能变成 patch 交给特权腿。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-autofix-capture-'))
+  const outputPath = path.join(directory, 'output')
+  fs.writeFileSync(outputPath, '')
+  const result = spawnSync(process.execPath, [scriptPath, 'capture'], {
+    encoding: 'utf8',
+    env: {
+      PATH: process.env.PATH,
+      GITHUB_OUTPUT: outputPath,
+      GITHUB_REPOSITORY: 'owner/repo',
+      RUNNER_TEMP: directory,
+      CODEX_AUTOFIX_HEAD_SHA: headSha
+    },
+    cwd: directory
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /no configuration snapshot/)
+  const outputs = Object.fromEntries(
+    fs
+      .readFileSync(outputPath, 'utf8')
+      .split('\n')
+      .filter(Boolean)
+      .map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)])
+  )
+  assert.equal(outputs.has_patch, 'false')
+  assert.match(outputs.reject_reason, /preflight/)
+  fs.rmSync(directory, { recursive: true, force: true })
+}
+
 console.log('.github/scripts/codex-autofix.test.mjs: all assertions passed')

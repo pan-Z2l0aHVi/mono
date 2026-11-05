@@ -20,13 +20,13 @@ jobs:
     name: Publish review conclusion
     # workflow_run 的 payload 里没有 base 分支与版本分支信息，资格判定交给 trusted 脚本里的
     # reviewTarget：它会拒绝 fork、非 main base、已关闭的 PR 与 changeset 版本分支。
-    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository }}
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.conclusion != 'cancelled' && github.event.workflow_run.head_branch != 'changeset-release/main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
       contents: read
       issues: write
-      pull-requests: read
+      pull-requests: write
       actions: read
 
     steps:
@@ -50,7 +50,8 @@ jobs:
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" resolve-pull
 
       - name: Download review findings
-        # review job 被跳过时没有 artifact；那正是「本次未审查」，要把这句话写进评论而不是让 job 变红。
+        id: findings
+        # 没有 artifact 说明 review job 根本没跑；这属于不适用，不该再发一条结论评论、也不该让 job 变红。
         continue-on-error: true
         uses: actions/download-artifact@v7
         with:
@@ -59,8 +60,21 @@ jobs:
           repository: ${{ github.repository }}
           path: ${{ runner.temp }}/codex-review
 
+      - name: Probe comment permission
+        if: success() && steps.pull.outputs.pull_number != '' && steps.findings.outcome == 'success'
+        # 探测只是诊断，失败不能挡住 publish 的 403 排查清单。
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
+        # 只读探测把 token 与端点错误在写之前分开；真正的写权限由 publish 的 403 诊断兜住。
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PULL_NUMBER/comments?per_page=1" >/dev/null
+          echo "comment API is reachable; the publish step reports any write denial with a permission checklist"
+
       - name: Publish conclusion comment
-        if: steps.pull.outputs.pull_number != ''
+        if: always() && steps.pull.outputs.pull_number != '' && steps.findings.outcome == 'success'
         env:
           CODEX_REVIEW_PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
           CODEX_REVIEW_RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
@@ -69,7 +83,7 @@ jobs:
 
   codex-autofix-apply:
     name: Apply Codex autofix
-    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository }}
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.conclusion != 'cancelled' && github.event.workflow_run.head_branch != 'changeset-release/main' && vars.CODEX_AUTOFIX_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     # 只有这一步能写 Git：patch 由只读腿生成，这里只做校验、提交与推送。
