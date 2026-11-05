@@ -6,9 +6,14 @@ import path from 'node:path'
 
 import { readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
 
+import { CONFIG_ENV } from '../codex-review.mjs'
+
 import {
+  CODEX_CONFIG_ENV,
+  CODEX_CONFIG_INPUTS,
   RELEASE_BRANCH,
   REQUIRED_CONTEXT,
+  codexConfigInputViolations,
   ghTokenStepViolations,
   jobEnvContextViolations,
   localActionBootstrapViolations,
@@ -493,7 +498,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.deepEqual(publish.jobs['publish-review'].permissions, {
       contents: 'read',
       issues: 'write',
-      'pull-requests': 'read',
+      'pull-requests': 'write',
       actions: 'read'
     })
     assert.deepEqual(publish.jobs['codex-autofix-apply'].permissions, {
@@ -548,11 +553,108 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     const autofixStep = namedStep(ci, 'Propose autofix patch with Codex')
     assert.match(reviewStep, /sandbox: 'read-only'/)
     assert.match(autofixStep, /sandbox: 'workspace-write'/)
-    assert.match(reviewStep, /codex-version: '0\.165\.0'/)
-    assert.match(autofixStep, /codex-version: '0\.165\.0'/)
-    assert.match(reviewStep, /openai-api-key: \$\{\{ secrets\.CODEX_REVIEW_API_KEY \}\}/)
-    assert.match(reviewStep, /responses-api-endpoint: \$\{\{ vars\.CODEX_RESPONSES_ENDPOINT \}\}/)
     assert.ok(!/openai-api-key: \$\{\{ vars\./.test(ci), 'the api key must never come from a public variable')
+
+    // 端点、模型、强度、密钥与 codex 版本只准从 GitHub 后台来；字面量与 || 兜底会让后台配置永远不生效。
+    assert.deepEqual([...CONFIG_ENV], [...CODEX_CONFIG_ENV], 'preflight and topology checks must share one config list')
+    assert.deepEqual(codexConfigInputViolations(ci), [])
+    assert.equal(
+      codexConfigInputViolations(ci.replace('model: ${{ vars.CODEX_REVIEW_MODEL }}', "model: 'some-model'")).length,
+      1,
+      'a hardcoded model must be reported'
+    )
+    const withoutEffort = ci.split('effort: ${{ vars.CODEX_REVIEW_EFFORT }}').join('')
+    assert.deepEqual(
+      codexConfigInputViolations(withoutEffort),
+      [{ input: 'effort', found: 'missing', expected: 'declared in both model legs' }],
+      'a missing config input must be reported'
+    )
+    for (const input of Object.keys(CODEX_CONFIG_INPUTS)) {
+      const hits = ci.split('\n').filter(line => new RegExp(`^\\s+${input}:`).test(line))
+      assert.equal(hits.length, 2, `${input} must be wired in both model legs`)
+    }
+    for (const jobId of ['codex-review', 'codex-autofix-plan']) {
+      const block = workflowJob(ci, jobId)
+        .split('\n')
+        .filter(line => !/^\s*#/.test(line))
+        .join('\n')
+      assert.ok(
+        !/\|\||claude-|effort: 'high'|codex-version: '\d/.test(block),
+        `${jobId} must not carry config fallbacks`
+      )
+      assert.ok(
+        !/^ {6}CODEX_REVIEW_API_KEY:/m.test(block),
+        `${jobId} must not expose the API key through job-level env`
+      )
+      const preflight = namedStep(block, 'Validate Codex configuration')
+      for (const name of CODEX_CONFIG_ENV) {
+        assert.ok(
+          preflight.includes(`${name}: \${{ ${name === 'CODEX_REVIEW_API_KEY' ? 'secrets' : 'vars'}.${name} }}`),
+          `${jobId} preflight must receive ${name} from the GitHub backend`
+        )
+      }
+    }
+    assert.match(reviewStep, /id: review/)
+    assert.match(reviewStep, /steps\.config\.outputs\.configured == 'true'/)
+    assert.match(reviewStep, /continue-on-error: true/, 'the model step alone may mask its own crash')
+    assert.match(
+      namedStep(ci, 'Record review conclusion'),
+      /CODEX_REVIEW_STEP_OUTCOME: \$\{\{ steps\.review\.outcome \}\}/
+    )
+    const assertNotApplicableIsDerived = text =>
+      assert.match(
+        namedStep(text, 'Apply review gate'),
+        /CODEX_REVIEW_NOT_APPLICABLE: \$\{\{ needs\.codex-review\.result == 'skipped' \}\}/,
+        'not-applicable must be derived from the review job result, never hardcoded'
+      )
+    assertNotApplicableIsDerived(ci)
+    const derivedNotApplicable = "CODEX_REVIEW_NOT_APPLICABLE: ${{ needs.codex-review.result == 'skipped' }}"
+    assert.equal(
+      ci.split(derivedNotApplicable).length - 1,
+      1,
+      'the derived not-applicable assignment must exist exactly once'
+    )
+    for (const pinned of ["CODEX_REVIEW_NOT_APPLICABLE: 'true'", "CODEX_REVIEW_NOT_APPLICABLE: 'false'"]) {
+      assert.throws(
+        () => assertNotApplicableIsDerived(ci.split(derivedNotApplicable).join(pinned)),
+        /never hardcoded/,
+        'a pinned not-applicable value must be rejected by the assertion itself'
+      )
+    }
+    assert.match(parsed['ci.yml'].jobs['codex-autofix-plan'].if, /vars\.CODEX_AUTOFIX_ENABLED == 'true'/)
+    assert.match(
+      parsed['codex-review-publish.yml'].jobs['codex-autofix-apply'].if,
+      /vars\.CODEX_AUTOFIX_ENABLED == 'true'/
+    )
+
+    // 写腿：403 的定位信息、收敛条件与 smoke 步骤都得在定义里，不能只靠运行时报错。
+    assert.match(
+      namedStep(publishText, 'Probe comment permission'),
+      /continue-on-error: true/,
+      'the best-effort probe must not suppress the publish step'
+    )
+    const assertPublishIsUnconditional = text =>
+      assert.match(
+        namedStep(text, 'Publish conclusion comment'),
+        /if: always\(\) && steps\.pull\.outputs\.pull_number != '' && steps\.findings\.outcome == 'success'/,
+        'publishing must not depend on the probe succeeding'
+      )
+    assertPublishIsUnconditional(publishText)
+    assert.equal(
+      namedStep(publishText, 'Publish conclusion comment').split('if: always() && ').length - 1,
+      1,
+      'the publish step must carry exactly one unconditional guard'
+    )
+    assert.throws(
+      () => assertPublishIsUnconditional(publishText.replace('if: always() && ', 'if: success() && ')),
+      /publishing must not depend/,
+      'a probe-gated publish step must be rejected by the assertion itself'
+    )
+    for (const jobId of ['publish-review', 'codex-autofix-apply']) {
+      const guard = parsed['codex-review-publish.yml'].jobs[jobId].if
+      assert.match(guard, /workflow_run\.conclusion != 'cancelled'/)
+      assert.match(guard, /head_branch != 'changeset-release\/main'/)
+    }
 
     for (const [, reference] of `${ci}\n${publishText}`.matchAll(/\/trusted\/([^\s"']+)/g)) {
       assert.ok(/^(?:codex|scripts|\.claude)\//.test(reference), `unexpected trusted path ${reference}`)
@@ -582,8 +684,8 @@ function assertPullRequestValidationIsReadOnly(workflow) {
 
     assert.equal(
       parsed['ci.yml'].jobs['codex-review'].continueOnError,
-      'true',
-      'a model outage is unreviewed, not a failed PR'
+      undefined,
+      'the review job must expose preflight and conclusion-write failures; only the model step may mask its own crash'
     )
     assert.equal(parsed['ci.yml'].jobs['codex-autofix-plan'].continueOnError, 'true')
     assert.equal(
@@ -593,6 +695,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     )
     assert.equal(parsed['ci.yml'].stepContinueOnError['Apply review gate'], undefined)
     assert.equal(parsed['ci.yml'].steps['Apply review gate'], undefined, 'the gate step must run unconditionally')
+    assert.equal(parsed['ci.yml'].stepContinueOnError['Record review conclusion'], undefined)
     assert.match(workflowJob(ci, 'codex-review'), /timeout-minutes: 60/)
     assert.match(workflowJob(ci, 'codex-autofix-plan'), /timeout-minutes: 60/)
     assert.match(workflowJob(ci, 'codex-gate'), /timeout-minutes: 10/, 'the gate does no model work and stays short')
