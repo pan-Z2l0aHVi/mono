@@ -6,7 +6,7 @@ tooltip 的显示手势由 `trigger` 声明，默认是指针悬停加键盘聚�
 
 ### Basic
 
-默认插槽是 trigger。`content` 属性给出纯文本提示。
+默认插槽是触发器。`content` 属性给出纯文本提示。
 
 指针进入后按 `show-delay` 延迟显示，键盘聚焦（`:focus-visible`）立即显示。指针离开后按 `hide-delay` 收起，失焦立即收起。
 
@@ -66,9 +66,9 @@ function onOpenChange(event: WebUiEvent<WebUiTooltip, 'open-change'>) {
 
 ### Rich content
 
-`content` 插槽替代纯文本，可以放多行文本、粗体或行内代码。插槽元素必须是 tooltip 的直接子节点，并带 `slot="content"`。默认插槽里的 trigger 不要写 slot 属性。
+`content` 插槽替代纯文本，可以放多行文本、粗体或行内代码。插槽元素必须是 tooltip 的直接子节点，并带 `slot="content"`。默认插槽里的触发器不要写 `slot` 属性。
 
-trigger 请用带 `aria-label` 的 icon button，让它保持可聚焦，键盘用户也能看到提示。
+触发器请用带 `aria-label` 的图标按钮，让它保持可聚焦，键盘用户也能看到提示。
 
 ```tsx
 import { lucideInfo } from '@greypan/web-ui/icons'
@@ -194,7 +194,7 @@ const last = ref('—')
 
 ### Click trigger
 
-`trigger` 默认写的是 `hover focus`：指针悬停和键盘聚焦都能开。换成 `trigger="click"`，提示改由点 trigger 切换、点提示外面收起；换成 `trigger="manual"`，就只有 `open` 属性能控制它，指针、焦点和点击都不再触发。手势可以并排写：`trigger="hover focus click"`。
+`trigger` 默认写的是 `hover focus`：指针悬停和键盘聚焦都能开。换成 `trigger="click"`，提示改由点触发器切换、点提示外面收起；换成 `trigger="manual"`，就只有 `open` 属性能控制它，指针、焦点和点击都不再触发。手势可以并排写：`trigger="hover focus click"`。
 
 ```tsx
 import { useState } from 'react'
@@ -267,12 +267,12 @@ const last = ref('—')
 | `show-delay`       | 显示延迟（毫秒）。                                                                                           | `number`           | `200`           |
 | `hide-delay`       | 隐藏延迟（毫秒）。                                                                                           | `number`           | `100`           |
 | `disabled`         | 禁用状态。                                                                                                   | `boolean`          | `false`         |
-| `offset`           | 与 trigger 的距离（px）。                                                                                    | `number`           | `6`             |
+| `offset`           | 与触发器的距离（px）。                                                                                       | `number`           | `6`             |
 | `content`          | 提示文本，是 `content` 插槽的纯文本替代。                                                                    | `string`           | `''`            |
 | `open`             | 可见性。                                                                                                     | `boolean`          | `false`         |
 | `isOpen`           | 当前是否可见（只读）。                                                                                       | `boolean`          | —               |
 | `portal`           | 在主题的 overlay 容器中渲染。                                                                                | `boolean`          | `false`         |
-| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。                                                             | `OverlayContainer` | —               |
+| `overlayContainer` | 显式指定面板挂载的 overlay 容器（property）。                                                                | `OverlayContainer` | —               |
 
 ### Events
 
@@ -282,10 +282,10 @@ const last = ref('—')
 
 ### Slots
 
-| 名称      | 说明                                   |
-| --------- | -------------------------------------- |
-| `default` | trigger。                              |
-| `content` | 提示 panel 内容，替代 `content` 属性。 |
+| 名称      | 说明                                |
+| --------- | ----------------------------------- |
+| `default` | 触发器。                            |
+| `content` | 提示面板内容，替代 `content` 属性。 |
 
 ### 行为说明
 
@@ -293,7 +293,7 @@ const last = ref('—')
 
 - `hover`：指针进入按 `show-delay` 显示，离开按 `hide-delay` 收起；触屏指针不算。
 - `focus`：键盘聚焦（`:focus-visible`）直接显示，不播入场动画；焦点离开立即收起。
-- `click`：点 trigger 切换，点提示外面收起；键盘激活（Enter / Space）与聚焦同等对待，不播入场动画。
+- `click`：点触发器切换，点提示外面收起；键盘激活（Enter / Space）与聚焦同等对待，不播入场动画。
 - `manual`：不接受任何自动开合，只有 `open` 属性能改变它。
 
 `trigger` 里出现 `manual` 时整串只按 `manual` 处理；一个已知手势都没写时回退到默认的 `hover focus`。
@@ -302,7 +302,7 @@ const last = ref('—')
 
 一个 tooltip 显示后，把指针移到相邻 tooltip 会立即切换。只有指针的进出走 `show-delay` / `hide-delay`，点击与焦点触发都立即生效。
 
-打开时把提示文本写到 trigger 可聚焦元素的 `aria-description`，包括该元素内部的原生控件；关闭时还原原值。读屏描述不使用 `aria-describedby`：panel 和 trigger 通常位于不同的 DOM 树中，IDREF 无法跨树解析。
+打开时把提示文本写到触发器可聚焦元素的 `aria-description`，包括该元素内部的原生控件；关闭时还原原值。读屏描述不使用 `aria-describedby`：面板和触发器通常位于不同的 DOM 树中，IDREF 无法跨树解析。
 
 ### CSS Custom Properties
 

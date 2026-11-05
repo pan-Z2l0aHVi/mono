@@ -188,7 +188,7 @@ export default function Demo() {
 
 ### 行为说明
 
-同步子项 checkbox 的 `checked` 状态。`disabled` 提供可继承的有效禁用状态，不改写子项自身的 `disabled` 属性。`direction` 传入非法值时回退为 `vertical`。
+同步子项复选框的 `checked` 状态。`disabled` 提供可继承的有效禁用状态，不改写子项自身的 `disabled` 属性。`direction` 传入非法值时回退为 `vertical`。
 
 `--wui-checkbox-group-gap` 写在 group 元素本身，或同一个 `<web-ui-theme>` 作用域内的祖先元素上；写在 theme 宿主之外的覆盖到不了 group。它的默认值经 `--wui-space-2` 解析，因此显式设置这个 token 会覆盖 `--wui-space-2` 的值。
 
@@ -200,6 +200,6 @@ web-ui-checkbox-group {
 
 ### CSS Custom Properties
 
-| 名称                       | 说明                     | 默认值               |
-| -------------------------- | ------------------------ | -------------------- |
-| `--wui-checkbox-group-gap` | 成员 checkbox 之间的间距 | `var(--wui-space-2)` |
+| 名称                       | 说明                 | 默认值               |
+| -------------------------- | -------------------- | -------------------- |
+| `--wui-checkbox-group-gap` | 成员复选框之间的间距 | `var(--wui-space-2)` |

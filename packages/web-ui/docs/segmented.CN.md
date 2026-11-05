@@ -1,6 +1,6 @@
 # Segmented
 
-segmented 是单选 button group，子项是 `<web-ui-segmented-trigger>`。`value` 同步选中项，组件与原生 `<form>` 集成。
+segmented 是单选按钮组，子项是 `<web-ui-segmented-trigger>`。`value` 同步选中项，组件与原生 `<form>` 集成。
 
 ## Samples
 
@@ -8,7 +8,7 @@ segmented 是单选 button group，子项是 `<web-ui-segmented-trigger>`。`val
 
 默认插槽投影 segmented-trigger，`value` 决定哪一项选中。用户点击（或按 Enter / Space）后，`input` 带回新值，页面把它写回 `value` 以维持受控。
 
-按住当前选中项横向拖拽也能连续切换。松手后 indicator 吸附到最近的 trigger；快速划过时按速度切换。
+按住当前选中项横向拖拽也能连续切换。松手后指示器吸附到最近的触发器；快速划过时按速度切换。
 
 `aria-label` 会转发给组内的 listbox，作为这组选项的名称。`aria-labelledby` 的 IDREF 无法跨组件边界解析，需要可见文本标签时请直接用 `aria-label`。
 
@@ -56,7 +56,7 @@ const day = ref('wed')
 
 ### Variant comparison
 
-`variant` 决定 track 与 indicator 的材质。`inset`（默认）把 indicator 嵌进带常驻描边环与投影的 track；`raised` 的 indicator 浮在 track 上方。两个变体的交互、按压态与文字色一致，只有静止外观不同。
+`variant` 决定轨道与指示器的材质。`inset`（默认）把指示器嵌进带常驻描边环与投影的轨道；`raised` 的指示器浮在轨道上方。两个变体的交互、按压态与文字色一致，只有静止外观不同。
 
 ```tsx
 import { useState } from 'react'
@@ -130,7 +130,7 @@ const raisedView = ref('week')
 
 ### Item and group disabled
 
-`disabled` 加在 trigger 上只禁用这一项，其余项照常切换。加在 `<web-ui-segmented>` 上禁用整组：子项自身的 `disabled` 属性不变，但全部退出 Tab 序列，也不再响应点击。
+`disabled` 加在触发器上只禁用这一项，其余项照常切换。加在 `<web-ui-segmented>` 上禁用整组：子项自身的 `disabled` 属性不变，但全部退出 Tab 序列，也不再响应点击。
 
 ```tsx
 import { useState } from 'react'
@@ -202,7 +202,7 @@ const lockedView = ref('list')
 
 ### Icon-only
 
-纯图标 trigger 仍需要自己的可访问名，请给每个 `<web-ui-segmented-trigger>` 写 `aria-label`。组的单选、拖拽与键盘行为保持不变。
+纯图标触发器仍需要自己的可访问名，请给每个 `<web-ui-segmented-trigger>` 写 `aria-label`。组的单选、拖拽与键盘行为保持不变。
 
 ```tsx
 import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
@@ -348,7 +348,7 @@ function reset() {
 
 ### input and change
 
-每次用户切换（点击、Enter / Space 或拖拽）都会先派发 `input`，再派发 `change`，各一次；点击已是当前项的 trigger 不派发。直接改 `value` 属于程序化更新：indicator 会移动，两个计数都不变。
+每次用户切换（点击、Enter / Space 或拖拽）都会先派发 `input`，再派发 `change`，各一次；点击已是当前项的触发器不派发。直接改 `value` 属于程序化更新：指示器会移动，两个计数都不变。
 
 ```tsx
 import { useState } from 'react'
@@ -427,7 +427,7 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 | ------------ | ---------------------------------------------------------------------------------------------------- | --------------------- | --------- |
 | `name`       | 表单字段名。                                                                                         | `string`              | `''`      |
 | `variant`    | 材质变体：`inset`（默认）或 `raised`。                                                               | `'inset' \| 'raised'` | `'inset'` |
-| `disabled`   | 禁用全部 trigger。                                                                                   | `boolean`             | `false`   |
+| `disabled`   | 禁用全部触发器。                                                                                     | `boolean`             | `false`   |
 | `required`   | 只反射属性，不参与校验。                                                                             | `boolean`             | `false`   |
 | `aria-label` | 组的可访问名称；`aria-labelledby` 无法跨组件边界解析，名称转发到 shadow 内的 `role="listbox"` 元素。 | `string`              | —         |
 | `value`      | 当前选中值。                                                                                         | `string`              | `''`      |
@@ -447,13 +447,13 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 ### 变体
 
-`inset`（默认）的 indicator 嵌在带常驻 1px 描边环与投影的不透明 track 里；`raised` 的 track 没有描边环与投影，indicator 带柔和投影浮在其上。两个变体的交互与文字色一致。
+`inset`（默认）的指示器嵌在带常驻 1px 描边环与投影的不透明轨道里；`raised` 的轨道没有描边环与投影，指示器带柔和投影浮在其上。两个变体的交互与文字色一致。
 
 非法值回退到 `inset`。
 
 与原生 `<form>` 集成：`name` 提交当前值，`form.reset()` 退回初始值。
 
-组件按 `value` 同步子 trigger 的 `checked` 状态。`disabled` 为整组提供可继承的有效禁用状态，不改写 trigger 自身的 `disabled` 属性。直接设置 `value` 不派发事件。
+组件按 `value` 同步子触发器的 `checked` 状态。`disabled` 为整组提供可继承的有效禁用状态，不改写触发器自身的 `disabled` 属性。直接设置 `value` 不派发事件。
 
 键盘用户按 Tab 进入当前选中项；没有选中项时进入首个启用项。组内只有这一项参与 Tab 顺序。
 
@@ -461,16 +461,16 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 ArrowUp / ArrowDown 不移动焦点。
 
-按住当前选中项横向拖拽可以滑动 indicator，松手后吸附到最近的 option；快速划过时按速度切换。
+按住当前选中项横向拖拽可以滑动指示器，松手后吸附到最近的选项；快速划过时按速度切换。
 
-trigger 宽度不等时，拖拽中的 indicator 使用离自身中心最近的那一项的宽度，也就是松手后会落到的那一项。它不会保持按下那一项的宽度。
+触发器宽度不等时，拖拽中的指示器使用离自身中心最近的那一项的宽度，也就是松手后会落到的那一项。它不会保持按下那一项的宽度。
 
 触摸面声明 `touch-action: none`，拖拽激活期间阻止 `touchmove` 的默认滚动，避免 iOS Safari 中断手势。
 
 ### 按压态
 
-两个变体的按压 / 拖拽态一致：indicator 转成透明玻璃面（模糊、描边环与 1.5x 放大），按下第一帧就到位，松开后淡回各自的静止外观。
+两个变体的按压 / 拖拽态一致：指示器转成透明玻璃面（模糊、描边环与 1.5x 放大），按下第一帧就到位，松开后淡回各自的静止外观。
 
 ### 文字色
 
-所有 label 一律使用 `--wui-color-text`，选中与未选中项同色。选中状态由 indicator 表现，任何 label 都不使用 `--wui-color-accent`。在内建 light/dark 主题下，14px 文字满足 4.5:1。
+所有标签一律使用 `--wui-color-text`，选中与未选中项同色。选中状态由指示器表现，任何标签都不使用 `--wui-color-accent`。在内建浅色 / 深色主题下，14px 文字满足 4.5:1。

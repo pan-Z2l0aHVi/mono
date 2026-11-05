@@ -4,7 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Empty" },
-  { label: 'p', content: "empty state 占位：<code>title</code> 和 <code>description</code> 提供文案，<code>icon</code> / <code>action</code> 插槽补上图形和操作入口。除 <code>title</code> 与 <code>description</code> 之外没有其它属性，图形、文案、留白的尺寸和颜色都用 <code>--wui-empty-*</code> 变量设置。" },
+  { label: 'p', content: "空状态占位：<code>title</code> 和 <code>description</code> 提供文案，<code>icon</code> / <code>action</code> 插槽补上图形和操作入口。除 <code>title</code> 与 <code>description</code> 之外没有其它属性，图形、文案、留白的尺寸和颜色都用 <code>--wui-empty-*</code> 变量设置。" },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },
   { label: 'p', content: "<code>title</code> 和 <code>description</code> 是两个主要文案位，两个都写是这套空态最常见的用法。默认图形（<code>andrsrxn:inbox</code>）随组件提供，边长和颜色各有一枚变量。" },
@@ -83,7 +83,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>icon</code>" },
-      { label: 'td', content: "图形区内容，替代默认 icon。" }
+      { label: 'td', content: "图形区内容，替代默认图标。" }
       ]
     },
     {
@@ -104,7 +104,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>action</code>" },
-      { label: 'td', content: "操作区内容，例如主 button。" }
+      { label: 'td', content: "操作区内容，例如主按钮。" }
       ]
     }
     ]
@@ -195,7 +195,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-empty-title-margin-top</code>" },
-      { label: 'td', content: "icon 与标题之间的间距" },
+      { label: 'td', content: "图标与标题之间的间距" },
       { label: 'td', content: "<code>12px</code>" }
       ]
     },

@@ -1,16 +1,16 @@
 # Collapse
 
-collapse panel 把 trigger 与内容放在同一个元素里：trigger 放在默认插槽，要收起的内容放在 `content` 插槽。
+collapse 面板把触发器与内容放在同一个元素里：触发器放在默认插槽，要收起的内容放在 `content` 插槽。
 
-用户点击 trigger 时，组件先更新 `open`，再派发一次 `open-change`。调用方把 `detail.open` 写回页面状态后，页面状态才与面板一致。
+用户点击触发器时，组件先更新 `open`，再派发一次 `open-change`。调用方把 `detail.open` 写回页面状态后，页面状态才与面板一致。
 
 ## Samples
 
 ### Basic
 
-`open` 是唯一状态源，`content` 插槽放要收起的内容，默认插槽放 trigger。
+`open` 是唯一状态源，`content` 插槽放要收起的内容，默认插槽放触发器。
 
-点击 trigger 时，组件先更新 `open` 再派发 `open-change`，所以 handler 只需要把 `detail.open` 写回页面状态。
+点击触发器时，组件先更新 `open` 再派发 `open-change`，所以处理函数只需要把 `detail.open` 写回页面状态。
 
 ```tsx
 import { useState } from 'react'
@@ -144,11 +144,11 @@ export default function Demo() {
 
 交互语义来自默认插槽中的元素：原生 `<button>` 与 `<web-ui-button>` 自带 Enter / Space 激活和焦点。组件把 `aria-expanded` 写回默认插槽中的第一个元素，并在 `disabled` 时给该元素加上 `disabled`。
 
-不回写 `aria-controls`：展开关系由 `aria-expanded` 表达，`<web-ui-button>` 会把它同步到实际的 button 元素。
+不回写 `aria-controls`：展开关系由 `aria-expanded` 表达，`<web-ui-button>` 会把它同步到实际的按钮元素。
 
 整个默认插槽都是可点击区域，点击任意位置都算一次开合，所以不要把说明文字放进来。
 
-纯文本 trigger 可点击，但不能聚焦、没有键盘激活。
+纯文本触发器可点击，但不能聚焦、没有键盘激活。
 
 ```tsx
 import { lucideChevronDown } from '@greypan/web-ui/icons'
@@ -161,10 +161,10 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          原生 button
+          原生按钮
         </button>
         <div slot="content">
-          <div className="p-3 text-sm">Enter / Space 与焦点都由这个原生 button 自己提供。</div>
+          <div className="p-3 text-sm">Enter / Space 与焦点都由这个原生按钮自己提供。</div>
         </div>
       </web-ui-collapse>
 
@@ -173,23 +173,21 @@ export default function Demo() {
           web-ui-button
         </web-ui-button>
         <div slot="content">
-          <div className="p-3 text-sm">
-            自定义元素也能当 trigger；展开状态会同步到它内部原生 button，供辅助技术读取。
-          </div>
+          <div className="p-3 text-sm">自定义元素也能当触发器；展开状态会同步到它内部原生按钮，供辅助技术读取。</div>
         </div>
       </web-ui-collapse>
 
       <web-ui-collapse>
         <web-ui-button variant="secondary" full>
-          <web-ui-icon slot="prefix" icon={lucideChevronDown} size={14}></web-ui-icon>带 prefix icon 的 trigger
+          <web-ui-icon slot="prefix" icon={lucideChevronDown} size={14}></web-ui-icon>带前缀图标的触发器
         </web-ui-button>
         <div slot="content">
-          <div className="p-3 text-sm">被指派的第一件东西仍然是那个 button；展开状态会同步到它内部原生 button。</div>
+          <div className="p-3 text-sm">被指派的第一件东西仍然是那个按钮；展开状态会同步到它内部原生按钮。</div>
         </div>
       </web-ui-collapse>
 
       <web-ui-collapse>
-        纯文本 trigger
+        纯文本触发器
         <div slot="content">
           <div className="p-3 text-sm">反面写法：鼠标点得动，但不可聚焦、没有键盘激活。</div>
         </div>
@@ -207,32 +205,32 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        原生 button
+        原生按钮
       </button>
       <div slot="content">
-        <div class="p-3 text-sm">Enter / Space 与焦点都由这个原生 button 自己提供。</div>
+        <div class="p-3 text-sm">Enter / Space 与焦点都由这个原生按钮自己提供。</div>
       </div>
     </web-ui-collapse>
 
     <web-ui-collapse>
       <web-ui-button variant="secondary" full>web-ui-button</web-ui-button>
       <div slot="content">
-        <div class="p-3 text-sm">自定义元素也能当 trigger；展开状态会同步到它内部原生 button，供辅助技术读取。</div>
+        <div class="p-3 text-sm">自定义元素也能当触发器；展开状态会同步到它内部原生按钮，供辅助技术读取。</div>
       </div>
     </web-ui-collapse>
 
     <web-ui-collapse>
       <web-ui-button variant="secondary" full>
         <web-ui-icon slot="prefix" :icon="lucideChevronDown" :size="14"></web-ui-icon>
-        带 prefix icon 的 trigger
+        带前缀图标的触发器
       </web-ui-button>
       <div slot="content">
-        <div class="p-3 text-sm">被指派的第一件东西仍然是那个 button；展开状态会同步到它内部原生 button。</div>
+        <div class="p-3 text-sm">被指派的第一件东西仍然是那个按钮；展开状态会同步到它内部原生按钮。</div>
       </div>
     </web-ui-collapse>
 
     <web-ui-collapse>
-      纯文本 trigger
+      纯文本触发器
       <div slot="content">
         <div class="p-3 text-sm">反面写法：鼠标点得动，但不可聚焦、没有键盘激活。</div>
       </div>
@@ -247,7 +245,7 @@ import { lucideChevronDown } from '@greypan/web-ui/icons'
 
 ### Disabled
 
-`disabled` 让点击被忽略，并给 trigger 元素加上 `disabled`；取消禁用时移除该 attribute，回到 trigger 原本的禁用状态。它不改变已经展开的面板。`open` 与 `disabled` 同时存在时内容仍然可见，因为 `disabled` 只影响触发，不影响当前状态。
+`disabled` 让点击被忽略，并给触发器元素加上 `disabled`；取消禁用时移除该 attribute，回到触发器原本的禁用状态。它不改变已经展开的面板。`open` 与 `disabled` 同时存在时内容仍然可见，因为 `disabled` 只影响触发，不影响当前状态。
 
 ```tsx
 import { useState } from 'react'
@@ -258,7 +256,7 @@ export default function Demo() {
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
       <web-ui-checkbox checked={disabled} onChange={event => setDisabled(event.currentTarget.checked)}>
-        禁用第一条的 trigger
+        禁用第一条的触发器
       </web-ui-checkbox>
 
       <web-ui-collapse disabled={disabled}>
@@ -293,7 +291,7 @@ export default function Demo() {
 <template>
   <div class="flex w-full max-w-md flex-col items-start gap-3">
     <web-ui-checkbox :checked="disabled" @change="disabled = $event.target.checked">
-      禁用第一条的 trigger
+      禁用第一条的触发器
     </web-ui-checkbox>
 
     <web-ui-collapse :disabled="disabled">
@@ -369,7 +367,7 @@ export default function Demo() {
           type="button"
           className="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
         >
-          点击 trigger 开合
+          点击触发器开合
         </button>
         <div slot="content">
           <div className="p-3 text-sm">上面三个按钮能让面板开合，却不产生计数。</div>
@@ -398,7 +396,7 @@ export default function Demo() {
         type="button"
         class="w-full cursor-pointer rounded-md bg-(--wui-color-surface-control) px-3 py-2 text-left"
       >
-        点击 trigger 开合
+        点击触发器开合
       </button>
       <div slot="content">
         <div class="p-3 text-sm">上面三个按钮能让面板开合，却不产生计数。</div>
@@ -814,11 +812,11 @@ const edgeColorRows = Array.from(
 
 ### Horizontal
 
-`horizontal` 把动画轴从高度换成宽度，内容沿宽度展开，trigger 与内容排在同一行。宿主是 block 盒子，需要一行排列时在宿主上添加 flex，例如 `flex items-center gap-2`。
+`horizontal` 把动画轴从高度换成宽度，内容沿宽度展开，触发器与内容排在同一行。宿主是块级盒子，需要一行排列时在宿主上添加 flex，例如 `flex items-center gap-2`。
 
 换了动画轴之后 `peek` 也变成宽度，换成 `horizontal` 后渐隐区域落在右边缘。
 
-代价是动画期间内容随宽度变化 reflow。
+代价是动画期间内容随宽度变化重排。
 
 ```tsx
 import { radixIconsPanelLeftMinimized } from '@greypan/web-ui/icons'
@@ -888,9 +886,9 @@ import { radixIconsPanelLeftMinimized } from '@greypan/web-ui/icons'
 
 内层 collapse 放在外层的 `content` 插槽里。展开内层时，外层高度随内容增加。
 
-两条折叠互不干扰，点击内层 trigger 不会同时开合外层。
+两条折叠互不干扰，点击内层触发器不会同时开合外层。
 
-但 `open-change` 带有 `bubbles` 和 `composed`，内层的通知会经过外层宿主，所以外层绑定 handler 时要按 `event.target === event.currentTarget` 过滤，否则内层开合会被当成外层开合。
+但 `open-change` 带有 `bubbles` 和 `composed`，内层的通知会经过外层宿主，所以外层绑定处理函数时要按 `event.target === event.currentTarget` 过滤，否则内层开合会被当成外层开合。
 
 ```tsx
 import { useState } from 'react'
@@ -1187,13 +1185,13 @@ function removeRow() {
 
 ### Props
 
-| 名称           | 说明                                                                                                          | 类型             | 默认值  |
-| -------------- | ------------------------------------------------------------------------------------------------------------- | ---------------- | ------- |
-| `open`         | 展开状态，唯一状态源。用户点 trigger 时组件自己把它改到位，再派发 `open-change`；静态写在模板里只决定初始值。 | `boolean`        | `false` |
-| `disabled`     | 禁用触发：点击忽略，给 trigger 元素加上 `disabled`；已展开内容保持现状。                                      | `boolean`        | `false` |
-| `horizontal`   | 水平方向：沿宽度展开，默认沿高度。                                                                            | `boolean`        | `false` |
-| `keep-mounted` | 关闭后内容保持挂载但不可交互，保留滚动位置与尺寸。                                                            | `boolean`        | `false` |
-| `peek`         | 关闭时露出的尺寸（CSS 长度，如 `120px`、`6rem`）。设置后行为与 `keep-mounted` 相同。                          | `string \| null` | `null`  |
+| 名称           | 说明                                                                                                       | 类型             | 默认值  |
+| -------------- | ---------------------------------------------------------------------------------------------------------- | ---------------- | ------- |
+| `open`         | 展开状态，唯一状态源。用户点触发器时组件自己把它改到位，再派发 `open-change`；静态写在模板里只决定初始值。 | `boolean`        | `false` |
+| `disabled`     | 禁用触发：点击忽略，给触发器元素加上 `disabled`；已展开内容保持现状。                                      | `boolean`        | `false` |
+| `horizontal`   | 水平方向：沿宽度展开，默认沿高度。                                                                         | `boolean`        | `false` |
+| `keep-mounted` | 关闭后内容保持挂载但不可交互，保留滚动位置与尺寸。                                                         | `boolean`        | `false` |
+| `peek`         | 关闭时露出的尺寸（CSS 长度，如 `120px`、`6rem`）。设置后行为与 `keep-mounted` 相同。                       | `string \| null` | `null`  |
 
 ### Events
 
@@ -1203,10 +1201,10 @@ function removeRow() {
 
 ### Slots
 
-| 名称      | 说明                                                                                                                                                                                                         |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `default` | trigger。整个 slot 都是可点击区域，点任何一处都算一次开合；`aria-expanded` 回写到插槽中的第一个元素，`disabled` 时给该元素加上 `disabled`。`<web-ui-button>` 会把两者同步到内部 `button`，所以放可交互元素。 |
-| `content` | collapse content。关闭态内容不可交互；`keep-mounted` 时保持挂载，`peek` 时露出头部一段。                                                                                                                     |
+| 名称      | 说明                                                                                                                                                                                                      |
+| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `default` | 触发器。整个插槽都是可点击区域，点任何一处都算一次开合；`aria-expanded` 回写到插槽中的第一个元素，`disabled` 时给该元素加上 `disabled`。`<web-ui-button>` 会把两者同步到内部 `button`，所以放可交互元素。 |
+| `content` | 折叠内容。关闭态内容不可交互；`keep-mounted` 时保持挂载，`peek` 时露出头部一段。                                                                                                                          |
 
 ### Methods
 
@@ -1226,17 +1224,17 @@ function removeRow() {
 
 不回写不会被回退，但页面状态会与面板不一致。
 
-嵌套时点击互不干扰：内层 trigger 的点击不会同时开合外层。内层的 `open-change` 会经过外层宿主，所以外层绑定监听时要按 `event.target === event.currentTarget` 过滤。
+嵌套时点击互不干扰：内层触发器的点击不会同时开合外层。内层的 `open-change` 会经过外层宿主，所以外层绑定监听时要按 `event.target === event.currentTarget` 过滤。
 
-### trigger 语义
+### 触发器语义
 
 交互语义来自默认插槽中的元素：原生 `<button>`、`<web-ui-button>` 或其他可交互元素自带 Enter / Space 激活与焦点。
 
-collapse 把 `aria-expanded` 写回默认插槽中的第一个元素，`disabled` 时给该元素加上 `disabled`；`<web-ui-button>` 会把两者同步到实际的 button 元素。
+collapse 把 `aria-expanded` 写回默认插槽中的第一个元素，`disabled` 时给该元素加上 `disabled`；`<web-ui-button>` 会把两者同步到实际的按钮元素。
 
 不回写 `aria-controls`：展开关系由 `aria-expanded` 表达。
 
-trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘 / 焦点语义。
+触发器请使用可交互元素：纯 `<span>` 可点击但没有键盘 / 焦点语义。
 
 默认插槽的全部内容都是点击区域：放进默认插槽的说明文字被点击时同样算一次开合。组件只写回插槽中的第一个元素，所以可交互元素要放在最前面。
 
@@ -1291,4 +1289,4 @@ trigger 请使用可交互元素：纯 `<span>` 可点击但没有键盘 / 焦�
 
 ### 已知限制
 
-`horizontal` 动画期间内容随宽度变化 reflow。
+`horizontal` 动画期间内容随宽度变化重排。

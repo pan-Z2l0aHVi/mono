@@ -1,6 +1,6 @@
 # Toast
 
-命令式 toast。调用 `toast()` 创建一条 toast 并拿到它的 id，再用 `toast.close(id)` 关闭。同一个 `id` 再次调用会更新那一条，不会新建。下面的表分别列出 `toast()` 的 option、命令式入口，以及 `<web-ui-toast>` 元素自身的属性、事件和方法。
+命令式 toast。调用 `toast()` 创建一条 toast 并拿到它的 id，再用 `toast.close(id)` 关闭。同一个 `id` 再次调用会更新那一条，不会新建。下面的表分别列出 `toast()` 的选项、命令式入口，以及 `<web-ui-toast>` 元素自身的属性、事件和方法。
 
 ## Samples
 
@@ -74,7 +74,7 @@ onBeforeUnmount(() => toast.clear())
 
 ### Full options
 
-`toast()` 接受完整 option：`heading` 是粗体标题，`message` 是正文，`position` 决定出现在屏幕的哪个位置（这里是 `top-center`），`duration` 是自动关闭的毫秒数，`closable` 控制是否渲染关闭 button。
+`toast()` 接受完整选项：`heading` 是粗体标题，`message` 是正文，`position` 决定出现在屏幕的哪个位置（这里是 `top-center`），`duration` 是自动关闭的毫秒数，`closable` 控制是否渲染关闭按钮。
 
 ```tsx
 import { toast } from '@greypan/web-ui'
@@ -317,7 +317,7 @@ onBeforeUnmount(() => toast.clear())
 | `message`   | 通知文本。                                                  | `string`        | —             |
 | `type`      | 类型：`success`、`info`、`warning`、`error`。               | `ToastType`     | `'info'`      |
 | `duration`  | 自动关闭时间（ms），0 表示不自动关闭；`error` 默认 `5000`。 | `number`        | `3000`        |
-| `closable`  | 展示关闭 button。                                           | `boolean`       | `true`        |
+| `closable`  | 展示关闭按钮。                                              | `boolean`       | `true`        |
 | `id`        | 合并键：同一个 `id` 再次调用是更新那一条。                  | `string`        | 自动生成      |
 | `heading`   | 粗体标题。                                                  | `string`        | `''`          |
 | `position`  | 屏幕位置。                                                  | `ToastPosition` | `'top-right'` |
@@ -410,7 +410,7 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 | `heading`         | 粗体标题。                                                    | `string`        | `''`          |
 | `message`         | 通知文本。                                                    | `string`        | `''`          |
 | `duration`        | 自动关闭时间（ms），0 表示不自动关闭；`error` 回退为 `5000`。 | `number`        | `3000`        |
-| `no-close-button` | 隐藏关闭 button。                                             | `boolean`       | `false`       |
+| `no-close-button` | 隐藏关闭按钮。                                                | `boolean`       | `false`       |
 | `visible`         | 是否可见。                                                    | `boolean`       | `false`       |
 | `toastId`         | 合并键；只能通过 property 设置，由 `toast()` 写入。           | `string`        | `''`          |
 
@@ -422,7 +422,7 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 
 ### 元素属性与方法
 
-命令式入口下，`toast()` 会写入 `<web-ui-toast>` 的这些属性：合并键写在 `toastId` 上（只能通过 property 设置），其余与上面的 Props 表一一对应。
+命令式入口下，`toast()` 会写入 `<web-ui-toast>` 的这些属性：合并键写在 `toastId` 上（只能通过 property 设置），其余与上面的属性表一一对应。
 
 元素自身还公开一组实例方法：`show()` 播放入场（把 `visible` 设为 `true`），并在 `duration` 大于 0 时开始计时。
 
@@ -436,8 +436,8 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 
 ### CSS Custom Properties
 
-| 名称                            | 说明                                                                  | 默认值 |
-| ------------------------------- | --------------------------------------------------------------------- | ------ |
-| `--wui-toast-viewport-gap`      | Toast 到视口边缘的可见距离                                            | `16px` |
-| `--wui-toast-container-padding` | 容器预留的扩散阴影绘制空间                                            | `40px` |
-| `--wui-toast-top-offset`        | 顶部 Toast 容器的额外下移量，用于避让固定 header；只影响 `top-*` 位置 | `0px`  |
+| 名称                            | 说明                                                               | 默认值 |
+| ------------------------------- | ------------------------------------------------------------------ | ------ |
+| `--wui-toast-viewport-gap`      | Toast 到视口边缘的可见距离                                         | `16px` |
+| `--wui-toast-container-padding` | 容器预留的扩散阴影绘制空间                                         | `40px` |
+| `--wui-toast-top-offset`        | 顶部 Toast 容器的额外下移量，用于避让固定头部；只影响 `top-*` 位置 | `0px`  |

@@ -80,7 +80,7 @@ export default function Demo() {
 
 ### Full-screen instance
 
-`show()` 在当前主题的 overlay 容器（没有主题作用域时回退到 body 的默认 overlay 容器）挂载一个全屏实例，`size` / `description` / `color` 覆盖外观，`duration` 大于 0 时到期自动 `hide()`。
+`show()` 在当前主题的 overlay 容器（没有主题作用域时回退到主体的默认 overlay 容器）挂载一个全屏实例，`size` / `description` / `color` 覆盖外观，`duration` 大于 0 时到期自动 `hide()`。
 
 全屏实例的覆盖层不接收指针事件。它只报告加载状态，不接管点击、焦点或页面滚动。`hide()` 会关闭它，并清除 `duration` 计时器。
 
@@ -204,17 +204,17 @@ export default function Demo() {
 
 | 名称          | 说明                                                               | 类型     | 默认值 |
 | ------------- | ------------------------------------------------------------------ | -------- | ------ |
-| `size`        | 实例尺寸；只在 truthy 时写实例的 `size`，`0` 被忽略而留默认 `24`。 | `number` | `24`   |
+| `size`        | 实例尺寸；只在为真值时写入实例的 `size`，`0` 被忽略而留默认 `24`。 | `number` | `24`   |
 | `description` | 实例说明文字，使用属性这条通道；空串等于不设置。                   | `string` | `''`   |
 | `color`       | 实例指示器颜色，CSS 颜色值；空串等于不设置。                       | `string` | `''`   |
 | `duration`    | 大于 `0` 时到期自动 `hide()`；不传或 `0` 时实例一直存在。          | `number` | —      |
 
 ### Methods
 
-| 名称                          | 说明                                                                                                                                                                                     |
-| ----------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `WebUiSpinner.show(options?)` | 在主题的 overlay 容器（无主题时为 body 的默认 overlay 容器）挂载一个全屏实例并返回它；实例非模态，不拦截页面交互与滚动。新实例挂载时移除上一个命令式实例，`duration` 到期调用 `hide()`。 |
-| `WebUiSpinner.hide()`         | 关闭实例的 dialog，清除 `duration` 计时器，并把 `show()` 挂载的实例从 overlay 容器移除；没有实例时不做任何事。                                                                           |
+| 名称                          | 说明                                                                                                                                                                                   |
+| ----------------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `WebUiSpinner.show(options?)` | 在主题的 overlay 容器（无主题时为主体的默认 overlay 容器）挂载一个全屏实例并返回它；实例非模态，不拦截页面交互与滚动。新实例挂载时移除上一个命令式实例，`duration` 到期调用 `hide()`。 |
+| `WebUiSpinner.hide()`         | 关闭实例的 dialog，清除 `duration` 计时器，并把 `show()` 挂载的实例从 overlay 容器移除；没有实例时不做任何事。                                                                         |
 
 ### 行为说明
 
@@ -222,13 +222,13 @@ export default function Demo() {
 
 尺寸只有 `size` 这一个入口：在宿主上覆盖 `--wui-spinner-size` 不生效。
 
-命令式实例挂载在主题的 overlay 容器里（没有主题作用域时挂 body 的默认 overlay 容器），说明文字、速度（`--wui-duration-spinner`）和层级（`--wui-layer-loading`）因此都跟随主题。
+命令式实例挂载在主题的 overlay 容器里（没有主题作用域时挂主体的默认 overlay 容器），说明文字、速度（`--wui-duration-spinner`）和层级（`--wui-layer-loading`）因此都跟随主题。
 
 组件不会替你收尾。`duration` 不传或为 `0` 时实例会一直存在，只有 `hide()` 或新实例顶替才会移除它。命令式实例不锁页面滚动。
 
 ### 颜色
 
-指示器颜色默认取宿主的 `--wui-color-text-secondary`，`color` 属性给任意 CSS 颜色值即可覆盖（声明式的属性和 `show()` 的 `color` option 都使用它）。
+指示器颜色默认取宿主的 `--wui-color-text-secondary`，`color` 属性给任意 CSS 颜色值即可覆盖（声明式的属性和 `show()` 的 `color` 选项都使用它）。
 
 说明文字使用 `--wui-color-text-secondary`。
 

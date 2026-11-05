@@ -123,7 +123,7 @@ const meta = [
   { label: 'p', content: "无障碍名按 <code>alt</code> → <code>name</code> 的顺序取，取到了才声明 <code>role=\"img\"</code> 并写 <code>aria-label</code>；两个都留空时头像按装饰处理（<code>role=\"presentation\"</code>、<code>aria-hidden=\"true\"</code>），屏幕阅读器不会播报。" },
   { label: 'p', content: "首字母取自 <code>name</code> 前两个词的第一个字符，并转成大写。中文这类按空格分不开的名字因此只会取到第一个字（<code>潘某某</code> 出「潘」）；要两个字就自己把词分开，或者改用 <code>default</code> 插槽。" },
   { label: 'h3', id: 'section-14', content: "布局" },
-  { label: 'p', content: "宿主是 inline-block，边长由 <code>size</code> 决定；圆形用 pill 圆角，方形用 <code>min(12px, size × 0.25)</code>。" },
+  { label: 'p', content: "宿主是 inline-block，边长由 <code>size</code> 决定；圆形用胶囊圆角，方形用 <code>min(12px, size × 0.25)</code>。" },
   { label: 'p', content: "回退态是玻璃材质（模糊、内描边环与投影）：底色 <code>--wui-color-surface-raised</code>，首字母与默认图标使用 <code>--wui-color-text</code>，随主题切换。图片态只有图片本身。" },
   { label: 'p', content: "<code>default</code> 插槽的盒子铺满整个头像并居中。它不参与「该画什么」的判定，所以给了 <code>src</code> 且图片成功加载时，插槽内容会叠在图片之上。回退内容和图片二选一，不要同时提供。组件没有其他样式变量，尺寸与形状都用 <code>size</code> / <code>shape</code> 设置。" }
 ]

@@ -1,6 +1,6 @@
 # Input
 
-文本 input，支持清除 button 与前后缀插槽，并与原生 `<form>` 集成。宿主自身不可聚焦，焦点落在内部原生 input 上；`focus()` / `blur()` / `select()` 都作用于它。
+文本输入框，支持清除按钮与前后缀插槽，并与原生 `<form>` 集成。宿主自身不可聚焦，焦点落在内部原生输入框上；`focus()` / `blur()` / `select()` 都作用于它。
 
 ## Samples
 
@@ -30,7 +30,7 @@ export default function Demo() {
 
 ### Input types
 
-`type` 原样传给原生 input，掩码与格式判定都由原生类型提供：`password` 掩码输入内容，`email` 在表单提交时校验格式。
+`type` 原样传给原生输入框，掩码与格式判定都由原生类型提供：`password` 掩码输入内容，`email` 在表单提交时校验格式。
 
 ```tsx
 export default function Demo() {
@@ -56,7 +56,7 @@ export default function Demo() {
 
 ### Prefix and suffix
 
-`prefix` / `suffix` 插槽在输入区两侧放 icon 或文字；哪一侧没有指派节点就整块收起，不留 `gap` 的间距。没有可见 label 的输入用 `aria-label` 提供无障碍名称。
+`prefix` / `suffix` 插槽在输入区两侧放图标或文字；哪一侧没有指派节点就整块收起，不留 `gap` 的间距。没有可见标签的输入用 `aria-label` 提供无障碍名称。
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -96,14 +96,14 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### Clear button
 
-`clearable` 只在有值且未设置 `disabled` 或 `readonly` 时画出清除 button；空值、禁用或只读时不画。点击清除 button 会清空值，同时派发 `input` 与 `change`。清空是一次已提交的离散变更，不是连续输入，所以只监听 `change` 的调用方也必须收到。`full` 让控件占满父容器宽度。
+`clearable` 只在有值且未设置 `disabled` 或 `readonly` 时画出清除按钮；空值、禁用或只读时不画。点击清除按钮会清空值，同时派发 `input` 与 `change`。清空是一次已提交的离散变更，不是连续输入，所以只监听 `change` 的调用方也必须收到。`full` 让控件占满父容器宽度。
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-3">
       <web-ui-input full clearable aria-label="可清除的内容" value="web-ui"></web-ui-input>
-      <web-ui-input full clearable placeholder="还没有内容，所以没有清除 button"></web-ui-input>
+      <web-ui-input full clearable placeholder="还没有内容，所以没有清除按钮"></web-ui-input>
     </div>
   )
 }
@@ -113,14 +113,14 @@ export default function Demo() {
 <template>
   <div class="flex w-full flex-col gap-3">
     <web-ui-input full clearable aria-label="可清除的内容" value="web-ui"></web-ui-input>
-    <web-ui-input full clearable placeholder="还没有内容，所以没有清除 button"></web-ui-input>
+    <web-ui-input full clearable placeholder="还没有内容，所以没有清除按钮"></web-ui-input>
   </div>
 </template>
 ```
 
 ### Disabled and readonly
 
-`disabled` 关掉输入、校验与清除操作，宿主整体降到四成不透明度。`readonly` 保留可读、可全选与可复制，但不接受输入，并收起清除 button。清除会改值，与只读语义冲突。
+`disabled` 关掉输入、校验与清除操作，宿主整体降到四成不透明度。`readonly` 保留可读、可全选与可复制，但不接受输入，并收起清除按钮。清除会改值，与只读语义冲突。
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -156,7 +156,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 ### Borderless
 
-`borderless` 移除边框、背景、模糊、阴影与 glass 描边环，只留 padding 与 focus ring，供外层自己画容器；输入区宽度仍取 `--wui-input-width`。
+`borderless` 移除边框、背景、模糊、阴影与 glass 描边环，只留内边距与焦点环，供外层自己画容器；输入区宽度仍取 `--wui-input-width`。
 
 ```tsx
 import { lucideSearch } from '@greypan/web-ui/icons'
@@ -326,9 +326,9 @@ function reset() {
 
 ### Focus and select all
 
-`focus()` / `blur()` / `select()` 作用于内部原生 input；`focus()` 与 `select()` 在 `disabled` 下不产生效果，`blur()` 没有这道守卫。
+`focus()` / `blur()` / `select()` 作用于内部原生输入框；`focus()` 与 `select()` 在 `disabled` 下不产生效果，`blur()` 没有这道守卫。
 
-宿主自身没有 tab 位，Tab 进来的是内部控件。
+宿主自身没有 Tab 位，Tab 进来的是内部控件。
 
 ```tsx
 import type { WebUiInput } from '@greypan/web-ui'
@@ -368,7 +368,7 @@ const field = useTemplateRef<WebUiInput>('field')
 
 ### CSS variables
 
-`--wui-input-width` 决定输入区宽度（`full` 下由 100% 接管），`--wui-input-clear-color` 决定清除 button 的颜色，默认取三级文本色。
+`--wui-input-width` 决定输入区宽度（`full` 下由 100% 接管），`--wui-input-clear-color` 决定清除按钮的颜色，默认取三级文本色。
 
 ```tsx
 export default function Demo() {
@@ -409,52 +409,52 @@ export default function Demo() {
 
 ### Props
 
-| 名称               | 说明                                                                     | 类型             | 默认值   |
-| ------------------ | ------------------------------------------------------------------------ | ---------------- | -------- |
-| `type`             | HTML input 类型，透传给内部原生 input。                                  | `string`         | `'text'` |
-| `placeholder`      | 占位文本。                                                               | `string`         | `''`     |
-| `name`             | 表单字段名。                                                             | `string`         | `''`     |
-| `disabled`         | 禁用状态。                                                               | `boolean`        | `false`  |
-| `readonly`         | 只读状态。                                                               | `boolean`        | `false`  |
-| `required`         | 必填校验。                                                               | `boolean`        | `false`  |
-| `clearable`        | 有值且未设置 `disabled` 或 `readonly` 时显示清除 button。                | `boolean`        | `false`  |
-| `aria-clear-label` | 清除 button 的无障碍名称；未设置时回退内置英文文案（`Clear`）。          | `string`         | `''`     |
-| `full`             | 占满父容器宽度。                                                         | `boolean`        | `false`  |
-| `borderless`       | ghost 形态：移除边框、背景、背景模糊与阴影，保留 padding 与 focus ring。 | `boolean`        | `false`  |
-| `aria-label`       | 无障碍 label。                                                           | `string \| null` | `null`   |
-| `value`            | 输入值，也是表单提交值。                                                 | `string`         | `''`     |
+| 名称               | 说明                                                             | 类型             | 默认值   |
+| ------------------ | ---------------------------------------------------------------- | ---------------- | -------- |
+| `type`             | HTML 输入框类型，透传给内部原生输入框。                          | `string`         | `'text'` |
+| `placeholder`      | 占位文本。                                                       | `string`         | `''`     |
+| `name`             | 表单字段名。                                                     | `string`         | `''`     |
+| `disabled`         | 禁用状态。                                                       | `boolean`        | `false`  |
+| `readonly`         | 只读状态。                                                       | `boolean`        | `false`  |
+| `required`         | 必填校验。                                                       | `boolean`        | `false`  |
+| `clearable`        | 有值且未设置 `disabled` 或 `readonly` 时显示清除按钮。           | `boolean`        | `false`  |
+| `aria-clear-label` | 清除按钮的无障碍名称；未设置时回退内置英文文案（`Clear`）。      | `string`         | `''`     |
+| `full`             | 占满父容器宽度。                                                 | `boolean`        | `false`  |
+| `borderless`       | ghost 形态：移除边框、背景、背景模糊与阴影，保留内边距与焦点环。 | `boolean`        | `false`  |
+| `aria-label`       | 无障碍标签。                                                     | `string \| null` | `null`   |
+| `value`            | 输入值，也是表单提交值。                                         | `string`         | `''`     |
 
 ### Events
 
-| 名称     | 说明                                                                   |
-| -------- | ---------------------------------------------------------------------- |
-| `input`  | 每次输入派发；点击清除 button 清空时一起派发。                         |
-| `change` | 值改动后失焦时由内部原生控件转发一次；点击清除 button 清空时一起派发。 |
-| `focus`  | 内部原生控件的 `focus`，组合但不冒泡：宿主上要监听请用捕获阶段。       |
-| `blur`   | 内部原生控件的 `blur`，与 `focus` 同一条路径。                         |
+| 名称     | 说明                                                               |
+| -------- | ------------------------------------------------------------------ |
+| `input`  | 每次输入派发；点击清除按钮清空时一起派发。                         |
+| `change` | 值改动后失焦时由内部原生控件转发一次；点击清除按钮清空时一起派发。 |
+| `focus`  | 内部原生控件的 `focus`，组合但不冒泡：宿主上要监听请用捕获阶段。   |
+| `blur`   | 内部原生控件的 `blur`，与 `focus` 同一条路径。                     |
 
 ### Slots
 
-| 名称     | 说明                                                 |
-| -------- | ---------------------------------------------------- |
-| `prefix` | 输入区左侧的 icon 或文字；空插槽整块收起，不占间距。 |
-| `suffix` | 输入区右侧的 icon 或文字；清除 button 画在它之前。   |
+| 名称     | 说明                                               |
+| -------- | -------------------------------------------------- |
+| `prefix` | 输入区左侧的图标或文字；空插槽整块收起，不占间距。 |
+| `suffix` | 输入区右侧的图标或文字；清除按钮画在它之前。       |
 
 ### Methods
 
 | 名称              | 说明                                                         |
 | ----------------- | ------------------------------------------------------------ |
-| `focus(options?)` | 聚焦内部原生 input；`disabled` 时不产生效果。                |
-| `blur()`          | 让内部原生 input 失焦。                                      |
+| `focus(options?)` | 聚焦内部原生输入框；`disabled` 时不产生效果。                |
+| `blur()`          | 让内部原生输入框失焦。                                       |
 | `select()`        | 全选当前值；`disabled` 时不产生效果，`readonly` 下仍然可用。 |
 
 ### 行为说明
 
-宿主自身不可聚焦，也没有 tab 位：Tab 与点击都把焦点交给内部原生 input，`focused` 属性反映焦点态并驱动 focus ring。`focus()` / `blur()` / `select()` 都作用于它。
+宿主自身不可聚焦，也没有 Tab 位：Tab 与点击都把焦点交给内部原生输入框，`focused` 属性反映焦点态并驱动焦点环。`focus()` / `blur()` / `select()` 都作用于它。
 
 `input` 原生冒泡且组合，宿主直接收得到；`change` 由组件在宿主上补发一个 `composed` 事件。
 
-清除 button 触发同一次离散变更，`input` 与 `change` 一起派发，`v-model.lazy` 这类只听 `change` 的调用方不会漏掉清空。
+清除按钮触发同一次离散变更，`input` 与 `change` 一起派发，`v-model.lazy` 这类只听 `change` 的调用方不会漏掉清空。
 
 `disabled` 与表单级禁用（外层 `<fieldset disabled>`）都让输入与校验退出：`required` 与 `type="email"` 的判定（`valueMissing` / `typeMismatch`）交给宿主 `<form>`，禁用时不拦截提交。
 
@@ -472,11 +472,11 @@ export default function Demo() {
 
 某一侧插槽没有指派节点时不留 `gap`；指派一个自己 `display: none` 的节点仍算「有内容」，`gap` 照留。
 
-清除 button 只在有值、未禁用且非只读时出现，位置贴着输入文本。
+清除按钮只在有值、未禁用且非只读时出现，位置贴着输入文本。
 
 ### CSS Custom Properties
 
 | 名称                      | 说明                                  | 默认值                           |
 | ------------------------- | ------------------------------------- | -------------------------------- |
 | `--wui-input-width`       | 输入区宽度；`full` 时被 `100%` 接管。 | `200px`                          |
-| `--wui-input-clear-color` | 清除 button 的颜色。                  | `var(--wui-color-text-tertiary)` |
+| `--wui-input-clear-color` | 清除按钮的颜色。                      | `var(--wui-color-text-tertiary)` |

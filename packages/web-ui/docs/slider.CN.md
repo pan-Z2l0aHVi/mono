@@ -6,7 +6,7 @@
 
 ### Basic
 
-不写属性时，范围是 `0` 到 `100`，步进为 `1`。`min` / `max` / `step` 约束取值范围和步进幅度。`disabled` 让 track 与 thumb 不再响应交互。
+不写属性时，范围是 `0` 到 `100`，步进为 `1`。`min` / `max` / `step` 约束取值范围和步进幅度。`disabled` 让轨道与滑块不再响应交互。
 
 ```tsx
 export default function Demo() {
@@ -32,7 +32,7 @@ export default function Demo() {
 
 ### Tick marks
 
-`marks` 沿 track 画出刻度点，间距取自 `step`。最多画 100 段；`step` 相对 `min` 到 `max` 太密时，只画前 100 段。
+`marks` 沿轨道画出刻度点，间距取自 `step`。最多画 100 段；`step` 相对 `min` 到 `max` 太密时，只画前 100 段。
 
 ```tsx
 export default function Demo() {
@@ -56,7 +56,7 @@ export default function Demo() {
 
 ### Vertical orientation
 
-`vertical` 让 track 竖直，数值由下往上增长。`aria-orientation` 随之变为 `vertical`，调节改用上下方向键。
+`vertical` 让轨道竖直，数值由下往上增长。`aria-orientation` 随之变为 `vertical`，调节改用上下方向键。
 
 ```tsx
 import { useState } from 'react'
@@ -130,7 +130,7 @@ const volume = ref(30)
 
 ### input and change
 
-拖拽过程中 `input` 连续触发。松手时，如果数值确实变过，组件派发一次 `change`。用键盘时，每按一次调节键且值发生变化，都会先派发 `input`，再派发 `change`。点击 track 的空白处也算一次取值变更。
+拖拽过程中 `input` 连续触发。松手时，如果数值确实变过，组件派发一次 `change`。用键盘时，每按一次调节键且值发生变化，都会先派发 `input`，再派发 `change`。点击轨道的空白处也算一次取值变更。
 
 ```tsx
 import { useState } from 'react'
@@ -258,7 +258,7 @@ function reset() {
 
 ### CSS variables
 
-`--wui-slider-width` / `--wui-slider-vertical-height` 决定宿主的轴长，`--wui-slider-track-size` 是 track 厚度。thumb 的厚度和按压态的长边各由一个变量控制。
+`--wui-slider-width` / `--wui-slider-vertical-height` 决定宿主的轴长，`--wui-slider-track-size` 是轨道厚度。滑块的厚度和按压态的长边各由一个变量控制。
 
 ```tsx
 export default function Demo() {
@@ -336,33 +336,33 @@ export default function Demo() {
 
 ### Events
 
-| 名称     | 说明                                                           |
-| -------- | -------------------------------------------------------------- |
-| `input`  | 取值变化时派发；拖拽过程中连续派发。                           |
-| `change` | 一次取值变更结束时派发：拖拽松手、点击 track、每按一次调节键。 |
+| 名称     | 说明                                                         |
+| -------- | ------------------------------------------------------------ |
+| `input`  | 取值变化时派发；拖拽过程中连续派发。                         |
+| `change` | 一次取值变更结束时派发：拖拽松手、点击轨道、每按一次调节键。 |
 
 ### Methods
 
-| 名称      | 说明                                 |
-| --------- | ------------------------------------ |
-| `focus()` | 聚焦 `role="slider"` 的 track 元素。 |
-| `blur()`  | 让 track 元素失焦。                  |
+| 名称      | 说明                              |
+| --------- | --------------------------------- |
+| `focus()` | 聚焦 `role="slider"` 的轨道元素。 |
+| `blur()`  | 让轨道元素失焦。                  |
 
 ### 行为说明
 
 支持 ArrowLeft/Right/Up/Down、Home/End、PageUp/PageDown 键盘导航。
 
-组件用 pointer capture 处理鼠标、触控笔和触摸交互。宿主和接收触摸的 track 都声明 `touch-action: none`；拖拽激活期间还会阻止 `touchmove` 的默认滚动，避免 iOS Safari 在横向或纵向拖拽中接管手势。
+组件用指针捕获处理鼠标、触控笔和触摸交互。宿主和接收触摸的轨道都声明 `touch-action: none`；拖拽激活期间还会阻止 `touchmove` 的默认滚动，避免 iOS Safari 在横向或纵向拖拽中接管手势。
 
-thumb 静止时是正圆，直径取自 `--wui-slider-thumb-thickness`。按压或拖拽时，它沿 track 方向展开成胶囊，厚度不变，长边取自 `--wui-slider-thumb-length`。横向 slider 沿宽度方向展开，纵向 slider 沿高度方向展开。
+滑块静止时是正圆，直径取自 `--wui-slider-thumb-thickness`。按压或拖拽时，它沿轨道方向展开成胶囊，厚度不变，长边取自 `--wui-slider-thumb-length`。横向 slider 沿宽度方向展开，纵向 slider 沿高度方向展开。
 
 ### CSS Custom Properties
 
-| 名称                           | 说明                                 | 默认值  |
-| ------------------------------ | ------------------------------------ | ------- |
-| `--wui-slider-width`           | slider 宽度                          | `200px` |
-| `--wui-slider-vertical-height` | 垂直 slider 高度                     | `200px` |
-| `--wui-slider-track-size`      | track 厚度                           | `6px`   |
-| `--wui-slider-thumb-length`    | thumb 按压/拖拽态沿 track 方向的长边 | `24px`  |
-| `--wui-slider-thumb-thickness` | thumb 厚度（静止态为正圆直径）       | `20px`  |
-| `--wui-slider-marks-inset`     | marks 内缩                           | `0`     |
+| 名称                           | 说明                            | 默认值  |
+| ------------------------------ | ------------------------------- | ------- |
+| `--wui-slider-width`           | slider 宽度                     | `200px` |
+| `--wui-slider-vertical-height` | 垂直 slider 高度                | `200px` |
+| `--wui-slider-track-size`      | 轨道厚度                        | `6px`   |
+| `--wui-slider-thumb-length`    | 滑块按压/拖拽态沿轨道方向的长边 | `24px`  |
+| `--wui-slider-thumb-thickness` | 滑块厚度（静止态为正圆直径）    | `20px`  |
+| `--wui-slider-marks-inset`     | 刻度内缩                        | `0`     |

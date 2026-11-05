@@ -1,6 +1,6 @@
 # Segmented Trigger
 
-`<web-ui-segmented>` 的分段 button。`value` 是它代表的分段值；是否选中由父级 segmented 回写 `checked`；表单提交由父级负责。
+`<web-ui-segmented>` 的分段按钮。`value` 是它代表的分段值；是否选中由父级 segmented 回写 `checked`；表单提交由父级负责。
 
 点击或按 Enter / Space 派发 `change`。在组内该事件不冒泡，由父级统一派发一次组级事件；脱离组后它才冒泡，并传出组件边界。
 
@@ -8,7 +8,7 @@
 
 ### Basic
 
-`value` 决定哪个 trigger 是当前项，父级 segmented 按它回写 `checked`。默认插槽里的文本就是 button 内容。
+`value` 决定哪个触发器是当前项，父级 segmented 按它回写 `checked`。默认插槽里的文本就是按钮内容。
 
 ```tsx
 import { useState } from 'react'
@@ -44,7 +44,7 @@ const view = ref('day')
 
 ### Individual disabling
 
-`disabled` 加在 trigger 上只禁用这一项：它仍留在 track 里，但不可选中，键盘导航也会跳过它。加在 `<web-ui-segmented>` 上则禁用全部 trigger。
+`disabled` 加在触发器上只禁用这一项：它仍留在轨道里，但不可选中，键盘导航也会跳过它。加在 `<web-ui-segmented>` 上则禁用全部触发器。
 
 ```tsx
 import { useState } from 'react'
@@ -86,20 +86,20 @@ const view = ref('list')
 | ------------ | --------------------------------------------------------------------------------- | ---------------- | ------- |
 | `value`      | 分段值。                                                                          | `string`         | `''`    |
 | `checked`    | 当前是否选中；由父级 segmented 回写，单独设置不会通知父级。                       | `boolean`        | `false` |
-| `disabled`   | 单独禁用该 trigger。                                                              | `boolean`        | `false` |
+| `disabled`   | 单独禁用该触发器。                                                                | `boolean`        | `false` |
 | `aria-label` | 可访问名称；插槽中只有图标时必须提供，并转发到 shadow 内的 `role="option"` 元素。 | `string \| null` | `null`  |
 
 ### Events
 
-| 名称     | 说明                                                                                      |
-| -------- | ----------------------------------------------------------------------------------------- |
-| `change` | 点击或 Enter / Space 激活未选中的 trigger 时派发；已是当前项时不派发。事件不带 `detail`。 |
+| 名称     | 说明                                                                                   |
+| -------- | -------------------------------------------------------------------------------------- |
+| `change` | 点击或 Enter / Space 激活未选中的触发器时派发；已是当前项时不派发。事件不带 `detail`。 |
 
 ### Slots
 
-| 名称      | 说明                                                                 |
-| --------- | -------------------------------------------------------------------- |
-| `default` | button 内容；trigger 没有 label 属性，这段内容就是它的全部显示内容。 |
+| 名称      | 说明                                                         |
+| --------- | ------------------------------------------------------------ |
+| `default` | 按钮内容；触发器没有标签属性，这段内容就是它的全部显示内容。 |
 
 ### 行为说明
 
@@ -107,8 +107,8 @@ const view = ref('list')
 
 ### CSS Custom Properties
 
-| 名称                                | 说明             | 默认值                           |
-| ----------------------------------- | ---------------- | -------------------------------- |
-| `--wui-segmented-trigger-px`        | 水平内边距       | `12px`                           |
-| `--wui-segmented-trigger-bg-hover`  | Trigger 悬停背景 | `--wui-color-state-layer-hover`  |
-| `--wui-segmented-trigger-bg-active` | Trigger 按下背景 | `--wui-color-state-layer-active` |
+| 名称                                | 说明           | 默认值                           |
+| ----------------------------------- | -------------- | -------------------------------- |
+| `--wui-segmented-trigger-px`        | 水平内边距     | `12px`                           |
+| `--wui-segmented-trigger-bg-hover`  | 触发器悬停背景 | `--wui-color-state-layer-hover`  |
+| `--wui-segmented-trigger-bg-active` | 触发器按下背景 | `--wui-color-state-layer-active` |

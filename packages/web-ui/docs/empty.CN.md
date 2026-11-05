@@ -1,6 +1,6 @@
 # Empty
 
-empty state 占位：`title` 和 `description` 提供文案，`icon` / `action` 插槽补上图形和操作入口。除 `title` 与 `description` 之外没有其它属性，图形、文案、留白的尺寸和颜色都用 `--wui-empty-*` 变量设置。
+空状态占位：`title` 和 `description` 提供文案，`icon` / `action` 插槽补上图形和操作入口。除 `title` 与 `description` 之外没有其它属性，图形、文案、留白的尺寸和颜色都用 `--wui-empty-*` 变量设置。
 
 ## Samples
 
@@ -259,10 +259,10 @@ export default function Demo() {
 
 | 名称          | 说明                                |
 | ------------- | ----------------------------------- |
-| `icon`        | 图形区内容，替代默认 icon。         |
+| `icon`        | 图形区内容，替代默认图标。          |
 | `default`     | 标题内容，覆盖 `title` 属性。       |
 | `description` | 描述内容，覆盖 `description` 属性。 |
-| `action`      | 操作区内容，例如主 button。         |
+| `action`      | 操作区内容，例如主按钮。            |
 
 ### 行为说明
 
@@ -306,7 +306,7 @@ export default function Demo() {
 | `--wui-empty-icon-color`            | 图形颜色（实色，不含透明） | `--wui-color-text-secondary` |
 | `--wui-empty-icon-opacity`          | 图形整体深浅               | `0.75`                       |
 | `--wui-empty-content-width`         | 标题/描述/操作区最大宽度   | `480px`                      |
-| `--wui-empty-title-margin-top`      | icon 与标题之间的间距      | `12px`                       |
+| `--wui-empty-title-margin-top`      | 图标与标题之间的间距       | `12px`                       |
 | `--wui-empty-title-font-size`       | 标题字号                   | `16px`                       |
 | `--wui-empty-title-color`           | 标题颜色                   | `--wui-color-text`           |
 | `--wui-empty-description-font-size` | 描述字号                   | `14px`                       |

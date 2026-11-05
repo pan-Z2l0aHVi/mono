@@ -1,12 +1,12 @@
 # Autocomplete
 
-可输入并过滤候选的单值选择器。输入的文本按 `option` 的 label 过滤候选；选中后，组件把 label 回填到 input，并把该项的 value 暴露为只读的 `selected-value`。
+可输入并过滤候选的单值选择器。输入的文本按 `option` 的标签过滤候选；选中后，组件把标签回填到输入框，并把该项的值暴露为只读的 `selected-value`。
 
 ## Samples
 
 ### Basic
 
-`value` 是当前输入文本，由页面持有。键入时按 label 过滤候选（默认 `contains`）；没有匹配项时 panel 保持关闭。选中后，文本回填为该项 label，`selected-value` 给出该项的 value。
+`value` 是当前输入文本，由页面持有。键入时按标签过滤候选（默认 `contains`）；没有匹配项时面板保持关闭。选中后，文本回填为该项标签，`selected-value` 给出该项的值。
 
 ```tsx
 import { useState } from 'react'
@@ -73,7 +73,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 
 ### Filter modes
 
-`filter` 取 `contains`（默认）、`prefix` 或 `none`。前两者按 label 包含或前缀匹配；`none` 关闭过滤，候选始终全量列出。
+`filter` 取 `contains`（默认）、`prefix` 或 `none`。前两者按标签文本包含或前缀匹配；`none` 关闭过滤，候选始终全量列出。
 
 ```tsx
 import { useState } from 'react'
@@ -143,7 +143,7 @@ function onModeChange(event: WebUiEvent<WebUiSelect, 'change'>) {
 
 ### change and selected-value
 
-选中候选后，`selected-value` 是该项的 value；输入与任何 label 都不完全一致时，它清空。在 `input` 里读它要等一帧（`requestAnimationFrame`），在 `change` 里读到的才是当次提交的值。
+选中候选后，`selected-value` 是该项的值；输入与任何标签都不完全一致时，它清空。在 `input` 里读它要等一帧（`requestAnimationFrame`），在 `change` 里读到的才是当次提交的值。
 
 ```tsx
 import { useState } from 'react'
@@ -237,7 +237,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 
 ### Custom trigger
 
-把可编辑组件放进 `trigger` 插槽即可替换默认 input。多行 trigger 保留 Enter 换行语义，关闭 panel 改用 Escape 或 blur。`filter="none"` 让候选始终全量列出。`focus()` 落在 `web-ui-textarea` 内部的原生控件上。
+把可编辑组件放进 `trigger` 插槽即可替换默认输入框。多行触发器保留 Enter 换行语义，关闭面板改用 Escape 或失焦。`filter="none"` 让候选始终全量列出。`focus()` 落在 `web-ui-textarea` 内部的原生控件上。
 
 ```tsx
 import type { WebUiAutocomplete } from '@greypan/web-ui'
@@ -253,7 +253,7 @@ export default function Demo() {
           slot="trigger"
           rows={3}
           className="[--wui-textarea-width:20rem]"
-          placeholder="多行 trigger：Enter 换行，Escape 或失焦关闭 panel"
+          placeholder="多行触发器：Enter 换行，Escape 或失焦关闭面板"
         ></web-ui-textarea>
         <web-ui-option value="bug" label="缺陷"></web-ui-option>
         <web-ui-option value="feature" label="需求"></web-ui-option>
@@ -272,7 +272,7 @@ export default function Demo() {
         slot="trigger"
         :rows="3"
         class="[--wui-textarea-width:20rem]"
-        placeholder="多行 trigger：Enter 换行，Escape 或失焦关闭 panel"
+        placeholder="多行触发器：Enter 换行，Escape 或失焦关闭面板"
       ></web-ui-textarea>
       <web-ui-option value="bug" label="缺陷"></web-ui-option>
       <web-ui-option value="feature" label="需求"></web-ui-option>
@@ -289,9 +289,9 @@ const field = useTemplateRef<WebUiAutocomplete>('field')
 </script>
 ```
 
-### Allow custom values
+### Allow custom value
 
-开启 `allow-custom-value` 后，输入不在候选中的文本也能提交。按 Enter 时，输入原文作为 custom value 提交，panel 随之关闭，`change` 触发，`selected-value` 保持为空。过滤后没有候选时，panel 不展开，Enter 仍可提交。
+开启 `allow-custom-value` 后，输入不在候选中的文本也能提交。按 Enter 时，输入原文作为自定义值提交，面板随之关闭，`change` 触发，`selected-value` 保持为空。过滤后没有候选时，面板不展开，Enter 仍可提交。
 
 ```tsx
 import { useState } from 'react'
@@ -353,7 +353,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 
 ### Disabled and readonly
 
-`disabled` 与 `readonly` 都不接受输入，也不展开 panel；预填的 `value` 仍然照常显示。两者在必填校验上都按通过处理。
+`disabled` 与 `readonly` 都不接受输入，也不展开面板；预填的 `value` 仍然照常显示。两者在必填校验上都按通过处理。
 
 ```tsx
 const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
@@ -397,67 +397,67 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 ### Props
 
-| 名称                 | 说明                                                                     | 类型                  | 默认值           |
-| -------------------- | ------------------------------------------------------------------------ | --------------------- | ---------------- |
-| `placeholder`        | input 占位文本。                                                         | `string`              | `''`             |
-| `borderless`         | ghost 形态：移除边框、背景、背景模糊与阴影，保留 padding 与 focus ring。 | `boolean`             | `false`          |
-| `disabled`           | 禁用态，不可输入、不可展开下拉。                                         | `boolean`             | `false`          |
-| `readonly`           | 只读态：不可输入、不可展开下拉。                                         | `boolean`             | `false`          |
-| `required`           | 必填校验。                                                               | `boolean`             | `false`          |
-| `portal`             | 在主题的 overlay 容器中渲染下拉 panel。                                  | `boolean`             | `false`          |
-| `placement`          | 下拉 panel 位置，默认从触发器左下角向下展开。                            | `Placement`           | `'bottom-start'` |
-| `no-scroll-lock`     | 打开时不锁定页面滚动。                                                   | `boolean`             | `false`          |
-| `allow-custom-value` | 允许 Enter 提交不在候选中的输入原文。                                    | `boolean`             | `false`          |
-| `overlayContainer`   | 显式指定 panel 挂载的 overlay 容器（property，不是 attribute）。         | `OverlayContainer`    | —                |
-| `name`               | 表单字段名。                                                             | `string`              | `''`             |
-| `aria-label`         | 无障碍名称。                                                             | `string \| null`      | `null`           |
-| `aria-labelledby`    | 无障碍名称引用。                                                         | `string \| undefined` | —                |
-| `filter`             | 候选过滤模式：`contains`（默认）、`prefix` 或 `none`。                   | `FilterMode`          | `'contains'`     |
-| `value`              | 当前输入文本，也是表单提交值。                                           | `string`              | `''`             |
+| 名称                 | 说明                                                             | 类型                  | 默认值           |
+| -------------------- | ---------------------------------------------------------------- | --------------------- | ---------------- |
+| `placeholder`        | 输入框占位文本。                                                 | `string`              | `''`             |
+| `borderless`         | ghost 形态：移除边框、背景、背景模糊与阴影，保留内边距与焦点环。 | `boolean`             | `false`          |
+| `disabled`           | 禁用态，不可输入、不可展开下拉。                                 | `boolean`             | `false`          |
+| `readonly`           | 只读态：不可输入、不可展开下拉。                                 | `boolean`             | `false`          |
+| `required`           | 必填校验。                                                       | `boolean`             | `false`          |
+| `portal`             | 在主题的 overlay 容器中渲染下拉面板。                            | `boolean`             | `false`          |
+| `placement`          | 下拉面板位置，默认从触发器左下角向下展开。                       | `Placement`           | `'bottom-start'` |
+| `no-scroll-lock`     | 打开时不锁定页面滚动。                                           | `boolean`             | `false`          |
+| `allow-custom-value` | 允许 Enter 提交不在候选中的输入原文。                            | `boolean`             | `false`          |
+| `overlayContainer`   | 显式指定面板挂载的 overlay 容器（property，不是 attribute）。    | `OverlayContainer`    | —                |
+| `name`               | 表单字段名。                                                     | `string`              | `''`             |
+| `aria-label`         | 无障碍名称。                                                     | `string \| null`      | `null`           |
+| `aria-labelledby`    | 无障碍名称引用。                                                 | `string \| undefined` | —                |
+| `filter`             | 候选过滤模式：`contains`（默认）、`prefix` 或 `none`。           | `FilterMode`          | `'contains'`     |
+| `value`              | 当前输入文本，也是表单提交值。                                   | `string`              | `''`             |
 
 ### Events
 
-| 名称          | 说明                                        |
-| ------------- | ------------------------------------------- |
-| `input`       | 输入时触发，`value` 为当前文本。            |
-| `change`      | 选中候选或提交 custom value 时触发。        |
-| `focus`       | trigger 获得焦点时触发。                    |
-| `blur`        | trigger 失去焦点时触发。                    |
-| `open-change` | 下拉 panel 开合，`detail.open` 为当前状态。 |
+| 名称          | 说明                                     |
+| ------------- | ---------------------------------------- |
+| `input`       | 输入时触发，`value` 为当前文本。         |
+| `change`      | 选中候选或提交自定义值时触发。           |
+| `focus`       | 触发器获得焦点时触发。                   |
+| `blur`        | 触发器失去焦点时触发。                   |
+| `open-change` | 下拉面板开合，`detail.open` 为当前状态。 |
 
 ### Slots
 
 | 名称      | 说明                                 |
 | --------- | ------------------------------------ |
-| `trigger` | 自定义触发区域内容，替换默认 input。 |
+| `trigger` | 自定义触发区域内容，替换默认输入框。 |
 | `default` | 投影 `<web-ui-option>` 候选。        |
 
 ### Methods
 
-| 名称      | 说明                                                                                                                                                   |
-| --------- | ------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `focus()` | 聚焦当前 trigger：`web-ui-input` / `web-ui-textarea` trigger 把焦点交给内部原生控件，没有自己的 focus 重定向的自定义 trigger 则聚焦 trigger 元素自身。 |
-| `blur()`  | 让当前 trigger 失焦。                                                                                                                                  |
+| 名称      | 说明                                                                                                                                      |
+| --------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
+| `focus()` | 聚焦当前触发器：`web-ui-input` / `web-ui-textarea` 触发器把焦点交给内部原生控件，没有自己的焦点重定向的自定义触发器则聚焦触发器元素自身。 |
+| `blur()`  | 让当前触发器失焦。                                                                                                                        |
 
 ### 行为说明
 
-键入时按 label 过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。
+键入时按标签过滤候选（`contains` 或 `prefix`，`none` 关闭过滤）。
 
-没有匹配项时下拉 panel 保持关闭；删除字符后重新出现匹配项时，panel 会再次打开。
+没有匹配项时下拉面板保持关闭；删除字符后重新出现匹配项时，面板会再次打开。
 
-选择 option 时，文本回填为该项 label，`selected-value` 暴露该项的 value。`change` 在选择提交时触发。
+选择选项时，文本回填为该项的标签，`selected-value` 暴露该项的值。`change` 在选择提交时触发。
 
 支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航。
 
-启用 `portal` 的 panel 在创建时读取宿主上的这些变量值；更新宿主后需重新打开 panel 才会生效。
+启用 `portal` 的面板在创建时读取宿主上的这些变量值；更新宿主后需重新打开面板才会生效。
 
 ### Trigger
 
-默认 trigger 是一个 `web-ui-input`。
+默认触发器是一个 `web-ui-input`。
 
-把任意可编辑组件放进 `trigger` 插槽即可替换它。使用自定义 trigger 时，shadow DOM 内的 trigger 包装 `<div>` 带上 `data-custom-trigger`，overlay 始终以 trigger 元素为锚点；宿主自身不带这个属性，外部样式选不到它。
+把任意可编辑组件放进 `trigger` 插槽即可替换它。使用自定义触发器时，shadow DOM 内的触发器包装 `<div>` 带上 `data-custom-trigger`，overlay 始终以触发器元素为锚点；宿主自身不带这个属性，外部样式选不到它。
 
-组件的 `focus()` / `blur()` 委托到当前生效的 trigger：`web-ui-input` 与 `web-ui-textarea` 会把焦点落到内部原生控件；自定义 trigger 没有自己的 focus 重定向时，聚焦 trigger 元素自身。
+组件的 `focus()` / `blur()` 委托到当前生效的触发器：`web-ui-input` 与 `web-ui-textarea` 会把焦点落到内部原生控件；自定义触发器没有自己的焦点重定向时，聚焦触发器元素自身。
 
 ```html
 <web-ui-autocomplete placeholder="描述问题">
@@ -467,23 +467,23 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 </web-ui-autocomplete>
 ```
 
-自定义 trigger 与默认 trigger 共用同一套规则：用字符串 `value` 承载文本，可聚焦，并派发组件委托监听的事件（`input`、`click`、`focus`、`blur`）。
+自定义触发器与默认触发器共用同一套规则：用字符串 `value` 承载文本，可聚焦，并派发组件委托监听的事件（`input`、`click`、`focus`、`blur`）。
 
 `web-ui-input` 与 `web-ui-textarea` 开箱即用；自定义元素只要暴露字符串 `value` property 即可接入。
 
-顺序焦点落在 trigger 自身，所以自定义 trigger 必须可聚焦，键盘用户才能到达 combobox。
+顺序焦点落在触发器自身，所以自定义触发器必须可聚焦，键盘用户才能到达 combobox。
 
-多行 trigger（可编辑元素为 `<textarea>`）保留 Enter 换行语义：Enter 不会选中高亮项，也不会提交 custom value；关闭 panel 用 Escape 或 blur。选择 option 仍会把该项 label 回写到 trigger。
+多行触发器（可编辑元素为 `<textarea>`）保留 Enter 换行语义：Enter 不会选中高亮项，也不会提交自定义值；关闭面板用 Escape 或失焦。选择选项仍会把该项标签回写到触发器。
 
-单行自定义 trigger 保持默认的 Enter 语义。
+单行自定义触发器保持默认的 Enter 语义。
 
-panel 打开时，ArrowUp/ArrowDown 适用同样的例外：方向键移动文本光标，不导航候选，此时键盘无法导航 option，请用指针点击选择。panel 关闭时，ArrowDown/ArrowUp 仍可打开 panel。
+面板打开时，ArrowUp/ArrowDown 适用同样的例外：方向键移动文本光标，不导航候选，此时键盘无法导航选项，请用指针点击选择。面板关闭时，ArrowDown/ArrowUp 仍可打开面板。
 
-启用 `allow-custom-value` 后，无匹配且无活动 option 时，Enter 会把当前输入原文作为 custom value 提交并关闭 panel；`change` 会触发，`selected-value` 保持为空。
+启用 `allow-custom-value` 后，无匹配且无活动选项时，Enter 会把当前输入原文作为自定义值提交并关闭面板；`change` 会触发，`selected-value` 保持为空。
 
-过滤后没有任何候选时，panel 不展开（已展开则收起）；此时 Enter 仍使用同一条提交路径。
+过滤后没有任何候选时，面板不展开（已展开则收起）；此时 Enter 仍使用同一条提交路径。
 
-组件不会自动创建 option，也不会 trim 原文。命中禁用 option 的文本不会绕过禁用语义，也不会派生为已选 option。
+组件不会自动创建选项，也不会去掉原文的首尾空白。命中禁用选项的文本不会绕过禁用语义，也不会派生为已选选项。
 
 ### CSS Custom Properties
 

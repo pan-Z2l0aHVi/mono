@@ -6,7 +6,7 @@
 
 ### Basic
 
-`value` 由页面持有。用户选中某项后，`change` 会把 `event.currentTarget.value` 交回来；把它写回 `value`，trigger 的文本就会更新。不写 `value` 时，trigger 显示 `placeholder`。程序写入 `value` 不派发事件，因此「清除」只是改变页面状态。
+`value` 由页面持有。用户选中某项后，`change` 会把 `event.currentTarget.value` 交回来；把它写回 `value`，触发器的文本就会更新。不写 `value` 时，触发器显示 `placeholder`。程序写入 `value` 不派发事件，因此「清除」只是改变页面状态。
 
 `disabled` 让整个控件不再响应交互。
 
@@ -72,7 +72,7 @@ const framework = ref('vue')
 
 ### Option decoration
 
-`prefix` / `suffix` 插槽在 label 两侧放 icon 与说明。`disabled` 的项留在列表里，但无法选中，键盘导航也会跳过它。
+`prefix` / `suffix` 插槽在标签两侧放图标与说明。`disabled` 的项留在列表里，但无法选中，键盘导航也会跳过它。
 
 ```tsx
 import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
@@ -128,7 +128,7 @@ import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
 
 ### Custom trigger
 
-`trigger` 插槽替换默认的 label 文本；箭头与开合行为仍由组件提供。组件不会改写插槽内容的字体、颜色或尺寸。插槽内容由页面状态驱动，所以会跟着选择变化。
+`trigger` 插槽替换默认的标签文本；箭头与开合行为仍由组件提供。组件不会改写插槽内容的字体、颜色或尺寸。插槽内容由页面状态驱动，所以会跟着选择变化。
 
 ```tsx
 import { lucideGlobe } from '@greypan/web-ui/icons'
@@ -189,7 +189,7 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-select
-        placeholder="打开或关闭 panel"
+        placeholder="打开或关闭面板"
         onopen-change={event => {
           setCount(value => value + 1)
           setLast(event.detail.open ? 'true' : 'false')
@@ -209,7 +209,7 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-select placeholder="打开或关闭 panel" @open-change="onOpenChange">
+    <web-ui-select placeholder="打开或关闭面板" @open-change="onOpenChange">
       <web-ui-option value="a" label="选项 A"></web-ui-option>
       <web-ui-option value="b" label="选项 B"></web-ui-option>
     </web-ui-select>
@@ -293,7 +293,7 @@ function pick(value: string) {
 
 ### Form value
 
-`name` 让选中值以该字段名进入 `FormData`。值为空时，`required` 上报 `valueMissing`，原生提交会被拦下。`form.reset()` 把值退回挂载时的初值，trigger 也随之回到 `placeholder`。
+`name` 让选中值以该字段名进入 `FormData`。值为空时，`required` 上报 `valueMissing`，原生提交会被拦下。`form.reset()` 把值退回挂载时的初值，触发器也随之回到 `placeholder`。
 
 ```tsx
 import { useRef, useState } from 'react'
@@ -375,7 +375,7 @@ function reset() {
 
 ### Portal rendering
 
-默认情况下，祖先元素的 `overflow` 会裁掉 panel。`portal` 把 panel 渲染到主题的 overlay 容器，容器就裁不到它。
+默认情况下，祖先元素的 `overflow` 会裁掉面板。`portal` 把面板渲染到主题的 overlay 容器，容器就裁不到它。
 
 ```tsx
 export default function Demo() {
@@ -431,45 +431,45 @@ export default function Demo() {
 | `trigger`          | 触发器外观：`label` 保留选中文本与箭头，`icon` 保留箭头并把 `trigger` 插槽作为左侧图标。 | `'label' \| 'icon'` | `'label'`        |
 | `disabled`         | 禁用状态。                                                                               | `boolean`           | `false`          |
 | `required`         | 必填校验。                                                                               | `boolean`           | `false`          |
-| `portal`           | 在主题的 overlay 容器中渲染下拉 panel。                                                  | `boolean`           | `false`          |
-| `placement`        | 下拉 panel 位置，默认从触发器左下角向下展开。                                            | `Placement`         | `'bottom-start'` |
+| `portal`           | 在主题的 overlay 容器中渲染下拉面板。                                                    | `boolean`           | `false`          |
+| `placement`        | 下拉面板位置，默认从触发器左下角向下展开。                                               | `Placement`         | `'bottom-start'` |
 | `no-scroll-lock`   | 打开时不锁定页面滚动。                                                                   | `boolean`           | `false`          |
-| `overlayContainer` | 显式指定 panel 挂载的 overlay 容器（property）。                                         | `OverlayContainer`  | —                |
+| `overlayContainer` | 显式指定面板挂载的 overlay 容器（property）。                                            | `OverlayContainer`  | —                |
 | `name`             | 表单字段名。                                                                             | `string`            | `''`             |
 | `aria-label`       | combobox 的可访问名称。                                                                  | `string \| null`    | `null`           |
 | `value`            | 选中值。                                                                                 | `string`            | `''`             |
 
 ### Events
 
-| 名称          | 说明                                        |
-| ------------- | ------------------------------------------- |
-| `input`       | 用户选中某项后触发，`value` 为新值。        |
-| `change`      | 与 `input` 成对派发，一次选择各一次。       |
-| `open-change` | 下拉 panel 开合，`detail.open` 为当前状态。 |
+| 名称          | 说明                                     |
+| ------------- | ---------------------------------------- |
+| `input`       | 用户选中某项后触发，`value` 为新值。     |
+| `change`      | 与 `input` 成对派发，一次选择各一次。    |
+| `open-change` | 下拉面板开合，`detail.open` 为当前状态。 |
 
 ### Slots
 
-| 名称      | 说明                                                                                  |
-| --------- | ------------------------------------------------------------------------------------- |
-| `trigger` | 自定义触发区域内容，替换默认 label；`trigger="icon"` 下它是左侧图标区，箭头仍在右侧。 |
-| `default` | 投影 `<web-ui-option>` 候选。                                                         |
+| 名称      | 说明                                                                                |
+| --------- | ----------------------------------------------------------------------------------- |
+| `trigger` | 自定义触发区域内容，替换默认标签；`trigger="icon"` 下它是左侧图标区，箭头仍在右侧。 |
+| `default` | 投影 `<web-ui-option>` 候选。                                                       |
 
 ### 行为说明
 
-panel 使用 `role="listbox"`，候选项使用 `role="option"`。当前非空 `value` 对应的 option 设为 `aria-selected="true"`，`aria-disabled` 反映禁用状态。
+面板使用 `role="listbox"`，候选项使用 `role="option"`。当前非空 `value` 对应的选项设为 `aria-selected="true"`，`aria-disabled` 反映禁用状态。
 
-非 Portal 模式下，键盘导航时 `aria-activedescendant` 指向当前 option；Portal 模式下不设置此属性。
+非 Portal 模式下，键盘导航时 `aria-activedescendant` 指向当前选项；Portal 模式下不设置此属性。
 
-关闭态的 Space / Enter / ArrowDown / ArrowUp 打开 panel；展开态的 ArrowDown / ArrowUp、Home / End 与 typeahead 移动激活项，Enter / Space 选择并关闭，Escape 关闭。
+关闭态的 Space / Enter / ArrowDown / ArrowUp 打开面板；展开态的 ArrowDown / ArrowUp、Home / End 与 typeahead 移动激活项，Enter / Space 选择并关闭，Escape 关闭。
 
-启用 `portal` 的 panel 在创建时读取宿主上的这些变量值；更新宿主后需重新打开 panel 才会生效。
+启用 `portal` 的面板在创建时读取宿主上的这些变量值；更新宿主后需重新打开面板才会生效。
 
 ### CSS Custom Properties
 
-| 名称                      | 说明                  | 默认值                             |
-| ------------------------- | --------------------- | ---------------------------------- |
-| `--wui-select-max-width`  | 下拉框最大宽度        | `500px`                            |
-| `--wui-select-max-height` | 下拉滚动区域最大高度  | `200px`                            |
-| `--wui-overlay-min-width` | 下拉框最小宽度        | `200px`                            |
-| `--wui-select-bg-hover`   | Trigger 悬停背景      | `--wui-color-surface-glass-hover`  |
-| `--wui-select-bg-active`  | Trigger 按下/打开背景 | `--wui-color-surface-glass-active` |
+| 名称                      | 说明                 | 默认值                             |
+| ------------------------- | -------------------- | ---------------------------------- |
+| `--wui-select-max-width`  | 下拉框最大宽度       | `500px`                            |
+| `--wui-select-max-height` | 下拉滚动区域最大高度 | `200px`                            |
+| `--wui-overlay-min-width` | 下拉框最小宽度       | `200px`                            |
+| `--wui-select-bg-hover`   | 触发器悬停背景       | `--wui-color-surface-glass-hover`  |
+| `--wui-select-bg-active`  | 触发器按下/打开背景  | `--wui-color-surface-glass-active` |
