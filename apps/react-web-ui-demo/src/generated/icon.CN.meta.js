@@ -55,7 +55,7 @@ const meta = [
       { label: 'td', content: "<code>icon</code>" },
       { label: 'td', content: "Iconify 数据对象；只能通过 property 传入，不接受图标名字。" },
       { label: 'td', content: "<code>IconifyIcon</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -82,7 +82,7 @@ const meta = [
       { label: 'td', content: "<code>color</code>" },
       { label: 'td', content: "图标颜色；留空时先读 <code>--wui-icon-color</code>，再读文字颜色。" },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     }
     ]

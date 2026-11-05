@@ -103,7 +103,7 @@ const meta = [
       { label: 'td', content: "<code>ariaLabels</code>" },
       { label: 'td', content: "内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖（property）；未提供的 key 使用内置英文文案，<code>no-sidebar</code> 下侧栏相关 key 不参与渲染。" },
       { label: 'td', content: "<code>LayoutAriaLabels</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -148,7 +148,7 @@ const meta = [
       { label: 'td', content: "<code>sidebar-min-width</code>" },
       { label: 'td', content: "拖拽调整的下限（px）；默认为 <code>collapsed-width</code>。" },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -157,7 +157,7 @@ const meta = [
       { label: 'td', content: "<code>sidebar-max-width</code>" },
       { label: 'td', content: "拖拽调整的上限（px）；限制在视口一半以内，内置上限优先。" },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     }
     ]

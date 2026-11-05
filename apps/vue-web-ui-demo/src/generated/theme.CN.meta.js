@@ -66,7 +66,7 @@ const meta = [
       { label: 'td', content: "<code>appearance</code>" },
       { label: 'td', content: "配色方案：<code>light</code>、<code>dark</code> 或 <code>system</code>。" },
       { label: 'td', content: "<code>ThemeAppearance | undefined</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {

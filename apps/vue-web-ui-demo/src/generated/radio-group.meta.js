@@ -97,7 +97,7 @@ const meta = [
       { label: 'td', content: "<code>aria-labelledby</code>" },
       { label: 'td', content: "ID of the element that provides the group's accessible name." },
       { label: 'td', content: "<code>string | undefined</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     }
     ]

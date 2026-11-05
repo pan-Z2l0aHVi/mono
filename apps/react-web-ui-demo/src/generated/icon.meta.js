@@ -55,7 +55,7 @@ const meta = [
       { label: 'td', content: "<code>icon</code>" },
       { label: 'td', content: "Iconify data object; passed only as a property, and an icon name is not accepted." },
       { label: 'td', content: "<code>IconifyIcon</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -82,7 +82,7 @@ const meta = [
       { label: 'td', content: "<code>color</code>" },
       { label: 'td', content: "Icon color; when empty, <code>--wui-icon-color</code> is read first, then the text color." },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     }
     ]

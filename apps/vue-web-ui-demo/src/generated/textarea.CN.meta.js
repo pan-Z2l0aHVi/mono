@@ -157,7 +157,7 @@ const meta = [
       { label: 'td', content: "<code>minlength</code>" },
       { label: 'td', content: "最小长度校验。" },
       { label: 'td', content: "<code>number | undefined</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -166,7 +166,7 @@ const meta = [
       { label: 'td', content: "<code>maxlength</code>" },
       { label: 'td', content: "最大长度校验。" },
       { label: 'td', content: "<code>number | undefined</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -202,7 +202,7 @@ const meta = [
       { label: 'td', content: "<code>aria-labelledby</code>" },
       { label: 'td', content: "无障碍 label 引用。" },
       { label: 'td', content: "<code>string | undefined</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {

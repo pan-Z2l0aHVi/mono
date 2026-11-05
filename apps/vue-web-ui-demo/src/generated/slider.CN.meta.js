@@ -95,7 +95,7 @@ const meta = [
       { label: 'td', content: "<code>aria-label</code>" },
       { label: 'td', content: "slider 的无障碍名称。" },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -104,7 +104,7 @@ const meta = [
       { label: 'td', content: "<code>aria-labelledby</code>" },
       { label: 'td', content: "指向提供 slider 无障碍名称的一个或多个元素 ID。" },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {

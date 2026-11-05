@@ -131,7 +131,7 @@ const meta = [
       { label: 'td', content: "<code>overlayContainer</code>" },
       { label: 'td', content: "显式指定 panel 挂载的 overlay 容器（property，不是 attribute）。" },
       { label: 'td', content: "<code>OverlayContainer</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -158,7 +158,7 @@ const meta = [
       { label: 'td', content: "<code>aria-labelledby</code>" },
       { label: 'td', content: "无障碍名称引用。" },
       { label: 'td', content: "<code>string | undefined</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {

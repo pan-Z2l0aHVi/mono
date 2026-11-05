@@ -148,7 +148,7 @@ const meta = [
       { label: 'td', content: "<code>aria-label</code>" },
       { label: 'td', content: "输入框的无障碍名称。" },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -157,7 +157,7 @@ const meta = [
       { label: 'td', content: "<code>aria-labelledby</code>" },
       { label: 'td', content: "无障碍名称引用，用于命名原生 input。" },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {

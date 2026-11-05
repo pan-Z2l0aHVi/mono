@@ -56,7 +56,7 @@ const meta = [
       { label: 'td', content: "<code>images</code>" },
       { label: 'td', content: "图片列表，至少一项；每项为 <code>{ src, alt? }</code>。" },
       { label: 'td', content: "<code>ImagePreviewItem[]</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -83,7 +83,7 @@ const meta = [
       { label: 'td', content: "<code>target</code>" },
       { label: 'td', content: "用于解析最近主题的 overlay 容器的触发元素。" },
       { label: 'td', content: "<code>Element</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -92,7 +92,7 @@ const meta = [
       { label: 'td', content: "<code>container</code>" },
       { label: 'td', content: "显式挂载容器，优先级高于主题作用域。" },
       { label: 'td', content: "<code>HTMLElement</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -164,7 +164,7 @@ const meta = [
       { label: 'td', content: "<code>ariaLabels</code>" },
       { label: 'td', content: "按组覆盖内置无障碍名称（关闭 / 前后切换 / 缩放 / 重置）；未提供的 key 回退到内置英文文案。" },
       { label: 'td', content: "<code>ImagePreviewAriaLabels</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     }
     ]

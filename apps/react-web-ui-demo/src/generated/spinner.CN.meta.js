@@ -133,7 +133,7 @@ const meta = [
       { label: 'td', content: "<code>duration</code>" },
       { label: 'td', content: "大于 <code>0</code> 时到期自动 <code>hide()</code>；不传或 <code>0</code> 时实例一直存在。" },
       { label: 'td', content: "<code>number</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     }
     ]

@@ -97,7 +97,7 @@ const meta = [
       { label: 'td', content: "<code>aria-labelledby</code>" },
       { label: 'td', content: "引用提供组无障碍名称的元素 ID。" },
       { label: 'td', content: "<code>string | undefined</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     }
     ]
