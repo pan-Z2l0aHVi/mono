@@ -480,7 +480,7 @@ describe('chainShape 归一化口径', () => {
     expect(chainShape(a)).not.toBe(chainShape(b))
   })
 
-  it('超过旧实现 50 层上限的深链仍坍缩到底（只有真正链式变体才相等）', () => {
+  it('60 层深链仍坍缩到底（只有真正链式变体才相等）', () => {
     // 深链必须一路坍缩到底：深链若在中途停住，两条只在深层不同的链会形状相同——无声的假绿。
     // 这里取 60 层。
     const build = (tail: string, depth: number) => {
