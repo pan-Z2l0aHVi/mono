@@ -19,9 +19,11 @@
 
 Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：绿色 CI 不证明 review 完成，模型结论也不证明人工独立 review 已完成。
 
-**门禁形态**：约定式门禁，不改 GitHub 分支保护。`reviewed` 且 `Block > 0`、以及 `error` 让这道门变红；`unreviewed`、`stale`、`not_applicable` 保持绿色。`Block` 数量、状态、故障码与缺失配置名一起写进 PR 上同一条持久评论。合并准入仍由人和仓库的 PR review 纪律决定。
+**门禁形态**：约定式门禁，不改 GitHub 分支保护。`reviewed` 且 `Block > 0`、`error` 与 `unreviewed` 让这道门变红；`stale`、`not_applicable` 保持绿色。绿色因此只表示「这次运行有结论可读」，不表示结论是「没问题」。`Block` 数量、状态、故障码与缺失配置名一起写进 PR 上同一条持久评论。合并准入仍由人和仓库的 PR review 纪律决定。
 
-**状态口径**：`error` 只表示配置或调用故障，故障码为 `config_missing`、`model_failed`、`artifact_missing` 之一；模型腿正常结束却没产出结论是 `unreviewed`，输出不合 schema 也归 `unreviewed`。`continue-on-error` 只让判定脚本有机会落结论，模型腿的 `steps.<id>.outcome` 仍传给判定脚本，故障不会被掩成「未审查」。review job 被整体跳过时门记 `not_applicable`。
+**状态口径**：`error` 只表示配置或调用故障，故障码为 `config_missing`、`model_failed`、`artifact_missing` 之一；模型腿跑完却没产出可用结论是 `unreviewed`，故障码 `unusable_output`，输出不合 schema 也归这一档。两档都让门变红：`unreviewed` 曾经保持绿色，实测中一次空 `summary` 就把整份 findings 丢掉而 PR 上只留一个绿勾，因此「模型没给出可用结论」与「结论是 Block 0」必须用颜色分开，处置是重跑一次，重复出现说明输出契约坏了。`continue-on-error` 只让判定脚本有机会落结论，模型腿的 `steps.<id>.outcome` 仍传给判定脚本，故障不会被掩成「未审查」。review job 被整体跳过时门记 `not_applicable`。
+
+**输出校验口径**：`parseReviewFindings` 只把 findings 的结构当致命错误（非法 JSON、缺 `findings`、未知档位、未知字段、空 `problem` 与非法行号）。`summary` 只是评论顶部一行摘要，模型给空串或没给时结论照常成立，`validate` 在日志里留一行 `review output carries no summary` 并照常写 `reviewed`；prompt 的「输出」段明确要求 1–2 句摘要，但校验不拿装饰性字段当阻断条件——一次空 `summary` 不该让整份 findings 作废。
 
 **权限分腿**：模型只在 PR 验证的只读 job 里运行；写回（评论、应用并推送 patch）在由 CI 完成事件触发的独立 workflow 里进行，那条 workflow 一次都不调用模型。这条划分是 PR 验证只读不变量成立的前提。该 workflow 显示名为 `Codex Review Report`（文件 `codex-review-report.yml`）：它的产物是一份关于既有结论的报告，不改判结论，所以不叫 publish。
 
@@ -56,7 +58,7 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 **自动修**：`check` job 失败且 `CODEX_AUTOFIX_ENABLED` 为 `true` 时，模型在 workspace 沙箱里产出一份候选 patch，作为 artifact 交给特权腿；只有它校验通过才提交并直推 PR 分支。patch 只能修改已入库文件，CI 定义、依赖清单、生成物、agent 指令与凭证路径一律整份拒绝。已包含自动修提交的 head 不再规划第二次。开关无值即两条腿都不跑，主审查链路不依赖它。规划腿是尽力而为的旁路，保留 job 级 `continue-on-error`，其失败不让 PR 变红；这与审查腿「故障即红」不矛盾：门只看审查结论，自动修的失败由 artifact 与日志呈现。
 
-**触发收敛**：写回腿只处理同源仓库的 PR run，排除已取消的 run 与版本分支；没有审查 artifact 时跳过发评论，不制造无意义失败——但跳过必须留痕：`Explain the skipped report` 在 Summary 与 notice 里写明原因，并回查触发 run 的 artifact 列表，把「没有可写回的结论」和「写回腿没取到已有产物」分开。只读探测是尽力而为，失败不阻止结论发布，写权限不足由发布步骤的 403 清单报告。门仍不设为分支必需检查。
+**触发收敛**：写回腿只处理同源仓库的 PR run，排除已取消的 run 与版本分支；没有审查 artifact 时跳过发评论，不制造无意义失败——但跳过必须留痕：`Explain the skipped report` 在 Summary 与 notice 里写明原因，并回查触发 run 的 artifact 列表，把「没有可写回的结论」和「写回腿没取到已有产物」分开。同一道留痕也覆盖「head 不属于任何打开的 PR」：这一步的守卫按 `resolve-pull` 是否成功取，不按有没有解析到 PR，否则解析不到 PR 时整条腿一步都不跑、静默变绿。只读探测是尽力而为，失败不阻止结论发布，写权限不足由结论步骤的 403 清单报告。门仍不设为分支必需检查。
 
 **结论产物跨 run 传递**：审查腿上传的 `codex-review-findings` artifact 由写回腿下载，结论复用也会下载历史 run 的同名 artifact。`actions/download-artifact@v7` 只有在**显式给出 `github-token: ${{ github.token }}`** 时才会启用 `repository` / `run-id` 跨 run 查找（上游 `src/download-artifact.ts` 节选：`if (inputs.token) { options.findBy = { workflowRunId: inputs.runID } }`）；缺 token 会静默退化成「只查当前 workflow run」，写回腿因此报 `Artifact not found for name: codex-review-findings` 并跳过发评论。三处跨 run 下载（写回腿两条、`ci.yml` 的复用一条）都必须带 token，由拓扑断言钉住；同 run 的下载不需要。上传用 `upload-artifact@v6`、下载用 `download-artifact@v7` 是各自独立的主版本，二者都基于 v4+ artifact 后端，互相兼容，此次故障与版本差无关。另：写回腿是 `workflow_run`，GitHub 只取**默认分支**上的 workflow 文件，所以本文件的修改必须合入 main 后才生效，PR 自己那轮 CI 无法验证写回修复。
 
@@ -107,12 +109,13 @@ Error: /usr/bin/sudo exited with code 1
 2. PR 上出现 `codex-review-conclusion` 持久评论，`status=reviewed`。
 3. 清掉任一变量后重跑：`codex-gate` 变红，日志只列缺失变量名，评论标 `error` 与 `config_missing`。
 4. 改 `CODEX_REVIEW_MODEL` 后同 head 重跑：旧结论不复用，模型重新调用。
-5. 写回腿成功发出或更新结论评论；workflow_run 列表里没有无产物的失败 run。没有产物的 run 仍为绿色，但 Summary 必须写明「未发布」与原因。
+5. 写回腿成功发出或更新结论评论；workflow_run 列表里没有无产物的失败 run。没有产物的 run 仍为绿色，但 Summary 必须写明「未写回」与原因。
 6. 拓扑断言与脚本单测全绿。
 7. `review-scope.json` 记有 `excluded_pathspecs` 与 `empty_diff`，审查 diff 里没有 `**/generated/**` 路径；大 PR 不因 `ENOBUFS` 让 `prepare` 失败。（**合入 main 后的下一个 PR** 上核对：可信脚本取自 PR base，修复自己的 CI 仍跑旧脚本。）
 8. 两条模型腿的 `Set up job` 日志出现 `Image: ubuntu-24.04`，且 `Run codex exec` 不再出现 `Could not restrict access to /run/dbus/system_bus_socket`。以审查腿为准，满足第 1 项（有真实模型结论）后再核对此项；autofix 腿只在 `CODEX_AUTOFIX_ENABLED=true` 且 `check` 失败时运行，默认关闭，不必为验收专门打开。
 9. 写回腿 `Download review findings` 不再报 `Artifact not found`，且 `Post conclusion comment` 未被跳过（这两步是可观测的修复点；评论内容本身按第 2 / 5 项核对）。写回腿取默认分支版本，**必须在修复合入 main 后的下一个 PR** 上核对，PR #516 自身无法验证。autofix patch 那处下载同理，但 `CODEX_AUTOFIX_ENABLED=false` 时整条腿被跳过，只能在显式打开开关且 `check` 失败的 run 上验证。
 10. 写回腿改名为 `Codex Review Report` 后：Actions 列表显示新名字，job 为 `report-conclusion`（`Report review conclusion`）；无产物的 run 在 Summary 里有跳过原因与 notice；写回成功时 Summary 记 `已创建/已更新结论评论 #<id>`。「有产物却下载失败」的判红分支只能靠改坏 `run-id` 或断网触发，自然 run 上不必刻意制造，留作未实测项。
+11. 输出校验口径与红色边界：模型给出 `summary: ""` 而 findings 合法时，`Record review conclusion` 照常写 `reviewed`、PR 评论有档位与发现但没有摘要行，`Codex review gate` 的颜色只由 `Block` 决定；`review-meta.json` 为 `unreviewed` 时 gate 必须红，日志为 `Codex review produced no usable conclusion (unusable_output): …`，Summary 里有 `Code: unusable_output`。这两条由脚本单测钉住（`parseReviewFindings` 的容错用例、`gate` 在 `unreviewed` 上退出 1），无需在真实 run 上刻意制造。
 
 **待办**：`prepare` 的任何失败都会跳过 preflight，被 `validate` 记成 `config_missing`；后续把 preflight 前置到 prepare 之前，或引入 `job_failed` / `preflight_missing` 错误码，并同步「状态口径」、`docs/agents/review.md` 的故障码清单、`renderConclusion()` 与相关单测。本次修复后该误归因对 PR #515 的事故不再可达，门「故障即红」不受影响。
 
@@ -125,5 +128,5 @@ Error: /usr/bin/sudo exited with code 1
 - 只读腿与写腿分居两个 workflow，读代码时看到的 YAML 不能解释全部行为；判据在 ADR 与机器断言里，不只在 CI 定义里。
 - 模型结论的可信度受沙箱档位、输入版本与后台配置影响，这三处都由 CI 拓扑测试钉住，改动会被断言挡下来，而不是靠 review 时想起来。
 - 两条模型腿绑定 `ubuntu-24.04`，与本 workflow 其它 Linux job 的 `ubuntu-latest` 不同步；24.04 退役前必须按「Runner 镜像」条款的恢复条件完成迁移，否则审查链路会再次在模型启动前静默失败（表现为 job 绿、gate 红、零模型调用）。这是一笔有到期日的技术债。
-- 只改 `**/generated/**` 的 PR 得到空 diff，门不会因此变红：通常是 `reviewed`（`Block 0`），也可能是 `unreviewed`，两者都是绿的；门本身不区分「审过源码」与「没有源码可审」。这块覆盖空白由 `docs/agents/review.md`「审查范围与生成物」的人工纪律兜：空 diff 不构成可合并结论，也不适用核对式抽查。
-- 仍未实测的项：Linux 上 `--sandbox` 是否如文档生效；60 分钟余量对应多大的真实耗时；`codex-action` 在输出不合 schema 时是否仍以 0 退出（这决定 `unreviewed` 会不会被 `model_failed` 取代）；`workflow_run.head_branch` 在各事件下的实际取值；写回腿 403 在补 `pull-requests: write` 后是否彻底消失。403 若仍复现则按「故障可见」条款升级到专用写令牌。
+- 只改 `**/generated/**` 的 PR 得到空 diff，门不会因此变红：结论是 `reviewed`（`Block 0`）。门本身不区分「审过源码」与「没有源码可审」——`unreviewed` 现在会让门变红，那是「模型没给出可用结论」，不是空 diff 的预期结果。这块覆盖空白由 `docs/agents/review.md`「审查范围与生成物」的人工纪律兜：空 diff 不构成可合并结论，也不适用核对式抽查。
+- 仍未实测的项：Linux 上 `--sandbox` 是否如文档生效；60 分钟余量对应多大的真实耗时；`codex-action` 在输出不合 schema 时是否仍以 0 退出（已观测到 schema 合法但 `summary` 为空的输出以 0 退出并落到 `unreviewed`；schema 非法时是重试还是失败仍未观测）；`workflow_run.head_branch` 在各事件下的实际取值；写回腿 403 在补 `pull-requests: write` 后是否彻底消失。403 若仍复现则按「故障可见」条款升级到专用写令牌。

@@ -39,6 +39,8 @@ function requireSha(value, label) {
 /**
  * 模型输出是门禁的唯一输入，必须先过结构校验：未知档位、未知字段或空文本都会让结论不可信，
  * 宁可判「未审查」，也不带着半截 JSON 去拦或放。
+ * `summary` 只是评论顶部的一行摘要，缺它不影响档位与阻断判定，因此不做硬校验：
+ * 把装饰性字段判成致命错误，代价是整份 findings 作废、门却在绿色里沉默。
  */
 export function parseReviewFindings(raw) {
   let value
@@ -49,7 +51,7 @@ export function parseReviewFindings(raw) {
   }
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('review output must be a JSON object')
-  if (typeof value.summary !== 'string' || value.summary.trim() === '') throw new Error('review output needs a summary')
+  const summary = typeof value.summary === 'string' ? value.summary.trim() : ''
   if (!Array.isArray(value.findings)) throw new Error('review output needs a findings array')
 
   const findings = value.findings.map((entry, index) => {
@@ -81,7 +83,7 @@ export function parseReviewFindings(raw) {
 
   const counts = emptyCounts()
   for (const finding of findings) counts[finding.severity] += 1
-  return { summary: value.summary.trim(), findings, counts }
+  return { summary, findings, counts }
 }
 
 export function resolveReviewRange({ baseSha, headSha, command = run }) {
@@ -135,7 +137,10 @@ export function readConfig(env = process.env) {
   }
 }
 
-/** `error` 是配置或调用故障，必须让门变红；`unreviewed` 只留给模型跑完却没给结论。 */
+/**
+ * `error` 是配置或调用故障，`unreviewed` 是模型跑完却没给出可用结论；两者都是审查链路的故障，
+ * 都要让门变红。绿色只留给「已审查」「已过时」与「不适用」——绿色必须意味着有结论可读。
+ */
 export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplicable = false }) {
   const counts = findings?.counts ?? emptyCounts()
   if (meta?.status === 'error') {
@@ -151,8 +156,9 @@ export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplic
     return {
       status: 'unreviewed',
       reason: meta.error ?? error ?? 'the review job produced no conclusion',
+      code: meta.error_code ?? 'unusable_output',
       counts,
-      blocking: false
+      blocking: true
     }
   }
   if (error || !findings || !meta) {
@@ -210,11 +216,11 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
     `- 结论：**${labels[conclusion.status]}**${conclusion.reason ? `（原因：${inline(conclusion.reason)}）` : ''}`,
     `- 审查快照：\`${meta?.head_sha ?? '无'}\``,
     `- 档位统计：Block ${conclusion.counts.Block} · Should fix ${conclusion.counts['Should fix']} · Nit ${conclusion.counts.Nit}`,
-    '- 合并判据：`Block` 与 `error` 让 `codex-gate` 变红；未审查、已过时与不适用不拦合并，但结论不覆盖当前 head。',
+    '- 合并判据：`Block`、`error` 与「未审查」让 `codex-gate` 变红；已过时与不适用不拦合并，但结论不覆盖当前 head。',
     '- 这是约定式门禁，GitHub 没有把它设为必需检查；合并前按 `docs/agents/review.md` 核对。'
   ]
-  if (conclusion.status === 'error') {
-    lines.push(`- 故障码：\`${inline(conclusion.code ?? 'unknown')}\``)
+  if (conclusion.code) {
+    lines.push(`- 故障码：\`${inline(conclusion.code)}\``)
     if (Array.isArray(meta?.missing) && meta.missing.length > 0) {
       lines.push(`- 缺失配置：\`${meta.missing.map(name => inline(name)).join('`、`')}\``)
     }
@@ -231,7 +237,9 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
     if (conclusion.status === 'reviewed') lines.push('没有需要改动的发现。')
     else if (conclusion.status === 'error')
       lines.push('本次审查没有跑成：检查 GitHub 后台的 secrets/variables 与 CI 日志，配置齐全后重跑。')
-    else lines.push('没有可用发现：本次没有拿到模型结论，按未审查处理。')
+    else if (conclusion.status === 'unreviewed')
+      lines.push('本次没有可用结论：模型腿跑完了但输出不可用，重跑整条 run；重复出现就按故障码修输出契约。')
+    else lines.push('没有可用发现：本次没有拿到模型结论，不能当作已审查。')
   }
   for (const finding of findings) {
     lines.push(`- **${finding.severity}** \`${location(finding)}\` — ${inline(finding.problem)}`)
@@ -540,7 +548,7 @@ function commandValidate() {
     }
     fs.writeFileSync(
       path.join(directory, META_FILE),
-      `${JSON.stringify({ ...identity, status: 'unreviewed', error }, null, 2)}\n`
+      `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: 'unusable_output', error }, null, 2)}\n`
     )
     writeOutputs({ blocks: '0', reason: error })
     console.error(`review is unreviewed: ${error}`)
@@ -549,6 +557,7 @@ function commandValidate() {
 
   writeConclusion(directory, { findings: parsed, meta: { ...identity, status: 'reviewed', reused_from: '' } })
   writeOutputs({ blocks: String(parsed.counts.Block), reason: '' })
+  if (parsed.summary === '') console.log('review output carries no summary; the conclusion stands on its findings')
   console.log(
     `review conclusion: Block ${parsed.counts.Block}, Should fix ${parsed.counts['Should fix']}, Nit ${parsed.counts.Nit}`
   )
@@ -605,6 +614,7 @@ function commandGate() {
     '## Codex review gate',
     '',
     `- Status: **${status.status}**`,
+    ...(status.code ? [`- Code: \`${inline(status.code)}\``] : []),
     `- Reviewed head: \`${conclusion?.meta?.head_sha ?? 'none'}\``,
     `- Live head: \`${liveHeadSha || 'none'}\``,
     `- Block ${status.counts.Block} · Should fix ${status.counts['Should fix']} · Nit ${status.counts.Nit}`,
@@ -615,6 +625,9 @@ function commandGate() {
     if (status.status === 'error') {
       console.error(`Codex review failed (${status.code}): ${status.reason}`)
       console.error('Fix the repository configuration or the model invocation, then rerun CI.')
+    } else if (status.status === 'unreviewed') {
+      console.error(`Codex review produced no usable conclusion (${status.code}): ${status.reason}`)
+      console.error('Rerun the whole CI run once; a repeat means the review output contract needs fixing.')
     } else {
       console.error(`Block findings must be fixed before merge: ${status.counts.Block} at ${liveHeadSha}`)
     }

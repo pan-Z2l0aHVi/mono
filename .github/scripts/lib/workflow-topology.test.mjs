@@ -758,6 +758,32 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     )
     assert.match(skippedReport, /::notice /, 'the skipped run must also carry a notice annotation')
 
+    // 解析不到 PR 也是一种跳过：守卫必须按 resolve-pull 的成功取，
+    // 挂在 pull_number 上会让「没解析到 PR」这条路径一步都不跑，整条腿静默变绿。
+    const assertResolveMissIsExplained = text => {
+      const step = namedStep(text, 'Explain the skipped report')
+      assert.match(step, /steps\.pull\.outcome == 'success'/, 'the skip explanation must run whenever resolve-pull ran')
+      assert.ok(!/pull_number != ''/.test(step), 'the skip explanation must not be gated on a resolved pull request')
+      assert.match(
+        step,
+        /PULL_NUMBER: \$\{\{ steps\.pull\.outputs\.pull_number \}\}/,
+        'the step must read the resolved number to tell the two skip reasons apart'
+      )
+      assert.match(step, /## 未解析到 PR/, 'an unresolved head needs its own summary section')
+    }
+    assertResolveMissIsExplained(reportText)
+    assert.throws(
+      () =>
+        assertResolveMissIsExplained(
+          reportText.replace(
+            "if: always() && steps.pull.outcome == 'success' && ",
+            "if: always() && steps.pull.outputs.pull_number != '' && "
+          )
+        ),
+      /must not be gated on a resolved pull request|must run whenever resolve-pull ran/,
+      'the old pull-number guard must be rejected by the assertion itself'
+    )
+
     for (const [, reference] of `${ci}\n${reportText}`.matchAll(/\/trusted\/([^\s"']+)/g)) {
       assert.ok(/^(?:codex|scripts|\.claude)\//.test(reference), `unexpected trusted path ${reference}`)
     }
