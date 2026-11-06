@@ -386,6 +386,36 @@ for (const [label, value] of [
   assert.ok(!mismatched.includes('<b>'), 'a mismatched backtick run must not swallow the following text')
   assert.match(mismatched, /``a` &lt;b&gt;/)
 
+  // 反斜杠转义的反引号不能开代码段：CommonMark 把它当普通字符，后面的 <b> 仍是 HTML。
+  const escapedTickParsed = parseReviewFindings(
+    JSON.stringify({ summary: '边界', findings: [{ ...finding('Nit'), problem: '\\`<b>`', suggestion: '' }] })
+  )
+  const escapedTickMeta = { ...metaOf(), summary: escapedTickParsed.summary, findings: escapedTickParsed.findings }
+  const escapedTick = renderConclusion({
+    conclusion: deriveConclusion({
+      meta: escapedTickMeta,
+      findings: escapedTickParsed,
+      liveHeadSha: headSha,
+      error: ''
+    }),
+    meta: escapedTickMeta,
+    pullNumber: 54
+  })
+  assert.ok(!escapedTick.includes('<b>'), 'a backslash-escaped backtick must not open a code span')
+  assert.match(escapedTick, /&lt;b&gt;/)
+
+  // 文件名里的反引号会提前闭合包裹它的代码段；代码段内的尖括号不会执行，但反引号必须先剔除。
+  const pathParsed = parseReviewFindings(
+    JSON.stringify({ summary: '路径', findings: [{ ...finding('Nit'), file: 'src/`<b>x.ts' }] })
+  )
+  const pathMeta = { ...metaOf(), summary: pathParsed.summary, findings: pathParsed.findings }
+  const pathBody = renderConclusion({
+    conclusion: deriveConclusion({ meta: pathMeta, findings: pathParsed, liveHeadSha: headSha, error: '' }),
+    meta: pathMeta,
+    pullNumber: 54
+  })
+  assert.ok(pathBody.includes('`src/<b>x.ts:12`'), 'a backtick in the file path must not break the code span')
+
   const unreviewedMeta = { status: 'unreviewed', error: 'the review step produced no output file' }
   const unreviewed = renderConclusion({
     conclusion: deriveConclusion({ meta: unreviewedMeta, findings: null, liveHeadSha: headSha, error: '' }),

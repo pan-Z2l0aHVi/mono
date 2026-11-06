@@ -192,15 +192,23 @@ export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplic
 /**
  * 评论正文是 Markdown：模型给出的尖括号必须转义，否则 `<script>` 会被当成 HTML；
  * 但整段删掉会把 `Plugin<ToolchainApi, KitCtx>` 这类泛型吃成 `PluginToolchainApi, KitCtx`。
- * 代码段按 CommonMark 的「同长度反引号 run 才闭合」识别：段内原样保留，段外转义；
- * 未闭合或长度不匹配的反引号不算代码段，其后的尖括号仍按普通文本处理。
+ * 代码段按 CommonMark 识别：只有未被反斜杠转义、且由同长度反引号 run 闭合的才是代码段；
+ * 段内原样保留，其余文本（含未闭合或被转义的反引号）一律转义尖括号。
  */
+function isEscaped(text, index) {
+  let backslashes = 0
+  for (let cursor = index - 1; cursor >= 0 && text[cursor] === '\\'; cursor -= 1) backslashes += 1
+  return backslashes % 2 === 1
+}
+
 function escapeOutsideCodeSpans(text) {
   const escaped = value => value.replace(/</gu, '&lt;').replace(/>/gu, '&gt;')
   let result = ''
   let index = 0
   while (index < text.length) {
-    const tick = text.indexOf('`', index)
+    let tick = text.indexOf('`', index)
+    // CommonMark：反斜杠转义的反引号是普通字符，不能开代码段；代码段内反斜杠不转义，所以只查开符。
+    while (tick !== -1 && isEscaped(text, tick)) tick = text.indexOf('`', tick + 1)
     if (tick === -1) {
       result += escaped(text.slice(index))
       break
@@ -242,8 +250,10 @@ function inline(value) {
 }
 
 function location(finding) {
-  if (finding.file === '') return finding.line === 0 ? '整体' : `行 ${finding.line}`
-  return finding.line === 0 ? finding.file : `${finding.file}:${finding.line}`
+  // 这里会整体放进反引号：文件名里的反引号会提前闭合代码段，空白会断开行内代码。
+  const file = finding.file.replace(/`/gu, '').replace(/\s+/gu, ' ')
+  if (file === '') return finding.line === 0 ? '整体' : `行 ${finding.line}`
+  return finding.line === 0 ? file : `${file}:${finding.line}`
 }
 
 export function renderConclusion({ conclusion, meta, pullNumber }) {
