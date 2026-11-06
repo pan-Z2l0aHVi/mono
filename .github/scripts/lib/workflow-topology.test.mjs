@@ -1142,4 +1142,11 @@ function matrixEntries(text) {
   }
 }
 
+// macOS 14 于 2026-11-02 退役（actions/runner-images#13518）：标签一旦回到工作流，
+// macOS 腿会在 0 秒被取消，而同一 run 的 Linux 腿照常绿，很容易被误判成偶发。
+for (const file of ['wails-verify.yml', 'wails-release.yml']) {
+  assert.match(workflowText[file], /runner: macos-15\b/u, `${file} must build on the supported arm64 macOS runner`)
+  assert.doesNotMatch(workflowText[file], /macos-1[34]/u, `${file} must not target a retired macOS runner`)
+}
+
 console.log('.github/scripts/lib/workflow-topology.test.mjs: all assertions passed')
