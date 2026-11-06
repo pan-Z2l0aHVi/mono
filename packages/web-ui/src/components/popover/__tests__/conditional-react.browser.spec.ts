@@ -43,7 +43,7 @@ async function mountReactPopover(children: ReactNode): Promise<{
       root.render(
         createElement(
           'web-ui-popover',
-          { portal: true, trigger: 'manual', open: false },
+          { portal: true, trigger: 'none', open: false },
           createElement('button', { slot: 'trigger' }, 't'),
           node
         )

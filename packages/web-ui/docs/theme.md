@@ -729,7 +729,7 @@ export default function Demo() {
 
 | Name                  | Description                                                                          | Type                           | Default    |
 | --------------------- | ------------------------------------------------------------------------------------ | ------------------------------ | ---------- |
-| `appearance`          | Color scheme: `light`, `dark`, or `system`.                                          | `ThemeAppearance \| undefined` | —          |
+| `appearance`          | Color scheme: `light`, `dark`, or `system`.                                          | `ThemeAppearance \| undefined` | -          |
 | `resolved-appearance` | Resolved color scheme, a read-only output written back to an attribute.              | `ResolvedThemeAppearance`      | `'light'`  |
 | `motion`              | Motion preference of the current nested theme scope: `full`, `reduced`, or `system`. | `ThemeMotion`                  | `'system'` |
 

@@ -131,7 +131,7 @@ const meta = [
     ]
   },
   { label: 'h3', id: 'section-11', content: "行为说明" },
-  { label: 'p', content: "同步子项 checkbox 的 <code>checked</code> 状态。<code>disabled</code> 提供可继承的有效禁用状态，不改写子项自身的 <code>disabled</code> 属性。<code>direction</code> 传入非法值时回退为 <code>vertical</code>。" },
+  { label: 'p', content: "同步子项复选框的 <code>checked</code> 状态。<code>disabled</code> 提供可继承的有效禁用状态，不改写子项自身的 <code>disabled</code> 属性。<code>direction</code> 传入非法值时回退为 <code>vertical</code>。" },
   { label: 'p', content: "<code>--wui-checkbox-group-gap</code> 写在 group 元素本身，或同一个 <code>&lt;web-ui-theme></code> 作用域内的祖先元素上；写在 theme 宿主之外的覆盖到不了 group。它的默认值经 <code>--wui-space-2</code> 解析，因此显式设置这个 token 会覆盖 <code>--wui-space-2</code> 的值。" },
   { label: 'codeblock', content: "<pre class=\"shiki shiki-themes github-light github-dark mdm-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span class=\"line-number\">1</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">web-ui-checkbox-group</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> {</span></span>\n<span class=\"line\"><span class=\"line-number\">2</span><span style=\"--shiki-light:#E36209;--shiki-dark:#FFAB70\">  --wui-checkbox-group-gap</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">: </span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">16</span><span style=\"--shiki-light:#D73A49;--shiki-dark:#F97583\">px</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">;</span></span>\n<span class=\"line\"><span class=\"line-number\">3</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">}</span></span></code></pre>", lang: "css", path: './codeblock/b3a0a6384b58.css' },
   { label: 'h3', id: 'section-12', content: "CSS Custom Properties" },
@@ -150,7 +150,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-checkbox-group-gap</code>" },
-      { label: 'td', content: "成员 checkbox 之间的间距" },
+      { label: 'td', content: "成员复选框之间的间距" },
       { label: 'td', content: "<code>var(--wui-space-2)</code>" }
       ]
     }

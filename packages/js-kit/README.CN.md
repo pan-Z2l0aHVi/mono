@@ -1,19 +1,8 @@
 # @greypan/js-kit
 
-> JavaScript 工具函数库，基于可组合插件系统
+> JavaScript 工具函数与可组合插件，可用于浏览器、Node.js 和 Worker。
 
-[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/README.md) | 简体中文
-
-## 功能
-
-- **插件系统**：基于 `definePlugin` 的可组合插件，支持 `.use()` 链式组合和 `.make()` 实例化
-- **URL**：解析和构建 URL，支持查询参数和 hash
-- **Number**：字节数格式化与范围限制
-- **String**：文件扩展名提取
-- **Timer**：支持 leading/trailing/both 三种模式的防抖，支持暂停/恢复与手动 tick 的可控定时器
-- **Shortcut**：fire-and-forget 的 `safeCall` 包装器
-- **Paradigm**：Rust 风格的 `Result` 类型工具
-- **Types**：共享类型工具（`ValueOf`、`DeepPartial`、`Equal` 等）
+[English](./README.md) | 简体中文
 
 ## 安装
 
@@ -36,36 +25,47 @@ bun add @greypan/js-kit
 ```ts
 import { definePlugin } from '@greypan/js-kit'
 
-// 定义可复用的插件
-const defineLogger = () => definePlugin(() => ({ log: (msg: string) => console.log(msg) }))
-
+const defineLogger = () => definePlugin(() => ({ log: (message: string) => console.log(message) }))
 const defineAuth = () => definePlugin(() => ({ token: 'xxx' }))
 
-// 通过 .use() 组合插件，通过 .make() 实例化
 const app = defineLogger().use(defineAuth()).make()
 
-app.log('hello') // 'hello'
-console.log(app.token) // 'xxx'
+app.log('hello')
+console.log(app.token)
 ```
+
+## 提供什么
+
+- 用 `definePlugin`、`.use()` 和 `.make()` 组合插件。
+- 解析和构建带查询参数与 hash 的 URL。
+- 文件大小、数值范围和文件扩展名等数字与字符串工具。
+- 防抖函数与可控定时器。
+- 用于 fire-and-forget 任务的 `safeCall` 包装器。
+- 不依赖异常的错误处理 Result 值。
+- 共享 TypeScript 工具类型。
 
 ## 插件
 
 ### `definePlugin(setup)`
 
-插件系统核心。将功能封装为可组合的插件，通过 `.use()` 链式组合，`.make()` 实例化。插件内部可以注册其他插件，所有 API 最终合并到实例中。
+创建插件。用 `.use()` 组合其他插件，再用 `.make()` 创建实例。
 
 ```ts
 import { definePlugin } from '@greypan/js-kit'
 
 const defineConfig = () => definePlugin(() => ({ apiUrl: 'https://api.example.com' }))
+const config = defineConfig().make()
 
-const ctx = defineConfig().make()
-console.log(ctx.apiUrl) // 'https://api.example.com'
+console.log(config.apiUrl)
 ```
+
+| 参数    | 类型            | 说明                           |
+| ------- | --------------- | ------------------------------ |
+| `setup` | `(ctx: D) => C` | 接收共享上下文并返回插件 API。 |
 
 ### `defineBatchEmitter<S>(options?)`
 
-批量事件发射器。收集事件并在延迟后批量触发。
+收集事件，并在延迟后以一批发送。
 
 ```ts
 import { defineBatchEmitter } from '@greypan/js-kit'
@@ -79,39 +79,29 @@ await ctx.batchEmit({ id: 1 })
 await ctx.batchEmit({ id: 2 })
 ```
 
-`batchEmit(data, delay = 0)` 返回本批 flush 出来的数组。`delay` 为 `0` 或负数时立即调用 `onFlushed([data])` 并以 `[data]` resolve；正数则按延迟聚合。`flush()` 立即发出当前队列。
+`batchEmit(data, delay = 0)` 以本次发送的批次 resolve。`delay` 为 `0` 或负数时立即发送 `[data]`，正数时按延迟聚合事件。`flush()` 立即发送当前队列。
 
-| 参数项              | 类型                                    | 默认值 | 说明              |
-| ------------------- | --------------------------------------- | ------ | ----------------- |
-| `options.onFlushed` | `(items: S[]) => void \| Promise<void>` | -      | 每批 flush 时调用 |
+| 参数                | 类型                                    | 默认值 | 说明             |
+| ------------------- | --------------------------------------- | ------ | ---------------- |
+| `options.onFlushed` | `(items: S[]) => void \| Promise<void>` | -      | 每批发送时调用。 |
 
 ### `defineQueue<T>(options)`
 
-「交付即消费」的通用队列。调用 `onConsume` 后立即移除条目，不等待消费者返回的 Promise；适合 fire-and-forget 任务。
+用于 fire-and-forget 任务的队列。调用 `onConsume` 后立即移除条目，不等待返回的 Promise。
 
 ### `defineAckQueue<T>(options)`
 
-「消费者确认后消费」的通用队列。只有 `onConsume` 返回的 Promise fulfilled 后才移除条目；rejection 只影响当前项，失败项可由 `resume()` 或 `flush()` 再次尝试。
+等待消费者完成的队列。`onConsume` 返回的 Promise resolve 后才移除条目。reject 只影响当前条目，`resume()` 或 `flush()` 可以重试失败条目。
 
-两种队列都提供 `enqueue()`、`pause()`、`resume()` 和异步 `flush()`，并支持 `initialItems`、同步 `onPersist` 快照持久化以及 `onConsumeError`。完整 option 表、flush 与 persist-before-commit 语义、以及在消费者内调用 `flush()` 的循环等待约束见 [`src/plugin-system/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/src/plugin-system/README.md)。
+两种队列都提供 `enqueue()`、`pause()`、`resume()` 和异步 `flush()`，并支持 `initialItems`、同步快照回调 `onPersist` 与 `onConsumeError`。
 
-## API
+完整参数表、持久化行为，以及在消费者内调用 `flush()` 的限制见 [`src/plugin-system/README.CN.md`](./src/plugin-system/README.CN.md)。
 
-### `definePlugin<C, D>(setup)`
-
-插件工厂核心函数。创建可通过 `.use()` 组合、`.make()` 实例化的插件。
-
-| 参数    | 类型            | 默认值 | 说明                               |
-| ------- | --------------- | ------ | ---------------------------------- |
-| `setup` | `(ctx: D) => C` | -      | 设置函数，接收上下文并返回插件 API |
-
-### `PluginMade<T>`
-
-类型工具，从插件工厂或插件实例中提取实例化后的类型。
+## URL
 
 ### `parseUrl(url?)`
 
-将 URL 字符串解析为结构化对象，支持相对路径。
+把 URL 字符串解析为 `base`、`query` 和 `hash`。支持相对 URL 与协议相对 URL。
 
 | 参数  | 类型     | 默认值 | 说明         |
 | ----- | -------- | ------ | ------------ |
@@ -119,57 +109,47 @@ await ctx.batchEmit({ id: 2 })
 
 ### `stringifyUrl(opts, omitNil?)`
 
-从结构化组件构建 URL 字符串。
+用 `base`、`query` 和 `hash` 构建 URL 字符串。
 
 | 参数      | 类型                 | 默认值 | 说明                              |
 | --------- | -------------------- | ------ | --------------------------------- |
 | `opts`    | `Partial<URLObject>` | -      | URL 组件：`base`、`query`、`hash` |
-| `omitNil` | `boolean`            | `true` | 是否移除查询参数中的空值          |
+| `omitNil` | `boolean`            | `true` | 是否移除查询参数中的空值。        |
 
-完整的 `URLObject` 结构、相对路径行为与示例见 [`src/url/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/src/url/README.md)。
+示例与边界行为见 [`src/url/README.CN.md`](./src/url/README.CN.md)。
+
+## 数字与字符串
 
 ### `clamp(val, min, max)`
 
-将数字限制在范围内。如果 min > max 会自动交换。
-
-| 参数  | 类型     | 默认值 | 说明       |
-| ----- | -------- | ------ | ---------- |
-| `val` | `number` | -      | 待限制的值 |
-| `min` | `number` | -      | 最小值     |
-| `max` | `number` | -      | 最大值     |
-
-### `getFileExtension(filename)`
-
-从文件名中提取扩展名。输入为空或没有扩展名时抛错。
-
-| 参数       | 类型     | 默认值 | 说明   |
-| ---------- | -------- | ------ | ------ |
-| `filename` | `string` | -      | 文件名 |
+把数字限制在范围内。`min` 大于 `max` 时会自动交换。
 
 ### `formatFileSize(bytes, decimals?)`
 
-将字节数格式化为可读字符串，例如 `'1.23 KB'`。
+把字节数格式化为可读字符串，例如 `'1.23 KB'`。
 
 | 参数       | 类型     | 默认值 | 说明     |
 | ---------- | -------- | ------ | -------- |
 | `bytes`    | `number` | -      | 字节数   |
 | `decimals` | `number` | `2`    | 小数位数 |
 
+### `getFileExtension(filename)`
+
+返回文件名的扩展名。输入为空或没有扩展名时抛错。
+
+## 定时器
+
 ### `defineControllableInterval(options)`
 
-创建可控定时器，支持暂停/恢复。返回包含 `start`、`pause`、`resume`、`stop`、`tick` 方法的插件。
+创建可暂停和恢复的定时器。实例提供 `start`、`pause`、`resume`、`stop` 和 `tick`。
 
-| 方法          | 说明                                                  |
-| ------------- | ----------------------------------------------------- |
-| `start()`     | 启动定时器；已暂停的定时器应使用 `resume()`。         |
-| `pause()`     | 暂停并保留当前周期剩余时间。                          |
-| `resume()`    | 从剩余时间继续，而不是重新开始整个周期。              |
-| `stop()`      | 取消定时器并重置状态。                                |
-| `tick(delay)` | 在 `delay` 毫秒后额外触发一次回调，不改变暂停状态机。 |
-
-| 参数      | 类型                                         | 默认值 | 说明       |
-| --------- | -------------------------------------------- | ------ | ---------- |
-| `options` | `{ callback: () => void; interval: number }` | -      | 定时器配置 |
+| 方法          | 说明                                                |
+| ------------- | --------------------------------------------------- |
+| `start()`     | 启动定时器。已暂停的定时器应使用 `resume()`。       |
+| `pause()`     | 暂停并保留当前周期的剩余时间。                      |
+| `resume()`    | 从剩余时间继续，不重新开始整个周期。                |
+| `stop()`      | 取消定时器并重置状态。                              |
+| `tick(delay)` | 在 `delay` 毫秒后额外执行一次回调，不改变暂停状态。 |
 
 ```ts
 const timer = defineControllableInterval({ callback: () => console.log('tick'), interval: 1000 }).make()
@@ -178,37 +158,39 @@ timer.start()
 
 ### `debounce(func, options?)`
 
-防抖函数，支持三种 timing 模式。返回 `call`、`cancel`、`flush`、`isPending` 与 `cachedValue`。
+防抖函数。返回 `call`、`cancel`、`flush`、`isPending` 和 `cachedValue`。
 
-| 参数      | 类型                                                                                  | 默认值 | 说明         |
-| --------- | ------------------------------------------------------------------------------------- | ------ | ------------ |
-| `func`    | `Function`                                                                            | -      | 待防抖的函数 |
-| `options` | `{ timing?: 'trailing' \| 'leading' \| 'both'; waitMs?: number; maxWaitMs?: number }` | -      | 防抖 option  |
+| 参数      | 类型                                                                                  | 默认值 | 说明       |
+| --------- | ------------------------------------------------------------------------------------- | ------ | ---------- |
+| `func`    | `Function`                                                                            | -      | 待防抖函数 |
+| `options` | `{ timing?: 'trailing' \| 'leading' \| 'both'; waitMs?: number; maxWaitMs?: number }` | -      | 防抖参数   |
 
-`maxWaitMs` 不能小于 `waitMs`，否则调用时抛错。`leading` 模式在类型面上不接受 `maxWaitMs`。
+`maxWaitMs` 不能小于 `waitMs`。`leading` 模式不接受 `maxWaitMs`。
+
+## 错误处理
 
 ### `safeCall(fn, options?)`
 
-fire-and-forget 包装器。捕获同步异常和异步 rejection；默认静默吞掉，传入 `options.onError` 时转发给它。`onError` 自身的失败同样被吞掉，调用始终保持 fire-and-forget。
+调用函数时不在调用点处理错误。同步异常和 Promise rejection 默认被忽略。传入 `onError` 可以接收它们。
 
-| 参数      | 类型                                 | 默认值 | 说明           |
-| --------- | ------------------------------------ | ------ | -------------- |
-| `fn`      | `() => unknown`                      | -      | 待调用的 thunk |
-| `options` | `{ onError?: (e: unknown) => void }` | -      | 可选错误出口   |
+| 参数      | 类型                                 | 默认值 | 说明         |
+| --------- | ------------------------------------ | ------ | ------------ |
+| `fn`      | `() => unknown`                      | -      | 待调用的函数 |
+| `options` | `{ onError?: (e: unknown) => void }` | -      | 可选错误出口 |
 
 ### `rust`
 
-Result 类型命名空间，提供 Rust 风格的错误处理。
+不用异常的 Result 工具。
 
-| 方法                    | 说明                                                                          |
-| ----------------------- | ----------------------------------------------------------------------------- |
-| `ok(value)`             | 创建成功结果                                                                  |
-| `err(error)`            | 创建错误结果                                                                  |
-| `isOk(result)`          | 检查结果是否成功                                                              |
-| `isErr(result)`         | 检查结果是否失败                                                              |
-| `to(promise)`           | 把 Promise 解析为 `Ok`，或把 rejection 捕获为 `Err`                           |
-| `andThen(result, next)` | Rust 的 `Result::and_then`：`Ok` 载荷交给 `next`，`Err` 原样返回且不跑 `next` |
-| `unwrap(result)`        | 返回成功值或错误载荷；不会抛错                                                |
+| 方法                    | 说明                                                |
+| ----------------------- | --------------------------------------------------- |
+| `ok(value)`             | 创建成功结果。                                      |
+| `err(error)`            | 创建错误结果。                                      |
+| `isOk(result)`          | 判断是否为成功结果。                                |
+| `isErr(result)`         | 判断是否为错误结果。                                |
+| `to(promise)`           | 把 Promise 转为 `Ok`，或把 rejection 捕获为 `Err`。 |
+| `andThen(result, next)` | 接上下一步：`Ok` 交给 `next` 执行，`Err` 原样返回。 |
+| `unwrap(result)`        | 返回成功值或错误载荷，不会抛错。                    |
 
 ```ts
 import { rust } from '@greypan/js-kit/rust'
@@ -219,14 +201,15 @@ if (rust.isOk(result)) console.log(result.value)
 else console.error(rust.unwrap(result))
 ```
 
-### 类型工具
+## 类型工具
 
-| 类型                    | 说明                                     |
-| ----------------------- | ---------------------------------------- |
-| `ValueOf<T>`            | 对象所有值类型的联合                     |
-| `ArrayItem<T>`          | 数组元素类型                             |
-| `ArgumentType<T>`       | 函数参数的元素类型（多参数时为联合类型） |
-| `DeepPartial<T>`        | 深度可选                                 |
-| `DeepRequired<T>`       | 深度必选                                 |
-| `ClassPropertyTypes<T>` | 类属性类型                               |
-| `Equal<X, Y>`           | 类型相等性检查                           |
+| 类型                    | 说明                           |
+| ----------------------- | ------------------------------ |
+| `ValueOf<T>`            | 对象所有值类型的联合。         |
+| `ArrayItem<T>`          | 数组元素类型。                 |
+| `ArgumentType<T>`       | 函数参数类型的联合。           |
+| `DeepPartial<T>`        | 递归可选。                     |
+| `DeepRequired<T>`       | 递归必选。                     |
+| `ClassPropertyTypes<T>` | 类属性类型。                   |
+| `Equal<X, Y>`           | 类型相等性检查。               |
+| `PluginMade<T>`         | 插件工厂或插件实例化后的类型。 |

@@ -68,6 +68,16 @@
 
 `**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据而不是生成物，故意不进 `deny`：基线由测试运行器写盘，拦手改既拦不彻底，又会挡掉显式更新基线的正当路径。
 
+## 审查范围与编辑拦截的分工
+
+Codex 自动审查在 `git diff` 入口用 `REVIEW_EXCLUDE_PATHSPECS`（`:(exclude,glob)**/generated/**`）剔掉这条路径下的产物，避免整批换哈希名的文件淹没真实改动。它是**路径层面的批量 churn 过滤**，不是本文清单的替代，两者判据不同：
+
+- 排除清单决定**自动审查看什么**，只按路径生效；覆盖边界与审计字段见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围」。
+- 本文清单决定**人怎么核对**：generator 重建、适用的 `check-generated` 只判校验、消费者类型检查。
+- 被排除不等于免于核对：生成物的正确性由 generator 幂等与相应守卫保证，不由审查意见保证。
+
+新增生成物时一般不必动排除清单：落在 `**/generated/**` 下自动被覆盖，落在别处也照旧不进过滤。只有新增了会产生批量重命名或大段 churn 的目录，才评估是否加入排除清单，并同步 ADR-0021 与审查 prompt。
+
 ## 新增生成物时
 
 同时更新四处，缺一处就会漂：本文的表格、turbo inputs 与产出集合守卫、[`.claude/settings.json`](../../.claude/settings.json) 的 `deny`，以及受影响包的测试。根 [`AGENTS.md`](../../AGENTS.md) 只指向本文，不复制清单。

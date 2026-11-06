@@ -1,0 +1,200 @@
+name: Codex Review Report
+
+# 写回腿：ci.yml 的只读不变量不允许任何写操作，所以评论与 autofix 推送住在这里。
+# 模型一次都不跑在本文件里；它只在 ci.yml 的 contents: read job 里执行。
+# 本腿不改判审查结论，只把 CI 已产出的结论写到 PR 上。
+# workflow_run 只在默认分支上存在的这个文件里生效，因此本段的版本由 main 决定。
+on:
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+
+permissions:
+  contents: read
+
+concurrency:
+  group: ${{ github.workflow }}-${{ github.event.workflow_run.id }}
+  cancel-in-progress: false
+
+jobs:
+  report-conclusion:
+    name: Report review conclusion
+    # workflow_run 的 payload 里没有 base 分支与版本分支信息，资格判定交给 trusted 脚本里的
+    # reviewTarget：它会拒绝 fork、非 main base、已关闭的 PR 与 changeset 版本分支。
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.conclusion != 'cancelled' && github.event.workflow_run.head_branch != 'changeset-release/main' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    permissions:
+      contents: read
+      issues: write
+      pull-requests: write
+      actions: read
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          mise-install: 'node'
+          skip-install: 'true'
+
+      - uses: ./.github/actions/stage-codex-inputs
+
+      - name: Resolve pull request
+        id: pull
+        env:
+          CODEX_REVIEW_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          # runner 不会替步骤注入 GITHUB_TOKEN，gh 只认 GH_TOKEN。
+          GH_TOKEN: ${{ github.token }}
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" resolve-pull
+
+      - name: Download review findings
+        id: findings
+        # head 不属于任何打开的 PR 时没有可写的对象，下载没有意义。
+        # 其余情况下的缺失说明 review job 没有产出结论：本腿不发结论评论，也不判红。
+        if: steps.pull.outputs.pull_number != ''
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: codex-review-findings
+          # v7 只在显式给 token 时才用 repository/run-id 跨 run 查找；缺它只查当前 run。
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+          repository: ${{ github.repository }}
+          path: ${{ runner.temp }}/codex-review
+
+      - name: Explain the skipped report
+        # 这一步不判审查结论的颜色，只判写回腿自己的健康度：
+        # 「没有产物」是合法跳过，写清原因后保持绿色；「有产物却下载不下来」是本腿故障，判红。
+        # 守卫按 resolve-pull 的成功与否取，不按 pull_number：解析不到 PR 本身也是一种要写明的跳过。
+        if: always() && steps.pull.outcome == 'success' && steps.findings.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+          WORKFLOW_RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${PULL_NUMBER:-}" ]]; then
+            {
+              echo '## 未解析到 PR'
+              echo ''
+              echo "触发 run [#$WORKFLOW_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$WORKFLOW_RUN_ID) 的 head 不属于任何打开的 PR，本次没有可写回的对象。"
+              echo ''
+              echo '- 常见原因：PR 已关闭或已合并，或 head 被后续推送覆盖。'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Codex review report skipped::run $WORKFLOW_RUN_ID has no open pull request for its head"
+            exit 0
+          fi
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$WORKFLOW_RUN_ID/artifacts?per_page=100" \
+            --jq '[.artifacts[].name] | join(" ")')
+          if [[ " $artifacts " == *" codex-review-findings "* ]]; then
+            {
+              echo '## Codex 审查结论写回失败'
+              echo ''
+              echo "触发 run [#$WORKFLOW_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$WORKFLOW_RUN_ID) 上传了 \`codex-review-findings\`，但本运行没能下载。"
+              echo ''
+              echo '- 这不是「没有结论」，是写回腿自己的故障：先看 `Download review findings` 的 error 注释。'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Codex review artifacts unreadable::run $WORKFLOW_RUN_ID has codex-review-findings but this run could not download it"
+            exit 1
+          fi
+          {
+            echo '## Codex 审查结论未写回'
+            echo ''
+            echo "触发 run [#$WORKFLOW_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$WORKFLOW_RUN_ID) 没有 \`codex-review-findings\` 产物，因此本次没有任何结论可写回（run 结论：\`$WORKFLOW_RUN_CONCLUSION\`）。"
+            echo ''
+            echo '- 常见原因：`check` 先失败，`Codex review` 没有运行；或审查腿自己没跑成。'
+            echo '- 结论是否拦合并由该 CI run 里的 `Codex review gate` 判定，与本运行的颜色无关。'
+            echo '- 排查顺序见 `docs/agents/review.md` 的 `error` 处置。'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Codex review report skipped::run $WORKFLOW_RUN_ID has no codex-review-findings artifact, so there is no conclusion to write back"
+
+      - name: Probe comment permission
+        if: success() && steps.pull.outputs.pull_number != '' && steps.findings.outcome == 'success'
+        # 探测只是诊断，失败不阻断结论评论步骤的 403 排查清单。
+        continue-on-error: true
+        env:
+          GH_TOKEN: ${{ github.token }}
+          PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
+        # 只读探测把 token 与端点错误在写之前分开；真正的写权限由结论评论步骤的 403 诊断兜住。
+        run: |
+          set -euo pipefail
+          gh api "repos/$GITHUB_REPOSITORY/issues/$PULL_NUMBER/comments?per_page=1" >/dev/null
+          echo "comment API is reachable; the conclusion step reports any write denial with a permission checklist"
+
+      - name: Post conclusion comment
+        if: always() && steps.pull.outputs.pull_number != '' && steps.findings.outcome == 'success'
+        env:
+          CODEX_REVIEW_PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
+          CODEX_REVIEW_RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          GH_TOKEN: ${{ github.token }}
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" report
+
+  codex-autofix-apply:
+    name: Apply Codex autofix
+    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.conclusion != 'cancelled' && github.event.workflow_run.head_branch != 'changeset-release/main' && vars.CODEX_AUTOFIX_ENABLED == 'true' }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+    # 只有这一步能写 Git：patch 由只读腿生成，这里只做校验、提交与推送。
+    permissions:
+      contents: write
+      pull-requests: read
+      actions: read
+    concurrency:
+      # 同一分支上的 patch 只能有一个在推：第二个 job 会在 assertPushAllowed 处被 head 漂移拒绝，
+      # 排队比让它红掉更好读。
+      group: codex-autofix-${{ github.event.workflow_run.head_branch }}
+      cancel-in-progress: false
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          mise-install: 'node'
+          skip-install: 'true'
+
+      - uses: ./.github/actions/stage-codex-inputs
+
+      - name: Resolve pull request
+        id: pull
+        env:
+          CODEX_REVIEW_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          # runner 不会替步骤注入 GITHUB_TOKEN，gh 只认 GH_TOKEN。
+          GH_TOKEN: ${{ github.token }}
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" resolve-pull
+
+      - name: Check out the pull request head
+        if: steps.pull.outputs.pull_number != ''
+        env:
+          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+        # patch 是相对 run head 生成的，所以工作树必须停在同一份代码上；
+        # assertPushAllowed 再把 checkout、live head 与 patch base 三个 SHA 对齐。
+        run: |
+          set -euo pipefail
+          git fetch --no-tags origin "$HEAD_BRANCH"
+          git checkout --detach FETCH_HEAD
+
+      - name: Download autofix patch
+        # 大多数 run 没有 patch：下载失败就是「无事可做」，由 apply 自己按文件缺失跳过。
+        continue-on-error: true
+        uses: actions/download-artifact@v7
+        with:
+          name: codex-autofix-patch
+          github-token: ${{ github.token }}
+          run-id: ${{ github.event.workflow_run.id }}
+          repository: ${{ github.repository }}
+          path: ${{ runner.temp }}
+
+      - name: Apply and push autofix
+        if: steps.pull.outputs.pull_number != ''
+        env:
+          CODEX_AUTOFIX_PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
+          CODEX_AUTOFIX_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
+          CODEX_AUTOFIX_HEAD_REF: ${{ github.event.workflow_run.head_branch }}
+          CODEX_TRUSTED_SETTINGS: ${{ runner.temp }}/trusted/.claude/settings.json
+          GH_TOKEN: ${{ github.token }}
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-autofix.mjs" apply

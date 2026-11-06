@@ -10,14 +10,14 @@ The default slot is the trigger. The `content` attribute gives the plain-text hi
 
 Pointer entry shows it after the `show-delay`; keyboard focus (`:focus-visible`) shows it immediately. Pointer exit hides it after the `hide-delay`, and losing focus hides it immediately.
 
-`open-change` is dispatched only after user-originated open and close actions, and `detail.open` is the state the component has already moved to.
+`open-change` is dispatched after gestures or `show()` / `hide()` change visibility, and `detail.open` is the state the component has already moved to. Writing `open` directly is silent.
 
 ```tsx
 import { useState } from 'react'
 
 export default function Demo() {
   const [count, setCount] = useState(0)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -55,7 +55,7 @@ import type { WebUiEvent, WebUiTooltip } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const count = ref(0)
-const last = ref('—')
+const last = ref('-')
 
 function onOpenChange(event: WebUiEvent<WebUiTooltip, 'open-change'>) {
   count.value += 1
@@ -75,7 +75,7 @@ import { lucideInfo } from '@greypan/web-ui/icons'
 import { useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -126,7 +126,7 @@ export default function Demo() {
 import { lucideInfo } from '@greypan/web-ui/icons'
 import { ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
@@ -138,7 +138,7 @@ const last = ref('—')
 import { useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -188,19 +188,22 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
-### Click trigger
+### Trigger modes
 
-`trigger` defaults to `hover focus`: pointer hover and keyboard focus both show the hint. Set `trigger="click"` and it toggles on a trigger click and closes when you click outside it; set `trigger="manual"` and only the `open` property moves it — pointer, focus, and click all stop triggering. Gestures can be written side by side: `trigger="hover focus click"`.
+`trigger` is a gesture set separated by spaces or commas: `click`, `hover`, `focus`, `none`. It defaults to `hover focus`, so pointer hover and keyboard focus both show the hint. With `trigger="click"` it toggles on a trigger click and closes when you click outside it. Gestures can be written side by side: `trigger="hover focus click"`.
+
+`none` accepts no gesture and takes no part in outside-click closing or Escape; only the `open` property or `show()` / `hide()` moves it. `none` and gestures are mutually exclusive: when both appear, `none` wins and a development warning is printed.
 
 ```tsx
-import { useState } from 'react'
+import type { WebUiTooltip } from '@greypan/web-ui'
+import { useRef, useState } from 'react'
 
 export default function Demo() {
-  const [open, setOpen] = useState(false)
+  const hint = useRef<WebUiTooltip>(null)
   const [last, setLast] = useState('—')
 
   return (
@@ -213,15 +216,21 @@ export default function Demo() {
         >
           <web-ui-button variant="secondary">Click tooltip</web-ui-button>
         </web-ui-tooltip>
-        <web-ui-tooltip content="Follows open only" trigger="manual" open={open}>
-          <web-ui-button variant="secondary" onClick={() => setOpen(value => !value)}>
-            Toggle open
+        <web-ui-tooltip
+          ref={hint}
+          content="Follows show() / hide() only"
+          trigger="none"
+          onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}
+        >
+          <web-ui-button variant="secondary" onClick={() => hint.current?.show()}>
+            show()
           </web-ui-button>
         </web-ui-tooltip>
+        <web-ui-button size="28" variant="secondary" onClick={() => hint.current?.hide()}>
+          hide()
+        </web-ui-button>
       </div>
-      <output className="text-sm text-(--wui-color-text-secondary)">
-        Click tooltip last detail.open = {last} · writing open dispatches nothing
-      </output>
+      <output className="text-sm text-(--wui-color-text-secondary)">Last detail.open = {last}</output>
     </div>
   )
 }
@@ -238,20 +247,25 @@ export default function Demo() {
       >
         <web-ui-button variant="secondary">Click tooltip</web-ui-button>
       </web-ui-tooltip>
-      <web-ui-tooltip content="Follows open only" trigger="manual" :open="open">
-        <web-ui-button variant="secondary" @click="open = !open">Toggle open</web-ui-button>
+      <web-ui-tooltip
+        ref="hint"
+        content="Follows show() / hide() only"
+        trigger="none"
+        @open-change="last = $event.detail.open ? 'true' : 'false'"
+      >
+        <web-ui-button variant="secondary" @click="hint?.show()">show()</web-ui-button>
       </web-ui-tooltip>
+      <web-ui-button size="28" variant="secondary" @click="hint?.hide()">hide()</web-ui-button>
     </div>
-    <output class="text-sm text-(--wui-color-text-secondary)">
-      Click tooltip last detail.open = {{ last }} · writing open dispatches nothing
-    </output>
+    <output class="text-sm text-(--wui-color-text-secondary)">Last detail.open = {{ last }}</output>
   </div>
 </template>
 
 <script setup lang="ts">
-import { ref } from 'vue'
+import type { WebUiTooltip } from '@greypan/web-ui'
+import { ref, useTemplateRef } from 'vue'
 
-const open = ref(false)
+const hint = useTemplateRef<WebUiTooltip>('hint')
 const last = ref('—')
 </script>
 ```
@@ -260,25 +274,25 @@ const last = ref('—')
 
 ### Props
 
-| Name               | Description                                                                                                                                                  | Type               | Default         |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | --------------- |
-| `placement`        | Tooltip placement; defaults to `top`.                                                                                                                        | `Placement`        | `'top'`         |
-| `trigger`          | Trigger gesture set, space separated: `click`, `hover`, `focus`, `manual`; the property channel also accepts an array, and it always reads back as a string. | `string`           | `'hover focus'` |
-| `show-delay`       | Show delay (milliseconds).                                                                                                                                   | `number`           | `200`           |
-| `hide-delay`       | Hide delay (milliseconds).                                                                                                                                   | `number`           | `100`           |
-| `disabled`         | Disabled state.                                                                                                                                              | `boolean`          | `false`         |
-| `offset`           | Distance from the trigger (px).                                                                                                                              | `number`           | `6`             |
-| `content`          | Hint text, the plain-text alternative to the `content` slot.                                                                                                 | `string`           | `''`            |
-| `open`             | Visibility.                                                                                                                                                  | `boolean`          | `false`         |
-| `isOpen`           | Whether the hint is currently visible (read-only).                                                                                                           | `boolean`          | —               |
-| `portal`           | Renders in the theme overlay container.                                                                                                                      | `boolean`          | `false`         |
-| `overlayContainer` | Explicit Portal container (property).                                                                                                                        | `OverlayContainer` | —               |
+| Name               | Description                                                                                                                              | Type               | Default         |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | --------------- |
+| `placement`        | Tooltip placement; defaults to `top`.                                                                                                    | `Placement`        | `'top'`         |
+| `trigger`          | Trigger gesture set, separated by spaces or commas: `click`, `hover`, `focus`, `none`; reads back as a comma-separated canonical string. | `string`           | `'hover,focus'` |
+| `show-delay`       | Hover-open delay (milliseconds); only hover-originated opens use it.                                                                     | `number`           | `200`           |
+| `hide-delay`       | Hover-close delay (milliseconds); only hover-originated closes use it.                                                                   | `number`           | `100`           |
+| `disabled`         | Disabled state.                                                                                                                          | `boolean`          | `false`         |
+| `offset`           | Distance from the trigger (px).                                                                                                          | `number`           | `6`             |
+| `content`          | Hint text, the plain-text alternative to the `content` slot.                                                                             | `string`           | `''`            |
+| `open`             | Visibility.                                                                                                                              | `boolean`          | `false`         |
+| `isOpen`           | Whether the hint is currently visible (read-only).                                                                                       | `boolean`          | —               |
+| `portal`           | Renders in the theme overlay container.                                                                                                  | `boolean`          | `false`         |
+| `overlayContainer` | Explicit Portal container (property).                                                                                                    | `OverlayContainer` | —               |
 
 ### Events
 
-| Name          | Description                                                      |
-| ------------- | ---------------------------------------------------------------- |
-| `open-change` | The tooltip opens or closes; `detail.open` is the current state. |
+| Name          | Description                                                                                                                              |
+| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------- |
+| `open-change` | Dispatched when gestures or `show()` / `hide()` change visibility; `detail.open` is the current state. Writing `open` does not dispatch. |
 
 ### Slots
 
@@ -287,20 +301,32 @@ const last = ref('—')
 | `default` | The trigger.                                              |
 | `content` | Tooltip panel content, replacing the `content` attribute. |
 
+### Methods
+
+| Name       | Description                                                                     |
+| ---------- | ------------------------------------------------------------------------------- |
+| `show()`   | Opens the tooltip and dispatches `open-change`; available under `none` as well. |
+| `hide()`   | Hides the tooltip and dispatches `open-change`; no effect when already hidden.  |
+| `toggle()` | Toggles by current visibility and dispatches `open-change`.                     |
+
 ### Behavior
 
-Each gesture in `trigger` wires up its own events, and the gestures combine freely:
+Each gesture in `trigger` wires up its own events, and the gestures combine freely. Unknown values are dropped; when no known gesture remains it falls back to the default `hover focus`.
 
-- `hover`: the pointer entering shows the hint after `show-delay`, leaving hides it after `hide-delay`. Touch pointers do not count.
-- `focus`: keyboard focus (`:focus-visible`) shows it right away without an entrance animation; losing focus hides it immediately.
-- `click`: clicking the trigger toggles the hint and clicking outside closes it; keyboard activation (Enter / Space) is treated like focus, with no entrance animation.
-- `manual`: no gesture moves it — only the `open` property does.
+- `click`: clicking the trigger toggles the hint and clicking outside closes it; keyboard activation (Enter / Space) is treated like a click, with no entrance animation.
+- `hover`: pointer entry shows the hint after `show-delay`; once the pointer leaves both the trigger and the panel and focus is outside them, it hides after `hide-delay`. Touch pointers do not count.
+- `focus`: keyboard focus (`:focus-visible`) shows it right away without an entrance animation; it hides after focus leaves both the trigger and the panel.
+- `none`: no gesture moves it, and neither outside clicks nor Escape close it; only the `open` property or `show()` / `hide()` does.
 
-When `manual` appears in `trigger` the whole value acts as `manual` alone; when it names no known gesture it falls back to the default `hover focus`.
+`show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately.
 
-`open` is a self-managed visibility property. Pointer and focus triggers update it, and assigning the property directly also shows or hides the tooltip. `open-change` is dispatched only for user-originated toggles.
+Showing requires `content` text or at least one `slot="content"` node. With no content, gestures do nothing, while `show()` and writing `open` still show an empty panel. Content added while hidden does not show it; clearing the content while visible hides the tooltip immediately without an exit transition.
 
-Once a tooltip is shown, moving the pointer to an adjacent tooltip switches immediately. Only pointer enter and leave go through `show-delay` / `hide-delay`; click and focus triggers act instantly.
+Outside clicks and Escape hide every tooltip except those in `none`; focus leaving both the trigger and the panel also hides it. Neither depends on `trigger` containing `click` or `focus`.
+
+`open` is a self-managed visibility property. Gestures and `show()` / `hide()` update it, and assigning the property directly also shows or hides the tooltip, but that write is silent and does not dispatch `open-change`.
+
+Once a tooltip is shown, moving the pointer to an adjacent tooltip switches immediately.
 
 While open, the tooltip text is written to `aria-description` on the trigger's focusable element, including native controls inside it, and restored on close. The screen-reader description does not use `aria-describedby`: the panel and trigger usually sit in different DOM trees, where IDREFs cannot resolve.
 

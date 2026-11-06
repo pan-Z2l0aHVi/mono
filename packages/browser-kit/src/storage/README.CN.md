@@ -1,23 +1,23 @@
 # Storage
 
-带命名空间、TTL 和跨 tab 同步的 localStorage/sessionStorage
+> 带命名空间、TTL 与跨 tab 变更事件的 localStorage 和 sessionStorage。
 
 [English](./README.md) | 简体中文
 
 ## 概述
 
-基于插件的存储方案，封装 `localStorage` 和 `sessionStorage`，提供：
+`@greypan/browser-kit` 的存储实例封装浏览器存储 API，并增加四项能力：
 
-- **命名空间隔离**：多个应用共存无键名冲突
-- **TTL 过期**：键在指定时间后自动过期
-- **跨 tab 同步**：`watch` 监听其他 tab 的 `storage` 事件
-- **配额处理**：存储满时自动清理过期键
+- 命名空间前缀，让同一 origin 下的多个应用不冲突。
+- 可选的 TTL 过期。
+- 用 `watch` 监听其他 tab 的变更。
+- 存储已满时自动清理过期键。
 
 ## API
 
 ### `defineLocal(namespace?)` / `defineSession(namespace?)`
 
-创建带命名空间的存储实例。每个 namespace 返回单例。
+创建带命名空间的存储实例。相同 namespace 始终返回同一实例。
 
 | 参数        | 类型     | 默认值 | 说明             |
 | ----------- | -------- | ------ | ---------------- |
@@ -32,7 +32,7 @@ const session = defineSession('my-app')
 
 ### `local` / `session`
 
-默认无命名空间的单例实例。
+不带命名空间的默认实例。
 
 ```ts
 import { local, session } from '@greypan/browser-kit'
@@ -43,7 +43,7 @@ session.set('temp', 'data')
 
 ### `storage.get(key, defaultValue?)`
 
-按键获取值。键不存在或已过期时返回 `defaultValue`。
+读取值。键不存在或已过期时返回 `defaultValue`。
 
 | 参数           | 类型        | 默认值 | 说明     |
 | -------------- | ----------- | ------ | -------- |
@@ -52,57 +52,54 @@ session.set('temp', 'data')
 
 ### `storage.set(key, value, ttl?)`
 
-设置值。传 `undefined` 会删除该键。返回 `true` 表示底层存储操作成功；受限存储被安全降级时返回 `false`，但不会抛错。
+写入值。值传 `undefined` 会删除该键。写入成功返回 `true`，受限存储不可用时返回 `false`，不会抛错。
 
-| 参数    | 类型     | 默认值 | 说明           |
-| ------- | -------- | ------ | -------------- |
-| `key`   | `string` | -      | 存储键名       |
-| `value` | `T`      | -      | 待存储的值     |
-| `ttl`   | `number` | -      | 有效期（毫秒） |
+| 参数    | 类型     | 默认值 | 说明               |
+| ------- | -------- | ------ | ------------------ |
+| `key`   | `string` | -      | 存储键名           |
+| `value` | `T`      | -      | 待存储的值         |
+| `ttl`   | `number` | -      | 有效期，单位为毫秒 |
 
 ```ts
-storage.set('token', 'abc123', 3600_000) // 1 小时后过期
-storage.set('user', { name: 'Alice' }) // 永不过期
+storage.set('token', 'abc123', 3600_000) // 一小时后过期
+storage.set('user', { name: 'Alice' }) // 不过期
 storage.set('key', undefined) // 删除该键
 ```
 
 ### `storage.has(key)`
 
-检查键是否存在且未过期。
+返回键是否存在且未过期。
 
 ### `storage.remove(key)`
 
-删除指定键。返回 `true` 表示删除成功；受限存储被安全降级时返回 `false`，但不会抛错。
+删除键。成功返回 `true`，受限存储不可用时返回 `false`。
 
 ### `storage.clear()`
 
-清空当前命名空间下的所有键。
+删除当前命名空间下的所有键。
 
 ### `storage.clearUseless()`
 
-清理当前命名空间下的所有过期键。
+删除当前命名空间下的所有过期键。
 
 ### `storage.watch(key, callback)`
 
-监听其他 tab 对指定键的变更。返回 unwatch 函数。
+监听其他 tab 对指定键的变更。返回取消监听函数。
 
-| 参数       | 类型                                             | 默认值 | 说明         |
-| ---------- | ------------------------------------------------ | ------ | ------------ |
-| `key`      | `string`                                         | -      | 待监听的键   |
-| `callback` | `(newVal: T \| null, oldVal: T \| null) => void` | -      | 变更处理函数 |
+| 参数       | 类型                                             | 说明         |
+| ---------- | ------------------------------------------------ | ------------ |
+| `key`      | `string`                                         | 待监听的键   |
+| `callback` | `(newVal: T \| null, oldVal: T \| null) => void` | 变更处理函数 |
 
 ```ts
-const unwatch = storage.watch('user', (newVal, oldVal) => {
-  console.log('user changed from', oldVal, 'to', newVal)
+const unwatch = storage.watch('user', (newValue, oldValue) => {
+  console.log('user changed from', oldValue, 'to', newValue)
 })
 
-// 后续取消监听
 unwatch()
 ```
 
-## 注意事项
+## 说明
 
-- 值被包装在 `Pkg` 信封中：`{ m: '_pkg', v: value, t?: expiry }`
-- 过期值在 `get` 时自动删除
-- `set` 遇到 `QuotaExceededError` 会清理过期键后重试一次
-- 相同 namespace 始终返回同一实例（单例模式）
+- `get` 读到过期值时会同时删除它。
+- 写入超出存储配额时，会清理过期键并重试一次。

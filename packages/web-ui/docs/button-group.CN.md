@@ -1,6 +1,6 @@
 # Button Group
 
-把若干个 `<web-ui-button>` 并成一组。组只负责两件事：让相邻的 button 连成整体（共享一块 glass 底，相邻 button 之间画分割线），以及决定排列方向。它不管选中态，也不改变成员各自的事件与表单行为。成员自己的 `size` 在组内被忽略，所有成员都按 30px 高渲染。
+把若干个 `<web-ui-button>` 并成一组。组只负责两件事：让相邻的按钮连成整体（共享一块 glass 底，相邻按钮之间画分割线），以及决定排列方向。它不管选中态，也不改变成员各自的事件与表单行为。成员自己的 `size` 在组内被忽略，所有成员都按 30px 高渲染。
 
 ## Samples
 
@@ -8,7 +8,7 @@
 
 整组共享一块 glass 底，相邻成员之间有分割线，末尾那枚没有。
 
-成员的 `variant` 在这里只剩文字色的意义：背景透明，hover / active 使用共用的状态层。
+成员的 `variant` 在这里只剩文字色的意义：背景透明，悬停 / 激活使用共用的状态层。
 
 因此 `secondary` / `ghost` / `glass` 三种在组内看起来一样，只有 `danger` 的红字保留。
 
@@ -38,9 +38,9 @@ export default function Demo() {
 
 ### Member content
 
-成员可以是 icon-only、纯文字，或用 `prefix` / `suffix` 夹一个 icon；成员高度统一成 30px 并居中对齐，混排不会被拉伸或压窄。
+成员可以是纯图标、纯文字，或用 `prefix` / `suffix` 夹一个图标；成员高度统一成 30px 并居中对齐，混排不会被拉伸或压窄。
 
-icon-only 成员照旧要写 `aria-label`，否则读屏只念出一个空 button。
+纯图标成员照旧要写 `aria-label`，否则读屏只念出一个空按钮。
 
 非 `<web-ui-button>` 的节点也照常投影，但不参与末位与分割线的计算。
 
@@ -148,7 +148,7 @@ import { lucideChevronLeft, lucideChevronRight } from '@greypan/web-ui/icons'
 
 这个属性只决定排列方向，组不改写成员的任何属性。
 
-竖排时最小宽为 `--wui-control-size`（36px），高度由成员撑开。成员仍按 30px 渲染，纯图标成员是 30px 方形、两侧各留 3px；文字成员的 label 不折行，可以撑宽轨道。
+竖排时最小宽为 `--wui-control-size`（36px），高度由成员撑开。成员仍按 30px 渲染，纯图标成员是 30px 方形、两侧各留 3px；文字成员的标签不折行，可以撑宽轨道。
 
 分割线这时画在成员下方，`--wui-button-group-divider-length` 控制的是宽度。
 
@@ -194,7 +194,7 @@ import { lucideMinus, lucidePlus, lucideSearch } from '@greypan/web-ui/icons'
 
 ### Member gap
 
-button-group 没有自己的 gap token：成员间距与玻璃盒子内衬都取 theme 的 `--wui-space-1`（4px），改一处两者一起变。
+按钮组没有自己的间距 token：成员间距与玻璃盒子内衬都取主题的 `--wui-space-1`（4px），改一处两者一起变。
 
 写在 `<web-ui-theme>` 之外的祖先上到不了组；写在组宿主自己身上则优先。
 
@@ -326,7 +326,7 @@ import { lucideMinus, lucidePlus } from '@greypan/web-ui/icons'
 
 `event.target` 是那一枚成员宿主，所以一个处理函数就能接住整组，用 `data-id` 区分是哪一枚。`data-*` 留在宿主上，可以放心当身份标记。
 
-`disabled` 与 `loading` 的成员照样不产生 click。
+`disabled` 与 `loading` 的成员照样不产生点击。
 
 入组也不改表单行为：`type="submit"` 的成员仍然提交外层 `<form>`。
 
@@ -421,7 +421,7 @@ function onSubmit(event: Event) {
 
 组不持有选中态、值或禁用态，不改写成员的任何属性，也不替成员做排他选择。`direction` 传入集合外的值时回退成 `horizontal`。
 
-成员的 `size` 在组内被忽略，高度统一成 30px；成员被移出组时恢复独立控件的表现（按 variant 画背景，按自己的 `size` 定高）。
+成员的 `size` 在组内被忽略，高度统一成 30px；成员被移出组时恢复独立控件的表现（按变体画背景，按自己的 `size` 定高）。
 
 成员的 `click` 原样冒泡出组宿主，`event.target` 是那一枚成员宿主。
 

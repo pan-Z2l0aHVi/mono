@@ -126,7 +126,7 @@ import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Custom trigger
+### Custom trigger slot
 
 The `trigger` slot replaces the default label text; the arrow and the open/close behavior still come from the component. The component does not rewrite the font, color, or size of slot content. Driving the slot content from page state makes it follow the selection.
 
@@ -175,16 +175,88 @@ const lang = ref('en')
 </script>
 ```
 
+### Trigger modes
+
+`trigger` is a gesture set separated by spaces or commas: `click`, `hover`, `focus`, `none`. It defaults to `click`. `hover` opens and closes with pointer entry and exit, and `focus` opens on keyboard focus (`:focus-visible`); gestures can be written side by side.
+
+`none` accepts no gesture and takes no part in outside-click closing or Escape; in the closed state, arrow keys, Space, Enter and typeahead no longer auto-open either — only the `open` property or `show()` / `hide()` moves it. `none` and gestures are mutually exclusive: when both appear, `none` wins and a development warning is printed.
+
+`show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately.
+
+```tsx
+import type { WebUiSelect } from '@greypan/web-ui'
+import { useRef, useState } from 'react'
+
+export default function Demo() {
+  const picker = useRef<WebUiSelect>(null)
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex flex-col items-start gap-3">
+      <web-ui-select
+        ref={picker}
+        trigger="none"
+        placeholder="none mode"
+        aria-label="none mode"
+        onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}
+      >
+        <web-ui-option value="a" label="Option A"></web-ui-option>
+        <web-ui-option value="b" label="Option B"></web-ui-option>
+      </web-ui-select>
+      <div className="flex flex-wrap items-center gap-2">
+        <web-ui-button size="28" variant="secondary" onClick={() => picker.current?.show()}>
+          show()
+        </web-ui-button>
+        <web-ui-button size="28" variant="secondary" onClick={() => picker.current?.hide()}>
+          hide()
+        </web-ui-button>
+        <output className="text-sm text-(--wui-color-text-secondary)">Last detail.open = {last}</output>
+      </div>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-col items-start gap-3">
+    <web-ui-select
+      ref="picker"
+      trigger="none"
+      placeholder="none mode"
+      aria-label="none mode"
+      @open-change="last = $event.detail.open ? 'true' : 'false'"
+    >
+      <web-ui-option value="a" label="Option A"></web-ui-option>
+      <web-ui-option value="b" label="Option B"></web-ui-option>
+    </web-ui-select>
+    <div class="flex flex-wrap items-center gap-2">
+      <web-ui-button size="28" variant="secondary" @click="picker?.show()">show()</web-ui-button>
+      <web-ui-button size="28" variant="secondary" @click="picker?.hide()">hide()</web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)">Last detail.open = {{ last }}</output>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { WebUiSelect } from '@greypan/web-ui'
+import { ref, useTemplateRef } from 'vue'
+
+const picker = useTemplateRef<WebUiSelect>('picker')
+const last = ref('—')
+</script>
+```
+
 ### Open-change notification
 
-`open-change` is notification only, with `detail.open` as the current state. select's `open` is a read-only property with no writable controlled property, so the page just follows the event.
+`open-change` is notification only, with `detail.open` as the current state. Gestures and `show()` / `hide()` dispatch it; writing `open` directly is silent and lets the page drive the panel one-way.
 
 ```tsx
 import { useState } from 'react'
 
 export default function Demo() {
   const [count, setCount] = useState(0)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex flex-col items-start gap-3">
@@ -224,7 +296,7 @@ import type { WebUiEvent, WebUiSelect } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const count = ref(0)
-const last = ref('—')
+const last = ref('-')
 
 function onOpenChange(event: WebUiEvent<WebUiSelect, 'open-change'>) {
   count.value += 1
@@ -233,9 +305,9 @@ function onOpenChange(event: WebUiEvent<WebUiSelect, 'open-change'>) {
 </script>
 ```
 
-### Icon trigger
+### Icon variant
 
-`trigger="icon"` keeps the arrow on the right and turns the left side into an icon area; the icon can follow the selected value. The trigger itself has no text, so give the select an `aria-label`.
+`variant="icon"` keeps the arrow on the right and turns the left side into an icon area; the icon can follow the selected value. The trigger itself has no text, so give the select an `aria-label`.
 
 ```tsx
 import { lucideLayoutGrid, lucideList, lucideSettings } from '@greypan/web-ui/icons'
@@ -249,7 +321,7 @@ export default function Demo() {
 
   return (
     <web-ui-select
-      trigger="icon"
+      variant="icon"
       aria-label="View mode"
       value={view}
       onChange={event => {
@@ -268,7 +340,7 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-select trigger="icon" aria-label="View mode" :value="view" @change="pick($event.currentTarget.value)">
+  <web-ui-select variant="icon" aria-label="View mode" :value="view" @change="pick($event.currentTarget.value)">
     <web-ui-icon slot="trigger" :icon="ICONS[view]" :size="18"></web-ui-icon>
     <web-ui-option value="grid" label="Grid"></web-ui-option>
     <web-ui-option value="list" label="List"></web-ui-option>
@@ -427,34 +499,47 @@ export default function Demo() {
 
 ### Props
 
-| Name               | Description                                                                                                                          | Type                | Default          |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------ | ------------------- | ---------------- |
-| `placeholder`      | Placeholder text shown when nothing is selected.                                                                                     | `string`            | `''`             |
-| `trigger`          | Trigger appearance: `label` shows the selected text and arrow, `icon` keeps the arrow and treats the `trigger` slot as icon content. | `'label' \| 'icon'` | `'label'`        |
-| `disabled`         | Disabled state.                                                                                                                      | `boolean`           | `false`          |
-| `required`         | Required validation.                                                                                                                 | `boolean`           | `false`          |
-| `portal`           | Renders the dropdown panel in the theme overlay container.                                                                           | `boolean`           | `false`          |
-| `placement`        | Placement of the dropdown panel; defaults to expanding downward from the trigger's bottom-left corner.                               | `Placement`         | `'bottom-start'` |
-| `no-scroll-lock`   | Does not lock page scrolling while open.                                                                                             | `boolean`           | `false`          |
-| `overlayContainer` | Explicit Portal container (property).                                                                                                | `OverlayContainer`  | —                |
-| `name`             | Form field name.                                                                                                                     | `string`            | `''`             |
-| `aria-label`       | Accessible name of the combobox.                                                                                                     | `string \| null`    | `null`           |
-| `value`            | Selected value.                                                                                                                      | `string`            | `''`             |
+| Name               | Description                                                                                                                              | Type                | Default          |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ---------------- |
+| `placeholder`      | Placeholder text shown when nothing is selected.                                                                                         | `string`            | `''`             |
+| `variant`          | Trigger appearance: `label` shows the selected text and arrow, `icon` keeps the arrow and treats the `trigger` slot as icon content.     | `'label' \| 'icon'` | `'label'`        |
+| `trigger`          | Trigger gesture set, separated by spaces or commas: `click`, `hover`, `focus`, `none`; reads back as a comma-separated canonical string. | `string`            | `'click'`        |
+| `show-delay`       | Hover-open delay (milliseconds); only hover-originated opens use it.                                                                     | `number`            | `200`            |
+| `hide-delay`       | Hover-close delay (milliseconds); only hover-originated closes use it.                                                                   | `number`            | `100`            |
+| `disabled`         | Disabled state.                                                                                                                          | `boolean`           | `false`          |
+| `required`         | Required validation.                                                                                                                     | `boolean`           | `false`          |
+| `portal`           | Renders the dropdown panel in the theme overlay container.                                                                               | `boolean`           | `false`          |
+| `placement`        | Placement of the dropdown panel; defaults to expanding downward from the trigger's bottom-left corner.                                   | `Placement`         | `'bottom-start'` |
+| `no-scroll-lock`   | Does not lock page scrolling while open.                                                                                                 | `boolean`           | `false`          |
+| `overlayContainer` | Explicit Portal container (property).                                                                                                    | `OverlayContainer`  | —                |
+| `name`             | Form field name.                                                                                                                         | `string`            | `''`             |
+| `aria-label`       | Accessible name of the combobox.                                                                                                         | `string \| null`    | `null`           |
+| `value`            | Selected value.                                                                                                                          | `string`            | `''`             |
+| `open`             | Declarative switch; writing it directly is silent and does not dispatch `open-change`.                                                   | `boolean`           | `false`          |
+| `isOpen`           | Whether the panel is currently open (read-only).                                                                                         | `boolean`           | —                |
 
 ### Events
 
-| Name          | Description                                                             |
-| ------------- | ----------------------------------------------------------------------- |
-| `input`       | Fired after the user selects an item; `value` is the new value.         |
-| `change`      | Dispatched in pair with `input`, one each per selection.                |
-| `open-change` | The dropdown panel opens or closes; `detail.open` is the current state. |
+| Name          | Description                                                                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `input`       | Fired after the user selects an item; `value` is the new value.                                                                              |
+| `change`      | Dispatched in pair with `input`, one each per selection.                                                                                     |
+| `open-change` | Dispatched when gestures or `show()` / `hide()` change the open state; `detail.open` is the current state. Writing `open` does not dispatch. |
 
 ### Slots
 
 | Name      | Description                                                                                                                                |
 | --------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `trigger` | Custom trigger area content, replacing the default label; with `trigger="icon"` it is the left icon area and the arrow stays on the right. |
-| `default` | Projects `<web-ui-option>` candidates.                                                                                                     |
+| `trigger` | Custom trigger area content, replacing the default label; with `variant="icon"` it is the left icon area and the arrow stays on the right. |
+| `default` | Projects `<web-ui-option>` candidates; other nodes also count as panel content.                                                            |
+
+### Methods
+
+| Name       | Description                                                                              |
+| ---------- | ---------------------------------------------------------------------------------------- |
+| `show()`   | Opens the panel and dispatches `open-change`; no effect when `disabled` or already open. |
+| `hide()`   | Closes the panel and dispatches `open-change`; no effect when already closed.            |
+| `toggle()` | Toggles according to the current `open` and dispatches `open-change`.                    |
 
 ### Behavior
 
@@ -462,7 +547,11 @@ The panel uses `role="listbox"` and the candidates use `role="option"`. The opti
 
 Outside Portal mode, `aria-activedescendant` points at the current option during keyboard navigation; in Portal mode this attribute is not set.
 
-When closed, Space / Enter / ArrowDown / ArrowUp open the panel; when expanded, ArrowDown / ArrowUp, Home / End, and typeahead move the active item, Enter / Space select and close, and Escape closes.
+Opening requires content: with nothing in the `default` slot to show, click, keyboard gestures and hover do nothing. `show()` and writing `open` still open an empty panel, and content added while closed does not open it. If the last content disappears while the panel is open, it collapses immediately without an exit transition.
+
+When closed, Space / Enter / ArrowDown / ArrowUp open the panel; under `none` these keys no longer auto-open it. When expanded, ArrowDown / ArrowUp, Home / End, and typeahead move the active item, Enter / Space select and close, and Escape closes.
+
+`hover` opens and closes with pointer entry and exit; once the pointer leaves both the trigger and the panel and focus is outside them, it closes after `hide-delay`. `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately. Escape, outside clicks and focus loss close every layer except those in `none`, regardless of whether `trigger` contains `click` or `focus`.
 
 A Portal panel reads these variables as resolved on the host when it is created; after updating the host, the Portal panel must be reopened for the change to take effect.
 

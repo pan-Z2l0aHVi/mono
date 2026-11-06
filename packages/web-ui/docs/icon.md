@@ -1,8 +1,8 @@
 # Icon
 
-icon renders an icon from an Iconify data object; `@greypan/web-ui/icons` exports objects of this shape, named by icon set. The result is an `<svg>` with `aria-hidden="true"`, and the icon itself provides no accessible name.
+icon renders an icon; the result is an `<svg>` with `aria-hidden="true"`, and the icon itself provides no accessible name. The input is an Iconify data object, not an icon name: the component accepts any valid `IconifyIcon`, where `body` is required and holds a fragment of inner SVG markup, and `width` / `height` / `left` / `top` describe the canvas. A hand-built object renders the same way and does not have to be registered in `@greypan/web-ui/icons` first.
 
-`@greypan/web-ui/icons` currently uses a whitelist-based on-demand generation mechanism: the icons this monorepo actually uses are registered one entry per line in the package-root `icons.used.json` (`set:name` format), and the generator extracts assets only from those entries, producing one data module per icon plus an aggregated `iconGallery` listing. To add a new icon, append a `set:name` entry to `icons.used.json` and run `pnpm --filter @greypan/web-ui generate-icons`. The collection may expand over time, but on-demand generation is how the bundle stays small today; external callers who need an icon outside the whitelist can pass any `IconifyIcon` data to the component directly (see "Bring your own icon data" below) without waiting for the whitelist to grow.
+`@greypan/web-ui/icons` exports these objects named by icon set, so common icons can be imported by name; `iconGallery` aggregates that set for browsing and picking. An icon outside the set needs no waiting for an expansion: pass any valid `IconifyIcon` data to `icon` — either hand-written, or taken from the data package of the icon set (for example `@iconify-json/lucide`).
 
 ## Samples
 
@@ -58,7 +58,7 @@ import { lucideFolderOpen, lucideSearch, lucideSettings } from '@greypan/web-ui/
 
 ### Bring your own icon data
 
-The component accepts one input shape: `IconifyIcon`. `body` is required and holds a fragment of inner SVG markup; `width` / `height` / `left` / `top` describe the canvas. A hand-built object renders the same way, so the icon does not have to live in `@greypan/web-ui/icons` first.
+A hand-built object renders the same way: `clock` never goes through `@greypan/web-ui/icons` and is passed straight to `icon`.
 
 ```tsx
 const clock = {
@@ -274,7 +274,7 @@ import { lucideChevronLeft, lucideDownload, lucideUpload } from '@greypan/web-ui
 
 ### Icon gallery
 
-`iconGallery` aggregates every icon currently exported by `@greypan/web-ui/icons` into a single `Record<string, IconifyIcon>`, keyed by the same camelCase names as the named exports. Iterating it is how you browse the full list of icons available today; once you find one, a named import of the same name gives you the identical data object.
+`iconGallery` is a `Record<string, IconifyIcon>` keyed by the same camelCase names as the named exports, collecting every icon currently exported by `@greypan/web-ui/icons`. Iterating it is how you browse the full list of icons available today; once you find one, a named import of the same name gives you the identical data object.
 
 ```tsx
 import { iconGallery } from '@greypan/web-ui/icons'
@@ -283,9 +283,11 @@ export default function Demo() {
   return (
     <div className="grid w-full grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-4">
       {Object.entries(iconGallery).map(([name, icon]) => (
-        <span key={name} className="flex flex-col items-center gap-2">
+        <span key={name} className="flex min-w-0 w-full flex-col items-center gap-2">
           <web-ui-icon icon={icon}></web-ui-icon>
-          <span className="text-xs text-(--wui-color-text-secondary)">{name}</span>
+          <span className="w-full break-words text-center text-xs leading-tight text-(--wui-color-text-secondary)">
+            {name}
+          </span>
         </span>
       ))}
     </div>
@@ -296,9 +298,11 @@ export default function Demo() {
 ```vue
 <template>
   <div class="grid w-full grid-cols-[repeat(auto-fill,minmax(96px,1fr))] gap-4">
-    <span v-for="(icon, name) in iconGallery" :key="name" class="flex flex-col items-center gap-2">
+    <span v-for="(icon, name) in iconGallery" :key="name" class="flex min-w-0 w-full flex-col items-center gap-2">
       <web-ui-icon :icon="icon"></web-ui-icon>
-      <span class="text-xs text-(--wui-color-text-secondary)">{{ name }}</span>
+      <span class="w-full break-words text-center text-xs leading-tight text-(--wui-color-text-secondary)">
+        {{ name }}
+      </span>
     </span>
   </div>
 </template>
@@ -314,10 +318,10 @@ import { iconGallery } from '@greypan/web-ui/icons'
 
 | Name    | Description                                                                       | Type          | Default |
 | ------- | --------------------------------------------------------------------------------- | ------------- | ------- |
-| `icon`  | Iconify data object; passed only as a property, and an icon name is not accepted. | `IconifyIcon` | —       |
+| `icon`  | Iconify data object; passed only as a property, and an icon name is not accepted. | `IconifyIcon` | -       |
 | `spin`  | Rotation animation.                                                               | `boolean`     | `false` |
 | `size`  | Pixel size, written into both the `<svg>`'s `width` and `height`.                 | `number`      | `18`    |
-| `color` | Icon color; when empty, `--wui-icon-color` is read first, then the text color.    | `string`      | —       |
+| `color` | Icon color; when empty, `--wui-icon-color` is read first, then the text color.    | `string`      | -       |
 
 ### Behavior
 

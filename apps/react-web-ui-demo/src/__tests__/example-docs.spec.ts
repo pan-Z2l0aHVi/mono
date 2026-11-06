@@ -10,21 +10,14 @@ import { describe, expect, it } from 'vite-plus/test'
 import { MetaComp } from '../components/meta'
 import { loadMeta } from '../i18n/examples'
 
-// 语料接线的 contract 断言（围栏同源 / 落盘文件 / 页面 ↔ 语料不互为孤儿）收拢在
-// `@greypan/doc-demo-kit/testing`；这里只注入 React 侧的宿主事实。生成器那侧的判据在
-// `@greypan/md-to-meta` 的单测里；跨 app 的另一半由 web-ui 包的 generated-parity.spec.ts 持有。
+// 语料接线的轻量 contract 断言（围栏同源 / 落盘文件）收拢在 `@greypan/doc-demo-kit/testing`；
+// 这里只注入 React 侧的宿主事实。生成器判据在 `@greypan/md-to-meta` 单测里。
 runExampleDocsContractTests({
   loadMeta,
   docsDir: path.resolve(import.meta.dirname, '../../../../packages/web-ui/docs'),
   generatedDir: path.resolve(import.meta.dirname, '../generated'),
   /** 本端只执行 tsx 围栏：它们才是真组件；其余围栏只是源码。 */
-  execLanguage: 'tsx',
-  componentsDir: path.resolve(import.meta.dirname, '../components'),
-  pagesDir: path.resolve(import.meta.dirname, '../routes/components'),
-  pageExt: '.tsx',
-  framework: 'React',
-  demoImportSample: `import Demo from '@/components/slider-demo'`,
-  exampleDocImportSample: `import Doc from '@/components/example-doc'`
+  execLanguage: 'tsx'
 })
 
 describe('通用 meta 渲染', () => {
@@ -97,7 +90,9 @@ describe('通用 meta 渲染', () => {
     const card = container.querySelector('[data-codeblock]')!
     expect(card.getAttribute('data-codeblock')).toBe('tsx')
 
-    const vueTrigger = [...card.querySelectorAll('web-ui-segmented-trigger')].find(item => item.value === 'vue')
+    const vueTrigger = [...card.querySelectorAll<HTMLElement & { value?: string }>('web-ui-segmented-trigger')].find(
+      item => item.value === 'vue'
+    )
     await waitFor(() => expect(vueTrigger?.shadowRoot?.querySelector('[role="option"]')).toBeTruthy())
     vueTrigger!.shadowRoot!.querySelector<HTMLElement>('[role="option"]')!.click()
 

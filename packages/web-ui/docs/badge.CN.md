@@ -6,7 +6,7 @@ badge / 通知计数：把 `count` 角标叠加在默认插槽内容的一角；
 
 ### Basic
 
-默认插槽是要装饰的内容，`count` 就是角标上的数字。`count` 为 0 时角标不画，被装饰的内容照常显示；要让 0 也占位，就写 `show-zero`。图形（icon）和控件（button）都能作为内容被包住。
+默认插槽是要装饰的内容，`count` 就是角标上的数字。`count` 为 0 时角标不画，被装饰的内容照常显示；要让 0 也占位，就写 `show-zero`。图形（图标）和控件（按钮）都能作为内容被包住。
 
 ```tsx
 import { lucideBell } from '@greypan/web-ui/icons'

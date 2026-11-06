@@ -12,7 +12,7 @@
  */
 import { findFocusedMenuItem, focusMenuItem, getEnabledMenuItems } from '@/shared/menu-portal/menu-tree'
 import { hideOverlayPresence as hidePanelPresence } from '@/shared/overlay/presence'
-import { isEventInsideHost } from '@/shared/overlay/trigger-gestures'
+import { isEventInsideHost } from '@/shared/overlay/trigger-controller'
 
 /** menu hierarchy panel 的最小视图：行为层只需要 panel（presence/contains）与内容容器（项查询）。 */
 export interface MenuLevelSurface {

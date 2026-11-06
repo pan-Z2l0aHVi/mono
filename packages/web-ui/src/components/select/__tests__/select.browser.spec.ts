@@ -5,7 +5,7 @@ import '@/components/option'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 
-import { getPortalPanel, pollUntil } from '@/shared/test-utils'
+import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiSelect } from '..'
 
@@ -21,6 +21,16 @@ const mountKeyboardIsolated = () => {
   return mountPoint
 }
 
+/** 把 option 高亮用的背景 token 解析成计算后的颜色，避免在断言里抄 rgb 字面量。 */
+const highlightColor = (scope: Element): string => {
+  const probe = document.createElement('span')
+  probe.style.backgroundColor = 'var(--wui-color-border, rgb(0 0 0 / 0.1))'
+  scope.append(probe)
+  const color = getComputedStyle(probe).backgroundColor
+  probe.remove()
+  return color
+}
+
 describe('WebUiSelect 组件（浏览器）', () => {
   it('host aria-label gives the combobox an accessible name', async () => {
     const select = document.createElement('web-ui-select')
@@ -32,9 +42,9 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(root.getByRole('combobox', { name: 'Global theme' }).length).toBe(1)
   })
 
-  it('icon trigger 保留右侧箭头，左侧 slot 保持图标尺寸', async () => {
+  it('variant="icon" 保留右侧箭头，左侧 slot 保持图标尺寸', async () => {
     const select = document.createElement('web-ui-select')
-    select.trigger = 'icon'
+    select.variant = 'icon'
     select.innerHTML = `
       <span slot="trigger">T</span>
       <web-ui-option value="a" label="A"></web-ui-option>
@@ -52,7 +62,7 @@ describe('WebUiSelect 组件（浏览器）', () => {
   it('placement="bottom" 把 panel 水平居中到 trigger', async () => {
     const select = document.createElement('web-ui-select')
     select.placement = 'bottom'
-    select.trigger = 'icon'
+    select.variant = 'icon'
     // 挂到视口中部：窄 trigger 上的居中 panel 会向两侧各溢出约 72px，贴边会触发 shift 夹取。
     select.style.position = 'fixed'
     select.style.left = '50vw'
@@ -83,7 +93,7 @@ describe('WebUiSelect 组件（浏览器）', () => {
 
   it('打开后修改 placement 会重新定位 panel', async () => {
     const select = document.createElement('web-ui-select')
-    select.trigger = 'icon'
+    select.variant = 'icon'
     // 同 placement="bottom" 用例：挂到视口中部，避免居中 panel 被视口边缘夹取。
     select.style.position = 'fixed'
     select.style.left = '50vw'
@@ -167,6 +177,37 @@ describe('WebUiSelect 组件（浏览器）', () => {
     await select.updateComplete
     expect(select.value).toBe('react')
     expect(select.open).toBe(false)
+  })
+
+  /*
+   * 键盘导航的活动项与悬停同底：只加深背景，文字颜色沿用未选中项。蓝底白字会把「当前项」
+   * 读成「已选中」，也会吃掉图标与次要文字的对比度。
+   */
+  it('键盘导航的活动项与悬停同底，不改文字颜色', async () => {
+    const mountPoint = mountKeyboardIsolated()
+    const select = document.createElement('web-ui-select')
+    select.innerHTML = `
+      <web-ui-option value="vue" label="Vue"></web-ui-option>
+      <web-ui-option value="react" label="React"></web-ui-option>
+    `
+    mountPoint.append(select)
+    await select.updateComplete
+
+    const trigger = select.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!
+    trigger.focus()
+    await userEvent.keyboard('{Enter}')
+    await select.updateComplete
+    await userEvent.keyboard('{Home}')
+    await select.updateComplete
+
+    const options = [...select.querySelectorAll<HTMLElement>('web-ui-option')]
+    const active = options.find(option => option.hasAttribute('active'))
+    const idle = options.find(option => !option.hasAttribute('active'))
+    if (!active || !idle) throw new Error('缺少活动项或未选中项')
+    const labelOf = (option: HTMLElement) => option.shadowRoot!.querySelector<HTMLElement>('.option-label')!
+
+    expect(getComputedStyle(labelOf(active)).backgroundColor).toBe(highlightColor(select))
+    expect(getComputedStyle(labelOf(active)).color).toBe(getComputedStyle(labelOf(idle)).color)
   })
 
   it.each([
@@ -294,5 +335,26 @@ describe('WebUiSelect 组件（浏览器）', () => {
     await select.updateComplete
 
     expect(form.checkValidity()).toBe(true)
+  })
+
+  it('内容清空时立即隐藏 panel，不播空盒退场过渡', async () => {
+    const select = document.createElement('web-ui-select')
+    select.innerHTML = '<web-ui-option value="a" label="A"></web-ui-option>'
+    document.body.append(select)
+    await select.updateComplete
+
+    select.show({ instant: true })
+    await select.updateComplete
+    await waitForFrame()
+
+    const panel = select.shadowRoot!.querySelector<HTMLElement>('[role="listbox"]')!
+    expect(panel.hidden).toBe(false)
+
+    select.querySelector('web-ui-option')!.remove()
+    // 一帧远短于退场过渡：此刻仍可见就说明走了动画，而不是内容已空就落隐藏态。
+    await waitForFrame()
+
+    expect(select.isOpen).toBe(false)
+    expect(panel.hidden).toBe(true)
   })
 })

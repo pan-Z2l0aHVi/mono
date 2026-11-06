@@ -28,7 +28,7 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 
 CI 在 Build 步之前经两端 demo 的 `check-generated` turbo 任务以同一份插件配置只判不改地校验产物：Build 的写盘会把失步产物原地治愈，测试档里的判据到那时永远空转，所以检测必须抢在 healing 之前。判据与测试档同源（`@greypan/md-to-meta` 的 `checkArtifacts`），配置直接 import 各 demo `vite.config.ts` 的 `mdToMetaOptions` 具名导出，不抄第二份。
 
-这些语料必须进入本包 `build` 与 `test` 的 turbo inputs：根配置排除 Markdown，包级 [`turbo.json`](../../turbo.json) 重新纳入，并由 `pnpm run check-policy` 中的 `web-ui-docs-inputs` 检查守护。
+这些语料必须进入本包 `build` 与 `test` 的 turbo inputs：根配置排除 Markdown，包级 [`turbo.json`](../../turbo.json) 重新纳入，并由 `pnpm run check-policy` 中的 `web-ui-docs-inputs` 检查守护。`web-ui` 侧的对齐判据还读取两个 demo 的 `src/generated/**` 与页面目录（React `src/routes/components/**`、Vue `src/pages/components/**`）；这些路径不在本包目录内，依赖方向又是 demo → `web-ui`，`^build` 传播不到，因此逐条登记在 [`packages/web-ui/turbo.json`](../../packages/web-ui/turbo.json) 的 `test.inputs` 里。
 
 React 与 Vue demo 的**壳文案**（TSX / SFC 中的界面文字）走另一条链：`wuchale` 从源码抽取 msgid，中文为源、英文为译文，落进 `apps/{react,vue}-web-ui-demo/src/locales/<locale>.po`。PO 是入库的译文源、手写不生成；catalog 与 loader（`src/locales/.wuchale/**`、`*.loader.js`、`data.js`、`plural.js`）由 Vite 插件按 PO 重编译，全部 gitignore。dev 与 build 只编译不抽取，所以**增删壳文案必须显式在应用目录跑 `pnpm exec wuchale --clean`** 把新 msgid 写进 PO，否则构建默默用旧语料出页面。`--clean` 会顺带移除代码里已不再引用的条目；不得用 `--modify`——它把译文写回源码，而源码里的中文才是唯一原文。PO 是 tracked 文件，天然在 `$TURBO_DEFAULT$` 里，不需要像 Markdown 那样重新纳入。
 

@@ -307,7 +307,7 @@ export function localActionBootstrapViolations(text) {
 
 // 需要向 GitHub 开口才要凭据，所以表里记的是命令而不是脚本：prepare 与 capture 只读本地文件。
 const ghCommands = {
-  'codex-review.mjs': ['prior-run', 'gate', 'resolve-pull', 'publish'],
+  'codex-review.mjs': ['prior-run', 'gate', 'resolve-pull', 'report'],
   'codex-autofix.mjs': ['prepare', 'apply']
 }
 
@@ -331,6 +331,56 @@ export function ghTokenStepViolations(text) {
     )
     if (commands.length > 0 && !/^ {10}GH_TOKEN:/m.test(block))
       violations.push({ job, step: labelOf(block), commands: commands.map(match => match[2]).join(', ') })
+    block = null
+  }
+
+  for (const line of text.split(/\r?\n/)) {
+    if (/^[A-Za-z-]+:/.test(line)) {
+      close()
+      job = null
+      continue
+    }
+    const jobStart = line.match(/^ {2}([a-z0-9-]+):$/)
+    if (jobStart) {
+      close()
+      job = jobStart[1]
+      continue
+    }
+    if (job === null) continue
+    if (/^ {6}- /.test(line)) {
+      close()
+      block = `${line}\n`
+      continue
+    }
+    if (block === null) continue
+    if (/^ {4}\S/.test(line)) {
+      close()
+      continue
+    }
+    block += `${line}\n`
+  }
+  close()
+  return violations
+}
+
+// download-artifact@v7 只有在显式给出 github-token 时才会用 repository/run-id 跨 run 查找：
+// 源码里 `if (inputs.token) { options.findBy = { workflowRunId: inputs.runID } }`。
+// 缺 token 会静默退化成「只查当前 workflow run」，写回腿与结论复用都拿不到产物。
+export function crossRunArtifactViolations(text) {
+  const violations = []
+  let job = null
+  let block = null
+
+  const close = () => {
+    if (block === null) return
+    const named = block.match(/^ {6}- name:\s*(.*)$/m)
+    if (
+      /^ {6,8}(?:- )?uses: actions\/download-artifact@/m.test(block) &&
+      /^ {8,}run-id:/m.test(block) &&
+      !/^ {8,}github-token:\s*\$\{\{\s*(?:github\.token|secrets\.GITHUB_TOKEN)\s*\}\}\s*$/m.test(block)
+    ) {
+      violations.push({ job, step: named ? unquote(named[1]) : 'unnamed step' })
+    }
     block = null
   }
 

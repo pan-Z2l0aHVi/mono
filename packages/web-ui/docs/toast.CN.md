@@ -1,6 +1,6 @@
 # Toast
 
-命令式 toast。调用 `toast()` 创建一条 toast 并拿到它的 id，再用 `toast.close(id)` 关闭。同一个 `id` 再次调用会更新那一条，不会新建。下面的表分别列出 `toast()` 的 option、命令式入口，以及 `<web-ui-toast>` 元素自身的属性、事件和方法。
+命令式 toast。调用 `toast()` 创建一条 toast 并拿到它的 id，再用 `toast.close(id)` 关闭。同一个 `id` 再次调用会更新那一条，不会新建。下面的表分别列出 `toast()` 的选项、命令式入口，以及 `<web-ui-toast>` 元素自身的属性、事件和方法。
 
 ## Samples
 
@@ -15,7 +15,7 @@ import { toast } from '@greypan/web-ui'
 import { useEffect, useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   useEffect(() => () => toast.clear(), [])
 
@@ -50,7 +50,7 @@ export default function Demo() {
 import { toast } from '@greypan/web-ui'
 import { onBeforeUnmount, ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 
 function showSuccess() {
   last.value = toast.success('操作成功')
@@ -72,39 +72,120 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
+### Positions
+
+`position` 接受 `top-left`、`top-center`、`top-right`、`bottom-left`、`bottom-center`、`bottom-right` 六个值。每个值对应一个固定在视口边缘的容器，位置不随页面滚动改变。下面每个按钮在对应位置弹出一条默认时长的 toast。
+
+```tsx
+import { toast, type ToastPosition } from '@greypan/web-ui'
+import { useEffect } from 'react'
+
+const POSITIONS: ToastPosition[] = [
+  'top-left',
+  'top-center',
+  'top-right',
+  'bottom-left',
+  'bottom-center',
+  'bottom-right'
+]
+
+export default function Demo() {
+  useEffect(() => () => toast.clear(), [])
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {POSITIONS.map(position => (
+        <web-ui-button key={position} variant="secondary" onClick={() => toast.info(position, { position })}>
+          {position}
+        </web-ui-button>
+      ))}
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-wrap gap-2">
+    <web-ui-button v-for="position in POSITIONS" :key="position" variant="secondary" @click="notify(position)">
+      {{ position }}
+    </web-ui-button>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { toast, type ToastPosition } from '@greypan/web-ui'
+import { onBeforeUnmount } from 'vue'
+
+const POSITIONS: ToastPosition[] = [
+  'top-left',
+  'top-center',
+  'top-right',
+  'bottom-left',
+  'bottom-center',
+  'bottom-right'
+]
+
+function notify(position: ToastPosition) {
+  toast.info(position, { position })
+}
+
+onBeforeUnmount(() => toast.clear())
+</script>
+```
+
 ### Full options
 
-`toast()` 接受完整 option：`heading` 是粗体标题，`message` 是正文，`position` 决定出现在屏幕的哪个位置（这里是 `top-center`），`duration` 是自动关闭的毫秒数，`closable` 控制是否渲染关闭 button。
+`toast()` 接受完整选项：`heading` 是粗体标题，`message` 是正文，`position` 决定出现在屏幕的哪个位置（这里是 `top-center`），`duration` 是自动关闭的毫秒数，`closable` 控制是否渲染关闭按钮。第二个按钮把 `closable` 设为 `false`，没有关闭按钮，只能等 `duration` 到期。
 
 ```tsx
 import { toast } from '@greypan/web-ui'
 import { useEffect, useState } from 'react'
 
 export default function Demo() {
-  const [id, setId] = useState('—')
+  const [id, setId] = useState('-')
 
   useEffect(() => () => toast.clear(), [])
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-button
-        onClick={() => {
-          setId(
-            toast({
-              heading: '已保存',
-              message: '更改已写入云端',
-              type: 'info',
-              position: 'top-center',
-              duration: 4000,
-              closable: true
-            })
-          )
-        }}
-      >
-        创建完整 option 的 toast
-      </web-ui-button>
+      <div className="flex flex-wrap gap-2">
+        <web-ui-button
+          onClick={() => {
+            setId(
+              toast({
+                heading: '已保存',
+                message: '更改已写入云端',
+                type: 'info',
+                position: 'top-center',
+                duration: 4000,
+                closable: true
+              })
+            )
+          }}
+        >
+          创建完整 option 的 toast
+        </web-ui-button>
+        <web-ui-button
+          variant="secondary"
+          onClick={() => {
+            setId(
+              toast({
+                heading: '不可关闭',
+                message: '这条没有关闭按钮',
+                type: 'warning',
+                position: 'bottom-right',
+                duration: 6000,
+                closable: false
+              })
+            )
+          }}
+        >
+          创建不可关闭的 toast
+        </web-ui-button>
+      </div>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        id：{id} · 位置：bottom-right · 4 秒后自动关闭
+        id：{id} · 第一条 4 秒后自动关闭，第二条 6 秒后自动关闭
       </output>
     </div>
   )
@@ -114,9 +195,12 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-button @click="notify">创建完整 option 的 toast</web-ui-button>
+    <div class="flex flex-wrap gap-2">
+      <web-ui-button @click="notify">创建完整 option 的 toast</web-ui-button>
+      <web-ui-button variant="secondary" @click="notifyWithoutClose">创建不可关闭的 toast</web-ui-button>
+    </div>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      id：{{ id }} · 位置：bottom-right · 4 秒后自动关闭
+      id：{{ id }} · 第一条 4 秒后自动关闭，第二条 6 秒后自动关闭
     </output>
   </div>
 </template>
@@ -125,7 +209,7 @@ export default function Demo() {
 import { toast } from '@greypan/web-ui'
 import { onBeforeUnmount, ref } from 'vue'
 
-const id = ref('—')
+const id = ref('-')
 
 function notify() {
   id.value = toast({
@@ -135,6 +219,17 @@ function notify() {
     position: 'top-center',
     duration: 4000,
     closable: true
+  })
+}
+
+function notifyWithoutClose() {
+  id.value = toast({
+    heading: '不可关闭',
+    message: '这条没有关闭按钮',
+    type: 'warning',
+    position: 'bottom-right',
+    duration: 6000,
+    closable: false
   })
 }
 
@@ -236,7 +331,7 @@ import { useEffect, useState } from 'react'
 const DEMO_ID = 'demo-close'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   useEffect(() => () => toast.clear(), [])
 
@@ -288,7 +383,7 @@ import { toast } from '@greypan/web-ui'
 import { onBeforeUnmount, ref } from 'vue'
 
 const DEMO_ID = 'demo-close'
-const last = ref('—')
+const last = ref('-')
 
 function create() {
   last.value = `创建 ${toast.info('这条 toast 不会自动关闭', { id: DEMO_ID, duration: 0 })}`
@@ -314,15 +409,15 @@ onBeforeUnmount(() => toast.clear())
 
 | 名称        | 说明                                                        | 类型            | 默认值        |
 | ----------- | ----------------------------------------------------------- | --------------- | ------------- |
-| `message`   | 通知文本。                                                  | `string`        | —             |
+| `message`   | 通知文本。                                                  | `string`        | -             |
 | `type`      | 类型：`success`、`info`、`warning`、`error`。               | `ToastType`     | `'info'`      |
 | `duration`  | 自动关闭时间（ms），0 表示不自动关闭；`error` 默认 `5000`。 | `number`        | `3000`        |
-| `closable`  | 展示关闭 button。                                           | `boolean`       | `true`        |
+| `closable`  | 展示关闭按钮。                                              | `boolean`       | `true`        |
 | `id`        | 合并键：同一个 `id` 再次调用是更新那一条。                  | `string`        | 自动生成      |
 | `heading`   | 粗体标题。                                                  | `string`        | `''`          |
 | `position`  | 屏幕位置。                                                  | `ToastPosition` | `'top-right'` |
-| `target`    | 用于查找最近主题的 overlay 容器。                           | `Element`       | —             |
-| `container` | 显式挂载容器（最高优先级）。                                | `HTMLElement`   | —             |
+| `target`    | 用于查找最近主题的 overlay 容器。                           | `Element`       | -             |
+| `container` | 显式挂载容器（最高优先级）。                                | `HTMLElement`   | -             |
 
 ### Methods
 
@@ -410,7 +505,7 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 | `heading`         | 粗体标题。                                                    | `string`        | `''`          |
 | `message`         | 通知文本。                                                    | `string`        | `''`          |
 | `duration`        | 自动关闭时间（ms），0 表示不自动关闭；`error` 回退为 `5000`。 | `number`        | `3000`        |
-| `no-close-button` | 隐藏关闭 button。                                             | `boolean`       | `false`       |
+| `no-close-button` | 隐藏关闭按钮。                                                | `boolean`       | `false`       |
 | `visible`         | 是否可见。                                                    | `boolean`       | `false`       |
 | `toastId`         | 合并键；只能通过 property 设置，由 `toast()` 写入。           | `string`        | `''`          |
 
@@ -422,7 +517,7 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 
 ### 元素属性与方法
 
-命令式入口下，`toast()` 会写入 `<web-ui-toast>` 的这些属性：合并键写在 `toastId` 上（只能通过 property 设置），其余与上面的 Props 表一一对应。
+命令式入口下，`toast()` 会写入 `<web-ui-toast>` 的这些属性：合并键写在 `toastId` 上（只能通过 property 设置），其余与上面的属性表一一对应。
 
 元素自身还公开一组实例方法：`show()` 播放入场（把 `visible` 设为 `true`），并在 `duration` 大于 0 时开始计时。
 
@@ -436,8 +531,8 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 
 ### CSS Custom Properties
 
-| 名称                            | 说明                                                                  | 默认值 |
-| ------------------------------- | --------------------------------------------------------------------- | ------ |
-| `--wui-toast-viewport-gap`      | Toast 到视口边缘的可见距离                                            | `16px` |
-| `--wui-toast-container-padding` | 容器预留的扩散阴影绘制空间                                            | `40px` |
-| `--wui-toast-top-offset`        | 顶部 Toast 容器的额外下移量，用于避让固定 header；只影响 `top-*` 位置 | `0px`  |
+| 名称                            | 说明                                                               | 默认值 |
+| ------------------------------- | ------------------------------------------------------------------ | ------ |
+| `--wui-toast-viewport-gap`      | Toast 到视口边缘的可见距离                                         | `16px` |
+| `--wui-toast-container-padding` | 容器预留的扩散阴影绘制空间                                         | `40px` |
+| `--wui-toast-top-offset`        | 顶部 Toast 容器的额外下移量，用于避让固定头部；只影响 `top-*` 位置 | `0px`  |

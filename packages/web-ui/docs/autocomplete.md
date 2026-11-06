@@ -6,7 +6,7 @@ A single-value selector that accepts input and filters candidates. Typed text fi
 
 ### Basic
 
-`value` is the current input text and is owned by the page. Typing filters candidates by label (default `contains`); the panel stays closed when nothing matches. After a selection, the text is filled back with that option's label and `selected-value` gives that option's value.
+`value` is the current input text and is owned by the page. Typing filters candidates by label (default `contains`); the panel stays closed when nothing is left to show. After a selection, the text is filled back with that option's label and `selected-value` gives that option's value.
 
 ```tsx
 import { useState } from 'react'
@@ -235,7 +235,79 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### Custom trigger
+### Trigger modes
+
+`trigger` is a gesture set separated by spaces or commas: `click`, `hover`, `focus`, `none`. It defaults to `click`. Clicking the input only opens the panel, never closes it; a second click does not collapse it, and closing goes through outside clicks, Escape or `hide()`. `hover` opens and closes with pointer entry and exit, and `focus` opens on keyboard focus (`:focus-visible`); gestures can be written side by side.
+
+`none` disables all automatic opening: clicks, typing, arrow keys, focus and hover no longer expand the panel — only the `open` property or `show()` / `hide()` moves it. `none` and gestures are mutually exclusive: when both appear, `none` wins and a development warning is printed.
+
+`show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, typing, focus and programmatic calls act immediately.
+
+```tsx
+import type { WebUiAutocomplete } from '@greypan/web-ui'
+import { useRef, useState } from 'react'
+
+export default function Demo() {
+  const field = useRef<WebUiAutocomplete>(null)
+  const [last, setLast] = useState('—')
+
+  return (
+    <div className="flex w-full max-w-md flex-col items-start gap-3">
+      <web-ui-autocomplete
+        ref={field}
+        trigger="none"
+        placeholder="none mode"
+        aria-label="none mode"
+        onopen-change={event => setLast(event.detail.open ? 'true' : 'false')}
+      >
+        <web-ui-option value="bug" label="Bug"></web-ui-option>
+        <web-ui-option value="feature" label="Feature"></web-ui-option>
+      </web-ui-autocomplete>
+      <div className="flex flex-wrap items-center gap-2">
+        <web-ui-button size="28" variant="secondary" onClick={() => field.current?.show()}>
+          show()
+        </web-ui-button>
+        <web-ui-button size="28" variant="secondary" onClick={() => field.current?.hide()}>
+          hide()
+        </web-ui-button>
+        <output className="text-sm text-(--wui-color-text-secondary)">Last detail.open = {last}</output>
+      </div>
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex w-full max-w-md flex-col items-start gap-3">
+    <web-ui-autocomplete
+      ref="field"
+      trigger="none"
+      placeholder="none mode"
+      aria-label="none mode"
+      @open-change="last = $event.detail.open ? 'true' : 'false'"
+    >
+      <web-ui-option value="bug" label="Bug"></web-ui-option>
+      <web-ui-option value="feature" label="Feature"></web-ui-option>
+    </web-ui-autocomplete>
+    <div class="flex flex-wrap items-center gap-2">
+      <web-ui-button size="28" variant="secondary" @click="field?.show()">show()</web-ui-button>
+      <web-ui-button size="28" variant="secondary" @click="field?.hide()">hide()</web-ui-button>
+      <output class="text-sm text-(--wui-color-text-secondary)">Last detail.open = {{ last }}</output>
+    </div>
+  </div>
+</template>
+
+<script setup lang="ts">
+import type { WebUiAutocomplete } from '@greypan/web-ui'
+import { ref, useTemplateRef } from 'vue'
+
+const field = useTemplateRef<WebUiAutocomplete>('field')
+const last = ref('—')
+</script>
+```
+
+### Custom trigger slot
 
 Put an editable component into the `trigger` slot to replace the default input. A multiline trigger keeps Enter as a newline and closes the panel with Escape or blur. `filter="none"` lists all candidates regardless of input. `focus()` lands on the native control inside `web-ui-textarea`.
 
@@ -291,7 +363,7 @@ const field = useTemplateRef<WebUiAutocomplete>('field')
 
 ### Allow custom values
 
-With `allow-custom-value` on, text that is not among the candidates can still be submitted. Pressing Enter submits the raw input as a custom value, the panel closes, `change` fires, and `selected-value` stays empty. When filtering leaves no candidates, the panel does not open, and Enter still submits.
+With `allow-custom-value` on, text that is not among the candidates can still be submitted. Pressing Enter submits the raw input as a custom value, the panel closes, `change` fires, and `selected-value` stays empty. When filtering leaves nothing to show, the panel does not open, and Enter still submits.
 
 ```tsx
 import { useState } from 'react'
@@ -401,61 +473,71 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 ### Props
 
-| Name                 | Description                                                                                                     | Type                  | Default          |
-| -------------------- | --------------------------------------------------------------------------------------------------------------- | --------------------- | ---------------- |
-| `placeholder`        | Input placeholder text.                                                                                         | `string`              | `''`             |
-| `borderless`         | Ghost form: removes the border, background, backdrop blur, and shadow while keeping padding and the focus ring. | `boolean`             | `false`          |
-| `disabled`           | Disabled state: no input, no dropdown.                                                                          | `boolean`             | `false`          |
-| `readonly`           | Readonly state: no input, no dropdown.                                                                          | `boolean`             | `false`          |
-| `required`           | Required validation.                                                                                            | `boolean`             | `false`          |
-| `portal`             | Renders the dropdown panel in the theme overlay container.                                                      | `boolean`             | `false`          |
-| `placement`          | Placement of the dropdown panel; defaults to expanding downward from the trigger's bottom-left corner.          | `Placement`           | `'bottom-start'` |
-| `no-scroll-lock`     | Does not lock page scrolling while open.                                                                        | `boolean`             | `false`          |
-| `allow-custom-value` | Allows Enter to submit input text that is not among the candidates.                                             | `boolean`             | `false`          |
-| `overlayContainer`   | Explicit portal container (property, not attribute).                                                            | `OverlayContainer`    | —                |
-| `name`               | Form field name.                                                                                                | `string`              | `''`             |
-| `aria-label`         | Accessible name.                                                                                                | `string \| null`      | `null`           |
-| `aria-labelledby`    | Accessible name reference.                                                                                      | `string \| undefined` | —                |
-| `filter`             | Candidate filtering mode: `contains` (default), `prefix`, or `none`.                                            | `FilterMode`          | `'contains'`     |
-| `value`              | Current input text, also the form-submitted value.                                                              | `string`              | `''`             |
+| Name                 | Description                                                                                                                              | Type                  | Default          |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ---------------- |
+| `placeholder`        | Input placeholder text.                                                                                                                  | `string`              | `''`             |
+| `borderless`         | Ghost form: removes the border, background, backdrop blur, and shadow while keeping padding and the focus ring.                          | `boolean`             | `false`          |
+| `disabled`           | Disabled state: no input, no dropdown.                                                                                                   | `boolean`             | `false`          |
+| `readonly`           | Readonly state: no input, no dropdown.                                                                                                   | `boolean`             | `false`          |
+| `required`           | Required validation.                                                                                                                     | `boolean`             | `false`          |
+| `portal`             | Renders the dropdown panel in the theme overlay container.                                                                               | `boolean`             | `false`          |
+| `placement`          | Placement of the dropdown panel; defaults to expanding downward from the trigger's bottom-left corner.                                   | `Placement`           | `'bottom-start'` |
+| `no-scroll-lock`     | Does not lock page scrolling while open.                                                                                                 | `boolean`             | `false`          |
+| `allow-custom-value` | Allows Enter to submit input text that is not among the candidates.                                                                      | `boolean`             | `false`          |
+| `overlayContainer`   | Explicit portal container (property, not attribute).                                                                                     | `OverlayContainer`    | —                |
+| `name`               | Form field name.                                                                                                                         | `string`              | `''`             |
+| `aria-label`         | Accessible name.                                                                                                                         | `string \| null`      | `null`           |
+| `aria-labelledby`    | Accessible name reference.                                                                                                               | `string \| undefined` | —                |
+| `filter`             | Candidate filtering mode: `contains` (default), `prefix`, or `none`.                                                                     | `FilterMode`          | `'contains'`     |
+| `value`              | Current input text, also the form-submitted value.                                                                                       | `string`              | `''`             |
+| `trigger`            | Trigger gesture set, separated by spaces or commas: `click`, `hover`, `focus`, `none`; reads back as a comma-separated canonical string. | `string`              | `'click'`        |
+| `show-delay`         | Hover-open delay (milliseconds); only hover-originated opens use it.                                                                     | `number`              | `200`            |
+| `hide-delay`         | Hover-close delay (milliseconds); only hover-originated closes use it.                                                                   | `number`              | `100`            |
+| `open`               | Declarative switch; writing it directly is silent and does not dispatch `open-change`.                                                   | `boolean`             | `false`          |
+| `isOpen`             | Whether the panel is currently open (read-only).                                                                                         | `boolean`             | —                |
 
 ### Events
 
-| Name          | Description                                                             |
-| ------------- | ----------------------------------------------------------------------- |
-| `input`       | Fires on input; `value` is the current text.                            |
-| `change`      | Fires when a candidate is selected or a custom value is submitted.      |
-| `focus`       | Fires when the trigger gains focus.                                     |
-| `blur`        | Fires when the trigger loses focus.                                     |
-| `open-change` | The dropdown panel opens or closes; `detail.open` is the current state. |
+| Name          | Description                                                                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `input`       | Fires on input; `value` is the current text.                                                                                                 |
+| `change`      | Fires when a candidate is selected or a custom value is submitted.                                                                           |
+| `focus`       | Fires when the trigger gains focus.                                                                                                          |
+| `blur`        | Fires when the trigger loses focus.                                                                                                          |
+| `open-change` | Dispatched when gestures or `show()` / `hide()` change the open state; `detail.open` is the current state. Writing `open` does not dispatch. |
 
 ### Slots
 
-| Name      | Description                                                       |
-| --------- | ----------------------------------------------------------------- |
-| `trigger` | Custom content for the trigger area, replacing the default input. |
-| `default` | Projects `<web-ui-option>` candidates.                            |
+| Name      | Description                                                                                                        |
+| --------- | ------------------------------------------------------------------------------------------------------------------ |
+| `trigger` | Custom content for the trigger area, replacing the default input.                                                  |
+| `default` | Projects `<web-ui-option>` candidates; other nodes also count as panel content and can carry a custom empty state. |
 
 ### Methods
 
-| Name      | Description                                                                                                                                                                                                           |
-| --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `focus()` | Focuses the current trigger: a `web-ui-input` / `web-ui-textarea` trigger hands focus to its inner native control, while a custom trigger without its own focus redirection gets focus on the trigger element itself. |
-| `blur()`  | Blurs the current trigger.                                                                                                                                                                                            |
+| Name       | Description                                                                                                                                                                                                           |
+| ---------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `focus()`  | Focuses the current trigger: a `web-ui-input` / `web-ui-textarea` trigger hands focus to its inner native control, while a custom trigger without its own focus redirection gets focus on the trigger element itself. |
+| `blur()`   | Blurs the current trigger.                                                                                                                                                                                            |
+| `show()`   | Opens the panel and dispatches `open-change`; available under `none` as well.                                                                                                                                         |
+| `hide()`   | Closes the panel and dispatches `open-change`; no effect when already closed.                                                                                                                                         |
+| `toggle()` | Toggles according to the current `open` and dispatches `open-change`.                                                                                                                                                 |
 
 ### Behavior
 
 Typing filters candidates by label (`contains` or `prefix`; `none` turns filtering off).
 
-When nothing matches, the dropdown panel stays closed; when deleting characters brings matches back, the panel opens again.
+Whether the panel can open depends on whether anything is left to show: a matching candidate, or any other node in the `default` slot. Filtered or `hidden` candidates, comments, whitespace-only text, `script` / `style` / `template`, and nodes kept for the removed `slot="empty"` do not count; an empty wrapper does. With nothing to show, automatic gestures (click, typing, arrow keys, focus, hover) do nothing. `show()` and writing `open` still open the empty panel, and content added while closed does not open it. If the last content disappears while the panel is open, it collapses immediately without an exit transition.
 
 Selecting an option fills the text back with that option's label and exposes that option's value as `selected-value`. `change` fires when the selection is committed.
 
-ArrowDown/ArrowUp/Enter/Escape keyboard navigation is supported.
+ArrowDown/ArrowUp/Enter/Escape keyboard navigation is supported; under `none`, ArrowDown no longer auto-opens the panel while it is closed.
+
+Clicking the input only opens the panel, never closes it; closing goes through outside clicks, Escape, selecting a candidate or `hide()`. `hover` opens and closes with pointer entry and exit, and once the pointer leaves both the trigger and the panel and focus is outside them, it closes after `hide-delay`. `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, typing, focus and programmatic calls act immediately. Escape, outside clicks and focus loss close every panel except those in `none`, regardless of whether `trigger` contains `click` or `focus`.
 
 A portal panel reads these variables as resolved on the host when it is created; after updating the host, the portal panel must be reopened for the change to take effect.
 
-### Trigger
+### Trigger slot
 
 The default trigger is a `web-ui-input`.
 
@@ -485,7 +567,7 @@ While the panel is open, ArrowUp/ArrowDown follow the same exception: the arrow 
 
 With `allow-custom-value` enabled, when there is no match and no active option, Enter submits the current raw input as a custom value and closes the panel; `change` fires and `selected-value` stays empty.
 
-When filtering leaves no candidates at all, the panel does not open (and collapses if it is open); Enter still uses the same submission path.
+When filtering leaves nothing to show, the panel does not open (and collapses if it is open); Enter still uses the same submission path.
 
 The component never creates options on its own and never trims the raw text. Text that hits a disabled option does not bypass the disabled semantics and is not derived into a selected option.
 

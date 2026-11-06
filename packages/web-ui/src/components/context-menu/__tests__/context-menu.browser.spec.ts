@@ -53,14 +53,14 @@ async function waitForMenuFocus() {
   )
 }
 
-/** 把主题的 accent token 解析成计算后的颜色，避免在断言里抄 rgb 字面量。 */
-function accentColor(scope: Element): string {
+/** 把菜单项高亮用的背景 token 解析成计算后的颜色，避免在断言里抄 rgb 字面量。 */
+function highlightColor(scope: Element): string {
   const probe = document.createElement('span')
-  probe.style.color = 'var(--wui-color-accent, rgb(0 113 227))'
+  probe.style.backgroundColor = 'var(--wui-color-border, rgb(0 0 0 / 0.1))'
   scope.append(probe)
-  const color = getComputedStyle(probe).color
+  const color = getComputedStyle(probe).backgroundColor
   probe.remove()
-  if (!color) throw new Error('无法解析 --wui-color-accent')
+  if (!color) throw new Error('无法解析 --wui-color-border')
   return color
 }
 
@@ -216,7 +216,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(panel?.style.top).toBe('180px')
   })
 
-  it('初始聚焦不绘制 accent，方向键导航后恢复键盘焦点视觉', async () => {
+  it('初始聚焦不绘制高亮，方向键导航后恢复键盘焦点视觉', async () => {
     const menu = document.createElement('web-ui-context-menu')
     menu.innerHTML =
       '<web-ui-dropdown-item>Open</web-ui-dropdown-item><web-ui-dropdown-item>Copy</web-ui-dropdown-item>'
@@ -233,26 +233,29 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     const items = [...(panel?.querySelectorAll<HTMLElement>('web-ui-dropdown-item') ?? [])]
     const firstControl = items[0]?.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
     const secondControl = items[1]?.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
-    const accent = accentColor(firstControl?.parentElement ?? items[0] ?? document.body)
+    const highlight = highlightColor(firstControl?.parentElement ?? items[0] ?? document.body)
+    const idleColor = getComputedStyle(secondControl!).color
     expect(items[0]?.shadowRoot?.activeElement).toBe(firstControl)
     expect(firstControl?.matches(':focus-visible')).toBe(true)
-    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe(accent)
+    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe(highlight)
 
     await userEvent.hover(firstControl!)
-    expect(getComputedStyle(firstControl!).backgroundColor).not.toBe(accent)
+    expect(getComputedStyle(firstControl!).backgroundColor).toBe(highlight)
 
     await userEvent.keyboard('{ArrowDown}')
     await waitForFrame()
 
     expect(items[1]?.shadowRoot?.activeElement).toBe(secondControl)
     expect(secondControl?.matches(':focus-visible')).toBe(true)
-    expect(getComputedStyle(secondControl!).backgroundColor).toBe(accent)
+    expect(getComputedStyle(secondControl!).backgroundColor).toBe(highlight)
+    expect(getComputedStyle(secondControl!).color).toBe(idleColor)
 
     await userEvent.keyboard('{ArrowUp}')
     await waitForFrame()
 
     expect(items[0]?.shadowRoot?.activeElement).toBe(firstControl)
-    expect(getComputedStyle(firstControl!).backgroundColor).toBe(accent)
+    expect(getComputedStyle(firstControl!).backgroundColor).toBe(highlight)
+    expect(getComputedStyle(firstControl!).color).toBe(idleColor)
   })
 
   it('键盘打开 menu 时首项保留焦点视觉', async () => {
@@ -270,7 +273,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     expect(firstItem?.shadowRoot?.activeElement).toBe(firstControl)
     expect(firstControl?.matches(':focus-visible')).toBe(true)
     expect(getComputedStyle(firstControl!).backgroundColor).toBe(
-      accentColor(firstControl?.parentElement ?? firstItem ?? document.body)
+      highlightColor(firstControl?.parentElement ?? firstItem ?? document.body)
     )
   })
 

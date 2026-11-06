@@ -199,7 +199,7 @@ jobs:
         # 表现为随机的等待预算耗尽。只在 CI 收敛任务并发，本地 `pnpm run test` 保持默认。
         run: pnpm exec turbo test --concurrency=2
 
-  # Codex 审查腿全部只读：模型在这里跑，写回（评论、推 patch）只在 codex-review-publish.yml 发生。
+  # Codex 审查腿全部只读：模型在这里跑，写回（评论、推 patch）只在 codex-review-report.yml 发生。
   # 两条腿分开是因为 ci.yml 的 permissions 不变量要求 PR 验证不持有任何写权限。
   codex-review:
     name: Codex review
@@ -208,7 +208,10 @@ jobs:
     if: ${{ !cancelled() && needs.check.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' }}
     # 模型步骤自己带 continue-on-error；job 级不再吞掉预检、落结论与上传的失败。
     # 首次落地时 base 的可信脚本还没有 preflight 子命令，这一步的红叉是唯一能暴露 bootstrap 的信号。
-    runs-on: ubuntu-latest
+    # 固定在 24.04：ubuntu-26.04 的 sudo-rs + uutils `test -w` 让 codex-action 的 drop-sudo
+    # socket ACL 校验误判（openai/codex-action#188，修复 PR #191 未合并），模型腿会在 exec 前退出。
+    # 恢复条件见 docs/adr/0021-codex-review-gate.md「Runner 镜像」；改标签会被拓扑断言挡下。
+    runs-on: ubuntu-24.04
     # 60 分钟是首批实测的临时余量，测出真实分布后回收；判定口径见 docs/adr/0021-codex-review-gate.md。
     timeout-minutes: 60
     permissions:
@@ -268,6 +271,8 @@ jobs:
         uses: actions/download-artifact@v7
         with:
           name: codex-review-findings
+          # 复用的是另一个 run 的 artifact，v7 必须显式给 token 才会用 run-id。
+          github-token: ${{ github.token }}
           run-id: ${{ steps.prior.outputs.prior_run_id }}
           repository: ${{ github.repository }}
           path: ${{ runner.temp }}/codex-review
@@ -347,7 +352,7 @@ jobs:
           base-sha: ${{ github.event.pull_request.base.sha }}
 
       - name: Download review findings
-        # review job 被跳过时没有 artifact，那是 unreviewed，不是门禁故障。
+        # review job 被跳过时没有 artifact，那是 not_applicable，不是门禁故障。
         continue-on-error: true
         uses: actions/download-artifact@v7
         with:
@@ -367,7 +372,8 @@ jobs:
     needs: check
     if: ${{ needs.check.result == 'failure' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' && vars.CODEX_AUTOFIX_ENABLED == 'true' }}
     continue-on-error: true
-    runs-on: ubuntu-latest
+    # 与审查腿同一镜像约束：autofix 用 workspace-write + drop-sudo，同样会撞上 #188。
+    runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:
       contents: read

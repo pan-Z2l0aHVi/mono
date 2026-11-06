@@ -126,7 +126,7 @@ const meta = [
     ]
   },
   { label: 'h3', id: 'section-10', content: "Behavior" },
-  { label: 'p', content: "Role: <code>menuitem</code>." }
+  { label: 'p', content: "Role: <code>menuitem</code>. Keyboard focus and hover use the same background shade; the text color stays unchanged." }
 ]
 
 export default meta

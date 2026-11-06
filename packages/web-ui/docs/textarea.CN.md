@@ -1,6 +1,6 @@
 # Textarea
 
-多行文本 input，支持清除 button、自动高度与前后缀插槽。焦点落在原生 textarea 上，`focus()` / `blur()` / `select()` 都作用于它。
+多行文本输入框，支持清除按钮、自动高度与前后缀插槽。焦点落在原生 textarea 上，`focus()` / `blur()` / `select()` 都作用于它。
 
 ## Samples
 
@@ -58,7 +58,7 @@ export default function Demo() {
 
 ### Prefix and suffix
 
-`prefix` / `suffix` 插槽放 icon 或文字，它们与首行文字顶对齐；没有可见 label 时用 `aria-label` 给出无障碍名称（`aria-labelledby` 的限制见下面的行为说明）。
+`prefix` / `suffix` 插槽放图标或文字，它们与首行文字顶对齐；没有可见标签时用 `aria-label` 给出无障碍名称（`aria-labelledby` 的限制见下面的行为说明）。
 
 ```tsx
 import { lucideFileText } from '@greypan/web-ui/icons'
@@ -158,14 +158,14 @@ const committed = ref('')
 
 ### Clear button
 
-`clearable` 只在有值且未设置 `disabled` 或 `readonly` 时画出清除 button；空值、禁用或只读时不画。清除 button 对齐首行而不是整框垂直居中；点它清空值并派发 `input`。`full` 让控件占满父容器宽度，`--wui-textarea-width` 只在非 `full` 时生效。
+`clearable` 只在有值且未设置 `disabled` 或 `readonly` 时画出清除按钮；空值、禁用或只读时不画。清除按钮对齐首行而不是整框垂直居中；点它清空值并派发 `input`。`full` 让控件占满父容器宽度，`--wui-textarea-width` 只在非 `full` 时生效。
 
 ```tsx
 export default function Demo() {
   return (
     <div className="flex w-full flex-col gap-3">
       <web-ui-textarea full clearable aria-label="可清除的多行文本" value="这一段可以一次清掉"></web-ui-textarea>
-      <web-ui-textarea full clearable placeholder="空值时没有清除 button"></web-ui-textarea>
+      <web-ui-textarea full clearable placeholder="空值时没有清除按钮"></web-ui-textarea>
     </div>
   )
 }
@@ -175,14 +175,14 @@ export default function Demo() {
 <template>
   <div class="flex w-full flex-col gap-3">
     <web-ui-textarea full clearable aria-label="可清除的多行文本" value="这一段可以一次清掉"></web-ui-textarea>
-    <web-ui-textarea full clearable placeholder="空值时没有清除 button"></web-ui-textarea>
+    <web-ui-textarea full clearable placeholder="空值时没有清除按钮"></web-ui-textarea>
   </div>
 </template>
 ```
 
 ### Disabled and readonly
 
-`disabled` 关掉输入、校验与清除操作，宿主整体降到四成不透明度。`readonly` 保留可读、可全选与可复制，仍可拖拽右下角改高度，但不接受输入，并收起清除 button。
+`disabled` 关掉输入、校验与清除操作，宿主整体降到四成不透明度。`readonly` 保留可读、可全选与可复制，仍可拖拽右下角改高度，但不接受输入，并收起清除按钮。
 
 ```tsx
 export default function Demo() {
@@ -194,7 +194,7 @@ export default function Demo() {
         readonly
         clearable
         aria-label="只读的多行文本"
-        value="只读：清除 button 已收起"
+        value="只读：清除按钮已收起"
       ></web-ui-textarea>
     </div>
   )
@@ -205,20 +205,14 @@ export default function Demo() {
 <template>
   <div class="flex w-full flex-col gap-3">
     <web-ui-textarea full disabled aria-label="禁用的多行文本" value="禁用：读得到，改不动"></web-ui-textarea>
-    <web-ui-textarea
-      full
-      readonly
-      clearable
-      aria-label="只读的多行文本"
-      value="只读：清除 button 已收起"
-    ></web-ui-textarea>
+    <web-ui-textarea full readonly clearable aria-label="只读的多行文本" value="只读：清除按钮已收起"></web-ui-textarea>
   </div>
 </template>
 ```
 
 ### Borderless
 
-`borderless` 移除边框、背景、模糊、阴影与 glass 描边环，只留 padding 与 focus ring，圆角仍取 `--wui-radius-menu`。外层自己画容器时用这一形态。
+`borderless` 移除边框、背景、模糊、阴影与 glass 描边环，只留内边距与焦点环，圆角仍取 `--wui-radius-menu`。外层自己画容器时用这一形态。
 
 ```tsx
 export default function Demo() {
@@ -344,7 +338,7 @@ function reset() {
 
 ### Focus and select all
 
-`focus()` / `blur()` / `select()` 都作用于原生 textarea，三条在 `disabled` 下都不产生效果。宿主自身没有 tab 位，按 Tab 进来的始终是原生 textarea。
+`focus()` / `blur()` / `select()` 都作用于原生 textarea，三条在 `disabled` 下都不产生效果。宿主自身没有 Tab 位，按 Tab 进来的始终是原生 textarea。
 
 ```tsx
 import type { WebUiTextarea } from '@greypan/web-ui'
@@ -398,7 +392,7 @@ const field = useTemplateRef<WebUiTextarea>('field')
 
 ### CSS variables
 
-`--wui-textarea-width` 决定输入区宽度（`full` 时被 `100%` 接管），`--wui-textarea-clear-color` 决定清除 button 的颜色。
+`--wui-textarea-width` 决定输入区宽度（`full` 时被 `100%` 接管），`--wui-textarea-clear-color` 决定清除按钮的颜色。
 
 ```tsx
 export default function Demo() {
@@ -444,25 +438,25 @@ export default function Demo() {
 
 ### Props
 
-| 名称               | 说明                                                                     | 类型                  | 默认值  |
-| ------------------ | ------------------------------------------------------------------------ | --------------------- | ------- |
-| `placeholder`      | 占位文本。                                                               | `string`              | `''`    |
-| `name`             | 表单字段名。                                                             | `string`              | `''`    |
-| `disabled`         | 禁用状态。                                                               | `boolean`             | `false` |
-| `readonly`         | 只读状态。                                                               | `boolean`             | `false` |
-| `required`         | 必填校验。                                                               | `boolean`             | `false` |
-| `full`             | 占满父容器宽度。                                                         | `boolean`             | `false` |
-| `clearable`        | 有值且未设置 `disabled` 或 `readonly` 时显示清除 button。                | `boolean`             | `false` |
-| `aria-clear-label` | 清除 button 的无障碍名称；未设置时回退内置英文文案（`Clear`）。          | `string`              | `''`    |
-| `borderless`       | ghost 形态：移除边框、背景、背景模糊与阴影，保留 padding 与 focus ring。 | `boolean`             | `false` |
-| `rows`             | 显示行数，也是自动高度的起点。                                           | `number`              | `3`     |
-| `minlength`        | 最小长度校验。                                                           | `number \| undefined` | —       |
-| `maxlength`        | 最大长度校验。                                                           | `number \| undefined` | —       |
-| `autosize`         | 自动调整高度，同时强制 `resize: none`。                                  | `boolean`             | `false` |
-| `max-height`       | 自动高度上限（px），0 表示不限制。                                       | `number`              | `0`     |
-| `aria-label`       | 无障碍 label。                                                           | `string \| null`      | `null`  |
-| `aria-labelledby`  | 无障碍 label 引用。                                                      | `string \| undefined` | —       |
-| `value`            | 输入值，也是表单提交值。                                                 | `string`              | `''`    |
+| 名称               | 说明                                                             | 类型                  | 默认值  |
+| ------------------ | ---------------------------------------------------------------- | --------------------- | ------- |
+| `placeholder`      | 占位文本。                                                       | `string`              | `''`    |
+| `name`             | 表单字段名。                                                     | `string`              | `''`    |
+| `disabled`         | 禁用状态。                                                       | `boolean`             | `false` |
+| `readonly`         | 只读状态。                                                       | `boolean`             | `false` |
+| `required`         | 必填校验。                                                       | `boolean`             | `false` |
+| `full`             | 占满父容器宽度。                                                 | `boolean`             | `false` |
+| `clearable`        | 有值且未设置 `disabled` 或 `readonly` 时显示清除按钮。           | `boolean`             | `false` |
+| `aria-clear-label` | 清除按钮的无障碍名称；未设置时回退内置英文文案（`Clear`）。      | `string`              | `''`    |
+| `borderless`       | ghost 形态：移除边框、背景、背景模糊与阴影，保留内边距与焦点环。 | `boolean`             | `false` |
+| `rows`             | 显示行数，也是自动高度的起点。                                   | `number`              | `3`     |
+| `minlength`        | 最小长度校验。                                                   | `number \| undefined` | —       |
+| `maxlength`        | 最大长度校验。                                                   | `number \| undefined` | —       |
+| `autosize`         | 自动调整高度，同时强制 `resize: none`。                          | `boolean`             | `false` |
+| `max-height`       | 自动高度上限（px），0 表示不限制。                               | `number`              | `0`     |
+| `aria-label`       | 无障碍标签。                                                     | `string \| null`      | `null`  |
+| `aria-labelledby`  | 无障碍标签引用。                                                 | `string \| undefined` | —       |
+| `value`            | 输入值，也是表单提交值。                                         | `string`              | `''`    |
 
 ### Events
 
@@ -475,10 +469,10 @@ export default function Demo() {
 
 ### Slots
 
-| 名称     | 说明                                                  |
-| -------- | ----------------------------------------------------- |
-| `prefix` | textarea 左侧的 icon 或文字，与首行对齐。             |
-| `suffix` | textarea 右侧的 icon 或文字；清除 button 画在它之前。 |
+| 名称     | 说明                                            |
+| -------- | ----------------------------------------------- |
+| `prefix` | textarea 左侧的图标或文字，与首行对齐。         |
+| `suffix` | textarea 右侧的图标或文字；清除按钮画在它之前。 |
 
 ### Methods
 
@@ -490,11 +484,11 @@ export default function Demo() {
 
 ### 行为说明
 
-宿主不可聚焦，也没有 tab 位：Tab 与点击都把焦点交给原生 textarea，`focused` 属性反映焦点态并驱动 focus ring。
+宿主不可聚焦，也没有 Tab 位：Tab 与点击都把焦点交给原生 textarea，`focused` 属性反映焦点态并驱动焦点环。
 
 `input` 原生冒泡且组合；`change` 由组件在宿主上补发一次 `composed` 事件。
 
-清除 button 只派发 `input`，不派发 `change`。这一点与 `<web-ui-input>` 不同，只听 `change` 的调用方收不到这次清空。
+清除按钮只派发 `input`，不派发 `change`。这一点与 `<web-ui-input>` 不同，只听 `change` 的调用方收不到这次清空。
 
 `autosize` 独占高度，同时关掉原生拖拽手柄。
 
@@ -508,23 +502,23 @@ export default function Demo() {
 
 `aria-labelledby` 的 IDREF 只在组件内部解析，指向宿主外部元素的写法取不到名字。用 `aria-label` 提供名称。
 
-外层 `<label for>` 也接不上，宿主不是 labelable 元素。
+外层 `<label for>` 也接不上，宿主不是可被 `<label>` 关联的元素。
 
 `prefix` 插槽里的可见文字不会成为控件的无障碍名称。
 
 ### 布局
 
-宿主是 block 盒，宽度取 `--wui-textarea-width`（`200px`），`full` 时铺满父容器；最小高度取 `--wui-control-size`（`36px`），圆角取 `--wui-radius-menu`（`18px`）；`borderless` 去掉边框、背景与描边环。
+宿主是块级盒，宽度取 `--wui-textarea-width`（`200px`），`full` 时铺满父容器；最小高度取 `--wui-control-size`（`36px`），圆角取 `--wui-radius-menu`（`18px`）；`borderless` 去掉边框、背景与描边环。
 
 未开 `autosize` 时原生拖拽手柄可用。
 
 文字取 `--wui-font-size`，行高取 `--wui-line-height-normal`；粗指针设备上字号不小于 16px，避免 iOS Safari 聚焦时缩放。占位文本与插槽内容取二级文本色。
 
-清除 button 与首行对齐，在多行框里也贴着第一行。
+清除按钮与首行对齐，在多行框里也贴着第一行。
 
 ### CSS Custom Properties
 
 | 名称                         | 说明                                  | 默认值                           |
 | ---------------------------- | ------------------------------------- | -------------------------------- |
 | `--wui-textarea-width`       | 输入区宽度；`full` 时被 `100%` 接管。 | `200px`                          |
-| `--wui-textarea-clear-color` | 清除 button 的颜色。                  | `var(--wui-color-text-tertiary)` |
+| `--wui-textarea-clear-color` | 清除按钮的颜色。                      | `var(--wui-color-text-tertiary)` |

@@ -1,6 +1,6 @@
 # Popover
 
-A popover anchored to a trigger element. `trigger` declares which gestures can open and close it, as a space-separated set of `click`, `hover`, `focus`, and `manual`. The `trigger` slot holds the trigger and the default slot holds the panel content.
+A popover anchored to a trigger element. `trigger` declares which gestures can open and close it, as a set of `click`, `hover`, `focus`, and `none`. The `trigger` slot holds the trigger and the default slot holds the panel content.
 
 ## Samples
 
@@ -8,14 +8,14 @@ A popover anchored to a trigger element. `trigger` declares which gestures can o
 
 In click mode, clicking the trigger toggles the panel, and clicking outside the panel or pressing Escape closes it. Put an interactive element in the trigger (`web-ui-button` or a native `button`); the open state is written back to its `aria-expanded` / `aria-controls`.
 
-`open-change` is dispatched only after user-originated open and close actions. Writing `open` programmatically does not dispatch it.
+`open-change` is dispatched after gestures or `show()` / `hide()` change the open state. Writing `open` directly is silent.
 
 ```tsx
 import { useState } from 'react'
 
 export default function Demo() {
   const [count, setCount] = useState(0)
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -62,7 +62,7 @@ import type { WebUiEvent, WebUiPopover } from '@greypan/web-ui'
 import { ref } from 'vue'
 
 const count = ref(0)
-const last = ref('—')
+const last = ref('-')
 
 function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
   count.value += 1
@@ -73,13 +73,13 @@ function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
 
 ### Hover trigger
 
-`trigger="hover"` opens and closes as the pointer enters and leaves, with a short delay. Moving the pointer from the trigger into the panel does not collapse it. In this value neither click nor focus triggers it; to accept both the pointer and the keyboard, write the gestures side by side: `trigger="hover focus"`.
+`trigger="hover"` opens and closes as the pointer enters and leaves, with delays: entering the trigger opens after `show-delay`, and once the pointer leaves both the trigger and the panel it closes after `hide-delay`. Moving the pointer from the trigger into the panel does not collapse it. In this value neither click nor focus triggers it; to accept both the pointer and the keyboard, write the gestures side by side: `trigger="hover focus"`.
 
 ```tsx
 import { useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -117,7 +117,7 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
@@ -129,7 +129,7 @@ const last = ref('—')
 import { useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
@@ -177,13 +177,13 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 </script>
 ```
 
 ### Controlled open state
 
-`trigger="manual"` does not respond to hover, and neither clicking outside the panel nor Escape closes it. The open state changes through `show()` / `close()` or by clicking the trigger. Programmatic calls do not dispatch `open-change`, so the caller syncs `open` itself; user-originated changes are written back through `open-change`.
+`trigger="none"` accepts no gesture and takes no part in outside-click closing or Escape. The open state changes only through `show()` / `hide()` or a declarative `open` property. `show()` / `hide()` dispatch `open-change`, so the value can be written back to `open` as below; assigning `open` directly is silent.
 
 ```tsx
 import type { WebUiPopover } from '@greypan/web-ui'
@@ -195,37 +195,23 @@ export default function Demo() {
 
   return (
     <div className="flex w-full max-w-md flex-col items-start gap-3">
-      <web-ui-popover ref={panel} trigger="manual" open={open} onopen-change={event => setOpen(event.detail.open)}>
+      <web-ui-popover ref={panel} trigger="none" open={open} onopen-change={event => setOpen(event.detail.open)}>
         <web-ui-button slot="trigger" variant="secondary">
           Manual toggle
         </web-ui-button>
         <div className="flex max-w-xs flex-col gap-1 text-sm">
-          <span className="font-semibold">manual mode</span>
+          <span className="font-semibold">none mode</span>
           <span>
-            Does not respond to hover; clicking outside the panel or pressing Escape does not close it either.
+            Does not respond to gestures; clicking outside the panel or pressing Escape does not close it either.
           </span>
         </div>
       </web-ui-popover>
       <div className="flex flex-wrap items-center gap-2">
-        <web-ui-button
-          size="28"
-          variant="secondary"
-          onClick={() => {
-            panel.current?.show()
-            setOpen(true)
-          }}
-        >
+        <web-ui-button size="28" variant="secondary" onClick={() => panel.current?.show()}>
           show()
         </web-ui-button>
-        <web-ui-button
-          size="28"
-          variant="secondary"
-          onClick={() => {
-            panel.current?.close()
-            setOpen(false)
-          }}
-        >
-          close()
+        <web-ui-button size="28" variant="secondary" onClick={() => panel.current?.hide()}>
+          hide()
         </web-ui-button>
         <output className="text-sm text-(--wui-color-text-secondary)">open = {String(open)}</output>
       </div>
@@ -237,16 +223,18 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex w-full max-w-md flex-col items-start gap-3">
-    <web-ui-popover ref="panel" trigger="manual" :open="open" @open-change="open = $event.detail.open">
+    <web-ui-popover ref="panel" trigger="none" :open="open" @open-change="open = $event.detail.open">
       <web-ui-button slot="trigger" variant="secondary">Manual toggle</web-ui-button>
       <div class="flex max-w-xs flex-col gap-1 text-sm">
-        <span class="font-semibold">manual mode</span>
-        <span>Does not respond to hover; clicking outside the panel or pressing Escape does not close it either.</span>
+        <span class="font-semibold">none mode</span>
+        <span
+          >Does not respond to gestures; clicking outside the panel or pressing Escape does not close it either.</span
+        >
       </div>
     </web-ui-popover>
     <div class="flex flex-wrap items-center gap-2">
-      <web-ui-button size="28" variant="secondary" @click="show">show()</web-ui-button>
-      <web-ui-button size="28" variant="secondary" @click="close">close()</web-ui-button>
+      <web-ui-button size="28" variant="secondary" @click="panel?.show()">show()</web-ui-button>
+      <web-ui-button size="28" variant="secondary" @click="panel?.hide()">hide()</web-ui-button>
       <output class="text-sm text-(--wui-color-text-secondary)">open = {{ open }}</output>
     </div>
   </div>
@@ -258,16 +246,6 @@ import { ref, useTemplateRef } from 'vue'
 
 const panel = useTemplateRef<WebUiPopover>('panel')
 const open = ref(false)
-
-function show() {
-  panel.value?.show()
-  open.value = true
-}
-
-function close() {
-  panel.value?.close()
-  open.value = false
-}
 </script>
 ```
 
@@ -275,21 +253,24 @@ function close() {
 
 ### Props
 
-| Name               | Description                                                                                                                                                  | Type               | Default    |
-| ------------------ | ------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | ---------- |
-| `open`             | Popover visibility.                                                                                                                                          | `boolean`          | `false`    |
-| `disabled`         | Disabled state.                                                                                                                                              | `boolean`          | `false`    |
-| `placement`        | Panel placement; defaults to `bottom`.                                                                                                                       | `Placement`        | `'bottom'` |
-| `offset`           | Distance from the anchor (px).                                                                                                                               | `number`           | `8`        |
-| `trigger`          | Trigger gesture set, space separated: `click`, `hover`, `focus`, `manual`; the property channel also accepts an array, and it always reads back as a string. | `string`           | `'click'`  |
-| `portal`           | Renders in the theme overlay container.                                                                                                                      | `boolean`          | `false`    |
-| `overlayContainer` | Explicit Portal container (property).                                                                                                                        | `OverlayContainer` | —          |
+| Name               | Description                                                                                                                              | Type               | Default    |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------ | ---------- |
+| `open`             | Popover visibility.                                                                                                                      | `boolean`          | `false`    |
+| `isOpen`           | Whether the panel is currently open (read-only).                                                                                         | `boolean`          | —          |
+| `disabled`         | Disabled state.                                                                                                                          | `boolean`          | `false`    |
+| `placement`        | Panel placement; defaults to `bottom`.                                                                                                   | `Placement`        | `'bottom'` |
+| `offset`           | Distance from the anchor (px).                                                                                                           | `number`           | `8`        |
+| `trigger`          | Trigger gesture set, separated by spaces or commas: `click`, `hover`, `focus`, `none`; reads back as a comma-separated canonical string. | `string`           | `'click'`  |
+| `show-delay`       | Hover-open delay (milliseconds); only hover-originated opens use it.                                                                     | `number`           | `200`      |
+| `hide-delay`       | Hover-close delay (milliseconds); only hover-originated closes use it.                                                                   | `number`           | `100`      |
+| `portal`           | Renders in the theme overlay container.                                                                                                  | `boolean`          | `false`    |
+| `overlayContainer` | Explicit Portal container (property).                                                                                                    | `OverlayContainer` | —          |
 
 ### Events
 
-| Name          | Description                                                      |
-| ------------- | ---------------------------------------------------------------- |
-| `open-change` | The popover opens or closes; `detail.open` is the current state. |
+| Name          | Description                                                                                                                                  |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
+| `open-change` | Dispatched when gestures or `show()` / `hide()` change the open state; `detail.open` is the current state. Writing `open` does not dispatch. |
 
 ### Slots
 
@@ -300,24 +281,28 @@ function close() {
 
 ### Methods
 
-| Name       | Description                                                   |
-| ---------- | ------------------------------------------------------------- |
-| `show()`   | Opens the popover; no effect when `disabled` or already open. |
-| `close()`  | Closes the popover; no effect when already closed.            |
-| `toggle()` | Toggles according to the current `open`.                      |
+| Name       | Description                                                                                |
+| ---------- | ------------------------------------------------------------------------------------------ |
+| `show()`   | Opens the popover and dispatches `open-change`; no effect when `disabled` or already open. |
+| `hide()`   | Closes the popover and dispatches `open-change`; no effect when already closed.            |
+| `toggle()` | Toggles according to the current `open` and dispatches `open-change`.                      |
 
 ### Behavior
 
-Each gesture in `trigger` wires up its own events, and the gestures combine freely:
+Each gesture in `trigger` wires up its own events, and the gestures combine freely. Unknown values are dropped; when no known gesture remains it falls back to the default `click`.
 
-- `click`: clicking the trigger toggles the panel; it closes when you click outside the panel, or once focus leaves the trigger and the panel.
-- `hover`: the pointer entering the trigger opens it after a 100ms delay; leaving the trigger and the panel closes it after 100ms. Touch pointers do not count.
+- `click`: clicking the trigger toggles the panel; clicking outside the panel closes it. Keyboard activation (Enter / Space) is treated like a click.
+- `hover`: pointer entry opens after `show-delay`; once the pointer leaves both the trigger and the panel and focus is outside them, it closes after `hide-delay`. Touch pointers do not count.
 - `focus`: keyboard focus (`:focus-visible`) opens it immediately; it closes once focus leaves the trigger and the panel.
-- `manual`: nothing closes it automatically — clicking outside, losing focus, and Escape all leave it open.
+- `none`: no gesture moves it, and neither outside clicks nor Escape close it; only the `open` property or `show()` / `hide()` does.
 
-Escape is arbitrated by the overlay stack: every value except `manual` closes on it, and `manual` swallows the key so it does not reach an outer overlay. Both the trigger click and `show()` / `close()` change `open`; programmatic calls do not dispatch `open-change`.
+`show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately.
 
-When `manual` appears in `trigger` the whole value acts as `manual` alone; when it names no known gesture it falls back to the default `click`.
+Opening requires content in the `default` slot; the `trigger` slot does not count. With nothing to show, gestures do nothing, while `show()` and writing `open` still open an empty panel. Content added while closed does not open it; clearing the content while open collapses the panel immediately without an exit transition.
+
+Outside clicks and focus loss close every layer except those in `none`, regardless of whether `trigger` contains `click` or `focus`. Escape is arbitrated by the overlay stack: every value except `none` closes on it, and `none` neither responds to nor intercepts the key, so it continues to an outer overlay.
+
+`open` is a self-managed state. Gestures and `show()` / `hide()` update it, and assigning the property directly also opens or closes the panel, but that write is silent and does not dispatch `open-change`.
 
 ### trigger ARIA
 

@@ -9,6 +9,7 @@ import {
   CONFIG_FILE,
   CONCLUSION_MARKER,
   FINDINGS_ARTIFACT,
+  REVIEW_EXCLUDE_PATHSPECS,
   createGhReviewAdapter,
   deriveConclusion,
   findPullForHead,
@@ -21,6 +22,7 @@ import {
   reviewTarget,
   withPermissionDiagnosis
 } from './codex-review.mjs'
+import { SPAWN_MAX_BUFFER, run } from './lib/github.mjs'
 import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
 const headSha = 'a'.repeat(40)
@@ -94,13 +96,26 @@ function conclusionOf(...severities) {
     'Should fix': 0,
     Nit: 0
   })
+
+  // summary 只进评论的摘要行：缺了它不能让整份 findings 作废（真实 run 上模型给过空串）。
+  for (const [label, raw] of [
+    ['missing summary', JSON.stringify({ findings: [finding('Should fix')] })],
+    ['empty summary', JSON.stringify({ summary: '', findings: [finding('Should fix')] })],
+    ['blank summary', JSON.stringify({ summary: '  \n ', findings: [finding('Should fix')] })],
+    ['non-string summary', JSON.stringify({ summary: null, findings: [finding('Should fix')] })]
+  ]) {
+    const tolerant = parseReviewFindings(raw)
+    assert.equal(tolerant.summary, '', label)
+    assert.equal(tolerant.findings.length, 1, label)
+    assert.deepEqual(tolerant.counts, { Block: 0, 'Should fix': 1, Nit: 0 }, label)
+  }
 }
 
 for (const [label, value] of [
   ['non JSON', 'not json'],
   ['array root', '[]'],
-  ['empty summary', JSON.stringify({ summary: ' ', findings: [] })],
   ['missing findings', JSON.stringify({ summary: 'ok' })],
+  ['findings not an array', JSON.stringify({ summary: 'ok', findings: {} })],
   ['unknown severity', JSON.stringify({ summary: 'ok', findings: [{ ...finding('Block'), severity: 'Must fix' }] })],
   ['unknown field', JSON.stringify({ summary: 'ok', findings: [{ ...finding('Block'), extra: 1 }] })],
   [
@@ -128,8 +143,9 @@ for (const [label, value] of [
     ['git', 'cat-file', '-e', `${otherSha}^{commit}`],
     ['git', 'cat-file', '-e', `${headSha}^{commit}`],
     ['git', 'merge-base', otherSha, headSha],
-    ['git', 'diff', '--no-color', otherSha, headSha]
+    ['git', 'diff', '--no-color', otherSha, headSha, '--', ':(exclude,glob)**/generated/**']
   ])
+  assert.deepEqual([...REVIEW_EXCLUDE_PATHSPECS], [':(exclude,glob)**/generated/**'])
   assert.throws(() => resolveReviewRange({ baseSha: 'main', headSha, command }), /PR base SHA/)
   const missing = []
   const fetchOnDemand = (name, args) => {
@@ -238,7 +254,8 @@ for (const [label, value] of [
     error: ''
   })
   assert.equal(unreviewed.status, 'unreviewed')
-  assert.equal(unreviewed.blocking, false, 'a model that completed without output stays green')
+  assert.equal(unreviewed.code, 'unusable_output')
+  assert.equal(unreviewed.blocking, true, 'a model that completed without a usable conclusion must turn the gate red')
 
   const complete = inspectConfig(configuredEnv)
   assert.equal(complete.present, true)
@@ -283,7 +300,7 @@ for (const [label, value] of [
   assert.match(body, /packages\/web-ui\/src\/button\.ts:12/)
   assert.match(body, /Block 1 · Should fix 1 · Nit 0/)
   assert.match(body, /模型：`configured-model`/)
-  assert.match(body, /Block` 与 `error` 让/)
+  assert.match(body, /Block`、`error` 与「未审查」让/)
   assert.match(body, /run `1234`/)
   assert.ok(body.indexOf('**Block**') < body.indexOf('**Should fix**'), 'Block renders before Should fix')
   assert.deepEqual(
@@ -313,7 +330,8 @@ for (const [label, value] of [
   })
   assert.match(unreviewed, /sha=none status=unreviewed blocks=0/)
   assert.match(unreviewed, /结论：\*\*未审查\*\*/)
-  assert.match(unreviewed, /没有可用发现/)
+  assert.match(unreviewed, /故障码：`unusable_output`/)
+  assert.match(unreviewed, /本次没有可用结论/)
 
   const failed = renderConclusion({
     conclusion: deriveConclusion({
@@ -554,13 +572,15 @@ function runCli(command, { env = {}, conclusionDir }) {
   fs.rmSync(path.join(conclusionDir, 'review-findings.json'))
   fs.rmSync(path.join(conclusionDir, 'review-meta.json'))
   const broken = runCli('validate', { env: validateEnv, conclusionDir })
-  assert.equal(broken.result.status, 0, 'a model that completed without output stays unreviewed')
+  assert.equal(broken.result.status, 0, 'validate records the gap; the gate is what judges it')
   assert.equal(broken.outputs.blocks, '0')
   assert.match(broken.outputs.reason, /no output file/)
   assert.equal(fs.existsSync(path.join(conclusionDir, 'review-findings.json')), false)
+  assert.equal(readConclusion(conclusionDir).meta.status, 'unreviewed')
   const gateAfterBreak = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha }, conclusionDir })
-  assert.equal(gateAfterBreak.result.status, 0)
+  assert.equal(gateAfterBreak.result.status, 1, 'no usable conclusion must not look like a green review')
   assert.match(gateAfterBreak.summary, /Status: \*\*unreviewed\*\*/)
+  assert.match(gateAfterBreak.summary, /unusable_output/)
 
   // 同一个「没有输出文件」，outcome=failure 说明 action 崩了，必须让 gate 变红。
   const crashed = runCli('validate', {
@@ -571,6 +591,23 @@ function runCli(command, { env = {}, conclusionDir }) {
   const gateAfterCrash = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha }, conclusionDir })
   assert.equal(gateAfterCrash.result.status, 1, 'a crashed model action must not be masked by continue-on-error')
   assert.match(gateAfterCrash.summary, /Status: \*\*error\*\*/)
+
+  // 模型给了 findings 但 summary 是空串：结论照样成立，不会退化成 unreviewed。
+  fs.writeFileSync(
+    path.join(runnerTemp, 'codex-final-message.json'),
+    JSON.stringify({ summary: '', findings: [finding('Should fix')] })
+  )
+  const missingSummary = runCli('validate', { env: validateEnv, conclusionDir })
+  assert.equal(missingSummary.result.status, 0, missingSummary.result.stderr)
+  assert.equal(missingSummary.outputs.blocks, '0')
+  assert.equal(readConclusion(conclusionDir).meta.status, 'reviewed')
+  assert.equal(readConclusion(conclusionDir).findings.counts['Should fix'], 1)
+  const gateAfterMissingSummary = runCli('gate', {
+    env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha },
+    conclusionDir
+  })
+  assert.equal(gateAfterMissingSummary.result.status, 0, 'a cosmetic gap must not invalidate the findings')
+  assert.match(gateAfterMissingSummary.summary, /Status: \*\*reviewed\*\*/)
 
   // 没有配置快照时 validate 不能把 error 结论覆盖成 unreviewed。
   fs.rmSync(path.join(runnerTemp, CONFIG_FILE))
@@ -712,7 +749,7 @@ function runCli(command, { env = {}, conclusionDir }) {
 
 {
   // 端到端：把 gh 换成受控替身，分别让读评论、写评论、非权限调用失败。
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-publish-'))
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-report-'))
   const bin = path.join(directory, 'bin')
   fs.mkdirSync(bin)
   const fakeGh = path.join(bin, 'gh')
@@ -746,34 +783,81 @@ esac
     { mode: 0o755 }
   )
   writeFixtures(directory, conclusionOf('Nit'), metaOf())
-  const publishEnv = failAt => ({
+  const reportEnv = failAt => ({
     PATH: `${bin}:${process.env.PATH}`,
     CODEX_REVIEW_LIVE_HEAD_SHA: headSha,
     FAKE_GH_FAIL_AT: failAt,
     FAKE_GH_ERROR: 'Resource not accessible by integration (HTTP 403)'
   })
 
-  const created = runCli('publish', { env: publishEnv('none'), conclusionDir: directory })
+  const created = runCli('report', { env: reportEnv('none'), conclusionDir: directory })
   assert.equal(created.result.status, 0, created.result.stderr)
   assert.match(created.result.stdout, /created conclusion comment 9001/)
+  // 运行页要能回答「这次到底发了什么」：只有日志里的 console.log 不够。
+  assert.match(created.summary, /已创建结论评论 #9001/)
+  assert.match(created.summary, /Block 0 · Should fix 0 · Nit 1/)
 
   for (const failAt of ['read', 'write']) {
-    const denied = runCli('publish', { env: publishEnv(failAt), conclusionDir: directory })
-    assert.equal(denied.result.status, 1, `${failAt} 403 must fail the publish step`)
+    const denied = runCli('report', { env: reportEnv(failAt), conclusionDir: directory })
+    assert.equal(denied.result.status, 1, `${failAt} 403 must fail the report step`)
     assert.match(denied.result.stderr, /cannot access PR #54 or its comments/, failAt)
     assert.match(denied.result.stderr, /pull-requests: write/, failAt)
     assert.match(denied.result.stderr, /Workflow permissions/, failAt)
     assert.match(denied.result.stderr, /organization policy/, failAt)
   }
 
-  const serverError = runCli('publish', {
-    env: { ...publishEnv('server'), FAKE_GH_ERROR: 'HTTP 500: upstream unavailable' },
+  const serverError = runCli('report', {
+    env: { ...reportEnv('server'), FAKE_GH_ERROR: 'HTTP 500: upstream unavailable' },
     conclusionDir: directory
   })
   assert.equal(serverError.result.status, 1)
   assert.match(serverError.result.stderr, /HTTP 500/, 'the original failure must still be visible')
   assert.doesNotMatch(serverError.result.stderr, /cannot access PR #54/, 'a 500 is not a permission diagnosis')
   fs.rmSync(directory, { recursive: true, force: true })
+}
+
+{
+  // 生成产物必须在 diff 入口就剔掉，而不是指望模型自己忽略；嵌套与根级 generated/ 都要覆盖。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-scope-'))
+  const git = args => run('git', ['-C', directory, ...args])
+  const commit = message =>
+    git(['-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', message])
+  git(['-c', 'init.defaultBranch=main', 'init', '-q'])
+  git(['config', 'user.email', 'scope@example.test'])
+  git(['config', 'user.name', 'Scope Test'])
+  fs.mkdirSync(path.join(directory, 'src/generated'), { recursive: true })
+  fs.mkdirSync(path.join(directory, 'generated'), { recursive: true })
+  fs.writeFileSync(path.join(directory, 'src/generated/hash-a.js'), 'export const a = 1\n')
+  fs.writeFileSync(path.join(directory, 'generated/root.js'), 'export const root = 1\n')
+  fs.writeFileSync(path.join(directory, 'src/real.ts'), 'export const real = 1\n')
+  git(['add', '.'])
+  commit('base')
+  const baseSha = git(['rev-parse', 'HEAD']).trim()
+  fs.rmSync(path.join(directory, 'src/generated/hash-a.js'))
+  fs.writeFileSync(path.join(directory, 'src/generated/hash-b.js'), 'export const a = 2\n')
+  fs.writeFileSync(path.join(directory, 'generated/root.js'), 'export const root = 2\n')
+  fs.writeFileSync(path.join(directory, 'src/real.ts'), 'export const real = 2\n')
+  git(['add', '-A'])
+  commit('head')
+  const headSha = git(['rev-parse', 'HEAD']).trim()
+  const range = resolveReviewRange({ baseSha, headSha, command: (_name, args) => git(args) })
+  assert.match(range.diff, /src\/real\.ts/, 'real source must stay in the review diff')
+  assert.doesNotMatch(range.diff, /src\/generated\//, 'nested generated artifacts must be excluded')
+  assert.doesNotMatch(range.diff, /generated\/root\.js/, 'root-level generated artifacts must be excluded')
+  fs.rmSync(directory, { recursive: true, force: true })
+}
+
+{
+  // 回归：大 PR 的 git diff 曾撑爆 spawnSync 默认 1 MiB 缓冲，让 prepare 在 preflight 之前就失败。
+  const bytes = 2 * 1024 * 1024
+  const output = run(process.execPath, ['-e', `process.stdout.write('x'.repeat(${bytes}))`])
+  assert.equal(output.length, bytes, 'large stdout must not hit ENOBUFS')
+  assert.equal(SPAWN_MAX_BUFFER, 64 * 1024 * 1024, 'the documented buffer ceiling must stay explicit')
+  assert.throws(
+    () => run(process.execPath, ['-e', "process.stdout.write('x'.repeat(4096))"], { maxBuffer: 1024 }),
+    /exceeded the configured 1024 bytes buffer/,
+    'an overridden maxBuffer must be reported with the actual limit'
+  )
 }
 
 console.log('.github/scripts/codex-review.test.mjs: all assertions passed')

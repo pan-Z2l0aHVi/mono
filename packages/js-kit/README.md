@@ -1,19 +1,8 @@
 # @greypan/js-kit
 
-> JavaScript utility functions with composable plugin system
+> JavaScript utilities and composable plugins. Works in browsers, Node.js, and workers.
 
-English | [简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/README.CN.md)
-
-## Features
-
-- **Plugin system**: Composable plugins with `definePlugin`, chainable `.use()` and `.make()`
-- **URL**: Parse and stringify URLs with query params and hash
-- **Number**: Byte-size formatting and range clamping
-- **String**: File-extension extraction
-- **Timer**: Debounce with leading/trailing/both timing, controllable interval with pause/resume and manual ticks
-- **Shortcut**: Fire-and-forget `safeCall` wrapper
-- **Paradigm**: Rust-style `Result` type utilities
-- **Types**: Shared utility types (`ValueOf`, `DeepPartial`, `Equal`, and more)
+English | [简体中文](./README.CN.md)
 
 ## Install
 
@@ -31,41 +20,52 @@ yarn add @greypan/js-kit
 bun add @greypan/js-kit
 ```
 
-## Quick Start
+## Quick start
 
 ```ts
 import { definePlugin } from '@greypan/js-kit'
 
-// Define reusable plugins
-const defineLogger = () => definePlugin(() => ({ log: (msg: string) => console.log(msg) }))
-
+const defineLogger = () => definePlugin(() => ({ log: (message: string) => console.log(message) }))
 const defineAuth = () => definePlugin(() => ({ token: 'xxx' }))
 
-// Compose plugins with .use() and instantiate with .make()
 const app = defineLogger().use(defineAuth()).make()
 
-app.log('hello') // 'hello'
-console.log(app.token) // 'xxx'
+app.log('hello')
+console.log(app.token)
 ```
+
+## What you get
+
+- Composable plugins built with `definePlugin`, `.use()`, and `.make()`.
+- URL parsing and building with query parameters and hash.
+- Number and string helpers for file sizes, ranges, and extensions.
+- Debounce and a controllable interval timer.
+- A `safeCall` wrapper for fire-and-forget work.
+- Result values for error handling without exceptions.
+- Shared TypeScript utility types.
 
 ## Plugins
 
 ### `definePlugin(setup)`
 
-Core of the plugin system. Encapsulates functionality into composable plugins, chainable with `.use()`, instantiated with `.make()`. Plugins can register other plugins internally, and all APIs merge into the final instance.
+Create a plugin. Call `.use()` to combine it with other plugins, then `.make()` to create the instance.
 
 ```ts
 import { definePlugin } from '@greypan/js-kit'
 
 const defineConfig = () => definePlugin(() => ({ apiUrl: 'https://api.example.com' }))
+const config = defineConfig().make()
 
-const ctx = defineConfig().make()
-console.log(ctx.apiUrl) // 'https://api.example.com'
+console.log(config.apiUrl)
 ```
+
+| Parameter | Type            | Description                                      |
+| --------- | --------------- | ------------------------------------------------ |
+| `setup`   | `(ctx: D) => C` | Receives the shared context and returns the API. |
 
 ### `defineBatchEmitter<S>(options?)`
 
-Batched event emitter. Collects events and flushes them as a batch after a delay.
+Collect events and deliver them as one batch after a delay.
 
 ```ts
 import { defineBatchEmitter } from '@greypan/js-kit'
@@ -79,7 +79,7 @@ await ctx.batchEmit({ id: 1 })
 await ctx.batchEmit({ id: 2 })
 ```
 
-`batchEmit(data, delay = 0)` resolves with the batch that was flushed. A delay of `0` or less calls `onFlushed([data])` immediately and resolves with `[data]`; a positive delay batches events until the timer fires. `flush()` emits the current queue immediately.
+`batchEmit(data, delay = 0)` resolves with the flushed batch. A delay of `0` or less delivers `[data]` immediately. A positive delay collects events until the timer fires. `flush()` delivers the current queue immediately.
 
 | Option              | Type                                    | Default | Description                    |
 | ------------------- | --------------------------------------- | ------- | ------------------------------ |
@@ -87,31 +87,21 @@ await ctx.batchEmit({ id: 2 })
 
 ### `defineQueue<T>(options)`
 
-A "delivery-is-consumption" queue. It removes an item immediately after calling `onConsume` and does not await a returned Promise, making it suitable for fire-and-forget work.
+A queue for fire-and-forget work. It removes an item as soon as it calls `onConsume` and does not wait for a returned promise.
 
 ### `defineAckQueue<T>(options)`
 
-A consumer-acknowledged queue. It removes an item only after the Promise returned by `onConsume` fulfills; a rejection affects only the current item, and failed items can be retried with `resume()` or `flush()`.
+A queue that waits for the consumer. It removes an item only after the promise returned by `onConsume` resolves. A rejection affects only that item, and `resume()` or `flush()` can retry failed items.
 
-Both queues expose `enqueue()`, `pause()`, `resume()`, and asynchronous `flush()`, and support `initialItems`, synchronous `onPersist` snapshot persistence, and `onConsumeError`. See [`src/plugin-system/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/src/plugin-system/README.md) for the full option table, flush and persist-before-commit semantics, and the circular-wait constraint on calling `flush()` from a consumer.
+Both queues expose `enqueue()`, `pause()`, `resume()`, and asynchronous `flush()`. They also accept `initialItems`, a synchronous `onPersist` callback for snapshots, and `onConsumeError`.
 
-## API
+See [`src/plugin-system/README.md`](./src/plugin-system/README.md) for the option table, persistence behavior, and the rule against calling `flush()` from inside a consumer.
 
-### `definePlugin<C, D>(setup)`
-
-Core plugin factory. Creates a plugin that can be composed with `.use()` and instantiated with `.make()`.
-
-| Parameter | Type            | Default | Description                                                 |
-| --------- | --------------- | ------- | ----------------------------------------------------------- |
-| `setup`   | `(ctx: D) => C` | -       | Setup function that receives context and returns plugin API |
-
-### `PluginMade<T>`
-
-Type utility that extracts the instantiated type from a plugin factory or plugin instance.
+## URL
 
 ### `parseUrl(url?)`
 
-Parse a URL string into a structured object. Supports relative paths.
+Parse a URL string into `base`, `query`, and `hash`. Relative and protocol-relative URLs are supported.
 
 | Parameter | Type     | Default | Description         |
 | --------- | -------- | ------- | ------------------- |
@@ -119,57 +109,47 @@ Parse a URL string into a structured object. Supports relative paths.
 
 ### `stringifyUrl(opts, omitNil?)`
 
-Build a URL string from structured components.
+Build a URL string from `base`, `query`, and `hash`.
 
 | Parameter | Type                 | Default | Description                             |
 | --------- | -------------------- | ------- | --------------------------------------- |
 | `opts`    | `Partial<URLObject>` | -       | URL components: `base`, `query`, `hash` |
-| `omitNil` | `boolean`            | `true`  | Remove nil values from query            |
+| `omitNil` | `boolean`            | `true`  | Remove nil values from the query        |
 
-Full `URLObject` shape, relative-path behavior, and examples: see [`src/url/README.md`](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/src/url/README.md).
+See [`src/url/README.md`](./src/url/README.md) for examples and edge cases.
+
+## Number and string helpers
 
 ### `clamp(val, min, max)`
 
-Clamp a number to a range. Automatically swaps min/max if inverted.
-
-| Parameter | Type     | Default | Description    |
-| --------- | -------- | ------- | -------------- |
-| `val`     | `number` | -       | Value to clamp |
-| `min`     | `number` | -       | Minimum value  |
-| `max`     | `number` | -       | Maximum value  |
-
-### `getFileExtension(filename)`
-
-Extract file extension from filename. Throws when the input is empty or has no extension.
-
-| Parameter  | Type     | Default | Description     |
-| ---------- | -------- | ------- | --------------- |
-| `filename` | `string` | -       | Filename string |
+Clamp a number to a range. Swaps `min` and `max` when they are reversed.
 
 ### `formatFileSize(bytes, decimals?)`
 
-Format byte count to a human-readable string, e.g. `'1.23 KB'`.
+Format a byte count as a readable string, for example `'1.23 KB'`.
 
 | Parameter  | Type     | Default | Description    |
 | ---------- | -------- | ------- | -------------- |
 | `bytes`    | `number` | -       | Byte count     |
 | `decimals` | `number` | `2`     | Decimal places |
 
+### `getFileExtension(filename)`
+
+Return the extension of a filename. Throws when the input is empty or has no extension.
+
+## Timers
+
 ### `defineControllableInterval(options)`
 
-Create a controllable interval with pause/resume support. Returns a plugin with `start`, `pause`, `resume`, `stop`, and `tick` methods.
+Create an interval that can be paused and resumed. The instance provides `start`, `pause`, `resume`, `stop`, and `tick`.
 
-| Method        | Description                                                                |
-| ------------- | -------------------------------------------------------------------------- |
-| `start()`     | Start the interval. A paused timer must be resumed instead.                |
-| `pause()`     | Pause and keep the remaining time of the current cycle.                    |
-| `resume()`    | Resume from the remaining time instead of restarting the full interval.    |
-| `stop()`      | Cancel the interval and reset its state.                                   |
-| `tick(delay)` | Schedule one extra callback after `delay` ms without changing pause state. |
-
-| Parameter | Type                                         | Default | Description         |
-| --------- | -------------------------------------------- | ------- | ------------------- |
-| `options` | `{ callback: () => void; interval: number }` | -       | Timer configuration |
+| Method        | Description                                                                         |
+| ------------- | ----------------------------------------------------------------------------------- |
+| `start()`     | Start the interval. A paused timer must be resumed instead.                         |
+| `pause()`     | Pause and keep the remaining time of the current cycle.                             |
+| `resume()`    | Continue from the remaining time instead of restarting the cycle.                   |
+| `stop()`      | Cancel the interval and reset its state.                                            |
+| `tick(delay)` | Run one extra callback after `delay` milliseconds without changing the pause state. |
 
 ```ts
 const timer = defineControllableInterval({ callback: () => console.log('tick'), interval: 1000 }).make()
@@ -178,55 +158,58 @@ timer.start()
 
 ### `debounce(func, options?)`
 
-Debounce a function with configurable timing mode. Returns `call`, `cancel`, `flush`, `isPending`, and `cachedValue`.
+Debounce a function. Returns `call`, `cancel`, `flush`, `isPending`, and `cachedValue`.
 
 | Parameter | Type                                                                                  | Default | Description          |
 | --------- | ------------------------------------------------------------------------------------- | ------- | -------------------- |
 | `func`    | `Function`                                                                            | -       | Function to debounce |
 | `options` | `{ timing?: 'trailing' \| 'leading' \| 'both'; waitMs?: number; maxWaitMs?: number }` | -       | Debounce options     |
 
-`maxWaitMs` cannot be less than `waitMs`; the call throws when it is. A `leading` debounce does not accept `maxWaitMs` in the type surface.
+`maxWaitMs` cannot be smaller than `waitMs`. A `leading` debounce does not accept `maxWaitMs`.
+
+## Error handling
 
 ### `safeCall(fn, options?)`
 
-Fire-and-forget wrapper. Catches sync exceptions and async rejections; silently by default, or forwards them to `options.onError` when provided. `onError` failures are swallowed too. The call stays fire-and-forget.
+Run a function without handling its errors at the call site. Synchronous throws and rejected promises are swallowed by default. Pass `onError` to receive them.
 
 | Parameter | Type                                 | Default | Description           |
 | --------- | ------------------------------------ | ------- | --------------------- |
-| `fn`      | `() => unknown`                      | -       | Thunk to call         |
+| `fn`      | `() => unknown`                      | -       | Function to call      |
 | `options` | `{ onError?: (e: unknown) => void }` | -       | Optional error outlet |
 
 ### `rust`
 
-Result type namespace for Rust-style error handling.
+Result helpers for error handling without exceptions.
 
-| Method                  | Description                                                                                               |
-| ----------------------- | --------------------------------------------------------------------------------------------------------- |
-| `ok(value)`             | Create a success result                                                                                   |
-| `err(error)`            | Create an error result                                                                                    |
-| `isOk(result)`          | Check if a result is a success                                                                            |
-| `isErr(result)`         | Check if a result is an error                                                                             |
-| `to(promise)`           | Resolve a Promise into `Ok`, or capture a rejection as `Err`                                              |
-| `andThen(result, next)` | Rust's `Result::and_then`: pass the `Ok` payload to `next`, return the `Err` untouched without running it |
-| `unwrap(result)`        | Return the success value or the error payload; never throws                                               |
+| Method                  | Description                                                          |
+| ----------------------- | -------------------------------------------------------------------- |
+| `ok(value)`             | Create a success result.                                             |
+| `err(error)`            | Create an error result.                                              |
+| `isOk(result)`          | Check for a success result.                                          |
+| `isErr(result)`         | Check for an error result.                                           |
+| `to(promise)`           | Resolve a promise into `Ok`, or capture a rejection as `Err`.        |
+| `andThen(result, next)` | Chain the next step: run `next` on `Ok`, return the `Err` untouched. |
+| `unwrap(result)`        | Return the success value or the error payload. It never throws.      |
 
 ```ts
 import { rust } from '@greypan/js-kit/rust'
-// also available from '@greypan/js-kit'
+// Also available from '@greypan/js-kit'
 
 const result = await rust.to(fetch('/api/user'))
 if (rust.isOk(result)) console.log(result.value)
 else console.error(rust.unwrap(result))
 ```
 
-### Type Utilities
+## Type utilities
 
-| Type                    | Description                                                                 |
-| ----------------------- | --------------------------------------------------------------------------- |
-| `ValueOf<T>`            | Union of all value types in an object                                       |
-| `ArrayItem<T>`          | Element type of an array                                                    |
-| `ArgumentType<T>`       | Parameter element type of a function (a union for multi-argument functions) |
-| `DeepPartial<T>`        | Recursive partial                                                           |
-| `DeepRequired<T>`       | Recursive required                                                          |
-| `ClassPropertyTypes<T>` | Class property types                                                        |
-| `Equal<X, Y>`           | Type equality check                                                         |
+| Type                    | Description                                      |
+| ----------------------- | ------------------------------------------------ |
+| `ValueOf<T>`            | Union of all value types in an object.           |
+| `ArrayItem<T>`          | Element type of an array.                        |
+| `ArgumentType<T>`       | Union of a function's parameter types.           |
+| `DeepPartial<T>`        | Recursive partial.                               |
+| `DeepRequired<T>`       | Recursive required.                              |
+| `ClassPropertyTypes<T>` | Types of a class's properties.                   |
+| `Equal<X, Y>`           | Type equality check.                             |
+| `PluginMade<T>`         | Instantiated type of a plugin factory or plugin. |

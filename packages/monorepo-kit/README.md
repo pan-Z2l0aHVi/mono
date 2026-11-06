@@ -1,11 +1,15 @@
 # monorepo-kit
 
-本仓库的门禁、策略检查与构建编排实现。源码是 TypeScript，`build` 跑 `vp pack` 产出 `dist/index.js` 与 `dist/vite.js`（各带 `.d.ts`）；消费方一律经包名读产物，`dist/` 被 gitignore。门禁因此依赖产物新鲜度，见 [AGENTS.md](./AGENTS.md)。
+> 本仓库的门禁、策略检查与构建编排实现。
+
+这是私有 workspace 包。源码是 TypeScript，`build` 跑 `vp pack` 产出 `dist/`（两个入口 `index.js` 与 `vite.js`，各带 `.d.ts`），消费方通过包名导入，不直接引用 `src/`。门禁读产物，因此依赖产物新鲜度，见 [AGENTS.md](./AGENTS.md)。
 
 ```js
 import { defineCatch, defineRunner, getWorkspaceRoot } from '@greypan/monorepo-kit'
 import { testApiPort } from '@greypan/monorepo-kit/vite'
 ```
+
+## 导出内容
 
 `exports` 有两个 specifier，按消费者划分：`.` 给 Node 脚本（门禁入口与判定），`./vite` 给 `vite.config.ts` 在求值期用的端口与 dev 证书适配。入口导出三类：链协议（`defineRunner`、`defineCatch` 与 `Chain` / `Run` / `KitCtx` 类型）、插件（`defineXxx(options)`，判定插件产 `run`、能力插件产方法）、平铺的叶子函数与类型。
 
@@ -19,7 +23,13 @@ import { testApiPort } from '@greypan/monorepo-kit/vite'
 
 分区判据与迁移理由见 [ADR-0018](../../docs/adr/0018-monorepo-kit-generic-plugins.md)，包内约束见 [AGENTS.md](./AGENTS.md)。
 
+## 变更后验证
+
 ```bash
-pnpm --filter @greypan/monorepo-kit build   # 产出 dist/
-pnpm --filter @greypan/monorepo-kit test    # 跑各能力目录 __tests__/ 下的 .spec.ts
+pnpm --filter @greypan/monorepo-kit build
+pnpm --filter @greypan/monorepo-kit test
+pnpm run check-pre-commit
+pnpm run check-policy
 ```
+
+门禁读取 `dist/` 产物，所以改完源码要先构建。根 `check-pre-commit` 会先构建本包。

@@ -61,8 +61,7 @@
 }
 
 :host([active]) .option-label {
-  color: var(--wui-color-on-accent, #fff);
-  background: var(--wui-color-accent, #0071e3);
+  background: var(--wui-color-border, rgb(0 0 0 / 0.1));
 }
 
 @media (hover: hover) and (pointer: fine) {

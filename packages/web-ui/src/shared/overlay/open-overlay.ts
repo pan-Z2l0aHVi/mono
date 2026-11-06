@@ -82,6 +82,14 @@ export interface OpenOverlayHandle {
    */
   setInert(inert: boolean): void
   /**
+   * 改写本层的仲裁身份。`none` 让本层留在组合树里但不参与 Escape 归属，
+   * 按键穿过它落到下层 overlay。
+   *
+   * 与 `setInert` 的分工：惰性层仍是候选（吞掉 Escape、不走关闭入口），`none` 压根
+   * 不是候选。trigger 可在开启期间改写，所以这是动态通道而不是建层参数。
+   */
+  setArbitration(arbitration: OverlayArbitration): void
+  /**
    * 进入退场暂缓态：panel 仍在场（可见），本层继续留在登记表里并吞掉 Escape，但不走
    * 关闭入口。`anchored-panel.close()` 在退场等待前调用它。
    *
@@ -202,6 +210,7 @@ if (import.meta.env.DEV) {
 const inactiveHandle: OpenOverlayHandle = {
   deferArbitration() {},
   setInert() {},
+  setArbitration() {},
   adopt: () => inactiveHandle,
   contains: () => false,
   containsEvent: () => false,
@@ -328,6 +337,12 @@ function createLayer(input: {
     setInert(inert) {
       if (layer.released) return
       layer.inert = inert
+    },
+
+    setArbitration(arbitration) {
+      if (layer.released || layer.arbitration === arbitration) return
+      layer.arbitration = arbitration
+      syncListener()
     },
 
     adopt(panel, options = {}) {

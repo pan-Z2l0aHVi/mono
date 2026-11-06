@@ -12,16 +12,16 @@ import type { WebUiOption } from '@/components/option'
 import { lucideChevronDown } from '@/icons'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
-import { normalizeLiteral } from '@/shared/normalize'
+import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import {
   createComboboxOpenController,
   createOptionListenerBinding,
   defineOptionPortal,
-  handleComboboxFocusOut,
   nextWrappingIndex
 } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
+import { hasOverlayContent } from '@/shared/overlay/content-presence'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import {
@@ -30,12 +30,15 @@ import {
   type OverlayContainer,
   type OverlayPortal
 } from '@/shared/overlay/portal'
-import { isEventInsideHost } from '@/shared/overlay/trigger-gestures'
+import { defineTriggerController } from '@/shared/overlay/trigger-controller'
+import { isTriggerNone, normalizeTriggerSet } from '@/shared/overlay/trigger-props'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
 installPointerFocusSuppression()
+
+const DEFAULT_TRIGGERS = ['click'] as const
 
 @customElement('web-ui-select')
 export class WebUiSelect extends FormAssociated(LitElement) {
@@ -50,15 +53,49 @@ export class WebUiSelect extends FormAssociated(LitElement) {
    * 图标模式需要消费方提供 `trigger` slot 与 `aria-label`。
    */
   @property({ type: String, reflect: true })
-  get trigger(): 'label' | 'icon' {
-    return this._trigger
+  get variant(): 'label' | 'icon' {
+    return this._variant
+  }
+  set variant(v: string) {
+    const old = this._variant
+    this._variant = normalizeLiteral(v, ['label', 'icon'] as const, 'label')
+    this.requestUpdate('variant', old)
+  }
+  private _variant: 'label' | 'icon' = 'label'
+
+  @property({ type: String, reflect: true })
+  get trigger(): string {
+    return this._triggerValue
   }
   set trigger(v: string) {
-    const old = this._trigger
-    this._trigger = normalizeLiteral(v, ['label', 'icon'] as const, 'label')
+    const old = this._triggerValue
+    this._triggerValue = normalizeTriggerSet(v, DEFAULT_TRIGGERS)
     this.requestUpdate('trigger', old)
   }
-  private _trigger: 'label' | 'icon' = 'label'
+  private _triggerValue: string = DEFAULT_TRIGGERS.join(',')
+
+  @property({ type: Number, attribute: 'show-delay' })
+  get showDelay(): number {
+    return this._showDelay
+  }
+  set showDelay(v: number) {
+    const old = this._showDelay
+    this._showDelay = normalizeNumber(v, 0, 5000, 200)
+    this.requestUpdate('showDelay', old)
+  }
+  private _showDelay = 200
+
+  @property({ type: Number, attribute: 'hide-delay' })
+  get hideDelay(): number {
+    return this._hideDelay
+  }
+  set hideDelay(v: number) {
+    const old = this._hideDelay
+    this._hideDelay = normalizeNumber(v, 0, 5000, 100)
+    this.requestUpdate('hideDelay', old)
+  }
+  private _hideDelay = 100
+
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) portal = false
   /** 下拉 panel 相对触发器的方向；默认贴着触发器左下角向下展开。 */
@@ -165,7 +202,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
    * 声明而非询问，仲裁时不再回头问 isOpen()。
    */
   private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => this._close(),
+    requestClose: () => this._triggerController.hide(),
     isConnected: () => this.isConnected
   })
   private readonly _panel = defineAnchoredPanel().make({
@@ -180,48 +217,81 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     }),
     isPortal: () => this.portal,
     createPortal: () => this._createPortal(),
-    openOverlay: this._overlay
+    openOverlay: this._overlay,
+    // `none` 在逻辑组合树里但不参与 Escape 归属：按键穿过它落到下层 overlay。
+    arbitration: () => this._triggerController.arbitration()
   })
+  // 手势路由、开合状态机与程序式入口在共享接线里；open 的 reactive 存储仍由本组件持有。
+  private readonly _triggerController = defineTriggerController({
+    host: this,
+    getTrigger: () => this.trigger,
+    isDisabled: () => this._isDisabled,
+    canOpen: () => true,
+    getOpen: () => this._isOpen,
+    getShowDelay: () => this.showDelay,
+    getHideDelay: () => this.hideDelay,
+    hoverOpensInstantly: () => false,
+    isInsidePanel: event => !!this._panel.getHandle()?.containsEvent(event),
+    hasFocusWithin: () => this.matches(':focus-within') || !!this._panel.getHandle()?.hasFocusWithin(),
+    requestOpen: meta =>
+      this._open({
+        isKeyboardNavigation: meta.source === 'focus',
+        notify: meta.notify,
+        automatic: meta.automatic
+      }),
+    requestClose: meta => this._close({ notify: meta.notify })
+  })
+  private _panelKeepAliveDisposers: (() => void)[] = []
+  private _portalKeepAliveDisposer?: () => void
+
+  private _openValue = false
+  /** 本次打开会话是否见过内容；程序式空开不得被后续渲染立即关掉。 */
+  private _openedWithContent = false
 
   get isOpen(): boolean {
     return this._isOpen
   }
 
+  /** 声明式开关：静默变更，不派发 `open-change`。 */
+  @property({ type: Boolean })
   get open(): boolean {
-    return this._isOpen
+    return this._openValue
+  }
+  set open(v: boolean) {
+    this._triggerController.applyDeclarativeOpen(Boolean(v))
   }
 
-  private _onClickOutside = (e: MouseEvent) => {
-    // 在监听器内部判定：composedPath() 在派发结束后会被清空。
-    const isInside = isEventInsideHost(this, e) || !!this._panel.getHandle()?.containsEvent(e)
-    if (this._isOpen && !isInside) {
-      this._close()
-    }
+  /** 命令式打开：派发 `open-change`。`none` 下同样可用。 */
+  show(options?: { instant?: boolean }): void {
+    this._triggerController.show(options)
   }
 
-  private _onFocusOut = () => {
-    handleComboboxFocusOut(
-      this,
-      () => this._panel.getHandle(),
-      () => this._isOpen,
-      () => this._close()
-    )
+  /** 命令式收起：派发 `open-change`。 */
+  hide(options?: { instant?: boolean }): void {
+    this._triggerController.hide(options)
+  }
+
+  toggle(options?: { instant?: boolean }): void {
+    this._triggerController.toggle(options)
   }
 
   override connectedCallback() {
     super.connectedCallback()
     this._optionPortal.bindHost()
+    this._triggerController.connect()
     this.addEventListener('keydown', this._onKeydown)
-    this.addEventListener('focusout', this._onFocusOut)
-    document.addEventListener('click', this._onClickOutside)
+    this._bindLocalPanelKeepAlive()
   }
 
   override disconnectedCallback() {
     super.disconnectedCallback()
     this._optionPortal.dispose()
+    this._triggerController.disconnect()
     this.removeEventListener('keydown', this._onKeydown)
-    this.removeEventListener('focusout', this._onFocusOut)
-    document.removeEventListener('click', this._onClickOutside)
+    for (const dispose of this._panelKeepAliveDisposers) dispose()
+    this._panelKeepAliveDisposers = []
+    this._portalKeepAliveDisposer?.()
+    this._portalKeepAliveDisposer = undefined
     this._options.forEach(this._unbindOption)
     this._options = []
     this._portal = undefined
@@ -233,9 +303,16 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   override firstUpdated() {
+    this._bindLocalPanelKeepAlive()
     requestAnimationFrame(() => {
       if (this.isConnected) this._optionPortal.scheduleRefresh()
     })
+    if (this._isOpen) this._openOverlay(true)
+  }
+
+  private _bindLocalPanelKeepAlive() {
+    const localPanel = this.shadowRoot?.querySelector<HTMLElement>('.select-overlay')
+    if (localPanel) this._panelKeepAliveDisposers.push(this._triggerController.bindPanelKeepAlive(localPanel))
   }
 
   override willUpdate() {
@@ -248,9 +325,14 @@ export class WebUiSelect extends FormAssociated(LitElement) {
       requestAnimationFrame(() => this._reconfigureOverlay())
     if (changed.has('noScrollLock')) this._syncScrollLock()
     if (changed.has('placement')) this._panel.updatePosition()
+    if (changed.has('trigger')) {
+      this._triggerController.syncTriggerChange()
+      this._panel.syncArbitration()
+    }
     this._syncOpenAttribute()
     this._syncOverlayInert()
     this._syncValidity()
+    this._syncOpenWithContent()
   }
 
   private _syncValidity() {
@@ -361,20 +443,24 @@ export class WebUiSelect extends FormAssociated(LitElement) {
 
   private _onKeydown = (e: KeyboardEvent) => {
     if (this._isDisabled || e.isComposing) return
+    // `none` 只接受程序式开关：关闭态下键盘不再是打开入口，但已打开时仍可导航。
+    const canOpen = !isTriggerNone(this.trigger)
 
     // Escape 不在本组件处理：由共享仲裁者在 document 捕获阶段归属（issue #120 Block 1）。
     switch (e.key) {
       case 'ArrowDown':
+        if (!this._isOpen && !canOpen) return
         e.preventDefault()
         if (!this._isOpen) {
-          this._open(true)
+          this._open({ isKeyboardNavigation: true })
         } else {
           this._navigateActive(1)
         }
         break
       case 'ArrowUp':
+        if (!this._isOpen && !canOpen) return
         e.preventDefault()
-        if (!this._isOpen) this._open(true)
+        if (!this._isOpen) this._open({ isKeyboardNavigation: true })
         else this._navigateActive(-1)
         break
       case 'Home':
@@ -388,18 +474,20 @@ export class WebUiSelect extends FormAssociated(LitElement) {
         this._moveActiveToBoundary(false)
         break
       case 'Enter': {
+        if (!this._isOpen && !canOpen) return
         e.preventDefault()
         if (e.repeat) break
-        if (!this._isOpen) this._open(true)
+        if (!this._isOpen) this._open({ isKeyboardNavigation: true })
         else if (this._activeIndex >= 0) this._selectActiveOption()
         break
       }
       case ' ':
       case 'Space':
       case 'Spacebar': {
+        if (!this._isOpen && !canOpen) return
         e.preventDefault()
         if (e.repeat) break
-        if (!this._isOpen) this._open(true)
+        if (!this._isOpen) this._open({ isKeyboardNavigation: true })
         else if (this._activeIndex >= 0) this._selectActiveOption()
         break
       }
@@ -505,6 +593,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     getIsOpen: () => this._isOpen,
     setIsOpen: open => {
       this._isOpen = open
+      this._openValue = open
     },
     dispatchOpenChange: () => this._dispatchOpenChange(),
     syncScrollLock: open => this._syncScrollLock(open),
@@ -517,19 +606,46 @@ export class WebUiSelect extends FormAssociated(LitElement) {
       else this._syncActiveOption()
     },
     onAfterClose: () => {
+      this._openedWithContent = false
       this._activeIndex = -1
       this._options.forEach(o => o.removeAttribute('active'))
     }
   })
 
-  private _open(isKeyboardNavigation = false) {
-    this._resetTypeahead()
-    this._openController.open(isKeyboardNavigation)
+  private _hasOverlayContent() {
+    return hasOverlayContent(this._portalContent ?? this)
   }
 
-  private _close() {
+  private _syncOpenWithContent() {
+    if (!this._isOpen) {
+      this._openedWithContent = false
+      return
+    }
+    if (this._hasOverlayContent()) {
+      this._openedWithContent = true
+      return
+    }
+    // 打开时就没有内容（程序式空开）保持原状；只有内容从有到无才收起。
+    if (this._openedWithContent) this._close()
+  }
+
+  private _open(options: { isKeyboardNavigation?: boolean; notify?: boolean; automatic?: boolean } = {}) {
     this._resetTypeahead()
-    this._openController.close()
+    const hasContent = this._hasOverlayContent()
+    if ((options.automatic ?? true) && !hasContent) {
+      if (this._isOpen) this._close()
+      return
+    }
+    this._openedWithContent = hasContent
+    this._openController.open({
+      isKeyboardNavigation: options.isKeyboardNavigation,
+      notify: options.notify
+    })
+  }
+
+  private _close(options: { notify?: boolean } = {}) {
+    this._resetTypeahead()
+    this._openController.close(options)
   }
 
   private _resetTypeahead() {
@@ -565,12 +681,6 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     this._scrollLock.sync(isOpen && !this.noScrollLock)
   }
 
-  private _togglePopup() {
-    if (this._isDisabled) return
-    if (this._isOpen) this._close()
-    else this._open()
-  }
-
   private _openOverlay(isKeyboardNavigation = false) {
     this._panel.open(isKeyboardNavigation)
     // 新会话的 handle 刚建立，惰性状态需按当前 disabled 重新同步。
@@ -592,6 +702,8 @@ export class WebUiSelect extends FormAssociated(LitElement) {
       '--wui-select-max-height'
     ])
     portal.panel.setAttribute('role', 'listbox')
+    this._portalKeepAliveDisposer?.()
+    this._portalKeepAliveDisposer = this._triggerController.bindPanelKeepAlive(portal.panel)
     const scroll = document.createElement('div')
     scroll.className = 'select-scroll wui-scroll'
     const content = document.createElement('div')
@@ -609,6 +721,8 @@ export class WebUiSelect extends FormAssociated(LitElement) {
 
   private _reconfigureOverlay() {
     // reconfigure 会 dispose 并按需重建 portal，旧引用必须同步失效
+    this._portalKeepAliveDisposer?.()
+    this._portalKeepAliveDisposer = undefined
     this._portal = undefined
     this._portalContent = undefined
     this._panel.reconfigure(this._isOpen)
@@ -621,7 +735,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   private async _closeOverlay() {
-    const closed = await this._panel.close(() => this._isOpen)
+    const closed = await this._panel.close(() => this._isOpen, !this._hasOverlayContent())
     // portal 已随关闭 dispose，与 autocomplete 对齐同步失效引用
     if (closed) {
       this._portal = undefined
@@ -643,7 +757,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
         <div
           class="wui-glass select-trigger"
           ?data-custom-trigger=${this._hasTriggerSlot}
-          @click=${this._togglePopup}
+          @click=${this._triggerController.handleTriggerClick}
           tabindex=${this._isDisabled ? '-1' : '0'}
           role="combobox"
           aria-expanded=${this._isOpen}

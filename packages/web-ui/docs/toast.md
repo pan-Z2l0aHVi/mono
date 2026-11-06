@@ -15,7 +15,7 @@ import { toast } from '@greypan/web-ui'
 import { useEffect, useState } from 'react'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   useEffect(() => () => toast.clear(), [])
 
@@ -50,7 +50,7 @@ export default function Demo() {
 import { toast } from '@greypan/web-ui'
 import { onBeforeUnmount, ref } from 'vue'
 
-const last = ref('—')
+const last = ref('-')
 
 function showSuccess() {
   last.value = toast.success('Operation succeeded')
@@ -72,39 +72,120 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
+### Positions
+
+`position` accepts six values: `top-left`, `top-center`, `top-right`, `bottom-left`, `bottom-center`, and `bottom-right`. Each maps to a container pinned to a viewport edge, so its place does not change when the page scrolls. Each button below shows a toast at its own position with the default duration.
+
+```tsx
+import { toast, type ToastPosition } from '@greypan/web-ui'
+import { useEffect } from 'react'
+
+const POSITIONS: ToastPosition[] = [
+  'top-left',
+  'top-center',
+  'top-right',
+  'bottom-left',
+  'bottom-center',
+  'bottom-right'
+]
+
+export default function Demo() {
+  useEffect(() => () => toast.clear(), [])
+
+  return (
+    <div className="flex flex-wrap gap-2">
+      {POSITIONS.map(position => (
+        <web-ui-button key={position} variant="secondary" onClick={() => toast.info(position, { position })}>
+          {position}
+        </web-ui-button>
+      ))}
+    </div>
+  )
+}
+```
+
+```vue
+<template>
+  <div class="flex flex-wrap gap-2">
+    <web-ui-button v-for="position in POSITIONS" :key="position" variant="secondary" @click="notify(position)">
+      {{ position }}
+    </web-ui-button>
+  </div>
+</template>
+
+<script setup lang="ts">
+import { toast, type ToastPosition } from '@greypan/web-ui'
+import { onBeforeUnmount } from 'vue'
+
+const POSITIONS: ToastPosition[] = [
+  'top-left',
+  'top-center',
+  'top-right',
+  'bottom-left',
+  'bottom-center',
+  'bottom-right'
+]
+
+function notify(position: ToastPosition) {
+  toast.info(position, { position })
+}
+
+onBeforeUnmount(() => toast.clear())
+</script>
+```
+
 ### Full options
 
-`toast()` accepts the full set of options: `heading` is the bold title, `message` is the body, `position` decides where on screen it appears (here `top-center`), `duration` is the auto-close time in milliseconds, and `closable` controls whether a close button is rendered.
+`toast()` accepts the full set of options: `heading` is the bold title, `message` is the body, `position` decides where on screen it appears (here `top-center`), `duration` is the auto-close time in milliseconds, and `closable` controls whether a close button is rendered. The second button sets `closable` to `false`: it has no close button and only goes away when `duration` expires.
 
 ```tsx
 import { toast } from '@greypan/web-ui'
 import { useEffect, useState } from 'react'
 
 export default function Demo() {
-  const [id, setId] = useState('—')
+  const [id, setId] = useState('-')
 
   useEffect(() => () => toast.clear(), [])
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-button
-        onClick={() => {
-          setId(
-            toast({
-              heading: 'Saved',
-              message: 'Changes written to the cloud',
-              type: 'info',
-              position: 'top-center',
-              duration: 4000,
-              closable: true
-            })
-          )
-        }}
-      >
-        Create a toast with full options
-      </web-ui-button>
+      <div className="flex flex-wrap gap-2">
+        <web-ui-button
+          onClick={() => {
+            setId(
+              toast({
+                heading: 'Saved',
+                message: 'Changes written to the cloud',
+                type: 'info',
+                position: 'top-center',
+                duration: 4000,
+                closable: true
+              })
+            )
+          }}
+        >
+          Create a toast with full options
+        </web-ui-button>
+        <web-ui-button
+          variant="secondary"
+          onClick={() => {
+            setId(
+              toast({
+                heading: 'Cannot close',
+                message: 'This toast has no close button',
+                type: 'warning',
+                position: 'bottom-right',
+                duration: 6000,
+                closable: false
+              })
+            )
+          }}
+        >
+          Create a toast without a close button
+        </web-ui-button>
+      </div>
       <output className="text-sm text-(--wui-color-text-secondary)">
-        id: {id} · position: top-center · closes automatically after 4 seconds
+        id: {id} · the first closes after 4 seconds, the second after 6
       </output>
     </div>
   )
@@ -114,9 +195,14 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-button @click="notify">Create a toast with full options</web-ui-button>
+    <div class="flex flex-wrap gap-2">
+      <web-ui-button @click="notify">Create a toast with full options</web-ui-button>
+      <web-ui-button variant="secondary" @click="notifyWithoutClose">
+        Create a toast without a close button
+      </web-ui-button>
+    </div>
     <output class="text-sm text-(--wui-color-text-secondary)">
-      id: {{ id }} · position: top-center · closes automatically after 4 seconds
+      id: {{ id }} · the first closes after 4 seconds, the second after 6
     </output>
   </div>
 </template>
@@ -125,7 +211,7 @@ export default function Demo() {
 import { toast } from '@greypan/web-ui'
 import { onBeforeUnmount, ref } from 'vue'
 
-const id = ref('—')
+const id = ref('-')
 
 function notify() {
   id.value = toast({
@@ -135,6 +221,17 @@ function notify() {
     position: 'top-center',
     duration: 4000,
     closable: true
+  })
+}
+
+function notifyWithoutClose() {
+  id.value = toast({
+    heading: 'Cannot close',
+    message: 'This toast has no close button',
+    type: 'warning',
+    position: 'bottom-right',
+    duration: 6000,
+    closable: false
   })
 }
 
@@ -236,7 +333,7 @@ import { useEffect, useState } from 'react'
 const DEMO_ID = 'demo-close'
 
 export default function Demo() {
-  const [last, setLast] = useState('—')
+  const [last, setLast] = useState('-')
 
   useEffect(() => () => toast.clear(), [])
 
@@ -288,7 +385,7 @@ import { toast } from '@greypan/web-ui'
 import { onBeforeUnmount, ref } from 'vue'
 
 const DEMO_ID = 'demo-close'
-const last = ref('—')
+const last = ref('-')
 
 function create() {
   last.value = `Created ${toast.info('This toast does not close automatically', { id: DEMO_ID, duration: 0 })}`
@@ -314,15 +411,15 @@ onBeforeUnmount(() => toast.clear())
 
 | Name        | Description                                                              | Type            | Default        |
 | ----------- | ------------------------------------------------------------------------ | --------------- | -------------- |
-| `message`   | Notification text.                                                       | `string`        | —              |
+| `message`   | Notification text.                                                       | `string`        | -              |
 | `type`      | Type: `success`, `info`, `warning`, `error`.                             | `ToastType`     | `'info'`       |
 | `duration`  | Auto-close time (ms); 0 means no auto-close; `error` defaults to `5000`. | `number`        | `3000`         |
 | `closable`  | Shows the close button.                                                  | `boolean`       | `true`         |
 | `id`        | Merge key: another call with the same `id` updates that toast.           | `string`        | Auto-generated |
 | `heading`   | Bold title.                                                              | `string`        | `''`           |
 | `position`  | Screen position.                                                         | `ToastPosition` | `'top-right'`  |
-| `target`    | Used to find the nearest theme overlay container.                        | `Element`       | —              |
-| `container` | Explicit mount container (highest precedence).                           | `HTMLElement`   | —              |
+| `target`    | Used to find the nearest theme overlay container.                        | `Element`       | -              |
+| `container` | Explicit mount container (highest precedence).                           | `HTMLElement`   | -              |
 
 ### Methods
 

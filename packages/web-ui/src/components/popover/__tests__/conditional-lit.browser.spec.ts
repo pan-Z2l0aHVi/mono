@@ -15,7 +15,7 @@ function mountLitPopover(template: ReturnType<typeof html>) {
   const mountPoint = document.createElement('div')
   document.body.append(mountPoint)
   const popover = document.createElement('web-ui-popover') as WebUiPopover
-  popover.setAttribute('trigger', 'manual')
+  popover.setAttribute('trigger', 'none')
   popover.setAttribute('portal', '')
   mountPoint.append(popover)
   render(template, popover)

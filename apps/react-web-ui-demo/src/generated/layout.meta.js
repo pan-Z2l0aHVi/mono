@@ -103,7 +103,7 @@ const meta = [
       { label: 'td', content: "<code>ariaLabels</code>" },
       { label: 'td', content: "Grouped overrides for the built-in accessible names (sidebar collapse/expand, resize, open navigation menu, main navigation) (property); keys without a value use the built-in English copy, and sidebar-related keys are not rendered under <code>no-sidebar</code>." },
       { label: 'td', content: "<code>LayoutAriaLabels</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -148,7 +148,7 @@ const meta = [
       { label: 'td', content: "<code>sidebar-min-width</code>" },
       { label: 'td', content: "Lower bound (px) for drag resizing; defaults to <code>collapsed-width</code>." },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -157,7 +157,7 @@ const meta = [
       { label: 'td', content: "<code>sidebar-max-width</code>" },
       { label: 'td', content: "Upper bound (px) for drag resizing; limited to half the viewport, with the built-in limit taking precedence." },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     }
     ]

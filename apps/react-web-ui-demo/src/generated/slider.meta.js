@@ -95,7 +95,7 @@ const meta = [
       { label: 'td', content: "<code>aria-label</code>" },
       { label: 'td', content: "Accessible name of the slider." },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -104,7 +104,7 @@ const meta = [
       { label: 'td', content: "<code>aria-labelledby</code>" },
       { label: 'td', content: "IDs of one or more elements that provide the slider's accessible name." },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {

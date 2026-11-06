@@ -46,7 +46,7 @@ afterEach(() => {
 
 describe('WebUiPopover 组件', () => {
   describe('属性：trigger', () => {
-    // trigger 是空格分隔的手势集合：取值规范化走共享的 normalizeTriggerSet，
+    // trigger 是空格或逗号分隔的手势集合：取值规范化走共享的 normalizeTriggerSet，
     // 各手势的实际接线由下面的触发方式分组按行为覆盖。
     it('设置为 hover', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'hover' })
@@ -57,11 +57,11 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    it('设置为 manual', async () => {
+    it('旧字面量 manual 不生效，回退到默认 click', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'manual' })
       await waitForUpdate(el)
 
-      expect(el.trigger).toBe('manual')
+      expect(el.trigger).toBe('click')
 
       cleanupElement(el)
     })
@@ -75,29 +75,29 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    // 空格分隔的集合：每种手势独立接线，组合不是「只认第一种」。
+    // 空格分隔的集合：每种手势独立接线，组合不是「只认第一种」；读回为逗号规范串。
     it('空格分隔的集合成立', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'hover focus' })
       await waitForUpdate(el)
 
-      expect(el.trigger).toBe('hover focus')
+      expect(el.trigger).toBe('hover,focus')
 
       cleanupElement(el)
     })
 
-    it('数组从 property 通道读回规范串', () => {
+    it('非字符串取值回退到默认', () => {
       const el = createPopover('Btn', 'Content')
-      el.trigger = ['hover', 'click']
+      el.trigger = ['hover', 'click'] as unknown as string
 
-      expect(el.trigger).toBe('click hover')
+      expect(el.trigger).toBe('click')
 
       cleanupElement(el)
     })
 
-    it('manual 覆盖其余手势', () => {
+    it('旧字面量 manual 作为未知 token 被丢弃', () => {
       const el = createPopover('Btn', 'Content', { trigger: 'hover manual' })
 
-      expect(el.trigger).toBe('manual')
+      expect(el.trigger).toBe('hover')
 
       cleanupElement(el)
     })
@@ -173,6 +173,69 @@ describe('WebUiPopover 组件', () => {
     contractReflection('disabled 反射到 host attribute', () => createPopover('Btn', 'Content'), [
       ['disabled', true, 'disabled', '']
     ])
+  })
+
+  describe('内容门控', () => {
+    const createEmptyPopover = () => {
+      const el = document.createElement('web-ui-popover')
+      el.innerHTML = '<button slot="trigger">B</button>'
+      document.body.appendChild(el)
+      return el
+    }
+
+    it('没有 panel 内容时点击不打开', async () => {
+      const el = createEmptyPopover()
+      await waitForUpdate(el)
+
+      clickTrigger(el)
+      await waitForUpdate(el)
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('关闭态新增内容不自动打开', async () => {
+      const el = createEmptyPopover()
+      await waitForUpdate(el)
+
+      el.append(document.createElement('div'))
+      await Promise.resolve()
+      await waitForUpdate(el)
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
+
+    it('show() 可以空开；内容从有到无才收起', async () => {
+      const el = createEmptyPopover()
+      await waitForUpdate(el)
+
+      el.show()
+      await el.updateComplete
+      vi.advanceTimersToNextFrame()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      const content = document.createElement('div')
+      content.textContent = 'Content'
+      el.append(content)
+      await Promise.resolve()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(true)
+
+      content.remove()
+      await Promise.resolve()
+      await waitForUpdate(el)
+      expect(el.isOpen).toBe(false)
+
+      cleanupElement(el)
+    })
   })
 
   describe('属性：placement', () => {
@@ -338,7 +401,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
@@ -350,7 +413,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
@@ -376,7 +439,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
@@ -402,29 +465,29 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    it('hover 模式下点击外部不关闭', async () => {
+    it('hover 模式下点击外部关闭', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'hover' })
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       document.body.click()
       await waitForUpdate(el)
-      expect(el.isOpen).toBe(true)
+      expect(el.isOpen).toBe(false)
 
       cleanupElement(el)
     })
 
-    // Escape 的归属由 overlay 仲裁决定，不看 trigger：只有 manual 会把它接住。
+    // Escape 的归属由 overlay 仲裁决定，不看手势集合：只有 none 会把它接住。
     it('hover 集合下 Escape 关闭', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'hover' })
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersByTime(200)
       await el.updateComplete
       vi.advanceTimersToNextFrame()
       await waitForUpdate(el)
@@ -453,7 +516,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
 
@@ -467,7 +530,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
@@ -489,7 +552,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersByTime(200)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
@@ -503,8 +566,8 @@ describe('WebUiPopover 组件', () => {
 
   describe('触发方式：focus', () => {
     // focusin 打开由 `:focus-visible` 决定，需要真实引擎，见同目录 popover.browser.spec.ts。
-    // 这里钉 focus 集合独有的两条：不接管点击、随失焦收起。
-    it('focus 集合下点击 trigger 不切换', async () => {
+    // 这里钉 focus 集合独有的两条：点击不接管、外点照常关闭。
+    it('focus 集合下点击 trigger 不打开，外点关闭', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'focus' })
       await waitForUpdate(el)
 
@@ -518,7 +581,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
       document.body.click()
       await waitForUpdate(el)
-      expect(el.isOpen).toBe(true)
+      expect(el.isOpen).toBe(false)
 
       cleanupElement(el)
     })
@@ -541,7 +604,7 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    it('hover 集合下失焦不关闭', async () => {
+    it('hover 集合下失焦也关闭', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'hover' })
       await waitForUpdate(el)
 
@@ -554,28 +617,26 @@ describe('WebUiPopover 组件', () => {
       vi.advanceTimersToNextFrame()
       await waitForUpdate(el)
 
-      expect(el.isOpen).toBe(true)
+      expect(el.isOpen).toBe(false)
 
       cleanupElement(el)
     })
   })
 
-  describe('触发方式：manual', () => {
-    it('点击 trigger 切换打开', async () => {
-      const el = createPopover('Btn', 'Content', { trigger: 'manual' })
+  describe('触发方式：none', () => {
+    it('点击 trigger 不打开', async () => {
+      const el = createPopover('Btn', 'Content', { trigger: 'none' })
       await waitForUpdate(el)
 
       clickTrigger(el)
-      await el.updateComplete
-      vi.advanceTimersToNextFrame()
       await waitForUpdate(el)
-      expect(el.isOpen).toBe(true)
+      expect(el.isOpen).toBe(false)
 
       cleanupElement(el)
     })
 
     it('点击外部不关闭', async () => {
-      const el = createPopover('Btn', 'Content', { trigger: 'manual' })
+      const el = createPopover('Btn', 'Content', { trigger: 'none' })
       await waitForUpdate(el)
 
       el.open = true
@@ -592,7 +653,7 @@ describe('WebUiPopover 组件', () => {
     })
 
     it('Escape 不关闭', async () => {
-      const el = createPopover('Btn', 'Content', { trigger: 'manual' })
+      const el = createPopover('Btn', 'Content', { trigger: 'none' })
       await waitForUpdate(el)
 
       el.open = true
@@ -608,11 +669,11 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    it('portal 变更后 Escape 仍不关闭：reconfigure 换会话不得丢掉 manual 惰性', async () => {
+    it('portal 变更后 Escape 仍不关闭：reconfigure 换会话不得丢掉 none 惰性', async () => {
       // portal 变更只登记一帧 rAF；fake timers 下这条路径走不到 reconfigure，必须用真实帧。
       vi.useRealTimers()
 
-      const el = createPopover('Btn', 'Content', { trigger: 'manual' })
+      const el = createPopover('Btn', 'Content', { trigger: 'none' })
       await waitForUpdate(el)
 
       el.open = true
@@ -622,7 +683,7 @@ describe('WebUiPopover 组件', () => {
       expect(el.isOpen).toBe(true)
 
       // reconfigure 会 dispose 并按需重建 portal，也就是重新 claim —— 新会话的 inert
-      // 恒为 false，组件必须按当前 trigger 重推，否则 manual 的契约被 Escape 破坏。
+      // 恒为 false，组件必须按当前 trigger 重推，否则 none 的契约被 Escape 破坏。
       // 本行承重（非备份）：popover 的 reconfigure 不引发渲染，摘掉这行本用例立刻转红。
       el.portal = true
       await el.updateComplete
@@ -639,24 +700,26 @@ describe('WebUiPopover 组件', () => {
     })
   })
 
-  // 注：`open-change` 的 notification 语义（程序式静默、用户手势通知、detail.open 为变更后值）
+  // 注：`open-change` 的 notification 语义（命令式派发、声明式静默、用户手势通知、detail.open 为变更后值）
   // 已由共享矩阵 `shared/open-state/__tests__/open-change-contract.spec.ts` 在 4 个 overlay 组件上统一覆盖。
   // 下方仅保留 popover 特有的「hover 重入」边界，其余等价用例按 D4 删除、存活覆盖指向该矩阵。
   describe('事件：open-change', () => {
-    it('hover 重入不让后续命令式关闭派发残留事件', async () => {
+    it('hover 重入后命令式关闭只派发关闭事件', async () => {
       vi.useFakeTimers()
       const el = createPopover('Btn', 'Content', { trigger: 'hover' })
       el.show()
       await waitForUpdate(el)
 
-      const handler = vi.fn<(e: Event) => void>()
+      const handler = vi.fn<(event: Event) => void>()
       el.addEventListener('open-change', handler)
       el.dispatchEvent(new PointerEvent('pointerenter'))
       await vi.advanceTimersByTimeAsync(100)
-      el.close()
+      el.hide()
       await waitForUpdate(el)
 
-      expect(handler).not.toHaveBeenCalled()
+      expect(handler).toHaveBeenCalledTimes(1)
+      const [[event]] = handler.mock.calls
+      expect((event as CustomEvent<{ open: boolean }>).detail.open).toBe(false)
       vi.useRealTimers()
       cleanupElement(el)
     })
@@ -666,11 +729,10 @@ describe('WebUiPopover 组件', () => {
     // 命令式 API 与 open 属性走同一条状态机，唯一独立的东西是「命令序列本身能驱动
     // panel 挂出与隐藏」。合进一条：三条各开一个元素的重复用例会让同一契约可被整体删除。
     //
-    // 这一条也是命令式入口的存活覆盖：show()/close()/toggle() 不读 trigger（源码里它们只写
-    // open），所以 manual 分组下那条「仅由公开 API 或 open prop 控制」的副本判的是同一件事，
-    // 已按等价重复删除。manual 特有的语义留在上面那组：点击 trigger 仍切换（docs/popover 记载）、
-    // 点 panel 外与 Escape 都不关。
-    it('show() / toggle() / close() 驱动 panel 挂出与隐藏', async () => {
+    // 这一条也是命令式入口的存活覆盖：show()/hide()/toggle() 不读 trigger（源码里它们只写
+    // open），所以 none 分组下那条「仅由公开 API 或 open prop 控制」的副本判的是同一件事，
+    // 已按等价重复删除。none 特有的语义留在上面那组：手势一律不触发。
+    it('show() / toggle() / hide() 驱动 panel 挂出与隐藏', async () => {
       const el = createPopover('Btn', 'Content')
       await waitForUpdate(el)
       const panel = () => queryA11y(el, '[role="dialog"]')?.hasAttribute('hidden')
@@ -682,7 +744,7 @@ describe('WebUiPopover 组件', () => {
       expect(el.isOpen).toBe(true)
       expect(panel()).toBe(false)
 
-      el.close()
+      el.hide()
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
       expect(panel()).not.toBe(false)

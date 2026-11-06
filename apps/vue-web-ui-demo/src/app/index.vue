@@ -10,13 +10,11 @@ import {
   NAV_ITEM_CLASS,
   NAV_SECTIONS,
   NAV_SECTION_TITLE_CLASS,
-  observeToastTopOffset,
   SIDEBAR_WIDTH_STORAGE_KEY,
   THEME_APPEARANCE_STORAGE_KEY,
   THEME_MOTION_STORAGE_KEY,
   type ThemeAppearance,
-  type ThemeMotion,
-  type ToastTopOffsetHandle
+  type ThemeMotion
 } from '@greypan/doc-demo-kit'
 import type { WebUiEvent, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
 import { toast } from '@greypan/web-ui'
@@ -36,7 +34,7 @@ import {
   useOverlayScrollbars,
   type OverlayScrollbarsComponentRef
 } from 'overlayscrollbars-vue'
-import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import { bootDegraded, currentLocale, loadDemoLocale, localePending } from '@/i18n/locale'
@@ -77,7 +75,6 @@ function getInitialSidebarWidth(): string {
 const themeAppearance = ref(getInitialThemeAppearance())
 const themeMotion = ref(getInitialThemeMotion())
 const bannerVisible = ref(true)
-let toastTopOffset: ToastTopOffsetHandle | undefined
 const shellLayout = ref<WebUiLayout | null>(null)
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
@@ -156,13 +153,6 @@ const navSidebar = ref<OverlayScrollbarsComponentRef>()
 // 只能直接初始化 body。
 const [initPageScrollbars] = useOverlayScrollbars({ options: appScrollbarsOptions })
 
-onBeforeUnmount(() => toastTopOffset?.stop())
-watch(bannerVisible, async () => {
-  await nextTick()
-  // banner 用 v-if 重建，refresh 让 observer 重新解析并观察新的 [slot="banner"]。
-  toastTopOffset?.refresh()
-})
-
 // 目标语种与文档在挂载后补载，降级可能晚于 onMounted：用 watch 才不会漏掉提示。
 watch(bootDegraded, degraded => {
   if (!degraded) return
@@ -172,7 +162,6 @@ watch(bootDegraded, degraded => {
 
 onMounted(async () => {
   initPageScrollbars(document.body)
-  toastTopOffset = observeToastTopOffset(() => shellLayout.value)
   await router.isReady()
   requestAnimationFrame(() => {
     const link = navSidebar.value?.getElement()?.querySelector('[data-active="true"]')
@@ -229,7 +218,7 @@ onMounted(async () => {
           slot="header"
           class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:w-[calc(100vw-60px)] mobile:gap-1.5 mobile:px-2 mobile:py-2"
         >
-          <web-ui-select trigger="icon" :value="themeMotion" aria-label="全局动效" @change="updateThemeMotion">
+          <web-ui-select variant="icon" :value="themeMotion" aria-label="全局动效" @change="updateThemeMotion">
             <web-ui-icon
               slot="trigger"
               :icon="
@@ -246,7 +235,7 @@ onMounted(async () => {
             <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
           <web-ui-select
-            trigger="icon"
+            variant="icon"
             :value="themeAppearance"
             placement="bottom"
             aria-label="全局主题"
@@ -263,7 +252,7 @@ onMounted(async () => {
             <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
           </web-ui-select>
           <web-ui-select
-            trigger="icon"
+            variant="icon"
             :value="currentLocale"
             :disabled="localePending"
             :aria-busy="localePending"

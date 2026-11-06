@@ -1,6 +1,6 @@
 # Input Number
 
-数字 input，左右各一个步进 button，支持 `min` / `max` / `step` / `precision`。越界与非法输入都在提交点收敛回有效值。
+数字输入框，左右各一个步进按钮，支持 `min` / `max` / `step` / `precision`。越界与非法输入都在提交点收敛回有效值。
 
 ## Samples
 
@@ -32,7 +32,7 @@ export default function Demo() {
 
 ### Value range
 
-`min` / `max` 限制取值范围，`step` 决定步进幅度。落在端点时，对应那一侧的步进 button 变为禁用；编辑中可以写出越界文本，越界值在提交那一刻被拉回范围。
+`min` / `max` 限制取值范围，`step` 决定步进幅度。落在端点时，对应那一侧的步进按钮变为禁用；编辑中可以写出越界文本，越界值在提交那一刻被拉回范围。
 
 ```tsx
 export default function Demo() {
@@ -90,7 +90,7 @@ export default function Demo() {
 
 `value` 是受控值，接住 `input` 才能跟着输入与步进变化。
 
-`input` 每敲一个字、每点一次步进 button 都派发；`change` 只在提交点派发：文本失焦提交与 ArrowUp / ArrowDown。点击步进 button 不派发。
+`input` 每敲一个字、每点一次步进按钮都派发；`change` 只在提交点派发：文本失焦提交与 ArrowUp / ArrowDown。点击步进按钮不派发。
 
 两条都接住就能区分这两种节奏。
 
@@ -146,7 +146,7 @@ const committed = ref(1)
 
 ### Disabled and readonly
 
-`disabled` 关掉输入与步进，校验一并失效，宿主整体降到四成不透明度。`readonly` 保留可读与可复制，两个步进 button 直接画成禁用态，ArrowUp / ArrowDown 无响应，失焦提交也不转发 `change`。
+`disabled` 关掉输入与步进，校验一并失效，宿主整体降到四成不透明度。`readonly` 保留可读与可复制，两个步进按钮直接画成禁用态，ArrowUp / ArrowDown 无响应，失焦提交也不转发 `change`。
 
 ```tsx
 export default function Demo() {
@@ -268,29 +268,29 @@ export default function Demo() {
 
 ### Props
 
-| 名称                  | 说明                                                               | 类型             | 默认值     |
-| --------------------- | ------------------------------------------------------------------ | ---------------- | ---------- |
-| `placeholder`         | 占位文本；只在编辑中清空内容时露出。                               | `string`         | `''`       |
-| `name`                | 表单字段名。                                                       | `string`         | `''`       |
-| `disabled`            | 禁用状态。                                                         | `boolean`        | `false`    |
-| `readonly`            | 只读状态；步进 button 与键盘增减都不生效。                         | `boolean`        | `false`    |
-| `required`            | 必填校验。                                                         | `boolean`        | `false`    |
-| `value`               | 当前值，也是表单提交值；越界写入会收敛到范围端点。                 | `number`         | `0`        |
-| `min`                 | 最小值。                                                           | `number`         | `0`        |
-| `max`                 | 最大值。                                                           | `number`         | `Infinity` |
-| `step`                | 步进幅度；未显式设置 `precision` 时，其小数位数决定默认规整精度。  | `number`         | `1`        |
-| `precision`           | 显式设置时按该值规整；设为 `null` 或移除属性时按 `step` 推导。     | `number \| null` | `0`        |
-| `aria-label`          | 输入框的无障碍名称。                                               | `string`         | —          |
-| `aria-labelledby`     | 无障碍名称引用，用于命名原生 input。                               | `string`         | —          |
-| `aria-decrease-label` | 减少 button 的无障碍名称；未设置时回退内置英文文案（`Decrease`）。 | `string`         | `''`       |
-| `aria-increase-label` | 增加 button 的无障碍名称；未设置时回退内置英文文案（`Increase`）。 | `string`         | `''`       |
+| 名称                  | 说明                                                              | 类型             | 默认值     |
+| --------------------- | ----------------------------------------------------------------- | ---------------- | ---------- |
+| `placeholder`         | 占位文本；只在编辑中清空内容时露出。                              | `string`         | `''`       |
+| `name`                | 表单字段名。                                                      | `string`         | `''`       |
+| `disabled`            | 禁用状态。                                                        | `boolean`        | `false`    |
+| `readonly`            | 只读状态；步进按钮与键盘增减都不生效。                            | `boolean`        | `false`    |
+| `required`            | 必填校验。                                                        | `boolean`        | `false`    |
+| `value`               | 当前值，也是表单提交值；越界写入会收敛到范围端点。                | `number`         | `0`        |
+| `min`                 | 最小值。                                                          | `number`         | `0`        |
+| `max`                 | 最大值。                                                          | `number`         | `Infinity` |
+| `step`                | 步进幅度；未显式设置 `precision` 时，其小数位数决定默认规整精度。 | `number`         | `1`        |
+| `precision`           | 显式设置时按该值规整；设为 `null` 或移除属性时按 `step` 推导。    | `number \| null` | `0`        |
+| `aria-label`          | 输入框的无障碍名称。                                              | `string`         | —          |
+| `aria-labelledby`     | 无障碍名称引用，用于命名原生输入框。                              | `string`         | —          |
+| `aria-decrease-label` | 减少按钮的无障碍名称；未设置时回退内置英文文案（`Decrease`）。    | `string`         | `''`       |
+| `aria-increase-label` | 增加按钮的无障碍名称；未设置时回退内置英文文案（`Increase`）。    | `string`         | `''`       |
 
 ### Events
 
-| 名称     | 说明                                                                          |
-| -------- | ----------------------------------------------------------------------------- |
-| `input`  | 每敲一个字、每点一次步进 button 派发；组件没有可清空值的清除 button。         |
-| `change` | 提交点派发：文本失焦提交、ArrowUp / ArrowDown。点击步进 button 不派发这一条。 |
+| 名称     | 说明                                                                      |
+| -------- | ------------------------------------------------------------------------- |
+| `input`  | 每敲一个字、每点一次步进按钮派发；组件没有可清空值的清除按钮。            |
+| `change` | 提交点派发：文本失焦提交、ArrowUp / ArrowDown。点击步进按钮不派发这一条。 |
 
 ### 行为说明
 
@@ -302,7 +302,7 @@ export default function Demo() {
 
 未显式设置 `precision` 时按 `step` 的小数位数推导规整精度；显式设置后按该值规整，`step` 本身不退化。
 
-事件节奏：文本输入与步进都派发 `input`；`change` 在文本失焦提交与 ArrowUp / ArrowDown 时派发，点击步进 button 不派发。
+事件节奏：文本输入与步进都派发 `input`；`change` 在文本失焦提交与 ArrowUp / ArrowDown 时派发，点击步进按钮不派发。
 
 只听 `change` 的受控写法会漏掉点击步进。
 
@@ -316,7 +316,7 @@ export default function Demo() {
 
 也没有 `focus()` / `blur()` / `select()` 委托：在宿主上调这三个方法不会落到内部控件上。
 
-焦点态反映成宿主上的 `focused` 属性，focus ring 跟随它。
+焦点态反映成宿主上的 `focused` 属性，焦点环跟随它。
 
 ### 布局
 
@@ -324,9 +324,9 @@ export default function Demo() {
 
 宽度取 `--wui-input-width`（`200px`），最小宽度与高度取 `--wui-control-size`（`36px`），圆角为胶囊。
 
-两枚步进 button 是原生 `<button>`（不是 `<web-ui-button>`），到达 `min` / `max` 或 `readonly` 时进入禁用态。
+两枚步进按钮是原生 `<button>`（不是 `<web-ui-button>`），到达 `min` / `max` 或 `readonly` 时进入禁用态。
 
-数字居中显示，原生 spinner 被隐藏，增减由这两个 button 承担。
+数字居中显示，原生 spinner 被隐藏，增减由这两个按钮承担。
 
 文字取 `--wui-font-size`，粗指针设备上不小于 16px，避免 iOS Safari 聚焦时缩放；占位文本取二级文本色。
 

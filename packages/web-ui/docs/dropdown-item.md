@@ -149,4 +149,4 @@ export default function Demo() {
 
 ### Behavior
 
-Role: `menuitem`.
+Role: `menuitem`. Keyboard focus and hover use the same background shade; the text color stays unchanged.

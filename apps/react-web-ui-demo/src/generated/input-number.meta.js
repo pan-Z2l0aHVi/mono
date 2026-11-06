@@ -148,7 +148,7 @@ const meta = [
       { label: 'td', content: "<code>aria-label</code>" },
       { label: 'td', content: "Accessible name of the input." },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {
@@ -157,7 +157,7 @@ const meta = [
       { label: 'td', content: "<code>aria-labelledby</code>" },
       { label: 'td', content: "Accessible name reference, used to name the native input." },
       { label: 'td', content: "<code>string</code>" },
-      { label: 'td', content: "—" }
+      { label: 'td', content: "" }
       ]
     },
     {

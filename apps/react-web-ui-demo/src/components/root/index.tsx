@@ -8,7 +8,6 @@ import {
   NAV_ITEM_CLASS,
   NAV_SECTIONS,
   NAV_SECTION_TITLE_CLASS,
-  observeToastTopOffset,
   SIDEBAR_WIDTH_STORAGE_KEY,
   THEME_APPEARANCE_STORAGE_KEY,
   THEME_MOTION_STORAGE_KEY,
@@ -180,15 +179,6 @@ export function Root() {
     layout.addEventListener('mobile-change', syncMobileSidebarViewport)
     return () => layout.removeEventListener('mobile-change', syncMobileSidebarViewport)
   }, [])
-  /*
-   * banner 与断点都会改变 header 底边：banner 用条件渲染重建、跨断点换另一套壳，依赖变化时
-   * 重新挂 observer，让它重新解析 layout 内的 header / banner。
-   */
-  useLayoutEffect(() => {
-    if (!layoutRef.current) return
-    const toastTopOffset = observeToastTopOffset(() => layoutRef.current)
-    return toastTopOffset.stop
-  }, [bannerVisible, isMobileSidebar])
   const sidebarWidth = isMobileSidebar ? 'min(320px, 80vw)' : desktopSidebarWidth
   /*
    * collapse 是桌面端的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
@@ -310,7 +300,7 @@ export function Root() {
               slot="header"
               className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-[calc(100vw-60px)] mobile:gap-1.5 mobile:px-2 mobile:py-2"
             >
-              <web-ui-select trigger="icon" value={themeMotion} aria-label="全局动效" onChange={updateThemeMotion}>
+              <web-ui-select variant="icon" value={themeMotion} aria-label="全局动效" onChange={updateThemeMotion}>
                 <web-ui-icon
                   slot="trigger"
                   icon={
@@ -333,7 +323,7 @@ export function Root() {
                 </web-ui-option>
               </web-ui-select>
               <web-ui-select
-                trigger="icon"
+                variant="icon"
                 value={themeAppearance}
                 placement="bottom"
                 aria-label="全局主题"
@@ -358,7 +348,7 @@ export function Root() {
                 </web-ui-option>
               </web-ui-select>
               <web-ui-select
-                trigger="icon"
+                variant="icon"
                 value={locale}
                 disabled={localePending}
                 aria-busy={localePending ? 'true' : 'false'}

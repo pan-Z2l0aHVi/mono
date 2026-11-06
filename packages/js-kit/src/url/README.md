@@ -1,30 +1,30 @@
 # URL
 
-Parse and stringify URLs with query params and hash
+> Parse and build URLs with query parameters and a hash.
 
 English | [简体中文](./README.CN.md)
 
 ## Overview
 
-Utilities for working with URLs. `parseUrl` breaks a URL string into structured components, and `stringifyUrl` builds a URL from those components. Both support relative paths.
+`parseUrl` turns a URL string into `base`, `query`, and `hash`. `stringifyUrl` builds a URL from those parts. Both support relative URLs.
 
 ## API
 
 ### `parseUrl(url?)`
 
-Parse a URL string into a structured object. Supports both absolute and relative URLs.
+Parse a URL string. Absolute, relative, and protocol-relative URLs are supported.
 
 | Parameter | Type     | Default | Description         |
 | --------- | -------- | ------- | ------------------- |
 | `url`     | `string` | `''`    | URL string to parse |
 
-**Returns:** `URLObject`
+Returns a `URLObject`.
 
-| Property | Type                     | Description                                              |
-| -------- | ------------------------ | -------------------------------------------------------- |
-| `base`   | `string`                 | Origin + pathname (absolute) or pathname only (relative) |
-| `query`  | `Record<string, string>` | Query parameters as key-value pairs                      |
-| `hash`   | `string`                 | Hash fragment including `#`                              |
+| Property | Type                     | Description                                         |
+| -------- | ------------------------ | --------------------------------------------------- |
+| `base`   | `string`                 | Origin and pathname for absolute URLs, or pathname. |
+| `query`  | `Record<string, string>` | Query parameters as key-value pairs.                |
+| `hash`   | `string`                 | Hash fragment, including `#`.                       |
 
 ```ts
 import { parseUrl } from '@greypan/js-kit'
@@ -42,18 +42,18 @@ parseUrl('//cdn.example.com/a.js')
 // { base: '//cdn.example.com/a.js', query: {}, hash: '' }
 ```
 
-Protocol-relative URLs (`//host/path`) keep their `//host/path` form instead of gaining an `http:` prefix.
+Protocol-relative URLs keep their `//host/path` form.
 
 ### `stringifyUrl(opts, omitNil?)`
 
-Build a URL string from structured components.
+Build a URL string from `base`, `query`, and `hash`.
 
 | Parameter | Type                 | Default | Description                                 |
 | --------- | -------------------- | ------- | ------------------------------------------- |
-| `opts`    | `Partial<URLObject>` | -       | URL components: `base`, `query`, `hash`     |
-| `omitNil` | `boolean`            | `true`  | Remove `undefined`/`null` values from query |
+| `opts`    | `Partial<URLObject>` | -       | URL components: `base`, `query`, `hash`.    |
+| `omitNil` | `boolean`            | `true`  | Remove `undefined` and `null` query values. |
 
-**Returns:** `string`
+Returns a `string`.
 
 ```ts
 import { stringifyUrl } from '@greypan/js-kit'
@@ -63,7 +63,7 @@ stringifyUrl({
   query: { key: 'val', empty: null },
   hash: '#section'
 })
-// 'https://example.com/path?key=val#section' (null value omitted)
+// 'https://example.com/path?key=val#section'
 
 stringifyUrl({
   base: '/search',
@@ -77,9 +77,7 @@ stringifyUrl({ base: '/page' })
 
 ## Notes
 
-- Relative URLs use `http://n.n` as a temporary base for parsing
-- Protocol-relative URLs (`//host/path`) keep their `//host/path` form
-- `parseUrl` throws `Error('Invalid URL.')` for malformed URLs
-- `stringifyUrl` auto-completes hash with `#` if missing
-- Query values are stringified, so numbers and booleans work alongside strings
-- When `base` ends with `?`, `stringifyUrl` appends parameters directly; a `base` that already contains `?` elsewhere uses `&`
+- `parseUrl` throws `Error('Invalid URL.')` for a malformed URL.
+- `stringifyUrl` adds `#` to a hash that does not start with it.
+- Query values are converted to strings, so numbers and booleans work.
+- When `base` ends with `?`, parameters are appended directly. When `base` already contains `?` elsewhere, parameters use `&`.

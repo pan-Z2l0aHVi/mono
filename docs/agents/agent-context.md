@@ -23,6 +23,7 @@
 | 主题                     | 规则边界                                                                        | 流程权威来源                                                                                     | 证据类别                                       |
 | ------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
 | 生成物                   | 根/包级 `AGENTS.md` 只指向清单，不复制路径                                      | [`generated-artifacts.md`](./generated-artifacts.md)                                             | generator diff、构建、消费者类型检查           |
+| 自动与人工审查的范围差   | 根/包级 `AGENTS.md` 只声明两者读的 diff 不同，不复制范围与排除清单              | [`review.md`](./review.md)                                                                       | `review-scope.json`、PR 结论评论               |
 | 真实浏览器取证           | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                          | [`runtime-verification.md`](./runtime-verification.md)                                           | 浏览器用例与 MCP 操作记录                      |
 | 浏览器进程与 profile     | 根/包级 `AGENTS.md` 只路由，不复制归属流程                                      | [`browser-resources.md`](./browser-resources.md)                                                 | 启动记录、profile 查询、回收结果               |
 | 该跑哪些验证             | 根/包级 `AGENTS.md` 只路由，不复制选择矩阵                                      | [`verification.md`](./verification.md)                                                           | 相关测试与聚焦构建                             |
@@ -43,6 +44,7 @@
 
 - `docs/agents/**` 不得链接 `.agents/rules/**`：短约束层自己指向正文，路由是入口的事。
 - 非入口层文档之间不得互指。
+- ADR 与指向它的 `docs/agents/` 文档之间只保留单向链接（由后者发出）：ADR 侧用行内 code 指代文档名，不建链接，否则与入站链接构成回路。
 
 ### 怎么引用另一篇文档
 
@@ -115,6 +117,7 @@ ADR 记录技术选型、架构设计与工程化决策及其取舍；具体实�
 | `packages/web-ui` 组件、icon 或公共契约                         | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md)、[`web-ui.md`](./web-ui.md) 与受影响 ADR                |
 | commitlint 或提交流程                                           | [`commit.md`](./commit.md)                                                                                             |
 | 影响未来工程取舍的架构决定                                      | 对应 ADR，并更新 [`CONTEXT.md`](../../CONTEXT.md) ADR 索引                                                             |
+| CI 审查腿的审查范围、生成物排除清单或两份 diff 的分工           | [`review.md`](./review.md) 与 [`generated-artifacts.md`](./generated-artifacts.md)                                     |
 | client adapter、共享 rules/skills 或 instruction 体系布局与锚点 | 本文件、[`CONTEXT.md`](../../CONTEXT.md)、[ADR-0004](../adr/0004-progressive-agent-context-architecture.md) 与仓库校验 |
 
 ## 维护 instruction system

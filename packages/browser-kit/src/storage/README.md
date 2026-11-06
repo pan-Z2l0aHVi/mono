@@ -1,23 +1,23 @@
 # Storage
 
-Namespaced localStorage/sessionStorage with TTL and cross-tab sync
+> Namespaced localStorage and sessionStorage with TTL and cross-tab change events.
 
 English | [简体中文](./README.CN.md)
 
 ## Overview
 
-A plugin-based storage solution that wraps `localStorage` and `sessionStorage` with:
+`@greypan/browser-kit` storage instances wrap the browser storage APIs with four additions:
 
-- **Namespace isolation**: Multiple apps can coexist without key conflicts
-- **TTL expiry**: Keys auto-expire after a specified duration
-- **Cross-tab sync**: `watch` listens to `storage` events for changes in other tabs
-- **Quota handling**: Auto-cleans expired keys when storage is full
+- A namespace prefix so multiple apps can share one origin without key conflicts.
+- Optional TTL expiry.
+- `watch` events for changes made in other tabs.
+- Automatic removal of expired keys when storage is full.
 
 ## API
 
 ### `defineLocal(namespace?)` / `defineSession(namespace?)`
 
-Create a namespaced storage instance. Returns a singleton per namespace.
+Create a namespaced storage instance. The same namespace always returns the same instance.
 
 | Parameter   | Type     | Default | Description              |
 | ----------- | -------- | ------- | ------------------------ |
@@ -32,7 +32,7 @@ const session = defineSession('my-app')
 
 ### `local` / `session`
 
-Default no-namespace singleton instances.
+Default instances without a namespace.
 
 ```ts
 import { local, session } from '@greypan/browser-kit'
@@ -43,7 +43,7 @@ session.set('temp', 'data')
 
 ### `storage.get(key, defaultValue?)`
 
-Get a value by key. Returns `defaultValue` if key doesn't exist or has expired.
+Return a value. Returns `defaultValue` when the key is missing or expired.
 
 | Parameter      | Type        | Default | Description   |
 | -------------- | ----------- | ------- | ------------- |
@@ -52,57 +52,54 @@ Get a value by key. Returns `defaultValue` if key doesn't exist or has expired.
 
 ### `storage.set(key, value, ttl?)`
 
-Set a value. Pass `undefined` to remove the key. Returns `true` when the underlying storage operation succeeds; returns `false` for safely degraded/restricted storage without throwing.
+Store a value. Pass `undefined` as the value to remove the key. Returns `true` when the write succeeds and `false` when restricted storage is unavailable. It does not throw for restricted storage.
 
 | Parameter | Type     | Default | Description                  |
 | --------- | -------- | ------- | ---------------------------- |
 | `key`     | `string` | -       | Storage key                  |
 | `value`   | `T`      | -       | Value to store               |
-| `ttl`     | `number` | -       | Time-to-live in milliseconds |
+| `ttl`     | `number` | -       | Time to live in milliseconds |
 
 ```ts
-storage.set('token', 'abc123', 3600_000) // Expires in 1 hour
+storage.set('token', 'abc123', 3600_000) // Expires in one hour
 storage.set('user', { name: 'Alice' }) // No expiry
-storage.set('key', undefined) // Removes the key
+storage.set('key', undefined) // Remove the key
 ```
 
 ### `storage.has(key)`
 
-Check if a key exists and hasn't expired.
+Return whether a key exists and has not expired.
 
 ### `storage.remove(key)`
 
-Remove a key. Returns `true` when removal succeeds and `false` when restricted storage is safely degraded.
+Remove a key. Returns `true` on success and `false` when restricted storage is unavailable.
 
 ### `storage.clear()`
 
-Clear all keys with the current namespace.
+Remove all keys in the current namespace.
 
 ### `storage.clearUseless()`
 
-Remove all expired keys with the current namespace.
+Remove all expired keys in the current namespace.
 
 ### `storage.watch(key, callback)`
 
-Watch for changes to a key from other tabs. Returns an unwatch function.
+Listen for changes to a key made in other tabs. Returns an unwatch function.
 
-| Parameter  | Type                                             | Default | Description          |
-| ---------- | ------------------------------------------------ | ------- | -------------------- |
-| `key`      | `string`                                         | -       | Storage key to watch |
-| `callback` | `(newVal: T \| null, oldVal: T \| null) => void` | -       | Change handler       |
+| Parameter  | Type                                             | Description          |
+| ---------- | ------------------------------------------------ | -------------------- |
+| `key`      | `string`                                         | Storage key to watch |
+| `callback` | `(newVal: T \| null, oldVal: T \| null) => void` | Change handler       |
 
 ```ts
-const unwatch = storage.watch('user', (newVal, oldVal) => {
-  console.log('user changed from', oldVal, 'to', newVal)
+const unwatch = storage.watch('user', (newValue, oldValue) => {
+  console.log('user changed from', oldValue, 'to', newValue)
 })
 
-// Later
 unwatch()
 ```
 
 ## Notes
 
-- Values are wrapped in a `Pkg` envelope: `{ m: '_pkg', v: value, t?: expiry }`
-- Expired values are auto-removed on `get`
-- `set` retries once on `QuotaExceededError` after cleaning expired keys
-- Same namespace always returns the same instance (singleton pattern)
+- `get` removes an expired value when it reads it.
+- If a write exceeds the storage quota, expired keys are cleared and the write is retried once.

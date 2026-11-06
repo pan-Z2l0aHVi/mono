@@ -1,35 +1,33 @@
 # Tracker
 
-Data tracking and analytics with batch aggregation, page errors, offline restore, and last-words flush.
+> Send analytics events with batching, retry, offline handling, and page error capture.
 
 English | [简体中文](./README.CN.md)
 
-Composing a listener plugin provides an idempotent `stop()` that releases all composed offline, page-exit, and page-error listeners. It does not pause, clear, or flush the outbox. Call it when the instance is no longer needed.
-
 ## Overview
 
-Tracker is a composable tracking system built on the plugin architecture. It maintains one pending transport outbox for data that the browser transport has not accepted yet.
+The tracker sends events to one endpoint. Pending events are stored in localStorage by default and restored when a tracker is created again. Events are sent one at a time in enqueue order unless you add the batch plugin.
 
-- **Pending transport outbox**: Persists pending entries in localStorage by default and restores them when a Tracker is created again.
-- **Ordered normal drain**: Regular `track()` calls send entries in enqueue order, one request at a time.
-- **Batch aggregation**: Collects events and sends arrays after a configurable delay.
-- **Beacon splitting**: Recursively splits oversized batches around the configured `maxBatchKB` (64 KB by default).
-- **Page errors**: Collects uncaught errors and unhandled promise rejections through the normal Tracker transport.
-- **Offline restore**: Pauses while offline and resumes retained work after the browser comes back online.
-- **Last-words flush**: Makes a best-effort flush when the page is leaving or hidden.
-- **Auto-fallback**: Falls back from `sendBeacon()` to `fetch()` with `keepalive: true` when needed.
+A tracker can use these plugins:
 
-## Core plugin
+- Batch events before sending.
+- Pause while the browser is offline.
+- Report uncaught errors and unhandled promise rejections.
+- Flush pending events when the page is hidden or about to close.
+
+The core tries `navigator.sendBeacon()` first and falls back to `fetch()` with `keepalive: true`. A `true` result from `sendBeacon()` means the browser accepted the data. It does not mean the server received it.
+
+## Core
 
 ### `defineTracker(options)`
 
-| Option               | Type                                      | Default           | Description                                                                                                                                |
-| -------------------- | ----------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------------------------------------------ |
-| `url`                | `string`                                  | -                 | Tracking endpoint URL                                                                                                                      |
-| `transform`          | `(data: object) => object`                | Identity function | Transforms every event before serialization and byte-size calculation                                                                      |
-| `transport`          | `(item: object) => Promise<void> \| void` | Beacon adapter    | Replaces the single-entry delivery path and receives the transformed payload; an entry is removed only after the returned Promise fulfills |
-| `disablePersistence` | `boolean`                                 | `false`           | Disables reading and writing the localStorage pending transport outbox                                                                     |
-| `persistenceKey`     | `string`                                  | `url` value       | Stable localStorage outbox key; independent Tracker instances must use different keys                                                      |
+| Option               | Type                                      | Default           | Description                                                                                            |
+| -------------------- | ----------------------------------------- | ----------------- | ------------------------------------------------------------------------------------------------------ |
+| `url`                | `string`                                  | -                 | Tracking endpoint URL.                                                                                 |
+| `transform`          | `(data: object) => object`                | Identity function | Transform each event before it is serialized and measured.                                             |
+| `transport`          | `(item: object) => Promise<void> \| void` | Beacon adapter    | Replace the single-event delivery path. The event is removed only after the returned promise resolves. |
+| `disablePersistence` | `boolean`                                 | `false`           | Do not read or write the localStorage snapshot.                                                        |
+| `persistenceKey`     | `string`                                  | `url` value       | Stable localStorage key. Independent trackers must use different keys.                                 |
 
 ```ts
 import { defineTracker } from '@greypan/browser-kit'
@@ -42,33 +40,35 @@ const tracker = defineTracker({
 tracker.track({ event: 'page_view', path: '/' })
 ```
 
-The resulting context exposes these methods:
+The instance provides these methods.
 
-| Method        | Description                                                                                                                                                  |
-| ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------ |
-| `track(data)` | Enqueues one event and starts the normal drain unless the Tracker is paused or blocked by a persistence failure.                                             |
-| `pause()`     | Stops the normal drain. Newly tracked data remains in the pending transport outbox.                                                                          |
-| `resume()`    | Removes the paused/failure gate and schedules a retry of retained entries.                                                                                   |
-| `flush()`     | Returns a Promise and best-effort sends call-time entries that are not already in flight. It bypasses pause and per-item failures, but does not clear pause. |
+| Method        | Description                                                                                                                 |
+| ------------- | --------------------------------------------------------------------------------------------------------------------------- |
+| `track(data)` | Add one event and start sending unless the tracker is paused or blocked by a persistence failure.                           |
+| `pause()`     | Stop sending. New events stay in the pending snapshot.                                                                      |
+| `resume()`    | Remove the pause or failure block and retry retained events.                                                                |
+| `flush()`     | Send events that are not already in flight. It ignores pause and per-item failures, and it does not clear the paused state. |
 
-The core serializes the transformed event and tries `navigator.sendBeacon()` first. If the browser returns `false` or the call throws, it uses `fetch()` with `keepalive: true` as a fallback. A `true` return from `sendBeacon()` only means that the browser accepted the data for transmission, not that the server received it.
+Events stay in localStorage until the browser accepts them. If both `sendBeacon()` and the fallback request fail, the event remains pending. `flush()` retries pending and failed events in its call-time snapshot and does not restart events that are already in flight.
 
-Entries remain in localStorage until the browser transport accepts them. If the Beacon path and the fallback request both fail, the entry remains pending. `flush()` also retries pending and failed entries in its call-time snapshot, without restarting entries that are already in flight. Automatic retry otherwise occurs through `resume()`, an `online` event when `defineOfflineRestore()` is installed, or a later Tracker instance. This is a browser-transport outbox, not a server-acknowledged delivery queue.
+Other retries happen when you call `resume()`, when the browser fires `online` with `defineOfflineRestore()` installed, or when a later tracker instance starts.
 
-`persistenceKey` defaults to `url`. Independent Tracker instances in the same page must provide different stable keys; instances that reuse a key read and overwrite the same snapshot. If localStorage is restricted, full, or otherwise unavailable, the Tracker warns once, stops using persistence, and continues in memory-only mode. A stale snapshot may remain and cause at-least-once duplicates on a later initialization; this fallback does not provide exactly-once delivery.
+`persistenceKey` defaults to `url`. Two independent trackers on the same page must use different stable keys. If localStorage is restricted, full, or unavailable, the tracker warns once, stops using persistence, and continues in memory. A stale snapshot can cause duplicate events on a later start.
+
+When a tracker includes a listener plugin, `stop()` releases the listeners. It does not pause, clear, or flush pending events. Call it when the instance is no longer needed.
 
 ## Plugins
 
 ### `defineBatchTrack(options?)`
 
-Collects events and sends arrays after a delay.
+Collect events and send them as an array after a delay.
 
-| Option              | Type     | Default | Description                                         |
-| ------------------- | -------- | ------- | --------------------------------------------------- |
-| `defaultBatchDelay` | `number` | `500`   | Default batch delay in milliseconds                 |
-| `maxBatchKB`        | `number` | `64`    | Maximum batch size in KB before recursive splitting |
+| Option              | Type     | Default | Description                                          |
+| ------------------- | -------- | ------- | ---------------------------------------------------- |
+| `defaultBatchDelay` | `number` | `500`   | Default batch delay in milliseconds.                 |
+| `maxBatchKB`        | `number` | `64`    | Maximum batch size in KB before recursive splitting. |
 
-The composed `track(data, batchDelay?)` accepts an optional per-call delay. Pass `0` or a negative value to bypass batching for that event. Batches larger than `maxBatchKB` are split recursively; a single oversized event remains one item so its schema is preserved.
+The composed `track(data, batchDelay?)` accepts a per-call delay. Pass `0` or a negative value to send that event without batching. Batches larger than `maxBatchKB` are split. A single oversized event stays in one piece so its data shape does not change.
 
 ```ts
 import { defineBatchTrack, defineTracker } from '@greypan/browser-kit'
@@ -83,21 +83,21 @@ tracker.track({ event: 'scroll', position: 100 }, 0)
 
 ### `defineOfflineRestore()`
 
-Pauses the Tracker while the browser is offline, including when the Tracker starts offline, and calls `resume()` after the `online` event. It does not change persistence: persistence belongs to the core Tracker and can be disabled with `disablePersistence`.
+Pause while the browser is offline, including when the tracker starts offline, and resume after the `online` event. It does not change persistence. Use `disablePersistence` on the core tracker for that.
 
 ### `definePageErrors(options?)`
 
-Collects browser-global uncaught errors and unhandled promise rejections, then sends them through the composed `track()`. It does not collect resource load failures, `console` messages, or framework callback errors.
+Collect uncaught errors and unhandled promise rejections, then send them through the composed `track()`. It does not collect resource load failures, console messages, or framework callback errors.
 
-| Option             | Type                       | Default     | Description                                                    |
-| ------------------ | -------------------------- | ----------- | -------------------------------------------------------------- |
-| `maxErrors`        | `number`                   | `20`        | Maximum number of events actually reported per plugin instance |
-| `dedupeWindowMs`   | `number`                   | `5000`      | Deduplication window for an error signature; `≤ 0` disables it |
-| `maxMessageLength` | `number`                   | `1000`      | Maximum length of the reported message                         |
-| `maxStackLength`   | `number`                   | `8000`      | Maximum length of the reported stack                           |
-| `metadata`         | `object \| (() => object)` | `undefined` | Per-report context; it cannot override standard event fields   |
+| Option             | Type                       | Default     | Description                                                           |
+| ------------------ | -------------------------- | ----------- | --------------------------------------------------------------------- |
+| `maxErrors`        | `number`                   | `20`        | Maximum events reported by one plugin instance.                       |
+| `dedupeWindowMs`   | `number`                   | `5000`      | Deduplication window for an error signature. `0` or less disables it. |
+| `maxMessageLength` | `number`                   | `1000`      | Maximum reported message length.                                      |
+| `maxStackLength`   | `number`                   | `8000`      | Maximum reported stack length.                                        |
+| `metadata`         | `object \| (() => object)` | `undefined` | Per-report context. It cannot override standard event fields.         |
 
-The payload nests normalized error data and does not retain the original rejection reason:
+The payload looks like this:
 
 ```ts
 {
@@ -115,9 +115,9 @@ The payload nests normalized error data and does not retain the original rejecti
 }
 ```
 
-Messages and stacks are truncated by default but are not automatically scrubbed for PII. If a metadata callback throws or returns a non-object, metadata is omitted and the error is still reported. `make()` installs the listeners; `stop()` removes them, does not restart collection, and does not reset protection counters.
+Messages and stacks are truncated by default but are not scrubbed for personal data. If the metadata callback throws or returns a non-object, the metadata is omitted and the error is still reported.
 
-Metadata is business-owned data: keep it bounded and serializable. Do not install this plugin more than once on the same page; each installation adds separate listeners and protection state.
+`make()` installs the listeners. `stop()` removes them and cannot restart collection. Do not install this plugin more than once on the same page, because each installation adds separate listeners and counters.
 
 ```ts
 import { definePageErrors, defineTracker } from '@greypan/browser-kit'
@@ -126,15 +126,14 @@ const tracker = defineTracker({ url: '/api/track' })
   .use(definePageErrors({ metadata: { app: 'demo' } }))
   .make()
 
-// Later, for HMR or test cleanup:
 tracker.stop()
 ```
 
 ### `defineLastWords()`
 
-Calls the composed `flush()` on `beforeunload`, `pagehide`, and when `visibilitychange` changes the document to hidden. The flush returns a Promise, but the exit path remains best-effort; it does not wait for server acknowledgement and persistence errors do not block page exit.
+Call the composed `flush()` on `beforeunload`, `pagehide`, and when `visibilitychange` hides the document. The flush returns a promise, but the page exit path is best-effort. It does not wait for a server response, and a persistence error does not block the page from closing.
 
-## Recommended composition
+## Recommended setup
 
 ```ts
 import {

@@ -6,7 +6,7 @@ import { createMemoryHistory, createRootRoute, createRoute, createRouter, Router
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { page, userEvent } from 'vite-plus/test/browser'
+import { userEvent } from 'vite-plus/test/browser'
 
 import { setViewport } from '@/__tests__/viewport'
 import { loadShellLocale, LocaleProvider } from '@/i18n/locale'
@@ -374,7 +374,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(iconOf('Global theme')?.icon).toBe(lucideSun)
   })
 
-  it('挂载时已有 toast，banner 和 header 保持原高度且 toast 从 header 下方开始', async () => {
+  it('挂载时已有 toast，banner 和 header 保持原高度且 toast 贴视口定位', async () => {
     const toastId = 'root-mount-toast'
 
     try {
@@ -404,7 +404,9 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
         if (!toastElement?.visible) throw new Error('top-right toast not visible')
         expect(banner.getBoundingClientRect().height).toBeCloseTo(naturalBannerHeight)
         expect(header.getBoundingClientRect().height).toBeCloseTo(naturalHeaderHeight)
-        expect(toastElement.getBoundingClientRect().top).toBeGreaterThanOrEqual(header.getBoundingClientRect().bottom)
+        // 视口锚定：toast 不会被推到 header 底边之后。
+        expect(toastElement.getBoundingClientRect().top).toBeGreaterThanOrEqual(0)
+        expect(toastElement.getBoundingClientRect().top).toBeLessThan(header.getBoundingClientRect().bottom)
       })
     } finally {
       await act(async () => {
@@ -418,7 +420,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     }
   })
 
-  it('右上角 toast 显示时滚过 banner，仍从 sticky header 下方开始', async () => {
+  it('右上角 toast 在页面滚动后仍固定在视口', async () => {
     await mountAppShell()
     const toastId = 'root-sticky-header-toast'
 
@@ -435,18 +437,15 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       filler.style.height = '1800px'
       content.append(filler)
 
-      await waitFor(() => {
-        if (!findToast(toastId)?.visible) throw new Error('top-right toast not visible')
+      const beforeScroll = await waitFor(() => {
+        const toastElement = findToast(toastId)
+        if (!toastElement?.visible) throw new Error('top-right toast not visible')
+        return toastElement.getBoundingClientRect()
       })
       const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')
       if (!header) throw new Error('header not found')
       const headerHeight = header.getBoundingClientRect().height
-      const bannerCloseButton = layoutRoot().querySelector<HTMLElement>('[slot="banner"] web-ui-button')
-      if (!bannerCloseButton) throw new Error('banner close button not found')
-      await act(async () => page.elementLocator(bannerCloseButton).click())
-      await waitFor(() => {
-        if (layoutRoot().querySelector('[slot="banner"]')) throw new Error('banner stayed mounted after close')
-      })
+
       await act(async () => {
         window.scrollTo(0, 500)
         await nextFrame()
@@ -456,9 +455,12 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
         const toastElement = findToast(toastId)
         const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')
         if (!toastElement || !header) throw new Error('toast or sticky header not found')
+        const afterScroll = toastElement.getBoundingClientRect()
 
         expect(header.getBoundingClientRect().height).toBeCloseTo(headerHeight)
-        expect(toastElement.getBoundingClientRect().top).toBeGreaterThanOrEqual(header.getBoundingClientRect().bottom)
+        expect(afterScroll.top).toBeCloseTo(beforeScroll.top, 0)
+        expect(afterScroll.left).toBeCloseTo(beforeScroll.left, 0)
+        expect(afterScroll.top).toBeLessThan(header.getBoundingClientRect().bottom)
       })
     } finally {
       await act(async () => {
