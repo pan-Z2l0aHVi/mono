@@ -108,6 +108,7 @@ catalog:
   wuchale: ^0.26.7
   zustand: ^5.0.14
   '@iconify-json/icon-park-outline': ^1.2.4
+  '@iconify-json/ci': ^1.2.4
 
 catalogMode: prefer
 

@@ -45,3 +45,11 @@ afterAll(() => {
   for (const id of pendingIntervals) nativeClearInterval(id)
   pendingIntervals.clear()
 })
+
+// jsdom 不实现 Web Animations API；drawer page-shift 使用它管理页面位移动画。
+if (!Element.prototype.getAnimations) {
+  Element.prototype.getAnimations = () => []
+}
+if (!Element.prototype.animate) {
+  Element.prototype.animate = () => ({ id: '', cancel() {} }) as Animation
+}

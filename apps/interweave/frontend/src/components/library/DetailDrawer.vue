@@ -239,6 +239,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
 
 <template>
   <web-ui-drawer
+    page-shift
     :open="open"
     :placement="placement"
     aria-dialog-label="资源详情"

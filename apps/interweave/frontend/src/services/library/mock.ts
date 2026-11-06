@@ -42,14 +42,15 @@ function mockTagColor(name: string): TagColor {
   return MOCK_TAG_COLORS[Math.abs(hash) % MOCK_TAG_COLORS.length]
 }
 
-function svgPlaceholder(label: string, from: string, to: string): string {
+function svgPlaceholder(label: string, from: string, to: string, portrait = false): string {
+  const height = portrait ? 960 : 200
   const svg =
-    `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="200">` +
+    `<svg xmlns="http://www.w3.org/2000/svg" width="320" height="${height}">` +
     `<defs><linearGradient id="g" x1="0" y1="0" x2="1" y2="1">` +
     `<stop offset="0" stop-color="${from}"/><stop offset="1" stop-color="${to}"/>` +
     `</linearGradient></defs>` +
-    `<rect width="320" height="200" fill="url(#g)"/>` +
-    `<text x="160" y="112" font-family="system-ui,sans-serif" font-size="44" font-weight="600" ` +
+    `<rect width="320" height="${height}" fill="url(#g)"/>` +
+    `<text x="160" y="${height / 2}" font-family="system-ui,sans-serif" font-size="44" font-weight="600" ` +
     `fill="rgba(255,255,255,.92)" text-anchor="middle">${label}</text>` +
     `</svg>`
   return `data:image/svg+xml,${encodeURIComponent(svg)}`
@@ -74,10 +75,30 @@ interface MockResourceSpec {
   updatedAgo: number
   tagNames: string[]
   sources: MockSourceSpec[]
-  media?: { label: string; from: string; to: string }
+  media?: { label: string; from: string; to: string; portrait?: boolean }
 }
 
 const SPECS: MockResourceSpec[] = [
+  {
+    id: 'mock-portrait-1',
+    title: '竖向长图预览',
+    note: '用于检查长图的适配与缩放。',
+    kind: ResourceKind.ResourceKindImage,
+    sizeBytes: 240000,
+    createdAgo: 7 * DAY,
+    updatedAgo: DAY,
+    tagNames: ['测试', '长图'],
+    media: { label: 'LONG', from: '#245c78', to: '#cda27e', portrait: true },
+    sources: [
+      {
+        id: 'mock-portrait-1-file',
+        type: SourceType.SourceTypeFile,
+        location: '/Users/demo/Pictures/portrait.png',
+        available: true,
+        isPreferred: true
+      }
+    ]
+  },
   {
     id: 'mock-image-1',
     title: '晨雾中的山谷',
@@ -251,8 +272,8 @@ const SPECS: MockResourceSpec[] = [
 const MEDIA_BY_SOURCE_ID = new Map<string, string>()
 for (const resource of SPECS) {
   if (!resource.media) continue
-  const { label, from, to } = resource.media
-  for (const source of resource.sources) MEDIA_BY_SOURCE_ID.set(source.id, svgPlaceholder(label, from, to))
+  const { label, from, to, portrait } = resource.media
+  for (const source of resource.sources) MEDIA_BY_SOURCE_ID.set(source.id, svgPlaceholder(label, from, to, portrait))
 }
 
 let tagCounter = 0

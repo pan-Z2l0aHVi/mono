@@ -7,6 +7,7 @@ import andrsrxnInbox from './andrsrxn-inbox'
 import antDesignSyncOutlined from './ant-design-sync-outlined'
 import biCheck from './bi-check'
 import biCheckLg from './bi-check-lg'
+import ciSettingsFuture from './ci-settings-future'
 import fluentTagSearch24Regular from './fluent-tag-search-24-regular'
 import heroiconsBarsArrowDown16Solid from './heroicons-bars-arrow-down-16-solid'
 import heroiconsBarsArrowUp16Solid from './heroicons-bars-arrow-up-16-solid'
@@ -92,6 +93,7 @@ import oouiClose from './ooui-close'
 import radixIconsPanelLeftMinimized from './radix-icons-panel-left-minimized'
 import radixIconsReset from './radix-icons-reset'
 import tablerBrandTypescript from './tabler-brand-typescript'
+import tablerClockPlus from './tabler-clock-plus'
 import tablerSortAscendingLetters from './tabler-sort-ascending-letters'
 
 export const iconGallery: Record<string, IconifyIcon> = {
@@ -116,6 +118,7 @@ export const iconGallery: Record<string, IconifyIcon> = {
   lucideTrash2,
   lucidePrinter,
   lucideSettings,
+  ciSettingsFuture,
   lucideDownload,
   lucideUpload,
   lucideUndo2,
@@ -162,6 +165,7 @@ export const iconGallery: Record<string, IconifyIcon> = {
   lucidePlay,
   lucideListFilter,
   tablerSortAscendingLetters,
+  tablerClockPlus,
   lucideCode,
   lucideEllipsisVertical,
   heroiconsBarsArrowDown16Solid,

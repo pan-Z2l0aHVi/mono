@@ -31,7 +31,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     @open-change="handleOpenChange"
   >
     <span slot="header" class="flex items-center gap-2">
-      <web-ui-icon :icon="lucideTriangleAlert" :size="16" class="text-[#b45309] dark:text-[#fcd34d]" />
+      <web-ui-icon :icon="lucideTriangleAlert" class="text-[#b45309] dark:text-[#fcd34d]" />
       资源库中已有这个文件
     </span>
 

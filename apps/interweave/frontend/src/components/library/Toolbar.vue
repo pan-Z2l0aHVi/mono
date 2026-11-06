@@ -10,16 +10,17 @@ import {
   lucideListFilter,
   lucideListRestart,
   lucidePlus,
+  lucideRotateCwClock,
   lucideSearch,
   lucideTag,
   lucideTrash2,
   lucideUndo2,
-  mdiTagSearchOutline,
+  tablerClockPlus,
   tablerSortAscendingLetters
 } from '@greypan/web-ui/icons'
 import { computed, nextTick, ref, watch } from 'vue'
 
-import type { AvailabilityFilter, ResourceKind, SortOption, SourceType } from '@/stores/library'
+import type { AvailabilityFilter, ResourceKind, SortDirection, SortOption, SourceType } from '@/stores/library'
 
 const props = defineProps<{
   searchQuery: string
@@ -28,6 +29,7 @@ const props = defineProps<{
   filterAvailability: AvailabilityFilter
   filterTag: string
   sort: SortOption
+  sortDirection: SortDirection
   allTagNames: string[]
   hasActiveFilter: boolean
   filterOpen: boolean
@@ -50,6 +52,7 @@ const emit = defineEmits<{
   'update:filterAvailability': [value: AvailabilityFilter]
   'update:filterTag': [value: string]
   'update:sort': [value: SortOption]
+  'update:sortDirection': [value: SortDirection]
   'update:filterOpen': [value: boolean]
   'update:searchOpen': [value: boolean]
   add: []
@@ -110,6 +113,10 @@ function handleTagInput(event: WebUiEvent<WebUiAutocomplete, 'input'>) {
 
 function handleSortChange(event: WebUiEvent<WebUiSelect, 'change'>) {
   emit('update:sort', event.target.value as SortOption)
+}
+
+function handleSortDirectionChange(event: WebUiEvent<WebUiSelect, 'change'>) {
+  emit('update:sortDirection', event.target.value as SortDirection)
 }
 
 const filterLabelClass =
@@ -270,7 +277,7 @@ const filterLabelClass =
               aria-label="按标签筛选"
               class="[--wui-input-width:200px]"
             >
-              <web-ui-icon slot="prefix" :icon="mdiTagSearchOutline" />
+              <web-ui-icon slot="prefix" :icon="lucideTag" />
             </web-ui-input>
             <web-ui-option v-for="tagName in allTagNames" :key="tagName" :value="tagName" :label="tagName">
               {{ tagName }}
@@ -282,6 +289,7 @@ const filterLabelClass =
           <web-ui-select
             portal
             :value="sort"
+            variant="icon"
             aria-label="排序"
             class="[--wui-input-width:48px]"
             @change="handleSortChange"
@@ -293,16 +301,32 @@ const filterLabelClass =
                   ? tablerSortAscendingLetters
                   : sort === 'tagName'
                     ? lucideTag
-                    : sort === 'latest'
-                      ? heroiconsBarsArrowDown16Solid
-                      : heroiconsBarsArrowUp16Solid
+                    : sort === 'createdAt'
+                      ? tablerClockPlus
+                      : lucideRotateCwClock
               "
-              :size="16"
             />
+            <web-ui-option value="createdAt" label="创建时间">创建时间</web-ui-option>
+            <web-ui-option value="updatedAt" label="更新时间">更新时间</web-ui-option>
             <web-ui-option value="name" label="名称">名称</web-ui-option>
-            <web-ui-option value="tagName" label="标签名称">标签名称</web-ui-option>
-            <web-ui-option value="latest" label="最新">最近修改</web-ui-option>
-            <web-ui-option value="earliest" label="最早">较早修改</web-ui-option>
+            <web-ui-option value="tagName" label="标签">标签</web-ui-option>
+          </web-ui-select>
+        </label>
+
+        <label :class="filterLabelClass">
+          <web-ui-select
+            portal
+            variant="icon"
+            :value="sortDirection"
+            aria-label="排序方向"
+            @change="handleSortDirectionChange"
+          >
+            <web-ui-icon
+              slot="trigger"
+              :icon="sortDirection === 'asc' ? heroiconsBarsArrowUp16Solid : heroiconsBarsArrowDown16Solid"
+            />
+            <web-ui-option value="desc" label="降序">降序</web-ui-option>
+            <web-ui-option value="asc" label="升序">升序</web-ui-option>
           </web-ui-select>
         </label>
 
