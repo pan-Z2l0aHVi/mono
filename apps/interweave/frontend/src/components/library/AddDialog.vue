@@ -286,8 +286,8 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           @dragleave.prevent="dragActive = false"
           @drop.prevent="handleDrop"
         >
-          <web-ui-empty class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:64px]">
-            <web-ui-icon slot="icon" :icon="lucideUpload" :size="64" />
+          <web-ui-empty class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:40px]">
+            <web-ui-icon slot="icon" :icon="lucideUpload" :size="40" />
             <span
               class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
             >
@@ -438,8 +438,8 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           v-else
           class="grid h-full min-h-0 place-items-center rounded-[18px] border border-black/6 bg-white dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
         >
-          <web-ui-empty class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:64px]">
-            <web-ui-icon slot="icon" :icon="andrsrxnInbox" :size="64" />
+          <web-ui-empty class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:40px]">
+            <web-ui-icon slot="icon" :icon="andrsrxnInbox" :size="40" />
             <span slot="description" class="grid gap-3 mobile:gap-2">
               <span
                 class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"

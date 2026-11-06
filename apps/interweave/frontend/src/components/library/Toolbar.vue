@@ -119,8 +119,7 @@ function handleSortDirectionChange(event: WebUiEvent<WebUiSelect, 'change'>) {
   emit('update:sortDirection', event.target.value as SortDirection)
 }
 
-const filterLabelClass =
-  'flex items-center gap-1.5 text-[#8a8a94] mobile:basis-full dark:text-(--wui-color-text-secondary)'
+const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--wui-color-text-secondary)'
 </script>
 
 <template>

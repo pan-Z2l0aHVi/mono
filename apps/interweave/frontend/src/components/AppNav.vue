@@ -47,7 +47,11 @@ async function playDraw(key: NavKey) {
 
   void host.replay()
 
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  if (
+    host.closest('web-ui-theme')?.getAttribute('motion') === 'reduced' ||
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+    return
   host.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.3)', offset: 0.4 }, { transform: 'scale(1)' }], {
     duration: 720,
     easing: 'ease-out'
