@@ -65,7 +65,7 @@ jobs:
       matrix:
         include:
           - name: macOS ARM64 DMG
-            runner: macos-14
+            runner: macos-15
             command: build:macos
             artifact-name: interweave-macos-arm64
             artifact-path: apps/interweave/bin/interweave.dmg

@@ -320,7 +320,133 @@ for (const [label, value] of [
     pullNumber: 54
   })
   assert.ok(!escaped.includes('<script>'), 'model text must not inject HTML into the comment')
-  assert.match(escaped, /scriptalert/)
+  assert.match(escaped, /&lt;script&gt;alert\(1\)&lt;\/script&gt; broke/)
+
+  // 尖括号转义不能吃掉泛型：真实 run 里 Plugin<ToolchainApi, KitCtx> 被删成了 PluginToolchainApi, KitCtx。
+  const genericParsed = parseReviewFindings(
+    JSON.stringify({
+      summary: '比较 Array<T> 与 <div> 的写法',
+      findings: [
+        {
+          ...finding('Should fix'),
+          suggestion: '把返回类型标注为 `Plugin<ToolchainApi, KitCtx>`。'
+        }
+      ]
+    })
+  )
+  const genericMeta = { ...metaOf(), summary: genericParsed.summary, findings: genericParsed.findings }
+  const generic = renderConclusion({
+    conclusion: deriveConclusion({ meta: genericMeta, findings: genericParsed, liveHeadSha: headSha, error: '' }),
+    meta: genericMeta,
+    pullNumber: 54
+  })
+  assert.match(generic, /Array&lt;T&gt; 与 &lt;div&gt;/)
+  assert.match(generic, /<code>Plugin&lt;ToolchainApi, KitCtx&gt;<\/code>/)
+  assert.ok(!generic.includes('PluginToolchainApi'), 'generic parameters must survive escaping')
+  assert.ok(!generic.includes('<div>'), 'summary must not inject HTML either')
+
+  // 代码段之外才转义：反引号里的比较符必须原样保留，否则会显示成实体。
+  const codeSpanParsed = parseReviewFindings(
+    JSON.stringify({
+      summary: '格式化',
+      findings: [{ ...finding('Nit'), problem: '条件 `a < b` 永远为假', suggestion: '' }]
+    })
+  )
+  const codeSpanMeta = { ...metaOf(), summary: codeSpanParsed.summary, findings: codeSpanParsed.findings }
+  const codeSpan = renderConclusion({
+    conclusion: deriveConclusion({ meta: codeSpanMeta, findings: codeSpanParsed, liveHeadSha: headSha, error: '' }),
+    meta: codeSpanMeta,
+    pullNumber: 54
+  })
+  assert.match(codeSpan, /<code>a &lt; b<\/code>/)
+
+  // 未闭合的反引号不是代码段：后面的 <b> 仍要转义。审查在 PR #520 上抓到的正是这个绕过。
+  const unclosedParsed = parseReviewFindings(
+    JSON.stringify({ summary: '边界', findings: [{ ...finding('Nit'), problem: '`<b>hack', suggestion: '' }] })
+  )
+  const unclosedMeta = { ...metaOf(), summary: unclosedParsed.summary, findings: unclosedParsed.findings }
+  const unclosed = renderConclusion({
+    conclusion: deriveConclusion({ meta: unclosedMeta, findings: unclosedParsed, liveHeadSha: headSha, error: '' }),
+    meta: unclosedMeta,
+    pullNumber: 54
+  })
+  assert.ok(!unclosed.includes('<b>'), 'an unclosed backtick must not become a code span')
+  assert.match(unclosed, /`&lt;b&gt;hack/)
+
+  // 长度不匹配的反引号 run 同样不是代码段。
+  const mismatchedParsed = parseReviewFindings(
+    JSON.stringify({ summary: '边界', findings: [{ ...finding('Nit'), problem: '``a` <b>', suggestion: '' }] })
+  )
+  const mismatchedMeta = { ...metaOf(), summary: mismatchedParsed.summary, findings: mismatchedParsed.findings }
+  const mismatched = renderConclusion({
+    conclusion: deriveConclusion({ meta: mismatchedMeta, findings: mismatchedParsed, liveHeadSha: headSha, error: '' }),
+    meta: mismatchedMeta,
+    pullNumber: 54
+  })
+  assert.ok(!mismatched.includes('<b>'), 'a mismatched backtick run must not swallow the following text')
+  assert.match(mismatched, /``a` &lt;b&gt;/)
+
+  // 反斜杠转义的反引号不能开代码段：CommonMark 把它当普通字符，后面的 <b> 仍是 HTML。
+  const escapedTickParsed = parseReviewFindings(
+    JSON.stringify({ summary: '边界', findings: [{ ...finding('Nit'), problem: '\\`<b>`', suggestion: '' }] })
+  )
+  const escapedTickMeta = { ...metaOf(), summary: escapedTickParsed.summary, findings: escapedTickParsed.findings }
+  const escapedTick = renderConclusion({
+    conclusion: deriveConclusion({
+      meta: escapedTickMeta,
+      findings: escapedTickParsed,
+      liveHeadSha: headSha,
+      error: ''
+    }),
+    meta: escapedTickMeta,
+    pullNumber: 54
+  })
+  assert.ok(!escapedTick.includes('<b>'), 'a backslash-escaped backtick must not open a code span')
+  assert.match(escapedTick, /&lt;b&gt;/)
+
+  // 未闭合的反引号之后仍可能有合法代码段：CommonMark 只把该 run 当普通文本，不能吞掉后文。
+  const unmatchedParsed = parseReviewFindings(
+    JSON.stringify({ summary: '边界', findings: [{ ...finding('Nit'), problem: '` ``Plugin<T>``', suggestion: '' }] })
+  )
+  const unmatchedMeta = { ...metaOf(), summary: unmatchedParsed.summary, findings: unmatchedParsed.findings }
+  const unmatched = renderConclusion({
+    conclusion: deriveConclusion({ meta: unmatchedMeta, findings: unmatchedParsed, liveHeadSha: headSha, error: '' }),
+    meta: unmatchedMeta,
+    pullNumber: 54
+  })
+  assert.match(unmatched, /<code>Plugin&lt;T&gt;<\/code>/, 'a later valid code span must still be recognised')
+  assert.ok(!unmatched.includes('<T>'), 'code content must stay escaped')
+
+  // 文件名里的反引号会提前闭合包裹它的代码段；保留原路径，改用更长的围栏。
+  const pathParsed = parseReviewFindings(
+    JSON.stringify({ summary: '路径', findings: [{ ...finding('Nit'), file: 'src/`<b>x.ts' }] })
+  )
+  const pathMeta = { ...metaOf(), summary: pathParsed.summary, findings: pathParsed.findings }
+  const pathBody = renderConclusion({
+    conclusion: deriveConclusion({ meta: pathMeta, findings: pathParsed, liveHeadSha: headSha, error: '' }),
+    meta: pathMeta,
+    pullNumber: 54
+  })
+  assert.ok(
+    pathBody.includes('<code>src/`&lt;b&gt;x.ts:12</code>'),
+    'the path must keep its backtick inside the code element'
+  )
+
+  // 路径里的换行会提前结束段落，代码段随之失效；先折成一行再包。
+  const multilineParsed = parseReviewFindings(
+    JSON.stringify({
+      summary: '路径',
+      findings: [{ ...finding('Nit'), file: 'src/a.ts\n\n<img src=x>', line: 3 }]
+    })
+  )
+  const multilineMeta = { ...metaOf(), summary: multilineParsed.summary, findings: multilineParsed.findings }
+  const multiline = renderConclusion({
+    conclusion: deriveConclusion({ meta: multilineMeta, findings: multilineParsed, liveHeadSha: headSha, error: '' }),
+    meta: multilineMeta,
+    pullNumber: 54
+  })
+  assert.ok(!multiline.includes('\n\n<img'), 'a multi-line path must not break out of the code span')
+  assert.ok(multiline.includes('<code>src/a.ts &lt;img src=x&gt;:3</code>'))
 
   const unreviewedMeta = { status: 'unreviewed', error: 'the review step produced no output file' }
   const unreviewed = renderConclusion({

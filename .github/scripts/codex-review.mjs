@@ -189,14 +189,87 @@ export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplic
   return { status: 'reviewed', reason: '', counts, blocking: counts.Block > 0 }
 }
 
-function inline(value) {
-  const single = String(value).replace(/\s+/gu, ' ').replace(/[<>]/gu, '')
+/**
+ * 评论正文会交给 GitHub 渲染 Markdown。模型文本里的尖括号必须当文本处理，
+ * 否则 `<script>` 会变成 HTML；直接删除又会吃掉 `Plugin<ToolchainApi, KitCtx>`。
+ * 这里不把「代码段识别正确」当作安全前提：先把所有内容按 HTML 转义，
+ * 命中代码段时再包一层自己生成的 `<code>`。即使识别错了，输入也已转义，
+ * 最坏结果只是格式不对，不会漏出标签。
+ */
+function isEscaped(text, index) {
+  let backslashes = 0
+  for (let cursor = index - 1; cursor >= 0 && text[cursor] === '\\'; cursor -= 1) backslashes += 1
+  return backslashes % 2 === 1
+}
+
+function escapeHtml(value) {
+  return String(value).replace(/&/gu, '&amp;').replace(/</gu, '&lt;').replace(/>/gu, '&gt;')
+}
+
+function richText(value) {
+  const text = oneLine(value)
+  let result = ''
+  let index = 0
+  while (index < text.length) {
+    let tick = text.indexOf('`', index)
+    // CommonMark：反斜杠转义的反引号是普通字符；代码段内反斜杠不转义，所以只查开符。
+    while (tick !== -1 && isEscaped(text, tick)) tick = text.indexOf('`', tick + 1)
+    if (tick === -1) {
+      result += escapeHtml(text.slice(index))
+      break
+    }
+    result += escapeHtml(text.slice(index, tick))
+    let runEnd = tick
+    while (text[runEnd] === '`') runEnd += 1
+    const run = runEnd - tick
+    let close = -1
+    let search = runEnd
+    while (search < text.length) {
+      const next = text.indexOf('`', search)
+      if (next === -1) break
+      let end = next
+      while (text[end] === '`') end += 1
+      if (end - next === run) {
+        close = next
+        break
+      }
+      search = end
+    }
+    if (close === -1) {
+      // 没有同长度闭合的 run 是普通文本，后面的合法代码段仍要识别。
+      result += escapeHtml(text.slice(tick, runEnd))
+      index = runEnd
+      continue
+    }
+    // CommonMark 会去掉代码段首尾各一个空格（内容全是空格时除外）。
+    let content = text.slice(runEnd, close)
+    if (content.length > 1 && content.startsWith(' ') && content.endsWith(' ') && content.trim() !== '') {
+      content = content.slice(1, -1)
+    }
+    result += `<code>${escapeHtml(content)}</code>`
+    index = close + run
+  }
+  return result
+}
+
+function plainText(value) {
+  return escapeHtml(oneLine(value))
+}
+
+function codeSpan(value) {
+  return `<code>${escapeHtml(oneLine(value))}</code>`
+}
+
+function oneLine(value) {
+  const single = String(value).replace(/\s+/gu, ' ')
   return single.length > FIELD_LIMIT ? `${single.slice(0, FIELD_LIMIT)}…` : single
 }
 
 function location(finding) {
-  if (finding.file === '') return finding.line === 0 ? '整体' : `行 ${finding.line}`
-  return finding.line === 0 ? finding.file : `${finding.file}:${finding.line}`
+  // 路径会进行内代码：换行会断开段落，先折成一行。
+  const file = finding.file.replace(/\s+/gu, ' ')
+  if (file === '') return finding.line === 0 ? '整体' : `行 ${finding.line}`
+  return finding.line === 0 ? file : `${file}:${finding.line}`
 }
 
 export function renderConclusion({ conclusion, meta, pullNumber }) {
@@ -213,16 +286,16 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
     '',
     '## Codex PR 审查',
     '',
-    `- 结论：**${labels[conclusion.status]}**${conclusion.reason ? `（原因：${inline(conclusion.reason)}）` : ''}`,
+    `- 结论：**${labels[conclusion.status]}**${conclusion.reason ? `（原因：${richText(conclusion.reason)}）` : ''}`,
     `- 审查快照：\`${meta?.head_sha ?? '无'}\``,
     `- 档位统计：Block ${conclusion.counts.Block} · Should fix ${conclusion.counts['Should fix']} · Nit ${conclusion.counts.Nit}`,
     '- 合并判据：`Block`、`error` 与「未审查」让 `codex-gate` 变红；已过时与不适用不拦合并，但结论不覆盖当前 head。',
     '- 这是约定式门禁，GitHub 没有把它设为必需检查；合并前按 `docs/agents/review.md` 核对。'
   ]
   if (conclusion.code) {
-    lines.push(`- 故障码：\`${inline(conclusion.code)}\``)
+    lines.push(`- 故障码：\`${plainText(conclusion.code)}\``)
     if (Array.isArray(meta?.missing) && meta.missing.length > 0) {
-      lines.push(`- 缺失配置：\`${meta.missing.map(name => inline(name)).join('`、`')}\``)
+      lines.push(`- 缺失配置：\`${meta.missing.map(name => plainText(name)).join('`、`')}\``)
     }
   }
   if (meta?.model) lines.push(`- 模型：\`${meta.model}\`（effort \`${meta.effort || 'default'}\`）`)
@@ -232,7 +305,7 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
   const findings = [...(meta?.findings ?? [])].sort(
     (left, right) => SEVERITIES.indexOf(left.severity) - SEVERITIES.indexOf(right.severity)
   )
-  if (conclusion.status === 'reviewed' && meta?.summary) lines.push(inline(meta.summary), '')
+  if (conclusion.status === 'reviewed' && meta?.summary) lines.push(richText(meta.summary), '')
   if (findings.length === 0) {
     if (conclusion.status === 'reviewed') lines.push('没有需要改动的发现。')
     else if (conclusion.status === 'error')
@@ -242,8 +315,8 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
     else lines.push('没有可用发现：本次没有拿到模型结论，不能当作已审查。')
   }
   for (const finding of findings) {
-    lines.push(`- **${finding.severity}** \`${location(finding)}\` — ${inline(finding.problem)}`)
-    if (finding.suggestion) lines.push(`  - 建议：${inline(finding.suggestion)}`)
+    lines.push(`- **${finding.severity}** ${codeSpan(location(finding))} — ${richText(finding.problem)}`)
+    if (finding.suggestion) lines.push(`  - 建议：${richText(finding.suggestion)}`)
   }
   lines.push('', `PR #${pullNumber} 只保留这一条结论 comment，由 \`codex-review-report.yml\` 持续更新。`)
   return lines.join('\n')
@@ -327,8 +400,9 @@ export function pullNumberFromRef(ref) {
 function writeOutputs(values) {
   const target = process.env.GITHUB_OUTPUT
   if (!target) return
+  // step output 不是 Markdown：这里只需要压成一行，转义会污染下游读到的原值。
   const body = Object.entries(values)
-    .map(([key, value]) => `${key}=${inline(value)}`)
+    .map(([key, value]) => `${key}=${oneLine(value)}`)
     .join('\n')
   fs.appendFileSync(target, `${body}\n`)
 }
@@ -614,11 +688,11 @@ function commandGate() {
     '## Codex review gate',
     '',
     `- Status: **${status.status}**`,
-    ...(status.code ? [`- Code: \`${inline(status.code)}\``] : []),
+    ...(status.code ? [`- Code: \`${plainText(status.code)}\``] : []),
     `- Reviewed head: \`${conclusion?.meta?.head_sha ?? 'none'}\``,
     `- Live head: \`${liveHeadSha || 'none'}\``,
     `- Block ${status.counts.Block} · Should fix ${status.counts['Should fix']} · Nit ${status.counts.Nit}`,
-    ...(status.reason ? [`- Reason: ${inline(status.reason)}`] : [])
+    ...(status.reason ? [`- Reason: ${richText(status.reason)}`] : [])
   ])
   console.log(`codex gate: ${status.status} (Block ${status.counts.Block})${status.reason ? `: ${status.reason}` : ''}`)
   if (status.blocking) {
