@@ -1,6 +1,7 @@
 # ADR-0017: 门禁与仓库工具收敛到 workspace 包
 
 - **Date**: 2026-10-28
+- **Revised**: 2026-11-06
 - **Status**: 已接受
 
 ## 背景
@@ -15,15 +16,15 @@
 
 新建私有包 `@greypan/monorepo-kit` 承载门禁与仓库工具，三类职责由包名而不是目录位置给出身份。
 
-包只有一个入口：`exports` 只有 `"."`，没有子路径。所有消费点——门禁入口、本仓的组合点、各 workspace 的构建配置与 demo 的 catalog 测试——一律经包名引用。没有子路径，就没有「子路径拼错」和「新增分区忘了加通配」两类错误；分区仍是目录约定，但不是导入面。入口内部分两类导出，判据是模块导出名是否互相冲突：检查单元全部导出 `name` 与 `run`，平铺必然互相覆盖，因此以命名空间给出；其余叶子函数与常量平铺。
+包的 `exports` 是一小撮数得清的 specifier，没有按目录粒度的通配子路径。所有消费点——门禁入口、本仓的组合点、各 workspace 的构建配置与 demo 的 catalog 测试——一律经包名引用。没有自由子路径，就没有「子路径拼错」和「新增分区忘了加通配」两类错误；分区仍是目录约定，但不是导入面。入口内部平铺导出，判据是模块导出名是否互相冲突。
 
 `scripts/lib/` 收缩成「Node 启动之前要跑的东西」：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值的 bootstrap helper。同一能力只留一份实现，Node 消费者调用它，不维护等价实现。
 
-依赖边写进根 `package.json` 与每个消费 workspace 的 `devDependencies`（`workspace:*`）。入口收成一个 specifier 之后，这条边比按子路径引用时更值得保留：`pnpm why @greypan/monorepo-kit` 是「谁在消费」的唯一可靠答案。包 `private: true`，不进发布面；`.changeset/config.json` 不把它加入 `ignore`——门禁行为的变更值得留变更记录，代价是改检查逻辑要写一条带包名的 changeset。
+依赖边写进根 `package.json` 与每个消费 workspace 的 `devDependencies`（`workspace:*`）。入口收成少数 specifier 之后，这条边比按子路径引用时更值得保留：`pnpm why @greypan/monorepo-kit` 是「谁在消费」的唯一可靠答案。包 `private: true`，不进发布面；`.changeset/config.json` 不把它加入 `ignore`——门禁行为的变更值得留变更记录，代价是改检查逻辑要写一条带包名的 changeset。
 
 ## 后果
 
-- 相对路径深度这一维消失，跨包引用变成稳定的 specifier；引用面只剩一个 specifier，新增模块不需要动 `exports`。
+- 相对路径深度这一维消失，跨包引用变成稳定的 specifier；新增模块不需要动 `exports`。
 - 门禁与编排的测试进入 turbo 图：并行、缓存、按包定位失败。
 - 代价是加载面从「按需取一个模块」变成「整包」，配置求值期读一次表也会把整包图带进来；这笔成本相对 dev/test 的启动时间可忽略，因此没有为它做惰性加载或分片入口。
 - 门禁入口多一层 `node_modules` 解析；提交路径本来就经 `pnpm run` 启动，不改变「需要先 install」这个前提。

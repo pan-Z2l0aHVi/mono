@@ -32,7 +32,7 @@ CI 在 Build 步之前经两端 demo 的 `check-generated` turbo 任务以同一
 
 React 与 Vue demo 的**壳文案**（TSX / SFC 中的界面文字）走另一条链：`wuchale` 从源码抽取 msgid，中文为源、英文为译文，落进 `apps/{react,vue}-web-ui-demo/src/locales/<locale>.po`。PO 是入库的译文源、手写不生成；catalog 与 loader（`src/locales/.wuchale/**`、`*.loader.js`、`data.js`、`plural.js`）由 Vite 插件按 PO 重编译，全部 gitignore。dev 与 build 只编译不抽取，所以**增删壳文案必须显式在应用目录跑 `pnpm exec wuchale --clean`** 把新 msgid 写进 PO，否则构建默默用旧语料出页面。`--clean` 会顺带移除代码里已不再引用的条目；不得用 `--modify`——它把译文写回源码，而源码里的中文才是唯一原文。PO 是 tracked 文件，天然在 `$TURBO_DEFAULT$` 里，不需要像 Markdown 那样重新纳入。
 
-壳文案的一致性由两端应用的 `catalog.spec.ts` 随 `pnpm run test` 验证：各应用用 `@greypan/monorepo-kit` 的 `defineShellI18nCatalog` 声明自己的语种与 PO 目录，再调用 `run`。它分别把每个应用的两份 PO 复制到临时目录、按 `wuchale.config.js` 的 glob 重跑一次抽取，然后判五件事——en 有空译文、en 与 zh 的 msgid 集合不等（缺译或多译）、PO 里残留 `#~` 废弃条目、代码里有中文没进语料、语料里有中文代码里已不再引用。`wuchale status` 与 `check` 只看 PO 自身，看不见新加的源码文案，也判不出空译文，所以这条检查补的是它够不到的那一半。
+壳文案的一致性由两端应用的 `catalog.spec.ts` 随 `pnpm run test` 验证：各应用用 `@greypan/monorepo-kit` 的 `defineShellI18nCatalog` 声明自己的应用目录、语种与 PO 目录，把它 `.use()` 进一条 `defineRunner()` 链、链尾接 `defineCatch()`，再 `run()`。它分别把每个应用的两份 PO 复制到临时目录、按 `wuchale.config.js` 的 glob 重跑一次抽取，然后判五件事——en 有空译文、en 与 zh 的 msgid 集合不等（缺译或多译）、PO 里残留 `#~` 废弃条目、代码里有中文没进语料、语料里有中文代码里已不再引用。`wuchale status` 与 `check` 只看 PO 自身，看不见新加的源码文案，也判不出空译文，所以这条检查补的是它够不到的那一半。
 
 测试由 Turbo 的 `^build` 先准备适配器产物；两端 test inputs 包含共享检查实现，修改它会使测试缓存失效。
 
@@ -50,7 +50,7 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 ## 库构建模式
 
-公共面是固定入口集合的包用 `vp pack`（基于 tsdown，可以多入口，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。公共面含通配子路径导出或需要 Vite CSS/资源管线的包同样用 `vp pack`，按下面三条加配置：`unbundle: true` + `root: 'src'` 让产物与源码树一一对应（子路径导出靠它）；`fixedExtension: false` 把扩展名对齐到 exports 指向的 `.js` / `.d.ts`（node 平台默认是 `.mjs` / `.d.mts`），凡是 exports 指向 `.js` 的包都要显式写这一行，不要依赖 `platform: 'browser'` 的默认值碰巧相同；CSS 入口就是 `pack.entry` 里的一项（见 `web-ui` 的 `classes/style`），`pack.css` 只承载 `minify` 这类选项，浏览器下限由顶层 `target` 同时驱动 JS 语法降级与 LightningCSS 前缀。声明文件由 `pack.dts` 生成：不在 JS 图里的纯类型入口必须显式列进 `pack.entry` 才会产出 `.d.ts`，顶层 `sourcemap: true` 会连带给 `.d.ts` 写 `sourceMappingURL`，所以要同时开 `dts.sourcemap`；`dts.entry` glob 也能补类型入口，但会让 dts 阶段慢数倍，不要用。纯转发的 barrel（`export * from './x'`）在 `unbundle` 下会被拍平进叶子模块，没有 `index.js` / `index.d.ts`，所以 `./*` 通配覆盖的子目录要按 `'<dir>/index'` 的键逐个列进 `pack.entry`——产物落点由键决定，写成 `<dir>` 会落到 `dist/<dir>.js`。具体选择以各包 manifest 与 `vite.config.ts` 为准，入口数量本身不是判据。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。私有仓库工具包 `@greypan/monorepo-kit` 是 Node 侧的单入口包：`build` 跑 `vp pack` 产出 `dist/index.js` 与 `dist/index.d.ts`，消费方一律经包名读产物。门禁因此依赖产物新鲜度——根 `check-pre-commit` 前置一次 `turbo run build --filter=@greypan/monorepo-kit`，CI 在门禁之前显式构建。
+公共面是固定入口集合的包用 `vp pack`（基于 tsdown，可以多入口，输出 `.mjs` 与 `.d.mts`，自动生成声明文件并从依赖中外部化）。公共面含通配子路径导出或需要 Vite CSS/资源管线的包同样用 `vp pack`，按下面三条加配置：`unbundle: true` + `root: 'src'` 让产物与源码树一一对应（子路径导出靠它）；`fixedExtension: false` 把扩展名对齐到 exports 指向的 `.js` / `.d.ts`（node 平台默认是 `.mjs` / `.d.mts`），凡是 exports 指向 `.js` 的包都要显式写这一行，不要依赖 `platform: 'browser'` 的默认值碰巧相同；CSS 入口就是 `pack.entry` 里的一项（见 `web-ui` 的 `classes/style`），`pack.css` 只承载 `minify` 这类选项，浏览器下限由顶层 `target` 同时驱动 JS 语法降级与 LightningCSS 前缀。声明文件由 `pack.dts` 生成：不在 JS 图里的纯类型入口必须显式列进 `pack.entry` 才会产出 `.d.ts`，顶层 `sourcemap: true` 会连带给 `.d.ts` 写 `sourceMappingURL`，所以要同时开 `dts.sourcemap`；`dts.entry` glob 也能补类型入口，但会让 dts 阶段慢数倍，不要用。纯转发的 barrel（`export * from './x'`）在 `unbundle` 下会被拍平进叶子模块，没有 `index.js` / `index.d.ts`，所以 `./*` 通配覆盖的子目录要按 `'<dir>/index'` 的键逐个列进 `pack.entry`——产物落点由键决定，写成 `<dir>` 会落到 `dist/<dir>.js`。具体选择以各包 manifest 与 `vite.config.ts` 为准，入口数量本身不是判据。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。私有仓库工具包 `@greypan/monorepo-kit` 是 Node 侧的两入口包：`build` 跑 `vp pack` 产出 `dist/index.js`（判定、能力插件与链协议）与 `dist/vite.js`（`vite.config.ts` 求值期用的端口与 dev 证书适配），消费方一律经包名读产物。门禁因此依赖产物新鲜度——根 `check-pre-commit` 前置一次 `turbo run build --filter=@greypan/monorepo-kit`，CI 在门禁之前显式构建。
 
 ## 外部化规则
 
@@ -60,13 +60,13 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 消费方在各自的 package manifest 中声明同一份 browserslist 目标，根 [`package.json`](../../package.json) 没有目标值；改目标时同步所有声明处，也就是各 manifest 的 browserslist 与 `web-ui` 的 `pack.target`——产物实际用的是 `pack.target`，manifest 里的 browserslist 只作文档性声明，两者目前手工双写。`web-ui` 是唯一在构建时输出 CSS 的包；静态 `color-mix()` 由 lightningcss 求值，含 `var()` 的 `color-mix()` 保留为运行时 CSS。纯 JavaScript 库包统一声明 `engines`，具体值以各包 manifest 为准。
 
-两个 demo 通过 `@greypan/monorepo-kit` 的 `devHttpsPlugin()` 为 dev/preview 提供安全上下文：Service Worker 与 `navigator.clipboard` 只在安全上下文可用，而 demo 设了 `server.host: true`。证书由本机 mkcert 生成，放在 `~/.config/greypan/dev-certs/`，同一台机器的所有 worktree 共用；准备步骤见 [`worktree.md`](./worktree.md#本地-https-证书)。插件只在 `serve` 档生效，生产构建不读证书。测试档在证书存在时沿用同一份 HTTPS，CI 没有本机证书时保持 HTTP（Playwright 自身忽略证书错误），不按 `VITEST` 分叉。各 demo 的插件、测试面与构建差异以各应用 `vite.config.ts` 与 [`verification.md`](./verification.md) 为准。`depsReload` 监听库的 `dist/` 目录，本地依赖变化时触发整页刷新。嵌套 WebView 前端遵循对应框架 demo 的 Vite 插件与本地包约定。
+两个 demo 通过 `@greypan/monorepo-kit/vite` 的 `devHttpsPlugin()` 为 dev/preview 提供安全上下文：Service Worker 与 `navigator.clipboard` 只在安全上下文可用，而 demo 设了 `server.host: true`。证书由本机 mkcert 生成，放在 `~/.config/greypan/dev-certs/`，同一台机器的所有 worktree 共用；准备步骤见 [`worktree.md`](./worktree.md#本地-https-证书)。插件只在 `serve` 档生效，生产构建不读证书。测试档在证书存在时沿用同一份 HTTPS，CI 没有本机证书时保持 HTTP（Playwright 自身忽略证书错误），不按 `VITEST` 分叉。各 demo 的插件、测试面与构建差异以各应用 `vite.config.ts` 与 [`verification.md`](./verification.md) 为准。`depsReload` 监听库的 `dist/` 目录，本地依赖变化时触发整页刷新。嵌套 WebView 前端遵循对应框架 demo 的 Vite 插件与本地包约定。
 
 ## 测试端口分配
 
 浏览器测试的 API 端口从根 [`monorepo.json`](../../monorepo.json) 的 `testPorts` 取，不要在 `vite.config.ts` 里写裸数字。每个 project 占一个 `bandWidth` 宽的段，留出 Vite 在端口被占时 +1 重试的空间；登记了哪些 project、各自占哪一段，以该文件为准。
 
-新增 browser project 时在 `monorepo.json` 里占一个空闲段，并在它的 `vite.config.ts` 里调用 `testApiPort('<project>')` 取端口。分配与调用点的一致性由 `pnpm run check-policy` 中的 `test-port-call-sites` 检查守护：它扫描全仓 `vite.config.ts` 的 `testApiPort` 字面量实参，集合必须与配置完全相等，且每个段位只被一个 project 引用。同一台机器上并行多个 worktree 时，给每个 worktree 导出不同的 `GREYPAN_TEST_PORT_OFFSET`（`offsetStride` 的整数倍）整体错开；不设时为 0，端口就是固定值，不随 worktree 变化。
+新增 browser project 时在 `monorepo.json` 里占一个空闲段，并在它的 `vite.config.ts` 里调用 `@greypan/monorepo-kit/vite` 的 `testApiPort('<project>')` 取端口。分配与调用点的一致性由 `pnpm run check-policy` 中的 `test-port-call-sites` 检查守护：它扫描全仓 `vite.config.ts` 的 `testApiPort` 字面量实参，集合必须与配置完全相等，且每个段位只被一个 project 引用。同一台机器上并行多个 worktree 时，给每个 worktree 导出不同的 `GREYPAN_TEST_PORT_OFFSET`（`offsetStride` 的整数倍）整体错开；不设时为 0，端口就是固定值，不随 worktree 变化。
 
 偏移是整表平移，所以同一 worktree 内的相对间隔不受影响；要守的是**不同 worktree 的两组端口不重叠**，因此偏移步长 `offsetStride` 不得小于全表跨度。读取配置时校验「段间不重叠」与「跨度不超过步长」两条，任一条不成立直接抛错，而不是悄悄和其他 worktree 抢端口。
 
