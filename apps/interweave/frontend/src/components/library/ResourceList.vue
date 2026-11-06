@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { WebUiContextMenu, WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
 import {
-  lucideEye,
   lucideExternalLink,
   lucideInfo,
   lucidePenLine,
@@ -36,7 +35,6 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   select: [resource: ResourceView]
-  preview: [resource: ResourceView]
   detail: [resource: ResourceView]
   startRename: [resource: ResourceView]
   editTags: [resource: ResourceView]
@@ -650,11 +648,6 @@ function handleDelete(resource: ResourceView | null) {
   closeContextMenu()
 }
 
-function handlePreview(resource: ResourceView | null) {
-  if (resource) emit('preview', resource)
-  closeContextMenu()
-}
-
 function handleDetail(resource: ResourceView | null) {
   if (resource) emit('detail', resource)
   closeContextMenu()
@@ -847,9 +840,9 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
       shadow root，这个属性在那边是惰性的，项照常显示。
     -->
     <div class="contents" slot="context-menu-hidden">
-      <web-ui-dropdown-item v-if="contextResource?.available" @click="handlePreview(contextResource)">
-        <web-ui-icon slot="prefix" :icon="lucideEye" :size="14" />
-        预览
+      <web-ui-dropdown-item v-if="contextResource" @click="handleDetail(contextResource)">
+        <web-ui-icon slot="prefix" :icon="lucideInfo" :size="14" />
+        详情
       </web-ui-dropdown-item>
       <web-ui-dropdown-item v-if="contextResource?.available" submenu>
         <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />
@@ -858,16 +851,6 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
           <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />
           {{ defaultOpenWithName || '系统默认应用' }}
         </web-ui-dropdown-item>
-      </web-ui-dropdown-item>
-      <!--
-        详情不跟预览一起 gate 在「资源可用」上。打开详情会对失效的网页入口发一次探测
-        （见 probeURLSourceOnOpen），那条路只对不可用的资源有意义；跟着 gate 住会让探测
-        无入口可达，也会让不可用资源彻底失去详情 drawer（备注、元数据、来源都在里面）。
-        资源可用时它排在预览与打开方式之后。
-      -->
-      <web-ui-dropdown-item v-if="contextResource" @click="handleDetail(contextResource)">
-        <web-ui-icon slot="prefix" :icon="lucideInfo" :size="14" />
-        详情
       </web-ui-dropdown-item>
       <web-ui-dropdown-divider />
       <web-ui-dropdown-item v-if="contextResource" @click="handleStartRename(contextResource)">

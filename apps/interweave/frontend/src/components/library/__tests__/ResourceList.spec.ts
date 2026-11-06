@@ -798,7 +798,7 @@ describe('ResourceList：触屏长按 menu', () => {
         new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 4, clientY: 4 })
       )
       await nextTick()
-      expect(labelsOf(mounted.host)).toContain('预览')
+      expect(labelsOf(mounted.host)).toContain('打开方式')
 
       // 触屏按在 r2 上：只按下、不抬手。这一步就该把 contextResource 换成 r2。
       mounted.rows[1].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
@@ -1076,7 +1076,7 @@ describe('ResourceList：context menu 的详情入口', () => {
     document.body.innerHTML = ''
   })
 
-  it('资源可用时，详情排在预览与打开方式之后', async () => {
+  it('资源可用时，详情排在首位且菜单没有预览', async () => {
     const detail = vi.fn<RowHandler>()
     const preview = vi.fn<RowHandler>()
     const mounted = await mountList([resource()], [], {}, { onDetail: detail, onPreview: preview })
@@ -1087,11 +1087,9 @@ describe('ResourceList：context menu 的详情入口', () => {
       await nextTick()
 
       const labels = [...mounted.host.querySelectorAll('web-ui-dropdown-item')].map(node => node.textContent?.trim())
-      // 打开方式是 submenu，它的子项在 querySelectorAll 的文档序里也占位，
-      // 所以详情要排在「打开方式」这棵子树之后，而不是紧邻它。
-      expect(labels.indexOf('详情')).toBeGreaterThan(labels.indexOf('打开方式'))
-      // 详情与重命名之间是一道 divider，所以两者在项序上相邻。
-      expect(labels.indexOf('重命名')).toBe(labels.indexOf('详情') + 1)
+      expect(labels[0]).toBe('详情')
+      expect(labels).not.toContain('预览')
+      expect(labels[1]).toContain('打开方式')
 
       menuItem(mounted.host, '详情').dispatchEvent(new MouseEvent('click', { bubbles: true }))
       expect(detail).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'r1' }))
@@ -1215,10 +1213,8 @@ describe('ResourceList：键盘呼出 context menu', () => {
       ;(mounted.rows[0] as HTMLElement).focus()
       await nextTick()
 
-      // 六项齐全。缺哪一项，那一项的键盘入口就是断的
-      expect(labelsOf(mounted.host)).toEqual(
-        expect.arrayContaining(['预览', '打开方式', '详情', '重命名', '标签', '删除'])
-      )
+      // 菜单包含该资源可用的操作。
+      expect(labelsOf(mounted.host)).toEqual(expect.arrayContaining(['打开方式', '详情', '重命名', '标签', '删除']))
     } finally {
       mounted.unmount()
     }
@@ -1237,7 +1233,7 @@ describe('ResourceList：键盘呼出 context menu', () => {
       const [first, second] = mounted.rows as HTMLElement[]
       first.focus()
       await nextTick()
-      expect(labelsOf(mounted.host)).toContain('预览')
+      expect(labelsOf(mounted.host)).toContain('打开方式')
 
       second.focus()
       await nextTick()
@@ -1263,7 +1259,7 @@ describe('ResourceList：键盘呼出 context menu', () => {
       const container = mounted.container!
       row.focus()
       await nextTick()
-      expect(labelsOf(mounted.host)).toContain('预览')
+      expect(labelsOf(mounted.host)).toContain('打开方式')
 
       container.focus()
       await nextTick()

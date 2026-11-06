@@ -9,6 +9,7 @@ import {
 } from '@greypan/web-ui'
 import {
   akarIconsCircleCheck,
+  andrsrxnInbox,
   lucideClipboardPaste,
   lucidePenLine,
   lucideTags,
@@ -285,15 +286,8 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           @dragleave.prevent="dragActive = false"
           @drop.prevent="handleDrop"
         >
-          <web-ui-empty
-            class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:52px] mobile:[--wui-empty-icon-size:40px]"
-          >
-            <span
-              slot="icon"
-              class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) transition-[background-color] duration-[160ms] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) mobile:size-10 mobile:rounded-xl"
-            >
-              <web-ui-icon :icon="lucideUpload" :size="23" />
-            </span>
+          <web-ui-empty class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:64px]">
+            <web-ui-icon slot="icon" :icon="lucideUpload" :size="64" />
             <span
               class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
             >
@@ -444,7 +438,8 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           v-else
           class="grid h-full min-h-0 place-items-center rounded-[18px] border border-black/6 bg-white dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
         >
-          <web-ui-empty class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:23px]">
+          <web-ui-empty class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:64px]">
+            <web-ui-icon slot="icon" :icon="andrsrxnInbox" :size="64" />
             <span slot="description" class="grid gap-3 mobile:gap-2">
               <span
                 class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
@@ -483,7 +478,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       @click="emit('submit')"
     >
       <web-ui-icon slot="prefix" :icon="akarIconsCircleCheck" />
-      {{ queue.length > 1 ? '确认批量添加' : '确认添加' }}
+      {{ queue.length > 1 ? '批量添加' : '添加' }}
     </web-ui-button>
   </web-ui-dialog>
 </template>

@@ -69,11 +69,7 @@ function selectNav(item: (typeof navItems)[number]) {
         v-for="item in navItems"
         :key="item.key"
         type="button"
-        :class="[
-          navItemClass,
-          route.path === item.path ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
-          collapsed ? 'justify-center' : ''
-        ]"
+        :class="[navItemClass, route.path === item.path ? '' : 'hover:bg-black/4 dark:hover:bg-white/6']"
         :data-active="route.path === item.path"
         :aria-current="route.path === item.path ? 'page' : undefined"
         :aria-label="item.label"
@@ -101,7 +97,7 @@ function selectNav(item: (typeof navItems)[number]) {
     <web-ui-dropdown-divider class="mt-auto [--wui-space-1:8px]" />
     <button
       type="button"
-      :class="[navItemClass, collapsed ? 'justify-center' : '', 'hover:bg-black/4 dark:hover:bg-white/6']"
+      :class="[navItemClass, 'hover:bg-black/4 dark:hover:bg-white/6']"
       aria-label="设置"
       @click="emit('openSettings')"
     >

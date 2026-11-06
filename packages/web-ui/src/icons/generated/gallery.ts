@@ -95,6 +95,7 @@ import radixIconsReset from './radix-icons-reset'
 import tablerBrandTypescript from './tabler-brand-typescript'
 import tablerClockPlus from './tabler-clock-plus'
 import tablerSortAscendingLetters from './tabler-sort-ascending-letters'
+import tablerTagPlus from './tabler-tag-plus'
 
 export const iconGallery: Record<string, IconifyIcon> = {
   andrsrxnInbox,
@@ -166,6 +167,7 @@ export const iconGallery: Record<string, IconifyIcon> = {
   lucideListFilter,
   tablerSortAscendingLetters,
   tablerClockPlus,
+  tablerTagPlus,
   lucideCode,
   lucideEllipsisVertical,
   heroiconsBarsArrowDown16Solid,

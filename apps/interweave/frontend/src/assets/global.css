@@ -41,6 +41,10 @@ main {
   min-height: 100%;
 }
 
+html {
+  background: var(--wui-color-page, #fff);
+}
+
 /* 消除双击缩放与 300ms 点击延迟；保留双指缩放以符合 WCAG 2.1 SC 1.4.4 */
 html,
 body {

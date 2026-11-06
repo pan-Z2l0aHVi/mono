@@ -1287,7 +1287,15 @@ const open = ref(false)
 
 `--wui-drawer-nested-peek-base` 是嵌套堆叠时每层露出的基准距离：桌面端默认 `43.2px`，窄视口默认 `28.8px`。在宿主或任意祖先上覆盖它即可同时改变两者，在任何视口宽度下都生效。
 
-`page-shift` 会移动整个页面，不需要额外配置。页面里 `position: fixed` 的内容一起移动；已经打开的其他 dialog 或抽屉不受影响。
+`page-shift` 会移动整个页面。页面里 `position: fixed` 的内容一起移动；已经打开的其他 dialog 或抽屉不受影响。
+
+为页面设置与内容一致的背景色，避免偏移后露出的区域颜色不一致。使用 `web-ui-theme` 时，可在全局样式中设置：
+
+```css
+html {
+  background: var(--wui-color-page, #fff);
+}
+```
 
 多层同时打开时按打开顺序叠加，嵌套层和同级层规则相同；关闭任意一层后，其余层重新计算。
 

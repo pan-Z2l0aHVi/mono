@@ -8,7 +8,11 @@ import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/
 import type { LibraryQueueItem } from '../../../services/library'
 import EditTagsDialog from '../EditTagsDialog.vue'
 
-function mountDialog(target: LibraryQueueItem, onSave: (resourceId: string, tagNames: string[]) => void) {
+function mountDialog(
+  target: LibraryQueueItem,
+  onSave: (resourceId: string, tagNames: string[]) => void,
+  onClose = vi.fn<(open: boolean) => void>()
+) {
   const host = document.createElement('div')
   document.body.append(host)
   const app = createApp({
@@ -21,7 +25,7 @@ function mountDialog(target: LibraryQueueItem, onSave: (resourceId: string, tagN
         busy: false,
         error: '',
         onSave,
-        'onUpdate:open': () => {}
+        'onUpdate:open': onClose
       })
   })
   app.mount(host)
@@ -89,37 +93,74 @@ describe('EditTagsDialog', () => {
     }
   })
 
-  it('点确认才把 input 内容加入当前标签，并以队列 id 即时保存', async () => {
+  it('添加和移除标签只修改草稿，更新时一次保存', async () => {
     const save = vi.fn<(resourceId: string, tagNames: string[]) => void>()
     const mounted = mountDialog(TARGET, save)
 
     try {
       await nextTick()
+      expect(textContent(mounted.host, '当前标签')).toBeDefined()
       await selectCandidate(mounted.host, '旅行')
 
       clickButtonByLabel(mounted.host, '确认添加标签')
       await nextTick()
       expect(textContent(mounted.host, '旅行')).not.toBeUndefined()
+      expect(textContent(mounted.host, '未保存标签')).toBeDefined()
+      clickButtonByLabel(mounted.host, '移除标签 设计')
+      await nextTick()
+      expect(save).not.toHaveBeenCalled()
+
+      clickButtonByText(mounted.host, '更新标签')
       expect(save).toHaveBeenCalledOnce()
-      expect(save).toHaveBeenCalledWith('queue-item', ['设计', '旅行'])
+      expect(save).toHaveBeenCalledWith('queue-item', ['旅行'])
     } finally {
       mounted.close()
     }
   })
 
-  it('「完成」只是关闭，不再触发保存', async () => {
+  it('草稿恢复原样后显示当前标签', async () => {
+    const mounted = mountDialog(TARGET, vi.fn<(resourceId: string, tagNames: string[]) => void>())
+    try {
+      await selectCandidate(mounted.host, '旅行')
+      clickButtonByLabel(mounted.host, '确认添加标签')
+      await nextTick()
+      expect(textContent(mounted.host, '未保存标签')).toBeDefined()
+      clickButtonByLabel(mounted.host, '移除标签 旅行')
+      await nextTick()
+      expect(textContent(mounted.host, '当前标签')).toBeDefined()
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('更新时将输入框内容加入草稿，并忽略重复标签', async () => {
     const save = vi.fn<(resourceId: string, tagNames: string[]) => void>()
     const mounted = mountDialog(TARGET, save)
+    try {
+      await selectCandidate(mounted.host, '  新   标签  ')
+      clickButtonByText(mounted.host, '更新标签')
+      expect(save).toHaveBeenLastCalledWith('queue-item', ['设计', '新 标签'])
+      await selectCandidate(mounted.host, '设计')
+      clickButtonByText(mounted.host, '更新标签')
+      expect(save).toHaveBeenLastCalledWith('queue-item', ['设计', '新 标签'])
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('关闭时不保存尚未提交的草稿', async () => {
+    const save = vi.fn<(resourceId: string, tagNames: string[]) => void>()
+    const close = vi.fn<(open: boolean) => void>()
+    const mounted = mountDialog(TARGET, save, close)
 
     try {
       await nextTick()
       await selectCandidate(mounted.host, '旅行')
       clickButtonByLabel(mounted.host, '确认添加标签')
       await nextTick()
-      expect(save).toHaveBeenCalledOnce()
-
-      clickButtonByText(mounted.host, '完成')
-      expect(save).toHaveBeenCalledOnce()
+      clickButtonByText(mounted.host, '取消')
+      expect(close).toHaveBeenCalledWith(false)
+      expect(save).not.toHaveBeenCalled()
     } finally {
       mounted.close()
     }

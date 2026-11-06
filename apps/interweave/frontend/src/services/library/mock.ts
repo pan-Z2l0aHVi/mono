@@ -190,7 +190,7 @@ const SPECS: MockResourceSpec[] = [
     sizeBytes: 41_205_760,
     createdAgo: 9 * DAY,
     updatedAgo: 9 * DAY,
-    tagNames: ['播客', '工程化'],
+    tagNames: [],
     sources: [
       {
         id: 'mock-audio-1-file',
@@ -229,7 +229,7 @@ const SPECS: MockResourceSpec[] = [
     sizeBytes: null,
     createdAgo: 120 * DAY,
     updatedAgo: 60 * DAY,
-    tagNames: ['博客', '待恢复'],
+    tagNames: [],
     sources: [
       {
         id: 'mock-web-2-url',
