@@ -307,7 +307,7 @@ export function localActionBootstrapViolations(text) {
 
 // 需要向 GitHub 开口才要凭据，所以表里记的是命令而不是脚本：prepare 与 capture 只读本地文件。
 const ghCommands = {
-  'codex-review.mjs': ['prior-run', 'gate', 'resolve-pull', 'publish'],
+  'codex-review.mjs': ['prior-run', 'gate', 'resolve-pull', 'report'],
   'codex-autofix.mjs': ['prepare', 'apply']
 }
 

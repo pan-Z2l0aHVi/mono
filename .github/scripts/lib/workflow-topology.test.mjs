@@ -489,7 +489,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     }
   }
   const tokenLine = '          github-token: ${{ github.token }}'
-  for (const file of ['ci.yml', 'codex-review-publish.yml']) {
+  for (const file of ['ci.yml', 'codex-review-report.yml']) {
     const text = workflowText[file]
     const hits = text.split(tokenLine).length - 1
     assert.ok(hits > 0, `${file} must carry at least one cross-run download token`)
@@ -535,24 +535,24 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     )
   }
 
-  // Codex 审查门：模型只在 ci.yml 的只读 job 里跑，评论与推送都在 codex-review-publish.yml。
+  // Codex 审查门：模型只在 ci.yml 的只读 job 里跑，评论与推送都在 codex-review-report.yml。
   {
     const ci = workflowText['ci.yml']
-    const publishText = workflowText['codex-review-publish.yml']
-    const publish = parsed['codex-review-publish.yml']
+    const reportText = workflowText['codex-review-report.yml']
+    const report = parsed['codex-review-report.yml']
     const actionRef = 'openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675'
 
     assert.equal(ci.split(actionRef).length - 1, 2, 'both model legs must run inside the read-only CI workflow')
-    assert.ok(!publishText.includes('openai/codex-action'), 'the privileged workflow must never run the model')
+    assert.ok(!reportText.includes('openai/codex-action'), 'the privileged workflow must never run the model')
 
-    assert.deepEqual(publish.permissions, { contents: 'read' })
-    assert.deepEqual(publish.jobs['publish-review'].permissions, {
+    assert.deepEqual(report.permissions, { contents: 'read' })
+    assert.deepEqual(report.jobs['report-conclusion'].permissions, {
       contents: 'read',
       issues: 'write',
       'pull-requests': 'write',
       actions: 'read'
     })
-    assert.deepEqual(publish.jobs['codex-autofix-apply'].permissions, {
+    assert.deepEqual(report.jobs['codex-autofix-apply'].permissions, {
       contents: 'write',
       'pull-requests': 'read',
       actions: 'read'
@@ -704,40 +704,61 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     }
     assert.match(parsed['ci.yml'].jobs['codex-autofix-plan'].if, /vars\.CODEX_AUTOFIX_ENABLED == 'true'/)
     assert.match(
-      parsed['codex-review-publish.yml'].jobs['codex-autofix-apply'].if,
+      parsed['codex-review-report.yml'].jobs['codex-autofix-apply'].if,
       /vars\.CODEX_AUTOFIX_ENABLED == 'true'/
     )
 
     // 写腿：403 的定位信息、收敛条件与 smoke 步骤都得在定义里，不能只靠运行时报错。
     assert.match(
-      namedStep(publishText, 'Probe comment permission'),
+      namedStep(reportText, 'Probe comment permission'),
       /continue-on-error: true/,
-      'the best-effort probe must not suppress the publish step'
+      'the best-effort probe must not suppress the conclusion step'
     )
-    const assertPublishIsUnconditional = text =>
+    const assertReportIsUnconditional = text =>
       assert.match(
-        namedStep(text, 'Publish conclusion comment'),
+        namedStep(text, 'Post conclusion comment'),
         /if: always\(\) && steps\.pull\.outputs\.pull_number != '' && steps\.findings\.outcome == 'success'/,
-        'publishing must not depend on the probe succeeding'
+        'the conclusion step must not depend on the probe succeeding'
       )
-    assertPublishIsUnconditional(publishText)
+    assertReportIsUnconditional(reportText)
     assert.equal(
-      namedStep(publishText, 'Publish conclusion comment').split('if: always() && ').length - 1,
+      namedStep(reportText, 'Post conclusion comment').split('if: always() && ').length - 1,
       1,
-      'the publish step must carry exactly one unconditional guard'
+      'the conclusion step must carry exactly one unconditional guard'
     )
     assert.throws(
-      () => assertPublishIsUnconditional(publishText.replace('if: always() && ', 'if: success() && ')),
-      /publishing must not depend/,
-      'a probe-gated publish step must be rejected by the assertion itself'
+      () =>
+        assertReportIsUnconditional(
+          // 变异必须落在结论评论步骤自己的守卫上：文件里现在还有别的 `if: always()` 步骤。
+          reportText.replace(
+            namedStep(reportText, 'Post conclusion comment'),
+            namedStep(reportText, 'Post conclusion comment').replace('if: always() && ', 'if: success() && ')
+          )
+        ),
+      /the conclusion step must not depend/,
+      'a probe-gated conclusion step must be rejected by the assertion itself'
     )
-    for (const jobId of ['publish-review', 'codex-autofix-apply']) {
-      const guard = parsed['codex-review-publish.yml'].jobs[jobId].if
+    for (const jobId of ['report-conclusion', 'codex-autofix-apply']) {
+      const guard = parsed['codex-review-report.yml'].jobs[jobId].if
       assert.match(guard, /workflow_run\.conclusion != 'cancelled'/)
       assert.match(guard, /head_branch != 'changeset-release\/main'/)
     }
 
-    for (const [, reference] of `${ci}\n${publishText}`.matchAll(/\/trusted\/([^\s"']+)/g)) {
+    // 没有产物时不能只是安静地绿着：用户在运行页上必须能读到「为什么没有评论」。
+    const skippedReport = namedStep(reportText, 'Explain the skipped report')
+    assert.match(
+      skippedReport,
+      /if: always\(\) && .*steps\.findings\.outcome != 'success'/,
+      'the no-artifact path must be explained on the run page'
+    )
+    assert.match(
+      skippedReport,
+      />> "\$GITHUB_STEP_SUMMARY"/,
+      'the explanation must be written to the step summary, not only to the log'
+    )
+    assert.match(skippedReport, /::notice /, 'the skipped run must also carry a notice annotation')
+
+    for (const [, reference] of `${ci}\n${reportText}`.matchAll(/\/trusted\/([^\s"']+)/g)) {
       assert.ok(/^(?:codex|scripts|\.claude)\//.test(reference), `unexpected trusted path ${reference}`)
     }
     const staged = fs
@@ -745,7 +766,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       .match(/for tracked in[\s\S]*?; do/)[0]
     const trustedPrefix = reference =>
       reference.startsWith('codex/') || reference.startsWith('scripts/') ? `.github/${reference}` : reference
-    for (const [, reference] of `${ci}\n${publishText}`.matchAll(/\/trusted\/([^\s"']+)/g)) {
+    for (const [, reference] of `${ci}\n${reportText}`.matchAll(/\/trusted\/([^\s"']+)/g)) {
       assert.ok(
         staged.includes(trustedPrefix(reference)),
         `workflows read ${reference} but stage-codex-inputs does not stage it`
@@ -785,7 +806,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       !/persist-credentials: 'true'|git push/.test(workflowJob(ci, 'codex-review')),
       'the review leg must stay write-free'
     )
-    assert.match(workflowJob(publishText, 'codex-autofix-apply'), /timeout-minutes: 10/)
+    assert.match(workflowJob(reportText, 'codex-autofix-apply'), /timeout-minutes: 10/)
   }
 
   const version = workflowText['changeset-version.yml']

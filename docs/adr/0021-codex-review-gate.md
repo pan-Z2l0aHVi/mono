@@ -23,7 +23,7 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 **状态口径**：`error` 只表示配置或调用故障，故障码为 `config_missing`、`model_failed`、`artifact_missing` 之一；模型腿正常结束却没产出结论是 `unreviewed`，输出不合 schema 也归 `unreviewed`。`continue-on-error` 只让判定脚本有机会落结论，模型腿的 `steps.<id>.outcome` 仍传给判定脚本，故障不会被掩成「未审查」。review job 被整体跳过时门记 `not_applicable`。
 
-**权限分腿**：模型只在 PR 验证的只读 job 里运行；写回（评论、应用并推送 patch）在由 CI 完成事件触发的独立 workflow 里进行，那条 workflow 一次都不调用模型。这条划分是 PR 验证只读不变量成立的前提。
+**权限分腿**：模型只在 PR 验证的只读 job 里运行；写回（评论、应用并推送 patch）在由 CI 完成事件触发的独立 workflow 里进行，那条 workflow 一次都不调用模型。这条划分是 PR 验证只读不变量成立的前提。该 workflow 显示名为 `Codex Review Report`（文件 `codex-review-report.yml`）：它的产物是一份关于既有结论的报告，不改判结论，所以不叫 publish。
 
 **配置契约**：端点、模型名、思考强度、密钥与 codex 版本全部由 GitHub 后台提供，CI 定义只写引用，不写默认值、不写兜底表达式。
 
@@ -56,11 +56,11 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 **自动修**：`check` job 失败且 `CODEX_AUTOFIX_ENABLED` 为 `true` 时，模型在 workspace 沙箱里产出一份候选 patch，作为 artifact 交给特权腿；只有它校验通过才提交并直推 PR 分支。patch 只能修改已入库文件，CI 定义、依赖清单、生成物、agent 指令与凭证路径一律整份拒绝。已包含自动修提交的 head 不再规划第二次。开关无值即两条腿都不跑，主审查链路不依赖它。规划腿是尽力而为的旁路，保留 job 级 `continue-on-error`，其失败不让 PR 变红；这与审查腿「故障即红」不矛盾：门只看审查结论，自动修的失败由 artifact 与日志呈现。
 
-**触发收敛**：写回腿只处理同源仓库的 PR run，排除已取消的 run 与版本分支；没有审查 artifact 时跳过发评论，不制造无意义失败。只读探测是尽力而为，失败不阻止结论发布，写权限不足由发布步骤的 403 清单报告。门仍不设为分支必需检查。
+**触发收敛**：写回腿只处理同源仓库的 PR run，排除已取消的 run 与版本分支；没有审查 artifact 时跳过发评论，不制造无意义失败——但跳过必须留痕：`Explain the skipped report` 在 Summary 与 notice 里写明原因，并回查触发 run 的 artifact 列表，把「没有可写回的结论」和「写回腿没取到已有产物」分开。只读探测是尽力而为，失败不阻止结论发布，写权限不足由发布步骤的 403 清单报告。门仍不设为分支必需检查。
 
 **结论产物跨 run 传递**：审查腿上传的 `codex-review-findings` artifact 由写回腿下载，结论复用也会下载历史 run 的同名 artifact。`actions/download-artifact@v7` 只有在**显式给出 `github-token: ${{ github.token }}`** 时才会启用 `repository` / `run-id` 跨 run 查找（上游 `src/download-artifact.ts` 节选：`if (inputs.token) { options.findBy = { workflowRunId: inputs.runID } }`）；缺 token 会静默退化成「只查当前 workflow run」，写回腿因此报 `Artifact not found for name: codex-review-findings` 并跳过发评论。三处跨 run 下载（写回腿两条、`ci.yml` 的复用一条）都必须带 token，由拓扑断言钉住；同 run 的下载不需要。上传用 `upload-artifact@v6`、下载用 `download-artifact@v7` 是各自独立的主版本，二者都基于 v4+ artifact 后端，互相兼容，此次故障与版本差无关。另：写回腿是 `workflow_run`，GitHub 只取**默认分支**上的 workflow 文件，所以本文件的修改必须合入 main 后才生效，PR 自己那轮 CI 无法验证写回修复。
 
-**残留风险**：下载步骤带 `continue-on-error`，发布步骤又以 `steps.findings.outcome == 'success'` 为条件，因此「本来就没有 artifact」与「artifact 存在但下载失败」在日志里都表现为 job 绿且无评论，无法区分。本轮只修了 token 这个已定位的成因，没有把这条静默链改成可区分的失败信号；排查时要直接读 `Download review findings` 步骤日志，不能只看 job 结论。
+**残留风险**：下载步骤仍带 `continue-on-error`，因为「本来就没有产物」是合法跳过，不该把这种 run 判红。跳过不再静默：`Explain the skipped report` 会把原因写进运行页 Summary 与 notice，并回查触发 run 的 artifact 列表——产物存在却下载失败时该步骤非零退出，把写回腿自身的故障和「没有可写回的结论」分开。代价是每次跳过多一次 `actions: read` 的 API 调用。
 
 **引导落地**：可信脚本取自 PR base，因此引入新子命令的那个 PR 自己拿到的仍是 base 里的旧脚本。模型腿的 job 级不设 `continue-on-error`，旧脚本缺少 `preflight` 时该 job 直接变红，而不是又回到全绿静默。合并后的下一个 PR 起，base 带新脚本，链路完整生效。
 
@@ -107,11 +107,12 @@ Error: /usr/bin/sudo exited with code 1
 2. PR 上出现 `codex-review-conclusion` 持久评论，`status=reviewed`。
 3. 清掉任一变量后重跑：`codex-gate` 变红，日志只列缺失变量名，评论标 `error` 与 `config_missing`。
 4. 改 `CODEX_REVIEW_MODEL` 后同 head 重跑：旧结论不复用，模型重新调用。
-5. 写回腿成功发出或更新结论评论；workflow_run 列表里没有无产物的失败 run。
+5. 写回腿成功发出或更新结论评论；workflow_run 列表里没有无产物的失败 run。没有产物的 run 仍为绿色，但 Summary 必须写明「未发布」与原因。
 6. 拓扑断言与脚本单测全绿。
 7. `review-scope.json` 记有 `excluded_pathspecs` 与 `empty_diff`，审查 diff 里没有 `**/generated/**` 路径；大 PR 不因 `ENOBUFS` 让 `prepare` 失败。（**合入 main 后的下一个 PR** 上核对：可信脚本取自 PR base，修复自己的 CI 仍跑旧脚本。）
 8. 两条模型腿的 `Set up job` 日志出现 `Image: ubuntu-24.04`，且 `Run codex exec` 不再出现 `Could not restrict access to /run/dbus/system_bus_socket`。以审查腿为准，满足第 1 项（有真实模型结论）后再核对此项；autofix 腿只在 `CODEX_AUTOFIX_ENABLED=true` 且 `check` 失败时运行，默认关闭，不必为验收专门打开。
-9. 写回腿 `Download review findings` 不再报 `Artifact not found`，且 `Publish conclusion comment` 未被跳过（这两步是可观测的修复点；评论内容本身按第 2 / 5 项核对）。写回腿取默认分支版本，**必须在修复合入 main 后的下一个 PR** 上核对，PR #516 自身无法验证。autofix patch 那处下载同理，但 `CODEX_AUTOFIX_ENABLED=false` 时整条腿被跳过，只能在显式打开开关且 `check` 失败的 run 上验证。
+9. 写回腿 `Download review findings` 不再报 `Artifact not found`，且 `Post conclusion comment` 未被跳过（这两步是可观测的修复点；评论内容本身按第 2 / 5 项核对）。写回腿取默认分支版本，**必须在修复合入 main 后的下一个 PR** 上核对，PR #516 自身无法验证。autofix patch 那处下载同理，但 `CODEX_AUTOFIX_ENABLED=false` 时整条腿被跳过，只能在显式打开开关且 `check` 失败的 run 上验证。
+10. 写回腿改名为 `Codex Review Report` 后：Actions 列表显示新名字，job 为 `report-conclusion`（`Report review conclusion`）；无产物的 run 在 Summary 里有跳过原因与 notice；写回成功时 Summary 记 `已创建/已更新结论评论 #<id>`。「有产物却下载失败」的判红分支只能靠改坏 `run-id` 或断网触发，自然 run 上不必刻意制造，留作未实测项。
 
 **待办**：`prepare` 的任何失败都会跳过 preflight，被 `validate` 记成 `config_missing`；后续把 preflight 前置到 prepare 之前，或引入 `job_failed` / `preflight_missing` 错误码，并同步「状态口径」、`docs/agents/review.md` 的故障码清单、`renderConclusion()` 与相关单测。本次修复后该误归因对 PR #515 的事故不再可达，门「故障即红」不受影响。
 
