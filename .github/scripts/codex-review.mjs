@@ -116,24 +116,26 @@ export function parseReviewFindings(raw) {
 }
 
 /**
- * 空 findings 只有在带得出覆盖证据时才算结论。两条都要过：至少列了一个 `inspected` 路径，
- * 且其中有路径属于本次 diff —— 只读 `docs/agents/review.md` 就收尾不算审查，那正是要区分的早停。
- * 返回空串表示通过，否则返回写进结论的失败原因。diff 为空时不要求覆盖：那时没有源码可读。
+ * `coverage` 是结论的一部分，不是可选装饰：schema 已列为必填，缺了就是模型没按契约输出，
+ * 不论有没有 findings 都判 `missing_coverage`——否则交一条 Nit 就能绕开整条覆盖规则。
+ * 空 findings 时另外要求清单真的落到本次改动的路径上：只读了判据文档就收尾，正是要区分的早停。
+ * 返回空串表示通过，否则返回写进结论的失败原因。diff 为空时整条豁免：那时没有改动可读。
  */
 function coverageGap(parsed, scope) {
-  if (parsed.findings.length > 0) return ''
   if (scope.empty_diff) return ''
-  const inspected = parsed.coverage?.inspected ?? []
+  if (!parsed.coverage) return 'the conclusion carries no coverage list'
+  if (parsed.findings.length > 0) return ''
+  const inspected = parsed.coverage.inspected ?? []
   if (inspected.length === 0) return 'the review reported no findings without listing a single inspected path'
   const changed = Array.isArray(scope.changed_paths) ? scope.changed_paths : []
-  if (changed.length > 0 && !inspected.some(entry => touchesChangedPath(entry, changed)))
+  if (!inspected.some(entry => touchesChangedPath(entry, changed)))
     return 'the review reported no findings but inspected none of the changed paths'
   return ''
 }
 
 /**
  * 旧结论要被复用，还得先来自当前契约：`coverage` 是这一版才加上的必填字段，
- * 没有它的产物不论有没有 findings 都不能沿用，否则一次没有证据的审查会借复用回到绿色。
+ * 没有它的产物一律不能沿用，否则一次没有证据的审查会借复用回到绿色。
  */
 function reuseCoverageGap(parsed, scope) {
   if (!parsed.coverage) return 'the prior conclusion carries no coverage list'
@@ -479,6 +481,15 @@ export function conclusionDirectory(env = process.env) {
 }
 
 /**
+ * 上一轮 artifact 必须解到独立目录：它带着上一轮的 `review-scope.json`，
+ * 与本轮 `prepare` 写的同名文件放在一起会覆盖掉本次范围（其中的 `changed_paths`），
+ * 覆盖判定于是拿到一份对不上当前 diff 的 scope。
+ */
+export function priorConclusionDirectory(env = process.env) {
+  return env.CODEX_REVIEW_PRIOR_DIR ?? `${conclusionDirectory(env)}-prior`
+}
+
+/**
  * 只有「同源仓库、base 是 main、非版本分支、仍开着」的 PR 才接受结论回写与自动修：
  * fork PR 拿不到仓库 secret，也没有可信的作者身份；版本分支的 PR 由发布流程自己负责。
  */
@@ -644,12 +655,14 @@ function commandPriorRun() {
  */
 function commandReuse() {
   const env = requireEnv(['CODEX_REVIEW_HEAD_SHA'])
+  // 读上一轮的 artifact，写回本轮的目录；两者的 scope 不能混用。
+  const prior = priorConclusionDirectory()
   const directory = conclusionDirectory()
   const config = readConfig()
   let reusable = null
   let failure = ''
   try {
-    const conclusion = readConclusion(directory)
+    const conclusion = readConclusion(prior)
     if (!conclusion?.findings) failure = 'no usable conclusion'
     else if (conclusion.meta.head_sha !== env.CODEX_REVIEW_HEAD_SHA) failure = ''
     else if (!config) failure = 'the configuration snapshot is missing'
@@ -756,8 +769,7 @@ function commandValidate() {
     return
   }
 
-  // 空 findings 必须带覆盖证据：没有 findings 又没读过任何文件，与「查完确实没问题」在产物上完全同形，
-  // 门就会为一次没有真正发生的审查保持绿色。diff 为空时豁免——那种情况本来就没有源码改动可读。
+  // 覆盖清单是结论的一部分，也是空 findings 与「没查就收尾」唯一的区分；判据见 `coverageGap`。
   const scope = readScope()
   const gap = coverageGap(parsed, scope)
   if (gap !== '') {

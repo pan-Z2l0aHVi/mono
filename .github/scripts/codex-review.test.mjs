@@ -694,7 +694,11 @@ function runCli(command, { env = {}, conclusionDir }) {
   writeConfig(runnerTemp)
   fs.writeFileSync(
     path.join(runnerTemp, 'codex-final-message.json'),
-    JSON.stringify({ summary: '有两处要改。', findings: [finding('Block'), finding('Should fix')] })
+    JSON.stringify({
+      summary: '有两处要改。',
+      coverage: { inspected: ['src/app.ts'], uncovered: [] },
+      findings: [finding('Block'), finding('Should fix')]
+    })
   )
   const validated = runCli('validate', { env: validateEnv, conclusionDir })
   assert.equal(validated.result.status, 0, validated.result.stderr)
@@ -733,7 +737,11 @@ function runCli(command, { env = {}, conclusionDir }) {
   // 模型给了 findings 但 summary 是空串：结论照样成立，不会退化成 unreviewed。
   fs.writeFileSync(
     path.join(runnerTemp, 'codex-final-message.json'),
-    JSON.stringify({ summary: '', findings: [finding('Should fix')] })
+    JSON.stringify({
+      summary: '',
+      coverage: { inspected: ['src/app.ts'], uncovered: [] },
+      findings: [finding('Should fix')]
+    })
   )
   const missingSummary = runCli('validate', { env: validateEnv, conclusionDir })
   assert.equal(missingSummary.result.status, 0, missingSummary.result.stderr)
@@ -800,10 +808,17 @@ function runCli(command, { env = {}, conclusionDir }) {
 
 {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-reuse-'))
-  const reuseEnv = { CODEX_REVIEW_HEAD_SHA: headSha, CODEX_REVIEW_PRIOR_RUN_ID: '4321', RUNNER_TEMP: directory }
+  // 上一轮 artifact 解在独立目录：它与本轮结论目录各有自己的 review-scope.json。
+  const priorDirectory = `${directory}-prior`
+  const reuseEnv = {
+    CODEX_REVIEW_HEAD_SHA: headSha,
+    CODEX_REVIEW_PRIOR_RUN_ID: '4321',
+    CODEX_REVIEW_PRIOR_DIR: priorDirectory,
+    RUNNER_TEMP: directory
+  }
   writeConfig(directory)
 
-  writeFixtures(directory, conclusionOf('Nit'), metaOf())
+  writeFixtures(priorDirectory, conclusionOf('Nit'), metaOf())
   const reused = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(reused.result.status, 0, reused.result.stderr)
   assert.equal(reused.outputs.reused, 'true')
@@ -813,7 +828,7 @@ function runCli(command, { env = {}, conclusionDir }) {
   const legacy = conclusionOf('Nit')
   delete legacy.coverage
   legacy.findings = []
-  writeFixtures(directory, legacy, metaOf())
+  writeFixtures(priorDirectory, legacy, metaOf())
   const upgraded = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(upgraded.outputs.reused, 'false', 'a conclusion written before the coverage contract must not be reused')
   assert.match(upgraded.outputs.reason, /coverage/)
@@ -826,12 +841,12 @@ function runCli(command, { env = {}, conclusionDir }) {
   // 有 findings 但缺 coverage 同样是旧契约产物：不能因为「有发现」就放过。
   const legacyFindings = conclusionOf('Nit')
   delete legacyFindings.coverage
-  writeFixtures(directory, legacyFindings, metaOf())
+  writeFixtures(priorDirectory, legacyFindings, metaOf())
   const stale = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(stale.outputs.reused, 'false', 'findings do not excuse a missing coverage list')
   assert.match(stale.outputs.reason, /coverage/)
 
-  writeFixtures(directory, conclusionOf('Nit'), metaOf({ head_sha: otherSha }))
+  writeFixtures(priorDirectory, conclusionOf('Nit'), metaOf({ head_sha: otherSha }))
   const drifted = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(drifted.outputs.reused, 'false')
   assert.equal(drifted.outputs.reason, '', 'a head mismatch is expected, not a read failure')
@@ -841,14 +856,14 @@ function runCli(command, { env = {}, conclusionDir }) {
     'a mismatched conclusion must not be reused'
   )
 
-  writeFixtures(directory, conclusionOf('Nit'), metaOf())
-  fs.writeFileSync(path.join(directory, 'review-findings.json'), 'not json')
+  writeFixtures(priorDirectory, conclusionOf('Nit'), metaOf())
+  fs.writeFileSync(path.join(priorDirectory, 'review-findings.json'), 'not json')
   const corrupt = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(corrupt.result.status, 0, 'a corrupt conclusion degrades to a fresh model call')
   assert.equal(corrupt.outputs.reused, 'false')
   assert.match(corrupt.outputs.reason, /not valid JSON/)
 
-  writeFixtures(directory, conclusionOf('Nit'), metaOf({ config_fingerprint: 'another-configuration' }))
+  writeFixtures(priorDirectory, conclusionOf('Nit'), metaOf({ config_fingerprint: 'another-configuration' }))
   const reconfigured = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(reconfigured.outputs.reused, 'false')
   assert.match(
@@ -857,17 +872,49 @@ function runCli(command, { env = {}, conclusionDir }) {
     'a changed model or endpoint must force a fresh review'
   )
 
-  writeFixtures(directory, conclusionOf('Nit'), metaOf({ status: 'error', error_code: 'config_missing' }))
+  writeFixtures(priorDirectory, conclusionOf('Nit'), metaOf({ status: 'error', error_code: 'config_missing' }))
   const priorError = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(priorError.outputs.reused, 'false')
   assert.match(priorError.outputs.reason, /no reviewable conclusion/, 'a failed prior run must never be reused')
 
   fs.rmSync(path.join(directory, CONFIG_FILE))
-  writeFixtures(directory, conclusionOf('Nit'), metaOf())
+  writeFixtures(priorDirectory, conclusionOf('Nit'), metaOf())
   const noConfig = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(noConfig.outputs.reused, 'false')
   assert.match(noConfig.outputs.reason, /configuration snapshot is missing/)
   fs.rmSync(directory, { recursive: true, force: true })
+  fs.rmSync(priorDirectory, { recursive: true, force: true })
+}
+
+{
+  // 上一轮 artifact 带着上一轮的 scope：它不能覆盖本轮 prepare 写的范围，
+  // 否则覆盖判定会拿一份对不上当前 diff 的 changed_paths，旧产物反而更容易变绿。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-scope-'))
+  const priorDirectory = `${directory}-prior`
+  writeConfig(directory)
+  const currentScope = {
+    empty_diff: false,
+    diff_bytes: 8192,
+    changed_paths: ['packages/monorepo-kit/src/runner/runner.ts']
+  }
+  fs.writeFileSync(path.join(directory, 'review-scope.json'), JSON.stringify(currentScope))
+  writeFixtures(priorDirectory, conclusionOf(), metaOf())
+  fs.writeFileSync(
+    path.join(priorDirectory, 'review-scope.json'),
+    JSON.stringify({ empty_diff: false, diff_bytes: 4096 })
+  )
+  const ran = runCli('reuse', {
+    env: { CODEX_REVIEW_HEAD_SHA: headSha, CODEX_REVIEW_PRIOR_DIR: priorDirectory, RUNNER_TEMP: directory },
+    conclusionDir: directory
+  })
+  assert.equal(ran.outputs.reused, 'true', ran.result.stderr)
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(path.join(directory, 'review-scope.json'), 'utf8')),
+    currentScope,
+    'the current review range survives a reuse artifact download'
+  )
+  fs.rmSync(directory, { recursive: true, force: true })
+  fs.rmSync(priorDirectory, { recursive: true, force: true })
 }
 
 {
@@ -1141,6 +1188,12 @@ esac
       changed_paths: ['packages/monorepo-kit/src/runner/runner.ts']
     })
   )
+  // 有 findings 也不能省掉覆盖清单：交一条 Nit 就绕开整条覆盖规则，是这条契约的漏洞。
+  writeOutput({ summary: '有一处小问题。', findings: [finding('Nit')] })
+  runValidate()
+  assert.equal(metaAfter().status, 'unreviewed', 'findings do not excuse a missing coverage list')
+  assert.equal(metaAfter().error_code, 'missing_coverage')
+
   writeOutput({ summary: 'Inspecting shell i18n and related exec checks.', findings: [] })
   runValidate()
   assert.equal(metaAfter().status, 'unreviewed', 'no findings without coverage is not a reviewed conclusion')
@@ -1155,6 +1208,26 @@ esac
   runValidate()
   assert.equal(metaAfter().status, 'unreviewed', 'reading the rubric is not reading the change')
   assert.equal(metaAfter().error_code, 'missing_coverage')
+
+  // 没有 changed_paths 的 scope（上一轮 artifact 的形状）不能当放行条件：判定必须 fail closed，
+  // 否则覆盖了本次范围的旧 scope 会让任意 inspected 都通过。
+  fs.writeFileSync(path.join(directory, 'review-scope.json'), JSON.stringify({ empty_diff: false, diff_bytes: 4096 }))
+  writeOutput({
+    summary: '改动整体可用。',
+    coverage: { inspected: ['docs/agents/review.md'], uncovered: [] },
+    findings: []
+  })
+  runValidate()
+  assert.equal(metaAfter().status, 'unreviewed', 'a scope without changed paths narrows nothing')
+  assert.equal(metaAfter().error_code, 'missing_coverage')
+  fs.writeFileSync(
+    path.join(directory, 'review-scope.json'),
+    JSON.stringify({
+      empty_diff: false,
+      diff_bytes: 4096,
+      changed_paths: ['packages/monorepo-kit/src/runner/runner.ts']
+    })
+  )
 
   writeOutput({
     summary: '改动整体可用。',
@@ -1173,7 +1246,10 @@ esac
 
   // 复用路径的兜底：即使别的写入口塞进一份没有覆盖清单的旧结论，也不能让它变绿。
   fs.rmSync(path.join(directory, 'codex-final-message.json'), { force: true })
-  fs.writeFileSync(path.join(directory, 'review-scope.json'), JSON.stringify({ empty_diff: false, diff_bytes: 4096 }))
+  fs.writeFileSync(
+    path.join(directory, 'review-scope.json'),
+    JSON.stringify({ empty_diff: false, diff_bytes: 4096, changed_paths: ['src/app.ts'] })
+  )
   fs.writeFileSync(
     path.join(directory, 'review-findings.json'),
     JSON.stringify({ summary: '历史结论。', findings: [] })

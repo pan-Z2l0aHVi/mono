@@ -504,6 +504,20 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     }
   }
 
+  // 复用产物不能解到本轮结论目录：上一轮 artifact 里的 review-scope.json 会盖掉本次 prepare
+  // 写的范围（含 changed_paths），覆盖判定于是拿到一份对不上当前 diff 的 scope。
+  {
+    const destination = namedStep(workflowText['ci.yml'], 'Download prior conclusion')
+      .match(/^\s*path:\s*(.+)$/mu)?.[1]
+      ?.trim()
+    assert.ok(destination, 'the prior conclusion download must declare its destination')
+    assert.notEqual(
+      destination,
+      '${{ runner.temp }}/codex-review',
+      'the prior artifact must not land in the current conclusion directory'
+    )
+  }
+
   const pullRequestValidation = Object.entries(parsed).filter(([, workflow]) =>
     workflow.triggers.some(
       trigger =>
