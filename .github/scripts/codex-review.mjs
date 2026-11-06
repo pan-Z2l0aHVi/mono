@@ -142,9 +142,16 @@ function reuseCoverageGap(parsed, scope) {
   return coverageGap(parsed, scope)
 }
 
-/** `inspected` 里的路径可能带 `./`、结尾斜杠或指向改动文件所在目录，按最宽松的方式对齐。 */
+/**
+ * `inspected` 里的路径可能带 `./`、`path:line` 后缀、结尾斜杠，或只写到改动文件所在的目录，
+ * 按最宽松的方式对齐：这些写法都指向同一个文件，判成 miss 只会制造假红。
+ */
 function touchesChangedPath(entry, changed) {
-  const normalized = String(entry).trim().replace(/^\.\//u, '').replace(/\/+$/u, '')
+  const normalized = String(entry)
+    .trim()
+    .replace(/^\.\//u, '')
+    .replace(/:\d+(?::\d+)?$/u, '')
+    .replace(/\/+$/u, '')
   if (normalized === '') return false
   return changed.some(file => file === normalized || file.startsWith(`${normalized}/`))
 }
@@ -221,7 +228,9 @@ export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplic
       blocking: true
     }
   }
-  if (meta?.status === 'unreviewed' && !findings) {
+  // 状态是权威：`unreviewed` 即使带着 findings 也不是「已审查」，
+  // findings 只说明这次审查看到了什么，不能把一份不可用的结论洗成绿色。
+  if (meta?.status === 'unreviewed') {
     return {
       status: 'unreviewed',
       reason: meta.error ?? error ?? 'the review job produced no conclusion',
@@ -719,12 +728,12 @@ function commandValidate() {
     // 免得任何其它写入口把一次没有证据的空结论洗成绿色。
     const gap = reuseCoverageGap(parsed, readScope())
     if (gap !== '') {
-      fs.rmSync(reusedPath, { force: true })
-      fs.writeFileSync(
-        path.join(directory, META_FILE),
-        `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: 'missing_coverage', error: gap }, null, 2)}\n`
-      )
-      writeOutputs({ blocks: '0', reason: gap })
+      // findings 留着：结论不可用由 status 表达，把已经看到的 Block 丢掉只会让作者少一条线索。
+      writeConclusion(directory, {
+        findings: parsed,
+        meta: { ...identity, status: 'unreviewed', error_code: 'missing_coverage', error: gap }
+      })
+      writeOutputs({ blocks: String(parsed.counts.Block), reason: gap })
       console.error(`review is unreviewed: ${gap}`)
       return
     }
@@ -773,12 +782,12 @@ function commandValidate() {
   const scope = readScope()
   const gap = coverageGap(parsed, scope)
   if (gap !== '') {
-    fs.rmSync(reusedPath, { force: true })
-    fs.writeFileSync(
-      path.join(directory, META_FILE),
-      `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: 'missing_coverage', error: gap }, null, 2)}\n`
-    )
-    writeOutputs({ blocks: '0', reason: gap })
+    // findings 留着：结论不可用由 status 表达，把已经看到的 Block 丢掉只会让作者少一条线索。
+    writeConclusion(directory, {
+      findings: parsed,
+      meta: { ...identity, status: 'unreviewed', error_code: 'missing_coverage', error: gap }
+    })
+    writeOutputs({ blocks: String(parsed.counts.Block), reason: gap })
     console.error(`review is unreviewed: ${gap}`)
     console.error('Rerun the whole CI run once; a repeat means the review output contract needs fixing.')
     return

@@ -1193,6 +1193,14 @@ esac
   runValidate()
   assert.equal(metaAfter().status, 'unreviewed', 'findings do not excuse a missing coverage list')
   assert.equal(metaAfter().error_code, 'missing_coverage')
+  // 结论不可用不等于把已经看到的发现丢掉：findings 留着，红色由 status 表达。
+  const preserved = readConclusion(directory)
+  assert.equal(preserved.findings.counts.Nit, 1, 'the findings survive a missing coverage list')
+  assert.equal(
+    deriveConclusion({ meta: preserved.meta, findings: preserved.findings, liveHeadSha: headSha }).status,
+    'unreviewed',
+    'findings must not upgrade an unusable conclusion'
+  )
 
   writeOutput({ summary: 'Inspecting shell i18n and related exec checks.', findings: [] })
   runValidate()
@@ -1237,6 +1245,15 @@ esac
   runValidate()
   assert.equal(metaAfter().status, 'reviewed', 'coverage turns an empty findings list into a reviewable conclusion')
   assert.ok(metaAfter().generated_at, 'every conclusion records when it was generated')
+
+  // 模型把路径写成 `path:line` 时仍算命中：写法不同不代表没读，判成 miss 只是假红。
+  writeOutput({
+    summary: '改动整体可用。',
+    coverage: { inspected: ['./packages/monorepo-kit/src/runner/runner.ts:42'], uncovered: [] },
+    findings: []
+  })
+  runValidate()
+  assert.equal(metaAfter().status, 'reviewed', 'a path with a line suffix still points at a changed file')
 
   // 空 diff 豁免：没有源码改动可读时，空的 inspected 不是缺证据。
   fs.writeFileSync(path.join(directory, 'review-scope.json'), JSON.stringify({ empty_diff: true, diff_bytes: 0 }))
