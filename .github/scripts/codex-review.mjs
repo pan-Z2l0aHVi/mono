@@ -116,15 +116,35 @@ export function parseReviewFindings(raw) {
 }
 
 /**
- * 空 findings 只有在带得出覆盖清单时才算结论。没有 findings 又没列出一个读过的路径，
- * 与「查完确实没问题」在产物上完全同形，门会为一次没有真正发生的审查保持绿色。
+ * 空 findings 只有在带得出覆盖证据时才算结论。两条都要过：至少列了一个 `inspected` 路径，
+ * 且其中有路径属于本次 diff —— 只读 `docs/agents/review.md` 就收尾不算审查，那正是要区分的早停。
  * 返回空串表示通过，否则返回写进结论的失败原因。diff 为空时不要求覆盖：那时没有源码可读。
  */
 function coverageGap(parsed, scope) {
   if (parsed.findings.length > 0) return ''
   if (scope.empty_diff) return ''
-  if (parsed.coverage?.inspected.length > 0) return ''
-  return 'the review reported no findings without listing a single inspected path'
+  const inspected = parsed.coverage?.inspected ?? []
+  if (inspected.length === 0) return 'the review reported no findings without listing a single inspected path'
+  const changed = Array.isArray(scope.changed_paths) ? scope.changed_paths : []
+  if (changed.length > 0 && !inspected.some(entry => touchesChangedPath(entry, changed)))
+    return 'the review reported no findings but inspected none of the changed paths'
+  return ''
+}
+
+/**
+ * 旧结论要被复用，还得先来自当前契约：`coverage` 是这一版才加上的必填字段，
+ * 没有它的产物不论有没有 findings 都不能沿用，否则一次没有证据的审查会借复用回到绿色。
+ */
+function reuseCoverageGap(parsed, scope) {
+  if (!parsed.coverage) return 'the prior conclusion carries no coverage list'
+  return coverageGap(parsed, scope)
+}
+
+/** `inspected` 里的路径可能带 `./`、结尾斜杠或指向改动文件所在目录，按最宽松的方式对齐。 */
+function touchesChangedPath(entry, changed) {
+  const normalized = String(entry).trim().replace(/^\.\//u, '').replace(/\/+$/u, '')
+  if (normalized === '') return false
+  return changed.some(file => file === normalized || file.startsWith(`${normalized}/`))
 }
 
 export function resolveReviewRange({ baseSha, headSha, command = run }) {
@@ -140,7 +160,10 @@ export function resolveReviewRange({ baseSha, headSha, command = run }) {
   }
   const mergeBaseSha = requireSha(command('git', ['merge-base', base, head]).trim(), 'merge base SHA')
   const diff = command('git', ['diff', '--no-color', mergeBaseSha, head, '--', ...REVIEW_EXCLUDE_PATHSPECS])
-  return { baseSha: base, headSha: head, mergeBaseSha, diff }
+  // 覆盖度判定需要知道「这次到底改了哪些文件」，否则只读了判据文档也能自称审查过。
+  const names = command('git', ['diff', '--name-only', '-z', mergeBaseSha, head, '--', ...REVIEW_EXCLUDE_PATHSPECS])
+  const changedPaths = names.split('\u0000').filter(name => name !== '')
+  return { baseSha: base, headSha: head, mergeBaseSha, diff, changedPaths }
 }
 
 export function readConclusion(directory) {
@@ -575,6 +598,7 @@ function commandPrepare() {
         merge_base_sha: range.mergeBaseSha,
         diff_bytes: Buffer.byteLength(range.diff),
         empty_diff: Buffer.byteLength(range.diff) === 0,
+        changed_paths: range.changedPaths,
         excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS
       },
       null,
@@ -632,7 +656,7 @@ function commandReuse() {
     else if (conclusion.meta.status === 'error' || conclusion.meta.status === 'unreviewed')
       failure = 'the prior run has no reviewable conclusion'
     else if (conclusion.meta.config_fingerprint !== config.fingerprint) failure = 'the repository configuration changed'
-    else if (coverageGap(conclusion.findings, readScope()) !== '')
+    else if (reuseCoverageGap(conclusion.findings, readScope()) !== '')
       failure = 'the prior conclusion carries no coverage evidence'
     else reusable = conclusion
   } catch (error) {
@@ -680,7 +704,7 @@ function commandValidate() {
     const prior = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : {}
     // 兜底：正常路径上 `reuse` 已经挡掉了没有覆盖清单的旧产物，这里再判一次，
     // 免得任何其它写入口把一次没有证据的空结论洗成绿色。
-    const gap = coverageGap(parsed, readScope())
+    const gap = reuseCoverageGap(parsed, readScope())
     if (gap !== '') {
       fs.rmSync(reusedPath, { force: true })
       fs.writeFileSync(

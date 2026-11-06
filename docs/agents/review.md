@@ -9,7 +9,7 @@
 CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发现，并把结论写进 PR 上同一条持久评论。它与人工审查读的不是同一份 diff，范围差见下文「审查范围与生成物」；决策与代价见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 
 - 结论绑定被审查的 head。`reviewed` 只覆盖那一份代码；head 变了结论就过期，`stale`、`unreviewed` 与 `not_applicable` 都不代表已审。
-- `reviewed` 且 `Block > 0`、`error` 与 `unreviewed` 让这道门变红。`error` 表示配置或调用故障，不是审查意见，按故障码处置：`config_missing` 按 PR 评论列出的变量名补齐 GitHub 后台的 secrets/variables；`model_failed` 先看 `Run codex exec` 日志，网关 5xx 或瞬时错误重跑整条 run，只有配置或模型侧拒绝才改后台；`artifact_missing` 查审查腿的上传与写回腿的下载。模型腿跑完却没产出可用结论是 `unreviewed`（故障码 `unusable_output`），同样变红：先重跑整条 run，重复出现说明输出契约坏了，改 prompt 或校验而不是当成「没有意见」。给出空 findings 却没交覆盖清单是 `missing_coverage`，同样记 `unreviewed`：没有覆盖证据的空结论与「没查就收尾」在产物上分不开，不能当作已审查。绿色只留给有结论可读的 run。门是约定式的：不改动 GitHub 的分支规则，红叉由人处置，绿色也不替人签字。
+- `reviewed` 且 `Block > 0`、`error` 与 `unreviewed` 让这道门变红。`error` 表示配置或调用故障，不是审查意见，按故障码处置：`config_missing` 按 PR 评论列出的变量名补齐 GitHub 后台的 secrets/variables；`model_failed` 先看 `Run codex exec` 日志，网关 5xx 或瞬时错误重跑整条 run，只有配置或模型侧拒绝才改后台；`artifact_missing` 查审查腿的上传与写回腿的下载。模型腿跑完却没产出可用结论是 `unreviewed`（故障码 `unusable_output`），同样变红：先重跑整条 run，重复出现说明输出契约坏了，改 prompt 或校验而不是当成「没有意见」。给出空 findings 却没交覆盖清单是 `missing_coverage`，同样记 `unreviewed`：没有覆盖证据的空结论与「没查就收尾」在产物上分不开，不能当作已审查；只读了判据文档、`inspected` 没有一条落在本次 diff 改过的文件上，也归这一档。绿色只留给有结论可读的 run。门是约定式的：不改动 GitHub 的分支规则，红叉由人处置，绿色也不替人签字。
 - 端点、模型名、思考强度、密钥与 codex 版本由 GitHub 后台提供，仓库不写默认值；配置未填齐时门是红的，这是设计意图。完整契约见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 - 三条同时成立、本次有可审的源码改动、且生成物已按下文核对时，人工可以只做核对式抽查，不必逐行重看：结论的 reviewed SHA 等于当前 head、`Block` 为 0、required context `check` 在当前 head 上成功。自动审查没看过被剔除的生成物，抽查结论不覆盖它们。
 - 以下任一情形仍要人按本文流程做完整独立审查：T0 改动；`error`、`unreviewed`、`stale` 或 `not_applicable`；来自 fork 的 PR——那条腿默认不跑；自动修推送出的新 head。

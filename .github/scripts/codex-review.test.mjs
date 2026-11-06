@@ -138,16 +138,24 @@ for (const [label, value] of [
   const command = (name, args) => {
     calls.push([name, ...args])
     if (args[0] === 'merge-base') return `${otherSha}\n`
+    if (args[0] === 'diff' && args.includes('--name-only')) return 'src/a.ts\u0000docs/b.md\u0000'
     if (args[0] === 'diff') return 'diff --git a/x b/x\n'
     return ''
   }
   const range = resolveReviewRange({ baseSha: otherSha, headSha, command })
-  assert.deepEqual(range, { baseSha: otherSha, headSha, mergeBaseSha: otherSha, diff: 'diff --git a/x b/x\n' })
+  assert.deepEqual(range, {
+    baseSha: otherSha,
+    headSha,
+    mergeBaseSha: otherSha,
+    diff: 'diff --git a/x b/x\n',
+    changedPaths: ['src/a.ts', 'docs/b.md']
+  })
   assert.deepEqual(calls, [
     ['git', 'cat-file', '-e', `${otherSha}^{commit}`],
     ['git', 'cat-file', '-e', `${headSha}^{commit}`],
     ['git', 'merge-base', otherSha, headSha],
-    ['git', 'diff', '--no-color', otherSha, headSha, '--', ':(exclude,glob)**/generated/**']
+    ['git', 'diff', '--no-color', otherSha, headSha, '--', ':(exclude,glob)**/generated/**'],
+    ['git', 'diff', '--name-only', '-z', otherSha, headSha, '--', ':(exclude,glob)**/generated/**']
   ])
   assert.deepEqual([...REVIEW_EXCLUDE_PATHSPECS], [':(exclude,glob)**/generated/**'])
   assert.throws(() => resolveReviewRange({ baseSha: 'main', headSha, command }), /PR base SHA/)
@@ -815,6 +823,14 @@ function runCli(command, { env = {}, conclusionDir }) {
     'the stale conclusion is discarded so the model has to produce coverage for this head'
   )
 
+  // 有 findings 但缺 coverage 同样是旧契约产物：不能因为「有发现」就放过。
+  const legacyFindings = conclusionOf('Nit')
+  delete legacyFindings.coverage
+  writeFixtures(directory, legacyFindings, metaOf())
+  const stale = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
+  assert.equal(stale.outputs.reused, 'false', 'findings do not excuse a missing coverage list')
+  assert.match(stale.outputs.reason, /coverage/)
+
   writeFixtures(directory, conclusionOf('Nit'), metaOf({ head_sha: otherSha }))
   const drifted = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(drifted.outputs.reused, 'false')
@@ -1117,10 +1133,27 @@ esac
       fs.rmSync(path.join(directory, name), { force: true })
   }
 
-  fs.writeFileSync(path.join(directory, 'review-scope.json'), JSON.stringify({ empty_diff: false, diff_bytes: 4096 }))
+  fs.writeFileSync(
+    path.join(directory, 'review-scope.json'),
+    JSON.stringify({
+      empty_diff: false,
+      diff_bytes: 4096,
+      changed_paths: ['packages/monorepo-kit/src/runner/runner.ts']
+    })
+  )
   writeOutput({ summary: 'Inspecting shell i18n and related exec checks.', findings: [] })
   runValidate()
   assert.equal(metaAfter().status, 'unreviewed', 'no findings without coverage is not a reviewed conclusion')
+  assert.equal(metaAfter().error_code, 'missing_coverage')
+
+  // 只读了判据文档不算审查过改动：inspected 必须命中本次 diff 改过的路径。
+  writeOutput({
+    summary: '改动整体可用。',
+    coverage: { inspected: ['docs/agents/review.md'], uncovered: [] },
+    findings: []
+  })
+  runValidate()
+  assert.equal(metaAfter().status, 'unreviewed', 'reading the rubric is not reading the change')
   assert.equal(metaAfter().error_code, 'missing_coverage')
 
   writeOutput({
