@@ -1255,6 +1255,42 @@ esac
   runValidate()
   assert.equal(metaAfter().status, 'reviewed', 'a path with a line suffix still points at a changed file')
 
+  // 写父目录不等于读过里面的文件：命中必须是改动文件本身。
+  for (const entry of ['packages/monorepo-kit/src/runner', 'packages/monorepo-kit/src/runner:1']) {
+    writeOutput({
+      summary: '改动整体可用。',
+      coverage: { inspected: [entry], uncovered: [] },
+      findings: []
+    })
+    runValidate()
+    assert.equal(
+      metaAfter().status,
+      'unreviewed',
+      `a directory entry (${entry}) must not stand in for the changed file`
+    )
+  }
+
+  // 反过来：PR 改的就是判据文档时，读过该文档就是读过了改动。
+  fs.writeFileSync(
+    path.join(directory, 'review-scope.json'),
+    JSON.stringify({ empty_diff: false, diff_bytes: 1024, changed_paths: ['docs/agents/review.md'] })
+  )
+  writeOutput({
+    summary: '只改了判据文档。',
+    coverage: { inspected: ['docs/agents/review.md'], uncovered: [] },
+    findings: []
+  })
+  runValidate()
+  assert.equal(metaAfter().status, 'reviewed', 'a rubric document is a reviewable change when the diff touches it')
+  fs.writeFileSync(
+    path.join(directory, 'review-scope.json'),
+    JSON.stringify({
+      empty_diff: false,
+      diff_bytes: 4096,
+      changed_paths: ['packages/monorepo-kit/src/runner/runner.ts']
+    })
+  )
+
   // 空 diff 豁免：没有源码改动可读时，空的 inspected 不是缺证据。
   fs.writeFileSync(path.join(directory, 'review-scope.json'), JSON.stringify({ empty_diff: true, diff_bytes: 0 }))
   writeOutput({ summary: '只改了生成物。', findings: [] })

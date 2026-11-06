@@ -143,8 +143,9 @@ function reuseCoverageGap(parsed, scope) {
 }
 
 /**
- * `inspected` 里的路径可能带 `./`、`path:line` 后缀、结尾斜杠，或只写到改动文件所在的目录，
- * 按最宽松的方式对齐：这些写法都指向同一个文件，判成 miss 只会制造假红。
+ * `inspected` 里的路径可能带 `./`、`path:line` 后缀或结尾斜杠，按最宽松的方式归一。
+ * 只接受与改动文件**完全相等**的路径：写父目录（`docs`）不等于读过 `docs/agents/review.md`，
+ * 拿目录当命中会把「哪条改动被看过」这个唯一判据换成「看过某个目录」。
  */
 function touchesChangedPath(entry, changed) {
   const normalized = String(entry)
@@ -153,7 +154,7 @@ function touchesChangedPath(entry, changed) {
     .replace(/:\d+(?::\d+)?$/u, '')
     .replace(/\/+$/u, '')
   if (normalized === '') return false
-  return changed.some(file => file === normalized || file.startsWith(`${normalized}/`))
+  return changed.includes(normalized)
 }
 
 export function resolveReviewRange({ baseSha, headSha, command = run }) {

@@ -34,7 +34,7 @@
 - `coverage.inspected` 列出你实际读过的仓库相对路径；只写真的打开读过的文件，不要写打算读的。
 - `coverage.uncovered` 列出你没能判断的改动处，每条写成 `path:line` 加一句原因；全都看过就给空数组。
 - `coverage` 是每条结论的必填项，有 findings 也要给；整份结论没带 `coverage` 会被判 `missing_coverage`，作废重跑。
-- 没有 findings 时，`coverage` 就是这份结论唯一的凭据：`inspected` 为空、或其中没有任何一条属于本次 diff 改动过的文件，同样判 `missing_coverage`，整条审查作废并要求重跑。读 `docs/agents/review.md`、`AGENTS.md` 这类判据文档不算读了改动。
+- 没有 findings 时，`coverage` 就是这份结论唯一的凭据：`inspected` 为空、或其中没有任何一条**等于**本次 diff 改动过的文件，同样判 `missing_coverage`，整条审查作废并要求重跑。`inspected` 要写到文件，写到目录不算；读 `docs/agents/review.md`、`AGENTS.md` 这类判据文档本身不算读了改动——除非这次 PR 改的正是该文档，那时它就是被审对象。
 - 每条 finding 指向 diff 里的具体位置；指不到代码的猜测不要写。`file` 用仓库相对路径，`line` 用 head 快照里的行号，整体性问题用空路径与 `0`。
 - `problem` 说清它会怎么坏：可观察的行为、契约或数据，不是风格偏好。
 - `suggestion` 给去掉该问题的最小改法。
