@@ -238,6 +238,17 @@ describe('WebUiTheme 组件', () => {
       await theme.updateComplete
 
       theme.appearance = 'dark'
+      const press = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true })
+      expect(window.dispatchEvent(press)).toBe(false)
+      const click = new MouseEvent('click', { bubbles: true, cancelable: true, detail: 0 })
+      expect(window.dispatchEvent(click)).toBe(false)
+      for (const type of ['auxclick', 'dblclick', 'contextmenu', 'beforeinput']) {
+        const event = new Event(type, { bubbles: true, cancelable: true })
+        expect(window.dispatchEvent(event)).toBe(false)
+      }
+      window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }))
+      const pointer = new PointerEvent('pointerdown', { pointerId: 42, bubbles: true, cancelable: true })
+      expect(window.dispatchEvent(pointer)).toBe(false)
       theme.appearance = 'light'
       await theme.updateComplete
       expect(theme.appearance).toBe('light')
@@ -247,6 +258,14 @@ describe('WebUiTheme 组件', () => {
       await Promise.resolve()
       resolveFinished?.()
       await Promise.resolve()
+      window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 42, bubbles: true }))
+      const delayedClick = new PointerEvent('click', { pointerId: 42, detail: 1, bubbles: true, cancelable: true })
+      expect(window.dispatchEvent(delayedClick)).toBe(false)
+      const nextPointer = new PointerEvent('pointerdown', { pointerId: 42, bubbles: true, cancelable: true })
+      expect(window.dispatchEvent(nextPointer)).toBe(true)
+      const nextKey = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true })
+      expect(window.dispatchEvent(nextKey)).toBe(true)
+      window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 42, bubbles: true }))
       theme.remove()
       vi.mocked(startViewTransition).mockRestore()
       document.startViewTransition = original

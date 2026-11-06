@@ -315,7 +315,7 @@ describe('theme transition（浏览器）', () => {
     expect(inner.style.getPropertyValue('display')).toBe('')
   })
 
-  it('pointermove 与 pointerup 不触发 skip，pointerdown 立即恢复 hit-test', async () => {
+  it('揭示期间阻止新的按下且保持动画，结束后恢复 hit-test', async () => {
     const wrapper = wrapStartViewTransition()
     const source = createHitTarget()
     const recovery = createHitTarget(240)
@@ -346,13 +346,17 @@ describe('theme transition（浏览器）', () => {
       )
     expect(reveal?.playState).toBe('running')
 
-    dispatchPointer(document.documentElement, 'pointerdown', recoveryPoint, 99)
-    expect(wrapper.skipCount).toBe(1)
+    const press = new PointerEvent('pointerdown', { bubbles: true, composed: true, cancelable: true, pointerId: 99 })
+    document.documentElement.dispatchEvent(press)
+    expect(press.defaultPrevented).toBe(true)
+    document.documentElement.dispatchEvent(new PointerEvent('pointercancel', { bubbles: true, pointerId: 99 }))
+    expect(wrapper.skipCount).toBe(0)
+    expect(reveal?.playState).toBe('running')
+    await transition!.finished.catch(() => undefined)
     await waitFor(
       () => document.elementFromPoint(recoveryPoint.x, recoveryPoint.y) === recovery,
-      'pointerdown did not end rendering suppression before the configured duration'
+      'hit-test not restored'
     )
-    await transition!.finished.catch(() => undefined)
 
     expect(theme.appearance).toBe('dark')
     expect(document.adoptedStyleSheets.some(sheet => sheet.cssRules.length > 0)).toBe(false)

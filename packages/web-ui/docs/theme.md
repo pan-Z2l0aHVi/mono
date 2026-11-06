@@ -182,7 +182,7 @@ function pick(value: string) {
 
 `resolved-appearance` (also exposed as the `resolvedAppearance` property) is always `light` or `dark`. An explicit `appearance` is passed through as-is. `system` is resolved from `prefers-color-scheme` and updates live when the OS switches between light and dark. When `appearance` is not set, the output defaults to `light`.
 
-theme dispatches no events. To observe it, bind to this attribute: a CSS selector or a MutationObserver both work.
+Observe this attribute with a CSS selector or MutationObserver to track the resolved appearance.
 
 Only the component writes this attribute. External changes are reverted.
 
@@ -772,7 +772,7 @@ The root theme reveals the whole page. A nested theme reveals only its own area.
 
 These cases apply the new appearance immediately, with no reveal: an unsupported browser, a reduced-motion scope, a zero duration, or a reveal that is already running. OS light/dark switches under `appearance="system"` do not animate.
 
-While a reveal is running, the underlying page cannot receive pointer interaction.
+During a root reveal, new pointer and keyboard activation and cancelable input events in the document are temporarily blocked. A nested reveal limits protection to its scope when possible, falling back to the document for events that cannot be attributed. Wheel input ends the reveal to restore scrolling. Programmatic assignments, browser shortcuts, and some input method operations are not covered.
 
 The theme host draws no background. The component library does not paint a background on the host page, and the embedder keeps full control over the surface behind the theme subtree.
 

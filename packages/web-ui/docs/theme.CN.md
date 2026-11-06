@@ -174,7 +174,7 @@ function pick(value: string) {
 
 `resolved-appearance`（同时以 `resolvedAppearance` property 暴露）的值始终是 `light` 或 `dark`。显式的 `appearance` 直接透传。`system` 从 `prefers-color-scheme` 解析，并在系统深浅切换时实时更新。未设置 `appearance` 时输出默认值 `light`。
 
-theme 不派发任何事件。要观察它的变化，直接绑定这个 attribute：用 CSS 选择器或 MutationObserver 都可以。
+要观察解析后的外观，可用 CSS 选择器或 MutationObserver 监听这个 attribute。
 
 只有组件会写入这个 attribute。外部改写会被组件恢复。
 
@@ -742,7 +742,7 @@ Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近�
 
 以下情况都会立即应用新的 appearance，不播放揭示：浏览器不支持、作用域为 reduced-motion、时长为 0、上一次揭示尚未结束。`appearance="system"` 下的系统深浅切换不播放动画。
 
-揭示进行中，底层页面暂时无法接收指针交互。
+根主题揭示期间会暂时阻止当前文档的新指针、键盘激活和可取消的输入事件；嵌套主题优先限制自身范围，无法归属的文档级事件按整个文档处理。滚轮会结束揭示以恢复滚动。程序化赋值、浏览器快捷键和部分输入法操作不受此保护。
 
 主题宿主不绘制任何背景。组件库不在宿主页面上画背景，嵌入方对主题子树背后的表面保留完全控制权。
 
