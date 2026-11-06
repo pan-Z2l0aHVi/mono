@@ -320,7 +320,45 @@ for (const [label, value] of [
     pullNumber: 54
   })
   assert.ok(!escaped.includes('<script>'), 'model text must not inject HTML into the comment')
-  assert.match(escaped, /scriptalert/)
+  assert.match(escaped, /&lt;script&gt;alert\(1\)&lt;\/script&gt; broke/)
+
+  // 尖括号转义不能吃掉泛型：真实 run 里 Plugin<ToolchainApi, KitCtx> 被删成了 PluginToolchainApi, KitCtx。
+  const genericParsed = parseReviewFindings(
+    JSON.stringify({
+      summary: '比较 Array<T> 与 <div> 的写法',
+      findings: [
+        {
+          ...finding('Should fix'),
+          suggestion: '把返回类型标注为 `Plugin<ToolchainApi, KitCtx>`。'
+        }
+      ]
+    })
+  )
+  const genericMeta = { ...metaOf(), summary: genericParsed.summary, findings: genericParsed.findings }
+  const generic = renderConclusion({
+    conclusion: deriveConclusion({ meta: genericMeta, findings: genericParsed, liveHeadSha: headSha, error: '' }),
+    meta: genericMeta,
+    pullNumber: 54
+  })
+  assert.match(generic, /Array&lt;T&gt; 与 &lt;div&gt;/)
+  assert.match(generic, /`Plugin<ToolchainApi, KitCtx>`/)
+  assert.ok(!generic.includes('PluginToolchainApi'), 'generic parameters must survive escaping')
+  assert.ok(!generic.includes('<div>'), 'summary must not inject HTML either')
+
+  // 代码段之外才转义：反引号里的比较符必须原样保留，否则会显示成实体。
+  const codeSpanParsed = parseReviewFindings(
+    JSON.stringify({
+      summary: '格式化',
+      findings: [{ ...finding('Nit'), problem: '条件 `a < b` 永远为假', suggestion: '' }]
+    })
+  )
+  const codeSpanMeta = { ...metaOf(), summary: codeSpanParsed.summary, findings: codeSpanParsed.findings }
+  const codeSpan = renderConclusion({
+    conclusion: deriveConclusion({ meta: codeSpanMeta, findings: codeSpanParsed, liveHeadSha: headSha, error: '' }),
+    meta: codeSpanMeta,
+    pullNumber: 54
+  })
+  assert.match(codeSpan, /`a < b`/)
 
   const unreviewedMeta = { status: 'unreviewed', error: 'the review step produced no output file' }
   const unreviewed = renderConclusion({

@@ -189,9 +189,25 @@ export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplic
   return { status: 'reviewed', reason: '', counts, blocking: counts.Block > 0 }
 }
 
-function inline(value) {
-  const single = String(value).replace(/\s+/gu, ' ').replace(/[<>]/gu, '')
+/**
+ * 评论正文是 Markdown：模型给出的尖括号必须转义，否则 `<script>` 会被当成 HTML；
+ * 但整段删掉会把 `Plugin<ToolchainApi, KitCtx>` 这类泛型吃成 `PluginToolchainApi, KitCtx`。
+ * 反引号代码段里的尖括号由 Markdown 原样显示，本身不会执行，所以只转义代码段之外的部分。
+ */
+function escapeAngleBrackets(text) {
+  return text
+    .split(/(`[^`]*`)/u)
+    .map(chunk => (chunk.startsWith('`') ? chunk : chunk.replace(/</gu, '&lt;').replace(/>/gu, '&gt;')))
+    .join('')
+}
+
+function oneLine(value) {
+  const single = String(value).replace(/\s+/gu, ' ')
   return single.length > FIELD_LIMIT ? `${single.slice(0, FIELD_LIMIT)}…` : single
+}
+
+function inline(value) {
+  return escapeAngleBrackets(oneLine(value))
 }
 
 function location(finding) {
@@ -327,8 +343,9 @@ export function pullNumberFromRef(ref) {
 function writeOutputs(values) {
   const target = process.env.GITHUB_OUTPUT
   if (!target) return
+  // step output 不是 Markdown：这里只需要压成一行，转义会污染下游读到的原值。
   const body = Object.entries(values)
-    .map(([key, value]) => `${key}=${inline(value)}`)
+    .map(([key, value]) => `${key}=${oneLine(value)}`)
     .join('\n')
   fs.appendFileSync(target, `${body}\n`)
 }
