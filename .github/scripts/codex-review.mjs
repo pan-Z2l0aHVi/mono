@@ -260,8 +260,10 @@ function inline(value) {
 }
 
 function location(finding) {
-  if (finding.file === '') return finding.line === 0 ? '整体' : `行 ${finding.line}`
-  return finding.line === 0 ? finding.file : `${finding.file}:${finding.line}`
+  // 路径会进行内代码：换行会断开段落，先折成一行；反引号由 codeSpan 选更长的围栏保留。
+  const file = finding.file.replace(/\s+/gu, ' ')
+  if (file === '') return finding.line === 0 ? '整体' : `行 ${finding.line}`
+  return finding.line === 0 ? file : `${file}:${finding.line}`
 }
 
 export function renderConclusion({ conclusion, meta, pullNumber }) {

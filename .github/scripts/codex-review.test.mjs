@@ -432,6 +432,22 @@ for (const [label, value] of [
     'the path must keep its backtick and be wrapped in a longer fence'
   )
 
+  // 路径里的换行会提前结束段落，代码段随之失效；先折成一行再包。
+  const multilineParsed = parseReviewFindings(
+    JSON.stringify({
+      summary: '路径',
+      findings: [{ ...finding('Nit'), file: 'src/a.ts\n\n<img src=x>', line: 3 }]
+    })
+  )
+  const multilineMeta = { ...metaOf(), summary: multilineParsed.summary, findings: multilineParsed.findings }
+  const multiline = renderConclusion({
+    conclusion: deriveConclusion({ meta: multilineMeta, findings: multilineParsed, liveHeadSha: headSha, error: '' }),
+    meta: multilineMeta,
+    pullNumber: 54
+  })
+  assert.ok(!multiline.includes('\n\n<img'), 'a multi-line path must not break out of the code span')
+  assert.ok(multiline.includes('src/a.ts <img src=x>:3'))
+
   const unreviewedMeta = { status: 'unreviewed', error: 'the review step produced no output file' }
   const unreviewed = renderConclusion({
     conclusion: deriveConclusion({ meta: unreviewedMeta, findings: null, liveHeadSha: headSha, error: '' }),
