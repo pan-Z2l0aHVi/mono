@@ -96,13 +96,26 @@ function conclusionOf(...severities) {
     'Should fix': 0,
     Nit: 0
   })
+
+  // summary 只进评论的摘要行：缺了它不能让整份 findings 作废（真实 run 上模型给过空串）。
+  for (const [label, raw] of [
+    ['missing summary', JSON.stringify({ findings: [finding('Should fix')] })],
+    ['empty summary', JSON.stringify({ summary: '', findings: [finding('Should fix')] })],
+    ['blank summary', JSON.stringify({ summary: '  \n ', findings: [finding('Should fix')] })],
+    ['non-string summary', JSON.stringify({ summary: null, findings: [finding('Should fix')] })]
+  ]) {
+    const tolerant = parseReviewFindings(raw)
+    assert.equal(tolerant.summary, '', label)
+    assert.equal(tolerant.findings.length, 1, label)
+    assert.deepEqual(tolerant.counts, { Block: 0, 'Should fix': 1, Nit: 0 }, label)
+  }
 }
 
 for (const [label, value] of [
   ['non JSON', 'not json'],
   ['array root', '[]'],
-  ['empty summary', JSON.stringify({ summary: ' ', findings: [] })],
   ['missing findings', JSON.stringify({ summary: 'ok' })],
+  ['findings not an array', JSON.stringify({ summary: 'ok', findings: {} })],
   ['unknown severity', JSON.stringify({ summary: 'ok', findings: [{ ...finding('Block'), severity: 'Must fix' }] })],
   ['unknown field', JSON.stringify({ summary: 'ok', findings: [{ ...finding('Block'), extra: 1 }] })],
   [
@@ -241,7 +254,8 @@ for (const [label, value] of [
     error: ''
   })
   assert.equal(unreviewed.status, 'unreviewed')
-  assert.equal(unreviewed.blocking, false, 'a model that completed without output stays green')
+  assert.equal(unreviewed.code, 'unusable_output')
+  assert.equal(unreviewed.blocking, true, 'a model that completed without a usable conclusion must turn the gate red')
 
   const complete = inspectConfig(configuredEnv)
   assert.equal(complete.present, true)
@@ -286,7 +300,7 @@ for (const [label, value] of [
   assert.match(body, /packages\/web-ui\/src\/button\.ts:12/)
   assert.match(body, /Block 1 · Should fix 1 · Nit 0/)
   assert.match(body, /模型：`configured-model`/)
-  assert.match(body, /Block` 与 `error` 让/)
+  assert.match(body, /Block`、`error` 与「未审查」让/)
   assert.match(body, /run `1234`/)
   assert.ok(body.indexOf('**Block**') < body.indexOf('**Should fix**'), 'Block renders before Should fix')
   assert.deepEqual(
@@ -316,7 +330,8 @@ for (const [label, value] of [
   })
   assert.match(unreviewed, /sha=none status=unreviewed blocks=0/)
   assert.match(unreviewed, /结论：\*\*未审查\*\*/)
-  assert.match(unreviewed, /没有可用发现/)
+  assert.match(unreviewed, /故障码：`unusable_output`/)
+  assert.match(unreviewed, /本次没有可用结论/)
 
   const failed = renderConclusion({
     conclusion: deriveConclusion({
@@ -557,13 +572,15 @@ function runCli(command, { env = {}, conclusionDir }) {
   fs.rmSync(path.join(conclusionDir, 'review-findings.json'))
   fs.rmSync(path.join(conclusionDir, 'review-meta.json'))
   const broken = runCli('validate', { env: validateEnv, conclusionDir })
-  assert.equal(broken.result.status, 0, 'a model that completed without output stays unreviewed')
+  assert.equal(broken.result.status, 0, 'validate records the gap; the gate is what judges it')
   assert.equal(broken.outputs.blocks, '0')
   assert.match(broken.outputs.reason, /no output file/)
   assert.equal(fs.existsSync(path.join(conclusionDir, 'review-findings.json')), false)
+  assert.equal(readConclusion(conclusionDir).meta.status, 'unreviewed')
   const gateAfterBreak = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha }, conclusionDir })
-  assert.equal(gateAfterBreak.result.status, 0)
+  assert.equal(gateAfterBreak.result.status, 1, 'no usable conclusion must not look like a green review')
   assert.match(gateAfterBreak.summary, /Status: \*\*unreviewed\*\*/)
+  assert.match(gateAfterBreak.summary, /unusable_output/)
 
   // 同一个「没有输出文件」，outcome=failure 说明 action 崩了，必须让 gate 变红。
   const crashed = runCli('validate', {
@@ -574,6 +591,23 @@ function runCli(command, { env = {}, conclusionDir }) {
   const gateAfterCrash = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha }, conclusionDir })
   assert.equal(gateAfterCrash.result.status, 1, 'a crashed model action must not be masked by continue-on-error')
   assert.match(gateAfterCrash.summary, /Status: \*\*error\*\*/)
+
+  // 模型给了 findings 但 summary 是空串：结论照样成立，不会退化成 unreviewed。
+  fs.writeFileSync(
+    path.join(runnerTemp, 'codex-final-message.json'),
+    JSON.stringify({ summary: '', findings: [finding('Should fix')] })
+  )
+  const missingSummary = runCli('validate', { env: validateEnv, conclusionDir })
+  assert.equal(missingSummary.result.status, 0, missingSummary.result.stderr)
+  assert.equal(missingSummary.outputs.blocks, '0')
+  assert.equal(readConclusion(conclusionDir).meta.status, 'reviewed')
+  assert.equal(readConclusion(conclusionDir).findings.counts['Should fix'], 1)
+  const gateAfterMissingSummary = runCli('gate', {
+    env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha },
+    conclusionDir
+  })
+  assert.equal(gateAfterMissingSummary.result.status, 0, 'a cosmetic gap must not invalidate the findings')
+  assert.match(gateAfterMissingSummary.summary, /Status: \*\*reviewed\*\*/)
 
   // 没有配置快照时 validate 不能把 error 结论覆盖成 unreviewed。
   fs.rmSync(path.join(runnerTemp, CONFIG_FILE))

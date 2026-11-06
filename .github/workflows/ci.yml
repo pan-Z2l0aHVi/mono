@@ -352,7 +352,7 @@ jobs:
           base-sha: ${{ github.event.pull_request.base.sha }}
 
       - name: Download review findings
-        # review job 被跳过时没有 artifact，那是 unreviewed，不是门禁故障。
+        # review job 被跳过时没有 artifact，那是 not_applicable，不是门禁故障。
         continue-on-error: true
         uses: actions/download-artifact@v7
         with:

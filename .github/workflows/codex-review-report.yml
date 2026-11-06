@@ -52,8 +52,9 @@ jobs:
 
       - name: Download review findings
         id: findings
-        # 没有 artifact 说明 review job 没有产出结论：本腿不发结论评论，也不判红。
-        # 跳过原因由 `Explain the skipped report` 写进运行页的 Summary 与 notice。
+        # head 不属于任何打开的 PR 时没有可写的对象，下载没有意义。
+        # 其余情况下的缺失说明 review job 没有产出结论：本腿不发结论评论，也不判红。
+        if: steps.pull.outputs.pull_number != ''
         continue-on-error: true
         uses: actions/download-artifact@v7
         with:
@@ -67,13 +68,26 @@ jobs:
       - name: Explain the skipped report
         # 这一步不判审查结论的颜色，只判写回腿自己的健康度：
         # 「没有产物」是合法跳过，写清原因后保持绿色；「有产物却下载不下来」是本腿故障，判红。
-        if: always() && steps.pull.outputs.pull_number != '' && steps.findings.outcome != 'success'
+        # 守卫按 resolve-pull 的成功与否取，不按 pull_number：解析不到 PR 本身也是一种要写明的跳过。
+        if: always() && steps.pull.outcome == 'success' && steps.findings.outcome != 'success'
         env:
           GH_TOKEN: ${{ github.token }}
           WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
           WORKFLOW_RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+          PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
         run: |
           set -euo pipefail
+          if [[ -z "${PULL_NUMBER:-}" ]]; then
+            {
+              echo '## 未解析到 PR'
+              echo ''
+              echo "触发 run [#$WORKFLOW_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$WORKFLOW_RUN_ID) 的 head 不属于任何打开的 PR，本次没有可写回的对象。"
+              echo ''
+              echo '- 常见原因：PR 已关闭或已合并，或 head 被后续推送覆盖。'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::notice title=Codex review report skipped::run $WORKFLOW_RUN_ID has no open pull request for its head"
+            exit 0
+          fi
           artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$WORKFLOW_RUN_ID/artifacts?per_page=100" \
             --jq '[.artifacts[].name] | join(" ")')
           if [[ " $artifacts " == *" codex-review-findings "* ]]; then
