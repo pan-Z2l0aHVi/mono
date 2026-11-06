@@ -111,8 +111,8 @@ Error: /usr/bin/sudo exited with code 1
 6. 拓扑断言与脚本单测全绿。
 7. `review-scope.json` 记有 `excluded_pathspecs` 与 `empty_diff`，审查 diff 里没有 `**/generated/**` 路径；大 PR 不因 `ENOBUFS` 让 `prepare` 失败。（**合入 main 后的下一个 PR** 上核对：可信脚本取自 PR base，修复自己的 CI 仍跑旧脚本。）
 8. 两条模型腿的 `Set up job` 日志出现 `Image: ubuntu-24.04`，且 `Run codex exec` 不再出现 `Could not restrict access to /run/dbus/system_bus_socket`。以审查腿为准，满足第 1 项（有真实模型结论）后再核对此项；autofix 腿只在 `CODEX_AUTOFIX_ENABLED=true` 且 `check` 失败时运行，默认关闭，不必为验收专门打开。
-9. 写回腿 `Download review findings` 不再报 `Artifact not found`，且 `Publish conclusion comment` 未被跳过（这两步是可观测的修复点；评论内容本身按第 2 / 5 项核对）。写回腿取默认分支版本，**必须在修复合入 main 后的下一个 PR** 上核对，PR #516 自身无法验证。autofix patch 那处下载同理，但 `CODEX_AUTOFIX_ENABLED=false` 时整条腿被跳过，只能在显式打开开关且 `check` 失败的 run 上验证。
-10. 写回腿改名为 `Codex Review Report` 后：Actions 列表显示新名字；无产物的 run 在 Summary 里有跳过原因与 notice；发布成功时 Summary 记 `已创建/已更新结论评论 #<id>`。「有产物却下载失败」的判红分支只能靠改坏 `run-id` 或断网触发，自然 run 上不必刻意制造，留作未实测项。
+9. 写回腿 `Download review findings` 不再报 `Artifact not found`，且 `Post conclusion comment` 未被跳过（这两步是可观测的修复点；评论内容本身按第 2 / 5 项核对）。写回腿取默认分支版本，**必须在修复合入 main 后的下一个 PR** 上核对，PR #516 自身无法验证。autofix patch 那处下载同理，但 `CODEX_AUTOFIX_ENABLED=false` 时整条腿被跳过，只能在显式打开开关且 `check` 失败的 run 上验证。
+10. 写回腿改名为 `Codex Review Report` 后：Actions 列表显示新名字，job 为 `report-conclusion`（`Report review conclusion`）；无产物的 run 在 Summary 里有跳过原因与 notice；写回成功时 Summary 记 `已创建/已更新结论评论 #<id>`。「有产物却下载失败」的判红分支只能靠改坏 `run-id` 或断网触发，自然 run 上不必刻意制造，留作未实测项。
 
 **待办**：`prepare` 的任何失败都会跳过 preflight，被 `validate` 记成 `config_missing`；后续把 preflight 前置到 prepare 之前，或引入 `job_failed` / `preflight_missing` 错误码，并同步「状态口径」、`docs/agents/review.md` 的故障码清单、`renderConclusion()` 与相关单测。本次修复后该误归因对 PR #515 的事故不再可达，门「故障即红」不受影响。
 

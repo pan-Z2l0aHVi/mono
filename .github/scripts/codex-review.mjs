@@ -635,7 +635,7 @@ export function withPermissionDiagnosis(number) {
         throw error
       }
       throw new Error(
-        `the publish token cannot access PR #${number} or its comments. Check (1) publish-review grants ` +
+        `the write-back token cannot access PR #${number} or its comments. Check (1) report-conclusion grants ` +
           `pull-requests: write, (2) Settings > Actions > General > Workflow permissions allows write, ` +
           `(3) no organization policy downgrades the workflow_run token. Original: ${error.message}`
       )
@@ -645,7 +645,7 @@ export function withPermissionDiagnosis(number) {
 
 // 写回腿的绿色必须能读懂：同一个 success，既可能是「发了评论」，也可能是「什么都没发」。
 // 所以每条返回路径都往运行页写一行结果，把「没发」的原因留在 Summary 里而不是只留在日志。
-function appendPublishSummary({ number, status, meta, outcome }) {
+function appendReportSummary({ number, status, meta, outcome }) {
   const counts = status?.counts
   appendSummary([
     '## Codex 审查结论写回',
@@ -663,7 +663,7 @@ function appendPublishSummary({ number, status, meta, outcome }) {
   ])
 }
 
-function commandPublish() {
+function commandReport() {
   const env = requireEnv(['GITHUB_REPOSITORY'])
   const adapter = createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY })
   const number = pullNumber()
@@ -672,8 +672,8 @@ function commandPublish() {
   const pull = call(() => adapter.pull(number))
   const target = reviewTarget({ pull, repository: env.GITHUB_REPOSITORY, releaseBranch: RELEASE_BRANCH })
   if (!target.ok) {
-    console.log(`conclusion publish skipped for #${number}: ${target.reason}`)
-    appendPublishSummary({ number, outcome: `未发布：${target.reason}` })
+    console.log(`conclusion report skipped for #${number}: ${target.reason}`)
+    appendReportSummary({ number, outcome: `未写回：${target.reason}` })
     return
   }
   const { conclusion, status } = call(() => evaluateGate(adapter, pull))
@@ -684,18 +684,18 @@ function commandPublish() {
   )
   if (existing?.body === body) {
     console.log(`conclusion comment ${existing.id} already current`)
-    appendPublishSummary({ number, status, meta, outcome: `结论评论 #${existing.id} 已是最新，未改动` })
+    appendReportSummary({ number, status, meta, outcome: `结论评论 #${existing.id} 已是最新，未改动` })
     return
   }
   if (existing) {
     call(() => adapter.updateComment(existing.id, body))
     console.log(`updated conclusion comment ${existing.id} (${status.status})`)
-    appendPublishSummary({ number, status, meta, outcome: `已更新结论评论 #${existing.id}` })
+    appendReportSummary({ number, status, meta, outcome: `已更新结论评论 #${existing.id}` })
     return
   }
   const created = call(() => adapter.createComment(number, body))
   console.log(`created conclusion comment ${created.id} (${status.status})`)
-  appendPublishSummary({ number, status, meta, outcome: `已创建结论评论 #${created.id}` })
+  appendReportSummary({ number, status, meta, outcome: `已创建结论评论 #${created.id}` })
 }
 
 const commands = {
@@ -706,7 +706,7 @@ const commands = {
   reuse: commandReuse,
   validate: commandValidate,
   gate: commandGate,
-  publish: commandPublish
+  report: commandReport
 }
 
 function main() {

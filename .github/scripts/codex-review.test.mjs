@@ -749,14 +749,14 @@ esac
     { mode: 0o755 }
   )
   writeFixtures(directory, conclusionOf('Nit'), metaOf())
-  const publishEnv = failAt => ({
+  const reportEnv = failAt => ({
     PATH: `${bin}:${process.env.PATH}`,
     CODEX_REVIEW_LIVE_HEAD_SHA: headSha,
     FAKE_GH_FAIL_AT: failAt,
     FAKE_GH_ERROR: 'Resource not accessible by integration (HTTP 403)'
   })
 
-  const created = runCli('publish', { env: publishEnv('none'), conclusionDir: directory })
+  const created = runCli('report', { env: reportEnv('none'), conclusionDir: directory })
   assert.equal(created.result.status, 0, created.result.stderr)
   assert.match(created.result.stdout, /created conclusion comment 9001/)
   // 运行页要能回答「这次到底发了什么」：只有日志里的 console.log 不够。
@@ -764,16 +764,16 @@ esac
   assert.match(created.summary, /Block 0 · Should fix 0 · Nit 1/)
 
   for (const failAt of ['read', 'write']) {
-    const denied = runCli('publish', { env: publishEnv(failAt), conclusionDir: directory })
-    assert.equal(denied.result.status, 1, `${failAt} 403 must fail the publish step`)
+    const denied = runCli('report', { env: reportEnv(failAt), conclusionDir: directory })
+    assert.equal(denied.result.status, 1, `${failAt} 403 must fail the report step`)
     assert.match(denied.result.stderr, /cannot access PR #54 or its comments/, failAt)
     assert.match(denied.result.stderr, /pull-requests: write/, failAt)
     assert.match(denied.result.stderr, /Workflow permissions/, failAt)
     assert.match(denied.result.stderr, /organization policy/, failAt)
   }
 
-  const serverError = runCli('publish', {
-    env: { ...publishEnv('server'), FAKE_GH_ERROR: 'HTTP 500: upstream unavailable' },
+  const serverError = runCli('report', {
+    env: { ...reportEnv('server'), FAKE_GH_ERROR: 'HTTP 500: upstream unavailable' },
     conclusionDir: directory
   })
   assert.equal(serverError.result.status, 1)

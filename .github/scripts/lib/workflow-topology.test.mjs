@@ -546,7 +546,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.ok(!reportText.includes('openai/codex-action'), 'the privileged workflow must never run the model')
 
     assert.deepEqual(report.permissions, { contents: 'read' })
-    assert.deepEqual(report.jobs['publish-review'].permissions, {
+    assert.deepEqual(report.jobs['report-conclusion'].permissions, {
       contents: 'read',
       issues: 'write',
       'pull-requests': 'write',
@@ -712,33 +712,33 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.match(
       namedStep(reportText, 'Probe comment permission'),
       /continue-on-error: true/,
-      'the best-effort probe must not suppress the publish step'
+      'the best-effort probe must not suppress the conclusion step'
     )
-    const assertPublishIsUnconditional = text =>
+    const assertReportIsUnconditional = text =>
       assert.match(
-        namedStep(text, 'Publish conclusion comment'),
+        namedStep(text, 'Post conclusion comment'),
         /if: always\(\) && steps\.pull\.outputs\.pull_number != '' && steps\.findings\.outcome == 'success'/,
-        'publishing must not depend on the probe succeeding'
+        'the conclusion step must not depend on the probe succeeding'
       )
-    assertPublishIsUnconditional(reportText)
+    assertReportIsUnconditional(reportText)
     assert.equal(
-      namedStep(reportText, 'Publish conclusion comment').split('if: always() && ').length - 1,
+      namedStep(reportText, 'Post conclusion comment').split('if: always() && ').length - 1,
       1,
-      'the publish step must carry exactly one unconditional guard'
+      'the conclusion step must carry exactly one unconditional guard'
     )
     assert.throws(
       () =>
-        assertPublishIsUnconditional(
-          // 变异必须落在 publish 自己的守卫上：文件里现在还有别的 `if: always()` 步骤。
+        assertReportIsUnconditional(
+          // 变异必须落在结论评论步骤自己的守卫上：文件里现在还有别的 `if: always()` 步骤。
           reportText.replace(
-            namedStep(reportText, 'Publish conclusion comment'),
-            namedStep(reportText, 'Publish conclusion comment').replace('if: always() && ', 'if: success() && ')
+            namedStep(reportText, 'Post conclusion comment'),
+            namedStep(reportText, 'Post conclusion comment').replace('if: always() && ', 'if: success() && ')
           )
         ),
-      /publishing must not depend/,
-      'a probe-gated publish step must be rejected by the assertion itself'
+      /the conclusion step must not depend/,
+      'a probe-gated conclusion step must be rejected by the assertion itself'
     )
-    for (const jobId of ['publish-review', 'codex-autofix-apply']) {
+    for (const jobId of ['report-conclusion', 'codex-autofix-apply']) {
       const guard = parsed['codex-review-report.yml'].jobs[jobId].if
       assert.match(guard, /workflow_run\.conclusion != 'cancelled'/)
       assert.match(guard, /head_branch != 'changeset-release\/main'/)

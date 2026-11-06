@@ -1,8 +1,8 @@
 name: Codex Review Report
 
 # 写回腿：ci.yml 的只读不变量不允许任何写操作，所以评论与 autofix 推送住在这里。
-# 它不改判审查结论，只把 CI 已产出的结论搬到 PR 上；名字因此用 report 而非 publish。
 # 模型一次都不跑在本文件里；它只在 ci.yml 的 contents: read job 里执行。
+# 本腿不改判审查结论，只把 CI 已产出的结论写到 PR 上。
 # workflow_run 只在默认分支上存在的这个文件里生效，因此本段的版本由 main 决定。
 on:
   workflow_run:
@@ -17,8 +17,8 @@ concurrency:
   cancel-in-progress: false
 
 jobs:
-  publish-review:
-    name: Publish review conclusion
+  report-conclusion:
+    name: Report review conclusion
     # workflow_run 的 payload 里没有 base 分支与版本分支信息，资格判定交给 trusted 脚本里的
     # reviewTarget：它会拒绝 fork、非 main base、已关闭的 PR 与 changeset 版本分支。
     if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.conclusion != 'cancelled' && github.event.workflow_run.head_branch != 'changeset-release/main' }}
@@ -52,14 +52,13 @@ jobs:
 
       - name: Download review findings
         id: findings
-        # 没有 artifact 说明 review job 根本没跑；这属于不适用，不该再发一条结论评论、也不该让 job 变红。
-        # 跳过必须由下一步写进运行页：否则绿色的「成功」和「评论丢了」在页面上长得一模一样。
+        # 没有 artifact 说明 review job 没有产出结论：本腿不发结论评论，也不判红。
+        # 跳过原因由 `Explain the skipped report` 写进运行页的 Summary 与 notice。
         continue-on-error: true
         uses: actions/download-artifact@v7
         with:
           name: codex-review-findings
-          # v7 只在显式给 token 时才用 repository/run-id 跨 run 查找；缺它会静默只查当前 run。
-          # 修复前写回腿因此拿不到 CI 上传的结论产物（PR #516 首次真实模型调用后才暴露）。
+          # v7 只在显式给 token 时才用 repository/run-id 跨 run 查找；缺它只查当前 run。
           github-token: ${{ github.token }}
           run-id: ${{ github.event.workflow_run.id }}
           repository: ${{ github.repository }}
@@ -67,7 +66,7 @@ jobs:
 
       - name: Explain the skipped report
         # 这一步不判审查结论的颜色，只判写回腿自己的健康度：
-        # 「本来就没有产物」是合法跳过，写清楚原因后保持绿色；「有产物却下载不下来」是本腿故障，要红。
+        # 「没有产物」是合法跳过，写清原因后保持绿色；「有产物却下载不下来」是本腿故障，判红。
         if: always() && steps.pull.outputs.pull_number != '' && steps.findings.outcome != 'success'
         env:
           GH_TOKEN: ${{ github.token }}
@@ -89,7 +88,7 @@ jobs:
             exit 1
           fi
           {
-            echo '## Codex 审查结论未发布'
+            echo '## Codex 审查结论未写回'
             echo ''
             echo "触发 run [#$WORKFLOW_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$WORKFLOW_RUN_ID) 没有 \`codex-review-findings\` 产物，因此本次没有任何结论可写回（run 结论：\`$WORKFLOW_RUN_CONCLUSION\`）。"
             echo ''
@@ -101,24 +100,24 @@ jobs:
 
       - name: Probe comment permission
         if: success() && steps.pull.outputs.pull_number != '' && steps.findings.outcome == 'success'
-        # 探测只是诊断，失败不能挡住 publish 的 403 排查清单。
+        # 探测只是诊断，失败不阻断结论评论步骤的 403 排查清单。
         continue-on-error: true
         env:
           GH_TOKEN: ${{ github.token }}
           PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
-        # 只读探测把 token 与端点错误在写之前分开；真正的写权限由 publish 的 403 诊断兜住。
+        # 只读探测把 token 与端点错误在写之前分开；真正的写权限由结论评论步骤的 403 诊断兜住。
         run: |
           set -euo pipefail
           gh api "repos/$GITHUB_REPOSITORY/issues/$PULL_NUMBER/comments?per_page=1" >/dev/null
-          echo "comment API is reachable; the publish step reports any write denial with a permission checklist"
+          echo "comment API is reachable; the conclusion step reports any write denial with a permission checklist"
 
-      - name: Publish conclusion comment
+      - name: Post conclusion comment
         if: always() && steps.pull.outputs.pull_number != '' && steps.findings.outcome == 'success'
         env:
           CODEX_REVIEW_PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
           CODEX_REVIEW_RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           GH_TOKEN: ${{ github.token }}
-        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" publish
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" report
 
   codex-autofix-apply:
     name: Apply Codex autofix
