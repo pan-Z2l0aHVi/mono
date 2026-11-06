@@ -200,14 +200,15 @@ Fire-and-forget wrapper. Catches sync exceptions and async rejections; silently 
 
 Result type namespace for Rust-style error handling.
 
-| Method           | Description                                                  |
-| ---------------- | ------------------------------------------------------------ |
-| `ok(value)`      | Create a success result                                      |
-| `err(error)`     | Create an error result                                       |
-| `isOk(result)`   | Check if a result is a success                               |
-| `isErr(result)`  | Check if a result is an error                                |
-| `to(promise)`    | Resolve a Promise into `Ok`, or capture a rejection as `Err` |
-| `unwrap(result)` | Return the success value or the error payload; never throws  |
+| Method                  | Description                                                                                               |
+| ----------------------- | --------------------------------------------------------------------------------------------------------- |
+| `ok(value)`             | Create a success result                                                                                   |
+| `err(error)`            | Create an error result                                                                                    |
+| `isOk(result)`          | Check if a result is a success                                                                            |
+| `isErr(result)`         | Check if a result is an error                                                                             |
+| `to(promise)`           | Resolve a Promise into `Ok`, or capture a rejection as `Err`                                              |
+| `andThen(result, next)` | Rust's `Result::and_then`: pass the `Ok` payload to `next`, return the `Err` untouched without running it |
+| `unwrap(result)`        | Return the success value or the error payload; never throws                                               |
 
 ```ts
 import { rust } from '@greypan/js-kit/rust'

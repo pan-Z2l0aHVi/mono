@@ -200,14 +200,15 @@ fire-and-forget 包装器。捕获同步异常和异步 rejection；默认静默
 
 Result 类型命名空间，提供 Rust 风格的错误处理。
 
-| 方法             | 说明                                                |
-| ---------------- | --------------------------------------------------- |
-| `ok(value)`      | 创建成功结果                                        |
-| `err(error)`     | 创建错误结果                                        |
-| `isOk(result)`   | 检查结果是否成功                                    |
-| `isErr(result)`  | 检查结果是否失败                                    |
-| `to(promise)`    | 把 Promise 解析为 `Ok`，或把 rejection 捕获为 `Err` |
-| `unwrap(result)` | 返回成功值或错误载荷；不会抛错                      |
+| 方法                    | 说明                                                                          |
+| ----------------------- | ----------------------------------------------------------------------------- |
+| `ok(value)`             | 创建成功结果                                                                  |
+| `err(error)`            | 创建错误结果                                                                  |
+| `isOk(result)`          | 检查结果是否成功                                                              |
+| `isErr(result)`         | 检查结果是否失败                                                              |
+| `to(promise)`           | 把 Promise 解析为 `Ok`，或把 rejection 捕获为 `Err`                           |
+| `andThen(result, next)` | Rust 的 `Result::and_then`：`Ok` 载荷交给 `next`，`Err` 原样返回且不跑 `next` |
+| `unwrap(result)`        | 返回成功值或错误载荷；不会抛错                                                |
 
 ```ts
 import { rust } from '@greypan/js-kit/rust'
