@@ -275,7 +275,9 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ steps.prior.outputs.prior_run_id }}
           repository: ${{ github.repository }}
-          path: ${{ runner.temp }}/codex-review
+          # 上一轮 artifact 必须解到独立目录：它带着上一轮的 review-scope.json，
+          # 与本次 prepare 写的同名文件同目录会覆盖本次范围。
+          path: ${{ runner.temp }}/codex-review-prior
 
       - name: Reuse prior conclusion
         id: reuse

@@ -6,7 +6,7 @@ import path from 'node:path'
 
 import { readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
 
-import { CONFIG_ENV } from '../codex-review.mjs'
+import { CONFIG_ENV, priorConclusionDirectory } from '../codex-review.mjs'
 
 import {
   CODEX_CONFIG_ENV,
@@ -502,6 +502,25 @@ function assertPullRequestValidationIsReadOnly(workflow) {
         `${file} must fail the assertion when cross-run token #${index + 1} is removed`
       )
     }
+  }
+
+  // 复用产物不能解到本轮结论目录：上一轮 artifact 里的 review-scope.json 会盖掉本次 prepare
+  // 写的范围（含 changed_paths）。路径必须与脚本读的位置同源，只改一边会让复用静默失效。
+  {
+    const destination = namedStep(workflowText['ci.yml'], 'Download prior conclusion')
+      .match(/^\s*path:\s*(.+)$/mu)?.[1]
+      ?.trim()
+    const scriptDefault = priorConclusionDirectory({ RUNNER_TEMP: '/tmp/runner' })
+    assert.equal(
+      scriptDefault,
+      '/tmp/runner/codex-review-prior',
+      'the reuse directory must stay a sibling of the conclusion directory'
+    )
+    assert.equal(
+      destination,
+      scriptDefault.replace('/tmp/runner/', '${{ runner.temp }}/'),
+      'the download destination must be the directory `reuse` reads'
+    )
   }
 
   const pullRequestValidation = Object.entries(parsed).filter(([, workflow]) =>
