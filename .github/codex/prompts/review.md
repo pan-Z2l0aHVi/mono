@@ -33,7 +33,8 @@
 - `summary` 用一到两句写这次改动做了什么、总体结论是什么；它是评论顶部的摘要行，不要留空串。它描述的是这次改动，不是你此刻在做什么：`正在检查…`、`接下来要看…` 这类过程句不算摘要。
 - `coverage.inspected` 列出你实际读过的仓库相对路径；只写真的打开读过的文件，不要写打算读的。
 - `coverage.uncovered` 列出你没能判断的改动处，每条写成 `path:line` 加一句原因；全都看过就给空数组。
-- 没有 findings 时，`coverage` 就是这份结论唯一的凭据：`inspected` 为空、或其中没有任何一条属于本次 diff 改动过的文件，都会被判 `missing_coverage`，整条审查作废并要求重跑。读 `docs/agents/review.md`、`AGENTS.md` 这类判据文档不算读了改动。
+- `coverage` 是每条结论的必填项，有 findings 也要给；整份结论没带 `coverage` 会被判 `missing_coverage`，作废重跑。
+- 没有 findings 时，`coverage` 就是这份结论唯一的凭据：`inspected` 为空、或其中没有任何一条属于本次 diff 改动过的文件，同样判 `missing_coverage`，整条审查作废并要求重跑。读 `docs/agents/review.md`、`AGENTS.md` 这类判据文档不算读了改动。
 - 每条 finding 指向 diff 里的具体位置；指不到代码的猜测不要写。`file` 用仓库相对路径，`line` 用 head 快照里的行号，整体性问题用空路径与 `0`。
 - `problem` 说清它会怎么坏：可观察的行为、契约或数据，不是风格偏好。
 - `suggestion` 给去掉该问题的最小改法。
