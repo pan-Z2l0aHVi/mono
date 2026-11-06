@@ -134,6 +134,18 @@ it('git-hooks-status', async () => {
   assert.equal(directory.level, 'fail')
   assert.match(directory.detail, /commit-msg \(not a file\)/)
 
+  // hook 自己是一个循环符号链接：stat 抛 ELOOP，必须落成 fail 诊断而不是把异常抛给调用方。
+  // throwIfNoEntry 只吃掉 ENOENT/ENOTDIR，ELOOP 与 EACCES 仍会抛；这里用 ELOOP 是因为 CI 可能以 root 跑，权限位拦不住它。
+  const loopRepo = initRepo('loop')
+  const loopHooks = path.join(fixtureRoot, 'loop-hooks')
+  installHooks(loopHooks, ['commit-msg'])
+  fs.symlinkSync(path.join(loopHooks, 'pre-commit'), path.join(loopHooks, 'pre-commit'))
+  git(loopRepo, ['config', 'core.hooksPath', loopHooks])
+  const loop = inspect(loopRepo)
+  assert.equal(loop.level, 'fail')
+  assert.match(loop.detail, /pre-commit \(ELOOP\)/)
+  assert.doesNotMatch(loop.detail, /commit-msg \(/)
+
   // 非法布尔值：安装脚本会直接报错，体检至少给 warn，不能静默当作未禁用。
   const invalidRepo = initRepo('invalid')
   git(invalidRepo, ['config', 'core.hooksPath', path.join(fixtureRoot, 'invalid-hooks')])

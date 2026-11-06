@@ -58,6 +58,10 @@ root. `ExecResult` keeps `{ ok, status, stdout, stderr }` so "ran and failed" st
 `staged-clean`'s `unavailable()` branch and `StagedCleanOptions.installHint` are removed, so a tool that
 cannot start fails as a `git:` verdict instead of being skipped; `git-hooks-status` keeps its own
 `installHint`, which is a hint string shown to the developer.
+`git-hooks-status` stats each required hook with `throwIfNoEntry: false`: that flag turns ENOENT and ENOTDIR
+into `undefined` but still throws for EACCES and ELOOP, so the call is wrapped and the code lands in the `fail`
+detail as `pre-commit (ELOOP)`. An escaping stat error would abort `inspectGitHooks` and leave `env-doctor`
+with no verdict at all.
 `script-tests` no longer writes the discovered scripts' output from inside the package: a passing run is
 silent, and a failing one appends that script's captured stdout and exit code to the `script:` verdict.
 Nothing is lost for debugging — `execFileSync` forwards the child's stderr to the parent process by

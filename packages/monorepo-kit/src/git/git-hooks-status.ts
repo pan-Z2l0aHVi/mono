@@ -90,7 +90,14 @@ export const defineGitHooksStatus = ({
         const missing: string[] = []
         for (const name of required) {
           const file = path.join(hooksDir, name)
-          const stats = fs.statSync(file, { throwIfNoEntry: false })
+          let stats: fs.Stats | undefined
+          try {
+            stats = fs.statSync(file, { throwIfNoEntry: false })
+          } catch (error) {
+            // throwIfNoEntry 只吃掉 ENOENT 与 ENOTDIR，EACCES、ELOOP 仍然抛；调用方直接读这个返回值，异常会让体检整个没有输出。
+            missing.push(`${name} (${(error as NodeJS.ErrnoException).code ?? 'stat failed'})`)
+            continue
+          }
           if (!stats) {
             missing.push(`${name} (missing)`)
             continue
