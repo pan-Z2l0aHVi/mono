@@ -107,7 +107,7 @@ function Home() {
       <div className="grid w-full max-w-3xl grid-cols-1 gap-x-6 gap-y-3 mb-12 text-left md:grid-cols-2 xl:grid-cols-4">
         {features.map(feature => (
           <div key={feature.id} className="flex items-center gap-2.5 text-xs text-(--wui-color-text-secondary)">
-            <web-ui-icon icon={feature.icon} size={16} className="shrink-0 text-(--wui-color-accent)"></web-ui-icon>
+            <web-ui-icon icon={feature.icon} className="shrink-0 text-(--wui-color-accent)"></web-ui-icon>
             <span className="whitespace-nowrap font-medium leading-tight text-(--wui-color-text)">
               {feature.label()}
             </span>
@@ -117,7 +117,7 @@ function Home() {
 
       <div className="w-full text-left">
         <div className="flex items-center gap-2 mb-5 text-[16px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)">
-          <web-ui-icon icon={lucideLayoutGrid} size={16}></web-ui-icon>
+          <web-ui-icon icon={lucideLayoutGrid}></web-ui-icon>
           <span>快速预览</span>
         </div>
 

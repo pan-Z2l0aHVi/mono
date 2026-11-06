@@ -320,12 +320,12 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-autocomplete ref={fieldRef} filter="none">
+      <web-ui-autocomplete ref={fieldRef} filter="none" trigger="click focus">
         <web-ui-textarea
           slot="trigger"
           rows={3}
           className="[--wui-textarea-width:20rem]"
-          placeholder="Multiline trigger: Enter inserts a newline, Escape or blur closes the panel"
+          placeholder="Multiline trigger: Enter inserts a newline, Escape or blur (with `focus` enabled) closes the panel"
         ></web-ui-textarea>
         <web-ui-option value="bug" label="Bug"></web-ui-option>
         <web-ui-option value="feature" label="Feature"></web-ui-option>
@@ -339,12 +339,12 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-autocomplete ref="field" filter="none">
+    <web-ui-autocomplete ref="field" filter="none" trigger="click focus">
       <web-ui-textarea
         slot="trigger"
         :rows="3"
         class="[--wui-textarea-width:20rem]"
-        placeholder="Multiline trigger: Enter inserts a newline, Escape or blur closes the panel"
+        placeholder="Multiline trigger: Enter inserts a newline, Escape or blur (with `focus` enabled) closes the panel"
       ></web-ui-textarea>
       <web-ui-option value="bug" label="Bug"></web-ui-option>
       <web-ui-option value="feature" label="Feature"></web-ui-option>
@@ -533,7 +533,7 @@ Selecting an option fills the text back with that option's label and exposes tha
 
 ArrowDown/ArrowUp/Enter/Escape keyboard navigation is supported; under `none`, ArrowDown no longer auto-opens the panel while it is closed.
 
-Clicking the input only opens the panel, never closes it; closing goes through outside clicks, Escape, selecting a candidate or `hide()`. `hover` opens and closes with pointer entry and exit, and once the pointer leaves both the trigger and the panel and focus is outside them, it closes after `hide-delay`. `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, typing, focus and programmatic calls act immediately. Escape, outside clicks and focus loss close every panel except those in `none`, regardless of whether `trigger` contains `click` or `focus`.
+Clicking the input only opens the panel, never closes it; closing goes through outside clicks, Escape, selecting a candidate or `hide()`. `hover` opens and closes with pointer entry and exit, and once the pointer leaves both the trigger and the panel it closes after `hide-delay` when focus is outside them if `focus` is enabled. `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, typing, focus and programmatic calls act immediately. Outside clicks close panels with `click`, focus loss closes panels with `focus`, and Escape closes panels except those in `none`.
 
 A portal panel reads these variables as resolved on the host when it is created; after updating the host, the portal panel must be reopened for the change to take effect.
 
@@ -559,7 +559,7 @@ Custom triggers follow the same rules as the default trigger: a string `value` c
 
 Sequential focus belongs to the trigger itself, so a custom trigger must be focusable for keyboard users to reach the combobox.
 
-A multiline trigger (an editable `<textarea>`) keeps Enter as a newline: Enter neither selects the highlighted option nor submits a custom value; the panel is closed with Escape or blur. Selecting an option still writes that option's label back into the trigger.
+A multiline trigger (an editable `<textarea>`) keeps Enter as a newline: Enter neither selects the highlighted option nor submits a custom value; the panel closes with Escape or, when `focus` is enabled, blur. Selecting an option still writes that option's label back into the trigger.
 
 A single-line custom trigger keeps the default Enter semantics.
 

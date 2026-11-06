@@ -65,7 +65,7 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-input aria-label="Search" clearable placeholder="Search components">
-        <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideSearch}></web-ui-icon>
       </web-ui-input>
       <web-ui-input aria-label="Website" value="web-ui">
         <span slot="prefix">www.</span>
@@ -80,7 +80,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-input aria-label="Search" clearable placeholder="Search components">
-      <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
     </web-ui-input>
     <web-ui-input aria-label="Website" value="web-ui">
       <span slot="prefix">www.</span>
@@ -131,7 +131,7 @@ export default function Demo() {
       <web-ui-input disabled placeholder="Disabled"></web-ui-input>
       <web-ui-input disabled aria-label="Disabled input with a value" value="Disabled with a value"></web-ui-input>
       <web-ui-input readonly clearable aria-label="Readonly input" value="Readonly: can select and copy, cannot edit">
-        <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideSearch}></web-ui-icon>
       </web-ui-input>
     </div>
   )
@@ -144,7 +144,7 @@ export default function Demo() {
     <web-ui-input disabled placeholder="Disabled"></web-ui-input>
     <web-ui-input disabled aria-label="Disabled input with a value" value="Disabled with a value"></web-ui-input>
     <web-ui-input readonly clearable aria-label="Readonly input" value="Readonly: can select and copy, cannot edit">
-      <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
     </web-ui-input>
   </div>
 </template>
@@ -171,7 +171,7 @@ export default function Demo() {
         value="Borderless with a value"
       ></web-ui-input>
       <web-ui-input borderless aria-label="Search" placeholder="Borderless with an icon">
-        <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideSearch}></web-ui-icon>
       </web-ui-input>
     </div>
   )
@@ -184,7 +184,7 @@ export default function Demo() {
     <web-ui-input borderless placeholder="Borderless input"></web-ui-input>
     <web-ui-input borderless aria-label="Borderless input with a value" value="Borderless with a value"></web-ui-input>
     <web-ui-input borderless aria-label="Search" placeholder="Borderless with an icon">
-      <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
     </web-ui-input>
   </div>
 </template>

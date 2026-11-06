@@ -151,15 +151,15 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-button variant="secondary">
-        <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideSearch}></web-ui-icon>
         Search
       </web-ui-button>
       <web-ui-button variant="secondary">
         Next
-        <web-ui-icon slot="suffix" icon={lucideChevronRight} size={16}></web-ui-icon>
+        <web-ui-icon slot="suffix" icon={lucideChevronRight}></web-ui-icon>
       </web-ui-button>
       <web-ui-button variant="primary">
-        <web-ui-icon slot="prefix" icon={lucideChevronLeft} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideChevronLeft}></web-ui-icon>
         Back
         <span slot="suffix" className="opacity-60">
           Enter
@@ -179,15 +179,15 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-button variant="secondary">
-      <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
       Search
     </web-ui-button>
     <web-ui-button variant="secondary">
       Next
-      <web-ui-icon slot="suffix" :icon="lucideChevronRight" :size="16"></web-ui-icon>
+      <web-ui-icon slot="suffix" :icon="lucideChevronRight"></web-ui-icon>
     </web-ui-button>
     <web-ui-button variant="primary">
-      <web-ui-icon slot="prefix" :icon="lucideChevronLeft" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideChevronLeft"></web-ui-icon>
       Back
       <span slot="suffix" class="opacity-60">Enter</span>
     </web-ui-button>
@@ -219,22 +219,22 @@ export default function Demo() {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <web-ui-button icon aria-label="Search">
-        <web-ui-icon icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideSearch}></web-ui-icon>
       </web-ui-button>
       <web-ui-button icon variant="primary" aria-label="Search">
-        <web-ui-icon icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideSearch}></web-ui-icon>
       </web-ui-button>
       <web-ui-button icon variant="secondary" aria-label="Search">
-        <web-ui-icon icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideSearch}></web-ui-icon>
       </web-ui-button>
       <web-ui-button icon variant="ghost" aria-label="Search">
-        <web-ui-icon icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideSearch}></web-ui-icon>
       </web-ui-button>
       <web-ui-button icon variant="danger" aria-label="Search">
-        <web-ui-icon icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideSearch}></web-ui-icon>
       </web-ui-button>
       <web-ui-button icon variant="primary" loading aria-label="Loading">
-        <web-ui-icon icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideSearch}></web-ui-icon>
       </web-ui-button>
       <web-ui-button icon aria-label="Plus">
         <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
@@ -250,22 +250,22 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-3">
     <web-ui-button icon aria-label="Search">
-      <web-ui-icon :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideSearch"></web-ui-icon>
     </web-ui-button>
     <web-ui-button icon variant="primary" aria-label="Search">
-      <web-ui-icon :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideSearch"></web-ui-icon>
     </web-ui-button>
     <web-ui-button icon variant="secondary" aria-label="Search">
-      <web-ui-icon :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideSearch"></web-ui-icon>
     </web-ui-button>
     <web-ui-button icon variant="ghost" aria-label="Search">
-      <web-ui-icon :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideSearch"></web-ui-icon>
     </web-ui-button>
     <web-ui-button icon variant="danger" aria-label="Search">
-      <web-ui-icon :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideSearch"></web-ui-icon>
     </web-ui-button>
     <web-ui-button icon variant="primary" loading aria-label="Loading">
-      <web-ui-icon :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideSearch"></web-ui-icon>
     </web-ui-button>
     <web-ui-button icon aria-label="Plus">
       <svg xmlns="http://www.w3.org/2000/svg" width="16" height="16" viewBox="0 0 24 24">
@@ -516,7 +516,7 @@ export default function Demo() {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <web-ui-button variant="secondary" className="[--wui-button-px:28px] [--wui-button-gap:14px]">
-        <web-ui-icon slot="prefix" icon={lucideUpload} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideUpload}></web-ui-icon>
         Wider padding and slot gap
       </web-ui-button>
       <web-ui-button variant="primary" style={successOnly}>
@@ -534,7 +534,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-3">
     <web-ui-button class="[--wui-button-px:28px] [--wui-button-gap:14px]" variant="secondary">
-      <web-ui-icon slot="prefix" :icon="lucideUpload" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideUpload"></web-ui-icon>
       Wider padding and slot gap
     </web-ui-button>
     <web-ui-button :style="successOnly" variant="primary">Background only</web-ui-button>

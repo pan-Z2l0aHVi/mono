@@ -17,8 +17,8 @@ import { normalizeTriggerSet } from '@/shared/overlay/trigger-props'
 
 import style from './style.css?inline'
 
-/** 指针悬停与键盘聚焦是 tooltip 的常驻手势；`none` 表示只由 `open` / `show()` / `hide()` 控制。 */
-const DEFAULT_TRIGGERS = ['hover', 'focus'] as const
+/** 默认由指针悬停触发；`none` 表示只由 `open` / `show()` / `hide()` 控制。 */
+const DEFAULT_TRIGGERS = ['hover'] as const
 
 let visibleTooltipCount = 0
 let tooltipIdCounter = 0

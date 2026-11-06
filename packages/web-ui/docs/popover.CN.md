@@ -280,7 +280,7 @@ const open = ref(false)
 `trigger` 里的每个手势各接各的事件，可以任意组合；未知取值会被丢弃，一个已知手势都没写时回退到默认的 `click`。
 
 - `click`：点触发器切换；点面板外面收起。键盘激活（Enter / Space）与点击同等对待。
-- `hover`：指针进入触发器后按 `show-delay` 展开；指针离开触发器与面板、且焦点不在其中时按 `hide-delay` 收起。触屏指针不算。
+- `hover`：指针进入触发器后按 `show-delay` 展开；指针离开触发器与面板后按 `hide-delay` 收起；启用 `focus` 时焦点可保持层打开。触屏指针不算。
 - `focus`：键盘聚焦（`:focus-visible`）立即展开；焦点离开触发器和面板之后收起。
 - `none`：不接受任何手势，点面板外与 Escape 都不关闭；只能由 `open` 属性或 `show()` / `hide()` 控制。
 
@@ -288,7 +288,7 @@ const open = ref(false)
 
 弹出层能否打开看的是 `default` 插槽里还有没有内容可展示；`trigger` 插槽不算内容。没有内容时手势不展开，`show()` 与写 `open` 仍可空开。关闭态新增内容不会打开面板；打开期间内容清空时立即收起，不播退场过渡。
 
-点触发器外面与失焦会收起所有非 `none` 的层，不取决于 `trigger` 是否包含 `click` 或 `focus`。按 Escape 收起由覆盖层统一仲裁：非 `none` 的层都能关，`none` 既不响应也不拦截这次按键，它会继续传给外层 overlay。
+外点仅收起包含 `click` 的层，失焦仅收起包含 `focus` 的层。按 Escape 收起由覆盖层统一仲裁：非 `none` 的层都能关，`none` 既不响应也不拦截这次按键，它会继续传给外层 overlay。
 
 `open` 是组件自行管理的状态。手势和 `show()` / `hide()` 都会更新它，直接给 property 赋值也会开合面板，但该写入是静默的，不派发 `open-change`。
 

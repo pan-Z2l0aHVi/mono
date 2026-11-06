@@ -54,10 +54,10 @@ export default function Demo() {
         <span className="text-xs text-(--wui-color-text-secondary)">icon-only 成员</span>
         <web-ui-button-group>
           <web-ui-button icon variant="secondary" aria-label="上一页">
-            <web-ui-icon icon={lucideChevronLeft} size={16}></web-ui-icon>
+            <web-ui-icon icon={lucideChevronLeft}></web-ui-icon>
           </web-ui-button>
           <web-ui-button icon variant="secondary" aria-label="下一页">
-            <web-ui-icon icon={lucideChevronRight} size={16}></web-ui-icon>
+            <web-ui-icon icon={lucideChevronRight}></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
       </div>
@@ -66,12 +66,12 @@ export default function Demo() {
         <span className="text-xs text-(--wui-color-text-secondary)">icon 使用 prefix / suffix</span>
         <web-ui-button-group>
           <web-ui-button variant="secondary">
-            <web-ui-icon slot="prefix" icon={lucideChevronLeft} size={16}></web-ui-icon>
+            <web-ui-icon slot="prefix" icon={lucideChevronLeft}></web-ui-icon>
             上一页
           </web-ui-button>
           <web-ui-button variant="secondary">
             下一页
-            <web-ui-icon slot="suffix" icon={lucideChevronRight} size={16}></web-ui-icon>
+            <web-ui-icon slot="suffix" icon={lucideChevronRight}></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
       </div>
@@ -80,11 +80,11 @@ export default function Demo() {
         <span className="text-xs text-(--wui-color-text-secondary)">文字与 icon 混排</span>
         <web-ui-button-group>
           <web-ui-button icon variant="secondary" aria-label="上一页">
-            <web-ui-icon icon={lucideChevronLeft} size={16}></web-ui-icon>
+            <web-ui-icon icon={lucideChevronLeft}></web-ui-icon>
           </web-ui-button>
           <web-ui-button variant="secondary">第 1 / 3 页</web-ui-button>
           <web-ui-button icon variant="secondary" aria-label="下一页">
-            <web-ui-icon icon={lucideChevronRight} size={16}></web-ui-icon>
+            <web-ui-icon icon={lucideChevronRight}></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
       </div>
@@ -100,10 +100,10 @@ export default function Demo() {
       <span class="text-xs text-(--wui-color-text-secondary)">icon-only 成员</span>
       <web-ui-button-group>
         <web-ui-button icon variant="secondary" aria-label="上一页">
-          <web-ui-icon :icon="lucideChevronLeft" :size="16"></web-ui-icon>
+          <web-ui-icon :icon="lucideChevronLeft"></web-ui-icon>
         </web-ui-button>
         <web-ui-button icon variant="secondary" aria-label="下一页">
-          <web-ui-icon :icon="lucideChevronRight" :size="16"></web-ui-icon>
+          <web-ui-icon :icon="lucideChevronRight"></web-ui-icon>
         </web-ui-button>
       </web-ui-button-group>
     </div>
@@ -112,12 +112,12 @@ export default function Demo() {
       <span class="text-xs text-(--wui-color-text-secondary)">icon 使用 prefix / suffix</span>
       <web-ui-button-group>
         <web-ui-button variant="secondary">
-          <web-ui-icon slot="prefix" :icon="lucideChevronLeft" :size="16"></web-ui-icon>
+          <web-ui-icon slot="prefix" :icon="lucideChevronLeft"></web-ui-icon>
           上一页
         </web-ui-button>
         <web-ui-button variant="secondary">
           下一页
-          <web-ui-icon slot="suffix" :icon="lucideChevronRight" :size="16"></web-ui-icon>
+          <web-ui-icon slot="suffix" :icon="lucideChevronRight"></web-ui-icon>
         </web-ui-button>
       </web-ui-button-group>
     </div>
@@ -126,11 +126,11 @@ export default function Demo() {
       <span class="text-xs text-(--wui-color-text-secondary)">文字与 icon 混排</span>
       <web-ui-button-group>
         <web-ui-button icon variant="secondary" aria-label="上一页">
-          <web-ui-icon :icon="lucideChevronLeft" :size="16"></web-ui-icon>
+          <web-ui-icon :icon="lucideChevronLeft"></web-ui-icon>
         </web-ui-button>
         <web-ui-button variant="secondary">第 1 / 3 页</web-ui-button>
         <web-ui-button icon variant="secondary" aria-label="下一页">
-          <web-ui-icon :icon="lucideChevronRight" :size="16"></web-ui-icon>
+          <web-ui-icon :icon="lucideChevronRight"></web-ui-icon>
         </web-ui-button>
       </web-ui-button-group>
     </div>
@@ -159,13 +159,13 @@ export default function Demo() {
   return (
     <web-ui-button-group direction="vertical">
       <web-ui-button icon variant="secondary" aria-label="放大">
-        <web-ui-icon icon={lucidePlus} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucidePlus}></web-ui-icon>
       </web-ui-button>
       <web-ui-button icon variant="secondary" aria-label="缩小">
-        <web-ui-icon icon={lucideMinus} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideMinus}></web-ui-icon>
       </web-ui-button>
       <web-ui-button icon variant="secondary" aria-label="搜索">
-        <web-ui-icon icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideSearch}></web-ui-icon>
       </web-ui-button>
     </web-ui-button-group>
   )
@@ -176,13 +176,13 @@ export default function Demo() {
 <template>
   <web-ui-button-group direction="vertical">
     <web-ui-button icon variant="secondary" aria-label="放大">
-      <web-ui-icon :icon="lucidePlus" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucidePlus"></web-ui-icon>
     </web-ui-button>
     <web-ui-button icon variant="secondary" aria-label="缩小">
-      <web-ui-icon :icon="lucideMinus" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideMinus"></web-ui-icon>
     </web-ui-button>
     <web-ui-button icon variant="secondary" aria-label="搜索">
-      <web-ui-icon :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideSearch"></web-ui-icon>
     </web-ui-button>
   </web-ui-button-group>
 </template>
@@ -277,10 +277,10 @@ export default function Demo() {
         <span className="text-xs text-(--wui-color-text-secondary)">竖排：同一条变量给的是宽度</span>
         <web-ui-button-group className="[--wui-button-group-divider-length:32px]" direction="vertical">
           <web-ui-button icon variant="secondary" aria-label="放大">
-            <web-ui-icon icon={lucidePlus} size={16}></web-ui-icon>
+            <web-ui-icon icon={lucidePlus}></web-ui-icon>
           </web-ui-button>
           <web-ui-button icon variant="secondary" aria-label="缩小">
-            <web-ui-icon icon={lucideMinus} size={16}></web-ui-icon>
+            <web-ui-icon icon={lucideMinus}></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
       </div>
@@ -305,10 +305,10 @@ export default function Demo() {
       <span class="text-xs text-(--wui-color-text-secondary)">竖排：同一条变量给的是宽度</span>
       <web-ui-button-group class="[--wui-button-group-divider-length:32px]" direction="vertical">
         <web-ui-button icon variant="secondary" aria-label="放大">
-          <web-ui-icon :icon="lucidePlus" :size="16"></web-ui-icon>
+          <web-ui-icon :icon="lucidePlus"></web-ui-icon>
         </web-ui-button>
         <web-ui-button icon variant="secondary" aria-label="缩小">
-          <web-ui-icon :icon="lucideMinus" :size="16"></web-ui-icon>
+          <web-ui-icon :icon="lucideMinus"></web-ui-icon>
         </web-ui-button>
       </web-ui-button-group>
     </div>

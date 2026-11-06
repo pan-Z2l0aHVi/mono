@@ -292,7 +292,7 @@ const open = ref(false)
 Each gesture in `trigger` wires up its own events, and the gestures combine freely. Unknown values are dropped; when no known gesture remains it falls back to the default `click`.
 
 - `click`: clicking the trigger toggles the panel; clicking outside the panel closes it. Keyboard activation (Enter / Space) is treated like a click.
-- `hover`: pointer entry opens after `show-delay`; once the pointer leaves both the trigger and the panel and focus is outside them, it closes after `hide-delay`. Touch pointers do not count.
+- `hover`: pointer entry opens after `show-delay`; once the pointer leaves both the trigger and the panel, it closes after `hide-delay`; focus keeps it open only when `focus` is enabled. Touch pointers do not count.
 - `focus`: keyboard focus (`:focus-visible`) opens it immediately; it closes once focus leaves the trigger and the panel.
 - `none`: no gesture moves it, and neither outside clicks nor Escape close it; only the `open` property or `show()` / `hide()` does.
 
@@ -300,7 +300,7 @@ Each gesture in `trigger` wires up its own events, and the gestures combine free
 
 Opening requires content in the `default` slot; the `trigger` slot does not count. With nothing to show, gestures do nothing, while `show()` and writing `open` still open an empty panel. Content added while closed does not open it; clearing the content while open collapses the panel immediately without an exit transition.
 
-Outside clicks and focus loss close every layer except those in `none`, regardless of whether `trigger` contains `click` or `focus`. Escape is arbitrated by the overlay stack: every value except `none` closes on it, and `none` neither responds to nor intercepts the key, so it continues to an outer overlay.
+Outside clicks close layers with `click`; focus loss closes layers with `focus`. Escape is arbitrated by the overlay stack: every value except `none` closes on it, and `none` neither responds to nor intercepts the key, so it continues to an outer overlay.
 
 `open` is a self-managed state. Gestures and `show()` / `hide()` update it, and assigning the property directly also opens or closes the panel, but that write is silent and does not dispatch `open-change`.
 

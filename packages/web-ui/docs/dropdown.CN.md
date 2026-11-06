@@ -493,7 +493,7 @@ const menu = useTemplateRef<WebUiDropdown>('menu')
 
 菜单能否打开看的是根层还有没有内容可展示：没有菜单项、分隔线或标题（含框架 wrapper 里的）时，点击、键盘手势与悬停都不展开；`hidden` 子树不算内容。`show()` 与写 `open` 仍可空开；关闭态新增内容不会打开菜单。菜单打开期间最后一段内容消失时，立即收起，不播退场过渡。
 
-`hover` 由指针进出开合；指针从触发器移进面板不会收起，离开触发器与面板、且焦点不在其中时按 `hide-delay` 收起。`show-delay` / `hide-delay` 只作用于 hover 来源；点击、焦点与程序式调用都立即生效。Escape、点外面与失焦会收起所有非 `none` 的菜单，不取决于 `trigger` 是否包含 `click` 或 `focus`；`none` 不响应也不拦截它们。
+`hover` 由指针进出开合；指针从触发器移进面板不会收起，离开触发器与面板、启用 `focus` 时还需焦点离开，随后按 `hide-delay` 收起。`show-delay` / `hide-delay` 只作用于 hover 来源；点击、焦点与程序式调用都立即生效。外点仅关闭包含 `click` 的菜单，失焦仅关闭包含 `focus` 的菜单；Escape 关闭非 `none` 的菜单。
 
 `open` 可以直接赋值；该写入是静默的，不派发 `open-change`。
 

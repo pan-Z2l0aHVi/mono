@@ -320,7 +320,7 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-autocomplete ref={fieldRef} filter="none">
+      <web-ui-autocomplete ref={fieldRef} filter="none" trigger="click focus">
         <web-ui-textarea
           slot="trigger"
           rows={3}
@@ -339,7 +339,7 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-autocomplete ref="field" filter="none">
+    <web-ui-autocomplete ref="field" filter="none" trigger="click focus">
       <web-ui-textarea
         slot="trigger"
         :rows="3"
@@ -529,7 +529,7 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 支持 ArrowDown/ArrowUp/Enter/Escape 键盘导航；`none` 下关闭态的 ArrowDown 不再自动打开面板。
 
-点击输入框只打开、不关闭；关闭由点外面、Escape、选择候选或 `hide()` 完成。`hover` 由指针进出开合，指针离开触发器与面板、且焦点不在其中时按 `hide-delay` 收起。`show-delay` / `hide-delay` 只作用于 hover 来源；点击、键入、焦点与程序式调用都立即生效。Escape、点外面与失焦会收起所有非 `none` 的面板，不取决于 `trigger` 是否包含 `click` 或 `focus`。
+点击输入框只打开、不关闭；关闭由点外面、Escape、选择候选或 `hide()` 完成。`hover` 由指针进出开合，指针离开触发器与面板、启用 `focus` 时还需焦点离开，随后按 `hide-delay` 收起。`show-delay` / `hide-delay` 只作用于 hover 来源；点击、键入、焦点与程序式调用都立即生效。外点仅关闭包含 `click` 的面板，失焦仅关闭包含 `focus` 的面板；Escape 关闭非 `none` 的面板。
 
 启用 `portal` 的面板在创建时读取宿主上的这些变量值；更新宿主后需重新打开面板才会生效。
 
@@ -555,7 +555,7 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 顺序焦点落在触发器自身，所以自定义触发器必须可聚焦，键盘用户才能到达 combobox。
 
-多行触发器（可编辑元素为 `<textarea>`）保留 Enter 换行语义：Enter 不会选中高亮项，也不会提交自定义值；关闭面板用 Escape 或失焦。选择选项仍会把该项标签回写到触发器。
+多行触发器（可编辑元素为 `<textarea>`）保留 Enter 换行语义：Enter 不会选中高亮项，也不会提交自定义值；启用 `focus` 时可用失焦关闭面板，也可按 Escape 关闭。选择选项仍会把该项标签回写到触发器。
 
 单行自定义触发器保持默认的 Enter 语义。
 

@@ -107,6 +107,7 @@ catalog:
   webpack: ^5.99.0
   wuchale: ^0.26.7
   zustand: ^5.0.14
+  '@iconify-json/icon-park-outline': ^1.2.4
 
 catalogMode: prefer
 

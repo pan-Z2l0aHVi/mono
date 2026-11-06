@@ -65,7 +65,7 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-input aria-label="搜索" clearable placeholder="搜索组件">
-        <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideSearch}></web-ui-icon>
       </web-ui-input>
       <web-ui-input aria-label="官网" value="web-ui">
         <span slot="prefix">www.</span>
@@ -80,7 +80,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-input aria-label="搜索" clearable placeholder="搜索组件">
-      <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
     </web-ui-input>
     <web-ui-input aria-label="官网" value="web-ui">
       <span slot="prefix">www.</span>
@@ -131,7 +131,7 @@ export default function Demo() {
       <web-ui-input disabled placeholder="禁用"></web-ui-input>
       <web-ui-input disabled aria-label="禁用且有值的输入框" value="禁用且有值"></web-ui-input>
       <web-ui-input readonly clearable aria-label="只读输入框" value="只读：可选中复制，不能改">
-        <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideSearch}></web-ui-icon>
       </web-ui-input>
     </div>
   )
@@ -144,7 +144,7 @@ export default function Demo() {
     <web-ui-input disabled placeholder="禁用"></web-ui-input>
     <web-ui-input disabled aria-label="禁用且有值的输入框" value="禁用且有值"></web-ui-input>
     <web-ui-input readonly clearable aria-label="只读输入框" value="只读：可选中复制，不能改">
-      <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
     </web-ui-input>
   </div>
 </template>
@@ -167,7 +167,7 @@ export default function Demo() {
       <web-ui-input borderless placeholder="无边框输入"></web-ui-input>
       <web-ui-input borderless aria-label="无边框输入框" value="无边框且有值"></web-ui-input>
       <web-ui-input borderless aria-label="搜索" placeholder="无边框带 icon">
-        <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideSearch}></web-ui-icon>
       </web-ui-input>
     </div>
   )
@@ -180,7 +180,7 @@ export default function Demo() {
     <web-ui-input borderless placeholder="无边框输入"></web-ui-input>
     <web-ui-input borderless aria-label="无边框输入框" value="无边框且有值"></web-ui-input>
     <web-ui-input borderless aria-label="搜索" placeholder="无边框带 icon">
-      <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
     </web-ui-input>
   </div>
 </template>

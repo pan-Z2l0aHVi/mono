@@ -16,6 +16,7 @@ import icBaselinePhonelink from './ic-baseline-phonelink'
 import icOutlineMotionPhotosOff from './ic-outline-motion-photos-off'
 import icOutlineMotionPhotosOn from './ic-outline-motion-photos-on'
 import icRoundMenuOpen from './ic-round-menu-open'
+import iconParkOutlineTagOne from './icon-park-outline-tag-one'
 import jamCloseCircleF from './jam-close-circle-f'
 import lucideAccessibility from './lucide-accessibility'
 import lucideArrowDownToLine from './lucide-arrow-down-to-line'
@@ -30,6 +31,7 @@ import lucideChevronUp from './lucide-chevron-up'
 import lucideCircleAlert from './lucide-circle-alert'
 import lucideClapperboard from './lucide-clapperboard'
 import lucideClipboardPaste from './lucide-clipboard-paste'
+import lucideClockPlus from './lucide-clock-plus'
 import lucideCode from './lucide-code'
 import lucideContrast from './lucide-contrast'
 import lucideCopy from './lucide-copy'
@@ -68,6 +70,7 @@ import lucidePlus from './lucide-plus'
 import lucidePrinter from './lucide-printer'
 import lucideRedo2 from './lucide-redo-2'
 import lucideRefreshCw from './lucide-refresh-cw'
+import lucideRotateCwClock from './lucide-rotate-cw-clock'
 import lucideScissors from './lucide-scissors'
 import lucideSearch from './lucide-search'
 import lucideSettings from './lucide-settings'
@@ -145,6 +148,8 @@ export const iconGallery: Record<string, IconifyIcon> = {
   lucidePackage,
   lucidePencil,
   lucideRefreshCw,
+  lucideRotateCwClock,
+  lucideClockPlus,
   lucideTag,
   lucideTags,
   lucideWrench,
@@ -164,6 +169,7 @@ export const iconGallery: Record<string, IconifyIcon> = {
   lucideListRestart,
   radixIconsReset,
   akarIconsCheck,
+  iconParkOutlineTagOne,
   biCheck,
   biCheckLg,
   akarIconsCircleCheck,

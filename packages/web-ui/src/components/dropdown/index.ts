@@ -34,7 +34,7 @@ import { defineOverlay, type OverlayApi } from '@/shared/overlay/overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 import { defineTriggerController } from '@/shared/overlay/trigger-controller'
-import { isTriggerNone, normalizeTriggerSet } from '@/shared/overlay/trigger-props'
+import { hasTriggerGesture, isTriggerNone, normalizeTriggerSet } from '@/shared/overlay/trigger-props'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
@@ -901,8 +901,7 @@ export class WebUiDropdown extends LitElement {
       this._pointerInteraction = undefined
       this._resumePendingFocusOutCheck()
     }
-    // `none` 只接受程序式开关：外点不收起，也不参与 Escape。
-    if (isTriggerNone(this.trigger)) return
+    if (!hasTriggerGesture(this.trigger, 'click')) return
     if (!this.isOpen || this._outsideClickGuard.isArmed()) return
     if (this._outsideClickGuard.isInside(e)) return
     this._closeAll(true)
@@ -944,7 +943,7 @@ export class WebUiDropdown extends LitElement {
   }
 
   private _onFocusOut = (event: FocusEvent) => {
-    if (isTriggerNone(this.trigger)) return
+    if (!hasTriggerGesture(this.trigger, 'focus')) return
     const handle = this._handle
     if (!this.open || !handle?.containsEvent(event)) return
     const pointerInteraction = this._pointerInteraction
@@ -962,7 +961,7 @@ export class WebUiDropdown extends LitElement {
     if (movedToKnownOutsideTarget) this._skipFocusRestoreOnClose = true
 
     const checkFocus = () => {
-      if (!this.open || this._handle !== handle) return
+      if (!this.open || this._handle !== handle || !hasTriggerGesture(this.trigger, 'focus')) return
       if (this._pendingTabNavigation) {
         this._pendingFocusOutCheck = () => this._overlay.scheduleFrame(checkFocus)
         return
@@ -991,7 +990,7 @@ export class WebUiDropdown extends LitElement {
     if (!handle.containsEvent(event)) {
       if (this._pendingTabNavigation) return
       if (this._pointerInteraction?.startedWithinDropdown && !this._pointerInteraction.completed) return
-      if (isTriggerNone(this.trigger)) return
+      if (!hasTriggerGesture(this.trigger, 'focus')) return
       this._skipFocusRestoreOnClose = true
       this._closeAll(true)
       return

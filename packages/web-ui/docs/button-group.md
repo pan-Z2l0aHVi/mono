@@ -54,10 +54,10 @@ export default function Demo() {
         <span className="text-xs text-(--wui-color-text-secondary)">icon-only member</span>
         <web-ui-button-group>
           <web-ui-button icon variant="secondary" aria-label="Previous page">
-            <web-ui-icon icon={lucideChevronLeft} size={16}></web-ui-icon>
+            <web-ui-icon icon={lucideChevronLeft}></web-ui-icon>
           </web-ui-button>
           <web-ui-button icon variant="secondary" aria-label="Next page">
-            <web-ui-icon icon={lucideChevronRight} size={16}></web-ui-icon>
+            <web-ui-icon icon={lucideChevronRight}></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
       </div>
@@ -66,12 +66,12 @@ export default function Demo() {
         <span className="text-xs text-(--wui-color-text-secondary)">icon via prefix / suffix</span>
         <web-ui-button-group>
           <web-ui-button variant="secondary">
-            <web-ui-icon slot="prefix" icon={lucideChevronLeft} size={16}></web-ui-icon>
+            <web-ui-icon slot="prefix" icon={lucideChevronLeft}></web-ui-icon>
             Previous
           </web-ui-button>
           <web-ui-button variant="secondary">
             Next
-            <web-ui-icon slot="suffix" icon={lucideChevronRight} size={16}></web-ui-icon>
+            <web-ui-icon slot="suffix" icon={lucideChevronRight}></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
       </div>
@@ -80,11 +80,11 @@ export default function Demo() {
         <span className="text-xs text-(--wui-color-text-secondary)">Text and icon mixed</span>
         <web-ui-button-group>
           <web-ui-button icon variant="secondary" aria-label="Previous page">
-            <web-ui-icon icon={lucideChevronLeft} size={16}></web-ui-icon>
+            <web-ui-icon icon={lucideChevronLeft}></web-ui-icon>
           </web-ui-button>
           <web-ui-button variant="secondary">Page 1 / 3</web-ui-button>
           <web-ui-button icon variant="secondary" aria-label="Next page">
-            <web-ui-icon icon={lucideChevronRight} size={16}></web-ui-icon>
+            <web-ui-icon icon={lucideChevronRight}></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
       </div>
@@ -100,10 +100,10 @@ export default function Demo() {
       <span class="text-xs text-(--wui-color-text-secondary)">icon-only member</span>
       <web-ui-button-group>
         <web-ui-button icon variant="secondary" aria-label="Previous page">
-          <web-ui-icon :icon="lucideChevronLeft" :size="16"></web-ui-icon>
+          <web-ui-icon :icon="lucideChevronLeft"></web-ui-icon>
         </web-ui-button>
         <web-ui-button icon variant="secondary" aria-label="Next page">
-          <web-ui-icon :icon="lucideChevronRight" :size="16"></web-ui-icon>
+          <web-ui-icon :icon="lucideChevronRight"></web-ui-icon>
         </web-ui-button>
       </web-ui-button-group>
     </div>
@@ -112,12 +112,12 @@ export default function Demo() {
       <span class="text-xs text-(--wui-color-text-secondary)">icon via prefix / suffix</span>
       <web-ui-button-group>
         <web-ui-button variant="secondary">
-          <web-ui-icon slot="prefix" :icon="lucideChevronLeft" :size="16"></web-ui-icon>
+          <web-ui-icon slot="prefix" :icon="lucideChevronLeft"></web-ui-icon>
           Previous
         </web-ui-button>
         <web-ui-button variant="secondary">
           Next
-          <web-ui-icon slot="suffix" :icon="lucideChevronRight" :size="16"></web-ui-icon>
+          <web-ui-icon slot="suffix" :icon="lucideChevronRight"></web-ui-icon>
         </web-ui-button>
       </web-ui-button-group>
     </div>
@@ -126,11 +126,11 @@ export default function Demo() {
       <span class="text-xs text-(--wui-color-text-secondary)">Text and icon mixed</span>
       <web-ui-button-group>
         <web-ui-button icon variant="secondary" aria-label="Previous page">
-          <web-ui-icon :icon="lucideChevronLeft" :size="16"></web-ui-icon>
+          <web-ui-icon :icon="lucideChevronLeft"></web-ui-icon>
         </web-ui-button>
         <web-ui-button variant="secondary">Page 1 / 3</web-ui-button>
         <web-ui-button icon variant="secondary" aria-label="Next page">
-          <web-ui-icon :icon="lucideChevronRight" :size="16"></web-ui-icon>
+          <web-ui-icon :icon="lucideChevronRight"></web-ui-icon>
         </web-ui-button>
       </web-ui-button-group>
     </div>
@@ -159,13 +159,13 @@ export default function Demo() {
   return (
     <web-ui-button-group direction="vertical">
       <web-ui-button icon variant="secondary" aria-label="Zoom in">
-        <web-ui-icon icon={lucidePlus} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucidePlus}></web-ui-icon>
       </web-ui-button>
       <web-ui-button icon variant="secondary" aria-label="Zoom out">
-        <web-ui-icon icon={lucideMinus} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideMinus}></web-ui-icon>
       </web-ui-button>
       <web-ui-button icon variant="secondary" aria-label="Search">
-        <web-ui-icon icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideSearch}></web-ui-icon>
       </web-ui-button>
     </web-ui-button-group>
   )
@@ -176,13 +176,13 @@ export default function Demo() {
 <template>
   <web-ui-button-group direction="vertical">
     <web-ui-button icon variant="secondary" aria-label="Zoom in">
-      <web-ui-icon :icon="lucidePlus" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucidePlus"></web-ui-icon>
     </web-ui-button>
     <web-ui-button icon variant="secondary" aria-label="Zoom out">
-      <web-ui-icon :icon="lucideMinus" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideMinus"></web-ui-icon>
     </web-ui-button>
     <web-ui-button icon variant="secondary" aria-label="Search">
-      <web-ui-icon :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideSearch"></web-ui-icon>
     </web-ui-button>
   </web-ui-button-group>
 </template>
@@ -279,10 +279,10 @@ export default function Demo() {
         <span className="text-xs text-(--wui-color-text-secondary)">Vertical: the same variable sets the width</span>
         <web-ui-button-group className="[--wui-button-group-divider-length:32px]" direction="vertical">
           <web-ui-button icon variant="secondary" aria-label="Zoom in">
-            <web-ui-icon icon={lucidePlus} size={16}></web-ui-icon>
+            <web-ui-icon icon={lucidePlus}></web-ui-icon>
           </web-ui-button>
           <web-ui-button icon variant="secondary" aria-label="Zoom out">
-            <web-ui-icon icon={lucideMinus} size={16}></web-ui-icon>
+            <web-ui-icon icon={lucideMinus}></web-ui-icon>
           </web-ui-button>
         </web-ui-button-group>
       </div>
@@ -307,10 +307,10 @@ export default function Demo() {
       <span class="text-xs text-(--wui-color-text-secondary)">Vertical: the same variable sets the width</span>
       <web-ui-button-group class="[--wui-button-group-divider-length:32px]" direction="vertical">
         <web-ui-button icon variant="secondary" aria-label="Zoom in">
-          <web-ui-icon :icon="lucidePlus" :size="16"></web-ui-icon>
+          <web-ui-icon :icon="lucidePlus"></web-ui-icon>
         </web-ui-button>
         <web-ui-button icon variant="secondary" aria-label="Zoom out">
-          <web-ui-icon :icon="lucideMinus" :size="16"></web-ui-icon>
+          <web-ui-icon :icon="lucideMinus"></web-ui-icon>
         </web-ui-button>
       </web-ui-button-group>
     </div>

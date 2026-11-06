@@ -85,7 +85,7 @@ export default function Demo() {
   return (
     <div className="flex flex-col gap-3">
       <web-ui-textarea aria-label="Notes" clearable placeholder="With a prefix icon">
-        <web-ui-icon slot="prefix" icon={lucideFileText} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideFileText}></web-ui-icon>
       </web-ui-textarea>
       <web-ui-textarea aria-label="Feedback" clearable placeholder="Both prefix and suffix are text">
         <span slot="prefix">Notes: </span>
@@ -100,7 +100,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-col gap-3">
     <web-ui-textarea aria-label="Notes" clearable placeholder="With a prefix icon">
-      <web-ui-icon slot="prefix" :icon="lucideFileText" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideFileText"></web-ui-icon>
     </web-ui-textarea>
     <web-ui-textarea aria-label="Feedback" clearable placeholder="Both prefix and suffix are text">
       <span slot="prefix">Notes: </span>

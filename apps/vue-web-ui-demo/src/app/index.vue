@@ -206,7 +206,7 @@ onMounted(async () => {
             aria-label="关闭横幅"
             @click="bannerVisible = false"
           >
-            <web-ui-icon class="text-(--wui-color-on-accent)" :icon="lucideX" :size="16"></web-ui-icon>
+            <web-ui-icon class="text-(--wui-color-on-accent)" :icon="lucideX"></web-ui-icon>
           </web-ui-button>
           <span class="col-start-2 text-center">🎉 欢迎使用 web-ui 组件库！</span>
         </div>

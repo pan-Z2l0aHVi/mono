@@ -119,7 +119,7 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
         :key="feature.id"
         class="flex items-center gap-2.5 text-sm text-(--wui-color-text-secondary)"
       >
-        <web-ui-icon :icon="feature.icon" :size="16" class="shrink-0 text-(--wui-color-accent)"></web-ui-icon>
+        <web-ui-icon :icon="feature.icon" class="shrink-0 text-(--wui-color-accent)"></web-ui-icon>
         <span class="whitespace-nowrap font-medium leading-tight text-(--wui-color-text)">{{ feature.label() }}</span>
       </div>
     </div>
@@ -128,7 +128,7 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
       <div
         class="flex items-center gap-2 mb-5 text-[16px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)"
       >
-        <web-ui-icon :icon="lucideLayoutGrid" :size="16"></web-ui-icon>
+        <web-ui-icon :icon="lucideLayoutGrid"></web-ui-icon>
         快速预览
       </div>
 

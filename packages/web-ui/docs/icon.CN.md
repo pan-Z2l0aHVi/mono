@@ -72,7 +72,7 @@ export default function Demo() {
     <div className="flex flex-wrap items-center gap-6">
       <span className="flex items-center gap-2">
         <web-ui-icon icon={clock}></web-ui-icon>
-        默认 18px
+        默认 16px
       </span>
       <span className="flex items-center gap-2">
         <web-ui-icon icon={clock} size={32} color="#007aff"></web-ui-icon>
@@ -88,7 +88,7 @@ export default function Demo() {
   <div class="flex flex-wrap items-center gap-6">
     <span class="flex items-center gap-2">
       <web-ui-icon :icon="clock"></web-ui-icon>
-      默认 18px
+      默认 16px
     </span>
     <span class="flex items-center gap-2">
       <web-ui-icon :icon="clock" :size="32" color="#007aff"></web-ui-icon>
@@ -108,7 +108,7 @@ const clock = {
 
 ### Size
 
-`size` 是像素尺寸，图形按资产自己的 viewBox 等比缩放，不会被拉伸。默认 `18`。
+`size` 是像素尺寸，图形按资产自己的 viewBox 等比缩放，不会被拉伸。默认 `16`。
 
 ```tsx
 import { lucideStar } from '@greypan/web-ui/icons'
@@ -235,11 +235,11 @@ export default function Demo() {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <web-ui-button>
-        <web-ui-icon slot="prefix" icon={lucideUpload} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideUpload}></web-ui-icon>
         上传
       </web-ui-button>
       <web-ui-button variant="secondary">
-        <web-ui-icon slot="suffix" icon={lucideDownload} size={16}></web-ui-icon>
+        <web-ui-icon slot="suffix" icon={lucideDownload}></web-ui-icon>
         下载
       </web-ui-button>
       <web-ui-button icon aria-label="上一页">
@@ -254,11 +254,11 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-3">
     <web-ui-button>
-      <web-ui-icon slot="prefix" :icon="lucideUpload" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideUpload"></web-ui-icon>
       上传
     </web-ui-button>
     <web-ui-button variant="secondary">
-      <web-ui-icon slot="suffix" :icon="lucideDownload" :size="16"></web-ui-icon>
+      <web-ui-icon slot="suffix" :icon="lucideDownload"></web-ui-icon>
       下载
     </web-ui-button>
     <web-ui-button icon aria-label="上一页">
@@ -320,7 +320,7 @@ import { iconGallery } from '@greypan/web-ui/icons'
 | ------- | ---------------------------------------------------------- | ------------- | ------- |
 | `icon`  | Iconify 数据对象；只能通过 property 传入，不接受图标名字。 | `IconifyIcon` | -       |
 | `spin`  | 旋转动画。                                                 | `boolean`     | `false` |
-| `size`  | 像素尺寸，同时写进 `<svg>` 的 `width` 与 `height`。        | `number`      | `18`    |
+| `size`  | 像素尺寸，同时写进 `<svg>` 的 `width` 与 `height`。        | `number`      | `16`    |
 | `color` | 图标颜色；留空时先读 `--wui-icon-color`，再读文字颜色。    | `string`      | -       |
 
 ### 行为说明

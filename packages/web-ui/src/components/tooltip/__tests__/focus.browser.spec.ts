@@ -5,7 +5,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import type { WebUiButton } from '@/components/button'
-import { cleanupElement, queryA11y, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, pollUntil, queryA11y, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiTooltip } from '..'
 
@@ -26,10 +26,43 @@ function createTooltip(attrs: Record<string, string>): { tooltip: WebUiTooltip; 
 
 // show-delay 拉到 2 秒：下面的用例都要在「不等延迟」的路径上判定，避免和悬停延迟抢时间。
 function mountShadowTriggerTooltip(): { tooltip: WebUiTooltip; trigger: WebUiButton } {
-  return createTooltip({ 'show-delay': '2000' })
+  return createTooltip({ trigger: 'hover focus', 'show-delay': '2000' })
 }
 
 describe('WebUiTooltip 焦点触发（浏览器）', () => {
+  it('默认触发方式下 Tab 聚焦不会打开提示', async () => {
+    const { tooltip, trigger } = createTooltip({ 'show-delay': '2000' })
+    await waitForUpdate(tooltip)
+    await waitForUpdate(trigger)
+
+    await userEvent.keyboard('{Tab}')
+    await waitForUpdate(tooltip)
+
+    expect(trigger.shadowRoot?.activeElement).toBeTruthy()
+    expect(tooltip.open).toBe(false)
+    cleanupElement(tooltip)
+  })
+
+  it('默认 hover 提示在点击后指针离开时关闭，即使按钮仍有焦点', async () => {
+    const { tooltip, trigger } = createTooltip({ 'show-delay': '0', 'hide-delay': '0' })
+    const away = document.createElement('div')
+    away.textContent = 'Away'
+    away.style.cssText = 'width:100px;height:100px;margin-top:100px'
+    document.body.append(away)
+    await waitForUpdate(tooltip)
+    await waitForUpdate(trigger)
+
+    const button = trigger.shadowRoot!.querySelector('button')!
+    await userEvent.hover(button)
+    await pollUntil(() => tooltip.open, 'Expected tooltip to open on hover')
+    await userEvent.click(button)
+    expect(trigger.shadowRoot?.activeElement).toBe(button)
+    await userEvent.hover(away)
+    await pollUntil(() => !tooltip.open, 'Expected tooltip to close after pointer leaves')
+    expect(trigger.shadowRoot?.activeElement).toBe(button)
+    cleanupElement(tooltip)
+  })
+
   it('Tab 聚焦 web-ui-button 的 shadow 按钮后立即显示', async () => {
     const { tooltip, trigger } = mountShadowTriggerTooltip()
     await waitForUpdate(tooltip)

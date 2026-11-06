@@ -200,6 +200,9 @@ catalogs:
     '@iconify-json/ic':
       specifier: ^1.2.4
       version: 1.2.4
+    '@iconify-json/icon-park-outline':
+      specifier: ^1.2.4
+      version: 1.2.4
     '@iconify-json/jam':
       specifier: ^1.2.3
       version: 1.2.3
@@ -1071,6 +1074,9 @@ importers:
         specifier: 'catalog:'
         version: 1.2.3
       '@iconify-json/ic':
+        specifier: 'catalog:'
+        version: 1.2.4
+      '@iconify-json/icon-park-outline':
         specifier: 'catalog:'
         version: 1.2.4
       '@iconify-json/jam':
@@ -2176,6 +2182,9 @@ packages:
 
   '@iconify-json/ic@1.2.4':
     resolution: {integrity: sha512-pzPMmrZrBQuwT7nmtrYdkttun8KalRGgZPIL1Ny9KpF2zjRGIUPN+npTfuD3lrgO/OnSwAoJWuekQwBpt/Cqrw==}
+
+  '@iconify-json/icon-park-outline@1.2.4':
+    resolution: {integrity: sha512-NyZxXe2gD2TbTOyoRRMdtEJhr6i2KQCdDlYYoOn5oZLndQjwpIhw79hzeFhXvP38/o40D3gQ+l+IaSJgbB+0TQ==}
 
   '@iconify-json/jam@1.2.3':
     resolution: {integrity: sha512-Kp+OxTzB8xvbaMyIoqEqB96Ik4zv7uo5y1yavjAee0N1K/6u+PCOBwEi+Djn3WJ2trCrNZk+qYw1BJUsZC41Eg==}
@@ -7713,6 +7722,10 @@ snapshots:
       '@iconify/types': 2.0.0
 
   '@iconify-json/ic@1.2.4':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/icon-park-outline@1.2.4':
     dependencies:
       '@iconify/types': 2.0.0
 

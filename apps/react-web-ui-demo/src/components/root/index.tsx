@@ -289,7 +289,7 @@ export function Root() {
                   aria-label="关闭横幅"
                   onClick={() => setBannerVisible(false)}
                 >
-                  <web-ui-icon className="text-(--wui-color-on-accent)" icon={lucideX} size={16}></web-ui-icon>
+                  <web-ui-icon className="text-(--wui-color-on-accent)" icon={lucideX}></web-ui-icon>
                 </web-ui-button>
                 <span className="col-start-2 text-center">🎉 欢迎使用 web-ui 组件库！</span>
               </div>

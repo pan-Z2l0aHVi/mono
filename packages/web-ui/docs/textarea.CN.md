@@ -67,7 +67,7 @@ export default function Demo() {
   return (
     <div className="flex flex-col gap-3">
       <web-ui-textarea aria-label="备注" clearable placeholder="带前缀 icon">
-        <web-ui-icon slot="prefix" icon={lucideFileText} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideFileText}></web-ui-icon>
       </web-ui-textarea>
       <web-ui-textarea aria-label="反馈" clearable placeholder="前后缀都是文字">
         <span slot="prefix">备注：</span>
@@ -82,7 +82,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-col gap-3">
     <web-ui-textarea aria-label="备注" clearable placeholder="带前缀 icon">
-      <web-ui-icon slot="prefix" :icon="lucideFileText" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideFileText"></web-ui-icon>
     </web-ui-textarea>
     <web-ui-textarea aria-label="反馈" clearable placeholder="前后缀都是文字">
       <span slot="prefix">备注：</span>

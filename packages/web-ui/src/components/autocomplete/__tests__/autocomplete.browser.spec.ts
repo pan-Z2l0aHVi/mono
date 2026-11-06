@@ -1228,6 +1228,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
   it('web-ui-textarea 自定义 trigger Enter 插入换行不选中高亮项，Escape/blur 关闭', async () => {
     const el = document.createElement('web-ui-autocomplete')
+    el.trigger = 'click focus'
     el.innerHTML = `
       <web-ui-textarea slot="trigger"></web-ui-textarea>
       <web-ui-option value="apple" label="Apple"></web-ui-option>

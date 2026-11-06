@@ -219,7 +219,7 @@ const meta = [
   { label: 'h3', id: 'section-15', content: "行为说明" },
   { label: 'p', content: "菜单项：<code>web-ui-dropdown-item</code>、<code>web-ui-dropdown-divider</code>、<code>web-ui-dropdown-header</code>。子菜单在 <code>web-ui-dropdown-item</code> 上通过 <code>submenu</code> 属性启用。完整键盘导航支持。" },
   { label: 'p', content: "菜单能否打开看的是根层还有没有内容可展示：没有菜单项、分隔线或标题（含框架 wrapper 里的）时，点击、键盘手势与悬停都不展开；<code>hidden</code> 子树不算内容。<code>show()</code> 与写 <code>open</code> 仍可空开；关闭态新增内容不会打开菜单。菜单打开期间最后一段内容消失时，立即收起，不播退场过渡。" },
-  { label: 'p', content: "<code>hover</code> 由指针进出开合；指针从触发器移进面板不会收起，离开触发器与面板、且焦点不在其中时按 <code>hide-delay</code> 收起。<code>show-delay</code> / <code>hide-delay</code> 只作用于 hover 来源；点击、焦点与程序式调用都立即生效。Escape、点外面与失焦会收起所有非 <code>none</code> 的菜单，不取决于 <code>trigger</code> 是否包含 <code>click</code> 或 <code>focus</code>；<code>none</code> 不响应也不拦截它们。" },
+  { label: 'p', content: "<code>hover</code> 由指针进出开合；指针从触发器移进面板不会收起，离开触发器与面板、启用 <code>focus</code> 时还需焦点离开，随后按 <code>hide-delay</code> 收起。<code>show-delay</code> / <code>hide-delay</code> 只作用于 hover 来源；点击、焦点与程序式调用都立即生效。外点仅关闭包含 <code>click</code> 的菜单，失焦仅关闭包含 <code>focus</code> 的菜单；Escape 关闭非 <code>none</code> 的菜单。" },
   { label: 'p', content: "<code>open</code> 可以直接赋值；该写入是静默的，不派发 <code>open-change</code>。" },
   { label: 'h3', id: 'section-16', content: "trigger ARIA" },
   { label: 'p', content: "<code>aria-haspopup=\"menu\"</code>、<code>aria-expanded</code> 与 <code>aria-controls</code>（指向根菜单面板）回写到 <code>trigger</code> 插槽的第一个元素。<code>trigger</code> 插槽请放可交互元素。" }

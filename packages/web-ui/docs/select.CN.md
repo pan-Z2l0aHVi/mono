@@ -142,7 +142,7 @@ export default function Demo() {
   return (
     <web-ui-select value={lang} onChange={event => setLang(event.currentTarget.value)}>
       <div slot="trigger" className="flex items-center gap-1.5">
-        <web-ui-icon icon={lucideGlobe} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideGlobe}></web-ui-icon>
         <span className="text-sm">{LABELS[lang] ?? '选择语言'}</span>
       </div>
       <web-ui-option value="zh" label="中文"></web-ui-option>
@@ -157,7 +157,7 @@ export default function Demo() {
 <template>
   <web-ui-select :value="lang" @change="lang = $event.currentTarget.value">
     <div slot="trigger" class="flex items-center gap-1.5">
-      <web-ui-icon :icon="lucideGlobe" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideGlobe"></web-ui-icon>
       <span class="text-sm">{{ LABELS[lang] ?? '选择语言' }}</span>
     </div>
     <web-ui-option value="zh" label="中文"></web-ui-option>
@@ -549,7 +549,7 @@ export default function Demo() {
 
 关闭态的 Space / Enter / ArrowDown / ArrowUp 打开面板；`none` 下这些按键不再自动展开。展开态的 ArrowDown / ArrowUp、Home / End 与 typeahead 移动激活项，Enter / Space 选择并关闭，Escape 关闭。
 
-`hover` 由指针进出开合；指针离开触发器与面板、且焦点不在其中时按 `hide-delay` 收起。`show-delay` / `hide-delay` 只作用于 hover 来源；点击、焦点与程序式调用都立即生效。Escape、点面板外与失焦会收起所有非 `none` 的层，不取决于 `trigger` 是否包含 `click` 或 `focus`。
+`hover` 由指针进出开合；指针离开触发器与面板、启用 `focus` 时还需焦点离开，随后按 `hide-delay` 收起。`show-delay` / `hide-delay` 只作用于 hover 来源；点击、焦点与程序式调用都立即生效。外点仅关闭包含 `click` 的层，失焦仅关闭包含 `focus` 的层；Escape 关闭非 `none` 的层。
 
 启用 `portal` 的面板在创建时读取宿主上的这些变量值；更新宿主后需重新打开面板才会生效。
 
