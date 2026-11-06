@@ -1,7 +1,5 @@
 <script setup lang="ts">
-import appScrollbarsOptions from '@greypan/app-scrollbars'
 import type { WebUiDrawer, WebUiEvent } from '@greypan/web-ui'
-import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { ResourceView } from '@/stores/library'
@@ -135,21 +133,20 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
     -->
     <div
       v-if="open && resource"
-      class="-m-5 grid h-[calc(100%+40px)] w-[calc(100%+40px)] min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden rounded-[var(--wui-drawer-radius,28px)] mobile:h-(--wui-drawer-height)"
+      class="-m-5 w-[calc(100%+40px)] min-h-0 rounded-[var(--wui-drawer-radius,28px)]"
+      :class="
+        target.mode === 'text'
+          ? 'min-h-full'
+          : 'grid h-[calc(100%+40px)] grid-rows-[minmax(0,1fr)] overflow-hidden mobile:h-(--wui-drawer-height)'
+      "
     >
-      <!--
-        滚动接在外层宿主上，grid 留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己生成的
-        块盒 viewport，`place-items-center` 的居中就不再作用于内容（见 library/host-layout-probe.png
-        的实测对照）。里层用 min-h-full / h-full 把「至少和滚动口一样高」这条接回来——viewport
-        的高度是确定的，百分比因此能解析。
-      -->
-      <OverlayScrollbarsComponent v-if="emptyState" :options="appScrollbarsOptions" class="min-h-0 overflow-y-auto">
+      <div v-if="emptyState" class="min-h-0 overflow-y-auto">
         <div class="grid min-h-full place-items-center">
           <web-ui-empty :size="72" :title="emptyState.title" :description="emptyState.description">
             <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
           </web-ui-empty>
         </div>
-      </OverlayScrollbarsComponent>
+      </div>
 
       <div v-else-if="target.mode === 'image'" class="min-h-0 overflow-hidden">
         <web-ui-empty v-if="imageFailed" :size="72" title="无法显示这张图片" description="文件可能已被移动或删除。">
@@ -164,11 +161,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
         />
       </div>
 
-      <OverlayScrollbarsComponent
-        v-else-if="target.mode === 'video'"
-        :options="appScrollbarsOptions"
-        class="min-h-0 overflow-auto"
-      >
+      <div v-else-if="target.mode === 'video'" class="min-h-0 overflow-auto">
         <div class="grid h-full min-h-full place-items-center">
           <web-ui-empty
             v-if="videoFailed"
@@ -194,28 +187,20 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
             @error="videoFailed = true"
           ></video>
         </div>
-      </OverlayScrollbarsComponent>
+      </div>
 
-      <div v-else-if="target.mode === 'text'" class="grid min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden">
+      <div v-else-if="target.mode === 'text'" class="min-h-full">
         <div v-if="textState === 'loading'" class="grid min-h-0 place-items-center" role="status">
           <web-ui-spinner :size="28" />
         </div>
         <web-ui-empty v-else-if="textState === 'failed'" :size="72" title="无法读取这个文件" :description="textError">
           <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
         </web-ui-empty>
-        <div v-else-if="textPreview" class="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
+        <div v-else-if="textPreview">
           <p class="m-0 border-b border-black/6 text-xs text-(--wui-color-text-secondary) dark:border-white/8">
             {{ textNotice }}
           </p>
-          <OverlayScrollbarsComponent :options="appScrollbarsOptions" class="overflow-auto">
-            <!--
-              滚动接在外层宿主上、`pre` 留在里面：适配包会在宿主里插一层内容 div，宿主若就是
-              `pre`，那层 div 会成为它的直接子节点——与 <ul>/<ol> 那条同一个形状。
-            -->
-            <pre class="m-0 font-mono text-xs leading-5 whitespace-pre-wrap wrap-break-word">{{
-              textPreview.text
-            }}</pre>
-          </OverlayScrollbarsComponent>
+          <pre class="m-0 font-mono text-xs leading-5 whitespace-pre-wrap wrap-break-word">{{ textPreview.text }}</pre>
         </div>
       </div>
 
