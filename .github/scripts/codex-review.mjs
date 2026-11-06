@@ -192,13 +192,44 @@ export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplic
 /**
  * 评论正文是 Markdown：模型给出的尖括号必须转义，否则 `<script>` 会被当成 HTML；
  * 但整段删掉会把 `Plugin<ToolchainApi, KitCtx>` 这类泛型吃成 `PluginToolchainApi, KitCtx`。
- * 反引号代码段里的尖括号由 Markdown 原样显示，本身不会执行，所以只转义代码段之外的部分。
+ * 代码段按 CommonMark 的「同长度反引号 run 才闭合」识别：段内原样保留，段外转义；
+ * 未闭合或长度不匹配的反引号不算代码段，其后的尖括号仍按普通文本处理。
  */
-function escapeAngleBrackets(text) {
-  return text
-    .split(/(`[^`]*`)/u)
-    .map(chunk => (chunk.startsWith('`') ? chunk : chunk.replace(/</gu, '&lt;').replace(/>/gu, '&gt;')))
-    .join('')
+function escapeOutsideCodeSpans(text) {
+  const escaped = value => value.replace(/</gu, '&lt;').replace(/>/gu, '&gt;')
+  let result = ''
+  let index = 0
+  while (index < text.length) {
+    const tick = text.indexOf('`', index)
+    if (tick === -1) {
+      result += escaped(text.slice(index))
+      break
+    }
+    result += escaped(text.slice(index, tick))
+    let runEnd = tick
+    while (text[runEnd] === '`') runEnd += 1
+    const run = runEnd - tick
+    let close = -1
+    let search = runEnd
+    while (search < text.length) {
+      const next = text.indexOf('`', search)
+      if (next === -1) break
+      let end = next
+      while (text[end] === '`') end += 1
+      if (end - next === run) {
+        close = next
+        break
+      }
+      search = end
+    }
+    if (close === -1) {
+      result += escaped(text.slice(tick))
+      break
+    }
+    result += text.slice(tick, close + run)
+    index = close + run
+  }
+  return result
 }
 
 function oneLine(value) {
@@ -207,7 +238,7 @@ function oneLine(value) {
 }
 
 function inline(value) {
-  return escapeAngleBrackets(oneLine(value))
+  return escapeOutsideCodeSpans(oneLine(value))
 }
 
 function location(finding) {

@@ -360,6 +360,32 @@ for (const [label, value] of [
   })
   assert.match(codeSpan, /`a < b`/)
 
+  // 未闭合的反引号不是代码段：后面的 <b> 仍要转义。审查在 PR #520 上抓到的正是这个绕过。
+  const unclosedParsed = parseReviewFindings(
+    JSON.stringify({ summary: '边界', findings: [{ ...finding('Nit'), problem: '`<b>hack', suggestion: '' }] })
+  )
+  const unclosedMeta = { ...metaOf(), summary: unclosedParsed.summary, findings: unclosedParsed.findings }
+  const unclosed = renderConclusion({
+    conclusion: deriveConclusion({ meta: unclosedMeta, findings: unclosedParsed, liveHeadSha: headSha, error: '' }),
+    meta: unclosedMeta,
+    pullNumber: 54
+  })
+  assert.ok(!unclosed.includes('<b>'), 'an unclosed backtick must not become a code span')
+  assert.match(unclosed, /`&lt;b&gt;hack/)
+
+  // 长度不匹配的反引号 run 同样不是代码段。
+  const mismatchedParsed = parseReviewFindings(
+    JSON.stringify({ summary: '边界', findings: [{ ...finding('Nit'), problem: '``a` <b>', suggestion: '' }] })
+  )
+  const mismatchedMeta = { ...metaOf(), summary: mismatchedParsed.summary, findings: mismatchedParsed.findings }
+  const mismatched = renderConclusion({
+    conclusion: deriveConclusion({ meta: mismatchedMeta, findings: mismatchedParsed, liveHeadSha: headSha, error: '' }),
+    meta: mismatchedMeta,
+    pullNumber: 54
+  })
+  assert.ok(!mismatched.includes('<b>'), 'a mismatched backtick run must not swallow the following text')
+  assert.match(mismatched, /``a` &lt;b&gt;/)
+
   const unreviewedMeta = { status: 'unreviewed', error: 'the review step produced no output file' }
   const unreviewed = renderConclusion({
     conclusion: deriveConclusion({ meta: unreviewedMeta, findings: null, liveHeadSha: headSha, error: '' }),
