@@ -341,7 +341,7 @@ for (const [label, value] of [
     pullNumber: 54
   })
   assert.match(generic, /Array&lt;T&gt; 与 &lt;div&gt;/)
-  assert.match(generic, /`Plugin<ToolchainApi, KitCtx>`/)
+  assert.match(generic, /<code>Plugin&lt;ToolchainApi, KitCtx&gt;<\/code>/)
   assert.ok(!generic.includes('PluginToolchainApi'), 'generic parameters must survive escaping')
   assert.ok(!generic.includes('<div>'), 'summary must not inject HTML either')
 
@@ -358,7 +358,7 @@ for (const [label, value] of [
     meta: codeSpanMeta,
     pullNumber: 54
   })
-  assert.match(codeSpan, /`a < b`/)
+  assert.match(codeSpan, /<code>a &lt; b<\/code>/)
 
   // 未闭合的反引号不是代码段：后面的 <b> 仍要转义。审查在 PR #520 上抓到的正是这个绕过。
   const unclosedParsed = parseReviewFindings(
@@ -414,8 +414,8 @@ for (const [label, value] of [
     meta: unmatchedMeta,
     pullNumber: 54
   })
-  assert.match(unmatched, /``Plugin<T>``/, 'a later valid code span must still be recognised')
-  assert.ok(!unmatched.includes('Plugin&lt;T&gt;'), 'a valid code span must not be escaped as text')
+  assert.match(unmatched, /<code>Plugin&lt;T&gt;<\/code>/, 'a later valid code span must still be recognised')
+  assert.ok(!unmatched.includes('<T>'), 'code content must stay escaped')
 
   // 文件名里的反引号会提前闭合包裹它的代码段；保留原路径，改用更长的围栏。
   const pathParsed = parseReviewFindings(
@@ -428,8 +428,8 @@ for (const [label, value] of [
     pullNumber: 54
   })
   assert.ok(
-    pathBody.includes('`` src/`<b>x.ts:12 ``'),
-    'the path must keep its backtick and be wrapped in a longer fence'
+    pathBody.includes('<code>src/`&lt;b&gt;x.ts:12</code>'),
+    'the path must keep its backtick inside the code element'
   )
 
   // 路径里的换行会提前结束段落，代码段随之失效；先折成一行再包。
@@ -446,7 +446,7 @@ for (const [label, value] of [
     pullNumber: 54
   })
   assert.ok(!multiline.includes('\n\n<img'), 'a multi-line path must not break out of the code span')
-  assert.ok(multiline.includes('src/a.ts <img src=x>:3'))
+  assert.ok(multiline.includes('<code>src/a.ts &lt;img src=x&gt;:3</code>'))
 
   const unreviewedMeta = { status: 'unreviewed', error: 'the review step produced no output file' }
   const unreviewed = renderConclusion({
