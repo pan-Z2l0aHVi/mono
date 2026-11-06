@@ -11,7 +11,7 @@ import { definePlugin, rust, type Plugin } from '@greypan/js-kit'
 export type Run = () => Promise<rust.Result<void, string>>
 
 /**
- * 由触发层经 `.make()` 注入的仓库事实。插件与 `plugin/**` 一律不产出 `root`。
+ * 由触发层经 `.make()` 注入的仓库事实。插件与 `src/` 下的能力目录一律不产出 `root`。
  */
 export interface KitCtx {
   readonly root: string

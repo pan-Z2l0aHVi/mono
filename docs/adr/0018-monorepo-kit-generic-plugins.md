@@ -16,12 +16,13 @@
 
 ```text
 packages/monorepo-kit/src/
-  plugin/      # 一个能力一个目录：<能力>.ts 是插件，同目录的其余模块是它承载的判定
+  <能力>/      # 一个能力一个目录：<能力>.ts 是插件，同目录的其余模块是它承载的判定；各带 index.ts 作为对外面
   runner/      # 检查协议本身
+  vite/        # Vite 配置求值期的适配（端口分配、dev 证书），走 ./vite 子路径
   shared/      # 与领域无关的纯函数：readJsonFile、排序、按 pnpm-workspace.yaml 定位仓库根
 ```
 
-能力与判定不按形态分家：判定与它依赖的那份能力同住一个 `plugin/<能力>/` 目录。一份判定归谁的判据是**它的权威输入由谁拥有**，不是它 import 了几个能力——任务输入哈希读 `turbo.json`，归 `turbo`；hook 状态读 `.vite-hooks/` 与 Git 配置，归 `git`。子进程执行、Git 查询与 workspace manifest 读取都是插件；只有「按 `pnpm-workspace.yaml` 向上定位仓库根」留在 `shared/`，因为根是触发层注入的 context，不该由某个插件产出。
+能力与判定不按形态分家：判定与它依赖的那份能力同住一个能力目录。一份判定归谁的判据是**它的权威输入由谁拥有**，不是它 import 了几个能力——任务输入哈希读 `turbo.json`，归 `turbo`；hook 状态读 `.vite-hooks/` 与 Git 配置，归 `git`。子进程执行、Git 查询与 workspace manifest 读取都是插件；只有「按 `pnpm-workspace.yaml` 向上定位仓库根」留在 `shared/`，因为根是触发层注入的 context，不该由某个插件产出。
 
 能力插件用 `@greypan/js-kit` 的 `definePlugin` 组合，`.make()` 的产物就是判定在链上收到的上下文。
 
@@ -33,9 +34,8 @@ packages/monorepo-kit/src/
 | `turbo`      | 读 `turbo.json`、解析任务输入与缓存目录                                   |
 | `changesets` | `.changeset/` 目录、config 与 `changeset status` 的只读封装               |
 | `toolchain`  | 有序步骤列表 `{ name, match, command, args, failOn: 'exit' \| 'stdout' }` |
-| `test-ports` | 读取端口分配配置（默认 `monorepo.json`）、校验与偏移                      |
 
-`toolchain` 之所以是插件而不是检查内联逻辑：同一份步骤表上要做「按 staged 文件匹配」与「并发执行」两件事，换仓库时变的是步骤表，不是匹配与汇总语义。
+`toolchain` 之所以是插件而不是检查内联逻辑：同一份步骤表上要做「按 staged 文件匹配」与「并发执行」两件事，换仓库时变的是步骤表，不是匹配与汇总语义。端口分配也不在这张表里：它的消费发生在 `vite.config.ts` 求值期而不是链上，2026-11-06 起它是 `src/vite/` 导出的 Vite 插件 `testPorts()`，链上只留「调用点与分配表是否相等」这条判定（裁决见 ADR-0022）。
 
 检查全参数化：每个检查以 `defineXxx(options)` 导出，仓库事实只能经 options 进入。
 
@@ -51,7 +51,6 @@ packages/monorepo-kit/src/
 | `git-hooks-status`                                               | `required` hook 名单                                                |
 | `script-tests`                                                   | 无（发现集合由 `git ls-files '*.test.mjs'` 现读，包内测试不在里面） |
 | `full-checkout`                                                  | 恢复全树的提示文案                                                  |
-| `test-ports`                                                     | 端口表文件名（默认 `monorepo.json`）                                |
 | `test-port-call-sites`                                           | 扫描 glob、调用名                                                   |
 | `package-contract`、`turbo-cache-invariant`、`turbo-input-paths` | 无（仓库事实从 `turbo.json` 与 `pnpm-workspace.yaml` 读出来）       |
 

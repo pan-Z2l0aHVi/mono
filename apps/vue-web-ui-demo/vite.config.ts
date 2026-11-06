@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import depsReload from '@greypan/deps-reload/vite'
 import { mdToMeta, type MdToMetaOptions } from '@greypan/md-to-meta'
-import { devHttpsPlugin, testApiPort } from '@greypan/monorepo-kit/vite'
+import { devHttpsPlugin, testPorts } from '@greypan/monorepo-kit/vite'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
 import tailwindcss from '@tailwindcss/vite'
@@ -82,13 +82,6 @@ export default defineConfig({
           // 断点与 collapsed state 都是真实浏览器才成立的东西：jsdom 里 media query 是替身、
           // 工具类是一串不生效的字符串。这一档在 Chromium 里读回渲染结果。
           include: ['src/**/*.browser.spec.ts'],
-          // vitest 5 把 `browser.api` 挪到了 `test.api`，而且要写在 browser project 自己的
-          // `test` 块里：写到根上会连 jsdom project 一起抢这个端口。默认 63315 会被同机并行的
-          // 其他 worktree（或同一轮 turbo test 里其他包的测试进程）占住——同一进程内的多个
-          // browser project 倒是会各自递增，不冲突；端口分配与多 worktree 的偏移见
-          // 根 monorepo.json 与 GREYPAN_TEST_PORT_OFFSET。host 钉成 loopback 的理由见
-          // apps/react-web-ui-demo/vite.config.ts。
-          api: { host: '127.0.0.1', port: testApiPort('vue-web-ui-demo') },
           browser: {
             enabled: true,
             headless: true,
@@ -100,6 +93,10 @@ export default defineConfig({
     ]
   },
   plugins: [
+    // browser project 的端口段由 testPorts() 写进上面那个 project 的 `test.api`，host 与
+    // strictPort 一起给出：本应用顶层 `server.host` 是 `true`，不显式钉回 loopback 时测试服务器
+    // 会跟着绑通配地址。分配表与偏移见 docs/agents/build.md「测试端口分配」。
+    testPorts({ project: 'vue-web-ui-demo', testName: 'browser' }),
     wuchale({ configPath: fileURLToPath(new URL('./wuchale.config.js', import.meta.url)) }),
     // 文档：markdown 是唯一来源，dev 与 build 都由这个插件生成 `src/generated/**`。
     // 生成物同样受版本控制，测试档只判不改（不一致就让这次的测试红）；CI 在 Build 步之前还经

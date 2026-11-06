@@ -36,8 +36,28 @@ function sources(...directories: string[]): Source[] {
   return found.sort((left, right) => left.file.localeCompare(right.file))
 }
 
-const judgementSources = sources(path.join(srcDir, 'plugin'))
-const runnerSources = sources(path.join(srcDir, 'plugin'), path.join(srcDir, 'runner'))
+// 判定层 = src 下除这三处以外的目录：`shared` 是与链无关的纯工具，`runner` 是基座本身（它不产
+// `Err` 文案，只在 runnerSources 里受协议类型的约束），`vite` 是 Vite 插件面（配置求值期抛错，
+// 不在这条链上）。名单按目录现取，新增一个能力目录就自动进判据；反过来，被排除的名字对不上任何
+// 目录就说明分区变了，先在这里失败，别让扫描面静默缩水。
+const EXCLUDED_DIRS = ['runner', 'shared', 'vite']
+
+function capabilityDirs(): string[] {
+  const dirs = fs
+    .readdirSync(srcDir, { withFileTypes: true })
+    .filter(entry => entry.isDirectory())
+    .map(entry => entry.name)
+  for (const name of EXCLUDED_DIRS)
+    assert.ok(dirs.includes(name), `src/${name} is missing: the scan face and its exclusion list must be re-decided`)
+  return dirs.filter(name => !EXCLUDED_DIRS.includes(name))
+}
+
+function inSrc(...names: string[]): string[] {
+  return names.map(name => path.join(srcDir, name))
+}
+
+const judgementSources = sources(...inSrc(...capabilityDirs()))
+const runnerSources = sources(...inSrc(...capabilityDirs(), 'runner'))
 
 function lineOf(code: string, index: number): string {
   return String(code.slice(0, index).split('\n').length)

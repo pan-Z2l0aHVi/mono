@@ -36,10 +36,22 @@ skipping the checks that already passed. `Chain`, `Run` and `KitCtx` are declare
 carrying a domain prefix, `Run` and `Chain` declared in exactly one place, `Chain` annotation on every
 run-producing export, and no judgement writing `process.stdout`/`process.stderr`/`console.*`).
 
-Add `exports["./vite"]` for `testApiPort` and `devHttpsPlugin`: both are evaluated inside
+Add `exports["./vite"]` for `testPorts` and `devHttpsPlugin`: both are evaluated inside
 `vite.config.ts`, and keeping them in the main entry would spread Vite's type surface to every Node
-consumer. The main entry no longer exports them, and `testApiPortNames` is deleted: `testApiPort` reports
-an unknown project name by listing the keys of `monorepo.json`, so the separate accessor had no caller.
+consumer. `testPorts()` is a Vite plugin rather than a js-kit one — no judgement on the chain ever
+consumed the `testApiPort(name)` accessor it replaces, because the port is read while the config is
+evaluated. It writes `{ host: '127.0.0.1', port, strictPort: false }` into `test.api`, targeting the
+project named by `testName` when the config declares `test.projects`, so consumers' `plugins` arrays no
+longer hand-write those keys and their rationale. `testApiPort`, `testApiPortNames`, `defineTestPorts`
+and `TestPortsApi` are deleted; reading and offsetting the table (`readTestPorts`) stays internal, shared
+by the plugin and the `port:` call-site guard.
+
+The layout drops the `plugin/` tier: each capability folder moved up to `src/<capability>/` and publishes
+its surface through a folder `index.ts`, which `src/index.ts` re-exports. Intra-package imports still name
+concrete files — a folder entry is a re-export, and importing across folders through it would merge two
+module graphs and cycle `exec` against `git`. Both Vite adapters live in `src/vite/`; `shared/` has no
+entry of its own. `@greypan/monorepo-kit/vite` is now `dist/vite/index.js`, the second entry key is
+written as `vite/index` because `unbundle` puts the output where the key says.
 `getWorkspaceRoot()` in `shared/workspace-root.ts` is the only repo-root lookup, and no plugin produces a
 root. `ExecResult` keeps `{ ok, status, stdout, stderr }` so "ran and failed" stays distinguishable from
 "could not start", but the judgement layer now turns any non-zero exit into an `Err`.

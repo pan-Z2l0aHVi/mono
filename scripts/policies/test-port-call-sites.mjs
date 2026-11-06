@@ -9,5 +9,5 @@ import { repoRoot } from './repo-root.mjs'
  */
 export const testPortCallSites = defineTestPortCallSites({
   configGlobs: readPnpmWorkspaceDirectories(repoRoot).map(directory => `${directory}/**/vite.config.ts`),
-  callName: 'testApiPort'
+  callName: 'testPorts'
 })
