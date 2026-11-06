@@ -2,11 +2,33 @@
   "type": "object",
   "description": "A read-only Codex review conclusion for one pull request head snapshot.",
   "additionalProperties": false,
-  "required": ["summary", "findings"],
+  "required": ["summary", "coverage", "findings"],
   "properties": {
     "summary": {
       "type": "string",
-      "description": "One or two sentences that state what the change does and the overall conclusion."
+      "description": "One or two sentences that state what the change does and the overall conclusion. Never describe what you are about to do or what you are reading."
+    },
+    "coverage": {
+      "type": "object",
+      "description": "What the review actually covered. This is the evidence behind an empty findings array, so it may not be empty when nothing was reported.",
+      "additionalProperties": false,
+      "required": ["inspected", "uncovered"],
+      "properties": {
+        "inspected": {
+          "type": "array",
+          "description": "Repository-relative paths whose current content you read while reviewing. List every file you actually opened, not the files you intended to open.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "uncovered": {
+          "type": "array",
+          "description": "Changed areas you could not judge, each written as path or path:line followed by the reason. An empty array claims every changed hunk was reviewed.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
     },
     "findings": {
       "type": "array",
