@@ -25,7 +25,7 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 **输出校验口径**：`parseReviewFindings` 只把 findings 的结构当致命错误（非法 JSON、缺 `findings`、未知档位、未知字段、空 `problem` 与非法行号）。`summary` 只是评论顶部一行摘要，模型给空串或没给时结论照常成立，`validate` 在日志里留一行 `review output carries no summary` 并照常写 `reviewed`；prompt 的「输出」段明确要求 1–2 句摘要，但校验不拿装饰性字段当阻断条件——一次空 `summary` 不该让整份 findings 作废。
 
-**覆盖度口径**：`docs/agents/review.md` 一直要求「无发现也要记录审查范围、验证证据和未覆盖风险」，但 schema 在 2026-11-06 之前只有 `summary` 与 `findings`，这条要求在输出里没有落脚处——模型只能把「我正在看什么」塞进 `summary`，于是空 findings 的结论和「没查就收尾」在产物上完全同形。现在 schema 必填 `coverage.inspected` / `coverage.uncovered`：`validate` 在「无 findings、diff 非空、`inspected` 为空」时判 `missing_coverage` 并让门变红，diff 为空时豁免（没有源码改动可读，空清单不是缺证据）。复用路径不重判：它来自同一个 head 与同一份配置指纹，重跑不会凭空产生新证据，缺覆盖清单只在日志留一行。
+**覆盖度口径**：`docs/agents/review.md` 一直要求「无发现也要记录审查范围、验证证据和未覆盖风险」，但 schema 在 2026-11-06 之前只有 `summary` 与 `findings`，这条要求在输出里没有落脚处——模型只能把「我正在看什么」塞进 `summary`，于是空 findings 的结论和「没查就收尾」在产物上完全同形。现在 schema 必填 `coverage.inspected` / `coverage.uncovered`：`validate` 在「无 findings、diff 非空、`inspected` 为空」时判 `missing_coverage` 并让门变红，diff 为空时豁免（没有源码改动可读，空清单不是缺证据）。复用路径同样要过这一关：旧契约产物（没有 `coverage`，或空 findings 而 `inspected` 为空）一律不复用，宁可重跑模型让这个 head 产出证据，也不把一次没有证据的空结论洗成绿色——若改成「复用后再判红」，该 head 的重跑会永远红下去。`validate` 的复用分支再用同一判据兜一次，避免别的写入口绕开 `reuse`。
 
 **权限分腿**：模型只在 PR 验证的只读 job 里运行；写回（评论、应用并推送 patch）在由 CI 完成事件触发的独立 workflow 里进行，那条 workflow 一次都不调用模型。这条划分是 PR 验证只读不变量成立的前提。该 workflow 显示名为 `Codex Review Report`（文件 `codex-review-report.yml`）：它的产物是一份关于既有结论的报告，不改判结论，所以不叫 publish。
 

@@ -115,6 +115,18 @@ export function parseReviewFindings(raw) {
   return { summary, coverage, findings, counts }
 }
 
+/**
+ * 空 findings 只有在带得出覆盖清单时才算结论。没有 findings 又没列出一个读过的路径，
+ * 与「查完确实没问题」在产物上完全同形，门会为一次没有真正发生的审查保持绿色。
+ * 返回空串表示通过，否则返回写进结论的失败原因。diff 为空时不要求覆盖：那时没有源码可读。
+ */
+function coverageGap(parsed, scope) {
+  if (parsed.findings.length > 0) return ''
+  if (scope.empty_diff) return ''
+  if (parsed.coverage?.inspected.length > 0) return ''
+  return 'the review reported no findings without listing a single inspected path'
+}
+
 export function resolveReviewRange({ baseSha, headSha, command = run }) {
   const base = requireSha(baseSha, 'PR base SHA')
   const head = requireSha(headSha, 'PR head SHA')
@@ -602,7 +614,10 @@ function commandPriorRun() {
   console.log(reuse ? `earlier conclusion available in run ${reuse.runId}` : 'no earlier conclusion for this head')
 }
 
-/** 复用要求 head、状态与配置指纹三者都自洽；配置换了就不能沿用旧模型的结论。 */
+/**
+ * 复用要求 head、状态、配置指纹与覆盖清单四者都自洽：配置换了不能沿用旧模型的结论，
+ * 缺少覆盖清单的旧契约产物也不能沿用——否则一次没有证据的空结论会借复用这条路回到绿色。
+ */
 function commandReuse() {
   const env = requireEnv(['CODEX_REVIEW_HEAD_SHA'])
   const directory = conclusionDirectory()
@@ -617,6 +632,8 @@ function commandReuse() {
     else if (conclusion.meta.status === 'error' || conclusion.meta.status === 'unreviewed')
       failure = 'the prior run has no reviewable conclusion'
     else if (conclusion.meta.config_fingerprint !== config.fingerprint) failure = 'the repository configuration changed'
+    else if (coverageGap(conclusion.findings, readScope()) !== '')
+      failure = 'the prior conclusion carries no coverage evidence'
     else reusable = conclusion
   } catch (error) {
     failure = error.message
@@ -661,18 +678,25 @@ function commandValidate() {
     const parsed = parseReviewFindings(fs.readFileSync(reusedPath, 'utf8'))
     const metaPath = path.join(directory, META_FILE)
     const prior = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : {}
-    writeConclusion(directory, {
-      findings: parsed,
-      meta: {
-        ...identity,
-        // 复用的结论是上一次生成的，时间也跟着上一次，否则评论区会把旧结论标成刚出炉。
-        generated_at: prior.generated_at ?? identity.generated_at,
-        status: 'reviewed',
-        reused_from: process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? ''
-      }
-    })
+    // 兜底：正常路径上 `reuse` 已经挡掉了没有覆盖清单的旧产物，这里再判一次，
+    // 免得任何其它写入口把一次没有证据的空结论洗成绿色。
+    const gap = coverageGap(parsed, readScope())
+    if (gap !== '') {
+      fs.rmSync(reusedPath, { force: true })
+      fs.writeFileSync(
+        path.join(directory, META_FILE),
+        `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: 'missing_coverage', error: gap }, null, 2)}\n`
+      )
+      writeOutputs({ blocks: '0', reason: gap })
+      console.error(`review is unreviewed: ${gap}`)
+      return
+    }
+    const meta = { ...identity, status: 'reviewed', reused_from: process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '' }
+    // 复用的结论是上一次生成的：它没记时间就不写，绝不拿当前时间冒充它的生成时间。
+    if (typeof prior.generated_at === 'string' && prior.generated_at !== '') meta.generated_at = prior.generated_at
+    else delete meta.generated_at
+    writeConclusion(directory, { findings: parsed, meta })
     writeOutputs({ blocks: String(parsed.counts.Block), reason: 'reused conclusion' })
-    if (!parsed.coverage) console.log('reused conclusion carries no coverage; the next head has to supply it')
     console.log(`reused conclusion: Block ${parsed.counts.Block}`)
     return
   }
@@ -711,15 +735,15 @@ function commandValidate() {
   // 空 findings 必须带覆盖证据：没有 findings 又没读过任何文件，与「查完确实没问题」在产物上完全同形，
   // 门就会为一次没有真正发生的审查保持绿色。diff 为空时豁免——那种情况本来就没有源码改动可读。
   const scope = readScope()
-  if (parsed.findings.length === 0 && !scope.empty_diff && !(parsed.coverage?.inspected.length > 0)) {
-    const reason = 'the review reported no findings without listing a single inspected path'
+  const gap = coverageGap(parsed, scope)
+  if (gap !== '') {
     fs.rmSync(reusedPath, { force: true })
     fs.writeFileSync(
       path.join(directory, META_FILE),
-      `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: 'missing_coverage', error: reason }, null, 2)}\n`
+      `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: 'missing_coverage', error: gap }, null, 2)}\n`
     )
-    writeOutputs({ blocks: '0', reason })
-    console.error(`review is unreviewed: ${reason}`)
+    writeOutputs({ blocks: '0', reason: gap })
+    console.error(`review is unreviewed: ${gap}`)
     console.error('Rerun the whole CI run once; a repeat means the review output contract needs fixing.')
     return
   }

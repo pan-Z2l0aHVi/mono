@@ -83,7 +83,11 @@ function writeFixtures(directory, conclusion = conclusionOf('Block'), meta = met
 }
 
 function conclusionOf(...severities) {
-  return { summary: '改动整体可用。', findings: severities.map(finding) }
+  return {
+    summary: '改动整体可用。',
+    coverage: { inspected: ['packages/monorepo-kit/src/runner/runner.ts'], uncovered: [] },
+    findings: severities.map(finding)
+  }
 }
 
 {
@@ -797,6 +801,20 @@ function runCli(command, { env = {}, conclusionDir }) {
   assert.equal(reused.outputs.reused, 'true')
   assert.equal(readConclusion(directory).meta.reused_from, '4321')
 
+  // 旧契约产物（没有 coverage）不能复用：否则一次没有证据的空结论会借复用这条路回到绿色。
+  const legacy = conclusionOf('Nit')
+  delete legacy.coverage
+  legacy.findings = []
+  writeFixtures(directory, legacy, metaOf())
+  const upgraded = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
+  assert.equal(upgraded.outputs.reused, 'false', 'a conclusion written before the coverage contract must not be reused')
+  assert.match(upgraded.outputs.reason, /coverage/)
+  assert.equal(
+    fs.existsSync(path.join(directory, 'review-findings.json')),
+    false,
+    'the stale conclusion is discarded so the model has to produce coverage for this head'
+  )
+
   writeFixtures(directory, conclusionOf('Nit'), metaOf({ head_sha: otherSha }))
   const drifted = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(drifted.outputs.reused, 'false')
@@ -1120,7 +1138,7 @@ esac
   runValidate()
   assert.equal(metaAfter().status, 'reviewed', 'an empty diff needs no coverage evidence')
 
-  // 有空覆盖清单的 old-format 结论在复用路径上仍可用：它来自同一个 head，重跑不会凭空产生证据。
+  // 复用路径的兜底：即使别的写入口塞进一份没有覆盖清单的旧结论，也不能让它变绿。
   fs.rmSync(path.join(directory, 'codex-final-message.json'), { force: true })
   fs.writeFileSync(path.join(directory, 'review-scope.json'), JSON.stringify({ empty_diff: false, diff_bytes: 4096 }))
   fs.writeFileSync(
@@ -1129,7 +1147,25 @@ esac
   )
   fs.writeFileSync(path.join(directory, 'review-meta.json'), JSON.stringify(metaOf({ reused_from: '99' })))
   runValidate()
-  assert.equal(metaAfter().status, 'reviewed', 'a reused conclusion is not re-litigated by the new rule')
+  assert.equal(metaAfter().status, 'unreviewed', 'a reused conclusion without coverage is not a review')
+  assert.equal(metaAfter().error_code, 'missing_coverage')
+
+  // 复用有覆盖清单的结论时沿用上一次的生成时间，不能把旧结论标成刚出炉。
+  const reusable = { summary: '历史结论。', coverage: { inspected: ['src/app.ts'], uncovered: [] }, findings: [] }
+  fs.writeFileSync(path.join(directory, 'review-findings.json'), JSON.stringify(reusable))
+  fs.writeFileSync(
+    path.join(directory, 'review-meta.json'),
+    JSON.stringify(metaOf({ reused_from: '99', generated_at: '2026-11-06T11:14:38Z' }))
+  )
+  runValidate()
+  assert.equal(metaAfter().status, 'reviewed', 'a reused conclusion that carries coverage stays reviewable')
+  assert.equal(metaAfter().generated_at, '2026-11-06T11:14:38Z', 'reuse keeps the earlier generation time')
+
+  // 上一次没记生成时间就不写，不能拿当前时间冒充它的生成时间。
+  fs.writeFileSync(path.join(directory, 'review-findings.json'), JSON.stringify(reusable))
+  fs.writeFileSync(path.join(directory, 'review-meta.json'), JSON.stringify(metaOf({ reused_from: '99' })))
+  runValidate()
+  assert.equal(metaAfter().generated_at, undefined, 'a reused conclusion without a timestamp gets none invented')
 
   fs.rmSync(directory, { recursive: true, force: true })
 }
