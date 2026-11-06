@@ -986,4 +986,152 @@ esac
   )
 }
 
+{
+  // coverage 是「空 findings」与「没查就收尾」之间唯一的区分依据，结构错误直接作废整份结论。
+  const parsed = parseReviewFindings(
+    JSON.stringify({
+      summary: '把审查契约补上覆盖清单。',
+      coverage: { inspected: [' .github/scripts/codex-review.mjs ', 'docs/agents/review.md'], uncovered: [] },
+      findings: []
+    })
+  )
+  assert.deepEqual(
+    parsed.coverage,
+    { inspected: ['.github/scripts/codex-review.mjs', 'docs/agents/review.md'], uncovered: [] },
+    'coverage entries are trimmed and kept in order'
+  )
+  assert.equal(
+    parseReviewFindings(JSON.stringify({ summary: '', findings: [] })).coverage,
+    null,
+    'an absent coverage block stays null so validate can name the failure'
+  )
+  for (const [payload, expected] of [
+    [{ summary: '', coverage: [], findings: [] }, /coverage must be an object/],
+    [{ summary: '', coverage: { inspected: [], uncovered: [], extra: 1 }, findings: [] }, /unknown fields: extra/],
+    [
+      { summary: '', coverage: { inspected: [], uncovered: [] }, findings: [{ ...finding('Nit'), extra: 1 }] },
+      /unknown fields/
+    ],
+    [{ summary: '', coverage: { uncovered: [] }, findings: [] }, /coverage is missing inspected/],
+    [
+      { summary: '', coverage: { inspected: 'src/a.ts', uncovered: [] }, findings: [] },
+      /coverage\.inspected must be an array/
+    ],
+    [
+      { summary: '', coverage: { inspected: [7], uncovered: [] }, findings: [] },
+      /coverage\.inspected\[0\] must be a non-empty string/
+    ],
+    [
+      { summary: '', coverage: { inspected: ['   '], uncovered: [] }, findings: [] },
+      /coverage\.inspected\[0\] must be a non-empty string/
+    ]
+  ]) {
+    assert.throws(() => parseReviewFindings(JSON.stringify(payload)), expected)
+  }
+}
+
+{
+  // 评论是就地更新的，创建时间不会动；正文必须自己带上生成时间与覆盖度，否则读者无法判断新旧。
+  const parsed = parseReviewFindings(
+    JSON.stringify({
+      summary: '把审查契约补上覆盖清单。',
+      coverage: { inspected: ['src/a.ts', 'src/b.ts'], uncovered: ['src/c.ts:9 打不开'] },
+      findings: []
+    })
+  )
+  const meta = metaOf({ generated_at: '2026-11-06T11:14:38Z' })
+  const body = renderConclusion({
+    conclusion: deriveConclusion({ meta, findings: parsed, liveHeadSha: headSha }),
+    meta: { ...meta, summary: parsed.summary, coverage: parsed.coverage, findings: parsed.findings },
+    pullNumber: 519
+  })
+  assert.match(body, /结论生成于：`2026-11-06 11:14Z`/, 'the generation stamp must survive in-place edits')
+  assert.match(body, /覆盖：检查 2 个文件，另有 1 处未覆盖/, 'coverage counts must be in the header')
+  assert.match(body, /\*\*未覆盖\*\*/)
+  assert.match(body, /- src\/c\.ts:9 打不开/, 'uncovered entries must be listed for the reader')
+
+  const withoutCoverage = renderConclusion({
+    conclusion: deriveConclusion({ meta, findings: parsedConclusion(), liveHeadSha: headSha }),
+    meta: { ...meta, summary: '改动整体可用。', findings: [] },
+    pullNumber: 519
+  })
+  assert.match(
+    withoutCoverage,
+    /覆盖：本次结论没有附覆盖清单/,
+    'a reviewed conclusion without coverage cannot claim coverage'
+  )
+
+  const many = parseReviewFindings(
+    JSON.stringify({
+      summary: '覆盖清单很长。',
+      coverage: {
+        inspected: ['src/a.ts'],
+        uncovered: Array.from({ length: 8 }, (_, index) => `src/f${index}.ts:1 需要判断`)
+      },
+      findings: []
+    })
+  )
+  const capped = renderConclusion({
+    conclusion: deriveConclusion({ meta, findings: many, liveHeadSha: headSha }),
+    meta: { ...meta, summary: many.summary, coverage: many.coverage, findings: many.findings },
+    pullNumber: 519
+  })
+  assert.match(
+    capped,
+    /其余 3 处见 `review-findings\.json`/,
+    'the comment lists a capped slice, the artifact keeps the rest'
+  )
+}
+
+{
+  // 端到端：没有 findings 又没交覆盖清单 → unreviewed + missing_coverage，门必须变红。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-coverage-'))
+  writeConfig(directory)
+  const runValidate = () =>
+    runCli('validate', {
+      env: { CODEX_REVIEW_HEAD_SHA: headSha, CODEX_REVIEW_BASE_SHA: otherSha, CODEX_REVIEW_STEP_OUTCOME: 'success' },
+      conclusionDir: directory
+    })
+  const metaAfter = () => JSON.parse(fs.readFileSync(path.join(directory, 'review-meta.json'), 'utf8'))
+  const writeOutput = payload => {
+    fs.writeFileSync(path.join(directory, 'codex-final-message.json'), JSON.stringify(payload))
+    for (const name of ['review-meta.json', 'review-findings.json'])
+      fs.rmSync(path.join(directory, name), { force: true })
+  }
+
+  fs.writeFileSync(path.join(directory, 'review-scope.json'), JSON.stringify({ empty_diff: false, diff_bytes: 4096 }))
+  writeOutput({ summary: 'Inspecting shell i18n and related exec checks.', findings: [] })
+  runValidate()
+  assert.equal(metaAfter().status, 'unreviewed', 'no findings without coverage is not a reviewed conclusion')
+  assert.equal(metaAfter().error_code, 'missing_coverage')
+
+  writeOutput({
+    summary: '改动整体可用。',
+    coverage: { inspected: ['packages/monorepo-kit/src/runner/runner.ts'], uncovered: [] },
+    findings: []
+  })
+  runValidate()
+  assert.equal(metaAfter().status, 'reviewed', 'coverage turns an empty findings list into a reviewable conclusion')
+  assert.ok(metaAfter().generated_at, 'every conclusion records when it was generated')
+
+  // 空 diff 豁免：没有源码改动可读时，空的 inspected 不是缺证据。
+  fs.writeFileSync(path.join(directory, 'review-scope.json'), JSON.stringify({ empty_diff: true, diff_bytes: 0 }))
+  writeOutput({ summary: '只改了生成物。', findings: [] })
+  runValidate()
+  assert.equal(metaAfter().status, 'reviewed', 'an empty diff needs no coverage evidence')
+
+  // 有空覆盖清单的 old-format 结论在复用路径上仍可用：它来自同一个 head，重跑不会凭空产生证据。
+  fs.rmSync(path.join(directory, 'codex-final-message.json'), { force: true })
+  fs.writeFileSync(path.join(directory, 'review-scope.json'), JSON.stringify({ empty_diff: false, diff_bytes: 4096 }))
+  fs.writeFileSync(
+    path.join(directory, 'review-findings.json'),
+    JSON.stringify({ summary: '历史结论。', findings: [] })
+  )
+  fs.writeFileSync(path.join(directory, 'review-meta.json'), JSON.stringify(metaOf({ reused_from: '99' })))
+  runValidate()
+  assert.equal(metaAfter().status, 'reviewed', 'a reused conclusion is not re-litigated by the new rule')
+
+  fs.rmSync(directory, { recursive: true, force: true })
+}
+
 console.log('.github/scripts/codex-review.test.mjs: all assertions passed')

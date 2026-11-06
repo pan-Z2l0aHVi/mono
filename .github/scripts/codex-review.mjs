@@ -12,6 +12,7 @@ export const FINDINGS_ARTIFACT = 'codex-review-findings'
 export const CONCLUSION_MARKER = 'codex-review-conclusion'
 export const FINDINGS_FILE = 'review-findings.json'
 export const META_FILE = 'review-meta.json'
+export const SCOPE_FILE = 'review-scope.json'
 export const CONFIG_FILE = 'codex-config.json'
 export const SEVERITIES = Object.freeze(['Block', 'Should fix', 'Nit'])
 
@@ -24,8 +25,11 @@ export const CONFIG_ENV = CODEX_CONFIG_ENV
 export const REVIEW_EXCLUDE_PATHSPECS = Object.freeze([':(exclude,glob)**/generated/**'])
 
 const FINDING_FIELDS = Object.freeze(['severity', 'file', 'line', 'problem', 'suggestion'])
+const COVERAGE_FIELDS = Object.freeze(['inspected', 'uncovered'])
 const SHA_PATTERN = /^[0-9a-f]{40,64}$/iu
 const FIELD_LIMIT = 700
+// 未覆盖清单是给人看的行动提示，不是全量报表；超出部分留在 artifact 里，别把评论撑爆。
+const UNCOVERED_LIMIT = 5
 
 function emptyCounts() {
   return Object.fromEntries(SEVERITIES.map(severity => [severity, 0]))
@@ -34,6 +38,30 @@ function emptyCounts() {
 function requireSha(value, label) {
   if (typeof value !== 'string' || !SHA_PATTERN.test(value)) throw new Error(`${label} is not a commit SHA: ${value}`)
   return value
+}
+
+/**
+ * `coverage` 是「这次到底查了什么」的唯一凭据，也是空 findings 与「没查就收尾」之间唯一的区分。
+ * 结构错了按契约失败处理（整份结论作废）；整个字段缺席则交给 validate 判 `missing_coverage`，
+ * 好让故障码说清是「模型没交证据」而不是「输出不可解析」。
+ */
+function parseCoverage(value) {
+  if (value === undefined || value === null) return null
+  if (typeof value !== 'object' || Array.isArray(value)) throw new Error('review output coverage must be an object')
+  const unknown = Object.keys(value).filter(key => !COVERAGE_FIELDS.includes(key))
+  if (unknown.length > 0) throw new Error(`review output coverage has unknown fields: ${unknown.join(', ')}`)
+  const coverage = {}
+  for (const field of COVERAGE_FIELDS) {
+    if (!(field in value)) throw new Error(`review output coverage is missing ${field}`)
+    if (!Array.isArray(value[field])) throw new Error(`review output coverage.${field} must be an array`)
+    coverage[field] = value[field].map((entry, index) => {
+      if (typeof entry !== 'string' || entry.trim() === '') {
+        throw new Error(`review output coverage.${field}[${index}] must be a non-empty string`)
+      }
+      return entry.trim()
+    })
+  }
+  return coverage
 }
 
 /**
@@ -52,6 +80,7 @@ export function parseReviewFindings(raw) {
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('review output must be a JSON object')
   const summary = typeof value.summary === 'string' ? value.summary.trim() : ''
+  const coverage = parseCoverage(value.coverage)
   if (!Array.isArray(value.findings)) throw new Error('review output needs a findings array')
 
   const findings = value.findings.map((entry, index) => {
@@ -83,7 +112,7 @@ export function parseReviewFindings(raw) {
 
   const counts = emptyCounts()
   for (const finding of findings) counts[finding.severity] += 1
-  return { summary, findings, counts }
+  return { summary, coverage, findings, counts }
 }
 
 export function resolveReviewRange({ baseSha, headSha, command = run }) {
@@ -109,7 +138,10 @@ export function readConclusion(directory) {
   const meta = JSON.parse(fs.readFileSync(metaPath, 'utf8'))
   if (!fs.existsSync(findingsPath)) return { meta, findings: null }
   const findings = parseReviewFindings(fs.readFileSync(findingsPath, 'utf8'))
-  return { meta: { ...meta, findings: findings.findings, summary: findings.summary }, findings }
+  return {
+    meta: { ...meta, findings: findings.findings, summary: findings.summary, coverage: findings.coverage },
+    findings
+  }
 }
 
 /** 配置快照只保留非密钥字段，指纹把端点/模型/强度/版本/密钥有无绑成复用键的一部分。 */
@@ -272,6 +304,16 @@ function location(finding) {
   return finding.line === 0 ? file : `${file}:${finding.line}`
 }
 
+// 评论是就地更新的：创建时间永远停在第一次写回那一刻，所以「这版结论是什么时候生成的」
+// 只能由正文自己说明，否则读者会把一条已刷新的结论当成旧的。
+function stamp(value) {
+  if (typeof value !== 'string' || value === '') return ''
+  const date = new Date(value)
+  if (Number.isNaN(date.getTime())) return ''
+  const pad = part => String(part).padStart(2, '0')
+  return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}Z`
+}
+
 export function renderConclusion({ conclusion, meta, pullNumber }) {
   const labels = {
     reviewed: '已审查',
@@ -300,12 +342,34 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
   }
   if (meta?.model) lines.push(`- 模型：\`${meta.model}\`（effort \`${meta.effort || 'default'}\`）`)
   if (meta?.reused_from) lines.push(`- 复用：同一 head 已有结论，来自 run \`${meta.reused_from}\`，未再调用模型`)
+  const generated = stamp(meta?.generated_at)
+  if (generated) lines.push(`- 结论生成于：\`${generated}\`（评论就地更新，创建时间不会变）`)
+  const coverage = meta?.coverage
+    ? { inspected: meta.coverage.inspected ?? [], uncovered: meta.coverage.uncovered ?? [] }
+    : null
+  if (coverage) {
+    const uncovered = coverage.uncovered.length
+    lines.push(
+      `- 覆盖：检查 ${coverage.inspected.length} 个文件${uncovered > 0 ? `，另有 ${uncovered} 处未覆盖` : '，无未覆盖项'}`
+    )
+  } else if (conclusion.status === 'reviewed') {
+    lines.push('- 覆盖：本次结论没有附覆盖清单，无法核对查过哪些文件')
+  }
   lines.push('')
 
   const findings = [...(meta?.findings ?? [])].sort(
     (left, right) => SEVERITIES.indexOf(left.severity) - SEVERITIES.indexOf(right.severity)
   )
   if (conclusion.status === 'reviewed' && meta?.summary) lines.push(richText(meta.summary), '')
+  if (coverage && coverage.uncovered.length > 0) {
+    const shown = coverage.uncovered.slice(0, UNCOVERED_LIMIT)
+    lines.push('**未覆盖**', '')
+    for (const entry of shown) lines.push(`- ${richText(entry)}`)
+    if (coverage.uncovered.length > shown.length) {
+      lines.push(`- 其余 ${coverage.uncovered.length - shown.length} 处见 \`review-findings.json\``)
+    }
+    lines.push('')
+  }
   if (findings.length === 0) {
     if (conclusion.status === 'reviewed') lines.push('没有需要改动的发现。')
     else if (conclusion.status === 'error')
@@ -425,18 +489,28 @@ function requireEnv(names) {
 function writeConclusion(directory, { findings, meta }) {
   fs.writeFileSync(
     path.join(directory, FINDINGS_FILE),
-    `${JSON.stringify({ summary: findings.summary, findings: findings.findings }, null, 2)}\n`
+    `${JSON.stringify(
+      { summary: findings.summary, coverage: findings.coverage, findings: findings.findings },
+      null,
+      2
+    )}\n`
   )
   fs.writeFileSync(path.join(directory, META_FILE), `${JSON.stringify(meta, null, 2)}\n`)
 }
 
+function readScope() {
+  const scopePath = path.join(conclusionDirectory(), SCOPE_FILE)
+  return fs.existsSync(scopePath) ? JSON.parse(fs.readFileSync(scopePath, 'utf8')) : {}
+}
+
 function identityFromEnv() {
-  const scopePath = path.join(conclusionDirectory(), 'review-scope.json')
-  const scope = fs.existsSync(scopePath) ? JSON.parse(fs.readFileSync(scopePath, 'utf8')) : {}
+  const scope = readScope()
   const config = readConfig()
   return {
     head_sha: process.env.CODEX_REVIEW_HEAD_SHA ?? '',
     base_sha: process.env.CODEX_REVIEW_BASE_SHA ?? '',
+    // 评论是就地更新的，创建时间永远停在第一次写回那一刻；结论自己的生成时间只能记在这里。
+    generated_at: new Date().toISOString(),
     merge_base_sha: scope.merge_base_sha ?? '',
     model: config?.model ?? '',
     effort: config?.effort ?? '',
@@ -481,7 +555,7 @@ function commandPrepare() {
   fs.mkdirSync(directory, { recursive: true })
   fs.writeFileSync(path.join(env.RUNNER_TEMP, 'pr.diff'), range.diff)
   fs.writeFileSync(
-    path.join(directory, 'review-scope.json'),
+    path.join(directory, SCOPE_FILE),
     `${JSON.stringify(
       {
         base_sha: range.baseSha,
@@ -585,15 +659,20 @@ function commandValidate() {
 
   if (fs.existsSync(reusedPath)) {
     const parsed = parseReviewFindings(fs.readFileSync(reusedPath, 'utf8'))
+    const metaPath = path.join(directory, META_FILE)
+    const prior = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : {}
     writeConclusion(directory, {
       findings: parsed,
       meta: {
         ...identity,
+        // 复用的结论是上一次生成的，时间也跟着上一次，否则评论区会把旧结论标成刚出炉。
+        generated_at: prior.generated_at ?? identity.generated_at,
         status: 'reviewed',
         reused_from: process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? ''
       }
     })
     writeOutputs({ blocks: String(parsed.counts.Block), reason: 'reused conclusion' })
+    if (!parsed.coverage) console.log('reused conclusion carries no coverage; the next head has to supply it')
     console.log(`reused conclusion: Block ${parsed.counts.Block}`)
     return
   }
@@ -629,9 +708,30 @@ function commandValidate() {
     return
   }
 
+  // 空 findings 必须带覆盖证据：没有 findings 又没读过任何文件，与「查完确实没问题」在产物上完全同形，
+  // 门就会为一次没有真正发生的审查保持绿色。diff 为空时豁免——那种情况本来就没有源码改动可读。
+  const scope = readScope()
+  if (parsed.findings.length === 0 && !scope.empty_diff && !(parsed.coverage?.inspected.length > 0)) {
+    const reason = 'the review reported no findings without listing a single inspected path'
+    fs.rmSync(reusedPath, { force: true })
+    fs.writeFileSync(
+      path.join(directory, META_FILE),
+      `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: 'missing_coverage', error: reason }, null, 2)}\n`
+    )
+    writeOutputs({ blocks: '0', reason })
+    console.error(`review is unreviewed: ${reason}`)
+    console.error('Rerun the whole CI run once; a repeat means the review output contract needs fixing.')
+    return
+  }
+
   writeConclusion(directory, { findings: parsed, meta: { ...identity, status: 'reviewed', reused_from: '' } })
   writeOutputs({ blocks: String(parsed.counts.Block), reason: '' })
   if (parsed.summary === '') console.log('review output carries no summary; the conclusion stands on its findings')
+  if (parsed.coverage) {
+    console.log(
+      `review coverage: ${parsed.coverage.inspected.length} inspected, ${parsed.coverage.uncovered.length} uncovered`
+    )
+  }
   console.log(
     `review conclusion: Block ${parsed.counts.Block}, Should fix ${parsed.counts['Should fix']}, Nit ${parsed.counts.Nit}`
   )
