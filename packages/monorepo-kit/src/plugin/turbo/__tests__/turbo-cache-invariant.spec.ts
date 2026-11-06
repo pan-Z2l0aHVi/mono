@@ -5,6 +5,8 @@ import path from 'node:path'
 
 import { afterAll, it } from 'vite-plus/test'
 
+import { defineCatch } from '../../../runner/catch'
+import { defineRunner } from '../../../runner/runner'
 import { defineTurboCacheInvariant } from '../turbo-cache-invariant'
 
 const turboCacheInvariant = defineTurboCacheInvariant()
@@ -18,15 +20,34 @@ function config() {
   return root
 }
 
-async function writeTurbo(root: string, turbo: unknown): Promise<string> {
+// 链尾带 defineCatch：turbo.json 缺失或不是合法 JSON 由 ctx.config 抛出，属于装配故障，
+// 走 `throw: ` 而不是某个域名前缀。
+function kit(root: string) {
+  return defineRunner()
+    .use(turboCacheInvariant)
+    .use(defineCatch())
+    .make({ root, env: { ...process.env } })
+}
+
+async function writeTurbo(root: string, turbo: unknown) {
   fs.writeFileSync(path.join(root, 'turbo.json'), JSON.stringify(turbo, null, 2) + '\n')
-  const value = await turboCacheInvariant.run({ root })
-  assert.ok(value, 'turbo-cache-invariant returned no detail')
-  return value
+  return kit(root).run()
+}
+
+async function failure(turbo: unknown): Promise<string> {
+  const result = await writeTurbo(config(), turbo)
+  if (result.ok) assert.fail('expected turbo-cache-invariant to fail')
+  return result.error
+}
+
+async function failureAt(root: string): Promise<string> {
+  const result = await kit(root).run()
+  if (result.ok) assert.fail('expected turbo-cache-invariant to fail')
+  return result.error
 }
 
 async function fails(turbo: unknown, pattern: RegExp): Promise<void> {
-  await assert.rejects(writeTurbo(config(), turbo), pattern)
+  assert.match(await failure(turbo), pattern)
 }
 
 it('turbo-cache-invariant', async () => {
@@ -36,22 +57,25 @@ it('turbo-cache-invariant', async () => {
       build: { outputs: ['dist/**', 'bin/**', '!bin/**'] }
     }
   }
-  assert.match(await writeTurbo(config(), valid), /consistent/)
+  assert.ok((await writeTurbo(config(), valid)).ok)
 
-  await fails({ tasks: { test: {}, build: { outputs: ['dist/**'] } } }, /dependsOn is missing/)
-  await fails({ tasks: { test: { dependsOn: ['build'] }, build: { outputs: ['dist/**'] } } }, /must include "\^build"/)
-  await fails({ tasks: { test: { dependsOn: ['^build'] }, build: {} } }, /outputs is missing/)
+  await fails({ tasks: { test: {}, build: { outputs: ['dist/**'] } } }, /^turbo: tasks\.test\.dependsOn is missing/)
+  await fails(
+    { tasks: { test: { dependsOn: ['build'] }, build: { outputs: ['dist/**'] } } },
+    /^turbo: tasks\.test\.dependsOn must include "\^build"/
+  )
+  await fails({ tasks: { test: { dependsOn: ['^build'] }, build: {} } }, /^turbo: tasks\.build\.outputs is missing/)
   await fails(
     { tasks: { test: { dependsOn: ['^build'] }, build: { outputs: ['bin/**'] } } },
-    /must include "dist\/\*\*"/
+    /^turbo: tasks\.build\.outputs must include "dist\/\*\*"/
   )
   await fails(
     { tasks: { test: { dependsOn: ['^build'] }, build: { outputs: ['dist/**', '!dist/**'] } } },
-    /negative pattern "!dist\/\*\*" may exclude dist/
+    /^turbo: tasks\.build\.outputs: negative pattern "!dist\/\*\*" may exclude dist/
   )
   await fails(
     { tasks: { test: { dependsOn: ['^build'], inputs: ['dist/**'] }, build: { outputs: ['dist/**'] } } },
-    /positive pattern "dist\/\*\*" may include dist/
+    /^turbo: tasks\.test\.inputs: positive pattern "dist\/\*\*" may include dist/
   )
   await fails(
     {
@@ -69,15 +93,16 @@ it('turbo-cache-invariant', async () => {
         build: { outputs: ['{dist,bin}/**'] }
       }
     },
-    /unsupported pattern item/
+    /^turbo: tasks\.build\.outputs: unsupported pattern item/
   )
 
+  // 配置读不出来时抛出，由链尾的 defineCatch 收敛成 `throw: `。
   const missing = config()
-  await assert.rejects(turboCacheInvariant.run({ root: missing }), /turbo.json not found/)
+  assert.match(await failureAt(missing), /^throw: turbo\.json not found in /)
 
   const malformed = config()
   fs.writeFileSync(path.join(malformed, 'turbo.json'), '{ nope\n')
-  await assert.rejects(turboCacheInvariant.run({ root: malformed }), /cannot parse/)
+  assert.match(await failureAt(malformed), /^throw: cannot parse /)
 })
 
 afterAll(() => {

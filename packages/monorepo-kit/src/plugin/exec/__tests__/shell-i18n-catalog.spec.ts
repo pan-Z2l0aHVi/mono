@@ -7,11 +7,26 @@ import { it } from 'vite-plus/test'
 
 import { defineShellI18nCatalog, parsePo } from '../shell-i18n-catalog'
 
-// 语种与 PO 目录是消费方的事实，测试自带一份；两端应用的真实取值写在各自的 `catalog.spec.ts`。
-const shellI18nCatalog = defineShellI18nCatalog({
+// `app`、语种与 PO 目录都是装配期参数，测试自带一份；两端应用的真实取值写在各自的 `catalog.spec.ts`。
+// 链里会 spawn pnpm 跑 wuchale 抽取，env 显式给一份不依赖开发者 shell 的副本。
+const reactCatalog = defineShellI18nCatalog({
+  app: 'apps/react-web-ui-demo',
   locales: { source: 'zh-CN', targets: ['en'] },
   directory: 'src/locales'
 })
+const vueCatalog = defineShellI18nCatalog({
+  app: 'apps/vue-web-ui-demo',
+  locales: { source: 'zh-CN', targets: ['en'] },
+  directory: 'src/locales'
+})
+
+type Catalog = ReturnType<typeof defineShellI18nCatalog>
+
+async function failure(catalog: Catalog, root: string): Promise<string> {
+  const result = await catalog.make({ root, env: { ...process.env } }).run()
+  if (result.ok) assert.fail('expected shell-i18n-catalog to fail')
+  return result.error
+}
 
 const header = 'msgid ""\nmsgstr ""\n"Language: en\\n"\n"Plural-Forms: nplurals=2; plural=(n != 1);\\n"\n\n'
 
@@ -62,7 +77,7 @@ it('target locale must fill every plural form', async () => {
   fs.writeFileSync(path.join(locales, 'zh-CN.po'), `${header}${pluralEntry('文件', '多个文件', ['文件', '多个文件'])}`)
   fs.writeFileSync(path.join(locales, 'en.po'), `${header}${pluralEntry('文件', '多个文件', ['File', ''])}`)
   try {
-    await assert.rejects(() => shellI18nCatalog.run({ root, app: 'apps/react-web-ui-demo' }), /空译文/)
+    assert.match(await failure(reactCatalog, root), /^i18n: en 语料有 1 条空译文/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
@@ -83,7 +98,7 @@ function fixture(messages: readonly (readonly [string, string?])[], app = 'react
 it('empty msgstr fails the check', async () => {
   const root = fixture([['已复制', '']])
   try {
-    await assert.rejects(() => shellI18nCatalog.run({ root, app: 'apps/react-web-ui-demo' }), /空译文/)
+    assert.match(await failure(reactCatalog, root), /^i18n: en 语料有 1 条空译文/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
@@ -95,7 +110,7 @@ it('missing translation fails the check', async () => {
   const enFile = path.join(root, 'apps', 'react-web-ui-demo', 'src', 'locales', 'en.po')
   fs.writeFileSync(enFile, `${header}${entry('别的', 'Other')}`)
   try {
-    await assert.rejects(() => shellI18nCatalog.run({ root, app: 'apps/react-web-ui-demo' }), /缺 1 条译文/)
+    assert.match(await failure(reactCatalog, root), /^i18n: en 语料缺 1 条译文/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
@@ -105,7 +120,7 @@ it('missing translation fails the check', async () => {
 it('vue app uses the same empty-translation rule', async () => {
   const root = fixture([['复制代码', '']], 'vue-web-ui-demo')
   try {
-    await assert.rejects(() => shellI18nCatalog.run({ root, app: 'apps/vue-web-ui-demo' }), /空译文/)
+    assert.match(await failure(vueCatalog, root), /^i18n: en 语料有 1 条空译文/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
@@ -119,11 +134,12 @@ it('options drive locales and the PO directory', async () => {
   fs.writeFileSync(path.join(directory, 'zh-CN.po'), `${header}${entry('已复制', '已复制')}`)
   fs.writeFileSync(path.join(directory, 'ja.po'), `${header}${entry('已复制', '')}`)
   const check = defineShellI18nCatalog({
+    app: 'apps/react-web-ui-demo',
     locales: { source: 'zh-CN', targets: ['ja'] },
     directory: 'i18n/messages'
   })
   try {
-    await assert.rejects(check.run({ root, app: 'apps/react-web-ui-demo' }), /ja 语料有 1 条空译文/)
+    assert.match(await failure(check, root), /^i18n: ja 语料有 1 条空译文/)
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }

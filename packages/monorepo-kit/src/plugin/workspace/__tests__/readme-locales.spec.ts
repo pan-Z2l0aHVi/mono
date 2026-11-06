@@ -38,10 +38,17 @@ function addPackage(
   if (cn !== undefined) write(root, `packages/${name}/README.CN.md`, cn)
 }
 
-async function detail(result: Promise<string | void>): Promise<string> {
-  const value = await result
-  assert.ok(value, 'readme-locales returned no detail')
-  return value
+// 只扫磁盘、不 spawn 子进程：env 用 process.env 即可。
+type Locales = ReturnType<typeof defineReadmeLocales>
+
+function run(plugin: Locales, root: string) {
+  return plugin.make({ root, env: process.env }).run()
+}
+
+async function failure(plugin: Locales, root: string): Promise<string> {
+  const result = await run(plugin, root)
+  if (result.ok) assert.fail('expected readme-locales to fail')
+  return result.error
 }
 
 it('readme-locales', async () => {
@@ -49,47 +56,44 @@ it('readme-locales', async () => {
   addPackage(valid, 'pub', { readme: '[简体中文](./README.CN.md)\n', cn: '[English](./README.md)\n' })
   addPackage(valid, 'priv', { privatePackage: true, readme: '# private\n' })
   write(valid, 'packages/priv/__tests__/fixtures/README.md', '# fixture\n')
-  assert.match(
-    await detail(readmeLocales.run({ root: valid })),
-    /1 bilingual README pair\(s\), 1 published package\(s\)/
-  )
+  assert.ok((await run(readmeLocales, valid)).ok)
 
   const absolute = makeFixture()
   write(absolute, 'docs/README.md', `[简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/docs/README.CN.md)\n`)
   write(absolute, 'docs/README.CN.md', `[English](https://github.com/pan-Z2l0aHVi/mono/blob/main/docs/README.md)\n`)
-  await readmeLocales.run({ root: absolute })
+  assert.ok((await run(readmeLocales, absolute)).ok)
 
   const fragments = makeFixture()
   write(fragments, 'README.md', '[简体中文](./README.CN.md#概述 "中文版")\n')
   write(fragments, 'README.CN.md', '[English](./README.md)\n')
-  await readmeLocales.run({ root: fragments })
+  assert.ok((await run(readmeLocales, fragments)).ok)
 
   const missingLocale = makeFixture()
   addPackage(missingLocale, 'pub', { readme: '# pub\n' })
-  await assert.rejects(
-    readmeLocales.run({ root: missingLocale }),
-    /@greypan\/pub: published package is missing README\.CN\.md/
+  assert.match(
+    await failure(readmeLocales, missingLocale),
+    /^md:[\s\S]*@greypan\/pub: published package is missing README\.CN\.md/
   )
 
   const missingBase = makeFixture()
   addPackage(missingBase, 'pub', { cn: '[English](./README.md)\n' })
-  await assert.rejects(
-    readmeLocales.run({ root: missingBase }),
-    /@greypan\/pub: published package is missing README\.md/
+  assert.match(
+    await failure(readmeLocales, missingBase),
+    /^md:[\s\S]*@greypan\/pub: published package is missing README\.md/
   )
 
   const missingForward = makeFixture()
   addPackage(missingForward, 'pub', { readme: '# pub\n', cn: '[English](./README.md)\n' })
-  await assert.rejects(
-    readmeLocales.run({ root: missingForward }),
-    /packages\/pub\/README\.md: no link to packages\/pub\/README\.CN\.md/
+  assert.match(
+    await failure(readmeLocales, missingForward),
+    /^md:[\s\S]*packages\/pub\/README\.md: no link to packages\/pub\/README\.CN\.md/
   )
 
   const missingBack = makeFixture()
   addPackage(missingBack, 'pub', { readme: '[简体中文](./README.CN.md)\n', cn: '# 中文\n' })
-  await assert.rejects(
-    readmeLocales.run({ root: missingBack }),
-    /packages\/pub\/README\.CN\.md: no link to packages\/pub\/README\.md/
+  assert.match(
+    await failure(readmeLocales, missingBack),
+    /^md:[\s\S]*packages\/pub\/README\.CN\.md: no link to packages\/pub\/README\.md/
   )
 
   const wrongTarget = makeFixture()
@@ -97,16 +101,22 @@ it('readme-locales', async () => {
     readme: '[简体中文](https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/other/README.CN.md)\n',
     cn: '[English](./README.md)\n'
   })
-  await assert.rejects(readmeLocales.run({ root: wrongTarget }), /README\.md: no link to packages\/pub\/README\.CN\.md/)
+  assert.match(
+    await failure(readmeLocales, wrongTarget),
+    /^md:[\s\S]*README\.md: no link to packages\/pub\/README\.CN\.md/
+  )
 
   const orphan = makeFixture()
   write(orphan, 'docs/README.CN.md', '# 中文\n')
-  await assert.rejects(readmeLocales.run({ root: orphan }), /docs\/README\.CN\.md: no docs\/README\.md to translate/)
+  assert.match(
+    await failure(readmeLocales, orphan),
+    /^md:[\s\S]*docs\/README\.CN\.md: no docs\/README\.md to translate/
+  )
 
   const externalOnly = makeFixture()
   write(externalOnly, 'README.md', '[文档](https://example.com/README.CN.md)\n')
   write(externalOnly, 'README.CN.md', '[docs](https://example.com/README.md)\n')
-  await assert.rejects(readmeLocales.run({ root: externalOnly }), /no link to README\.CN\.md/)
+  assert.match(await failure(readmeLocales, externalOnly), /^md:[\s\S]*no link to README\.CN\.md/)
 })
 
 it('readme-locales options drive locales and skipped directories', async () => {
@@ -116,7 +126,7 @@ it('readme-locales options drive locales and skipped directories', async () => {
   write(root, 'packages/pub/README.md', '[日本語](./README.JP.md)\n')
   write(root, 'packages/pub/README.JP.md', '[English](./README.md)\n')
   write(root, 'packages/pub/fixtures/README.JP.md', '# 夹具里的译文，没有主版\n')
-  assert.match(await detail(readmeJp.run({ root })), /1 bilingual README pair\(s\), 1 published package\(s\)/)
+  assert.ok((await run(readmeJp, root)).ok)
 })
 
 afterAll(() => {

@@ -1,13 +1,16 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { definePlugin, rust } from '@greypan/js-kit'
 import { globSync } from 'glob'
 
-import type { CheckUnit } from '../../runner/check-runner'
+import { type Chain, type KitCtx, type Run, defineRunner } from '../../runner/runner'
 import { byCodeUnit } from '../../shared/order'
-import { defineWorkspace } from '../workspace/workspace'
+import { defineWorkspace, type WorkspaceApi } from '../workspace/workspace'
 
-import { defineTurbo } from './turbo'
+import { defineTurbo, type TurboApi } from './turbo'
+
+const { andThen, err, ok } = rust
 
 // turbo 对指向不存在文件的正模式输入不报错：它只是收不到任何文件，于是「改了这份实现就重跑这个
 // 任务」这条失效链静默消失，测试继续命中旧缓存给出绿色。目录改名最容易踩到它，所以这条判断常驻
@@ -27,60 +30,63 @@ interface InputPath {
   readonly entry: string
 }
 
-function collect(value: unknown, file: string, trail: string, found: InputPath[], exclusions: string[]): void {
+function collect(value: unknown, file: string, trail: string, found: InputPath[]): void {
   if (Array.isArray(value)) {
-    value.forEach((item, index) => collect(item, file, `${trail}[${index}]`, found, exclusions))
+    value.forEach((item, index) => collect(item, file, `${trail}[${index}]`, found))
     return
   }
   if (value && typeof value === 'object') {
-    for (const [key, item] of Object.entries(value))
-      collect(item, file, trail ? `${trail}.${key}` : key, found, exclusions)
+    for (const [key, item] of Object.entries(value)) collect(item, file, trail ? `${trail}.${key}` : key, found)
     return
   }
-  if (typeof value !== 'string') return
-  if (value.startsWith(`!${ROOT_PREFIX}`)) exclusions.push(value)
-  else if (value.startsWith(ROOT_PREFIX)) found.push({ file, trail, entry: value })
+  if (typeof value === 'string' && value.startsWith(ROOT_PREFIX)) found.push({ file, trail, entry: value })
 }
 
-export function defineTurboInputPaths(): CheckUnit {
-  const plugins = defineWorkspace().use(defineTurbo())
+/**
+ * `$TURBO_ROOT$` 输入路径的判定，链上以 `turbo: ` 起头归因。一份配置都扫不到时按失败报：
+ * 那时「没有失配」只是这道门禁空转。
+ */
+export const defineTurboInputPaths = (): Chain =>
+  defineRunner()
+    .use(defineWorkspace())
+    .use(defineTurbo())
+    .use(
+      definePlugin<{ run: Run }, KitCtx & { run: Run } & WorkspaceApi & TurboApi>(ctx => ({
+        run: () =>
+          andThen(ctx.run(), async () => {
+            const candidates = new Set(['turbo.json'])
+            for (const manifest of ctx.manifests()) {
+              const directory = path.posix.dirname(manifest)
+              candidates.add(directory === '.' ? 'turbo.json' : `${directory}/turbo.json`)
+            }
+            const configs = [...candidates].filter(file => fs.existsSync(path.join(ctx.root, file))).sort(byCodeUnit)
+            if (configs.length === 0) return err('turbo: no turbo.json found: this check would idle')
 
-  return {
-    name: 'turbo-input-paths',
-    async run({ root }: { root: string }): Promise<string> {
-      const { config, manifests } = plugins.make({ root })
+            const inputs: InputPath[] = []
+            for (const file of configs) collect(ctx.config(file), file, '', inputs)
 
-      const candidates = new Set(['turbo.json'])
-      for (const manifest of manifests()) {
-        const directory = path.posix.dirname(manifest)
-        candidates.add(directory === '.' ? 'turbo.json' : `${directory}/turbo.json`)
-      }
-      const configs = [...candidates].filter(file => fs.existsSync(path.join(root, file))).sort(byCodeUnit)
-      if (configs.length === 0) throw new Error('no turbo.json found: this check would idle')
+            const misses = inputs
+              .filter(({ entry }) => {
+                const target = entry.slice(ROOT_PREFIX.length).replace(/^\/+/, '')
+                if (!target) return true
+                if (GLOB_METACHARACTERS.test(target)) {
+                  return (
+                    globSync(target, { cwd: ctx.root, nodir: true, dot: true, ignore: ['**/node_modules/**'] })
+                      .length === 0
+                  )
+                }
+                return !fs.existsSync(path.join(ctx.root, target))
+              })
+              .map(({ file, trail, entry }) => `  ${file} ${trail}: ${entry}`)
 
-      const inputs: InputPath[] = []
-      const exclusions: string[] = []
-      for (const file of configs) collect(config(file), file, '', inputs, exclusions)
+            if (misses.length > 0)
+              return err(
+                `turbo: these $TURBO_ROOT$ inputs match no file, so the tasks that list them stop invalidating silently:\n` +
+                  `${misses.join('\n')}\n` +
+                  `point them at the moved files or drop them — turbo does not fail on an input that matches nothing`
+              )
 
-      const misses = inputs
-        .filter(({ entry }) => {
-          const target = entry.slice(ROOT_PREFIX.length).replace(/^\/+/, '')
-          if (!target) return true
-          if (GLOB_METACHARACTERS.test(target)) {
-            return globSync(target, { cwd: root, nodir: true, dot: true, ignore: ['**/node_modules/**'] }).length === 0
-          }
-          return !fs.existsSync(path.join(root, target))
-        })
-        .map(({ file, trail, entry }) => `  ${file} ${trail}: ${entry}`)
-
-      if (misses.length > 0)
-        throw new Error(
-          `these $TURBO_ROOT$ inputs match no file, so the tasks that list them stop invalidating silently:\n` +
-            `${misses.join('\n')}\n` +
-            `point them at the moved files or drop them — turbo does not fail on an input that matches nothing`
-        )
-
-      return `${inputs.length} $TURBO_ROOT$ input(s) in ${configs.length} turbo config(s) resolve; ${exclusions.length} exclusion(s) unchecked`
-    }
-  }
-}
+            return ok(undefined)
+          })
+      }))
+    )

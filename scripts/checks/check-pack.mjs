@@ -1,21 +1,15 @@
-import path from 'node:path'
+import { defineCatch, defineRunner, getWorkspaceRoot } from '@greypan/monorepo-kit'
 
 import { packageContract } from '../policies/package-contract.mjs'
 
-const args = process.argv.slice(2)
-const rootOptionIndex = args.indexOf('--root')
-const quiet = args.includes('--quiet')
-if (rootOptionIndex >= 0 && !args[rootOptionIndex + 1]) {
-  console.error('Usage: node scripts/checks/check-pack.mjs [--quiet] [--root <repository-root>]')
-  process.exit(1)
-}
-const root =
-  rootOptionIndex >= 0 ? path.resolve(args[rootOptionIndex + 1] ?? '') : path.resolve(import.meta.dirname, '../..')
-try {
-  const detail = await packageContract.run({ root })
-  if (!quiet) console.log(`check-pack passed (${detail})`)
-} catch (error) {
-  if (!quiet)
-    console.error(`check-pack failed with error(s):\n${error instanceof Error ? error.message : String(error)}`)
+// 发布包契约：`pnpm pack --dry-run` 的实际产物必须与各自 `package.json` 的声明一致。
+const kit = defineRunner()
+  .use(packageContract)
+  .use(defineCatch())
+  .make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })
+
+const result = await kit.run()
+if (!result.ok) {
+  process.stderr.write(`${result.error}\n`)
   process.exitCode = 1
 }

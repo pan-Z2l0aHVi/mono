@@ -1,7 +1,11 @@
 import path from 'node:path'
 
-import type { CheckUnit } from '../../runner/check-runner'
+import { definePlugin, rust } from '@greypan/js-kit'
+
+import { type Chain, type KitCtx, type Run, defineRunner } from '../../runner/runner'
 import { readJsonFile } from '../../shared/config'
+
+const { andThen, err, ok } = rust
 
 // 根命令面支持分组 CLI（以管理对象命名，动作由子命令提供）和单动作 CLI；单动作命名为
 // {namespace}:{do}-{something}，动宾用 `-` 连接，无 something 时省略。
@@ -18,30 +22,32 @@ function escapeRegExp(value: string): string {
   return value.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
 }
 
-export function defineCommandConventions({ namespaces }: CommandConventionsOptions): CheckUnit {
+export const defineCommandConventions = ({ namespaces }: CommandConventionsOptions): Chain => {
   const prefix = namespaces.length === 0 ? '' : `(?:(?:${namespaces.map(escapeRegExp).join('|')}):)?`
   const shape = new RegExp(`^${prefix}[a-z]+(?:-[a-z]+)*$`)
 
-  return {
-    name: 'command-conventions',
-    async run({ root }: { root: string }): Promise<string> {
-      const manifest = readJsonFile<{ scripts?: Record<string, string> }>(path.join(root, 'package.json'))
-      const scripts = manifest.scripts
-      if (!scripts || typeof scripts !== 'object' || Array.isArray(scripts))
-        throw new Error('package.json has no scripts object')
+  return defineRunner().use(
+    definePlugin<{ run: Run }, KitCtx & { run: Run }>(ctx => ({
+      run: () =>
+        andThen(ctx.run(), async () => {
+          const manifest = readJsonFile<{ scripts?: Record<string, string> }>(path.join(ctx.root, 'package.json'))
+          const scripts = manifest.scripts
+          if (!scripts || typeof scripts !== 'object' || Array.isArray(scripts))
+            return err('pack: package.json has no scripts object')
 
-      const names = Object.keys(scripts)
-      if (names.length === 0) throw new Error('package.json scripts is empty')
+          const names = Object.keys(scripts)
+          if (names.length === 0) return err('pack: package.json scripts is empty')
 
-      const invalid = names.filter(scriptName => !shape.test(scriptName))
-      if (invalid.length > 0)
-        throw new Error(
-          `root script names must match {namespace}:{do}-{something} with namespace ∈ {${namespaces.join(', ')}}: ${invalid
-            .map(scriptName => `'${scriptName}'`)
-            .join(', ')}`
-        )
+          const invalid = names.filter(scriptName => !shape.test(scriptName))
+          if (invalid.length > 0)
+            return err(
+              `pack: root script names must match {namespace}:{do}-{something} with namespace ∈ {${namespaces.join(', ')}}: ${invalid
+                .map(scriptName => `'${scriptName}'`)
+                .join(', ')}`
+            )
 
-      return `${names.length} root commands`
-    }
-  }
+          return ok(undefined)
+        })
+    }))
+  )
 }

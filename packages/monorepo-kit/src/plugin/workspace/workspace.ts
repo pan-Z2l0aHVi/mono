@@ -4,23 +4,10 @@ import path from 'node:path'
 import { definePlugin } from '@greypan/js-kit'
 import { globSync } from 'glob'
 
+import type { KitCtx } from '../../runner/runner'
 import { readJsonFile } from '../../shared/config'
 import { byCodeUnit } from '../../shared/order'
-
-// 仓库根的唯一定义：向上查找 pnpm-workspace.yaml。
-// 按目录深度写 `../..` 在文件搬家时会静默指向别处——迁移期已经在这个维度上错过一次
-// （两个包目录深度不同）。门禁的失败语义必须是「检查不通过」，不能是「检查跑在了错的目录上」。
-const WORKSPACE_FILE = 'pnpm-workspace.yaml'
-
-export function findRepoRoot(start: string = import.meta.dirname): string {
-  let directory = path.resolve(start)
-  for (;;) {
-    if (fs.existsSync(path.join(directory, WORKSPACE_FILE))) return directory
-    const parent = path.dirname(directory)
-    if (parent === directory) throw new Error(`monorepo-kit: cannot find ${WORKSPACE_FILE} above ${start}`)
-    directory = parent
-  }
-}
+import { WORKSPACE_FILE } from '../../shared/workspace-root'
 
 function parseWorkspacePattern(value: string, lineNumber: number): string {
   const trimmed = value.trim()
@@ -94,10 +81,6 @@ export function listPnpmWorkspaceManifests(root: string): string[] {
   return [...new Set(manifests)].sort().map(file => path.join(root, file))
 }
 
-export interface WorkspaceContext {
-  readonly root: string
-}
-
 export interface WorkspaceApi {
   /** `pnpm-workspace.yaml` 的 packages 模式，含 `!` 排除项 */
   readonly patterns: () => readonly string[]
@@ -108,7 +91,7 @@ export interface WorkspaceApi {
 }
 
 export const defineWorkspace = () =>
-  definePlugin<WorkspaceApi, WorkspaceContext>(ctx => ({
+  definePlugin<WorkspaceApi, KitCtx>(ctx => ({
     patterns: () => readPnpmWorkspacePatterns(ctx.root),
     manifests: () =>
       listPnpmWorkspaceManifests(ctx.root).map(file => path.relative(ctx.root, file).split(path.sep).join('/')),

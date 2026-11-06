@@ -8,7 +8,6 @@ import { defineStagedClean, pnpm } from '@greypan/monorepo-kit'
  * `hint` 是失败信息末尾的下一步提示，带本仓的修复命令。
  */
 export const stagedClean = defineStagedClean({
-  installHint: 'mise install; pnpm install for Node deps',
   steps: [
     {
       name: 'vp check',

@@ -1,8 +1,12 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import type { CheckUnit } from '../../runner/check-runner'
+import { definePlugin, rust } from '@greypan/js-kit'
+
+import { type Chain, type KitCtx, type Run, defineRunner } from '../../runner/runner'
 import { byCodeUnit } from '../../shared/order'
+
+const { andThen, err, ok } = rust
 
 // 指令面互指图守卫：只解析行内 Markdown `[label](target)` 链接，引用式 `[label][id]` 不纳入既定判据。
 // 扫描面、方向规则与上游件清单都是消费仓库的事实，经 options 传入；判据本身见
@@ -164,53 +168,58 @@ function parseTarget(raw: string): string | null {
   return target || null
 }
 
-export function defineNoMutualLinks(options: NoMutualLinksOptions): CheckUnit {
-  return {
-    name: 'no-mutual-links',
-    async run({ root }: { root: string }): Promise<string> {
-      const entries = collect(root, options)
-      if (entries.length === 0) throw new Error('cannot run: instruction scan found 0 Markdown files')
+/**
+ * 指令面互指图判定，链上以 `md: ` 起头归因。扫描面为空或一条本地链接都没有时，
+ * 「没有违规」是扫描没跑起来的假象，所以这两条按失败报而不是通过。
+ */
+export const defineNoMutualLinks = (options: NoMutualLinksOptions): Chain =>
+  defineRunner().use(
+    definePlugin<{ run: Run }, KitCtx & { run: Run }>(ctx => ({
+      run: () =>
+        andThen(ctx.run(), async () => {
+          const entries = collect(ctx.root, options)
+          if (entries.length === 0) return err('md: cannot run: instruction scan found 0 Markdown files')
 
-      const known = new Set(entries.map(entry => entry.path))
-      const edges = new Set<string>()
+          const known = new Set(entries.map(entry => entry.path))
+          const edges = new Set<string>()
 
-      for (const entry of entries) {
-        let text: string
-        try {
-          text = fs.readFileSync(path.join(root, entry.file), 'utf8')
-        } catch {
-          throw new Error(`cannot read scan entry: ${entry.path}`)
-        }
-        for (const match of text.matchAll(LINK)) {
-          const target = parseTarget(match[1])
-          if (!target) continue
-          const directory = entry.path.includes('/') ? entry.path.slice(0, entry.path.lastIndexOf('/')) : '.'
-          const resolved = normalize(`${directory}/${target}`)
-          if (!known.has(resolved)) continue
-          edges.add(`${entry.path}\u0000${resolved}`)
-        }
-      }
+          for (const entry of entries) {
+            let text: string
+            try {
+              text = fs.readFileSync(path.join(ctx.root, entry.file), 'utf8')
+            } catch {
+              return err(`md: cannot read scan entry: ${entry.path}`)
+            }
+            for (const match of text.matchAll(LINK)) {
+              const target = parseTarget(match[1])
+              if (!target) continue
+              const directory = entry.path.includes('/') ? entry.path.slice(0, entry.path.lastIndexOf('/')) : '.'
+              const resolved = normalize(`${directory}/${target}`)
+              if (!known.has(resolved)) continue
+              edges.add(`${entry.path}\u0000${resolved}`)
+            }
+          }
 
-      if (edges.size === 0) throw new Error('cannot run: instruction scan found 0 local Markdown links')
+          if (edges.size === 0) return err('md: cannot run: instruction scan found 0 local Markdown links')
 
-      const violations: string[] = []
-      for (const key of edges) {
-        const [source, target] = key.split('\u0000')
-        for (const direction of options.forbiddenDirections ?? []) {
-          if (source.startsWith(direction.from) && target.startsWith(direction.to))
-            violations.push(`${direction.label} link forbidden: ${source} -> ${target}`)
-        }
-      }
-      for (const key of edges) {
-        const [source, target] = key.split('\u0000')
-        if (source >= target || !edges.has(`${target}\u0000${source}`)) continue
-        if (ENTRY_NAME.test(basename(source)) || ENTRY_NAME.test(basename(target))) continue
-        violations.push(`mutual links forbidden: ${source} <-> ${target}`)
-      }
-      violations.sort()
-      if (violations.length > 0) throw new Error(violations.join('\n'))
+          const violations: string[] = []
+          for (const key of edges) {
+            const [source, target] = key.split('\u0000')
+            for (const direction of options.forbiddenDirections ?? []) {
+              if (source.startsWith(direction.from) && target.startsWith(direction.to))
+                violations.push(`${direction.label} link forbidden: ${source} -> ${target}`)
+            }
+          }
+          for (const key of edges) {
+            const [source, target] = key.split('\u0000')
+            if (source >= target || !edges.has(`${target}\u0000${source}`)) continue
+            if (ENTRY_NAME.test(basename(source)) || ENTRY_NAME.test(basename(target))) continue
+            violations.push(`mutual links forbidden: ${source} <-> ${target}`)
+          }
+          violations.sort()
+          if (violations.length > 0) return err(`md: ${violations.join('\n')}`)
 
-      return `${entries.length} Markdown files, ${edges.size} local edges`
-    }
-  }
-}
+          return ok(undefined)
+        })
+    }))
+  )

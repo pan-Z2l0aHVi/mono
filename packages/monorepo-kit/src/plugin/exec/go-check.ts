@@ -1,10 +1,14 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import type { CheckUnit } from '../../runner/check-runner'
+import { definePlugin, rust } from '@greypan/js-kit'
+
+import { type Chain, type KitCtx, type Run, defineRunner } from '../../runner/runner'
 import { byCodeUnit } from '../../shared/order'
 
-import { defineExec, type ExecResult } from './exec'
+import { defineExec, type ExecApi, type ExecResult } from './exec'
+
+const { andThen, err, ok } = rust
 
 // 仓库级 Go 静态检查：格式与 vet。工具失败必须非零退出——gofmt 在解析错误时
 // 可能 stdout 为空，不能只用 `gofmt -l | grep` 判断。
@@ -14,18 +18,22 @@ export interface GoCheckOptions {
   readonly fixCommand: string
 }
 
-function argvFromEnv(value: string | undefined, fallback: string[], name: string): string[] {
-  if (value === undefined) return fallback
+function argvFromEnv(
+  value: string | undefined,
+  fallback: readonly string[],
+  name: string
+): rust.Result<readonly string[], string> {
+  if (value === undefined) return ok(fallback)
   let parsed: unknown
   try {
     parsed = JSON.parse(value)
   } catch {
-    throw new Error(`${name} must be a JSON array of non-empty strings`)
+    return err(`${name} must be a JSON array of non-empty strings`)
   }
   if (!Array.isArray(parsed) || parsed.length === 0 || parsed.some(item => typeof item !== 'string' || item === '')) {
-    throw new Error(`${name} must be a JSON array of non-empty strings`)
+    return err(`${name} must be a JSON array of non-empty strings`)
   }
-  return parsed as string[]
+  return ok(parsed as readonly string[])
 }
 
 function collectGoSources(root: string): { goFiles: string[]; moduleDirs: string[] } {
@@ -44,43 +52,48 @@ function collectGoSources(root: string): { goFiles: string[]; moduleDirs: string
   return { goFiles: goFiles.sort(byCodeUnit), moduleDirs: moduleDirs.sort(byCodeUnit) }
 }
 
-export function defineGoCheck({ fixCommand }: GoCheckOptions): CheckUnit {
-  const execPlugin = defineExec()
+/**
+ * Go 格式与 vet 判定，链上以 `go: ` 起头归因。
+ *
+ * 自带 `defineExec()`：产 `run` 的插件自己接齐所需能力，触发层只决定它在链里的位置。
+ */
+export const defineGoCheck = (options: GoCheckOptions): Chain =>
+  defineRunner()
+    .use(defineExec())
+    .use(
+      definePlugin<{ run: Run }, KitCtx & { run: Run } & ExecApi>(ctx => ({
+        run: () =>
+          andThen(ctx.run(), async () => {
+            const gofmtArgv = argvFromEnv(ctx.env.AGENT_GOFMT_ARGV, ['gofmt'], 'AGENT_GOFMT_ARGV')
+            if (!gofmtArgv.ok) return err(`go: ${gofmtArgv.error}`)
+            const goArgv = argvFromEnv(ctx.env.AGENT_GO_VET_ARGV, ['go'], 'AGENT_GO_VET_ARGV')
+            if (!goArgv.ok) return err(`go: ${goArgv.error}`)
 
-  return {
-    name: 'check-go',
-    async run({ root, env = process.env }: { root: string; env?: NodeJS.ProcessEnv }): Promise<string> {
-      const { exec, commandOutput } = execPlugin.make()
-      const failureDetail = (result: ExecResult): string => (commandOutput(result) ? `:\n${commandOutput(result)}` : '')
+            const failureDetail = (result: ExecResult): string => `:\n${ctx.failureEvidence(result)}`
+            const { goFiles, moduleDirs } = collectGoSources(ctx.root)
 
-      const gofmtCommand = argvFromEnv(env.AGENT_GOFMT_ARGV, ['gofmt'], 'AGENT_GOFMT_ARGV')
-      const goCommand = argvFromEnv(env.AGENT_GO_VET_ARGV, ['go'], 'AGENT_GO_VET_ARGV')
-      const { goFiles, moduleDirs } = collectGoSources(root)
+            if (goFiles.length > 0) {
+              const result = ctx.exec(gofmtArgv.value[0], [...gofmtArgv.value.slice(1), '-l', ...goFiles], {
+                stdio: 'pipe'
+              })
+              if (!result.ok) return err(`go: gofmt failed${failureDetail(result)}`)
+              const dirty = result.stdout.trim()
+              if (dirty)
+                return err(
+                  `go: Go files are not formatted:\n${dirty}\nrun: gofmt -w <files> (or ${options.fixCommand})`
+                )
+            }
 
-      if (goFiles.length === 0 && moduleDirs.length === 0) return 'no Go files or modules'
+            for (const moduleDir of moduleDirs) {
+              const relative = path.relative(ctx.root, moduleDir) || '.'
+              const result = ctx.exec(goArgv.value[0], [...goArgv.value.slice(1), 'vet', './...'], {
+                cwd: moduleDir,
+                stdio: 'pipe'
+              })
+              if (!result.ok) return err(`go: go vet failed in ${relative}${failureDetail(result)}`)
+            }
 
-      if (goFiles.length > 0) {
-        const result = exec(gofmtCommand[0], [...gofmtCommand.slice(1), '-l', ...goFiles], {
-          cwd: root,
-          env,
-          stdio: 'pipe'
-        })
-        if (!result.ok) throw new Error(`gofmt failed${failureDetail(result)}`)
-        const dirty = result.stdout.trim()
-        if (dirty) throw new Error(`Go files are not formatted:\n${dirty}\nrun: gofmt -w <files> (or ${fixCommand})`)
-      }
-
-      for (const moduleDir of moduleDirs) {
-        const relative = path.relative(root, moduleDir) || '.'
-        const result = exec(goCommand[0], [...goCommand.slice(1), 'vet', './...'], {
-          cwd: moduleDir,
-          env,
-          stdio: 'pipe'
-        })
-        if (!result.ok) throw new Error(`go vet failed in ${relative}${failureDetail(result)}`)
-      }
-
-      return `${goFiles.length} Go file(s) checked; ${moduleDirs.length} module(s) vetted`
-    }
-  }
-}
+            return ok(undefined)
+          })
+      }))
+    )

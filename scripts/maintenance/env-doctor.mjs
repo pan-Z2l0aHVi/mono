@@ -268,7 +268,7 @@ function worktreeResidueCheck() {
 // 判定逻辑放在 packages/monorepo-kit/src/plugin/git/git-hooks-status.ts，便于用临时 Git 仓库覆盖 fail 分支；
 // hook 名单与安装指引的实例在 scripts/policies/git-hooks-status.mjs。修复命令只打印，不自动改写 Git 配置。
 function gitHooksCheck() {
-  const { level, detail } = gitHooksStatus.inspect(root)
+  const { level, detail } = gitHooksStatus.make({ root, env: process.env }).inspectGitHooks()
   record('git-hooks', level, detail)
 }
 

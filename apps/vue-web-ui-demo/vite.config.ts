@@ -4,7 +4,7 @@ import { fileURLToPath } from 'node:url'
 
 import depsReload from '@greypan/deps-reload/vite'
 import { mdToMeta, type MdToMetaOptions } from '@greypan/md-to-meta'
-import { devHttpsPlugin, testApiPort } from '@greypan/monorepo-kit'
+import { devHttpsPlugin, testApiPort } from '@greypan/monorepo-kit/vite'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
 import tailwindcss from '@tailwindcss/vite'

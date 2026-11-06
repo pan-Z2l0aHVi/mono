@@ -2,15 +2,21 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import type { CheckUnit } from '../../runner/check-runner'
+import { definePlugin, rust } from '@greypan/js-kit'
 
-import { defineExec } from './exec'
+import { type Chain, type KitCtx, type Run, defineRunner } from '../../runner/runner'
+
+import { defineExec, type ExecApi } from './exec'
+
+const { andThen, err, ok } = rust
 
 // React 与 Vue demo 的壳文案走 wuchale：中文是源语种，英文是 PO 里的译文。构建期的 wuchale 插件只按已有
 // PO 编译，不抽取新文案，所以「代码加了中文却没进语料」和「英文 msgstr 还空着」这两类静默降级
 // 由应用测试复验，避免构建成功掩盖译文不完整。语种与 PO 目录是消费方的事实，经 options 传入。
 
 export interface ShellI18nCatalogOptions {
+  /** 被校验的应用目录，相对仓库根 */
+  readonly app: string
   /** 源语种与必须齐全的译文语种 */
   readonly locales: {
     readonly source: string
@@ -147,10 +153,10 @@ function poFile(appDir: string, directory: string, locale: string): string {
   return path.join(appDir, directory, `${locale}.po`)
 }
 
-function readPo(appDir: string, directory: string, locale: string): PoCatalog {
+function readPo(appDir: string, directory: string, locale: string): rust.Result<PoCatalog, string> {
   const file = poFile(appDir, directory, locale)
-  if (!fs.existsSync(file)) throw new Error(`${file} 不存在：壳文案的 ${locale} 语料缺失`)
-  return parsePo(fs.readFileSync(file, 'utf8'))
+  if (!fs.existsSync(file)) return err(`i18n: ${file} 不存在：壳文案的 ${locale} 语料缺失`)
+  return ok(parsePo(fs.readFileSync(file, 'utf8')))
 }
 
 /**
@@ -185,83 +191,90 @@ export default {
 
 /**
  * 校验一个应用的壳文案语料：译文齐全、与当前源码抽取一致、无废弃条目。
- * `run` 收到的 `app` 是相对仓库根的路径，通过时的摘要带语料条数。
+ * 链上以 `i18n: ` 起头归因；`app` 是相对仓库根的应用路径，判定作用在哪个应用从装配期就知道。
  */
-export function defineShellI18nCatalog({ locales, directory }: ShellI18nCatalogOptions): CheckUnit {
-  const plugin = defineExec()
+export const defineShellI18nCatalog = ({ app, locales, directory }: ShellI18nCatalogOptions): Chain =>
+  defineRunner()
+    .use(defineExec())
+    .use(
+      definePlugin<{ run: Run }, KitCtx & { run: Run } & ExecApi>(ctx => ({
+        run: () =>
+          andThen(ctx.run(), async () => {
+            const appDir = path.join(ctx.root, app)
+            if (!fs.existsSync(appDir)) return err(`i18n: ${app} 不存在`)
 
-  return {
-    name: 'shell-i18n-catalog',
-    async run({ root, app }: { root: string; app: string }): Promise<string> {
-      const { exec, pnpm } = plugin.make({})
-      const appDir = path.join(root, app)
-      if (!fs.existsSync(appDir)) throw new Error(`${app} 不存在`)
+            const source = readPo(appDir, directory, locales.source)
+            if (!source.ok) return err(source.error)
+            const obsolete = [...source.value.obsolete]
+            for (const locale of locales.targets) {
+              const target = readPo(appDir, directory, locale)
+              if (!target.ok) return err(target.error)
+              obsolete.push(...target.value.obsolete)
+              const missing = [...source.value.entries.keys()].filter(id => !target.value.entries.has(id))
+              const extra = [...target.value.entries.keys()].filter(id => !source.value.entries.has(id))
+              if (missing.length) {
+                return err(
+                  `i18n: ${locale} 语料缺 ${missing.length} 条译文：${missing.map(id => `"${id}"`).join('、')}`
+                )
+              }
+              const empty = [...target.value.entries]
+                .filter(([, translations]) =>
+                  Array.isArray(translations)
+                    ? translations.length !== target.value.pluralCount ||
+                      translations.some(value => value.trim() === '')
+                    : translations.trim() === ''
+                )
+                .map(([msgid]) => msgid)
+              if (empty.length) {
+                return err(`i18n: ${locale} 语料有 ${empty.length} 条空译文：${empty.map(id => `"${id}"`).join('、')}`)
+              }
+              if (extra.length) {
+                return err(`i18n: ${locale} 语料混入了源语料没有的文案：${extra.map(id => `"${id}"`).join('、')}`)
+              }
+            }
+            if (obsolete.length) {
+              return err(
+                `i18n: 语料里有 ${obsolete.length} 条废弃（#~）文案，跑一次 wuchale --clean 清掉：${obsolete.join('、')}`
+              )
+            }
 
-      const source = readPo(appDir, directory, locales.source)
-      const obsolete = [...source.obsolete]
-      for (const locale of locales.targets) {
-        const target = readPo(appDir, directory, locale)
-        obsolete.push(...target.obsolete)
-        const missing = [...source.entries.keys()].filter(id => !target.entries.has(id))
-        const extra = [...target.entries.keys()].filter(id => !source.entries.has(id))
-        if (missing.length) {
-          throw new Error(`${locale} 语料缺 ${missing.length} 条译文：${missing.map(id => `"${id}"`).join('、')}`)
-        }
-        const empty = [...target.entries]
-          .filter(([, translations]) =>
-            Array.isArray(translations)
-              ? translations.length !== target.pluralCount || translations.some(value => value.trim() === '')
-              : translations.trim() === ''
-          )
-          .map(([msgid]) => msgid)
-        if (empty.length) {
-          throw new Error(`${locale} 语料有 ${empty.length} 条空译文：${empty.map(id => `"${id}"`).join('、')}`)
-        }
-        if (extra.length) {
-          throw new Error(`${locale} 语料混入了源语料没有的文案：${extra.map(id => `"${id}"`).join('、')}`)
-        }
-      }
-      if (obsolete.length) {
-        throw new Error(
-          `语料里有 ${obsolete.length} 条废弃（#~）文案，跑一次 wuchale --clean 清掉：${obsolete.join('、')}`
-        )
-      }
+            // 抽取一次到临时目录：PO 是代码里那批中文的判据，只有重新抽取才知道代码现在到底有哪些文案。
+            const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shell-i18n-'))
+            try {
+              const outDir = path.join(tempDir, 'locales')
+              fs.mkdirSync(outDir, { recursive: true })
+              for (const locale of [locales.source, ...locales.targets]) {
+                fs.copyFileSync(poFile(appDir, directory, locale), path.join(outDir, `${locale}.po`))
+              }
+              const configFile = path.join(tempDir, 'wuchale.check.config.mjs')
+              fs.writeFileSync(configFile, extractionConfigSource(appDir, outDir), 'utf8')
 
-      // 抽取一次到临时目录：PO 是代码里那批中文的判据，只有重新抽取才知道代码现在到底有哪些文案。
-      const tempDir = fs.mkdtempSync(path.join(os.tmpdir(), 'shell-i18n-'))
-      try {
-        const outDir = path.join(tempDir, 'locales')
-        fs.mkdirSync(outDir, { recursive: true })
-        for (const locale of [locales.source, ...locales.targets]) {
-          fs.copyFileSync(poFile(appDir, directory, locale), path.join(outDir, `${locale}.po`))
-        }
-        const configFile = path.join(tempDir, 'wuchale.check.config.mjs')
-        fs.writeFileSync(configFile, extractionConfigSource(appDir, outDir), 'utf8')
+              const result = ctx.exec(ctx.pnpm, ['exec', 'wuchale', '--config', configFile, '--clean'], { cwd: appDir })
+              if (!result.ok) {
+                return err(
+                  `i18n: wuchale 抽取失败（exit ${result.status}）：${(result.stderr ?? '').trim() || result.stdout.trim()}`
+                )
+              }
+              const fresh = parsePo(fs.readFileSync(path.join(outDir, `${locales.source}.po`), 'utf8'))
+              const freshIds = [...fresh.entries.keys()]
+              const committedIds = [...source.value.entries.keys()]
+              const notExtracted = freshIds.filter(id => !source.value.entries.has(id))
+              const stale = committedIds.filter(id => !fresh.entries.has(id))
+              if (notExtracted.length) {
+                return err(
+                  `i18n: 代码里有 ${notExtracted.length} 条中文没进语料，跑一次 wuchale 抽取：${notExtracted.map(id => `"${id}"`).join('、')}`
+                )
+              }
+              if (stale.length) {
+                return err(
+                  `i18n: 语料里有 ${stale.length} 条代码已经不再引用的文案：${stale.map(id => `"${id}"`).join('、')}`
+                )
+              }
+            } finally {
+              fs.rmSync(tempDir, { recursive: true, force: true })
+            }
 
-        const result = exec(pnpm, ['exec', 'wuchale', '--config', configFile, '--clean'], { cwd: appDir })
-        if (!result.ok) {
-          throw new Error(
-            `wuchale 抽取失败（exit ${result.status}）：${(result.stderr ?? '').trim() || result.stdout.trim()}`
-          )
-        }
-        const fresh = parsePo(fs.readFileSync(path.join(outDir, `${locales.source}.po`), 'utf8'))
-        const freshIds = [...fresh.entries.keys()]
-        const committedIds = [...source.entries.keys()]
-        const notExtracted = freshIds.filter(id => !source.entries.has(id))
-        const stale = committedIds.filter(id => !fresh.entries.has(id))
-        if (notExtracted.length) {
-          throw new Error(
-            `代码里有 ${notExtracted.length} 条中文没进语料，跑一次 wuchale 抽取：${notExtracted.map(id => `"${id}"`).join('、')}`
-          )
-        }
-        if (stale.length) {
-          throw new Error(`语料里有 ${stale.length} 条代码已经不再引用的文案：${stale.map(id => `"${id}"`).join('、')}`)
-        }
-      } finally {
-        fs.rmSync(tempDir, { recursive: true, force: true })
-      }
-
-      return `${source.entries.size} 条壳文案，${locales.targets.join('/')} 译文齐全且与代码抽取一致`
-    }
-  }
-}
+            return ok(undefined)
+          })
+      }))
+    )

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 
-import { testApiPort } from '@greypan/monorepo-kit'
+import { testApiPort } from '@greypan/monorepo-kit/vite'
 import { defineConfig, type Plugin } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 

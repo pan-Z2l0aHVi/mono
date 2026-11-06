@@ -3,11 +3,8 @@ import path from 'node:path'
 
 import { definePlugin } from '@greypan/js-kit'
 
+import type { KitCtx } from '../../runner/runner'
 import { readJsonFile } from '../../shared/config'
-
-export interface TurboContext {
-  readonly root: string
-}
 
 export interface TurboApi {
   /** 读取仓库内的 turbo 配置；缺省是根 `turbo.json`，缺失或不是合法 JSON 时抛出 */
@@ -17,7 +14,7 @@ export interface TurboApi {
 }
 
 export const defineTurbo = () =>
-  definePlugin<TurboApi, TurboContext>(ctx => ({
+  definePlugin<TurboApi, KitCtx>(ctx => ({
     config: <T = unknown>(file = 'turbo.json') => {
       const absolute = path.join(ctx.root, file)
       if (!fs.existsSync(absolute)) throw new Error(`${file} not found in ${ctx.root}`)

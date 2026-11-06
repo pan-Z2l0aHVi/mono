@@ -1,22 +1,25 @@
-import type { CheckUnit } from '../../runner/check-runner'
-import { errorMessage } from '../../shared/errors'
-import { defineGit } from '../git/git'
+import { definePlugin, rust } from '@greypan/js-kit'
 
-import { defineChangesets, type ChangesetsOptions } from './changesets'
+import { type Chain, type KitCtx, type Run, defineRunner } from '../../runner/runner'
+import { errorMessage } from '../../shared/errors'
+import { defineGit, type GitApi } from '../git/git'
+
+import { defineChangesets, type ChangesetsApi, type ChangesetsOptions } from './changesets'
+
+const { andThen, err, ok } = rust
 
 // PR changeset requirement: compare committed PR head content with the merge base and read every
 // blob from head. Staged or unstaged changes are intentionally invisible to this check.
 
-function requireCommit(resolve: (ref: string) => string, label: string, value: string | undefined): string {
-  if (!value) throw new Error(`missing required option --${label} <sha-or-ref>`)
+function requireCommit(resolve: (ref: string) => string, label: string, value: string): rust.Result<string, string> {
   try {
-    return resolve(value)
+    return ok(resolve(value))
   } catch {
-    throw new Error(`changeset check cannot run: ${label} ${JSON.stringify(value)} is not a commit in this repository`)
+    return err(`changeset: ${label} ${JSON.stringify(value)} is not a commit in this repository`)
   }
 }
 
-function inspectChangeset(file: string, blob: string, ignoredPackages: readonly string[]): void {
+function inspectChangeset(file: string, blob: string, ignoredPackages: readonly string[]): rust.Result<void, string> {
   const lines = blob.split(/\r?\n/)
   let fenceCount = 0
   let preamble = false
@@ -40,8 +43,8 @@ function inspectChangeset(file: string, blob: string, ignoredPackages: readonly 
     }
   }
 
-  if (fenceCount < 2) throw new Error(`changeset malformed: ${file} has no paired --- frontmatter block`)
-  if (preamble) throw new Error(`changeset malformed: ${file} has content before its first --- line`)
+  if (fenceCount < 2) return err(`changeset: malformed: ${file} has no paired --- frontmatter block`)
+  if (preamble) return err(`changeset: malformed: ${file} has content before its first --- line`)
 
   const afterFrontmatter = lines.slice(lines.findIndex(line => /^---\s*$/.test(line)) + 1)
   let fencesSeen = 0
@@ -53,55 +56,58 @@ function inspectChangeset(file: string, blob: string, ignoredPackages: readonly 
     if (fencesSeen >= 1 && /\S/.test(line)) bodyHasText = true
   }
   if (packageLines > 0 && !bodyHasText)
-    throw new Error(
-      `changeset has no summary: ${file} declares a package bump on ${packageLines} line(s) but writes no description`
+    return err(
+      `changeset: has no summary: ${file} declares a package bump on ${packageLines} line(s) but writes no description`
     )
 
   const frontmatterText = frontmatter.join('\n')
   for (const packageName of ignoredPackages) {
     if (frontmatterText.includes(packageName))
-      throw new Error(
-        `changeset declares ignored package: ${file} declares ${JSON.stringify(packageName)}, which Changesets skips`
+      return err(
+        `changeset: declares ignored package: ${file} declares ${JSON.stringify(packageName)}, which Changesets skips`
       )
   }
+  return ok(undefined)
 }
 
-export function defineChangesetRequired(options: ChangesetsOptions = {}): CheckUnit {
-  const plugins = defineGit().use(defineChangesets(options))
-
-  return {
-    name: 'changeset-required',
-    async run({
-      root,
-      base,
-      head,
-      env = process.env
-    }: {
-      root: string
-      base?: string
-      head?: string
-      env?: NodeJS.ProcessEnv
-    }): Promise<string> {
-      const { resolveCommit, mergeBase, changed, read, ignoredPackages } = plugins.make({ root, env })
-      const baseCommit = requireCommit(resolveCommit, 'base', base)
-      const headCommit = requireCommit(resolveCommit, 'head', head)
-
-      let mergeBaseCommit: string
-      try {
-        mergeBaseCommit = mergeBase(baseCommit, headCommit)
-      } catch (error) {
-        throw new Error(`changeset check cannot determine merge-base for the supplied commits: ${errorMessage(error)}`)
-      }
-
-      const files = changed(mergeBaseCommit, headCommit)
-      const ignored = ignoredPackages(headCommit)
-      if (files.length === 0)
-        throw new Error(
-          'changeset missing: no added, modified or renamed effective .changeset/*.md in merge-base..head'
-        )
-
-      for (const file of files) inspectChangeset(file, read(headCommit, file), ignored)
-      return `${files.length} changeset(s): ${files.join(', ')}`
-    }
-  }
+export interface ChangesetRequiredOptions extends ChangesetsOptions {
+  /** 区间下界，SHA 或 ref */
+  readonly base: string
+  /** 区间上界，SHA 或 ref */
+  readonly head: string
 }
+
+/** PR 区间必须带有效 changeset 的判定，链上以 `changeset: ` 起头归因。区间两端是装配期就定下来的参数。 */
+export const defineChangesetRequired = ({ base, head, ...changesets }: ChangesetRequiredOptions): Chain =>
+  defineRunner()
+    .use(defineGit())
+    .use(defineChangesets(changesets))
+    .use(
+      definePlugin<{ run: Run }, KitCtx & { run: Run } & GitApi & ChangesetsApi>(ctx => ({
+        run: () =>
+          andThen(ctx.run(), async () => {
+            const baseCommit = requireCommit(ctx.resolveCommit, 'base', base)
+            if (!baseCommit.ok) return err(baseCommit.error)
+            const headCommit = requireCommit(ctx.resolveCommit, 'head', head)
+            if (!headCommit.ok) return err(headCommit.error)
+
+            let mergeBaseCommit: string
+            try {
+              mergeBaseCommit = ctx.mergeBase(baseCommit.value, headCommit.value)
+            } catch (error) {
+              return err(`changeset: cannot determine merge-base for the supplied commits: ${errorMessage(error)}`)
+            }
+
+            const files = ctx.changed(mergeBaseCommit, headCommit.value)
+            const ignored = ctx.ignoredPackages(headCommit.value)
+            if (files.length === 0)
+              return err('changeset: no added, modified or renamed effective .changeset/*.md in merge-base..head')
+
+            for (const file of files) {
+              const inspected = inspectChangeset(file, ctx.read(headCommit.value, file), ignored)
+              if (!inspected.ok) return err(inspected.error)
+            }
+            return ok(undefined)
+          })
+      }))
+    )

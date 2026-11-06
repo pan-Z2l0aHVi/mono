@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import depsReload from '@greypan/deps-reload/vite'
 import { mdToMeta, type MdToMetaOptions } from '@greypan/md-to-meta'
-import { devHttpsPlugin, testApiPort } from '@greypan/monorepo-kit'
+import { devHttpsPlugin, testApiPort } from '@greypan/monorepo-kit/vite'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'

@@ -1,4 +1,3 @@
-import crypto from 'node:crypto'
 import path from 'node:path'
 
 // 只收已观测到的漂移短语。泛化的「当前」「目前」会把合法的过程描述一起判红，
@@ -26,10 +25,6 @@ const REMOTE_WRITE =
   /\b(?:git push|gh pr (?:create|merge|comment|review|edit)|npm publish|pnpm publish|git tag|gh release|wails3 package)\b/
 const REFERENCE_MARKER = '<!-- corpus-status: reference -->'
 const REFERENCE_BANNER = '状态：非权威参考'
-
-export function countNonWhitespace(source: string): number {
-  return source.replace(/\s/gu, '').length
-}
 
 // 围栏代码块与行内 code 里的 `[label](target)` 不是链接：研究笔录常直接贴正则字面量
 // （`/[?&](?:worker|raw)\b/`），朴素的行内链接模式会把 `[...](...)` 当成断链。
@@ -210,31 +205,4 @@ export function findUnmarkedReferenceDocs(entries: readonly CorpusEntry[]): stri
     .filter(({ source }) => !source.startsWith(REFERENCE_MARKER) || !source.includes(REFERENCE_BANNER))
     .map(({ file }) => file)
     .sort()
-}
-
-// 墓碑式提及（「ADR-0009 已删除」）是合法修订记录；只报标题或本节声明层面的退役痕迹。
-const RETIRED_SECTION = [/^#{1,6}\s+.*(?:已废止|已删除)/, /(?:本节|此节|该节|以下|以上)[^\n]{0,20}(?:已废止|已删除)/]
-
-export function findRetiredAdrMarkers(
-  entries: readonly CorpusEntry[],
-  adrDocs: string
-): { file: string; line: number; phrase: string }[] {
-  const markers: { file: string; line: number; phrase: string }[] = []
-  for (const { file, source } of entries) {
-    if (!file.startsWith(`${adrDocs}/`)) continue
-    source.split('\n').forEach((line, index) => {
-      if (!RETIRED_SECTION.some(pattern => pattern.test(line))) return
-      markers.push({ file, line: index + 1, phrase: line.includes('已废止') ? '已废止' : '已删除' })
-    })
-  }
-  return markers
-}
-
-export function contentDigest(entries: readonly CorpusEntry[]): string {
-  const hash = crypto.createHash('sha256')
-  // 码元序而非 localeCompare：指纹要跨机器可复现，不能随 ICU/locale 改变文件顺序。
-  for (const { file, source } of [...entries].sort((a, b) => (a.file < b.file ? -1 : a.file > b.file ? 1 : 0))) {
-    hash.update(file).update('\0').update(source).update('\0')
-  }
-  return hash.digest('hex').slice(0, 12)
 }

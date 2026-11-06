@@ -1,6 +1,7 @@
 import { definePlugin } from '@greypan/js-kit'
 
-import { defineExec, type ExecResult } from '../exec/exec'
+import type { KitCtx } from '../../runner/runner'
+import { defineExec, type ExecApi, type ExecResult } from '../exec/exec'
 
 export interface ToolchainStep {
   /** 步骤名，失败信息里用它标出是哪条命令 */
@@ -31,21 +32,9 @@ export interface ToolchainRun {
 }
 
 export interface ToolchainApi {
-  readonly steps: readonly ToolchainStep[]
   /** 按 `match` 把文件分到各步，保持步骤表顺序 */
   readonly partition: (files: readonly string[]) => ToolchainJob[]
-  /** seam 解析后的命令前缀，不含 `args` */
-  readonly command: (step: ToolchainStep) => readonly string[]
-  /** 命令前缀加固定参数，不含文件 */
-  readonly argv: (step: ToolchainStep) => readonly string[]
-  /** 命令能否启动：以 `--help` 试跑，只报告可用性，不看输出 */
-  readonly probe: (step: ToolchainStep) => boolean
   readonly invoke: (job: ToolchainJob) => ToolchainRun
-}
-
-export interface ToolchainContext {
-  readonly root: string
-  readonly env?: NodeJS.ProcessEnv
 }
 
 function seamArgv(seam: string, value: string | undefined, fallback: readonly string[]): readonly string[] {
@@ -63,31 +52,28 @@ function seamArgv(seam: string, value: string | undefined, fallback: readonly st
   return parsed as string[]
 }
 
+/**
+ * 把一张工具链表跑成「按文件类型分派 + 判定成败」。命令起不来与命令跑了但失败都算失败，
+ * 两者的区别留在 `ExecResult` 的退出码缺位里，由调用方的证据文案体现。
+ */
 export const defineToolchain = (steps: readonly ToolchainStep[]) =>
-  definePlugin<ToolchainApi, ToolchainContext>(({ root, env = process.env }) => {
-    const { exec } = defineExec().make()
-
-    function command(step: ToolchainStep): readonly string[] {
-      return step.seam === undefined ? step.command : seamArgv(step.seam, env[step.seam], step.command)
-    }
-
-    function argv(step: ToolchainStep): readonly string[] {
-      return [...command(step), ...(step.args ?? [])]
-    }
-
-    return {
-      steps,
-      partition: files => steps.map(step => ({ step, files: files.filter(file => step.match.test(file)) })),
-      command,
-      argv,
-      probe: step => {
-        const prefix = command(step)
-        return exec(prefix[0], [...prefix.slice(1), '--help'], { cwd: root, env }).ok
-      },
-      invoke: job => {
-        const prefix = argv(job.step)
-        const result = exec(prefix[0], [...prefix.slice(1), ...job.files], { cwd: root, env })
-        return { job, result, failed: !result.ok || (job.step.failOn === 'stdout' && result.stdout.trim() !== '') }
+  defineExec().use(
+    definePlugin<ToolchainApi, KitCtx & ExecApi>(ctx => {
+      function command(step: ToolchainStep): readonly string[] {
+        return step.seam === undefined ? step.command : seamArgv(step.seam, ctx.env[step.seam], step.command)
       }
-    }
-  })
+
+      function argv(step: ToolchainStep): readonly string[] {
+        return [...command(step), ...(step.args ?? [])]
+      }
+
+      return {
+        partition: files => steps.map(step => ({ step, files: files.filter(file => step.match.test(file)) })),
+        invoke: job => {
+          const prefix = argv(job.step)
+          const result = ctx.exec(prefix[0], [...prefix.slice(1), ...job.files])
+          return { job, result, failed: !result.ok || (job.step.failOn === 'stdout' && result.stdout.trim() !== '') }
+        }
+      }
+    })
+  )

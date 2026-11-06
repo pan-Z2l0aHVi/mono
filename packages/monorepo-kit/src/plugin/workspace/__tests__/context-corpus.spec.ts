@@ -60,49 +60,53 @@ function makeFixture(routed = true): string {
   return root
 }
 
-async function detail(result: Promise<string | void>): Promise<string> {
-  const value = await result
-  assert.ok(value, 'check-context returned no detail')
-  return value
+// 链里会 spawn git（跟踪 Markdown 清单），env 显式给出一份不依赖开发者 shell 的副本。
+type Corpus = ReturnType<typeof defineContextCorpus>
+
+function run(plugin: Corpus, root: string) {
+  return plugin.make({ root, env: { ...process.env } }).run()
+}
+
+async function failure(plugin: Corpus, root: string): Promise<string> {
+  const result = await run(plugin, root)
+  if (result.ok) assert.fail('expected context-corpus to fail')
+  return result.error
 }
 
 it('context-corpus', async () => {
-  assert.match(
-    await detail(contextCorpus.run({ root: makeFixture() })),
-    /^3 Markdown files, 3 link-scanned files \/ 2 local links, corpus [0-9a-f]{12}$/
-  )
+  assert.ok((await run(contextCorpus, makeFixture())).ok)
 
   // 路由表由入口提供：入口没提到的 task-specific 文档没有加载路径。
-  await assert.rejects(
-    contextCorpus.run({ root: makeFixture(false) }),
-    /docs\/agents\/a\.md: no loading path from the AGENTS\.md task routing table/
+  assert.match(
+    await failure(contextCorpus, makeFixture(false)),
+    /^md:[\s\S]*docs\/agents\/a\.md: no loading path from the AGENTS\.md task routing table/
   )
 
   // 授权指针来自组合点：同一篇文档，换一个 pointer 就从通过变成失败。
   const unauthorized = makeFixture()
   write(unauthorized, 'docs/agents/a.md', '# a\n\n执行 git push 后合并。\n')
-  await assert.rejects(
-    contextCorpus.run({ root: unauthorized }),
-    /a\.md: remote write commands require the authorization pointer workflow\.md#custom/
+  assert.match(
+    await failure(contextCorpus, unauthorized),
+    /^md:[\s\S]*a\.md: remote write commands require the authorization pointer workflow\.md#custom/
   )
 
   // pointer 命中即通过；文档名写成链接，因为裸文本引用本身已被语料门禁判红。
   write(unauthorized, 'docs/agents/a.md', '# a\n\n执行 git push 前先读 [workflow.md](./workflow.md#custom)。\n')
-  await detail(contextCorpus.run({ root: unauthorized }))
+  assert.ok((await run(contextCorpus, unauthorized)).ok)
 
   const otherPointer = defineContextCorpus({
     ...options,
     authorization: { pointer: 'workflow.md#other', owner: 'docs/agents/workflow.md' }
   })
-  await assert.rejects(
-    otherPointer.run({ root: unauthorized }),
-    /a\.md: remote write commands require the authorization pointer workflow\.md#other/
+  assert.match(
+    await failure(otherPointer, unauthorized),
+    /^md:[\s\S]*a\.md: remote write commands require the authorization pointer workflow\.md#other/
   )
 
   // owner 文档定义授权机制本身，不要求指向自己。
   const owned = makeFixture()
   write(owned, 'docs/agents/workflow.md', '# workflow\n\n## custom\n\n执行 git push。\n')
-  await detail(contextCorpus.run({ root: owned }))
+  assert.ok((await run(contextCorpus, owned)).ok)
 })
 
 it('commit scopes collapse nested workspaces', async () => {
@@ -126,12 +130,15 @@ it('commit scopes collapse nested workspaces', async () => {
   // 嵌套 workspace 归入最近的祖先 workspace，不要求在 scope 清单里单独出现。
   const passing = makeNestedFixture()
   write(passing, 'commitlint.config.js', "export default { prompt: { scopes: ['root', 'app'] } }\n")
-  await detail(scoped('commitlint.config.js').run({ root: passing }))
+  assert.ok((await run(scoped('commitlint.config.js'), passing)).ok)
 
   // 反过来，把嵌套 workspace 当独立 scope 登记就是指向不存在的 option。
   const failing = makeNestedFixture()
   write(failing, 'commitlint-extra.config.js', "export default { prompt: { scopes: ['root', 'app', 'app-web'] } }\n")
-  await assert.rejects(scoped('commitlint-extra.config.js').run({ root: failing }), /lists an unknown scope: app-web/)
+  assert.match(
+    await failure(scoped('commitlint-extra.config.js'), failing),
+    /^md:[\s\S]*lists an unknown scope: app-web/
+  )
 })
 
 afterAll(() => {

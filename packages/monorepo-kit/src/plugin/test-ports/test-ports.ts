@@ -3,7 +3,7 @@ import path from 'node:path'
 
 import { definePlugin } from '@greypan/js-kit'
 
-import { findRepoRoot } from '../workspace/workspace'
+import type { KitCtx } from '../../runner/runner'
 
 // 浏览器测试的 API 端口分配。谁占哪个段是本仓库的编排事实，数据在根 `monorepo.json`；
 // 这里只做读取、校验与偏移。
@@ -23,16 +23,11 @@ export interface TestPortsOptions {
   readonly configFile?: string
 }
 
-export interface TestPortsContext {
-  /** 仓库根；缺省从本模块位置向上找 `pnpm-workspace.yaml` */
-  readonly root?: string
-}
-
 export interface TestPortsApi {
   /** 端口分配里登记的 project 名，顺序与端口表一致 */
   readonly names: () => readonly string[]
-  /** 取某个项目的基端口；偏移只做整表平移，不改段内间隔 */
-  readonly port: (name: string, env?: NodeJS.ProcessEnv) => number
+  /** 取某个项目的基端口；偏移只做整表平移，不改段内间隔，偏移量读 `ctx.env` */
+  readonly port: (name: string) => number
 }
 
 interface Allocation {
@@ -89,13 +84,13 @@ function parse(raw: unknown, configFile: string): Allocation {
 }
 
 export const defineTestPorts = ({ configFile = 'monorepo.json' }: TestPortsOptions = {}) =>
-  definePlugin<TestPortsApi, TestPortsContext>(ctx => {
+  definePlugin<TestPortsApi, KitCtx>(ctx => {
     let cached: Allocation | undefined
 
     function allocation(): Allocation {
       if (cached) return cached
 
-      const file = path.join(ctx.root ?? findRepoRoot(import.meta.dirname), configFile)
+      const file = path.join(ctx.root, configFile)
       let text: string
       try {
         text = fs.readFileSync(file, 'utf8')
@@ -116,7 +111,7 @@ export const defineTestPorts = ({ configFile = 'monorepo.json' }: TestPortsOptio
 
     return {
       names: () => allocation().names,
-      port: (name, env = process.env) => {
+      port: name => {
         const { bandWidth, offsetStride, ports, names } = allocation()
 
         const base = ports.get(name)
@@ -124,7 +119,7 @@ export const defineTestPorts = ({ configFile = 'monorepo.json' }: TestPortsOptio
           throw new Error(`test-ports: 未知项目 "${name}"；可选：${names.join(', ')}`)
         }
 
-        const rawOffset = env.GREYPAN_TEST_PORT_OFFSET
+        const rawOffset = ctx.env.GREYPAN_TEST_PORT_OFFSET
         const offset = rawOffset === undefined || rawOffset === '' ? 0 : Number(rawOffset)
         if (!Number.isInteger(offset) || offset < 0) {
           throw new Error(`test-ports: GREYPAN_TEST_PORT_OFFSET 必须是非负整数，收到 "${rawOffset}"`)
@@ -140,21 +135,3 @@ export const defineTestPorts = ({ configFile = 'monorepo.json' }: TestPortsOptio
       }
     }
   })
-
-const defaultPorts = defineTestPorts()
-let defaultApi: TestPortsApi | undefined
-
-function api(): TestPortsApi {
-  defaultApi ??= defaultPorts.make({})
-  return defaultApi
-}
-
-/** 端口分配里登记的 project 名，顺序与端口表一致。 */
-export function testApiPortNames(): readonly string[] {
-  return api().names()
-}
-
-/** 取某个项目的基端口；项目名在编译期只是 `string`，未知名字在这里报错并列出可选值。 */
-export function testApiPort(name: string, env: NodeJS.ProcessEnv = process.env): number {
-  return api().port(name, env)
-}

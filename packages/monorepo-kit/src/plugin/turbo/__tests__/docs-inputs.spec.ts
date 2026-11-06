@@ -8,7 +8,6 @@ import { afterAll, it } from 'vite-plus/test'
 import { defineDocsInputs } from '../docs-inputs'
 
 const docsInputs = defineDocsInputs({
-  name: 'web-ui-docs-inputs',
   packageDir: 'packages/web-ui',
   corpusDir: 'docs',
   proseNames: ['README.md', 'README.CN.md', 'AGENTS.md', 'CHANGELOG.md']
@@ -46,47 +45,54 @@ function makeFixture({
   return { root, packageRoot }
 }
 
-async function detail(result: Promise<string | void>): Promise<string> {
-  const value = await result
-  assert.ok(value, 'web-ui-docs-inputs returned no detail')
-  return value
+function run(root: string) {
+  return docsInputs.make({ root, env: { ...process.env } }).run()
+}
+
+async function failure(root: string): Promise<string> {
+  const result = await run(root)
+  if (result.ok) assert.fail('expected web-ui-docs-inputs to fail')
+  return result.error
 }
 
 it('web-ui-docs-inputs', async () => {
   const valid = makeFixture()
-  assert.match(await detail(docsInputs.run({ root: valid.root })), /1 corpus files/)
+  assert.ok((await run(valid.root)).ok)
 
   fs.mkdirSync(path.join(valid.packageRoot, '__tests__'), { recursive: true })
   fs.writeFileSync(path.join(valid.packageRoot, '__tests__', 'fixture.md'), '# fixture\n')
-  await docsInputs.run({ root: valid.root })
+  assert.ok((await run(valid.root)).ok)
 
   fs.writeFileSync(path.join(valid.packageRoot, 'notes.md'), '# stray\n')
-  await assert.rejects(docsInputs.run({ root: valid.root }), /not in the allowlist/)
+  assert.match(await failure(valid.root), /^turbo: packages\/web-ui: these Markdown files are not in the allowlist/)
   fs.rmSync(path.join(valid.packageRoot, 'notes.md'))
 
   const missingDocs = makeFixture({ docs: false })
-  await assert.rejects(docsInputs.run({ root: missingDocs.root }), /does not exist/)
+  assert.match(await failure(missingDocs.root), /^turbo: packages\/web-ui: docs\/ does not exist/)
 
   const wrongExtends = makeFixture({ extendsValue: ['//', 'packages/web-ui'] })
-  await assert.rejects(docsInputs.run({ root: wrongExtends.root }), /extends must be \["\/\/"\]/)
+  assert.match(await failure(wrongExtends.root), /^turbo: packages\/web-ui: turbo\.json extends must be \["\/\/"\]/)
 
   const missingDefault = makeFixture({ buildInputs: ['!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md'] })
-  await assert.rejects(docsInputs.run({ root: missingDefault.root }), /missing \$TURBO_DEFAULT\$/)
+  assert.match(
+    await failure(missingDefault.root),
+    /^turbo: packages\/web-ui: tasks\.build\.inputs is missing \$TURBO_DEFAULT\$/
+  )
 
   const coversDocs = makeFixture({
     buildInputs: ['$TURBO_DEFAULT$', '!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md', '!**/docs/**']
   })
-  await assert.rejects(docsInputs.run({ root: coversDocs.root }), /covers the docs\/ corpus/)
+  assert.match(await failure(coversDocs.root), /^turbo: packages\/web-ui: .*covers the docs\/ corpus/)
 
   const missesProse = makeFixture({
     testInputs: ['$TURBO_DEFAULT$', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md']
   })
-  await assert.rejects(docsInputs.run({ root: missesProse.root }), /missing !README\.md/)
+  assert.match(await failure(missesProse.root), /^turbo: packages\/web-ui: tasks\.test\.inputs is missing !README\.md/)
 
   const unsupported = makeFixture({
     buildInputs: ['$TURBO_DEFAULT$', '!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md', '!{docs,x}/**']
   })
-  await assert.rejects(docsInputs.run({ root: unsupported.root }), /covers the docs\/ corpus/)
+  assert.match(await failure(unsupported.root), /^turbo: packages\/web-ui: .*covers the docs\/ corpus/)
 })
 
 afterAll(() => {

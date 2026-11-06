@@ -6,9 +6,9 @@ import path from 'node:path'
 
 import { afterAll, it } from 'vite-plus/test'
 
+import { defineCatch } from '../../../runner/catch'
+import { defineRunner } from '../../../runner/runner'
 import { defineChangesetRequired } from '../changeset-required'
-
-const required = defineChangesetRequired()
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-changeset-'))
 const gitEnv = {
@@ -49,14 +49,20 @@ function makeRepo(
   return { root, base: commit(root, 'base fixture') }
 }
 
-function check(repo: Fixture, base: string = repo.base, head = 'HEAD'): Promise<string | void> {
-  return required.run({ root: repo.root, base, head })
+// 区间是装配期参数：每次判定都按用例给的 base/head 现造一条链。
+// 链尾带 defineCatch：坏 config 由 parseConfig 抛出，属于装配故障，走 `throw: ` 而不是 `changeset: `。
+function kit(repo: Fixture, base: string, head: string) {
+  return defineRunner()
+    .use(defineChangesetRequired({ base, head }))
+    .use(defineCatch())
+    .make({ root: repo.root, env: gitEnv })
+    .run()
 }
 
-async function pass(repo: Fixture, base: string = repo.base, head = 'HEAD'): Promise<string> {
-  const detail = await check(repo, base, head)
-  assert.ok(detail, 'changeset-required returned no detail')
-  return detail
+async function failure(repo: Fixture, base: string = repo.base, head = 'HEAD'): Promise<string> {
+  const result = await kit(repo, base, head)
+  if (result.ok) assert.fail('expected changeset-required to fail')
+  return result.error
 }
 
 // 每个用例只建自己需要的夹具：一份 `git init` 加若干 commit 是一两百次子进程，
@@ -64,16 +70,19 @@ async function pass(repo: Fixture, base: string = repo.base, head = 'HEAD'): Pro
 it('changeset-required rejects a PR without its own changeset', async () => {
   const missing = makeRepo('missing')
   fs.writeFileSync(path.join(missing.root, 'README.md'), '# feature\n')
-  await assert.rejects(check(missing, missing.base, commit(missing.root, 'source change')), /changeset missing/)
+  assert.match(
+    await failure(missing, missing.base, commit(missing.root, 'source change')),
+    /^changeset: no added, modified or renamed effective \.changeset\/\*\.md in merge-base\.\.head/
+  )
 
   const mainChangeset = makeRepo('main-changeset', undefined, {
     path: 'main-only.md',
     body: '---\n"@scope/package": patch\n---\nMain branch declaration.\n'
   })
   fs.writeFileSync(path.join(mainChangeset.root, 'README.md'), '# PR change\n')
-  await assert.rejects(
-    check(mainChangeset, mainChangeset.base, commit(mainChangeset.root, 'feature change')),
-    /changeset missing/
+  assert.match(
+    await failure(mainChangeset, mainChangeset.base, commit(mainChangeset.root, 'feature change')),
+    /^changeset: no added, modified or renamed effective \.changeset\/\*\.md in merge-base\.\.head/
   )
 
   const deleted = makeRepo('deleted-main-changeset', undefined, {
@@ -82,9 +91,9 @@ it('changeset-required rejects a PR without its own changeset', async () => {
   })
   fs.rmSync(path.join(deleted.root, '.changeset', 'removed.md'))
   fs.writeFileSync(path.join(deleted.root, 'README.md'), '# deletion\n')
-  await assert.rejects(
-    check(deleted, deleted.base, commit(deleted.root, 'delete inherited changeset')),
-    /changeset missing/
+  assert.match(
+    await failure(deleted, deleted.base, commit(deleted.root, 'delete inherited changeset')),
+    /^changeset: no added, modified or renamed effective \.changeset\/\*\.md in merge-base\.\.head/
   )
 })
 
@@ -97,7 +106,10 @@ it('changeset-required sees committed content only', async () => {
     '---\n"@scope/package": patch\n---\nStaged but not committed.\n'
   )
   git(stagedOnly.root, 'add', '.changeset/staged.md')
-  await assert.rejects(check(stagedOnly, stagedOnly.base, stagedHead), /changeset missing/)
+  assert.match(
+    await failure(stagedOnly, stagedOnly.base, stagedHead),
+    /^changeset: no added, modified or renamed effective \.changeset\/\*\.md in merge-base\.\.head/
+  )
 
   const unstagedOnly = makeRepo('unstaged-only')
   fs.writeFileSync(path.join(unstagedOnly.root, 'README.md'), '# committed source\n')
@@ -106,7 +118,10 @@ it('changeset-required sees committed content only', async () => {
     path.join(unstagedOnly.root, '.changeset', 'unstaged.md'),
     '---\n"@scope/package": patch\n---\nUnstaged and uncommitted.\n'
   )
-  await assert.rejects(check(unstagedOnly, unstagedOnly.base, unstagedHead), /changeset missing/)
+  assert.match(
+    await failure(unstagedOnly, unstagedOnly.base, unstagedHead),
+    /^changeset: no added, modified or renamed effective \.changeset\/\*\.md in merge-base\.\.head/
+  )
 })
 
 it('changeset-required accepts declarations in any shape or commit', async () => {
@@ -116,7 +131,7 @@ it('changeset-required accepts declarations in any shape or commit', async () =>
     path.join(single.root, '.changeset', 'valid.md'),
     '---\n"@scope/package": patch\n---\nDescribe the change.\n'
   )
-  assert.match(await pass(single, single.base, commit(single.root, 'source and changeset')), /\.changeset\/valid\.md/)
+  assert.ok((await kit(single, single.base, commit(single.root, 'source and changeset'))).ok)
 
   const multipleCommits = makeRepo('multiple-commits')
   fs.writeFileSync(path.join(multipleCommits.root, 'README.md'), '# first change\n')
@@ -127,54 +142,54 @@ it('changeset-required accepts declarations in any shape or commit', async () =>
     path.join(multipleCommits.root, '.changeset', 'later.md'),
     '---\n"@scope/package": minor\n---\nSummary from a later commit.\n'
   )
-  await pass(multipleCommits, multipleCommits.base, commit(multipleCommits.root, 'add changeset'))
+  assert.ok((await kit(multipleCommits, multipleCommits.base, commit(multipleCommits.root, 'add changeset'))).ok)
 
   const emptyShell = makeRepo('empty-shell')
   fs.writeFileSync(path.join(emptyShell.root, 'README.md'), '# source change\n')
   fs.writeFileSync(path.join(emptyShell.root, '.changeset', 'empty.md'), '---\n---\n')
-  await pass(emptyShell, emptyShell.base, commit(emptyShell.root, 'source with empty changeset'))
+  assert.ok((await kit(emptyShell, emptyShell.base, commit(emptyShell.root, 'source with empty changeset'))).ok)
 
   const spacedPath = makeRepo('unicode-and-space')
   fs.writeFileSync(path.join(spacedPath.root, 'README.md'), '# unicode\n')
   const unicodeFile = '.changeset/变更 with space.md'
   fs.writeFileSync(path.join(spacedPath.root, unicodeFile), '---\n"@scope/package": patch\n---\nUnicode path.\n')
-  assert.match(
-    await pass(spacedPath, spacedPath.base, commit(spacedPath.root, 'unicode changeset')),
-    /变更 with space\.md/
-  )
+  assert.ok((await kit(spacedPath, spacedPath.base, commit(spacedPath.root, 'unicode changeset'))).ok)
 
   const renamed = makeRepo('renamed', undefined, {
     path: 'before.md',
     body: '---\n"@scope/package": patch\n---\nRenamed declaration.\n'
   })
   git(renamed.root, 'mv', '.changeset/before.md', '.changeset/after.md')
-  assert.match(await pass(renamed, renamed.base, commit(renamed.root, 'rename changeset')), /\.changeset\/after\.md/)
+  assert.ok((await kit(renamed, renamed.base, commit(renamed.root, 'rename changeset'))).ok)
 })
 
 it('changeset-required rejects malformed declarations', async () => {
   const noFrontmatter = makeRepo('no-frontmatter')
   fs.writeFileSync(path.join(noFrontmatter.root, '.changeset', 'bad.md'), 'plain text\n')
-  await assert.rejects(
-    check(noFrontmatter, noFrontmatter.base, commit(noFrontmatter.root, 'malformed changeset')),
-    /no paired ---/
+  assert.match(
+    await failure(noFrontmatter, noFrontmatter.base, commit(noFrontmatter.root, 'malformed changeset')),
+    /^changeset:[\s\S]*no paired ---/
   )
 
   const preamble = makeRepo('preamble')
   fs.writeFileSync(path.join(preamble.root, '.changeset', 'bad.md'), 'stray line\n---\n---\n')
-  await assert.rejects(
-    check(preamble, preamble.base, commit(preamble.root, 'preamble changeset')),
-    /content before its first ---/
+  assert.match(
+    await failure(preamble, preamble.base, commit(preamble.root, 'preamble changeset')),
+    /^changeset:[\s\S]*content before its first ---/
   )
 
   const noSummary = makeRepo('no-summary')
   fs.writeFileSync(path.join(noSummary.root, '.changeset', 'bad.md'), '---\n"@scope/package": patch\n---\n\n')
-  await assert.rejects(check(noSummary, noSummary.base, commit(noSummary.root, 'empty summary')), /has no summary/)
+  assert.match(
+    await failure(noSummary, noSummary.base, commit(noSummary.root, 'empty summary')),
+    /^changeset:[\s\S]*has no summary/
+  )
 
   const fenceOnlySummary = makeRepo('fence-only-summary')
   fs.writeFileSync(path.join(fenceOnlySummary.root, '.changeset', 'bad.md'), '---\n"@scope/package": patch\n---\n---\n')
-  await assert.rejects(
-    check(fenceOnlySummary, fenceOnlySummary.base, commit(fenceOnlySummary.root, 'fence is not a summary')),
-    /has no summary/
+  assert.match(
+    await failure(fenceOnlySummary, fenceOnlySummary.base, commit(fenceOnlySummary.root, 'fence is not a summary')),
+    /^changeset:[\s\S]*has no summary/
   )
 })
 
@@ -185,9 +200,9 @@ it('changeset-required rejects declarations for ignored packages and unreadable 
     path.join(ignored.root, '.changeset', 'ignored.md'),
     '---\n"@scope/ignored": patch\n---\nIgnored package.\n'
   )
-  await assert.rejects(
-    check(ignored, ignored.base, commit(ignored.root, 'ignored changeset')),
-    /declares ignored package/
+  assert.match(
+    await failure(ignored, ignored.base, commit(ignored.root, 'ignored changeset')),
+    /^changeset:[\s\S]*declares ignored package/
   )
 
   const invalidConfig = makeRepo('invalid-head-config')
@@ -200,16 +215,17 @@ it('changeset-required rejects declarations for ignored packages and unreadable 
     path.join(invalidConfig.root, '.changeset', 'valid.md'),
     '---\n"@scope/package": patch\n---\nA valid change.\n'
   )
-  await assert.rejects(
-    check(invalidConfig, invalidConfig.base, commit(invalidConfig.root, 'invalid head config')),
-    /must contain an ignore array/
+  assert.match(
+    await failure(invalidConfig, invalidConfig.base, commit(invalidConfig.root, 'invalid head config')),
+    /^throw:[\s\S]*must contain an ignore array/
   )
 })
 
-it('changeset-required validates the base and head options', async () => {
+it('changeset-required validates the base and head commits', async () => {
   const repo = makeRepo('option-validation')
-  await assert.rejects(check(repo, 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef', repo.base), /base .* is not a commit/)
-  await assert.rejects(required.run({ root: repo.root, head: repo.base }), /missing required option --base/)
+  const notACommit = 'deadbeefdeadbeefdeadbeefdeadbeefdeadbeef'
+  assert.match(await failure(repo, notACommit, repo.base), /^changeset: base .* is not a commit/)
+  assert.match(await failure(repo, repo.base, notACommit), /^changeset: head .* is not a commit/)
 })
 
 afterAll(() => {

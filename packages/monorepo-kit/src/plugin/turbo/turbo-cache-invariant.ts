@@ -1,6 +1,10 @@
-import type { CheckUnit } from '../../runner/check-runner'
+import { definePlugin, rust } from '@greypan/js-kit'
 
-import { defineTurbo } from './turbo'
+import { type Chain, type KitCtx, type Run, defineRunner } from '../../runner/runner'
+
+import { defineTurbo, type TurboApi } from './turbo'
+
+const { andThen, err, ok } = rust
 
 // Turbo cache 的正确性依赖三件事：test 先跑依赖包的 build，build 缓存恢复 dist/**，
 // 以及 test inputs 不显式把 gitignored 的 dist 拉进 key。任何一项被改掉，缓存命中就可能
@@ -25,64 +29,73 @@ function mayMatchDist(pattern: string): boolean {
   return globToRegExp(normalized.split('/')[0]).test('dist')
 }
 
-function requireArray(value: unknown, label: string): string[] {
-  if (!Array.isArray(value)) throw new Error(`${label} must be a bracketed array of strings`)
+function requireArray(value: unknown, label: string): rust.Result<string[], string> {
+  if (!Array.isArray(value)) return err(`turbo: ${label} must be a bracketed array of strings`)
   for (const item of value) {
     if (typeof item !== 'string' || !ITEM_SHAPE.test(item))
-      throw new Error(`${label}: unsupported pattern item (extended glob syntax is not interpreted): ${String(item)}`)
+      return err(`turbo: ${label}: unsupported pattern item (extended glob syntax is not interpreted): ${String(item)}`)
   }
-  return value as string[]
+  return ok(value as string[])
 }
 
 interface TurboConfig {
   tasks?: Record<string, { dependsOn?: unknown; outputs?: unknown; inputs?: unknown }>
 }
 
-export function defineTurboCacheInvariant(): CheckUnit {
-  const turbo = defineTurbo()
+/**
+ * Turbo 缓存形状的判定，链上以 `turbo: ` 起头归因。只核对配置形状，不执行构建。
+ */
+export const defineTurboCacheInvariant = (): Chain =>
+  defineRunner()
+    .use(defineTurbo())
+    .use(
+      definePlugin<{ run: Run }, KitCtx & { run: Run } & TurboApi>(ctx => ({
+        run: () =>
+          andThen(ctx.run(), async () => {
+            const config = ctx.config<TurboConfig>()
+            const test = config.tasks?.test
+            const build = config.tasks?.build
+            if (!test || typeof test !== 'object') return err('turbo: cannot read tasks.test from turbo.json')
+            if (!build || typeof build !== 'object') return err('turbo: cannot read tasks.build from turbo.json')
 
-  return {
-    name: 'turbo-cache-invariant',
-    async run({ root }: { root: string }): Promise<string> {
-      const config = turbo.make({ root }).config<TurboConfig>()
-      const test = config.tasks?.test
-      const build = config.tasks?.build
-      if (!test || typeof test !== 'object') throw new Error('cannot read tasks.test from turbo.json')
-      if (!build || typeof build !== 'object') throw new Error('cannot read tasks.build from turbo.json')
+            if (test.dependsOn === undefined)
+              return err('turbo: tasks.test.dependsOn is missing; test must run after upstream builds restore dist')
+            const dependsOn = requireArray(test.dependsOn, 'tasks.test.dependsOn')
+            if (!dependsOn.ok) return err(dependsOn.error)
+            if (!dependsOn.value.includes('^build'))
+              return err(
+                'turbo: tasks.test.dependsOn must include "^build" so cached upstream build outputs are restored before the dependent task runs'
+              )
 
-      if (test.dependsOn === undefined)
-        throw new Error('tasks.test.dependsOn is missing; test must run after upstream builds restore dist')
-      const dependsOn = requireArray(test.dependsOn, 'tasks.test.dependsOn')
-      if (!dependsOn.includes('^build'))
-        throw new Error(
-          'tasks.test.dependsOn must include "^build" so cached upstream build outputs are restored before the dependent task runs'
-        )
+            if (build.outputs === undefined)
+              return err('turbo: tasks.build.outputs is missing; build must declare its cacheable outputs')
+            const outputs = requireArray(build.outputs, 'tasks.build.outputs')
+            if (!outputs.ok) return err(outputs.error)
+            if (outputs.value.length === 0)
+              return err('turbo: tasks.build.outputs must be a non-empty array of strings containing "dist/**"')
+            for (const item of outputs.value) {
+              if (item.startsWith('!') && mayMatchDist(item.slice(1)))
+                return err(
+                  `turbo: tasks.build.outputs: negative pattern "${item}" may exclude dist/** after the output was declared; dist must remain recoverable`
+                )
+            }
+            if (!outputs.value.includes('dist/**'))
+              return err(
+                'turbo: tasks.build.outputs must include "dist/**" so a cached build restores the package dist tree'
+              )
 
-      if (build.outputs === undefined)
-        throw new Error('tasks.build.outputs is missing; build must declare its cacheable outputs')
-      const outputs = requireArray(build.outputs, 'tasks.build.outputs')
-      if (outputs.length === 0)
-        throw new Error('tasks.build.outputs must be a non-empty array of strings containing "dist/**"')
-      for (const item of outputs) {
-        if (item.startsWith('!') && mayMatchDist(item.slice(1)))
-          throw new Error(
-            `tasks.build.outputs: negative pattern "${item}" may exclude dist/** after the output was declared; dist must remain recoverable`
-          )
-      }
-      if (!outputs.includes('dist/**'))
-        throw new Error('tasks.build.outputs must include "dist/**" so a cached build restores the package dist tree')
+            if (test.inputs !== undefined) {
+              const inputs = requireArray(test.inputs, 'tasks.test.inputs')
+              if (!inputs.ok) return err(inputs.error)
+              for (const item of inputs.value) {
+                if (!item.startsWith('!') && mayMatchDist(item))
+                  return err(
+                    `turbo: tasks.test.inputs: positive pattern "${item}" may include dist/**; dist is gitignored and must stay out of the test input key`
+                  )
+              }
+            }
 
-      if (test.inputs !== undefined) {
-        const inputs = requireArray(test.inputs, 'tasks.test.inputs')
-        for (const item of inputs) {
-          if (!item.startsWith('!') && mayMatchDist(item))
-            throw new Error(
-              `tasks.test.inputs: positive pattern "${item}" may include dist/**; dist is gitignored and must stay out of the test input key`
-            )
-        }
-      }
-
-      return 'test.dependsOn, build.outputs and test.inputs are consistent'
-    }
-  }
-}
+            return ok(undefined)
+          })
+      }))
+    )

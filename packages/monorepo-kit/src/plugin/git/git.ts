@@ -1,11 +1,7 @@
-import { execFileSync } from 'node:child_process'
+import { type Plugin, definePlugin } from '@greypan/js-kit'
 
-import { definePlugin } from '@greypan/js-kit'
-
-export interface GitContext {
-  readonly root: string
-  readonly env?: NodeJS.ProcessEnv
-}
+import type { KitCtx } from '../../runner/runner'
+import { defineExec, type ExecApi } from '../exec/exec'
 
 export interface ChangedFilesOptions {
   readonly from: string
@@ -31,64 +27,54 @@ export interface GitApi {
   readonly mergeBase: (left: string, right: string) => string
 }
 
-interface GitFailure {
-  stderr?: string | Buffer
-}
-
-/**
- * 与 `exec` 相反：git 是门禁的判据来源，失败必须抛出，不能降级成返回值。
- */
-function runGit(root: string, args: readonly string[], env: NodeJS.ProcessEnv | undefined): string {
-  try {
-    return execFileSync('git', [...args], {
-      cwd: root,
-      env,
-      encoding: 'utf8',
-      maxBuffer: 64 * 1024 * 1024
-    })
-  } catch (error) {
-    const failure = error as GitFailure
-    const detail = String(failure.stderr ?? '').trim()
-    throw new Error(`git ${args.join(' ')} failed${detail ? `: ${detail}` : ''}`)
-  }
-}
-
 function nulSeparated(output: string): string[] {
   return output.split('\0').filter(Boolean)
 }
 
-export const defineGit = () =>
-  definePlugin<GitApi, GitContext>(ctx => {
-    const raw = (args: readonly string[]): string => runGit(ctx.root, args, ctx.env)
+/**
+ * 起进程用 `exec`，但语义相反：git 是门禁的判据来源，失败必须抛出，不能降级成返回值。
+ * 返回值标注成 `Plugin<GitApi, KitCtx>`：`use` 会并进 `defineExec` 的产出与需求，
+ * 不收窄就要求消费者自己供给这条能力内部已经装好的东西。
+ */
+export const defineGit = (): Plugin<GitApi, KitCtx> =>
+  defineExec().use(
+    definePlugin<GitApi, KitCtx & ExecApi>(ctx => {
+      const raw = (args: readonly string[]): string => {
+        const result = ctx.exec('git', args)
+        if (result.ok) return result.stdout
+        const detail = (result.stderr ?? '').trim()
+        throw new Error(`git ${args.join(' ')} failed${detail ? `: ${detail}` : ''}`)
+      }
 
-    return {
-      stagedFiles: () =>
-        raw(['-c', 'core.quotePath=false', 'diff', '--cached', '--name-only', '--diff-filter=ACMR'])
-          .split(/\r?\n/)
-          .filter(Boolean),
-      files: pattern => nulSeparated(raw(['ls-files', '-z', pattern])),
-      // `-v` 在路径前加一位状态码：`H` 是普通条目，`S` 是 skip-worktree（cone 外），小写是 assume-unchanged。
-      skipWorktreeFiles: () =>
-        nulSeparated(raw(['ls-files', '-v', '-z']))
-          .filter(entry => entry.startsWith('S '))
-          .map(entry => entry.slice(2)),
-      changedFiles: ({ from, to, pathspec, filter }) =>
-        nulSeparated(
-          raw([
-            '-c',
-            'core.quotePath=false',
-            'diff',
-            '--name-only',
-            '-z',
-            ...(filter ? [`--diff-filter=${filter}`] : []),
-            from,
-            to,
-            '--',
-            ...(pathspec ? [pathspec] : [])
-          ])
-        ),
-      show: (commit, file) => raw(['show', `${commit}:${file}`]),
-      resolveCommit: ref => raw(['rev-parse', '--verify', '--quiet', '--end-of-options', `${ref}^{commit}`]).trim(),
-      mergeBase: (left, right) => raw(['merge-base', left, right]).trim()
-    }
-  })
+      return {
+        stagedFiles: () =>
+          raw(['-c', 'core.quotePath=false', 'diff', '--cached', '--name-only', '--diff-filter=ACMR'])
+            .split(/\r?\n/)
+            .filter(Boolean),
+        files: pattern => nulSeparated(raw(['ls-files', '-z', pattern])),
+        // `-v` 在路径前加一位状态码：`H` 是普通条目，`S` 是 skip-worktree（cone 外），小写是 assume-unchanged。
+        skipWorktreeFiles: () =>
+          nulSeparated(raw(['ls-files', '-v', '-z']))
+            .filter(entry => entry.startsWith('S '))
+            .map(entry => entry.slice(2)),
+        changedFiles: ({ from, to, pathspec, filter }) =>
+          nulSeparated(
+            raw([
+              '-c',
+              'core.quotePath=false',
+              'diff',
+              '--name-only',
+              '-z',
+              ...(filter ? [`--diff-filter=${filter}`] : []),
+              from,
+              to,
+              '--',
+              ...(pathspec ? [pathspec] : [])
+            ])
+          ),
+        show: (commit, file) => raw(['show', `${commit}:${file}`]),
+        resolveCommit: ref => raw(['rev-parse', '--verify', '--quiet', '--end-of-options', `${ref}^{commit}`]).trim(),
+        mergeBase: (left, right) => raw(['merge-base', left, right]).trim()
+      }
+    })
+  )

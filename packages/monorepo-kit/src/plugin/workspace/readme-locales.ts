@@ -1,9 +1,13 @@
 import fs from 'node:fs'
 import path from 'node:path'
 
-import type { CheckUnit } from '../../runner/check-runner'
+import { definePlugin, rust } from '@greypan/js-kit'
 
-import { defineWorkspace } from './workspace'
+import { type Chain, type KitCtx, type Run, defineRunner } from '../../runner/runner'
+
+import { defineWorkspace, type WorkspaceApi } from './workspace'
+
+const { andThen, err, ok } = rust
 
 // 发布包的根 README 就是 npm 包页，英文版与中文版各是一半读者的入口：缺一份，或只有单向链接，
 // 另一侧读者就没有路。私有包与应用不要求多语言——内部文档的语言由仓库规则统一——但只要多语言版
@@ -90,64 +94,66 @@ function resolveTarget(source: string, target: string): string | null {
   return segments.join('/')
 }
 
-export function defineReadmeLocales({ locales, skippedDirectories }: ReadmeLocalesOptions): CheckUnit {
-  const plugin = defineWorkspace()
+/**
+ * README 双语配对的判定，链上以 `md: ` 起头归因：译文必须有主版可译、双向互链，
+ * 发布包必须同时备齐每个 locale 的 README。
+ */
+export const defineReadmeLocales = ({ locales, skippedDirectories }: ReadmeLocalesOptions): Chain => {
   const skipped = new Set(skippedDirectories)
 
-  return {
-    name: 'readme-locales',
-    async run({ root }: { root: string }): Promise<string> {
-      const { manifests, readManifest } = plugin.make({ root })
-      const violations: string[] = []
-      let pairs = 0
+  return defineRunner()
+    .use(defineWorkspace())
+    .use(
+      definePlugin<{ run: Run }, KitCtx & { run: Run } & WorkspaceApi>(ctx => ({
+        run: () =>
+          andThen(ctx.run(), async () => {
+            const { root } = ctx
+            const violations: string[] = []
 
-      for (const directory of walkDirectories(root, skipped)) {
-        const basePath = fileIn(directory, BASE)
-        const baseExists = fs.existsSync(path.join(root, basePath))
+            for (const directory of walkDirectories(root, skipped)) {
+              const basePath = fileIn(directory, BASE)
+              const baseExists = fs.existsSync(path.join(root, basePath))
 
-        for (const locale of locales) {
-          const localePath = fileIn(directory, `README.${locale}.md`)
-          if (!fs.existsSync(path.join(root, localePath))) continue
-          if (!baseExists) {
-            violations.push(`${localePath}: no ${basePath} to translate`)
-            continue
-          }
-          pairs += 1
+              for (const locale of locales) {
+                const localePath = fileIn(directory, `README.${locale}.md`)
+                if (!fs.existsSync(path.join(root, localePath))) continue
+                if (!baseExists) {
+                  violations.push(`${localePath}: no ${basePath} to translate`)
+                  continue
+                }
 
-          for (const [source, sibling] of [
-            [basePath, localePath],
-            [localePath, basePath]
-          ]) {
-            const text = fs.readFileSync(path.join(root, source), 'utf8')
-            if (!linkTargets(text).some(target => resolveTarget(source, target) === sibling)) {
-              violations.push(`${source}: no link to ${sibling}`)
+                for (const [source, sibling] of [
+                  [basePath, localePath],
+                  [localePath, basePath]
+                ]) {
+                  const text = fs.readFileSync(path.join(root, source), 'utf8')
+                  if (!linkTargets(text).some(target => resolveTarget(source, target) === sibling)) {
+                    violations.push(`${source}: no link to ${sibling}`)
+                  }
+                }
+              }
             }
-          }
-        }
-      }
 
-      let published = 0
-      for (const manifestFile of manifests()) {
-        const manifest = readManifest<{ name?: string; private?: boolean }>(manifestFile)
-        if (manifest.private === true) continue
-        published += 1
+            for (const manifestFile of ctx.manifests()) {
+              const manifest = ctx.readManifest<{ name?: string; private?: boolean }>(manifestFile)
+              if (manifest.private === true) continue
 
-        const packageDirectory = path.posix.dirname(manifestFile)
-        const label = manifest.name ?? packageDirectory
-        if (!fs.existsSync(path.join(root, packageDirectory, BASE))) {
-          violations.push(`${label}: published package is missing ${BASE}`)
-        }
-        for (const locale of locales) {
-          if (!fs.existsSync(path.join(root, fileIn(packageDirectory, `README.${locale}.md`)))) {
-            violations.push(`${label}: published package is missing README.${locale}.md`)
-          }
-        }
-      }
+              const packageDirectory = path.posix.dirname(manifestFile)
+              const label = manifest.name ?? packageDirectory
+              if (!fs.existsSync(path.join(root, packageDirectory, BASE))) {
+                violations.push(`${label}: published package is missing ${BASE}`)
+              }
+              for (const locale of locales) {
+                if (!fs.existsSync(path.join(root, fileIn(packageDirectory, `README.${locale}.md`)))) {
+                  violations.push(`${label}: published package is missing README.${locale}.md`)
+                }
+              }
+            }
 
-      violations.sort()
-      if (violations.length > 0) throw new Error(violations.join('\n'))
-
-      return `${pairs} bilingual README pair(s), ${published} published package(s)`
-    }
-  }
+            violations.sort()
+            if (violations.length > 0) return err(`md: ${violations.join('\n')}`)
+            return ok(undefined)
+          })
+      }))
+    )
 }

@@ -8,7 +8,8 @@ export default {
   },
   pack: {
     entry: {
-      index: resolve(import.meta.dirname, 'src/index.ts')
+      index: resolve(import.meta.dirname, 'src/index.ts'),
+      vite: resolve(import.meta.dirname, 'src/vite.ts')
     },
     // 产物与源码树一一对应：unbundle 让 dist 下的栈帧落回具体模块，而不是一个整包文件。
     unbundle: true,

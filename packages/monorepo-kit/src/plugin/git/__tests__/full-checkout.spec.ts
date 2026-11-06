@@ -16,6 +16,17 @@ function git(args: readonly string[]): void {
   execFileSync('git', args, { cwd: root, stdio: 'pipe' })
 }
 
+// 链里会 spawn git（index 查询），env 显式给出一份不依赖开发者 shell 的副本。
+function run() {
+  return fullCheckout.make({ root, env: { ...process.env } }).run()
+}
+
+async function failure(): Promise<string> {
+  const result = await run()
+  if (result.ok) assert.fail('expected full-checkout to fail')
+  return result.error
+}
+
 it('full-checkout', async () => {
   git(['init', '-b', 'main'])
   fs.mkdirSync(path.join(root, 'keep'), { recursive: true })
@@ -27,19 +38,19 @@ it('full-checkout', async () => {
   git(['-c', 'user.name=test', '-c', 'user.email=test@example.com', 'commit', '-m', 'init'])
 
   // 全树：cone 不生效，门禁照常通过。
-  assert.equal(await fullCheckout.run({ root }), 'no skip-worktree entries')
+  assert.ok((await run()).ok)
 
   // cone 收缩后 hide/two.md 只是没检出，index 里还在——这正是扫描面静默变窄的那一步。
   git(['sparse-checkout', 'set', '--cone', 'keep'])
   assert.equal(fs.existsSync(path.join(root, 'hide', 'two.md')), false)
   assert.equal(fs.existsSync(path.join(root, 'root.md')), true)
-  await assert.rejects(
-    fullCheckout.run({ root }),
-    /worktree is sparse: 1 tracked file\(s\) are hidden by the cone \(first: hide\/two\.md\)\nrepo-wide checks would only scan the cone — .*restore command/
+  assert.match(
+    await failure(),
+    /^git: worktree is sparse: 1 tracked file\(s\) are hidden by the cone \(first: hide\/two\.md\)\nrepo-wide checks would only scan the cone — .*restore command/
   )
 
   git(['sparse-checkout', 'disable'])
-  assert.equal(await fullCheckout.run({ root }), 'no skip-worktree entries')
+  assert.ok((await run()).ok)
 })
 
 afterAll(() => {

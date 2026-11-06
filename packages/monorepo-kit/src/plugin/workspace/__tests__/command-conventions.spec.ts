@@ -19,29 +19,34 @@ function makeFixture(scripts: Record<string, string>): string {
   return root
 }
 
-async function detail(promise: Promise<string | void>): Promise<string> {
-  const value = await promise
-  assert.ok(value, 'command-conventions returned no detail')
-  return value
+// 只读 package.json，不 spawn 子进程：env 用 process.env 即可。
+type Conventions = ReturnType<typeof defineCommandConventions>
+
+function run(plugin: Conventions, root: string) {
+  return plugin.make({ root, env: process.env }).run()
 }
 
-function check(root: string): Promise<string> {
-  return detail(commandConventions.run({ root }))
+async function failure(plugin: Conventions, root: string): Promise<string> {
+  const result = await run(plugin, root)
+  if (result.ok) assert.fail('expected command-conventions to fail')
+  return result.error
 }
 
 it('command-conventions', async () => {
-  assert.match(
-    await check(
-      makeFixture({
-        build: 'turbo build',
-        test: 'turbo test',
-        'check-policy': 'node scripts/checks/check-policy.mjs',
-        'agent:env-doctor': 'node scripts/maintenance/env-doctor.mjs',
-        'test-scripts': 'node scripts/checks/test-scripts.mjs',
-        'dev:react-web-ui-demo': 'turbo run dev'
-      })
-    ),
-    /6 root commands/
+  assert.ok(
+    (
+      await run(
+        commandConventions,
+        makeFixture({
+          build: 'turbo build',
+          test: 'turbo test',
+          'check-policy': 'node scripts/checks/check-policy.mjs',
+          'agent:env-doctor': 'node scripts/maintenance/env-doctor.mjs',
+          'test-scripts': 'node scripts/checks/test-scripts.mjs',
+          'dev:react-web-ui-demo': 'turbo run dev'
+        })
+      )
+    ).ok
   )
 
   // 形状一旦放宽，命令面会重新膨胀而不惊动任何人：逐个钉住被拒类别，而不是只断言当前 manifest 合法。
@@ -54,7 +59,7 @@ it('command-conventions', async () => {
     'fix-go',
     'dev:react-web-ui-demo'
   ]) {
-    assert.match(await check(makeFixture({ [accepted]: 'true' })), /1 root commands/)
+    assert.ok((await run(commandConventions, makeFixture({ [accepted]: 'true' }))).ok)
   }
   for (const rejected of [
     'check:Code',
@@ -68,20 +73,20 @@ it('command-conventions', async () => {
     'docs:build',
     ''
   ]) {
-    await assert.rejects(check(makeFixture({ [rejected]: 'true' })), /must match/)
+    assert.match(await failure(commandConventions, makeFixture({ [rejected]: 'true' })), /^pack:.*must match/)
   }
 
   // namespace 闭集来自组合点：换一份名单，同一个命令的判定随之改变。
   const docsOnly = defineCommandConventions({ namespaces: ['docs'] })
-  await assert.rejects(docsOnly.run({ root: makeFixture({ 'ci:release': 'true' }) }), /must match/)
-  assert.match(await detail(docsOnly.run({ root: makeFixture({ 'docs:build-site': 'true' }) })), /1 root commands/)
+  assert.match(await failure(docsOnly, makeFixture({ 'ci:release': 'true' })), /^pack:.*must match/)
+  assert.ok((await run(docsOnly, makeFixture({ 'docs:build-site': 'true' }))).ok)
 
-  await assert.rejects(commandConventions.run({ root: makeFixture({}) }), /scripts is empty/)
+  assert.match(await failure(commandConventions, makeFixture({})), /^pack: package\.json scripts is empty/)
 
   const notObject = path.join(tempRoot, 'not-object')
   fs.mkdirSync(notObject, { recursive: true })
   fs.writeFileSync(path.join(notObject, 'package.json'), JSON.stringify({ scripts: [] }) + '\n')
-  await assert.rejects(commandConventions.run({ root: notObject }), /no scripts object/)
+  assert.match(await failure(commandConventions, notObject), /^pack: package\.json has no scripts object/)
 })
 
 afterAll(() => {

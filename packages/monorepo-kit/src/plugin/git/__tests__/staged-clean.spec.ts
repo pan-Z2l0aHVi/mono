@@ -6,6 +6,8 @@ import path from 'node:path'
 
 import { afterAll, it } from 'vite-plus/test'
 
+import { defineCatch } from '../../../runner/catch'
+import { defineRunner } from '../../../runner/runner'
 import type { ToolchainStep } from '../../toolchain/toolchain'
 import { defineStagedClean } from '../staged-clean'
 
@@ -53,37 +55,36 @@ const steps: ToolchainStep[] = [
     hint: 'gofmt hint line'
   }
 ]
-const stagedClean = defineStagedClean({ steps, installHint: 'install the tools' })
+const stagedClean = defineStagedClean({ steps })
 
 function git(...args: string[]): string {
   return execFileSync('git', ['-C', root, ...args], { env, encoding: 'utf8' }).trim()
 }
 
-async function check(extraEnv: NodeJS.ProcessEnv = {}): Promise<string> {
-  const detail = await stagedClean.run({
-    root,
-    env: {
-      ...env,
-      AGENT_VP_ARGV: JSON.stringify(['sh', toolStub, 'vp']),
-      AGENT_STYLELINT_ARGV: JSON.stringify(['sh', toolStub, 'stylelint']),
-      AGENT_GOFMT_ARGV: JSON.stringify(['sh', toolStub, 'gofmt']),
-      FORMAT_STUB_LOG: log,
-      FORMAT_STUB_FAIL: failMarker,
-      FORMAT_STUB_DIRTY_GO: dirtyGoMarker,
-      ...extraEnv
-    }
-  })
-  assert.ok(detail, 'staged-clean returned no detail')
-  return detail
+// 链尾带 defineCatch：测试 seam 写坏属于装配故障，走 `throw: ` 而不是某个域名前缀。
+function kit(extraEnv: NodeJS.ProcessEnv = {}) {
+  return defineRunner()
+    .use(stagedClean)
+    .use(defineCatch())
+    .make({
+      root,
+      env: {
+        ...env,
+        AGENT_VP_ARGV: JSON.stringify(['sh', toolStub, 'vp']),
+        AGENT_STYLELINT_ARGV: JSON.stringify(['sh', toolStub, 'stylelint']),
+        AGENT_GOFMT_ARGV: JSON.stringify(['sh', toolStub, 'gofmt']),
+        FORMAT_STUB_LOG: log,
+        FORMAT_STUB_FAIL: failMarker,
+        FORMAT_STUB_DIRTY_GO: dirtyGoMarker,
+        ...extraEnv
+      }
+    })
 }
 
-async function failure(promise: Promise<unknown>): Promise<string> {
-  try {
-    await promise
-  } catch (error) {
-    return error instanceof Error ? error.message : String(error)
-  }
-  assert.fail('expected staged-clean to fail')
+async function failure(extraEnv: NodeJS.ProcessEnv = {}): Promise<string> {
+  const result = await kit(extraEnv).run()
+  if (result.ok) assert.fail('expected staged-clean to fail')
+  return result.error
 }
 
 it('staged-clean', async () => {
@@ -98,7 +99,6 @@ it('staged-clean', async () => {
       '#!/bin/sh',
       'tool=$1',
       'shift',
-      'for arg in "$@"; do [ "$arg" = --help ] && exit 0; done',
       'for arg in "$@"; do',
       '  [ -f "$arg" ] || continue',
       '  [ "${arg#-}" = "$arg" ] && echo "$tool|$arg" >> "$FORMAT_STUB_LOG"',
@@ -124,7 +124,7 @@ it('staged-clean', async () => {
   fs.writeFileSync(path.join(root, 'ghost.mjs'), 'untracked, so never checked\n')
   git('add', 'demo 目录/a b.mjs', 'probe.css', 'probe.go')
 
-  assert.match(await check(), /3 staged file\(s\) checked/)
+  assert.ok((await kit().run()).ok)
   const callLines = fs.readFileSync(log, 'utf8').trim().split('\n')
   assert.ok(callLines.includes('vp|demo 目录/a b.mjs'))
   assert.equal(callLines.filter(line => line.startsWith('vp|')).length, 3)
@@ -138,7 +138,7 @@ it('staged-clean', async () => {
 
   fs.rmSync(log)
   fs.writeFileSync(failMarker, 'stub fails\n')
-  const vpMessage = await failure(check())
+  const vpMessage = await failure()
   assert.match(vpMessage, /stub: vp found issues/)
   assert.match(vpMessage, /formatting, lint or types \(vp check\)/)
   assert.match(vpMessage, /vp hint line/)
@@ -148,7 +148,7 @@ it('staged-clean', async () => {
   // A staged path beginning with a dash must fail before it reaches any tool argument.
   fs.writeFileSync(path.join(root, '--fix'), 'export const fix = 1\n')
   git('add', '--', '--fix')
-  assert.match(await failure(check()), /staged path '--fix' starts with '-'/)
+  assert.match(await failure(), /^git: cannot run: staged path '--fix' starts with '-'/)
   assert.equal(fs.existsSync(log), false)
   git('rm', '--cached', '--quiet', '--', '--fix')
   fs.rmSync(path.join(root, '--fix'))
@@ -156,7 +156,7 @@ it('staged-clean', async () => {
   // Git C-quotes names containing a double quote; the quoted spelling is not a path a formatter can inspect.
   fs.writeFileSync(path.join(root, 'probe".mjs'), 'export const quote = 1\n')
   git('add', '--', 'probe".mjs')
-  assert.match(await failure(check()), /git C-quoted a staged path/)
+  assert.match(await failure(), /^git: cannot run: git C-quoted a staged path/)
   assert.equal(fs.existsSync(log), false)
   git('rm', '--cached', '--quiet', '--', 'probe".mjs')
   fs.rmSync(path.join(root, 'probe".mjs'))
@@ -165,13 +165,14 @@ it('staged-clean', async () => {
   fs.writeFileSync(dirtyGoMarker, 'gofmt reports output\n')
   fs.writeFileSync(path.join(root, 'probe-two.go'), 'package main\n')
   git('add', 'probe-two.go')
-  const goMessage = await failure(check())
+  const goMessage = await failure()
+  assert.match(goMessage, /^git: staged files are not clean/)
   assert.match(goMessage, /probe-two\.go/)
   assert.match(goMessage, /formatting, lint or types \(gofmt\)/)
   assert.match(goMessage, /gofmt hint line/)
 
   // The test seam is a JSON argv array; a command string must fail instead of reaching a shell.
-  assert.match(await failure(check({ AGENT_VP_ARGV: 'pnpm exec vp' })), /AGENT_VP_ARGV must be a JSON array/)
+  assert.match(await failure({ AGENT_VP_ARGV: 'pnpm exec vp' }), /^throw: AGENT_VP_ARGV must be a JSON array/)
 })
 
 afterAll(() => {

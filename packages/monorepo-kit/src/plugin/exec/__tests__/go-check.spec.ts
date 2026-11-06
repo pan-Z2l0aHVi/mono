@@ -7,8 +7,6 @@ import { afterAll, it } from 'vite-plus/test'
 
 import { defineGoCheck } from '../go-check'
 
-const checkGo = defineGoCheck({ fixCommand: 'pnpm run fix-go' })
-
 const root = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-go-check-'))
 const log = path.join(root, 'tool-calls.log')
 const gofmtFail = path.join(root, 'gofmt-fail')
@@ -22,35 +20,28 @@ function writeStub(file: string, body: string): void {
   fs.chmodSync(file, 0o755)
 }
 
-function check(extraEnv: NodeJS.ProcessEnv = {}): Promise<string | void> {
-  return checkGo.run({
-    root,
-    env: {
-      ...process.env,
-      AGENT_GOFMT_ARGV: JSON.stringify(['sh', gofmtStub]),
-      AGENT_GO_VET_ARGV: JSON.stringify(['sh', goStub]),
-      GO_CHECK_LOG: log,
-      GOFMT_FAIL: gofmtFail,
-      GOFMT_DIRTY: gofmtDirty,
-      GO_VET_FAIL: vetFail,
-      ...extraEnv
-    }
-  })
+function check(extraEnv: NodeJS.ProcessEnv = {}) {
+  return defineGoCheck({ fixCommand: 'pnpm run fix-go' })
+    .make({
+      root,
+      env: {
+        ...process.env,
+        AGENT_GOFMT_ARGV: JSON.stringify(['sh', gofmtStub]),
+        AGENT_GO_VET_ARGV: JSON.stringify(['sh', goStub]),
+        GO_CHECK_LOG: log,
+        GOFMT_FAIL: gofmtFail,
+        GOFMT_DIRTY: gofmtDirty,
+        GO_VET_FAIL: vetFail,
+        ...extraEnv
+      }
+    })
+    .run()
 }
 
-async function failure(promise: Promise<unknown>): Promise<string> {
-  try {
-    await promise
-  } catch (error) {
-    return error instanceof Error ? error.message : String(error)
-  }
-  assert.fail('expected check-go to fail')
-}
-
-async function detail(result: Promise<string | void>): Promise<string> {
-  const value = await result
-  assert.ok(value, 'check-go returned no detail')
-  return value
+async function failure(extraEnv: NodeJS.ProcessEnv = {}): Promise<string> {
+  const result = await check(extraEnv)
+  if (result.ok) assert.fail('expected go-check to fail')
+  return result.error
 }
 
 it('go-check', async () => {
@@ -92,7 +83,8 @@ it('go-check', async () => {
   fs.writeFileSync(path.join(root, 'node_modules', 'ghost', 'go.mod'), 'module ghost\n')
   fs.writeFileSync(path.join(root, 'node_modules', 'ghost', 'ghost.go'), 'package ghost\n')
 
-  assert.match(await detail(check()), /3 Go file\(s\) checked; 2 module\(s\) vetted/)
+  // 通过时链上没有任何输出：下面这批工具调用记录是这一步真的跑过的唯一证据。
+  assert.ok((await check()).ok)
   const calls = fs.readFileSync(log, 'utf8').trim().split('\n')
   assert.ok(calls.includes('gofmt|-l modA/main.go modB/sub/x.go untracked.go'))
   // sh 会报告解析过符号链接的物理路径（macOS 的 /var -> /private/var）。
@@ -101,22 +93,22 @@ it('go-check', async () => {
   assert.doesNotMatch(calls.join('\n'), /ghost/)
 
   fs.writeFileSync(gofmtDirty, 'dirty\n')
-  assert.match(await failure(check()), /not formatted[\s\S]*modA\/main\.go/)
+  assert.match(await failure(), /^go: Go files are not formatted:[\s\S]*modA\/main\.go/)
   fs.rmSync(gofmtDirty)
   fs.rmSync(log, { force: true })
 
   // gofmt 解析失败时 stdout 可能为空；必须按退出码失败，而不是看有没有列出文件。
   fs.writeFileSync(gofmtFail, 'fail\n')
-  assert.match(await failure(check()), /gofmt exploded/)
+  assert.match(await failure(), /gofmt exploded/)
   fs.rmSync(gofmtFail)
   fs.rmSync(log, { force: true })
 
   fs.writeFileSync(vetFail, 'fail\n')
-  assert.match(await failure(check()), /go vet failed in modA[\s\S]*vet exploded/)
+  assert.match(await failure(), /^go: go vet failed in modA[\s\S]*vet exploded/)
   fs.rmSync(vetFail)
   fs.rmSync(log, { force: true })
 
-  assert.match(await failure(check({ AGENT_GOFMT_ARGV: 'gofmt' })), /AGENT_GOFMT_ARGV must be a JSON array/)
+  assert.match(await failure({ AGENT_GOFMT_ARGV: 'gofmt' }), /^go: AGENT_GOFMT_ARGV must be a JSON array/)
 })
 
 afterAll(() => {
