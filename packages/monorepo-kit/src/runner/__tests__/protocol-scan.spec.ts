@@ -122,7 +122,7 @@ it('判定不转写子进程输出：过程记录只归触发层', () => {
   for (const { file, code } of judgementSources) {
     assert.doesNotMatch(
       code,
-      /\b(?:process\.(?:stdout|stderr)\.write|console\.(?:log|error|warn|info))\b/,
+      /\b(?:process\.(?:stdout|stderr)\.write|console\.[a-z]+\b)/,
       `${file} writes process output from inside the package`
     )
   }

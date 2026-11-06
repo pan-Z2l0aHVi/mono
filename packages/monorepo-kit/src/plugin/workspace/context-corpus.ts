@@ -62,7 +62,7 @@ export interface ContextCorpusOptions {
   readonly workspaces: readonly string[]
   /** 必须有 README 的应用目录；写 workspace 相对路径前缀 */
   readonly applicationDirs: readonly string[]
-  /** 研究/设计语料：必须有非权威标记，并进入内容指纹 */
+  /** 研究/设计语料：必须有非权威标记 */
   readonly referenceDirs: readonly string[]
   /** 根 `package.json` 必须提供的 script */
   readonly requiredScripts: readonly string[]
@@ -100,7 +100,7 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
             const errors: string[] = []
 
             const relative = (file: string): string => path.relative(root, file) || '.'
-            // context index 要与 worktree 的绝对路径无关：先归一为正斜杠，跨平台才能得到稳定指纹。
+            // context index 要与 worktree 的绝对路径无关：先归一为正斜杠，跨平台才能得到一致的路径键。
             const relativePosix = (file: string): string => relative(file).split(path.sep).join('/')
             const exists = (file: string): boolean => fs.existsSync(path.join(root, file))
             const read = (file: string): string => fs.readFileSync(path.join(root, file), 'utf8')
@@ -403,7 +403,7 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
               .map(file => ({ file, source: read(file) }))
             for (const { file, name } of findUnlinkedAgentDocReferences(corpus))
               addError(`${file}: reference to ${name} must be a Markdown link`)
-            // 研究记录与设计资产不在指令面的链接/命令扫描内，但属于 RAG 语料：必须有非权威标记，并进入内容指纹。
+            // 研究记录与设计资产不在指令面的链接/命令扫描内，但属于 RAG 语料：必须有非权威标记。
             const referenceCorpus = options.referenceDirs
               .flatMap(directory => walk(directory, file => file.endsWith('.md')))
               .map(file => ({ file: relativePosix(file), source: read(relativePosix(file)) }))

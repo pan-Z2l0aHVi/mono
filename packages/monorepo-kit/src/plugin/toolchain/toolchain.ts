@@ -1,4 +1,4 @@
-import { definePlugin } from '@greypan/js-kit'
+import { type Plugin, definePlugin } from '@greypan/js-kit'
 
 import type { KitCtx } from '../../runner/runner'
 import { defineExec, type ExecApi, type ExecResult } from '../exec/exec'
@@ -55,8 +55,10 @@ function seamArgv(seam: string, value: string | undefined, fallback: readonly st
 /**
  * 把一张工具链表跑成「按文件类型分派 + 判定成败」。命令起不来与命令跑了但失败都算失败，
  * 两者的区别留在 `ExecResult` 的退出码缺位里，由调用方的证据文案体现。
+ * 返回值标注成 `Plugin<ToolchainApi, KitCtx>`：`use` 会并进 `defineExec` 的产出与需求，
+ * 不收窄就要求消费者自己供给这条能力内部已经装好的东西。
  */
-export const defineToolchain = (steps: readonly ToolchainStep[]) =>
+export const defineToolchain = (steps: readonly ToolchainStep[]): Plugin<ToolchainApi, KitCtx> =>
   defineExec().use(
     definePlugin<ToolchainApi, KitCtx & ExecApi>(ctx => {
       function command(step: ToolchainStep): readonly string[] {

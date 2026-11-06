@@ -73,20 +73,20 @@ it('command-conventions', async () => {
     'docs:build',
     ''
   ]) {
-    assert.match(await failure(commandConventions, makeFixture({ [rejected]: 'true' })), /^pack:.*must match/)
+    assert.match(await failure(commandConventions, makeFixture({ [rejected]: 'true' })), /^script:.*must match/)
   }
 
   // namespace 闭集来自组合点：换一份名单，同一个命令的判定随之改变。
   const docsOnly = defineCommandConventions({ namespaces: ['docs'] })
-  assert.match(await failure(docsOnly, makeFixture({ 'ci:release': 'true' })), /^pack:.*must match/)
+  assert.match(await failure(docsOnly, makeFixture({ 'ci:release': 'true' })), /^script:.*must match/)
   assert.ok((await run(docsOnly, makeFixture({ 'docs:build-site': 'true' }))).ok)
 
-  assert.match(await failure(commandConventions, makeFixture({})), /^pack: package\.json scripts is empty/)
+  assert.match(await failure(commandConventions, makeFixture({})), /^script: package\.json scripts is empty/)
 
   const notObject = path.join(tempRoot, 'not-object')
   fs.mkdirSync(notObject, { recursive: true })
   fs.writeFileSync(path.join(notObject, 'package.json'), JSON.stringify({ scripts: [] }) + '\n')
-  assert.match(await failure(commandConventions, notObject), /^pack: package\.json has no scripts object/)
+  assert.match(await failure(commandConventions, notObject), /^script: package\.json has no scripts object/)
 })
 
 afterAll(() => {

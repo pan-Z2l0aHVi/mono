@@ -33,15 +33,15 @@ export const defineCommandConventions = ({ namespaces }: CommandConventionsOptio
           const manifest = readJsonFile<{ scripts?: Record<string, string> }>(path.join(ctx.root, 'package.json'))
           const scripts = manifest.scripts
           if (!scripts || typeof scripts !== 'object' || Array.isArray(scripts))
-            return err('pack: package.json has no scripts object')
+            return err('script: package.json has no scripts object')
 
           const names = Object.keys(scripts)
-          if (names.length === 0) return err('pack: package.json scripts is empty')
+          if (names.length === 0) return err('script: package.json scripts is empty')
 
           const invalid = names.filter(scriptName => !shape.test(scriptName))
           if (invalid.length > 0)
             return err(
-              `pack: root script names must match {namespace}:{do}-{something} with namespace ∈ {${namespaces.join(', ')}}: ${invalid
+              `script: root script names must match {namespace}:{do}-{something} with namespace ∈ {${namespaces.join(', ')}}: ${invalid
                 .map(scriptName => `'${scriptName}'`)
                 .join(', ')}`
             )

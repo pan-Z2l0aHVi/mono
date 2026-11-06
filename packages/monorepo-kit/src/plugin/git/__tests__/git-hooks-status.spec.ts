@@ -16,10 +16,13 @@ const gitHooks = defineGitHooksStatus({
   installHint:
     'Run `node scripts/maintenance/install-git-hooks.mjs` directly; a plain `pnpm install` only runs prepare when the lockfile or node_modules change (`pnpm install --force` also works). When core.hooksPath points outside .vite-hooks, vp config leaves that path alone and only the installer repairs it.'
 })
-// 能力插件不进链：env 挂在 make 上（它会 spawn git 读配置），默认用 process.env 的副本，
-// 加上用例自己的开关覆盖，测试不受开发者 shell 里的 HUSKY 等变量影响。
+// 能力插件不进链：env 挂在 make 上（它会 spawn git 读配置），所以要留一条进程环境里的 PATH；
+// 但三个 hook 开关键必须抠掉，否则开发者 shell 里的 HUSKY=0 会让 inspect 一律早退成 ok。
+// 关闭与否只由 inspect 的 env 入参决定。
+const hookSwitches = ['HUSKY', 'VP_GIT_HOOKS', 'VITE_GIT_HOOKS']
+const gitPathEnv = Object.fromEntries(Object.entries(process.env).filter(([name]) => !hookSwitches.includes(name)))
 const inspect = (repo: string, env: NodeJS.ProcessEnv = {}) =>
-  gitHooks.make({ root: repo, env: { ...process.env, ...env } }).inspectGitHooks()
+  gitHooks.make({ root: repo, env: { ...gitPathEnv, ...env } }).inspectGitHooks()
 
 // 隔离 global/system Git 配置：开发者可能把 vp.hooks.disabled 写进全局配置，测试不能受它影响。
 const globalConfig = path.join(fixtureRoot, 'gitconfig')

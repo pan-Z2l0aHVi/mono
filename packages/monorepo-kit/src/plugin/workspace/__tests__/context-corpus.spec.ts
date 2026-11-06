@@ -76,6 +76,18 @@ async function failure(plugin: Corpus, root: string): Promise<string> {
 it('context-corpus', async () => {
   assert.ok((await run(contextCorpus, makeFixture())).ok)
 
+  // 链接面承重：死链与失效节锚点必须各自判红，否则把这段扫描整块删掉也不会有用例变红。
+  // 路由与授权判定各自独立报错，不会替它红。
+  const deadLinks = makeFixture()
+  write(
+    deadLinks,
+    'AGENTS.md',
+    '# 入口\n\n[workflow](docs/agents/workflow.md)\n\n[a](docs/agents/gone.md)\n\n[节](docs/agents/a.md#missing)\n'
+  )
+  const dead = await failure(contextCorpus, deadLinks)
+  assert.match(dead, /^md:[\s\S]*AGENTS\.md: broken local link docs\/agents\/gone\.md/)
+  assert.match(dead, /AGENTS\.md: broken local anchor docs\/agents\/a\.md#missing/)
+
   // 路由表由入口提供：入口没提到的 task-specific 文档没有加载路径。
   assert.match(
     await failure(contextCorpus, makeFixture(false)),
