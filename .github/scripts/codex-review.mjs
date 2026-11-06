@@ -237,7 +237,7 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
     lines.push(`- **${finding.severity}** \`${location(finding)}\` — ${inline(finding.problem)}`)
     if (finding.suggestion) lines.push(`  - 建议：${inline(finding.suggestion)}`)
   }
-  lines.push('', `PR #${pullNumber} 只保留这一条结论 comment，由 \`codex-review-publish.yml\` 持续更新。`)
+  lines.push('', `PR #${pullNumber} 只保留这一条结论 comment，由 \`codex-review-report.yml\` 持续更新。`)
   return lines.join('\n')
 }
 
@@ -643,6 +643,26 @@ export function withPermissionDiagnosis(number) {
   }
 }
 
+// 写回腿的绿色必须能读懂：同一个 success，既可能是「发了评论」，也可能是「什么都没发」。
+// 所以每条返回路径都往运行页写一行结果，把「没发」的原因留在 Summary 里而不是只留在日志。
+function appendPublishSummary({ number, status, meta, outcome }) {
+  const counts = status?.counts
+  appendSummary([
+    '## Codex 审查结论写回',
+    '',
+    `- PR：#${number}`,
+    `- 结果：${outcome}`,
+    ...(status
+      ? [
+          `- 结论：**${status.status}**`,
+          `- 档位：Block ${counts.Block} · Should fix ${counts['Should fix']} · Nit ${counts.Nit}`,
+          `- 审查快照：\`${meta?.head_sha ?? '无'}\``
+        ]
+      : []),
+    '- 本运行只写回既有结论；是否拦合并由 CI run 的 `Codex review gate` 判定。'
+  ])
+}
+
 function commandPublish() {
   const env = requireEnv(['GITHUB_REPOSITORY'])
   const adapter = createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY })
@@ -653,24 +673,29 @@ function commandPublish() {
   const target = reviewTarget({ pull, repository: env.GITHUB_REPOSITORY, releaseBranch: RELEASE_BRANCH })
   if (!target.ok) {
     console.log(`conclusion publish skipped for #${number}: ${target.reason}`)
+    appendPublishSummary({ number, outcome: `未发布：${target.reason}` })
     return
   }
   const { conclusion, status } = call(() => evaluateGate(adapter, pull))
-  const body = renderConclusion({ conclusion: status, meta: conclusion?.meta ?? null, pullNumber: number })
+  const meta = conclusion?.meta ?? null
+  const body = renderConclusion({ conclusion: status, meta, pullNumber: number })
   const existing = call(() => adapter.listComments(number)).find(comment =>
     (comment.body ?? '').includes(CONCLUSION_MARKER)
   )
   if (existing?.body === body) {
     console.log(`conclusion comment ${existing.id} already current`)
+    appendPublishSummary({ number, status, meta, outcome: `结论评论 #${existing.id} 已是最新，未改动` })
     return
   }
   if (existing) {
     call(() => adapter.updateComment(existing.id, body))
     console.log(`updated conclusion comment ${existing.id} (${status.status})`)
+    appendPublishSummary({ number, status, meta, outcome: `已更新结论评论 #${existing.id}` })
     return
   }
   const created = call(() => adapter.createComment(number, body))
   console.log(`created conclusion comment ${created.id} (${status.status})`)
+  appendPublishSummary({ number, status, meta, outcome: `已创建结论评论 #${created.id}` })
 }
 
 const commands = {

@@ -715,7 +715,7 @@ function runCli(command, { env = {}, conclusionDir }) {
 
 {
   // 端到端：把 gh 换成受控替身，分别让读评论、写评论、非权限调用失败。
-  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-publish-'))
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-report-'))
   const bin = path.join(directory, 'bin')
   fs.mkdirSync(bin)
   const fakeGh = path.join(bin, 'gh')
@@ -759,6 +759,9 @@ esac
   const created = runCli('publish', { env: publishEnv('none'), conclusionDir: directory })
   assert.equal(created.result.status, 0, created.result.stderr)
   assert.match(created.result.stdout, /created conclusion comment 9001/)
+  // 运行页要能回答「这次到底发了什么」：只有日志里的 console.log 不够。
+  assert.match(created.summary, /已创建结论评论 #9001/)
+  assert.match(created.summary, /Block 0 · Should fix 0 · Nit 1/)
 
   for (const failAt of ['read', 'write']) {
     const denied = runCli('publish', { env: publishEnv(failAt), conclusionDir: directory })

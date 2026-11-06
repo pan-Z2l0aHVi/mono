@@ -1,6 +1,7 @@
-name: Codex Review Publish
+name: Codex Review Report
 
 # 写回腿：ci.yml 的只读不变量不允许任何写操作，所以评论与 autofix 推送住在这里。
+# 它不改判审查结论，只把 CI 已产出的结论搬到 PR 上；名字因此用 report 而非 publish。
 # 模型一次都不跑在本文件里；它只在 ci.yml 的 contents: read job 里执行。
 # workflow_run 只在默认分支上存在的这个文件里生效，因此本段的版本由 main 决定。
 on:
@@ -52,6 +53,7 @@ jobs:
       - name: Download review findings
         id: findings
         # 没有 artifact 说明 review job 根本没跑；这属于不适用，不该再发一条结论评论、也不该让 job 变红。
+        # 跳过必须由下一步写进运行页：否则绿色的「成功」和「评论丢了」在页面上长得一模一样。
         continue-on-error: true
         uses: actions/download-artifact@v7
         with:
@@ -62,6 +64,40 @@ jobs:
           run-id: ${{ github.event.workflow_run.id }}
           repository: ${{ github.repository }}
           path: ${{ runner.temp }}/codex-review
+
+      - name: Explain the skipped report
+        # 这一步不判审查结论的颜色，只判写回腿自己的健康度：
+        # 「本来就没有产物」是合法跳过，写清楚原因后保持绿色；「有产物却下载不下来」是本腿故障，要红。
+        if: always() && steps.pull.outputs.pull_number != '' && steps.findings.outcome != 'success'
+        env:
+          GH_TOKEN: ${{ github.token }}
+          WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
+          WORKFLOW_RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
+        run: |
+          set -euo pipefail
+          artifacts=$(gh api "repos/$GITHUB_REPOSITORY/actions/runs/$WORKFLOW_RUN_ID/artifacts?per_page=100" \
+            --jq '[.artifacts[].name] | join(" ")')
+          if [[ " $artifacts " == *" codex-review-findings "* ]]; then
+            {
+              echo '## Codex 审查结论写回失败'
+              echo ''
+              echo "触发 run [#$WORKFLOW_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$WORKFLOW_RUN_ID) 上传了 \`codex-review-findings\`，但本运行没能下载。"
+              echo ''
+              echo '- 这不是「没有结论」，是写回腿自己的故障：先看 `Download review findings` 的 error 注释。'
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "::error title=Codex review artifacts unreadable::run $WORKFLOW_RUN_ID has codex-review-findings but this run could not download it"
+            exit 1
+          fi
+          {
+            echo '## Codex 审查结论未发布'
+            echo ''
+            echo "触发 run [#$WORKFLOW_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$WORKFLOW_RUN_ID) 没有 \`codex-review-findings\` 产物，因此本次没有任何结论可写回（run 结论：\`$WORKFLOW_RUN_CONCLUSION\`）。"
+            echo ''
+            echo '- 常见原因：`check` 先失败，`Codex review` 没有运行；或审查腿自己没跑成。'
+            echo '- 结论是否拦合并由该 CI run 里的 `Codex review gate` 判定，与本运行的颜色无关。'
+            echo '- 排查顺序见 `docs/agents/review.md` 的 `error` 处置。'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Codex review report skipped::run $WORKFLOW_RUN_ID has no codex-review-findings artifact, so there is no conclusion to write back"
 
       - name: Probe comment permission
         if: success() && steps.pull.outputs.pull_number != '' && steps.findings.outcome == 'success'

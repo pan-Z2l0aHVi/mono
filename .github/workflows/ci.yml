@@ -199,7 +199,7 @@ jobs:
         # 表现为随机的等待预算耗尽。只在 CI 收敛任务并发，本地 `pnpm run test` 保持默认。
         run: pnpm exec turbo test --concurrency=2
 
-  # Codex 审查腿全部只读：模型在这里跑，写回（评论、推 patch）只在 codex-review-publish.yml 发生。
+  # Codex 审查腿全部只读：模型在这里跑，写回（评论、推 patch）只在 codex-review-report.yml 发生。
   # 两条腿分开是因为 ci.yml 的 permissions 不变量要求 PR 验证不持有任何写权限。
   codex-review:
     name: Codex review

@@ -14,6 +14,7 @@ CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发�
 - 三条同时成立、本次有可审的源码改动、且生成物已按下文核对时，人工可以只做核对式抽查，不必逐行重看：结论的 reviewed SHA 等于当前 head、`Block` 为 0、required context `check` 在当前 head 上成功。自动审查没看过被剔除的生成物，抽查结论不覆盖它们。
 - 以下任一情形仍要人按本文流程做完整独立审查：T0 改动；`error`、`unreviewed`、`stale` 或 `not_applicable`；来自 fork 的 PR——那条腿默认不跑；自动修推送出的新 head。
 - 自动修在 `check` 失败且后台开关开启时产出一份候选 patch，校验通过才提交并推回 PR 分支。机器人提交不会触发 checks，所以新 head 上要等一次人重跑的 CI 才有 CI 证据；已经含自动修提交的 head 不再自动规划第二次。
+- `Codex Review Report` 是写回腿，不改判结论，只把 CI 已产出的结论搬到 PR 上。它的绿色只说明这条腿跑过，不代表发了评论：没有 `codex-review-findings` 产物时它按设计跳过，并在运行页 Summary 与 notice 里写明跳过原因。要判断「这条评论是不是当前 head 的」，仍按第一条核对评论头部的 `sha` 与 `status`。
 
 ## 审查范围与生成物
 
