@@ -231,13 +231,23 @@ function escapeOutsideCodeSpans(text) {
       search = end
     }
     if (close === -1) {
-      result += escaped(text.slice(tick))
-      break
+      // CommonMark 把没有同长度闭合的 run 当普通文本，后面的合法代码段仍要按代码段处理。
+      result += text.slice(tick, runEnd)
+      index = runEnd
+      continue
     }
     result += text.slice(tick, close + run)
     index = close + run
   }
   return result
+}
+
+/** 用比内容里最长反引号 run 更长的围栏包住代码段，路径里的反引号就不会提前闭合。 */
+function codeSpan(value) {
+  const text = String(value)
+  const longest = Math.max(0, ...(text.match(/`+/gu) ?? []).map(run => run.length))
+  const fence = '`'.repeat(longest + 1)
+  return `${fence} ${text} ${fence}`
 }
 
 function oneLine(value) {
@@ -250,10 +260,8 @@ function inline(value) {
 }
 
 function location(finding) {
-  // 这里会整体放进反引号：文件名里的反引号会提前闭合代码段，空白会断开行内代码。
-  const file = finding.file.replace(/`/gu, '').replace(/\s+/gu, ' ')
-  if (file === '') return finding.line === 0 ? '整体' : `行 ${finding.line}`
-  return finding.line === 0 ? file : `${file}:${finding.line}`
+  if (finding.file === '') return finding.line === 0 ? '整体' : `行 ${finding.line}`
+  return finding.line === 0 ? finding.file : `${finding.file}:${finding.line}`
 }
 
 export function renderConclusion({ conclusion, meta, pullNumber }) {
@@ -299,7 +307,7 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
     else lines.push('没有可用发现：本次没有拿到模型结论，不能当作已审查。')
   }
   for (const finding of findings) {
-    lines.push(`- **${finding.severity}** \`${location(finding)}\` — ${inline(finding.problem)}`)
+    lines.push(`- **${finding.severity}** ${codeSpan(location(finding))} — ${inline(finding.problem)}`)
     if (finding.suggestion) lines.push(`  - 建议：${inline(finding.suggestion)}`)
   }
   lines.push('', `PR #${pullNumber} 只保留这一条结论 comment，由 \`codex-review-report.yml\` 持续更新。`)

@@ -404,7 +404,20 @@ for (const [label, value] of [
   assert.ok(!escapedTick.includes('<b>'), 'a backslash-escaped backtick must not open a code span')
   assert.match(escapedTick, /&lt;b&gt;/)
 
-  // 文件名里的反引号会提前闭合包裹它的代码段；代码段内的尖括号不会执行，但反引号必须先剔除。
+  // 未闭合的反引号之后仍可能有合法代码段：CommonMark 只把该 run 当普通文本，不能吞掉后文。
+  const unmatchedParsed = parseReviewFindings(
+    JSON.stringify({ summary: '边界', findings: [{ ...finding('Nit'), problem: '` ``Plugin<T>``', suggestion: '' }] })
+  )
+  const unmatchedMeta = { ...metaOf(), summary: unmatchedParsed.summary, findings: unmatchedParsed.findings }
+  const unmatched = renderConclusion({
+    conclusion: deriveConclusion({ meta: unmatchedMeta, findings: unmatchedParsed, liveHeadSha: headSha, error: '' }),
+    meta: unmatchedMeta,
+    pullNumber: 54
+  })
+  assert.match(unmatched, /``Plugin<T>``/, 'a later valid code span must still be recognised')
+  assert.ok(!unmatched.includes('Plugin&lt;T&gt;'), 'a valid code span must not be escaped as text')
+
+  // 文件名里的反引号会提前闭合包裹它的代码段；保留原路径，改用更长的围栏。
   const pathParsed = parseReviewFindings(
     JSON.stringify({ summary: '路径', findings: [{ ...finding('Nit'), file: 'src/`<b>x.ts' }] })
   )
@@ -414,7 +427,10 @@ for (const [label, value] of [
     meta: pathMeta,
     pullNumber: 54
   })
-  assert.ok(pathBody.includes('`src/<b>x.ts:12`'), 'a backtick in the file path must not break the code span')
+  assert.ok(
+    pathBody.includes('`` src/`<b>x.ts:12 ``'),
+    'the path must keep its backtick and be wrapped in a longer fence'
+  )
 
   const unreviewedMeta = { status: 'unreviewed', error: 'the review step produced no output file' }
   const unreviewed = renderConclusion({
