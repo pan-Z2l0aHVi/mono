@@ -70,7 +70,7 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 **时间与成本**：两条模型腿各给 60 分钟上限，这是首批实测用的临时余量，测出真实分布后回收；自动修只在失败时触发，它自己也是消耗模型调用的一条腿。
 
-**审查范围**：`resolveReviewRange` 的 `git diff` 用 `:(exclude,glob)**/generated/**` 在入口剔掉生成产物，`review-scope.json` 记下 `excluded_pathspecs` 与 `empty_diff` 便于审计。这是路径层面的批量 churn 过滤：md-to-meta 的 meta/codeblock 随 markdown 重建整批换哈希名，`icons/generated` 等入库产物同样只随 generator 变，都只会淹没真实改动；`routeTree.gen.ts` 之类单文件生成物仍留在审查 diff。`prepare` 由审查腿与自动修腿共用，两条腿同时受益。对 PR #515 的 base/head 对象做本地 `git diff` 实测：13.9 MB → 1.29 MB（不是 CI run 观测值；可信脚本取自 base，本修复 PR 的 CI 仍跑旧脚本）。**执行纪律不在本 ADR**：两份 diff 的分工、生成物怎么核对、空 diff 为何不构成可合并结论，由 `docs/agents/review.md`「审查范围与生成物」承载；生成物清单与排除清单的边界由 `docs/agents/generated-artifacts.md` 承载；本 ADR 只记取舍与实测。
+**审查范围**：`resolveReviewRange` 的 `git diff` 用 `:(exclude,glob)**/generated/**` 在入口剔掉生成产物，`review-scope.json` 记下 `excluded_pathspecs` 与 `empty_diff` 便于审计。该文件的 `changed_paths` 同时是模型的分片入口：提示词要求先读它，再按文件逐个 `git diff <merge-base> <head> -- <path>`，而不是一次读完整个 diff。这是路径层面的批量 churn 过滤：md-to-meta 的 meta/codeblock 随 markdown 重建整批换哈希名，`icons/generated` 等入库产物同样只随 generator 变，都只会淹没真实改动；`routeTree.gen.ts` 之类单文件生成物仍留在审查 diff。`prepare` 由审查腿与自动修腿共用，两条腿同时受益。对 PR #515 的 base/head 对象做本地 `git diff` 实测：13.9 MB → 1.29 MB（不是 CI run 观测值；可信脚本取自 base，本修复 PR 的 CI 仍跑旧脚本）。**执行纪律不在本 ADR**：两份 diff 的分工、生成物怎么核对、空 diff 为何不构成可合并结论，由 `docs/agents/review.md`「审查范围与生成物」承载；生成物清单与排除清单的边界由 `docs/agents/generated-artifacts.md` 承载；本 ADR 只记取舍与实测。
 
 **同步子进程上限**：`lib/github.mjs` 的 `run()` 与 codex 链路的 `gh` 调用统一给 `spawnSync` 设 64 MiB `maxBuffer`。默认 1 MiB 缓冲在大 PR 上抛 `ENOBUFS`，`prepare` 会在 preflight 之前失败并被下游误判成 `config_missing`；排除生成物后 diff 仍可能超过 1 MiB，两处修复缺一不可。
 
@@ -109,6 +109,8 @@ Error: /usr/bin/sudo exited with code 1
 
 根因不在模型能力，而在输出契约缺字段：`review.md` 要求「无发现也要记录审查范围、验证证据和未覆盖风险」，schema 却只有 `summary` 与 `findings`——这条要求无处落脚，模型只能把过程句塞进 `summary`；而「空 findings」零成本、且与「查完没问题」在产物上完全同形，早停因此不可观测、门照旧绿。修法见「覆盖度口径」与评论的「结论生成于」行；没有采用换模型或「摘要必须含中文」这类替代判据。
 
+**同日第七次实测（PR #519 head `d96d5d88`，CI run `42260301840` 的两次 attempt）**：`coverage` 让早停可见，但没让它停下来。attempt 1 只跑 4.2 秒、316 tokens、**零命令调用**，摘要写成「正在读取 PR 的源码 diff 与仓库审查判据，随后核对受影响文件及相关调用方。」；attempt 2 跑 11.2 秒、16,589 tokens、6 次命令调用，先把 `review-scope.json` 猜成 `$RUNNER_TEMP/review-scope.json`（实际在同级 `codex-review/` 目录下，输出为空），再 `sed -n '1,200p' pr.diff`（578,836 字节 / 137 个文件），推理里写下 `Diff huge 578k. Need systematically inspect all changed files` 后直接交出 `{"summary":"...","coverage":{"inspected":[],"uncovered":[]},"findings":[]}`。两次都判 `missing_coverage`，门是红的——`coverage` 按设计让这类结论无法变绿，但它只解决「看不见」，不解决「没查」。同一 PR 的上一个 head `9fbda756` 用同一份 prompt 跑 15m39s、读 113 个文件、报出 1 条 `Should fix`（正是 `d96d5d88` 修掉的 `throwIfNoEntry` 缺陷），说明改动本身可审，缺的是可读入口：prompt 只提到 `review-scope.json` 的名字却没给路径，也没说大的 diff 该怎么分片。修法见「审查范围」；评论侧同时把作废结论的覆盖行与「未覆盖」段落一并收掉，不再与「未审查」自相矛盾。
+
 **验收清单**（后台配置填齐后按 run 日志逐项核对）：
 
 1. `Run codex exec` 出现，`codex-final-message.json` 非空且通过 schema。
@@ -123,7 +125,7 @@ Error: /usr/bin/sudo exited with code 1
 10. 写回腿改名为 `Codex Review Report` 后：Actions 列表显示新名字，job 为 `report-conclusion`（`Report review conclusion`）；无产物的 run 在 Summary 里有跳过原因与 notice；写回成功时 Summary 记 `已创建/已更新结论评论 #<id>`。「有产物却下载失败」的判红分支只能靠改坏 `run-id` 或断网触发，自然 run 上不必刻意制造，留作未实测项。
 11. 输出校验口径与红色边界：模型给出 `summary: ""` 而 findings 合法时，`Record review conclusion` 照常写 `reviewed`、PR 评论有档位与发现但没有摘要行，`Codex review gate` 的颜色只由 `Block` 决定；`review-meta.json` 为 `unreviewed` 时 gate 必须红，日志为 `Codex review produced no usable conclusion (unusable_output): …`，Summary 里有 `Code: unusable_output`。这两条由脚本单测钉住（`parseReviewFindings` 的容错用例、`gate` 在 `unreviewed` 上退出 1），无需在真实 run 上刻意制造。
 
-12. 覆盖度口径：`review-findings.json` 含 `coverage.inspected` 与 `coverage.uncovered`，`review-scope.json` 含 `changed_paths`，PR 评论头部有「覆盖：检查 N 个文件」；diff 非空时缺 `coverage` 一律判 `missing_coverage`（有 findings 也不例外），空 findings 时还要 `inspected` 至少一条**等于** `changed_paths` 里的文件（写目录不算）；没有 `coverage` 的旧产物不复用，且复用 artifact 解在独立目录、不会覆盖本轮的 `review-scope.json`。评论正文有「结论生成于」且就地更新时该行随新结论变化。这一条由脚本单测钉住（coverage 结构用例、有 findings 缺清单用例、`changed_paths` 相等与缺位用例、`path:line` 与目录条目用例、scope 不被覆盖用例、`missing_coverage` 端到端用例、复用拒绝用例、渲染断言），无需在真实 run 上刻意制造。
+12. 覆盖度口径：`review-findings.json` 含 `coverage.inspected` 与 `coverage.uncovered`，`review-scope.json` 含 `changed_paths`，PR 评论头部有「覆盖：检查 N 个文件」；diff 非空时缺 `coverage` 一律判 `missing_coverage`（有 findings 也不例外），空 findings 时还要 `inspected` 至少一条**等于** `changed_paths` 里的文件（写目录不算）；没有 `coverage` 的旧产物不复用，且复用 artifact 解在独立目录、不会覆盖本轮的 `review-scope.json`。评论正文有「结论生成于」且就地更新时该行随新结论变化。这一条由脚本单测钉住（coverage 结构用例、有 findings 缺清单用例、`changed_paths` 相等与缺位用例、`path:line` 与目录条目用例、scope 不被覆盖用例、`missing_coverage` 端到端用例、复用拒绝用例、渲染断言），无需在真实 run 上刻意制造。提示词里的路径与 `scopePath()` 的输出一致，由单测钉住；作废结论的评论不出现「无未覆盖项」，也不渲染「未覆盖」段落。
 
 **待办**：`prepare` 的任何失败都会跳过 preflight，被 `validate` 记成 `config_missing`；后续把 preflight 前置到 prepare 之前，或引入 `job_failed` / `preflight_missing` 错误码，并同步「状态口径」、`docs/agents/review.md` 的故障码清单、`renderConclusion()` 与相关单测。本次修复后该误归因对 PR #515 的事故不再可达，门「故障即红」不受影响。
 
