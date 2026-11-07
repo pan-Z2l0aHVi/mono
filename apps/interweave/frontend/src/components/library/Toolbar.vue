@@ -18,7 +18,7 @@ import {
   tablerClockPlus,
   tablerSortAscendingLetters
 } from '@greypan/web-ui/icons'
-import { computed, nextTick, ref, watch } from 'vue'
+import { nextTick, ref, watch } from 'vue'
 
 import type { AvailabilityFilter, ResourceKind, SortDirection, SortOption, SourceType } from '@/stores/library'
 
@@ -67,8 +67,6 @@ const emit = defineEmits<{
 
 const searchInputRef = ref<WebUiInput>()
 
-const hasActiveSearch = computed(() => props.searchQuery !== '')
-
 watch(
   () => props.searchOpen,
   open => {
@@ -87,10 +85,6 @@ function handleSearchKeydown(event: KeyboardEvent) {
   emit('update:searchOpen', false)
 }
 
-/*
- * blur 收起搜索框，但把已生效的查询留在 button 上：searchOpen 归零后查询仍在 store 里，
- * 若 button 不反映这一点，用户会看不到也清不掉这个筛选。
- */
 function handleSearchBlur() {
   emit('update:searchOpen', false)
 }
@@ -166,12 +160,7 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
             </web-ui-button>
           </web-ui-tooltip>
           <web-ui-tooltip v-if="!searchOpen" content="搜索" portal>
-            <web-ui-button
-              icon
-              :variant="hasActiveSearch ? 'secondary' : 'glass'"
-              aria-label="搜索"
-              @click="emit('update:searchOpen', true)"
-            >
+            <web-ui-button icon variant="glass" aria-label="搜索" @click="emit('update:searchOpen', true)">
               <web-ui-icon :icon="lucideSearch" />
             </web-ui-button>
           </web-ui-tooltip>

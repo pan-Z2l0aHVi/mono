@@ -82,6 +82,15 @@ const meta = [
     {
       label: 'tr',
       children: [
+      { label: 'td', content: "<code>autocomplete</code>" },
+      { label: 'td', content: "传递给原生输入框的浏览器自动填充值；空值不设置属性。" },
+      { label: 'td', content: "<code>string</code>" },
+      { label: 'td', content: "<code>''</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
       { label: 'td', content: "<code>name</code>" },
       { label: 'td', content: "表单字段名。" },
       { label: 'td', content: "<code>string</code>" },

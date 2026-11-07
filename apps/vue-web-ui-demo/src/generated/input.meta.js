@@ -82,6 +82,15 @@ const meta = [
     {
       label: 'tr',
       children: [
+      { label: 'td', content: "<code>autocomplete</code>" },
+      { label: 'td', content: "Browser autofill hint forwarded to the native input; empty leaves the attribute unset." },
+      { label: 'td', content: "<code>string</code>" },
+      { label: 'td', content: "<code>''</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
       { label: 'td', content: "<code>name</code>" },
       { label: 'td', content: "Form field name." },
       { label: 'td', content: "<code>string</code>" },

@@ -211,6 +211,7 @@ const meta = [
     ]
   },
   { label: 'h3', id: 'section-12', content: "Behavior" },
+  { label: 'p', content: "For arrow-key navigation between an input and real links, use <code>navigatePopoverLinks(event, input, links)</code>. It handles vertical arrow keys and focus only; the caller controls the panel, Escape, and routing. Set link <code>tabindex=\"-1\"</code> when Tab should leave the results region." },
   { label: 'p', content: "Each gesture in <code>trigger</code> wires up its own events, and the gestures combine freely. Unknown values are dropped; when no known gesture remains it falls back to the default <code>click</code>." },
   {
     label: 'ul',
@@ -227,7 +228,29 @@ const meta = [
   { label: 'p', content: "<code>open</code> is a self-managed state. Gestures and <code>show()</code> / <code>hide()</code> update it, and assigning the property directly also opens or closes the panel, but that write is silent and does not dispatch <code>open-change</code>." },
   { label: 'h3', id: 'section-13', content: "trigger ARIA" },
   { label: 'p', content: "The open state is written back to the trigger element: <code>aria-expanded</code> and <code>aria-controls</code> (pointing at the panel) are set on the first element in the <code>trigger</code> slot." },
-  { label: 'p', content: "Put an interactive element in the trigger slot (a native button, <code>web-ui-button</code>)." }
+  { label: 'p', content: "Put an interactive element in the trigger slot (a native button, <code>web-ui-button</code>)." },
+  { label: 'h3', id: 'section-14', content: "CSS Custom Properties" },
+  {
+    label: 'table',
+    children: [
+    {
+      label: 'tr',
+      children: [
+      { label: 'th', content: "Name" },
+      { label: 'th', content: "Description" },
+      { label: 'th', content: "Default" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>--wui-popover-padding</code>" },
+      { label: 'td', content: "Panel padding; read on open in portal mode." },
+      { label: 'td', content: "<code>8px 12px</code>" }
+      ]
+    }
+    ]
+  }
 ]
 
 export default meta

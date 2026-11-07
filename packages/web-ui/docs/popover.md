@@ -289,6 +289,8 @@ const open = ref(false)
 
 ### Behavior
 
+For arrow-key navigation between an input and real links, use `navigatePopoverLinks(event, input, links)`. It handles vertical arrow keys and focus only; the caller controls the panel, Escape, and routing. Set link `tabindex="-1"` when Tab should leave the results region.
+
 Each gesture in `trigger` wires up its own events, and the gestures combine freely. Unknown values are dropped; when no known gesture remains it falls back to the default `click`.
 
 - `click`: clicking the trigger toggles the panel; clicking outside the panel closes it. Keyboard activation (Enter / Space) is treated like a click.
@@ -309,3 +311,9 @@ Outside clicks close layers with `click`; focus loss closes layers with `focus`.
 The open state is written back to the trigger element: `aria-expanded` and `aria-controls` (pointing at the panel) are set on the first element in the `trigger` slot.
 
 Put an interactive element in the trigger slot (a native button, `web-ui-button`).
+
+### CSS Custom Properties
+
+| Name                    | Description                                 | Default    |
+| ----------------------- | ------------------------------------------- | ---------- |
+| `--wui-popover-padding` | Panel padding; read on open in portal mode. | `8px 12px` |

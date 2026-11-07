@@ -270,3 +270,22 @@ msgstr "命令式"
 #: src/routes/home/-component.tsx
 msgid "函数调用触发"
 msgstr "函数调用触发"
+
+
+#: src/components/search/index.tsx
+#: src/components/search/index.tsx
+msgid "搜索"
+msgstr "搜索"
+
+#: src/components/search/index.tsx
+#: src/components/search/index.tsx
+msgid "搜索页面和组件"
+msgstr "搜索页面和组件"
+
+#: src/components/search/index.tsx
+msgid "没有匹配结果"
+msgstr "没有匹配结果"
+
+#: src/components/search/index.tsx
+msgid "搜索结果"
+msgstr "搜索结果"

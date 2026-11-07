@@ -18,6 +18,15 @@ function createPopover(innerHtml = '<button slot="trigger">Trigger</button><div>
 }
 
 describe('WebUiPopover 组件（浏览器）', () => {
+  it('portal 面板打开时读取宿主配置的 padding', async () => {
+    const popover = createPopover()
+    popover.portal = true
+    popover.style.setProperty('--wui-popover-padding', '0px')
+    await popover.updateComplete
+    popover.show()
+    await pollUntil(() => getPortalPanel('dialog') !== null, 'portal panel 未挂载')
+    expect(getComputedStyle(getPortalPanel('dialog')!).padding).toBe('0px')
+  })
   it('show() 以即时状态打开 panel', async () => {
     const popover = createPopover()
     await popover.updateComplete

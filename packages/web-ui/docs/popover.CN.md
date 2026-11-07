@@ -277,6 +277,8 @@ const open = ref(false)
 
 ### 行为说明
 
+需要用方向键在输入控件与一组真实链接之间移动时，可使用 `navigatePopoverLinks(event, input, links)`。它只处理上下方向键与焦点，不负责打开面板、Escape 或路由；链接仍保留原生行为。调用方可将链接设为 `tabindex="-1"`，以便 Tab 离开结果区域。
+
 `trigger` 里的每个手势各接各的事件，可以任意组合；未知取值会被丢弃，一个已知手势都没写时回退到默认的 `click`。
 
 - `click`：点触发器切换；点面板外面收起。键盘激活（Enter / Space）与点击同等对待。
@@ -297,3 +299,9 @@ const open = ref(false)
 开合状态回写到触发器元素：`aria-expanded` 与 `aria-controls`（指向面板）设在 `trigger` 插槽的第一个元素上。
 
 触发器插槽请放可交互元素（原生按钮、`web-ui-button`）。
+
+### CSS Custom Properties
+
+| 名称                    | 说明                                  | 默认值     |
+| ----------------------- | ------------------------------------- | ---------- |
+| `--wui-popover-padding` | 面板内边距；portal 模式在打开时读取。 | `8px 12px` |

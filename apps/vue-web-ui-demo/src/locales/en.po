@@ -262,3 +262,22 @@ msgstr "Imperative"
 #: src/pages/home/index.vue
 msgid "函数调用触发"
 msgstr "Triggered by function calls"
+
+
+#: src/components/search/index.vue
+#: src/components/search/index.vue
+msgid "搜索"
+msgstr "Search"
+
+#: src/components/search/index.vue
+#: src/components/search/index.vue
+msgid "搜索页面和组件"
+msgstr "Search pages and components"
+
+#: src/components/search/index.vue
+msgid "搜索结果"
+msgstr "Search results"
+
+#: src/components/search/index.vue
+msgid "没有匹配结果"
+msgstr "No results found"

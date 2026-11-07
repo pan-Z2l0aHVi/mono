@@ -413,6 +413,7 @@ export default function Demo() {
 | ------------------ | ---------------------------------------------------------------- | ---------------- | -------- |
 | `type`             | HTML 输入框类型，透传给内部原生输入框。                          | `string`         | `'text'` |
 | `placeholder`      | 占位文本。                                                       | `string`         | `''`     |
+| `autocomplete`     | 传递给原生输入框的浏览器自动填充值；空值不设置属性。             | `string`         | `''`     |
 | `name`             | 表单字段名。                                                     | `string`         | `''`     |
 | `disabled`         | 禁用状态。                                                       | `boolean`        | `false`  |
 | `readonly`         | 只读状态。                                                       | `boolean`        | `false`  |

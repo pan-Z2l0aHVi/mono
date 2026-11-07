@@ -36,7 +36,7 @@
   box-sizing: border-box;
   width: max-content;
   max-width: min(90vw, 400px);
-  padding: var(--wui-space-2, 8px) var(--wui-space-3, 12px);
+  padding: var(--wui-popover-padding, var(--wui-space-2, 8px) var(--wui-space-3, 12px));
   border-radius: var(--wui-radius-menu, 18px);
 
   font-size: var(--wui-font-size, 14px);

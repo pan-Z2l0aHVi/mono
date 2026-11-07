@@ -211,6 +211,7 @@ const meta = [
     ]
   },
   { label: 'h3', id: 'section-12', content: "行为说明" },
+  { label: 'p', content: "需要用方向键在输入控件与一组真实链接之间移动时，可使用 <code>navigatePopoverLinks(event, input, links)</code>。它只处理上下方向键与焦点，不负责打开面板、Escape 或路由；链接仍保留原生行为。调用方可将链接设为 <code>tabindex=\"-1\"</code>，以便 Tab 离开结果区域。" },
   { label: 'p', content: "<code>trigger</code> 里的每个手势各接各的事件，可以任意组合；未知取值会被丢弃，一个已知手势都没写时回退到默认的 <code>click</code>。" },
   {
     label: 'ul',
@@ -227,7 +228,29 @@ const meta = [
   { label: 'p', content: "<code>open</code> 是组件自行管理的状态。手势和 <code>show()</code> / <code>hide()</code> 都会更新它，直接给 property 赋值也会开合面板，但该写入是静默的，不派发 <code>open-change</code>。" },
   { label: 'h3', id: 'section-13', content: "trigger ARIA" },
   { label: 'p', content: "开合状态回写到触发器元素：<code>aria-expanded</code> 与 <code>aria-controls</code>（指向面板）设在 <code>trigger</code> 插槽的第一个元素上。" },
-  { label: 'p', content: "触发器插槽请放可交互元素（原生按钮、<code>web-ui-button</code>）。" }
+  { label: 'p', content: "触发器插槽请放可交互元素（原生按钮、<code>web-ui-button</code>）。" },
+  { label: 'h3', id: 'section-14', content: "CSS Custom Properties" },
+  {
+    label: 'table',
+    children: [
+    {
+      label: 'tr',
+      children: [
+      { label: 'th', content: "名称" },
+      { label: 'th', content: "说明" },
+      { label: 'th', content: "默认值" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>--wui-popover-padding</code>" },
+      { label: 'td', content: "面板内边距；portal 模式在打开时读取。" },
+      { label: 'td', content: "<code>8px 12px</code>" }
+      ]
+    }
+    ]
+  }
 ]
 
 export default meta

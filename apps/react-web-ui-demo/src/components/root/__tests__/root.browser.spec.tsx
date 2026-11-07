@@ -176,6 +176,69 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await changeViewport(DESKTOP_VIEWPORT)
   })
 
+  it('搜索展开后聚焦，匹配中英文并在收起后保留查询', async () => {
+    await mountAppShell()
+    const button = document.querySelector<HTMLElement>('web-ui-button[aria-label="搜索"]')!
+    await act(async () => {
+      await userEvent.click(button)
+    })
+    const input = await waitFor(() => {
+      const element = document
+        .querySelector('web-ui-input[aria-label="搜索页面和组件"]')
+        ?.shadowRoot?.querySelector('input')
+      if (!element || element !== (element.getRootNode() as ShadowRoot).activeElement)
+        throw new Error('搜索输入框尚未聚焦')
+      return element
+    })
+    await act(async () => {
+      await userEvent.fill(input, '输入框')
+    })
+    await waitFor(() =>
+      expect(document.querySelector('[aria-label="搜索结果"] a[href="/components/input"]')).toBeTruthy()
+    )
+    await act(async () => {
+      await userEvent.clear(input)
+    })
+    expect(document.querySelector('web-ui-popover')?.open).toBe(false)
+    expect(document.querySelector('[aria-label="搜索结果"] a[href="/components/input"]')).toBeTruthy()
+    expect(document.querySelector('[aria-label="搜索结果"] web-ui-empty')).toBeNull()
+    await act(async () => {
+      await userEvent.fill(input, '输入框')
+    })
+    await act(async () => {
+      await userEvent.keyboard('{Enter}')
+    })
+    expect(document.activeElement?.tagName).toBe('WEB-UI-INPUT')
+    await act(async () => {
+      await userEvent.keyboard('{ArrowDown}')
+    })
+    const link = document.querySelector<HTMLAnchorElement>('[aria-label="搜索结果"] a[href="/components/input"]')!
+    expect(document.activeElement).toBe(link)
+    await act(async () => {
+      await userEvent.keyboard('{Escape}')
+    })
+    expect(document.activeElement?.tagName).toBe('WEB-UI-INPUT')
+    await act(async () => {
+      await userEvent.keyboard('{ArrowDown}')
+    })
+    await waitFor(() => expect(document.activeElement).toBe(link))
+    await act(async () => {
+      await userEvent.keyboard('{Escape}')
+    })
+    await act(async () => {
+      await userEvent.keyboard('{Escape}')
+    })
+    await waitFor(() => expect(document.querySelector('web-ui-input[aria-label="搜索页面和组件"]')).toBeNull())
+    await act(async () => {
+      await userEvent.click(document.querySelector<HTMLElement>('web-ui-button[aria-label="搜索"]')!)
+    })
+    await waitFor(() =>
+      expect(
+        document.querySelector('web-ui-input[aria-label="搜索页面和组件"]')?.shadowRoot?.querySelector('input')?.value
+      ).toBe('输入框')
+    )
+  })
+
   it('导航按类别分组并显示中文小标题', async () => {
     await mountAppShell()
     expect([...navRoot().querySelectorAll('h2')].map(heading => heading.textContent?.trim())).toEqual([
@@ -313,12 +376,12 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     )
   })
 
-  it('320px 移动视口内三个全局选择器全部留在视口内，page 不产生横向滚动', async () => {
+  it('320px 移动视口内搜索和全局选择器留在视口内，page 不产生横向滚动', async () => {
     await mountAppShell()
     await changeViewport({ width: 320, height: 700 })
     await settleViewport(true)
 
-    const controls = ['全局动效', '全局主题', '全局语言'].map(label => {
+    const controls = ['全局动效', '全局主题', '全局语言', '搜索'].map(label => {
       const control = document.querySelector<HTMLElement>(`[aria-label="${label}"]`)
       if (!control) throw new Error(`missing global control: ${label}`)
       return control.getBoundingClientRect()
@@ -327,9 +390,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(controls.every(bounds => bounds.width > 0 && bounds.left >= 0 && bounds.right <= window.innerWidth)).toBe(
       true
     )
-    const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')!
-    const headerPaddingRight = Number.parseFloat(getComputedStyle(header).paddingRight)
-    expect(controls.at(-1)!.right).toBeCloseTo(header.getBoundingClientRect().right - headerPaddingRight)
+    expect(controls.at(-1)!.left).toBeGreaterThanOrEqual(controls.at(-2)!.right)
     expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth)
   })
 

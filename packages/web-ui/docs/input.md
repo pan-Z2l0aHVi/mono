@@ -432,6 +432,7 @@ export default function Demo() {
 | ------------------ | --------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
 | `type`             | HTML input type, forwarded to the native input inside.                                                          | `string`         | `'text'` |
 | `placeholder`      | Placeholder text.                                                                                               | `string`         | `''`     |
+| `autocomplete`     | Browser autofill hint forwarded to the native input; empty leaves the attribute unset.                          | `string`         | `''`     |
 | `name`             | Form field name.                                                                                                | `string`         | `''`     |
 | `disabled`         | Disabled state.                                                                                                 | `boolean`        | `false`  |
 | `readonly`         | Readonly state.                                                                                                 | `boolean`        | `false`  |
