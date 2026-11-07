@@ -1,6 +1,6 @@
 {
   "name": "@greypan/doc-demo-kit",
-  "version": "0.0.1",
+  "version": "0.1.0",
   "description": "react/vue web-ui demo 共享的文档示例层：locale 状态机、语料契约、meta 渲染与 codeblock 纯逻辑",
   "license": "MIT",
   "repository": {
