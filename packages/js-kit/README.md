@@ -182,14 +182,15 @@ Run a function without handling its errors at the call site. Synchronous throws 
 
 Result helpers for error handling without exceptions.
 
-| Method           | Description                                                     |
-| ---------------- | --------------------------------------------------------------- |
-| `ok(value)`      | Create a success result.                                        |
-| `err(error)`     | Create an error result.                                         |
-| `isOk(result)`   | Check for a success result.                                     |
-| `isErr(result)`  | Check for an error result.                                      |
-| `to(promise)`    | Resolve a promise into `Ok`, or capture a rejection as `Err`.   |
-| `unwrap(result)` | Return the success value or the error payload. It never throws. |
+| Method                  | Description                                                          |
+| ----------------------- | -------------------------------------------------------------------- |
+| `ok(value)`             | Create a success result.                                             |
+| `err(error)`            | Create an error result.                                              |
+| `isOk(result)`          | Check for a success result.                                          |
+| `isErr(result)`         | Check for an error result.                                           |
+| `to(promise)`           | Resolve a promise into `Ok`, or capture a rejection as `Err`.        |
+| `andThen(result, next)` | Chain the next step: run `next` on `Ok`, return the `Err` untouched. |
+| `unwrap(result)`        | Return the success value or the error payload. It never throws.      |
 
 ```ts
 import { rust } from '@greypan/js-kit/rust'

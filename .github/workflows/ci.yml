@@ -150,7 +150,7 @@ jobs:
       - name: Check shared agent context
         run: pnpm run check-context
 
-      # 纳入唯一 required context；check-policy 内部并发运行各 policy check，任一失败都会使 job 失败。
+      # 纳入唯一 required context；check-policy 按 .use() 顺序串行跑各 policy 判定，首个 Err 短路并使 job 失败。
       - name: Check repository policies
         shell: bash
         run: |

@@ -1,69 +1,26 @@
-// 包的唯一入口。子路径不再对外导出：消费方一律 `import { … } from '@greypan/monorepo-kit'`。
+// 包的入口。三类内容：
+//   - 链协议：`defineRunner()` 是唯一的链基座（链头给恒等 `ok`，链中原样转发继承来的 `run`），
+//     `defineCatch()` 把逃逸的异常收成 `throw: ` 前缀的 `Err`；
+//   - 判定与能力插件：`defineXxx(options)` 返回插件，判定插件产 `run`，能力插件产方法；触发层
+//     用 `.use()` 按想要的顺序组合，再 `.make({ root, env })` 得到实例；
+//   - 叶子函数与常量：包内名字唯一、不需要上下文的部分实现，平铺后调用点最短。
 //
-// 导出分三类：
-//   - 能力插件：`defineXxx(options)` 返回插件，`.use()` 组合、`.make(ctx)` 得到能力对象；
-//   - 检查单元：`defineXxx(options)` 返回 `{ name, run }`，仓库事实只经 options 进入，实例由
-//     消费仓库的 `scripts/policies/` 建好再交给入口；
-//   - 叶子函数与常量：包内名字唯一，平铺后调用点最短。
+// 每个目录的入口再导出自己的面，本文件只把它们并起来；`shared/` 不成体系，没有入口，由这里
+// 直接指向具体模块。包内模块之间仍然 import 具体文件而不走目录入口：入口是再导出，跨目录经
+// 入口互相 import 会把两个目录的全部模块拉进同一张模块图，`exec` 与 `git` 之间就会成环。
 //
-// 包内模块之间仍然用相对路径互相 import；写成 `@greypan/monorepo-kit` 会绕回本文件形成环。
+// Vite 侧的适配（取端口、dev HTTPS）不在这里，走 `@greypan/monorepo-kit/vite`：本入口的消费者是
+// Node 脚本，不该为了两个配置符号把 Vite 的类型面摊给每个 import。
 
-export { defineChangesetRequired } from './plugin/changesets/changeset-required'
-export { defineChangesetStatus } from './plugin/changesets/changeset-status'
-export { defineCommandConventions } from './plugin/workspace/command-conventions'
-export type { CommandConventionsOptions } from './plugin/workspace/command-conventions'
-export { defineContextCorpus } from './plugin/workspace/context-corpus'
-export type { ContextCorpusOptions, SkillsSurface } from './plugin/workspace/context-corpus'
-export { defineDocsInputs } from './plugin/turbo/docs-inputs'
-export type { DocsInputsOptions } from './plugin/turbo/docs-inputs'
-export { defineFullCheckout } from './plugin/git/full-checkout'
-export type { FullCheckoutOptions } from './plugin/git/full-checkout'
-export { defineGitHooksStatus } from './plugin/git/git-hooks-status'
-export type { GitHooksStatus, GitHooksStatusOptions, HookStatus } from './plugin/git/git-hooks-status'
-export { defineGoCheck } from './plugin/exec/go-check'
-export type { GoCheckOptions } from './plugin/exec/go-check'
-export { devHttpsPlugin } from './plugin/dev-https/dev-https'
-export type { DevHttpsOptions } from './plugin/dev-https/dev-https'
-export { defineNoMutualLinks } from './plugin/workspace/no-mutual-links'
-export type { NoMutualLinksOptions } from './plugin/workspace/no-mutual-links'
-export { definePackageContract } from './plugin/workspace/package-contract'
-export { defineReadmeLocales } from './plugin/workspace/readme-locales'
-export type { ReadmeLocalesOptions } from './plugin/workspace/readme-locales'
-export { defineScriptTests } from './plugin/exec/script-tests'
-export { defineShellI18nCatalog } from './plugin/exec/shell-i18n-catalog'
-export type { ShellI18nCatalogOptions } from './plugin/exec/shell-i18n-catalog'
-export { defineStagedClean } from './plugin/git/staged-clean'
-export type { StagedCleanOptions } from './plugin/git/staged-clean'
-export { defineTestPortCallSites } from './plugin/test-ports/test-port-call-sites'
-export type { TestPortCallSitesOptions } from './plugin/test-ports/test-port-call-sites'
-export { defineTurboCacheInvariant } from './plugin/turbo/turbo-cache-invariant'
-export { defineTurboInputPaths } from './plugin/turbo/turbo-input-paths'
-export { defineTurboInputs } from './plugin/turbo/turbo-inputs'
-export type { TurboInput, TurboInputsOptions } from './plugin/turbo/turbo-inputs'
-
-export { defineChangesets } from './plugin/changesets/changesets'
-export type { ChangesetsApi, ChangesetsOptions } from './plugin/changesets/changesets'
-export { commandOutput, defineExec, exec, pnpm } from './plugin/exec/exec'
-export type { ExecApi, ExecOptions, ExecResult } from './plugin/exec/exec'
-export { defineGit } from './plugin/git/git'
-export type { ChangedFilesOptions, GitApi } from './plugin/git/git'
-export { defineTestPorts, testApiPort, testApiPortNames } from './plugin/test-ports/test-ports'
-export type { TestPortsApi, TestPortsOptions } from './plugin/test-ports/test-ports'
-export { defineToolchain } from './plugin/toolchain/toolchain'
-export type { ToolchainStep } from './plugin/toolchain/toolchain'
-export { defineTurbo } from './plugin/turbo/turbo'
-export type { TurboApi } from './plugin/turbo/turbo'
-export {
-  defineWorkspace,
-  findRepoRoot,
-  listPnpmWorkspaceManifests,
-  readPnpmWorkspaceDirectories,
-  readPnpmWorkspacePatterns
-} from './plugin/workspace/workspace'
-export type { WorkspaceApi } from './plugin/workspace/workspace'
-
-export { runChecks, runEntrypoint } from './runner/check-runner'
-export type { CheckContext, CheckResult, CheckUnit } from './runner/check-runner'
+export * from './changesets'
+export * from './exec'
+export * from './git'
+export * from './runner'
+export * from './test-ports'
+export * from './toolchain'
+export * from './turbo'
+export * from './workspace'
 
 export { readJsonFile } from './shared/config'
 export { byCodeUnit } from './shared/order'
+export { getWorkspaceRoot } from './shared/workspace-root'

@@ -34,7 +34,7 @@ ADR 只记录技术选型、架构设计与工程化决策；具体实现细节�
 | [0009](docs/adr/0009-interweave-sqlite.md)                      | SQLite 持久化与 WAL                                           | 修改 interweave 持久化层或 SQLite 并发模型                               |
 | [0010](docs/adr/0010-task-orchestration.md)                     | 编排层承接需求拆分与 task 派发                                | 修改 worktree 分工、T0 判据或编排层边界                                  |
 | [0011](docs/adr/0011-layout-mobile-state.md)                    | Layout 暴露派生视口状态（`mobile` / `mobile-change`）         | 修改 layout 的断点判定、给组件加派生状态，或让 app 消费移动端判定        |
-| [0012](docs/adr/0012-pr-review.md)                              | PR 独立 review 与增量复审                                     | 修改 task 登记簿、政策检查集合、PR changeset gate 或 review/merge 前核验 |
+| [0012](docs/adr/0012-pr-review.md)                              | PR review 结论与人工审查的增量复审                            | 修改 task 登记簿、政策检查集合、PR changeset gate 或 review/merge 前核验 |
 | [0013](docs/adr/0013-context-authority.md)                      | Context 语料权威与漂移门禁                                    | 修改指令文档的权威标记、漂移门禁或 RAG 语料契约                          |
 | [0014](docs/adr/0014-script-organization.md)                    | 脚本按执行面分类与统一入口                                    | 修改政策检查集合、pre-commit / CI policy 入口或脚本目录布局              |
 | [0015](docs/adr/0015-task-ledger.md)                            | Task 分级与记账提取为通用 skill                               | 修改 task 分级判据、台账命令、状态目录或跨项目复用方式                   |
@@ -44,6 +44,7 @@ ADR 只记录技术选型、架构设计与工程化决策；具体实现细节�
 | [0019](docs/adr/0019-md-to-meta.md)                             | md-to-comp 收敛为通用 markdown 结构化引擎 md-to-meta          | 修改 meta 节点形状、围栏落盘策略、`load` thunk 或主题契约                |
 | [0020](docs/adr/0020-skill-self-contained.md)                   | 自撰 skill 保持运行时自包含                                   | 提议统一 skill 与 workspace 包的重复实现，或修改 skill 的依赖边界        |
 | [0021](docs/adr/0021-codex-review-gate.md)                      | Codex 自动 PR 审查门：约定式门禁与只读/写回分腿               | 修改 CI 的审查腿、发现分档、自动修边界或这道门的红绿判据                 |
+| [0022](docs/adr/0022-monorepo-kit-plugin-chain.md)              | monorepo-kit 判定改为嵌套 `run` 链                            | 修改检查协议、判定插件的组合方式、`runner/` 或门禁入口的组链             |
 
 ## 已知边界
 

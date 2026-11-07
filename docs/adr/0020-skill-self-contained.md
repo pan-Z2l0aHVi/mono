@@ -5,7 +5,7 @@
 
 ## 背景
 
-2026-11 的架构 review 发现 `.agents/skills/turbo-sparse-scope/sparse-scope.mjs` 与 `packages/monorepo-kit`（`src/plugin/workspace/workspace.ts`）各自维护一份 `pnpm-workspace.yaml` 容器目录推导，外加 cone-path 归一与排序比较的纯函数重复。两个推导的语义存在可分歧点：字面量条目（如 `tools/cli`）在 kit 只认含 glob 的模式（不产生容器），在 sparse-scope 取除末段外前缀（容器为 `tools`）。当时的提议是把解析收敛到 monorepo-kit 一处，sparse-scope 经安装后的包 import 消费。
+2026-11 的架构 review 发现 `.agents/skills/turbo-sparse-scope/sparse-scope.mjs` 与 `packages/monorepo-kit`（`src/workspace/workspace.ts`）各自维护一份 `pnpm-workspace.yaml` 容器目录推导，外加 cone-path 归一与排序比较的纯函数重复。两个推导的语义存在可分歧点：字面量条目（如 `tools/cli`）在 kit 只认含 glob 的模式（不产生容器），在 sparse-scope 取除末段外前缀（容器为 `tools`）。当时的提议是把解析收敛到 monorepo-kit 一处，sparse-scope 经安装后的包 import 消费。
 
 ## 决策
 

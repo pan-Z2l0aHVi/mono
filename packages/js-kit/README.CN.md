@@ -182,14 +182,15 @@ timer.start()
 
 不用异常的 Result 工具。
 
-| 方法             | 说明                                                |
-| ---------------- | --------------------------------------------------- |
-| `ok(value)`      | 创建成功结果。                                      |
-| `err(error)`     | 创建错误结果。                                      |
-| `isOk(result)`   | 判断是否为成功结果。                                |
-| `isErr(result)`  | 判断是否为错误结果。                                |
-| `to(promise)`    | 把 Promise 转为 `Ok`，或把 rejection 捕获为 `Err`。 |
-| `unwrap(result)` | 返回成功值或错误载荷，不会抛错。                    |
+| 方法                    | 说明                                                |
+| ----------------------- | --------------------------------------------------- |
+| `ok(value)`             | 创建成功结果。                                      |
+| `err(error)`            | 创建错误结果。                                      |
+| `isOk(result)`          | 判断是否为成功结果。                                |
+| `isErr(result)`         | 判断是否为错误结果。                                |
+| `to(promise)`           | 把 Promise 转为 `Ok`，或把 rejection 捕获为 `Err`。 |
+| `andThen(result, next)` | 接上下一步：`Ok` 交给 `next` 执行，`Err` 原样返回。 |
+| `unwrap(result)`        | 返回成功值或错误载荷，不会抛错。                    |
 
 ```ts
 import { rust } from '@greypan/js-kit/rust'
