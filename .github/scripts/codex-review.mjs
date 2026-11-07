@@ -19,10 +19,20 @@ export const SEVERITIES = Object.freeze(['Block', 'Should fix', 'Nit'])
 // 顺序即诊断输出顺序，与 CI 拓扑断言共用同一份名单。密钥只判「有没有」，值从不写进快照、日志或 PR 评论。
 export const CONFIG_ENV = CODEX_CONFIG_ENV
 
-// 路径层面的批量 churn 过滤：md-to-meta 的 meta/codeblock 随 markdown 重建整批换名，
-// icons/generated 等入库产物同样只随 generator 变，塞进审查 diff 只会淹没真实改动。
-// 用 glob magic 让前导 **/ 同时覆盖嵌套与根级 generated/；review-scope.json 留痕便于审计。
-export const REVIEW_EXCLUDE_PATHSPECS = Object.freeze([':(exclude,glob)**/generated/**'])
+// 入库生成物整批滤出审查输入：它们由 generator 完整重建，没有需要人判断的改动，既不需要 diff
+// 也不需要逐行 review，留在 pr.diff 与 changed_paths 里只会淹没真实源码、吃掉大 PR 的审查预算。
+// 判据、清单与同步要求见 docs/agents/generated-artifacts.md；路径参考 .claude/settings.json 的 deny
+// 名单，按清单取可表达的最小 glob：单文件生成物收到具体文件，目录型产物仍按目录通配。用 glob magic
+// 让前导 **/ 同时覆盖嵌套与根级路径；review-scope.json 记 excluded_pathspecs 便于审计。
+// 这份名单必须留在取自 PR base 的可信脚本里：从 PR head 的工作树读名单等于让作者自定义审查范围。
+export const REVIEW_EXCLUDE_PATHSPECS = Object.freeze([
+  ':(exclude,glob)**/generated/**',
+  ':(exclude,glob)apps/*/frontend/bindings/**',
+  ':(exclude,glob)**/routeTree.gen.ts',
+  ':(exclude,glob)**/typed-router.d.ts',
+  ':(exclude,glob)**/auto-imports.d.ts',
+  ':(exclude,glob)packages/web-ui/src/icons/index.ts'
+])
 
 const FINDING_FIELDS = Object.freeze(['severity', 'file', 'line', 'problem', 'suggestion'])
 const COVERAGE_FIELDS = Object.freeze(['inspected', 'uncovered'])
@@ -189,7 +199,7 @@ export function readConclusion(directory) {
   }
 }
 
-/** 配置快照只保留非密钥字段，指纹把端点/模型/强度/版本/密钥有无绑成复用键的一部分。 */
+/** 配置快照只保留非密钥字段；指纹把后台配置与审查输入范围绑成复用键的一部分。 */
 export function inspectConfig(env = process.env) {
   const text = name => (env[name] ?? '').trim()
   const missing = CONFIG_ENV.filter(name => text(name) === '')
@@ -200,7 +210,12 @@ export function inspectConfig(env = process.env) {
     version: text('CODEX_VERSION'),
     key_present: text('CODEX_REVIEW_API_KEY') !== ''
   }
-  const fingerprint = createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16)
+  // 排除清单也是审查输入：清单换了，同 head 上按旧范围产出的结论不能借复用回到绿色。
+  // 只进 fingerprint，不进 config 快照——快照描述的是后台配置，不是脚本常量。
+  const fingerprint = createHash('sha256')
+    .update(JSON.stringify({ ...values, excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS }))
+    .digest('hex')
+    .slice(0, 16)
   return { present: missing.length === 0, missing, config: { ...values, fingerprint } }
 }
 
