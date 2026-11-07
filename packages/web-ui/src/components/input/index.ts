@@ -107,7 +107,7 @@ export class WebUiInput extends FormAssociated(LitElement) {
   private _onSlotChange(e: Event) {
     if (!(e.target instanceof HTMLSlotElement)) return
     const slot = e.target
-    const hasContent = slot.assignedElements().length > 0
+    const hasContent = slot.assignedElements({ flatten: true }).length > 0
     if (slot.name === 'prefix') this._hasPrefix = hasContent
     if (slot.name === 'suffix') this._hasSuffix = hasContent
   }

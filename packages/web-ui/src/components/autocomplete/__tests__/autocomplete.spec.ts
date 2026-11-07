@@ -92,6 +92,35 @@ function pressKeyOnCustomTrigger(el: WebUiAutocomplete, key: string) {
 }
 
 describe('WebUiAutocomplete 组件', () => {
+  describe('默认输入框配置', () => {
+    it('转发输入属性并在清除时同步值和事件', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      el.clearable = true
+      el.full = true
+      el.type = 'search'
+      el.autocomplete = 'off'
+      el.ariaClearLabel = '清除搜索'
+      el.value = 'Apple'
+      const events: string[] = []
+      el.addEventListener('input', () => events.push(`input:${el.value}`))
+      el.addEventListener('change', () => events.push(`change:${el.value}:${el.selectedValue}`))
+      await waitForUpdate(el)
+      const input = defaultTrigger(el)
+      await input.updateComplete
+      expect(input.clearable).toBe(true)
+      expect(input.full).toBe(true)
+      expect(input.type).toBe('search')
+      expect(input.autocomplete).toBe('off')
+      const clear = input.shadowRoot!.querySelector<HTMLElement>('web-ui-button')!
+      expect(clear.getAttribute('aria-label')).toBe('清除搜索')
+      clear.click()
+      await waitForUpdate(el)
+      expect(el.value).toBe('')
+      expect(events).toEqual(['input:', 'change::'])
+      cleanupElement(el)
+    })
+  })
+
   describe('宿主属性', () => {
     it('默认 trigger 原生 input 有稳定且实例唯一的 id', async () => {
       const first = createAutocomplete(OPTIONS_HTML)

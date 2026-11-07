@@ -46,6 +46,10 @@ function isTriggerSlotNode(node: Node): node is Element {
   return node instanceof Element && node.slot === 'trigger'
 }
 
+function isInputAdornmentSlotNode(node: Node): node is Element {
+  return node instanceof Element && (node.slot === 'prefix' || node.slot === 'suffix')
+}
+
 // 已移除的 empty slot 仍可能留在既有消费者 light DOM；不得把它作为普通内容迁入 portal。
 function isEmptySlotNode(node: Node): node is Element {
   return node instanceof Element && node.slot === 'empty'
@@ -70,6 +74,11 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(scrollbarStyle), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) placeholder = ''
+  @property({ type: String, reflect: true }) type = 'text'
+  @property({ type: String, reflect: true }) autocomplete = ''
+  @property({ type: Boolean, reflect: true }) clearable = false
+  @property({ type: Boolean, reflect: true }) full = false
+  @property({ type: String, attribute: 'aria-clear-label' }) ariaClearLabel = ''
   @property({ type: Boolean, reflect: true }) borderless = false
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) readonly = false
@@ -221,7 +230,9 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     isOpen: () => this.portal && this._isOpen,
     // 默认 slot 内容随 panel 迁移；trigger 与已移除的 empty slot 留在宿主，不进 panel。
     getMigratableNodes: () =>
-      Array.from(this.childNodes).filter(node => !isTriggerSlotNode(node) && !isEmptySlotNode(node)),
+      Array.from(this.childNodes).filter(
+        node => !isTriggerSlotNode(node) && !isInputAdornmentSlotNode(node) && !isEmptySlotNode(node)
+      ),
     hasUpdated: () => this.hasUpdated,
     requestUpdate: () => this.requestUpdate(),
     bindOption: option => this._bindOption(option),
@@ -749,6 +760,18 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
   }
 
+  private _onDefaultInput = (event: Event) => {
+    const input = event.currentTarget
+    // web-ui-input 的清除操作从 input 宿主派发 input；键入则来自原生 input。
+    if (!(input instanceof HTMLElement) || event.composedPath()[0] !== input || !this.clearable || !this._value) return
+    if (!('value' in input) || input.value !== '') return
+    queueMicrotask(() => {
+      if (!this.isConnected) return
+      this._syncSelectedValue()
+      this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+    })
+  }
+
   private _onTriggerInput = (value: string) => {
     if (this._isDisabled || this.readonly) return
     if (value === this._value) return
@@ -923,7 +946,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       // 会以 panel 内节点为插入基准；portal 的 marker 注释同理不参与迁移。
       if (node instanceof Comment) continue
       // 自定义 trigger 与 select（:461）同判据：留在宿主，不随 options 迁入 overlay
-      if (isTriggerSlotNode(node)) continue
+      if (isTriggerSlotNode(node) || isInputAdornmentSlotNode(node)) continue
       // 已移除的 empty slot 不能作为普通内容出现在新 portal panel 中
       if (isEmptySlotNode(node)) continue
       portal.appendContent([node], content)
@@ -979,14 +1002,21 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
             !this._hasTriggerSlot
               ? html`<web-ui-input
                   class="autocomplete-input"
+                  @input=${this._onDefaultInput}
                   .value=${this._value}
                   placeholder=${this.placeholder}
+                  type=${this.type}
+                  autocomplete=${this.autocomplete}
+                  .ariaClearLabel=${this.ariaClearLabel}
+                  ?clearable=${this.clearable}
+                  ?full=${this.full}
                   name=${this.name}
                   ?borderless=${this.borderless}
                   ?disabled=${this._isDisabled}
                   ?readonly=${this.readonly}
                   ?required=${this.required}
                   aria-label=${ifDefined(this.ariaLabel || labelledbyText || undefined)}
+                  ><slot name="prefix" slot="prefix"></slot><slot name="suffix" slot="suffix"></slot
                 ></web-ui-input>`
               : nothing
           }

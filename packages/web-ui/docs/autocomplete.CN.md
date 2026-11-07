@@ -467,6 +467,34 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 </script>
 ```
 
+### 输入框配置
+
+默认 trigger 支持输入框属性和前后缀 slot。清除时依次派发 `input` 和 `change`；使用自定义 trigger 时由调用方配置对应输入框。
+
+```tsx
+export default function Demo() {
+  return (
+    <web-ui-autocomplete clearable autocomplete="off" placeholder="搜索">
+      <span slot="prefix">🔍</span>
+      <span slot="suffix">⌘K</span>
+      <web-ui-option value="react" label="React"></web-ui-option>
+      <web-ui-option value="vue" label="Vue"></web-ui-option>
+    </web-ui-autocomplete>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-autocomplete clearable autocomplete="off" placeholder="搜索">
+    <span slot="prefix">🔍</span>
+    <span slot="suffix">⌘K</span>
+    <web-ui-option value="react" label="React"></web-ui-option>
+    <web-ui-option value="vue" label="Vue"></web-ui-option>
+  </web-ui-autocomplete>
+</template>
+```
+
 ## API
 
 ### 属性
@@ -474,6 +502,11 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 | 名称                 | 说明                                                                                      | 类型                  | 默认值           |
 | -------------------- | ----------------------------------------------------------------------------------------- | --------------------- | ---------------- |
 | `placeholder`        | 输入框占位文本。                                                                          | `string`              | `''`             |
+| `type`               | 默认输入框类型。                                                                          | `string`              | `'text'`         |
+| `autocomplete`       | 默认输入框的浏览器自动填充提示。                                                          | `string`              | `''`             |
+| `clearable`          | 显示清除按钮。                                                                            | `boolean`             | `false`          |
+| `full`               | 默认输入框撑满可用宽度。                                                                  | `boolean`             | `false`          |
+| `aria-clear-label`   | 清除按钮的无障碍名称。                                                                    | `string`              | `''`             |
 | `borderless`         | ghost 形态：移除边框、背景、背景模糊与阴影，保留内边距与焦点环。                          | `boolean`             | `false`          |
 | `disabled`           | 禁用态，不可输入、不可展开下拉。                                                          | `boolean`             | `false`          |
 | `readonly`           | 只读态：不可输入、不可展开下拉。                                                          | `boolean`             | `false`          |
@@ -499,7 +532,7 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 | 名称          | 说明                                                                                    |
 | ------------- | --------------------------------------------------------------------------------------- |
 | `input`       | 输入时触发，`value` 为当前文本。                                                        |
-| `change`      | 选中候选或提交自定义值时触发。                                                          |
+| `change`      | 选中候选、提交自定义值或清除输入时触发。                                                |
 | `focus`       | 触发器获得焦点时触发。                                                                  |
 | `blur`        | 触发器失去焦点时触发。                                                                  |
 | `open-change` | 手势或 `show()` / `hide()` 改变开合时派发，`detail.open` 是当前状态；写 `open` 不派发。 |
@@ -509,6 +542,8 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 | 名称      | 说明                                                                      |
 | --------- | ------------------------------------------------------------------------- |
 | `trigger` | 自定义触发区域内容，替换默认输入框。                                      |
+| `prefix`  | 默认输入框的前缀内容。                                                    |
+| `suffix`  | 默认输入框的后缀内容。                                                    |
 | `default` | 投影 `<web-ui-option>` 候选；其他节点同样算面板内容，可用来放自定义空态。 |
 
 ### 方法

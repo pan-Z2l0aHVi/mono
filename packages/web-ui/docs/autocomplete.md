@@ -471,6 +471,34 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 </script>
 ```
 
+### Input configuration
+
+The default trigger supports input properties and prefix/suffix slots. Clearing dispatches `input` followed by `change`. Configure a custom trigger directly.
+
+```tsx
+export default function Demo() {
+  return (
+    <web-ui-autocomplete clearable autocomplete="off" placeholder="Search">
+      <span slot="prefix">🔍</span>
+      <span slot="suffix">⌘K</span>
+      <web-ui-option value="react" label="React"></web-ui-option>
+      <web-ui-option value="vue" label="Vue"></web-ui-option>
+    </web-ui-autocomplete>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-autocomplete clearable autocomplete="off" placeholder="Search">
+    <span slot="prefix">🔍</span>
+    <span slot="suffix">⌘K</span>
+    <web-ui-option value="react" label="React"></web-ui-option>
+    <web-ui-option value="vue" label="Vue"></web-ui-option>
+  </web-ui-autocomplete>
+</template>
+```
+
 ## API
 
 ### Props
@@ -478,6 +506,11 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 | Name                 | Description                                                                                                                              | Type                  | Default          |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ---------------- |
 | `placeholder`        | Input placeholder text.                                                                                                                  | `string`              | `''`             |
+| `type`               | Default input type.                                                                                                                      | `string`              | `'text'`         |
+| `autocomplete`       | Browser autofill hint for the default input.                                                                                             | `string`              | `''`             |
+| `clearable`          | Shows a clear button.                                                                                                                    | `boolean`             | `false`          |
+| `full`               | Makes the default input fill the available width.                                                                                        | `boolean`             | `false`          |
+| `aria-clear-label`   | Accessible name for the clear button.                                                                                                    | `string`              | `''`             |
 | `borderless`         | Ghost form: removes the border, background, backdrop blur, and shadow while keeping padding and the focus ring.                          | `boolean`             | `false`          |
 | `disabled`           | Disabled state: no input, no dropdown.                                                                                                   | `boolean`             | `false`          |
 | `readonly`           | Readonly state: no input, no dropdown.                                                                                                   | `boolean`             | `false`          |
@@ -503,7 +536,7 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 | Name          | Description                                                                                                                                  |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `input`       | Fires on input; `value` is the current text.                                                                                                 |
-| `change`      | Fires when a candidate is selected or a custom value is submitted.                                                                           |
+| `change`      | Fires when a candidate is selected, a custom value is submitted, or the input is cleared.                                                    |
 | `focus`       | Fires when the trigger gains focus.                                                                                                          |
 | `blur`        | Fires when the trigger loses focus.                                                                                                          |
 | `open-change` | Dispatched when gestures or `show()` / `hide()` change the open state; `detail.open` is the current state. Writing `open` does not dispatch. |
@@ -513,6 +546,8 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 | Name      | Description                                                                                                        |
 | --------- | ------------------------------------------------------------------------------------------------------------------ |
 | `trigger` | Custom content for the trigger area, replacing the default input.                                                  |
+| `prefix`  | Content before the default input.                                                                                  |
+| `suffix`  | Content after the default input.                                                                                   |
 | `default` | Projects `<web-ui-option>` candidates; other nodes also count as panel content and can carry a custom empty state. |
 
 ### Methods
