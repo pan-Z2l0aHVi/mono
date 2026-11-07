@@ -1,5 +1,7 @@
 # Button Group
 
+English | [简体中文](./button-group.CN.md)
+
 Groups several `<web-ui-button>` elements into one. The group does two things: it makes adjacent buttons read as one control (a shared glass base, dividers between adjacent buttons) and it sets the layout direction. It does not manage selection state and does not change members' own events or form behavior. A member's own `size` is ignored inside the group, where every member renders 30px high.
 
 ## Samples

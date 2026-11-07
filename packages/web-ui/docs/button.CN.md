@@ -1,12 +1,14 @@
 # Button
 
+[English](./button.md) | 简体中文
+
 按钮触发一个即时操作：提交表单、打开对话框、切换状态。
 
 它不向 `FormData` 贡献值。`type="submit"` 与 `type="reset"` 把这两个原生动作转发给外层 `<form>`。对外只有原生按钮的 `click`，组件不派发自定义事件。
 
-## Samples
+## 示例
 
-### Variants
+### 变体
 
 `variant` 决定视觉层级。合法值只有 `primary` / `secondary` / `ghost` / `danger` / `glass`，集合外的值回退到 `glass`。`glass` 与页面背景融合，适合工具栏；`primary` 一页只应有一个。
 
@@ -38,7 +40,7 @@ export default function Demo() {
 </template>
 ```
 
-### Sizes
+### 尺寸
 
 `size` 接受裸数字或 CSS 长度。裸数字按 px 解释，`size="28"` 即 28px；带单位的写法（`32px`、`1.5rem`）原样使用。它只决定高度，留空时高度取 theme 的 `--wui-control-size`（36px）。
 
@@ -84,7 +86,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Width
+### 宽度
 
 宽度有两种设置：`full` 让控件铺满父容器，`--wui-button-width` 给按钮一个固定宽度（默认 `max-content`）。
 
@@ -138,7 +140,7 @@ export default function Demo() {
 </template>
 ```
 
-### Prefix and suffix
+### 前缀和后缀
 
 默认插槽是标签文字，`prefix` / `suffix` 命名插槽排在它两侧，三段之间的间距取 `--wui-button-gap`。
 
@@ -204,7 +206,7 @@ import { lucideChevronLeft, lucideChevronRight, lucideSearch } from '@greypan/we
 </script>
 ```
 
-### Icon mode
+### 图标模式
 
 `icon` 让宿主成为正方形，默认插槽整体当作图标内容，`prefix` / `suffix` 这时不渲染。
 
@@ -280,7 +282,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Disabled and loading
+### 禁用和加载
 
 `disabled` 与 `loading` 都会真正禁用控件：不派发 `click`，也退出 Tab 序。禁用态整体降到四成不透明度，没有悬停与按下态。
 
@@ -350,7 +352,7 @@ const pending = ref(false)
 </script>
 ```
 
-### Click and pressed state
+### 点击和按压状态
 
 按钮没有自定义事件，监听原生 `click` 即可。这个事件组合并冒泡到宿主，`event.target` 会重定向到宿主，所以 React 与 Vue 都能直接在 `<web-ui-button>` 上写处理函数。
 
@@ -400,7 +402,7 @@ const clicks = ref(0)
 </script>
 ```
 
-### Form submit and reset
+### 表单提交与重置
 
 `type` 只有 `button` / `submit` / `reset` 三个合法值，非法值规范化成 `button`。
 
@@ -487,7 +489,7 @@ function onCancelledClick(event: MouseEvent) {
 </script>
 ```
 
-### CSS variables
+### CSS 变量
 
 表里七个变量都写在 `<web-ui-button>` 宿主上。`--wui-button-width` / `--wui-button-px` / `--wui-button-gap` 挂在宿主的 class 上即可。
 
@@ -555,7 +557,7 @@ const fourStates = {
 
 ## API
 
-### Props
+### 属性
 
 | 名称            | 说明                                                                                                               | 类型                                                         | 默认值     |
 | --------------- | ------------------------------------------------------------------------------------------------------------------ | ------------------------------------------------------------ | ---------- |
@@ -569,7 +571,7 @@ const fourStates = {
 | `aria-label`    | 无障碍名称。                                                                                                       | `string \| null`                                             | `null`     |
 | `aria-expanded` | 展开状态，供辅助技术读取。                                                                                         | `string \| null`                                             | `null`     |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                                         |
 | --------- | ------------------------------------------------------------ |
@@ -615,7 +617,7 @@ const fourStates = {
 
 内部按钮暴露为 `::part(button)`。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                     | 说明                                                                                                          | 默认值               |
 | ------------------------ | ------------------------------------------------------------------------------------------------------------- | -------------------- |

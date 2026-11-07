@@ -1,5 +1,7 @@
 # Dropdown Header
 
+English | [简体中文](./dropdown-header.CN.md)
+
 A group title inside a menu. It is a piece of small text that plays no part in interaction and names the menu items that follow it. It has no props or events, and keyboard navigation does not stop on it. The menu only moves focus to `<web-ui-dropdown-item>`. Group titles are often used together with `<web-ui-dropdown-divider>`.
 
 ## Samples

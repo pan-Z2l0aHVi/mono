@@ -1,10 +1,12 @@
 # Slider
 
+[English](./slider.md) | 简体中文
+
 范围 slider，支持刻度标记和垂直方向。键盘支持方向键、Home / End 与 PageUp / PageDown。每个实例都应通过 `aria-label` 或 `aria-labelledby` 提供可区分的名称。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 不写属性时，范围是 `0` 到 `100`，步进为 `1`。`min` / `max` / `step` 约束取值范围和步进幅度。`disabled` 让轨道与滑块不再响应交互。
 
@@ -30,7 +32,7 @@ export default function Demo() {
 </template>
 ```
 
-### Tick marks
+### 刻度
 
 `marks` 沿轨道画出刻度点，间距取自 `step`。最多画 100 段；`step` 相对 `min` 到 `max` 太密时，只画前 100 段。
 
@@ -54,7 +56,7 @@ export default function Demo() {
 </template>
 ```
 
-### Vertical orientation
+### 垂直方向
 
 `vertical` 让轨道竖直，数值由下往上增长。`aria-orientation` 随之变为 `vertical`，调节改用上下方向键。
 
@@ -128,7 +130,7 @@ const volume = ref(30)
 </script>
 ```
 
-### input and change
+### input 和 change 事件
 
 拖拽过程中 `input` 连续触发。松手时，如果数值确实变过，组件派发一次 `change`。用键盘时，每按一次调节键且值发生变化，都会先派发 `input`，再派发 `change`。点击轨道的空白处也算一次取值变更。
 
@@ -186,7 +188,7 @@ const changeValue = ref(40)
 </script>
 ```
 
-### Form value
+### 表单值
 
 `name` 让当前值以该字段名进入 `FormData`。`form.reset()` 会把值退回初始值。
 
@@ -256,7 +258,7 @@ function reset() {
 </script>
 ```
 
-### CSS variables
+### CSS 变量
 
 `--wui-slider-width` / `--wui-slider-vertical-height` 决定宿主的轴长，`--wui-slider-track-size` 是轨道厚度。滑块的厚度和按压态的长边各由一个变量控制。
 
@@ -318,7 +320,7 @@ export default function Demo() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称              | 说明                                            | 类型      | 默认值  |
 | ----------------- | ----------------------------------------------- | --------- | ------- |
@@ -334,14 +336,14 @@ export default function Demo() {
 | `max`             | 最大值。                                        | `number`  | `100`   |
 | `step`            | 步进值。                                        | `number`  | `1`     |
 
-### Events
+### 事件
 
 | 名称     | 说明                                                         |
 | -------- | ------------------------------------------------------------ |
 | `input`  | 取值变化时派发；拖拽过程中连续派发。                         |
 | `change` | 一次取值变更结束时派发：拖拽松手、点击轨道、每按一次调节键。 |
 
-### Methods
+### 方法
 
 | 名称      | 说明                              |
 | --------- | --------------------------------- |
@@ -356,7 +358,7 @@ export default function Demo() {
 
 滑块静止时是正圆，直径取自 `--wui-slider-thumb-thickness`。按压或拖拽时，它沿轨道方向展开成胶囊，厚度不变，长边取自 `--wui-slider-thumb-length`。横向 slider 沿宽度方向展开，纵向 slider 沿高度方向展开。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                           | 说明                            | 默认值  |
 | ------------------------------ | ------------------------------- | ------- |

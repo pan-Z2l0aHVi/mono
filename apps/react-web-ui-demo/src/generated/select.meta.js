@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Select" },
+  { label: 'p', content: "English | <a href=\"./select.CN.md\">简体中文</a>" },
   { label: 'p', content: "Select dropdown. The default slot holds <code>&lt;web-ui-option></code> candidates, and the <code>trigger</code> slot can replace the default trigger area. The component supports keyboard navigation and Portal." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

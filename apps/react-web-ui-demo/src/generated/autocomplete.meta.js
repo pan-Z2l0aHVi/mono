@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Autocomplete" },
+  { label: 'p', content: "English | <a href=\"./autocomplete.CN.md\">简体中文</a>" },
   { label: 'p', content: "A single-value selector that accepts input and filters candidates. Typed text filters candidates by <code>option</code> label. A selection fills the label back into the input and exposes that option's value as the readonly <code>selected-value</code>." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

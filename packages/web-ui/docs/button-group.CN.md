@@ -1,10 +1,12 @@
 # Button Group
 
+[English](./button-group.md) | 简体中文
+
 把若干个 `<web-ui-button>` 并成一组。组只负责两件事：让相邻的按钮连成整体（共享一块 glass 底，相邻按钮之间画分割线），以及决定排列方向。它不管选中态，也不改变成员各自的事件与表单行为。成员自己的 `size` 在组内被忽略，所有成员都按 30px 高渲染。
 
-## Samples
+## 示例
 
-### Horizontal group
+### 水平 group
 
 整组共享一块 glass 底，相邻成员之间有分割线，末尾那枚没有。
 
@@ -36,7 +38,7 @@ export default function Demo() {
 </template>
 ```
 
-### Member content
+### 成员内容
 
 成员可以是纯图标、纯文字，或用 `prefix` / `suffix` 夹一个图标；成员高度统一成 30px 并居中对齐，混排不会被拉伸或压窄。
 
@@ -142,7 +144,7 @@ import { lucideChevronLeft, lucideChevronRight } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Vertical group
+### 垂直 group
 
 `direction` 决定横排还是竖排，默认 `horizontal`。合法值只有这两个，集合外的值回退成 `horizontal`。
 
@@ -192,7 +194,7 @@ import { lucideMinus, lucidePlus, lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Member gap
+### 成员间距
 
 按钮组没有自己的间距 token：成员间距与玻璃盒子内衬都取主题的 `--wui-space-1`（4px），改一处两者一起变。
 
@@ -250,7 +252,7 @@ export default function Demo() {
 </template>
 ```
 
-### Divider
+### 分隔线
 
 分割线由除末位之外的成员渲染，带 `aria-hidden`；末位成员没有分割线。
 
@@ -320,7 +322,7 @@ import { lucideMinus, lucidePlus } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Member events
+### 成员事件
 
 组不拦截成员的 `click`，点击原样冒泡过组宿主。
 
@@ -405,13 +407,13 @@ function onSubmit(event: Event) {
 
 ## API
 
-### Props
+### 属性
 
 | 名称        | 说明             | 类型                         | 默认值         |
 | ----------- | ---------------- | ---------------------------- | -------------- |
 | `direction` | 成员的排列方向。 | `'horizontal' \| 'vertical'` | `'horizontal'` |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                                |
 | --------- | --------------------------------------------------- |
@@ -437,7 +439,7 @@ function onSubmit(event: Event) {
 
 `--wui-control-size` 决定组的宽高，但不能决定成员高度：成员固定 30px，所以 36px 的盒子里上下各留 3px。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                                | 说明                                                             | 默认值 |
 | ----------------------------------- | ---------------------------------------------------------------- | ------ |

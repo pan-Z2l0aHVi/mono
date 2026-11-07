@@ -1,10 +1,12 @@
 # Toast
 
+[English](./toast.md) | 简体中文
+
 命令式 toast。调用 `toast()` 创建一条 toast 并拿到它的 id，再用 `toast.close(id)` 关闭。同一个 `id` 再次调用会更新那一条，不会新建。下面的表分别列出 `toast()` 的选项、命令式入口，以及 `<web-ui-toast>` 元素自身的属性、事件和方法。
 
-## Samples
+## 示例
 
-### Shortcuts
+### 快捷操作
 
 `toast.success` / `info` / `warning` / `error` 是 `toast()` 加 `type` 的快捷写法。每次调用都返回这条 toast 的最终 id。`error` 的默认时长是 `5000`，比其余类型的 `3000` 长。
 
@@ -72,7 +74,7 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### Positions
+### 位置
 
 `position` 接受 `top-left`、`top-center`、`top-right`、`bottom-left`、`bottom-center`、`bottom-right` 六个值。每个值对应一个固定在视口边缘的容器，位置不随页面滚动改变。下面每个按钮在对应位置弹出一条默认时长的 toast。
 
@@ -134,7 +136,7 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### Full options
+### 完整选项
 
 `toast()` 接受完整选项：`heading` 是粗体标题，`message` 是正文，`position` 决定出现在屏幕的哪个位置（这里是 `top-center`），`duration` 是自动关闭的毫秒数，`closable` 控制是否渲染关闭按钮。第二个按钮把 `closable` 设为 `false`，没有关闭按钮，只能等 `duration` 到期。
 
@@ -237,7 +239,7 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### Merging into one toast
+### 合并为一条 toast
 
 同一个 `id` 的后续调用更新那一条，不会新增。不传 `duration` 时倒计时保持不动，只有显式传入才重新开始计时。`duration: 0` 让这一条不自动关闭。
 
@@ -320,7 +322,7 @@ onBeforeUnmount(() => toast.clear())
 </script>
 ```
 
-### Closing
+### 关闭
 
 每次调用都返回最终 id。`toast.close(id)` 关闭指定的那一条，`toast.clear()` 关闭当前全部。两者对 `duration: 0`、不会自动关闭的 toast 同样有效。
 
@@ -405,7 +407,7 @@ onBeforeUnmount(() => toast.clear())
 
 ## API
 
-### Options
+### 选项
 
 | 名称        | 说明                                                        | 类型            | 默认值        |
 | ----------- | ----------------------------------------------------------- | --------------- | ------------- |
@@ -419,7 +421,7 @@ onBeforeUnmount(() => toast.clear())
 | `target`    | 用于查找最近主题的 overlay 容器。                           | `Element`       | -             |
 | `container` | 显式挂载容器（最高优先级）。                                | `HTMLElement`   | -             |
 
-### Methods
+### 方法
 
 | 名称                               | 说明                                                                   |
 | ---------------------------------- | ---------------------------------------------------------------------- |
@@ -496,7 +498,7 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 
 `toast.clear()` 的规则相同：队列里的条目一并取消，已挂载的全部关闭。
 
-### Props
+### 属性
 
 | 名称              | 说明                                                          | 类型            | 默认值        |
 | ----------------- | ------------------------------------------------------------- | --------------- | ------------- |
@@ -509,7 +511,7 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 | `visible`         | 是否可见。                                                    | `boolean`       | `false`       |
 | `toastId`         | 合并键；只能通过 property 设置，由 `toast()` 写入。           | `string`        | `''`          |
 
-### Events
+### 事件
 
 | 名称          | 说明                                           |
 | ------------- | ---------------------------------------------- |
@@ -529,7 +531,7 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 
 `startAutoClose()` 按当前 `duration` 重排自动关闭计时。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                            | 说明                                                               | 默认值 |
 | ------------------------------- | ------------------------------------------------------------------ | ------ |

@@ -1,5 +1,7 @@
 # Checkbox Group
 
+English | [简体中文](./checkbox-group.CN.md)
+
 A container for a group of `<web-ui-checkbox>`: it collapses the members' selected state into a `string[]`, dispatches `input` / `change` uniformly when it changes, and handles group-level disabling and required validation. As an attribute the value is a comma-separated string (`value="apple,cherry"`), while the JS side always reads an array.
 
 ## Samples

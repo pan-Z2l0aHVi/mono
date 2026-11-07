@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Checkbox Group" },
+  { label: 'p', content: "English | <a href=\"./checkbox-group.CN.md\">简体中文</a>" },
   { label: 'p', content: "A container for a group of <code>&lt;web-ui-checkbox></code>: it collapses the members' selected state into a <code>string[]</code>, dispatches <code>input</code> / <code>change</code> uniformly when it changes, and handles group-level disabling and required validation. As an attribute the value is a comma-separated string (<code>value=\"apple,cherry\"</code>), while the JS side always reads an array." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Checkbox group" },

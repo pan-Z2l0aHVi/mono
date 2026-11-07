@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Grouped Text" },
+  { label: 'p', content: "English | <a href=\"./grouped-text.CN.md\">简体中文</a>" },
   { label: 'p', content: "Grouped display: spread a long digit or text string into visible groups while \"select and copy\" still yields the <strong>original continuous string</strong>. It fits continuous identifiers that must stay usable after copying, such as bank card numbers, phone numbers, and large amounts." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Card number" },

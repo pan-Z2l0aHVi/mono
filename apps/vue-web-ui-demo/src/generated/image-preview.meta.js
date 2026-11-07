@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Image Preview" },
+  { label: 'p', content: "English | <a href=\"./image-preview.CN.md\">简体中文</a>" },
   { label: 'p', content: "Imperative image preview. Open it through <code>imagePreview()</code> and control it with the returned handle. Without <code>container</code>, the preview mounts into the overlay container of the root theme (<code>web-ui-theme</code>); when the page has no theme scope, it falls back to the global default container. Passing <code>target</code> resolves the nearest theme scope from that element instead." },
   { label: 'p', content: "The tables below list the <code>imagePreview()</code> options and the members of the returned handle." },
   { label: 'h2', id: 'section-2', content: "Samples" },

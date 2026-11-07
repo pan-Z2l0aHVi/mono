@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Option" },
+  { label: 'p', content: "English | <a href=\"./option.CN.md\">简体中文</a>" },
   { label: 'p', content: "An option inside <code>&lt;web-ui-select></code> or <code>&lt;web-ui-autocomplete></code>. <code>value</code> is the value submitted when the item is selected, <code>label</code> is the displayed text (defaults to the element's own text content), and the <code>prefix</code> / <code>suffix</code> slots hold icons at either end." },
   { label: 'p', content: "It dispatches no events aimed at consumers. The registration handshake emitted on mount, update, and unmount is consumed only by the parent container. The parent writes the selected state back through <code>selected</code>." },
   { label: 'h2', id: 'section-2', content: "Samples" },

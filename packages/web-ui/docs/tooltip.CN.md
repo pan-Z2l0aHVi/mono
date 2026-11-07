@@ -1,10 +1,12 @@
 # Tooltip
 
+[English](./tooltip.md) | 简体中文
+
 tooltip 的显示手势由 `trigger` 声明，默认仅由指针悬停触发。`content` 属性提供纯文本，`content` 插槽可以放更丰富的内容。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 默认插槽是触发器。`content` 属性给出纯文本提示。
 
@@ -64,7 +66,7 @@ function onOpenChange(event: WebUiEvent<WebUiTooltip, 'open-change'>) {
 </script>
 ```
 
-### Rich content
+### 富文本内容
 
 `content` 插槽替代纯文本，可以放多行文本、粗体或行内代码。插槽元素必须是 tooltip 的直接子节点，并带 `slot="content"`。默认插槽里的触发器不要写 `slot` 属性。
 
@@ -130,7 +132,7 @@ const last = ref('-')
 </script>
 ```
 
-### Delay
+### 延迟
 
 `show-delay` / `hide-delay` 控制指针进出时的显示与隐藏延迟，`0` 表示不等待。`disabled` 关掉所有触发：指针、焦点和点击都不会让提示出现，已经显示的提示会立刻收起，等待中的延迟被取消；禁用期间不派发 `open-change`。
 
@@ -192,7 +194,7 @@ const last = ref('-')
 </script>
 ```
 
-### Trigger modes
+### 触发方式
 
 `trigger` 是手势集合，用空格或逗号分隔，可写 `click`、`hover`、`focus`、`none`。默认 `hover`，由指针悬停打开。换成 `trigger="click"`，提示改由点触发器切换、点提示外面收起；手势可以并排写：`trigger="hover focus click"`。
 
@@ -272,7 +274,7 @@ const last = ref('—')
 
 ## API
 
-### Props
+### 属性
 
 | 名称               | 说明                                                                                      | 类型               | 默认值    |
 | ------------------ | ----------------------------------------------------------------------------------------- | ------------------ | --------- |
@@ -288,20 +290,20 @@ const last = ref('—')
 | `portal`           | 在主题的 overlay 容器中渲染。                                                             | `boolean`          | `false`   |
 | `overlayContainer` | 显式指定面板挂载的 overlay 容器（property）。                                             | `OverlayContainer` | —         |
 
-### Events
+### 事件
 
 | 名称          | 说明                                                                                      |
 | ------------- | ----------------------------------------------------------------------------------------- |
 | `open-change` | 手势或 `show()` / `hide()` 改变可见性时派发，`detail.open` 是当前状态；写 `open` 不派发。 |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                |
 | --------- | ----------------------------------- |
 | `default` | 触发器。                            |
 | `content` | 提示面板内容，替代 `content` 属性。 |
 
-### Methods
+### 方法
 
 | 名称       | 说明                                               |
 | ---------- | -------------------------------------------------- |
@@ -330,7 +332,7 @@ const last = ref('—')
 
 打开时把提示文本写到触发器可聚焦元素的 `aria-description`，包括该元素内部的原生控件；关闭时还原原值。读屏描述不使用 `aria-describedby`：面板和触发器通常位于不同的 DOM 树中，IDREF 无法跨树解析。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                      | 说明         | 默认值  |
 | ------------------------- | ------------ | ------- |

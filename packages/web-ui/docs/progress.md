@@ -1,5 +1,7 @@
 # Progress
 
+English | [简体中文](./progress.CN.md)
+
 progress / progress indicator: a linear track for completed work, with an indeterminate mode for operations whose percentage is not known yet.
 
 ## Samples

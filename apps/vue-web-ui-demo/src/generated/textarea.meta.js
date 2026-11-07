@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Textarea" },
+  { label: 'p', content: "English | <a href=\"./textarea.CN.md\">简体中文</a>" },
   { label: 'p', content: "A multiline text input with a clear button, autosize, and prefix/suffix slots. Focus lands on the native textarea; <code>focus()</code> / <code>blur()</code> / <code>select()</code> act on it." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

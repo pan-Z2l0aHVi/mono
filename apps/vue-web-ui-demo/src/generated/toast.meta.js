@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Toast" },
+  { label: 'p', content: "English | <a href=\"./toast.CN.md\">简体中文</a>" },
   { label: 'p', content: "An imperative toast. Call <code>toast()</code> to create one and get its id, then <code>toast.close(id)</code> to close it. Calling again with the same <code>id</code> updates that toast and does not create a new one. The tables below list the options of <code>toast()</code>, the imperative entry points, and the attributes, events, and methods of the <code>&lt;web-ui-toast></code> element itself." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Shortcuts" },

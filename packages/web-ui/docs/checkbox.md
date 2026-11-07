@@ -1,5 +1,7 @@
 # Checkbox
 
+English | [简体中文](./checkbox.CN.md)
+
 A single checkbox that toggles with Enter / Space. It integrates with a native `<form>` and submits `value` into `FormData` when checked.
 
 ## Samples

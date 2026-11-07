@@ -1,5 +1,7 @@
 # Slider
 
+English | [简体中文](./slider.CN.md)
+
 Range slider with tick marks and a vertical orientation. The keyboard supports the arrow keys, Home / End, and PageUp / PageDown. Every instance should provide a distinguishing name through `aria-label` or `aria-labelledby`.
 
 ## Samples

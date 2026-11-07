@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Input Number" },
+  { label: 'p', content: "English | <a href=\"./input-number.CN.md\">简体中文</a>" },
   { label: 'p', content: "Numeric input with a step button on each side, supporting <code>min</code> / <code>max</code> / <code>step</code> / <code>precision</code>; out-of-range and invalid input converge back to a valid value at the commit point." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

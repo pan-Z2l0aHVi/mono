@@ -1,5 +1,7 @@
 # Collapse
 
+English | [简体中文](./collapse.CN.md)
+
 A collapse panel packs the trigger and the content into one element. Put the trigger in the default slot and the content in the `content` slot.
 
 When the user clicks the trigger, the component updates `open` and then dispatches `open-change`. The handler writes `detail.open` back into page state, so the page state matches the panel.

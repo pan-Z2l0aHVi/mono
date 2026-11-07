@@ -1,5 +1,7 @@
 # Segmented
 
+English | [简体中文](./segmented.CN.md)
+
 segmented is a single-select button group whose children are `<web-ui-segmented-trigger>` elements. `value` synchronizes the selected item, and the group integrates with a native `<form>`.
 
 ## Samples

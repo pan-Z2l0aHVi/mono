@@ -1,5 +1,7 @@
 # Shake
 
+English | [简体中文](./shake.CN.md)
+
 Imperative shake. `shake()` moves a target a few times and back to where it started, which signals "not allowed" or "handle this first". Use it when a form still has unsaved content and the user is leaving, or when attention needs to return to a field. It is a function imported straight from `@greypan/web-ui`.
 
 Without `target` it shakes the whole page. Pass `target` to shake only that one box. The horizontal amplitude comes from `--wui-shake-x-distance` (default `12px`), the vertical one from `--wui-shake-y-distance` (default `12px`, the same as the horizontal one), and the total duration from `--wui-shake-duration` (default `420ms`). All three can also be overridden per call through options.

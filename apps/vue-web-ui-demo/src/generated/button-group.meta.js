@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Button Group" },
+  { label: 'p', content: "English | <a href=\"./button-group.CN.md\">简体中文</a>" },
   { label: 'p', content: "Groups several <code>&lt;web-ui-button></code> elements into one. The group does two things: it makes adjacent buttons read as one control (a shared glass base, dividers between adjacent buttons) and it sets the layout direction. It does not manage selection state and does not change members' own events or form behavior. A member's own <code>size</code> is ignored inside the group, where every member renders 30px high." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Horizontal group" },

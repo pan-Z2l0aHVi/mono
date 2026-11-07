@@ -1,5 +1,7 @@
 # Popover
 
+English | [简体中文](./popover.CN.md)
+
 A popover anchored to a trigger element. `trigger` declares which gestures can open and close it, as a set of `click`, `hover`, `focus`, and `none`. The `trigger` slot holds the trigger and the default slot holds the panel content.
 
 ## Samples

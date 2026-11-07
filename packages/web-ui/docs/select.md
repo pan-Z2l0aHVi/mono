@@ -1,5 +1,7 @@
 # Select
 
+English | [简体中文](./select.CN.md)
+
 Select dropdown. The default slot holds `<web-ui-option>` candidates, and the `trigger` slot can replace the default trigger area. The component supports keyboard navigation and Portal.
 
 ## Samples

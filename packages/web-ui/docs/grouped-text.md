@@ -1,5 +1,7 @@
 # Grouped Text
 
+English | [简体中文](./grouped-text.CN.md)
+
 Grouped display: spread a long digit or text string into visible groups while "select and copy" still yields the **original continuous string**. It fits continuous identifiers that must stay usable after copying, such as bank card numbers, phone numbers, and large amounts.
 
 ## Samples

@@ -1,5 +1,7 @@
 # Segmented Trigger
 
+English | [简体中文](./segmented-trigger.CN.md)
+
 A segment button inside `<web-ui-segmented>`. `value` is the segment value it represents; the parent segmented writes the selected state back through `checked`; form submission is the parent's job.
 
 A click or Enter / Space dispatches `change`. Inside a group the event does not bubble; the parent dispatches one group-level event instead. Outside a group it bubbles and crosses the component boundary.

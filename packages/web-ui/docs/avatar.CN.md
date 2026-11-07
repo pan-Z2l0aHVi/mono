@@ -1,10 +1,12 @@
 # Avatar
 
+[English](./avatar.md) | 简体中文
+
 avatar，按 `src` 画图片；没有图片或图片加载失败时回退到 `name` 的首字母，`name` 也留空时回退到默认图标。
 
-## Samples
+## 示例
 
-### Image
+### 图片
 
 `src` 是图片 URL，`alt` 同时给出图片替代文本与无障碍名称，`size` 决定头像边长（px）。
 
@@ -40,7 +42,7 @@ const photo =
 </script>
 ```
 
-### Initials fallback
+### 首字母回退
 
 没有 `src` 时不画图片，改为从 `name` 取首字母：按空白切词，最多取前两个词，各取第一个字符并转成大写，所以 `Grey Pan` 是 GP、`Ada` 只有 A、`John Michael Doe` 截到 JM。`name` 同时充当无障碍名称。
 
@@ -66,7 +68,7 @@ export default function Demo() {
 </template>
 ```
 
-### Icon fallback
+### 图标回退
 
 `src` 与 `name` 都留空、`default` 插槽也空着时，回退到内置的 `<web-ui-icon>` 人形图标。这个图标没有名字可播报，整个头像因此按装饰性内容处理，详见下面的行为说明。
 
@@ -92,7 +94,7 @@ export default function Demo() {
 </template>
 ```
 
-### Sizes
+### 尺寸
 
 `size` 是唯一的尺寸设置，决定头像边长（px）；回退内容跟着它缩放。
 
@@ -126,7 +128,7 @@ export default function Demo() {
 </template>
 ```
 
-### Square
+### 正方形
 
 `shape="square"` 把圆角压在 12px 上限内（实际取 `min(12px, size × 0.25)`，默认 40px 边长时是 10px）的方块，图片、首字母与默认图标三种内容共用这个形状。非法值不参与渲染，会被规范回 `circle`。
 
@@ -162,7 +164,7 @@ const photo =
 </script>
 ```
 
-### Load failure
+### 加载失败
 
 图片触发 `error` 后，组件按回退处理：有 `name` 就显示首字母，没有就显示默认图标，不会留下破图。回退判定按 `src` 生效：换掉 `src` 时，上一次的失败记录会被清掉。
 
@@ -186,7 +188,7 @@ export default function Demo() {
 </template>
 ```
 
-### Custom fallback content
+### 自定义回退内容
 
 `default` 插槽用来替换首字母或默认图标，例如用工号、等级标记填上这个位置。插槽内容按元素子节点判定，只要有一个元素就生效，并且优先于 `name`。
 
@@ -222,7 +224,7 @@ export default function Demo() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称    | 说明                                | 类型                   | 默认值     |
 | ------- | ----------------------------------- | ---------------------- | ---------- |
@@ -232,7 +234,7 @@ export default function Demo() {
 | `size`  | avatar 边长（px）。                 | `number`               | `40`       |
 | `shape` | 形状：`circle`（默认）或 `square`。 | `'circle' \| 'square'` | `'circle'` |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                       |
 | --------- | ------------------------------------------ |

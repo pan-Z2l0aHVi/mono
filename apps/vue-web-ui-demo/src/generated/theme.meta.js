@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Theme" },
+  { label: 'p', content: "English | <a href=\"./theme.CN.md\">简体中文</a>" },
   { label: 'p', content: "The theme provider defines foundation, color, layer, shadow, and motion tokens inside its own subtree, and it is that subtree's theme overlay container." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Light and dark" },

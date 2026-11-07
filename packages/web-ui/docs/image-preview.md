@@ -1,5 +1,7 @@
 # Image Preview
 
+English | [简体中文](./image-preview.CN.md)
+
 Imperative image preview. Open it through `imagePreview()` and control it with the returned handle. Without `container`, the preview mounts into the overlay container of the root theme (`web-ui-theme`); when the page has no theme scope, it falls back to the global default container. Passing `target` resolves the nearest theme scope from that element instead.
 
 The tables below list the `imagePreview()` options and the members of the returned handle.

@@ -1,10 +1,12 @@
 # Textarea
 
+[English](./textarea.md) | 简体中文
+
 多行文本输入框，支持清除按钮、自动高度与前后缀插槽。焦点落在原生 textarea 上，`focus()` / `blur()` / `select()` 都作用于它。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 `rows` 决定初始显示行数（默认 3 行），`placeholder` 在空值时显示。不接 `input` 时，组件自己持有内容。要由页面同步，就写 `value` 并接住 `input`，见下面的受控值与事件。
 
@@ -30,7 +32,7 @@ export default function Demo() {
 </template>
 ```
 
-### Autosize
+### 自动调整尺寸
 
 `autosize` 让高度随内容变化，同时关掉原生拖拽手柄。
 
@@ -56,7 +58,7 @@ export default function Demo() {
 </template>
 ```
 
-### Prefix and suffix
+### 前缀和后缀
 
 `prefix` / `suffix` 插槽放图标或文字，它们与首行文字顶对齐；没有可见标签时用 `aria-label` 给出无障碍名称（`aria-labelledby` 的限制见下面的行为说明）。
 
@@ -96,7 +98,7 @@ import { lucideFileText } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Controlled value and character count
+### 受控值与字符计数
 
 `value` 是输入值也是表单提交值。`input` 每敲一个字（含换行）派发一次；`change` 与内部原生控件对齐，值改动后失焦时转发一次。`maxlength` 限制可输入长度，计数器由页面按 `value` 自己算。
 
@@ -156,7 +158,7 @@ const committed = ref('')
 </script>
 ```
 
-### Clear button
+### 清除按钮
 
 `clearable` 只在有值且未设置 `disabled` 或 `readonly` 时画出清除按钮；空值、禁用或只读时不画。清除按钮对齐首行而不是整框垂直居中；点它清空值并派发 `input`。`full` 让控件占满父容器宽度，`--wui-textarea-width` 只在非 `full` 时生效。
 
@@ -180,7 +182,7 @@ export default function Demo() {
 </template>
 ```
 
-### Disabled and readonly
+### 禁用和只读
 
 `disabled` 关掉输入、校验与清除操作，宿主整体降到四成不透明度。`readonly` 保留可读、可全选与可复制，仍可拖拽右下角改高度，但不接受输入，并收起清除按钮。
 
@@ -210,7 +212,7 @@ export default function Demo() {
 </template>
 ```
 
-### Borderless
+### 无边框
 
 `borderless` 移除边框、背景、模糊、阴影与 glass 描边环，只留内边距与焦点环，圆角仍取 `--wui-radius-menu`。外层自己画容器时用这一形态。
 
@@ -246,7 +248,7 @@ export default function Demo() {
 </template>
 ```
 
-### Form value
+### 表单值
 
 `name` 是字段名，提交值就是当前内容。`required` 在未填时拦下提交（`valueMissing`），`minlength` 在字数不够时拦下（`tooShort`）；两条判定都交给宿主 `<form>`。
 
@@ -336,7 +338,7 @@ function reset() {
 </script>
 ```
 
-### Focus and select all
+### 聚焦与全选
 
 `focus()` / `blur()` / `select()` 都作用于原生 textarea，三条在 `disabled` 下都不产生效果。宿主自身没有 Tab 位，按 Tab 进来的始终是原生 textarea。
 
@@ -390,7 +392,7 @@ const field = useTemplateRef<WebUiTextarea>('field')
 </script>
 ```
 
-### CSS variables
+### CSS 变量
 
 `--wui-textarea-width` 决定输入区宽度（`full` 时被 `100%` 接管），`--wui-textarea-clear-color` 决定清除按钮的颜色。
 
@@ -436,7 +438,7 @@ export default function Demo() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称               | 说明                                                             | 类型                  | 默认值  |
 | ------------------ | ---------------------------------------------------------------- | --------------------- | ------- |
@@ -458,7 +460,7 @@ export default function Demo() {
 | `aria-labelledby`  | 无障碍标签引用。                                                 | `string \| undefined` | —       |
 | `value`            | 输入值，也是表单提交值。                                         | `string`              | `''`    |
 
-### Events
+### 事件
 
 | 名称     | 说明                                                     |
 | -------- | -------------------------------------------------------- |
@@ -467,14 +469,14 @@ export default function Demo() {
 | `focus`  | 内部原生控件的 `focus`，组合但不冒泡：宿主上要捕获监听。 |
 | `blur`   | 内部原生控件的 `blur`，与 `focus` 同一条路径。           |
 
-### Slots
+### Slot
 
 | 名称     | 说明                                            |
 | -------- | ----------------------------------------------- |
 | `prefix` | textarea 左侧的图标或文字，与首行对齐。         |
 | `suffix` | textarea 右侧的图标或文字；清除按钮画在它之前。 |
 
-### Methods
+### 方法
 
 | 名称              | 说明                                                         |
 | ----------------- | ------------------------------------------------------------ |
@@ -516,7 +518,7 @@ export default function Demo() {
 
 清除按钮与首行对齐，在多行框里也贴着第一行。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                         | 说明                                  | 默认值                           |
 | ---------------------------- | ------------------------------------- | -------------------------------- |

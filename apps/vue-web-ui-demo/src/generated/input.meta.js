@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Input" },
+  { label: 'p', content: "English | <a href=\"./input.CN.md\">简体中文</a>" },
   { label: 'p', content: "A text input with a clear button and prefix/suffix slots that integrates with the native <code>&lt;form></code>. The host itself is not focusable, so focus lands on the native input; <code>focus()</code> / <code>blur()</code> / <code>select()</code> act on it." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

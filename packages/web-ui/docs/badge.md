@@ -1,5 +1,7 @@
 # Badge
 
+English | [简体中文](./badge.CN.md)
+
 badge / notification count: stacks a `count` corner badge on one corner of the default slot content; `dot` mode shows only a dot.
 
 ## Samples

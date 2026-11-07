@@ -1,10 +1,12 @@
 # Layout
 
+[English](./layout.md) | 简体中文
+
 响应式页面布局：可选全宽横幅、桌面端可折叠侧边栏，移动端默认使用抽屉。设置 `no-sidebar` 可去掉整块侧边栏，只保留内容布局。页面本身滚动；横幅滚出后，桌面端侧边栏和头部固定在视口内。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 五个插槽各占一区。`banner` 在主体上方全宽，`header` 是内容区的吸顶头部，`sidebar` 是侧边栏卡片内容，默认插槽是主内容区，`tabbar` 是底部栏。
 
@@ -84,7 +86,7 @@ const open = ref(false)
 </script>
 ```
 
-### No sidebar
+### 无侧边栏
 
 `no-sidebar` 把侧边栏结构整块从布局里去掉：桌面端没有侧栏区域与收起按钮，窄视口也没有头部开关与抽屉，只留下 `banner` / `header` / 默认内容 / `tabbar` 四个分区。
 
@@ -128,7 +130,7 @@ export default function Demo() {
 </template>
 ```
 
-### Collapsible sidebar
+### 可折叠侧边栏
 
 `sidebar-collapsed` 是桌面端侧边栏的受控收起状态。它只把桌面端 aside 收窄到 `collapsed-width`，不影响移动端抽屉。
 
@@ -206,7 +208,7 @@ const open = ref(false)
 </script>
 ```
 
-### Resize by dragging
+### 拖拽调整尺寸
 
 开启 `sidebar-resizable` 后，桌面端侧边栏右缘出现宽度调整手柄（收起状态下隐藏），拖拽实时改宽。键盘聚焦后可用 ←/→ 以 16px 步进（Shift 加速到 64px），Home/End 跳到上下限。
 
@@ -290,7 +292,7 @@ const open = ref(false)
 </script>
 ```
 
-### Mobile drawer and viewport detection
+### 移动端 drawer 与视口检测
 
 `sidebar-open` 是移动端抽屉的受控可见性，与 `sidebar-collapsed` 相互独立。
 
@@ -389,7 +391,7 @@ const mobile = ref(false)
 
 ## API
 
-### Props
+### 属性
 
 | 名称                  | 说明                                                                                                                                                               | 类型               | 默认值    |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | --------- |
@@ -406,7 +408,7 @@ const mobile = ref(false)
 | `sidebar-min-width`   | 拖拽调整的下限（px）；默认为 `collapsed-width`。                                                                                                                   | `string`           | —         |
 | `sidebar-max-width`   | 拖拽调整的上限（px）；限制在视口一半以内，内置上限优先。                                                                                                           | `string`           | —         |
 
-### Events
+### 事件
 
 | 名称                       | 说明                                                                                                   |
 | -------------------------- | ------------------------------------------------------------------------------------------------------ |
@@ -415,7 +417,7 @@ const mobile = ref(false)
 | `sidebar-width-change`     | 拖拽释放或键盘 Enter 提交调整后请求更新宽度；`detail.width` 是最终像素宽度。                           |
 | `mobile-change`            | 不是请求：报告 layout 自己的派生视口状态，`detail.mobile` 与 `mobile` 属性同值，每次跨断点只派发一次。 |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                                                                    |
 | --------- | --------------------------------------------------------------------------------------- |
@@ -528,7 +530,7 @@ const mobile = ref(false)
 
 它与 dialog、抽屉、toast 共用的 `--wui-color-surface-overlay` 相互独立，侧边栏可以采用不同表面。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                                | 说明                                                            | 默认值             |
 | ----------------------------------- | --------------------------------------------------------------- | ------------------ |

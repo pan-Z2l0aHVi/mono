@@ -1,5 +1,7 @@
 # SVG Draw Lines
 
+English | [简体中文](./svg-draw-lines.CN.md)
+
 An SVG line-drawing animation. The component animates the original elements in the slot directly and does not clone the DOM. By default it draws in; `replay({ reverse: true })` retracts along the same path.
 
 ## Samples

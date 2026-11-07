@@ -11,9 +11,11 @@ describe('meta 装载（本端 glob 接线；引擎判据在 kit 的 examples �
 
   it('中文与英文各拿自己那一份语料', async () => {
     const [zh, en] = await Promise.all([loadMeta('zh-CN', 'badge'), loadMeta('en', 'badge')])
-    const firstParagraph = (nodes: MetaNode[]) => nodes.find(node => node.label === 'p')
-    expect(firstParagraph(zh)?.content).toContain('角标')
-    expect(firstParagraph(en)?.content).toContain('corner badge')
+    const paragraphs = (nodes: MetaNode[]) => nodes.filter(node => node.label === 'p').map(node => node.content ?? '')
+    expect(paragraphs(zh).some(text => text.includes('角标'))).toBe(true)
+    expect(paragraphs(en).some(text => text.includes('corner badge'))).toBe(true)
+    expect(paragraphs(zh)[0]).toContain('href="./badge.md"')
+    expect(paragraphs(en)[0]).toContain('href="./badge.CN.md"')
   })
 
   it('loadMetaDocs 按组件名聚合成 Map', async () => {

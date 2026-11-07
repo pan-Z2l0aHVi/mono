@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Popover" },
+  { label: 'p', content: "English | <a href=\"./popover.CN.md\">简体中文</a>" },
   { label: 'p', content: "A popover anchored to a trigger element. <code>trigger</code> declares which gestures can open and close it, as a set of <code>click</code>, <code>hover</code>, <code>focus</code>, and <code>none</code>. The <code>trigger</code> slot holds the trigger and the default slot holds the panel content." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

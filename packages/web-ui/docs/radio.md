@@ -1,5 +1,7 @@
 # Radio
 
+English | [简体中文](./radio.CN.md)
+
 A single radio button that shares the selection-control box model rules with `<web-ui-checkbox>`; `<web-ui-radio-group>` is responsible for keeping a single selection across a set of options.
 
 ## Samples

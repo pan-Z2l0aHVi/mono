@@ -1,10 +1,12 @@
 # Dropdown
 
+[English](./dropdown.md) | 简体中文
+
 dropdown 菜单。`trigger` 插槽放触发器，其余子元素作为菜单项渲染进 overlay 面板；支持分隔线、分组标题与多级子菜单。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 `trigger` 里放可交互元素，其余子元素作为菜单项渲染进 overlay 面板。`divider` 用来分组；`disabled` 的项留在列表里，但无法选中。
 
@@ -40,7 +42,7 @@ export default function Demo() {
 </template>
 ```
 
-### Icons and shortcuts
+### 图标和快捷键
 
 `prefix` / `suffix` 插槽装饰菜单项两侧，`dropdown-header` 给一组项加标题。快捷键只是文本，组件不会解析按键。
 
@@ -92,7 +94,7 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Multi-level submenu
+### 多级子菜单
 
 在菜单项上写 `submenu`，嵌套在它里面的项就成为下一级。悬停或方向键可以进入下一级。
 
@@ -144,7 +146,7 @@ export default function Demo() {
 </template>
 ```
 
-### Trigger modes
+### 触发方式
 
 `trigger` 是手势集合，用空格或逗号分隔，可写 `click`、`hover`、`focus`、`none`，默认 `click`。`hover` 由指针进出开合，指针从触发器移进面板不会收起；`focus` 在键盘聚焦（`:focus-visible`）时展开；手势可以并排写。
 
@@ -208,7 +210,7 @@ const last = ref('—')
 </script>
 ```
 
-### Controlled open state
+### 受控开启状态
 
 `open` 由页面持有。外部按钮直接改它（直接写 `open` 是静默的）；触发器、Escape 与点外面通过 `open-change` 回写。点菜单项不会自动关闭，需要在项的原生 `click` 里回写。
 
@@ -296,7 +298,7 @@ function select(label: string) {
 </script>
 ```
 
-### Placement
+### 位置
 
 `placement` 默认 `bottom-start`；空间不够时面板会自动翻转或平移。
 
@@ -370,7 +372,7 @@ export default function Demo() {
 </template>
 ```
 
-### Imperative
+### 命令式调用
 
 `show()` 打开菜单，`hide()` 关闭全部层级。两者都派发 `open-change`。`disabled` 会同时阻止触发器点击与 `show()`。
 
@@ -452,7 +454,7 @@ const menu = useTemplateRef<WebUiDropdown>('menu')
 
 ## API
 
-### Props
+### 属性
 
 | 名称             | 说明                                                                                      | 类型        | 默认值           |
 | ---------------- | ----------------------------------------------------------------------------------------- | ----------- | ---------------- |
@@ -467,19 +469,19 @@ const menu = useTemplateRef<WebUiDropdown>('menu')
 | `hide-delay`     | 悬停收起的延迟（毫秒）；只影响 hover 来源。                                               | `number`    | `100`            |
 | `isOpen`         | 菜单当前是否打开（只读）。                                                                | `boolean`   | —                |
 
-### Events
+### 事件
 
 | 名称          | 说明                                                                                    |
 | ------------- | --------------------------------------------------------------------------------------- |
 | `open-change` | 手势或 `show()` / `hide()` 改变开合时派发，`detail.open` 是当前状态；写 `open` 不派发。 |
 
-### Slots
+### Slot
 
 | 名称      | 说明                     |
 | --------- | ------------------------ |
 | `trigger` | 触发器；请放可交互元素。 |
 
-### Methods
+### 方法
 
 | 名称       | 说明                                              |
 | ---------- | ------------------------------------------------- |
@@ -497,6 +499,6 @@ const menu = useTemplateRef<WebUiDropdown>('menu')
 
 `open` 可以直接赋值；该写入是静默的，不派发 `open-change`。
 
-### trigger ARIA
+### trigger 的 ARIA 属性
 
 `aria-haspopup="menu"`、`aria-expanded` 与 `aria-controls`（指向根菜单面板）回写到 `trigger` 插槽的第一个元素。`trigger` 插槽请放可交互元素。

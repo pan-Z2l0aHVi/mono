@@ -1,10 +1,12 @@
 # Autocomplete
 
+[English](./autocomplete.md) | 简体中文
+
 可输入并过滤候选的单值选择器。输入的文本按 `option` 的标签过滤候选；选中后，组件把标签回填到输入框，并把该项的值暴露为只读的 `selected-value`。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 `value` 是当前输入文本，由页面持有。键入时按标签过滤候选（默认 `contains`）；没有可展示的内容时面板保持关闭。选中后，文本回填为该项标签，`selected-value` 给出该项的值。
 
@@ -71,7 +73,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### Filter modes
+### 筛选模式
 
 `filter` 取 `contains`（默认）、`prefix` 或 `none`。前两者按标签文本包含或前缀匹配；`none` 关闭过滤，候选始终全量列出。
 
@@ -141,7 +143,7 @@ function onModeChange(event: WebUiEvent<WebUiSelect, 'change'>) {
 </script>
 ```
 
-### change and selected-value
+### change 事件和 selected-value
 
 选中候选后，`selected-value` 是该项的值；输入与任何标签都不完全一致时，它清空。在 `input` 里读它要等一帧（`requestAnimationFrame`），在 `change` 里读到的才是当次提交的值。
 
@@ -235,7 +237,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### Trigger modes
+### 触发方式
 
 `trigger` 是手势集合，用空格或逗号分隔，可写 `click`、`hover`、`focus`、`none`，默认 `click`。输入框的点击只打开、不关闭；再次点击不会收起，关闭靠点外面、Escape 或 `hide()`。`hover` 由指针进出开合，`focus` 在键盘聚焦（`:focus-visible`）时展开；手势可以并排写。
 
@@ -307,7 +309,7 @@ const last = ref('—')
 </script>
 ```
 
-### Custom trigger slot
+### 自定义 trigger slot
 
 把可编辑组件放进 `trigger` 插槽即可替换默认输入框。多行触发器保留 Enter 换行语义，关闭面板改用 Escape 或失焦。`filter="none"` 让候选始终全量列出。`focus()` 落在 `web-ui-textarea` 内部的原生控件上。
 
@@ -361,7 +363,7 @@ const field = useTemplateRef<WebUiAutocomplete>('field')
 </script>
 ```
 
-### Allow custom values
+### 允许自定义值
 
 开启 `allow-custom-value` 后，输入不在候选中的文本也能提交。按 Enter 时，输入原文作为自定义值提交，面板随之关闭，`change` 触发，`selected-value` 保持为空。过滤后没有可展示的内容时，面板不展开，Enter 仍可提交。
 
@@ -423,7 +425,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 </script>
 ```
 
-### Disabled and readonly
+### 禁用和只读
 
 `disabled` 与 `readonly` 都不接受输入，也不展开面板；预填的 `value` 仍然照常显示。两者在必填校验上都按通过处理。
 
@@ -467,7 +469,7 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 ## API
 
-### Props
+### 属性
 
 | 名称                 | 说明                                                                                      | 类型                  | 默认值           |
 | -------------------- | ----------------------------------------------------------------------------------------- | --------------------- | ---------------- |
@@ -492,7 +494,7 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 | `open`               | 声明式开关；直接写入静默，不派发 `open-change`。                                          | `boolean`             | `false`          |
 | `isOpen`             | 当前是否打开（只读）。                                                                    | `boolean`             | —                |
 
-### Events
+### 事件
 
 | 名称          | 说明                                                                                    |
 | ------------- | --------------------------------------------------------------------------------------- |
@@ -502,14 +504,14 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 | `blur`        | 触发器失去焦点时触发。                                                                  |
 | `open-change` | 手势或 `show()` / `hide()` 改变开合时派发，`detail.open` 是当前状态；写 `open` 不派发。 |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                                                      |
 | --------- | ------------------------------------------------------------------------- |
 | `trigger` | 自定义触发区域内容，替换默认输入框。                                      |
 | `default` | 投影 `<web-ui-option>` 候选；其他节点同样算面板内容，可用来放自定义空态。 |
 
-### Methods
+### 方法
 
 | 名称       | 说明                                                                                                                                      |
 | ---------- | ----------------------------------------------------------------------------------------------------------------------------------------- |
@@ -533,7 +535,7 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 启用 `portal` 的面板在创建时读取宿主上的这些变量值；更新宿主后需重新打开面板才会生效。
 
-### Trigger slot
+### trigger slot
 
 默认触发器是一个 `web-ui-input`。
 
@@ -567,7 +569,7 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 
 组件不会自动创建选项，也不会去掉原文的首尾空白。命中禁用选项的文本不会绕过禁用语义，也不会派生为已选选项。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                            | 说明                 | 默认值  |
 | ------------------------------- | -------------------- | ------- |

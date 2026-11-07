@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Editable Text" },
+  { label: 'p', content: "English | <a href=\"./editable-text.CN.md\">简体中文</a>" },
   { label: 'p', content: "An inline plain-text editor. Click the text to edit it in place; Enter and blur commit, and only Escape cancels. Entering edit mode does not shift the layout." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

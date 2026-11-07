@@ -1,5 +1,7 @@
 # Back Top
 
+English | [简体中文](./back-top.CN.md)
+
 A back-to-top button (`web-ui-back-top`) appears in the corner once the scroll position reaches `threshold`. Click it, or press Enter / Space, to return to the top.
 
 By default it scrolls smoothly to the top. When the theme is set to `motion="reduced"`, or to `motion="system"` with a system preference for reduced motion, clicking or pressing Enter jumps to the top immediately.

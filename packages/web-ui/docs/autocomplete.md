@@ -1,5 +1,7 @@
 # Autocomplete
 
+English | [简体中文](./autocomplete.CN.md)
+
 A single-value selector that accepts input and filters candidates. Typed text filters candidates by `option` label. A selection fills the label back into the input and exposes that option's value as the readonly `selected-value`.
 
 ## Samples

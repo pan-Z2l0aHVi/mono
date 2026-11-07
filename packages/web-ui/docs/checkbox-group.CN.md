@@ -1,8 +1,10 @@
 # Checkbox Group
 
+[English](./checkbox-group.md) | 简体中文
+
 一组 `<web-ui-checkbox>` 的容器：把成员的选中状态收敛成 `string[]`，变化时统一派发 `input` / `change`，并负责组级禁用与必填校验。属性形式的值是逗号分隔的字符串（`value="apple,cherry"`），JS 侧读到的始终是数组。
 
-## Samples
+## 示例
 
 ### Checkbox group
 
@@ -45,7 +47,7 @@ function onInput(event: WebUiEvent<WebUiCheckboxGroup, 'input'>) {
 </script>
 ```
 
-### Direction
+### 方向
 
 `direction` 决定成员横排还是竖排，默认 `vertical`；非法值也回退到 `vertical`。
 
@@ -95,7 +97,7 @@ export default function Demo() {
 </template>
 ```
 
-### Member gap
+### 成员间距
 
 成员之间的间距取 `--wui-checkbox-group-gap`，默认经 `--wui-space-2` 解析成 8px。覆盖它只换间距，不改排列方向。
 
@@ -137,7 +139,7 @@ export default function Demo() {
 </template>
 ```
 
-### Group-level disabled and required
+### group 的禁用与必填状态
 
 `disabled` 关掉整组的交互，这个禁用态会下发给成员；`required` 让原生表单校验在组为空时拦截提交。
 
@@ -163,7 +165,7 @@ export default function Demo() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称        | 说明                                     | 类型                         | 默认值       |
 | ----------- | ---------------------------------------- | ---------------------------- | ------------ |
@@ -173,14 +175,14 @@ export default function Demo() {
 | `direction` | 成员排列方向。                           | `'horizontal' \| 'vertical'` | `'vertical'` |
 | `value`     | 当前选中的值集合。                       | `string[]`                   | `[]`         |
 
-### Events
+### 事件
 
 | 名称     | 说明                                                   |
 | -------- | ------------------------------------------------------ |
 | `input`  | 选中集合变化时触发，`currentTarget.value` 是新的数组。 |
 | `change` | 与 `input` 一起派发，语义上表示一次确认。              |
 
-### Slots
+### Slot
 
 | 名称      | 说明                              |
 | --------- | --------------------------------- |
@@ -198,7 +200,7 @@ web-ui-checkbox-group {
 }
 ```
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                       | 说明                 | 默认值               |
 | -------------------------- | -------------------- | -------------------- |

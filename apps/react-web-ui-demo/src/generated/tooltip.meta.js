@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Tooltip" },
+  { label: 'p', content: "English | <a href=\"./tooltip.CN.md\">简体中文</a>" },
   { label: 'p', content: "The gestures that show a tooltip are declared by <code>trigger</code>, which defaults to pointer hover only. The <code>content</code> attribute supplies plain text, and the <code>content</code> slot can hold richer content." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

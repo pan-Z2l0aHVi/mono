@@ -1,12 +1,14 @@
 # Collapse
 
+[English](./collapse.md) | 简体中文
+
 collapse 面板把触发器与内容放在同一个元素里：触发器放在默认插槽，要收起的内容放在 `content` 插槽。
 
 用户点击触发器时，组件先更新 `open`，再派发一次 `open-change`。调用方把 `detail.open` 写回页面状态后，页面状态才与面板一致。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 `open` 是唯一状态源，`content` 插槽放要收起的内容，默认插槽放触发器。
 
@@ -66,7 +68,7 @@ const open = ref(false)
 </script>
 ```
 
-### Without binding open
+### 不绑定 open
 
 组件自己会切换 `open`，所以完全不绑定也能用，只要提供默认插槽与 `content` 插槽。静态写 `open` 表示初始就展开。挂载时已经是 `open` 的面板直接显示展开状态，不播放进入动画。静态值只在挂载时生效一次，之后组件继续自己切换这个属性，页面不参与。
 
@@ -140,7 +142,7 @@ export default function Demo() {
 </template>
 ```
 
-### Trigger types
+### 触发类型
 
 交互语义来自默认插槽中的元素：原生 `<button>` 与 `<web-ui-button>` 自带 Enter / Space 激活和焦点。组件把 `aria-expanded` 写回默认插槽中的第一个元素，并在 `disabled` 时给该元素加上 `disabled`。
 
@@ -243,7 +245,7 @@ import { lucideChevronDown } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Disabled
+### 禁用
 
 `disabled` 让点击被忽略，并给触发器元素加上 `disabled`；取消禁用时移除该 attribute，回到触发器原本的禁用状态。它不改变已经展开的面板。`open` 与 `disabled` 同时存在时内容仍然可见，因为 `disabled` 只影响触发，不影响当前状态。
 
@@ -327,7 +329,7 @@ const disabled = ref(true)
 </script>
 ```
 
-### Events and methods
+### 事件和方法
 
 `open-change` 只在用户手势后派发，`detail.open` 是组件已经进入的状态。
 
@@ -424,7 +426,7 @@ function onOpenChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
 </script>
 ```
 
-### Closed state and scroll position
+### 关闭状态与滚动位置
 
 两个示例都停在关闭状态，可见高度都是 0，区别在于内容如何退出。
 
@@ -516,7 +518,7 @@ const rows = Array.from({ length: 20 }, (_, index) => `列表项 ${index + 1}`)
 </script>
 ```
 
-### Peek preview
+### peek 预览
 
 `peek` 让关闭状态保留固定长度而不是 0，露出的部分用来提示下面还有内容。它的关闭状态行为与 `keep-mounted` 相同：露出的部分同样不可点击，Tab 也进不去，要交互必须先展开。
 
@@ -601,7 +603,7 @@ const longRows = Array.from(
 </script>
 ```
 
-### Edge fade
+### 边缘渐隐
 
 露出区域的裁剪边缘有一段透明度渐隐，同一区域还叠加背景模糊，长度根据 `peek` 计算：默认比例为 0.4，上限为 `--wui-collapse-peek-edge-max`（`112px`）。
 
@@ -696,7 +698,7 @@ const cappedRows = Array.from(
 </script>
 ```
 
-### CSS variables
+### CSS 变量
 
 `--wui-collapse-peek-edge` 显式指定渐变长度，覆盖默认值；`--wui-collapse-peek-edge-blur` 是同一区域背景模糊的半径；`--wui-collapse-peek-edge-color` 是裁剪边缘处的渐变起点色（默认页面底色），向内容方向淡到全透明。
 
@@ -810,7 +812,7 @@ const edgeColorRows = Array.from(
 </script>
 ```
 
-### Horizontal
+### 水平
 
 `horizontal` 把动画轴从高度换成宽度，内容沿宽度展开，触发器与内容排在同一行。宿主是块级盒子，需要一行排列时在宿主上添加 flex，例如 `flex items-center gap-2`。
 
@@ -882,7 +884,7 @@ import { radixIconsPanelLeftMinimized } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Nested
+### 嵌套
 
 内层 collapse 放在外层的 `content` 插槽里。展开内层时，外层高度随内容增加。
 
@@ -984,7 +986,7 @@ function onOuterChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
 </script>
 ```
 
-### Multiple instances
+### 多个实例
 
 三条面板各自持有 `open`，页面用一个数组作为状态源：每条的 `open` 写成「它是否在数组里」，写回使用 `open-change` 的 `detail.open`。勾选「同时只留一条」后，由页面保证互斥。collapse 不负责分组，互斥由调用方管理状态，不是组件属性。
 
@@ -1088,7 +1090,7 @@ function setAt(title: string, value: boolean) {
 </script>
 ```
 
-### Content height changes
+### 内容高度变化
 
 展开高度由内容决定：内容变高或变矮时，面板随之伸缩，加一行、删一行都立即生效。
 
@@ -1183,7 +1185,7 @@ function removeRow() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称           | 说明                                                                                                       | 类型             | 默认值  |
 | -------------- | ---------------------------------------------------------------------------------------------------------- | ---------------- | ------- |
@@ -1193,20 +1195,20 @@ function removeRow() {
 | `keep-mounted` | 关闭后内容保持挂载但不可交互，保留滚动位置与尺寸。                                                         | `boolean`        | `false` |
 | `peek`         | 关闭时露出的尺寸（CSS 长度，如 `120px`、`6rem`）。设置后行为与 `keep-mounted` 相同。                       | `string \| null` | `null`  |
 
-### Events
+### 事件
 
 | 名称          | 说明                                                                                                                                                                                                                                             |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
 | `open-change` | 用户手势开合后的通知：`detail.open` 是组件已经设置的状态，调用方回写 `open` 让页面状态与实际一致。`show()` / `close()` / `toggle()` 与直接写 `open` 都不派发。事件 `bubbles` 且 `composed`，会经过祖先宿主，绑在祖先上要按 `event.target` 过滤。 |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                                                                                                                                                                                      |
 | --------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `default` | 触发器。整个插槽都是可点击区域，点任何一处都算一次开合；`aria-expanded` 回写到插槽中的第一个元素，`disabled` 时给该元素加上 `disabled`。`<web-ui-button>` 会把两者同步到内部 `button`，所以放可交互元素。 |
 | `content` | 折叠内容。关闭态内容不可交互；`keep-mounted` 时保持挂载，`peek` 时露出头部一段。                                                                                                                          |
 
-### Methods
+### 方法
 
 | 名称       | 说明                                                           |
 | ---------- | -------------------------------------------------------------- |
@@ -1277,7 +1279,7 @@ collapse 把 `aria-expanded` 写回默认插槽中的第一个元素，`disabled
 </web-ui-collapse>
 ```
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                             | 说明                                       | 默认值                        |
 | -------------------------------- | ------------------------------------------ | ----------------------------- |

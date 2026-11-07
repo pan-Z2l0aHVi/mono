@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Segmented Trigger" },
+  { label: 'p', content: "English | <a href=\"./segmented-trigger.CN.md\">简体中文</a>" },
   { label: 'p', content: "A segment button inside <code>&lt;web-ui-segmented></code>. <code>value</code> is the segment value it represents; the parent segmented writes the selected state back through <code>checked</code>; form submission is the parent's job." },
   { label: 'p', content: "A click or Enter / Space dispatches <code>change</code>. Inside a group the event does not bubble; the parent dispatches one group-level event instead. Outside a group it bubbles and crosses the component boundary." },
   { label: 'h2', id: 'section-2', content: "Samples" },

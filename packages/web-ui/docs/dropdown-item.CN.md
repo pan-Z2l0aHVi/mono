@@ -1,12 +1,14 @@
 # Dropdown Item
 
+[English](./dropdown-item.md) | 简体中文
+
 `<web-ui-dropdown>` 与 `<web-ui-context-menu>` 的菜单项。`disabled` 让它留在菜单里但不能选中，键盘导航与悬停都会跳过它。`prefix` / `suffix` 插槽放两端的图标与快捷键提示。`submenu` 把嵌套的子菜单挂到下一级。
 
 它自己不派发对外事件。菜单不读取 `value`；它留给调用方在原生 `click` 里读取。
 
-## Samples
+## 示例
 
-### Basic menu
+### 基础菜单
 
 菜单项是宿主的子元素，渲染进 overlay 面板。`disabled` 的项仍在列表里，只是无法选中。
 
@@ -38,7 +40,7 @@ export default function Demo() {
 </template>
 ```
 
-### Icons and shortcuts
+### 图标和快捷键
 
 `prefix` / `suffix` 是两个装饰插槽。`pl` 设置项的左内边距，用来让纯文本项与带图标的项左对齐。
 
@@ -86,7 +88,7 @@ import { lucideCopy, lucideTrash2 } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Items with a submenu
+### 含子菜单的选项
 
 `submenu` 把项变成下一级菜单的入口。嵌套在它里面的菜单项成为下一级，右侧显示展开箭头，鼠标悬停或方向键都可以进入。
 
@@ -124,7 +126,7 @@ export default function Demo() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称       | 说明                                                                 | 类型      | 默认值  |
 | ---------- | -------------------------------------------------------------------- | --------- | ------- |
@@ -133,7 +135,7 @@ export default function Demo() {
 | `value`    | 项的标识，由调用方在原生 `click` 里读取；菜单自己不读取。            | `string`  | `''`    |
 | `submenu`  | 作为子菜单入口：嵌套的菜单项成为下一级，右侧显示展开箭头。           | `boolean` | `false` |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                                             |
 | --------- | ---------------------------------------------------------------- |
@@ -141,7 +143,7 @@ export default function Demo() {
 | `default` | 项的文本；也是子菜单项的宿主位置。                               |
 | `suffix`  | 文本右侧的快捷键提示等；`submenu` 为真时这个位置被展开箭头占用。 |
 
-### Methods
+### 方法
 
 | 名称          | 说明                                   |
 | ------------- | -------------------------------------- |

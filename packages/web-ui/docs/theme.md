@@ -1,5 +1,7 @@
 # Theme
 
+English | [简体中文](./theme.CN.md)
+
 The theme provider defines foundation, color, layer, shadow, and motion tokens inside its own subtree, and it is that subtree's theme overlay container.
 
 ## Samples

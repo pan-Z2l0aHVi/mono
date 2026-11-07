@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Dropdown Item" },
+  { label: 'p', content: "English | <a href=\"./dropdown-item.CN.md\">简体中文</a>" },
   { label: 'p', content: "A menu item for <code>&lt;web-ui-dropdown></code> and <code>&lt;web-ui-context-menu></code>. <code>disabled</code> keeps it in the menu but unselectable, and both keyboard navigation and hover skip it. The <code>prefix</code> / <code>suffix</code> slots hold icons and shortcut hints at either end. <code>submenu</code> attaches a nested submenu at the next level." },
   { label: 'p', content: "It dispatches no events of its own. The menu does not read <code>value</code>; it is an identifier for your app to read in the native <code>click</code>." },
   { label: 'h2', id: 'section-2', content: "Samples" },

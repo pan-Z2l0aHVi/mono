@@ -1,5 +1,7 @@
 # Dropdown
 
+English | [简体中文](./dropdown.CN.md)
+
 A dropdown menu. The `trigger` slot holds the trigger, and the remaining children render as menu items inside the overlay panel. Dividers, group headers, and multi-level submenus are supported.
 
 ## Samples

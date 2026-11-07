@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Segmented" },
+  { label: 'p', content: "English | <a href=\"./segmented.CN.md\">简体中文</a>" },
   { label: 'p', content: "segmented is a single-select button group whose children are <code>&lt;web-ui-segmented-trigger></code> elements. <code>value</code> synchronizes the selected item, and the group integrates with a native <code>&lt;form></code>." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic controlled" },

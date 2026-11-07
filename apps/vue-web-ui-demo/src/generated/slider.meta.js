@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Slider" },
+  { label: 'p', content: "English | <a href=\"./slider.CN.md\">简体中文</a>" },
   { label: 'p', content: "Range slider with tick marks and a vertical orientation. The keyboard supports the arrow keys, Home / End, and PageUp / PageDown. Every instance should provide a distinguishing name through <code>aria-label</code> or <code>aria-labelledby</code>." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

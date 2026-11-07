@@ -1,5 +1,7 @@
 # Input
 
+English | [简体中文](./input.CN.md)
+
 A text input with a clear button and prefix/suffix slots that integrates with the native `<form>`. The host itself is not focusable, so focus lands on the native input; `focus()` / `blur()` / `select()` act on it.
 
 ## Samples

@@ -1,10 +1,12 @@
 # Dropdown Header
 
+[English](./dropdown-header.md) | 简体中文
+
 菜单里的分组标题。它是一段不参与交互的小字，给紧随其后的几个菜单项起名。它没有属性与事件，也不参与键盘导航。菜单只把焦点停在 `<web-ui-dropdown-item>` 上。分组标题常与 `<web-ui-dropdown-divider>` 一起用。
 
-## Samples
+## 示例
 
-### Group title
+### Group 标题
 
 标题给一组菜单项起名。它不可聚焦，也不可点击，键盘上下键会直接跳过。
 
@@ -42,7 +44,7 @@ export default function Demo() {
 
 ## API
 
-### Slots
+### Slot
 
 | 名称      | 说明             |
 | --------- | ---------------- |

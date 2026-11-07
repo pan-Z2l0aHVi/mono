@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Drawer" },
+  { label: 'p', content: "English | <a href=\"./drawer.CN.md\">简体中文</a>" },
   { label: 'p', content: "A side drawer built on the native <code>&lt;dialog></code>, with slide-in and slide-out animations and drag-to-close from the inner edge on any side. Use it for secondary content that relates to the current page but does not require leaving the page." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

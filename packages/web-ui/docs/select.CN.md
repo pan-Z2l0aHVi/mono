@@ -1,10 +1,12 @@
 # Select
 
+[English](./select.md) | 简体中文
+
 选择器下拉框。默认插槽放 `<web-ui-option>` 候选，`trigger` 插槽可以替换默认的触发区域。组件支持键盘导航与 Portal。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 `value` 由页面持有。用户选中某项后，`change` 会把 `event.currentTarget.value` 交回来；把它写回 `value`，触发器的文本就会更新。不写 `value` 时，触发器显示 `placeholder`。程序写入 `value` 不派发事件，因此「清除」只是改变页面状态。
 
@@ -70,7 +72,7 @@ const framework = ref('vue')
 </script>
 ```
 
-### Option decoration
+### Option 装饰
 
 `prefix` / `suffix` 插槽在标签两侧放图标与说明。`disabled` 的项留在列表里，但无法选中，键盘导航也会跳过它。
 
@@ -126,7 +128,7 @@ import { lucideFileText, lucideFilm, lucideImage } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Custom trigger slot
+### 自定义 trigger slot
 
 `trigger` 插槽替换默认的标签文本；箭头与开合行为仍由组件提供。组件不会改写插槽内容的字体、颜色或尺寸。插槽内容由页面状态驱动，所以会跟着选择变化。
 
@@ -175,7 +177,7 @@ const lang = ref('en')
 </script>
 ```
 
-### Trigger modes
+### 触发方式
 
 `trigger` 是手势集合，用空格或逗号分隔，可写 `click`、`hover`、`focus`、`none`，默认 `click`。`hover` 由指针进出开合，`focus` 在键盘聚焦（`:focus-visible`）时展开；手势可以并排写。
 
@@ -247,7 +249,7 @@ const last = ref('—')
 </script>
 ```
 
-### Open-change notification
+### open-change 通知
 
 `open-change` 只做通知，`detail.open` 是当前状态。手势和 `show()` / `hide()` 会派发它；直接写 `open` 是静默的，适合页面单方面控制面板。
 
@@ -305,7 +307,7 @@ function onOpenChange(event: WebUiEvent<WebUiSelect, 'open-change'>) {
 </script>
 ```
 
-### Icon variant
+### 图标变体
 
 `variant="icon"` 保留右侧箭头，只把左侧内容换成图标，图标可以跟随选中值变化。触发器本身没有文本，所以需要给 select 写 `aria-label`。
 
@@ -363,7 +365,7 @@ function pick(value: string) {
 </script>
 ```
 
-### Form value
+### 表单值
 
 `name` 让选中值以该字段名进入 `FormData`。值为空时，`required` 上报 `valueMissing`，原生提交会被拦下。`form.reset()` 把值退回挂载时的初值，触发器也随之回到 `placeholder`。
 
@@ -445,7 +447,7 @@ function reset() {
 </script>
 ```
 
-### Portal rendering
+### Portal 渲染
 
 默认情况下，祖先元素的 `overflow` 会裁掉面板。`portal` 把面板渲染到主题的 overlay 容器，容器就裁不到它。
 
@@ -495,7 +497,7 @@ export default function Demo() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称               | 说明                                                                                      | 类型                | 默认值           |
 | ------------------ | ----------------------------------------------------------------------------------------- | ------------------- | ---------------- |
@@ -516,7 +518,7 @@ export default function Demo() {
 | `open`             | 声明式开关；直接写入静默，不派发 `open-change`。                                          | `boolean`           | `false`          |
 | `isOpen`           | 当前是否打开（只读）。                                                                    | `boolean`           | —                |
 
-### Events
+### 事件
 
 | 名称          | 说明                                                                                    |
 | ------------- | --------------------------------------------------------------------------------------- |
@@ -524,14 +526,14 @@ export default function Demo() {
 | `change`      | 与 `input` 成对派发，一次选择各一次。                                                   |
 | `open-change` | 手势或 `show()` / `hide()` 改变开合时派发，`detail.open` 是当前状态；写 `open` 不派发。 |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                                                                |
 | --------- | ----------------------------------------------------------------------------------- |
 | `trigger` | 自定义触发区域内容，替换默认标签；`variant="icon"` 下它是左侧图标区，箭头仍在右侧。 |
 | `default` | 投影 `<web-ui-option>` 候选；其他节点同样算面板内容。                               |
 
-### Methods
+### 方法
 
 | 名称       | 说明                                                            |
 | ---------- | --------------------------------------------------------------- |
@@ -553,7 +555,7 @@ export default function Demo() {
 
 启用 `portal` 的面板在创建时读取宿主上的这些变量值；更新宿主后需重新打开面板才会生效。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                      | 说明                 | 默认值                             |
 | ------------------------- | -------------------- | ---------------------------------- |

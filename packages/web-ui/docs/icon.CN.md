@@ -1,12 +1,14 @@
 # Icon
 
+[English](./icon.md) | 简体中文
+
 icon 用来渲染图标，渲染结果是一个 `aria-hidden="true"` 的 `<svg>`，图标本身不提供可访问名称。输入是 Iconify 数据对象，不是图标名字：组件接受任意合法的 `IconifyIcon`，`body` 必填，是一段 SVG 内部标记；`width` / `height` / `left` / `top` 描述画布。手写的对象与包内资产渲染方式相同，不必先登记进 `@greypan/web-ui/icons`。
 
 `@greypan/web-ui/icons` 按图标集命名导出这些对象，常用图标可以直接按名导入；`iconGallery` 聚合了这批导出，便于浏览和挑选。清单之外的图标不必等待扩充：把任意合法的 `IconifyIcon` 数据传给 `icon` 即可，数据可以自己手写，也可以安装对应图标集的数据包（如 `@iconify-json/lucide`）后从其中取出图标对象。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 `icon` 只能通过 property 传入，不接受 attribute，值是 Iconify 数据对象，不是图标名字。不传 `icon` 时组件不绘制任何内容，连 `<svg>` 也不生成。
 
@@ -56,7 +58,7 @@ import { lucideFolderOpen, lucideSearch, lucideSettings } from '@greypan/web-ui/
 </script>
 ```
 
-### Bring your own icon data
+### 自定义图标数据
 
 手写对象同样能渲染：`clock` 没有经过 `@greypan/web-ui/icons`，直接传给 `icon` 即可。
 
@@ -106,7 +108,7 @@ const clock = {
 </script>
 ```
 
-### Size
+### 尺寸
 
 `size` 是像素尺寸，图形按资产自己的 viewBox 等比缩放，不会被拉伸。默认 `16`。
 
@@ -146,7 +148,7 @@ const sizes = [14, 18, 24, 32]
 </script>
 ```
 
-### Color
+### 颜色
 
 颜色按优先级取：`color` 属性最高；其次是宿主上的 `--wui-icon-color`；两者都没有时跟随文字颜色，因为资产用 `currentColor` 绘制。
 
@@ -186,7 +188,7 @@ import { lucideHeart } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Spin
+### 旋转
 
 `spin` 给 `<svg>` 加一条无限循环的旋转，周期取自 `--wui-duration-spin`（`600ms`）。在 `motion="reduced"` 主题或系统减少动态偏好下，该 token 放慢到 `1600ms`，不会停止：加载指示停住会被理解为界面卡死。
 
@@ -224,7 +226,7 @@ const spinning = ref(true)
 </script>
 ```
 
-### Combined with button
+### 与 button 组合
 
 按钮的 `prefix` / `suffix` 插槽用来放图标。图标与标签文字排在同一条 flex 线上，共用标签的文字颜色。纯图标按钮设置 `icon` 并写 `aria-label`：图标自身是 `aria-hidden`，按钮里没有其他可见内容时，可访问名称只能来自 `aria-label`。
 
@@ -272,7 +274,7 @@ import { lucideChevronLeft, lucideDownload, lucideUpload } from '@greypan/web-ui
 </script>
 ```
 
-### Icon gallery
+### 图标列表
 
 `iconGallery` 是 `Record<string, IconifyIcon>`，key 与命名导出同名（camelCase），收录 `@greypan/web-ui/icons` 当前导出的全部图标。遍历它就是浏览当前可用图标的完整清单；找到后按同名命名导入，拿到的就是同一个数据对象。
 
@@ -314,7 +316,7 @@ import { iconGallery } from '@greypan/web-ui/icons'
 
 ## API
 
-### Props
+### 属性
 
 | 名称    | 说明                                                       | 类型          | 默认值  |
 | ------- | ---------------------------------------------------------- | ------------- | ------- |
@@ -335,7 +337,7 @@ import { iconGallery } from '@greypan/web-ui/icons'
 
 画布给错不会报错，只会按错误的比例缩放图形，并把它挤到一角。自己拼对象时，要按 SVG 的真实坐标系写 `width` / `height`。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                  | 说明                                                     | 默认值    |
 | --------------------- | -------------------------------------------------------- | --------- |

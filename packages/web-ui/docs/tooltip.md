@@ -1,5 +1,7 @@
 # Tooltip
 
+English | [简体中文](./tooltip.CN.md)
+
 The gestures that show a tooltip are declared by `trigger`, which defaults to pointer hover only. The `content` attribute supplies plain text, and the `content` slot can hold richer content.
 
 ## Samples

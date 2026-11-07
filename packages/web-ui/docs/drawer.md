@@ -1,5 +1,7 @@
 # Drawer
 
+English | [简体中文](./drawer.CN.md)
+
 A side drawer built on the native `<dialog>`, with slide-in and slide-out animations and drag-to-close from the inner edge on any side. Use it for secondary content that relates to the current page but does not require leaving the page.
 
 ## Samples

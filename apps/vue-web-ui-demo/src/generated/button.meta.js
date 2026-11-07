@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Button" },
+  { label: 'p', content: "English | <a href=\"./button.CN.md\">简体中文</a>" },
   { label: 'p', content: "button triggers an immediate action: submitting a form, opening a dialog, or toggling state." },
   { label: 'p', content: "It does not contribute a value to <code>FormData</code>. <code>type=\"submit\"</code> and <code>type=\"reset\"</code> forward those two native actions to the surrounding <code>&lt;form></code>. The only outward event is the native button's <code>click</code>; the component dispatches no custom events." },
   { label: 'h2', id: 'section-2', content: "Samples" },

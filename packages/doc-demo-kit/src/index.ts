@@ -9,3 +9,4 @@ export * from './quick-link'
 export * from './theme'
 
 export * from './search'
+export * from './readme'

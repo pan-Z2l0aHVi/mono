@@ -1,5 +1,7 @@
 # Avatar
 
+English | [简体中文](./avatar.CN.md)
+
 avatar draws an image from `src`; when there is no image or the image fails to load, it falls back to the initials of `name`, and when `name` is also empty, to the default icon.
 
 ## Samples

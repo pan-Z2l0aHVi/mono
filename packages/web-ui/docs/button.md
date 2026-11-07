@@ -1,5 +1,7 @@
 # Button
 
+English | [简体中文](./button.CN.md)
+
 button triggers an immediate action: submitting a form, opening a dialog, or toggling state.
 
 It does not contribute a value to `FormData`. `type="submit"` and `type="reset"` forward those two native actions to the surrounding `<form>`. The only outward event is the native button's `click`; the component dispatches no custom events.

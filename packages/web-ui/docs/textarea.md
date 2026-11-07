@@ -1,5 +1,7 @@
 # Textarea
 
+English | [简体中文](./textarea.CN.md)
+
 A multiline text input with a clear button, autosize, and prefix/suffix slots. Focus lands on the native textarea; `focus()` / `blur()` / `select()` act on it.
 
 ## Samples

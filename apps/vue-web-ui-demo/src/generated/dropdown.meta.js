@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Dropdown" },
+  { label: 'p', content: "English | <a href=\"./dropdown.CN.md\">简体中文</a>" },
   { label: 'p', content: "A dropdown menu. The <code>trigger</code> slot holds the trigger, and the remaining children render as menu items inside the overlay panel. Dividers, group headers, and multi-level submenus are supported." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

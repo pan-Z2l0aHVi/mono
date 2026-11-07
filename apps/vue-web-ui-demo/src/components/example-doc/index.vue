@@ -1,4 +1,5 @@
 <script setup lang="ts">
+import { resolveReadmeLinks } from '@greypan/doc-demo-kit'
 import { computed, watchEffect } from 'vue'
 
 import { currentDocs, ensureExampleDoc, registerExampleDoc } from '@/i18n/locale'
@@ -9,7 +10,10 @@ const props = defineProps<{
   component: string
 }>()
 
-const docNodes = computed(() => currentDocs.value.get(props.component) ?? null)
+const docNodes = computed(() => {
+  const nodes = currentDocs.value.get(props.component)
+  return nodes ? resolveReadmeLinks(nodes, 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs') : null
+})
 
 watchEffect(onCleanup => onCleanup(registerExampleDoc(props.component)))
 // 页面切换会带来新组件：语种提交只覆盖当时注册的那批，这里单独补齐当前页。
