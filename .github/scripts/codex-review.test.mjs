@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -151,14 +152,23 @@ for (const [label, value] of [
     diff: 'diff --git a/x b/x\n',
     changedPaths: ['src/a.ts', 'docs/b.md']
   })
+  // 期望值写在测试里，不从实现常量展开：过滤清单变了，这两条断言必须一起红。
+  const excluded = [
+    ':(exclude,glob)**/generated/**',
+    ':(exclude,glob)apps/*/frontend/bindings/**',
+    ':(exclude,glob)**/routeTree.gen.ts',
+    ':(exclude,glob)**/typed-router.d.ts',
+    ':(exclude,glob)**/auto-imports.d.ts',
+    ':(exclude,glob)packages/web-ui/src/icons/index.ts'
+  ]
   assert.deepEqual(calls, [
     ['git', 'cat-file', '-e', `${otherSha}^{commit}`],
     ['git', 'cat-file', '-e', `${headSha}^{commit}`],
     ['git', 'merge-base', otherSha, headSha],
-    ['git', 'diff', '--no-color', otherSha, headSha, '--', ':(exclude,glob)**/generated/**'],
-    ['git', 'diff', '--name-only', '-z', otherSha, headSha, '--', ':(exclude,glob)**/generated/**']
+    ['git', 'diff', '--no-color', otherSha, headSha, '--', ...excluded],
+    ['git', 'diff', '--name-only', '-z', otherSha, headSha, '--', ...excluded]
   ])
-  assert.deepEqual([...REVIEW_EXCLUDE_PATHSPECS], [':(exclude,glob)**/generated/**'])
+  assert.deepEqual([...REVIEW_EXCLUDE_PATHSPECS], excluded)
   assert.throws(() => resolveReviewRange({ baseSha: 'main', headSha, command }), /PR base SHA/)
   const missing = []
   const fetchOnDemand = (name, args) => {
@@ -1206,6 +1216,51 @@ esac
   const expected = scopePath({ RUNNER_TEMP: '$RUNNER_TEMP' })
   assert.ok(prompt.includes(expected), `the review prompt must point at ${expected}`)
   assert.ok(prompt.includes('changed_paths'), 'the review prompt must name the changed-path list')
+  assert.ok(
+    prompt.includes('docs/agents/generated-artifacts.md'),
+    'the review prompt must point at the generated-artifact criteria instead of inventing a list'
+  )
+  assert.ok(
+    prompt.includes('coverage.uncovered'),
+    'the review prompt must say filtered artifacts are not uncovered items'
+  )
+}
+
+{
+  // 从文档的过滤路径表解析清单，与脚本常量做双向比对：单向的字符串包含只能发现
+  // 「脚本新增而文档没跟上」，发现不了「文档新增而脚本没跟上」。
+  const criteria = fs.readFileSync(path.join(import.meta.dirname, '../../docs/agents/generated-artifacts.md'), 'utf8')
+  const section = criteria.split('## 审查范围与编辑拦截的分工')[1].split('## 新增生成物时')[0]
+  const documented = section
+    .split('\n')
+    .filter(line => line.startsWith('| '))
+    .flatMap(line => [...(line.split('|')[1] ?? '').matchAll(/`([^`]+)`/gu)].map(match => `:(exclude,glob)${match[1]}`))
+  assert.deepEqual(documented, [...REVIEW_EXCLUDE_PATHSPECS])
+}
+
+{
+  // 排除清单属于审查输入：它进了复用指纹，清单变更后同 head 的旧结论才不会借复用回到绿色。
+  const env = {
+    CODEX_RESPONSES_ENDPOINT: 'e',
+    CODEX_REVIEW_MODEL: 'm',
+    CODEX_REVIEW_EFFORT: 'high',
+    CODEX_VERSION: 'v',
+    CODEX_REVIEW_API_KEY: 'k'
+  }
+  const { config } = inspectConfig(env)
+  const values = { endpoint: 'e', model: 'm', effort: 'high', version: 'v', key_present: true }
+  assert.equal(
+    config.fingerprint,
+    createHash('sha256')
+      .update(JSON.stringify({ ...values, excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS }))
+      .digest('hex')
+      .slice(0, 16)
+  )
+  assert.notEqual(
+    config.fingerprint,
+    createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16),
+    'the fingerprint must include the review exclusion scope'
+  )
 }
 
 {

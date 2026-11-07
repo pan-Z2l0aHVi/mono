@@ -13,10 +13,10 @@ CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发�
 - 结论绑定被审查的 head。`reviewed` 只覆盖那一份代码；head 变了结论就过期，`stale`、`unreviewed` 与 `not_applicable` 都不代表已审。
 - `reviewed` 且 `Block > 0`、`error` 与 `unreviewed` 让这道门变红。`error` 表示配置或调用故障，不是审查意见，按故障码处置：`config_missing` 按 PR 评论列出的变量名补齐 GitHub 后台的 secrets/variables；`model_failed` 先看 `Run codex exec` 日志，网关 5xx 或瞬时错误重跑整条 run，只有配置或模型侧拒绝才改后台；`artifact_missing` 查审查腿的上传与写回腿的下载。模型腿跑完却没产出可用结论是 `unreviewed`（故障码 `unusable_output`），同样变红：先重跑整条 run，重复出现说明输出契约坏了，改 prompt 或校验而不是当成「没有意见」。没交覆盖清单是 `missing_coverage`，同样记 `unreviewed`：`coverage` 是 schema 的必填项，有 findings 也不能省，否则交一条 Nit 就绕开整条规则；空 findings 时清单还得逐条落到本次 diff 改过的文件上（写到目录不算命中；只读了判据文档、而本次 diff 没改它，同样归这一档）。没有覆盖证据的结论与「没查就收尾」在产物上分不开，不能当作已审查。绿色只留给有结论可读的 run。门是约定式的：不改动 GitHub 的分支规则，红叉由人处置，绿色也不替人签字。
 - 端点、模型名、思考强度、密钥与 codex 版本由 GitHub 后台提供，仓库不写默认值；配置未填齐时门是红的，这是设计意图。完整契约见 [ADR-0021](../adr/0021-codex-review-gate.md)。
-- **结论即 review**：结论的 reviewed SHA 等于当前 head、`Block` 为 0、required context `check` 在当前 head 上成功，三条同时成立时这份 PR 的 review 已经完成。要重看的是发现修掉后的新 head，不是同一份结论。
+- **结论即 review**：本次有可审的源码改动、生成物已按下文核对、自动结论的 `coverage.uncovered` 为空，且结论的 reviewed SHA 等于当前 head、`Block` 为 0、required context `check` 在当前 head 上成功时，这份 PR 的 review 已经完成，人工不必逐行重看。要重看的是发现修掉后的新 head，不是同一份结论。自动审查没看过被滤除的生成物，也没能判断 `uncovered` 里列出的改动处；有未覆盖项时这些位置必须逐项人工复核，绿门替代不了它们。
 - `coverage` 说清这份结论的射程：`coverage.inspected` 是模型实际读过的路径，`coverage.uncovered` 是它声明无法判断的改动处。`uncovered` 非空时，这些位置不在这份结论的覆盖范围内，必须逐项人工复核再收口，绿门替代不了它们。这条补的是结论自己列出的空白，不是把已覆盖的 diff 重看一遍。
-- 自动审查没看过被 `**/generated/**` 剔除的生成物，这块空白由机器证据补：`check-generated` 与消费者类型检查在当前 head 上成功，就是生成输入与产物同批的证明（判据见 [`generated-artifacts.md`](./generated-artifacts.md)）。没有 generator 可重建、只能靠人判断的入库产物落在这两份证据之外。
-- 门给不出覆盖当前 head 的结论时，PR 上没有可用的 review：`error`、`unreviewed`、`stale`、`not_applicable`；来自 fork 的 PR（那条腿默认不跑）；自动修推送出的新 head；只改被剔除路径、`empty_diff: true` 且 `check-generated` 不适用的 PR。`Block > 0` 不属于这一类：它有结论，处置是按三档修掉发现后在新 head 上重取结论。
+- 生成物不需要 diff，也不需要 review：按 [`generated-artifacts.md`](./generated-artifacts.md) 的清单滤除后，自动审查不读也不评注；它们的正确性由 `check-generated` 与消费者类型检查证明。没有 generator 可重建、只能靠人判断的入库产物落在这两份证据之外。
+- 门给不出覆盖当前 head 的结论时，PR 上没有可用的 review，仍要人按本文流程做完整独立审查：`error`、`unreviewed`、`stale`、`not_applicable`；来自 fork 的 PR（那条腿默认不跑）；自动修推送出的新 head；只改生成物、`empty_diff: true` 的 PR（空 diff 不构成可合并结论，也不算「结论即 review」）。`Block > 0` 不属于这一类：它有结论，处置是按三档修掉发现后在新 head 上重取结论。
 - 自动修在 `check` 失败且后台开关开启时产出一份候选 patch，校验通过才提交并推回 PR 分支。机器人提交不会触发 checks，所以新 head 上要等一次人重跑的 CI 才有 CI 证据；已经含自动修提交的 head 不再自动规划第二次。
 - `Codex Review Report` 是写回腿，不改判结论，只把 CI 已产出的结论搬到 PR 上。它的绿色只说明这条腿跑过，不代表发了评论：没有 `codex-review-findings` 产物、或 head 已不属于任何打开的 PR 时它按设计跳过，并在运行页 Summary 与 notice 里写明是哪一种跳过。要判断「这条评论是不是当前 head 的」，仍按第一条核对评论头部的 `sha` 与 `status`；正文另有「结论生成于」，因为这条评论是就地更新的，GitHub 上显示的创建时间永远是第一次写回那一刻。
 
@@ -24,23 +24,23 @@ CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发�
 
 同一个 PR 有两份 diff，读哪一份由执行体决定，结论只覆盖自己读过的那一份：
 
-| 执行体       | diff 面                                                                                                                | 生成物                                               |
-| ------------ | ---------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------------- |
-| Codex 审查门 | 入口用 `:(exclude,glob)**/generated/**` 剔除后的源码 diff；`review-scope.json` 记 `excluded_pathspecs` 与 `empty_diff` | 被剔除路径下的不在 diff 里；其余仍在，只按生成规则看 |
-| 人工审查     | merge-base..head 的完整 diff                                                                                           | 在 diff 里，按清单核对，不逐行评注                   |
+| 执行体       | diff 面                                                                                                     | 生成物                                     |
+| ------------ | ----------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
+| Codex 审查门 | 按生成物清单滤除后的源码 diff；`review-scope.json` 记 `excluded_pathspecs`、`changed_paths` 与 `empty_diff` | 不在 diff 里，不需要 diff，也不需要 review |
+| 人工独立审查 | merge-base..head 的完整 diff                                                                                | 在 diff 里，按清单核对，不逐行评注         |
+| 复审         | 前次已审 head..当前 head 的完整增量                                                                         | 同上                                       |
 
 每个新 head 都重看一次完整 diff，同 head 且配置指纹一致才复用前一次产物，所以新 head 上的这道结论就是该轮复审。人工审查的后续轮次以前次已审 head 到当前 head 的增量为范围。
 
-排除按路径批量过滤 churn，不是生成物权威名单：它只覆盖 `**/generated/**`，`routeTree.gen.ts`、`typed-router.d.ts`、`auto-imports.d.ts`、`icons/index.ts` 与 Wails bindings 这些单文件生成物仍留在两份 diff 里。清单、generator 入口与逐类核对办法见 [`generated-artifacts.md`](./generated-artifacts.md)，排除理由与实测见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围」。
+**生成物不需要 diff，也不需要 review**：它由 generator 完整重建，没有需要人判断的改动，留在审查输入里只会淹没真实源码、吃掉大 PR 的审查预算。自动审查按 [`generated-artifacts.md`](./generated-artifacts.md) 的唯一判据「能否由 generator 完整重建」取最小路径集，把清单里的入库生成物整批滤出 `pr.diff` 与 `changed_paths`；被滤除的路径不进 `coverage.inspected`，也不算 `coverage.uncovered`。清单、generator 入口、逐类核对办法与新增生成物时的同步要求都在该文档，排除理由与实测见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围」。
 
 生成物的判据是「能否由 generator 完整重建」，不适用逐行评注；审查结论也不评判它们的逐行正确性：
 
-- 默认路径不核生成物，由机器证明：`check-generated` 与消费者类型检查在当前 head 上通过，即生成输入与产物同批；不一致时这两项会红，不靠人看出来。
-- 人工审查发生时核对生成输入是否与产物同批改动，以及适用的只判校验（`check-generated`）与消费者类型检查是否通过；不一致按 `Should fix` 以上报，不手改产物。
-- Codex 结论不覆盖被剔除的生成物：`reviewed` 且 `Block 0` 不代表 `check-generated` 已过，不能据此跳过它。
-- Codex 也不得因 diff 里没有被剔除的生成物就判定它们缺失或未更新；需要核对时读工作树当前内容。
+- 人工审查核对生成输入是否与产物同批改动，以及适用的只判校验（`check-generated`）与消费者类型检查是否通过；不一致按 `Should fix` 以上报，不手改产物。
+- Codex 结论不覆盖生成物：`reviewed` 且 `Block 0` 不代表生成物已核对，不能据此跳过 `check-generated` 或人工核对。
+- Codex 也不得因 diff 里没有被滤除的生成物就判定它们缺失或未更新；它们的正确性由 `check-generated` 与消费者类型检查证明，不由审查结论证明。需要核对时读工作树当前内容。
 
-只改被剔除路径的 PR 会得到空 diff（`empty_diff: true`），自动审查只能得出「没有源码改动可审」。这不是对生成物的审查，也不改变它们的证明方式：`check-generated` 与消费者类型检查在当前 head 上通过，就是这类 PR 的全部 review。这两项都不适用、又没有 generator 可重建的产物落在两份证据之外。
+只改生成物（滤除清单内任意路径）的 PR 会得到空 diff（`empty_diff: true`），自动审查只能得出「没有源码改动可审」。这不是对生成物的审查，不构成可合并结论，也不算「结论即 review」：这类 PR 按完整 diff 走人工审查，或至少按清单逐类核对并留下 generator 证据。
 
 ## 固定输入与范围
 
