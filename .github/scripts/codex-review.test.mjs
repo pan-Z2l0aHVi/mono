@@ -20,6 +20,7 @@ import {
   renderConclusion,
   resolveReviewRange,
   reviewTarget,
+  scopePath,
   withPermissionDiagnosis
 } from './codex-review.mjs'
 import { SPAWN_MAX_BUFFER, run } from './lib/github.mjs'
@@ -1162,6 +1163,49 @@ esac
     /其余 3 处见 `review-findings\.json`/,
     'the comment lists a capped slice, the artifact keeps the rest'
   )
+
+  // 结论作废时清单跟着作废：空清单 +「无未覆盖项」会和上面的「未审查」说反话，
+  // 「未覆盖」段落也会借回「这些位置要人工复核」的含义。
+  const voidedMeta = metaOf({
+    status: 'unreviewed',
+    error_code: 'missing_coverage',
+    error: 'the review reported no findings without listing a single inspected path'
+  })
+  const renderVoided = coverage => {
+    const parsedVoid = parseReviewFindings(JSON.stringify({ summary: '...', coverage, findings: [] }))
+    return renderConclusion({
+      conclusion: deriveConclusion({ meta: voidedMeta, findings: parsedVoid, liveHeadSha: headSha }),
+      meta: {
+        ...voidedMeta,
+        summary: parsedVoid.summary,
+        coverage: parsedVoid.coverage,
+        findings: parsedVoid.findings
+      },
+      pullNumber: 519
+    })
+  }
+
+  // PR #519 的形状：清单是空数组，旧渲染会写成「检查 0 个文件，无未覆盖项」。
+  const emptyVoided = renderVoided({ inspected: [], uncovered: [] })
+  assert.match(emptyVoided, /覆盖：本次结论作废，覆盖清单不构成审查范围/)
+  assert.ok(!emptyVoided.includes('无未覆盖项'), 'a void conclusion may not claim that nothing was left uncovered')
+  assert.ok(!emptyVoided.includes('- 覆盖：检查'), 'a void conclusion may not print coverage counts')
+
+  // 清单里真有未覆盖项时也不能渲染成待复核清单。
+  const listedVoided = renderVoided({ inspected: [], uncovered: ['src/c.ts:9 打不开'] })
+  assert.ok(
+    !listedVoided.includes('**未覆盖**'),
+    'a void conclusion may not ask for the uncovered entries to be rechecked'
+  )
+}
+
+{
+  // 提示词给的路径必须与 prepare 真正写出的位置同源（同一个 scopePath）：只改结论目录不改 prompt，
+  // 模型会自己猜路径、拿到空清单，然后按「diff 太大」提前收尾。
+  const prompt = fs.readFileSync(path.join(import.meta.dirname, '../codex/prompts/review.md'), 'utf8')
+  const expected = scopePath({ RUNNER_TEMP: '$RUNNER_TEMP' })
+  assert.ok(prompt.includes(expected), `the review prompt must point at ${expected}`)
+  assert.ok(prompt.includes('changed_paths'), 'the review prompt must name the changed-path list')
 }
 
 {
