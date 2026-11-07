@@ -850,7 +850,9 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.equal(parsed['ci.yml'].stepContinueOnError['Apply review gate'], undefined)
     assert.equal(parsed['ci.yml'].steps['Apply review gate'], undefined, 'the gate step must run unconditionally')
     assert.equal(parsed['ci.yml'].stepContinueOnError['Record review conclusion'], undefined)
-    assert.match(workflowJob(ci, 'codex-review'), /timeout-minutes: 60/)
+    // 审查腿的上限只兜大 PR 的尾巴：137 文件/4.3k 行的 PR 在 60 分钟处用满额仍未收口。
+    // 自动修保持 60，它只在 check 失败时跑，且产物是一次小 patch。
+    assert.match(workflowJob(ci, 'codex-review'), /timeout-minutes: 120/)
     assert.match(workflowJob(ci, 'codex-autofix-plan'), /timeout-minutes: 60/)
     assert.match(workflowJob(ci, 'codex-gate'), /timeout-minutes: 10/, 'the gate does no model work and stays short')
     assert.match(workflowJob(ci, 'codex-review'), /uses: \.\/\.github\/actions\/stage-codex-inputs/)

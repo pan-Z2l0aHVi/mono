@@ -68,7 +68,7 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 **引导落地**：可信脚本取自 PR base，因此引入新子命令的那个 PR 自己拿到的仍是 base 里的旧脚本。模型腿的 job 级不设 `continue-on-error`，旧脚本缺少 `preflight` 时该 job 直接变红，而不是又回到全绿静默。合并后的下一个 PR 起，base 带新脚本，链路完整生效。
 
-**时间与成本**：两条模型腿各给 60 分钟上限，这是首批实测用的临时余量，测出真实分布后回收；自动修只在失败时触发，它自己也是消耗模型调用的一条腿。
+**时间与成本**：审查腿给 120 分钟上限，自动修腿保持 60 分钟——前者要读完整份改动，后者产出的是一小片 patch，且只在 `check` 失败时触发。上限是天花板不是预算：常规 PR 5–25 分钟，只有 130 文件以上的改动会用到后半段（实测见「同日第八次实测」）。
 
 **审查范围**：`resolveReviewRange` 的 `git diff` 用 `:(exclude,glob)**/generated/**` 在入口剔掉生成产物，`review-scope.json` 记下 `excluded_pathspecs` 与 `empty_diff` 便于审计。该文件的 `changed_paths` 同时是模型的分片入口：提示词要求先读它，再按文件逐个 `git diff <merge-base> <head> -- <path>`，而不是一次读完整个 diff。这是路径层面的批量 churn 过滤：md-to-meta 的 meta/codeblock 随 markdown 重建整批换哈希名，`icons/generated` 等入库产物同样只随 generator 变，都只会淹没真实改动；`routeTree.gen.ts` 之类单文件生成物仍留在审查 diff。`prepare` 由审查腿与自动修腿共用，两条腿同时受益。对 PR #515 的 base/head 对象做本地 `git diff` 实测：13.9 MB → 1.29 MB（不是 CI run 观测值；可信脚本取自 base，本修复 PR 的 CI 仍跑旧脚本）。**执行纪律不在本 ADR**：两份 diff 的分工、生成物怎么核对、空 diff 为何不构成可合并结论，由 `docs/agents/review.md`「审查范围与生成物」承载；生成物清单与排除清单的边界由 `docs/agents/generated-artifacts.md` 承载；本 ADR 只记取舍与实测。
 
@@ -111,6 +111,8 @@ Error: /usr/bin/sudo exited with code 1
 
 **同日第七次实测（PR #519 head `d96d5d88`，CI run `42260301840` 的两次 attempt）**：`coverage` 让早停可见，但没让它停下来。attempt 1 只跑 4.2 秒、316 tokens、**零命令调用**，摘要写成「正在读取 PR 的源码 diff 与仓库审查判据，随后核对受影响文件及相关调用方。」；attempt 2 跑 11.2 秒、16,589 tokens、6 次命令调用，先把 `review-scope.json` 猜成 `$RUNNER_TEMP/review-scope.json`（实际在同级 `codex-review/` 目录下，输出为空），再 `sed -n '1,200p' pr.diff`（578,836 字节 / 137 个文件），推理里写下 `Diff huge 578k. Need systematically inspect all changed files` 后直接交出 `{"summary":"...","coverage":{"inspected":[],"uncovered":[]},"findings":[]}`。两次都判 `missing_coverage`，门是红的——`coverage` 按设计让这类结论无法变绿，但它只解决「看不见」，不解决「没查」。同一 PR 的上一个 head `9fbda756` 用同一份 prompt 跑 15m39s、读 113 个文件、报出 1 条 `Should fix`（正是 `d96d5d88` 修掉的 `throwIfNoEntry` 缺陷），说明改动本身可审，缺的是可读入口：prompt 只提到 `review-scope.json` 的名字却没给路径，也没说大的 diff 该怎么分片。修法见「审查范围」；评论侧同时把作废结论的覆盖行与「未覆盖」段落一并收掉，不再与「未审查」自相矛盾。
 
+**同日第八次实测（PR #519 head `9a430e74`，CI run `42333032169`）**：新 prompt 生效后的第一轮。模型不再早停——同一份 137 文件 / +4323 −3394 的改动，上一版 prompt 在 11 秒内交白卷，这一版跑满 60 分钟仍在读：93 条命令、无一条重复，读掉 90 个仍存在的源码文件里的 62 个（另有 21 条源码路径是本 PR 删除的旧位置），推理里已在逐条比对实现与判据。但 job 级 `timeout-minutes: 60` 到点掐断了它：`codex-final-message.json` 没写出来，`validate` 记 `unusable_output`（`the review step produced no output file`），门红。**结论**：`changed_paths` 分片入口解决了「不查就收卷」，代价是把「大 PR 读不完」暴露出来；按已读比例推算收口需要 95–100 分钟，审查腿上限因此提到 120 分钟（自动修不受影响）。这一条同时说明「60 分钟余量」不再是猜测：常规 PR 仍在 25 分钟内，只有 130 文件量级的改动会落到后半段。**未采用**：给小 PR 和大 PR 分设两套 prompt（可信输入取自 base，分叉会让同一 head 的结论不可比），或让模型自行截断到某个文件数（截断点无法用判据表达，等于把「查多少」交给运气）。
+
 **验收清单**（后台配置填齐后按 run 日志逐项核对）：
 
 1. `Run codex exec` 出现，`codex-final-message.json` 非空且通过 schema。
@@ -139,4 +141,4 @@ Error: /usr/bin/sudo exited with code 1
 - 模型结论的可信度受沙箱档位、输入版本与后台配置影响，这三处都由 CI 拓扑测试钉住，改动会被断言挡下来，而不是靠 review 时想起来。
 - 两条模型腿绑定 `ubuntu-24.04`，与本 workflow 其它 Linux job 的 `ubuntu-latest` 不同步；24.04 退役前必须按「Runner 镜像」条款的恢复条件完成迁移，否则审查链路会再次在模型启动前静默失败（表现为 job 绿、gate 红、零模型调用）。这是一笔有到期日的技术债。
 - 只改 `**/generated/**` 的 PR 得到空 diff，门不会因此变红：结论是 `reviewed`（`Block 0`）。门本身不区分「审过源码」与「没有源码可审」——`unreviewed` 现在会让门变红，那是「模型没给出可用结论」，不是空 diff 的预期结果。这块覆盖空白由 `docs/agents/review.md`「审查范围与生成物」的人工纪律兜：空 diff 不构成可合并结论，也不适用核对式抽查。
-- 仍未实测的项：Linux 上 `--sandbox` 是否如文档生效；60 分钟余量对应多大的真实耗时；`codex-action` 在输出不合 schema 时是否仍以 0 退出（已观测到 schema 合法但 `summary` 为空的输出以 0 退出并落到 `unreviewed`；schema 非法时是重试还是失败仍未观测）；`workflow_run.head_branch` 在各事件下的实际取值；写回腿 403 在补 `pull-requests: write` 后是否彻底消失。403 若仍复现则按「故障可见」条款升级到专用写令牌。
+- 仍未实测的项：Linux 上 `--sandbox` 是否如文档生效；120 分钟对 200 文件以上的 PR 是否够（目前已见的最大档是 137 文件、需 95–100 分钟）；`codex-action` 在输出不合 schema 时是否仍以 0 退出（已观测到 schema 合法但 `summary` 为空的输出以 0 退出并落到 `unreviewed`；schema 非法时是重试还是失败仍未观测）；`workflow_run.head_branch` 在各事件下的实际取值；写回腿 403 在补 `pull-requests: write` 后是否彻底消失。403 若仍复现则按「故障可见」条款升级到专用写令牌。

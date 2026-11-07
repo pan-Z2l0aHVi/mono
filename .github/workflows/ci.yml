@@ -212,8 +212,9 @@ jobs:
     # socket ACL 校验误判（openai/codex-action#188，修复 PR #191 未合并），模型腿会在 exec 前退出。
     # 恢复条件见 docs/adr/0021-codex-review-gate.md「Runner 镜像」；改标签会被拓扑断言挡下。
     runs-on: ubuntu-24.04
-    # 60 分钟是首批实测的临时余量，测出真实分布后回收；判定口径见 docs/adr/0021-codex-review-gate.md。
-    timeout-minutes: 60
+    # 120 分钟只兜「大 PR」的尾巴：常规 PR 5–25 分钟，137 文件/4.3k 行的 PR 在 60 分钟处用了
+    # 满额仍未收口（读掉 62/90 个仍存在的源码文件），见 docs/adr/0021-codex-review-gate.md「时间与成本」。
+    timeout-minutes: 120
     permissions:
       contents: read
       pull-requests: read
