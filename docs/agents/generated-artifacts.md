@@ -70,14 +70,25 @@
 
 ## 审查范围与编辑拦截的分工
 
-Codex 自动审查在 `git diff` 入口用 `REVIEW_EXCLUDE_PATHSPECS`（`:(exclude,glob)**/generated/**`）剔掉这条路径下的产物，避免整批换哈希名的文件淹没真实改动。它是**路径层面的批量 churn 过滤**，不是本文清单的替代，两者判据不同：
+**生成物不需要 diff，也不需要 review。** 它由 generator 完整重建，没有需要人判断的改动；让它们进 `pr.diff` 与 `review-scope.json` 的 `changed_paths`，只会淹没真实源码改动、吃掉大 PR 的审查预算。Codex 自动审查因此在 `git diff` 入口用 `REVIEW_EXCLUDE_PATHSPECS` 把本文清单里的**入库生成物整批滤除**：
 
-- 排除清单决定**自动审查看什么**，只按路径生效；覆盖边界与审计字段见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围」。
-- 本文清单决定**人怎么核对**：generator 重建、适用的 `check-generated` 只判校验、消费者类型检查。
-- 被排除不等于免于核对：生成物的正确性由 generator 幂等与相应守卫保证，不由审查意见保证。
+| 过滤路径                                                              | 覆盖的清单条目                                                               |
+| --------------------------------------------------------------------- | ---------------------------------------------------------------------------- |
+| `**/generated/**`                                                     | demo 文档 meta/codeblock、`icons/generated/**`（目录型，重建时整批换哈希名） |
+| `apps/*/frontend/bindings/**`                                         | Wails Go bindings                                                            |
+| `**/routeTree.gen.ts`、`**/typed-router.d.ts`、`**/auto-imports.d.ts` | 各宿主的单文件生成声明                                                       |
+| `packages/web-ui/src/icons/index.ts`                                  | icon barrel                                                                  |
 
-新增生成物时一般不必动排除清单：落在 `**/generated/**` 下自动被覆盖，落在别处也照旧不进过滤。只有新增了会产生批量重命名或大段 churn 的目录，才评估是否加入排除清单，并同步 ADR-0021 与审查 prompt。
+路径与 [`.claude/settings.json`](../../.claude/settings.json) 的 `permissions.deny` 同源，但只取清单里的最小集：不把「同目录下将来可能手写的文件」一并排除。过滤是**按本文判据取路径**，不是按目录名猜——新文件该不该进名单，仍用「能不能由 generator 完整重建」判定。名单必须留在取自 PR base 的可信脚本里：从 PR head 的工作树读它，等于让作者自己定义审查范围。`review-scope.json` 记 `excluded_pathspecs`、`changed_paths` 与 `empty_diff` 供审计，覆盖边界见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围」。
+
+滤除不等于免于核对，两者是不同职责：
+
+- 排除清单决定**自动审查看什么**；被滤除的生成物不进 `coverage.inspected`，也不算 `coverage.uncovered`——那不是「没查完」，是「不需要查」。
+- 本文清单决定**人怎么核对**：generator 重建、适用的 `check-generated` 只判校验、消费者类型检查。生成物的正确性由 generator 幂等与相应守卫保证，不由审查意见保证；`reviewed` + `Block 0` 也不代表 `check-generated` 已过。
+- 人工审查仍读完整 diff，按清单核对而非逐行评注；自动结论不得表述成「已看过 PR 的全部改动」。
+
+新增生成物时同步三处：本文表格、`REVIEW_EXCLUDE_PATHSPECS`（可信脚本常量）与审查 prompt。落在 `**/generated/**` 下已被覆盖，其余按上表补最小路径；同时更新 ADR-0021 的验收项。
 
 ## 新增生成物时
 
-同时更新四处，缺一处就会漂：本文的表格、turbo inputs 与产出集合守卫、[`.claude/settings.json`](../../.claude/settings.json) 的 `deny`，以及受影响包的测试。根 [`AGENTS.md`](../../AGENTS.md) 只指向本文，不复制清单。
+同时更新，缺一处就会漂：本文的表格、turbo inputs 与产出集合守卫、[`.claude/settings.json`](../../.claude/settings.json) 的 `deny`、受影响包的测试，以及审查侧的 `REVIEW_EXCLUDE_PATHSPECS` 与审查 prompt（口径见上文「审查范围与编辑拦截的分工」）。根 [`AGENTS.md`](../../AGENTS.md) 只指向本文，不复制清单。

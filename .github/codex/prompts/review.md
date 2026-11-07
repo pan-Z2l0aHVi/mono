@@ -14,8 +14,9 @@
 - 环境变量 `CODEX_REVIEW_DIFF_PATH` 指向本 PR 相对 merge base 的**源码改动** unified diff。该变量不可见时，读 `/home/runner/work/_temp/pr.diff`。
 - 与它同批写出的还有 `review-scope.json`（`$RUNNER_TEMP/codex-review/review-scope.json`）：`changed_paths` 是这份 diff 改动过的仓库相对路径清单，`diff_bytes`、`empty_diff` 与 `excluded_pathspecs` 也在里面。**先读这份清单**，再决定读哪些改动；不要猜它的位置。
 - 改动大时不要试图一次读完整个 diff：单条命令的输出会被截断，不要依赖一条命令读完整份改动。按 `changed_paths` 逐个文件读，例如 `git diff $CODEX_REVIEW_MERGE_BASE_SHA $CODEX_REVIEW_HEAD_SHA -- <path>`。
-- 这份 diff **不是逐字节的完整 diff**：`git diff` 入口用 `:(exclude,glob)**/generated/**` 剔掉了生成产物（`src/generated/**`、`icons/generated/**` 等）。生成物只随 generator 变，不属于需要人工判断的改动；不要因「diff 里没看到生成物」就判定它们缺失或未更新，也不要把结论表述成「已看过 PR 的全部改动」。需要核对生成物时读工作树里的当前内容。人工 review 仍以完整 diff 为准。
-- 这份 diff 为空时（常见于改动只落在被排除的路径，或没有源码改动），返回空 `findings` 即可，但不得表述成「生成物已审查」——这份 diff 里没有它们。
+- 这份 diff **不是逐字节的完整 diff**：`git diff` 入口按 `docs/agents/generated-artifacts.md` 的清单滤掉了全部入库生成物（`**/generated/**`、Wails `bindings/**`、`routeTree.gen.ts`、`typed-router.d.ts`、`auto-imports.d.ts`、`icons/index.ts` 等）。**生成物由 generator 完整重建，既不需要 diff，也不需要 review**：不读、不逐行评注、不写进 `coverage.inspected`，也不要因为没读它们就列进 `coverage.uncovered`——那不是未覆盖项，是本来就不需要查。把调查预算留给 `changed_paths` 里的源码改动，不要去补齐生成物清单。`changed_paths` 里若仍出现疑似生成物，按该文档的唯一判据「能不能由 generator 完整重建」跳过，不要自创名单或按文件名猜。人工 review 仍以完整 diff 为准。
+- 生成物的正确性由 `check-generated` 与消费者类型检查证明，不由你的结论证明：不要因 diff 里没有生成物就判定它们缺失或未更新，也不要把结论表述成「已看过 PR 的全部改动」或「生成物已审查」。需要核对时读工作树里的当前内容。
+- 这份 diff 为空时（常见于改动只落在被滤除的路径，或没有源码改动），返回空 `findings` 即可，但不得表述成「生成物已审查」——这份 diff 里没有它们。
 - `CODEX_REVIEW_MERGE_BASE_SHA` 与 `CODEX_REVIEW_HEAD_SHA` 给出同一范围。两者都拿不到时，用 `git log --decorate --oneline -20` 与 `git diff` 自行确定这个 PR 引入了什么。
 - 工作树已经检出到 PR head。需要被改文件的上下文、调用方或既有测试时，读工作树里的当前内容。
 - 结论只描述这个 head 快照的代码，不推断作者接下来打算做什么。

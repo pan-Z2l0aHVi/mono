@@ -151,14 +151,23 @@ for (const [label, value] of [
     diff: 'diff --git a/x b/x\n',
     changedPaths: ['src/a.ts', 'docs/b.md']
   })
+  // 期望值写在测试里，不从实现常量展开：过滤清单变了，这两条断言必须一起红。
+  const excluded = [
+    ':(exclude,glob)**/generated/**',
+    ':(exclude,glob)apps/*/frontend/bindings/**',
+    ':(exclude,glob)**/routeTree.gen.ts',
+    ':(exclude,glob)**/typed-router.d.ts',
+    ':(exclude,glob)**/auto-imports.d.ts',
+    ':(exclude,glob)packages/web-ui/src/icons/index.ts'
+  ]
   assert.deepEqual(calls, [
     ['git', 'cat-file', '-e', `${otherSha}^{commit}`],
     ['git', 'cat-file', '-e', `${headSha}^{commit}`],
     ['git', 'merge-base', otherSha, headSha],
-    ['git', 'diff', '--no-color', otherSha, headSha, '--', ':(exclude,glob)**/generated/**'],
-    ['git', 'diff', '--name-only', '-z', otherSha, headSha, '--', ':(exclude,glob)**/generated/**']
+    ['git', 'diff', '--no-color', otherSha, headSha, '--', ...excluded],
+    ['git', 'diff', '--name-only', '-z', otherSha, headSha, '--', ...excluded]
   ])
-  assert.deepEqual([...REVIEW_EXCLUDE_PATHSPECS], [':(exclude,glob)**/generated/**'])
+  assert.deepEqual([...REVIEW_EXCLUDE_PATHSPECS], excluded)
   assert.throws(() => resolveReviewRange({ baseSha: 'main', headSha, command }), /PR base SHA/)
   const missing = []
   const fetchOnDemand = (name, args) => {
@@ -1206,6 +1215,24 @@ esac
   const expected = scopePath({ RUNNER_TEMP: '$RUNNER_TEMP' })
   assert.ok(prompt.includes(expected), `the review prompt must point at ${expected}`)
   assert.ok(prompt.includes('changed_paths'), 'the review prompt must name the changed-path list')
+  assert.ok(
+    prompt.includes('docs/agents/generated-artifacts.md'),
+    'the review prompt must point at the generated-artifact criteria instead of inventing a list'
+  )
+  assert.ok(
+    prompt.includes('coverage.uncovered'),
+    'the review prompt must say filtered artifacts are not uncovered items'
+  )
+}
+
+{
+  // 生成物的唯一判据与清单在 generated-artifacts.md 里：常量中每条 pathspec 都要能在文档里找到，
+  // 否则新增生成物只改脚本不改文档（或反过来）时，模型会重新把生成物当源码读。
+  const criteria = fs.readFileSync(path.join(import.meta.dirname, '../../docs/agents/generated-artifacts.md'), 'utf8')
+  for (const pathspec of REVIEW_EXCLUDE_PATHSPECS) {
+    const bare = pathspec.replace(/^:\(exclude,glob\)/u, '')
+    assert.ok(criteria.includes(bare), `generated-artifacts.md must document excluded path ${bare}`)
+  }
 }
 
 {
