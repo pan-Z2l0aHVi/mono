@@ -79,16 +79,16 @@
 | `**/routeTree.gen.ts`、`**/typed-router.d.ts`、`**/auto-imports.d.ts` | 各宿主的单文件生成声明                                                       |
 | `packages/web-ui/src/icons/index.ts`                                  | icon barrel                                                                  |
 
-路径与 [`.claude/settings.json`](../../.claude/settings.json) 的 `permissions.deny` 同源，但只取清单里的最小集：不把「同目录下将来可能手写的文件」一并排除。过滤是**按本文判据取路径**，不是按目录名猜——新文件该不该进名单，仍用「能不能由 generator 完整重建」判定。名单必须留在取自 PR base 的可信脚本里：从 PR head 的工作树读它，等于让作者自己定义审查范围。`review-scope.json` 记 `excluded_pathspecs`、`changed_paths` 与 `empty_diff` 供审计，覆盖边界见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围」。
+路径参考 [`.claude/settings.json`](../../.claude/settings.json) 的 `permissions.deny`，但按本文清单取可表达的最小 glob：单文件生成物收到具体文件（`icons/index.ts` 而不是整个 `icons/**`），目录型产物仍按目录通配。过滤是**按本文判据取路径**，不是按目录名猜——新文件该不该进名单，仍用「能不能由 generator 完整重建」判定。名单必须留在取自 PR base 的可信脚本里：从 PR head 的工作树读它，等于让作者自己定义审查范围。`review-scope.json` 记 `excluded_pathspecs`、`changed_paths` 与 `empty_diff` 供审计，覆盖边界见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围」。
 
 滤除不等于免于核对，两者是不同职责：
 
-- 排除清单决定**自动审查看什么**；被滤除的生成物不进 `coverage.inspected`，也不算 `coverage.uncovered`——那不是「没查完」，是「不需要查」。
+- 滤除清单决定**自动审查看什么**；被滤除的生成物不进 `coverage.inspected`，也不算 `coverage.uncovered`——那不是「没查完」，是「不需要查」。
 - 本文清单决定**人怎么核对**：generator 重建、适用的 `check-generated` 只判校验、消费者类型检查。生成物的正确性由 generator 幂等与相应守卫保证，不由审查意见保证；`reviewed` + `Block 0` 也不代表 `check-generated` 已过。
 - 人工审查仍读完整 diff，按清单核对而非逐行评注；自动结论不得表述成「已看过 PR 的全部改动」。
 
-新增生成物时同步三处：本文表格、`REVIEW_EXCLUDE_PATHSPECS`（可信脚本常量）与审查 prompt。落在 `**/generated/**` 下已被覆盖，其余按上表补最小路径；同时更新 ADR-0021 的验收项。
+新增生成物时的同步清单见下一节；落在 `**/generated/**` 下已被上表覆盖，其余按上表补可表达的最小 glob。
 
 ## 新增生成物时
 
-同时更新，缺一处就会漂：本文的表格、turbo inputs 与产出集合守卫、[`.claude/settings.json`](../../.claude/settings.json) 的 `deny`、受影响包的测试，以及审查侧的 `REVIEW_EXCLUDE_PATHSPECS` 与审查 prompt（口径见上文「审查范围与编辑拦截的分工」）。根 [`AGENTS.md`](../../AGENTS.md) 只指向本文，不复制清单。
+同时更新，缺一处就会漂：本文的表格、turbo inputs 与产出集合守卫、[`.claude/settings.json`](../../.claude/settings.json) 的 `deny`、受影响包的测试、审查侧的 `REVIEW_EXCLUDE_PATHSPECS` 与审查 prompt（只有措辞变化时才动），以及 ADR-0021 的验收项。口径见上文「审查范围与编辑拦截的分工」。根 [`AGENTS.md`](../../AGENTS.md) 只指向本文，不复制清单。

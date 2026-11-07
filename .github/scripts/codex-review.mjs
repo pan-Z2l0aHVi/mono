@@ -21,9 +21,9 @@ export const CONFIG_ENV = CODEX_CONFIG_ENV
 
 // 入库生成物整批滤出审查输入：它们由 generator 完整重建，没有需要人判断的改动，既不需要 diff
 // 也不需要逐行 review，留在 pr.diff 与 changed_paths 里只会淹没真实源码、吃掉大 PR 的审查预算。
-// 判据、清单与同步要求见 docs/agents/generated-artifacts.md；路径取自 .claude/settings.json 的 deny
-// 名单但收敛到最小集，避免把同目录下将来可能手写的文件一并排除。用 glob magic 让前导 **/ 同时
-// 覆盖嵌套与根级路径；review-scope.json 记 excluded_pathspecs 便于审计。
+// 判据、清单与同步要求见 docs/agents/generated-artifacts.md；路径参考 .claude/settings.json 的 deny
+// 名单，按清单取可表达的最小 glob：单文件生成物收到具体文件，目录型产物仍按目录通配。用 glob magic
+// 让前导 **/ 同时覆盖嵌套与根级路径；review-scope.json 记 excluded_pathspecs 便于审计。
 // 这份名单必须留在取自 PR base 的可信脚本里：从 PR head 的工作树读名单等于让作者自定义审查范围。
 export const REVIEW_EXCLUDE_PATHSPECS = Object.freeze([
   ':(exclude,glob)**/generated/**',
@@ -199,7 +199,7 @@ export function readConclusion(directory) {
   }
 }
 
-/** 配置快照只保留非密钥字段，指纹把端点/模型/强度/版本/密钥有无绑成复用键的一部分。 */
+/** 配置快照只保留非密钥字段；指纹把后台配置与审查输入范围绑成复用键的一部分。 */
 export function inspectConfig(env = process.env) {
   const text = name => (env[name] ?? '').trim()
   const missing = CONFIG_ENV.filter(name => text(name) === '')
@@ -210,7 +210,12 @@ export function inspectConfig(env = process.env) {
     version: text('CODEX_VERSION'),
     key_present: text('CODEX_REVIEW_API_KEY') !== ''
   }
-  const fingerprint = createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16)
+  // 排除清单也是审查输入：清单换了，同 head 上按旧范围产出的结论不能借复用回到绿色。
+  // 只进 fingerprint，不进 config 快照——快照描述的是后台配置，不是脚本常量。
+  const fingerprint = createHash('sha256')
+    .update(JSON.stringify({ ...values, excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS }))
+    .digest('hex')
+    .slice(0, 16)
   return { present: missing.length === 0, missing, config: { ...values, fingerprint } }
 }
 

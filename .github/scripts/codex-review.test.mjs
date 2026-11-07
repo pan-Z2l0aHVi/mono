@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -1226,13 +1227,40 @@ esac
 }
 
 {
-  // 生成物的唯一判据与清单在 generated-artifacts.md 里：常量中每条 pathspec 都要能在文档里找到，
-  // 否则新增生成物只改脚本不改文档（或反过来）时，模型会重新把生成物当源码读。
+  // 从文档的过滤路径表解析清单，与脚本常量做双向比对：单向的字符串包含只能发现
+  // 「脚本新增而文档没跟上」，发现不了「文档新增而脚本没跟上」。
   const criteria = fs.readFileSync(path.join(import.meta.dirname, '../../docs/agents/generated-artifacts.md'), 'utf8')
-  for (const pathspec of REVIEW_EXCLUDE_PATHSPECS) {
-    const bare = pathspec.replace(/^:\(exclude,glob\)/u, '')
-    assert.ok(criteria.includes(bare), `generated-artifacts.md must document excluded path ${bare}`)
+  const section = criteria.split('## 审查范围与编辑拦截的分工')[1].split('## 新增生成物时')[0]
+  const documented = section
+    .split('\n')
+    .filter(line => line.startsWith('| '))
+    .flatMap(line => [...(line.split('|')[1] ?? '').matchAll(/`([^`]+)`/gu)].map(match => `:(exclude,glob)${match[1]}`))
+  assert.deepEqual(documented, [...REVIEW_EXCLUDE_PATHSPECS])
+}
+
+{
+  // 排除清单属于审查输入：它进了复用指纹，清单变更后同 head 的旧结论才不会借复用回到绿色。
+  const env = {
+    CODEX_RESPONSES_ENDPOINT: 'e',
+    CODEX_REVIEW_MODEL: 'm',
+    CODEX_REVIEW_EFFORT: 'high',
+    CODEX_VERSION: 'v',
+    CODEX_REVIEW_API_KEY: 'k'
   }
+  const { config } = inspectConfig(env)
+  const values = { endpoint: 'e', model: 'm', effort: 'high', version: 'v', key_present: true }
+  assert.equal(
+    config.fingerprint,
+    createHash('sha256')
+      .update(JSON.stringify({ ...values, excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS }))
+      .digest('hex')
+      .slice(0, 16)
+  )
+  assert.notEqual(
+    config.fingerprint,
+    createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16),
+    'the fingerprint must include the review exclusion scope'
+  )
 }
 
 {
