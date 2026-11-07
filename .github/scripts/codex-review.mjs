@@ -394,10 +394,16 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
   const coverage = meta?.coverage
     ? { inspected: meta.coverage.inspected ?? [], uncovered: meta.coverage.uncovered ?? [] }
     : null
-  if (coverage) {
-    const uncovered = coverage.uncovered.length
+  // 清单是模型的自我描述，只为「已审查」与「已过时」的结论作证。结论本身被判不可用时它跟着作废：
+  // 空清单加上「无未覆盖项」会说成「全都看过了」，与上面那行「未审查」正好相反；「未覆盖」段落
+  // 会把这些位置写成待人工复核，作废的清单同样借不起这层含义。
+  const auditable = conclusion.status === 'unreviewed' ? null : coverage
+  if (conclusion.status === 'unreviewed' && coverage) {
+    lines.push('- 覆盖：本次结论作废，覆盖清单不构成审查范围')
+  } else if (auditable) {
+    const uncovered = auditable.uncovered.length
     lines.push(
-      `- 覆盖：检查 ${coverage.inspected.length} 个文件${uncovered > 0 ? `，另有 ${uncovered} 处未覆盖` : '，无未覆盖项'}`
+      `- 覆盖：检查 ${auditable.inspected.length} 个文件${uncovered > 0 ? `，另有 ${uncovered} 处未覆盖` : '，无未覆盖项'}`
     )
   } else if (conclusion.status === 'reviewed') {
     lines.push('- 覆盖：本次结论没有附覆盖清单，无法核对查过哪些文件')
@@ -408,12 +414,12 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
     (left, right) => SEVERITIES.indexOf(left.severity) - SEVERITIES.indexOf(right.severity)
   )
   if (conclusion.status === 'reviewed' && meta?.summary) lines.push(richText(meta.summary), '')
-  if (coverage && coverage.uncovered.length > 0) {
-    const shown = coverage.uncovered.slice(0, UNCOVERED_LIMIT)
+  if (auditable && auditable.uncovered.length > 0) {
+    const shown = auditable.uncovered.slice(0, UNCOVERED_LIMIT)
     lines.push('**未覆盖**', '')
     for (const entry of shown) lines.push(`- ${richText(entry)}`)
-    if (coverage.uncovered.length > shown.length) {
-      lines.push(`- 其余 ${coverage.uncovered.length - shown.length} 处见 \`review-findings.json\``)
+    if (auditable.uncovered.length > shown.length) {
+      lines.push(`- 其余 ${auditable.uncovered.length - shown.length} 处见 \`review-findings.json\``)
     }
     lines.push('')
   }
@@ -491,6 +497,14 @@ export function conclusionDirectory(env = process.env) {
 }
 
 /**
+ * 提示词要把「模型从哪读改动清单」写成同一个函数的产物，否则这句话就成了第二处手抄的常量：
+ * 结论目录一挪，模型会照着旧路径读空文件，然后按「diff 太大」提前收尾。
+ */
+export function scopePath(env = process.env) {
+  return path.join(conclusionDirectory(env), SCOPE_FILE)
+}
+
+/**
  * 上一轮 artifact 必须解到独立目录：它带着上一轮的 `review-scope.json`，
  * 与本轮 `prepare` 写的同名文件放在一起会覆盖掉本次范围（其中的 `changed_paths`），
  * 覆盖判定于是拿到一份对不上当前 diff 的 scope。
@@ -555,8 +569,8 @@ function writeConclusion(directory, { findings, meta }) {
 }
 
 function readScope() {
-  const scopePath = path.join(conclusionDirectory(), SCOPE_FILE)
-  return fs.existsSync(scopePath) ? JSON.parse(fs.readFileSync(scopePath, 'utf8')) : {}
+  const file = scopePath()
+  return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {}
 }
 
 function identityFromEnv() {
@@ -611,7 +625,7 @@ function commandPrepare() {
   fs.mkdirSync(directory, { recursive: true })
   fs.writeFileSync(path.join(env.RUNNER_TEMP, 'pr.diff'), range.diff)
   fs.writeFileSync(
-    path.join(directory, SCOPE_FILE),
+    scopePath(),
     `${JSON.stringify(
       {
         base_sha: range.baseSha,

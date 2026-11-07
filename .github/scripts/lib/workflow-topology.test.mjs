@@ -523,6 +523,13 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     )
   }
 
+  // 提示词把 review-scope.json 的位置写成结论目录的默认值。CI 若在这里覆盖目录，
+  // prepare 会写到别处、模型仍读默认路径，覆盖判定直接失效；这条断言逼改动方同时更新提示词。
+  assert.ok(
+    !/^\s*CODEX_REVIEW_CONCLUSION_DIR\s*:/mu.test(workflowText['ci.yml']),
+    'ci.yml may not override CODEX_REVIEW_CONCLUSION_DIR: the review prompt hardcodes the default'
+  )
+
   const pullRequestValidation = Object.entries(parsed).filter(([, workflow]) =>
     workflow.triggers.some(
       trigger =>
