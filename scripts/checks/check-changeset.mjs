@@ -3,6 +3,8 @@ import { defineCatch, defineRunner, getWorkspaceRoot } from '@greypan/monorepo-k
 import { changesetRequired } from '../policies/changeset-required.mjs'
 import { changesetStatus } from '../policies/changeset-status.mjs'
 
+import { runCheck } from './run-check.mjs'
+
 function parseOptions(argv) {
   const options = {}
   for (let index = 0; index < argv.length; index += 1) {
@@ -19,7 +21,7 @@ function parseOptions(argv) {
 }
 
 // 传参坏了（exit 2，要修 workflow）与门禁没过（exit 1，要补 changeset）是两种失效；
-// 判据失败由链上的 `Err` 就地写成一行 stderr，不在这里兜。区间先解析，再作为装配期参数接进链。
+// 判据失败交给 `runCheck` 写成一行 stderr，不在这里兜。区间先解析，再作为装配期参数接进链。
 let options
 try {
   options = parseOptions(process.argv.slice(2))
@@ -29,14 +31,10 @@ try {
 }
 const { base, head } = options
 
-const kit = defineRunner()
-  .use(changesetStatus({ base }))
-  .use(changesetRequired({ base, head }))
-  .use(defineCatch())
-  .make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })
-
-const result = await kit.run()
-if (!result.ok) {
-  process.stderr.write(`${result.error}\n`)
-  process.exitCode = 1
-}
+await runCheck(() =>
+  defineRunner()
+    .use(changesetStatus({ base }))
+    .use(changesetRequired({ base, head }))
+    .use(defineCatch())
+    .make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })
+)

@@ -42,7 +42,10 @@ export function exec(command: string, args: readonly string[], options: ExecOpti
     const failure = error as ExecFailure
     return {
       ok: false,
-      status: failure.status,
+      // spawn 失败时 Node 给的是 `null`，不是 `undefined`；原样返回会让所有用 `status === undefined`
+      // 判「命令起不来」的调用方失效，报出 `exit null` 这种不存在的退出码。在边界上归一后，
+      // `status` 只可能是 `number | undefined`，那三处调用方保持原样即可，不必改成 `== null`。
+      status: failure.status ?? undefined,
       stdout: String(failure.stdout ?? ''),
       stderr: String(failure.stderr ?? '')
     }
@@ -50,7 +53,9 @@ export function exec(command: string, args: readonly string[], options: ExecOpti
 }
 
 export function commandOutput(result: ExecResult): string {
-  return [result.stdout, result.stderr].filter(Boolean).join('').trim()
+  // 两路输出必须分行：连起来会把 stdout 末行与 stderr 首行拼成一个不存在的字符串，
+  // 而触发层只打印这一行，CI 红时它就是唯一的定位信息。
+  return [result.stdout, result.stderr].filter(Boolean).join('\n').trim()
 }
 
 /**
@@ -77,7 +82,13 @@ export interface ExecApi {
 export const defineExec = () =>
   definePlugin<ExecApi, KitCtx>(ctx => ({
     pnpm,
-    exec: (command, args, options = {}) => exec(command, args, { cwd: ctx.root, env: ctx.env, ...options }),
+    exec: (command, args, options = {}) =>
+      exec(command, args, {
+        cwd: ctx.root,
+        ...options,
+        // 调用方给 env 时是补几个变量，不是替换整份环境；整体替换会丢掉 PATH 让命令起不来。
+        env: { ...ctx.env, ...options.env }
+      }),
     commandOutput,
     failureEvidence
   }))

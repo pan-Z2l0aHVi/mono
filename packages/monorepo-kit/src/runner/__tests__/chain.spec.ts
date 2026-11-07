@@ -73,6 +73,17 @@ it('链尾 defineCatch 把抛出收敛成 throw: 前缀', async () => {
   assert.deepEqual(trace, ['a', 'b'])
 })
 
+it('构造期抛错不在 defineCatch 的射程内，由触发层承担', () => {
+  // js-kit 的 make 是 eager 的：插件工厂在 `.make()` 期就执行，早于链上的 run()。
+  // defineCatch 只包 run()，所以这里钉死「工厂抛错会冒泡」这个边界，别把契约读成全链护罩。
+  const factory: Chain = definePlugin<{ run: Run }, KitCtx>(() => {
+    throw new Error('factory exploded')
+  })
+  assert.throws(() => defineRunner().use(factory).use(defineCatch()).make(ctx), {
+    message: 'factory exploded'
+  })
+})
+
 it('先到的 Err 不被后面的抛出覆盖', async () => {
   const trace: string[] = []
   const result = await defineRunner()

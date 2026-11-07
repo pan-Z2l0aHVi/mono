@@ -171,6 +171,19 @@ it('staged-clean', async () => {
   assert.match(goMessage, /formatting, lint or types \(gofmt\)/)
   assert.match(goMessage, /gofmt hint line/)
 
+  // 自指符号链接让 statSync 抛 ELOOP：这一个文件只记自己那行，其余暂存文件与工具链的
+  // 失败证据仍要一起回来。异常若冲出回调，门禁只剩一句 `throw:`，整批证据都丢。
+  const loop = path.join(root, 'loop.mjs')
+  fs.symlinkSync('loop.mjs', loop)
+  git('add', 'loop.mjs')
+  fs.writeFileSync(failMarker, 'stub fails\n')
+  const statMessage = await failure()
+  assert.match(statMessage, /cannot stat staged path 'loop\.mjs' \(ELOOP\)/)
+  assert.match(statMessage, /stub: vp found issues/, '其余暂存文件的工具失败证据不能被一个 stat 异常吞掉')
+  git('rm', '--cached', '--quiet', '--', 'loop.mjs')
+  fs.rmSync(loop)
+  fs.rmSync(failMarker)
+
   // The test seam is a JSON argv array; a command string must fail instead of reaching a shell.
   assert.match(await failure({ AGENT_VP_ARGV: 'pnpm exec vp' }), /^throw: AGENT_VP_ARGV must be a JSON array/)
 })

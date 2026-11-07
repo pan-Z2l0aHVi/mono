@@ -63,7 +63,20 @@ into `undefined` but still throws for EACCES and ELOOP, so the call is wrapped a
 detail as `pre-commit (ELOOP)`. An escaping stat error would abort `inspectGitHooks` and leave `env-doctor`
 with no verdict at all.
 `script-tests` no longer writes the discovered scripts' output from inside the package: a passing run is
-silent, and a failing one appends that script's captured stdout and exit code to the `script:` verdict.
-Nothing is lost for debugging — `execFileSync` forwards the child's stderr to the parent process by
-default, so tracebacks reached the terminal without the package echoing them; the echo only added
-progress output on the success path, which is process logging and belongs to the trigger layer.
+silent, and a failing one appends that script's captured stdout/stderr (each on its own line) and exit
+code to the `script:` verdict. `execFileSync` also forwards the child's stderr to the parent process by
+default, so tracebacks still reach the terminal; what the echo used to add was progress output on the
+success path, which is process logging and belongs to the trigger layer. Success-path progress is
+intentionally gone — the failure verdict keeps the child's output, not a live progress stream.
+
+Post-review hardening: `commandOutput()` joins stdout and stderr with a newline instead of concatenating
+them (a glued pair used to invent a string that never appeared in either stream); `exec()` normalises a
+spawn failure's `status: null` to `undefined` so callers can still test "command could not start";
+`defineExec()` merges `options.env` into the injected environment instead of replacing it, so a caller
+adding one variable no longer drops `PATH`; `staged-clean` catches EACCES/ELOOP from `statSync`,
+records that one path's failure and keeps going, so the remaining staged files and the tool-chain
+evidence still arrive in the same verdict; and `testPorts()` skips its
+config hook for `env.command === 'build'`, so a missing or invalid port table cannot break a build that
+never runs tests. The seven gate entrypoints now construct and run through `scripts/checks/run-check.mjs`,
+which turns an assembly-time throw (plugin factories run eagerly in `.make()`) into the same one-line
+`throw: ` verdict and exit 1 that `defineCatch()` gives run-time escapes.

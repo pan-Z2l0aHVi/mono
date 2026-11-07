@@ -16,29 +16,30 @@ const gitHooks = defineGitHooksStatus({
   installHint:
     'Run `node scripts/maintenance/install-git-hooks.mjs` directly; a plain `pnpm install` only runs prepare when the lockfile or node_modules change (`pnpm install --force` also works). When core.hooksPath points outside .vite-hooks, vp config leaves that path alone and only the installer repairs it.'
 })
-// 能力插件不进链：env 挂在 make 上（它会 spawn git 读配置），所以要留一条进程环境里的 PATH；
+// 能力插件不进链：env 挂在 make 上（它会 spawn git 读配置），所以留一条进程环境里的 PATH；
 // 但三个 hook 开关键必须抠掉，否则开发者 shell 里的 HUSKY=0 会让 inspect 一律早退成 ok。
 // 关闭与否只由 inspect 的 env 入参决定。
 const hookSwitches = ['HUSKY', 'VP_GIT_HOOKS', 'VITE_GIT_HOOKS']
-const gitPathEnv = Object.fromEntries(Object.entries(process.env).filter(([name]) => !hookSwitches.includes(name)))
-const inspect = (repo: string, env: NodeJS.ProcessEnv = {}) =>
-  gitHooks.make({ root: repo, env: { ...gitPathEnv, ...env } }).inspectGitHooks()
-
-// 隔离 global/system Git 配置：开发者可能把 vp.hooks.disabled 写进全局配置，测试不能受它影响。
 const globalConfig = path.join(fixtureRoot, 'gitconfig')
 fs.writeFileSync(globalConfig, '')
-process.env.GIT_CONFIG_GLOBAL = globalConfig
-process.env.GIT_CONFIG_NOSYSTEM = '1'
-process.env.HOME = path.join(fixtureRoot, 'home')
-process.env.XDG_CONFIG_HOME = path.join(fixtureRoot, 'xdg')
-for (const name of Object.keys(process.env)) {
-  if (name.startsWith('GIT_CONFIG_') && !['GIT_CONFIG_GLOBAL', 'GIT_CONFIG_NOSYSTEM'].includes(name)) {
-    delete process.env[name]
-  }
+
+// 隔离变量必须落进被测代码的那份 env：`make({ env })` 起 git 子进程时不继承后来才写进
+// process.env 的值，只写全局等于没隔离（开发者 ~/.gitconfig 里的 vp.hooks.disabled 仍会生效）。
+// helper 与被测代码共用这一份显式环境，两边才跑在同一套 Git 配置下，也不污染进程环境。
+const isolatedGitEnv: NodeJS.ProcessEnv = {
+  ...Object.fromEntries(
+    Object.entries(process.env).filter(([name]) => !hookSwitches.includes(name) && !name.startsWith('GIT_CONFIG_'))
+  ),
+  GIT_CONFIG_GLOBAL: globalConfig,
+  GIT_CONFIG_NOSYSTEM: '1',
+  HOME: path.join(fixtureRoot, 'home'),
+  XDG_CONFIG_HOME: path.join(fixtureRoot, 'xdg')
 }
+const inspect = (repo: string, env: NodeJS.ProcessEnv = {}) =>
+  gitHooks.make({ root: repo, env: { ...isolatedGitEnv, ...env } }).inspectGitHooks()
 
 function git(repo: string, args: readonly string[]): string {
-  const result = spawnSync('git', args, { cwd: repo, encoding: 'utf8' })
+  const result = spawnSync('git', args, { cwd: repo, encoding: 'utf8', env: isolatedGitEnv })
   assert.equal(result.status, 0, `git ${args.join(' ')} failed: ${result.stderr}`)
   return result.stdout.trim()
 }
@@ -155,6 +156,7 @@ it('git-hooks-status', async () => {
   assert.match(invalid.detail, /cannot read vp\.hooks\.disabled/)
 })
 
+// process.env 从未被改写，无需恢复；只收掉夹具目录。
 afterAll(() => {
   fs.rmSync(fixtureRoot, { recursive: true, force: true })
 })

@@ -5,7 +5,14 @@ import path from 'node:path'
 
 import { afterAll, it } from 'vite-plus/test'
 
-import { type TestPortsTargetConfig, applyTestPorts, readTestPorts } from '../ports'
+import { getWorkspaceRoot } from '../../shared/workspace-root'
+import {
+  type TestPortsPluginOptions,
+  type TestPortsTargetConfig,
+  applyTestPorts,
+  readTestPorts,
+  testPorts
+} from '../ports'
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-test-ports-'))
 let fixture = 0
@@ -138,6 +145,46 @@ it('applyTestPorts 只把端口段写进指定的那个 project', () => {
   const custom: TestPortsTargetConfig = { test: {} }
   applyTestPorts(custom, ports(allocation, '100'), { project: 'alpha', host: 'localhost' })
   assert.deepEqual(custom.test?.api, { host: 'localhost', port: 30100, strictPort: false })
+})
+
+// Vite 的 config hook 带 `this: ConfigPluginContext`，直接当裸函数调用会被类型层拦下；
+// 这里把被测的那支实现收窄成普通函数，只保留测试要用到的两个入参与「就地改 config」的副作用。
+type ConfigEnv = { command: 'build' | 'serve'; mode: string }
+type ConfigHook = (config: TestPortsTargetConfig, env: ConfigEnv) => void
+const configHookOf = (options: TestPortsPluginOptions): ConfigHook => {
+  const hook = testPorts(options).config
+  assert.equal(typeof hook, 'function', 'testPorts must expose a callable config hook')
+  return hook as ConfigHook
+}
+
+it('testPorts 的 config hook 在 build 档跳过，只在 serve 档写端口', () => {
+  // build 档连表都不读：故意给一份根本不存在的端口表，只要读了就会抛。空配置也不该让
+  // 测试编排数据变成构建的前置依赖。
+  const buildHook = configHookOf({ project: 'alpha', configFile: 'no-such-port-table.json' })
+  const build: TestPortsTargetConfig = {}
+  assert.doesNotThrow(() => buildHook(build, { command: 'build', mode: 'test' }))
+  assert.deepEqual(build, {})
+
+  // serve 档用夹具端口表，不依赖真实仓库根的 monorepo.json：configFile 按仓库根相对给出，
+  // path.join 会把临时目录折算出来的 `..` 归掉。夹具里有 alpha，值固定为 30000（加本机偏移）。
+  const configFile = path.relative(
+    getWorkspaceRoot(import.meta.dirname),
+    path.join(makeFixture(allocation), 'monorepo.json')
+  )
+  const call = configHookOf({ project: 'alpha', configFile })
+
+  // serve 档确实往下走：同样的空配置会撞上「没有 test 块」这条判据。
+  assert.throws(() => call({}, { command: 'serve', mode: 'test' }), /没有 test 块/)
+
+  // 带 test 块时把 host、端口与 strictPort 一起写进去。这里只钉结构，免得测试跟着夹具表
+  // 或开发机上的端口偏移漂移。不传 testName 的插件写根 test 块。
+  const rootHook = configHookOf({ project: 'alpha', configFile })
+  const served: TestPortsTargetConfig = { test: {} }
+  rootHook(served, { command: 'serve', mode: 'test' })
+  assert.equal(served.test?.api?.host, '127.0.0.1')
+  assert.equal(served.test?.api?.strictPort, false)
+  assert.equal(typeof served.test?.api?.port, 'number')
+  assert.ok((served.test?.api?.port ?? 0) > 0)
 })
 
 afterAll(() => {

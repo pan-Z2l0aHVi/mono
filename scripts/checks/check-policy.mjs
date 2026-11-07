@@ -10,23 +10,22 @@ import { turboCacheInvariant } from '../policies/turbo-cache-invariant.mjs'
 import { turboInputPaths } from '../policies/turbo-input-paths.mjs'
 import { webUiDocsInputs } from '../policies/web-ui-docs-inputs.mjs'
 
-// 触发层只排顺序：`.use()` 的先后就是判定的先后，首个 `Err` 短路，能力接线在插件内部。
-// 这里的失败语义只有一条——stderr 一行 `Err` 文案加非零退出码；静默通过不产出任何证据。
-const kit = defineRunner()
-  .use(commandConventions)
-  .use(fullCheckout)
-  .use(interweaveTurboInputs)
-  .use(noMutualLinks)
-  .use(readmeLocales)
-  .use(testPortCallSites)
-  .use(turboCacheInvariant)
-  .use(turboInputPaths)
-  .use(webUiDocsInputs)
-  .use(defineCatch())
-  .make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })
+import { runCheck } from './run-check.mjs'
 
-const result = await kit.run()
-if (!result.ok) {
-  process.stderr.write(`${result.error}\n`)
-  process.exitCode = 1
-}
+// 触发层只排顺序：`.use()` 的先后就是判定的先后，首个 `Err` 短路，能力接线在插件内部。
+// 失败语义由 `runCheck` 统一落地：stderr 一行加非零退出码，装配期抛错也收成 `throw: ` 一行；
+// 静默通过不产出任何证据。
+await runCheck(() =>
+  defineRunner()
+    .use(commandConventions)
+    .use(fullCheckout)
+    .use(interweaveTurboInputs)
+    .use(noMutualLinks)
+    .use(readmeLocales)
+    .use(testPortCallSites)
+    .use(turboCacheInvariant)
+    .use(turboInputPaths)
+    .use(webUiDocsInputs)
+    .use(defineCatch())
+    .make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })
+)

@@ -218,7 +218,10 @@ function writeApi(
 export function testPorts({ project, testName, host = '127.0.0.1', configFile }: TestPortsPluginOptions): Plugin {
   return {
     name: 'greypan:test-ports',
-    config: config => {
+    // Vite 在 build 也会求值 config hook。端口表是测试编排数据，不该变成构建的前置依赖：
+    // 根 monorepo.json 缺失或坏表、或 build 环境里带了非法端口偏移，都不该让不跑测试的构建失败。
+    config: (config, env) => {
+      if (env.command === 'build') return
       applyTestPorts(
         config as TestPortsTargetConfig,
         readTestPorts({ root: getWorkspaceRoot(import.meta.dirname), configFile }),
