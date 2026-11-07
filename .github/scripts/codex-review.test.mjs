@@ -1274,8 +1274,13 @@ esac
 {
   // `.claude/settings.json` 的 deny 是「编辑拦截」的路径权威，REVIEW_EXCLUDE_PATHSPECS 是「审查
   // 滤除」的最小 glob 集：一条 deny 可以由多条 pathspec 联合覆盖（icons/** 拆成 barrel 与
-  // generated/），但新增生成物时漏改任一侧不该静默通过。用显式覆盖表把两边钉在一起。
+  // generated/）。三层护栏：显式覆盖表挡单侧增删，真实入库文件集合挡「同步改表」的绕过，
+  // 临时 git 仓库挡 pathspec 写错。覆盖表与样例是人工维护的，新增生成物仍须按判据核对。
   const settings = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '../../.claude/settings.json'), 'utf8'))
+  assert.ok(
+    settings.permissions && typeof settings.permissions === 'object',
+    'the deny list must live under permissions.deny'
+  )
   const deny = settings.permissions.deny
   assert.ok(Array.isArray(deny) && deny.length > 0, 'the deny list must not disappear')
   const editPrefix = 'Edit(./'
@@ -1332,37 +1337,60 @@ esac
     'every review pathspec must be justified by a deny entry'
   )
 
-  // 字符串映射挡不住 glob 写错：把每条 deny 的样例路径与一个手写源码文件做成真实 diff，
+  // 覆盖表是人工数据：只靠它能「同步改 deny + 覆盖表」绕过。用 git 自己的 glob 引擎把两份
+  // 名单落到真实入库文件上，集合必须完全相同——新增生成物只要已有文件入库，漏改审查侧就红。
+  // 尚无文件入库的新路径不在这道断言的射程内，仍按 docs/agents/generated-artifacts.md 核对。
+  const repository = path.join(import.meta.dirname, '../..')
+  const trackedBy = glob =>
+    new Set(
+      run('git', ['-C', repository, 'ls-files', '-z', '--', `:(glob)${glob}`])
+        .split('\0')
+        .filter(Boolean)
+    )
+  const matchedBy = globs => [...new Set(globs.flatMap(glob => [...trackedBy(glob)]))].sort()
+  const deniedFiles = matchedBy(deniedPaths)
+  const excludedFiles = matchedBy(pathspecs)
+  assert.ok(deniedFiles.length > 0, 'the deny list must match tracked generated files')
+  assert.deepEqual(
+    deniedFiles,
+    excludedFiles,
+    'every tracked file denied for edits must be excluded from the review diff, and vice versa'
+  )
+
+  // 集合断言挡不住 glob 写错：把每条 deny 的样例路径与一个手写源码文件做成真实 diff，
   // 确认只有源码留在 changed_paths 里。
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-deny-'))
-  const git = args => run('git', ['-C', directory, ...args])
-  const commit = message =>
-    git(['-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', message])
-  git(['-c', 'init.defaultBranch=main', 'init', '-q'])
-  git(['config', 'user.email', 'deny@example.test'])
-  git(['config', 'user.name', 'Deny Test'])
-  const samples = Object.values(coverage).flatMap(entry => entry.samples)
-  const source = 'packages/web-ui/src/button.ts'
-  for (const file of [...samples, source]) {
-    fs.mkdirSync(path.join(directory, path.dirname(file)), { recursive: true })
-    fs.writeFileSync(path.join(directory, file), 'base\n')
+  try {
+    const git = args => run('git', ['-C', directory, ...args])
+    const commit = message =>
+      git(['-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', message])
+    git(['-c', 'init.defaultBranch=main', 'init', '-q'])
+    git(['config', 'user.email', 'deny@example.test'])
+    git(['config', 'user.name', 'Deny Test'])
+    const samples = Object.values(coverage).flatMap(entry => entry.samples)
+    const source = 'packages/web-ui/src/button.ts'
+    for (const file of [...samples, source]) {
+      fs.mkdirSync(path.join(directory, path.dirname(file)), { recursive: true })
+      fs.writeFileSync(path.join(directory, file), 'base\n')
+    }
+    git(['add', '.'])
+    commit('base')
+    const baseSha = git(['rev-parse', 'HEAD']).trim()
+    for (const file of [...samples, source]) {
+      fs.writeFileSync(path.join(directory, file), 'head\n')
+    }
+    git(['add', '-A'])
+    commit('head')
+    const headSha = git(['rev-parse', 'HEAD']).trim()
+    const range = resolveReviewRange({ baseSha, headSha, command: (_name, args) => git(args) })
+    assert.deepEqual(
+      range.changedPaths,
+      [source],
+      'every path guarded by a deny Edit(...) entry must be filtered out of the review scope'
+    )
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true })
   }
-  git(['add', '.'])
-  commit('base')
-  const baseSha = git(['rev-parse', 'HEAD']).trim()
-  for (const file of [...samples, source]) {
-    fs.writeFileSync(path.join(directory, file), 'head\n')
-  }
-  git(['add', '-A'])
-  commit('head')
-  const headSha = git(['rev-parse', 'HEAD']).trim()
-  const range = resolveReviewRange({ baseSha, headSha, command: (_name, args) => git(args) })
-  assert.deepEqual(
-    range.changedPaths,
-    [source],
-    'every path guarded by a deny Edit(...) entry must be filtered out of the review scope'
-  )
-  fs.rmSync(directory, { recursive: true, force: true })
 }
 
 {

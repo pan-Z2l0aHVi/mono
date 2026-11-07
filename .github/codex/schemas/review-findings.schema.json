@@ -23,7 +23,7 @@
         },
         "uncovered": {
           "type": "array",
-          "description": "Changed areas you could not judge, each written as path or path:line followed by the reason. An empty array claims every changed hunk was reviewed. A non-empty array is a valid way to close a large review and does not void the conclusion, but every entry must be rechecked by a human.",
+          "description": "Changed areas you could not judge, each written as path or path:line followed by the reason. An empty array claims every changed hunk was reviewed. A non-empty array is a valid way to close a large review and does not void the conclusion, provided inspected reflects files actually read, but every entry must be rechecked by a human.",
           "items": {
             "type": "string"
           }
