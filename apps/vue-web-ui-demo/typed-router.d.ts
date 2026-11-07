@@ -283,6 +283,13 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/getting-started': RouteRecordInfo<
+      '/getting-started',
+      '/getting-started',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/home/': RouteRecordInfo<
       '/home/',
       '/home',
@@ -586,6 +593,14 @@ declare module 'vue-router/auto-routes' {
     'src/pages/components/tooltip.vue': {
       routes:
         | '/components/tooltip'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/getting-started.vue': {
+      routes:
+        | '/getting-started'
       views:
         | never
       pathParamNames:

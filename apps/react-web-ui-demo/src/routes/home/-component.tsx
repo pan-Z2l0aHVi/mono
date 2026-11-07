@@ -11,7 +11,23 @@ import {
 } from '@greypan/web-ui/icons'
 import { Fragment } from 'react'
 
+import Codeblock from '@/components/codeblock'
 import QuickLinkCard from '@/components/quick-link-card'
+
+const INSTALL_COMMANDS = [
+  ['npm', 'npm install @greypan/web-ui'],
+  ['pnpm', 'pnpm add @greypan/web-ui'],
+  ['bun', 'bun add @greypan/web-ui'],
+  ['yarn', 'yarn add @greypan/web-ui']
+].map(([name, command]) => ({
+  value: name!,
+  label: name!,
+  node: {
+    label: 'codeblock' as const,
+    lang: name,
+    content: `<pre class="shiki mdm-code"><code><span class="line"><span class="line-number">1</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">${name}</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">${command!.slice(name!.length)}</span></span></code></pre>`
+  }
+}))
 
 // 产品名、图片替代文本与组件名都是专有名词，中英两版保持一致，因此不进 wuchale 语料。
 const PRODUCT_NAME = 'Web UI'
@@ -103,6 +119,10 @@ function Home() {
       <p className="text-base md:text-lg text-(--wui-color-text-secondary) max-w-2xl leading-relaxed mb-8">
         以 Web Components 为内核的跨框架 UI 组件库。轻量、精致，适配 React、Vue。
       </p>
+
+      <section className="mb-12 w-full max-w-3xl text-left" aria-label="安装">
+        <Codeblock nodes={[]} preview={false} variants={INSTALL_COMMANDS} switchLabel="包管理器" />
+      </section>
 
       <div className="grid w-full max-w-3xl grid-cols-1 gap-x-6 gap-y-3 mb-12 text-left md:grid-cols-2 xl:grid-cols-4">
         {features.map(feature => (

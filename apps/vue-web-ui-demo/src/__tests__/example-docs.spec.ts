@@ -1,14 +1,22 @@
 import path from 'node:path'
 
+import { fenceGroupVariants, groupedMetaNodes } from '@greypan/doc-demo-kit'
 import { runExampleDocsContractTests } from '@greypan/doc-demo-kit/testing'
 import type { MetaNode } from '@greypan/md-to-meta'
 import { visibleText } from '@greypan/md-to-meta/contract'
 import { flushPromises, mount } from '@vue/test-utils'
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 import { defineComponent, h } from 'vue'
 
+import Codeblock from '../components/codeblock/index.vue'
 import { MetaComp } from '../components/meta'
+import readme from '../generated/readme/README.CN.meta'
+import readmeEn from '../generated/readme/README.meta'
 import { loadMeta } from '../i18n/examples'
+
+const INSTALL_COMMANDS = fenceGroupVariants(
+  groupedMetaNodes(readme).find(group => group.length > 1 && group[0]?.lang === 'npm')!
+)!
 
 // 语料接线的轻量 contract 断言（围栏同源 / 落盘文件）收拢在 `@greypan/doc-demo-kit/testing`；
 // 这里只注入 Vue 侧的宿主事实。生成器判据在 `@greypan/md-to-meta` 单测里。
@@ -61,6 +69,57 @@ describe('通用 meta 渲染', () => {
     expect(visibleText(wrapper.find('[data-code] pre').element.innerHTML)).toBe('const answer = 42')
     await flushPromises()
     expect(wrapper.find('[data-demo]').exists()).toBe(true)
+  })
+
+  it('中英文 README 的安装选项和命令一致', () => {
+    const readCommands = (nodes: typeof readme) =>
+      fenceGroupVariants(groupedMetaNodes(nodes).find(group => group.length > 1 && group[0]?.lang === 'npm')!)!.map(
+        item => [item.label, visibleText(item.node.content ?? '')]
+      )
+    expect(readCommands(readmeEn)).toEqual(readCommands(readme))
+  })
+
+  it('README 的相邻安装围栏自动合并为一个切换卡片', () => {
+    const wrapper = mount(MetaComp, { props: { nodes: readme, preview: false, variantLabel: '包管理器' } })
+    const selector = wrapper.find('web-ui-segmented[aria-label="包管理器"]')
+    expect(selector.findAll('web-ui-segmented-trigger')).toHaveLength(4)
+    expect(selector.element.closest('article')?.querySelector('[data-code] pre')?.textContent).toContain(
+      'npm install @greypan/web-ui'
+    )
+    wrapper.unmount()
+  })
+
+  it('安装命令随包管理器切换，复制当前命令而不包含行号', async () => {
+    const previous = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+    const writeText = vi.fn<(text: string) => Promise<void>>().mockResolvedValue(undefined)
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { writeText } })
+    const wrapper = mount(Codeblock, {
+      props: { nodes: [], preview: false, variants: INSTALL_COMMANDS, switchLabel: '包管理器' },
+      attachTo: document.body
+    })
+    try {
+      const commands = [
+        ['npm', 'npm install @greypan/web-ui'],
+        ['pnpm', 'pnpm add @greypan/web-ui'],
+        ['bun', 'bun add @greypan/web-ui'],
+        ['yarn', 'yarn add @greypan/web-ui']
+      ] as const
+      await flushPromises()
+      for (const [manager, command] of commands) {
+        const trigger = wrapper
+          .findAll('web-ui-segmented-trigger')
+          .find(item => (item.element as { value?: string }).value === manager)
+        trigger!.element.shadowRoot!.querySelector<HTMLElement>('[role="option"]')!.click()
+        await flushPromises()
+        expect(visibleText(wrapper.find('[data-code] pre').element.innerHTML)).toBe(command)
+        await wrapper.find('web-ui-button[data-copy]').trigger('click')
+        await vi.waitFor(() => expect(writeText).toHaveBeenLastCalledWith(command))
+      }
+    } finally {
+      wrapper.unmount()
+      if (previous) Object.defineProperty(navigator, 'clipboard', previous)
+      else Reflect.deleteProperty(navigator, 'clipboard')
+    }
   })
 
   it('preview 关闭时只渲染源码，不挂运行示例', () => {

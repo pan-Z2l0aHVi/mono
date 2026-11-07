@@ -98,7 +98,7 @@ ${darkSelector} .${MDM_MARKDOWN_CLASS} :not(pre) > code {
 }
 
 ${darkSelector} .${MDM_MARKDOWN_CLASS} a {
-  text-decoration-color: rgb(255 255 255 / 0.4);
+  text-decoration-color: currentcolor;
 }
 
 ${darkSelector} .${MDM_MARKDOWN_CLASS} hr {
@@ -234,9 +234,9 @@ ${darkSelector} .${MDM_MARKDOWN_CLASS} th {
 }
 
 .${MDM_MARKDOWN_CLASS} a {
-  color: inherit;
+  color: var(--wui-color-accent, #0066cc);
   text-decoration: underline;
-  text-decoration-color: rgb(55 53 47 / 0.4);
+  text-decoration-color: currentcolor;
   text-underline-offset: 2px;
 }
 

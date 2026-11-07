@@ -2,7 +2,7 @@ import type { MetaNode } from '@greypan/md-to-meta'
 import { describe, expect, it } from 'vite-plus/test'
 
 import { flavorOf, FLAVORS, FLAVOR_LABELS } from '../flavor'
-import { groupedMetaNodes, isFlavorPair, isHeadingLabel } from '../meta'
+import { fenceGroupVariants, groupedMetaNodes, isFlavorPair, isHeadingLabel } from '../meta'
 
 const fence = (lang: string): MetaNode => ({ label: 'codeblock', lang })
 
@@ -60,5 +60,19 @@ describe('标题分发', () => {
     expect(isHeadingLabel('h6')).toBe(true)
     expect(isHeadingLabel('p')).toBe(false)
     expect(isHeadingLabel('table')).toBe(false)
+  })
+})
+
+describe('包管理器围栏', () => {
+  it('合并相邻且名称不重复的包管理器围栏', () => {
+    const nodes = [fence('npm'), fence('pnpm'), fence('bun'), fence('yarn'), fence('bash')]
+    expect(groupedMetaNodes(nodes)).toEqual([nodes.slice(0, 4), [nodes[4]]])
+    expect(fenceGroupVariants(nodes.slice(0, 4))?.map(item => item.label)).toEqual(['npm', 'pnpm', 'bun', 'yarn'])
+  })
+
+  it('重复名称或其他内容结束当前组', () => {
+    const nodes = [fence('npm'), fence('pnpm'), fence('npm'), { label: 'p' } as MetaNode, fence('yarn')]
+    expect(groupedMetaNodes(nodes)).toEqual([nodes.slice(0, 2), [nodes[2]], [nodes[3]], [nodes[4]]])
+    expect(fenceGroupVariants([nodes[0]!, nodes[2]!])).toBeUndefined()
   })
 })

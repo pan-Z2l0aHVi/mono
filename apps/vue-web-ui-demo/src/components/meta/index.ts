@@ -1,4 +1,4 @@
-import { groupedMetaNodes, isHeadingLabel } from '@greypan/doc-demo-kit'
+import { fenceGroupVariants, groupedMetaNodes, isHeadingLabel } from '@greypan/doc-demo-kit'
 import type { MetaNode } from '@greypan/md-to-meta'
 import { defineComponent, h, type PropType, type VNode } from 'vue'
 
@@ -11,13 +11,15 @@ import Codeblock from '../codeblock/index.vue'
  * 一条示例的两份源码在文档里是相邻的 `tsx` 与 `vue` 围栏，分组判据在 `@greypan/doc-demo-kit`；
  * 命中配对的合成一张卡由工具条切换，其余围栏各自一张卡。
  */
-function renderNodes(nodes: readonly MetaNode[], preview: boolean): VNode[] {
+function renderNodes(nodes: readonly MetaNode[], preview: boolean, variantLabel?: string): VNode[] {
   return groupedMetaNodes(nodes).map(group =>
-    group.length > 1 ? h(Codeblock, { nodes: group, preview }) : renderNode(group[0]!, preview)
+    group.length > 1
+      ? h(Codeblock, { nodes: group, preview, variants: fenceGroupVariants(group), switchLabel: variantLabel })
+      : renderNode(group[0]!, preview, variantLabel)
   )
 }
 
-function renderNode(node: MetaNode, preview: boolean): VNode {
+function renderNode(node: MetaNode, preview: boolean, variantLabel?: string): VNode {
   if (node.label === 'codeblock') return h(Codeblock, { nodes: [node], preview })
   if (node.label === 'img') return h('img', { src: node.src, alt: node.alt ?? '' })
 
@@ -26,7 +28,7 @@ function renderNode(node: MetaNode, preview: boolean): VNode {
   if (isHeadingLabel(node.label)) properties.class = 'mdm-heading'
   if (node.content) properties.innerHTML = node.content
 
-  const children = node.children ? renderNodes(node.children, preview) : undefined
+  const children = node.children ? renderNodes(node.children, preview, variantLabel) : undefined
 
   /*
    * html 的行本来就只允许出现在 `tbody` / `thead` 下；meta 里表格只有一串 `tr`，
@@ -43,9 +45,10 @@ export const MetaComp = defineComponent({
     // 语种控制器里的文档是 `readonly` 的：渲染只读，不该为了类型多拷贝一层。
     nodes: { type: Array as PropType<readonly MetaNode[]>, required: true },
     /** 代码块是否渲染 `load` 来的运行示例；只读上下文（如 changelog）可以关掉。 */
-    preview: { type: Boolean, default: true }
+    preview: { type: Boolean, default: true },
+    variantLabel: { type: String, default: undefined }
   },
   setup(props) {
-    return () => renderNodes(props.nodes, props.preview)
+    return () => renderNodes(props.nodes, props.preview, props.variantLabel)
   }
 })

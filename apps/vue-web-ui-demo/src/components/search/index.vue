@@ -9,6 +9,7 @@ import { currentLocale } from '@/i18n/locale'
 
 const pages = [
   { path: '/home', zh: '组件总览', en: 'Components' },
+  { path: '/getting-started', zh: '快速开始', en: 'Getting Started', keywords: 'quick start' },
   { path: '/changelog', zh: '更新日志', en: 'Changelog' }
 ]
 

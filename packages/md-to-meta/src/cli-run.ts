@@ -10,7 +10,7 @@ import { checkArtifacts, generate, writeArtifacts } from './index'
  * headless 入口的实现：CI 的新鲜度校验与版本 PR 的产物追平都从这里跑同一份生成逻辑，
  * 不用各自再写一遍「读包 manifest → 动态 import ESM 入口」的技巧——本模块经打包静态
  * 并入 cli.mjs。唯一保留的动态 import 是宿主的 vite.config.ts：options 的单一来源在
- * 宿主配置里（具名导出 mdToMetaOptions），整文件求值会把插件工厂跑一遍，一次性进程里可接受。
+ * 宿主配置里（具名导出 mdToMetaOptions 与可选的 mdToMetaAdditionalOptions），整文件求值会把插件工厂跑一遍，一次性进程里可接受。
  *
  * 与入口文件分开是为了能被测试直接调用：入口在模块求值时就执行命令行，import 它会顺带跑一遍。
  */
@@ -18,8 +18,10 @@ import { checkArtifacts, generate, writeArtifacts } from './index'
 export const CLI_USAGE = '用法：md-to-meta <check|write> <app-dir>...'
 
 export interface CliDeps {
-  /** 读取宿主 vite.config.ts 里具名导出的 mdToMetaOptions。 */
-  loadOptions: (root: string) => Promise<{ mdToMetaOptions?: MdToMetaOptions }>
+  /** 读取宿主 vite.config.ts 中的文档生成配置。 */
+  loadOptions: (
+    root: string
+  ) => Promise<{ mdToMetaOptions?: MdToMetaOptions; mdToMetaAdditionalOptions?: MdToMetaOptions[] }>
   generate: typeof generate
   checkArtifacts: typeof checkArtifacts
   writeArtifacts: typeof writeArtifacts
@@ -49,12 +51,14 @@ export async function runCli(argv: readonly string[], deps: CliDeps = defaultDep
   }
   for (const appDir of appDirs) {
     const root = path.resolve(appDir)
-    const { mdToMetaOptions } = await deps.loadOptions(root)
+    const { mdToMetaOptions, mdToMetaAdditionalOptions = [] } = await deps.loadOptions(root)
     if (!mdToMetaOptions) throw new Error(`${root}/vite.config.ts 没有导出 mdToMetaOptions`)
     // 与插件共用同一份解析口径（相对 Vite root 的路径），配置只写一次，解析只写一次。
-    const result = await deps.generate(resolveGenerateOptions(root, mdToMetaOptions))
-    if (mode === 'check') deps.checkArtifacts(result.files, result.output)
-    else deps.writeArtifacts(result.files, result.output)
+    for (const options of [mdToMetaOptions, ...mdToMetaAdditionalOptions]) {
+      const result = await deps.generate(resolveGenerateOptions(root, options))
+      if (mode === 'check') deps.checkArtifacts(result.files, result.output)
+      else deps.writeArtifacts(result.files, result.output)
+    }
   }
   return 0
 }

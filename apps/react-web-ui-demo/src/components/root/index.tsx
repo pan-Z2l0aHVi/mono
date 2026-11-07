@@ -394,6 +394,14 @@ export function Root() {
                   onNavigate={() => setSidebarOpen(false)}
                 />
                 <SidebarNavLink
+                  to="/getting-started"
+                  label="快速开始"
+                  active={isNavActive(pathname, '/getting-started')}
+                  collapsed={navCollapsed}
+                  title={navCollapsed ? undefined : '快速开始'}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
+                <SidebarNavLink
                   to="/changelog"
                   label="更新日志"
                   active={isNavActive(pathname, '/changelog')}

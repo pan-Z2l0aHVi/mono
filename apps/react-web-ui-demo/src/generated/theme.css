@@ -113,9 +113,9 @@
 }
 
 .mdm-markdown a {
-  color: inherit;
+  color: var(--wui-color-accent, #0066cc);
   text-decoration: underline;
-  text-decoration-color: rgb(55 53 47 / 0.4);
+  text-decoration-color: currentcolor;
   text-underline-offset: 2px;
 }
 
@@ -245,7 +245,7 @@ web-ui-theme[resolved-appearance='dark'] .mdm-markdown :not(pre) > code {
 }
 
 web-ui-theme[resolved-appearance='dark'] .mdm-markdown a {
-  text-decoration-color: rgb(255 255 255 / 0.4);
+  text-decoration-color: currentcolor;
 }
 
 web-ui-theme[resolved-appearance='dark'] .mdm-markdown hr {

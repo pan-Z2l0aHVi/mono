@@ -22,11 +22,11 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 
 哪些文件是生成的、各自由谁生成、怎么重新生成，清单见 [`generated-artifacts.md`](./generated-artifacts.md)；本节只讲生命周期与守卫。
 
-[`packages/web-ui/docs/*.md`](../../packages/web-ui/docs/) 与 [`packages/web-ui/CHANGELOG.md`](../../packages/web-ui/CHANGELOG.md) 是 demo 文档 meta 与代码文件的唯一输入（中文源是 `<name>.CN.md`，英文译文是 `<name>.md`）。generator 在 dev 与 build 时写盘，测试期只判不改；两个 demo 与 `web-ui` 的 parity 测试保证产物与 markdown 一致。改动组件 API 必须同时改对应 markdown。生成器的输入契约与校验规则以 `@greypan/md-to-meta` 的测试为准，宿主侧的呈现契约（示例小节、API 表、语种）以两端 app 的测试为准。
+[`packages/web-ui/docs/*.md`](../../packages/web-ui/docs/)、[`packages/web-ui/CHANGELOG.md`](../../packages/web-ui/CHANGELOG.md) 与 `packages/web-ui/README*.md` 是 demo 文档 meta 与代码文件的输入（中文源是 `<name>.CN.md`，英文译文是 `<name>.md`）。generator 在 dev 与 build 时写盘，测试期只判不改；两个 demo 与 `web-ui` 的 parity 测试保证产物与 markdown 一致。改动组件 API 必须同时改对应 markdown。生成器的输入契约与校验规则以 `@greypan/md-to-meta` 的测试为准，宿主侧的呈现契约（示例小节、API 表、语种）以两端 app 的测试为准。
 
 同一份输入与配置必须生成同一份完整字节；机器负载或调度耗时不得决定着色、解析等生成结果。预热和复跑通过不能证明确定性，涉及时间预算或部分结果降级的生成链要用可控调度验证完整产物；仅校验可见文本无法证明着色 HTML 一致。
 
-CI 在 Build 步之前经两端 demo 的 `check-generated` turbo 任务以同一份插件配置只判不改地校验产物：Build 的写盘会把失步产物原地治愈，测试档里的判据到那时永远空转，所以检测必须抢在 healing 之前。判据与测试档同源（`@greypan/md-to-meta` 的 `checkArtifacts`），配置直接 import 各 demo `vite.config.ts` 的 `mdToMetaOptions` 具名导出，不抄第二份。
+CI 在 Build 步之前经两端 demo 的 `check-generated` turbo 任务以同一份插件配置只判不改地校验产物：Build 的写盘会把失步产物原地治愈，测试档里的判据到那时永远空转，所以检测必须抢在 healing 之前。判据与测试档同源（`@greypan/md-to-meta` 的 `checkArtifacts`），配置直接 import 各 demo `vite.config.ts` 的 `mdToMetaOptions` 与可选的 `mdToMetaAdditionalOptions` 具名导出，不抄第二份。README 单独生成到 `src/generated/readme/`，其代码片段不作为示例执行。相邻的 `npm`、`pnpm`、`bun`、`yarn` 围栏中出现至少两种不同名称时，demo 将其合并为可切换的代码块；其他内容或重复名称结束当前组。
 
 这些语料必须进入本包 `build` 与 `test` 的 turbo inputs：根配置排除 Markdown，包级 [`turbo.json`](../../turbo.json) 重新纳入，并由 `pnpm run check-policy` 中的 `web-ui-docs-inputs` 检查守护。`web-ui` 侧的对齐判据还读取两个 demo 的 `src/generated/**` 与页面目录（React `src/routes/components/**`、Vue `src/pages/components/**`）；这些路径不在本包目录内，依赖方向又是 demo → `web-ui`，`^build` 传播不到，因此逐条登记在 [`packages/web-ui/turbo.json`](../../packages/web-ui/turbo.json) 的 `test.inputs` 里。
 

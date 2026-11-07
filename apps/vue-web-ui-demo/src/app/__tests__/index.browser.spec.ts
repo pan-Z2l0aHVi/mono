@@ -590,8 +590,12 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     const restoredLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
     expect(restoredLinks.map(link => link.querySelector('span')?.textContent?.trim() ?? '')).toEqual(expandedLabels)
     expect(restoredLinks.every(link => link.closest('web-ui-tooltip') === null)).toBe(true)
-    expect(restoredLinks.slice(2).every(link => !link.hasAttribute('title'))).toBe(true)
-    expect(restoredLinks.slice(0, 2).map(link => link.getAttribute('title'))).toEqual(['Components', 'Changelog'])
+    expect(restoredLinks.slice(3).every(link => !link.hasAttribute('title'))).toBe(true)
+    expect(restoredLinks.slice(0, 3).map(link => link.getAttribute('title'))).toEqual([
+      'Components',
+      'Getting Started',
+      'Changelog'
+    ])
   })
 
   it('桌面端 collapse 后导航文字居中，expanded state 左对齐', async () => {

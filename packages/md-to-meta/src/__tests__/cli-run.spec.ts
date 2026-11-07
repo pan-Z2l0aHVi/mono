@@ -67,6 +67,19 @@ describe('runCli 生成与落盘', () => {
     expect(deps.writeArtifacts).not.toHaveBeenCalled()
   })
 
+  it('校验宿主配置的额外输出', async () => {
+    const deps = fakeDeps()
+    deps.loadOptions.mockResolvedValue({
+      mdToMetaOptions: OPTIONS,
+      mdToMetaAdditionalOptions: [{ input: 'README.md', output: 'src/generated/readme' }]
+    })
+
+    expect(await runCli(['check', 'apps/a'], deps)).toBe(0)
+    expect(deps.generate).toHaveBeenCalledTimes(2)
+    expect(deps.generate.mock.calls[1]?.[0].input).toEqual(['README.md'])
+    expect(deps.checkArtifacts).toHaveBeenCalledTimes(2)
+  })
+
   it('write 走落盘而不是校验', async () => {
     const deps = fakeDeps()
 

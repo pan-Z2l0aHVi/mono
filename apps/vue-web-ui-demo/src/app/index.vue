@@ -290,6 +290,15 @@ onMounted(async () => {
               @navigate="sidebarOpen = false"
             />
             <SidebarNavLink
+              to="/getting-started"
+              label="快速开始"
+              :active="isNavActive(route.path, '/getting-started')"
+              :collapsed="navCollapsed"
+              :item-class="NAV_ITEM_CLASS"
+              :title="navCollapsed ? undefined : '快速开始'"
+              @navigate="sidebarOpen = false"
+            />
+            <SidebarNavLink
               to="/changelog"
               label="更新日志"
               :active="isNavActive(route.path, '/changelog')"

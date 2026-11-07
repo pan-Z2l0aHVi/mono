@@ -325,10 +325,10 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     const links = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
     const fullLabels = links.map(link => link.getAttribute('aria-label'))
-    expect(links).toHaveLength(36)
+    expect(links).toHaveLength(37)
     expect(links.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
-    expect(links.slice(2).every(link => link.title === '')).toBe(true)
-    expect(links.slice(0, 2).map(link => link.title)).toEqual(['组件总览', '更新日志'])
+    expect(links.slice(3).every(link => link.title === '')).toBe(true)
+    expect(links.slice(0, 3).map(link => link.title)).toEqual(['组件总览', '快速开始', '更新日志'])
 
     await requestCollapse(true)
 
@@ -356,8 +356,8 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     const expandedLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
     expect(expandedLinks.map(link => link.querySelector('span')?.textContent?.trim())).toEqual(fullLabels)
     expect(expandedLinks.every(link => link.closest('web-ui-tooltip') === null)).toBe(true)
-    expect(expandedLinks.slice(2).every(link => link.title === '')).toBe(true)
-    expect(expandedLinks.slice(0, 2).map(link => link.title)).toEqual(['组件总览', '更新日志'])
+    expect(expandedLinks.slice(3).every(link => link.title === '')).toBe(true)
+    expect(expandedLinks.slice(0, 3).map(link => link.title)).toEqual(['组件总览', '快速开始', '更新日志'])
   })
 
   it('375px 移动视口内全局语言选择器可见', async () => {
