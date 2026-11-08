@@ -131,7 +131,7 @@ export function parseReviewFindings(raw) {
  * 空 findings 时另外要求清单真的落到本次改动的路径上：只读了判据文档就收尾，正是要区分的早停。
  * 返回空串表示通过，否则返回写进结论的失败原因。diff 为空时整条豁免：那时没有改动可读。
  */
-function coverageGap(parsed, scope) {
+export function coverageGap(parsed, scope) {
   if (scope.empty_diff) return ''
   if (!parsed.coverage) return 'the conclusion carries no coverage list'
   if (parsed.findings.length > 0) return ''
@@ -443,7 +443,11 @@ export function renderConclusion({ conclusion, meta, pullNumber }) {
     else if (conclusion.status === 'error')
       lines.push('本次审查没有跑成：检查 GitHub 后台的 secrets/variables 与 CI 日志，配置齐全后重跑。')
     else if (conclusion.status === 'unreviewed')
-      lines.push('本次没有可用结论：模型腿跑完了但输出不可用，重跑整条 run；重复出现就按故障码修输出契约。')
+      lines.push(
+        conclusion.code === 'missing_coverage'
+          ? '本次没有可用结论：模型没交出覆盖证据，审查腿一并判红，用 `gh run rerun --failed` 只重跑审查与门禁腿；重复出现就按故障码修输出契约。'
+          : '本次没有可用结论：模型腿跑完了但输出不可用，重跑整条 run；重复出现就按故障码修输出契约。'
+      )
     else lines.push('没有可用发现：本次没有拿到模型结论，不能当作已审查。')
   }
   for (const finding of findings) {
@@ -819,7 +823,9 @@ function commandValidate() {
     })
     writeOutputs({ blocks: String(parsed.counts.Block), reason: gap })
     console.error(`review is unreviewed: ${gap}`)
-    console.error('Rerun the whole CI run once; a repeat means the review output contract needs fixing.')
+    console.error(
+      'Rerun the failed jobs with `gh run rerun --failed`; a repeat means the review output contract needs fixing.'
+    )
     return
   }
 
@@ -900,7 +906,13 @@ function commandGate() {
       console.error('Fix the repository configuration or the model invocation, then rerun CI.')
     } else if (status.status === 'unreviewed') {
       console.error(`Codex review produced no usable conclusion (${status.code}): ${status.reason}`)
-      console.error('Rerun the whole CI run once; a repeat means the review output contract needs fixing.')
+      // 只有 missing_coverage 会让审查腿一并判红；unusable_output / error 那条腿仍是绿的，
+      // 此时 --failed 只会重跑 gate，必须提示重跑整条 run 才会再调一次模型。
+      console.error(
+        status.code === 'missing_coverage'
+          ? 'Rerun the failed jobs with `gh run rerun --failed`; a repeat means the review output contract needs fixing.'
+          : 'Rerun the whole CI run once; a repeat means the review output contract needs fixing.'
+      )
     } else {
       console.error(`Block findings must be fixed before merge: ${status.counts.Block} at ${liveHeadSha}`)
     }
