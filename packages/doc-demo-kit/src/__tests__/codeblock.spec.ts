@@ -164,6 +164,23 @@ describe('代码卡状态机', () => {
     expect(controller.getSnapshot()).toMatchObject({ flavor: 'pnpm' })
   })
 
+  it('派生值未变时 setInputs 复用上一份快照引用（React useSyncExternalStore 的稳定性契约）', () => {
+    const { controller } = setup([tsxNode, vueNode])
+    const before = controller.getSnapshot()
+
+    // 宿主每次重渲染都传新数组，不能比数组引用：内容相同的全新输入不得产出新快照，
+    // 否则渲染期 setInputs 让 getSnapshot 每次都换引用，React 判定 store 变化，
+    // 立即再渲染再进 setInputs，陷入重渲染循环。
+    controller.setInputs({ nodes: [{ ...tsxNode }, { ...vueNode }], variants: undefined })
+    expect(controller.getSnapshot()).toBe(before)
+
+    // 激活内容真变了才换引用。
+    const changed = { label: 'codeblock', lang: 'tsx', content: 'const b = 2' } as MetaNode
+    controller.setInputs({ nodes: [changed, vueNode] })
+    expect(controller.getSnapshot()).not.toBe(before)
+    expect(controller.getSnapshot().active?.content).toBe('const b = 2')
+  })
+
   it('copy 接线：发起复制后快照带反馈状态', async () => {
     vi.stubGlobal('navigator', {
       clipboard: { writeText: vi.fn<(text: string) => Promise<void>>().mockResolvedValue() }

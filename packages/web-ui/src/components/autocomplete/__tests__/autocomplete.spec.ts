@@ -1033,6 +1033,23 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
+    it('面板开着时切 readonly，外点仍能关闭（关闭路径不被 readonly 拦住）', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      await waitForUpdate(el)
+
+      el.show()
+      await waitForUpdate(el)
+      expect(el.open).toBe(true)
+
+      el.readonly = true
+      await waitForUpdate(el)
+      document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.open, 'readonly 只挡打开，不挡关闭').toBe(false)
+      cleanupElement(el)
+    })
+
     it('readonly 时 ArrowDown 不打开 panel', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       el.readonly = true

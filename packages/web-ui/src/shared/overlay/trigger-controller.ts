@@ -66,6 +66,13 @@ export interface TriggerControllerPolicy {
    * 各手势入口的禁用判定也只看它（不再单列 isDisabled）。
    */
   canOpen(): boolean
+  /**
+   * 关闭总闸，缺省等于 canOpen()。「可关闭」与「可打开」必须分开：autocomplete 的
+   * readonly 挡的是打开，不该挡关闭——面板打开后切 readonly，outside click、focusout
+   * 与 hide timer 若仍被 readonly 拦住，面板会永远留在页面上（Escape 又被 inert 吞掉）。
+   * 关闭路径只受「真禁用」约束。
+   */
+  canClose?(): boolean
   getOpen(): boolean
   /** hover 打开是否免入场动画（tooltip：已有提示在场时指针滑入相邻目标）。 */
   hoverOpensInstantly(): boolean
@@ -159,6 +166,9 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
 
   const canApply = () => policy.canOpen()
 
+  /** 关闭路径的总闸：默认与打开同闸；autocomplete 的 readonly 只挡打开，不挡关闭。 */
+  const canCloseApply = () => policy.canClose?.() ?? canApply()
+
   /** 事件是否落在 panel 内（含 portal 后的 panel 与子层）；由会话 handle 派生。 */
   const isInsidePanel = (event: Event) => policy.getPanelHandle()?.containsEvent(event) ?? false
 
@@ -182,7 +192,7 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
     hideTimer = setTimeout(
       () => {
         hideTimer = undefined
-        if (!policy.getOpen() || !canApply() || isNone()) return
+        if (!policy.getOpen() || !canCloseApply() || isNone()) return
         if (hovering || focusKeepsOpen()) return
         requestClose(source)
       },
@@ -239,7 +249,7 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
     cancelFocusCheck()
     focusCheckFrame = requestAnimationFrame(() => {
       focusCheckFrame = undefined
-      if (!policy.getOpen() || !canApply() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
+      if (!policy.getOpen() || !canCloseApply() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
       if (hasFocusWithin()) {
         focusWithin = true
         return
@@ -251,7 +261,7 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
 
   const onFocusOut = () => {
     if (policy.focusOut === false) return
-    if (!canApply() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
+    if (!canCloseApply() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
     focusWithin = false
     clearShowTimer()
     scheduleFocusCheck()
@@ -259,7 +269,7 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
 
   const onDocumentClick = (event: MouseEvent) => {
     if (policy.outsideClick === false) return
-    if (!canApply() || !hasTriggerGesture(policy.getTrigger(), 'click') || !policy.getOpen()) return
+    if (!canCloseApply() || !hasTriggerGesture(policy.getTrigger(), 'click') || !policy.getOpen()) return
     // 在监听器内部判定：composedPath() 在派发结束后会被清空。
     if (isEventInsideHost(host, event)) return
     if (isInsidePanel(event)) return
@@ -267,13 +277,16 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
   }
 
   const handleTriggerClick = (event: MouseEvent) => {
-    if (!canApply() || isNone()) return
+    if (isNone()) return
     if (!hasTriggerGesture(policy.getTrigger(), 'click')) return
     cancelPending()
     if (policy.getOpen()) {
+      // 已开着时的点击是关闭方向：readonly 不得挡住它，否则面板关不掉。
+      if (!canCloseApply()) return
       if (!policy.clickOpensOnly) requestClose('click')
       return
     }
+    if (!canApply()) return
     requestOpen('click', event.detail === 0, true)
   }
 
@@ -332,13 +345,13 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
         if (policy.getOpen() && !focusKeepsOpen()) armHide('panel-leave')
       }
       const onPanelFocusIn = () => {
-        if (!canApply() || isNone()) return
+        if (!canCloseApply() || isNone()) return
         focusWithin = true
         if (focusKeepsOpen()) clearHideTimer()
       }
       const onPanelFocusOut = () => {
         if (policy.focusOut === false) return
-        if (!canApply() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
+        if (!canCloseApply() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
         scheduleFocusCheck()
       }
       panel.addEventListener('pointerenter', onPanelEnter)

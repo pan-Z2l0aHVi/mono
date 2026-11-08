@@ -265,6 +265,9 @@ export class WebUiAutocomplete extends defineOverlayDelayProps(FormAssociated(Li
     host: this,
     getTrigger: () => this.trigger,
     canOpen: () => !this._isDisabled && !this.readonly,
+    // readonly 只挡打开；面板开着时切 readonly 仍必须能被 outside click / focusout / hide
+    // timer 关闭，否则面板永远留在页面上（Escape 已被 inert 吞掉）。
+    canClose: () => !this._isDisabled,
     getOpen: () => this._isOpen,
     hoverOpensInstantly: () => false,
     getPanelHandle: () => this._panel.getHandle(),

@@ -261,7 +261,7 @@ export function createCodeblockController(options: CodeblockControllerOptions): 
       nodes.find(node => flavorOf(node.lang) === flavor) ??
       nodes[0] ??
       null
-    snapshot = {
+    const next: CodeblockSnapshot = {
       flavor,
       expanded,
       active,
@@ -269,6 +269,24 @@ export function createCodeblockController(options: CodeblockControllerOptions): 
       preview: nodes.find(node => node.load && flavorOf(node.lang) === nativeFlavor) ?? null,
       copy: copyFeedback.getSnapshot()
     }
+    // 渲染期 setInputs 会随宿主重渲染反复重算，而父组件每次都传入新数组（不能比引用）。
+    // 派生值未变时必须复用上一份快照引用：React 的 useSyncExternalStore 把「getSnapshot
+    // 返回了新引用」当 store 变化，会立即再渲染并再进 setInputs，陷入重渲染循环。
+    const prev = snapshot
+    if (
+      prev &&
+      prev.flavor === next.flavor &&
+      prev.expanded === next.expanded &&
+      prev.active?.lang === next.active?.lang &&
+      prev.active?.content === next.active?.content &&
+      prev.collapsible === next.collapsible &&
+      prev.preview?.load === next.preview?.load &&
+      prev.copy.status === next.copy.status &&
+      prev.copy.run === next.copy.run
+    ) {
+      return
+    }
+    snapshot = next
   }
 
   function publish() {
