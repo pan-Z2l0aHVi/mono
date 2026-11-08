@@ -867,6 +867,11 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.match(emptyGuard, /if: \$\{\{ always\(\) &&/, 'the guard must run even when the model step fails')
     assert.match(emptyGuard, /steps\.reuse\.outputs\.reused != 'true'/, 'a reused conclusion is not re-judged here')
     assert.match(emptyGuard, /node \.github\/scripts\/check-review-output\.mjs/)
+    assert.match(
+      emptyGuard,
+      /hashFiles\('\.github\/scripts\/check-review-output\.mjs'\) != ''/,
+      'a PR head that predates the workspace script must skip the guard instead of failing on module import'
+    )
     assert.ok(!/continue-on-error/.test(emptyGuard), 'the guard must be able to fail the review job')
     assert.match(
       namedStep(ci, 'Upload review findings'),

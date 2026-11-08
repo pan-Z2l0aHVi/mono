@@ -332,8 +332,11 @@ jobs:
       # 拿同一份空壳 artifact 再红一次。这一步让审查腿一起变红，好让 --failed 重跑模型腿。
       # 脚本从工作区（PR head）读取，改动提出它的 PR 上即生效；它只判红、不判绿，结论仍由
       # 取自 PR base 的 trusted validate / gate 裁决，作者改它换不来绿色。
+      # pull_request 的 workflow YAML 取自 merge ref（base + head），本改动合入 main 后，
+      # 尚未更新的 open PR 也会拿到这一步，但它们的 head 里没有该脚本：hashFiles 为空时跳过，
+      # 不把「分支落后」误判成模型腿故障；旧 head 本就处于新防线未生效的自举期。
       - name: Reject empty review output
-        if: ${{ always() && steps.config.outputs.configured == 'true' && steps.reuse.outputs.reused != 'true' }}
+        if: ${{ always() && steps.config.outputs.configured == 'true' && steps.reuse.outputs.reused != 'true' && hashFiles('.github/scripts/check-review-output.mjs') != '' }}
         env:
           CODEX_REVIEW_OUTPUT_PATH: ${{ runner.temp }}/codex-final-message.json
           CODEX_REVIEW_SCOPE_PATH: ${{ runner.temp }}/codex-review/review-scope.json
