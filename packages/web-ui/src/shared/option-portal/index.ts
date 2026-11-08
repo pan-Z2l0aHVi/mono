@@ -9,7 +9,8 @@ import type { OverlayPortal } from '@/shared/overlay/portal'
  *
  * 交互语义与 Lit 响应式由各组件保留（同 anchored-panel 的边界约定）：
  * 组件通过 host 回调注入差异点（迁移节点来源、打开期即时同步等），
- * 并持有 _options/_activeIndex 的 @state，shared 只经返回值同步数据。
+ * 并持有 _options 的注册表；游标状态在 combobox-navigation，组件只留 `@state`
+ * 镜像供 aria 计算。
  */
 
 export interface OptionPortalHost {
@@ -194,3 +195,4 @@ export const defineOptionPortal = () =>
     return api
   })
 export * from './combobox-shell'
+export * from './combobox-navigation'

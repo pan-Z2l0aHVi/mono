@@ -13,7 +13,8 @@ import type { WebUiOption } from '@/components/option'
  *   scroll-lock 释放 → closeOverlay（关闭后使 portal 引用失效）
  * - option 四事件监听对的绑定/解绑
  * - focusout 的 rAF :focus-within 复核
- * - 键盘导航的环绕游标算法
+ *
+ * 游标轴（activeIndex / 环绕导航 / typeahead）在 combobox-navigation，不在这里。
  */
 
 export interface ComboboxOpenHooks {
@@ -229,16 +230,4 @@ export function createOptionListenerBinding(handlers: OptionListenerHandlers) {
     option.removeEventListener('option-update', handlers.onUpdate)
   }
   return { bind, unbind }
-}
-
-/**
- * 环绕游标：在 enabled 列表内按 delta 移动；从 -1（无激活）向下取首项、向上取末项。
- * 返回在 enabled 中的下一索引；调用方负责换算回全量 options 索引。
- */
-export function nextWrappingIndex(enabledCount: number, currentIdx: number, delta: number): number {
-  if (enabledCount === 0) return -1
-  let nextIdx = currentIdx + delta
-  if (nextIdx < 0) nextIdx = enabledCount - 1
-  if (nextIdx >= enabledCount) nextIdx = 0
-  return nextIdx
 }

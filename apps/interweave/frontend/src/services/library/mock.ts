@@ -337,7 +337,6 @@ function toSourceDTO(spec: MockSourceSpec, resource: MockResourceSpec, createdAt
 function toResourceDTO(resource: MockResourceSpec): ResourceDTO {
   const createdAt = BASE - resource.createdAgo
   const sources = resource.sources.map(source => toSourceDTO(source, resource, createdAt))
-  const preferred = sources.find(source => source.is_preferred) ?? sources[0]
 
   return {
     id: resource.id,
@@ -348,8 +347,7 @@ function toResourceDTO(resource: MockResourceSpec): ResourceDTO {
     created_at: createdAt,
     updated_at: BASE - resource.updatedAgo,
     sources,
-    tags: resource.tagNames.map(name => toTagDTO(name, resource.id)),
-    preferred_source_id: preferred.id
+    tags: resource.tagNames.map(name => toTagDTO(name, resource.id))
   }
 }
 
@@ -414,14 +412,15 @@ export function createMockLibraryRuntime(): LibraryRuntime {
         return Promise.resolve()
       },
 
-      // 浏览器预览照搬后端的替换式集合语义：归一化去重后整体重设，同名标签复用既有身份。
+      // 浏览器预览照搬后端的替换式集合语义：归一化去重后整体重设，同名标签复用既有身份；
+      // 与后端一致回传变更后的完整 Resource 视图。
       setTags: (resourceId, tagNames) => {
         try {
           const found = require(resourceId)
           const names = [...new Set(tagNames.map(normalizeTagName).filter(Boolean))]
           found.tags = names.map(name => resolveTag(name, resourceId))
           found.updated_at = Date.now()
-          return Promise.resolve([...found.tags])
+          return Promise.resolve(found)
         } catch (error) {
           return Promise.reject(error)
         }
@@ -455,8 +454,7 @@ export function createMockLibraryRuntime(): LibraryRuntime {
           created_at: now,
           updated_at: now,
           sources: [source],
-          tags: (input.tags ?? []).map(name => resolveTag(name, id)).filter(Boolean),
-          preferred_source_id: source.id
+          tags: (input.tags ?? []).map(name => resolveTag(name, id)).filter(Boolean)
         }
         // 后端列表按纳入时间倒序，预览同样把新资源插到最前。
         resources = [created, ...resources]

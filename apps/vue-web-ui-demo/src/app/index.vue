@@ -1,20 +1,11 @@
 <script setup lang="ts">
 import appScrollbarsOptions from '@greypan/app-scrollbars'
-import { local } from '@greypan/browser-kit'
 import {
-  DEFAULT_SIDEBAR_WIDTH_PX,
+  createShellState,
   isNavActive,
-  isSidebarWidth,
-  isThemeAppearance,
-  isThemeMotion,
   NAV_ITEM_CLASS,
   NAV_SECTIONS,
-  NAV_SECTION_TITLE_CLASS,
-  SIDEBAR_WIDTH_STORAGE_KEY,
-  THEME_APPEARANCE_STORAGE_KEY,
-  THEME_MOTION_STORAGE_KEY,
-  type ThemeAppearance,
-  type ThemeMotion
+  NAV_SECTION_TITLE_CLASS
 } from '@greypan/doc-demo-kit'
 import type { WebUiEvent, WebUiLayout, WebUiSelect } from '@greypan/web-ui'
 import { toast } from '@greypan/web-ui'
@@ -34,7 +25,7 @@ import {
   useOverlayScrollbars,
   type OverlayScrollbarsComponentRef
 } from 'overlayscrollbars-vue'
-import { computed, onMounted, ref, watch } from 'vue'
+import { computed, onMounted, ref, shallowRef, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
 import Search from '@/components/search/index.vue'
@@ -59,84 +50,55 @@ async function updateLocale(event: WebUiEvent<WebUiSelect, 'change'>) {
   }
 }
 
-function getInitialThemeAppearance(): ThemeAppearance {
-  const appearance = local.get<unknown>(THEME_APPEARANCE_STORAGE_KEY)
-  return isThemeAppearance(appearance) ? appearance : 'light'
-}
-
-function getInitialThemeMotion(): ThemeMotion {
-  const motion = local.get<unknown>(THEME_MOTION_STORAGE_KEY)
-  return isThemeMotion(motion) ? motion : 'system'
-}
-
-function getInitialSidebarWidth(): string {
-  const width = local.get<unknown>(SIDEBAR_WIDTH_STORAGE_KEY)
-  return isSidebarWidth(width) ? width : DEFAULT_SIDEBAR_WIDTH_PX
-}
-
-const themeAppearance = ref(getInitialThemeAppearance())
-const themeMotion = ref(getInitialThemeMotion())
-const bannerVisible = ref(true)
-const searchOpen = ref(false)
-const shellLayout = ref<WebUiLayout | null>(null)
-const sidebarCollapsed = ref(false)
-const sidebarOpen = ref(false)
-const mobileSidebarWidth = 'min(320px, 80vw)'
+/*
+ * shell 状态（主题 / 动效 / 侧栏 collapsed / open / 宽度的持久化、校验、layout 事件过滤与
+ * mobile 派生）由 kit 的 `createShellState` 拥有；这里只把快照接进 Vue 响应式与 `useMobile`
+ * 的断点判定（判定留在 app，ADR-0023）。snapshot 只在提交时整体换引用，shallowRef 按引用
+ * 比较恰好匹配这个约定。
+ */
+const shell = createShellState()
+const snapshot = shallowRef(shell.getSnapshot())
+shell.subscribe(() => {
+  snapshot.value = shell.getSnapshot()
+})
 const isMobileSidebarViewport = useMobile()
-const desktopSidebarWidth = ref(getInitialSidebarWidth())
-const sidebarWidth = computed(() => (isMobileSidebarViewport.value ? mobileSidebarWidth : desktopSidebarWidth.value))
+watch(
+  isMobileSidebarViewport,
+  mobile => shell.setMobile(mobile),
+  // immediate：setup 期就把当前断点写进状态机，首帧的 drawer 宽度与展开态就是对的。
+  { immediate: true }
+)
+const themeAppearance = computed(() => snapshot.value.appearance)
+const themeMotion = computed(() => snapshot.value.motion)
+const sidebarCollapsed = computed(() => snapshot.value.sidebarCollapsed)
+const sidebarOpen = computed(() => snapshot.value.sidebarOpen)
+const sidebarWidth = computed(() => snapshot.value.sidebarWidth)
+const navCollapsed = computed(() => snapshot.value.navCollapsed)
 
-/*
- * collapse 是桌面端的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
- * min(320px, 80vw)，套用 collapsed state 会把 label 挤成居中截断。web-ui-layout 的
- * `sidebar-collapsed` 契约同样写明它「不会影响移动端 Drawer」，它只是无从替
- * Consumer 决定 slot 内容怎么渲染，所以闸门留在这里。
- */
-const navCollapsed = computed(() => sidebarCollapsed.value && !isMobileSidebarViewport.value)
-/*
- * layout 的四个 `*-change` 都是 `bubbles: true, composed: true`，而文档页里示例的 `web-ui-layout` 就挂在
- * 本站侧栏的子树内，它一翻转事件就顺着冒到这里。只采信自己这一层：窄视口下点示例的 Toggle，本站 drawer
- * 会跟着打开（实测 `shellDrawerOpen: true`，命中的那条事件 `target` 是示例元素）。
- */
-function isOwnLayoutEvent(event: Event): boolean {
-  return event.target === event.currentTarget
+// layout 的三个 sidebar 事件统一交给 shell 状态机：事件过滤（只采信自己层的冒泡）与提交都在 kit。
+function updateLayoutEvent(
+  event: WebUiEvent<WebUiLayout, 'sidebar-collapsed-change' | 'sidebar-open-change' | 'sidebar-width-change'>
+) {
+  shell.applyLayoutEvent(event)
 }
 
-function commitThemeAppearance(appearance: ThemeAppearance) {
-  themeAppearance.value = appearance
-  local.set(THEME_APPEARANCE_STORAGE_KEY, appearance)
-}
-
+// 校验与持久化都在 shell 状态机：非法值静默忽略，受控宿主保持已提交值。
 function updateThemeAppearance(event: WebUiEvent<WebUiSelect, 'change'>) {
-  const appearance = event.currentTarget.value
-  if (!isThemeAppearance(appearance)) return
-  commitThemeAppearance(appearance)
+  shell.setAppearance(event.currentTarget.value)
 }
 
 function updateThemeMotion(event: WebUiEvent<WebUiSelect, 'change'>) {
-  const motion = event.currentTarget.value
-  if (!isThemeMotion(motion)) return
-
-  themeMotion.value = motion
-  local.set(THEME_MOTION_STORAGE_KEY, motion)
+  shell.setMotion(event.currentTarget.value)
 }
 
-function updateSidebarCollapsed(event: WebUiEvent<WebUiLayout, 'sidebar-collapsed-change'>) {
-  if (!isOwnLayoutEvent(event)) return
-  sidebarCollapsed.value = event.detail.collapsed
+/** 导航后收起移动端 drawer；回写经 shell 状态机，模板里的快照是只读派生。 */
+function closeSidebar() {
+  shell.setSidebarOpen(false)
 }
 
-function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>) {
-  if (!isOwnLayoutEvent(event)) return
-  sidebarOpen.value = event.detail.open
-}
-
-// 拖拽调宽的受控回写 + localStorage 持久化（仅桌面端生效）
-function updateSidebarWidth(event: WebUiEvent<WebUiLayout, 'sidebar-width-change'>) {
-  if (!isOwnLayoutEvent(event)) return
-  desktopSidebarWidth.value = event.detail.width
-  local.set(SIDEBAR_WIDTH_STORAGE_KEY, event.detail.width)
-}
+const bannerVisible = ref(true)
+const searchOpen = ref(false)
+const shellLayout = ref<WebUiLayout | null>(null)
 
 const route = useRoute()
 const router = useRouter()
@@ -184,9 +146,9 @@ onMounted(async () => {
         sidebar-resizable
         sidebar-min-width="120px"
         sidebar-max-width="400px"
-        @sidebar-collapsed-change="updateSidebarCollapsed"
-        @sidebar-open-change="updateSidebarOpen"
-        @sidebar-width-change="updateSidebarWidth"
+        @sidebar-collapsed-change="updateLayoutEvent"
+        @sidebar-open-change="updateLayoutEvent"
+        @sidebar-width-change="updateLayoutEvent"
       >
         <div
           v-if="bannerVisible"
@@ -280,7 +242,7 @@ onMounted(async () => {
               :collapsed="navCollapsed"
               :item-class="NAV_ITEM_CLASS"
               :title="navCollapsed ? undefined : '组件总览'"
-              @navigate="sidebarOpen = false"
+              @navigate="closeSidebar"
             />
             <SidebarNavLink
               to="/getting-started"
@@ -289,7 +251,7 @@ onMounted(async () => {
               :collapsed="navCollapsed"
               :item-class="NAV_ITEM_CLASS"
               :title="navCollapsed ? undefined : '快速开始'"
-              @navigate="sidebarOpen = false"
+              @navigate="closeSidebar"
             />
             <SidebarNavLink
               to="/changelog"
@@ -298,7 +260,7 @@ onMounted(async () => {
               :collapsed="navCollapsed"
               :item-class="NAV_ITEM_CLASS"
               :title="navCollapsed ? undefined : '更新日志'"
-              @navigate="sidebarOpen = false"
+              @navigate="closeSidebar"
             />
             <div
               v-for="(section, index) in NAV_SECTIONS"
@@ -327,7 +289,7 @@ onMounted(async () => {
                 :active="isNavActive(route.path, item.path)"
                 :collapsed="navCollapsed"
                 :item-class="NAV_ITEM_CLASS"
-                @navigate="sidebarOpen = false"
+                @navigate="closeSidebar"
               />
             </div>
           </nav>

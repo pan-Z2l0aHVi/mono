@@ -300,6 +300,190 @@ describe('context-menu 长按（jsdom 逻辑）', () => {
    */
 })
 
+/*
+ * 长按开 menu 后宿主一侧的补发 click 吸收（自 interweave ResourceList 的回声机迁移而来，
+ * 迁移不复制）：长按抬手后浏览器合成的 click 落在宿主子树里（menu 已关时 target 恒为
+ * pointerdown 落点），会激活宿主的行。吸收由本组件在宿主子树 capture 阶段自己做，
+ * 用例走「pointer 序列进 → 吞 / 不吞出」的纯状态机断言，观察点是子树上派发的 click
+ * 有没有被吞（defaultPrevented + 子节点的冒泡监听没收到）。
+ */
+describe('context-menu 长按的宿主侧补发 click 吸收', () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    document.body.replaceChildren()
+  })
+
+  function createMenu(): WebUiContextMenu {
+    const el = document.createElement('web-ui-context-menu')
+    el.setAttribute('long-press', '')
+    el.innerHTML = '<div id="press-area">press</div>'
+    document.body.append(el)
+    return el
+  }
+
+  function pressArea(el: WebUiContextMenu): HTMLElement {
+    return el.querySelector('#press-area') as HTMLElement
+  }
+
+  function touchPointer(type: string): PointerEvent {
+    const event = new PointerEvent(type, { bubbles: true, cancelable: true, clientX: 120, clientY: 80 })
+    Object.defineProperty(event, 'pointerType', { value: 'touch' })
+    return event
+  }
+
+  /** 长按到计时器到期，走组件自己的开启路径（openAt 命令式不算长按）。 */
+  async function longPressOpensMenu(el: WebUiContextMenu) {
+    pressArea(el).dispatchEvent(touchPointer('pointerdown'))
+    await vi.advanceTimersByTimeAsync(600)
+    await waitForUpdate(el)
+    expect(el.isOpen, '前置条件：长按确实开出了 menu').toBe(true)
+  }
+
+  /** 在 press-area 上挂冒泡监听，观察 click 是否穿过吸收器落到宿主子树。 */
+  function trackClicks(el: WebUiContextMenu): MouseEvent[] {
+    const clicks: MouseEvent[] = []
+    pressArea(el).addEventListener('click', event => clicks.push(event as MouseEvent))
+    return clicks
+  }
+
+  it('menu 已关时仍吞掉长按手势的补发 click——吸收不读 menu 当前状态', async () => {
+    vi.useFakeTimers()
+    const el = createMenu()
+    await waitForUpdate(el)
+    const clicks = trackClicks(el)
+
+    await longPressOpensMenu(el)
+    // 真实顺序：touchend → pointerup → 浏览器补发 click。menu 常在补发 click 之前
+    // 因 blur / 外点先关，抬手仍在关闭之后发生。
+    pressArea(el).dispatchEvent(touchPointer('pointerup'))
+    el.close()
+    await waitForUpdate(el)
+    expect(el.isOpen, '前置条件：此刻 menu 确实是关的').toBe(false)
+
+    const echo = new MouseEvent('click', { bubbles: true, cancelable: true })
+    pressArea(el).dispatchEvent(echo)
+    await waitForUpdate(el)
+
+    expect(echo.defaultPrevented, '补发的 click 应被吞掉').toBe(true)
+    expect(clicks, '补发的 click 不该穿过吸收器激活宿主子树').toHaveLength(0)
+    cleanupElement(el)
+  })
+
+  it('menu 开着时同样吞掉宿主子树的补发 click', async () => {
+    vi.useFakeTimers()
+    const el = createMenu()
+    await waitForUpdate(el)
+    const clicks = trackClicks(el)
+
+    await longPressOpensMenu(el)
+    pressArea(el).dispatchEvent(touchPointer('pointerup'))
+    const echo = new MouseEvent('click', { bubbles: true, cancelable: true })
+    pressArea(el).dispatchEvent(echo)
+    await waitForUpdate(el)
+
+    expect(echo.defaultPrevented).toBe(true)
+    expect(clicks).toHaveLength(0)
+    expect(el.isOpen).toBe(true)
+    cleanupElement(el)
+  })
+
+  it('触屏轻点（没有长按开 menu）的 click 照常穿过', async () => {
+    vi.useFakeTimers()
+    const el = createMenu()
+    await waitForUpdate(el)
+    const clicks = trackClicks(el)
+
+    // 按下即抬手，不等长按到期：全程没有 menu 开出。
+    pressArea(el).dispatchEvent(touchPointer('pointerdown'))
+    pressArea(el).dispatchEvent(touchPointer('pointerup'))
+    await waitForUpdate(el)
+    expect(el.isOpen).toBe(false)
+
+    pressArea(el).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    await waitForUpdate(el)
+
+    expect(clicks, '轻点的 click 是有意的行激活，不能吞').toHaveLength(1)
+    cleanupElement(el)
+  })
+
+  it('鼠标指针不武装吸收器：命令式开 menu 后点宿主子树照常穿过', async () => {
+    vi.useFakeTimers()
+    const el = createMenu()
+    await waitForUpdate(el)
+    const clicks = trackClicks(el)
+
+    // 鼠标路径没有长按：即使 menu 被命令式打开，pointerup / click 也都不该被吞。
+    const mouseDown = new PointerEvent('pointerdown', { bubbles: true, cancelable: true })
+    Object.defineProperty(mouseDown, 'pointerType', { value: 'mouse' })
+    pressArea(el).dispatchEvent(mouseDown)
+    el.openAt(120, 80)
+    await waitForUpdate(el)
+    expect(el.isOpen, '前置条件：menu 处于打开态').toBe(true)
+
+    const mouseUp = new PointerEvent('pointerup', { bubbles: true, cancelable: true })
+    Object.defineProperty(mouseUp, 'pointerType', { value: 'mouse' })
+    pressArea(el).dispatchEvent(mouseUp)
+    pressArea(el).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    await waitForUpdate(el)
+
+    expect(clicks, '鼠标路径的点击照常激活宿主子树').toHaveLength(1)
+    cleanupElement(el)
+  })
+
+  it('吸收不泄漏到下一手：新的 pointerdown 之后点击照常穿过', async () => {
+    vi.useFakeTimers()
+    const el = createMenu()
+    await waitForUpdate(el)
+    const clicks = trackClicks(el)
+
+    await longPressOpensMenu(el)
+    pressArea(el).dispatchEvent(touchPointer('pointerup'))
+    // 补发的 click 这次没来（要构造的残留场景）。
+    pressArea(el).dispatchEvent(touchPointer('pointerdown'))
+    pressArea(el).dispatchEvent(touchPointer('pointerup'))
+    await waitForUpdate(el)
+
+    pressArea(el).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    await waitForUpdate(el)
+    expect(clicks, '上一手残留的吸收不该吞掉这一手的点击').toHaveLength(1)
+    cleanupElement(el)
+  })
+
+  it('吸收是一次性的：消费之后同一手的下一次点击照常穿过', async () => {
+    vi.useFakeTimers()
+    const el = createMenu()
+    await waitForUpdate(el)
+    const clicks = trackClicks(el)
+
+    await longPressOpensMenu(el)
+    pressArea(el).dispatchEvent(touchPointer('pointerup'))
+
+    pressArea(el).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    await waitForUpdate(el)
+    expect(clicks, '补发的 click 被吞').toHaveLength(0)
+
+    pressArea(el).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    await waitForUpdate(el)
+    expect(clicks, '消费之后同一手的下一次点击照常穿过').toHaveLength(1)
+    cleanupElement(el)
+  })
+
+  it('pointercancel 收尾的手势不武装吸收器', async () => {
+    vi.useFakeTimers()
+    const el = createMenu()
+    await waitForUpdate(el)
+    const clicks = trackClicks(el)
+
+    await longPressOpensMenu(el)
+    pressArea(el).dispatchEvent(touchPointer('pointercancel'))
+    pressArea(el).dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+    await waitForUpdate(el)
+
+    expect(clicks, '手势被系统接管时补发 click 不会来，后续点击照常穿过').toHaveLength(1)
+    cleanupElement(el)
+  })
+})
+
 // jsdom 未实现原生 dialog 的 modal 语义，这里局部补足 showModal/close 对 open 的影响。
 // 刻意不做成 test-helper 里的全局 shim —— 那会让共享 presence 的 `showModal?.()` 真正执行，
 // 改变 image-preview 等既有用例的观察点。依据见 test-helper.ts 末尾的说明。

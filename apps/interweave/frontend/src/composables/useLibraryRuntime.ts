@@ -128,9 +128,9 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     setPending(resourceId, true)
     error.value = ''
     try {
-      // 替换式集合语义：名称原样提交，归一化与差集增删由后端在单事务内完成。
-      await runtime.resources.setTags(resourceId, nextTagNames)
-      const updated = await runtime.resources.get(resourceId)
+      // 替换式集合语义：名称原样提交，归一化与差集增删由后端在单事务内完成；
+      // 变更后的完整 Resource 视图直接回流，不必再往返读取一次。
+      const updated = await runtime.resources.setTags(resourceId, nextTagNames)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
@@ -146,11 +146,10 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     refreshingSourceIds.value = [...new Set([...refreshingSourceIds.value, sourceId])]
     error.value = ''
     try {
-      const refreshed =
+      const updated =
         source.type === 'file'
           ? await runtime.sources.refreshFile(sourceId)
           : await runtime.sources.refreshURL(sourceId)
-      const updated = await runtime.resources.get(refreshed.resource_id)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
@@ -165,8 +164,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     replacingSourceIds.value = [...new Set([...replacingSourceIds.value, sourceId])]
     error.value = ''
     try {
-      const replaced = await runtime.sources.replaceFile(sourceId, inputPath)
-      const updated = await runtime.resources.get(replaced.resource_id)
+      const updated = await runtime.sources.replaceFile(sourceId, inputPath)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
@@ -181,8 +179,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     replacingSourceIds.value = [...new Set([...replacingSourceIds.value, sourceId])]
     error.value = ''
     try {
-      const replaced = await runtime.sources.replaceURL(sourceId, inputURL)
-      const updated = await runtime.resources.get(replaced.resource_id)
+      const updated = await runtime.sources.replaceURL(sourceId, inputURL)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
@@ -232,7 +229,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
         error.value = result.message || '暂时无法检测该链接'
         return
       }
-      if (result.source) store.upsertResource(await runtime.resources.get(result.source.resource_id))
+      if (result.resource) store.upsertResource(result.resource)
     } catch (cause) {
       error.value = errorMessage(cause)
     }

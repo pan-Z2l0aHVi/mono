@@ -4,9 +4,7 @@ import type {
   ResourceDTO,
   ResourceLocationMatchDTO,
   SourceAvailabilityEventDTO,
-  SourceDTO,
-  SourceProbeResultDTO,
-  TagDTO
+  SourceProbeResultDTO
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import type {
   ResourceKind,
@@ -32,19 +30,22 @@ export interface LibraryResourceCapabilities {
   updateNote(resourceId: string, note: string): Promise<ResourceDTO>
   remove(resourceId: string): Promise<void>
   /** 替换式集合语义：提交的名称集合成为该 Resource 的完整标签集合，规则在后端。 */
-  setTags(resourceId: string, tagNames: string[]): Promise<TagDTO[]>
+  setTags(resourceId: string, tagNames: string[]): Promise<ResourceDTO>
   findLocationMatches(input: string, sourceType: SourceType): Promise<ResourceLocationMatchDTO[]>
   /** 本地文件预览；DTO.media_url 是可直接渲染的临时地址。 */
   prepareFilePreview(inputPath: string): Promise<FilePreviewDTO>
   releaseFilePreview(token: string): Promise<void>
 }
 
-/** 单个入口的刷新与替换；地址、可用性与缩略图地址随后端 DTO 回流。 */
+/**
+ * 单个入口的刷新与替换：直接回传变更后的完整 Resource 视图，调用方 upsert 后即完成回流，
+ * 变更后的 Source 在 resource.sources 里按 id 可取。
+ */
 export interface LibrarySourceCapabilities {
-  refreshURL(sourceId: string): Promise<SourceDTO>
-  refreshFile(sourceId: string): Promise<SourceDTO>
-  replaceFile(sourceId: string, inputPath: string): Promise<SourceDTO>
-  replaceURL(sourceId: string, inputURL: string): Promise<SourceDTO>
+  refreshURL(sourceId: string): Promise<ResourceDTO>
+  refreshFile(sourceId: string): Promise<ResourceDTO>
+  replaceFile(sourceId: string, inputPath: string): Promise<ResourceDTO>
+  replaceURL(sourceId: string, inputURL: string): Promise<ResourceDTO>
   probeOnOpen(sourceId: string): Promise<SourceProbeResultDTO>
 }
 
@@ -118,11 +119,6 @@ export function requireFilePreviewDTO(value: FilePreviewDTO | null, action: stri
 export function requireResourceDTO(value: ResourceDTO | null, action: string): ResourceDTO {
   if (value) return value
   throw new Error(`${action}未返回 Resource`)
-}
-
-export function requireSourceDTO(value: SourceDTO | null, action: string): SourceDTO {
-  if (value) return value
-  throw new Error(`${action}未返回 Source`)
 }
 
 export function requireSourceProbeResultDTO(value: SourceProbeResultDTO | null, action: string): SourceProbeResultDTO {

@@ -24,6 +24,7 @@ import Toolbar from '@/components/library/Toolbar.vue'
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLayoutMobile } from '@/composables/useLayoutMobile'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
+import { useLibrarySelection } from '@/composables/useLibrarySelection'
 import type { LibraryQueueItem } from '@/services/library'
 import { useLibraryStore } from '@/stores/library'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
@@ -64,11 +65,15 @@ const {
 const mobile = useLayoutMobile()
 const filterOpen = ref(false)
 const searchOpen = ref(false)
-const selectionMode = ref(false)
-const checkedIds = ref<string[]>([])
 const activeResourceId = ref<string | null>(null)
 const activeTagTarget = ref<ResourceView | LibraryQueueItem | null>(null)
 const detailOpen = ref(false)
+// 选择态进入时的详情关闭要带上 drawer 自己的收尾（编辑器复位、激活行清空）：
+// 选择 composable 拿到的是这个可写视图，它的 detailOpen=false 写入等价于 setDetailOpen(false)。
+const detailOpenView = computed({
+  get: () => detailOpen.value,
+  set: open => setDetailOpen(open)
+})
 const previewOpen = ref(false)
 const tagsOpen = ref(false)
 const addOpen = ref(false)
@@ -80,7 +85,7 @@ const activeRestoreItemId = ref<string | null>(null)
 const addQueue = createLibraryAddQueue(runtime)
 const queue = addQueue.queue
 const duplicatePrompt = addQueue.duplicatePrompt
-const addingResources = ref(false)
+const submitting = addQueue.submitting
 const confirmBusy = ref(false)
 const confirmOpen = ref(false)
 const confirmRequest = ref<ConfirmRequest | null>(null)
@@ -107,17 +112,23 @@ const visibleResources = computed(() => store.filteredResources)
 const selectedResource = computed(
   () => store.resources.find(resource => resource.id === activeResourceId.value) ?? null
 )
-const allVisibleSelected = computed(
-  () =>
-    visibleResources.value.length > 0 &&
-    visibleResources.value.every(resource => checkedIds.value.includes(resource.id))
-)
-const selectedResources = computed(() => store.resources.filter(resource => checkedIds.value.includes(resource.id)))
-const canRestore = computed(
-  () =>
-    selectedResources.value.length > 0 &&
-    selectedResources.value.every(resource => resource.sources.some(source => !source.available))
-)
+const {
+  selectionMode,
+  checkedIds,
+  allVisibleSelected,
+  selectedResources,
+  canRestore,
+  toggleSelectionMode,
+  toggleChecked,
+  setResourceChecked,
+  toggleCheckAll
+} = useLibrarySelection({
+  visibleResources,
+  resources: computed(() => store.resources),
+  detailOpen: detailOpenView,
+  filterOpen,
+  stopResourceRename
+})
 // 标题由 runtimeAvailable 决定（资源库为空 / 桌面服务未连接），描述必须跟着同一判据走：
 // 未连接时给出「为什么是空的」的说明，正常使用为空时才讲资源库本身，否则会出现
 // 「桌面服务未连接」配「资源库还是空的」这种自相矛盾的组合。
@@ -221,47 +232,12 @@ function editQueueTags(item: LibraryQueueItem) {
   tagsOpen.value = true
 }
 
-function toggleSelectionMode() {
-  selectionMode.value = !selectionMode.value
-  if (selectionMode.value) {
-    stopResourceRename()
-    setDetailOpen(false)
-    // 选择态里筛选按钮收起，筛选 panel 必须跟着收起：留在展开状态时它既没有开关可回退，
-    // 又会继续压缩列表的可视高度。
-    filterOpen.value = false
-  } else {
-    checkedIds.value = []
-  }
-}
-
 function setDetailOpen(open: boolean) {
   detailOpen.value = open
   if (!open) {
     if (editingNameKey.value === DRAWER_TITLE_EDITOR_KEY) stopResourceRename()
     activeResourceId.value = null
   }
-}
-
-function toggleChecked(resourceId: string) {
-  checkedIds.value = checkedIds.value.includes(resourceId)
-    ? checkedIds.value.filter(id => id !== resourceId)
-    : [...checkedIds.value, resourceId]
-}
-
-// 扫选要的是「置成某个状态」而不是「翻一下」：一行被指针划过两次不能自己弹回去。
-function setResourceChecked(resourceId: string, checked: boolean) {
-  const isChecked = checkedIds.value.includes(resourceId)
-  if (isChecked === checked) return
-  checkedIds.value = checked ? [...checkedIds.value, resourceId] : checkedIds.value.filter(id => id !== resourceId)
-}
-
-function toggleCheckAll() {
-  const visibleIds = visibleResources.value.map(resource => resource.id)
-  if (allVisibleSelected.value) {
-    checkedIds.value = checkedIds.value.filter(id => !visibleIds.includes(id))
-    return
-  }
-  checkedIds.value = [...new Set([...checkedIds.value, ...visibleIds])]
 }
 
 function requestDeleteResource(resource: ResourceView) {
@@ -410,29 +386,20 @@ function renameQueueItem(itemId: string, title: string) {
   addQueue.renameItem(itemId, title)
 }
 
+/*
+ * 提交循环、preview token 结算与失败回卷都由 addQueue.submit 拥有；页面只保留
+ * dialog 开合（#189 退场动画约定）与错误展示。controller 的 close 是队列收尾
+ * （token 结算、代次推进），不是 dialog 开合——成功路径由页面关闭 AddDialog。
+ */
 async function submitQueue() {
-  if (!queue.value.length || addingResources.value) return
   addError.value = ''
-  addingResources.value = true
-  const remaining = new Set(queue.value.map(item => item.id))
-  const items = [...queue.value]
   try {
-    for (const item of items) {
-      await addQueue.waitForPreview(item.id)
-      try {
-        await addResource(item)
-        remaining.delete(item.id)
-      } finally {
-        await addQueue.releasePreview(item.id)
-      }
-    }
-    await addQueue.close()
-    addOpen.value = false
+    const completed = await addQueue.submit(async item => {
+      await addResource(item)
+    })
+    if (completed) addOpen.value = false
   } catch (cause) {
-    queue.value = queue.value.filter(item => remaining.has(item.id))
     addError.value = takeOperationError(cause, '添加资源失败，请稍后重试')
-  } finally {
-    addingResources.value = false
   }
 }
 
@@ -672,7 +639,7 @@ onMounted(() => {
   <AddDialog
     :open="addOpen"
     :queue="queue"
-    :busy="addingResources"
+    :busy="submitting"
     :error="addError"
     :mobile="mobile"
     :tag-colors="store.tagColors"

@@ -13,6 +13,7 @@ import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { defineOverlayPortal, type OverlayContainer, type OverlayPortal } from '@/shared/overlay/portal'
 import { defineTriggerController } from '@/shared/overlay/trigger-controller'
+import { defineOverlayDelayProps } from '@/shared/overlay/trigger-delay-props'
 import { normalizeTriggerSet } from '@/shared/overlay/trigger-props'
 
 import style from './style.css?inline'
@@ -24,7 +25,7 @@ let visibleTooltipCount = 0
 let tooltipIdCounter = 0
 
 @customElement('web-ui-tooltip')
-export class WebUiTooltip extends LitElement {
+export class WebUiTooltip extends defineOverlayDelayProps(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
 
   @property({ type: String, reflect: true })
@@ -48,28 +49,6 @@ export class WebUiTooltip extends LitElement {
     this.requestUpdate('trigger', old)
   }
   private _triggerValue: string = DEFAULT_TRIGGERS.join(',')
-
-  @property({ type: Number, attribute: 'show-delay' })
-  get showDelay(): number {
-    return this._showDelay
-  }
-  set showDelay(v: number) {
-    const old = this._showDelay
-    this._showDelay = normalizeNumber(v, 0, 5000, 200)
-    this.requestUpdate('showDelay', old)
-  }
-  private _showDelay = 200
-
-  @property({ type: Number, attribute: 'hide-delay' })
-  get hideDelay(): number {
-    return this._hideDelay
-  }
-  set hideDelay(v: number) {
-    const old = this._hideDelay
-    this._hideDelay = normalizeNumber(v, 0, 5000, 100)
-    this.requestUpdate('hideDelay', old)
-  }
-  private _hideDelay = 100
 
   @property({ type: Boolean, reflect: true }) disabled = false
 
@@ -108,14 +87,10 @@ export class WebUiTooltip extends LitElement {
   private readonly _triggerController = defineTriggerController({
     host: this,
     getTrigger: () => this.trigger,
-    isDisabled: () => this.disabled,
-    canOpen: () => true,
+    canOpen: () => !this.disabled,
     getOpen: () => this._openValue,
-    getShowDelay: () => this.showDelay,
-    getHideDelay: () => this.hideDelay,
     hoverOpensInstantly: () => visibleTooltipCount > 0,
-    isInsidePanel: event => !!this._panel.getHandle()?.containsEvent(event),
-    hasFocusWithin: () => this.matches(':focus-within') || !!this._panel.getHandle()?.hasFocusWithin(),
+    getPanelHandle: () => this._panel.getHandle(),
     requestOpen: meta => this._applyOpen(meta.instant, meta.notify, meta.automatic),
     requestClose: meta => this._applyClose(meta.notify)
   })

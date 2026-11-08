@@ -28,6 +28,8 @@ export interface LibraryAddQueueController {
   queue: Ref<LibraryQueueItem[]>
   /** 当前等待用户裁决的重复提示；null 表示没有待裁决项。页面据此渲染 dialog。 */
   duplicatePrompt: Ref<LibraryDuplicatePrompt | null>
+  /** 正在逐项提交资源；页面据此禁用提交入口。 */
+  submitting: Ref<boolean>
   enqueueFileLocations(locations: string[]): Promise<void>
   enqueueURL(url: string): Promise<void>
   /** 裁决当前重复提示；accept=false（取消）时该项不入队。 */
@@ -37,6 +39,12 @@ export interface LibraryAddQueueController {
   removeItem(itemId: string): Promise<void>
   waitForPreview(itemId: string): Promise<void>
   releasePreview(itemId: string): Promise<void>
+  /**
+   * 逐项提交整个队列。每项按 waitForPreview → create → releasePreview 结算 preview token，
+   * 全部成功后 close() 收尾并返回 true；任一项失败时按 remaining 回卷队列（已成功的项移出，
+   * 未处理的项原样保留），失败原因原样抛给调用方展示。
+   */
+  submit(create: (item: LibraryQueueItem) => Promise<void>): Promise<boolean>
   close(): Promise<void>
 }
 
@@ -72,6 +80,7 @@ export function queueItemTitle(item: LibraryQueueItem) {
 export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueController {
   const queue = ref<LibraryQueueItem[]>([])
   const duplicatePrompt = ref<LibraryDuplicatePrompt | null>(null)
+  const submitting = ref(false)
   const preparations = new Map<string, Promise<void>>()
   let settleDuplicate: ((accept: boolean) => void) | null = null
   // 逐项查询与逐项确认都是异步的：串在一条链上，弹窗才不会叠加，顺序也与提交顺序一致。
@@ -236,9 +245,37 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
     await Promise.allSettled(items.map(item => releaseToken(item.previewToken)))
   }
 
+  async function submit(create: (item: LibraryQueueItem) => Promise<void>): Promise<boolean> {
+    if (!queue.value.length || submitting.value) return false
+    submitting.value = true
+    // 以提交开始时的队列快照为准；remaining 记录尚未成功落库的项，失败时按它回卷。
+    const remaining = new Set(queue.value.map(item => item.id))
+    const items = [...queue.value]
+    try {
+      for (const item of items) {
+        await waitForPreview(item.id)
+        try {
+          await create(item)
+          remaining.delete(item.id)
+        } finally {
+          // 失败的项同样要结算：token 是预览资源，失败不豁免释放。
+          await releasePreview(item.id)
+        }
+      }
+      await close()
+      return true
+    } catch (cause) {
+      queue.value = queue.value.filter(item => remaining.has(item.id))
+      throw cause
+    } finally {
+      submitting.value = false
+    }
+  }
+
   return {
     queue,
     duplicatePrompt,
+    submitting,
     enqueueFileLocations,
     enqueueURL,
     resolveDuplicate,
@@ -247,6 +284,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
     removeItem,
     waitForPreview,
     releasePreview,
+    submit,
     close
   }
 }

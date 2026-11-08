@@ -96,13 +96,12 @@ type ResourceDTO struct {
 	// Kind 由后端按首选 Source 派生；旧客户端可忽略此可选字段。
 	Kind ResourceKind `json:"kind,omitempty"`
 	// SizeBytes 是首选文件 Source 的当前字节数；URL、失效或不可读文件不提供该字段。
-	SizeBytes   *int64      `json:"size_bytes,omitempty"`
-	Note        string      `json:"note"`
-	CreatedAt   int64       `json:"created_at"`
-	UpdatedAt   int64       `json:"updated_at"`
-	Sources     []SourceDTO `json:"sources"`
-	Tags        []TagDTO    `json:"tags"`
-	PreferredID string      `json:"preferred_source_id"`
+	SizeBytes *int64      `json:"size_bytes,omitempty"`
+	Note      string      `json:"note"`
+	CreatedAt int64       `json:"created_at"`
+	UpdatedAt int64       `json:"updated_at"`
+	Sources   []SourceDTO `json:"sources"`
+	Tags      []TagDTO    `json:"tags"`
 }
 
 // SourceAvailabilityEventDTO 是可用性翻转的推送载荷。只推文件 Source：
@@ -129,10 +128,12 @@ const (
 	SourceProbeOutcomeInconclusive SourceProbeOutcome = "inconclusive"
 )
 
-// SourceProbeResultDTO 承载打开时探测的结论；Inconclusive 时 Source 字段省略。
+// SourceProbeResultDTO 承载打开时探测的结论；Inconclusive 时 Source 与 Resource 字段省略。
 type SourceProbeResultDTO struct {
-	Source  *SourceDTO         `json:"source,omitempty"`
-	Outcome SourceProbeOutcome `json:"outcome"`
+	Source *SourceDTO `json:"source,omitempty"`
+	// Resource 是探测落库后的完整资源视图，前端据此直接回流，不必再按 resource_id 读取。
+	Resource *ResourceDTO       `json:"resource,omitempty"`
+	Outcome  SourceProbeOutcome `json:"outcome"`
 	// Message 是用户可见文案，由后端出（沿用 core 哨兵文案口径），前端不自己拼领域文案。
 	Message string `json:"message,omitempty"`
 }

@@ -269,7 +269,7 @@ func TestWatcherDedupsDirectoryRefs(t *testing.T) {
 	primary := filepath.Join(directory, "primary.mp4")
 	backup := filepath.Join(directory, "backup.mp4")
 	sink := newFakeSink([]string{primary, backup})
-	watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
+	watcher, err := NewWatcher(NewAvailabilityGate(sink))
 	if err != nil {
 		t.Fatalf("NewWatcher error: %v", err)
 	}
@@ -308,7 +308,7 @@ func TestWatcherBudgetDegrades(t *testing.T) {
 	t.Cleanup(func() { maxWatchedDirs = original })
 
 	sink := newFakeSink([]string{"/library/a/one.mp4", "/library/b/two.mp4", "/library/c/three.mp4"})
-	watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
+	watcher, err := NewWatcher(NewAvailabilityGate(sink))
 	if err != nil {
 		t.Fatalf("NewWatcher error: %v", err)
 	}
@@ -331,7 +331,7 @@ func TestWatcherAddFailureDoesNotFailSync(t *testing.T) {
 	useFakeFS(t, fs)
 	fs.addErr["/library/blocked"] = os.ErrPermission
 	sink := newFakeSink([]string{"/library/blocked/one.mp4", "/library/fine/two.mp4"})
-	watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
+	watcher, err := NewWatcher(NewAvailabilityGate(sink))
 	if err != nil {
 		t.Fatalf("NewWatcher error: %v", err)
 	}
@@ -351,7 +351,7 @@ func TestWatcherReconcileRestoresLostWatch(t *testing.T) {
 	useFakeFS(t, fs)
 	directory := "/library/moving"
 	sink := newFakeSink([]string{filepath.Join(directory, "one.mp4")})
-	watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
+	watcher, err := NewWatcher(NewAvailabilityGate(sink))
 	if err != nil {
 		t.Fatalf("NewWatcher error: %v", err)
 	}
@@ -383,7 +383,7 @@ func TestWatcherDebounceCoalescesStorm(t *testing.T) {
 		first := filepath.Join(directory, "first.mp4")
 		second := filepath.Join(directory, "second.mp4")
 		sink := newFakeSink([]string{first, second})
-		watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
+		watcher, err := NewWatcher(NewAvailabilityGate(sink))
 		if err != nil {
 			t.Fatalf("NewWatcher error: %v", err)
 		}
@@ -426,7 +426,7 @@ func TestWatcherIgnoresChmodAndWatchedDirEvents(t *testing.T) {
 		sink := newFakeSink([]string{file})
 		// 从失效起步：Create 带来的「恢复」必须产生一次真实翻转。
 		sink.setAvailability("source-a", false)
-		watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
+		watcher, err := NewWatcher(NewAvailabilityGate(sink))
 		if err != nil {
 			t.Fatalf("NewWatcher error: %v", err)
 		}
@@ -465,7 +465,7 @@ func TestWatcherConfirmsUnavailableTwice(t *testing.T) {
 		useServabilityProbe(t, false)
 		file := filepath.Join("/library/vanishing", "one.mp4")
 		sink := newFakeSink([]string{file})
-		watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
+		watcher, err := NewWatcher(NewAvailabilityGate(sink))
 		if err != nil {
 			t.Fatalf("NewWatcher error: %v", err)
 		}
@@ -512,7 +512,7 @@ func TestWatcherSelfHealWithinOneEventDoesNotWriteUnavailable(t *testing.T) {
 		t.Cleanup(func() { probeFileServable = original })
 		file := filepath.Join("/library/flaky", "one.mp4")
 		sink := newFakeSink([]string{file})
-		watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {})
+		watcher, err := NewWatcher(NewAvailabilityGate(sink))
 		if err != nil {
 			t.Fatalf("NewWatcher error: %v", err)
 		}
@@ -548,11 +548,13 @@ func TestWatcherEmitsOnlyOnRealFlips(t *testing.T) {
 		sink := newFakeSink([]string{file})
 		var emitMu sync.Mutex
 		emitted := 0
-		watcher, err := NewWatcher(sink, func(core.AvailabilityChange) {
+		gate := NewAvailabilityGate(sink)
+		gate.SetEmitter(func(core.AvailabilityChange) {
 			emitMu.Lock()
 			defer emitMu.Unlock()
 			emitted++
 		})
+		watcher, err := NewWatcher(gate)
 		if err != nil {
 			t.Fatalf("NewWatcher error: %v", err)
 		}
@@ -613,11 +615,13 @@ func TestWatcherDetectsRemovalAndSelfHeal(t *testing.T) {
 
 	var changesMu sync.Mutex
 	changes := 0
-	watcher, err := NewWatcher(sources, func(core.AvailabilityChange) {
+	gate := NewAvailabilityGate(sources)
+	gate.SetEmitter(func(core.AvailabilityChange) {
 		changesMu.Lock()
 		defer changesMu.Unlock()
 		changes++
 	})
+	watcher, err := NewWatcher(gate)
 	if err != nil {
 		t.Fatalf("NewWatcher error: %v", err)
 	}
@@ -697,11 +701,13 @@ func TestWatcherHandlesAtomicReplace(t *testing.T) {
 
 	var changesMu sync.Mutex
 	changes := 0
-	watcher, err := NewWatcher(sources, func(core.AvailabilityChange) {
+	gate := NewAvailabilityGate(sources)
+	gate.SetEmitter(func(core.AvailabilityChange) {
 		changesMu.Lock()
 		defer changesMu.Unlock()
 		changes++
 	})
+	watcher, err := NewWatcher(gate)
 	if err != nil {
 		t.Fatalf("NewWatcher error: %v", err)
 	}

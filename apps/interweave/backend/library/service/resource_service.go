@@ -128,15 +128,3 @@ func (s *ResourceService) ListResources(ctx context.Context) ([]ResourceDTO, err
 		return *resourceViewToDTO(&view)
 	}), nil
 }
-
-// 仅搜索用户维护的上下文与来源基础信息，不扩展为内容索引。
-func (s *ResourceService) SearchResources(ctx context.Context, query string) ([]ResourceDTO, error) {
-	views, err := s.core.SearchResources(ctx, query)
-	if err != nil {
-		return nil, err
-	}
-
-	return mapped(views, func(view core.ResourceView) ResourceDTO {
-		return *resourceViewToDTO(&view)
-	}), nil
-}

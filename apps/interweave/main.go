@@ -92,27 +92,19 @@ func main() {
 
 	pendingPreviews := libraryMedia.NewPendingPreviewRegistry()
 	resourceService := libraryService.NewResourceService(coreResourceService, pendingPreviews)
-	sourceService := libraryService.NewSourceService(coreSourceService)
-	tagService := libraryService.NewTagService(coreTagService)
+	sourceService := libraryService.NewSourceService(coreSourceService, coreResourceService)
+	tagService := libraryService.NewTagService(coreTagService, coreResourceService)
 	mapService := libraryService.NewMapService(coreMapService)
 	osService := nativeService.NewOSService()
 
-	// 事件出口要等 window 就绪才能确定。注入 watcher 的是读取该变量的闭包而不是当时的值，
-	// 且赋值发生在 watcher 启动与 app.Run 之前：watcher 的 goroutine 由 Start 在赋值后创建，
-	// 媒体回写 worker 读到的第一条消息必然来自 app.Run 之后建立的请求 goroutine。
-	var emitSourceAvailability libraryWatch.Emitter
-	watcher, watchErr := libraryWatch.NewWatcher(coreSourceService, func(change coreLibrary.AvailabilityChange) {
-		emitSourceAvailability(change)
-	})
+	// gate 恒存在：可用性写入口不依赖 fsnotify 是否可用，监听不可用时媒体 404 兜底照常
+	// 落库，只降级目录监听方向。事件出口要等 window 就绪才能确定，gate 未接线时只落库
+	// 不发事件；SetEmitter 必须在 watcher.Start 之前完成——watcher 的 goroutine 由 Start
+	// 创建，媒体回写 worker 读到的第一条消息必然来自 app.Run 之后建立的请求 goroutine。
+	gate := libraryWatch.NewAvailabilityGate(coreSourceService)
+	watcher, watchErr := libraryWatch.NewWatcher(gate)
 	if watchErr != nil {
 		log.Printf("interweave: file watch unavailable, availability relies on manual refresh: %v", watchErr)
-	}
-
-	// 媒体 404 兜底复用 watcher 的写入口与发射出口。监听不可用时传 nil，
-	// 保持「不启用兜底」而不是把 nil *Watcher 装进非空接口。
-	var mediaReporter libraryMedia.AvailabilityReporter
-	if watcher != nil {
-		mediaReporter = watcher
 	}
 	// 缩略图缓存与库文件同级；目录建不出来只降级缩略图能力（读取一律 404，
 	// 前端回退原图），不影响媒体读取与库本身。
@@ -122,7 +114,7 @@ func main() {
 	} else {
 		thumbs = store
 	}
-	mediaHandler := libraryMedia.NewHandler(storage.SourceStore{}, db.SqlDB(), pendingPreviews, thumbs, mediaReporter)
+	mediaHandler := libraryMedia.NewHandler(storage.SourceStore{}, db.SqlDB(), pendingPreviews, thumbs, gate)
 	defer mediaHandler.Close()
 
 	// 启动清理一次过期版本：文件被外部改写或 Source 被删除后，旧文件名不会再生效。
@@ -176,10 +168,11 @@ func main() {
 	}
 
 	// watcher 不注册为 Wails Service（ADR-0008 §2 的暴露面 allowlist）：它是产品能力之外的
-	// 基础设施编排，只由 main.go 装配、由 OnShutdown 收尾。
-	emitSourceAvailability = func(change coreLibrary.AvailabilityChange) {
+	// 基础设施编排，只由 main.go 装配、由 OnShutdown 收尾。window 已就绪，接上事件出口，
+	// 且必须在 watcher.Start 之前（见上方 gate 的时序说明）。
+	gate.SetEmitter(func(change coreLibrary.AvailabilityChange) {
 		window.EmitEvent(libraryService.SourceAvailabilityEventName, libraryService.NewSourceAvailabilityEventDTO(change))
-	}
+	})
 	if watcher != nil {
 		coreSourceService.SetIndexSync(watcher)
 		coreResourceService.SetIndexSync(watcher)

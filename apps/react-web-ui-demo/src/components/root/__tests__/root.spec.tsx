@@ -2,12 +2,14 @@ import type { WebUiLayout } from '@greypan/web-ui'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router'
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { act } from 'react'
-import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { loadShellLocale } from '@/i18n/locale'
 
 import { Root } from '..'
 
+// collapsed 的过滤、派生与持久化判据在 kit 的 shell 用例里；跨视口行为由 browser 套件用真实
+// 视口验证。这里只留一条 jsdom smoke：宿主的事件接线与受控回写确实落到了 layout 上。
 // collapsed 接线与文档初始化无关。真实 Provider 留在 browser 集成；本 fixture 固定 locale，
 // 避免每次挂载额外启动 catalog/docs 请求，并在测试结束后继续更新 React。
 vi.mock('@/i18n/locale', async importOriginal => {
@@ -17,48 +19,6 @@ vi.mock('@/i18n/locale', async importOriginal => {
     useLocale: () => ({ locale: 'zh-CN', pending: false, setLocale: async () => {} })
   }
 })
-
-// 模拟应用自身的移动端视口状态。
-const MOBILE_QUERY = '(width <= 640px)'
-const DESKTOP_WIDTH = 1280
-const MOBILE_WIDTH = 568
-
-function createMatchMediaStub() {
-  const lists = new Map<string, { matches: boolean; listeners: Set<EventListener> }>()
-
-  vi.stubGlobal('matchMedia', (query: string) => {
-    const state = lists.get(query) ?? { matches: false, listeners: new Set<EventListener>() }
-    lists.set(query, state)
-
-    return {
-      media: query,
-      onchange: null,
-      get matches() {
-        return state.matches
-      },
-      addEventListener(type: string, listener: EventListener) {
-        if (type === 'change') state.listeners.add(listener)
-      },
-      removeEventListener(type: string, listener: EventListener) {
-        if (type === 'change') state.listeners.delete(listener)
-      },
-      addListener() {},
-      removeListener() {},
-      dispatchEvent: () => false
-    }
-  })
-
-  return (query: string, matches: boolean) => {
-    const state = lists.get(query)
-    if (!state) throw new Error(`matchMedia(${query}) was never queried`)
-
-    state.matches = matches
-    // 宿主的 change 处理器读的是事件载荷上的 `matches`，两个来源一起改。
-    const event = new Event('change')
-    Object.defineProperty(event, 'matches', { value: matches })
-    for (const listener of state.listeners) listener(event)
-  }
-}
 
 function layoutRoot() {
   const element = document.querySelector('web-ui-layout') as
@@ -72,40 +32,6 @@ function navRoot() {
   const element = document.querySelector('[slot="sidebar"]')
   if (!element) throw new Error('sidebar nav not found')
   return element
-}
-
-/**
- * collapsed state 在这个 demo 里只体现为排版——桌面 collapse 与移动 drawer 渲染的是同一份 slot 内容，
- * 「导航项最终带上哪一套工具类」就是它唯一的观察点，jsdom 里也没有布局可读。
- * 判据因此不写死类名：由同一个组件在两种状态下的渲染互相比较得出。
- */
-function navItemClasses() {
-  const link = navRoot().querySelector('a')
-  if (!link) throw new Error('nav link not found')
-  return [...link.classList].sort()
-}
-
-/** 移动端 drawer 是否真的接管了 sidebar slot（不接管就谈不上「drawer 里的导航」）。 */
-function isDrawerMode() {
-  return layoutRoot().mobile
-}
-
-/**
- * layout 的 mobile 判定挂在一条去抖的 resize 上，所以等的是「布局真的换了形态」而不是一段
- * 固定时长：既不赌去抖的毫秒数，也不去读 layout 的内部实现。
- */
-async function settleViewport(drawerMode: boolean) {
-  await waitFor(() => {
-    if (isDrawerMode() !== drawerMode) throw new Error(`drawer 形态没有变成 ${drawerMode}`)
-  })
-}
-
-async function changeViewport(width: number, mobile: boolean) {
-  await act(async () => {
-    setViewportWidth(width)
-    setMediaMatches(MOBILE_QUERY, mobile)
-  })
-  await settleViewport(mobile)
 }
 
 function buildRouter() {
@@ -122,28 +48,16 @@ function buildRouter() {
   })
 }
 
-let innerWidthSpy: { mockReturnValue: (value: number) => unknown } | null = null
-
-function setViewportWidth(width: number) {
-  innerWidthSpy ??= vi.spyOn(window, 'innerWidth', 'get')
-  innerWidthSpy.mockReturnValue(width)
-  window.dispatchEvent(new Event('resize'))
-}
-
-async function mountAppShell(mark: (stage: string) => void = () => {}) {
+async function mountAppShell() {
   // 固定到中文源语种，避免 Provider 挂载后再异步换一次壳文案。
   localStorage.setItem('locale', 'zh-CN')
-  mark('load locale')
   await loadShellLocale('zh-CN')
-  mark('render shell')
   const router = buildRouter()
   render(<RouterProvider router={router} />)
-  mark('wait for layout and nav')
   await waitFor(() => {
     if (!document.querySelector('web-ui-layout')) throw new Error('layout not mounted')
     if (!navRoot().querySelector('a')) throw new Error('sidebar nav not rendered')
   })
-  mark('layout ready')
 }
 
 /** 复刻 layout 侧边栏 Toggle 的请求链路：layout 只派发请求，宿主回写受控属性。 */
@@ -153,79 +67,23 @@ async function requestCollapse(collapsed: boolean) {
   })
 }
 
-let setMediaMatches: (query: string, matches: boolean) => void
-
-// 每次挂载都要渲染完整导航与 layout 交互；本地实测 0.2–0.4s，CI 并发下实测 5.3–8.6s。
+// 挂载要渲染完整导航与 layout 交互；本地实测 0.2–0.4s，CI 并发下实测 5.3–8.6s。
 // 只在 CI 放宽，本地保留 Vitest 默认 5s。
 const SHELL_TIMEOUT = process.env.CI ? 15_000 : undefined
 
-describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
-  beforeEach(() => {
-    setMediaMatches = createMatchMediaStub()
-  })
-
+describe('应用外壳接线 smoke', () => {
   afterEach(() => {
     cleanup()
     // locale 是本应用的持久化输入；留在 origin 上会污染同 origin 的其他 spec。
     localStorage.removeItem('locale')
-    vi.unstubAllGlobals()
     vi.restoreAllMocks()
-    innerWidthSpy = null
   })
 
-  it('桌面端 collapsible sidebar 后导航进入 collapsed state', { timeout: SHELL_TIMEOUT }, async ({ onTestFailed }) => {
-    const started = performance.now()
-    const stages: string[] = []
-    const mark = (stage: string) => stages.push(`${stage}: ${Math.round(performance.now() - started)}ms`)
-    onTestFailed(() => console.error(`sidebar test stages: ${stages.join(', ')}`))
-    setViewportWidth(DESKTOP_WIDTH)
-    await mountAppShell(mark)
-    const expanded = navItemClasses()
-
-    mark('request collapse')
-    await requestCollapse(true)
-    mark('collapse complete')
-
-    expect(isDrawerMode()).toBe(false)
-    expect(layoutRoot().sidebarCollapsed).toBe(true)
-    expect(navItemClasses()).not.toEqual(expanded)
-  })
-
-  it(
-    '移动端断点下同一个 collapse preference 不把 drawer 导航压成 collapsed state',
-    { timeout: SHELL_TIMEOUT },
-    async () => {
-      setViewportWidth(DESKTOP_WIDTH)
-      await mountAppShell()
-      const expanded = navItemClasses()
-
-      await requestCollapse(true)
-      // 对照：collapse preference 确实改变了导航项的渲染，否则下面那条「与展开态一致」可能只是因为
-      // collapse 从未生效。
-      expect(navItemClasses()).not.toEqual(expanded)
-
-      await changeViewport(MOBILE_WIDTH, true)
-
-      // 前提：collapse preference 仍写在 layout 上。不成立的话下面那条「与展开态一致」只是没 collapse 过的假绿
-      // （drawer 形态由 settleViewport 保证，不另设断言）。
-      expect(layoutRoot().sidebarCollapsed).toBe(true)
-      expect(navItemClasses()).toEqual(expanded)
-    }
-  )
-
-  it('跨断点往返后 collapsed state 在桌面端恢复生效', { timeout: SHELL_TIMEOUT }, async () => {
-    setViewportWidth(DESKTOP_WIDTH)
+  it('layout 的 collapse 请求经 shell 状态机回写为受控属性', { timeout: SHELL_TIMEOUT }, async () => {
     await mountAppShell()
-    const expanded = navItemClasses()
 
     await requestCollapse(true)
-    const collapsed = navItemClasses()
 
-    await changeViewport(MOBILE_WIDTH, true)
-    expect(navItemClasses()).toEqual(expanded)
-
-    await changeViewport(DESKTOP_WIDTH, false)
-
-    expect(navItemClasses()).toEqual(collapsed)
+    expect(layoutRoot().sidebarCollapsed).toBe(true)
   })
 })

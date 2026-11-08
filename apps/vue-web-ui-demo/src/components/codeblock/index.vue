@@ -2,19 +2,15 @@
 import appScrollbarsOptions from '@greypan/app-scrollbars'
 import {
   COPY_FEEDBACK_DURATION,
+  createCodeblockController,
+  createThunkCache,
+  codeScrollbarsEvents,
   FLAVORS,
   FLAVOR_ICON_CLASS,
   FLAVOR_LABELS,
   FLAVOR_ICONS,
-  PEEK_HEIGHT,
   PACKAGE_MANAGER_ICONS,
-  codeFrameText,
-  codeScrollbarsEvents,
-  createCopyFeedback,
-  createThunkCache,
-  flavorOf,
-  isCodeCollapsible,
-  resetCodeScroll,
+  PEEK_HEIGHT,
   type CodeblockVariant,
   type DemoThunk,
   type Flavor
@@ -28,7 +24,7 @@ import {
   lucideCopy
 } from '@greypan/web-ui/icons'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
-import { computed, defineAsyncComponent, onBeforeUnmount, shallowRef, useId, ref, type Component } from 'vue'
+import { computed, defineAsyncComponent, onBeforeUnmount, shallowRef, useId, watch, type Component } from 'vue'
 
 // 本站框架既是切换器的第一项，也是打开页面时显示的源码；其余顺序由 kit 的 FLAVORS 决定。
 const NATIVE_FLAVOR: Flavor = 'vue'
@@ -44,9 +40,8 @@ const demoOf = createThunkCache((load: DemoThunk) =>
 
 /**
  * 一条围栏：命中 `exec` 的围栏带 `load`，先渲染真实组件预览，再挂源码卡；其余只显示源码。
- * 源码来自 `node.content`（生成期的高亮 HTML），与 markdown 围栏逐字相同。
- *
- * 一卡两稿时预览始终跑本站框架：带 `load` 的那份与当前选中的源码无关。
+ * 状态机（激活节点回退链、flavor / 折叠的滚动复位不变量、复制反馈）在 kit 的
+ * `createCodeblockController` 里；这里只把快照接进 Vue 与把事件交回控制器。
  */
 const props = defineProps<{
   /**
@@ -60,74 +55,49 @@ const props = defineProps<{
 }>()
 
 const panelId = `codeblock-${useId()}`
-const flavor = ref<string>(props.variants?.[0]?.value ?? NATIVE_FLAVOR)
-const expanded = ref(false)
+const controller = createCodeblockController({
+  nodes: props.nodes,
+  variants: props.variants,
+  nativeFlavor: NATIVE_FLAVOR,
+  getPanel: () => document.getElementById(panelId)
+})
 
-const active = computed(
-  () =>
-    props.variants?.find(item => item.value === flavor.value)?.node ??
-    props.nodes.find(node => flavorOf(node.lang) === flavor.value) ??
-    props.nodes[0]
-)
-const loadable = computed(() => props.nodes.find(node => node.load))
-const demo = () => (props.preview && loadable.value?.load ? demoOf(loadable.value.load) : null)
-const collapsible = computed(() => isCodeCollapsible(active.value?.content ?? ''))
+/*
+ * snapshot 只在提交时整体换引用，shallowRef 按引用比较接进 Vue；文档快照换引用时由
+ * watch 同步输入（不发布），用户动作才经由控制器的订阅更新。
+ */
+const snapshot = shallowRef(controller.getSnapshot())
+controller.subscribe(() => {
+  snapshot.value = controller.getSnapshot()
+})
+watch([() => props.nodes, () => props.variants], ([nodes, variants]) => {
+  controller.setInputs({ nodes, variants })
+  snapshot.value = controller.getSnapshot()
+})
+onBeforeUnmount(() => controller.dispose())
 
-function resetPanelScroll() {
-  const panel = document.getElementById(panelId)
-  if (panel) resetCodeScroll(panel)
-}
-
-// 换一份源码就回到顶部：两稿的行数不同，停在上次读到的位置会落到另一份的中段。
-function selectFlavor(value: string) {
-  const next = props.variants
-    ? props.variants.find(item => item.value === value)?.value
-    : FLAVOR_ORDER.find(item => item === value)
-  if (!next || next === flavor.value) return
-  flavor.value = next
-  resetPanelScroll()
-}
+const flavor = computed(() => snapshot.value.flavor)
+const expanded = computed(() => snapshot.value.expanded)
+const active = computed(() => snapshot.value.active)
+const collapsible = computed(() => snapshot.value.collapsible)
+const demo = () => (props.preview && snapshot.value.preview?.load ? demoOf(snapshot.value.preview.load) : null)
+const copied = computed(() => snapshot.value.copy.status)
+// 每次复制都换 key，让成功态的描边与 scale 动画重新挂载、各播一次。
+const copyRun = computed(() => snapshot.value.copy.run)
 
 function selectFlavorFromEvent(event: Event) {
   const target = event.currentTarget as { value?: string } | null
-  if (target?.value) selectFlavor(target.value)
-}
-
-function toggleExpanded() {
-  const next = !expanded.value
-  expanded.value = next
-  // 收起后代码区回到顶部，与从未展开时一致；否则再次展开会停在上次读到的位置。
-  if (!next) resetPanelScroll()
+  if (target?.value) controller.selectFlavor(target.value)
 }
 
 // 收起态的代码预览是第二块展开触发区；展开后同一次点击落在这块上只做滚动，不收回去。
 function expandFromPeek() {
   if (expanded.value) return
-  toggleExpanded()
+  controller.toggleExpanded()
 }
 
-/*
- * 复制反馈状态机在 kit：双通道剪贴板、成功/失败发布与回 idle 的定时都在那边。
- * snapshot 只在发布时整体换引用，shallowRef 按引用比较接进 Vue；行号槽按 kit 封装的
- * `@greypan/md-to-meta` 行号类名摘掉，剪贴板拿的是围栏原文。
- */
-const copyFeedback = createCopyFeedback({
-  readText: () => {
-    const panel = document.getElementById(panelId)
-    return panel ? codeFrameText(panel) : ''
-  }
-})
-const copyState = shallowRef(copyFeedback.getSnapshot())
-copyFeedback.subscribe(() => {
-  copyState.value = copyFeedback.getSnapshot()
-})
-onBeforeUnmount(() => copyFeedback.dispose())
-const copied = computed(() => copyState.value.status)
-// 每次复制都换 key，让成功态的描边与 scale 动画重新挂载、各播一次。
-const copyRun = computed(() => copyState.value.run)
-
 function copyCode() {
-  void copyFeedback.copy()
+  void controller.copy()
 }
 
 const copyLabel = () => (copied.value === 'copied' ? '已复制' : copied.value === 'failed' ? '复制失败' : '复制代码')
@@ -248,7 +218,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
                   :aria-label="expanded ? '收起代码' : '展开代码'"
                   :aria-expanded="expanded"
                   :aria-controls="panelId"
-                  @click="toggleExpanded()"
+                  @click="controller.toggleExpanded()"
                 >
                   <web-ui-icon :icon="expanded ? lucideChevronUp : lucideChevronDown" :size="15" />
                 </web-ui-button>

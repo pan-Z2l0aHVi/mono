@@ -5,7 +5,7 @@ import {
   ResourceKind,
   SourceType
 } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
-import type { LibraryRuntime } from '../../../services/library'
+import type { LibraryQueueItem, LibraryRuntime } from '../../../services/library'
 import { createLibraryAddQueue, queueItemTitle } from '../addQueue'
 
 // 队列只需要 isAvailable 与 resources 簇；其余能力给最小实现即可。
@@ -421,5 +421,147 @@ describe('library add queue url entries', () => {
       '我改的名字'
     )
     expect(queueItemTitle({ ...base, kind: 'file', title: '', location: '/tmp/photo.png' })).toBe('/tmp/photo.png')
+  })
+})
+
+/*
+ * 提交循环是 controller 的 implementation 属性：逐项 waitForPreview → create → releasePreview
+ * 结算 preview token，全部成功后 close 收尾；失败按 remaining 回卷。页面只保留 dialog 开合
+ * 与错误展示，不得自组提交循环。
+ */
+describe('library add queue submit', () => {
+  const LOCATIONS = ['/tmp/first.png', '/tmp/second.png']
+
+  interface SubmitCase {
+    name: string
+    /** 抛错的项下标；-1 表示全部成功。 */
+    failAt: number
+    /** 期望的逐项结算序列：每项先 create 再 release，失败的项同样结算。 */
+    events: string[]
+    /** 期望的返回值；失败时为 undefined 且抛出原因。 */
+    result: boolean | undefined
+    /** 失败回卷后期望留在队列里的位置。 */
+    remainingLocations: string[]
+  }
+
+  it.each<SubmitCase>([
+    {
+      name: '全部成功',
+      failAt: -1,
+      events: [
+        'create:/tmp/first.png',
+        'release:token-/tmp/first.png',
+        'create:/tmp/second.png',
+        'release:token-/tmp/second.png'
+      ],
+      result: true,
+      remainingLocations: []
+    },
+    {
+      name: '首项失败',
+      failAt: 0,
+      events: ['create:/tmp/first.png', 'release:token-/tmp/first.png'],
+      result: undefined,
+      remainingLocations: ['/tmp/first.png', '/tmp/second.png']
+    },
+    {
+      name: '第二项失败',
+      failAt: 1,
+      events: [
+        'create:/tmp/first.png',
+        'release:token-/tmp/first.png',
+        'create:/tmp/second.png',
+        'release:token-/tmp/second.png'
+      ],
+      result: undefined,
+      remainingLocations: ['/tmp/second.png']
+    }
+  ])(
+    '$name：token 逐项结算，失败按 remaining 回卷',
+    async ({ failAt, events: expectedEvents, result, remainingLocations }) => {
+      const events: string[] = []
+      const releaseFilePreview = vi.fn<LibraryRuntime['resources']['releaseFilePreview']>(async token => {
+        events.push(`release:${token}`)
+      })
+      const queue = createLibraryAddQueue(
+        createRuntime({
+          prepareFilePreview: async location => ({ kind: ResourceKind.ResourceKindImage, token: `token-${location}` }),
+          releaseFilePreview
+        })
+      )
+      await queue.enqueueFileLocations(LOCATIONS)
+
+      const submittingDuringCreate: boolean[] = []
+
+      const create = vi.fn<(item: LibraryQueueItem) => Promise<void>>(async item => {
+        submittingDuringCreate.push(queue.submitting.value)
+        events.push(`create:${item.location}`)
+        if (item.location === LOCATIONS[failAt]) throw new Error('创建失败')
+      })
+
+      let settled: boolean | undefined
+      let thrown: unknown
+      try {
+        settled = await queue.submit(create)
+      } catch (cause) {
+        thrown = cause
+      }
+
+      // 提交中的每一项都发生在 submitting=true 之下，结束后必须复位。
+      expect(events).toEqual(expectedEvents)
+      expect(submittingDuringCreate.every(Boolean)).toBe(true)
+      expect(queue.submitting.value).toBe(false)
+      expect(settled).toBe(result)
+      expect(thrown).toEqual(failAt >= 0 ? new Error('创建失败') : undefined)
+      expect(queue.queue.value.map(item => item.location)).toEqual(remainingLocations)
+    }
+  )
+
+  it('成功的项回卷后不再留在队列，未处理项保留自己的 preview token', async () => {
+    const queue = createLibraryAddQueue(
+      createRuntime({
+        prepareFilePreview: async location => ({ kind: ResourceKind.ResourceKindImage, token: `token-${location}` }),
+        releaseFilePreview: async () => {}
+      })
+    )
+    await queue.enqueueFileLocations(LOCATIONS)
+    const items = [...queue.queue.value]
+
+    await expect(
+      queue.submit(async item => {
+        if (item.location === LOCATIONS[1]) throw new Error('创建失败')
+      })
+    ).rejects.toThrow('创建失败')
+
+    // 首项已成功并被移出队列；次项失败后保留，它的 token 已在 finally 里结算完毕。
+    expect(queue.queue.value.map(item => item.id)).toEqual([items[1]!.id])
+    expect(queue.queue.value[0]?.previewToken).toBeNull()
+  })
+
+  it('空队列直接返回 false，不调 create 也不进入 submitting', async () => {
+    const create = vi.fn<(item: LibraryQueueItem) => Promise<void>>(async () => {})
+    const queue = createLibraryAddQueue(createRuntime())
+
+    expect(await queue.submit(create)).toBe(false)
+    expect(create).not.toHaveBeenCalled()
+    expect(queue.submitting.value).toBe(false)
+  })
+
+  it('提交进行中重复 submit 被拒，不影响在途提交', async () => {
+    const gate = deferred<void>()
+    const created: string[] = []
+    const queue = createLibraryAddQueue(createRuntime())
+    await queue.enqueueFileLocations([LOCATIONS[0]!])
+
+    const first = queue.submit(async item => {
+      created.push(item.location)
+      await gate.promise
+    })
+    expect(await queue.submit(async () => {})).toBe(false)
+    gate.resolve()
+    expect(await first).toBe(true)
+
+    expect(created).toEqual([LOCATIONS[0]!])
+    expect(queue.submitting.value).toBe(false)
   })
 })

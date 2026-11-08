@@ -1,5 +1,6 @@
 import '@/assets/global.css'
 
+import { setViewport } from '@greypan/doc-demo-kit/testing.viewport'
 import { toast, type WebUiIcon, type WebUiLayout, type WebUiTheme, type WebUiToast } from '@greypan/web-ui'
 import {
   antDesignSyncOutlined,
@@ -15,7 +16,6 @@ import { userEvent } from 'vite-plus/test/browser'
 import { defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
-import { setViewport } from '@/__tests__/viewport'
 import { loadDemoLocale } from '@/i18n/locale'
 
 import AppShell from '../index.vue'

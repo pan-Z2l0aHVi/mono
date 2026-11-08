@@ -34,6 +34,7 @@ import { defineOverlay, type OverlayApi } from '@/shared/overlay/overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 import { defineTriggerController } from '@/shared/overlay/trigger-controller'
+import { defineOverlayDelayProps } from '@/shared/overlay/trigger-delay-props'
 import { hasTriggerGesture, isTriggerNone, normalizeTriggerSet } from '@/shared/overlay/trigger-props'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
@@ -87,7 +88,7 @@ type PointerInteraction = {
 }
 
 @customElement('web-ui-dropdown')
-export class WebUiDropdown extends LitElement {
+export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
   static override styles = unsafeCSS(style)
 
   @property({ type: Boolean, reflect: true })
@@ -114,28 +115,6 @@ export class WebUiDropdown extends LitElement {
     this.requestUpdate('trigger', old)
   }
   private _triggerValue: string = DEFAULT_TRIGGERS.join(',')
-
-  @property({ type: Number, attribute: 'show-delay' })
-  get showDelay(): number {
-    return this._showDelay
-  }
-  set showDelay(v: number) {
-    const old = this._showDelay
-    this._showDelay = normalizeNumber(v, 0, 5000, 200)
-    this.requestUpdate('showDelay', old)
-  }
-  private _showDelay = 200
-
-  @property({ type: Number, attribute: 'hide-delay' })
-  get hideDelay(): number {
-    return this._hideDelay
-  }
-  set hideDelay(v: number) {
-    const old = this._hideDelay
-    this._hideDelay = normalizeNumber(v, 0, 5000, 100)
-    this.requestUpdate('hideDelay', old)
-  }
-  private _hideDelay = 100
 
   private _placement: Placement = 'bottom-start'
 
@@ -171,14 +150,10 @@ export class WebUiDropdown extends LitElement {
   private readonly _triggerController = defineTriggerController({
     host: this,
     getTrigger: () => this.trigger,
-    isDisabled: () => this.disabled,
-    canOpen: () => true,
+    canOpen: () => !this.disabled,
     getOpen: () => this._openValue,
-    getShowDelay: () => this.showDelay,
-    getHideDelay: () => this.hideDelay,
     hoverOpensInstantly: () => false,
-    isInsidePanel: event => this._handle?.containsEvent(event) ?? false,
-    hasFocusWithin: () => this._handle?.hasFocusWithin() ?? false,
+    getPanelHandle: () => this._handle,
     outsideClick: false,
     focusOut: false,
     requestOpen: meta =>

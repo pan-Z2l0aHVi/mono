@@ -317,12 +317,14 @@ export function restoreBlockedTools(active: readonly string[], transcript: unkno
  * 组装桥接扩展。
  *
  * Pi 只调用扩展的 default 导出函数，不消费工厂的返回值，所以 reload / 退出时的清理入口是
- * 这里注册的 `session_shutdown` 钩子。返回的 `dispose` 保留给测试与直接装配方，与钩子走
- * 同一段清理逻辑，且幂等。
+ * 这里注册的 `session_shutdown` 钩子。返回的 `dispose` 与 `resetSession` 保留给测试与直接
+ * 装配方：`dispose` 是完整清理（shepherd 还原 + 会话内存态清空），`resetSession` 只清
+ * 九项会话内存态（见其注释）。两者与 `session_start` 的清空部分共用同一份清单，且幂等。
  */
-export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: () => void } {
+export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: () => void; resetSession: () => void } {
   // 激活门槛不成立时立刻返回：不注册钩子、不注册工具、不读文件、不起子进程。
-  if (!options.activation.active) return { dispose: () => {} }
+  // 没有任何内存态可清，两个入口都是 no-op。
+  if (!options.activation.active) return { dispose: () => {}, resetSession: () => {} }
 
   const pending: PendingQueue = createPendingQueue()
   // 任务板动作也要在同一轮 flush 里执行，否则 before_settle 会为两类待办各触发一次追加回合。
@@ -365,7 +367,30 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
   }
 
   /**
-   * 统一清理路径。
+   * 会话内存态的单一清空点。
+   *
+   * 九项内存态（pending、boardQueue、settleAttempts、inFlight、lastSaveError、state、
+   * reviewerNames、controlConfigPromise、controlConfigWarningShown）的清空只写这一份：
+   * `session_start` 与 `cleanup` 曾各持一份逐字相同的清单，加状态时漏改一处就是跨会话
+   * 泄漏（4fa3add2 修过的那类 bug）。两条路径各自在这里之外追加自己的尾缀逻辑。
+   *
+   * 幂等、可重入：在已清空的状态上再清一次没有可观察效果。
+   */
+  const resetSession = (): void => {
+    pending.clear()
+    boardQueue.length = 0
+    settleAttempts.clear()
+    inFlight.clear()
+    lastSaveError = undefined
+    // 新会话可能有新的 reviewer 与配置；不要让上一会话的名单/缓存漏进来。
+    reviewerNames.clear()
+    controlConfigPromise = undefined
+    controlConfigWarningShown = false
+    state = undefined
+  }
+
+  /**
+   * 统一清理路径：resetSession + shepherd 工具还原。
    *
    * Pi 在 reload / 退出时向旧 runner 发 `session_shutdown`，不消费工厂返回值；测试与直接
    * 装配方用返回的 `dispose`。两条路径都汇到这里，所以必须幂等、可重入：重复调用只是在
@@ -384,15 +409,7 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
     }
     shepherd.active = false
     shepherd.previousTools = undefined
-    reviewerNames.clear()
-    controlConfigPromise = undefined
-    controlConfigWarningShown = false
-    pending.clear()
-    boardQueue.length = 0
-    settleAttempts.clear()
-    inFlight.clear()
-    lastSaveError = undefined
-    state = undefined
+    resetSession()
   }
 
   const ensureState = (cwd: string): RuntimeState => {
@@ -401,15 +418,8 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
   }
 
   pi.on('session_start', async (_event, ctx) => {
-    pending.clear()
-    boardQueue.length = 0
-    settleAttempts.clear()
-    inFlight.clear()
-    lastSaveError = undefined
-    // 新会话可能有新的 reviewer 与配置；不要让上一会话的名单/缓存漏进来。
-    reviewerNames.clear()
-    controlConfigPromise = undefined
-    controlConfigWarningShown = false
+    // 与 cleanup 共用同一份清空清单；本钩子的尾缀是 state 重建 + 状态栏 + 工具修复 + 共享板。
+    resetSession()
     state = { identity: resolveRepoIdentity(ctx.cwd), cwd: ctx.cwd }
     // reload / 新会话后内存状态是 false；清掉可能残留的状态栏，避免显示与实际不符。
     refreshStatus(ctx, false, 0)
@@ -1101,9 +1111,9 @@ export function createBridge(pi: BridgePi, options: BridgeOptions): { dispose: (
     }
   })
 
-  // Pi 不消费这个返回值；它只会调用注册的 `session_shutdown`。保留 dispose 供测试与
-  // 直接装配方复用同一段清理逻辑。
-  return { dispose: cleanup }
+  // Pi 不消费这个返回值；它只会调用注册的 `session_shutdown`。保留 dispose 与 resetSession
+  // 供测试与直接装配方复用同一段清理逻辑（dispose = shepherd 还原 + resetSession）。
+  return { dispose: cleanup, resetSession }
 
   function failure(key: string, error: unknown) {
     const message = error instanceof Error ? error.message : String(error)

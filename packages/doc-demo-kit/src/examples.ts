@@ -1,5 +1,6 @@
 import type { MetaNode } from '@greypan/md-to-meta'
 
+import { resolveReadmeLinks } from './readme'
 /** demo 站的语种：中文是源语种，英文没有文件名后缀。 */
 export type DemoLocale = 'zh-CN' | 'en'
 
@@ -67,4 +68,41 @@ export async function prepareExamples(docs: MetaDocs): Promise<void> {
     }
   }
   await Promise.all(pending)
+}
+
+export interface DemoMetaLoaderOptions {
+  /** 宿主用 `import.meta.glob` 展开的生成物模块表。 */
+  modules: MetaModuleMap
+  /** 生成物目录前缀（glob 键的目录部分）。默认 `../generated`：生成器平铺，语种只体现在文件名后缀。 */
+  generatedDir?: string
+  /**
+   * README 相对链接（`href="./`）指向的仓库基址。不配则原样返回节点；
+   * 配了就由 `resolveDocLinks` 统一改写，宿主不再硬编码仓库 URL。
+   */
+  readmeBase?: string
+}
+
+export interface DemoMetaLoader extends MetaLoader {
+  /** 把文档里的相对 README 链接指向配置的仓库位置；未配置 `readmeBase` 时原样返回。 */
+  resolveDocLinks: (nodes: readonly MetaNode[]) => MetaNode[]
+}
+
+/**
+ * 在 `createMetaLoader` 之上收敛两端逐字重复的 generated 目录契约与 README 链接配置：
+ * 宿主只给出自己的 glob 模块表与仓库基址，文件名契约（`metaFileOf`）与链接改写都住在这里。
+ */
+export function createDemoMetaLoader({
+  modules,
+  generatedDir = '../generated',
+  readmeBase
+}: DemoMetaLoaderOptions): DemoMetaLoader {
+  const loader = createMetaLoader({
+    modules,
+    resolve: (locale, component) => `${generatedDir}/${metaFileOf(locale, component)}`
+  })
+  return {
+    loadMeta: loader.loadMeta,
+    loadMetaDocs: loader.loadMetaDocs,
+    resolveDocLinks: nodes => (readmeBase ? resolveReadmeLinks(nodes, readmeBase) : [...nodes])
+  }
 }

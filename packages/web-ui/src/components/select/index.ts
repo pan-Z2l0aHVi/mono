@@ -12,13 +12,13 @@ import type { WebUiOption } from '@/components/option'
 import { lucideChevronDown } from '@/icons'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
-import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
+import { normalizeLiteral } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import {
+  createComboboxNavigation,
   createComboboxOpenController,
   createOptionListenerBinding,
-  defineOptionPortal,
-  nextWrappingIndex
+  defineOptionPortal
 } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { hasOverlayContent } from '@/shared/overlay/content-presence'
@@ -31,6 +31,7 @@ import {
   type OverlayPortal
 } from '@/shared/overlay/portal'
 import { defineTriggerController } from '@/shared/overlay/trigger-controller'
+import { defineOverlayDelayProps } from '@/shared/overlay/trigger-delay-props'
 import { isTriggerNone, normalizeTriggerSet } from '@/shared/overlay/trigger-props'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
@@ -41,7 +42,7 @@ installPointerFocusSuppression()
 const DEFAULT_TRIGGERS = ['click'] as const
 
 @customElement('web-ui-select')
-export class WebUiSelect extends FormAssociated(LitElement) {
+export class WebUiSelect extends defineOverlayDelayProps(FormAssociated(LitElement)) {
   static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(scrollbarStyle), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) placeholder = ''
@@ -73,28 +74,6 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     this.requestUpdate('trigger', old)
   }
   private _triggerValue: string = DEFAULT_TRIGGERS.join(',')
-
-  @property({ type: Number, attribute: 'show-delay' })
-  get showDelay(): number {
-    return this._showDelay
-  }
-  set showDelay(v: number) {
-    const old = this._showDelay
-    this._showDelay = normalizeNumber(v, 0, 5000, 200)
-    this.requestUpdate('showDelay', old)
-  }
-  private _showDelay = 200
-
-  @property({ type: Number, attribute: 'hide-delay' })
-  get hideDelay(): number {
-    return this._hideDelay
-  }
-  set hideDelay(v: number) {
-    const old = this._hideDelay
-    this._hideDelay = normalizeNumber(v, 0, 5000, 100)
-    this.requestUpdate('hideDelay', old)
-  }
-  private _hideDelay = 100
 
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) portal = false
@@ -160,12 +139,10 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   @state() private _isOpen = false
+  /** 游标状态机在 combobox-navigation；这里是供 `aria-activedescendant` 计算的 @state 镜像。 */
   @state() private _activeIndex = -1
   @state() private _selectedLabel = ''
   @state() private _hasTriggerSlot = false
-
-  private _typeaheadBuffer = ''
-  private _typeaheadLastInputAt = 0
 
   private _options: WebUiOption[] = []
   private _portal?: OverlayPortal
@@ -225,14 +202,10 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   private readonly _triggerController = defineTriggerController({
     host: this,
     getTrigger: () => this.trigger,
-    isDisabled: () => this._isDisabled,
-    canOpen: () => true,
+    canOpen: () => !this._isDisabled,
     getOpen: () => this._isOpen,
-    getShowDelay: () => this.showDelay,
-    getHideDelay: () => this.hideDelay,
     hoverOpensInstantly: () => false,
-    isInsidePanel: event => !!this._panel.getHandle()?.containsEvent(event),
-    hasFocusWithin: () => this.matches(':focus-within') || !!this._panel.getHandle()?.hasFocusWithin(),
+    getPanelHandle: () => this._panel.getHandle(),
     requestOpen: meta =>
       this._open({
         isKeyboardNavigation: meta.source === 'focus',
@@ -389,12 +362,38 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   private _bindOption = (option: WebUiOption) => this._optionListeners.bind(option)
   private _unbindOption = (option: WebUiOption) => this._optionListeners.unbind(option)
 
+  // 游标状态机沉在 combobox-navigation（环绕导航 / 边界 / 锚点 / typeahead）；
+  // 键位映射留在组件，差异经 hooks 注入
+  private readonly _nav = createComboboxNavigation({
+    getOptions: () => this._options,
+    isEnabled: option => !option.disabled && this._isLive(option),
+    isOpen: () => this._isOpen,
+    onActiveChange: () => {
+      this._activeIndex = this._nav.activeIndex
+      this._syncActiveOption()
+    },
+    getInitialAnchor: enabled => {
+      const selectedIndex = enabled.findIndex(option => option.value === this.value)
+      return selectedIndex >= 0 ? selectedIndex : enabled.length ? 0 : -1
+    },
+    // 起点失效（无激活/已失联）时折入选中项，而不是按方向默认
+    getFallbackAnchor: enabled => {
+      const selected = this._options.find(
+        option => option.value === this.value && !option.disabled && this._isLive(option)
+      )
+      return selected ? enabled.indexOf(selected) : -1
+    },
+    // 指针接管立即清空键盘激活
+    canPointerTakeOver: () => this._nav.activeIndex >= 0
+  })
+
   private _refreshOptions() {
-    const activeOption = this._options[this._activeIndex]
+    const activeOption = this._options[this._nav.activeIndex]
     // diff 绑定/解绑与激活索引按 option 身份保持在 shared 内完成，
     // 避免移除中间项后激活静默偏移到相邻项
     const next = this._optionPortal.refresh(this._options, activeOption)
     this._options = next.options
+    this._nav.setActiveIndex(next.activeIndex)
     this._activeIndex = next.activeIndex
     // 非 portal 模式 aria-activedescendant 引用真实 option id,需保证已分配
     this._optionPortal.ensureOptionIds(this._options)
@@ -415,13 +414,8 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   private _handleOptionPointerOver = (e: PointerEvent) => {
-    if (e.pointerType === 'touch') return
-    if (!this._isOpen || this._activeIndex < 0 || !(e.currentTarget instanceof HTMLElement)) return
-
-    // 指针接管后只保留 :hover，避免键盘激活项与悬停项同时高亮。
-    this._activeIndex = -1
-    this._resetTypeahead()
-    this._syncActiveOption()
+    if (!(e.currentTarget instanceof HTMLElement)) return
+    this._nav.handleOptionPointerOver(e)
   }
 
   private _handleOptionPointerDown = (e: PointerEvent) => {
@@ -454,24 +448,24 @@ export class WebUiSelect extends FormAssociated(LitElement) {
         if (!this._isOpen) {
           this._open({ isKeyboardNavigation: true })
         } else {
-          this._navigateActive(1)
+          this._nav.navigate(1)
         }
         break
       case 'ArrowUp':
         if (!this._isOpen && !canOpen) return
         e.preventDefault()
         if (!this._isOpen) this._open({ isKeyboardNavigation: true })
-        else this._navigateActive(-1)
+        else this._nav.navigate(-1)
         break
       case 'Home':
         if (!this._isOpen) break
         e.preventDefault()
-        this._moveActiveToBoundary(true)
+        this._nav.moveToBoundary(true)
         break
       case 'End':
         if (!this._isOpen) break
         e.preventDefault()
-        this._moveActiveToBoundary(false)
+        this._nav.moveToBoundary(false)
         break
       case 'Enter': {
         if (!this._isOpen && !canOpen) return
@@ -494,7 +488,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
       default:
         if (this._isOpen && !e.isComposing && !e.ctrlKey && !e.metaKey && !e.altKey && Array.from(e.key).length === 1) {
           e.preventDefault()
-          this._typeahead(e.key)
+          this._nav.typeahead(e.key)
         }
         break
     }
@@ -507,83 +501,6 @@ export class WebUiSelect extends FormAssociated(LitElement) {
       this._notifyValueChange()
     }
     this._close()
-  }
-
-  private _moveActiveToBoundary(toStart: boolean) {
-    this._resetTypeahead()
-    const enabled = this._options.filter(option => !option.disabled && this._isLive(option))
-    const option = toStart ? enabled[0] : enabled.at(-1)
-    if (!option) return
-
-    this._activeIndex = this._options.indexOf(option)
-    this._syncActiveOption()
-  }
-
-  private _typeahead(key: string) {
-    const enabled = this._options.filter(option => !option.disabled && this._isLive(option))
-    if (!enabled.length) return
-
-    const now = Date.now()
-    const withinSequence = now - this._typeaheadLastInputAt <= 500
-    const isRepeatedKey =
-      withinSequence &&
-      Array.from(this._typeaheadBuffer).length === 1 &&
-      this._normalizeTypeaheadText(this._typeaheadBuffer) === this._normalizeTypeaheadText(key)
-    const query = isRepeatedKey ? key : withinSequence ? `${this._typeaheadBuffer}${key}` : key
-    this._typeaheadBuffer = query
-    this._typeaheadLastInputAt = now
-
-    const activeOption = this._options[this._activeIndex]
-    const activeIndex = activeOption ? enabled.indexOf(activeOption) : -1
-    const findMatch = (prefix: string) => {
-      const normalizedPrefix = this._normalizeTypeaheadText(prefix)
-      for (let offset = 1; offset <= enabled.length; offset++) {
-        const option = enabled[(activeIndex + offset + enabled.length) % enabled.length]
-        if (this._normalizeTypeaheadText(option.label.trimStart()).startsWith(normalizedPrefix)) return option
-      }
-      return undefined
-    }
-
-    const currentMatch =
-      query !== key &&
-      activeIndex >= 0 &&
-      activeOption &&
-      this._normalizeTypeaheadText(activeOption.label.trimStart()).startsWith(this._normalizeTypeaheadText(query))
-        ? activeOption
-        : undefined
-    const queryMatch = currentMatch ?? findMatch(query)
-    const option = queryMatch ?? (query === key ? undefined : findMatch(key))
-    if (!queryMatch && query !== key) this._typeaheadBuffer = key
-    if (!option) return
-
-    this._activeIndex = this._options.indexOf(option)
-    this._syncActiveOption()
-  }
-
-  private _normalizeTypeaheadText(value: string) {
-    return value.toLocaleLowerCase().normalize('NFD').replace(/\p{M}/gu, '')
-  }
-
-  private _navigateActive(delta: number) {
-    this._resetTypeahead()
-    const enabled = this._options.filter(o => !o.disabled && this._isLive(o))
-    if (!enabled.length) return
-
-    const selectedOption = this._options.find(
-      option => option.value === this.value && !option.disabled && this._isLive(option)
-    )
-    const currentIdx =
-      this._activeIndex >= 0 && this._isLive(this._options[this._activeIndex])
-        ? enabled.indexOf(this._options[this._activeIndex])
-        : selectedOption
-          ? enabled.indexOf(selectedOption)
-          : delta > 0
-            ? -1
-            : 0
-    const nextOption = enabled[nextWrappingIndex(enabled.length, currentIdx, delta)]
-    this._activeIndex = this._options.indexOf(nextOption)
-
-    this._syncActiveOption()
   }
 
   // 开合生命周期不变量（guard / 派发顺序 / scroll-lock 配对 / portal rAF dance）
@@ -602,12 +519,13 @@ export class WebUiSelect extends FormAssociated(LitElement) {
     closeOverlay: () => void this._closeOverlay(),
     onOpen: isKeyboardNavigation => {
       this._syncSelected()
-      if (isKeyboardNavigation) this._setInitialActiveOption()
+      if (isKeyboardNavigation) this._nav.activateInitialAnchor()
       else this._syncActiveOption()
     },
     onAfterClose: () => {
       this._openedWithContent = false
-      this._activeIndex = -1
+      this._nav.resetForClose()
+      this._activeIndex = this._nav.activeIndex
       this._options.forEach(o => o.removeAttribute('active'))
     }
   })
@@ -630,7 +548,7 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   private _open(options: { isKeyboardNavigation?: boolean; notify?: boolean; automatic?: boolean } = {}) {
-    this._resetTypeahead()
+    this._nav.resetTypeahead()
     const hasContent = this._hasOverlayContent()
     if ((options.automatic ?? true) && !hasContent) {
       if (this._isOpen) this._close()
@@ -644,26 +562,12 @@ export class WebUiSelect extends FormAssociated(LitElement) {
   }
 
   private _close(options: { notify?: boolean } = {}) {
-    this._resetTypeahead()
+    this._nav.resetTypeahead()
     this._openController.close(options)
-  }
-
-  private _resetTypeahead() {
-    this._typeaheadBuffer = ''
-    this._typeaheadLastInputAt = 0
   }
 
   private _dispatchOpenChange() {
     dispatchOpenChangeEvent(this, this._isOpen)
-  }
-
-  private _setInitialActiveOption() {
-    const selectedIndex = this._options.findIndex(
-      option => option.value === this.value && !option.disabled && this._isLive(option)
-    )
-    const firstEnabledIndex = this._options.findIndex(option => !option.disabled && this._isLive(option))
-    this._activeIndex = selectedIndex >= 0 ? selectedIndex : firstEnabledIndex
-    this._syncActiveOption()
   }
 
   private _syncActiveOption() {

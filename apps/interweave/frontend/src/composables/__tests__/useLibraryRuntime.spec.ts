@@ -45,7 +45,6 @@ function createResource(overrides: Partial<ResourceDTO> = {}): ResourceDTO {
     updated_at: 200,
     sources: [source],
     tags: [],
-    preferred_source_id: source.id,
     ...overrides
   }
 }
@@ -69,19 +68,21 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       updateTitle: async (resourceId, title) => createResource({ id: resourceId, title }),
       updateNote: async (resourceId, note) => createResource({ id: resourceId, note }),
       remove: async () => {},
-      setTags: async () => [],
+      setTags: async () => createResource(),
       findLocationMatches: async () => [],
       prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
       releaseFilePreview: async () => {},
       ...overrides.resources
     },
     sources: {
-      refreshURL: async () => createResource().sources[0]!,
-      refreshFile: async () => createResource().sources[0]!,
-      replaceFile: async () => createResource().sources[0]!,
-      replaceURL: async () => createResource().sources[0]!,
+      // 刷新与替换直接回传变更后的完整 Resource 视图，composable 单调用即可回流。
+      refreshURL: async () => createResource(),
+      refreshFile: async () => createResource(),
+      replaceFile: async () => createResource(),
+      replaceURL: async () => createResource(),
       probeOnOpen: async () => ({
         source: createResource().sources[0]!,
+        resource: createResource(),
         outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
       }),
       ...overrides.sources
@@ -256,29 +257,30 @@ describe('useLibraryRuntime', () => {
     expect(useLibraryStore().resources[0]?.tagNames).toEqual(['Design', 'Travel'])
   })
 
-  it('saveTags 把名称集合原样交给替换式接口并回读最新 DTO', async () => {
+  it('saveTags 把名称集合原样交给替换式接口并回流返回的最新 DTO', async () => {
     const tagged = createResource({
       id: 'resource-inline',
       tags: [{ id: 'tag-travel', name: 'Travel', created_at: 300, color: TagColor.TagColorAmber }]
     })
-    const setTags = vi.fn<LibraryRuntime['resources']['setTags']>(async () => tagged.tags)
-    const get = vi.fn<LibraryRuntime['resources']['get']>(async () => tagged)
+    const setTags = vi.fn<LibraryRuntime['resources']['setTags']>(async () => tagged)
+    const get = vi.fn<LibraryRuntime['resources']['get']>()
     const controller = useLibraryRuntime(createRuntime({ resources: { setTags, get } }))
     useLibraryStore().setResources([createResource()])
 
     const saved = await controller.saveTags('resource-inline', ['  Design ', 'Travel'])
 
     expect(setTags).toHaveBeenCalledExactlyOnceWith('resource-inline', ['  Design ', 'Travel'])
-    expect(get).toHaveBeenCalledWith('resource-inline')
+    expect(get).not.toHaveBeenCalled()
     expect(saved.tags.map(tag => tag.name)).toEqual(['Travel'])
     expect(useLibraryStore().resources[0]?.tagNames).toEqual(['Travel'])
   })
 
-  it('probeURLSourceOnOpen：只对判为不可用的 URL 首选 source 探测，回读最新 DTO 回流', async () => {
+  it('probeURLSourceOnOpen：只对判为不可用的 URL 首选 source 探测，回流的 Resource 直接更新 store', async () => {
     const revived = createResource({ id: 'resource-inline', size_bytes: 256 })
-    const get = vi.fn<LibraryRuntime['resources']['get']>(async () => revived)
+    const get = vi.fn<LibraryRuntime['resources']['get']>()
     const probeOnOpen = vi.fn<LibraryRuntime['sources']['probeOnOpen']>(async () => ({
-      source: createResource().sources[0]!,
+      source: revived.sources[0]!,
+      resource: revived,
       outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
     }))
     const controller = useLibraryRuntime(createRuntime({ resources: { get }, sources: { probeOnOpen } }))
@@ -287,7 +289,7 @@ describe('useLibraryRuntime', () => {
     await controller.probeURLSourceOnOpen(sourceView())
 
     expect(probeOnOpen).toHaveBeenCalledExactlyOnceWith('source-inline')
-    expect(get).toHaveBeenCalledWith('resource-inline')
+    expect(get).not.toHaveBeenCalled()
     expect(useLibraryStore().resources[0]?.sizeBytes).toBe(256)
     expect(controller.error.value).toBe('')
   })

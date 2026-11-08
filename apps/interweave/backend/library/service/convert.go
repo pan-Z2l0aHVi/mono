@@ -95,7 +95,7 @@ func tagToDTO(tag core.Tag) TagDTO {
 	}
 }
 
-// 将领域 Resource 视图映射为前端可见视图，并派生首选入口。
+// 将领域 Resource 视图映射为前端可见视图；首选入口由 SourceDTO.is_preferred 承载。
 func resourceViewToDTO(view *core.ResourceView) *ResourceDTO {
 	dto := &ResourceDTO{
 		ID:        view.Resource.ID,
@@ -111,13 +111,6 @@ func resourceViewToDTO(view *core.ResourceView) *ResourceDTO {
 	}
 	sources := mapped(view.Sources, sourceToDTO)
 	dto.Sources = sources
-	dto.PreferredID = ""
-	for _, srcDTO := range sources {
-		if srcDTO.IsPreferred {
-			dto.PreferredID = srcDTO.ID
-			break
-		}
-	}
 	dto.Tags = mapped(view.Tags, tagToDTO)
 	return dto
 }

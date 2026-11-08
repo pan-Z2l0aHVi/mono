@@ -46,7 +46,8 @@ _Avoid_: 添加时自动去重、重复定位、隐式合并或转移 Source
 **Source 可用性**:
 以 `available: boolean` 持久化：`true` 为可用，`false` 为不可用。新建 URL 必须在 10 秒总时限内完成基础元数据抓取再写入；失败或超时仍写入为 `false`，非 HTML 或展示元数据缺失不影响 `true`，后续非元数据数据加载不阻塞写入。新建文件先做轻量 `stat`，成功或失败分别写入 `true` 或 `false`，但都纳入且不读内容或计算 hash。
 已登记的 file source 只监听其所在目录：`available` 随文件增删自动翻转并恢复，媒体读取确认不可达时立即改判为 `false`。URL 不做监听，只在用户打开详情时按需重新判定；该次判定无法得出结论时保留原值。
-_Avoid_: `unknown`、独立状态枚举、以元数据完整性替代可用性、后台轮询探测、把无法判定写成不可用
+可用性写入统一经 [`backend/library/watch/`](./backend/library/watch/) 的 AvailabilityGate：它是目录监听与媒体 404 兜底共用的唯一写入口，「先落库、后发事件、只在真翻转时发」由 gate 的 implementation 保证，调用方不得绕开它自行落库或发事件。
+_Avoid_: `unknown`、独立状态枚举、以元数据完整性替代可用性、后台轮询探测、把无法判定写成不可用、绕开 gate 的可用性写入
 
 **语义标签（Semantic Tag）**:
 用户赋予 Resource 的扁平内容意义。每个 Tag 有不可变内部 `tag_id`；名称经标准化后不可变；标准名称相同即自动复用；没有别名、全局管理面板或自动语义合并；操作仅在单个 Resource 上增删 Tagging。标签无父子、路径、继承或显式标签关系；Resource 的关联仅从共享语义标签派生。
@@ -67,6 +68,7 @@ _Avoid_: 文件树、画布编辑器、关系连线器、资源容器
 
 ## 修改指南
 
+- 添加资源的 preview token 结算时序（waitForPreview → create → releasePreview → close）由 `frontend/src/components/library/addQueue.ts` 的 controller 拥有，页面经 `submit` 提交整个队列，不得自组提交循环。
 - 修改 Go/Wails API 时，先查 Wails 3 官方文档，再核对 Go 测试、frontend bindings 和消费端调用。公开 API 变更遵循上文 allowlist 与生成边界。
 - 文件选择等可取消操作应明确取消语义。class-mode bindings 已将顶层 Wails slice 返回值规范化为非 nullable 数组，前端应消费生成类型而不重复添加 `?? []`。仅 DTO 中仍为可选或 nullable 的字段按其生成类型处理，且不得手改生成 bindings。
 - 修改前端页面、store、组件或交互时，按 [`docs/agents/runtime-verification.md`](../../docs/agents/runtime-verification.md) 在真实 Wails/浏览器集成表面验证。

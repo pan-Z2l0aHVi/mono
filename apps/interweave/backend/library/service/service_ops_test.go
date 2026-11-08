@@ -25,8 +25,8 @@ func newTestServices(t *testing.T) (*service.ResourceService, *service.SourceSer
 	coreTag := coreLibrary.NewTagService(db)
 	coreMap := coreLibrary.NewMapService(db)
 	resService := service.NewResourceService(coreResource, libraryMedia.NewPendingPreviewRegistry())
-	srcService := service.NewSourceService(coreSource)
-	tagService := service.NewTagService(coreTag)
+	srcService := service.NewSourceService(coreSource, coreResource)
+	tagService := service.NewTagService(coreTag, coreResource)
 	mapService := service.NewMapService(coreMap)
 	return resService, srcService, tagService, mapService, cleanup
 }
@@ -40,6 +40,37 @@ func tempFile(t *testing.T, name string) string {
 	f.Close()
 	t.Cleanup(func() { _ = os.Remove(f.Name()) })
 	return f.Name()
+}
+
+// sourceByID 在变更后的 Resource 视图里找回发生变化的入口；变更类方法直接回传
+// ResourceDTO，变更后的 Source 在 sources 里按 id 可取。
+func sourceByID(dto *service.ResourceDTO, sourceID string) *service.SourceDTO {
+	for i := range dto.Sources {
+		if dto.Sources[i].ID == sourceID {
+			return &dto.Sources[i]
+		}
+	}
+	return nil
+}
+
+// sourceByLocation 按归一化前的输入路径找回刚变更的入口（测试场景里位置唯一）。
+func sourceByLocation(dto *service.ResourceDTO, location string) *service.SourceDTO {
+	for i := range dto.Sources {
+		if dto.Sources[i].Location == location {
+			return &dto.Sources[i]
+		}
+	}
+	return nil
+}
+
+// preferredID 从 Resource 视图派生首选入口；DTO 用 SourceDTO.is_preferred 承载唯一首选。
+func preferredID(dto *service.ResourceDTO) string {
+	for i := range dto.Sources {
+		if dto.Sources[i].IsPreferred {
+			return dto.Sources[i].ID
+		}
+	}
+	return ""
 }
 
 // 重复提示的 service 契约：只回带展示字段的命中项，未命中回非 nil 空切片（前端据此判定零打扰）。
@@ -84,7 +115,7 @@ func TestFindResourceLocationMatchesReturnsPromptFields(t *testing.T) {
 	}
 }
 
-// 验证标题、备注、列表、搜索与删除的维护路径。
+// 验证标题、备注、列表与删除的维护路径。
 func TestResourceMaintenanceOperations(t *testing.T) {
 	resService, _, tagService, _, cleanup := newTestServices(t)
 	defer cleanup()
@@ -122,17 +153,6 @@ func TestResourceMaintenanceOperations(t *testing.T) {
 
 	if _, err := tagService.AddTagToResource(ctx, res.ID, "Tokyo"); err != nil {
 		t.Fatalf("AddTagToResource error: %v", err)
-	}
-
-	// 标题、备注、标签与来源路径都应参与搜索。
-	for _, query := range []string{"整理后", "个人备注", "Tokyo", "maint-"} {
-		found, err := resService.SearchResources(ctx, query)
-		if err != nil {
-			t.Fatalf("SearchResources(%q) error: %v", query, err)
-		}
-		if len(found) != 1 {
-			t.Errorf("expected search %q to find 1 resource, got %d", query, len(found))
-		}
 	}
 
 	if err := resService.DeleteResource(ctx, res.ID); err != nil {
@@ -177,14 +197,18 @@ func TestURLSourceOperations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RefreshURLSource error: %v", err)
 	}
-	if !refreshed.Available {
-		t.Errorf("expected refreshed source to stay available")
+	if refreshedSource := sourceByID(refreshed, res.Sources[0].ID); refreshedSource == nil || !refreshedSource.Available {
+		t.Errorf("expected refreshed source to stay available, got %+v", refreshed.Sources)
 	}
 
 	filePath := tempFile(t, "src-*.txt")
-	fileSrc, err := srcService.AddFileSource(ctx, res.ID, filePath)
+	added, err := srcService.AddFileSource(ctx, res.ID, filePath)
 	if err != nil {
 		t.Fatalf("AddFileSource error: %v", err)
+	}
+	fileSrc := sourceByLocation(added, filePath)
+	if fileSrc == nil {
+		t.Fatalf("expected the added source in the returned resource view, got %+v", added.Sources)
 	}
 	if _, err := srcService.RefreshURLSource(ctx, fileSrc.ID); err == nil || err.Error() != "only URL sources can be refreshed" {
 		t.Errorf("expected only URL sources error, got %v", err)
@@ -195,11 +219,15 @@ func TestURLSourceOperations(t *testing.T) {
 	if err != nil {
 		t.Fatalf("ReplaceURLSource error: %v", err)
 	}
-	if replaced.IsPreferred {
+	replacedSource := sourceByID(replaced, fileSrc.ID)
+	if replacedSource == nil {
+		t.Fatalf("expected the replaced source in the returned resource view, got %+v", replaced.Sources)
+	}
+	if replacedSource.IsPreferred {
 		t.Errorf("expected replaced non-preferred source to stay non-preferred")
 	}
-	if replaced.Type != "url" || !replaced.Available {
-		t.Errorf("expected replaced source to be available url, got %+v", replaced)
+	if replacedSource.Type != storage.SourceTypeURL || !replacedSource.Available {
+		t.Errorf("expected replaced source to be available url, got %+v", replacedSource)
 	}
 
 	// 失败或超时的抓取仍创建入口，但可用性为 false。
@@ -246,8 +274,8 @@ func TestFileResourceDisplayMetadataAndRefresh(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RefreshFileSource unavailable error: %v", err)
 	}
-	if refreshed.Available {
-		t.Errorf("expected missing file to be unavailable after refresh")
+	if refreshedSource := sourceByID(refreshed, sourceID); refreshedSource == nil || refreshedSource.Available {
+		t.Errorf("expected missing file to be unavailable after refresh, got %+v", refreshed.Sources)
 	}
 
 	if err := os.WriteFile(path, []byte("123456789"), 0o644); err != nil {
@@ -257,8 +285,10 @@ func TestFileResourceDisplayMetadataAndRefresh(t *testing.T) {
 	if err != nil {
 		t.Fatalf("RefreshFileSource restored error: %v", err)
 	}
-	if !refreshed.Available || refreshed.Location != path || refreshed.ID != sourceID || refreshed.OrderIndex != orderIndex || !refreshed.IsPreferred {
-		t.Errorf("expected same source identity/location/order to become available, got %+v", refreshed)
+	restoredSource := sourceByID(refreshed, sourceID)
+	if restoredSource == nil || !restoredSource.Available || restoredSource.Location != path ||
+		restoredSource.OrderIndex != orderIndex || !restoredSource.IsPreferred {
+		t.Errorf("expected same source identity/location/order to become available, got %+v", refreshed.Sources)
 	}
 
 	after, err := resService.GetResource(ctx, res.ID)
@@ -306,30 +336,35 @@ func TestPreferredSourceSwitching(t *testing.T) {
 	}
 	firstID := res.Sources[0].ID
 
-	second, err := srcService.AddFileSource(ctx, res.ID, tempFile(t, "pref2-*.txt"))
+	secondPath := tempFile(t, "pref2-*.txt")
+	secondRes, err := srcService.AddFileSource(ctx, res.ID, secondPath)
 	if err != nil {
 		t.Fatalf("AddFileSource error: %v", err)
 	}
+	second := sourceByLocation(secondRes, secondPath)
+	if second == nil {
+		t.Fatalf("expected the added source in the returned resource view, got %+v", secondRes.Sources)
+	}
 
-	if err := srcService.SetPreferredSource(ctx, res.ID, second.ID); err != nil {
+	after, err := srcService.SetPreferredSource(ctx, res.ID, second.ID)
+	if err != nil {
 		t.Fatalf("SetPreferredSource error: %v", err)
 	}
-	after, _ := resService.GetResource(ctx, res.ID)
-	if after.PreferredID != second.ID {
-		t.Errorf("expected preferred %s, got %s", second.ID, after.PreferredID)
+	if got := preferredID(after); got != second.ID {
+		t.Errorf("expected preferred %s, got %s", second.ID, got)
 	}
 
-	if err := srcService.SetPreferredSource(ctx, res.ID, "missing"); err == nil || err.Error() != "source not found on resource" {
+	if _, err := srcService.SetPreferredSource(ctx, res.ID, "missing"); err == nil || err.Error() != "source not found on resource" {
 		t.Errorf("expected source not found on resource, got %v", err)
 	}
 
 	// 删除首选后按顺位延续到最早添加的剩余 Source。
-	if err := srcService.RemoveSource(ctx, second.ID); err != nil {
+	afterRemove, err := srcService.RemoveSource(ctx, second.ID)
+	if err != nil {
 		t.Fatalf("RemoveSource error: %v", err)
 	}
-	afterRemove, _ := resService.GetResource(ctx, res.ID)
-	if afterRemove.PreferredID != firstID {
-		t.Errorf("expected preferred to fall back to %s, got %s", firstID, afterRemove.PreferredID)
+	if got := preferredID(afterRemove); got != firstID {
+		t.Errorf("expected preferred to fall back to %s, got %s", firstID, got)
 	}
 }
 
@@ -394,15 +429,20 @@ func TestEdgeErrorPathsAndRemoval(t *testing.T) {
 	firstID := res.Sources[0].ID
 
 	// 删除非首选 Source 不触发回退，首选保持原样。
-	second, err := srcService.AddFileSource(ctx, res.ID, tempFile(t, "edge2-*.txt"))
+	secondPath := tempFile(t, "edge2-*.txt")
+	secondRes, err := srcService.AddFileSource(ctx, res.ID, secondPath)
 	if err != nil {
 		t.Fatalf("AddFileSource error: %v", err)
 	}
-	if err := srcService.RemoveSource(ctx, second.ID); err != nil {
+	second := sourceByLocation(secondRes, secondPath)
+	if second == nil {
+		t.Fatalf("expected the added source in the returned resource view, got %+v", secondRes.Sources)
+	}
+	after, err := srcService.RemoveSource(ctx, second.ID)
+	if err != nil {
 		t.Fatalf("RemoveSource non-preferred error: %v", err)
 	}
-	after, _ := resService.GetResource(ctx, res.ID)
-	if len(after.Sources) != 1 || after.PreferredID != firstID {
+	if len(after.Sources) != 1 || preferredID(after) != firstID {
 		t.Errorf("expected preferred %s with 1 source, got %+v", firstID, after.Sources)
 	}
 

@@ -6,12 +6,6 @@ import { useEffect, useRef, useState } from 'react'
 
 import { useLocale } from '@/i18n/locale'
 
-const pages = [
-  { path: '/home', zh: '组件总览', en: 'Components' },
-  { path: '/getting-started', zh: '快速开始', en: 'Getting Started', keywords: 'quick start' },
-  { path: '/changelog', zh: '更新日志', en: 'Changelog' }
-]
-
 const ESCAPE_KEY = 'Escape'
 const ARROW_DOWN_KEY = 'ArrowDown'
 
@@ -23,7 +17,8 @@ export function Search({ open, onOpenChange }: { open: boolean; onOpenChange: (o
   const results = useRef<HTMLDivElement>(null)
   const popover = useRef<WebUiPopover>(null)
   const input = useRef<WebUiInput>(null)
-  const matches = searchNavigation(displayQuery, pages)
+  // 壳页与组件导航的搜索全集在 kit（SHELL_NAV_PAGES + NAV_SECTIONS 的 zhName）。
+  const matches = searchNavigation(displayQuery)
   const hasQuery = query.trim().length > 0
 
   useEffect(() => {

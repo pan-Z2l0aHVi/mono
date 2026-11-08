@@ -865,6 +865,11 @@ describe('WebUiAutocomplete 组件', () => {
   })
 
   describe('键盘导航', () => {
+    /*
+     * 游标 / 锚点 / 过滤跳过语义断言已迁往 shared/option-portal 的
+     * combobox-navigation.spec（迁移不复制）；这里只留键位路由 smoke 与 ARIA 输出断言。
+     */
+
     it('ArrowDown 打开并激活首项，aria-activedescendant 指向 option', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
@@ -875,76 +880,6 @@ describe('WebUiAutocomplete 组件', () => {
       const activeId = comboboxTrigger(el).getAttribute('aria-activedescendant')
       expect(activeId).toBeTruthy()
       expect(el.shadowRoot?.querySelector(`#${activeId}`)?.textContent?.trim()).toBe('Apple')
-
-      cleanupElement(el)
-    })
-
-    it('ArrowUp 打开后再次按下循环到末尾', async () => {
-      const el = createAutocomplete(OPTIONS_HTML)
-      await waitForUpdate(el)
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
-      await waitForUpdate(el)
-      expect(el.open).toBe(true)
-
-      const activeId = comboboxTrigger(el).getAttribute('aria-activedescendant')
-      expect(el.shadowRoot?.querySelector(`#${activeId}`)?.textContent?.trim()).toBe('Apple')
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
-      await waitForUpdate(el)
-      const loopedId = comboboxTrigger(el).getAttribute('aria-activedescendant')
-      expect(el.shadowRoot?.querySelector(`#${loopedId}`)?.textContent?.trim()).toBe('Cherry')
-
-      cleanupElement(el)
-    })
-
-    it('过滤后 ArrowDown 跳过非匹配候选', async () => {
-      const el = createAutocomplete(OPTIONS_HTML)
-      await waitForUpdate(el)
-
-      typeText(el, 'ap')
-      await waitForUpdate(el)
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await waitForUpdate(el)
-
-      const activeId = comboboxTrigger(el).getAttribute('aria-activedescendant')
-      expect(el.shadowRoot?.querySelector(`#${activeId}`)?.textContent?.trim()).toBe('Apple')
-
-      cleanupElement(el)
-    })
-
-    it('禁用 option 被键盘导航跳过', async () => {
-      const el = createAutocomplete(
-        '<web-ui-option value="a" label="A"></web-ui-option><web-ui-option value="b" label="B" disabled></web-ui-option><web-ui-option value="c" label="C"></web-ui-option>'
-      )
-      await waitForUpdate(el)
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await waitForUpdate(el)
-      const first = comboboxTrigger(el).getAttribute('aria-activedescendant')
-      expect(el.shadowRoot?.querySelector(`#${first}`)?.textContent?.trim()).toBe('A')
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await waitForUpdate(el)
-      const second = comboboxTrigger(el).getAttribute('aria-activedescendant')
-      expect(el.shadowRoot?.querySelector(`#${second}`)?.textContent?.trim()).toBe('C')
-
-      cleanupElement(el)
-    })
-
-    it('无匹配候选时 ArrowDown 不产生 activedescendant', async () => {
-      const el = createAutocomplete(OPTIONS_HTML)
-      await waitForUpdate(el)
-
-      typeText(el, 'zzz')
-      await waitForUpdate(el)
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await waitForUpdate(el)
-
-      expect(comboboxTrigger(el).getAttribute('aria-activedescendant')).toBeFalsy()
-      expect(el.open).toBe(false)
 
       cleanupElement(el)
     })
@@ -1095,6 +1030,23 @@ describe('WebUiAutocomplete 组件', () => {
       await waitForUpdate(el)
 
       expect(el.open).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('面板开着时切 readonly，外点仍能关闭（关闭路径不被 readonly 拦住）', async () => {
+      const el = createAutocomplete(OPTIONS_HTML)
+      await waitForUpdate(el)
+
+      el.show()
+      await waitForUpdate(el)
+      expect(el.open).toBe(true)
+
+      el.readonly = true
+      await waitForUpdate(el)
+      document.body.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+      await waitForUpdate(el)
+
+      expect(el.open, 'readonly 只挡打开，不挡关闭').toBe(false)
       cleanupElement(el)
     })
 

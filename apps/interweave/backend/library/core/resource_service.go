@@ -233,18 +233,3 @@ func (s *ResourceService) ListResources(ctx context.Context) ([]ResourceView, er
 	}
 	return s.views.assembleMany(ctx, s.db.SqlDB(), models)
 }
-
-// 仅搜索用户维护的上下文与来源基础信息，不扩展为内容索引。
-func (s *ResourceService) SearchResources(ctx context.Context, query string) ([]ResourceView, error) {
-	trimmed := strings.TrimSpace(query)
-	if trimmed == "" {
-		return s.ListResources(ctx)
-	}
-
-	likePattern := "%" + escapeLike(trimmed) + "%"
-	models, err := s.resources.Search(ctx, s.db.SqlDB(), likePattern)
-	if err != nil {
-		return nil, err
-	}
-	return s.views.assembleMany(ctx, s.db.SqlDB(), models)
-}

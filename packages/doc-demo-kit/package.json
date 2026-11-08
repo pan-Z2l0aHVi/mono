@@ -16,6 +16,10 @@
     "./testing": {
       "types": "./dist/testing.d.mts",
       "import": "./dist/testing.mjs"
+    },
+    "./testing.viewport": {
+      "types": "./dist/testing.viewport.d.mts",
+      "import": "./dist/testing.viewport.mjs"
     }
   },
   "sideEffects": false,
@@ -25,6 +29,7 @@
     "dev": "vp pack --watch --clean=false"
   },
   "dependencies": {
+    "@greypan/browser-kit": "workspace:*",
     "@greypan/md-to-meta": "workspace:*",
     "overlayscrollbars": "catalog:"
   },

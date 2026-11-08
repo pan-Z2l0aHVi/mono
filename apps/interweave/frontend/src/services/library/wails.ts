@@ -18,7 +18,6 @@ import {
   isSourceAvailabilityEvent,
   requireFilePreviewDTO,
   requireResourceDTO,
-  requireSourceDTO,
   requireSourceProbeResultDTO,
   type LibraryRuntime,
   type SourceAvailabilityEventDTO
@@ -40,7 +39,8 @@ class WailsLibraryRuntime implements LibraryRuntime {
     remove: async (resourceId: string) => {
       await ResourceService.DeleteResource(resourceId)
     },
-    setTags: (resourceId: string, tagNames: string[]) => TagService.SetResourceTags(resourceId, tagNames),
+    setTags: async (resourceId: string, tagNames: string[]) =>
+      requireResourceDTO(await TagService.SetResourceTags(resourceId, tagNames), '保存标签'),
     findLocationMatches: (input: string, sourceType: SourceType) =>
       ResourceService.FindResourceLocationMatches(input, sourceType),
     prepareFilePreview: async (inputPath: string) =>
@@ -52,13 +52,13 @@ class WailsLibraryRuntime implements LibraryRuntime {
 
   readonly sources = {
     refreshURL: async (sourceId: string) =>
-      requireSourceDTO(await SourceService.RefreshURLSource(sourceId), '刷新 URL Source'),
+      requireResourceDTO(await SourceService.RefreshURLSource(sourceId), '刷新 URL Source'),
     refreshFile: async (sourceId: string) =>
-      requireSourceDTO(await SourceService.RefreshFileSource(sourceId), '刷新文件 Source'),
+      requireResourceDTO(await SourceService.RefreshFileSource(sourceId), '刷新文件 Source'),
     replaceFile: async (sourceId: string, inputPath: string) =>
-      requireSourceDTO(await SourceService.ReplaceFileSource(sourceId, inputPath), '替换文件 Source'),
+      requireResourceDTO(await SourceService.ReplaceFileSource(sourceId, inputPath), '替换文件 Source'),
     replaceURL: async (sourceId: string, inputURL: string) =>
-      requireSourceDTO(await SourceService.ReplaceURLSource(sourceId, inputURL), '替换 URL Source'),
+      requireResourceDTO(await SourceService.ReplaceURLSource(sourceId, inputURL), '替换 URL Source'),
     probeOnOpen: async (sourceId: string) =>
       requireSourceProbeResultDTO(await SourceService.ProbeURLSourceOnOpen(sourceId), '探测 URL Source')
   }

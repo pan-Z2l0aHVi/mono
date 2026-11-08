@@ -65,28 +65,6 @@ func (ResourceStore) List(ctx context.Context, q Queryer) ([]ResourceModel, erro
 	return collectRows(rows, scanResource)
 }
 
-// 仅搜索用户维护的上下文与来源基础信息，不扩展为内容索引。
-func (ResourceStore) Search(ctx context.Context, q Queryer, likePattern string) ([]ResourceModel, error) {
-	rows, err := q.QueryContext(ctx, `
-		SELECT DISTINCT r.id, r.title, r.note, r.created_at, r.updated_at
-		FROM resources r
-		LEFT JOIN sources s ON s.resource_id = r.id
-		LEFT JOIN taggings tg ON tg.resource_id = r.id
-		LEFT JOIN tags t ON t.id = tg.tag_id
-		WHERE r.title LIKE ? ESCAPE '\'
-		   OR r.note LIKE ? ESCAPE '\'
-		   OR t.name LIKE ? ESCAPE '\'
-		   OR s.location LIKE ? ESCAPE '\'
-		   OR s.metadata_json LIKE ? ESCAPE '\'
-		ORDER BY r.created_at DESC
-	`, likePattern, likePattern, likePattern, likePattern, likePattern)
-	if err != nil {
-		return nil, err
-	}
-	defer rows.Close()
-	return collectRows(rows, scanResource)
-}
-
 // 更新库内标题，不触碰外部内容；目标不存在时返回 ErrResourceNotFound。
 func (ResourceStore) UpdateTitle(ctx context.Context, q Queryer, id string, title string, now int64) error {
 	return execAffected(ctx, q, ErrResourceNotFound, `

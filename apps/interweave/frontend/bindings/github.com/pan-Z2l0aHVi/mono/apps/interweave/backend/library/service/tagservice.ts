@@ -32,10 +32,11 @@ export function RemoveTagFromResource(resourceID: string, tagID: string): $Cance
 
 /**
  * SetResourceTags 以替换式集合语义重设单个 Resource 的标签集合；规则由 core 承载。
+ * 回传变更后的完整 Resource 视图，前端不必再往返读取一次。
  */
-export function SetResourceTags(resourceID: string, tagNames: string[]): $CancellablePromise<$models.TagDTO[]> {
+export function SetResourceTags(resourceID: string, tagNames: string[]): $CancellablePromise<$models.ResourceDTO | null> {
     return $Call.ByID(230069075, resourceID, tagNames).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType3($result);
     });
 }
 
@@ -44,11 +45,13 @@ export function SetResourceTags(resourceID: string, tagNames: string[]): $Cancel
  */
 export function SuggestTags(query: string, limit: number): $CancellablePromise<$models.TagDTO[]> {
     return $Call.ByID(2618867969, query, limit).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType4($result);
     });
 }
 
 // Private type creation functions
 const $$createType0 = $models.TagDTO.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
-const $$createType2 = $Create.Array($$createType0);
+const $$createType2 = $models.ResourceDTO.createFrom;
+const $$createType3 = $Create.Nullable($$createType2);
+const $$createType4 = $Create.Array($$createType0);

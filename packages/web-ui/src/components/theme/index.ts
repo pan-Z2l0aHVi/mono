@@ -3,218 +3,29 @@ import { customElement, property } from 'lit/decorators.js'
 
 import { normalizeLiteral } from '@/shared/normalize'
 import { applyOverlayRootStyles } from '@/shared/overlay/overlay-root'
-import { parseDuration } from '@/shared/theme/duration'
 import {
   registerThemeRootSync,
   subscribeThemeSystemAppearanceChange,
   unregisterThemeRootSync
 } from '@/shared/theme/root-sync'
+import {
+  isThemeTransitionInFlight,
+  runThemeTransition,
+  themeTransitionMotion,
+  trackThemeTransitionOrigin,
+  untrackThemeTransitionOrigin,
+  type ResolvedThemeAppearance,
+  type ThemeTransitionSession
+} from '@/shared/theme/transition'
 
 import style from './style.css?inline'
 
 export type ThemeAppearance = 'light' | 'dark' | 'system'
-export type ResolvedThemeAppearance = 'light' | 'dark'
+export type { ResolvedThemeAppearance }
 export type ThemeMotion = 'full' | 'reduced' | 'system'
 
 const APPEARANCES = ['light', 'dark', 'system'] as const
 const MOTIONS = ['full', 'reduced', 'system'] as const
-
-// 揭示动画的落点段才是用户注视的时刻：强 ease-out 起步快、末段缓收，
-// ease-in 会把观感最好的那段推迟到动画结尾。与 style.css 的 token 保持一致。
-const DEFAULT_THEME_TRANSITION_EASING = 'cubic-bezier(0.23, 1, 0.32, 1)'
-
-interface ViewTransitionLike {
-  readonly ready: Promise<void>
-  readonly finished: Promise<void>
-  skipTransition?: () => void
-}
-
-// 主 theme 组件不知道触发它的控件；pointerdown 记录坐标。键盘或程序化调用回退中心。
-const transitionOrigin = { x: Number.NaN, y: Number.NaN }
-let transitionSequence = 0
-let transitionOriginCount = 0
-let themeTransitionFlightToken: object | null = null
-const activePointers = new Set<number>()
-const recordTransitionOrigin = (event: Event) => {
-  const pointer = event as PointerEvent
-  activePointers.add(pointer.pointerId)
-  transitionOrigin.x = pointer.clientX
-  transitionOrigin.y = pointer.clientY
-}
-const releaseTransitionPointer = (event: Event) => activePointers.delete((event as PointerEvent).pointerId)
-const forgetTransitionOrigin = () => {
-  transitionOrigin.x = Number.NaN
-  transitionOrigin.y = Number.NaN
-}
-
-function addTransitionOriginListeners() {
-  if (transitionOriginCount++ > 0) return
-  window.addEventListener('pointerdown', recordTransitionOrigin, true)
-  window.addEventListener('pointerup', releaseTransitionPointer, true)
-  window.addEventListener('pointercancel', releaseTransitionPointer, true)
-  window.addEventListener('keydown', forgetTransitionOrigin, true)
-}
-
-function removeTransitionOriginListeners() {
-  if (--transitionOriginCount > 0) return
-  window.removeEventListener('pointerdown', recordTransitionOrigin, true)
-  window.removeEventListener('pointerup', releaseTransitionPointer, true)
-  window.removeEventListener('pointercancel', releaseTransitionPointer, true)
-  activePointers.clear()
-  window.removeEventListener('keydown', forgetTransitionOrigin, true)
-}
-
-/*
- * rendering suppression 期间，规范强制 pointer hit-test 指向 documentElement；
- * 滚轮跳过揭示，及时恢复页面滚动。
- */
-function addTransitionInputSkipListeners(transition: ViewTransitionLike, scope?: HTMLElement): () => void {
-  let active = true
-  let listening = true
-  let skipRequested = false
-  const existingPointers = new Set(activePointers)
-  const blockedPointers = new Set<number>()
-  const blockedKeys = new Set<string>()
-  const pointerVersions = new Map<number, number>()
-  const keyVersions = new Map<string, number>()
-  const timers = new Set<ReturnType<typeof setTimeout>>()
-  const registrations: [string, EventListener, AddEventListenerOptions][] = []
-  const listen = (type: string, handler: EventListener, passive = false) => {
-    const options = { capture: true, passive }
-    registrations.push([type, handler, options])
-    window.addEventListener(type, handler, options)
-  }
-  const remove = () => {
-    if (!listening) return
-    listening = false
-    for (const [type, handler, options] of registrations) window.removeEventListener(type, handler, options)
-    for (const timer of timers) clearTimeout(timer)
-    timers.clear()
-  }
-  const releaseIfIdle = () => {
-    if (!active && blockedPointers.size === 0 && blockedKeys.size === 0) remove()
-  }
-  const defer = (callback: () => void, delay: number) => {
-    const timer = setTimeout(() => {
-      timers.delete(timer)
-      callback()
-      releaseIfIdle()
-    }, delay)
-    timers.add(timer)
-  }
-  const block = (event: Event) => {
-    if (event.cancelable) event.preventDefault()
-    event.stopImmediatePropagation()
-  }
-  const inScope = (event: Event) =>
-    !scope || event.target === document.documentElement || event.composedPath().includes(scope)
-  listen('pointerdown', event => {
-    const pointer = event as PointerEvent
-    if (!active || !inScope(event)) {
-      blockedPointers.delete(pointer.pointerId)
-      pointerVersions.delete(pointer.pointerId)
-      releaseIfIdle()
-      return
-    }
-    blockedPointers.add(pointer.pointerId)
-    pointerVersions.set(pointer.pointerId, (pointerVersions.get(pointer.pointerId) ?? 0) + 1)
-    block(event)
-  })
-  for (const type of ['pointerup', 'pointercancel']) {
-    listen(
-      type,
-      event => {
-        const id = (event as PointerEvent).pointerId
-        const version = pointerVersions.get(id)
-        if (version !== undefined)
-          defer(
-            () => {
-              if (pointerVersions.get(id) === version) {
-                blockedPointers.delete(id)
-                pointerVersions.delete(id)
-              }
-            },
-            type === 'pointercancel' ? 0 : 1000
-          )
-      },
-      true
-    )
-  }
-  listen('keydown', event => {
-    const key = event as KeyboardEvent
-    if (!active || !inScope(event) || key.metaKey || key.ctrlKey || key.altKey) return
-    blockedKeys.add(key.code || key.key)
-    keyVersions.set(key.code || key.key, (keyVersions.get(key.code || key.key) ?? 0) + 1)
-    block(event)
-  })
-  listen(
-    'keyup',
-    event => {
-      const key = event as KeyboardEvent
-      const code = key.code || key.key
-      const version = keyVersions.get(code)
-      if (version !== undefined)
-        defer(() => {
-          if (keyVersions.get(code) === version) {
-            blockedKeys.delete(code)
-            keyVersions.delete(code)
-          }
-        }, 1000)
-    },
-    true
-  )
-  for (const type of ['click', 'auxclick', 'dblclick', 'contextmenu']) {
-    listen(type, event => {
-      const pointer = event as PointerEvent
-      if (existingPointers.has(pointer.pointerId) && !blockedPointers.has(pointer.pointerId)) {
-        existingPointers.delete(pointer.pointerId)
-        return
-      }
-      const pendingPointer =
-        blockedPointers.has(pointer.pointerId) ||
-        (typeof pointer.pointerId !== 'number' && pointer.detail > 0 && blockedPointers.size > 0)
-      const pending = pendingPointer || (pointer.detail === 0 && blockedKeys.size > 0)
-      if ((!active || !inScope(event)) && !pending) return
-      block(event)
-    })
-  }
-  listen('beforeinput', event => {
-    if (active && inScope(event)) block(event)
-  })
-  listen(
-    'wheel',
-    () => {
-      if (active && !skipRequested) {
-        skipRequested = true
-        transition.skipTransition?.()
-      }
-    },
-    true
-  )
-  listen(
-    'blur',
-    event => {
-      if (event.target !== window) return
-      blockedPointers.clear()
-      blockedKeys.clear()
-      pointerVersions.clear()
-      keyVersions.clear()
-      releaseIfIdle()
-    },
-    true
-  )
-  return () => {
-    active = false
-    releaseIfIdle()
-    if (listening)
-      defer(() => {
-        blockedPointers.clear()
-        blockedKeys.clear()
-        pointerVersions.clear()
-        keyVersions.clear()
-      }, 30000)
-  }
-}
 
 function resolveAppearance(appearance: ThemeAppearance | undefined): ResolvedThemeAppearance {
   if (appearance === 'dark') return 'dark'
@@ -223,14 +34,6 @@ function resolveAppearance(appearance: ThemeAppearance | undefined): ResolvedThe
     return window.matchMedia('(prefers-color-scheme: dark)').matches ? 'dark' : 'light'
   } catch {
     return 'light'
-  }
-}
-
-function transitionPoint(x: number, y: number): { x: number; y: number } {
-  if (Number.isFinite(x) && Number.isFinite(y)) return { x, y }
-  return {
-    x: (window.innerWidth || 0) / 2,
-    y: (window.innerHeight || 0) / 2
   }
 }
 
@@ -247,25 +50,25 @@ export class WebUiTheme extends LitElement {
     const next = v !== undefined ? (normalizeLiteral(v, APPEARANCES, 'light') as ThemeAppearance) : undefined
     const resolvedNext = resolveAppearance(next)
     const request = ++this._appearanceRequest
-    if (
-      next !== undefined &&
-      !this._transitionRequested &&
-      themeTransitionFlightToken === null &&
-      this._shouldAnimateAppearance(next, resolvedNext)
-    ) {
-      // async helper 可能把函数体排到当前栈后；flight gate 必须在当前 setter 栈内生效。
-      this._transitionRequested = true
-      const flightToken = { requestId: request }
-      themeTransitionFlightToken = flightToken
-      void this._startThemeTransition(next, resolvedNext, old!, request, flightToken).catch(() => {
-        this._cleanupThemeTransition()
-        this._transitionRequested = false
-        if (themeTransitionFlightToken === flightToken) themeTransitionFlightToken = null
-        if (this._appearanceRequest === request) {
-          this._appearance = next
-          this._syncResolvedAppearance()
-          this.requestUpdate('appearance', old)
-        }
+    /*
+     * flight gate 单点在引擎（document 级单飞）：原「!this._transitionRequested &&
+     * themeTransitionFlightToken === null」两闸与引擎 token 同点置位 / 释放，单独的全局
+     * 在飞判定与之等价。token 的认领在 runThemeTransition 的同步段完成——async helper
+     * 可能把函数体排到当前栈后，gate 必须在当前 setter 栈内生效。
+     */
+    if (next !== undefined && !isThemeTransitionInFlight() && this._shouldAnimateAppearance(next, resolvedNext)) {
+      const session = runThemeTransition({
+        host: this,
+        // 嵌套主题只做局部揭示；根主题 scope 缺省（整页揭示）。
+        scope: this._findThemeAncestor() === null ? undefined : this,
+        resolvedNext,
+        update: () => this._commitAppearance(next, old!, request)
+      })
+      this._transitionSession = session
+      void session.finished.catch(() => {
+        // 原 setter .catch 的组件侧：失败回退仍要提交最终 appearance（引擎侧的清理链与
+        // flight token 释放已在 reject 之前跑完）。stale 请求守卫在提交闭包内，复用同一份。
+        void this._commitAppearance(next, old!, request)
       })
       return
     }
@@ -275,6 +78,23 @@ export class WebUiTheme extends LitElement {
   }
   private _appearance?: ThemeAppearance
   private _appearanceRequest = 0
+
+  /**
+   * appearance 提交闭包：View Transition 的 update callback 与失败回退共用。
+   * stale 请求守卫（飞行期间的新 setter 走「直接落地」分支并推进请求序号，
+   * 在途 commit 因此作废）与渲染收敛都在 property 管线这一侧。
+   */
+  private _commitAppearance(
+    next: ThemeAppearance,
+    previous: ThemeAppearance | undefined,
+    request: number
+  ): Promise<unknown> {
+    if (this._appearanceRequest !== request) return this.updateComplete
+    this._appearance = next
+    this._syncResolvedAppearance()
+    this.requestUpdate('appearance', previous)
+    return this.updateComplete
+  }
 
   /*
    * resolved-appearance 是派生输出，不是第二个输入：像 selected-value 一样由组件独占写入，
@@ -326,7 +146,8 @@ export class WebUiTheme extends LitElement {
   private _motion: ThemeMotion = 'system'
 
   private _transitionOriginListening = false
-  private _transitionRequested = false
+  /** 当前在途转场的 session（skip / 收尾信号）；无飞行时为 undefined。 */
+  private _transitionSession?: ThemeTransitionSession
 
   private _warned = false
 
@@ -345,8 +166,8 @@ export class WebUiTheme extends LitElement {
     this._unsubscribeSystemAppearance?.()
     this._unsubscribeSystemAppearance = undefined
     unregisterThemeRootSync(this)
-    this._activeTransition?.skipTransition?.()
-    this._cleanupThemeTransition()
+    this._transitionSession?.skip()
+    this._transitionSession = undefined
     super.disconnectedCallback()
   }
 
@@ -402,45 +223,11 @@ export class WebUiTheme extends LitElement {
     return null
   }
 
-  // 宿主 `display: contents` 时不产盒，rect 为 0；要量的是 slotted 子内容的并集宽度。
-  // jsdom 的 Range 没有几何实现，量不到就返回 0——飞行期间不钉宽。
-  private _contentWidth(): number {
-    try {
-      const range = document.createRange()
-      range.selectNodeContents(this)
-      return range.getBoundingClientRect().width
-    } catch {
-      return 0
-    }
-  }
-
-  private _transitionOrigin(): { x: number; y: number } {
-    if (Number.isFinite(transitionOrigin.x) && Number.isFinite(transitionOrigin.y)) {
-      return transitionOrigin
-    }
-
-    const box = this.getBoundingClientRect()
-    if (box.width > 0 && box.height > 0) {
-      return { x: box.left + box.width / 2, y: box.top + box.height / 2 }
-    }
-    return transitionPoint(Number.NaN, Number.NaN)
-  }
-
   private _syncTransitionOriginListeners(listening: boolean) {
     if (listening === this._transitionOriginListening) return
     this._transitionOriginListening = listening
-    if (listening) addTransitionOriginListeners()
-    else removeTransitionOriginListeners()
-  }
-
-  private _transitionMotion(): { duration: number; easing: string } {
-    const style = getComputedStyle(this)
-    const duration = parseDuration(style.getPropertyValue('--wui-theme-transition-duration')) ?? 500
-    const easing = style.getPropertyValue('--wui-theme-transition-easing').trim() || DEFAULT_THEME_TRANSITION_EASING
-    const safeEasing = globalThis.CSS?.supports('animation-timing-function', easing)
-      ? easing
-      : DEFAULT_THEME_TRANSITION_EASING
-    return { duration: Math.max(0, duration), easing: safeEasing }
+    if (listening) trackThemeTransitionOrigin()
+    else untrackThemeTransitionOrigin()
   }
 
   private _shouldAnimateAppearance(next: ThemeAppearance, resolvedNext: ResolvedThemeAppearance): boolean {
@@ -451,173 +238,9 @@ export class WebUiTheme extends LitElement {
       typeof document.startViewTransition === 'function' &&
       Array.isArray(document.adoptedStyleSheets) &&
       !this.isReducedMotion() &&
-      this._transitionMotion().duration > 0
+      themeTransitionMotion(this).duration > 0
     )
   }
-
-  // 嵌套主题只做局部揭示；View Transitions 需要 capture box，因此飞行期间临时生成一个 host box。
-  private async _startThemeTransition(
-    next: ThemeAppearance,
-    resolvedNext: ResolvedThemeAppearance,
-    previous: ThemeAppearance,
-    request: number,
-    flightToken: object
-  ): Promise<void> {
-    const root = this._findThemeAncestor() === null
-    const transitionName = root ? undefined : `wui-theme-transition-${++transitionSequence}`
-    const styleSheet = new CSSStyleSheet()
-    if (transitionName) {
-      styleSheet.replaceSync(`
-        ::view-transition-old(root), ::view-transition-new(root) { animation: none; }
-        ::view-transition-old(root), ::view-transition-new(root) { mix-blend-mode: normal; }
-        ::view-transition-image-pair(root), ::view-transition-image-pair(${transitionName}) { mix-blend-mode: normal; }
-        ::view-transition-group(${transitionName}) { animation: none; }
-        ::view-transition-old(${transitionName}), ::view-transition-new(${transitionName}) {
-          animation: none;
-          mix-blend-mode: normal;
-        }
-        ::view-transition-old(${transitionName}) { z-index: ${resolvedNext === 'dark' ? 1 : 2}; }
-        ::view-transition-new(${transitionName}) { z-index: ${resolvedNext === 'dark' ? 2 : 1}; }
-      `)
-    } else {
-      styleSheet.replaceSync(`
-        ::view-transition-old(root), ::view-transition-new(root) {
-          animation: none;
-          mix-blend-mode: normal;
-        }
-        ::view-transition-image-pair(root) { mix-blend-mode: normal; }
-        ::view-transition-old(root) { z-index: ${resolvedNext === 'dark' ? 1 : 2}; }
-        ::view-transition-new(root) { z-index: ${resolvedNext === 'dark' ? 2 : 1}; }
-      `)
-    }
-
-    const hadDisplay = this.style.getPropertyValue('display')
-    const hadWidth = this.style.getPropertyValue('width')
-    const hadTransitionName = transitionName ? this.style.getPropertyValue('view-transition-name') : undefined
-    if (transitionName) {
-      /*
-       * 抬成 block 同时把宿主塞回父级布局：宿主 display: contents 时 flex 容器里当 item 的是
-       * 作用域内那个 `width: 100%` 的子元素；宿主当 item 时宽度基准成了 shrink-to-fit，内容在揭示
-       * 期间跳窄、结束再跳回来。所以先把内容几何钉在宿主上——换了盒，没换宽度。
-       * `display: contents` 时宿主自己的 rect 是 0，量子内容只能靠 Range。
-       */
-      const contentWidth = this._contentWidth()
-      this.style.setProperty('display', 'block')
-      if (contentWidth > 0) this.style.setProperty('width', `${contentWidth}px`)
-      this.style.setProperty('view-transition-name', transitionName)
-    }
-
-    const restoreCapture = () => {
-      try {
-        document.adoptedStyleSheets = document.adoptedStyleSheets.filter(sheet => sheet !== styleSheet)
-      } catch {
-        // 拒绝写入的 setter 也拒绝回收，样式表本就没进去；host 内联态的恢复不能因此中断。
-      }
-      if (!transitionName) return
-      if (hadTransitionName) this.style.setProperty('view-transition-name', hadTransitionName)
-      else this.style.removeProperty('view-transition-name')
-      if (hadWidth) this.style.setProperty('width', hadWidth)
-      else this.style.removeProperty('width')
-      if (hadDisplay) this.style.setProperty('display', hadDisplay)
-      else this.style.removeProperty('display')
-    }
-
-    const commit = () => {
-      if (this._appearanceRequest !== request) return this.updateComplete
-      this._appearance = next
-      this._syncResolvedAppearance()
-      this.requestUpdate('appearance', previous)
-      return this.updateComplete
-    }
-    // cleanup 必须在 adoptedStyleSheets 写入之前登记：写入同步抛错时 setter 的 .catch 才拿得到它，
-    // 否则 host 上的 view-transition-name 会残留，污染之后每一次 view transition（issue #146）。
-    this._transitionCleanup = restoreCapture
-    document.adoptedStyleSheets = [...document.adoptedStyleSheets, styleSheet]
-    const transition = document.startViewTransition(commit) as unknown as ViewTransitionLike
-    this._activeTransition = transition
-    this._transitionInputSkipCleanup = addTransitionInputSkipListeners(transition, root ? undefined : this)
-    const animations: Animation[] = []
-
-    transition.ready
-      .then(() => {
-        const { duration, easing } = this._transitionMotion()
-        if (duration <= 0) return
-        const { x, y } = this._transitionOrigin()
-        const target = resolvedNext === 'dark' ? '::view-transition-new(root)' : '::view-transition-old(root)'
-        if (!root) {
-          const box = this.getBoundingClientRect()
-          const relative = { x: x - box.left, y: y - box.top }
-          const radius = Math.ceil(
-            Math.hypot(Math.max(relative.x, box.width - relative.x), Math.max(relative.y, box.height - relative.y))
-          )
-          const frames = this._transitionKeyframes(relative.x, relative.y, radius, resolvedNext)
-          const target =
-            resolvedNext === 'dark'
-              ? `::view-transition-new(${transitionName})`
-              : `::view-transition-old(${transitionName})`
-          animations.push(
-            document.documentElement.animate(frames, {
-              duration,
-              easing,
-              fill: 'both',
-              pseudoElement: target
-            } as KeyframeAnimationOptions)
-          )
-          return
-        }
-
-        const radius = Math.ceil(Math.hypot(Math.max(x, window.innerWidth - x), Math.max(y, window.innerHeight - y)))
-        animations.push(
-          document.documentElement.animate(this._transitionKeyframes(x, y, radius, resolvedNext), {
-            duration,
-            easing,
-            fill: 'both',
-            pseudoElement: target
-          } as KeyframeAnimationOptions)
-        )
-      })
-      .catch(() => undefined)
-
-    try {
-      await transition.finished
-    } catch {
-      // API 缺失、capture 冲突或用户 skip 都不是状态错误；appearance 已由 update callback 提交。
-    } finally {
-      this._transitionInputSkipCleanup?.()
-      this._transitionInputSkipCleanup = undefined
-      this._activeTransition = undefined
-      this._transitionCleanup = undefined
-      for (const animation of animations) animation.cancel()
-      restoreCapture()
-      // disconnected skip 会提前清掉 active；flight token/request 必须无条件释放。
-      this._transitionRequested = false
-      if (themeTransitionFlightToken === flightToken) themeTransitionFlightToken = null
-    }
-  }
-
-  private _transitionKeyframes(
-    x: number,
-    y: number,
-    radius: number,
-    resolvedNext: ResolvedThemeAppearance
-  ): Keyframe[] {
-    const from = `circle(0px at ${x}px ${y}px)`
-    const to = `circle(${radius}px at ${x}px ${y}px)`
-    return resolvedNext === 'dark' ? [{ clipPath: from }, { clipPath: to }] : [{ clipPath: to }, { clipPath: from }]
-  }
-
-  private _cleanupThemeTransition(restoreCapture = true) {
-    this._transitionInputSkipCleanup?.()
-    this._transitionInputSkipCleanup = undefined
-    this._activeTransition = undefined
-    const cleanup = this._transitionCleanup
-    this._transitionCleanup = undefined
-    if (restoreCapture) cleanup?.()
-  }
-
-  private _activeTransition?: ViewTransitionLike
-  private _transitionCleanup?: () => void
-  private _transitionInputSkipCleanup?: () => void
 
   override render() {
     return html`<slot></slot>${this._hasAppearance() ? html`<div data-wui-overlay-container></div>` : nothing}`

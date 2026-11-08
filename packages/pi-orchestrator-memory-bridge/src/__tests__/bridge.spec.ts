@@ -1162,3 +1162,205 @@ describe('/shepherd 状态可见性', () => {
     await expect(runCommand(pi, { cwd: repo, hasUI: false, ui: undefined }, 'on')).resolves.toBeUndefined()
   })
 })
+
+/**
+ * 会话重置收敛的等价断言。
+ *
+ * `session_start`、`dispose`（与 `session_shutdown` 同一段逻辑）与抽出来的 `resetSession`
+ * 必须清空同一份九项会话内存态。断言按「同一段弄脏序列 → 各走一条重置路径 → 同一组可观察
+ * 探针检查」钉住等价；另有一条不重置的基线证明探针确实观察得到残留。
+ *
+ * `agent_before_settle` 与 `tool_call`（dispatch 闸门）不读 state，所以 pending /
+ * boardQueue / inFlight / reviewerNames / 控制配置缓存可以不经重建直接观察；只有
+ * lastSaveError 的探针要先弄脏 pending（入队需要 state），dispose / resetSession 路径
+ * 因此先重新 session_start 再观察——那同时是用户可见的契约：新会话里不得漏出上一会话的
+ * 保存失败原因。
+ */
+describe('会话重置等价（session_start ≡ dispose ≡ resetSession）', () => {
+  type Bridge = ReturnType<typeof createBridge>
+  type Pi = ReturnType<typeof createMockPi>
+
+  /** 写一份非法 JSON 的控制配置，让 readControlConfig 带 warning 回退到缺省值。 */
+  const invalidControlConfigPath = async (): Promise<string> => {
+    const dir = await mkdtemp(join(tmpdir(), 'bridge-reset-spec-'))
+    const path = join(dir, 'config.json')
+    await writeFile(path, '{ not json', 'utf8')
+    return path
+  }
+
+  const ACTORS: ReadonlyArray<{
+    name: string
+    act: (bridge: Bridge, pi: Pi, repo: string) => void | Promise<void>
+  }> = [
+    {
+      name: 'dispose',
+      act: bridge => {
+        bridge.dispose()
+      }
+    },
+    {
+      name: 'session_start',
+      act: async (_bridge, pi, repo) => {
+        await pi.emit('session_start', { type: 'session_start' }, baseCtx(repo))
+      }
+    },
+    {
+      name: 'resetSession',
+      act: bridge => {
+        bridge.resetSession()
+      }
+    }
+  ]
+
+  const workingAgents = async () => [
+    { name: 'worker-a', agent_status: 'working', pane_id: 'w1:worker-a' },
+    { name: 'reviewer-1', agent_status: 'working', pane_id: 'w1:reviewer-1' }
+  ]
+
+  it('三条重置路径都清空 pending、boardQueue 与 inFlight（settle 不再追加回合）', async () => {
+    for (const actor of ACTORS) {
+      const repo = await makeRepo('demo')
+      const pi = createMockPi()
+      const bridge = createBridge(pi, { activation: ACTIVE })
+      await pi.emit('session_start', { type: 'session_start' }, baseCtx(repo))
+
+      // 弄脏三份待办：记忆锚点（pending）、任务板动作（boardQueue）、in-flight 登记。
+      await pi.emit('tool_result', { toolName: 'herdr_plan', details: planDetails() }, baseCtx(repo))
+      await pi.emit(
+        'tool_result',
+        { toolName: 'herdr_dispatch', details: { action: 'dispatch', name: 'worker-a', role: 'builder' } },
+        baseCtx(repo)
+      )
+      await pi.emit('tool_call', { toolName: 'herdr_review', input: { name: 'reviewer-1' } }, baseCtx(repo))
+
+      // 基线：有待办时 settle 会追加回合。这次 settle 会把 in-flight 按「无法核对」清掉，
+      // 所以再登记一笔，保证重置时 inFlight 确实非空。
+      expect(await pi.emit('agent_before_settle', { type: 'agent_before_settle' }, baseCtx(repo))).toBeDefined()
+      await pi.emit('tool_call', { toolName: 'herdr_review', input: { name: 'reviewer-2' } }, baseCtx(repo))
+
+      await actor.act(bridge, pi, repo)
+
+      // 九项内存态已清空：没有待办也没有未核对登记，settle 不再追加回合。
+      expect(await pi.emit('agent_before_settle', { type: 'agent_before_settle' }, baseCtx(repo))).toBeUndefined()
+    }
+  })
+
+  it('三条重置路径都清空 reviewerNames 与控制配置缓存', async () => {
+    for (const actor of ACTORS) {
+      const repo = await makeRepo('demo')
+      const configPath = await invalidControlConfigPath()
+      const listAgents = workingAgents
+      const pi = createMockPi()
+      const bridge = createBridge(pi, {
+        activation: ACTIVE,
+        control: { listAgents, configPath, maxConcurrentWorkers: 2 }
+      })
+      await pi.emit('session_start', { type: 'session_start' }, baseCtx(repo))
+
+      // reviewer 名单先登记，第一次 dispatch 才放行（reviewer 不占 worker 槽位）；
+      // 非法配置触发一次告警并被缓存。
+      await pi.emit(
+        'tool_result',
+        { toolName: 'herdr_review', details: { action: 'review', name: 'reviewer-1', verdict: 'APPROVE' } },
+        baseCtx(repo)
+      )
+      expect(
+        await pi.emit('tool_call', { toolName: 'herdr_dispatch', input: { name: 'worker-a' } }, baseCtx(repo))
+      ).toBeUndefined()
+      expect(pi.notifications.filter(message => message.startsWith('shepherd config:'))).toHaveLength(1)
+
+      await actor.act(bridge, pi, repo)
+
+      // 重置后：reviewerNames 清空 → reviewer-1 重新算 worker，两个 working 达上限 → 拒绝；
+      // 配置缓存与告警标记清空 → 重新读盘并再次告警。
+      const second = (await pi.emit(
+        'tool_call',
+        { toolName: 'herdr_dispatch', input: { name: 'worker-b' } },
+        baseCtx(repo)
+      )) as { block?: boolean; reason?: string } | undefined
+      expect(second?.block).toBe(true)
+      expect(second?.reason).toContain('worker-a')
+      expect(second?.reason).toContain('reviewer-1')
+      expect(pi.notifications.filter(message => message.startsWith('shepherd config:'))).toHaveLength(2)
+    }
+  })
+
+  it('三条重置路径都清空 lastSaveError（新会话的丢弃通知不带旧失败原因）', async () => {
+    for (const actor of ACTORS) {
+      const repo = await makeRepo('demo')
+      const pi = createMockPi()
+      const bridge = createBridge(pi, { activation: ACTIVE })
+      await pi.emit('session_start', { type: 'session_start' }, baseCtx(repo))
+      const failing: MockContext = {
+        ...baseCtx(repo),
+        executeTool: createExecuteTool({
+          results: { memory_remember: { content: [{ type: 'text', text: 'boom' }], isError: true } }
+        })
+      }
+
+      // 保存失败一次：lastSaveError 记下原因，锚点留在队列里。
+      await pi.emit('tool_result', { toolName: 'herdr_plan', details: planDetails() }, baseCtx(repo))
+      expect((await runTool(pi, SAVE_TOOL_NAME, failing, { flush: true })).isError).toBe(true)
+
+      await actor.act(bridge, pi, repo)
+      // 入队需要 state：dispose / resetSession 路径先重建会话再继续观察。
+      if (actor.name !== 'session_start') {
+        await pi.emit('session_start', { type: 'session_start' }, baseCtx(repo))
+      }
+
+      // 重新弄脏后不做任何保存，只靠 settle 轮次把锚点挤到超限丢弃：此会话内没有失败过
+      // 保存，丢弃通知不得带上一会话的 last save error。
+      await pi.emit('tool_result', { toolName: 'herdr_plan', details: planDetails() }, baseCtx(repo))
+      for (let round = 0; round <= MAX_SETTLE_APPENDS; round += 1) {
+        await pi.emit('agent_before_settle', { type: 'agent_before_settle' }, baseCtx(repo))
+      }
+      const drop = pi.notifications.find(message => message.includes('dropped 1 pending orchestration entry'))
+      expect(drop).toBeDefined()
+      expect(drop).not.toContain('last save error')
+    }
+  })
+
+  // 探针敏感性基线：不重置时，同一组观察点确实看得到弄脏的残留。
+  it('不重置时同一组探针能观察到残留（基线）', async () => {
+    const repo = await makeRepo('demo')
+    const configPath = await invalidControlConfigPath()
+    const listAgents = workingAgents
+    const pi = createMockPi()
+    createBridge(pi, {
+      activation: ACTIVE,
+      control: { listAgents, configPath, maxConcurrentWorkers: 2 }
+    })
+    await pi.emit('session_start', { type: 'session_start' }, baseCtx(repo))
+
+    // lastSaveError 残留：保存失败后不做保存、只挤 settle 轮次，丢弃通知带着失败原因。
+    const failing: MockContext = {
+      ...baseCtx(repo),
+      executeTool: createExecuteTool({
+        results: { memory_remember: { content: [{ type: 'text', text: 'boom' }], isError: true } }
+      })
+    }
+    await pi.emit('tool_result', { toolName: 'herdr_plan', details: planDetails() }, baseCtx(repo))
+    expect((await runTool(pi, SAVE_TOOL_NAME, failing, { flush: true })).isError).toBe(true)
+    for (let round = 0; round <= MAX_SETTLE_APPENDS; round += 1) {
+      await pi.emit('agent_before_settle', { type: 'agent_before_settle' }, baseCtx(repo))
+    }
+    const drop = pi.notifications.at(-1) ?? ''
+    expect(drop).toContain(`dropped 1 pending orchestration entry after ${MAX_SETTLE_APPENDS} save attempts`)
+    expect(drop).toContain('last save error')
+    expect(drop).toContain('boom')
+
+    // reviewerNames 残留：reviewer-1 已登记，第二次 dispatch 仍放行；配置缓存命中，不再告警。
+    await pi.emit(
+      'tool_result',
+      { toolName: 'herdr_review', details: { action: 'review', name: 'reviewer-1', verdict: 'APPROVE' } },
+      baseCtx(repo)
+    )
+    expect(
+      await pi.emit('tool_call', { toolName: 'herdr_dispatch', input: { name: 'worker-a' } }, baseCtx(repo))
+    ).toBeUndefined()
+    expect(
+      await pi.emit('tool_call', { toolName: 'herdr_dispatch', input: { name: 'worker-b' } }, baseCtx(repo))
+    ).toBeUndefined()
+    expect(pi.notifications.filter(message => message.startsWith('shepherd config:'))).toHaveLength(1)
+  })
+})

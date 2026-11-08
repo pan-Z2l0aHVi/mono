@@ -1,7 +1,7 @@
 <script setup lang="ts">
-import { resolveReadmeLinks } from '@greypan/doc-demo-kit'
 import { computed, watchEffect } from 'vue'
 
+import { resolveDocLinks } from '@/i18n/examples'
 import { currentDocs, ensureExampleDoc, registerExampleDoc } from '@/i18n/locale'
 
 import { MetaComp } from '../meta'
@@ -12,7 +12,7 @@ const props = defineProps<{
 
 const docNodes = computed(() => {
   const nodes = currentDocs.value.get(props.component)
-  return nodes ? resolveReadmeLinks(nodes, 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs') : null
+  return nodes ? resolveDocLinks(nodes) : null
 })
 
 watchEffect(onCleanup => onCleanup(registerExampleDoc(props.component)))

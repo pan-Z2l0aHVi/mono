@@ -1,6 +1,5 @@
 // @vitest-environment jsdom
 
-import type { WebUiContextMenu } from '@greypan/web-ui'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, ref } from 'vue'
 
@@ -826,192 +825,14 @@ describe('ResourceList：触屏长按 menu', () => {
   })
 
   /*
-   * 造出「组件的长按到期、menu 被打开」这个状态。
-   *
-   * 真实路径是组件自己的长按计时器到期 → _openAt 成功 → _userOpenChange.mark() 派发
-   * open-change。jsdom 里那条计时器不驱动 panel，所以这里直接造出同一个可观察结果。
-   *
-   * openAt 单独**不算**长按：它是命令式打开，按组件自己的注释不派发 open-change
-   * （context-menu/index.ts 的 openAt：「命令式打开不派发 open-change 事件」）。
-   * 只调 openAt 的用例会一路绿，却不代表真实事件序列——判据依赖
-   * 「menu 此刻开着没有」时测试看不出问题，正是因为它只造了那个瞬间状态。
+   * 长按抬手后宿主侧补发 click 的吞 / 不吞状态机用例已迁往 web-ui context-menu 的
+   * long-press.spec（迁移不复制）：吸收机制内建在 web-ui-context-menu 里，宿主不再
+   * 维护自己的回声机。这里只留宿主侧的属性绑定、contextResource 落定与扫选共存用例。
    */
-  function longPressOpensMenu(menu: WebUiContextMenu, row: Element, pointerType = 'touch') {
-    row.dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, pointerType))
-    menu.openAt(100, 100)
-    menu.dispatchEvent(new CustomEvent('open-change', { detail: { open: true } }))
-  }
-
-  /*
-   * 抬手。真实触控管线的顺序是 touchend → pointerup → 浏览器补发 click，
-   * 所以补发的 click 到达时 pointerup 已经过去了。
-   */
-  function touchLift(row: Element) {
-    row.dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 100 }, 'touch'))
-  }
-
-  /*
-   * 回归（本轮要修的缺陷）：长按抬手时 menu 与预览 drawer 同时弹出。
-   *
-   * 组件侧的 _isLongPressFollowUp() 只吸收它自己 menu 上的补发事件，管不到宿主的行激活，
-   * 所以这个抑制必须在宿主这边做。观察点是 onSelect 有没有被调用——补发的 click 被吃掉时
-   * 它一次都不该响。
-   *
-   * 关键在 menu**已经关掉**：抬手后浏览器补发 click 的那几十毫秒里，menu 很可能因 blur /
-   * 外点先关，于是「menu 此刻开着没有」读到 false，抑制失效，drawer 照弹。判据必须落在
-   * 「刚才那手确实开出了 menu」这个已经发生过的事实上，与 menu 此刻的状态无关。
-   *
-   * 关 menu 只能调 close()：isOpen 是只读 getter，写 menu.isOpen = false 是空操作，读回来
-   * 还是旧值，会得到「关了却读成 true」的反向结论。
-   */
-  it('menu 已关时仍吞掉触屏的补发 click——判据不读 menu 当前状态', async () => {
-    const select = vi.fn<(id: string) => void>()
-    const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })], [], {}, { onSelect: select })
-    const menu = mounted.contextMenu as WebUiContextMenu
-    try {
-      longPressOpensMenu(menu, mounted.rows[0])
-      expect(menu.isOpen, '前置条件：长按确实开出了 menu').toBe(true)
-
-      // 抬手：menu 先被 blur / 外点关掉，浏览器补发的 click 后到。
-      menu.close()
-      await nextTick()
-      expect(menu.isOpen, '前置条件：此刻 menu 确实是关的').toBe(false)
-
-      // 真实顺序：touchend → pointerup → 浏览器补发 click。判据锚在抬手，所以必须先抬手。
-      touchLift(mounted.rows[0])
-      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
-      await nextTick()
-      expect(select, 'menu 已关时的补发 click 仍不该激活行').not.toHaveBeenCalled()
-    } finally {
-      mounted.unmount()
-    }
-  })
-
-  /*
-   * R1 不得回归：menu 还开着时补发的 click 照样被吃掉。两条合起来才是完整判据——
-   * 开或关都抑制，说明判据读的是「开过」这个事实而不是某一瞬间的状态。
-   */
-  it('menu 开着时吞掉触屏的补发 click', async () => {
-    const select = vi.fn<(id: string) => void>()
-    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
-    const menu = mounted.contextMenu as WebUiContextMenu
-    try {
-      longPressOpensMenu(menu, mounted.rows[0])
-      expect(menu.isOpen, '前置条件：menu 处于打开态').toBe(true)
-
-      touchLift(mounted.rows[0])
-      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
-      await nextTick()
-      expect(select, 'menu 开着时的补发 click 不该激活行').not.toHaveBeenCalled()
-    } finally {
-      mounted.unmount()
-    }
-  })
-
-  /*
-   * R3：轻点必须照常激活行。抑制若写成「触屏按下过就吞 click」，轻点会被一起吞掉。
-   * 这里造的是「按下过、但没有长按开 menu」——全程没有 open-change。
-   */
-  it('触屏轻点（没有长按开 menu）照常激活行', async () => {
-    const select = vi.fn<(id: string) => void>()
-    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
-    const menu = mounted.contextMenu as WebUiContextMenu
-    try {
-      mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
-      await nextTick()
-      // 轻点同样有抬手。没有这一步，这条用例就绕开了「抬手时该不该置标志」那道门——
-      // 去掉 longPressOpened 判断后轻点也会被吞，而这组断言照样全绿。
-      touchLift(mounted.rows[0])
-      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
-      await nextTick()
-      expect(select, '轻点照常激活行').toHaveBeenCalledWith(expect.objectContaining({ id: 'r1' }))
-    } finally {
-      mounted.unmount()
-    }
-  })
-
-  /*
-   * R4：鼠标右键开 menu 后点行是合法操作，触屏的抑制不能波及它。
-   * 事件序列与长按几乎一致（menu 同样开着、同样派发 open-change），唯一区别是这一手
-   * 是鼠标。所以判据除了「开过 menu」还必须看「这一手是不是触屏」。
-   */
-  it('鼠标右键开 menu 后点行照常激活，触屏抑制不波及鼠标路径', async () => {
-    const select = vi.fn<(id: string) => void>()
-    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
-    const menu = mounted.contextMenu as WebUiContextMenu
-    try {
-      longPressOpensMenu(menu, mounted.rows[0], 'mouse')
-      expect(menu.isOpen, '前置条件：context menu 处于打开态').toBe(true)
-
-      // 鼠标的抬手同样会发生，但它不该置标志（pointerType 不是 touch）
-      mounted.rows[0].dispatchEvent(pointer('pointerup', { clientX: 100, clientY: 100 }))
-      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
-      await nextTick()
-      expect(select, '鼠标 context menu 开着时点行照常激活').toHaveBeenCalledWith(expect.objectContaining({ id: 'r1' }))
-    } finally {
-      mounted.unmount()
-    }
-  })
-
-  /*
-   * 标志不能泄漏到下一手。
-   *
-   * 抬手会把 followUpClickPending 置上，等浏览器补发 click 来消费它。绝大多数情况下那个
-   * click 一定会来；但只要它没来（手势被系统吃掉、事件被吞、落点不是可点的元素），标志就会
-   * 悬在那里，而它一旦悬着，用户之后点任何一行都会「点不动」——比原缺陷更难解释。
-   *
-   * 唯一的作废闸是下一次 pointerdown，而它一定晚于补发 click（任何点击都先有 pointerdown），
-   * 所以这个闸既能收拾残留，又不会提前把该拦的那个 click 放跑。
-   */
-  it('抬手置的标志不泄漏到下一次手势：新的 pointerdown 之后点击照常激活', async () => {
-    const select = vi.fn<(id: string) => void>()
-    const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })], [], {}, { onSelect: select })
-    const menu = mounted.contextMenu as WebUiContextMenu
-    try {
-      longPressOpensMenu(menu, mounted.rows[0])
-      touchLift(mounted.rows[0])
-      // 补发的 click 这次没来（这是要构造的残留场景）
-
-      // 下一手的按下（没有再长按，menu 也不开着）
-      mounted.rows[1].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
-      await nextTick()
-      mounted.rows[1].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
-      await nextTick()
-      expect(select, '上一手残留的标志不该吞掉这一手的点击').toHaveBeenCalledWith(expect.objectContaining({ id: 'r2' }))
-    } finally {
-      mounted.unmount()
-    }
-  })
-
-  /*
-   * 标志只被消费一次，不重复生效。
-   *
-   * 抬手置位、补发 click 消费之后，同一手不该再有第二次抑制——否则长按之后连点两下，
-   * 第二下会被当成补发事件吃掉。这个用例把「消费即清」钉住。
-   */
-  it('补发 click 消费标志后，同一手的下一次点击照常激活', async () => {
-    const select = vi.fn<(id: string) => void>()
-    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select })
-    const menu = mounted.contextMenu as WebUiContextMenu
-    try {
-      longPressOpensMenu(menu, mounted.rows[0])
-      touchLift(mounted.rows[0])
-
-      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
-      await nextTick()
-      expect(select, '补发的 click 不该激活行').not.toHaveBeenCalled()
-
-      mounted.rows[0].dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
-      await nextTick()
-      expect(select, '消费之后同一手的下一次点击照常激活').toHaveBeenCalledWith(expect.objectContaining({ id: 'r1' }))
-    } finally {
-      mounted.unmount()
-    }
-  })
 
   /*
    * 选择模式里的长按是扫选，不是看 menu，所以那条路径不能被这条抑制吃掉——扫选要能正常
-   * 勾选。这里锁的是「syncTouchContext 里的抑制只在非选择模式生效」。
+   * 勾选。这里锁的是「长按 menu 与扫选在手势语义上的分工」。
    */
   it('选择模式下长按仍走扫选，不被行激活抑制吃掉', async () => {
     vi.useFakeTimers()

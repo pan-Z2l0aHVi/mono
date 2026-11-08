@@ -1,19 +1,15 @@
 import appScrollbarsOptions from '@greypan/app-scrollbars'
 import {
   COPY_FEEDBACK_DURATION,
-  createCopyFeedback,
+  createCodeblockController,
   createThunkCache,
-  codeFrameText,
   codeScrollbarsEvents,
   FLAVORS,
   FLAVOR_ICON_CLASS,
   FLAVOR_LABELS,
   FLAVOR_ICONS,
-  flavorOf,
-  isCodeCollapsible,
-  PEEK_HEIGHT,
   PACKAGE_MANAGER_ICONS,
-  resetCodeScroll,
+  PEEK_HEIGHT,
   type CodeblockVariant,
   type DemoThunk,
   type Flavor
@@ -63,63 +59,29 @@ interface CodeblockProps {
 
 /**
  * 一条围栏：命中 `exec` 的围栏带 `load`，先渲染真实组件预览，再挂源码卡；其余只显示源码。
- * 源码来自 `node.content`（生成期的高亮 HTML），与 markdown 围栏逐字相同。
- *
- * 一卡两稿时预览始终跑本站框架：带 `load` 的那份与当前选中的源码无关。
+ * 状态机（激活节点回退链、flavor / 折叠的滚动复位不变量、复制反馈）在 kit 的
+ * `createCodeblockController` 里；这里只把快照接进 React 与把事件交回控制器。
  */
 function Codeblock({ nodes, preview, variants, switchLabel }: CodeblockProps) {
   const panelId = useId()
-  const [flavor, setFlavor] = useState<string>(variants?.[0]?.value ?? NATIVE_FLAVOR)
-  const [expanded, setExpanded] = useState(false)
-  /*
-   * 复制反馈状态机在 kit（`createCopyFeedback`）：双通道剪贴板、成功/失败、定时回 idle 都在
-   * 引擎里，这里只把它的 snapshot 接进 `useSyncExternalStore`。`readText` 在每次复制时按面板
-   * 现取围栏原文（`useId` 的 id 对组件实例稳定，闭包捕获它不会过期）。
-   */
-  const [copy] = useState(() =>
-    createCopyFeedback({
-      readText: () => {
-        const panel = document.getElementById(panelId)
-        return panel ? codeFrameText(panel) : ''
-      }
+  const [controller] = useState(() =>
+    createCodeblockController({
+      nodes,
+      variants,
+      nativeFlavor: NATIVE_FLAVOR,
+      getPanel: () => document.getElementById(panelId)
     })
   )
-  useEffect(() => () => copy.dispose(), [copy])
-  // getServerSnapshot 传同一份：初始 snapshot 是纯对象，静态渲染（更新日志页）不碰 DOM。
-  const copySnapshot = useSyncExternalStore(copy.subscribe, copy.getSnapshot, copy.getSnapshot)
+  // 文档快照换引用时同步输入；不发布，本次渲染自己会读到新快照。
+  controller.setInputs({ nodes, variants })
+  useEffect(() => () => controller.dispose(), [controller])
+  const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
+  const { flavor, expanded, active, collapsible, preview: previewNode, copy: copySnapshot } = snapshot
   const { status: copied, run: copyRun } = copySnapshot
 
-  const active =
-    variants?.find(item => item.value === flavor)?.node ??
-    nodes.find(node => flavorOf(node.lang) === flavor) ??
-    nodes[0]
-  const loadable = nodes.find(node => node.load)
-
-  const Demo = preview && loadable?.load ? demoOf(loadable.load) : null
+  const Demo = preview && previewNode?.load ? demoOf(previewNode.load) : null
 
   if (!active) return null
-
-  const collapsible = isCodeCollapsible(active.content ?? '')
-
-  function resetPanelScroll() {
-    const panel = document.getElementById(panelId)
-    if (panel) resetCodeScroll(panel)
-  }
-
-  // 换一份源码就回到顶部：两稿的行数不同，停在上次读到的位置会落到另一份的中段。
-  function selectFlavor(value: string) {
-    const next = variants ? variants.find(item => item.value === value)?.value : FLAVORS.find(item => item === value)
-    if (!next || next === flavor) return
-    setFlavor(next)
-    resetPanelScroll()
-  }
-
-  function toggleExpanded() {
-    const next = !expanded
-    setExpanded(next)
-    // 收起后代码区回到顶部，与从未展开时一致；否则再次展开会停在上次读到的位置。
-    if (!next) resetPanelScroll()
-  }
 
   const copyLabel = copied === 'copied' ? '已复制' : copied === 'failed' ? '复制失败' : '复制代码'
   const copyIcon = copied === 'failed' ? lucideCircleAlert : lucideCopy
@@ -189,7 +151,7 @@ function Codeblock({ nodes, preview, variants, switchLabel }: CodeblockProps) {
                 variant="inset"
                 aria-label={switchLabel}
                 className="[--wui-font-size:12px] [--wui-segmented-trigger-px:6px]"
-                onInput={event => selectFlavor(event.currentTarget.value)}
+                onInput={event => controller.selectFlavor(event.currentTarget.value)}
               >
                 {variants.map(item => (
                   <web-ui-segmented-trigger key={item.value} value={item.value}>
@@ -209,7 +171,7 @@ function Codeblock({ nodes, preview, variants, switchLabel }: CodeblockProps) {
                 data-flavor-switch
                 aria-label="示例代码框架"
                 className="[--wui-font-size:12px] [--wui-segmented-trigger-px:10px]"
-                onInput={event => selectFlavor(event.currentTarget.value)}
+                onInput={event => controller.selectFlavor(event.currentTarget.value)}
               >
                 {FLAVORS.map(item => (
                   <web-ui-segmented-trigger key={item} value={item}>
@@ -236,7 +198,13 @@ function Codeblock({ nodes, preview, variants, switchLabel }: CodeblockProps) {
               </span>
               <web-ui-button-group>
                 <web-ui-tooltip content={copyLabel}>
-                  <web-ui-button icon variant="ghost" data-copy aria-label={copyLabel} onClick={() => void copy.copy()}>
+                  <web-ui-button
+                    icon
+                    variant="ghost"
+                    data-copy
+                    aria-label={copyLabel}
+                    onClick={() => void controller.copy()}
+                  >
                     {/* 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次；
                       key 跟着每次复制递增，重复复制也会重新挂载并重播描边与 scale。 */}
                     {copied === 'copied' ? (
@@ -265,7 +233,7 @@ function Codeblock({ nodes, preview, variants, switchLabel }: CodeblockProps) {
                       aria-label={expanded ? '收起代码' : '展开代码'}
                       aria-expanded={expanded ? 'true' : 'false'}
                       aria-controls={panelId}
-                      onClick={() => toggleExpanded()}
+                      onClick={() => controller.toggleExpanded()}
                     >
                       <web-ui-icon icon={expanded ? lucideChevronUp : lucideChevronDown} size={15}></web-ui-icon>
                     </web-ui-button>
@@ -291,7 +259,7 @@ function Codeblock({ nodes, preview, variants, switchLabel }: CodeblockProps) {
               className="rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) [--wui-collapse-peek-edge-ratio:0.6]"
               onClick={() => {
                 if (expanded) return
-                toggleExpanded()
+                controller.toggleExpanded()
               }}
             >
               {codePanel}

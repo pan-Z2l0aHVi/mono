@@ -1,19 +1,11 @@
 import appScrollbarsOptions from '@greypan/app-scrollbars'
 import {
-  DEFAULT_SIDEBAR_WIDTH_PX,
+  createShellState,
   isNavActive,
-  isSidebarWidth,
-  isThemeAppearance,
-  isThemeMotion,
   NAV_ITEM_CLASS,
   NAV_SECTIONS,
   NAV_SECTION_TITLE_CLASS,
-  SIDEBAR_WIDTH_STORAGE_KEY,
-  THEME_APPEARANCE_STORAGE_KEY,
-  THEME_MOTION_STORAGE_KEY,
-  type NavSectionId,
-  type ThemeAppearance,
-  type ThemeMotion
+  type NavSectionId
 } from '@greypan/doc-demo-kit'
 import { toast, type WebUiSelect } from '@greypan/web-ui'
 import {
@@ -32,7 +24,7 @@ import {
   useOverlayScrollbars,
   type OverlayScrollbarsComponentRef
 } from 'overlayscrollbars-react'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useLayoutEffect, useRef, useState, useSyncExternalStore } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 
 import { useLocale } from '@/i18n/locale'
@@ -47,48 +39,18 @@ import { RootErrorFallback } from './root-error-fallback'
 const ZH_CN_LABEL = '简体中文'
 const EN_LABEL = 'English'
 
-// localStorage 在存储被禁的上下文（沙箱 iframe、隐私模式）访问会抛 SecurityError，
-// 损坏的旧数据会让 JSON.parse 抛错；这两处都在 useState 初始化器里执行，错误发生在
-// Root 自身 render 中，外层 ErrorBoundary 无法捕获，会导致整个应用白屏，因此必须防护。
-function readStoredTheme(key: string): unknown {
-  try {
-    const stored = localStorage.getItem(key)
-    return stored ? JSON.parse(stored) : null
-  } catch {
-    return null
-  }
-}
-
-function writeStoredTheme(key: string, value: string): void {
-  try {
-    localStorage.setItem(key, value)
-  } catch {
-    // 写入失败（配额/被禁）时仅跳过持久化，不打断交互
-  }
-}
-
-function getInitialThemeAppearance(): ThemeAppearance {
-  const appearance = readStoredTheme(THEME_APPEARANCE_STORAGE_KEY)
-  return isThemeAppearance(appearance) ? appearance : 'light'
-}
-
-function getInitialThemeMotion(): ThemeMotion {
-  const motion = readStoredTheme(THEME_MOTION_STORAGE_KEY)
-  return isThemeMotion(motion) ? motion : 'system'
-}
-
-function getInitialSidebarWidth(): string {
-  const width = readStoredTheme(SIDEBAR_WIDTH_STORAGE_KEY)
-  return isSidebarWidth(width) ? width : DEFAULT_SIDEBAR_WIDTH_PX
-}
-
-/*
- * layout 的四个 `*-change` 都是 `bubbles: true, composed: true`，而文档页里示例的 `web-ui-layout` 就挂在
- * 本站侧栏的子树内，它一翻转事件就顺着冒到这里。只采信自己这一层：窄视口下点示例的 Toggle，本站 drawer
- * 会跟着打开（实测 `shellDrawerOpen: true`，命中的那条事件 `target` 是示例元素）；挂载那四次嵌套的
+/**
+ * shell 状态（主题 / 动效 / 侧栏 collapsed / open / 宽度的持久化、校验、layout 事件过滤与
+ * mobile 派生）由 kit 的 `createShellState` 拥有；这里只把快照接进 React 与 `useMobile`
+ * 的断点判定（判定留在 app，ADR-0023）。layout effect 在首帧绘制前同步写回 mobile，
+ * 移动端首帧的 drawer 宽度与展开态就是对的。
  */
-function isOwnLayoutEvent(event: Event): boolean {
-  return event.target === event.currentTarget
+function useShellState() {
+  const [shell] = useState(createShellState)
+  const snapshot = useSyncExternalStore(shell.subscribe, shell.getSnapshot)
+  const isMobileSidebar = useMobile()
+  useLayoutEffect(() => shell.setMobile(isMobileSidebar), [shell, isMobileSidebar])
+  return { shell, snapshot, isMobileSidebar }
 }
 
 // 章节标题的中文文案留在本端：wuchale 只扫宿主 src，kit 只给结构。
@@ -150,23 +112,12 @@ function SidebarNavLink({ to, label, title, active, collapsed, onNavigate }: Sid
 
 export function Root() {
   const { locale, setLocale, pending: localePending } = useLocale()
-  const [themeAppearance, setThemeAppearance] = useState<ThemeAppearance>(getInitialThemeAppearance)
-  const [themeMotion, setThemeMotion] = useState<ThemeMotion>(getInitialThemeMotion)
+  const { shell, snapshot, isMobileSidebar } = useShellState()
+  const { appearance: themeAppearance, motion: themeMotion } = snapshot
   const [bannerVisible, setBannerVisible] = useState(true)
   const [searchOpen, setSearchOpen] = useState(false)
-  const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
-  const [sidebarOpen, setSidebarOpen] = useState(false)
-  const [desktopSidebarWidth, setDesktopSidebarWidth] = useState<string>(getInitialSidebarWidth)
   const navSidebarRef = useRef<OverlayScrollbarsComponentRef<'div'> | null>(null)
-  const isMobileSidebar = useMobile()
-  const sidebarWidth = isMobileSidebar ? 'min(320px, 80vw)' : desktopSidebarWidth
-  /*
-   * collapse 是桌面端的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
-   * min(320px, 80vw)，套用 collapsed state 会把 label 挤成居中截断。web-ui-layout 的
-   * `sidebar-collapsed` 契约同样写明它「不会影响移动端 Drawer」，它只是无从替
-   * Consumer 决定 slot 内容怎么渲染，所以闸门留在这里。
-   */
-  const navCollapsed = sidebarCollapsed && !isMobileSidebar
+  const { sidebarWidth, navCollapsed } = snapshot
   const router = useRouter()
   const pathname = useRouterState({ select: s => s.location.pathname })
 
@@ -190,15 +141,8 @@ export function Root() {
     select: s => s.matches.at(-1)?.staticData.title
   })
 
-  const commitThemeAppearance = (appearance: ThemeAppearance) => {
-    setThemeAppearance(appearance)
-    writeStoredTheme(THEME_APPEARANCE_STORAGE_KEY, JSON.stringify(appearance))
-  }
-
   const updateThemeAppearance = (event: React.ChangeEvent<WebUiSelect>) => {
-    const appearance = event.currentTarget.value
-    if (!isThemeAppearance(appearance)) return
-    commitThemeAppearance(appearance)
+    shell.setAppearance(event.currentTarget.value)
   }
 
   const updateLocale = (event: React.ChangeEvent<WebUiSelect>) => {
@@ -213,28 +157,16 @@ export function Root() {
   }
 
   const updateThemeMotion = (event: React.ChangeEvent<WebUiSelect>) => {
-    const motion = event.currentTarget.value
-    if (!isThemeMotion(motion)) return
-    setThemeMotion(motion)
-    writeStoredTheme(THEME_MOTION_STORAGE_KEY, JSON.stringify(motion))
+    shell.setMotion(event.currentTarget.value)
   }
 
-  const updateSidebarCollapsed = (event: CustomEvent<{ collapsed: boolean }>) => {
-    if (!isOwnLayoutEvent(event)) return
-    setSidebarCollapsed(event.detail.collapsed)
-  }
+  // layout 的三个 sidebar 事件统一交给 shell 状态机：事件过滤（只采信自己层的冒泡）与提交都在 kit。
+  const updateSidebarCollapsed = (event: CustomEvent<{ collapsed: boolean }>) => shell.applyLayoutEvent(event)
 
-  const updateSidebarOpen = (event: CustomEvent<{ open: boolean }>) => {
-    if (!isOwnLayoutEvent(event)) return
-    setSidebarOpen(event.detail.open)
-  }
+  const updateSidebarOpen = (event: CustomEvent<{ open: boolean }>) => shell.applyLayoutEvent(event)
 
-  // 拖拽调宽的受控回写 + localStorage 持久化（仅桌面端生效）
-  const updateSidebarWidth = (event: CustomEvent<{ width: string }>) => {
-    if (!isOwnLayoutEvent(event)) return
-    setDesktopSidebarWidth(event.detail.width)
-    writeStoredTheme(SIDEBAR_WIDTH_STORAGE_KEY, JSON.stringify(event.detail.width))
-  }
+  // 拖拽调宽的受控回写 + 持久化（仅桌面端生效）都由 shell 状态机处理。
+  const updateSidebarWidth = (event: CustomEvent<{ width: string }>) => shell.applyLayoutEvent(event)
 
   return (
     <ErrorBoundary FallbackComponent={RootErrorFallback}>
@@ -246,8 +178,8 @@ export function Root() {
             className="mobile:[--wui-layout-sidebar-radius:38px]"
             sidebarCollapsible
             header-glow
-            sidebarCollapsed={sidebarCollapsed}
-            sidebarOpen={sidebarOpen}
+            sidebarCollapsed={snapshot.sidebarCollapsed}
+            sidebarOpen={snapshot.sidebarOpen}
             sidebarWidth={sidebarWidth}
             sidebar-resizable
             sidebar-min-width="120px"
@@ -368,7 +300,7 @@ export function Root() {
                   active={isNavActive(pathname, '/home')}
                   collapsed={navCollapsed}
                   title={navCollapsed ? undefined : '组件总览'}
-                  onNavigate={() => setSidebarOpen(false)}
+                  onNavigate={() => shell.setSidebarOpen(false)}
                 />
                 <SidebarNavLink
                   to="/getting-started"
@@ -376,7 +308,7 @@ export function Root() {
                   active={isNavActive(pathname, '/getting-started')}
                   collapsed={navCollapsed}
                   title={navCollapsed ? undefined : '快速开始'}
-                  onNavigate={() => setSidebarOpen(false)}
+                  onNavigate={() => shell.setSidebarOpen(false)}
                 />
                 <SidebarNavLink
                   to="/changelog"
@@ -384,7 +316,7 @@ export function Root() {
                   active={isNavActive(pathname, '/changelog')}
                   collapsed={navCollapsed}
                   title={navCollapsed ? undefined : '更新日志'}
-                  onNavigate={() => setSidebarOpen(false)}
+                  onNavigate={() => shell.setSidebarOpen(false)}
                 />
                 {NAV_SECTIONS.map((section, index) => (
                   <div
@@ -409,7 +341,7 @@ export function Root() {
                         label={item.label}
                         active={isNavActive(pathname, item.path)}
                         collapsed={navCollapsed}
-                        onNavigate={() => setSidebarOpen(false)}
+                        onNavigate={() => shell.setSidebarOpen(false)}
                       />
                     ))}
                   </div>

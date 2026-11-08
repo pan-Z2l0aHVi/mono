@@ -7,18 +7,13 @@ import { RouterLink } from 'vue-router'
 
 import { currentLocale } from '@/i18n/locale'
 
-const pages = [
-  { path: '/home', zh: '组件总览', en: 'Components' },
-  { path: '/getting-started', zh: '快速开始', en: 'Getting Started', keywords: 'quick start' },
-  { path: '/changelog', zh: '更新日志', en: 'Changelog' }
-]
-
 const props = defineProps<{ open: boolean }>()
 const emit = defineEmits<{ 'update:open': [open: boolean] }>()
 const input = ref<WebUiInput>()
 const query = ref('')
 const displayQuery = ref('')
-const matches = computed(() => searchNavigation(displayQuery.value, pages))
+// 壳页与组件导航的搜索全集在 kit（SHELL_NAV_PAGES + NAV_SECTIONS 的 zhName）。
+const matches = computed(() => searchNavigation(displayQuery.value))
 const hasQuery = computed(() => query.value.trim().length > 0)
 const panelOpen = ref(true)
 const results = ref<HTMLDivElement>()

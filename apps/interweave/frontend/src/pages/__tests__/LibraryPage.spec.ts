@@ -113,7 +113,6 @@ function source(overrides: Partial<SourceDTO> = {}): SourceDTO {
 }
 
 function resource(overrides: Partial<ResourceDTO> = {}): ResourceDTO {
-  const preferred = source()
   return {
     id: 'resource-1',
     title: '失效链接',
@@ -122,9 +121,8 @@ function resource(overrides: Partial<ResourceDTO> = {}): ResourceDTO {
     size_bytes: null,
     created_at: 100,
     updated_at: 200,
-    sources: [preferred],
+    sources: [source()],
     tags: [],
-    preferred_source_id: preferred.id,
     ...overrides
   } as ResourceDTO
 }
@@ -148,19 +146,20 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       updateTitle: async (resourceId, title) => resource({ id: resourceId, title }),
       updateNote: async (resourceId, note) => resource({ id: resourceId, note }),
       remove: async () => {},
-      setTags: async () => [],
+      setTags: async () => resource(),
       findLocationMatches: async () => [],
       prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
       releaseFilePreview: async () => {},
       ...overrides.resources
     },
     sources: {
-      refreshURL: async () => source(),
-      refreshFile: async () => source({ type: SourceType.SourceTypeFile, location: '/tmp/a.png' }),
-      replaceFile: async () => source({ type: SourceType.SourceTypeFile, location: '/tmp/b.png' }),
-      replaceURL: async () => source(),
+      refreshURL: async () => resource(),
+      refreshFile: async () => resource(),
+      replaceFile: async () => resource(),
+      replaceURL: async () => resource(),
       probeOnOpen: async () => ({
         source: source(),
+        resource: resource(),
         outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
       }),
       ...overrides.sources
@@ -316,6 +315,20 @@ async function openAddDialog(host: HTMLElement) {
 
 function queueItems(host: HTMLElement) {
   return [...host.querySelectorAll('web-ui-dialog ol > li')]
+}
+
+/** AddDialog 是页面上唯一带「添加资源」header 的 dialog；按 slot 文本定位。 */
+function addDialog(host: HTMLElement): HTMLElement {
+  const dialog = [...host.querySelectorAll('web-ui-dialog')].find(node =>
+    node.querySelector('span[slot="header"]')?.textContent?.trim().includes('添加资源')
+  )
+  if (!(dialog instanceof HTMLElement)) throw new Error('没有找到添加资源 dialog')
+  return dialog
+}
+
+/** dialog 的 open 是 reflect 属性，jsdom 里按属性读；没升级成自定义元素时退回读 attribute。 */
+function dialogOpen(dialog: HTMLElement) {
+  return (dialog as HTMLElement & { open?: boolean }).open ?? dialog.hasAttribute('open')
 }
 
 /** drawer 的 open 是 reflect 属性，jsdom 里按属性读；没升级成自定义元素时退回读 attribute。 */
@@ -722,6 +735,53 @@ describe('LibraryPage：粘贴链接', () => {
         tags: []
       })
       expect(useLibraryStore().resources[0]?.title).toBe('示例文章')
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('提交成功后 AddDialog 自动关闭；controller 的 close 是队列收尾，不代 dialog 开合', async () => {
+    const createResource = vi.fn<LibraryRuntime['resources']['create']>(async input =>
+      resource({ title: '示例文章', sources: [source({ location: input.location, available: true })] })
+    )
+    runtimeStub.current = createRuntime({ resources: { create: createResource } })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      const dialog = addDialog(mounted.host)
+      expect(dialogOpen(dialog)).toBe(true)
+
+      paste('https://example.com/article')
+      await flush()
+      button(mounted.host, '添加').click()
+      await flush()
+
+      expect(createResource).toHaveBeenCalledTimes(1)
+      expect(dialogOpen(dialog)).toBe(false)
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('提交失败时 AddDialog 保持打开、队列按 remaining 回卷', async () => {
+    const createResource = vi.fn<LibraryRuntime['resources']['create']>(async () => {
+      throw new Error('磁盘已满')
+    })
+    runtimeStub.current = createRuntime({ resources: { create: createResource } })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      const dialog = addDialog(mounted.host)
+      paste('https://example.com/article')
+      await flush()
+      button(mounted.host, '添加').click()
+      await flush()
+
+      expect(dialogOpen(dialog)).toBe(true)
+      // takeOperationError 优先透出 cause 的 message，fallback 文案只兜无消息错误。
+      expect(mounted.host.textContent).toContain('磁盘已满')
     } finally {
       await mounted.close()
     }

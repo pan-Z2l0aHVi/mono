@@ -194,7 +194,6 @@ export class ResourceDTO {
     "updated_at": number;
     "sources": SourceDTO[];
     "tags": TagDTO[];
-    "preferred_source_id": string;
 
     /** Creates a new ResourceDTO instance. */
     constructor($$source: Partial<ResourceDTO> = {}) {
@@ -218,9 +217,6 @@ export class ResourceDTO {
         }
         if (!("tags" in $$source)) {
             this["tags"] = [];
-        }
-        if (!("preferred_source_id" in $$source)) {
-            this["preferred_source_id"] = "";
         }
 
         Object.assign(this, $$source);
@@ -464,10 +460,15 @@ export enum SourceProbeOutcome {
 };
 
 /**
- * SourceProbeResultDTO 承载打开时探测的结论；Inconclusive 时 Source 字段省略。
+ * SourceProbeResultDTO 承载打开时探测的结论；Inconclusive 时 Source 与 Resource 字段省略。
  */
 export class SourceProbeResultDTO {
     "source"?: SourceDTO | null;
+
+    /**
+     * Resource 是探测落库后的完整资源视图，前端据此直接回流，不必再按 resource_id 读取。
+     */
+    "resource"?: ResourceDTO | null;
     "outcome": SourceProbeOutcome;
 
     /**
@@ -489,9 +490,13 @@ export class SourceProbeResultDTO {
      */
     static createFrom($$source: any = {}): SourceProbeResultDTO {
         const $$createField0_0 = $$createType13;
+        const $$createField1_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("source" in $$parsedSource) {
             $$parsedSource["source"] = $$createField0_0($$parsedSource["source"]);
+        }
+        if ("resource" in $$parsedSource) {
+            $$parsedSource["resource"] = $$createField1_0($$parsedSource["resource"]);
         }
         return new SourceProbeResultDTO($$parsedSource as Partial<SourceProbeResultDTO>);
     }
@@ -620,3 +625,4 @@ const $$createType10 = $Create.Array($$createType5);
 const $$createType11 = SourceMetadataDTO.createFrom;
 const $$createType12 = $Create.Nullable($$createType11);
 const $$createType13 = $Create.Nullable($$createType8);
+const $$createType14 = $Create.Nullable($$createType6);
