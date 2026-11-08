@@ -2,6 +2,8 @@
 
 # Theme transition 的输入行为调研
 
+> 状态：非权威参考（时点性研究）。结论以现行 ADR、源码与测试为准。
+
 调研日期：2026-11-06。以下规范结论是标准要求，不能替代目标 WebView 的实际验证。
 
 ## View Transition 与 hit testing

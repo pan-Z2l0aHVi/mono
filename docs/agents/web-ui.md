@@ -12,6 +12,7 @@
 
 ## 修改前路由
 
+- **Layout 移动端状态**：应用控制 `mobile` 的契约见 [ADR-0023](../adr/0023-layout-controlled-mobile.md)。
 - **单个组件的属性、slot、事件、无障碍或表单行为**：先看该组件的 `docs/<component>.md`、源码和聚焦测试；只有契约或事件模型发生变化时才读 [ADR-0005](../adr/0005-web-ui-components.md)。
 - **受管组合**：成员追踪、下行广播与上行写回的通道读 [ADR-0006](../adr/0006-web-ui-composition.md)；带 portal 的 option 组合走 `src/shared/option-portal`，不按 `GroupController` 处理。
 - **覆盖层内容迁移或消费者节点写入**：打开时 portal 迁移、关闭态隐藏（menu 族隐藏 slot）与消费者 light DOM 写入边界见 [ADR-0006](../adr/0006-web-ui-composition.md)。
