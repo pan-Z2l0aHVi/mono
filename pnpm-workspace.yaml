@@ -58,9 +58,9 @@ catalog:
   copy-to-clipboard: ^4.0.2
   cspell: ^10.4.1
   cz-git: ^1.14.0
-  glob: ^13.0.6
+  glob: ^14.0.4
   hast-util-to-html: ^9.0.6
-  jsdom: ^30.0.1
+  jsdom: ^31.0.0
   lightningcss: ^1.32.0
   lit: ^3.3.3
   msw: ^3.0.4
@@ -84,11 +84,11 @@ catalog:
   remark-parse: ^11.0.0
   remark-rehype: ^11.1.2
   shiki: ^4.6.0
-  stylelint: ^17.14.0
+  stylelint: ^18.0.0
   stylelint-config-clean-order: ^10.0.0
   stylelint-config-html: ^2.0.0
   stylelint-config-recommended-vue: ^2.0.0
-  stylelint-config-standard: ^40.0.0
+  stylelint-config-standard: ^41.0.0
   stylelint-config-standard-vue: ^2.0.0
   tailwindcss: ^4.3.5
   tinyglobby: ^0.2.17
@@ -117,6 +117,10 @@ catalogMode: prefer
 
 overrides:
   vite: 'catalog:'
+  # jsdom@31 的 HTML 解析需要 parse5-parser-stream 的 flushCharacters（8.1.1 起才有），
+  # 但其声明范围 ^8.1.0 在 lowest-direct 解析下落到 8.1.0，导致 worker 启动即崩；
+  # 上游若把下限提到 ^8.1.1 可移除本条。
+  'parse5-parser-stream@^8.1.0': ^8.1.1
 
 peerDependencyRules:
   allowAny:
@@ -127,3 +131,7 @@ peerDependencyRules:
 allowBuilds:
   core-js: false
   msw: false
+
+minimumReleaseAgeExclude:
+  - parse5-parser-stream@8.1.1
+  - parse5@8.1.1
