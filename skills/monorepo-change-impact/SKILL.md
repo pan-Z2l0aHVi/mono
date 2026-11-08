@@ -20,7 +20,7 @@ description: 计算 monorepo 变更的影响面、消费者与所需验证，审
 ```sh
 node skills/monorepo-change-impact/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...
 node skills/monorepo-change-impact/repo-query.mjs contract [--json] <published-package>
-node skills/monorepo-change-impact/repo-query.mjs contract-diff --json --base <git-ref>
+node skills/monorepo-change-impact/repo-query.mjs contract-diff [--json] --base <git-ref>
 ```
 
 manifest 图以工作区内容为准，并会从 Git 索引补读稀疏检出隐藏的 manifest，因此 manifest 级影响面不要求全树检出。package 内的源文件与跨包引用不在该图里，仍要搜索完整 Git 树（如 `git grep <pattern> HEAD`；暂存未提交内容另查 `git grep --cached`），不能只看已检出的文件或子包文档。

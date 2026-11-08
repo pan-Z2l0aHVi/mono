@@ -1,7 +1,7 @@
 # pi-orchestrator-memory-bridge
 
 - 私有 Pi 扩展，只服务 Herdr 里运行的 Pi **lead** 会话。运行时由 Pi 的 jiti 直接加载 [`src/index.ts`](./src/index.ts)，不经 Vite 打包；因此 `src/` 里不能出现只有构建期才注入的东西（`import.meta.env` 等）。
-- 不引入外部运行时依赖。Pi 宿主 API 的类型声明在本包的 [`src/pi-types.ts`](./src/pi-types.ts)，不是 `devDependencies` 里的包——把 `@earendil-works/pi-coding-agent` 装进来会拖入整个 provider 闭包并需要改根 `pnpm.yaml` 的 `allowBuilds`，那是仓库级共享配置变更。
+- 不引入外部运行时依赖。Pi 宿主 API 的类型声明在本包的 [`src/pi-types.ts`](./src/pi-types.ts)，不是 `devDependencies` 里的包——把 `@earendil-works/pi-coding-agent` 装进来会拖入整个 provider 闭包并需要改根 `pnpm-workspace.yaml` 的 `allowBuilds`，那是仓库级共享配置变更。
 - 激活门槛靠 `herdr agent list` 的 `name` 字段区分 lead 与 worker。Herdr 不提供角色字段，而 worker 与 reviewer 可能同样是 `kind: "pi"`，会加载同一个扩展。**不要**把门槛退回成「只看 `HERDR_ENV` 与 `HERDR_PANE_ID`」，那会让桥接在 worker pane 里跑起来。
 - 写入时序依赖一条硬事实：事件钩子的 ctx 没有 `executeTool`，只有工具 `execute()` 有。改动 [`src/bridge.ts`](./src/bridge.ts) 的时序前先读 README 的「读写时序」。
 - 记忆不存 worker 终端输出、代码 diff 与文件内容；只存决策要点与拒绝原因。注入只进 `sections.orchestration`，不追加 transcript，不覆盖 `pi-memory` 自己的 `sections.memory`。
