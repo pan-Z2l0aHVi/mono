@@ -294,3 +294,7 @@ msgstr "安装"
 #: src/pages/home/index.vue
 msgid "包管理器"
 msgstr "包管理器"
+
+#: src/pages/home/index.vue
+msgid "支持触摸&手势"
+msgstr "支持触摸&手势"

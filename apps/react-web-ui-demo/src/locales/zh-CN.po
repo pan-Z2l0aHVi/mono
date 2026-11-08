@@ -138,10 +138,6 @@ msgid "响应式布局"
 msgstr "响应式布局"
 
 #: src/routes/home/-component.tsx
-msgid "Web Components"
-msgstr "Web Components"
-
-#: src/routes/home/-component.tsx
 msgid "无障碍"
 msgstr "无障碍"
 
@@ -302,3 +298,7 @@ msgstr "包管理器"
 #: src/routes/home/-component.tsx
 msgid "安装"
 msgstr "安装"
+
+#: src/routes/home/-component.tsx
+msgid "支持触摸&手势"
+msgstr "支持触摸&手势"
