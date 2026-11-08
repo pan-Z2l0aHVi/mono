@@ -16,13 +16,13 @@ scope 标识受影响的 workspace，不表示领域；跨 workspace 协作用�
 bash scripts/workflow/commit.sh <type> <scope> "<subject>" --dry
 ```
 
-确认 message 和文件列表后去掉 `--dry`。`commit.sh` 每一行分别传给 `-m`，正文行间保留空行，不要用 `git commit -F` 绕开脚本。
+确认 message（先暂存预期文件并用 `git status` / `git diff --staged` 核对文件列表，`--dry` 只预览 message，不显示文件清单）后去掉 `--dry`。`commit.sh` 每一行分别传给 `-m`，正文行间保留空行，不要用 `git commit -F` 绕开脚本。
 
 由 agent 创建 commit 时，author 与 committer 使用实际执行体的官方名称和邮箱，以该 agent 的官方文档或客户端明确提供的署名为准。不得从产品名或模型名推造邮箱，也不得冒用其他 agent 的署名；用户显式指定身份时优先遵循。人类 author 保持本人身份；`Co-authored-by` 只记录实际参与该提交的 agent，并使用该 agent 的官方署名。提交前确认 author 与 committer 符合授权人的预期；不需要为实施变更修改 Git 配置。
 
 ## Pre-commit 与本地 checks
 
-[`.vite-hooks/commit-msg`](../../.vite-hooks/commit-msg) 拒绝只有注释的 message，并通过 commitlint 检查。[`.vite-hooks/pre-commit`](../../.vite-hooks/pre-commit) 调用 `check-pre-commit`，只读取状态，不修复或暂存文件。检查从当前 Git worktree 运行，不读取 task state 或 `AGENT_TASK_*`；具体检查集合以入口实现为准。
+[`.vite-hooks/commit-msg`](../../.vite-hooks/commit-msg) 拒绝只有注释的 message，并通过 commitlint 检查。[`.vite-hooks/pre-commit`](../../.vite-hooks/pre-commit) 调用 `check-pre-commit`，检查链只读取状态，不修复或暂存文件（入口会先跑 `turbo run build --filter=@greypan/monorepo-kit` 物化判定依赖的产物，只写 gitignore 的 `dist/`）。检查从当前 Git worktree 运行，不读取 task state 或 `AGENT_TASK_*`；具体检查集合以入口实现为准。
 
 `pnpm install` 的 prepare 安装 hook dispatcher。用 `git hook run <hook>` 和 `pnpm run agent:env-doctor` 检查实际状态；缺少 dispatcher 时运行 `node scripts/maintenance/install-git-hooks.mjs`。不得修改 Git 配置或绕过 hook。
 
