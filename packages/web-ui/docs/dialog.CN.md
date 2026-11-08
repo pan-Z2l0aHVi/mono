@@ -1,10 +1,12 @@
 # Dialog
 
+[English](./dialog.md) | 简体中文
+
 模态对话框，带内置标题栏和页脚，也可以用 `headless` 完全自绘。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 `open` 由页面持有。点击按钮把它设为 `true`；Escape 和遮罩点击由组件发起关闭，组件再通过 `open-change` 把结果交回页面，页面按 `detail.open` 回写。
 
@@ -79,7 +81,7 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 </script>
 ```
 
-### Horizontal footer
+### 水平 footer
 
 `footer-orientation="horizontal"` 让页脚的操作按钮排在一行。两个按钮都设置 `full` 时，它们等分操作区的可用宽度。
 
@@ -135,7 +137,7 @@ const open = ref(false)
 </script>
 ```
 
-### No backdrop close
+### 禁止点击遮罩关闭
 
 `no-backdrop-close` 只拦截遮罩点击。页脚按钮和 Escape 仍能关闭对话框。
 
@@ -182,7 +184,7 @@ const open = ref(false)
 </script>
 ```
 
-### Closable without footer
+### 无 footer 时关闭
 
 `closable` 在卡片右上角显示内置关闭按钮。没有 `footer` 时，它是组件提供的唯一操作入口。
 
@@ -220,7 +222,7 @@ const open = ref(false)
 </script>
 ```
 
-### Controlled closing
+### 受控关闭
 
 `controlled` 把关闭的决定权交给页面。Escape 和遮罩点击都不修改 `open`，只派发 `open-change` 请求关闭。
 
@@ -280,7 +282,7 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 </script>
 ```
 
-### Headless
+### 无界面模式
 
 `headless` 只保留遮罩、进出场动画、滚动锁这些 overlay 行为。内置标题栏、内容区和页脚都不渲染，默认插槽直接成为卡片内的滚动层。
 
@@ -363,7 +365,7 @@ const open = ref(false)
 
 ## API
 
-### Props
+### 属性
 
 | 名称                 | 说明                                                            | 类型                         | 默认值       |
 | -------------------- | --------------------------------------------------------------- | ---------------------------- | ------------ |
@@ -379,13 +381,13 @@ const open = ref(false)
 | `aria-dialog-label`  | 对话框的可访问名称；`headless` 下必填。`dialog-label` 也可用。  | `string`                     | `''`         |
 | `aria-close-label`   | 内置关闭按钮的无障碍名称；未设置时回退内置英文文案（`Close`）。 | `string`                     | `''`         |
 
-### Events
+### 事件
 
 | 名称          | 说明                                              |
 | ------------- | ------------------------------------------------- |
 | `open-change` | `open` 状态变化，`detail.open` 是请求的目标状态。 |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                           |
 | --------- | ---------------------------------------------- |
@@ -393,7 +395,7 @@ const open = ref(false)
 | `header`  | 卡片顶部的标题栏区域，有内容时接管 `heading`。 |
 | `footer`  | 底部操作区。                                   |
 
-### Methods
+### 方法
 
 | 名称          | 说明                                       |
 | ------------- | ------------------------------------------ |
@@ -434,7 +436,7 @@ const open = ref(false)
 
 `headless` 没有可指向的内置标题，所以名字必须由调用方提供：`aria-dialog-label`，或一个自绘且可关联的标题元素。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                              | 说明                                                                                                                                                                                                                                                                                                                                                          | 默认值                                  |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | --------------------------------------- |

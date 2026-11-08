@@ -63,7 +63,7 @@ describe('WebUiIcon 组件', () => {
     const el = createIcon()
     await waitForUpdate(el)
 
-    expect(el.size).toBe(18)
+    expect(el.size).toBe(16)
 
     el.size = 32
     await waitForUpdate(el)

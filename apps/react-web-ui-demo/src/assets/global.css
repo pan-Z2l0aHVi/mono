@@ -7,25 +7,7 @@
 
 @custom-variant dark (&:where(web-ui-theme[resolved-appearance='dark'] *));
 
-/*
- * `mobile:` 跟随 `web-ui-layout` 的移动端判定，断点值不在这里另写一遍 640px。
- *
- * layout 的判定（`matchMedia('(width <= 640px)')`）与它自己的 CSS 是同一条条件，并通过
- * `mobile` 属性反射出来（ADR-0011），所以这里只需要选择器本身：断点在哪、什么时候翻，
- * 由 layout 一处决定，max-width 那一侧统一用 `mobile:`。
- *
- * 两条边界得记住：
- *
- * - **只对 layout 子树内的节点生效。** 被 overlay 的 portal 搬到 `document.body` 的内容够不到
- *   （menu/option、popover、tooltip、select、autocomplete、image-preview、toast），那里要继续用
- *   媒体查询。本 demo 当前没有这类节点。
- * - **不要拿它做 min-width 变体。** Tailwind v4 把 `@custom-variant` 生成的规则排在主题断点
- *   之后，`:where()` 又不抬特异性，于是同属性同权、后出现者胜——一条 `desktop:grid-cols-4`
- *   会在 ≥768 全段压掉 `md:grid-cols-4` 与 `lg:grid-cols-5`（实测：home 页三档都变 2 列）。
- *   所以 640 以上那一侧仍用 `sm:` / `md:` / `lg:` 这些主题断点。
- *
- * 写成 :where() 是为了不抬高特异性：变体带来的权重只有工具类本身。
- */
+/* 应用将全局移动端状态传入 layout，样式跟随反射的属性。 */
 @custom-variant mobile (&:where(web-ui-layout[mobile], web-ui-layout[mobile] *));
 
 @theme {
@@ -93,15 +75,15 @@ body {
 
 /*
  * 复制成功反馈：`web-ui-svg-draw-lines` 负责描边，这里补一个「放大再回原样」的 scale。
- * 时长与 example-doc 的 `COPY_FEEDBACK_DURATION`（500ms）对齐，改一处要同步另一处。
+ * 默认时长与 `COPY_FEEDBACK_DURATION`（300ms）对齐；主题动效 token 在减弱动效时归零。
  */
 @keyframes demo-copy-pop {
   0% {
-    transform: scale(1);
+    transform: scale(0.75);
   }
 
   40% {
-    transform: scale(1.5);
+    transform: scale(2);
   }
 
   100% {
@@ -110,11 +92,56 @@ body {
 }
 
 .demo-copy-pop {
-  animation: demo-copy-pop 500ms ease-out;
+  animation: demo-copy-pop calc(var(--wui-duration-focus, 200ms) * 1.5) ease-out;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .demo-copy-pop {
-    animation: none;
-  }
+web-ui-button[data-copy] > web-ui-icon,
+web-ui-button[data-copy] > .demo-copy-pop {
+  transition: transform var(--wui-duration-press, 80ms) ease-out;
+}
+
+web-ui-button[data-copy]:active > web-ui-icon,
+web-ui-button[data-copy]:active > .demo-copy-pop {
+  transform: scale(0.75);
+  animation: none;
+}
+
+.demo-search-popover {
+  --demo-search-radius: 18px;
+  --demo-search-padding: 8px;
+  --wui-radius-menu: calc(var(--demo-search-radius) + var(--demo-search-padding));
+  --wui-popover-padding: 0px;
+}
+
+.demo-search-results {
+  scrollbar-color: var(--wui-scrollbar-handle, rgb(0 0 0 / 0.39)) transparent;
+  scrollbar-width: thin;
+
+  overflow: auto;
+
+  width: 240px;
+  max-width: 80vw;
+  max-height: 320px;
+  padding: var(--demo-search-padding);
+}
+
+.demo-search-link {
+  display: block;
+  padding: 8px 12px;
+  border-radius: var(--demo-search-radius);
+  overflow-wrap: anywhere;
+}
+
+.demo-search-link:focus-visible {
+  outline: var(--wui-focus-ring-width, 3px) solid
+    var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
+  outline-offset: -3px;
+}
+
+.demo-search-empty {
+  --wui-empty-min-height: 0px;
+  --wui-empty-padding: 12px;
+  display: grid;
+  place-items: center;
+  min-height: 120px;
 }

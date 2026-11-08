@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Dropdown" },
+  { label: 'p', content: "English | <a href=\"./dropdown.CN.md\">简体中文</a>" },
   { label: 'p', content: "A dropdown menu. The <code>trigger</code> slot holds the trigger, and the remaining children render as menu items inside the overlay panel. Dividers, group headers, and multi-level submenus are supported." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },
@@ -219,7 +220,7 @@ const meta = [
   { label: 'h3', id: 'section-15', content: "Behavior" },
   { label: 'p', content: "Menu items: <code>web-ui-dropdown-item</code>, <code>web-ui-dropdown-divider</code>, <code>web-ui-dropdown-header</code>. A submenu is enabled on <code>web-ui-dropdown-item</code> through the <code>submenu</code> attribute. Full keyboard navigation is supported." },
   { label: 'p', content: "Opening requires content: with no root-level menu item, divider or header (including ones inside framework wrappers), click, keyboard gestures and hover do nothing; <code>hidden</code> subtrees do not count. <code>show()</code> and writing <code>open</code> still open an empty menu, and content added while closed does not open it. If the last content disappears while the menu is open, it collapses immediately without an exit transition." },
-  { label: 'p', content: "<code>hover</code> opens and closes with pointer entry and exit; moving the pointer from the trigger into the panel does not collapse it, and once the pointer leaves both the trigger and the panel and focus is outside them, it closes after <code>hide-delay</code>. <code>show-delay</code> / <code>hide-delay</code> only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately. Escape, outside clicks and focus loss close every menu except those in <code>none</code>, regardless of whether <code>trigger</code> contains <code>click</code> or <code>focus</code>; <code>none</code> neither responds to nor intercepts them." },
+  { label: 'p', content: "<code>hover</code> opens and closes with pointer entry and exit; moving the pointer from the trigger into the panel does not collapse it, and once the pointer leaves both the trigger and the panel it closes after <code>hide-delay</code> when focus is outside them if <code>focus</code> is enabled. <code>show-delay</code> / <code>hide-delay</code> only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately. Outside clicks close menus with <code>click</code>, focus loss closes menus with <code>focus</code>, and Escape closes menus except those in <code>none</code>." },
   { label: 'p', content: "<code>open</code> can be assigned directly; that write is silent and does not dispatch <code>open-change</code>." },
   { label: 'h3', id: 'section-16', content: "Trigger ARIA" },
   { label: 'p', content: "<code>aria-haspopup=\"menu\"</code>, <code>aria-expanded</code>, and <code>aria-controls</code> (pointing at the root menu panel) are written back to the first element in the <code>trigger</code> slot. Put an interactive element in the trigger slot." }

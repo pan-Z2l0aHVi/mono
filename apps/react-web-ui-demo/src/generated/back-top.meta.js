@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Back Top" },
+  { label: 'p', content: "English | <a href=\"./back-top.CN.md\">简体中文</a>" },
   { label: 'p', content: "A back-to-top button (<code>web-ui-back-top</code>) appears in the corner once the scroll position reaches <code>threshold</code>. Click it, or press Enter / Space, to return to the top." },
   { label: 'p', content: "By default it scrolls smoothly to the top. When the theme is set to <code>motion=\"reduced\"</code>, or to <code>motion=\"system\"</code> with a system preference for reduced motion, clicking or pressing Enter jumps to the top immediately." },
   { label: 'p', content: "By default it follows page scrolling. After pointing <code>scrollTarget</code> at a scroll container, it appears only with that container's scrolling and rests in the container's bottom corner." },

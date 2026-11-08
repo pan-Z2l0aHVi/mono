@@ -1,14 +1,16 @@
 # Dropdown Divider
 
+[English](./dropdown-divider.md) | 简体中文
+
 菜单里的分隔线，用来分隔成组的菜单项。
 
 它没有任何属性、事件与插槽，也不参与键盘导航。菜单只把焦点停在 `<web-ui-dropdown-item>` 上，分隔线自身只声明 `role="separator"`。
 
 它放在 `<web-ui-dropdown>` / `<web-ui-context-menu>` 的子元素里。
 
-## Samples
+## 示例
 
-### Group divider
+### Group 分隔符
 
 分隔线放在两组菜单项之间，横跨整个菜单面板。
 

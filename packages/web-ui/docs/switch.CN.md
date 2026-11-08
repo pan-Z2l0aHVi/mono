@@ -1,12 +1,14 @@
 # Switch
 
+[English](./switch.md) | 简体中文
+
 开关，声明 `role="switch"` 与 `aria-checked`。点击即时开合，也支持按住轨道横向拖动与快速甩动定值；空格与 Enter 都能切换。
 
 默认插槽的文字会成为可见标签和默认的可访问名称。也可以在宿主上设置 `aria-label` 或 `aria-labelledby`。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 `checked` 是开合状态。写在 `<web-ui-switch>` 里的文字渲染成开关旁的可见标签（见插槽）；不要可见标签时，把标签放在宿主外面。由页面持有这个值时，接住 `change` 再写回 `checked`。
 
@@ -45,7 +47,7 @@ function onChange(event: WebUiEvent<WebUiSwitch, 'change'>) {
 </script>
 ```
 
-### Disabled and loading
+### 禁用和加载
 
 `disabled` 与 `loading` 都阻断交互，外观也相同。
 
@@ -83,7 +85,7 @@ export default function Demo() {
 </template>
 ```
 
-### Event timing
+### 事件触发时机
 
 事件只在用户操作后派发：点击、Enter 与空格都由组件派发 `input` 加 `change` 两条。程序写入 `checked` 时两条都不派发。下面这个按钮就是这样做的。
 
@@ -143,7 +145,7 @@ function writeChecked() {
 </script>
 ```
 
-### Drag and flick
+### 拖拽和甩动
 
 按住轨道横向拖动：松手时位移过半就定值，快速甩动则按方向定值。
 
@@ -199,7 +201,7 @@ function record(name: string) {
 </script>
 ```
 
-### Form value
+### 表单值
 
 `name` 是字段名，`value` 是提交值，留空时提交 `'on'`。
 
@@ -279,7 +281,7 @@ function reset() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称       | 说明                                                                         | 类型      | 默认值  |
 | ---------- | ---------------------------------------------------------------------------- | --------- | ------- |
@@ -290,13 +292,13 @@ function reset() {
 | `required` | 必填校验：未选中时拦下提交。                                                 | `boolean` | `false` |
 | `loading`  | 加载状态：阻断交互，滑块内显示旋转图标，当前值保持不动。                     | `boolean` | `false` |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                                             |
 | --------- | ---------------------------------------------------------------- |
 | `default` | 可见标签文本，并作为 switch 的可访问名称；为空时不增加额外间距。 |
 
-### Events
+### 事件
 
 | 名称     | 说明                                                                |
 | -------- | ------------------------------------------------------------------- |

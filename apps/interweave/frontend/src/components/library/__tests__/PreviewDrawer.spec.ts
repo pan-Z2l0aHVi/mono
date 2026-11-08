@@ -110,6 +110,61 @@ afterEach(() => {
 })
 
 describe('PreviewDrawer', () => {
+  it('图片支持滚轮缩放，关闭再打开后恢复初始缩放', async () => {
+    const { host, setOpen } = await mountDrawer(resourceOf(fileSource(), ResourceKind.ResourceKindImage))
+    const image = host.querySelector('img')!
+    const stage = image.parentElement!
+    stage.dispatchEvent(new WheelEvent('wheel', { deltaY: -200, bubbles: true, cancelable: true }))
+    await nextTick()
+    expect(image.style.transform).not.toContain('scale(1)')
+    await setOpen(false)
+    await setOpen(true)
+    expect(host.querySelector('img')?.style.transform).toContain('scale(1)')
+  })
+
+  it('双指张开时放大图片，松开一指后仍可拖动', async () => {
+    const { host } = await mountDrawer(resourceOf(fileSource(), ResourceKind.ResourceKindImage))
+    const image = host.querySelector('img')!
+    const stage = image.parentElement!
+    stage.setPointerCapture = () => {}
+    Object.defineProperties(stage, { clientWidth: { value: 100 }, clientHeight: { value: 100 } })
+    Object.defineProperties(image, { offsetWidth: { value: 100 }, offsetHeight: { value: 100 } })
+    const pointer = (type: string, id: number, clientX: number) => {
+      const event = new MouseEvent(type, { bubbles: true, clientX })
+      Object.defineProperties(event, { pointerId: { value: id }, pointerType: { value: 'touch' } })
+      stage.dispatchEvent(event)
+    }
+    pointer('pointerdown', 1, 25)
+    pointer('pointerdown', 2, 75)
+    pointer('pointermove', 2, 125)
+    await nextTick()
+    expect(image.style.transform).toContain('scale(2)')
+    pointer('pointerup', 2, 125)
+    pointer('pointermove', 1, 35)
+    await nextTick()
+    expect(image.style.transform).not.toContain('translate(0px, 0px)')
+  })
+
+  it('放大图片后拖动受图片边界限制', async () => {
+    const { host } = await mountDrawer(resourceOf(fileSource(), ResourceKind.ResourceKindImage))
+    const image = host.querySelector('img')!
+    const stage = image.parentElement!
+    stage.setPointerCapture = () => {}
+    Object.defineProperties(stage, { clientWidth: { value: 100 }, clientHeight: { value: 100 } })
+    Object.defineProperties(image, { offsetWidth: { value: 100 }, offsetHeight: { value: 100 } })
+    stage.dispatchEvent(new MouseEvent('dblclick', { bubbles: true }))
+    await nextTick()
+    const pointer = (type: string, clientX: number) => {
+      const event = new MouseEvent(type, { bubbles: true, clientX })
+      Object.defineProperties(event, { pointerId: { value: 1 }, pointerType: { value: 'mouse' } })
+      stage.dispatchEvent(event)
+    }
+    pointer('pointerdown', 0)
+    pointer('pointermove', 1000)
+    await nextTick()
+    expect(image.style.transform).toContain('translate(75px, 0px)')
+  })
+
   it('图片铺满内容区渲染 img，加载失败回落到空态', async () => {
     const { host } = await mountDrawer(resourceOf(fileSource(), ResourceKind.ResourceKindImage))
     const image = host.querySelector('img')

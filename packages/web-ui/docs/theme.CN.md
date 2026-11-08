@@ -1,10 +1,12 @@
 # Theme
 
+[English](./theme.md) | 简体中文
+
 主题提供者在自己的子树内定义基础、颜色、层级、阴影与动效 token，同时是这个子树的 overlay 容器。
 
-## Samples
+## 示例
 
-### Light and dark
+### 浅色和深色
 
 `appearance` 决定这一层作用域解析出哪一套颜色与阴影 token。`light` 与 `dark` 可以在同一页并存。
 
@@ -66,7 +68,7 @@ const labels: Record<(typeof appearances)[number], string> = {
 </script>
 ```
 
-### Switching appearance
+### 切换外观
 
 把 `appearance` 绑定到页面状态上就是主题切换。`system` 由 `prefers-color-scheme` 解析。
 
@@ -170,11 +172,11 @@ function pick(value: string) {
 </script>
 ```
 
-### Derived output
+### 派生输出
 
 `resolved-appearance`（同时以 `resolvedAppearance` property 暴露）的值始终是 `light` 或 `dark`。显式的 `appearance` 直接透传。`system` 从 `prefers-color-scheme` 解析，并在系统深浅切换时实时更新。未设置 `appearance` 时输出默认值 `light`。
 
-theme 不派发任何事件。要观察它的变化，直接绑定这个 attribute：用 CSS 选择器或 MutationObserver 都可以。
+要观察解析后的外观，可用 CSS 选择器或 MutationObserver 监听这个 attribute。
 
 只有组件会写入这个 attribute。外部改写会被组件恢复。
 
@@ -234,7 +236,7 @@ function inspect() {
 </script>
 ```
 
-### Nested scopes
+### 嵌套作用域
 
 主题可以层层嵌套，每一层解析自己的 token。内层的值覆盖外层，离开内层后回到外层的值。每一层的 `resolved-appearance` 各自输出。
 
@@ -401,7 +403,7 @@ function pick(value: string): ThemeAppearance {
 </script>
 ```
 
-### Motion presets
+### 动效预设
 
 `motion` 设置这一层的动效模式。`reduced` 把转场时长归零，但两个无限加载循环不会停，只放慢到 `1600ms`。`full` 始终播放动效。`system` 跟随 `prefers-reduced-motion`。
 
@@ -520,7 +522,7 @@ function inspect() {
 </script>
 ```
 
-### Overlay root and portal
+### Overlay root 与 portal
 
 每个启用的主题同时是它自己的 overlay 容器。`getOverlayRoot()` 返回它。未设置 `appearance` 的主题不创建 overlay 容器，返回 `undefined`。
 
@@ -641,7 +643,7 @@ function inspect() {
 </script>
 ```
 
-### Overriding tokens within a scope
+### 在作用域内覆盖 token
 
 token 的默认值由 `<web-ui-theme>` 为自己的子树声明，所以覆盖要写在作用域内的元素上。调高 `--wui-control-size` 与 `--wui-input-width` 可以改变控件的高度与宽度。
 
@@ -695,7 +697,7 @@ export default function Demo() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称                  | 说明                                                        | 类型                           | 默认值     |
 | --------------------- | ----------------------------------------------------------- | ------------------------------ | ---------- |
@@ -703,13 +705,13 @@ export default function Demo() {
 | `resolved-appearance` | 解析后的配色方案，只读反射输出。                            | `ResolvedThemeAppearance`      | `'light'`  |
 | `motion`              | 当前嵌套主题范围的动效偏好：`full`、`reduced` 或 `system`。 | `ThemeMotion`                  | `'system'` |
 
-### Slots
+### Slot
 
 | 名称      | 说明                 |
 | --------- | -------------------- |
 | `default` | 主题作用域内的内容。 |
 
-### Methods
+### 方法
 
 | 名称                | 说明                                                                                                              |
 | ------------------- | ----------------------------------------------------------------------------------------------------------------- |
@@ -742,7 +744,7 @@ Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近�
 
 以下情况都会立即应用新的 appearance，不播放揭示：浏览器不支持、作用域为 reduced-motion、时长为 0、上一次揭示尚未结束。`appearance="system"` 下的系统深浅切换不播放动画。
 
-揭示进行中，底层页面暂时无法接收指针交互。
+根主题揭示期间会暂时阻止当前文档的新指针、键盘激活和可取消的输入事件；嵌套主题优先限制自身范围，无法归属的文档级事件按整个文档处理。滚轮会结束揭示以恢复滚动。程序化赋值、浏览器快捷键和部分输入法操作不受此保护。
 
 主题宿主不绘制任何背景。组件库不在宿主页面上画背景，嵌入方对主题子树背后的表面保留完全控制权。
 
@@ -758,7 +760,7 @@ Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近�
 
 页面色需要独立于主题 appearance 变化时，在 `:root` 或 `body` 上用 `!important` 定义自己的 `--wui-color-page`；或者让页面色跟随 `appearance` 变化。
 
-### Foundation tokens
+### 基础 token
 
 | 名称                      | 说明                     | 默认值  |
 | ------------------------- | ------------------------ | ------- |
@@ -813,7 +815,7 @@ Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近�
 
 没有主题作用域的 overlay 无法读取间距级，会回退到字面量默认值。
 
-### Spacing tokens
+### 间距 token
 
 | 名称            | 说明                       | 默认值 |
 | --------------- | -------------------------- | ------ |
@@ -824,7 +826,7 @@ Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近�
 | `--wui-space-5` | overlay 内容内边距         | `20px` |
 | `--wui-space-6` | 宽 overlay 内边距          | `24px` |
 
-### Selection control tokens
+### 选择控件 token
 
 | 名称                           | 说明                                 | 默认值               |
 | ------------------------------ | ------------------------------------ | -------------------- |
@@ -832,7 +834,7 @@ Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近�
 | `--wui-radio-group-gap`        | `<web-ui-radio-group>` 的成员间距    | `var(--wui-space-2)` |
 | `--wui-checkbox-group-gap`     | `<web-ui-checkbox-group>` 的成员间距 | `var(--wui-space-2)` |
 
-### Radius tokens
+### 圆角 token
 
 | 名称                   | 说明                                            | 默认值                 |
 | ---------------------- | ----------------------------------------------- | ---------------------- |
@@ -840,7 +842,7 @@ Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近�
 | `--wui-radius-menu`    | 菜单 / popover 浮动面板、多行 textarea 与 toast | `18px`                 |
 | `--wui-radius-overlay` | 大型覆盖层：dialog、抽屉、布局侧边栏            | `28px`                 |
 
-### Layer tokens
+### 层级 token
 
 | 名称                         | 说明            | 默认值 |
 | ---------------------------- | --------------- | ------ |
@@ -895,7 +897,7 @@ duration 默认值：
 
 悬停与激活的背景反馈即时切换，没有过渡动画。选中态、按压与焦点使用带时长的过渡，在减少动态效果时同样归零。
 
-### Color tokens
+### 颜色 token
 
 | 名称                                  | 说明                                     | 浅色默认值                                                              | 深色默认值                                                                            |
 | ------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
@@ -936,7 +938,7 @@ duration 默认值：
 | `--wui-color-focus-ring`              | 焦点指示器颜色，由 accent 派生           | `color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)` | `color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)` |
 | `--wui-scrollbar-handle`              | 原生滚动条的滑块颜色                     | `rgb(0 0 0 / 0.39)`                                                     | `rgb(255 255 255 / 0.5)`                                                              |
 
-### Shadow tokens
+### 阴影 token
 
 | 名称                   | 说明             | 浅色默认值                       | 深色默认值                      |
 | ---------------------- | ---------------- | -------------------------------- | ------------------------------- |

@@ -1,10 +1,12 @@
 # Progress
 
+[English](./progress.md) | 简体中文
+
 progress / 进度指示：用一条线性轨道表示已完成比例，也支持不暴露具体数值的 indeterminate 状态。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 `value` 的取值范围是 `0..max`，超过上限的值会收敛到 `max`。宿主始终带 `role="progressbar"`，用 `aria-label` 给它可访问名称。
 
@@ -30,7 +32,7 @@ export default function Demo() {
 </template>
 ```
 
-### Custom range
+### 自定义范围
 
 `max` 可以不是 100，适合「已选 12 / 共 40」这类业务计数。`show-value` 把四舍五入后的百分比显示在轨道右侧。屏幕阅读器读取的是 `aria-valuenow` / `aria-valuemax`，不会重复读可见的百分比。
 
@@ -54,7 +56,7 @@ export default function Demo() {
 </template>
 ```
 
-### Indeterminate
+### 不确定状态
 
 `indeterminate` 用于操作已经开始、但还无法计算百分比的状态。此时组件移除 `aria-valuenow`，仍保留进度条的名称和上限。主题的减少动效设置会放慢循环动画，不会完全停掉。
 
@@ -78,7 +80,7 @@ export default function Demo() {
 </template>
 ```
 
-### Styling
+### 样式
 
 轨道高度、圆角、轨道色和完成色都由 CSS Custom Properties 控制。把变量写在宿主或任意祖先上即可覆盖。宿主默认 `display: block; width: 100%`，由外层容器限制最大宽度。
 
@@ -122,7 +124,7 @@ export default function Demo() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称            | 说明                                                           | 类型      | 默认值  |
 | --------------- | -------------------------------------------------------------- | --------- | ------- |
@@ -131,7 +133,7 @@ export default function Demo() {
 | `indeterminate` | 未知进度模式。开启后移除 `aria-valuenow`，并播放循环动画。     | `boolean` | `false` |
 | `show-value`    | 在轨道右侧显示四舍五入后的百分比；indeterminate 时显示省略号。 | `boolean` | `false` |
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                                    | 说明                     | 默认值                                            |
 | --------------------------------------- | ------------------------ | ------------------------------------------------- |
@@ -141,10 +143,10 @@ export default function Demo() {
 | `--wui-progress-fill-color`             | 完成部分颜色。           | `var(--wui-color-accent, #0071e3)`                |
 | `--wui-progress-indeterminate-duration` | indeterminate 动画周期。 | `var(--wui-duration-spinner, 800ms)`              |
 
-### Parts
+### 构件
 
 公开样式部件为 `base`、`track`、`indicator` 与 `value`。需要更细的视觉控制时，可以经 `::part(...)` 选中；数值与尺寸变化仍应优先通过上面的 CSS Custom Properties 表达。
 
-### Accessibility
+### 无障碍
 
 宿主承担 `progressbar` 语义，并维护 `aria-valuemin`、`aria-valuemax` 与确定态的 `aria-valuenow`。未提供 `aria-label` 或 `aria-labelledby` 时，名称为内置英文 `Progress`。调用方应优先传入与业务含义一致的可访问名称。

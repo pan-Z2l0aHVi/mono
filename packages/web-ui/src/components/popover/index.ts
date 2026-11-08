@@ -10,7 +10,12 @@ import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { hasOverlayContent } from '@/shared/overlay/content-presence'
 import { defineOpenOverlay } from '@/shared/overlay/open-overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
-import { defineOverlayPortal, type OverlayContainer, type OverlayPortal } from '@/shared/overlay/portal'
+import {
+  applyOverlayVariables,
+  defineOverlayPortal,
+  type OverlayContainer,
+  type OverlayPortal
+} from '@/shared/overlay/portal'
 import { defineTriggerController } from '@/shared/overlay/trigger-controller'
 import { normalizeTriggerSet } from '@/shared/overlay/trigger-props'
 
@@ -287,6 +292,7 @@ export class WebUiPopover extends LitElement {
      * 首个已开启 overlay 与从宿主上溯结果一致，多出的那次登记是冗余的。
      */
     this._panel.open(isInstant)
+    if (this._portal) applyOverlayVariables(this._portal.panel, this, ['--wui-popover-padding'])
   }
 
   private _migratableContentNodes(nodes: Node[]): Node[] {

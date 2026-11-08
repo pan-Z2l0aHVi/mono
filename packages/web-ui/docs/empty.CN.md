@@ -1,10 +1,12 @@
 # Empty
 
+[English](./empty.md) | 简体中文
+
 空状态占位：`title` 和 `description` 提供文案，`icon` / `action` 插槽补上图形和操作入口。除 `title` 与 `description` 之外没有其它属性，图形、文案、留白的尺寸和颜色都用 `--wui-empty-*` 变量设置。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 `title` 和 `description` 是两个主要文案位，两个都写是这套空态最常见的用法。默认图形（`andrsrxn:inbox`）随组件提供，边长和颜色各有一枚变量。
 
@@ -20,7 +22,7 @@ export default function Demo() {
 </template>
 ```
 
-### Collapsing copy slots
+### 折叠复制用 slot
 
 标题、描述、操作区三段各自按「有没有内容」决定是否占位。只给 `title` 就没有描述行，只给 `description` 就没有标题行，三段都空着时只剩图形区。
 
@@ -46,7 +48,7 @@ export default function Demo() {
 </template>
 ```
 
-### Action area
+### 操作区
 
 `action` 插槽用于放恢复入口。它没有对应的属性可写，只接受插槽内容。一段空态通常只需要一个主操作。
 
@@ -70,7 +72,7 @@ export default function Demo() {
 </template>
 ```
 
-### Slot content
+### Slot 内容
 
 四个插槽可以替换整组内容：`icon` 替换图形，默认插槽替换标题，`description` 替换描述，`action` 替换操作区。插槽内容会覆盖同名属性，所以写了插槽就不必再写 `title` / `description`。多个操作请自己套一层容器，操作区只负责它上方的那段间距。
 
@@ -110,7 +112,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Size and color
+### 尺寸和颜色
 
 没有 `size` 属性：图形边长、两行字号、颜色和留白是四组独立变量。要整体放大就一起写，只放大图形会留下与字号不匹配的空白。
 
@@ -150,7 +152,7 @@ export default function Demo() {
 </template>
 ```
 
-### Long copy
+### 长文本
 
 标题和描述都按内容宽度换行，长词用 `overflow-wrap: anywhere` 断开。因此粘贴的链接或长标识符不会把盒子撑宽，也不会溢出到相邻段落之外。
 
@@ -174,7 +176,7 @@ export default function Demo() {
 </template>
 ```
 
-### Overriding one variable at a time
+### 逐个覆盖变量
 
 单枚变量也能单独修改：`--wui-empty-icon-size` 是盒与图形共用的边长，`--wui-empty-content-width` 和两个段间距只能通过变量调整。
 
@@ -248,14 +250,14 @@ export default function Demo() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称          | 说明       | 类型     | 默认值 |
 | ------------- | ---------- | -------- | ------ |
 | `title`       | 标题文字。 | `string` | `''`   |
 | `description` | 描述文字。 | `string` | `''`   |
 
-### Slots
+### Slot
 
 | 名称          | 说明                                |
 | ------------- | ----------------------------------- |
@@ -296,7 +298,7 @@ export default function Demo() {
 - `56`（默认）/ `40px` / `240px` / `32px 24px` / `16px` / `14px`
 - `72` / `51px` / `309px` / `41px 31px` / `16px` / `14px`
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                                | 说明                       | 默认值                       |
 | ----------------------------------- | -------------------------- | ---------------------------- |

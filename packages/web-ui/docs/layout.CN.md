@@ -1,10 +1,12 @@
 # Layout
 
+[English](./layout.md) | 简体中文
+
 响应式页面布局：可选全宽横幅、桌面端可折叠侧边栏，移动端默认使用抽屉。设置 `no-sidebar` 可去掉整块侧边栏，只保留内容布局。页面本身滚动；横幅滚出后，桌面端侧边栏和头部固定在视口内。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 五个插槽各占一区。`banner` 在主体上方全宽，`header` 是内容区的吸顶头部，`sidebar` 是侧边栏卡片内容，默认插槽是主内容区，`tabbar` 是底部栏。
 
@@ -41,8 +43,10 @@ export default function Demo() {
           <p className="m-0 text-sm">正文区随内层滚动条滚动，header 与 tabbar 各贴在容器上下缘。</p>
           <div className="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
         </div>
-        <div slot="tabbar" className="flex items-center justify-center px-4 py-2 text-xs">
-          Tabbar
+        <div slot="tabbar" className="flex justify-center p-2">
+          <div className="w-full max-w-64 rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-6 py-2 text-center text-xs shadow-lg">
+            Tabbar
+          </div>
         </div>
       </web-ui-layout>
     </div>
@@ -72,7 +76,13 @@ export default function Demo() {
         <p class="m-0 text-sm">正文区随内层滚动条滚动，header 与 tabbar 各贴在容器上下缘。</p>
         <div class="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
       </div>
-      <div slot="tabbar" class="flex items-center justify-center px-4 py-2 text-xs">Tabbar</div>
+      <div slot="tabbar" class="flex justify-center p-2">
+        <div
+          class="w-full max-w-64 rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-6 py-2 text-center text-xs shadow-lg"
+        >
+          Tabbar
+        </div>
+      </div>
     </web-ui-layout>
   </div>
 </template>
@@ -84,14 +94,19 @@ const open = ref(false)
 </script>
 ```
 
-### No sidebar
+### 无侧边栏
 
 `no-sidebar` 把侧边栏结构整块从布局里去掉：桌面端没有侧栏区域与收起按钮，窄视口也没有头部开关与抽屉，只留下 `banner` / `header` / 默认内容 / `tabbar` 四个分区。
 
 `sidebar` 插槽随之不渲染，但调用方节点仍留在 light DOM；撤下属性即恢复原布局。
 
 ```tsx
+import { lucideFileText, lucideHouse, lucideShoppingCart, lucideUser } from '@greypan/web-ui/icons'
+import { useState } from 'react'
+
 export default function Demo() {
+  const [tab, setTab] = useState('home')
+
   return (
     <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
       <web-ui-layout no-sidebar header-glow>
@@ -102,8 +117,21 @@ export default function Demo() {
           <p className="m-0 text-sm">no-sidebar 下没有 aside、开关和 Drawer，内容列占满整行。</p>
           <div className="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
         </div>
-        <div slot="tabbar" className="flex items-center justify-center px-4 py-2 text-xs">
-          Tabbar
+        <div slot="tabbar" className="flex justify-center p-2">
+          <web-ui-segmented aria-label="底部导航" value={tab} onInput={event => setTab(event.currentTarget.value)}>
+            <web-ui-segmented-trigger value="home" aria-label="首页">
+              <web-ui-icon icon={lucideHouse} />
+            </web-ui-segmented-trigger>
+            <web-ui-segmented-trigger value="orders" aria-label="订单">
+              <web-ui-icon icon={lucideFileText} />
+            </web-ui-segmented-trigger>
+            <web-ui-segmented-trigger value="cart" aria-label="购物车">
+              <web-ui-icon icon={lucideShoppingCart} />
+            </web-ui-segmented-trigger>
+            <web-ui-segmented-trigger value="account" aria-label="我">
+              <web-ui-icon icon={lucideUser} />
+            </web-ui-segmented-trigger>
+          </web-ui-segmented>
         </div>
       </web-ui-layout>
     </div>
@@ -122,13 +150,35 @@ export default function Demo() {
         <p class="m-0 text-sm">no-sidebar 下没有 aside、开关和 Drawer，内容列占满整行。</p>
         <div class="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
       </div>
-      <div slot="tabbar" class="flex items-center justify-center px-4 py-2 text-xs">Tabbar</div>
+      <div slot="tabbar" class="flex justify-center p-2">
+        <web-ui-segmented aria-label="底部导航" :value="tab" @input="tab = $event.currentTarget.value">
+          <web-ui-segmented-trigger value="home" aria-label="首页"
+            ><web-ui-icon :icon="lucideHouse"
+          /></web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="orders" aria-label="订单"
+            ><web-ui-icon :icon="lucideFileText"
+          /></web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="cart" aria-label="购物车"
+            ><web-ui-icon :icon="lucideShoppingCart"
+          /></web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="account" aria-label="我"
+            ><web-ui-icon :icon="lucideUser"
+          /></web-ui-segmented-trigger>
+        </web-ui-segmented>
+      </div>
     </web-ui-layout>
   </div>
 </template>
+
+<script setup lang="ts">
+import { lucideFileText, lucideHouse, lucideShoppingCart, lucideUser } from '@greypan/web-ui/icons'
+import { ref } from 'vue'
+
+const tab = ref('home')
+</script>
 ```
 
-### Collapsible sidebar
+### 可折叠侧边栏
 
 `sidebar-collapsed` 是桌面端侧边栏的受控收起状态。它只把桌面端 aside 收窄到 `collapsed-width`，不影响移动端抽屉。
 
@@ -154,10 +204,10 @@ export default function Demo() {
           onsidebar-open-change={event => setOpen(event.detail.open)}
         >
           <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-            <span className="rounded-md p-2 text-sm">Overview</span>
-            <span className="rounded-md p-2 text-sm">Components</span>
-            <span className="rounded-md p-2 text-sm">Theme</span>
-            <span className="rounded-md p-2 text-sm">Settings</span>
+            <span className="truncate rounded-md p-2 text-sm">Overview</span>
+            <span className="truncate rounded-md p-2 text-sm">Components</span>
+            <span className="truncate rounded-md p-2 text-sm">Theme</span>
+            <span className="truncate rounded-md p-2 text-sm">Settings</span>
           </nav>
           <div className="p-4">
             <p className="m-0 text-sm">点侧边栏底部的按钮收起 / 展开，layout 只把桌面端 aside 收窄到 60px。</p>
@@ -184,10 +234,10 @@ export default function Demo() {
         @sidebar-open-change="open = $event.detail.open"
       >
         <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-          <span class="rounded-md p-2 text-sm">Overview</span>
-          <span class="rounded-md p-2 text-sm">Components</span>
-          <span class="rounded-md p-2 text-sm">Theme</span>
-          <span class="rounded-md p-2 text-sm">Settings</span>
+          <span class="truncate rounded-md p-2 text-sm">Overview</span>
+          <span class="truncate rounded-md p-2 text-sm">Components</span>
+          <span class="truncate rounded-md p-2 text-sm">Theme</span>
+          <span class="truncate rounded-md p-2 text-sm">Settings</span>
         </nav>
         <div class="p-4">
           <p class="m-0 text-sm">点侧边栏底部的按钮收起 / 展开，layout 只把桌面端 aside 收窄到 60px。</p>
@@ -206,9 +256,11 @@ const open = ref(false)
 </script>
 ```
 
-### Resize by dragging
+### 拖拽调整尺寸
 
 开启 `sidebar-resizable` 后，桌面端侧边栏右缘出现宽度调整手柄（收起状态下隐藏），拖拽实时改宽。键盘聚焦后可用 ←/→ 以 16px 步进（Shift 加速到 64px），Home/End 跳到上下限。
+
+手柄支持鼠标、触摸和触控笔；移动端布局使用抽屉，不显示调宽手柄。
 
 拖拽释放或键盘 Enter 提交时派发一次 `sidebar-width-change`，携带最终像素宽度；调用方回写后宽度重新由 `sidebar-width` 接管，Escape 撤回未提交的调整。
 
@@ -290,106 +342,41 @@ const open = ref(false)
 </script>
 ```
 
-### Mobile drawer and viewport detection
+### 移动端 drawer
 
-`sidebar-open` 是移动端抽屉的受控可见性，与 `sidebar-collapsed` 相互独立。
-
-`mobile` 由 layout 独占写入，在 `640px` 断点处翻转，与页面切到移动端分支同时发生，并额外派发一次 `mobile-change`。
-
-React 要在 `useLayoutEffect` 里先读 `layout.mobile` 再订阅（挂载那一刻派发的事件早于订阅）；跨断点那次回写用 `flushSync`，否则会有一帧新树已上屏而调用方的值还是旧的。
-
-Vue 的模板监听在元素插入前挂好，直接绑即可。
-
-把视口收窄到 640px 及以下，layout 会切到移动端分支：头部里出现开关，点它经 `sidebar-open-change` 请求打开抽屉。移动端抽屉同时启用 `draggable` 与 `page-shift`：打开时整页朝抽屉的进场方向（向右）移动 `16vw`（视口宽度变化时自动重算），关闭后归位。
+`mobile` 由应用控制。设置为 `true` 时侧边栏使用 drawer，应用可按视口或自己的布局策略决定该值。
 
 ```tsx
-import type { WebUiLayout } from '@greypan/web-ui'
-import { useLayoutEffect, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
+import { useState } from 'react'
 
 export default function Demo() {
-  const layoutRef = useRef<WebUiLayout>(null)
   const [open, setOpen] = useState(false)
-  const [mobile, setMobile] = useState(false)
-
-  useLayoutEffect(() => {
-    const layout = layoutRef.current
-    if (!layout) return
-    setMobile(layout.mobile)
-    const onChange = (event: Event) => {
-      const next = (event as CustomEvent<{ mobile: boolean }>).detail.mobile
-      flushSync(() => setMobile(next))
-    }
-    layout.addEventListener('mobile-change', onChange)
-    return () => layout.removeEventListener('mobile-change', onChange)
-  }, [])
-
   return (
-    <div className="flex flex-col gap-3">
-      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
-        <web-ui-layout ref={layoutRef} sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
-          <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
-            Header
-          </div>
-          <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-            <span className="rounded-md p-2 text-sm">导航</span>
-            <span className="rounded-md p-2 text-sm">组件</span>
-          </nav>
-          <div className="p-4">
-            <p className="m-0 text-sm">
-              把视口收窄到 640px 及以下，标题栏出现开关；点它经 sidebar-open-change 请求打开抽屉。
-            </p>
-          </div>
-        </web-ui-layout>
-      </div>
-      <p className="text-sm text-(--wui-color-text-secondary)">
-        mobile：{mobile ? 'true' : 'false'} · sidebar-open：{open ? 'true' : 'false'}
-      </p>
-    </div>
+    <web-ui-layout mobile sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
+      <div slot="sidebar">导航</div>
+      <div>内容</div>
+    </web-ui-layout>
   )
 }
 ```
 
 ```vue
 <template>
-  <div class="flex flex-col gap-3">
-    <div
-      class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
-    >
-      <web-ui-layout
-        :sidebarOpen="open"
-        @sidebar-open-change="open = $event.detail.open"
-        @mobile-change="mobile = $event.detail.mobile"
-      >
-        <div slot="header" class="flex items-center px-4 py-2 text-sm font-medium">Header</div>
-        <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-          <span class="rounded-md p-2 text-sm">导航</span>
-          <span class="rounded-md p-2 text-sm">组件</span>
-        </nav>
-        <div class="p-4">
-          <p class="m-0 text-sm">
-            把视口收窄到 640px 及以下，标题栏出现开关；点它经 sidebar-open-change 请求打开抽屉。
-          </p>
-        </div>
-      </web-ui-layout>
-    </div>
-    <p class="text-sm text-(--wui-color-text-secondary)">
-      mobile：{{ mobile ? 'true' : 'false' }} · sidebar-open：{{ open ? 'true' : 'false' }}
-    </p>
-  </div>
+  <web-ui-layout :mobile="true" :sidebarOpen="open" @sidebar-open-change="open = $event.detail.open">
+    <div slot="sidebar">导航</div>
+    <div>内容</div>
+  </web-ui-layout>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-
 const open = ref(false)
-const mobile = ref(false)
 </script>
 ```
 
 ## API
 
-### Props
+### 属性
 
 | 名称                  | 说明                                                                                                                                                               | 类型               | 默认值    |
 | --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | --------- |
@@ -399,23 +386,22 @@ const mobile = ref(false)
 | `sidebar-open`        | 移动端侧边栏抽屉受控打开状态。                                                                                                                                     | `boolean`          | `false`   |
 | `header-glow`         | 在头部插槽内容背后显示装饰性晕染。                                                                                                                                 | `boolean`          | `false`   |
 | `ariaLabels`          | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖（property）；未提供的键使用内置英文文案，`no-sidebar` 下侧栏相关的键不参与渲染。               | `LayoutAriaLabels` | —         |
-| `mobile`              | 只读计算值：当前视口是否处于移动端断点及以下；写 attribute 会被恢复，property 赋值不生效。                                                                         | `boolean`          | `false`   |
+| `mobile`              | 是否使用移动端布局，由调用方控制。                                                                                                                                 | `boolean`          | `false`   |
 | `sidebar-width`       | 桌面端和移动端展开时的侧边栏宽度。                                                                                                                                 | `string`           | `'240px'` |
 | `collapsed-width`     | 桌面端收起时的侧边栏宽度。                                                                                                                                         | `string`           | `'60px'`  |
 | `sidebar-resizable`   | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                                                                                               | `boolean`          | `false`   |
 | `sidebar-min-width`   | 拖拽调整的下限（px）；默认为 `collapsed-width`。                                                                                                                   | `string`           | —         |
 | `sidebar-max-width`   | 拖拽调整的上限（px）；限制在视口一半以内，内置上限优先。                                                                                                           | `string`           | —         |
 
-### Events
+### 事件
 
-| 名称                       | 说明                                                                                                   |
-| -------------------------- | ------------------------------------------------------------------------------------------------------ |
-| `sidebar-collapsed-change` | 请求更新桌面端收起状态；`detail.collapsed` 是请求值，调用方须回写到 `sidebar-collapsed`。              |
-| `sidebar-open-change`      | 请求更新移动端抽屉打开状态；`detail.open` 是请求值。                                                   |
-| `sidebar-width-change`     | 拖拽释放或键盘 Enter 提交调整后请求更新宽度；`detail.width` 是最终像素宽度。                           |
-| `mobile-change`            | 不是请求：报告 layout 自己的派生视口状态，`detail.mobile` 与 `mobile` 属性同值，每次跨断点只派发一次。 |
+| 名称                       | 说明                                                                                      |
+| -------------------------- | ----------------------------------------------------------------------------------------- |
+| `sidebar-collapsed-change` | 请求更新桌面端收起状态；`detail.collapsed` 是请求值，调用方须回写到 `sidebar-collapsed`。 |
+| `sidebar-open-change`      | 请求更新移动端抽屉打开状态；`detail.open` 是请求值。                                      |
+| `sidebar-width-change`     | 拖拽释放或键盘 Enter 提交调整后请求更新宽度；`detail.width` 是最终像素宽度。              |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                                                                    |
 | --------- | --------------------------------------------------------------------------------------- |
@@ -425,23 +411,9 @@ const mobile = ref(false)
 | `default` | 主内容区。                                                                              |
 | `tabbar`  | 底部标签栏。                                                                            |
 
-### 移动端视口状态
+### 移动端状态
 
-`mobile` 是只读输出，不是额外的输入，由 layout 写入。property 只读（赋值不生效，严格模式下抛错），写 attribute 会被立即恢复，两种写法都不派发事件。
-
-它在 `640px` 断点处翻转，与页面切到移动端分支是同一时刻，不经过 resize 去抖。
-
-`mobile-change` 每次跨断点只派发一次，元素在窄视口挂载时的初始求值也算一次。
-
-调用方用 `layout.mobile` 读当前值、用 `mobile-change` 收更新即可，CSS 侧可以写 `web-ui-layout[mobile]`。
-
-### 框架中的使用方式
-
-在宏任务上响应的调用方会读到旧值，而新树已经在屏幕上了：
-
-- Vue：模板里绑 `@mobile-change`，用 `ref` 存值。模板监听在元素插入前挂好，能收到挂载时那次通知。
-- React：用 ref 拿到元素，在 `useLayoutEffect` 里先读 `layout.mobile` 再订阅，并用 `flushSync` 回写。先读是为了拿到挂载初值；`flushSync` 是为了让运行时跨断点时抢在 layout 组件重渲染之前，否则会出现一帧「抽屉已按新状态渲染、调用方的值还是旧的」。
-- CSS：直接按 `web-ui-layout[mobile]` 写样式，或把它包成一个变体。Tailwind v4 的应用可以只写一次这条边界的移动端一侧，而不是每个工具类各写一遍：`@custom-variant mobile (&:where(web-ui-layout[mobile], web-ui-layout[mobile] *));`。有两条限制：属性选择器只影响布局子树内的节点，被 overlay portal 到 `document.body` 的内容仍需媒体查询；不要用自定义变体处理 min-width 那一侧，因为 Tailwind 把 `@custom-variant` 规则排在主题断点之后，同属性的 `desktop:` 变体会在每个更宽的尺寸静默覆盖 `md:`/`lg:`。
+`mobile` 由调用方传入，反射为同名 attribute；CSS 可通过 `web-ui-layout[mobile]` 选择移动端布局。
 
 ### 收起只作用于桌面端
 
@@ -455,7 +427,7 @@ const mobile = ref(false)
 
 `sidebar` 插槽没有渲染出口，但调用方节点仍留在 light DOM。该模式下 `sidebar-collapsed`、`sidebar-open`、`sidebar-width` 等属性与 `sidebar-*` 事件都不产生可见效果。侧边栏相关的 `ariaLabels` key 与 CSS Custom Properties 也不产生可见效果。
 
-`mobile` 与 `mobile-change` 照常跟随视口变化。切换进该模式时，进行中的拖拽手势与未提交的宽度调整会被终止，撤下属性后回到 `sidebar-*` 属性管辖的布局。
+`mobile` 仍由调用方控制。切换进该模式时，进行中的拖拽手势与未提交的宽度调整会被终止，撤下属性后回到 `sidebar-*` 属性管辖的布局。
 
 ### 侧边栏调整宽度
 
@@ -500,7 +472,7 @@ const mobile = ref(false)
 }
 ```
 
-在 `640px` 及以下（与 `mobile` 报告的正是同一条条件），侧边栏会切换为使用内置玻璃主体、可滚动内容和拖拽区的 `web-ui-drawer`。
+当 `mobile` 为 `true` 时，侧边栏会切换为使用内置玻璃主体、可滚动内容和拖拽区的 `web-ui-drawer`。
 
 移动端抽屉的宽度跟随 `sidebar-width`，圆角跟随 `--wui-layout-sidebar-radius`。
 
@@ -528,7 +500,7 @@ const mobile = ref(false)
 
 它与 dialog、抽屉、toast 共用的 `--wui-color-surface-overlay` 相互独立，侧边栏可以采用不同表面。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                                | 说明                                                            | 默认值             |
 | ----------------------------------- | --------------------------------------------------------------- | ------------------ |

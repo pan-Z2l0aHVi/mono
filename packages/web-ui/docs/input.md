@@ -1,5 +1,7 @@
 # Input
 
+English | [简体中文](./input.CN.md)
+
 A text input with a clear button and prefix/suffix slots that integrates with the native `<form>`. The host itself is not focusable, so focus lands on the native input; `focus()` / `blur()` / `select()` act on it.
 
 ## Samples
@@ -65,7 +67,7 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-input aria-label="Search" clearable placeholder="Search components">
-        <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideSearch}></web-ui-icon>
       </web-ui-input>
       <web-ui-input aria-label="Website" value="web-ui">
         <span slot="prefix">www.</span>
@@ -80,7 +82,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-input aria-label="Search" clearable placeholder="Search components">
-      <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
     </web-ui-input>
     <web-ui-input aria-label="Website" value="web-ui">
       <span slot="prefix">www.</span>
@@ -131,7 +133,7 @@ export default function Demo() {
       <web-ui-input disabled placeholder="Disabled"></web-ui-input>
       <web-ui-input disabled aria-label="Disabled input with a value" value="Disabled with a value"></web-ui-input>
       <web-ui-input readonly clearable aria-label="Readonly input" value="Readonly: can select and copy, cannot edit">
-        <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideSearch}></web-ui-icon>
       </web-ui-input>
     </div>
   )
@@ -144,7 +146,7 @@ export default function Demo() {
     <web-ui-input disabled placeholder="Disabled"></web-ui-input>
     <web-ui-input disabled aria-label="Disabled input with a value" value="Disabled with a value"></web-ui-input>
     <web-ui-input readonly clearable aria-label="Readonly input" value="Readonly: can select and copy, cannot edit">
-      <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
     </web-ui-input>
   </div>
 </template>
@@ -171,7 +173,7 @@ export default function Demo() {
         value="Borderless with a value"
       ></web-ui-input>
       <web-ui-input borderless aria-label="Search" placeholder="Borderless with an icon">
-        <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideSearch}></web-ui-icon>
       </web-ui-input>
     </div>
   )
@@ -184,7 +186,7 @@ export default function Demo() {
     <web-ui-input borderless placeholder="Borderless input"></web-ui-input>
     <web-ui-input borderless aria-label="Borderless input with a value" value="Borderless with a value"></web-ui-input>
     <web-ui-input borderless aria-label="Search" placeholder="Borderless with an icon">
-      <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
     </web-ui-input>
   </div>
 </template>
@@ -432,6 +434,7 @@ export default function Demo() {
 | ------------------ | --------------------------------------------------------------------------------------------------------------- | ---------------- | -------- |
 | `type`             | HTML input type, forwarded to the native input inside.                                                          | `string`         | `'text'` |
 | `placeholder`      | Placeholder text.                                                                                               | `string`         | `''`     |
+| `autocomplete`     | Browser autofill hint forwarded to the native input; empty leaves the attribute unset.                          | `string`         | `''`     |
 | `name`             | Form field name.                                                                                                | `string`         | `''`     |
 | `disabled`         | Disabled state.                                                                                                 | `boolean`        | `false`  |
 | `readonly`         | Readonly state.                                                                                                 | `boolean`        | `false`  |

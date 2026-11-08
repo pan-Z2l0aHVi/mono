@@ -404,9 +404,11 @@ describe('LibraryPage：可用性感知接线', () => {
 
       expect(drawerOpen(mounted.host, '资源预览')).toBe(true)
       expect(drawerOpen(mounted.host, '资源详情')).toBe(false)
-      expect(mounted.host.querySelector('web-ui-drawer[aria-dialog-label="资源预览"] h2')?.textContent?.trim()).toBe(
-        '失效链接'
+      const preview = mounted.host.querySelector<HTMLIFrameElement>(
+        'web-ui-drawer[aria-dialog-label="资源预览"] iframe'
       )
+      expect(preview?.getAttribute('src')).toBe('https://example.com/dead')
+      expect(preview?.getAttribute('title')).toBe('失效链接 网页预览')
       expect(probeOnOpen).not.toHaveBeenCalled()
       mark('assertions:end')
     } finally {
@@ -710,7 +712,7 @@ describe('LibraryPage：粘贴链接', () => {
       await openAddDialog(mounted.host)
       paste('https://example.com/article')
       await flush()
-      button(mounted.host, '确认添加').click()
+      button(mounted.host, '添加').click()
       await flush()
 
       expect(createResource).toHaveBeenCalledExactlyOnceWith({

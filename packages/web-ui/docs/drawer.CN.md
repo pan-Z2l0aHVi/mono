@@ -1,10 +1,12 @@
 # Drawer
 
+[English](./drawer.md) | 简体中文
+
 侧边抽屉，基于原生 `<dialog>`，打开和关闭都有滑动动画，也可以从四周内缘拖拽关闭。用于展示与当前页面相关、又不需要离开当前页面的次级内容。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 `placement` 决定滑入方向，`heading` 在没有 `header` 插槽时作为标题显示。点击遮罩或按 Escape 关闭。
 
@@ -101,7 +103,7 @@ function openFrom(next: Placement) {
 </script>
 ```
 
-### Imperative
+### 命令式调用
 
 不绑定 `open`，通过元素实例的 `show()` / `close()` 控制。适合由命令式流程触发的场景；程序式开合不派发 `open-change`。
 
@@ -145,7 +147,7 @@ const drawer = useTemplateRef<WebUiDrawer>('drawer')
 </script>
 ```
 
-### Custom size
+### 自定义尺寸
 
 左右方向的尺寸由 `--wui-drawer-width` 控制，上下方向由 `--wui-drawer-height` 控制。
 
@@ -310,7 +312,7 @@ const noHeader = ref(false)
 </script>
 ```
 
-### Close button
+### 关闭按钮
 
 `closable` 显示内置关闭按钮。按钮固定在头部右上角，不随正文滚动。
 
@@ -363,7 +365,7 @@ const closable = ref(true)
 </script>
 ```
 
-### Footer actions
+### Footer 操作
 
 `footer` 插槽固定在抽屉底部，正文滚动时保持可见。
 
@@ -423,7 +425,7 @@ const open = ref(false)
 </script>
 ```
 
-### Scroll lock
+### 滚动锁定
 
 抽屉默认在打开期间锁定页面滚动；`no-scroll-lock` 保留背景滚动。
 
@@ -466,7 +468,7 @@ const open = ref(false)
 </script>
 ```
 
-### Page shift
+### 页面位移
 
 `page-shift` 在抽屉打开时把背景页面朝抽屉的进场方向移动一段距离。右侧抽屉从右侧滑入，页面整体左移，右侧空出抽屉的位置；左侧抽屉让页面右移；上下方向分别让出顶部或底部。偏移距离按视口尺寸计算，没有 CSS 变量可以调整。
 
@@ -513,7 +515,7 @@ const open = ref(false)
 </script>
 ```
 
-### Nested page shift
+### 嵌套页面位移
 
 四层嵌套都开启 `page-shift` 时，每打开一层，页面就在当前偏移的基础上继续移动；关闭中间某一层，它后面的层重新计算，页面回到新的总距离。
 
@@ -640,7 +642,7 @@ const setLayer = (index: number, open: boolean) => {
 </script>
 ```
 
-### Sibling page shift
+### 同级页面位移
 
 两个抽屉在 DOM 中是兄弟节点，没有嵌套关系，但组件仍按打开顺序管理层级：后打开的叠在前一个之上，前一个缩小并后退，看起来仍是一层套一层。`page-shift` 使用同一份打开顺序：先打开的最多，后打开的较少；关闭后页面回到前一层的偏移。
 
@@ -692,7 +694,7 @@ const second = ref(false)
 </script>
 ```
 
-### Backdrop click
+### 点击遮罩
 
 默认点击遮罩关闭；`no-backdrop-close` 后只能通过关闭按钮、页脚操作或 Escape 退出。
 
@@ -739,7 +741,7 @@ const open = ref(false)
 </script>
 ```
 
-### Controlled closing
+### 受控关闭
 
 `controlled` 下，Escape、遮罩与关闭按钮只派发 `open-change(false)`。调用方回写 `open` 后才真正关闭。
 
@@ -821,7 +823,7 @@ function close() {
 </script>
 ```
 
-### Headless
+### 无界面模式
 
 `headless` 只保留原生 dialog、遮罩、动画、滚动锁定与 Escape / 遮罩关闭，不渲染内置头部、关闭按钮或页脚。调用方负责默认插槽内容的完整样式，并必须提供 `aria-dialog-label`；`headless` 同样支持 `draggable` 拖拽关闭。
 
@@ -883,7 +885,7 @@ const open = ref(false)
 </script>
 ```
 
-### Drag to close
+### 拖拽关闭
 
 开启 `draggable` 后，抽屉内缘显示灰色胶囊拖拽条。朝关闭方向拖动超过自身尺寸的一半，或快速拖动后松开，抽屉就会关闭；没到阈值则回到打开位置。拖动方向随 `placement` 改变。
 
@@ -954,7 +956,7 @@ const bottomOpen = ref(false)
 </script>
 ```
 
-### Nested stacking
+### 嵌套叠放
 
 声明式嵌套的抽屉会自动堆叠：后打开的位于顶层并保持全尺寸，下层缩小并向内偏移，每层左侧露出可见的边缘。层宽不同或打开顺序变化时也会自动调整。Escape 和遮罩点击只作用于最顶层。
 
@@ -1107,7 +1109,7 @@ function closeLevel(index: number) {
 </script>
 ```
 
-### Sibling stacking
+### 同级叠放
 
 三个抽屉作为同级节点挂载。先从页面按钮打开抽屉 1，再从它的页脚打开下一层。组件自动管理层级：先打开的缩小并偏移，后打开的位于顶层；按任意顺序关闭后，其余层重新排列。
 
@@ -1185,7 +1187,7 @@ const open = ref([false, false, false])
 </script>
 ```
 
-### CSS variables
+### CSS 变量
 
 背景、圆角与视口留边分别由 `--wui-drawer-bg`、`--wui-drawer-radius`、`--wui-drawer-inset` 控制；把 `--wui-drawer-inset` 设为 `0` 可以让抽屉贴住视口边缘。把背景改成白色时，一并覆盖 `--wui-color-text` 与 `--wui-color-surface-control`，标题和关闭按钮在深浅主题下才清晰可读。
 
@@ -1237,7 +1239,7 @@ const open = ref(false)
 
 ## API
 
-### Props
+### 属性
 
 | 名称                | 说明                                                                                                                                     | 类型              | 默认值    |
 | ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
@@ -1254,13 +1256,13 @@ const open = ref(false)
 | `draggable`         | 在抽屉内缘显示拖拽条，支持拖拽关闭手势。                                                                                                 | `boolean`         | `false`   |
 | `page-shift`        | 打开时背景页面朝抽屉的进场方向移动。按打开顺序决定层级和偏移，嵌套层与同级层规则相同；关闭任意层后其余层重新计算。减少动效模式下不生效。 | `boolean`         | `false`   |
 
-### Events
+### 事件
 
 | 名称          | 说明                                                                    |
 | ------------- | ----------------------------------------------------------------------- |
 | `open-change` | 用户请求开合；`detail.open` 为目标状态。受控模式下由调用方回写 `open`。 |
 
-### Slots
+### Slot
 
 | 名称      | 说明         |
 | --------- | ------------ |
@@ -1268,7 +1270,7 @@ const open = ref(false)
 | `header`  | 顶部标题区。 |
 | `footer`  | 底部操作区。 |
 
-### Methods
+### 方法
 
 | 名称      | 说明                           |
 | --------- | ------------------------------ |
@@ -1287,7 +1289,15 @@ const open = ref(false)
 
 `--wui-drawer-nested-peek-base` 是嵌套堆叠时每层露出的基准距离：桌面端默认 `43.2px`，窄视口默认 `28.8px`。在宿主或任意祖先上覆盖它即可同时改变两者，在任何视口宽度下都生效。
 
-`page-shift` 会移动整个页面，不需要额外配置。页面里 `position: fixed` 的内容一起移动；已经打开的其他 dialog 或抽屉不受影响。
+`page-shift` 会移动整个页面。页面里 `position: fixed` 的内容一起移动；已经打开的其他 dialog 或抽屉不受影响。
+
+为页面设置与内容一致的背景色，避免偏移后露出的区域颜色不一致。使用 `web-ui-theme` 时，可在全局样式中设置：
+
+```css
+html {
+  background: var(--wui-color-page, #fff);
+}
+```
 
 多层同时打开时按打开顺序叠加，嵌套层和同级层规则相同；关闭任意一层后，其余层重新计算。
 
@@ -1305,7 +1315,7 @@ const open = ref(false)
 
 不支持拖拽打开，关闭状态的抽屉没有可拖拽的内容。`prefers-reduced-motion` 下松开后立即到位，不播放收尾动画。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                              | 说明                                                                                                                                                                | 默认值                                         |
 | --------------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ---------------------------------------------- |

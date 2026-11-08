@@ -131,7 +131,7 @@ describe('AppLayout：应用外壳', () => {
  * 与移动端 drawer。若把 collapsed state 直接透传给 AppNav，移动端 drawer 里的导航会以 collapsed state 渲染
  * （collapsed 为真时不渲染文字 label）。闸门因此必须按 viewport 收窄。
  *
- * 视口信号只有一个：`web-ui-layout` 自己订阅媒体查询，并通过 `mobile-change` 把判定
+ * 视口信号由应用订阅媒体查询，并将判定
  * 交给壳。所以拨一次 matchMedia 就同时移动了 layout 的树与壳的 collapse gate，无需等
  * 100ms 去抖。
  */
@@ -230,7 +230,7 @@ describe('AppLayout：collapse preference 不跨视口泄漏', () => {
     await nextTick()
     expect(navRoot().textContent).not.toContain('资料库')
 
-    // 换成移动端：layout 切到 drawer，壳的闸门跟着同一次 mobile-change 打开。
+    // 换成移动端：layout 切到 drawer，壳的状态同步更新。
     viewport.setMatches(true)
     await nextTick()
     expect(isDrawerMode()).toBe(true)

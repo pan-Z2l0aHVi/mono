@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Dialog" },
+  { label: 'p', content: "English | <a href=\"./dialog.CN.md\">简体中文</a>" },
   { label: 'p', content: "A modal dialog with a built-in heading bar and a footer, plus a <code>headless</code> mode you draw entirely yourself." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

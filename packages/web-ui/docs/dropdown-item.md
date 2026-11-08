@@ -1,5 +1,7 @@
 # Dropdown Item
 
+English | [简体中文](./dropdown-item.CN.md)
+
 A menu item for `<web-ui-dropdown>` and `<web-ui-context-menu>`. `disabled` keeps it in the menu but unselectable, and both keyboard navigation and hover skip it. The `prefix` / `suffix` slots hold icons and shortcut hints at either end. `submenu` attaches a nested submenu at the next level.
 
 It dispatches no events of its own. The menu does not read `value`; it is an identifier for your app to read in the native `click`.

@@ -11,6 +11,7 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChangelogRouteImport } from './routes/changelog'
+import { Route as GettingStartedRouteImport } from './routes/getting-started'
 import { Route as ComponentsAutocompleteRouteImport } from './routes/components/autocomplete'
 import { Route as ComponentsAvatarRouteImport } from './routes/components/avatar'
 import { Route as ComponentsBackTopRouteImport } from './routes/components/back-top'
@@ -55,6 +56,11 @@ const IndexRoute = IndexRouteImport.update({
 const ChangelogRoute = ChangelogRouteImport.update({
   id: '/changelog',
   path: '/changelog',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const GettingStartedRoute = GettingStartedRouteImport.update({
+  id: '/getting-started',
+  path: '/getting-started',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ComponentsAutocompleteRoute = ComponentsAutocompleteRouteImport.update({
@@ -237,6 +243,7 @@ const HomeIndexRoute = HomeIndexRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/changelog': typeof ChangelogRoute
+  '/getting-started': typeof GettingStartedRoute
   '/components/autocomplete': typeof ComponentsAutocompleteRoute
   '/components/avatar': typeof ComponentsAvatarRoute
   '/components/back-top': typeof ComponentsBackTopRoute
@@ -276,6 +283,7 @@ export interface FileRoutesByFullPath {
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/changelog': typeof ChangelogRoute
+  '/getting-started': typeof GettingStartedRoute
   '/components/autocomplete': typeof ComponentsAutocompleteRoute
   '/components/avatar': typeof ComponentsAvatarRoute
   '/components/back-top': typeof ComponentsBackTopRoute
@@ -316,6 +324,7 @@ export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/changelog': typeof ChangelogRoute
+  '/getting-started': typeof GettingStartedRoute
   '/components/autocomplete': typeof ComponentsAutocompleteRoute
   '/components/avatar': typeof ComponentsAvatarRoute
   '/components/back-top': typeof ComponentsBackTopRoute
@@ -357,6 +366,7 @@ export interface FileRouteTypes {
   fullPaths:
     | '/'
     | '/changelog'
+    | '/getting-started'
     | '/components/autocomplete'
     | '/components/avatar'
     | '/components/back-top'
@@ -396,6 +406,7 @@ export interface FileRouteTypes {
   to:
     | '/'
     | '/changelog'
+    | '/getting-started'
     | '/components/autocomplete'
     | '/components/avatar'
     | '/components/back-top'
@@ -435,6 +446,7 @@ export interface FileRouteTypes {
     | '__root__'
     | '/'
     | '/changelog'
+    | '/getting-started'
     | '/components/autocomplete'
     | '/components/avatar'
     | '/components/back-top'
@@ -475,6 +487,7 @@ export interface FileRouteTypes {
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
   ChangelogRoute: typeof ChangelogRoute
+  GettingStartedRoute: typeof GettingStartedRoute
   ComponentsAutocompleteRoute: typeof ComponentsAutocompleteRoute
   ComponentsAvatarRoute: typeof ComponentsAvatarRoute
   ComponentsBackTopRoute: typeof ComponentsBackTopRoute
@@ -526,6 +539,13 @@ declare module '@tanstack/react-router' {
       path: '/changelog'
       fullPath: '/changelog'
       preLoaderRoute: typeof ChangelogRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/getting-started': {
+      id: '/getting-started'
+      path: '/getting-started'
+      fullPath: '/getting-started'
+      preLoaderRoute: typeof GettingStartedRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/components/autocomplete': {
@@ -779,6 +799,7 @@ declare module '@tanstack/react-router' {
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
   ChangelogRoute: ChangelogRoute,
+  GettingStartedRoute: GettingStartedRoute,
   ComponentsAutocompleteRoute: ComponentsAutocompleteRoute,
   ComponentsAvatarRoute: ComponentsAvatarRoute,
   ComponentsBackTopRoute: ComponentsBackTopRoute,

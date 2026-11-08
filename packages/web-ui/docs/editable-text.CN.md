@@ -1,10 +1,12 @@
 # Editable Text
 
+[English](./editable-text.md) | 简体中文
+
 行内纯文本编辑器。点击文字就地编辑，Enter 与失焦提交，只有 Escape 取消。进入编辑态不会移动布局。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 点击文字进入编辑态，光标落在点击处；按 Tab 聚焦时，光标落在文本末尾。字体、颜色与对齐全部继承外部上下文，所以编辑前它就是一段普通文字。
 
@@ -28,7 +30,7 @@ export default function Demo() {
 </template>
 ```
 
-### Controlled value and commit
+### 受控值与提交
 
 `value` 是当前值，也是表单提交值。`input` 随每次输入触发；`change` 只在提交点派发一次，即 Enter 或失焦。要让页面持有这个值，就接住 `change` 再写回。
 
@@ -96,7 +98,7 @@ function onChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
 </script>
 ```
 
-### Escape cancels
+### 按 Escape 取消
 
 只有 Escape 触发取消：值回到进入编辑时的状态，派发 `cancel` 而不派发 `change`，焦点交还宿主。这次按键由组件接管，外层 overlay（抽屉、菜单）不会因为同一次按键关闭。`cancel` 不冒泡也不组合，所以监听一律挂在组件本身。React 没有对应的合成事件，只能挂原生监听。
 
@@ -144,7 +146,7 @@ function onCancel() {
 </script>
 ```
 
-### Empty value and placeholder
+### 空值与占位文本
 
 `placeholder` 只在值为空时显示。提交空值也算一次提交，值变空之后会改显示占位文本。值为空又没有写 `placeholder` 时，仍保留一行可点击进入编辑的位置。
 
@@ -170,7 +172,7 @@ export default function Demo() {
 </template>
 ```
 
-### Multiline
+### 多行
 
 值里已有的换行照常成行（`white-space` 默认 `pre-wrap`），第二行文字在盒宽处自然断行。Enter 属于提交，不插入换行，所以多行文案靠值本身带 `\n`。进入编辑不会让内容偏移一个像素。
 
@@ -197,7 +199,7 @@ const multiline = '第一行按值里的换行成行\n第二行的长文案会�
 </script>
 ```
 
-### Disabled and readonly
+### 禁用和只读
 
 `disabled` 把宿主移出 Tab 序列，指针与键盘都进不了编辑；它只把光标换成 `not-allowed`，不做视觉置灰。`readonly` 仍可聚焦与全选，输入会被拒绝，退出编辑态也不派发 `change`。
 
@@ -223,7 +225,7 @@ export default function Demo() {
 </template>
 ```
 
-### Form value
+### 表单值
 
 `name` 是字段名，提交值就是当前值，空值也照常以空字符串进入 `FormData`。组件没有 `required`，也不转发校验判定，必填请由外层承担。`form.reset()` 回填挂载时的初值。
 
@@ -320,7 +322,7 @@ function reset() {
 </script>
 ```
 
-### Preserving the draft on unmount
+### 卸载时保留草稿
 
 编辑到一半的元素被从 DOM 移除时，Chromium 会派发 `blur` 并按提交语义收尾；WebKit 什么都不派发，草稿随组件丢弃。`commit-on-unmount` 就是为后一种情况准备的。
 
@@ -403,7 +405,7 @@ function saveDraft(event: WebUiEvent<WebUiEditableText, 'change'>) {
 </script>
 ```
 
-### Focus and select all
+### 聚焦与全选
 
 宿主本身可聚焦（非禁用态带 `tabindex="0"`）。`focus()` 聚焦宿主并进入编辑态；`select()` 进入编辑态并全选内容，已在编辑态时只重新全选。两者在 `disabled` 下都不产生效果。
 
@@ -445,7 +447,7 @@ const field = useTemplateRef<WebUiEditableText>('field')
 </script>
 ```
 
-### CSS variables
+### CSS 变量
 
 空白与断词变量同时作用于文字态与编辑态，覆盖时两者保持一致。光标颜色跟随共享的 `--wui-color-accent`，在宿主或任意祖先上设置都有效。
 
@@ -488,7 +490,7 @@ const spacing = '空白按原样保留\n默认就是 pre-wrap'
 
 ## API
 
-### Props
+### 属性
 
 | 名称                | 说明                                                                | 类型             | 默认值  |
 | ------------------- | ------------------------------------------------------------------- | ---------------- | ------- |
@@ -500,7 +502,7 @@ const spacing = '空白按原样保留\n默认就是 pre-wrap'
 | `aria-label`        | 无障碍名称。                                                        | `string \| null` | `null`  |
 | `value`             | 当前值，也是表单提交值。                                            | `string`         | `''`    |
 
-### Events
+### 事件
 
 | 名称     | 说明                                                    |
 | -------- | ------------------------------------------------------- |
@@ -508,7 +510,7 @@ const spacing = '空白按原样保留\n默认就是 pre-wrap'
 | `change` | 提交草稿时触发（Enter 或失焦），一次提交恰好一条。      |
 | `cancel` | Escape 取消时触发，不冒泡不组合：监听一律挂在组件本身。 |
 
-### Methods
+### 方法
 
 | 名称       | 说明                                                                                                                                                       |
 | ---------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------- |
@@ -552,7 +554,7 @@ const spacing = '空白按原样保留\n默认就是 pre-wrap'
 
 光标颜色默认跟随共享语义 token `--wui-color-accent`；在宿主或任意祖先上设置该 token 即可整体改色。长无空格串（连续字母数字）超出盒宽时在盒内断开，文字态不溢出宿主盒。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                                | 说明                                                               | 默认值     |
 | ----------------------------------- | ------------------------------------------------------------------ | ---------- |

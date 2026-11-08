@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Badge" },
+  { label: 'p', content: "English | <a href=\"./badge.CN.md\">简体中文</a>" },
   { label: 'p', content: "badge / notification count: stacks a <code>count</code> corner badge on one corner of the default slot content; <code>dot</code> mode shows only a dot." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Collapse" },
+  { label: 'p', content: "English | <a href=\"./collapse.CN.md\">简体中文</a>" },
   { label: 'p', content: "A collapse panel packs the trigger and the content into one element. Put the trigger in the default slot and the content in the <code>content</code> slot." },
   { label: 'p', content: "When the user clicks the trigger, the component updates <code>open</code> and then dispatches <code>open-change</code>. The handler writes <code>detail.open</code> back into page state, so the page state matches the panel." },
   { label: 'h2', id: 'section-2', content: "Samples" },

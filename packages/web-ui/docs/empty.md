@@ -1,5 +1,7 @@
 # Empty
 
+English | [简体中文](./empty.CN.md)
+
 An empty-state placeholder: `title` and `description` provide the copy, and the `icon` / `action` slots add a graphic and an action entry point. Apart from `title` and `description` the component has no other properties; the sizes and colors of the graphic, the copy, and the whitespace all come from `--wui-empty-*` variables.
 
 ## Samples

@@ -374,6 +374,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     document.body.append(previous)
 
     const menu = createDropdown(TWO_ITEMS)
+    menu.trigger = 'click focus'
     const outside = document.createElement('button')
     outside.textContent = 'Outside'
     document.body.append(outside)
@@ -402,6 +403,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
   it('focusout 没有 relatedTarget 时仍关闭已失去焦点的 menu', async () => {
     const menu = createDropdown(TWO_ITEMS)
+    menu.trigger = 'click focus'
     await menu.updateComplete
 
     menu.show({ instant: true })
@@ -765,6 +767,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     const content =
       '<button slot="trigger">Menu</button><web-ui-dropdown-item submenu>Export<web-ui-dropdown-item>PDF</web-ui-dropdown-item></web-ui-dropdown-item><web-ui-dropdown-item>Other</web-ui-dropdown-item>'
     const menu = createDropdown(content)
+    menu.trigger = 'click focus'
     const outside = document.createElement('button')
     document.body.append(outside)
     await menu.updateComplete
@@ -943,6 +946,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
   it('断开期间结束的指针手势不会阻止重连后的 focusout 关闭', async () => {
     const menu = createDropdown(TWO_ITEMS)
+    menu.trigger = 'click focus'
     const outside = document.createElement('button')
     document.body.append(outside)
     await menu.updateComplete
@@ -969,6 +973,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
 
   it('菜单内点击让焦点回到 body 后，焦点进入页面控件时关闭 menu', async () => {
     const menu = createDropdown(TWO_ITEMS)
+    menu.trigger = 'click focus'
     const next = document.createElement('button')
     next.textContent = 'Next'
     document.body.append(next)

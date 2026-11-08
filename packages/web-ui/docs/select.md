@@ -1,5 +1,7 @@
 # Select
 
+English | [简体中文](./select.CN.md)
+
 Select dropdown. The default slot holds `<web-ui-option>` candidates, and the `trigger` slot can replace the default trigger area. The component supports keyboard navigation and Portal.
 
 ## Samples
@@ -142,7 +144,7 @@ export default function Demo() {
   return (
     <web-ui-select value={lang} onChange={event => setLang(event.currentTarget.value)}>
       <div slot="trigger" className="flex items-center gap-1.5">
-        <web-ui-icon icon={lucideGlobe} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideGlobe}></web-ui-icon>
         <span className="text-sm">{LABELS[lang] ?? 'Select language'}</span>
       </div>
       <web-ui-option value="zh" label="中文"></web-ui-option>
@@ -157,7 +159,7 @@ export default function Demo() {
 <template>
   <web-ui-select :value="lang" @change="lang = $event.currentTarget.value">
     <div slot="trigger" class="flex items-center gap-1.5">
-      <web-ui-icon :icon="lucideGlobe" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideGlobe"></web-ui-icon>
       <span class="text-sm">{{ LABELS[lang] ?? 'Select language' }}</span>
     </div>
     <web-ui-option value="zh" label="中文"></web-ui-option>
@@ -551,7 +553,7 @@ Opening requires content: with nothing in the `default` slot to show, click, key
 
 When closed, Space / Enter / ArrowDown / ArrowUp open the panel; under `none` these keys no longer auto-open it. When expanded, ArrowDown / ArrowUp, Home / End, and typeahead move the active item, Enter / Space select and close, and Escape closes.
 
-`hover` opens and closes with pointer entry and exit; once the pointer leaves both the trigger and the panel and focus is outside them, it closes after `hide-delay`. `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately. Escape, outside clicks and focus loss close every layer except those in `none`, regardless of whether `trigger` contains `click` or `focus`.
+`hover` opens and closes with pointer entry and exit; once the pointer leaves both the trigger and the panel it closes after `hide-delay` when focus is outside them if `focus` is enabled. `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately. Outside clicks close layers with `click`, focus loss closes layers with `focus`, and Escape closes layers except those in `none`.
 
 A Portal panel reads these variables as resolved on the host when it is created; after updating the host, the Portal panel must be reopened for the change to take effect.
 

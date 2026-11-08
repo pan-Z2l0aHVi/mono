@@ -7,6 +7,7 @@ import {
   FLAVOR_LABELS,
   FLAVOR_ICONS,
   PEEK_HEIGHT,
+  PACKAGE_MANAGER_ICONS,
   codeFrameText,
   codeScrollbarsEvents,
   createCopyFeedback,
@@ -14,6 +15,7 @@ import {
   flavorOf,
   isCodeCollapsible,
   resetCodeScroll,
+  type CodeblockVariant,
   type DemoThunk,
   type Flavor
 } from '@greypan/doc-demo-kit'
@@ -53,13 +55,20 @@ const props = defineProps<{
   nodes: readonly MetaNode[]
   /** 有 `load` 且允许预览时渲染真实组件；否则只显示源码。 */
   preview: boolean
+  variants?: readonly CodeblockVariant[]
+  switchLabel?: string
 }>()
 
 const panelId = `codeblock-${useId()}`
-const flavor = ref<Flavor>(NATIVE_FLAVOR)
+const flavor = ref<string>(props.variants?.[0]?.value ?? NATIVE_FLAVOR)
 const expanded = ref(false)
 
-const active = computed(() => props.nodes.find(node => flavorOf(node.lang) === flavor.value) ?? props.nodes[0])
+const active = computed(
+  () =>
+    props.variants?.find(item => item.value === flavor.value)?.node ??
+    props.nodes.find(node => flavorOf(node.lang) === flavor.value) ??
+    props.nodes[0]
+)
 const loadable = computed(() => props.nodes.find(node => node.load))
 const demo = () => (props.preview && loadable.value?.load ? demoOf(loadable.value.load) : null)
 const collapsible = computed(() => isCodeCollapsible(active.value?.content ?? ''))
@@ -71,7 +80,9 @@ function resetPanelScroll() {
 
 // 换一份源码就回到顶部：两稿的行数不同，停在上次读到的位置会落到另一份的中段。
 function selectFlavor(value: string) {
-  const next = FLAVOR_ORDER.find(item => item === value)
+  const next = props.variants
+    ? props.variants.find(item => item.value === value)?.value
+    : FLAVOR_ORDER.find(item => item === value)
   if (!next || next === flavor.value) return
   flavor.value = next
   resetPanelScroll()
@@ -150,7 +161,6 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
     <div class="isolate">
       <!--
         这一层只画边框和圆角，**不裁剪**：工具条里的控件才能把按压态画全。
-        顶部圆角补在工具条这一层：外层不裁剪，工具条的白底会自己溢出到圆角之外。
 
         外框圆角按同心半径取：内圈小圆角（`--wui-radius-menu`）+ 卡片横向内边距
         （`--wui-space-3`），两圈曲率才贴合。
@@ -161,10 +171,30 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
           单围栏的语言标签做成同高的 36px 胶囊，两者都靠 `items-center`；横向 12px 与代码区一致。
         -->
         <div
-          class="relative z-10 flex flex-wrap items-center justify-between gap-3 rounded-t-[var(--codeblock-radius)] bg-(--wui-color-page) p-3"
+          class="z-10 flex flex-wrap items-center justify-between gap-3 rounded-t-[var(--codeblock-radius)] p-3"
+          :class="collapsible && expanded ? 'sticky top-[52px]' : 'relative'"
         >
           <web-ui-segmented
-            v-if="nodes.length > 1"
+            v-if="variants && variants.length > 1"
+            :value="flavor"
+            variant="inset"
+            :aria-label="switchLabel"
+            class="[--wui-font-size:12px] [--wui-segmented-trigger-px:6px]"
+            @input="selectFlavorFromEvent"
+          >
+            <web-ui-segmented-trigger v-for="item in variants" :key="item.value" :value="item.value">
+              <span class="flex items-center gap-1.5">
+                <web-ui-icon
+                  v-if="PACKAGE_MANAGER_ICONS[item.value]"
+                  :icon="PACKAGE_MANAGER_ICONS[item.value]"
+                  :size="13"
+                />
+                {{ item.label }}
+              </span>
+            </web-ui-segmented-trigger>
+          </web-ui-segmented>
+          <web-ui-segmented
+            v-else-if="nodes.length > 1"
             :value="flavor"
             variant="inset"
             data-flavor-switch
@@ -182,7 +212,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
 
           <span
             v-else
-            class="inline-flex h-9 items-center rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-2 font-mono text-[11px] leading-none tracking-wide text-(--wui-color-text-secondary) uppercase"
+            class="px-1 font-mono text-[11px] leading-none tracking-wide text-(--wui-color-text-secondary) uppercase"
           >
             {{ active?.lang || 'text' }}
           </span>
@@ -228,7 +258,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
         </div>
 
         <!--
-          关闭态露出 128px：12px 上边距 + 4 行 24px + 第 5 行的 20px。末端渐隐/晕染带取
+          关闭态露出 128px：5 行 24px 加第 6 行的 8px。末端渐隐/晕染带取
           peek 的 60%（76.8px），「下面还有内容」由一整段发虚说出来，而不是只把最后一行切一半。
 
           收起态这块露出的代码就是展开触发区（点哪一行都算），展开后它退化成一段可滚动的正文，
@@ -248,7 +278,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
             :id="panelId"
             :options="appScrollbarsOptions"
             :events="codeScrollbarsEvents"
-            class="max-h-[512px] overflow-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 font-mono text-xs leading-6"
+            class="overflow-x-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 pt-0 font-mono text-xs leading-6"
             data-code
           >
             <!-- 生成期的高亮 HTML，不是运行时拼的用户输入。 -->
@@ -261,7 +291,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
           :id="panelId"
           :options="appScrollbarsOptions"
           :events="codeScrollbarsEvents"
-          class="max-h-[512px] overflow-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 font-mono text-xs leading-6"
+          class="overflow-x-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 pt-0 font-mono text-xs leading-6"
           data-code
         >
           <!-- 生成期的高亮 HTML，不是运行时拼的用户输入。 -->

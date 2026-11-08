@@ -12,7 +12,8 @@
         "!**/*.test.mjs",
         "!**/__tests__/**",
         "$TURBO_ROOT$/packages/web-ui/docs/**",
-        "$TURBO_ROOT$/packages/web-ui/CHANGELOG.md"
+        "$TURBO_ROOT$/packages/web-ui/CHANGELOG.md",
+        "$TURBO_ROOT$/packages/web-ui/README*.md"
       ]
     },
     "test": {
@@ -21,6 +22,7 @@
         "!**/*.md",
         "$TURBO_ROOT$/packages/web-ui/docs/**",
         "$TURBO_ROOT$/packages/web-ui/CHANGELOG.md",
+        "$TURBO_ROOT$/packages/web-ui/README*.md",
         "$TURBO_ROOT$/packages/monorepo-kit/src/exec/shell-i18n-catalog.ts",
         "$TURBO_ROOT$/packages/monorepo-kit/src/exec/exec.ts"
       ]

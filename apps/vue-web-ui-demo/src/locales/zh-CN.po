@@ -262,3 +262,39 @@ msgstr "命令式"
 #: src/pages/home/index.vue
 msgid "函数调用触发"
 msgstr "函数调用触发"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "快速开始"
+msgstr "快速开始"
+
+#: src/components/search/index.vue
+#: src/components/search/index.vue
+msgid "搜索"
+msgstr "搜索"
+
+#: src/components/search/index.vue
+#: src/components/search/index.vue
+msgid "搜索页面和组件"
+msgstr "搜索页面和组件"
+
+#: src/components/search/index.vue
+msgid "搜索结果"
+msgstr "搜索结果"
+
+#: src/components/search/index.vue
+msgid "没有匹配结果"
+msgstr "没有匹配结果"
+
+#: src/pages/home/index.vue
+msgid "安装"
+msgstr "安装"
+
+#: src/pages/getting-started.vue
+#: src/pages/home/index.vue
+msgid "包管理器"
+msgstr "包管理器"
+
+#: src/pages/home/index.vue
+msgid "支持触摸&手势"
+msgstr "支持触摸&手势"

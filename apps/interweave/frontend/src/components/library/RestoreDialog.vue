@@ -85,7 +85,7 @@ function submit() {
     no-backdrop-close
     footer-orientation="horizontal"
     :style="{ '--wui-dialog-footer-justify': mobile ? undefined : 'flex-end' }"
-    class="[--wui-dialog-width:min(90vw,880px)] [--wui-dialog-max-height:calc(min(90vh,640px)_-_142px)]"
+    class="[--wui-dialog-width:min(90vw,880px)] [--wui-dialog-max-height:calc(min(82vh,560px)_-_142px)]"
     @open-change="handleOpenChange"
   >
     <span slot="header">找回资源</span>
@@ -129,42 +129,52 @@ function submit() {
       class="grid min-h-0 grid-cols-2 gap-5 mobile:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
       style="height: var(--wui-dialog-max-height)"
     >
-      <section class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden">
-        <p class="m-0 min-w-0 text-[13px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
+      <section
+        class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-clip [overflow-clip-margin:6px]"
+      >
+        <p class="m-0 min-w-0 text-[14px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
           为失效资源指定新的位置；文件会按队列顺序选择，链接可直接编辑。
         </p>
         <div
-          class="grid h-full min-h-0 place-content-center justify-items-center gap-3 rounded-3xl bg-[#f0f0f4] px-6 py-7 text-center dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] mobile:gap-2 mobile:px-4 mobile:py-2 max-[900px]:p-5"
+          class="grid h-full min-h-0 place-content-center justify-items-center rounded-[18px] border border-black/6 bg-[#f0f0f4] px-6 py-7 text-center dark:border-white/8 dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] mobile:px-4 mobile:py-2 max-[900px]:p-5"
         >
-          <span
-            class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) mobile:size-10 mobile:rounded-xl"
+          <web-ui-empty
+            class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:52px] mobile:[--wui-empty-icon-size:40px]"
           >
-            <web-ui-icon :icon="lucideFolderOpen" :size="23" />
-          </span>
-          <span
-            class="text-[15px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
-          >
-            {{ queue.length }} 个资源待找回
-          </span>
-          <span class="text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]">
-            取消选择不会中断其他项目
-          </span>
+            <span
+              slot="icon"
+              class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) mobile:size-10 mobile:rounded-xl"
+            >
+              <web-ui-icon :icon="lucideFolderOpen" :size="23" />
+            </span>
+            <span
+              class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
+            >
+              {{ queue.length }} 个资源待找回
+            </span>
+            <span
+              slot="description"
+              class="text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
+            >
+              取消选择不会中断其他项目
+            </span>
+          </web-ui-empty>
         </div>
       </section>
 
       <aside
-        class="relative grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-hidden border-0 bg-transparent p-0"
+        class="relative grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-clip [overflow-clip-margin:6px] border-0 bg-transparent p-0"
         aria-labelledby="library-restore-queue-title"
       >
-        <div class="flex min-h-6 items-center justify-between">
+        <div class="flex h-7 min-w-0 items-center justify-between gap-2">
           <h3
             id="library-restore-queue-title"
-            class="m-0 flex items-center gap-1.5 text-[13px] font-semibold text-[#22212a] dark:text-(--wui-color-text)"
+            class="m-0 flex items-center gap-1.5 text-[14px] font-semibold text-[#22212a] dark:text-(--wui-color-text)"
           >
             将找回
           </h3>
           <span
-            class="rounded-full bg-black/4 px-2 py-1 text-xs leading-none text-[#6a6a6a] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] dark:text-(--wui-color-text-secondary)"
+            class="inline-flex h-7 items-center text-xs leading-none text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
           >
             {{ queue.length }} 项
           </span>
@@ -173,7 +183,7 @@ function submit() {
         <OverlayScrollbarsComponent
           v-if="queue.length"
           :options="appScrollbarsOptions"
-          class="h-full min-h-0 overflow-y-auto rounded-3xl bg-white dark:bg-(--wui-color-surface-raised)"
+          class="h-full min-h-0 overflow-y-auto rounded-[18px] border border-black/6 bg-white dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
         >
           <!--
             scrollbar 接在宿主 div 上，列表留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己
@@ -200,7 +210,7 @@ function submit() {
                     : 'bg-[rgb(5_150_105/0.1)] text-[#059669]'
                 "
               >
-                <web-ui-icon :icon="item.kind === 'file' ? lucideFile : lucideGlobe" :size="16" />
+                <web-ui-icon :icon="item.kind === 'file' ? lucideFile : lucideGlobe" />
               </span>
               <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
                 <div class="flex min-h-8 items-center gap-2">
@@ -245,7 +255,7 @@ function submit() {
 
         <div
           v-else
-          class="grid h-full min-h-0 place-items-center rounded-3xl bg-white dark:bg-(--wui-color-surface-raised)"
+          class="grid h-full min-h-0 place-items-center rounded-[18px] border border-black/6 bg-white dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
         >
           <web-ui-empty :size="40" description="暂无待找回资源" />
         </div>
@@ -269,7 +279,7 @@ function submit() {
       :disabled="queue.length === 0"
       @click="submit"
     >
-      <web-ui-icon slot="prefix" :icon="lucideUndo2" :size="16" />
+      <web-ui-icon slot="prefix" :icon="lucideUndo2" />
       {{ queue.length > 1 ? '批量找回' : '找回' }}
     </web-ui-button>
   </web-ui-dialog>

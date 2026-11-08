@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Checkbox" },
+  { label: 'p', content: "English | <a href=\"./checkbox.CN.md\">简体中文</a>" },
   { label: 'p', content: "A single checkbox that toggles with Enter / Space. It integrates with a native <code>&lt;form></code> and submits <code>value</code> into <code>FormData</code> when checked." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

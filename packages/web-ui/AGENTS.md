@@ -40,7 +40,7 @@ _Avoid_: 用 context 承载成员追踪或上行写回、在子项上用公开�
 - 语料住在被发布的包里，所以本包自带 [`turbo.json`](./turbo.json) 覆写 `build` 与 `test` 的 `inputs`：根 `turbo.json` 的 `!**/*.md` 把它们排除在哈希外，而排除项是绝对的，只能在这里反过来「语料进、散文 md 按名字排」。动 `docs/` 的布局或往包根加 md 要同步那份名单——新放的 md 会默认变成 build 输入，名单由仓库守卫 `@greypan/monorepo-kit` 导出的 `webUiDocsInputs`（[源码](../monorepo-kit/src/turbo/docs-inputs.ts)，本仓配置在 [scripts/policies/web-ui-docs-inputs.mjs](../../scripts/policies/web-ui-docs-inputs.mjs)）守。
 - 同一份源码在三处必须一致：markdown 围栏、消费方 demo 的 `src/generated/**/codeblock/` 落盘文件、页面 `<pre>` 的可见文本。落盘文件比围栏多一个行尾换行（落盘前 `trimEnd()` 再补一个，见 `codeFileOf`），除此之外三处逐字相同。改任何一段转义、高亮或落盘路径，都要让这三处一起继续成立。
 - 围栏语言就是落盘扩展名：React 写 `tsx`、Vue 写 `vue`。引擎不维护语言白名单，所有围栏都落盘，只有命中宿主 `exec` 的语言才在 meta 里带 `load`。
-- 示例标题（`## Samples` 下的 `###`）是专业术语，两侧同文、写成英文（`### Basic`）。它现在是普通 `h3` 节点（`section-<n>` 锚点），不再派生产物文件名；跟着语种翻译的是正文说明与 `## API` 的列名。
+- 示例标题按文档语种编写：中文文档使用中文，英文文档使用英文，组件名与专业术语保留原文。标题是普通节点，锚点按文档顺序生成为 `section-<n>`，不派生产物文件名。
 - 消费方 demo 的 `src/generated/**` 不手改：那几份产物是生成函数的输出，要改就改 `docs/*.md`。
 - `docs/*.md` 的散文只陈述当前行为、契约与设计意图，不写迁移说明或旧 API 对照：属性改名或移除时改写对应段落，不留「以前叫什么」的历史；兼容性承诺按当前契约写。
 

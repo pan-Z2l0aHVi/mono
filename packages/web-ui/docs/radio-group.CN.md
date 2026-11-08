@@ -1,10 +1,12 @@
 # Radio Group
 
+[English](./radio-group.md) | 简体中文
+
 一组 `<web-ui-radio>` 的容器。它把成员的选中状态收敛成单个 `value`，选中变化时统一派发 `input` / `change`，并负责组级禁用与必填校验。容器提供 `radiogroup` 语义，`direction` 同步为 `aria-orientation`，组级禁用与必填状态分别暴露为 `aria-disabled` 和 `aria-required`。用 `aria-label` 或 `aria-labelledby` 设置组的无障碍名称。四个方向键都能在启用成员间循环移动焦点并选中，`direction` 只决定阅读顺序（RTL 下左右翻转）。成员自己声明的 `name` 在组内不参与提交，表单字段名取组上的 `name`。
 
-## Samples
+## 示例
 
-### Single radio group
+### 单个 radio group
 
 组持有唯一的值：`value` 决定谁被选中，成员的选中态由组下发，页面只读组的值。
 
@@ -47,7 +49,7 @@ function onInput(event: WebUiEvent<WebUiRadioGroup, 'input'>) {
 </script>
 ```
 
-### Direction
+### 方向
 
 `direction` 决定成员横排还是竖排，默认 `vertical`；非法值也回退到 `vertical`。
 
@@ -97,7 +99,7 @@ export default function Demo() {
 </template>
 ```
 
-### Member gap
+### 成员间距
 
 成员之间的间距取 `--wui-radio-group-gap`，默认经 `--wui-space-2` 解析成 8px。覆盖它只换间距，不改排列方向。
 
@@ -139,7 +141,7 @@ export default function Demo() {
 </template>
 ```
 
-### Group-level disabled and required
+### group 的禁用与必填状态
 
 `disabled` 关掉整组的交互，这个禁用态会下发给成员；`required` 让原生表单校验在组没有值时拦截提交。
 
@@ -165,7 +167,7 @@ export default function Demo() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称              | 说明                                                           | 类型                         | 默认值       |
 | ----------------- | -------------------------------------------------------------- | ---------------------------- | ------------ |
@@ -177,14 +179,14 @@ export default function Demo() {
 | `aria-label`      | 组的无障碍名称。                                               | `string \| null`             | `null`       |
 | `aria-labelledby` | 引用提供组无障碍名称的元素 ID。                                | `string \| undefined`        | -            |
 
-### Events
+### 事件
 
 | 名称     | 说明                                           |
 | -------- | ---------------------------------------------- |
 | `input`  | 选中变化时触发，`currentTarget.value` 是新值。 |
 | `change` | 与 `input` 一起派发，语义上表示一次确认。      |
 
-### Slots
+### Slot
 
 | 名称      | 说明                           |
 | --------- | ------------------------------ |
@@ -202,7 +204,7 @@ web-ui-radio-group {
 }
 ```
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                    | 说明                   | 默认值               |
 | ----------------------- | ---------------------- | -------------------- |

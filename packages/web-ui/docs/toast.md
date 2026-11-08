@@ -1,5 +1,7 @@
 # Toast
 
+English | [简体中文](./toast.CN.md)
+
 An imperative toast. Call `toast()` to create one and get its id, then `toast.close(id)` to close it. Calling again with the same `id` updates that toast and does not create a new one. The tables below list the options of `toast()`, the imperative entry points, and the attributes, events, and methods of the `<web-ui-toast>` element itself.
 
 ## Samples

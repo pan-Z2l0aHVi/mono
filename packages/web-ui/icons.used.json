@@ -20,6 +20,7 @@
   "lucide:trash-2",
   "lucide:printer",
   "lucide:settings",
+  "ci:settings-future",
   "lucide:download",
   "lucide:upload",
   "lucide:undo-2",
@@ -52,6 +53,8 @@
   "lucide:package",
   "lucide:pencil",
   "lucide:refresh-cw",
+  "lucide:rotate-cw-clock",
+  "lucide:clock-plus",
   "lucide:tag",
   "lucide:tags",
   "lucide:wrench",
@@ -64,6 +67,8 @@
   "lucide:play",
   "lucide:list-filter",
   "tabler:sort-ascending-letters",
+  "tabler:clock-plus",
+  "tabler:tag-plus",
   "lucide:code",
   "lucide:ellipsis-vertical",
   "heroicons:bars-arrow-down-16-solid",
@@ -71,6 +76,7 @@
   "lucide:list-restart",
   "radix-icons:reset",
   "akar-icons:check",
+  "icon-park-outline:tag-one",
   "bi:check",
   "bi:check-lg",
   "akar-icons:circle-check",
@@ -87,5 +93,7 @@
   "lucide:languages",
   "ant-design:sync-outlined",
   "ic:baseline-phonelink",
-  "ic:round-menu-open"
+  "ic:round-menu-open",
+  "lucide:house",
+  "lucide:shopping-cart"
 ]

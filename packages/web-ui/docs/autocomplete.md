@@ -1,5 +1,7 @@
 # Autocomplete
 
+English | [简体中文](./autocomplete.CN.md)
+
 A single-value selector that accepts input and filters candidates. Typed text filters candidates by `option` label. A selection fills the label back into the input and exposes that option's value as the readonly `selected-value`.
 
 ## Samples
@@ -320,12 +322,12 @@ export default function Demo() {
 
   return (
     <div className="flex flex-col items-start gap-3">
-      <web-ui-autocomplete ref={fieldRef} filter="none">
+      <web-ui-autocomplete ref={fieldRef} filter="none" trigger="click focus">
         <web-ui-textarea
           slot="trigger"
           rows={3}
           className="[--wui-textarea-width:20rem]"
-          placeholder="Multiline trigger: Enter inserts a newline, Escape or blur closes the panel"
+          placeholder="Multiline trigger: Enter inserts a newline, Escape or blur (with `focus` enabled) closes the panel"
         ></web-ui-textarea>
         <web-ui-option value="bug" label="Bug"></web-ui-option>
         <web-ui-option value="feature" label="Feature"></web-ui-option>
@@ -339,12 +341,12 @@ export default function Demo() {
 ```vue
 <template>
   <div class="flex flex-col items-start gap-3">
-    <web-ui-autocomplete ref="field" filter="none">
+    <web-ui-autocomplete ref="field" filter="none" trigger="click focus">
       <web-ui-textarea
         slot="trigger"
         :rows="3"
         class="[--wui-textarea-width:20rem]"
-        placeholder="Multiline trigger: Enter inserts a newline, Escape or blur closes the panel"
+        placeholder="Multiline trigger: Enter inserts a newline, Escape or blur (with `focus` enabled) closes the panel"
       ></web-ui-textarea>
       <web-ui-option value="bug" label="Bug"></web-ui-option>
       <web-ui-option value="feature" label="Feature"></web-ui-option>
@@ -469,6 +471,34 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 </script>
 ```
 
+### Input configuration
+
+The default trigger supports input properties and prefix/suffix slots. Clearing dispatches `input` followed by `change`. Configure a custom trigger directly.
+
+```tsx
+export default function Demo() {
+  return (
+    <web-ui-autocomplete clearable autocomplete="off" placeholder="Search">
+      <span slot="prefix">🔍</span>
+      <span slot="suffix">⌘K</span>
+      <web-ui-option value="react" label="React"></web-ui-option>
+      <web-ui-option value="vue" label="Vue"></web-ui-option>
+    </web-ui-autocomplete>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-autocomplete clearable autocomplete="off" placeholder="Search">
+    <span slot="prefix">🔍</span>
+    <span slot="suffix">⌘K</span>
+    <web-ui-option value="react" label="React"></web-ui-option>
+    <web-ui-option value="vue" label="Vue"></web-ui-option>
+  </web-ui-autocomplete>
+</template>
+```
+
 ## API
 
 ### Props
@@ -476,6 +506,11 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 | Name                 | Description                                                                                                                              | Type                  | Default          |
 | -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ---------------- |
 | `placeholder`        | Input placeholder text.                                                                                                                  | `string`              | `''`             |
+| `type`               | Default input type.                                                                                                                      | `string`              | `'text'`         |
+| `autocomplete`       | Browser autofill hint for the default input.                                                                                             | `string`              | `''`             |
+| `clearable`          | Shows a clear button.                                                                                                                    | `boolean`             | `false`          |
+| `full`               | Makes the default input fill the available width.                                                                                        | `boolean`             | `false`          |
+| `aria-clear-label`   | Accessible name for the clear button.                                                                                                    | `string`              | `''`             |
 | `borderless`         | Ghost form: removes the border, background, backdrop blur, and shadow while keeping padding and the focus ring.                          | `boolean`             | `false`          |
 | `disabled`           | Disabled state: no input, no dropdown.                                                                                                   | `boolean`             | `false`          |
 | `readonly`           | Readonly state: no input, no dropdown.                                                                                                   | `boolean`             | `false`          |
@@ -501,7 +536,7 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 | Name          | Description                                                                                                                                  |
 | ------------- | -------------------------------------------------------------------------------------------------------------------------------------------- |
 | `input`       | Fires on input; `value` is the current text.                                                                                                 |
-| `change`      | Fires when a candidate is selected or a custom value is submitted.                                                                           |
+| `change`      | Fires when a candidate is selected, a custom value is submitted, or the input is cleared.                                                    |
 | `focus`       | Fires when the trigger gains focus.                                                                                                          |
 | `blur`        | Fires when the trigger loses focus.                                                                                                          |
 | `open-change` | Dispatched when gestures or `show()` / `hide()` change the open state; `detail.open` is the current state. Writing `open` does not dispatch. |
@@ -511,6 +546,8 @@ const frameworks = ['Vue', 'React', 'Svelte', 'Angular']
 | Name      | Description                                                                                                        |
 | --------- | ------------------------------------------------------------------------------------------------------------------ |
 | `trigger` | Custom content for the trigger area, replacing the default input.                                                  |
+| `prefix`  | Content before the default input.                                                                                  |
+| `suffix`  | Content after the default input.                                                                                   |
 | `default` | Projects `<web-ui-option>` candidates; other nodes also count as panel content and can carry a custom empty state. |
 
 ### Methods
@@ -533,7 +570,7 @@ Selecting an option fills the text back with that option's label and exposes tha
 
 ArrowDown/ArrowUp/Enter/Escape keyboard navigation is supported; under `none`, ArrowDown no longer auto-opens the panel while it is closed.
 
-Clicking the input only opens the panel, never closes it; closing goes through outside clicks, Escape, selecting a candidate or `hide()`. `hover` opens and closes with pointer entry and exit, and once the pointer leaves both the trigger and the panel and focus is outside them, it closes after `hide-delay`. `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, typing, focus and programmatic calls act immediately. Escape, outside clicks and focus loss close every panel except those in `none`, regardless of whether `trigger` contains `click` or `focus`.
+Clicking the input only opens the panel, never closes it; closing goes through outside clicks, Escape, selecting a candidate or `hide()`. `hover` opens and closes with pointer entry and exit, and once the pointer leaves both the trigger and the panel it closes after `hide-delay` when focus is outside them if `focus` is enabled. `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, typing, focus and programmatic calls act immediately. Outside clicks close panels with `click`, focus loss closes panels with `focus`, and Escape closes panels except those in `none`.
 
 A portal panel reads these variables as resolved on the host when it is created; after updating the host, the portal panel must be reopened for the change to take effect.
 
@@ -559,7 +596,7 @@ Custom triggers follow the same rules as the default trigger: a string `value` c
 
 Sequential focus belongs to the trigger itself, so a custom trigger must be focusable for keyboard users to reach the combobox.
 
-A multiline trigger (an editable `<textarea>`) keeps Enter as a newline: Enter neither selects the highlighted option nor submits a custom value; the panel is closed with Escape or blur. Selecting an option still writes that option's label back into the trigger.
+A multiline trigger (an editable `<textarea>`) keeps Enter as a newline: Enter neither selects the highlighted option nor submits a custom value; the panel closes with Escape or, when `focus` is enabled, blur. Selecting an option still writes that option's label back into the trigger.
 
 A single-line custom trigger keeps the default Enter semantics.
 

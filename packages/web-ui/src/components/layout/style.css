@@ -221,21 +221,13 @@ footer {
   bottom: 0;
 }
 
-@media (width <= 640px) {
-  aside,
-  .sidebar-wrapper {
-    display: none;
-  }
+:host([mobile]) header {
+  align-items: flex-start;
+}
 
-  /* Slot 可能包含展开后的多行 header；Toggle 对齐首行，而不是被整段 header 高度居中。 */
-  header {
-    align-items: flex-start;
-  }
-
-  .mobile-toggle {
-    align-self: flex-start;
-    margin-top: var(--wui-space-2, 8px);
-  }
+:host([mobile]) .mobile-toggle {
+  align-self: flex-start;
+  margin-top: var(--wui-space-2, 8px);
 }
 
 @media (prefers-reduced-motion: reduce) {

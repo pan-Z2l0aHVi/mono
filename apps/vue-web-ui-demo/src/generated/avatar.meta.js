@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Avatar" },
+  { label: 'p', content: "English | <a href=\"./avatar.CN.md\">简体中文</a>" },
   { label: 'p', content: "avatar draws an image from <code>src</code>; when there is no image or the image fails to load, it falls back to the initials of <code>name</code>, and when <code>name</code> is also empty, to the default icon." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Image" },

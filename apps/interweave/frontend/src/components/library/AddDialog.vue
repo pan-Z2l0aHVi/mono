@@ -9,8 +9,8 @@ import {
 } from '@greypan/web-ui'
 import {
   akarIconsCircleCheck,
+  andrsrxnInbox,
   lucideClipboardPaste,
-  lucideInbox,
   lucidePenLine,
   lucideTags,
   lucideTrash2,
@@ -262,13 +262,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             支持本地文件与远程链接，支持拖入或粘贴
           </p>
           <web-ui-tooltip content="粘贴" placement="bottom">
-            <web-ui-button
-              icon
-              variant="secondary"
-              size="28"
-              aria-label="粘贴复制的文件"
-              @click="emit('requestFilePaths')"
-            >
+            <web-ui-button icon size="28" aria-label="粘贴复制的文件" @click="emit('requestFilePaths')">
               <web-ui-icon :icon="lucideClipboardPaste" :size="15" />
             </web-ui-button>
           </web-ui-tooltip>
@@ -292,27 +286,26 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           @dragleave.prevent="dragActive = false"
           @drop.prevent="handleDrop"
         >
-          <span
-            class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) transition-[background-color] duration-[160ms] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) mobile:size-10 mobile:rounded-xl"
-          >
-            <web-ui-icon :icon="lucideUpload" :size="23" />
-          </span>
-          <span
-            class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
-          >
-            拖入文件，或点按选择
-          </span>
-          <!--
+          <web-ui-empty class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:40px]">
+            <web-ui-icon slot="icon" :icon="lucideUpload" :size="40" />
+            <span
+              class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
+            >
+              拖入文件，或点按选择
+            </span>
+            <!--
             两行各自成行，不靠自动折行：类型枚举有 7 项，按容器宽度自然换行会把
             「代码 / 等文件」这类词组劈开，读起来像缺字。grid 让「可批量添加」
             独立成行，容器变窄时它整体下移而枚举行内部再折。
           -->
-          <span
-            class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
-          >
-            <span>支持图片、视频、音频、文档、网页、代码等文件</span>
-            <span>可批量添加</span>
-          </span>
+            <span
+              slot="description"
+              class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
+            >
+              <span>支持图片、视频、音频、文档、网页、代码等文件</span>
+              <span>可批量添加</span>
+            </span>
+          </web-ui-empty>
         </button>
       </section>
 
@@ -327,9 +320,8 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           >
             待添加
           </h3>
-          <!-- 56px 下限让「0 项」和「12 项」宽度一致，计数跳变时标题行不左右抖动。 -->
           <span
-            class="inline-flex h-7 min-w-14 items-center justify-center rounded-full bg-black/4 px-2 text-xs leading-none text-[#6a6a6a] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_6%,transparent)] dark:text-(--wui-color-text-secondary)"
+            class="inline-flex h-7 items-center text-xs leading-none text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
           >
             {{ queue.length }} 项
           </span>
@@ -446,30 +438,9 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           v-else
           class="grid h-full min-h-0 place-items-center rounded-[18px] border border-black/6 bg-white dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
         >
-          <!--
-            空态以左侧 drop 区为基准对齐，两块内容同构、等高，各自居中后自然落在同一
-            水平线上——不靠单侧 padding 补偿：
-            icon 盒 52px/字形 23px、icon 到文案 12px、标题 16px/600/行高 1.4、
-            标题到说明 12px、说明两行 12px/1.4 行内距 2px，与左侧逐一对应，
-            桌面与 mobile: 各断点同样成对。
-            高度相等的关键是说明同为两行：两行时两侧都是
-            52 + 12 + 22.4 + 12 + (16.8 + 2 + 16.8) = 134px。说明只写一行时右侧会短
-            18.8px、整块被顶高；两侧都两行后不需要补平。文案里的逗号用换行：左栏 drop 区的
-            支持类型说明已经是两行，右栏跟着两行，两侧才对称。
-
-            关键一项是 --wui-empty-min-height: 0：web-ui-empty 的 `.empty` 默认把内容顶端对齐在
-            240px min-block-size 盒内，置 0 后内容才随外层 place-items-center 真正垂直居中。
-            icon 到文案的 6px 基础间距来自组件内部写死的 `.empty-description` margin-top（未开放
-            token），mt-1.5 把它补到左侧 gap-3 的 12px，mobile:mt-0.5 配 gap-2 同理。
-            icon 字形色仍沿用 web-ui-empty 的中性 token：右侧是不可点的空态占位，染成左侧
-            drop 区的强调色会读成可点击目标。
-          -->
-          <web-ui-empty
-            :size="40"
-            class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:52px] mobile:[--wui-empty-icon-size:40px]"
-          >
-            <web-ui-icon slot="icon" :icon="lucideInbox" :size="23" />
-            <span slot="description" class="mt-1.5 grid gap-3 mobile:mt-0.5 mobile:gap-2">
+          <web-ui-empty class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:40px]">
+            <web-ui-icon slot="icon" :icon="andrsrxnInbox" :size="40" />
+            <span slot="description" class="grid gap-3 mobile:gap-2">
               <span
                 class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
               >
@@ -506,8 +477,8 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       :disabled="queue.length === 0"
       @click="emit('submit')"
     >
-      <web-ui-icon slot="prefix" :icon="akarIconsCircleCheck" :size="16" />
-      {{ queue.length > 1 ? '确认批量添加' : '确认添加' }}
+      <web-ui-icon slot="prefix" :icon="akarIconsCircleCheck" />
+      {{ queue.length > 1 ? '批量添加' : '添加' }}
     </web-ui-button>
   </web-ui-dialog>
 </template>

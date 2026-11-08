@@ -1,5 +1,7 @@
 # Spinner
 
+English | [简体中文](./spinner.CN.md)
+
 A loading spinner. Use it declaratively in the page, or mount a full-screen instance with the static `WebUiSpinner.show()` / `hide()`.
 
 ## Samples

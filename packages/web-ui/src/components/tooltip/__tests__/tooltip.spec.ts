@@ -54,12 +54,11 @@ describe('WebUiTooltip 组件', () => {
   })
 
   describe('属性：trigger', () => {
-    // 默认集合就是「悬停 + 键盘聚焦」，即指针与焦点两组的取值来源；这里只钉集合语义本身。
-    it('默认是 hover,focus', async () => {
+    it('默认是 hover', async () => {
       const el = createTooltip()
       await waitForUpdate(el)
 
-      expect(el.trigger).toBe('hover,focus')
+      expect(el.trigger).toBe('hover')
 
       cleanupElement(el)
     })
@@ -68,7 +67,7 @@ describe('WebUiTooltip 组件', () => {
       const el = createTooltip()
       el.trigger = ['focus', 'hover'] as unknown as string
 
-      expect(el.trigger).toBe('hover,focus')
+      expect(el.trigger).toBe('hover')
 
       cleanupElement(el)
     })
@@ -80,7 +79,7 @@ describe('WebUiTooltip 组件', () => {
       const unknown = createTooltip({ trigger: 'tap' })
 
       expect(partial.trigger).toBe('click')
-      expect(unknown.trigger).toBe('hover,focus')
+      expect(unknown.trigger).toBe('hover')
 
       cleanupElement(partial)
       cleanupElement(unknown)
@@ -478,7 +477,7 @@ describe('WebUiTooltip 组件', () => {
       cleanupElement(el)
     })
 
-    it('click 集合下悬停不参与开合，失焦仍关闭', async () => {
+    it('click 集合下悬停不参与开合，失焦不关闭', async () => {
       const el = createTooltip({ trigger: 'click', content: '提示' })
       await waitForUpdate(el)
 
@@ -492,7 +491,7 @@ describe('WebUiTooltip 组件', () => {
       el.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
       vi.advanceTimersToNextFrame()
       await waitForUpdate(el)
-      expect(el.isOpen).toBe(false)
+      expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
     })
@@ -531,7 +530,7 @@ describe('WebUiTooltip 组件', () => {
   // 由同目录 `focus.browser.spec.ts` 覆盖；这里只保留 jsdom 能确定证明的关闭路径。
   describe('焦点离开', () => {
     it('focusout 立即隐藏', async () => {
-      const el = createTooltip({ content: '提示' })
+      const el = createTooltip({ trigger: 'focus', content: '提示' })
       await waitForUpdate(el)
 
       el.open = true

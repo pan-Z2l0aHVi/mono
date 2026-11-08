@@ -30,7 +30,11 @@ const themeStyle = computed(() => ({ '--wui-color-accent': settings.accent }))
 </script>
 
 <template>
-  <web-ui-theme :appearance="settings.appearance" :style="themeStyle">
+  <web-ui-theme
+    :appearance="settings.appearance"
+    :motion="settings.reducedMotion ? 'reduced' : 'system'"
+    :style="themeStyle"
+  >
     <AppLayout />
   </web-ui-theme>
 </template>

@@ -1,5 +1,7 @@
 # Dropdown Divider
 
+English | [简体中文](./dropdown-divider.CN.md)
+
 A divider inside a menu that separates groups of menu items.
 
 It has no props, events, or slots, and keyboard navigation does not stop on it. The menu only moves focus to `<web-ui-dropdown-item>`; the divider itself declares `role="separator"`.

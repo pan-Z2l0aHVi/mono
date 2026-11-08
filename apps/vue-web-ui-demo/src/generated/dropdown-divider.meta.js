@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Dropdown Divider" },
+  { label: 'p', content: "English | <a href=\"./dropdown-divider.CN.md\">简体中文</a>" },
   { label: 'p', content: "A divider inside a menu that separates groups of menu items." },
   { label: 'p', content: "It has no props, events, or slots, and keyboard navigation does not stop on it. The menu only moves focus to <code>&lt;web-ui-dropdown-item></code>; the divider itself declares <code>role=\"separator\"</code>." },
   { label: 'p', content: "Place it among the children of <code>&lt;web-ui-dropdown></code> / <code>&lt;web-ui-context-menu></code>." },

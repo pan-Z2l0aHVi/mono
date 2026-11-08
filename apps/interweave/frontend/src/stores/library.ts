@@ -80,7 +80,8 @@ export interface ResourceView {
 }
 
 export type AvailabilityFilter = 'all' | 'available' | 'unavailable'
-export type SortOption = 'latest' | 'earliest' | 'name' | 'tagName'
+export type SortOption = 'createdAt' | 'updatedAt' | 'name' | 'tagName'
+export type SortDirection = 'asc' | 'desc'
 
 export interface ListCriteria {
   searchQuery: string
@@ -89,6 +90,7 @@ export interface ListCriteria {
   filterAvailability: AvailabilityFilter
   filterTag: string
   sort: SortOption
+  sortDirection: SortDirection
 }
 
 function toSourceView(source: ResourceDTO['sources'][number]): ResourceSourceView {
@@ -156,13 +158,12 @@ export function filterAndSort(resources: ResourceView[], criteria: ListCriteria)
     const tag = (a.tagNames[0] ?? '').localeCompare(b.tagNames[0] ?? '')
     return tag || byName(a, b)
   }
-  const byTime = (a: ResourceView, b: ResourceView) => (a.updatedAt || a.createdAt) - (b.updatedAt || b.createdAt)
-
   return filtered.sort((a, b) => {
-    if (criteria.sort === 'name') return byName(a, b)
-    if (criteria.sort === 'tagName') return byTagName(a, b)
-    if (criteria.sort === 'earliest') return byTime(a, b)
-    return byTime(b, a)
+    let result: number
+    if (criteria.sort === 'name') result = byName(a, b)
+    else if (criteria.sort === 'tagName') result = byTagName(a, b)
+    else result = a[criteria.sort] - b[criteria.sort]
+    return criteria.sortDirection === 'asc' ? result : -result
   })
 }
 
@@ -174,6 +175,7 @@ interface LibraryState {
   filterAvailability: AvailabilityFilter
   filterTag: string
   sort: SortOption
+  sortDirection: SortDirection
 }
 
 export const useLibraryStore = defineStore('library', {
@@ -184,7 +186,8 @@ export const useLibraryStore = defineStore('library', {
     filterKind: 'all',
     filterAvailability: 'all',
     filterTag: '',
-    sort: 'latest'
+    sort: 'createdAt',
+    sortDirection: 'desc'
   }),
   getters: {
     allTagNames(state): string[] {
@@ -220,7 +223,8 @@ export const useLibraryStore = defineStore('library', {
         filterKind: state.filterKind,
         filterAvailability: state.filterAvailability,
         filterTag: state.filterTag,
-        sort: state.sort
+        sort: state.sort,
+        sortDirection: state.sortDirection
       })
     }
   },

@@ -15,7 +15,7 @@ import {
   type ThemeAppearance,
   type ThemeMotion
 } from '@greypan/doc-demo-kit'
-import { toast, type WebUiLayout, type WebUiSelect } from '@greypan/web-ui'
+import { toast, type WebUiSelect } from '@greypan/web-ui'
 import {
   antDesignSyncOutlined,
   icOutlineMotionPhotosOff,
@@ -32,11 +32,13 @@ import {
   useOverlayScrollbars,
   type OverlayScrollbarsComponentRef
 } from 'overlayscrollbars-react'
-import { useEffect, useLayoutEffect, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
+import { useEffect, useRef, useState } from 'react'
 import { ErrorBoundary } from 'react-error-boundary'
 
 import { useLocale } from '@/i18n/locale'
+import { useMobile } from '@/state/mobile'
+
+import { Search } from '../search'
 
 import { RootErrorFallback } from './root-error-fallback'
 
@@ -84,8 +86,6 @@ function getInitialSidebarWidth(): string {
  * layout 的四个 `*-change` 都是 `bubbles: true, composed: true`，而文档页里示例的 `web-ui-layout` 就挂在
  * 本站侧栏的子树内，它一翻转事件就顺着冒到这里。只采信自己这一层：窄视口下点示例的 Toggle，本站 drawer
  * 会跟着打开（实测 `shellDrawerOpen: true`，命中的那条事件 `target` 是示例元素）；挂载那四次嵌套的
- * `mobile-change` 还会把 flushSync 送进 React 提交阶段，报 "flushSync was called from inside a lifecycle
- * method"。
  */
 function isOwnLayoutEvent(event: Event): boolean {
   return event.target === event.currentTarget
@@ -153,32 +153,12 @@ export function Root() {
   const [themeAppearance, setThemeAppearance] = useState<ThemeAppearance>(getInitialThemeAppearance)
   const [themeMotion, setThemeMotion] = useState<ThemeMotion>(getInitialThemeMotion)
   const [bannerVisible, setBannerVisible] = useState(true)
+  const [searchOpen, setSearchOpen] = useState(false)
   const [sidebarCollapsed, setSidebarCollapsed] = useState(false)
   const [sidebarOpen, setSidebarOpen] = useState(false)
   const [desktopSidebarWidth, setDesktopSidebarWidth] = useState<string>(getInitialSidebarWidth)
   const navSidebarRef = useRef<OverlayScrollbarsComponentRef<'div'> | null>(null)
-  // 移动端判定由 web-ui-layout 给出（它同时决定渲染桌面树还是 drawer）：demo 不自己写断点。
-  const layoutRef = useRef<WebUiLayout | null>(null)
-  const [isMobileSidebar, setIsMobileSidebar] = useState(false)
-  /*
-   * 先读后订阅：连接那一刻 layout 就可能已经派发过 mobile-change，而 useLayoutEffect 的监听是在
-   * 插入之后才挂上的，接不到那一次，所以初值必须自己读。运行时跨断点则要 flushSync 同步回写——
-   * layout 在媒体查询变化的那一刻派发事件，React 从 DOM 事件里 setState 走的是 scheduler 的宏任务，
-   * 会晚于 layout 自己的 microtask 渲染，实测留下 2/221 帧「drawer 已渲染、sidebar-width 仍是桌面值」。
-   */
-  useLayoutEffect(() => {
-    const layout = layoutRef.current
-    if (!layout) return
-
-    setIsMobileSidebar(layout.mobile)
-    const syncMobileSidebarViewport = (event: Event) => {
-      if (!isOwnLayoutEvent(event)) return
-      const next = (event as CustomEvent<{ mobile: boolean }>).detail.mobile
-      flushSync(() => setIsMobileSidebar(next))
-    }
-    layout.addEventListener('mobile-change', syncMobileSidebarViewport)
-    return () => layout.removeEventListener('mobile-change', syncMobileSidebarViewport)
-  }, [])
+  const isMobileSidebar = useMobile()
   const sidebarWidth = isMobileSidebar ? 'min(320px, 80vw)' : desktopSidebarWidth
   /*
    * collapse 是桌面端的密度偏好，移动端 drawer 恒以展开态呈现同一份导航：drawer 宽
@@ -262,7 +242,7 @@ export function Root() {
         <div className="min-h-screen bg-(--wui-color-page) text-(--wui-color-text)">
           {routeTitle ? <title>{routeTitle}</title> : null}
           <web-ui-layout
-            ref={layoutRef}
+            mobile={isMobileSidebar}
             className="mobile:[--wui-layout-sidebar-radius:38px]"
             sidebarCollapsible
             header-glow
@@ -289,7 +269,7 @@ export function Root() {
                   aria-label="关闭横幅"
                   onClick={() => setBannerVisible(false)}
                 >
-                  <web-ui-icon className="text-(--wui-color-on-accent)" icon={lucideX} size={16}></web-ui-icon>
+                  <web-ui-icon className="text-(--wui-color-on-accent)" icon={lucideX}></web-ui-icon>
                 </web-ui-button>
                 <span className="col-start-2 text-center">🎉 欢迎使用 web-ui 组件库！</span>
               </div>
@@ -300,72 +280,79 @@ export function Root() {
               slot="header"
               className="flex h-full w-full items-center justify-end gap-4 px-4 py-2 mobile:w-[calc(100vw-60px)] mobile:gap-1.5 mobile:px-2 mobile:py-2"
             >
-              <web-ui-select variant="icon" value={themeMotion} aria-label="全局动效" onChange={updateThemeMotion}>
-                <web-ui-icon
-                  slot="trigger"
-                  icon={
-                    themeMotion === 'full'
-                      ? icOutlineMotionPhotosOn
-                      : themeMotion === 'reduced'
-                        ? icOutlineMotionPhotosOff
-                        : antDesignSyncOutlined
-                  }
-                  size={18}
-                ></web-ui-icon>
-                <web-ui-option value="full" label="完整动效">
-                  完整动效
-                </web-ui-option>
-                <web-ui-option value="reduced" label="减弱动效">
-                  减弱动效
-                </web-ui-option>
-                <web-ui-option value="system" label="跟随系统">
-                  跟随系统
-                </web-ui-option>
-              </web-ui-select>
-              <web-ui-select
-                variant="icon"
-                value={themeAppearance}
-                placement="bottom"
-                aria-label="全局主题"
-                onChange={updateThemeAppearance}
+              <div
+                className={
+                  searchOpen ? 'flex items-center gap-4 mobile:hidden' : 'flex items-center gap-4 mobile:gap-1.5'
+                }
               >
-                <web-ui-icon
-                  slot="trigger"
-                  icon={
-                    themeAppearance === 'light' ? lucideSun : themeAppearance === 'dark' ? lucideMoon : lucideContrast
-                  }
-                  size={18}
-                ></web-ui-icon>
-                {/* 外观名称由 Wuchale 壳文案统一翻译成 Light / Dark。 */}
-                <web-ui-option value="light" label="浅色模式">
-                  浅色模式
-                </web-ui-option>
-                <web-ui-option value="dark" label="深色模式">
-                  深色模式
-                </web-ui-option>
-                <web-ui-option value="system" label="跟随系统">
-                  跟随系统
-                </web-ui-option>
-              </web-ui-select>
-              <web-ui-select
-                variant="icon"
-                value={locale}
-                disabled={localePending}
-                aria-busy={localePending ? 'true' : 'false'}
-                aria-label="全局语言"
-                onChange={updateLocale}
-              >
-                <web-ui-icon slot="trigger" icon={lucideLanguages} size={18}></web-ui-icon>
-                <web-ui-option value="zh-CN" label={ZH_CN_LABEL}>
-                  {ZH_CN_LABEL}
-                </web-ui-option>
-                <web-ui-option value="en" label={EN_LABEL}>
-                  {EN_LABEL}
-                </web-ui-option>
-              </web-ui-select>
-              <span className="sr-only" role="status">
-                {localePending ? '正在切换语言' : ''}
-              </span>
+                <web-ui-select variant="icon" value={themeMotion} aria-label="全局动效" onChange={updateThemeMotion}>
+                  <web-ui-icon
+                    slot="trigger"
+                    icon={
+                      themeMotion === 'full'
+                        ? icOutlineMotionPhotosOn
+                        : themeMotion === 'reduced'
+                          ? icOutlineMotionPhotosOff
+                          : antDesignSyncOutlined
+                    }
+                    size={18}
+                  ></web-ui-icon>
+                  <web-ui-option value="full" label="完整动效">
+                    完整动效
+                  </web-ui-option>
+                  <web-ui-option value="reduced" label="减弱动效">
+                    减弱动效
+                  </web-ui-option>
+                  <web-ui-option value="system" label="跟随系统">
+                    跟随系统
+                  </web-ui-option>
+                </web-ui-select>
+                <web-ui-select
+                  variant="icon"
+                  value={themeAppearance}
+                  placement="bottom"
+                  aria-label="全局主题"
+                  onChange={updateThemeAppearance}
+                >
+                  <web-ui-icon
+                    slot="trigger"
+                    icon={
+                      themeAppearance === 'light' ? lucideSun : themeAppearance === 'dark' ? lucideMoon : lucideContrast
+                    }
+                    size={18}
+                  ></web-ui-icon>
+                  {/* 外观名称由 Wuchale 壳文案统一翻译成 Light / Dark。 */}
+                  <web-ui-option value="light" label="浅色模式">
+                    浅色模式
+                  </web-ui-option>
+                  <web-ui-option value="dark" label="深色模式">
+                    深色模式
+                  </web-ui-option>
+                  <web-ui-option value="system" label="跟随系统">
+                    跟随系统
+                  </web-ui-option>
+                </web-ui-select>
+                <web-ui-select
+                  variant="icon"
+                  value={locale}
+                  disabled={localePending}
+                  aria-busy={localePending ? 'true' : 'false'}
+                  aria-label="全局语言"
+                  onChange={updateLocale}
+                >
+                  <web-ui-icon slot="trigger" icon={lucideLanguages} size={18}></web-ui-icon>
+                  <web-ui-option value="zh-CN" label={ZH_CN_LABEL}>
+                    {ZH_CN_LABEL}
+                  </web-ui-option>
+                  <web-ui-option value="en" label={EN_LABEL}>
+                    {EN_LABEL}
+                  </web-ui-option>
+                </web-ui-select>
+                <span className="sr-only" role="status">
+                  {localePending ? '正在切换语言' : ''}
+                </span>
+              </div>
+              <Search open={searchOpen} onOpenChange={setSearchOpen} />
             </div>
             <OverlayScrollbarsComponent
               slot="sidebar"
@@ -381,6 +368,14 @@ export function Root() {
                   active={isNavActive(pathname, '/home')}
                   collapsed={navCollapsed}
                   title={navCollapsed ? undefined : '组件总览'}
+                  onNavigate={() => setSidebarOpen(false)}
+                />
+                <SidebarNavLink
+                  to="/getting-started"
+                  label="快速开始"
+                  active={isNavActive(pathname, '/getting-started')}
+                  collapsed={navCollapsed}
+                  title={navCollapsed ? undefined : '快速开始'}
                   onNavigate={() => setSidebarOpen(false)}
                 />
                 <SidebarNavLink

@@ -25,6 +25,7 @@ export class WebUiInput extends FormAssociated(LitElement) {
 
   @property({ type: String, reflect: true }) type = 'text'
   @property({ type: String, reflect: true }) placeholder = ''
+  @property({ type: String, reflect: true }) autocomplete = ''
   @property({ type: String, reflect: true }) name = ''
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true }) readonly = false
@@ -106,7 +107,7 @@ export class WebUiInput extends FormAssociated(LitElement) {
   private _onSlotChange(e: Event) {
     if (!(e.target instanceof HTMLSlotElement)) return
     const slot = e.target
-    const hasContent = slot.assignedElements().length > 0
+    const hasContent = slot.assignedElements({ flatten: true }).length > 0
     if (slot.name === 'prefix') this._hasPrefix = hasContent
     if (slot.name === 'suffix') this._hasSuffix = hasContent
   }
@@ -187,6 +188,7 @@ export class WebUiInput extends FormAssociated(LitElement) {
           id=${this._fieldId}
           type=${this.type}
           placeholder=${this.placeholder}
+          autocomplete=${ifDefined(this.autocomplete || undefined)}
           name=${this.name}
           aria-label=${ifDefined(this.ariaLabel)}
           ?disabled=${this._isDisabled}

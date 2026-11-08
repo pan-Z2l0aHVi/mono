@@ -1,5 +1,7 @@
 # Context Menu
 
+English | [简体中文](./context-menu.CN.md)
+
 A context menu opened by right-click. The first child element in the default slot is the trigger area and the remaining child elements are menu items (`<web-ui-dropdown-item>` and the like). While open the menu is modal, and clicking blank space only closes the menu.
 
 ## Samples

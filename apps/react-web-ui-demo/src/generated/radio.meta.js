@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Radio" },
+  { label: 'p', content: "English | <a href=\"./radio.CN.md\">简体中文</a>" },
   { label: 'p', content: "A single radio button that shares the selection-control box model rules with <code>&lt;web-ui-checkbox></code>; <code>&lt;web-ui-radio-group></code> is responsible for keeping a single selection across a set of options." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

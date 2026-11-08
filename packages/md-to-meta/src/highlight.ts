@@ -30,15 +30,16 @@ function escapeHtml(text: string): string {
  */
 export async function highlight(code: string, lang: string, file: string): Promise<string> {
   if (!lang) return plain(code)
+  const highlightLang = ['npm', 'pnpm', 'bun', 'yarn'].includes(lang) ? 'bash' : lang
   const hl = await highlighter()
   try {
-    await hl.loadLanguage(lang as never)
+    await hl.loadLanguage(highlightLang as never)
   } catch {
     return plain(code)
   }
   // 仓库文档的生成结果必须完整、可重建；分词不按机器负载截断着色。
   const html = hl.codeToHtml(code, {
-    lang,
+    lang: highlightLang,
     themes: THEMES,
     defaultColor: false,
     tokenizeTimeLimit: 0,

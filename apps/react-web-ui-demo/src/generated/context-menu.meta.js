@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Context Menu" },
+  { label: 'p', content: "English | <a href=\"./context-menu.CN.md\">简体中文</a>" },
   { label: 'p', content: "A context menu opened by right-click. The first child element in the default slot is the trigger area and the remaining child elements are menu items (<code>&lt;web-ui-dropdown-item></code> and the like). While open the menu is modal, and clicking blank space only closes the menu." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

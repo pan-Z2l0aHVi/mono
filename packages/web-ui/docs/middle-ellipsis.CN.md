@@ -1,10 +1,12 @@
 # Middle Ellipsis
 
+[English](./middle-ellipsis.md) | 简体中文
+
 单行中间省略：保留首尾，去掉中间，例如 `very-long-file-…-abcdefghij.txt`。切点一律落在字素簇边界上，不会劈开代理对、组合符序列或 ZWJ emoji。
 
-## Samples
+## 示例
 
-### Keep both ends
+### 保留两端
 
 `text-overflow: ellipsis` 只保住头部，长文件名因此丢掉真正区分它们的扩展名。中间省略把头尾都留下。两种写法都要求单行，并且有确定的行内尺寸。
 
@@ -46,7 +48,7 @@ const FILENAME = 'very-long-file-name-abcdefghij.txt'
 </script>
 ```
 
-### Mixed CJK and ASCII
+### 中英文混排
 
 汉字与 ASCII 混排时，切点仍落在字素簇边界，不会切出半个字符。第二行用 `marker-position: 80` 把更多空间留给尾部。
 
@@ -88,7 +90,7 @@ const CJK_TITLE = '海外增长与留存复盘报告-2026年第二季度终稿-v
 </script>
 ```
 
-### Long strings without spaces and grapheme clusters
+### 无空格长文本与字素簇
 
 无空格长串同样按宽度切；ZWJ 序列（👩‍💻）与「基字符 + 变体选择符」（⚠️）整簇保留，不会出现半个 emoji 或落单的连接符。两个串写成转义，因为 `U+200D` 与 `U+FE0F` 零宽，字面量读不出来。
 
@@ -132,7 +134,7 @@ const CLUSTERS = `${'\u{1F469}\u200D\u{1F4BB}'.repeat(16)}${'\u{26A0}\uFE0F}'.re
 </script>
 ```
 
-### Marker
+### 标记
 
 `marker` 换掉中间的省略号。空串表示确实截断了，只是不给可见信号，完整原文在 `title` 里。
 
@@ -182,7 +184,7 @@ const FILENAME = 'very-long-file-name-abcdefghij.txt'
 </script>
 ```
 
-### Marker position
+### 标记位置
 
 `marker-position` 是标记所在的横向比例，取值 0 到 100，默认 `50`。`0` 只剩头部，等价于末尾省略；`100` 只剩尾部。头部是路径噪声、尾部才是扩展名的场景，取大于 50 的值。
 
@@ -220,7 +222,7 @@ const POSITIONS = [0, 50, 80, 100]
 </script>
 ```
 
-### Container width
+### 容器宽度
 
 宽度由容器给出，容器变化后重新切分：缩窄截得更狠，放宽则收回截断。两个盒子各带宽度上限，保证宽屏下仍会溢出，也仍能看出截断。
 
@@ -264,7 +266,7 @@ const LONG_PATH = 'assets/images/screenshots/2026/06/very-long-file-name-abcdefg
 
 ## API
 
-### Props
+### 属性
 
 | 名称              | 说明                                                         | 类型     | 默认值 |
 | ----------------- | ------------------------------------------------------------ | -------- | ------ |

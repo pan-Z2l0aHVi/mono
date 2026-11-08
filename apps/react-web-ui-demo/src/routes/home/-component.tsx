@@ -4,14 +4,30 @@ import {
   lucideCode,
   lucideKeyboard,
   lucideLayoutGrid,
-  lucidePackage,
+  lucideSlidersHorizontal,
   icBaselinePhonelink,
   lucideSparkles,
   tablerBrandTypescript
 } from '@greypan/web-ui/icons'
 import { Fragment } from 'react'
 
+import Codeblock from '@/components/codeblock'
 import QuickLinkCard from '@/components/quick-link-card'
+
+const INSTALL_COMMANDS = [
+  ['npm', 'npm install @greypan/web-ui'],
+  ['pnpm', 'pnpm add @greypan/web-ui'],
+  ['bun', 'bun add @greypan/web-ui'],
+  ['yarn', 'yarn add @greypan/web-ui']
+].map(([name, command]) => ({
+  value: name!,
+  label: name!,
+  node: {
+    label: 'codeblock' as const,
+    lang: name,
+    content: `<pre class="shiki mdm-code"><code><span class="line"><span class="line-number">1</span><span style="--shiki-light:#6F42C1;--shiki-dark:#B392F0">${name}</span><span style="--shiki-light:#032F62;--shiki-dark:#9ECBFF">${command!.slice(name!.length)}</span></span></code></pre>`
+  }
+}))
 
 // 产品名、图片替代文本与组件名都是专有名词，中英两版保持一致，因此不进 wuchale 语料。
 const PRODUCT_NAME = 'Web UI'
@@ -77,14 +93,14 @@ const quickLinkGroups: QuickLinkGroup[] = [
 
 // 能力项同样延迟到渲染期取文案，切语种时随页面重新求值。
 const features = [
-  { id: 'web-components', icon: lucidePackage, label: () => 'Web Components' },
   { id: 'cross-framework', icon: lucideCode, label: () => '跨框架一致' },
   { id: 'typescript', icon: tablerBrandTypescript, label: () => 'TypeScript 类型安全' },
   { id: 'atomic', icon: lucideBoxes, label: () => '原子组件' },
-  { id: 'motion', icon: lucideSparkles, label: () => '丝滑动效' },
+  { id: 'pointer', icon: icBaselinePhonelink, label: () => '响应式设计' },
+  { id: 'touch', icon: lucideSlidersHorizontal, label: () => '支持触摸&手势' },
   { id: 'accessibility', icon: lucideAccessibility, label: () => '无障碍' },
   { id: 'keyboard', icon: lucideKeyboard, label: () => '键盘友好' },
-  { id: 'pointer', icon: icBaselinePhonelink, label: () => '响应式设计' }
+  { id: 'motion', icon: lucideSparkles, label: () => '丝滑动效' }
 ]
 
 function Home() {
@@ -104,10 +120,14 @@ function Home() {
         以 Web Components 为内核的跨框架 UI 组件库。轻量、精致，适配 React、Vue。
       </p>
 
-      <div className="grid w-full max-w-3xl grid-cols-1 gap-x-6 gap-y-3 mb-12 text-left md:grid-cols-2 xl:grid-cols-4">
+      <section className="mb-12 w-full text-left" aria-label="安装">
+        <Codeblock nodes={[]} preview={false} variants={INSTALL_COMMANDS} switchLabel="包管理器" />
+      </section>
+
+      <div className="grid w-full grid-cols-1 gap-x-6 gap-y-3 mb-12 text-left md:grid-cols-2 xl:grid-cols-4">
         {features.map(feature => (
           <div key={feature.id} className="flex items-center gap-2.5 text-xs text-(--wui-color-text-secondary)">
-            <web-ui-icon icon={feature.icon} size={16} className="shrink-0 text-(--wui-color-accent)"></web-ui-icon>
+            <web-ui-icon icon={feature.icon} className="shrink-0 text-(--wui-color-accent)"></web-ui-icon>
             <span className="whitespace-nowrap font-medium leading-tight text-(--wui-color-text)">
               {feature.label()}
             </span>
@@ -116,15 +136,15 @@ function Home() {
       </div>
 
       <div className="w-full text-left">
-        <div className="flex items-center gap-2 mb-5 text-[16px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)">
-          <web-ui-icon icon={lucideLayoutGrid} size={16}></web-ui-icon>
+        <div className="flex items-center justify-center gap-2 mb-10 text-[16px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)">
+          <web-ui-icon icon={lucideLayoutGrid}></web-ui-icon>
           <span>快速预览</span>
         </div>
 
-        <div data-testid="home-quick-links-grid" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-4">
+        <div data-testid="home-quick-links-grid" className="grid grid-cols-1 sm:grid-cols-2 md:grid-cols-3 gap-8">
           {quickLinkGroups.map(group => (
             <Fragment key={group.id}>
-              <div className="col-span-full flex flex-col items-start gap-y-1 pt-2 first:pt-0">
+              <div className="col-span-full flex flex-col items-start gap-y-2 pt-4 first:pt-0">
                 <h2 className="text-[20px] font-semibold text-(--wui-color-text)">{group.title()}</h2>
                 <span className="text-xs text-(--wui-color-text-tertiary)">{group.description()}</span>
               </div>

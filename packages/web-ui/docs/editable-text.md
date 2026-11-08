@@ -1,5 +1,7 @@
 # Editable Text
 
+English | [简体中文](./editable-text.CN.md)
+
 An inline plain-text editor. Click the text to edit it in place; Enter and blur commit, and only Escape cancels. Entering edit mode does not shift the layout.
 
 ## Samples

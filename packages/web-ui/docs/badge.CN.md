@@ -1,10 +1,12 @@
 # Badge
 
+[English](./badge.md) | 简体中文
+
 badge / 通知计数：把 `count` 角标叠加在默认插槽内容的一角；`dot` 模式只显示一个圆点。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 默认插槽是要装饰的内容，`count` 就是角标上的数字。`count` 为 0 时角标不画，被装饰的内容照常显示；要让 0 也占位，就写 `show-zero`。图形（图标）和控件（按钮）都能作为内容被包住。
 
@@ -60,7 +62,7 @@ import { lucideBell } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Number limit
+### 数量限制
 
 `count` 超过 `max` 时画 `max+`；`max` 默认为 99。
 
@@ -102,7 +104,7 @@ export default function Demo() {
 </template>
 ```
 
-### Dot mode
+### 圆点模式
 
 `dot` 只画一枚圆点，不画数字，用来表示「有事发生但不计件」。它是显示层优先级最高的开关：写了 `dot` 就始终显示，`count` 是多少都不参与判定。
 
@@ -144,7 +146,7 @@ export default function Demo() {
 </template>
 ```
 
-### Placement
+### 位置
 
 `placement` 把角标固定在内容盒的四个角之一，默认 `top-right`。非法值不参与渲染：组件把它规范回 `top-right`，宿主 attribute 也随之修正。
 
@@ -194,7 +196,7 @@ export default function Demo() {
 </template>
 ```
 
-### Offset
+### 偏移量
 
 `offset-x` / `offset-y` 在 `placement` 选中的角上做像素微调：负值向内容内侧收，正值向外推。圆角或带描边的内容常常需要收回一点，让角标不落在轮廓外面。
 
@@ -236,7 +238,7 @@ export default function Demo() {
 </template>
 ```
 
-### Standalone use
+### 独立使用
 
 默认插槽空着时没有「内容的一角」可以定位，角标回到行内流，自己就是一枚可读的数字或圆点，适合和文字并排出现在列表项、标签页标题这类位置。
 
@@ -264,7 +266,7 @@ export default function Demo() {
 </template>
 ```
 
-### Hidden
+### 隐藏
 
 `badge-hidden` 让角标整个不画，内容照常显示。它的优先级高于 `dot` 与 `count`：数字或未读状态仍然保留，只是这一次不显示。
 
@@ -306,7 +308,7 @@ export default function Demo() {
 </template>
 ```
 
-### Controlled count
+### 受控计数
 
 `count` 是普通属性，值由页面持有：数字涨到超过 `max` 就显示 `max+`，归 0 时角标自己消失，页面不需要额外做条件渲染。
 
@@ -352,7 +354,7 @@ const count = ref(3)
 
 ## API
 
-### Props
+### 属性
 
 | 名称           | 说明                                                                                                                                    | 类型                                                           | 默认值        |
 | -------------- | --------------------------------------------------------------------------------------------------------------------------------------- | -------------------------------------------------------------- | ------------- |
@@ -366,7 +368,7 @@ const count = ref(3)
 | `aria-label`   | 徽标（`role="status"`）的无障碍名称；设置后 dot / count / show-zero 三种状态都用它（支持 `{count}` 占位）。未设置时回退到内置英文文案。 | `string \| null`                                               | `null`        |
 | `placement`    | badge 位置：`top-right`（默认）、`top-left`、`bottom-right`、`bottom-left`。                                                            | `'top-right' \| 'top-left' \| 'bottom-right' \| 'bottom-left'` | `'top-right'` |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                 |
 | --------- | ------------------------------------ |

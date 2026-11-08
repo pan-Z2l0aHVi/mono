@@ -305,53 +305,65 @@ describe('ResourceList：按住拖动批量勾选', () => {
    *
    * 顶部带不能直接比：scrollY=0 时向上滚不动（已经在顶）。所以先滚到中段再测。
    */
-  it('边缘带内速度贴边最快、离边越远越慢', { timeout: SWEEP_TIMEOUT }, async () => {
+  it('边缘带内速度贴边最快、离边越远越慢', { timeout: SWEEP_TIMEOUT }, async ({ onTestFailed }) => {
+    const started = performance.now()
+    const stages: string[] = []
+    const mark = (stage: string) => stages.push(`${stage}: ${Math.round(performance.now() - started)}ms`)
+    onTestFailed(() => console.error('扫选梯度测试阶段', stages.join(', ')))
+    mark('mount:start')
     const resources = Array.from({ length: 400 }, (_, i) => resource({ id: `r${i}` }))
+    const mounted = await mountList(resources, [], { selectionMode: true })
+    mark('mount:end')
+    const hit = stubHitTest()
+    const frame = () => new Promise(resolve => requestAnimationFrame(() => resolve(null)))
     // 同样的两帧，贴边应该比带内靠里滚得更多
     const measure = async (clientY: number, fromTop = false) => {
-      const setChecked = vi.fn<SetChecked>()
-      const mounted = await mountList(resources, [], { selectionMode: true }, { onSetChecked: setChecked })
-      const hit = stubHitTest()
-      const frame = () => new Promise(resolve => requestAnimationFrame(() => resolve(null)))
-      try {
-        mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 1, clientY: 1 }))
-        hit.pointAt(mounted.rows[0])
-        if (fromTop) {
-          // 滚离顶部必须在 pointerdown 之后做：mountList 里的 stubLayout 每次都把 scrollY
-          // 归零，放在它之前滚会被抹掉；而 scrollY 为 0 时向上滚被 maxScrollY 夹住、
-          // 根本退不动，梯度差异就测不出来。
-          window.scrollTo({ top: 5000 })
-          await flushRenders()
-        }
-        // 基线在 pointerdown 之后取：按下这一刻页面可能被夹一下（实测 5000 → 4856），
-        // 拿按下前的值当基线会把那一下算进梯度里。
-        const before = currentScrollY()
-        window.dispatchEvent(pointer('pointermove', { clientX: 2, clientY }))
-        await frame()
-        await frame()
-        // 收尾必须显式抬手：endSweep 才会停掉自续的 rAF 滚动循环（滚到边界被夹住之前它
-        // 一直跑），否则每个 measure 都留下一个每帧 scrollTo + scroll 重渲染的活循环，
-        // 拖慢本用例后续的 measure、污染之后所有依赖滚动位置的用例。
-        window.dispatchEvent(pointer('pointerup'))
-        return { before, after: currentScrollY() }
-      } finally {
-        hit.restore()
-        mounted.unmount()
+      mark(`measure:${clientY}:start`)
+      window.scrollTo({ top: 0 })
+      await flushRenders()
+      const firstRow = mounted.host.querySelector('[data-resource-row]')
+      if (!firstRow) throw new Error('滚回顶部后没有渲染资源行')
+      firstRow.dispatchEvent(pointer('pointerdown', { button: 0, clientX: 1, clientY: 1 }))
+      hit.pointAt(firstRow)
+      if (fromTop) {
+        // 滚离顶部必须在 pointerdown 之后做：mountList 里的 stubLayout 每次都把 scrollY
+        // 归零，放在它之前滚会被抹掉；而 scrollY 为 0 时向上滚被 maxScrollY 夹住、
+        // 根本退不动，梯度差异就测不出来。
+        window.scrollTo({ top: 5000 })
+        await flushRenders()
       }
+      // 基线在 pointerdown 之后取：按下这一刻页面可能被夹一下（实测 5000 → 4856），
+      // 拿按下前的值当基线会把那一下算进梯度里。
+      const before = currentScrollY()
+      window.dispatchEvent(pointer('pointermove', { clientX: 2, clientY }))
+      await frame()
+      await frame()
+      // 收尾必须显式抬手：endSweep 才会停掉自续的 rAF 滚动循环（滚到边界被夹住之前它
+      // 一直跑），否则每个 measure 都留下一个每帧 scrollTo + scroll 重渲染的活循环，
+      // 拖慢本用例后续的 measure、污染之后所有依赖滚动位置的用例。
+      window.dispatchEvent(pointer('pointerup'))
+      mark(`measure:${clientY}:end`)
+      return { before, after: currentScrollY() }
     }
 
-    // 底部带：贴底边 clientY=底-1 比带内靠里 clientY=底-16 滚得更多
-    const bottomEdge = await measure(VIEWPORT_HEIGHT - 1)
-    const bottomInner = await measure(VIEWPORT_HEIGHT - 16)
-    expect(bottomEdge.after).toBeGreaterThan(bottomEdge.before)
-    expect(bottomEdge.after).toBeGreaterThan(bottomInner.after)
-    expect(bottomInner.after).toBeGreaterThan(bottomInner.before)
+    try {
+      // 底部带：贴底边 clientY=底-1 比带内靠里 clientY=底-16 滚得更多
+      const bottomEdge = await measure(VIEWPORT_HEIGHT - 1)
+      const bottomInner = await measure(VIEWPORT_HEIGHT - 16)
+      expect(bottomEdge.after).toBeGreaterThan(bottomEdge.before)
+      expect(bottomEdge.after).toBeGreaterThan(bottomInner.after)
+      expect(bottomInner.after).toBeGreaterThan(bottomInner.before)
 
-    // 顶部带：贴顶边 clientY=1 比带内靠里 clientY=16 退得更多（向上滚，after < before）
-    const topEdge = await measure(1, true)
-    const topInner = await measure(16, true)
-    expect(topEdge.before - topEdge.after).toBeGreaterThan(topInner.before - topInner.after)
-    expect(topInner.before - topInner.after).toBeGreaterThan(0)
+      // 顶部带：贴顶边 clientY=1 比带内靠里 clientY=16 退得更多（向上滚，after < before）
+      const topEdge = await measure(1, true)
+      const topInner = await measure(16, true)
+      expect(topEdge.before - topEdge.after).toBeGreaterThan(topInner.before - topInner.after)
+      expect(topInner.before - topInner.after).toBeGreaterThan(0)
+    } finally {
+      window.dispatchEvent(pointer('pointerup'))
+      hit.restore()
+      mounted.unmount()
+    }
   })
 
   /*
@@ -798,7 +810,7 @@ describe('ResourceList：触屏长按 menu', () => {
         new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 4, clientY: 4 })
       )
       await nextTick()
-      expect(labelsOf(mounted.host)).toContain('预览')
+      expect(labelsOf(mounted.host)).toContain('打开方式')
 
       // 触屏按在 r2 上：只按下、不抬手。这一步就该把 contextResource 换成 r2。
       mounted.rows[1].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 100, clientY: 100 }, 'touch'))
@@ -1076,7 +1088,7 @@ describe('ResourceList：context menu 的详情入口', () => {
     document.body.innerHTML = ''
   })
 
-  it('资源可用时，详情排在预览与打开方式之后', async () => {
+  it('资源可用时，详情排在首位且菜单没有预览', async () => {
     const detail = vi.fn<RowHandler>()
     const preview = vi.fn<RowHandler>()
     const mounted = await mountList([resource()], [], {}, { onDetail: detail, onPreview: preview })
@@ -1087,11 +1099,9 @@ describe('ResourceList：context menu 的详情入口', () => {
       await nextTick()
 
       const labels = [...mounted.host.querySelectorAll('web-ui-dropdown-item')].map(node => node.textContent?.trim())
-      // 打开方式是 submenu，它的子项在 querySelectorAll 的文档序里也占位，
-      // 所以详情要排在「打开方式」这棵子树之后，而不是紧邻它。
-      expect(labels.indexOf('详情')).toBeGreaterThan(labels.indexOf('打开方式'))
-      // 详情与重命名之间是一道 divider，所以两者在项序上相邻。
-      expect(labels.indexOf('重命名')).toBe(labels.indexOf('详情') + 1)
+      expect(labels[0]).toBe('详情')
+      expect(labels).not.toContain('预览')
+      expect(labels[1]).toContain('打开方式')
 
       menuItem(mounted.host, '详情').dispatchEvent(new MouseEvent('click', { bubbles: true }))
       expect(detail).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'r1' }))
@@ -1215,10 +1225,8 @@ describe('ResourceList：键盘呼出 context menu', () => {
       ;(mounted.rows[0] as HTMLElement).focus()
       await nextTick()
 
-      // 六项齐全。缺哪一项，那一项的键盘入口就是断的
-      expect(labelsOf(mounted.host)).toEqual(
-        expect.arrayContaining(['预览', '打开方式', '详情', '重命名', '标签', '删除'])
-      )
+      // 菜单包含该资源可用的操作。
+      expect(labelsOf(mounted.host)).toEqual(expect.arrayContaining(['打开方式', '详情', '重命名', '标签', '删除']))
     } finally {
       mounted.unmount()
     }
@@ -1237,7 +1245,7 @@ describe('ResourceList：键盘呼出 context menu', () => {
       const [first, second] = mounted.rows as HTMLElement[]
       first.focus()
       await nextTick()
-      expect(labelsOf(mounted.host)).toContain('预览')
+      expect(labelsOf(mounted.host)).toContain('打开方式')
 
       second.focus()
       await nextTick()
@@ -1263,7 +1271,7 @@ describe('ResourceList：键盘呼出 context menu', () => {
       const container = mounted.container!
       row.focus()
       await nextTick()
-      expect(labelsOf(mounted.host)).toContain('预览')
+      expect(labelsOf(mounted.host)).toContain('打开方式')
 
       container.focus()
       await nextTick()

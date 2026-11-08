@@ -1,12 +1,14 @@
 # Option
 
+[English](./option.md) | 简体中文
+
 `<web-ui-select>` 与 `<web-ui-autocomplete>` 里的选项元素。`value` 是选中时提交的值，`label` 是显示文本（缺省时取自身的文本内容），`prefix` / `suffix` 插槽放两端的图标。
 
 它不派发面向使用方的事件。挂载、更新与卸载时发出的注册握手只由父级容器消费。选中态由容器通过 `selected` 回写。
 
-## Samples
+## 示例
 
-### Basic option
+### 基础选项
 
 `label` 是显示文本，`value` 是选中后容器交回的值。
 
@@ -32,7 +34,7 @@ export default function Demo() {
 </template>
 ```
 
-### Prefix and suffix icons
+### 前缀和后缀图标
 
 不写 `label` 时，显示文本取默认插槽的文本；`prefix` 与 `suffix` 的内容不计入这段文本。
 
@@ -74,7 +76,7 @@ import { lucideImage, lucideStar } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Disabled items
+### 禁用选项
 
 `disabled` 的项留在列表里，但不能选中，键盘导航也会跳过它。
 
@@ -100,7 +102,7 @@ export default function Demo() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称       | 说明                                                 | 类型      | 默认值  |
 | ---------- | ---------------------------------------------------- | --------- | ------- |
@@ -109,7 +111,7 @@ export default function Demo() {
 | `disabled` | 禁用项：留在列表里但不可选中，键盘导航跳过它。       | `boolean` | `false` |
 | `selected` | 选中态，由容器回写；写 `selected` 属性不会通知容器。 | `boolean` | `false` |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                       |
 | --------- | ------------------------------------------ |
@@ -123,7 +125,7 @@ export default function Demo() {
 
 非表单关联组件（父级 select 统一提交）。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                         | 说明                        | 默认值  |
 | ---------------------------- | --------------------------- | ------- |

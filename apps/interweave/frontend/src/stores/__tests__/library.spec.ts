@@ -168,6 +168,7 @@ describe('filterAndSort（列表语义）', () => {
       dto({
         id: 'r1',
         title: 'Alpha Spec',
+        created_at: 100,
         updated_at: 300,
         tags: [{ id: 't1', name: 'design', created_at: 1, color: TagColor.TagColorTeal }]
       })
@@ -176,6 +177,7 @@ describe('filterAndSort（列表语义）', () => {
       dto({
         id: 'r2',
         title: 'Beta Notes',
+        created_at: 300,
         updated_at: 100,
         kind: ResourceKind.ResourceKindJSON,
         sources: [
@@ -195,6 +197,7 @@ describe('filterAndSort（列表语义）', () => {
       dto({
         id: 'r3',
         title: 'Gamma PDF',
+        created_at: 200,
         updated_at: 200,
         kind: ResourceKind.ResourceKindDocument,
         sources: [
@@ -217,7 +220,8 @@ describe('filterAndSort（列表语义）', () => {
     filterKind: 'all',
     filterAvailability: 'all',
     filterTag: '',
-    sort: 'latest'
+    sort: 'updatedAt',
+    sortDirection: 'desc'
   }
 
   it('搜索命中 title（大小写不敏感）', () => {
@@ -233,17 +237,35 @@ describe('filterAndSort（列表语义）', () => {
     expect(filterAndSort(resources, { ...base, filterTag: 'design' }).map(r => r.id)).toEqual(['r1'])
   })
 
-  it('排序：latest / earliest / name / tagName', () => {
-    expect(filterAndSort(resources, { ...base, sort: 'latest' }).map(r => r.id)).toEqual(['r1', 'r3', 'r2'])
-    expect(filterAndSort(resources, { ...base, sort: 'earliest' }).map(r => r.id)).toEqual(['r2', 'r3', 'r1'])
-    expect(filterAndSort(resources, { ...base, sort: 'name' }).map(r => r.id)).toEqual(['r1', 'r2', 'r3'])
-    expect(filterAndSort(resources, { ...base, sort: 'tagName' }).map(r => r.id)).toEqual(['r2', 'r1', 'r3'])
+  it('按选定字段和方向排序', () => {
+    expect(filterAndSort(resources, base).map(r => r.id)).toEqual(['r1', 'r3', 'r2'])
+    expect(filterAndSort(resources, { ...base, sort: 'createdAt' }).map(r => r.id)).toEqual(['r2', 'r3', 'r1'])
+    expect(filterAndSort(resources, { ...base, sort: 'updatedAt', sortDirection: 'asc' }).map(r => r.id)).toEqual([
+      'r2',
+      'r3',
+      'r1'
+    ])
+    expect(filterAndSort(resources, { ...base, sort: 'name', sortDirection: 'asc' }).map(r => r.id)).toEqual([
+      'r1',
+      'r2',
+      'r3'
+    ])
+    expect(filterAndSort(resources, { ...base, sort: 'tagName' }).map(r => r.id)).toEqual(['r3', 'r1', 'r2'])
   })
 })
 
 describe('useLibraryStore（Pinia 集成）', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+  })
+
+  it('默认按创建时间降序排列资源', () => {
+    const store = useLibraryStore()
+    store.setResources([
+      dto({ id: 'older', created_at: 100, updated_at: 300 }),
+      dto({ id: 'newer', created_at: 200, updated_at: 100 })
+    ])
+    expect(store.filteredResources.map(resource => resource.id)).toEqual(['newer', 'older'])
   })
 
   it('setResources 翻译整表，getter 派生标签集合', () => {

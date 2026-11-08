@@ -929,7 +929,7 @@ class WebUiImagePreview extends LitElement {
                       aria-label=${resolveBuiltinLabelSet(this.ariaLabels, 'close')}
                       @click=${this.close}
                     >
-                      <web-ui-icon size="16" .icon=${oouiClose}></web-ui-icon>
+                      <web-ui-icon .icon=${oouiClose}></web-ui-icon>
                     </web-ui-button>
                   `
                 : nothing
@@ -974,7 +974,7 @@ class WebUiImagePreview extends LitElement {
                         ?disabled=${this._scale <= MIN_SCALE}
                         @click=${this.zoomOut}
                       >
-                        <web-ui-icon size="16" .icon=${lucideMinus}></web-ui-icon>
+                        <web-ui-icon .icon=${lucideMinus}></web-ui-icon>
                       </web-ui-button>
                       <span class="wui-image-preview-scale">${Math.round(this._scale * 100)}%</span>
                       <web-ui-button
@@ -985,7 +985,7 @@ class WebUiImagePreview extends LitElement {
                         ?disabled=${this._scale >= MAX_SCALE}
                         @click=${this.zoomIn}
                       >
-                        <web-ui-icon size="16" .icon=${lucidePlus}></web-ui-icon>
+                        <web-ui-icon .icon=${lucidePlus}></web-ui-icon>
                       </web-ui-button>
                       <web-ui-button
                         variant="glass"
@@ -995,7 +995,7 @@ class WebUiImagePreview extends LitElement {
                         ?disabled=${this._scale <= MIN_SCALE && !this._isPanned}
                         @click=${this.resetZoom}
                       >
-                        <web-ui-icon size="16" .icon=${radixIconsReset}></web-ui-icon>
+                        <web-ui-icon .icon=${radixIconsReset}></web-ui-icon>
                       </web-ui-button>
                     </div>
                   `

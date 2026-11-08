@@ -1,5 +1,7 @@
 # Dialog
 
+English | [简体中文](./dialog.CN.md)
+
 A modal dialog with a built-in heading bar and a footer, plus a `headless` mode you draw entirely yourself.
 
 ## Samples

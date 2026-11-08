@@ -1,5 +1,7 @@
 # Drawer
 
+English | [简体中文](./drawer.CN.md)
+
 A side drawer built on the native `<dialog>`, with slide-in and slide-out animations and drag-to-close from the inner edge on any side. Use it for secondary content that relates to the current page but does not require leaving the page.
 
 ## Samples
@@ -1335,7 +1337,15 @@ The top offset uses `--wui-space-4` and defaults to `16px`, matching the header 
 
 `--wui-drawer-nested-peek-base` is the base distance each layer exposes when stacked: `43.2px` on desktop and `28.8px` on narrow viewports by default. Setting it on the host or any ancestor changes both at once and applies at any viewport width.
 
-`page-shift` moves the whole page and needs no extra configuration. `position: fixed` content in the page moves with it. Other open dialogs or drawers are not affected.
+`page-shift` moves the whole page. `position: fixed` content in the page moves with it. Other open dialogs or drawers are not affected.
+
+Set a page background that matches your content so the area exposed by the shift has the same color. With `web-ui-theme`, add this to your global styles:
+
+```css
+html {
+  background: var(--wui-color-page, #fff);
+}
+```
 
 With several layers open, the offsets stack by opening order, and nested and sibling layers follow the same rule; closing any layer recalculates the rest.
 

@@ -1,10 +1,12 @@
 # Popover
 
+[English](./popover.md) | 简体中文
+
 锚定在触发元素上的弹出层。`trigger` 用手势集合说明哪些操作能开合它，可写 `click`、`hover`、`focus`、`none`；`trigger` 插槽放触发器，默认插槽放面板内容。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 点击模式下点触发器切换开合，点面板外或按 Escape 关闭。触发器里请放可交互元素（`web-ui-button` 或原生 `button`），开合状态会回写到它的 `aria-expanded` / `aria-controls`。
 
@@ -71,7 +73,7 @@ function onOpenChange(event: WebUiEvent<WebUiPopover, 'open-change'>) {
 </script>
 ```
 
-### Hover trigger
+### 悬停触发
 
 `trigger="hover"` 由指针进出控制开合，带延迟：进入触发器后按 `show-delay` 展开，离开触发器与面板后按 `hide-delay` 收起。指针从触发器移进面板不会收起。这个取值下点击与焦点都不触发；要让指针和键盘都能开，把两个手势并排写：`trigger="hover focus"`。
 
@@ -117,7 +119,7 @@ const last = ref('-')
 </script>
 ```
 
-### Focus trigger
+### 聚焦触发
 
 `trigger="focus"` 由键盘聚焦展开：判定跟浏览器的焦点环一致（`:focus-visible`），用鼠标点出来的聚焦不算。焦点离开触发器和面板之后收起。
 
@@ -173,7 +175,7 @@ const last = ref('-')
 </script>
 ```
 
-### Controlled open state
+### 受控开启状态
 
 `trigger="none"` 不接受任何手势，也不参与点面板外关闭和 Escape。开合只由 `show()` / `hide()` 或写在 `open` 上的声明式属性控制。`show()` / `hide()` 会派发 `open-change`，可以像下面这样把 `detail.open` 回写到 `open`；直接给 `open` 赋值是静默的。
 
@@ -239,7 +241,7 @@ const open = ref(false)
 
 ## API
 
-### Props
+### 属性
 
 | 名称               | 说明                                                                                      | 类型               | 默认值     |
 | ------------------ | ----------------------------------------------------------------------------------------- | ------------------ | ---------- |
@@ -254,20 +256,20 @@ const open = ref(false)
 | `portal`           | 在主题的 overlay 容器中渲染。                                                             | `boolean`          | `false`    |
 | `overlayContainer` | 显式指定面板挂载的 overlay 容器（property）。                                             | `OverlayContainer` | —          |
 
-### Events
+### 事件
 
 | 名称          | 说明                                                                                    |
 | ------------- | --------------------------------------------------------------------------------------- |
 | `open-change` | 手势或 `show()` / `hide()` 改变开合时派发，`detail.open` 是当前状态；写 `open` 不派发。 |
 
-### Slots
+### Slot
 
 | 名称      | 说明                     |
 | --------- | ------------------------ |
 | `trigger` | 触发器；请放可交互元素。 |
 | `default` | 弹出层内容。             |
 
-### Methods
+### 方法
 
 | 名称       | 说明                                                              |
 | ---------- | ----------------------------------------------------------------- |
@@ -277,10 +279,12 @@ const open = ref(false)
 
 ### 行为说明
 
+需要用方向键在输入控件与一组真实链接之间移动时，可使用 `navigatePopoverLinks(event, input, links)`。它只处理上下方向键与焦点，不负责打开面板、Escape 或路由；链接仍保留原生行为。调用方可将链接设为 `tabindex="-1"`，以便 Tab 离开结果区域。
+
 `trigger` 里的每个手势各接各的事件，可以任意组合；未知取值会被丢弃，一个已知手势都没写时回退到默认的 `click`。
 
 - `click`：点触发器切换；点面板外面收起。键盘激活（Enter / Space）与点击同等对待。
-- `hover`：指针进入触发器后按 `show-delay` 展开；指针离开触发器与面板、且焦点不在其中时按 `hide-delay` 收起。触屏指针不算。
+- `hover`：指针进入触发器后按 `show-delay` 展开；指针离开触发器与面板后按 `hide-delay` 收起；启用 `focus` 时焦点可保持层打开。触屏指针不算。
 - `focus`：键盘聚焦（`:focus-visible`）立即展开；焦点离开触发器和面板之后收起。
 - `none`：不接受任何手势，点面板外与 Escape 都不关闭；只能由 `open` 属性或 `show()` / `hide()` 控制。
 
@@ -288,12 +292,18 @@ const open = ref(false)
 
 弹出层能否打开看的是 `default` 插槽里还有没有内容可展示；`trigger` 插槽不算内容。没有内容时手势不展开，`show()` 与写 `open` 仍可空开。关闭态新增内容不会打开面板；打开期间内容清空时立即收起，不播退场过渡。
 
-点触发器外面与失焦会收起所有非 `none` 的层，不取决于 `trigger` 是否包含 `click` 或 `focus`。按 Escape 收起由覆盖层统一仲裁：非 `none` 的层都能关，`none` 既不响应也不拦截这次按键，它会继续传给外层 overlay。
+外点仅收起包含 `click` 的层，失焦仅收起包含 `focus` 的层。按 Escape 收起由覆盖层统一仲裁：非 `none` 的层都能关，`none` 既不响应也不拦截这次按键，它会继续传给外层 overlay。
 
 `open` 是组件自行管理的状态。手势和 `show()` / `hide()` 都会更新它，直接给 property 赋值也会开合面板，但该写入是静默的，不派发 `open-change`。
 
-### trigger ARIA
+### trigger 的 ARIA 属性
 
 开合状态回写到触发器元素：`aria-expanded` 与 `aria-controls`（指向面板）设在 `trigger` 插槽的第一个元素上。
 
 触发器插槽请放可交互元素（原生按钮、`web-ui-button`）。
+
+### CSS 自定义属性
+
+| 名称                    | 说明                                  | 默认值     |
+| ----------------------- | ------------------------------------- | ---------- |
+| `--wui-popover-padding` | 面板内边距；portal 模式在打开时读取。 | `8px 12px` |

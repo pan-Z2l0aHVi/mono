@@ -465,7 +465,7 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    it('hover 模式下点击外部关闭', async () => {
+    it('hover 模式下外点不关闭', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'hover' })
       await waitForUpdate(el)
 
@@ -476,7 +476,7 @@ describe('WebUiPopover 组件', () => {
 
       document.body.click()
       await waitForUpdate(el)
-      expect(el.isOpen).toBe(false)
+      expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
     })
@@ -567,7 +567,7 @@ describe('WebUiPopover 组件', () => {
   describe('触发方式：focus', () => {
     // focusin 打开由 `:focus-visible` 决定，需要真实引擎，见同目录 popover.browser.spec.ts。
     // 这里钉 focus 集合独有的两条：点击不接管、外点照常关闭。
-    it('focus 集合下点击 trigger 不打开，外点关闭', async () => {
+    it('focus 集合下点击 trigger 和外点不切换', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'focus' })
       await waitForUpdate(el)
 
@@ -581,7 +581,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
       document.body.click()
       await waitForUpdate(el)
-      expect(el.isOpen).toBe(false)
+      expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
     })
@@ -604,7 +604,7 @@ describe('WebUiPopover 组件', () => {
       cleanupElement(el)
     })
 
-    it('hover 集合下失焦也关闭', async () => {
+    it('hover 集合下失焦不关闭', async () => {
       const el = createPopover('Btn', 'Content', { trigger: 'hover' })
       await waitForUpdate(el)
 
@@ -617,7 +617,7 @@ describe('WebUiPopover 组件', () => {
       vi.advanceTimersToNextFrame()
       await waitForUpdate(el)
 
-      expect(el.isOpen).toBe(false)
+      expect(el.isOpen).toBe(true)
 
       cleanupElement(el)
     })

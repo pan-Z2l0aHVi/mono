@@ -1,10 +1,12 @@
 # Checkbox
 
+[English](./checkbox.md) | 简体中文
+
 单个复选框，支持 Enter / Space 切换；与原生 `<form>` 集成，选中时把 `value` 提交进 `FormData`。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 `checked` 是控件状态，默认插槽是标签文字；指示器、间距与右侧文案都是触发区，点哪儿都算一次切换。
 
@@ -60,7 +62,7 @@ function toggle(channel: string) {
 </script>
 ```
 
-### Disabled
+### 禁用
 
 `disabled` 关掉交互，按下没有反应，校验也不生效。组级禁用写在 `<web-ui-checkbox-group>` 上，见下面的多选组。
 
@@ -86,7 +88,7 @@ export default function Demo() {
 </template>
 ```
 
-### Form value
+### 表单值
 
 `name` 是字段名、`value` 是选中时提交的值：同一字段名可以挂多项，每个选中项各占一条 `FormData` 条目，未选中的不进表单。`required` 让原生校验在未勾选时拦下提交。
 
@@ -178,7 +180,7 @@ function reset() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称       | 说明                 | 类型      | 默认值  |
 | ---------- | -------------------- | --------- | ------- |
@@ -188,14 +190,14 @@ function reset() {
 | `disabled` | 禁用状态。           | `boolean` | `false` |
 | `required` | 必填校验。           | `boolean` | `false` |
 
-### Events
+### 事件
 
 | 名称     | 说明                                              |
 | -------- | ------------------------------------------------- |
 | `input`  | 用户切换选中状态时派发：点击，或按 Enter / 空格。 |
 | `change` | 与 `input` 在同一次用户操作里一起派发。           |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                         |
 | --------- | -------------------------------------------- |

@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Dropdown Header" },
+  { label: 'p', content: "English | <a href=\"./dropdown-header.CN.md\">简体中文</a>" },
   { label: 'p', content: "A group title inside a menu. It is a piece of small text that plays no part in interaction and names the menu items that follow it. It has no props or events, and keyboard navigation does not stop on it. The menu only moves focus to <code>&lt;web-ui-dropdown-item></code>. Group titles are often used together with <code>&lt;web-ui-dropdown-divider></code>." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Group title" },

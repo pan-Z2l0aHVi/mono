@@ -229,6 +229,50 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
   })
 
+  it('搜索展开后聚焦，匹配中英文并在收起后保留查询', async () => {
+    await mountAppShell()
+    await userEvent.click(document.querySelector<HTMLElement>('web-ui-button[aria-label="Search"]')!)
+    const input = await vi.waitFor(() => {
+      const element = document
+        .querySelector('web-ui-input[aria-label="Search pages and components"]')
+        ?.shadowRoot?.querySelector('input')
+      if (!element || element !== (element.getRootNode() as ShadowRoot).activeElement)
+        throw new Error('搜索输入框尚未聚焦')
+      return element
+    })
+    await userEvent.fill(input, '输入框')
+    await vi.waitFor(() =>
+      expect(document.querySelector('[aria-label="Search results"] a[href="/components/input"]')).toBeTruthy()
+    )
+    await userEvent.clear(input)
+    await vi.waitFor(() => expect(document.querySelector('web-ui-popover')?.open).toBe(false))
+    expect(document.querySelector('[aria-label="Search results"] a[href="/components/input"]')).toBeTruthy()
+    expect(document.querySelector('[aria-label="Search results"] web-ui-empty')).toBeNull()
+    await userEvent.fill(input, '输入框')
+    await userEvent.keyboard('{Enter}')
+    expect(document.activeElement?.tagName).toBe('WEB-UI-INPUT')
+    await userEvent.keyboard('{ArrowDown}')
+    const link = document.querySelector<HTMLAnchorElement>('[aria-label="Search results"] a[href="/components/input"]')!
+    expect(document.activeElement).toBe(link)
+    await userEvent.keyboard('{Escape}')
+    expect(document.activeElement?.tagName).toBe('WEB-UI-INPUT')
+    await userEvent.keyboard('{ArrowDown}')
+    await vi.waitFor(() => expect(document.activeElement).toBe(link))
+    await userEvent.keyboard('{Escape}')
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() =>
+      expect(document.querySelector('web-ui-input[aria-label="Search pages and components"]')).toBeNull()
+    )
+    await userEvent.click(document.querySelector<HTMLElement>('web-ui-button[aria-label="Search"]')!)
+    await vi.waitFor(() =>
+      expect(
+        document
+          .querySelector('web-ui-input[aria-label="Search pages and components"]')
+          ?.shadowRoot?.querySelector('input')?.value
+      ).toBe('输入框')
+    )
+  })
+
   it('top toast 文案和字号变化不改变 header 位置', async () => {
     await mountAppShell()
     const toastElement = await persistentTopToast(SHORT_TOAST_MESSAGE)
@@ -488,23 +532,23 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(iconOf('Global theme')?.icon).toBe(lucideSun)
   })
 
-  it('320px 下三个全局选择器全部留在视口内，page 不产生横向滚动', async () => {
+  it('320px 下搜索和全局选择器留在视口内，page 不产生横向滚动', async () => {
     await setViewport(320, 700)
     await mountAppShell()
 
     const selects = [...document.querySelectorAll<HTMLElement>('web-ui-select')]
     expect(selects).toHaveLength(3)
-    for (const select of selects) {
-      const bounds = select.getBoundingClientRect()
+    const search = document.querySelector<HTMLElement>('web-ui-button[aria-label="Search"]')!
+    for (const control of [search, ...selects]) {
+      const bounds = control.getBoundingClientRect()
       expect(bounds.width).toBeGreaterThan(0)
       expect(bounds.left).toBeGreaterThanOrEqual(0)
       expect(bounds.right).toBeLessThanOrEqual(document.documentElement.clientWidth + 0.5)
     }
     expect(document.documentElement.scrollWidth).toBe(document.documentElement.clientWidth)
-    const header = layoutRoot().querySelector<HTMLElement>('[slot="header"]')!
-    const headerPaddingRight = Number.parseFloat(getComputedStyle(header).paddingRight)
-    const lastRight = Math.max(...selects.map(select => select.getBoundingClientRect().right))
-    expect(lastRight).toBeCloseTo(header.getBoundingClientRect().right - headerPaddingRight)
+    expect(search.getBoundingClientRect().left).toBeGreaterThanOrEqual(
+      Math.max(...selects.map(select => select.getBoundingClientRect().right))
+    )
   })
 
   it('桌面端 collapsed state 沿用完整导航名、超出部分省略，并通过 tooltip 提供完整 label', async () => {
@@ -546,8 +590,12 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     const restoredLinks = [...navRoot().querySelectorAll<HTMLAnchorElement>('a')]
     expect(restoredLinks.map(link => link.querySelector('span')?.textContent?.trim() ?? '')).toEqual(expandedLabels)
     expect(restoredLinks.every(link => link.closest('web-ui-tooltip') === null)).toBe(true)
-    expect(restoredLinks.slice(2).every(link => !link.hasAttribute('title'))).toBe(true)
-    expect(restoredLinks.slice(0, 2).map(link => link.getAttribute('title'))).toEqual(['Components', 'Changelog'])
+    expect(restoredLinks.slice(3).every(link => !link.hasAttribute('title'))).toBe(true)
+    expect(restoredLinks.slice(0, 3).map(link => link.getAttribute('title'))).toEqual([
+      'Components',
+      'Getting Started',
+      'Changelog'
+    ])
   })
 
   it('桌面端 collapse 后导航文字居中，expanded state 左对齐', async () => {

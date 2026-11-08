@@ -19,7 +19,7 @@ export class WebUiIcon extends LitElement {
 
   @property({ attribute: false }) icon?: IconifyIcon
   @property({ type: Boolean, reflect: true }) spin = false
-  @property({ type: Number, reflect: true }) size: number = 18
+  @property({ type: Number, reflect: true }) size: number = 16
   @property({ type: String, reflect: true }) color?: string
 
   override render() {

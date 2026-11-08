@@ -1,5 +1,7 @@
 # Icon
 
+English | [简体中文](./icon.CN.md)
+
 icon renders an icon; the result is an `<svg>` with `aria-hidden="true"`, and the icon itself provides no accessible name. The input is an Iconify data object, not an icon name: the component accepts any valid `IconifyIcon`, where `body` is required and holds a fragment of inner SVG markup, and `width` / `height` / `left` / `top` describe the canvas. A hand-built object renders the same way and does not have to be registered in `@greypan/web-ui/icons` first.
 
 `@greypan/web-ui/icons` exports these objects named by icon set, so common icons can be imported by name; `iconGallery` aggregates that set for browsing and picking. An icon outside the set needs no waiting for an expansion: pass any valid `IconifyIcon` data to `icon` — either hand-written, or taken from the data package of the icon set (for example `@iconify-json/lucide`).
@@ -72,7 +74,7 @@ export default function Demo() {
     <div className="flex flex-wrap items-center gap-6">
       <span className="flex items-center gap-2">
         <web-ui-icon icon={clock}></web-ui-icon>
-        Default 18px
+        Default 16px
       </span>
       <span className="flex items-center gap-2">
         <web-ui-icon icon={clock} size={32} color="#007aff"></web-ui-icon>
@@ -88,7 +90,7 @@ export default function Demo() {
   <div class="flex flex-wrap items-center gap-6">
     <span class="flex items-center gap-2">
       <web-ui-icon :icon="clock"></web-ui-icon>
-      Default 18px
+      Default 16px
     </span>
     <span class="flex items-center gap-2">
       <web-ui-icon :icon="clock" :size="32" color="#007aff"></web-ui-icon>
@@ -108,7 +110,7 @@ const clock = {
 
 ### Size
 
-`size` is a pixel size. The graphic scales proportionally with the asset's own viewBox and is never stretched. The default is `18`.
+`size` is a pixel size. The graphic scales proportionally with the asset's own viewBox and is never stretched. The default is `16`.
 
 ```tsx
 import { lucideStar } from '@greypan/web-ui/icons'
@@ -235,11 +237,11 @@ export default function Demo() {
   return (
     <div className="flex flex-wrap items-center gap-3">
       <web-ui-button>
-        <web-ui-icon slot="prefix" icon={lucideUpload} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideUpload}></web-ui-icon>
         Upload
       </web-ui-button>
       <web-ui-button variant="secondary">
-        <web-ui-icon slot="suffix" icon={lucideDownload} size={16}></web-ui-icon>
+        <web-ui-icon slot="suffix" icon={lucideDownload}></web-ui-icon>
         Download
       </web-ui-button>
       <web-ui-button icon aria-label="Previous page">
@@ -254,11 +256,11 @@ export default function Demo() {
 <template>
   <div class="flex flex-wrap items-center gap-3">
     <web-ui-button>
-      <web-ui-icon slot="prefix" :icon="lucideUpload" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideUpload"></web-ui-icon>
       Upload
     </web-ui-button>
     <web-ui-button variant="secondary">
-      <web-ui-icon slot="suffix" :icon="lucideDownload" :size="16"></web-ui-icon>
+      <web-ui-icon slot="suffix" :icon="lucideDownload"></web-ui-icon>
       Download
     </web-ui-button>
     <web-ui-button icon aria-label="Previous page">
@@ -320,7 +322,7 @@ import { iconGallery } from '@greypan/web-ui/icons'
 | ------- | --------------------------------------------------------------------------------- | ------------- | ------- |
 | `icon`  | Iconify data object; passed only as a property, and an icon name is not accepted. | `IconifyIcon` | -       |
 | `spin`  | Rotation animation.                                                               | `boolean`     | `false` |
-| `size`  | Pixel size, written into both the `<svg>`'s `width` and `height`.                 | `number`      | `18`    |
+| `size`  | Pixel size, written into both the `<svg>`'s `width` and `height`.                 | `number`      | `16`    |
 | `color` | Icon color; when empty, `--wui-icon-color` is read first, then the text color.    | `string`      | -       |
 
 ### Behavior

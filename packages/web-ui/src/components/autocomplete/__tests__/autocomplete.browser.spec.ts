@@ -104,6 +104,58 @@ function appendIsolated(node: HTMLElement): void {
 }
 
 describe('WebUiAutocomplete 组件（浏览器）', () => {
+  it('full 让默认输入框撑满容器', async () => {
+    const container = document.createElement('div')
+    container.style.width = '420px'
+    const el = document.createElement('web-ui-autocomplete')
+    el.full = true
+    container.append(el)
+    document.body.append(container)
+    await el.updateComplete
+    await defaultTrigger(el).updateComplete
+    expect(defaultTrigger(el).getBoundingClientRect().width).toBeCloseTo(container.getBoundingClientRect().width)
+  })
+
+  it('清除按钮提交空值并按顺序通知输入与变更', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.clearable = true
+    el.value = 'Apple'
+    el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+    await defaultTrigger(el).updateComplete
+    const events: string[] = []
+    el.addEventListener('input', () => events.push(`input:${el.value}`))
+    el.addEventListener('change', () => events.push(`change:${el.value}:${el.selectedValue}`))
+    const button = defaultTrigger(el).shadowRoot!.querySelector<HTMLElement>('web-ui-button')!
+    button.click()
+    await pollUntil(() => events.length === 2, 'Expected clear events')
+    expect(events).toEqual(['input:', 'change::'])
+  })
+
+  it('前后缀随默认输入框展示，portal 打开期间留在 trigger', async () => {
+    const el = document.createElement('web-ui-autocomplete')
+    el.portal = true
+    el.innerHTML =
+      '<span slot="prefix">前缀</span><span slot="suffix">后缀</span><web-ui-option value="a" label="Apple"></web-ui-option>'
+    document.body.append(el)
+    await el.updateComplete
+    const input = defaultTrigger(el)
+    await input.updateComplete
+    const prefix = input.shadowRoot!.querySelector<HTMLSlotElement>('slot[name="prefix"]')!
+    const suffix = input.shadowRoot!.querySelector<HTMLSlotElement>('slot[name="suffix"]')!
+    await pollUntil(() => prefix.assignedElements({ flatten: true }).length === 1, 'Expected prefix to be slotted')
+    expect(prefix.assignedElements({ flatten: true })[0]?.textContent).toBe('前缀')
+    expect(suffix.assignedElements({ flatten: true })[0]?.textContent).toBe('后缀')
+    expect(prefix.classList.contains('empty')).toBe(false)
+    clickTrigger(el)
+    await pollUntil(() => el.open, 'Expected autocomplete to open')
+    expect(el.querySelector('[slot="prefix"]')?.textContent).toBe('前缀')
+    expect(el.querySelector('[slot="suffix"]')?.textContent).toBe('后缀')
+    el.querySelector('[slot="prefix"]')!.remove()
+    await pollUntil(() => prefix.classList.contains('empty'), 'Expected removed prefix to leave the input empty')
+  })
+
   it('Portal 打开后 option 移入 theme-owned overlay root 并可点击选择', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
@@ -1228,6 +1280,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
   it('web-ui-textarea 自定义 trigger Enter 插入换行不选中高亮项，Escape/blur 关闭', async () => {
     const el = document.createElement('web-ui-autocomplete')
+    el.trigger = 'click focus'
     el.innerHTML = `
       <web-ui-textarea slot="trigger"></web-ui-textarea>
       <web-ui-option value="apple" label="Apple"></web-ui-option>

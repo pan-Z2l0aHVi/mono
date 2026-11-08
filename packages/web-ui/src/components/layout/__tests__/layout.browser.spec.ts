@@ -190,9 +190,10 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(layout.querySelector('[slot="sidebar"]')).toBeTruthy()
     })
 
-    it('移动端不渲染 header Toggle 与 Drawer，mobile 仍按视口派生', async () => {
+    it('移动端不渲染 header Toggle 与 Drawer', async () => {
       await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
+      layout.mobile = true
       layout.noSidebar = true
       await layout.updateComplete
 
@@ -233,10 +234,11 @@ describe('WebUiLayout 组件（浏览器）', () => {
   })
 
   describe('移动端 drawer', () => {
-    // 640px 两侧切换两套 DOM：桌面渲染 aside + 常驻侧栏，移动端渲染受控 drawer。
+    // 由调用方选择桌面侧栏或移动端 drawer。
     it('移动端改用受控 drawer，不再渲染桌面 aside', async () => {
       await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
+      layout.mobile = true
       await layout.updateComplete
 
       expect(queryA11y(layout, 'aside')).toBeFalsy()
@@ -249,6 +251,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     it('Toggle 请求打开 drawer，回写后与 sidebarOpen 一致', async () => {
       await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
+      layout.mobile = true
       syncControlledSidebarState(layout)
       await layout.updateComplete
 
@@ -270,6 +273,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     it('drawer 的关闭请求冒泡为 sidebar-open-change，组件自身不吞', async () => {
       await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
+      layout.mobile = true
       syncControlledSidebarState(layout)
       await layout.updateComplete
 
@@ -296,6 +300,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
     it('打开移动端 drawer 时整页让开，关闭后回到原位', { timeout: 20_000 }, async () => {
       await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
+      layout.mobile = true
       syncControlledSidebarState(layout)
       const marker = document.createElement('div')
       marker.style.cssText = 'width:10px;height:10px;margin-left:120px'
@@ -359,6 +364,28 @@ describe('WebUiLayout 组件（浏览器）', () => {
       handle.dispatchEvent(pointer('pointermove', { clientX: 60 }))
       await layout.updateComplete
       handle.dispatchEvent(pointer('pointerup', { clientX: 60 }))
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(1)
+      expect(parseFloat(widthRequests[0])).toBeCloseTo(parseFloat(layout.sidebarWidth) + 60, 0)
+    })
+
+    it('平板宽度下触摸拖拽侧栏手柄可请求调宽', async () => {
+      await setViewport(1024, 768)
+      const layout = createLayout()
+      layout.sidebarResizable = true
+      await layout.updateComplete
+      await waitForFrame()
+
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+      handle.dispatchEvent(pointer('pointerdown', { clientX: 240, pointerType: 'touch' }))
+      handle.dispatchEvent(pointer('pointermove', { clientX: 300, pointerType: 'touch' }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointerup', { clientX: 300, pointerType: 'touch' }))
       await layout.updateComplete
 
       expect(widthRequests).toHaveLength(1)
@@ -873,9 +900,9 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(parseFloat(widthRequests[0])).toBeCloseTo(parseFloat(layout.sidebarWidth) + 60, 0)
     })
 
-    // 跨越断点会卸载桌面 layout（resize handle 随之消失）。悬挂的手势若不终结，切回桌面后
+    // 切换移动端会卸载桌面 layout（resize handle 随之消失）。悬挂的手势若不终结，切回桌面后
     // 所有新拖拽都会在入口被 `_isResizing()` 拦下。
-    it('拖拽中视口跨越移动端断点后，切回桌面仍可再次拖拽', async () => {
+    it('拖拽中切换移动端后，切回桌面仍可再次拖拽', async () => {
       const layout = await resizableLayout()
       const widthRequests: string[] = []
       layout.addEventListener('sidebar-width-change', event =>
@@ -885,10 +912,12 @@ describe('WebUiLayout 组件（浏览器）', () => {
       handleOf(layout).dispatchEvent(pointer('pointerdown', { clientX: 0 }))
       await layout.updateComplete
 
-      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      layout.mobile = true
+      await layout.updateComplete
       await pollUntil(() => !queryA11y(layout, '[role="separator"]'), 'Expected handle to unmount on mobile')
 
-      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+      layout.mobile = false
+      await layout.updateComplete
       await pollUntil(() => Boolean(queryA11y(layout, '[role="separator"]')), 'Expected handle to remount on desktop')
       expect(widthRequests).toHaveLength(0)
 
@@ -904,157 +933,22 @@ describe('WebUiLayout 组件（浏览器）', () => {
     })
   })
 
-  describe('移动端状态对外暴露', () => {
-    // property、反射 attribute、派发的事件与渲染的树是同一个判定：任何一处落后半拍，
-    // 消费者（三处 app 外壳）就会与组件错开，而 #195 那类问题正是这么来的。
-    it('跨断点时 mobile、反射 attribute 与渲染的树一起翻转', async () => {
+  describe('受控移动端状态', () => {
+    it('由调用方控制布局并反射 attribute，视口变化不会改变该状态', async () => {
       await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       await layout.updateComplete
-
       expect(layout.mobile).toBe(false)
-      expect(layout.hasAttribute('mobile')).toBe(false)
-
-      const changes: boolean[] = []
-      layout.addEventListener('mobile-change', event => {
-        changes.push((event as CustomEvent<{ mobile: boolean }>).detail.mobile)
-      })
-
-      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
-      await pollUntil(() => layout.mobile, 'Expected mobile to flip on the narrow viewport')
-
+      layout.mobile = true
+      await layout.updateComplete
       expect(layout.hasAttribute('mobile')).toBe(true)
-      expect(changes).toEqual([true])
       expect(queryA11y(layout, 'web-ui-drawer')).toBeTruthy()
       expect(queryA11y(layout, 'aside')).toBeFalsy()
-
-      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
-      await pollUntil(() => !layout.mobile, 'Expected mobile to flip back on the wide viewport')
-
-      expect(layout.hasAttribute('mobile')).toBe(false)
-      expect(changes).toEqual([true, false])
-      expect(queryA11y(layout, 'aside')).toBeTruthy()
-      expect(queryA11y(layout, 'web-ui-drawer')).toBeFalsy()
-    })
-
-    // 断点翻转必须在媒体查询的 change 回调中同步生效，而不是等待 resize 去抖。
-    it('翻转只由媒体查询驱动，并在 change 回调中同步完成', async () => {
-      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
-      const matchMedia = window.matchMedia.bind(window)
-      let layoutQuery: MediaQueryList | undefined
-      const matchMediaSpy = vi.spyOn(window, 'matchMedia').mockImplementation(query => {
-        const result = matchMedia(query)
-        if (query === '(width <= 640px)') layoutQuery = result
-        return result
-      })
-      try {
-        const layout = createLayout()
-        await layout.updateComplete
-        if (!layoutQuery) throw new Error('Expected layout to subscribe to the mobile media query')
-
-        const changes: boolean[] = []
-        layout.addEventListener('mobile-change', event => {
-          changes.push((event as CustomEvent<{ mobile: boolean }>).detail.mobile)
-        })
-        const innerWidthDescriptor = Object.getOwnPropertyDescriptor(window, 'innerWidth')
-        Object.defineProperty(window, 'innerWidth', { configurable: true, get: () => MOBILE_VIEWPORT.width })
-        vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
-        try {
-          window.dispatchEvent(new Event('resize'))
-          vi.advanceTimersByTime(150)
-          expect(layout.mobile).toBe(false)
-          expect(changes).toEqual([])
-        } finally {
-          vi.useRealTimers()
-          if (innerWidthDescriptor) Object.defineProperty(window, 'innerWidth', innerWidthDescriptor)
-          else Reflect.deleteProperty(window, 'innerWidth')
-        }
-
-        // 监听同一个 MediaQueryList：组件先注册，我们在同一次 change 派发中观察结果。
-        const observed: Array<{ matches: boolean; mobile: boolean; changes: boolean[] }> = []
-        layoutQuery.addEventListener('change', event => {
-          observed.push({ matches: event.matches, mobile: layout.mobile, changes: [...changes] })
-        })
-        await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
-        expect(observed).toEqual([{ matches: true, mobile: true, changes: [true] }])
-      } finally {
-        matchMediaSpy.mockRestore()
-      }
-    })
-
-    // 同一侧内的宽度变化不是断点跨越，不该给消费者发通知（否则外壳会做无谓的重渲染）。
-    it('同侧视口变化不派发 mobile-change', async () => {
-      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
-      const layout = createLayout()
-      await layout.updateComplete
-
-      const changes: boolean[] = []
-      layout.addEventListener('mobile-change', () => changes.push(true))
-
-      await setViewport(900, 720)
-      await waitForFrame()
-
-      expect(layout.mobile).toBe(false)
-      expect(changes).toEqual([])
-    })
-
-    // 派生输出不是第二个输入：写 attribute 不改变状态，也不该派发通知。
-    it('外部写 mobile attribute 会被恢复，且不派发 mobile-change', async () => {
-      await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
-      const layout = createLayout()
-      await layout.updateComplete
-
-      const changes: boolean[] = []
-      layout.addEventListener('mobile-change', () => changes.push(true))
-
-      layout.setAttribute('mobile', '')
-      await layout.updateComplete
-
-      expect(layout.mobile).toBe(false)
-      expect(layout.hasAttribute('mobile')).toBe(false)
-      expect(changes).toEqual([])
-      expect(queryA11y(layout, 'aside')).toBeTruthy()
-    })
-
-    /*
-     * 移动端一侧的恢复不能只看存在性：`mobile="false"` 写进来时存在性本来就对（存在即 true），
-     * 只有值留在宿主上——`getAttribute` 会回读到 consumer 写的那串，而组件自己写的形态是空串。
-     */
-    it('移动端写 mobile attribute：值归位为空串，状态与树不动', async () => {
       await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
-      const layout = createLayout()
+      layout.mobile = false
       await layout.updateComplete
-
-      const changes: boolean[] = []
-      layout.addEventListener('mobile-change', () => changes.push(true))
-
-      layout.setAttribute('mobile', 'false')
-      await layout.updateComplete
-
-      expect(layout.mobile).toBe(true)
-      expect(layout.getAttribute('mobile')).toBe('')
-      expect(changes).toEqual([])
-      expect(queryA11y(layout, 'web-ui-drawer')).toBeTruthy()
-      expect(queryA11y(layout, 'aside')).toBeFalsy()
-    })
-
-    /*
-     * 消费者要在挂载期拿到初值：Vue 的模板监听在元素插入前就挂上，因此连接那一刻的翻转
-     * 必须对外可见，而不是只等下一次跨越（挂得晚的消费者则自己读一次属性，见 README）。
-     */
-    it('挂载时已在移动端：连接即派发一次 mobile-change', async () => {
-      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
-      const layout = document.createElement('web-ui-layout')
-      const changes: boolean[] = []
-      layout.addEventListener('mobile-change', event => {
-        changes.push((event as CustomEvent<{ mobile: boolean }>).detail.mobile)
-      })
-      document.body.append(layout)
-      await layout.updateComplete
-
-      expect(changes).toEqual([true])
-      expect(layout.mobile).toBe(true)
-      expect(layout.hasAttribute('mobile')).toBe(true)
+      expect(layout.hasAttribute('mobile')).toBe(false)
+      expect(queryA11y(layout, 'aside')).toBeTruthy()
     })
   })
 

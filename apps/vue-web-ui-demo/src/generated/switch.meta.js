@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Switch" },
+  { label: 'p', content: "English | <a href=\"./switch.CN.md\">简体中文</a>" },
   { label: 'p', content: "Switch, declaring <code>role=\"switch\"</code> and <code>aria-checked</code>. A click toggles it immediately. Holding the track to drag horizontally or flicking it also sets the value, and both Space and Enter toggle from the keyboard." },
   { label: 'p', content: "Text children of the default slot become the visible label and the default accessible name; <code>aria-label</code> or <code>aria-labelledby</code> can also be set on the host." },
   { label: 'h2', id: 'section-2', content: "Samples" },

@@ -37,7 +37,9 @@ import {
 import { computed, onMounted, ref, watch } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
+import Search from '@/components/search/index.vue'
 import { bootDegraded, currentLocale, loadDemoLocale, localePending } from '@/i18n/locale'
+import { useMobile } from '@/state/mobile'
 
 import SidebarNavLink from './sidebar-nav-link.vue'
 
@@ -75,12 +77,12 @@ function getInitialSidebarWidth(): string {
 const themeAppearance = ref(getInitialThemeAppearance())
 const themeMotion = ref(getInitialThemeMotion())
 const bannerVisible = ref(true)
+const searchOpen = ref(false)
 const shellLayout = ref<WebUiLayout | null>(null)
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const mobileSidebarWidth = 'min(320px, 80vw)'
-// 移动端判定由 web-ui-layout 给出（它同时决定渲染桌面树还是 drawer）：demo 不自己写断点。
-const isMobileSidebarViewport = ref(false)
+const isMobileSidebarViewport = useMobile()
 const desktopSidebarWidth = ref(getInitialSidebarWidth())
 const sidebarWidth = computed(() => (isMobileSidebarViewport.value ? mobileSidebarWidth : desktopSidebarWidth.value))
 
@@ -98,13 +100,6 @@ const navCollapsed = computed(() => sidebarCollapsed.value && !isMobileSidebarVi
  */
 function isOwnLayoutEvent(event: Event): boolean {
   return event.target === event.currentTarget
-}
-
-// 挂载即移动端时，layout 会在连接那一刻派发一次 mobile-change，模板监听挂在其之前，
-// 因此首帧拿到的就是 layout 自己的判定。
-function updateMobileSidebarViewport(event: WebUiEvent<WebUiLayout, 'mobile-change'>) {
-  if (!isOwnLayoutEvent(event)) return
-  isMobileSidebarViewport.value = event.detail.mobile
 }
 
 function commitThemeAppearance(appearance: ThemeAppearance) {
@@ -182,6 +177,7 @@ onMounted(async () => {
         class="mobile:[--wui-layout-sidebar-radius:38px]"
         header-glow
         sidebar-collapsible
+        :mobile="isMobileSidebarViewport"
         :sidebarCollapsed="sidebarCollapsed"
         :sidebarOpen="sidebarOpen"
         :sidebarWidth="sidebarWidth"
@@ -191,7 +187,6 @@ onMounted(async () => {
         @sidebar-collapsed-change="updateSidebarCollapsed"
         @sidebar-open-change="updateSidebarOpen"
         @sidebar-width-change="updateSidebarWidth"
-        @mobile-change="updateMobileSidebarViewport"
       >
         <div
           v-if="bannerVisible"
@@ -206,7 +201,7 @@ onMounted(async () => {
             aria-label="关闭横幅"
             @click="bannerVisible = false"
           >
-            <web-ui-icon class="text-(--wui-color-on-accent)" :icon="lucideX" :size="16"></web-ui-icon>
+            <web-ui-icon class="text-(--wui-color-on-accent)" :icon="lucideX"></web-ui-icon>
           </web-ui-button>
           <span class="col-start-2 text-center">🎉 欢迎使用 web-ui 组件库！</span>
         </div>
@@ -218,52 +213,57 @@ onMounted(async () => {
           slot="header"
           class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:w-[calc(100vw-60px)] mobile:gap-1.5 mobile:px-2 mobile:py-2"
         >
-          <web-ui-select variant="icon" :value="themeMotion" aria-label="全局动效" @change="updateThemeMotion">
-            <web-ui-icon
-              slot="trigger"
-              :icon="
-                themeMotion === 'full'
-                  ? icOutlineMotionPhotosOn
-                  : themeMotion === 'reduced'
-                    ? icOutlineMotionPhotosOff
-                    : antDesignSyncOutlined
-              "
-              :size="18"
-            ></web-ui-icon>
-            <web-ui-option value="full" label="完整动效">完整动效</web-ui-option>
-            <web-ui-option value="reduced" label="减弱动效">减弱动效</web-ui-option>
-            <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
-          </web-ui-select>
-          <web-ui-select
-            variant="icon"
-            :value="themeAppearance"
-            placement="bottom"
-            aria-label="全局主题"
-            @change="updateThemeAppearance"
-          >
-            <web-ui-icon
-              slot="trigger"
-              :icon="themeAppearance === 'light' ? lucideSun : themeAppearance === 'dark' ? lucideMoon : lucideContrast"
-              :size="18"
-            ></web-ui-icon>
-            <!-- 外观名称由 Wuchale 壳文案统一翻译成 Light / Dark。 -->
-            <web-ui-option value="light" label="浅色模式">浅色模式</web-ui-option>
-            <web-ui-option value="dark" label="深色模式">深色模式</web-ui-option>
-            <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
-          </web-ui-select>
-          <web-ui-select
-            variant="icon"
-            :value="currentLocale"
-            :disabled="localePending"
-            :aria-busy="localePending"
-            aria-label="全局语言"
-            @change="updateLocale"
-          >
-            <web-ui-icon slot="trigger" :icon="lucideLanguages" :size="18"></web-ui-icon>
-            <web-ui-option value="zh-CN" :label="ZH_LABEL">{{ ZH_LABEL }}</web-ui-option>
-            <web-ui-option value="en" :label="EN_LABEL">{{ EN_LABEL }}</web-ui-option>
-          </web-ui-select>
-          <span v-if="localePending" class="sr-only" role="status">正在加载语言</span>
+          <div :class="searchOpen ? 'flex items-center gap-2 mobile:hidden' : 'flex items-center gap-2 mobile:gap-1.5'">
+            <web-ui-select variant="icon" :value="themeMotion" aria-label="全局动效" @change="updateThemeMotion">
+              <web-ui-icon
+                slot="trigger"
+                :icon="
+                  themeMotion === 'full'
+                    ? icOutlineMotionPhotosOn
+                    : themeMotion === 'reduced'
+                      ? icOutlineMotionPhotosOff
+                      : antDesignSyncOutlined
+                "
+                :size="18"
+              ></web-ui-icon>
+              <web-ui-option value="full" label="完整动效">完整动效</web-ui-option>
+              <web-ui-option value="reduced" label="减弱动效">减弱动效</web-ui-option>
+              <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
+            </web-ui-select>
+            <web-ui-select
+              variant="icon"
+              :value="themeAppearance"
+              placement="bottom"
+              aria-label="全局主题"
+              @change="updateThemeAppearance"
+            >
+              <web-ui-icon
+                slot="trigger"
+                :icon="
+                  themeAppearance === 'light' ? lucideSun : themeAppearance === 'dark' ? lucideMoon : lucideContrast
+                "
+                :size="18"
+              ></web-ui-icon>
+              <!-- 外观名称由 Wuchale 壳文案统一翻译成 Light / Dark。 -->
+              <web-ui-option value="light" label="浅色模式">浅色模式</web-ui-option>
+              <web-ui-option value="dark" label="深色模式">深色模式</web-ui-option>
+              <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
+            </web-ui-select>
+            <web-ui-select
+              variant="icon"
+              :value="currentLocale"
+              :disabled="localePending"
+              :aria-busy="localePending"
+              aria-label="全局语言"
+              @change="updateLocale"
+            >
+              <web-ui-icon slot="trigger" :icon="lucideLanguages" :size="18"></web-ui-icon>
+              <web-ui-option value="zh-CN" :label="ZH_LABEL">{{ ZH_LABEL }}</web-ui-option>
+              <web-ui-option value="en" :label="EN_LABEL">{{ EN_LABEL }}</web-ui-option>
+            </web-ui-select>
+            <span v-if="localePending" class="sr-only" role="status">正在加载语言</span>
+          </div>
+          <Search v-model:open="searchOpen" />
         </div>
         <OverlayScrollbarsComponent
           slot="sidebar"
@@ -280,6 +280,15 @@ onMounted(async () => {
               :collapsed="navCollapsed"
               :item-class="NAV_ITEM_CLASS"
               :title="navCollapsed ? undefined : '组件总览'"
+              @navigate="sidebarOpen = false"
+            />
+            <SidebarNavLink
+              to="/getting-started"
+              label="快速开始"
+              :active="isNavActive(route.path, '/getting-started')"
+              :collapsed="navCollapsed"
+              :item-class="NAV_ITEM_CLASS"
+              :title="navCollapsed ? undefined : '快速开始'"
               @navigate="sidebarOpen = false"
             />
             <SidebarNavLink

@@ -1,5 +1,7 @@
 # Dropdown
 
+English | [简体中文](./dropdown.CN.md)
+
 A dropdown menu. The `trigger` slot holds the trigger, and the remaining children render as menu items inside the overlay panel. Dividers, group headers, and multi-level submenus are supported.
 
 ## Samples
@@ -493,7 +495,7 @@ Menu items: `web-ui-dropdown-item`, `web-ui-dropdown-divider`, `web-ui-dropdown-
 
 Opening requires content: with no root-level menu item, divider or header (including ones inside framework wrappers), click, keyboard gestures and hover do nothing; `hidden` subtrees do not count. `show()` and writing `open` still open an empty menu, and content added while closed does not open it. If the last content disappears while the menu is open, it collapses immediately without an exit transition.
 
-`hover` opens and closes with pointer entry and exit; moving the pointer from the trigger into the panel does not collapse it, and once the pointer leaves both the trigger and the panel and focus is outside them, it closes after `hide-delay`. `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately. Escape, outside clicks and focus loss close every menu except those in `none`, regardless of whether `trigger` contains `click` or `focus`; `none` neither responds to nor intercepts them.
+`hover` opens and closes with pointer entry and exit; moving the pointer from the trigger into the panel does not collapse it, and once the pointer leaves both the trigger and the panel it closes after `hide-delay` when focus is outside them if `focus` is enabled. `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately. Outside clicks close menus with `click`, focus loss closes menus with `focus`, and Escape closes menus except those in `none`.
 
 `open` can be assigned directly; that write is silent and does not dispatch `open-change`.
 

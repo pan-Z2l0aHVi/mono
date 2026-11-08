@@ -1,10 +1,12 @@
 # Input
 
+[English](./input.md) | 简体中文
+
 文本输入框，支持清除按钮与前后缀插槽，并与原生 `<form>` 集成。宿主自身不可聚焦，焦点落在内部原生输入框上；`focus()` / `blur()` / `select()` 都作用于它。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 `placeholder` 只在空值时显示，`value` 既是显示值也是表单提交值。不接 `input` 时，组件自己持有输入内容。要由页面同步这个值，就写 `value` 并接住 `input`，见下面的受控值与事件。
 
@@ -28,7 +30,7 @@ export default function Demo() {
 </template>
 ```
 
-### Input types
+### 输入类型
 
 `type` 原样传给原生输入框，掩码与格式判定都由原生类型提供：`password` 掩码输入内容，`email` 在表单提交时校验格式。
 
@@ -54,7 +56,7 @@ export default function Demo() {
 </template>
 ```
 
-### Prefix and suffix
+### 前缀和后缀
 
 `prefix` / `suffix` 插槽在输入区两侧放图标或文字；哪一侧没有指派节点就整块收起，不留 `gap` 的间距。没有可见标签的输入用 `aria-label` 提供无障碍名称。
 
@@ -65,7 +67,7 @@ export default function Demo() {
   return (
     <div className="flex flex-col items-start gap-3">
       <web-ui-input aria-label="搜索" clearable placeholder="搜索组件">
-        <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideSearch}></web-ui-icon>
       </web-ui-input>
       <web-ui-input aria-label="官网" value="web-ui">
         <span slot="prefix">www.</span>
@@ -80,7 +82,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-col items-start gap-3">
     <web-ui-input aria-label="搜索" clearable placeholder="搜索组件">
-      <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
     </web-ui-input>
     <web-ui-input aria-label="官网" value="web-ui">
       <span slot="prefix">www.</span>
@@ -94,7 +96,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Clear button
+### 清除按钮
 
 `clearable` 只在有值且未设置 `disabled` 或 `readonly` 时画出清除按钮；空值、禁用或只读时不画。点击清除按钮会清空值，同时派发 `input` 与 `change`。清空是一次已提交的离散变更，不是连续输入，所以只监听 `change` 的调用方也必须收到。`full` 让控件占满父容器宽度。
 
@@ -118,7 +120,7 @@ export default function Demo() {
 </template>
 ```
 
-### Disabled and readonly
+### 禁用和只读
 
 `disabled` 关掉输入、校验与清除操作，宿主整体降到四成不透明度。`readonly` 保留可读、可全选与可复制，但不接受输入，并收起清除按钮。清除会改值，与只读语义冲突。
 
@@ -131,7 +133,7 @@ export default function Demo() {
       <web-ui-input disabled placeholder="禁用"></web-ui-input>
       <web-ui-input disabled aria-label="禁用且有值的输入框" value="禁用且有值"></web-ui-input>
       <web-ui-input readonly clearable aria-label="只读输入框" value="只读：可选中复制，不能改">
-        <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideSearch}></web-ui-icon>
       </web-ui-input>
     </div>
   )
@@ -144,7 +146,7 @@ export default function Demo() {
     <web-ui-input disabled placeholder="禁用"></web-ui-input>
     <web-ui-input disabled aria-label="禁用且有值的输入框" value="禁用且有值"></web-ui-input>
     <web-ui-input readonly clearable aria-label="只读输入框" value="只读：可选中复制，不能改">
-      <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
     </web-ui-input>
   </div>
 </template>
@@ -154,7 +156,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Borderless
+### 无边框
 
 `borderless` 移除边框、背景、模糊、阴影与 glass 描边环，只留内边距与焦点环，供外层自己画容器；输入区宽度仍取 `--wui-input-width`。
 
@@ -167,7 +169,7 @@ export default function Demo() {
       <web-ui-input borderless placeholder="无边框输入"></web-ui-input>
       <web-ui-input borderless aria-label="无边框输入框" value="无边框且有值"></web-ui-input>
       <web-ui-input borderless aria-label="搜索" placeholder="无边框带 icon">
-        <web-ui-icon slot="prefix" icon={lucideSearch} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideSearch}></web-ui-icon>
       </web-ui-input>
     </div>
   )
@@ -180,7 +182,7 @@ export default function Demo() {
     <web-ui-input borderless placeholder="无边框输入"></web-ui-input>
     <web-ui-input borderless aria-label="无边框输入框" value="无边框且有值"></web-ui-input>
     <web-ui-input borderless aria-label="搜索" placeholder="无边框带 icon">
-      <web-ui-icon slot="prefix" :icon="lucideSearch" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideSearch"></web-ui-icon>
     </web-ui-input>
   </div>
 </template>
@@ -190,7 +192,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 </script>
 ```
 
-### Controlled value and events
+### 受控值与事件
 
 `input` 每敲一个字派发一次。`change` 与内部原生控件对齐：值改动后失焦时转发一次。两者都只带事件本身，取值读宿主的 `value`。
 
@@ -244,7 +246,7 @@ const committed = ref('')
 </script>
 ```
 
-### Form value
+### 表单值
 
 `name` 是字段名，提交值就是当前输入内容；`required` 在未填时拦下原生提交（`valueMissing`），`type="email"` 的格式不符同样拦下（`typeMismatch`）。校验由原生 `<form>` 接管，气泡指向这个控件。
 
@@ -324,7 +326,7 @@ function reset() {
 </script>
 ```
 
-### Focus and select all
+### 聚焦与全选
 
 `focus()` / `blur()` / `select()` 作用于内部原生输入框；`focus()` 与 `select()` 在 `disabled` 下不产生效果，`blur()` 没有这道守卫。
 
@@ -366,7 +368,7 @@ const field = useTemplateRef<WebUiInput>('field')
 </script>
 ```
 
-### CSS variables
+### CSS 变量
 
 `--wui-input-width` 决定输入区宽度（`full` 下由 100% 接管），`--wui-input-clear-color` 决定清除按钮的颜色，默认取三级文本色。
 
@@ -407,12 +409,13 @@ export default function Demo() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称               | 说明                                                             | 类型             | 默认值   |
 | ------------------ | ---------------------------------------------------------------- | ---------------- | -------- |
 | `type`             | HTML 输入框类型，透传给内部原生输入框。                          | `string`         | `'text'` |
 | `placeholder`      | 占位文本。                                                       | `string`         | `''`     |
+| `autocomplete`     | 传递给原生输入框的浏览器自动填充值；空值不设置属性。             | `string`         | `''`     |
 | `name`             | 表单字段名。                                                     | `string`         | `''`     |
 | `disabled`         | 禁用状态。                                                       | `boolean`        | `false`  |
 | `readonly`         | 只读状态。                                                       | `boolean`        | `false`  |
@@ -424,7 +427,7 @@ export default function Demo() {
 | `aria-label`       | 无障碍标签。                                                     | `string \| null` | `null`   |
 | `value`            | 输入值，也是表单提交值。                                         | `string`         | `''`     |
 
-### Events
+### 事件
 
 | 名称     | 说明                                                               |
 | -------- | ------------------------------------------------------------------ |
@@ -433,14 +436,14 @@ export default function Demo() {
 | `focus`  | 内部原生控件的 `focus`，组合但不冒泡：宿主上要监听请用捕获阶段。   |
 | `blur`   | 内部原生控件的 `blur`，与 `focus` 同一条路径。                     |
 
-### Slots
+### Slot
 
 | 名称     | 说明                                               |
 | -------- | -------------------------------------------------- |
 | `prefix` | 输入区左侧的图标或文字；空插槽整块收起，不占间距。 |
 | `suffix` | 输入区右侧的图标或文字；清除按钮画在它之前。       |
 
-### Methods
+### 方法
 
 | 名称              | 说明                                                         |
 | ----------------- | ------------------------------------------------------------ |
@@ -474,7 +477,7 @@ export default function Demo() {
 
 清除按钮只在有值、未禁用且非只读时出现，位置贴着输入文本。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                      | 说明                                  | 默认值                           |
 | ------------------------- | ------------------------------------- | -------------------------------- |

@@ -1,5 +1,7 @@
 # Segmented
 
+English | [简体中文](./segmented.CN.md)
+
 segmented is a single-select button group whose children are `<web-ui-segmented-trigger>` elements. `value` synchronizes the selected item, and the group integrates with a native `<form>`.
 
 ## Samples
@@ -214,13 +216,13 @@ export default function Demo() {
   return (
     <web-ui-segmented aria-label="View mode" value={view} onInput={event => setView(event.currentTarget.value)}>
       <web-ui-segmented-trigger value="grid" aria-label="Grid view">
-        <web-ui-icon icon={lucideLayoutGrid} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideLayoutGrid}></web-ui-icon>
       </web-ui-segmented-trigger>
       <web-ui-segmented-trigger value="list" aria-label="List view">
-        <web-ui-icon icon={lucideList} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideList}></web-ui-icon>
       </web-ui-segmented-trigger>
       <web-ui-segmented-trigger value="settings" aria-label="Settings view">
-        <web-ui-icon icon={lucideSettings} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideSettings}></web-ui-icon>
       </web-ui-segmented-trigger>
     </web-ui-segmented>
   )
@@ -231,13 +233,13 @@ export default function Demo() {
 <template>
   <web-ui-segmented aria-label="View mode" :value="view" @input="view = $event.currentTarget.value">
     <web-ui-segmented-trigger value="grid" aria-label="Grid view">
-      <web-ui-icon :icon="lucideLayoutGrid" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideLayoutGrid"></web-ui-icon>
     </web-ui-segmented-trigger>
     <web-ui-segmented-trigger value="list" aria-label="List view">
-      <web-ui-icon :icon="lucideList" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideList"></web-ui-icon>
     </web-ui-segmented-trigger>
     <web-ui-segmented-trigger value="settings" aria-label="Settings view">
-      <web-ui-icon :icon="lucideSettings" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideSettings"></web-ui-icon>
     </web-ui-segmented-trigger>
   </web-ui-segmented>
 </template>

@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Drawer" },
+  { label: 'p', content: "English | <a href=\"./drawer.CN.md\">简体中文</a>" },
   { label: 'p', content: "A side drawer built on the native <code>&lt;dialog></code>, with slide-in and slide-out animations and drag-to-close from the inner edge on any side. Use it for secondary content that relates to the current page but does not require leaving the page." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },
@@ -287,7 +288,9 @@ const meta = [
   { label: 'p', content: "With <code>closable</code> enabled, the built-in close button sits in the top-right corner of the header, <code>16px</code> from the top and <code>16px</code> from the right by default, and does not stretch with the content." },
   { label: 'p', content: "The top offset uses <code>--wui-space-4</code> and defaults to <code>16px</code>, matching the header padding. The right offset is fixed at <code>16px</code> and measures the distance from the button to the panel's right edge, which differs from the header's horizontal padding (<code>20px</code>)." },
   { label: 'p', content: "<code>--wui-drawer-nested-peek-base</code> is the base distance each layer exposes when stacked: <code>43.2px</code> on desktop and <code>28.8px</code> on narrow viewports by default. Setting it on the host or any ancestor changes both at once and applies at any viewport width." },
-  { label: 'p', content: "<code>page-shift</code> moves the whole page and needs no extra configuration. <code>position: fixed</code> content in the page moves with it. Other open dialogs or drawers are not affected." },
+  { label: 'p', content: "<code>page-shift</code> moves the whole page. <code>position: fixed</code> content in the page moves with it. Other open dialogs or drawers are not affected." },
+  { label: 'p', content: "Set a page background that matches your content so the area exposed by the shift has the same color. With <code>web-ui-theme</code>, add this to your global styles:" },
+  { label: 'codeblock', content: "<pre class=\"shiki shiki-themes github-light github-dark mdm-code\" style=\"--shiki-light:#24292e;--shiki-dark:#e1e4e8;--shiki-light-bg:#fff;--shiki-dark-bg:#24292e\" tabindex=\"0\"><code><span class=\"line\"><span class=\"line-number\">1</span><span style=\"--shiki-light:#22863A;--shiki-dark:#85E89D\">html</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\"> {</span></span>\n<span class=\"line\"><span class=\"line-number\">2</span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">  background</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">: </span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">var</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">(</span><span style=\"--shiki-light:#E36209;--shiki-dark:#FFAB70\">--wui-color-page</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">, </span><span style=\"--shiki-light:#005CC5;--shiki-dark:#79B8FF\">#fff</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">);</span></span>\n<span class=\"line\"><span class=\"line-number\">3</span><span style=\"--shiki-light:#24292E;--shiki-dark:#E1E4E8\">}</span></span></code></pre>", lang: "css", path: './codeblock/0fff569e061f.css' },
   { label: 'p', content: "With several layers open, the offsets stack by opening order, and nested and sibling layers follow the same rule; closing any layer recalculates the rest." },
   { label: 'p', content: "The page offset does not overwrite a <code>transform</code> your app sets on the page, and it can run at the same time as <code>shake()</code>." },
   { label: 'h3', id: 'section-26', content: "Drag to close" },

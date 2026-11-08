@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "SVG Draw Lines" },
+  { label: 'p', content: "English | <a href=\"./svg-draw-lines.CN.md\">简体中文</a>" },
   { label: 'p', content: "An SVG line-drawing animation. The component animates the original elements in the slot directly and does not clone the DOM. By default it draws in; <code>replay({ reverse: true })</code> retracts along the same path." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

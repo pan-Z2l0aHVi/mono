@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Progress" },
+  { label: 'p', content: "English | <a href=\"./progress.CN.md\">简体中文</a>" },
   { label: 'p', content: "progress / progress indicator: a linear track for completed work, with an indeterminate mode for operations whose percentage is not known yet." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

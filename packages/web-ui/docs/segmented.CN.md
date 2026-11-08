@@ -1,10 +1,12 @@
 # Segmented
 
+[English](./segmented.md) | 简体中文
+
 segmented 是单选按钮组，子项是 `<web-ui-segmented-trigger>`。`value` 同步选中项，组件与原生 `<form>` 集成。
 
-## Samples
+## 示例
 
-### Basic controlled
+### 基础受控用法
 
 默认插槽投影 segmented-trigger，`value` 决定哪一项选中。用户点击（或按 Enter / Space）后，`input` 带回新值，页面把它写回 `value` 以维持受控。
 
@@ -54,7 +56,7 @@ const day = ref('wed')
 </script>
 ```
 
-### Variant comparison
+### 变体对比
 
 `variant` 决定轨道与指示器的材质。`inset`（默认）把指示器嵌进带常驻描边环与投影的轨道；`raised` 的指示器浮在轨道上方。两个变体的交互、按压态与文字色一致，只有静止外观不同。
 
@@ -128,7 +130,7 @@ const raisedView = ref('week')
 </script>
 ```
 
-### Item and group disabled
+### 选项和 group 的禁用状态
 
 `disabled` 加在触发器上只禁用这一项，其余项照常切换。加在 `<web-ui-segmented>` 上禁用整组：子项自身的 `disabled` 属性不变，但全部退出 Tab 序列，也不再响应点击。
 
@@ -200,7 +202,7 @@ const lockedView = ref('list')
 </script>
 ```
 
-### Icon-only
+### 仅图标
 
 纯图标触发器仍需要自己的可访问名，请给每个 `<web-ui-segmented-trigger>` 写 `aria-label`。组的单选、拖拽与键盘行为保持不变。
 
@@ -214,13 +216,13 @@ export default function Demo() {
   return (
     <web-ui-segmented aria-label="View mode" value={view} onInput={event => setView(event.currentTarget.value)}>
       <web-ui-segmented-trigger value="grid" aria-label="Grid view">
-        <web-ui-icon icon={lucideLayoutGrid} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideLayoutGrid}></web-ui-icon>
       </web-ui-segmented-trigger>
       <web-ui-segmented-trigger value="list" aria-label="List view">
-        <web-ui-icon icon={lucideList} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideList}></web-ui-icon>
       </web-ui-segmented-trigger>
       <web-ui-segmented-trigger value="settings" aria-label="Settings view">
-        <web-ui-icon icon={lucideSettings} size={16}></web-ui-icon>
+        <web-ui-icon icon={lucideSettings}></web-ui-icon>
       </web-ui-segmented-trigger>
     </web-ui-segmented>
   )
@@ -231,13 +233,13 @@ export default function Demo() {
 <template>
   <web-ui-segmented aria-label="View mode" :value="view" @input="view = $event.currentTarget.value">
     <web-ui-segmented-trigger value="grid" aria-label="Grid view">
-      <web-ui-icon :icon="lucideLayoutGrid" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideLayoutGrid"></web-ui-icon>
     </web-ui-segmented-trigger>
     <web-ui-segmented-trigger value="list" aria-label="List view">
-      <web-ui-icon :icon="lucideList" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideList"></web-ui-icon>
     </web-ui-segmented-trigger>
     <web-ui-segmented-trigger value="settings" aria-label="Settings view">
-      <web-ui-icon :icon="lucideSettings" :size="16"></web-ui-icon>
+      <web-ui-icon :icon="lucideSettings"></web-ui-icon>
     </web-ui-segmented-trigger>
   </web-ui-segmented>
 </template>
@@ -250,7 +252,7 @@ const view = ref('grid')
 </script>
 ```
 
-### Form field
+### 表单字段
 
 `name` 让当前选中值以该字段名进入 `FormData`；没有选中任何项时不提交该字段。`form.reset()` 把 `value` 退回挂载时的初始值。
 
@@ -346,7 +348,7 @@ function reset() {
 </script>
 ```
 
-### input and change
+### input 和 change 事件
 
 每次用户切换（点击、Enter / Space 或拖拽）都会先派发 `input`，再派发 `change`，各一次；点击已是当前项的触发器不派发。直接改 `value` 属于程序化更新：指示器会移动，两个计数都不变。
 
@@ -421,7 +423,7 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 ## API
 
-### Props
+### 属性
 
 | 名称         | 说明                                                                                                 | 类型                  | 默认值    |
 | ------------ | ---------------------------------------------------------------------------------------------------- | --------------------- | --------- |
@@ -432,14 +434,14 @@ function onChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 | `aria-label` | 组的可访问名称；`aria-labelledby` 无法跨组件边界解析，名称转发到 shadow 内的 `role="listbox"` 元素。 | `string`              | -         |
 | `value`      | 当前选中值。                                                                                         | `string`              | `''`      |
 
-### Events
+### 事件
 
 | 名称     | 说明                                           |
 | -------- | ---------------------------------------------- |
 | `input`  | 用户点击、使用键盘或结束拖拽改变选中项时触发。 |
 | `change` | 与 `input` 成对派发，一次切换各一次。          |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                     |
 | --------- | ---------------------------------------- |

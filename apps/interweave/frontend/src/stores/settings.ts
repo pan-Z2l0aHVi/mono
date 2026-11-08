@@ -21,30 +21,30 @@ export interface AccentPreset {
 
 const APPEARANCE_STORAGE_KEY = 'theme-appearance'
 const ACCENT_STORAGE_KEY = 'theme-accent'
+const REDUCED_MOTION_STORAGE_KEY = 'theme-reduced-motion'
 
 const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
 
-/**
- * accent 预设色板。
- *
- * web-ui 默认的 --wui-color-on-accent 随外观变化：light 为 #fff，dark 为 #000。本表只写
- * --wui-color-accent，不定义文字颜色。Interweave 里覆在这些预设色上的 14–15px 白字应达到
- * WCAG AA 4.5:1；这些是常规字重正文，不是大字。
- *
- * 绿与橙因此**不是** Apple system 色：#30d158 只有 2.02:1、#ff9f0a 只有 2.06:1，都不达标，
- * 用同色相的深一档 #1d8348（4.78:1）与 #c64600（4.91:1）。其余四色与蓝色预设值保持原样；
- * 它们的主题配对问题另行处理。
- *
- * 「蓝」保留 #0a84ff。web-ui 的 light 默认值现为 #0071e3，dark 默认值仍为 #0a84ff。
- */
+/** 与 macOS 色板一致的强调色。 */
 export const ACCENT_PRESETS: readonly AccentPreset[] = [
-  { value: '#0a84ff', label: '蓝' },
-  { value: '#1d8348', label: '绿' },
-  { value: '#c64600', label: '橙' },
-  { value: '#ff453a', label: '红' },
-  { value: '#bf5af2', label: '紫' },
-  { value: '#ff375f', label: '粉' }
+  { value: '#007aff', label: '蓝' },
+  { value: '#a54ca4', label: '紫' },
+  { value: '#f54096', label: '粉' },
+  { value: '#ff4b53', label: '红' },
+  { value: '#ff8616', label: '橙' },
+  { value: '#ffbe00', label: '黄' },
+  { value: '#61bf45', label: '绿' },
+  { value: '#8c8c8c', label: '灰' }
 ] as const
+
+const LEGACY_ACCENTS: Record<string, string> = {
+  '#0a84ff': '#007aff',
+  '#1d8348': '#61bf45',
+  '#c64600': '#ff8616',
+  '#ff453a': '#ff4b53',
+  '#bf5af2': '#a54ca4',
+  '#ff375f': '#f54096'
+}
 
 const DEFAULT_ACCENT = ACCENT_PRESETS[0].value
 
@@ -69,18 +69,24 @@ function readAppearance(): ThemeAppearance {
 
 function readAccent(): string {
   const accent = local.get<unknown>(ACCENT_STORAGE_KEY)
-  return isAccentPreset(accent) ? accent : DEFAULT_ACCENT
+  if (isAccentPreset(accent)) return accent
+  return typeof accent === 'string' ? (LEGACY_ACCENTS[accent] ?? DEFAULT_ACCENT) : DEFAULT_ACCENT
 }
 
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
     appearance: readAppearance(),
-    accent: readAccent()
+    accent: readAccent(),
+    reducedMotion: local.get<unknown>(REDUCED_MOTION_STORAGE_KEY) === true
   }),
   actions: {
     setAppearance(appearance: ThemeAppearance) {
       this.appearance = appearance
       local.set(APPEARANCE_STORAGE_KEY, appearance)
+    },
+    setReducedMotion(reduced: boolean) {
+      this.reducedMotion = reduced
+      local.set(REDUCED_MOTION_STORAGE_KEY, reduced)
     },
     setAccent(accent: string) {
       if (!isAccentPreset(accent)) return

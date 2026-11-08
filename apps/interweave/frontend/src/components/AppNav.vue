@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WebUiIcon, WebUiSvgDrawLines } from '@greypan/web-ui'
-import { lucideFolderOpen, lucideLayoutGrid, lucideSettings } from '@greypan/web-ui/icons'
+import { ciSettingsFuture, lucideFolderOpen, lucideLayoutGrid } from '@greypan/web-ui/icons'
 import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
 
@@ -47,7 +47,11 @@ async function playDraw(key: NavKey) {
 
   void host.replay()
 
-  if (window.matchMedia('(prefers-reduced-motion: reduce)').matches) return
+  if (
+    host.closest('web-ui-theme')?.getAttribute('motion') === 'reduced' ||
+    window.matchMedia('(prefers-reduced-motion: reduce)').matches
+  )
+    return
   host.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.3)', offset: 0.4 }, { transform: 'scale(1)' }], {
     duration: 720,
     easing: 'ease-out'
@@ -63,27 +67,13 @@ function selectNav(item: (typeof navItems)[number]) {
 </script>
 
 <template>
-  <!--
-    pt-2 而不是 pt-14：panel 自身圆角 24px，导航项若顶到 y=8 会压进圆角弧里被削掉两角。
-    左右 px-3（12px）比它宽，两侧留白比顶部宽一点。
-
-    flex + pb-0 是为了让设置入口贴住 panel 底部：nav 是流内内容排在上面，设置 button 用 mt-auto
-    被推到盒子底边，而 AppNav 正是 .sidebar-viewport（layout 里 flex: 1 的那一格）里 h-full
-    的那个盒子，于是这一行的底边恰好落在 .sidebar-toggle-area 的上沿、与 collapse toggle 同一列。
-    底部留白改由 collapse toggle 自带的 8px margin 承担，pb 再留一份会把两者推散。nav 的 mb-1 是
-    兜底：h-full 万一没解析出来，mt-auto 不生效，没有这 4px 两块就会贴成一片。
-  -->
-  <div class="relative z-20 flex h-full flex-col pt-2 pb-0 px-3 mobile:px-0" aria-label="应用导航">
+  <div class="relative z-20 flex h-full flex-col p-2 pb-0" aria-label="应用导航">
     <nav class="grid gap-1 mb-1" aria-label="主导航">
       <button
         v-for="item in navItems"
         :key="item.key"
         type="button"
-        :class="[
-          navItemClass,
-          route.path === item.path ? '' : 'hover:bg-black/4 dark:hover:bg-white/6',
-          collapsed ? 'justify-center' : ''
-        ]"
+        :class="[navItemClass, route.path === item.path ? '' : 'hover:bg-black/4 dark:hover:bg-white/6']"
         :data-active="route.path === item.path"
         :aria-current="route.path === item.path ? 'page' : undefined"
         :aria-label="item.label"
@@ -108,14 +98,15 @@ function selectNav(item: (typeof navItems)[number]) {
       自动只剩 icon，tooltip 也用与导航项相同的 portal/placement/disabled 组合。icon 不套
       web-ui-svg-draw-lines——画线动画跟着路由选中语义走，设置不参与导航，就没有可重放的那一次点击。
     -->
+    <web-ui-dropdown-divider class="mt-auto [--wui-space-1:8px]" />
     <button
       type="button"
-      :class="[navItemClass, collapsed ? 'justify-center' : '', 'mt-auto hover:bg-black/4 dark:hover:bg-white/6']"
+      :class="[navItemClass, 'hover:bg-black/4 dark:hover:bg-white/6']"
       aria-label="设置"
       @click="emit('openSettings')"
     >
       <web-ui-tooltip portal placement="right" content="设置" :disabled="!collapsed">
-        <web-ui-icon :icon="lucideSettings" :size="18" />
+        <web-ui-icon :icon="ciSettingsFuture" :size="18" />
       </web-ui-tooltip>
       <span v-if="!collapsed" class="text-sm whitespace-nowrap overflow-hidden">设置</span>
     </button>

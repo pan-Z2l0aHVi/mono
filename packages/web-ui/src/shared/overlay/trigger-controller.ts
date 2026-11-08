@@ -6,10 +6,10 @@
  * - `trigger` 里的手势决定哪些事件能开合；`none` 只接受 `show()` / `hide()` 与 `open`。
  * - hover 的 show/hide 计时用组件给的 delay，其余手势立即生效。只有 hover 来源的
  *   开合走延迟，这样点击与键盘不会因为 hover 配置而变慢。
- * - hover 收起要求指针已经离开 trigger 与 panel，且焦点不在其中（「全部撤离才收起」）；
- *   焦点离开则直接收起，不区分 trigger 集合。
+ * - hover 收起要求指针离开 trigger 与 panel；启用 focus 时，焦点也须离开。
+ *   失焦关闭仅在启用 focus 时生效。
  * - 点 trigger 一律切换；autocomplete 的输入框点击只开不关（`clickOpensOnly`）。
- * - 外点与 Escape 对所有非 `none` 层生效；`none` 既不响应也不拦截 Escape
+ * - 外点仅对 click 生效，Escape 对所有非 `none` 层生效；`none` 既不响应也不拦截 Escape
  *   （仲裁策略由 `arbitration()` 给出）。
  * - `requestOpen` 带 `automatic` 标记：手势与键盘来源为 true，程序式与声明式为 false。
  *   宿主据此只拦截自动来源，`show()` 与直接写 `open` 始终能开。
@@ -162,13 +162,15 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
     policy.requestClose({ source, notify })
   }
 
+  const focusKeepsOpen = () => focusWithin && hasTriggerGesture(policy.getTrigger(), 'focus')
+
   const armHide = (source: 'hover' | 'panel-leave') => {
     clearHideTimer()
     hideTimer = setTimeout(
       () => {
         hideTimer = undefined
         if (!policy.getOpen() || policy.isDisabled() || isNone()) return
-        if (hovering || focusWithin) return
+        if (hovering || focusKeepsOpen()) return
         requestClose(source)
       },
       Math.max(0, policy.getHideDelay())
@@ -202,7 +204,7 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
     hovering = false
     clearShowTimer()
     if (!hasTriggerGesture(policy.getTrigger(), 'hover')) return
-    if (policy.getOpen() && !focusWithin) armHide('hover')
+    if (policy.getOpen() && !focusKeepsOpen()) armHide('hover')
   }
 
   const isFocusVisible = (event: FocusEvent) => {
@@ -214,7 +216,7 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
   const onFocusIn = (event: FocusEvent) => {
     if (policy.isDisabled() || isNone()) return
     focusWithin = true
-    clearHideTimer()
+    if (focusKeepsOpen()) clearHideTimer()
     if (!hasTriggerGesture(policy.getTrigger(), 'focus')) return
     if (!isFocusVisible(event)) return
     requestOpen('focus', true, true)
@@ -224,7 +226,7 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
     cancelFocusCheck()
     focusCheckFrame = requestAnimationFrame(() => {
       focusCheckFrame = undefined
-      if (!policy.getOpen() || policy.isDisabled() || isNone()) return
+      if (!policy.getOpen() || policy.isDisabled() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
       if (policy.hasFocusWithin()) {
         focusWithin = true
         return
@@ -236,7 +238,7 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
 
   const onFocusOut = () => {
     if (policy.focusOut === false) return
-    if (policy.isDisabled() || isNone()) return
+    if (policy.isDisabled() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
     focusWithin = false
     clearShowTimer()
     scheduleFocusCheck()
@@ -244,7 +246,7 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
 
   const onDocumentClick = (event: MouseEvent) => {
     if (policy.outsideClick === false) return
-    if (policy.isDisabled() || isNone() || !policy.getOpen()) return
+    if (policy.isDisabled() || !hasTriggerGesture(policy.getTrigger(), 'click') || !policy.getOpen()) return
     // 在监听器内部判定：composedPath() 在派发结束后会被清空。
     if (isEventInsideHost(host, event)) return
     if (policy.isInsidePanel(event)) return
@@ -314,16 +316,16 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
         if (event.pointerType === 'touch') return
         if (!hasTriggerGesture(policy.getTrigger(), 'hover')) return
         hovering = false
-        if (policy.getOpen() && !focusWithin) armHide('panel-leave')
+        if (policy.getOpen() && !focusKeepsOpen()) armHide('panel-leave')
       }
       const onPanelFocusIn = () => {
         if (policy.isDisabled() || isNone()) return
         focusWithin = true
-        clearHideTimer()
+        if (focusKeepsOpen()) clearHideTimer()
       }
       const onPanelFocusOut = () => {
         if (policy.focusOut === false) return
-        if (policy.isDisabled() || isNone()) return
+        if (policy.isDisabled() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
         scheduleFocusCheck()
       }
       panel.addEventListener('pointerenter', onPanelEnter)

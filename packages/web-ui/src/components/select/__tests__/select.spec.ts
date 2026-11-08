@@ -337,8 +337,9 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('焦点移出组件后关闭 overlay', async () => {
+    it('启用 focus 时焦点移出组件后关闭 overlay', async () => {
       const el = createSelect(OPTIONS_HTML)
+      el.trigger = 'click focus'
       const external = document.createElement('button')
       document.body.append(external)
       await waitForUpdate(el)

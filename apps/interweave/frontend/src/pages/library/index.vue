@@ -288,6 +288,10 @@ function requestDeleteSelected() {
     action: async () => {
       const deletedIds = await deleteResources(ids)
       finishDelete(deletedIds)
+      if (deletedIds.length === ids.length) {
+        selectionMode.value = false
+        checkedIds.value = []
+      }
     }
   })
 }
@@ -472,10 +476,12 @@ async function handleSaveTags(resourceId: string, tagNames: string[]) {
   if (!target || target.id !== resourceId) return
   if (!('tagNames' in target)) {
     addQueue.setItemTags(resourceId, tagNames)
+    tagsOpen.value = false
     return
   }
   try {
     await saveTags(resourceId, tagNames)
+    tagsOpen.value = false
   } catch {
     // 错误由 runtimeError 呈现；弹窗保持打开，草稿已在本地更新，用户可继续修改后再次保存。
   }
@@ -557,6 +563,7 @@ onMounted(() => {
       :filter-availability="store.filterAvailability"
       :filter-tag="store.filterTag"
       :sort="store.sort"
+      :sort-direction="store.sortDirection"
       :all-tag-names="store.allTagNames"
       :has-active-filter="store.hasActiveFilter"
       :filter-open="filterOpen"
@@ -575,6 +582,7 @@ onMounted(() => {
       @update:filter-availability="store.filterAvailability = $event"
       @update:filter-tag="store.filterTag = $event"
       @update:sort="store.sort = $event"
+      @update:sort-direction="store.sortDirection = $event"
       @update:filter-open="filterOpen = $event"
       @update:search-open="searchOpen = $event"
       @add="openAddDialog"
@@ -626,7 +634,6 @@ onMounted(() => {
         :resolve-default-open-with="resolveDefaultOpenWith"
         @open-default="openResource"
         @select="selectResource"
-        @preview="previewResource"
         @detail="openResourceDetail"
         @start-rename="renameResourceFromMenu"
         @edit-tags="editResourceTags"

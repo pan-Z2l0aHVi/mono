@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WebUiAutocomplete, WebUiDialog, WebUiEvent } from '@greypan/web-ui'
-import { heroiconsCheck16Solid, heroiconsXMark16Solid, lucideTags } from '@greypan/web-ui/icons'
+import { heroiconsXMark16Solid, lucideTags, tablerTagPlus } from '@greypan/web-ui/icons'
 import { computed, ref, watch } from 'vue'
 
 import type { LibraryQueueItem } from '@/services/library'
@@ -27,6 +27,7 @@ const emit = defineEmits<{
 }>()
 
 const draft = ref<string[]>([])
+const initialTags = ref<string[]>([])
 const inputValue = ref('')
 const autocompleteField = ref<WebUiAutocomplete | null>(null)
 
@@ -34,12 +35,17 @@ const options = computed(() => {
   const selected = new Set(draft.value.map(tag => tag.toLowerCase()))
   return props.allTagNames.filter(tag => !selected.has(tag.toLowerCase()))
 })
+const hasChanges = computed(() => {
+  const initial = new Set(initialTags.value)
+  return draft.value.length !== initial.size || draft.value.some(tag => !initial.has(tag))
+})
 
 watch(
   () => [props.open, props.target?.id] as const,
   ([open, targetId]) => {
     if (!open || !targetId || !props.target) return
     draft.value = [...('tagNames' in props.target ? props.target.tagNames : props.target.tags)]
+    initialTags.value = [...draft.value]
     inputValue.value = ''
   },
   { immediate: true }
@@ -64,6 +70,7 @@ function handleKeydown(event: KeyboardEvent) {
 
 function commit() {
   if (!props.target) return
+  addTag()
   emit('save', props.target.id, [...draft.value])
 }
 
@@ -71,7 +78,6 @@ function addTag(field?: WebUiAutocomplete | null) {
   const tag = (field?.value ?? inputValue.value).trim().replace(/\s+/g, ' ')
   if (tag && !draft.value.some(item => item.toLowerCase() === tag.toLowerCase())) {
     draft.value.push(tag)
-    commit()
   }
   if (field) field.value = ''
   inputValue.value = ''
@@ -79,7 +85,6 @@ function addTag(field?: WebUiAutocomplete | null) {
 
 function removeTag(tag: string) {
   draft.value = draft.value.filter(item => item !== tag)
-  commit()
 }
 </script>
 
@@ -129,13 +134,13 @@ function removeTag(tag: string) {
               slot="suffix"
               class="-mr-2 shrink-0 [--wui-button-width:40px]"
               icon
-              variant="primary"
+              variant="secondary"
               size="28"
               :disabled="busy || !inputValue.trim()"
               aria-label="确认添加标签"
               @click.stop="addTag()"
             >
-              <web-ui-icon :icon="heroiconsCheck16Solid" :size="18" />
+              <web-ui-icon :icon="tablerTagPlus" :size="18" />
             </web-ui-button>
           </web-ui-input>
           <web-ui-option v-for="tag in options" :key="tag" :value="tag" :label="tag">{{ tag }}</web-ui-option>
@@ -143,7 +148,9 @@ function removeTag(tag: string) {
       </div>
 
       <div class="grid gap-2">
-        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">当前标签</span>
+        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">{{
+          hasChanges ? '未保存标签' : '当前标签'
+        }}</span>
         <div
           v-if="draft.length"
           class="flex min-h-[36px] flex-wrap items-center gap-1.5 rounded-[18px] bg-white px-3 py-1.5 dark:bg-(--wui-color-surface-raised)"
@@ -164,14 +171,13 @@ function removeTag(tag: string) {
               :aria-label="`移除标签 ${tag}`"
               @click="removeTag(tag)"
             >
-              <!-- 实心 X：与 panel 里的实心 check 同一路子，16px 描边 icon 在这个 22px chip 里太轻。 -->
               <web-ui-icon :icon="heroiconsXMark16Solid" :size="10" />
             </web-ui-button>
           </span>
         </div>
         <div
           v-else
-          class="flex items-center gap-2 rounded-2xl border border-dashed border-black/10 px-3 py-3 text-xs text-[#9a9aa4] dark:border-white/10 dark:text-(--wui-color-text-tertiary)"
+          class="flex min-h-[36px] items-center gap-2 rounded-[18px] bg-white px-3 py-1.5 text-xs text-[#9a9aa4] dark:bg-(--wui-color-surface-raised) dark:text-(--wui-color-text-tertiary)"
         >
           <web-ui-icon :icon="lucideTags" :size="14" />
           暂无标签
@@ -180,7 +186,8 @@ function removeTag(tag: string) {
     </div>
 
     <div slot="footer" class="grid gap-2">
-      <web-ui-button full variant="secondary" @click="emit('update:open', false)">完成</web-ui-button>
+      <web-ui-button full variant="primary" :disabled="busy" @click="commit">更新标签</web-ui-button>
+      <web-ui-button full variant="secondary" :disabled="busy" @click="emit('update:open', false)">取消</web-ui-button>
     </div>
   </web-ui-dialog>
 </template>

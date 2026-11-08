@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Spinner" },
+  { label: 'p', content: "English | <a href=\"./spinner.CN.md\">简体中文</a>" },
   { label: 'p', content: "A loading spinner. Use it declaratively in the page, or mount a full-screen instance with the static <code>WebUiSpinner.show()</code> / <code>hide()</code>." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

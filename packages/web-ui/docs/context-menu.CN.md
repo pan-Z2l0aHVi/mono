@@ -1,10 +1,12 @@
 # Context Menu
 
+[English](./context-menu.md) | 简体中文
+
 右键打开的上下文菜单。默认插槽的第一个子元素是触发区域，其余子元素是菜单项（`<web-ui-dropdown-item>` 等）。打开期间菜单是模态的，点空白只会关掉菜单。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 默认插槽的第一个元素是触发区域，其余子元素是菜单项。在触发区内右键，菜单从光标位置展开。`prefix` / `suffix` 插槽放图标与快捷键提示；`disabled` 的项留在菜单里但不能选中。
 
@@ -102,7 +104,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 </script>
 ```
 
-### Touch long press
+### 触摸长按
 
 `long-press` 是触屏的可选行为：按住 `long-press-delay`（这里 600 ms）后打开菜单，菜单从按点向下展开；按住期间滚动会取消。它只响应触屏，鼠标右键仍然使用原生 `contextmenu`。长按打开后，浏览器为同一次触摸补发的 `contextmenu` 与 `click` 会被忽略，因此菜单不会重复打开，也不会立刻关掉刚打开的菜单。
 
@@ -170,7 +172,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 </script>
 ```
 
-### Disabled
+### 禁用
 
 `disabled` 只抑制菜单行为：右键不打开，触发区本身不置灰，颜色也不变。禁用上下文菜单不等于禁用触发区，视觉上的禁用态请在你自己的内容里表达。
 
@@ -251,7 +253,7 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 
 ## API
 
-### Props
+### 属性
 
 | 名称               | 说明                                                         | 类型      | 默认值  |
 | ------------------ | ------------------------------------------------------------ | --------- | ------- |
@@ -260,26 +262,26 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 | `long-press`       | 触屏长按打开菜单（需显式开启；鼠标始终使用 `contextmenu`）。 | `boolean` | `false` |
 | `long-press-delay` | 长按触发前需按住的时长（ms）。                               | `number`  | `500`   |
 
-### Events
+### 事件
 
 | 名称          | 说明                                 |
 | ------------- | ------------------------------------ |
 | `open-change` | 菜单开合，`detail.open` 为当前状态。 |
 
-### Slots
+### Slot
 
 | 名称      | 说明                                     |
 | --------- | ---------------------------------------- |
 | `default` | 第一个元素是触发区域，其余元素是菜单项。 |
 
-### Methods
+### 方法
 
 | 名称           | 说明                                                             |
 | -------------- | ---------------------------------------------------------------- |
 | `openAt(x, y)` | 在视口坐标 `(x, y)` 处打开菜单；命令式打开不派发 `open-change`。 |
 | `close()`      | 关闭菜单；命令式关闭不派发 `open-change`。                       |
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                                  | 说明                         | 默认值                             |
 | ------------------------------------- | ---------------------------- | ---------------------------------- |

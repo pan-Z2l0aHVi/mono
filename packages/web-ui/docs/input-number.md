@@ -1,5 +1,7 @@
 # Input Number
 
+English | [简体中文](./input-number.CN.md)
+
 Numeric input with a step button on each side, supporting `min` / `max` / `step` / `precision`; out-of-range and invalid input converge back to a valid value at the commit point.
 
 ## Samples

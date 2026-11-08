@@ -1,12 +1,14 @@
 # Shake
 
+[English](./shake.md) | 简体中文
+
 命令式 shake：`shake()` 让目标摆动几次后回到原位，用于提示「不行」或「请先处理」，例如表单还有未保存内容却要离开，或需要把注意力拉回某个字段。它直接从 `@greypan/web-ui` 导入，调用方式是一个函数。
 
 不传 `target` 时震整页，传 `target` 时只震那一块。横向摆幅由 `--wui-shake-x-distance`（默认 `12px`）控制，纵向摆幅由 `--wui-shake-y-distance`（默认与横向同值，也是 `12px`）控制，整段时长由 `--wui-shake-duration`（默认 `420ms`）控制。三者都可以通过选项逐次覆盖。
 
-## Samples
+## 示例
 
-### Whole page
+### 整个页面
 
 `shake()` 不带参数就震整页：页面中的普通流内容和 `position: fixed` 内容一起移动；已打开的对话框 / 抽屉不受影响。两轴同相位，合成后的位移沿一条直线，默认幅度下第一次摆动朝左上，回到原位时不会突然跳动。
 
@@ -28,7 +30,7 @@ import { shake } from '@greypan/web-ui'
 </script>
 ```
 
-### One element
+### 单个元素
 
 传 `target` 只震那个元素，页面其余部分保持不动：一次调用只在目标上保留一条动画，重复调用会取消上一条并重新开始，不会叠加成更大的位移。
 
@@ -81,7 +83,7 @@ function shakeCard() {
 </script>
 ```
 
-### Amplitude and duration
+### 振幅与时长
 
 `xDistance` 与 `yDistance` 分别是横向与纵向的幅度（px），`duration` 是整段时长（ms）。都省略时读取目标计算样式上的同名 token。两轴默认同值（各 `12px`），所以不带参数时斜向摆动。把一轴设为 `0` 就只摆另一条轴。
 
@@ -119,7 +121,7 @@ import { shake } from '@greypan/web-ui'
 
 ## API
 
-### Options
+### 选项
 
 `shake(input?)` 的 `input` 可以是一个 `HTMLElement`（等价于只传 `target`）、一个选项对象，或省略。
 
@@ -136,7 +138,7 @@ import { shake } from '@greypan/web-ui'
 
 减少动效（系统 `prefers-reduced-motion`，或所在 `web-ui-theme` 的 `motion` 模式）下不产生任何位移，也不留下状态。指定 `target` 时按它最近的主题范围判定；震整页时按页面根主题的模式判定。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                     | 说明                                                                            | 默认值  |
 | ------------------------ | ------------------------------------------------------------------------------- | ------- |

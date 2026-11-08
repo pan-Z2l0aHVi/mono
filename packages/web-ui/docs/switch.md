@@ -1,5 +1,7 @@
 # Switch
 
+English | [简体中文](./switch.CN.md)
+
 Switch, declaring `role="switch"` and `aria-checked`. A click toggles it immediately. Holding the track to drag horizontally or flicking it also sets the value, and both Space and Enter toggle from the keyboard.
 
 Text children of the default slot become the visible label and the default accessible name; `aria-label` or `aria-labelledby` can also be set on the host.

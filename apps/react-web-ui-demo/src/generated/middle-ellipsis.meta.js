@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Middle Ellipsis" },
+  { label: 'p', content: "English | <a href=\"./middle-ellipsis.CN.md\">简体中文</a>" },
   { label: 'p', content: "Single-line middle ellipsis: keep both ends, drop the middle, for example <code>very-long-file-…-abcdefghij.txt</code>. Cuts always land on grapheme cluster boundaries and never split surrogate pairs, combining sequences, or ZWJ emoji." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Keep both ends" },

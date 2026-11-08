@@ -1,10 +1,12 @@
 # Input Number
 
+[English](./input-number.md) | 简体中文
+
 数字输入框，左右各一个步进按钮，支持 `min` / `max` / `step` / `precision`。越界与非法输入都在提交点收敛回有效值。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 不接 `value` 时组件自己持有数值，默认 `0`。`value` 恒为数字、没有空态，`placeholder` 只在编辑中把内容清空时露出。
 
@@ -30,7 +32,7 @@ export default function Demo() {
 </template>
 ```
 
-### Value range
+### 取值范围
 
 `min` / `max` 限制取值范围，`step` 决定步进幅度。落在端点时，对应那一侧的步进按钮变为禁用；编辑中可以写出越界文本，越界值在提交那一刻被拉回范围。
 
@@ -56,7 +58,7 @@ export default function Demo() {
 </template>
 ```
 
-### Decimal precision
+### 小数精度
 
 `precision` 决定读取与提交时保留的小数位数，赋值时不抹掉原始小数：`value={1.5}` 与 `precision={1}` 的书写顺序不影响结果。
 
@@ -86,7 +88,7 @@ export default function Demo() {
 </template>
 ```
 
-### Controlled value and events
+### 受控值与事件
 
 `value` 是受控值，接住 `input` 才能跟着输入与步进变化。
 
@@ -144,7 +146,7 @@ const committed = ref(1)
 </script>
 ```
 
-### Disabled and readonly
+### 禁用和只读
 
 `disabled` 关掉输入与步进，校验一并失效，宿主整体降到四成不透明度。`readonly` 保留可读与可复制，两个步进按钮直接画成禁用态，ArrowUp / ArrowDown 无响应，失焦提交也不转发 `change`。
 
@@ -168,7 +170,7 @@ export default function Demo() {
 </template>
 ```
 
-### Form value
+### 表单值
 
 `name` 是字段名，提交值是 `String(value)`。`required` 在编辑中清空时拦下提交（`valueMissing`），`form.reset()` 回填挂载时的初值。`step` 只表示步进幅度，不参与原生校验，小数 `step` 照常可用。
 
@@ -240,7 +242,7 @@ function reset() {
 </script>
 ```
 
-### CSS variables
+### CSS 变量
 
 宽度取 `--wui-input-width`（与 `<web-ui-input>` 同一个 token），`input-number` 自己没有 `full`；再窄也有 `--wui-control-size` 作为最小宽度。
 
@@ -266,7 +268,7 @@ export default function Demo() {
 
 ## API
 
-### Props
+### 属性
 
 | 名称                  | 说明                                                              | 类型             | 默认值     |
 | --------------------- | ----------------------------------------------------------------- | ---------------- | ---------- |
@@ -285,7 +287,7 @@ export default function Demo() {
 | `aria-decrease-label` | 减少按钮的无障碍名称；未设置时回退内置英文文案（`Decrease`）。    | `string`         | `''`       |
 | `aria-increase-label` | 增加按钮的无障碍名称；未设置时回退内置英文文案（`Increase`）。    | `string`         | `''`       |
 
-### Events
+### 事件
 
 | 名称     | 说明                                                                      |
 | -------- | ------------------------------------------------------------------------- |
@@ -330,7 +332,7 @@ export default function Demo() {
 
 文字取 `--wui-font-size`，粗指针设备上不小于 16px，避免 iOS Safari 聚焦时缩放；占位文本取二级文本色。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                | 说明                                                                 | 默认值  |
 | ------------------- | -------------------------------------------------------------------- | ------- |

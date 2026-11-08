@@ -19,6 +19,17 @@ const createInput = (attrs?: Record<string, string>): WebUiInput => mountElement
 const nativeInput = (el: WebUiInput): HTMLInputElement => queryA11y(el, 'input') as HTMLInputElement
 
 describe('WebUiInput 组件特有契约', () => {
+  it('将 autocomplete 提示传给原生输入框并支持更新', async () => {
+    const el = createInput({ autocomplete: 'off' })
+    await waitForUpdate(el)
+    expect(nativeInput(el).getAttribute('autocomplete')).toBe('off')
+    el.autocomplete = 'email'
+    await waitForUpdate(el)
+    expect(nativeInput(el).getAttribute('autocomplete')).toBe('email')
+    el.autocomplete = ''
+    await waitForUpdate(el)
+    expect(nativeInput(el).hasAttribute('autocomplete')).toBe(false)
+  })
   it('type 默认 text', async () => {
     const el = createInput()
     await waitForUpdate(el)

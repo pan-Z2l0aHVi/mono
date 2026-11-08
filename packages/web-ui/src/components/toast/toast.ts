@@ -337,7 +337,7 @@ export class WebUiToast extends LitElement {
                   aria-label="Close"
                   @click=${this._onCloseClick}
                 >
-                  <web-ui-icon .icon=${heroiconsXMark16Solid} size="16"></web-ui-icon>
+                  <web-ui-icon .icon=${heroiconsXMark16Solid}></web-ui-icon>
                 </web-ui-button>
               `
             : nothing

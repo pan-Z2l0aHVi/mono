@@ -1,14 +1,16 @@
 # Back Top
 
+[English](./back-top.md) | 简体中文
+
 回到顶部按钮（`web-ui-back-top`）在滚动位置达到 `threshold` 后出现在角落。点击它，或按 Enter / Space，回到顶部。
 
 默认平滑回顶。主题设置为 `motion="reduced"`，或 `motion="system"` 且系统偏好减少动效时，点击或按 Enter 会立即回顶。
 
 默认跟随页面滚动。把 `scrollTarget` 指向某个滚动容器后，它只随该容器滚动出现，并停在容器的底部角落。
 
-## Samples
+## 示例
 
-### Custom scroll container
+### 自定义滚动容器
 
 `scrollTarget` 是元素上的 property，不是 attribute，所以只能在挂载后赋值：先用 `ref` 拿到容器和 `<web-ui-back-top>`，再在 `useEffect` / `onMounted` 里把容器交给它。
 
@@ -64,7 +66,7 @@ onMounted(() => {
 </script>
 ```
 
-### Custom content
+### 自定义内容
 
 默认插槽整体替换按钮的视觉内容。点击、Enter 和 Space 都触发 `toTop()`，角色仍是 `button`。
 
@@ -124,7 +126,7 @@ onMounted(() => {
 </script>
 ```
 
-### Jump to top immediately
+### 立即回到顶部
 
 `scroll-behavior="auto"` 不请求平滑滚动，点击直接跳到顶部。
 
@@ -180,7 +182,7 @@ onMounted(() => {
 
 ## API
 
-### Props
+### 属性
 
 | 名称              | 说明                                                                                       | 类型                    | 默认值                      |
 | ----------------- | ------------------------------------------------------------------------------------------ | ----------------------- | --------------------------- |
@@ -190,13 +192,13 @@ onMounted(() => {
 | `scrollTarget`    | 滚动容器，`window`（默认）或 `HTMLElement`（property）。                                   | `HTMLElement \| Window` | `window`                    |
 | `threshold`       | 显示按钮的滚动阈值（px）。                                                                 | `number`                | `200`                       |
 
-### Slots
+### Slot
 
 | 名称      | 说明             |
 | --------- | ---------------- |
 | `default` | 自定义按钮内容。 |
 
-### Methods
+### 方法
 
 | 名称      | 说明                                     |
 | --------- | ---------------------------------------- |
@@ -208,7 +210,7 @@ onMounted(() => {
 
 角色是 `button`。默认内容的无障碍名称回退为内置英文 `Back to top`。使用自定义内容时，名称来自插槽内容，宿主 `aria-label` 可以显式指定名称。键盘 Enter 和 Space 都能触发回到顶部。
 
-### CSS Custom Properties
+### CSS 自定义属性
 
 | 名称                      | 说明                     | 默认值                            |
 | ------------------------- | ------------------------ | --------------------------------- |

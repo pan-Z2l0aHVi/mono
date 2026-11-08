@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Empty" },
+  { label: 'p', content: "English | <a href=\"./empty.CN.md\">简体中文</a>" },
   { label: 'p', content: "An empty-state placeholder: <code>title</code> and <code>description</code> provide the copy, and the <code>icon</code> / <code>action</code> slots add a graphic and an action entry point. Apart from <code>title</code> and <code>description</code> the component has no other properties; the sizes and colors of the graphic, the copy, and the whitespace all come from <code>--wui-empty-*</code> variables." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },

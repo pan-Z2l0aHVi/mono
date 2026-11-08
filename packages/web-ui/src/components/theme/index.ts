@@ -30,11 +30,14 @@ const transitionOrigin = { x: Number.NaN, y: Number.NaN }
 let transitionSequence = 0
 let transitionOriginCount = 0
 let themeTransitionFlightToken: object | null = null
+const activePointers = new Set<number>()
 const recordTransitionOrigin = (event: Event) => {
   const pointer = event as PointerEvent
+  activePointers.add(pointer.pointerId)
   transitionOrigin.x = pointer.clientX
   transitionOrigin.y = pointer.clientY
 }
+const releaseTransitionPointer = (event: Event) => activePointers.delete((event as PointerEvent).pointerId)
 const forgetTransitionOrigin = () => {
   transitionOrigin.x = Number.NaN
   transitionOrigin.y = Number.NaN
@@ -43,42 +46,170 @@ const forgetTransitionOrigin = () => {
 function addTransitionOriginListeners() {
   if (transitionOriginCount++ > 0) return
   window.addEventListener('pointerdown', recordTransitionOrigin, true)
+  window.addEventListener('pointerup', releaseTransitionPointer, true)
+  window.addEventListener('pointercancel', releaseTransitionPointer, true)
   window.addEventListener('keydown', forgetTransitionOrigin, true)
 }
 
 function removeTransitionOriginListeners() {
   if (--transitionOriginCount > 0) return
   window.removeEventListener('pointerdown', recordTransitionOrigin, true)
+  window.removeEventListener('pointerup', releaseTransitionPointer, true)
+  window.removeEventListener('pointercancel', releaseTransitionPointer, true)
+  activePointers.clear()
   window.removeEventListener('keydown', forgetTransitionOrigin, true)
 }
 
-const TRANSITION_SKIP_INPUT_EVENTS = ['pointerdown', 'wheel'] as const
-
 /*
  * rendering suppression 期间，规范强制 pointer hit-test 指向 documentElement；
- * 伪元素的 pointer-events 或 host 覆写窗口都无法覆盖这条渲染规则。只有按下或滚轮
- * 才取消揭示，牺牲剩余动画换回交互；移动和抬起不取消，避免切换控件的收尾事件或
- * 过渡期间的普通移动打断动画。触发事件本身仍按规范以 html 为目标，因此这里缩短的
- * 是失效窗口，不是对首个事件的追溯改道。
+ * 滚轮跳过揭示，及时恢复页面滚动。
  */
-function addTransitionInputSkipListeners(transition: ViewTransitionLike): () => void {
+function addTransitionInputSkipListeners(transition: ViewTransitionLike, scope?: HTMLElement): () => void {
+  let active = true
   let listening = true
+  let skipRequested = false
+  const existingPointers = new Set(activePointers)
+  const blockedPointers = new Set<number>()
+  const blockedKeys = new Set<string>()
+  const pointerVersions = new Map<number, number>()
+  const keyVersions = new Map<string, number>()
+  const timers = new Set<ReturnType<typeof setTimeout>>()
+  const registrations: [string, EventListener, AddEventListenerOptions][] = []
+  const listen = (type: string, handler: EventListener, passive = false) => {
+    const options = { capture: true, passive }
+    registrations.push([type, handler, options])
+    window.addEventListener(type, handler, options)
+  }
   const remove = () => {
     if (!listening) return
     listening = false
-    for (const event of TRANSITION_SKIP_INPUT_EVENTS) {
-      window.removeEventListener(event, skip, true)
+    for (const [type, handler, options] of registrations) window.removeEventListener(type, handler, options)
+    for (const timer of timers) clearTimeout(timer)
+    timers.clear()
+  }
+  const releaseIfIdle = () => {
+    if (!active && blockedPointers.size === 0 && blockedKeys.size === 0) remove()
+  }
+  const defer = (callback: () => void, delay: number) => {
+    const timer = setTimeout(() => {
+      timers.delete(timer)
+      callback()
+      releaseIfIdle()
+    }, delay)
+    timers.add(timer)
+  }
+  const block = (event: Event) => {
+    if (event.cancelable) event.preventDefault()
+    event.stopImmediatePropagation()
+  }
+  const inScope = (event: Event) =>
+    !scope || event.target === document.documentElement || event.composedPath().includes(scope)
+  listen('pointerdown', event => {
+    const pointer = event as PointerEvent
+    if (!active || !inScope(event)) {
+      blockedPointers.delete(pointer.pointerId)
+      pointerVersions.delete(pointer.pointerId)
+      releaseIfIdle()
+      return
     }
+    blockedPointers.add(pointer.pointerId)
+    pointerVersions.set(pointer.pointerId, (pointerVersions.get(pointer.pointerId) ?? 0) + 1)
+    block(event)
+  })
+  for (const type of ['pointerup', 'pointercancel']) {
+    listen(
+      type,
+      event => {
+        const id = (event as PointerEvent).pointerId
+        const version = pointerVersions.get(id)
+        if (version !== undefined)
+          defer(
+            () => {
+              if (pointerVersions.get(id) === version) {
+                blockedPointers.delete(id)
+                pointerVersions.delete(id)
+              }
+            },
+            type === 'pointercancel' ? 0 : 1000
+          )
+      },
+      true
+    )
   }
-  const skip = () => {
-    if (!listening) return
-    remove()
-    transition.skipTransition?.()
+  listen('keydown', event => {
+    const key = event as KeyboardEvent
+    if (!active || !inScope(event) || key.metaKey || key.ctrlKey || key.altKey) return
+    blockedKeys.add(key.code || key.key)
+    keyVersions.set(key.code || key.key, (keyVersions.get(key.code || key.key) ?? 0) + 1)
+    block(event)
+  })
+  listen(
+    'keyup',
+    event => {
+      const key = event as KeyboardEvent
+      const code = key.code || key.key
+      const version = keyVersions.get(code)
+      if (version !== undefined)
+        defer(() => {
+          if (keyVersions.get(code) === version) {
+            blockedKeys.delete(code)
+            keyVersions.delete(code)
+          }
+        }, 1000)
+    },
+    true
+  )
+  for (const type of ['click', 'auxclick', 'dblclick', 'contextmenu']) {
+    listen(type, event => {
+      const pointer = event as PointerEvent
+      if (existingPointers.has(pointer.pointerId) && !blockedPointers.has(pointer.pointerId)) {
+        existingPointers.delete(pointer.pointerId)
+        return
+      }
+      const pendingPointer =
+        blockedPointers.has(pointer.pointerId) ||
+        (typeof pointer.pointerId !== 'number' && pointer.detail > 0 && blockedPointers.size > 0)
+      const pending = pendingPointer || (pointer.detail === 0 && blockedKeys.size > 0)
+      if ((!active || !inScope(event)) && !pending) return
+      block(event)
+    })
   }
-  for (const event of TRANSITION_SKIP_INPUT_EVENTS) {
-    window.addEventListener(event, skip, { capture: true, passive: true })
+  listen('beforeinput', event => {
+    if (active && inScope(event)) block(event)
+  })
+  listen(
+    'wheel',
+    () => {
+      if (active && !skipRequested) {
+        skipRequested = true
+        transition.skipTransition?.()
+      }
+    },
+    true
+  )
+  listen(
+    'blur',
+    event => {
+      if (event.target !== window) return
+      blockedPointers.clear()
+      blockedKeys.clear()
+      pointerVersions.clear()
+      keyVersions.clear()
+      releaseIfIdle()
+    },
+    true
+  )
+  return () => {
+    active = false
+    releaseIfIdle()
+    if (listening)
+      defer(() => {
+        blockedPointers.clear()
+        blockedKeys.clear()
+        pointerVersions.clear()
+        keyVersions.clear()
+      }, 30000)
   }
-  return remove
 }
 
 function resolveAppearance(appearance: ThemeAppearance | undefined): ResolvedThemeAppearance {
@@ -398,7 +529,7 @@ export class WebUiTheme extends LitElement {
     document.adoptedStyleSheets = [...document.adoptedStyleSheets, styleSheet]
     const transition = document.startViewTransition(commit) as unknown as ViewTransitionLike
     this._activeTransition = transition
-    this._transitionInputSkipCleanup = addTransitionInputSkipListeners(transition)
+    this._transitionInputSkipCleanup = addTransitionInputSkipListeners(transition, root ? undefined : this)
     const animations: Animation[] = []
 
     transition.ready

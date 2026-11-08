@@ -1,5 +1,7 @@
 # Middle Ellipsis
 
+English | [简体中文](./middle-ellipsis.CN.md)
+
 Single-line middle ellipsis: keep both ends, drop the middle, for example `very-long-file-…-abcdefghij.txt`. Cuts always land on grapheme cluster boundaries and never split surrogate pairs, combining sequences, or ZWJ emoji.
 
 ## Samples

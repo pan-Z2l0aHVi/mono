@@ -138,10 +138,6 @@ msgid "响应式布局"
 msgstr "Responsive layout"
 
 #: src/routes/home/-component.tsx
-msgid "Web Components"
-msgstr "Web Components"
-
-#: src/routes/home/-component.tsx
 msgid "无障碍"
 msgstr "Accessibility"
 
@@ -270,3 +266,39 @@ msgstr "Imperative"
 #: src/routes/home/-component.tsx
 msgid "函数调用触发"
 msgstr "Triggered by function calls"
+
+#: src/components/root/index.tsx
+#: src/components/root/index.tsx
+msgid "快速开始"
+msgstr "Getting Started"
+
+#: src/components/search/index.tsx
+#: src/components/search/index.tsx
+msgid "搜索"
+msgstr "Search"
+
+#: src/components/search/index.tsx
+#: src/components/search/index.tsx
+msgid "搜索页面和组件"
+msgstr "Search pages and components"
+
+#: src/components/search/index.tsx
+msgid "没有匹配结果"
+msgstr "No results found"
+
+#: src/components/search/index.tsx
+msgid "搜索结果"
+msgstr "Search results"
+
+#: src/routes/getting-started.tsx
+#: src/routes/home/-component.tsx
+msgid "包管理器"
+msgstr "Package manager"
+
+#: src/routes/home/-component.tsx
+msgid "安装"
+msgstr "Install"
+
+#: src/routes/home/-component.tsx
+msgid "支持触摸&手势"
+msgstr "Touch and gesture support"

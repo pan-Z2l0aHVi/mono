@@ -1,10 +1,12 @@
 # SVG Draw Lines
 
+[English](./svg-draw-lines.md) | 简体中文
+
 SVG 线条绘制动画。组件直接对插槽里的原元素做动画，不克隆 DOM。默认播放画入，`replay({ reverse: true })` 沿原路径收回。
 
-## Samples
+## 示例
 
-### Basic
+### 基础用法
 
 把需要动画的 SVG 内容放进默认插槽。内容第一次稳定渲染时，组件自动播放一次画入。`duration` 是这次动画的毫秒数，默认 `1000`。
 
@@ -70,7 +72,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 </script>
 ```
 
-### Stroked geometry
+### 描边图形
 
 参与动画的元素有 `path`、`rect`、`circle`、`line`、`polyline`、`polygon`、`ellipse`。一次播放中它们同时开始、同时推进。组件不提供延迟或错峰，需要逐条播放时请使用多个实例。
 
@@ -202,7 +204,7 @@ const closedPath = useTemplateRef<WebUiSvgDrawLines>('closedPath')
 </script>
 ```
 
-### Duration and easing
+### 时长与缓动
 
 `duration` 限制在 0 到 30000 毫秒之间，非数字会回退到 `1000`。`easing` 是 CSS 缓动函数，默认 `linear`。
 
@@ -352,7 +354,7 @@ const bounce = useTemplateRef<WebUiSvgDrawLines>('bounce')
 </script>
 ```
 
-### Multiple paths and nesting
+### 多条路径与嵌套
 
 每次 `replay()` 都会重新收集宿主的全部 light DOM 后代。同一个 `<svg>` 里的多条 `<path>`、并排的多个 `<svg>`，以及任意层 `<g>` 嵌套，都进入同一批，一起开始、一起结束。元素数量不会让动画排队。
 
@@ -416,7 +418,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 </script>
 ```
 
-### Nested shadow roots
+### 嵌套 shadow root
 
 嵌套的开放 shadow root 里的几何元素同样参与动画，例如 `<web-ui-icon>` 里的 `<path>`；闭合的 shadow root 会被跳过。因此两层实例不能覆盖同一批几何元素，详见「收回末态」。
 
@@ -486,7 +488,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 </script>
 ```
 
-### Disabling autoplay
+### 禁用自动播放
 
 `no-autoplay` 关闭首次自动播放，内容保持资产的完整描边。`replay()` 照常可用，由调用方决定何时播放。
 
@@ -532,7 +534,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 </script>
 ```
 
-### Manual replay
+### 手动重播
 
 `replay()` 取消当前动画，重新收集几何元素，从空白画到完整。`replay({ reverse: true })` 沿原路径收回，收回后的空白以内联样式保留在 DOM 上，要重新显示只能再调用一次 `replay()`。
 
@@ -588,7 +590,7 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 
 ## API
 
-### Props
+### 属性
 
 | 名称          | 说明                                        | 类型      | 默认值     |
 | ------------- | ------------------------------------------- | --------- | ---------- |
@@ -596,13 +598,13 @@ const lines = useTemplateRef<WebUiSvgDrawLines>('lines')
 | `easing`      | CSS 缓动函数；浏览器不支持时回退 `linear`。 | `string`  | `'linear'` |
 | `no-autoplay` | 关闭内容首次出现时的自动播放。              | `boolean` | `false`    |
 
-### Slots
+### Slot
 
 | 名称      | 说明                  |
 | --------- | --------------------- |
 | `default` | 需要动画的 SVG 内容。 |
 
-### Methods
+### 方法
 
 | 名称               | 说明                                                                                                                                                                                                  |
 | ------------------ | ----------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |

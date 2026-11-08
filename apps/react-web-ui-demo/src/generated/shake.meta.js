@@ -4,6 +4,7 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "Shake" },
+  { label: 'p', content: "English | <a href=\"./shake.CN.md\">简体中文</a>" },
   { label: 'p', content: "Imperative shake. <code>shake()</code> moves a target a few times and back to where it started, which signals \"not allowed\" or \"handle this first\". Use it when a form still has unsaved content and the user is leaving, or when attention needs to return to a field. It is a function imported straight from <code>@greypan/web-ui</code>." },
   { label: 'p', content: "Without <code>target</code> it shakes the whole page. Pass <code>target</code> to shake only that one box. The horizontal amplitude comes from <code>--wui-shake-x-distance</code> (default <code>12px</code>), the vertical one from <code>--wui-shake-y-distance</code> (default <code>12px</code>, the same as the horizontal one), and the total duration from <code>--wui-shake-duration</code> (default <code>420ms</code>). All three can also be overridden per call through options." },
   { label: 'h2', id: 'section-2', content: "Samples" },

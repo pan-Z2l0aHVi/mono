@@ -1,5 +1,4 @@
 <script setup lang="ts">
-import appScrollbarsOptions from '@greypan/app-scrollbars'
 import { copyToClipboard } from '@greypan/browser-kit'
 import type { WebUiDrawer, WebUiEditableText, WebUiEvent, WebUiTextarea } from '@greypan/web-ui'
 import {
@@ -11,7 +10,6 @@ import {
   lucideRefreshCw,
   lucideTags
 } from '@greypan/web-ui/icons'
-import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { computed, onScopeDispose, ref, watch } from 'vue'
 
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
@@ -239,6 +237,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
 
 <template>
   <web-ui-drawer
+    page-shift
     :open="open"
     :placement="placement"
     aria-dialog-label="资源详情"
@@ -247,16 +246,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
     class="mobile:[--wui-drawer-height:80vh] mobile:[--wui-drawer-inset:0px] mobile:[--wui-drawer-radius:28px_28px_0_0] mobile:[--wui-drawer-content-padding:0px] [--wui-drawer-width:360px]"
     @open-change="handleOpenChange"
   >
-    <OverlayScrollbarsComponent
-      v-if="resource"
-      :options="appScrollbarsOptions"
-      class="mobile:h-(--wui-drawer-height) mobile:overflow-y-auto"
-    >
-      <!--
-        滚动接在外层宿主上，grid 留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己生成的
-        块盒 viewport，卡片之间的间距来自 grid 的 `gap`——宿主若就是这个 grid，搬走之后 gap
-        不再作用于卡片，整栏会塌掉（见 library/host-layout-probe.png 的实测对照）。
-      -->
+    <template v-if="resource">
       <div class="grid gap-4 mobile:p-5">
         <!--
         标题与标签收进第一张白卡：iOS 设置详情页顶部是「名字 + 若干属性」的分组，
@@ -458,6 +448,6 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
           </web-ui-button>
         </div>
       </div>
-    </OverlayScrollbarsComponent>
+    </template>
   </web-ui-drawer>
 </template>

@@ -12,7 +12,9 @@ import {
   flavorOf,
   isCodeCollapsible,
   PEEK_HEIGHT,
+  PACKAGE_MANAGER_ICONS,
   resetCodeScroll,
+  type CodeblockVariant,
   type DemoThunk,
   type Flavor
 } from '@greypan/doc-demo-kit'
@@ -55,6 +57,8 @@ interface CodeblockProps {
   nodes: readonly MetaNode[]
   /** 有 `load` 且允许预览时渲染真实组件；否则只显示源码。 */
   preview: boolean
+  variants?: readonly CodeblockVariant[]
+  switchLabel?: string
 }
 
 /**
@@ -63,9 +67,9 @@ interface CodeblockProps {
  *
  * 一卡两稿时预览始终跑本站框架：带 `load` 的那份与当前选中的源码无关。
  */
-function Codeblock({ nodes, preview }: CodeblockProps) {
+function Codeblock({ nodes, preview, variants, switchLabel }: CodeblockProps) {
   const panelId = useId()
-  const [flavor, setFlavor] = useState<Flavor>(NATIVE_FLAVOR)
+  const [flavor, setFlavor] = useState<string>(variants?.[0]?.value ?? NATIVE_FLAVOR)
   const [expanded, setExpanded] = useState(false)
   /*
    * 复制反馈状态机在 kit（`createCopyFeedback`）：双通道剪贴板、成功/失败、定时回 idle 都在
@@ -85,7 +89,10 @@ function Codeblock({ nodes, preview }: CodeblockProps) {
   const copySnapshot = useSyncExternalStore(copy.subscribe, copy.getSnapshot, copy.getSnapshot)
   const { status: copied, run: copyRun } = copySnapshot
 
-  const active = nodes.find(node => flavorOf(node.lang) === flavor) ?? nodes[0]
+  const active =
+    variants?.find(item => item.value === flavor)?.node ??
+    nodes.find(node => flavorOf(node.lang) === flavor) ??
+    nodes[0]
   const loadable = nodes.find(node => node.load)
 
   const Demo = preview && loadable?.load ? demoOf(loadable.load) : null
@@ -101,7 +108,7 @@ function Codeblock({ nodes, preview }: CodeblockProps) {
 
   // 换一份源码就回到顶部：两稿的行数不同，停在上次读到的位置会落到另一份的中段。
   function selectFlavor(value: string) {
-    const next = FLAVORS.find(item => item === value)
+    const next = variants ? variants.find(item => item.value === value)?.value : FLAVORS.find(item => item === value)
     if (!next || next === flavor) return
     setFlavor(next)
     resetPanelScroll()
@@ -124,7 +131,7 @@ function Codeblock({ nodes, preview }: CodeblockProps) {
       id={panelId}
       options={appScrollbarsOptions}
       events={codeScrollbarsEvents}
-      className="max-h-[512px] overflow-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 font-mono text-xs leading-6"
+      className="overflow-x-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 pt-0 font-mono text-xs leading-6"
       data-code
     >
       {/* 生成期的高亮 HTML，不是运行时拼的用户输入。 */}
@@ -160,7 +167,6 @@ function Codeblock({ nodes, preview }: CodeblockProps) {
       <div className="isolate">
         {/*
           这一层只画边框和圆角，**不裁剪**：工具条里的控件才能把按压态画全。
-          顶部圆角补在工具条这一层：外层不裁剪，工具条的白底会自己溢出到圆角之外。
 
           外框圆角按同心半径取：内圈小圆角（`--wui-radius-menu`）+ 卡片横向内边距
           （`--wui-space-3`），两圈曲率才贴合。
@@ -170,8 +176,33 @@ function Codeblock({ nodes, preview }: CodeblockProps) {
             工具条左右两件对齐到同一条中线：切换器用组件默认高度（track 36px、内圈 28px），
             单围栏的语言标签做成同高的 36px 胶囊，两者都靠 `items-center`；横向 12px 与代码区一致。
           */}
-          <div className="relative z-10 flex flex-wrap items-center justify-between gap-3 rounded-t-[var(--codeblock-radius)] bg-(--wui-color-page) p-3">
-            {nodes.length > 1 ? (
+          <div
+            className={
+              collapsible && expanded
+                ? 'sticky top-[52px] z-10 flex flex-wrap items-center justify-between gap-3 rounded-t-[var(--codeblock-radius)] p-3'
+                : 'relative z-10 flex flex-wrap items-center justify-between gap-3 rounded-t-[var(--codeblock-radius)] p-3'
+            }
+          >
+            {variants && variants.length > 1 ? (
+              <web-ui-segmented
+                value={flavor}
+                variant="inset"
+                aria-label={switchLabel}
+                className="[--wui-font-size:12px] [--wui-segmented-trigger-px:6px]"
+                onInput={event => selectFlavor(event.currentTarget.value)}
+              >
+                {variants.map(item => (
+                  <web-ui-segmented-trigger key={item.value} value={item.value}>
+                    <span className="flex items-center gap-1.5">
+                      {PACKAGE_MANAGER_ICONS[item.value] && (
+                        <web-ui-icon icon={PACKAGE_MANAGER_ICONS[item.value]} size={13} />
+                      )}
+                      {item.label}
+                    </span>
+                  </web-ui-segmented-trigger>
+                ))}
+              </web-ui-segmented>
+            ) : nodes.length > 1 ? (
               <web-ui-segmented
                 value={flavor}
                 variant="inset"
@@ -194,7 +225,7 @@ function Codeblock({ nodes, preview }: CodeblockProps) {
                 ))}
               </web-ui-segmented>
             ) : (
-              <span className="inline-flex h-9 items-center rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-2 font-mono text-[11px] leading-none tracking-wide text-(--wui-color-text-secondary) uppercase">
+              <span className="px-1 font-mono text-[11px] leading-none tracking-wide text-(--wui-color-text-secondary) uppercase">
                 {active.lang || 'text'}
               </span>
             )}
@@ -245,7 +276,7 @@ function Codeblock({ nodes, preview }: CodeblockProps) {
           </div>
 
           {/*
-            关闭态露出 128px：12px 上边距 + 4 行 24px + 第 5 行的 20px。末端渐隐/晕染带取
+            关闭态露出 128px：5 行 24px 加第 6 行的 8px。末端渐隐/晕染带取
             peek 的 60%（76.8px），「下面还有内容」由一整段发虚说出来，而不是只把最后一行切一半。
 
             收起态这块露出的代码就是展开触发区（点哪一行都算），展开后它退化成一段可滚动的正文，

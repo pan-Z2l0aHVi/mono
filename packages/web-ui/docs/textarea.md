@@ -1,5 +1,7 @@
 # Textarea
 
+English | [简体中文](./textarea.CN.md)
+
 A multiline text input with a clear button, autosize, and prefix/suffix slots. Focus lands on the native textarea; `focus()` / `blur()` / `select()` act on it.
 
 ## Samples
@@ -85,7 +87,7 @@ export default function Demo() {
   return (
     <div className="flex flex-col gap-3">
       <web-ui-textarea aria-label="Notes" clearable placeholder="With a prefix icon">
-        <web-ui-icon slot="prefix" icon={lucideFileText} size={16}></web-ui-icon>
+        <web-ui-icon slot="prefix" icon={lucideFileText}></web-ui-icon>
       </web-ui-textarea>
       <web-ui-textarea aria-label="Feedback" clearable placeholder="Both prefix and suffix are text">
         <span slot="prefix">Notes: </span>
@@ -100,7 +102,7 @@ export default function Demo() {
 <template>
   <div class="flex flex-col gap-3">
     <web-ui-textarea aria-label="Notes" clearable placeholder="With a prefix icon">
-      <web-ui-icon slot="prefix" :icon="lucideFileText" :size="16"></web-ui-icon>
+      <web-ui-icon slot="prefix" :icon="lucideFileText"></web-ui-icon>
     </web-ui-textarea>
     <web-ui-textarea aria-label="Feedback" clearable placeholder="Both prefix and suffix are text">
       <span slot="prefix">Notes: </span>

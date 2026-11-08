@@ -129,6 +129,11 @@ it('组件页切换文档与运行示例，保留当前路由和主题', async (
     // 语料已就位，这次渲染也必然把受控的 `:value` 写回提交值；在这里读，不与异步加载赛跑。
     expect(language.value, '受控回写收敛到已提交语言').toBe('zh-CN')
     await vi.waitFor(() => expect(buttonDoc().text()).toContain('没写 variant（同样是 glass）'))
+    expect(
+      buttonDoc()
+        .findAll('h2')
+        .map(heading => heading.text())
+    ).toContain('示例')
     expect(wrapper.find('web-ui-button[aria-label="复制代码"]').exists()).toBe(true)
     expect(document.documentElement.lang).toBe('zh-CN')
     expect(localStorage.getItem('locale')).toBe('zh-CN')

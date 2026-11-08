@@ -9,6 +9,10 @@
   display: inline-block;
 }
 
+:host([full]) {
+  display: block;
+}
+
 :host([disabled]) {
   cursor: not-allowed;
   opacity: 0.4;
@@ -57,6 +61,10 @@
   outline: var(--wui-focus-ring-width, 3px) solid
     var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
   outline-offset: 2px;
+}
+
+:host([full]) .autocomplete-trigger:not([data-custom-trigger]) {
+  width: 100%;
 }
 
 /* 禁用态：宿主已整体降透明度，默认 trigger 自身的 disabled 降透明度在此抵消 */

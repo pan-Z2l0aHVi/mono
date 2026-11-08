@@ -7,6 +7,7 @@ import andrsrxnInbox from './andrsrxn-inbox'
 import antDesignSyncOutlined from './ant-design-sync-outlined'
 import biCheck from './bi-check'
 import biCheckLg from './bi-check-lg'
+import ciSettingsFuture from './ci-settings-future'
 import fluentTagSearch24Regular from './fluent-tag-search-24-regular'
 import heroiconsBarsArrowDown16Solid from './heroicons-bars-arrow-down-16-solid'
 import heroiconsBarsArrowUp16Solid from './heroicons-bars-arrow-up-16-solid'
@@ -16,6 +17,7 @@ import icBaselinePhonelink from './ic-baseline-phonelink'
 import icOutlineMotionPhotosOff from './ic-outline-motion-photos-off'
 import icOutlineMotionPhotosOn from './ic-outline-motion-photos-on'
 import icRoundMenuOpen from './ic-round-menu-open'
+import iconParkOutlineTagOne from './icon-park-outline-tag-one'
 import jamCloseCircleF from './jam-close-circle-f'
 import lucideAccessibility from './lucide-accessibility'
 import lucideArrowDownToLine from './lucide-arrow-down-to-line'
@@ -30,6 +32,7 @@ import lucideChevronUp from './lucide-chevron-up'
 import lucideCircleAlert from './lucide-circle-alert'
 import lucideClapperboard from './lucide-clapperboard'
 import lucideClipboardPaste from './lucide-clipboard-paste'
+import lucideClockPlus from './lucide-clock-plus'
 import lucideCode from './lucide-code'
 import lucideContrast from './lucide-contrast'
 import lucideCopy from './lucide-copy'
@@ -45,6 +48,7 @@ import lucideFolderOpen from './lucide-folder-open'
 import lucideGlobe from './lucide-globe'
 import lucideHeadphones from './lucide-headphones'
 import lucideHeart from './lucide-heart'
+import lucideHouse from './lucide-house'
 import lucideImage from './lucide-image'
 import lucideInbox from './lucide-inbox'
 import lucideInfo from './lucide-info'
@@ -68,9 +72,11 @@ import lucidePlus from './lucide-plus'
 import lucidePrinter from './lucide-printer'
 import lucideRedo2 from './lucide-redo-2'
 import lucideRefreshCw from './lucide-refresh-cw'
+import lucideRotateCwClock from './lucide-rotate-cw-clock'
 import lucideScissors from './lucide-scissors'
 import lucideSearch from './lucide-search'
 import lucideSettings from './lucide-settings'
+import lucideShoppingCart from './lucide-shopping-cart'
 import lucideSlidersHorizontal from './lucide-sliders-horizontal'
 import lucideSparkles from './lucide-sparkles'
 import lucideStar from './lucide-star'
@@ -89,7 +95,9 @@ import oouiClose from './ooui-close'
 import radixIconsPanelLeftMinimized from './radix-icons-panel-left-minimized'
 import radixIconsReset from './radix-icons-reset'
 import tablerBrandTypescript from './tabler-brand-typescript'
+import tablerClockPlus from './tabler-clock-plus'
 import tablerSortAscendingLetters from './tabler-sort-ascending-letters'
+import tablerTagPlus from './tabler-tag-plus'
 
 export const iconGallery: Record<string, IconifyIcon> = {
   andrsrxnInbox,
@@ -113,6 +121,7 @@ export const iconGallery: Record<string, IconifyIcon> = {
   lucideTrash2,
   lucidePrinter,
   lucideSettings,
+  ciSettingsFuture,
   lucideDownload,
   lucideUpload,
   lucideUndo2,
@@ -145,6 +154,8 @@ export const iconGallery: Record<string, IconifyIcon> = {
   lucidePackage,
   lucidePencil,
   lucideRefreshCw,
+  lucideRotateCwClock,
+  lucideClockPlus,
   lucideTag,
   lucideTags,
   lucideWrench,
@@ -157,6 +168,8 @@ export const iconGallery: Record<string, IconifyIcon> = {
   lucidePlay,
   lucideListFilter,
   tablerSortAscendingLetters,
+  tablerClockPlus,
+  tablerTagPlus,
   lucideCode,
   lucideEllipsisVertical,
   heroiconsBarsArrowDown16Solid,
@@ -164,6 +177,7 @@ export const iconGallery: Record<string, IconifyIcon> = {
   lucideListRestart,
   radixIconsReset,
   akarIconsCheck,
+  iconParkOutlineTagOne,
   biCheck,
   biCheckLg,
   akarIconsCircleCheck,
@@ -180,5 +194,7 @@ export const iconGallery: Record<string, IconifyIcon> = {
   lucideLanguages,
   antDesignSyncOutlined,
   icBaselinePhonelink,
-  icRoundMenuOpen
+  icRoundMenuOpen,
+  lucideHouse,
+  lucideShoppingCart
 }

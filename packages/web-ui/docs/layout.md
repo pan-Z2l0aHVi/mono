@@ -1,5 +1,7 @@
 # Layout
 
+English | [简体中文](./layout.CN.md)
+
 Responsive page layout with an optional full-width banner, a collapsible sidebar on desktop, and a drawer by default on mobile. Set `no-sidebar` to drop the entire sidebar and keep the content-only layout. The page itself scrolls; once the banner scrolls out, the desktop sidebar and header stay fixed within the viewport.
 
 ## Samples
@@ -44,8 +46,10 @@ export default function Demo() {
           </p>
           <div className="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
         </div>
-        <div slot="tabbar" className="flex items-center justify-center px-4 py-2 text-xs">
-          Tabbar
+        <div slot="tabbar" className="flex justify-center p-2">
+          <div className="w-full max-w-64 rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-6 py-2 text-center text-xs shadow-lg">
+            Tabbar
+          </div>
         </div>
       </web-ui-layout>
     </div>
@@ -78,7 +82,13 @@ export default function Demo() {
         </p>
         <div class="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
       </div>
-      <div slot="tabbar" class="flex items-center justify-center px-4 py-2 text-xs">Tabbar</div>
+      <div slot="tabbar" class="flex justify-center p-2">
+        <div
+          class="w-full max-w-64 rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-6 py-2 text-center text-xs shadow-lg"
+        >
+          Tabbar
+        </div>
+      </div>
     </web-ui-layout>
   </div>
 </template>
@@ -97,7 +107,12 @@ const open = ref(false)
 The `sidebar` slot is not rendered, but your app nodes stay in the light DOM. Removing the attribute restores the normal sidebar layout.
 
 ```tsx
+import { lucideFileText, lucideHouse, lucideShoppingCart, lucideUser } from '@greypan/web-ui/icons'
+import { useState } from 'react'
+
 export default function Demo() {
+  const [tab, setTab] = useState('home')
+
   return (
     <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
       <web-ui-layout no-sidebar header-glow>
@@ -110,8 +125,25 @@ export default function Demo() {
           </p>
           <div className="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
         </div>
-        <div slot="tabbar" className="flex items-center justify-center px-4 py-2 text-xs">
-          Tabbar
+        <div slot="tabbar" className="flex justify-center p-2">
+          <web-ui-segmented
+            aria-label="Bottom navigation"
+            value={tab}
+            onInput={event => setTab(event.currentTarget.value)}
+          >
+            <web-ui-segmented-trigger value="home" aria-label="Home">
+              <web-ui-icon icon={lucideHouse} />
+            </web-ui-segmented-trigger>
+            <web-ui-segmented-trigger value="orders" aria-label="Orders">
+              <web-ui-icon icon={lucideFileText} />
+            </web-ui-segmented-trigger>
+            <web-ui-segmented-trigger value="cart" aria-label="Cart">
+              <web-ui-icon icon={lucideShoppingCart} />
+            </web-ui-segmented-trigger>
+            <web-ui-segmented-trigger value="account" aria-label="Account">
+              <web-ui-icon icon={lucideUser} />
+            </web-ui-segmented-trigger>
+          </web-ui-segmented>
         </div>
       </web-ui-layout>
     </div>
@@ -132,10 +164,32 @@ export default function Demo() {
         </p>
         <div class="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
       </div>
-      <div slot="tabbar" class="flex items-center justify-center px-4 py-2 text-xs">Tabbar</div>
+      <div slot="tabbar" class="flex justify-center p-2">
+        <web-ui-segmented aria-label="Bottom navigation" :value="tab" @input="tab = $event.currentTarget.value">
+          <web-ui-segmented-trigger value="home" aria-label="Home"
+            ><web-ui-icon :icon="lucideHouse"
+          /></web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="orders" aria-label="Orders"
+            ><web-ui-icon :icon="lucideFileText"
+          /></web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="cart" aria-label="Cart"
+            ><web-ui-icon :icon="lucideShoppingCart"
+          /></web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="account" aria-label="Account"
+            ><web-ui-icon :icon="lucideUser"
+          /></web-ui-segmented-trigger>
+        </web-ui-segmented>
+      </div>
     </web-ui-layout>
   </div>
 </template>
+
+<script setup lang="ts">
+import { lucideFileText, lucideHouse, lucideShoppingCart, lucideUser } from '@greypan/web-ui/icons'
+import { ref } from 'vue'
+
+const tab = ref('home')
+</script>
 ```
 
 ### Collapsible sidebar
@@ -164,10 +218,10 @@ export default function Demo() {
           onsidebar-open-change={event => setOpen(event.detail.open)}
         >
           <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-            <span className="rounded-md p-2 text-sm">Overview</span>
-            <span className="rounded-md p-2 text-sm">Components</span>
-            <span className="rounded-md p-2 text-sm">Theme</span>
-            <span className="rounded-md p-2 text-sm">Settings</span>
+            <span className="truncate rounded-md p-2 text-sm">Overview</span>
+            <span className="truncate rounded-md p-2 text-sm">Components</span>
+            <span className="truncate rounded-md p-2 text-sm">Theme</span>
+            <span className="truncate rounded-md p-2 text-sm">Settings</span>
           </nav>
           <div className="p-4">
             <p className="m-0 text-sm">
@@ -197,10 +251,10 @@ export default function Demo() {
         @sidebar-open-change="open = $event.detail.open"
       >
         <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-          <span class="rounded-md p-2 text-sm">Overview</span>
-          <span class="rounded-md p-2 text-sm">Components</span>
-          <span class="rounded-md p-2 text-sm">Theme</span>
-          <span class="rounded-md p-2 text-sm">Settings</span>
+          <span class="truncate rounded-md p-2 text-sm">Overview</span>
+          <span class="truncate rounded-md p-2 text-sm">Components</span>
+          <span class="truncate rounded-md p-2 text-sm">Theme</span>
+          <span class="truncate rounded-md p-2 text-sm">Settings</span>
         </nav>
         <div class="p-4">
           <p class="m-0 text-sm">
@@ -225,6 +279,8 @@ const open = ref(false)
 ### Resize by dragging
 
 With `sidebar-resizable` enabled, a resize handle appears on the right edge of the desktop sidebar (hidden in the collapsed state), and dragging changes the width in real time. After focusing it with the keyboard, ←/→ step by 16px (Shift accelerates to 64px), and Home/End jump to the lower/upper bound.
+
+The handle supports mouse, touch, and pen input. In mobile layout the sidebar becomes a drawer and the resize handle is not shown.
 
 Releasing the drag or committing with the keyboard Enter dispatches one `sidebar-width-change` carrying the final pixel width. Once your app writes it back, the width is taken over by `sidebar-width` again. Escape reverts an uncommitted adjustment.
 
@@ -308,102 +364,35 @@ const open = ref(false)
 </script>
 ```
 
-### Mobile drawer and viewport detection
+### Mobile drawer
 
-`sidebar-open` is the controlled visibility of the mobile Drawer and is independent of `sidebar-collapsed`.
-
-`mobile` is written exclusively by layout and flips at the `640px` breakpoint at the same instant the page switches to the mobile branch, dispatching a `mobile-change` event as well.
-
-In React, read `layout.mobile` inside `useLayoutEffect` before subscribing (the event dispatched at mount time precedes the subscription); write back on a breakpoint crossing with `flushSync`, otherwise there is one frame where the new tree is already on screen while your app still holds the old value.
-
-Vue's template listener is attached before the element is inserted, so binding directly is enough.
-
-Narrow the viewport to 640px or below and layout switches to the mobile branch: a Toggle appears in the header, and clicking it requests the Drawer to open through `sidebar-open-change`. The mobile Drawer enables both `draggable` and `page-shift`: opening it slides the page toward the Drawer's entry direction (to the right) by `16vw` (recalculated when the viewport width changes), and closing it restores the page.
+The application controls `mobile`. When it is `true`, the sidebar uses a drawer. The application can choose the value based on its viewport or its own layout policy.
 
 ```tsx
-import type { WebUiLayout } from '@greypan/web-ui'
-import { useLayoutEffect, useRef, useState } from 'react'
-import { flushSync } from 'react-dom'
+import { useState } from 'react'
 
 export default function Demo() {
-  const layoutRef = useRef<WebUiLayout>(null)
   const [open, setOpen] = useState(false)
-  const [mobile, setMobile] = useState(false)
-
-  useLayoutEffect(() => {
-    const layout = layoutRef.current
-    if (!layout) return
-    setMobile(layout.mobile)
-    const onChange = (event: Event) => {
-      const next = (event as CustomEvent<{ mobile: boolean }>).detail.mobile
-      flushSync(() => setMobile(next))
-    }
-    layout.addEventListener('mobile-change', onChange)
-    return () => layout.removeEventListener('mobile-change', onChange)
-  }, [])
-
   return (
-    <div className="flex flex-col gap-3">
-      <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
-        <web-ui-layout ref={layoutRef} sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
-          <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
-            Header
-          </div>
-          <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-            <span className="rounded-md p-2 text-sm">Navigation</span>
-            <span className="rounded-md p-2 text-sm">Components</span>
-          </nav>
-          <div className="p-4">
-            <p className="m-0 text-sm">
-              Narrow the viewport to 640px or below and a Toggle appears in the header; clicking it requests the Drawer
-              to open through sidebar-open-change.
-            </p>
-          </div>
-        </web-ui-layout>
-      </div>
-      <p className="text-sm text-(--wui-color-text-secondary)">
-        mobile: {mobile ? 'true' : 'false'} · sidebar-open: {open ? 'true' : 'false'}
-      </p>
-    </div>
+    <web-ui-layout mobile sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
+      <div slot="sidebar">Navigation</div>
+      <div>Content</div>
+    </web-ui-layout>
   )
 }
 ```
 
 ```vue
 <template>
-  <div class="flex flex-col gap-3">
-    <div
-      class="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]"
-    >
-      <web-ui-layout
-        :sidebarOpen="open"
-        @sidebar-open-change="open = $event.detail.open"
-        @mobile-change="mobile = $event.detail.mobile"
-      >
-        <div slot="header" class="flex items-center px-4 py-2 text-sm font-medium">Header</div>
-        <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-          <span class="rounded-md p-2 text-sm">Navigation</span>
-          <span class="rounded-md p-2 text-sm">Components</span>
-        </nav>
-        <div class="p-4">
-          <p class="m-0 text-sm">
-            Narrow the viewport to 640px or below and a Toggle appears in the header; clicking it requests the Drawer to
-            open through sidebar-open-change.
-          </p>
-        </div>
-      </web-ui-layout>
-    </div>
-    <p class="text-sm text-(--wui-color-text-secondary)">
-      mobile: {{ mobile ? 'true' : 'false' }} · sidebar-open: {{ open ? 'true' : 'false' }}
-    </p>
-  </div>
+  <web-ui-layout :mobile="true" :sidebarOpen="open" @sidebar-open-change="open = $event.detail.open">
+    <div slot="sidebar">Navigation</div>
+    <div>Content</div>
+  </web-ui-layout>
 </template>
 
 <script setup lang="ts">
 import { ref } from 'vue'
-
 const open = ref(false)
-const mobile = ref(false)
 </script>
 ```
 
@@ -419,7 +408,7 @@ const mobile = ref(false)
 | `sidebar-open`        | Controlled open state of the mobile sidebar Drawer.                                                                                                                                                                                                        | `boolean`          | `false`   |
 | `header-glow`         | Shows a decorative glow behind the header slot content.                                                                                                                                                                                                    | `boolean`          | `false`   |
 | `ariaLabels`          | Grouped overrides for the built-in accessible names (sidebar collapse/expand, resize, open navigation menu, main navigation) (property); keys without a value use the built-in English copy, and sidebar-related keys are not rendered under `no-sidebar`. | `LayoutAriaLabels` | -         |
-| `mobile`              | Read-only calculated value: whether the current viewport is at or below the mobile breakpoint; writing the attribute is reverted, and assigning the property has no effect.                                                                                | `boolean`          | `false`   |
+| `mobile`              | Whether to use the mobile layout, controlled by the caller.                                                                                                                                                                                                | `boolean`          | `false`   |
 | `sidebar-width`       | Sidebar width when expanded on desktop and mobile.                                                                                                                                                                                                         | `string`           | `'240px'` |
 | `collapsed-width`     | Sidebar width when collapsed on desktop.                                                                                                                                                                                                                   | `string`           | `'60px'`  |
 | `sidebar-resizable`   | Enables drag resizing on the right edge of the desktop sidebar.                                                                                                                                                                                            | `boolean`          | `false`   |
@@ -428,12 +417,11 @@ const mobile = ref(false)
 
 ### Events
 
-| Name                       | Description                                                                                                                                                                       |
-| -------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| `sidebar-collapsed-change` | Requests an update of the desktop collapse state; `detail.collapsed` is the requested value, and your app must write it back to `sidebar-collapsed`.                              |
-| `sidebar-open-change`      | Requests an update of the mobile Drawer open state; `detail.open` is the requested value.                                                                                         |
-| `sidebar-width-change`     | Requests a width update after the drag is released or committed with the keyboard Enter; `detail.width` is the final pixel width.                                                 |
-| `mobile-change`            | Not a request. It reports layout's own calculated viewport state. `detail.mobile` has the same value as the `mobile` property, and it is dispatched once per breakpoint crossing. |
+| Name                       | Description                                                                                                                                          |
+| -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
+| `sidebar-collapsed-change` | Requests an update of the desktop collapse state; `detail.collapsed` is the requested value, and your app must write it back to `sidebar-collapsed`. |
+| `sidebar-open-change`      | Requests an update of the mobile Drawer open state; `detail.open` is the requested value.                                                            |
+| `sidebar-width-change`     | Requests a width update after the drag is released or committed with the keyboard Enter; `detail.width` is the final pixel width.                    |
 
 ### Slots
 
@@ -445,23 +433,9 @@ const mobile = ref(false)
 | `default` | Main content area.                                                                                                                                      |
 | `tabbar`  | Bottom tabbar.                                                                                                                                          |
 
-### Mobile viewport state
+### Mobile state
 
-`mobile` is a read-only output, not an extra input, and layout is the only writer. The property is read-only (assignment has no effect and throws in strict mode), and writing the attribute is reverted immediately. Neither form dispatches an event.
-
-It flips at the `640px` breakpoint at the same moment the page switches to the mobile branch, without a resize debounce.
-
-`mobile-change` is dispatched once per breakpoint crossing, and the initial evaluation at mount in a narrow viewport also counts.
-
-Read the current value from `layout.mobile` and receive updates through `mobile-change`. On the CSS side you can write `web-ui-layout[mobile]`.
-
-### Using from frameworks
-
-Code that reacts on a macrotask reads the old value while the new tree is already on screen:
-
-- Vue: bind `@mobile-change` in the template and store the value in a `ref`. The template listener is attached before the element is inserted, so it also receives the notification dispatched at mount.
-- React: get the element through a ref, read `layout.mobile` before subscribing inside `useLayoutEffect`, and write back with `flushSync`. Reading first gets the mount-time initial value. `flushSync` applies the breakpoint crossing before layout re-renders, which otherwise produces one frame where "the drawer is already rendered in the new state while your app's value is still old".
-- CSS: write styles directly against `web-ui-layout[mobile]`, or wrap it into a variant. A Tailwind v4 app can write the mobile side of that boundary once instead of repeating it for every utility class: `@custom-variant mobile (&:where(web-ui-layout[mobile], web-ui-layout[mobile] *));`. Two limits apply. The attribute selector only affects nodes inside the layout subtree, and content portalled by an overlay to `document.body` still needs a media query. Do not use the custom variant for the min-width side, because Tailwind orders `@custom-variant` rules after the theme breakpoints, so a `desktop:` variant of the same property silently overrides `md:`/`lg:` at every wider size.
+The caller supplies `mobile`, which is reflected as an attribute. CSS can select mobile layouts with `web-ui-layout[mobile]`.
 
 ### Collapse applies to the desktop only
 
@@ -475,7 +449,7 @@ With `no-sidebar` set, desktop renders no aside, collapse toggle, or resize hand
 
 The `sidebar` slot has no render outlet, while your app nodes stay in the light DOM. In this mode `sidebar-collapsed`, `sidebar-open`, `sidebar-width`, and the other `sidebar-*` attributes and events have no visible effect. Sidebar-related `ariaLabels` keys and CSS custom properties have no visible effect either.
 
-`mobile` and `mobile-change` still follow the viewport as usual. Switching into this mode ends an ongoing drag gesture and any uncommitted width change. Removing the attribute returns to the layout governed by the `sidebar-*` attributes.
+The caller continues to control `mobile`. Switching into this mode ends an ongoing drag gesture and any uncommitted width change. Removing the attribute returns to the layout governed by the `sidebar-*` attributes.
 
 ### Sidebar resizing
 
@@ -520,7 +494,7 @@ That lets your app fix a header and footer itself without extra public slots:
 }
 ```
 
-At `640px` and below (the very same condition `mobile` reports), the sidebar switches to a `web-ui-drawer` with the built-in glass body, scrollable content, and drag zone.
+When `mobile` is `true`, the sidebar switches to a `web-ui-drawer` with the built-in glass body, scrollable content, and drag zone.
 
 The mobile Drawer's width follows `sidebar-width`, and its radius follows `--wui-layout-sidebar-radius`.
 

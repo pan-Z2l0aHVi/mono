@@ -1,13 +1,12 @@
 <script setup lang="ts">
-import appScrollbarsOptions from '@greypan/app-scrollbars'
 import type { WebUiDrawer, WebUiEvent } from '@greypan/web-ui'
-import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { ResourceView } from '@/stores/library'
 
 import { resourceIcon } from './presentation'
 import { readTextPreview, resolvePreviewTarget, type PreviewEmptyReason } from './preview'
+import PreviewImage from './PreviewImage.vue'
 
 const props = defineProps<{
   open: boolean
@@ -23,6 +22,7 @@ const placement = computed(() => (props.mobile ? 'bottom' : 'right'))
 const target = computed(() => resolvePreviewTarget(props.resource))
 const imageFailed = ref(false)
 const videoFailed = ref(false)
+const videoPortrait = ref(false)
 const textState = ref<TextState>('idle')
 const textPreview = ref<{ text: string; truncated: boolean } | null>(null)
 const textError = ref('')
@@ -64,6 +64,7 @@ watch(
   ([open]) => {
     imageFailed.value = false
     videoFailed.value = false
+    videoPortrait.value = false
     cancelTextRequest()
     textPreview.value = null
     textError.value = ''
@@ -111,31 +112,19 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
     drag zone 取 32px（drawer 自己的默认值是 20px，见 CHANGELOG：曾从 32px 收窄并留了
     「consumer 可覆回 32px+」的口子）。20px 在 720px 宽的 panel 边缘上太窄，拖拽命中率低。
 
-    content-padding 跟着回到 drawer 默认的 20px，不归零：它同时是拖拽条中线的来源
-    （--wui-internal-drag-bar-center = max(padding/2, 厚度/2+4px)），归零时中线被 6px 下限
-    兜住，4px 的胶囊会压在 panel 内缘上，读起来像边框而不是 drag bar。20px 让胶囊落在 8px 处，
-    稳稳待在 32px drag zone 之内。代价是网页预览从满铺变成带一圈白框的视口——这个取舍得认。
   -->
   <web-ui-drawer
+    page-shift
     :open="open"
     :placement="placement"
     aria-dialog-label="资源预览"
     draggable
     controlled
-    class="mobile:[--wui-drawer-height:80vh] mobile:[--wui-drawer-inset:0px] mobile:[--wui-drawer-radius:28px_28px_0_0] mobile:[--wui-drawer-header-padding:0px] [--wui-drawer-width:max(60vw,320px)] [--wui-drawer-content-padding:20px] [--wui-drawer-drag-zone-size:32px]"
+    class="mobile:[--wui-drawer-height:80vh] mobile:[--wui-drawer-inset:0px] mobile:[--wui-drawer-radius:28px_28px_0_0] [--wui-drawer-width:max(60vw,320px)] [--wui-drawer-content-padding:20px] [--wui-empty-padding:0px] [--wui-drawer-drag-zone-size:32px]"
     @open-change="handleOpenChange"
   >
-    <div v-if="resource" slot="header" class="flex w-full min-w-0 items-center gap-2 px-4 mobile:h-14">
-      <h2
-        class="m-0 min-w-0 flex-1 truncate text-center text-[17px] font-semibold leading-snug text-[#22212a] dark:text-(--wui-color-text)"
-      >
-        {{ resource.title }}
-      </h2>
-    </div>
-
     <!--
-      bottom placement 的 dialog 是 height: auto，--wui-drawer-height 只声明在 host 上不会生效，
-      需要像 DetailDrawer 那样把高度落在内容层；减去移动端 header 的 h-14。
+      抽屉的 padding 同时用于定位拖拽手柄，内容向外延伸覆盖该空间，再按抽屉圆角裁切。
 
       open && resource 双重守卫：selectedResource 由行点击即赋值，而 previewOpen 仍是 false，
       此时 dialog 是 display:none。只按 resource 守卫会让 img/video/iframe 挂在隐藏 dialog 里
@@ -144,93 +133,74 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
     -->
     <div
       v-if="open && resource"
-      class="grid h-full min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden mobile:h-[calc(var(--wui-drawer-height)-56px)]"
+      class="-m-5 w-[calc(100%+40px)] min-h-0 rounded-[var(--wui-drawer-radius,28px)]"
+      :class="
+        target.mode === 'text'
+          ? 'min-h-full'
+          : 'grid h-[calc(100%+40px)] grid-rows-[minmax(0,1fr)] overflow-hidden mobile:h-(--wui-drawer-height)'
+      "
     >
-      <!--
-        滚动接在外层宿主上，grid 留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己生成的
-        块盒 viewport，`place-items-center` 的居中就不再作用于内容（见 library/host-layout-probe.png
-        的实测对照）。里层用 min-h-full / h-full 把「至少和滚动口一样高」这条接回来——viewport
-        的高度是确定的，百分比因此能解析。
-      -->
-      <OverlayScrollbarsComponent v-if="emptyState" :options="appScrollbarsOptions" class="min-h-0 overflow-y-auto">
-        <div class="grid min-h-full place-items-center p-5">
+      <div v-if="emptyState" class="min-h-0 overflow-y-auto">
+        <div class="grid min-h-full place-items-center">
           <web-ui-empty :size="72" :title="emptyState.title" :description="emptyState.description">
             <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
           </web-ui-empty>
         </div>
-      </OverlayScrollbarsComponent>
+      </div>
 
-      <OverlayScrollbarsComponent
-        v-else-if="target.mode === 'image'"
-        :options="appScrollbarsOptions"
-        class="min-h-0 overflow-auto"
-      >
-        <!--
-          `grid-rows-[minmax(0,1fr)]` 不能省：没有显式 track 时行高由图片撑出，而图片的 `max-h-full`
-          又要向这一行取值，两边互相依赖，百分比会退化成 none——图片不再被收进格子，溢出且偏离居中。
-          显式 track 把格子的高度定下来，百分比才解析得回去。
-        -->
-        <div class="grid h-full grid-rows-[minmax(0,1fr)] place-items-center p-3">
-          <web-ui-empty v-if="imageFailed" :size="72" title="无法显示这张图片" description="文件可能已被移动或删除。">
+      <div v-else-if="target.mode === 'image'" class="min-h-0 overflow-hidden">
+        <web-ui-empty v-if="imageFailed" :size="72" title="无法显示这张图片" description="文件可能已被移动或删除。">
+          <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
+        </web-ui-empty>
+        <PreviewImage
+          v-else
+          :key="mediaKey"
+          :src="target.mediaUrl ?? ''"
+          :alt="resource.title"
+          @error="imageFailed = true"
+        />
+      </div>
+
+      <div v-else-if="target.mode === 'video'" class="min-h-0 overflow-auto">
+        <div class="grid h-full min-h-full place-items-center">
+          <web-ui-empty
+            v-if="videoFailed"
+            :size="72"
+            title="无法播放这个视频"
+            description="文件可能已被移动，或编码不受支持。"
+          >
             <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
           </web-ui-empty>
-          <img
+          <video
             v-else
             :key="mediaKey"
             :src="target.mediaUrl ?? undefined"
-            class="max-h-full max-w-full object-contain"
-            :alt="resource.title"
-            @error="imageFailed = true"
-          />
+            :class="videoPortrait ? 'h-full max-w-none' : 'w-full max-w-none'"
+            class="bg-black"
+            controls
+            playsinline
+            preload="metadata"
+            @loadedmetadata="
+              videoPortrait =
+                ($event.target as HTMLVideoElement).videoHeight > ($event.target as HTMLVideoElement).videoWidth
+            "
+            @error="videoFailed = true"
+          ></video>
         </div>
-      </OverlayScrollbarsComponent>
-
-      <div
-        v-else-if="target.mode === 'video'"
-        class="grid min-h-0 grid-rows-[minmax(0,1fr)] place-items-center overflow-hidden p-3"
-      >
-        <web-ui-empty
-          v-if="videoFailed"
-          :size="72"
-          title="无法播放这个视频"
-          description="文件可能已被移动，或编码不受支持。"
-        >
-          <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
-        </web-ui-empty>
-        <video
-          v-else
-          :key="mediaKey"
-          :src="target.mediaUrl ?? undefined"
-          class="max-h-full max-w-full bg-black object-contain"
-          controls
-          playsinline
-          preload="metadata"
-          @error="videoFailed = true"
-        ></video>
       </div>
 
-      <div v-else-if="target.mode === 'text'" class="grid min-h-0 grid-rows-[minmax(0,1fr)] overflow-hidden">
+      <div v-else-if="target.mode === 'text'" class="min-h-full">
         <div v-if="textState === 'loading'" class="grid min-h-0 place-items-center" role="status">
           <web-ui-spinner :size="28" />
         </div>
         <web-ui-empty v-else-if="textState === 'failed'" :size="72" title="无法读取这个文件" :description="textError">
           <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
         </web-ui-empty>
-        <div v-else-if="textPreview" class="grid min-h-0 grid-rows-[auto_minmax(0,1fr)] overflow-hidden">
-          <p
-            class="m-0 border-b border-black/6 px-4 py-2 text-xs text-(--wui-color-text-secondary) dark:border-white/8"
-          >
+        <div v-else-if="textPreview">
+          <p class="m-0 border-b border-black/6 text-xs text-(--wui-color-text-secondary) dark:border-white/8">
             {{ textNotice }}
           </p>
-          <OverlayScrollbarsComponent :options="appScrollbarsOptions" class="overflow-auto">
-            <!--
-              滚动接在外层宿主上、`pre` 留在里面：适配包会在宿主里插一层内容 div，宿主若就是
-              `pre`，那层 div 会成为它的直接子节点——与 <ul>/<ol> 那条同一个形状。
-            -->
-            <pre class="m-0 p-4 font-mono text-xs leading-5 whitespace-pre-wrap wrap-break-word">{{
-              textPreview.text
-            }}</pre>
-          </OverlayScrollbarsComponent>
+          <pre class="m-0 font-mono text-xs leading-5 whitespace-pre-wrap wrap-break-word">{{ textPreview.text }}</pre>
         </div>
       </div>
 

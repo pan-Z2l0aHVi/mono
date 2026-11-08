@@ -21,17 +21,26 @@ import { wuchale } from 'wuchale/vite'
 const devCertDir = process.env.GREYPAN_DEV_CERT_DIR ?? join(homedir(), '.config', 'greypan', 'dev-certs')
 
 // 具名导出供 scripts/checks/check-md-to-meta-artifacts.mjs 复用：CI 在 Build 步之前以这份配置
-// 只判不改地校验生成物。配置只有这一份，不另抄。
+// 只判不改地校验生成物。配置以这里的具名导出为准，不另抄。
 export const mdToMetaOptions: MdToMetaOptions = {
-  // 文档与 changelog 是全部输入；引擎按文件名产出 meta 模块，`.CN.md` 与 `.md` 各自独立（不做语种解释）。
+  // 组件文档与 changelog 使用同一 output；引擎按文件名产出 meta 模块，`.CN.md` 与 `.md` 各自独立（不做语种解释）。
   input: ['../../packages/web-ui/docs/*.md', '../../packages/web-ui/CHANGELOG.md'],
-  // 单出口：中英文两份语料都落在同一目录，由宿主按文件名里的 `.CN` 判定语种。
+  // 组件文档的中英文两份语料落在同一目录，由宿主按文件名里的 `.CN` 判定语种。
   output: 'src/generated',
   // 只有 vue 围栏带 load thunk：Vue 站把示例挂成真 SFC；React 源码只用于显示。
   exec: ['vue'],
   // 深浅外观源是 web-ui-theme 的派生属性；切外观不需要重新生成高亮 HTML。
   darkSelector: "web-ui-theme[resolved-appearance='dark']"
 }
+
+// README 里的框架代码是说明片段，不作为可运行示例加载。
+export const mdToMetaAdditionalOptions: MdToMetaOptions[] = [
+  {
+    input: '../../packages/web-ui/README*.md',
+    output: 'src/generated/readme',
+    darkSelector: "web-ui-theme[resolved-appearance='dark']"
+  }
+]
 
 export default defineConfig({
   resolve: {
@@ -100,9 +109,10 @@ export default defineConfig({
     wuchale({ configPath: fileURLToPath(new URL('./wuchale.config.js', import.meta.url)) }),
     // 文档：markdown 是唯一来源，dev 与 build 都由这个插件生成 `src/generated/**`。
     // 生成物同样受版本控制，测试档只判不改（不一致就让这次的测试红）；CI 在 Build 步之前还经
-    // `check-generated` 任务以 mdToMetaOptions 只判不改地复验一次（Build 的写盘会把失步产物
+    // `check-generated` 任务以导出的配置只判不改地复验一次（Build 的写盘会把失步产物
     // 治愈，测试档的判据到那时永远空转）。
     mdToMeta(mdToMetaOptions),
+    ...mdToMetaAdditionalOptions.map(mdToMeta),
     vueRouter(),
     vue({
       template: {

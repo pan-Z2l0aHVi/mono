@@ -3,7 +3,7 @@
 import '@greypan/web-ui'
 
 import { local } from '@greypan/browser-kit'
-import type { WebUiDialog, WebUiRadio, WebUiRadioGroup, WebUiSegmented } from '@greypan/web-ui'
+import type { WebUiDialog, WebUiRadio, WebUiRadioGroup, WebUiSegmented, WebUiSwitch } from '@greypan/web-ui'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick } from 'vue'
@@ -90,7 +90,7 @@ describe('SettingsDialog', () => {
     try {
       await nextTick()
 
-      expect(mounted.host.querySelector('[slot="header"]')?.textContent).toContain('设置')
+      expect(dialogElement(mounted.host).getAttribute('aria-dialog-label')).toBe('设置')
       expect(dialogElement(mounted.host).closable).toBe(true)
       // 宿主不自绘 header 关闭 button，也没有 footer「关闭」——标题行那一枚由 web-ui-dialog
       // 自己渲染（在其 shadow 内），宿主拿不到那个节点。
@@ -150,54 +150,43 @@ describe('SettingsDialog', () => {
     }
   })
 
-  it('外观页渲染主题三态 segmented 与 6 个 accent 色板', async () => {
+  it('外观页提供八种可访问的强调色', async () => {
     const mounted = mountDialog(() => {})
-
     try {
       await nextTick()
       selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
       await nextTick()
-
-      expect(mounted.host.querySelector('web-ui-segmented[aria-label="主题模式"]')).toBeTruthy()
-      // 色板值列表是纯 CSS 事实（具体 hex 属于 test-authoring 不鼓励的断言），由浏览器取证；
-      // 这里只守「六格色板都在」，值的正确性由「点 button → store 写入」的用例背书。
-      expect(mounted.host.querySelectorAll('web-ui-radio')).toHaveLength(6)
+      const radios = [...mounted.host.querySelectorAll<HTMLInputElement>('input[type="radio"]')]
+      expect(radios.map(radio => radio.getAttribute('aria-label'))).toEqual([
+        '强调色 蓝',
+        '强调色 紫',
+        '强调色 粉',
+        '强调色 红',
+        '强调色 橙',
+        '强调色 黄',
+        '强调色 绿',
+        '强调色 灰'
+      ])
     } finally {
       mounted.close()
     }
   })
 
-  /*
-   * 回归：accent 的可点区域必须是原生 button，不能是 web-ui-radio 的 host。
-   *
-   * web-ui-radio 的可点区域在 shadow 里那个 <label> 上，而 :host 自身没有尺寸规则——它是个
-   * 0×0 的盒子。色板这格又是 flex-wrap 的 <span> 布局，host 中心那一片点下去落在组件之外，
-   * group 的 change 根本不派发：浏览器实测点 host 中心时 group.value 纹丝不动，而直接点
-   * shadow 里的 label 才会切。jsdom 里点 host 无效、点 label 有效，组件自身的测试覆盖不到
-   * 「从 light DOM 投影 slot 后 host 中心是否可点」这一层，所以这条断言必须在。
-   *
-   * 钉的是「六个色板各自有一个带可访问名与 role 的原生 button」——也就是用户与辅助技术
-   * 实际命中的目标；radio 本身是不是 pointer-events-none 属于内部实现，另有下面两条
-   * 直接断言「点 button → store 写入」的用例守着因果链。
-   */
-  it('accent 色板的可点区域是原生 button，不是 web-ui-radio 的 host', async () => {
+  it('减少动画开关保存偏好并在重新创建 store 后恢复', async () => {
     const mounted = mountDialog(() => {})
-
     try {
       await nextTick()
       selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
       await nextTick()
-
-      const buttons = [...mounted.host.querySelectorAll<HTMLButtonElement>('button[role="radio"]')]
-      expect(buttons).toHaveLength(6)
-      expect(buttons.map(button => button.getAttribute('aria-label'))).toEqual([
-        '强调色 蓝',
-        '强调色 绿',
-        '强调色 橙',
-        '强调色 红',
-        '强调色 紫',
-        '强调色 粉'
-      ])
+      const toggle = mounted.host.querySelector<WebUiSwitch>('web-ui-switch[aria-label="减少动画"]')
+      if (!toggle) throw new Error('减少动画开关未渲染')
+      expect(toggle.checked).toBe(false)
+      toggle.checked = true
+      toggle.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      expect(useSettingsStore().reducedMotion).toBe(true)
+      expect(local.get('theme-reduced-motion')).toBe(true)
+      setActivePinia(createPinia())
+      expect(useSettingsStore().reducedMotion).toBe(true)
     } finally {
       mounted.close()
     }
@@ -230,72 +219,23 @@ describe('SettingsDialog', () => {
     }
   })
 
-  it('点 accent 色板 button 经合成 click 写入 store，认不出的值不落库', async () => {
+  it('选择强调色后更新设置并持久化', async () => {
     const mounted = mountDialog(() => {})
     const settings = useSettingsStore()
-
     try {
       await nextTick()
       selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
       await nextTick()
-      expect(settings.accent).toBe('#0a84ff')
-
-      const green = mounted.host.querySelector<HTMLButtonElement>('button[aria-label="强调色 绿"]')
-      if (!green) throw new Error('accent 绿 button 未渲染')
+      const green = mounted.host.querySelector<HTMLInputElement>('input[aria-label="强调色 绿"]')
+      if (!green) throw new Error('强调色 绿未渲染')
       green.click()
       await nextTick()
-
-      expect(settings.accent).toBe('#1d8348')
-      expect(local.get('theme-accent')).toBe('#1d8348')
-      // 选中态只有一个真相：accent 同时驱动 button 的 aria-checked 与 web-ui-radio 的 checked。
-      const radios = [...mounted.host.querySelectorAll<WebUiRadio>('web-ui-radio')]
-      expect(radios.map(radio => radio.checked)).toEqual([false, true, false, false, false, false])
-      const buttons = [...mounted.host.querySelectorAll<HTMLButtonElement>('button[role="radio"]')]
-      expect(buttons.map(button => button.getAttribute('aria-checked'))).toEqual([
-        'false',
-        'true',
-        'false',
-        'false',
-        'false',
-        'false'
-      ])
-
+      expect(settings.accent).toBe('#61bf45')
+      expect(local.get('theme-accent')).toBe('#61bf45')
+      expect(green.checked).toBe(true)
       settings.setAccent('red')
-      expect(settings.accent).toBe('#1d8348')
-      expect(local.get('theme-accent')).toBe('#1d8348')
+      expect(settings.accent).toBe('#61bf45')
     } finally {
-      mounted.close()
-    }
-  })
-
-  /*
-   * 回归：点色板必须经 pickAccent 直接写 store，不能改成「合成一次点击转发进 web-ui-radio、
-   * 再听它的 change 回写」。那条路走不通——radio 是 pointer-events-none 的纯显示层，
-   * 合成点击进不了 group controller；而一旦把它升回写入层，store 就有了两个写入者。
-   *
-   * 钉住「点击 → store 写入」这条因果链，而不是组件内部怎么派事件：把转发实现换掉时，
-   * 下面这个 spy 仍会绿，但它测不到 store 到底有没有被写，所以另有一条
-   * 「点 accent 色板 button 经合成 click 写入 store」同时断言 store 的实际值。
-   */
-  it('点色板 button 直接写 store，不转发进 web-ui-radio', async () => {
-    const setAccent = vi.spyOn(useSettingsStore(), 'setAccent')
-    const mounted = mountDialog(() => {})
-
-    try {
-      await nextTick()
-      selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
-      await nextTick()
-
-      const green = mounted.host.querySelector<HTMLButtonElement>('button[aria-label="强调色 绿"]')
-      if (!green) throw new Error('accent 绿 button 未渲染')
-      green.click()
-      await nextTick()
-
-      // 一次点击一次写入，值就是被点的那个色
-      expect(setAccent).toHaveBeenCalledTimes(1)
-      expect(setAccent).toHaveBeenCalledWith('#1d8348')
-    } finally {
-      setAccent.mockRestore()
       mounted.close()
     }
   })
