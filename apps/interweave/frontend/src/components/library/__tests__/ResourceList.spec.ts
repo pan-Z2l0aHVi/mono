@@ -305,53 +305,65 @@ describe('ResourceList：按住拖动批量勾选', () => {
    *
    * 顶部带不能直接比：scrollY=0 时向上滚不动（已经在顶）。所以先滚到中段再测。
    */
-  it('边缘带内速度贴边最快、离边越远越慢', { timeout: SWEEP_TIMEOUT }, async () => {
+  it('边缘带内速度贴边最快、离边越远越慢', { timeout: SWEEP_TIMEOUT }, async ({ onTestFailed }) => {
+    const started = performance.now()
+    const stages: string[] = []
+    const mark = (stage: string) => stages.push(`${stage}: ${Math.round(performance.now() - started)}ms`)
+    onTestFailed(() => console.error('扫选梯度测试阶段', stages.join(', ')))
+    mark('mount:start')
     const resources = Array.from({ length: 400 }, (_, i) => resource({ id: `r${i}` }))
+    const mounted = await mountList(resources, [], { selectionMode: true })
+    mark('mount:end')
+    const hit = stubHitTest()
+    const frame = () => new Promise(resolve => requestAnimationFrame(() => resolve(null)))
     // 同样的两帧，贴边应该比带内靠里滚得更多
     const measure = async (clientY: number, fromTop = false) => {
-      const setChecked = vi.fn<SetChecked>()
-      const mounted = await mountList(resources, [], { selectionMode: true }, { onSetChecked: setChecked })
-      const hit = stubHitTest()
-      const frame = () => new Promise(resolve => requestAnimationFrame(() => resolve(null)))
-      try {
-        mounted.rows[0].dispatchEvent(pointer('pointerdown', { button: 0, clientX: 1, clientY: 1 }))
-        hit.pointAt(mounted.rows[0])
-        if (fromTop) {
-          // 滚离顶部必须在 pointerdown 之后做：mountList 里的 stubLayout 每次都把 scrollY
-          // 归零，放在它之前滚会被抹掉；而 scrollY 为 0 时向上滚被 maxScrollY 夹住、
-          // 根本退不动，梯度差异就测不出来。
-          window.scrollTo({ top: 5000 })
-          await flushRenders()
-        }
-        // 基线在 pointerdown 之后取：按下这一刻页面可能被夹一下（实测 5000 → 4856），
-        // 拿按下前的值当基线会把那一下算进梯度里。
-        const before = currentScrollY()
-        window.dispatchEvent(pointer('pointermove', { clientX: 2, clientY }))
-        await frame()
-        await frame()
-        // 收尾必须显式抬手：endSweep 才会停掉自续的 rAF 滚动循环（滚到边界被夹住之前它
-        // 一直跑），否则每个 measure 都留下一个每帧 scrollTo + scroll 重渲染的活循环，
-        // 拖慢本用例后续的 measure、污染之后所有依赖滚动位置的用例。
-        window.dispatchEvent(pointer('pointerup'))
-        return { before, after: currentScrollY() }
-      } finally {
-        hit.restore()
-        mounted.unmount()
+      mark(`measure:${clientY}:start`)
+      window.scrollTo({ top: 0 })
+      await flushRenders()
+      const firstRow = mounted.host.querySelector('[data-resource-row]')
+      if (!firstRow) throw new Error('滚回顶部后没有渲染资源行')
+      firstRow.dispatchEvent(pointer('pointerdown', { button: 0, clientX: 1, clientY: 1 }))
+      hit.pointAt(firstRow)
+      if (fromTop) {
+        // 滚离顶部必须在 pointerdown 之后做：mountList 里的 stubLayout 每次都把 scrollY
+        // 归零，放在它之前滚会被抹掉；而 scrollY 为 0 时向上滚被 maxScrollY 夹住、
+        // 根本退不动，梯度差异就测不出来。
+        window.scrollTo({ top: 5000 })
+        await flushRenders()
       }
+      // 基线在 pointerdown 之后取：按下这一刻页面可能被夹一下（实测 5000 → 4856），
+      // 拿按下前的值当基线会把那一下算进梯度里。
+      const before = currentScrollY()
+      window.dispatchEvent(pointer('pointermove', { clientX: 2, clientY }))
+      await frame()
+      await frame()
+      // 收尾必须显式抬手：endSweep 才会停掉自续的 rAF 滚动循环（滚到边界被夹住之前它
+      // 一直跑），否则每个 measure 都留下一个每帧 scrollTo + scroll 重渲染的活循环，
+      // 拖慢本用例后续的 measure、污染之后所有依赖滚动位置的用例。
+      window.dispatchEvent(pointer('pointerup'))
+      mark(`measure:${clientY}:end`)
+      return { before, after: currentScrollY() }
     }
 
-    // 底部带：贴底边 clientY=底-1 比带内靠里 clientY=底-16 滚得更多
-    const bottomEdge = await measure(VIEWPORT_HEIGHT - 1)
-    const bottomInner = await measure(VIEWPORT_HEIGHT - 16)
-    expect(bottomEdge.after).toBeGreaterThan(bottomEdge.before)
-    expect(bottomEdge.after).toBeGreaterThan(bottomInner.after)
-    expect(bottomInner.after).toBeGreaterThan(bottomInner.before)
+    try {
+      // 底部带：贴底边 clientY=底-1 比带内靠里 clientY=底-16 滚得更多
+      const bottomEdge = await measure(VIEWPORT_HEIGHT - 1)
+      const bottomInner = await measure(VIEWPORT_HEIGHT - 16)
+      expect(bottomEdge.after).toBeGreaterThan(bottomEdge.before)
+      expect(bottomEdge.after).toBeGreaterThan(bottomInner.after)
+      expect(bottomInner.after).toBeGreaterThan(bottomInner.before)
 
-    // 顶部带：贴顶边 clientY=1 比带内靠里 clientY=16 退得更多（向上滚，after < before）
-    const topEdge = await measure(1, true)
-    const topInner = await measure(16, true)
-    expect(topEdge.before - topEdge.after).toBeGreaterThan(topInner.before - topInner.after)
-    expect(topInner.before - topInner.after).toBeGreaterThan(0)
+      // 顶部带：贴顶边 clientY=1 比带内靠里 clientY=16 退得更多（向上滚，after < before）
+      const topEdge = await measure(1, true)
+      const topInner = await measure(16, true)
+      expect(topEdge.before - topEdge.after).toBeGreaterThan(topInner.before - topInner.after)
+      expect(topInner.before - topInner.after).toBeGreaterThan(0)
+    } finally {
+      window.dispatchEvent(pointer('pointerup'))
+      hit.restore()
+      mounted.unmount()
+    }
   })
 
   /*
