@@ -46,8 +46,10 @@ export default function Demo() {
           </p>
           <div className="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
         </div>
-        <div slot="tabbar" className="flex items-center justify-center px-4 py-2 text-xs">
-          Tabbar
+        <div slot="tabbar" className="flex justify-center p-2">
+          <div className="w-full max-w-64 rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-6 py-2 text-center text-xs shadow-lg">
+            Tabbar
+          </div>
         </div>
       </web-ui-layout>
     </div>
@@ -80,7 +82,13 @@ export default function Demo() {
         </p>
         <div class="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
       </div>
-      <div slot="tabbar" class="flex items-center justify-center px-4 py-2 text-xs">Tabbar</div>
+      <div slot="tabbar" class="flex justify-center p-2">
+        <div
+          class="w-full max-w-64 rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-6 py-2 text-center text-xs shadow-lg"
+        >
+          Tabbar
+        </div>
+      </div>
     </web-ui-layout>
   </div>
 </template>
@@ -99,7 +107,12 @@ const open = ref(false)
 The `sidebar` slot is not rendered, but your app nodes stay in the light DOM. Removing the attribute restores the normal sidebar layout.
 
 ```tsx
+import { lucideFileText, lucideHouse, lucideShoppingCart, lucideUser } from '@greypan/web-ui/icons'
+import { useState } from 'react'
+
 export default function Demo() {
+  const [tab, setTab] = useState('home')
+
   return (
     <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
       <web-ui-layout no-sidebar header-glow>
@@ -112,8 +125,25 @@ export default function Demo() {
           </p>
           <div className="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
         </div>
-        <div slot="tabbar" className="flex items-center justify-center px-4 py-2 text-xs">
-          Tabbar
+        <div slot="tabbar" className="flex justify-center p-2">
+          <web-ui-segmented
+            aria-label="Bottom navigation"
+            value={tab}
+            onInput={event => setTab(event.currentTarget.value)}
+          >
+            <web-ui-segmented-trigger value="home" aria-label="Home">
+              <web-ui-icon icon={lucideHouse} />
+            </web-ui-segmented-trigger>
+            <web-ui-segmented-trigger value="orders" aria-label="Orders">
+              <web-ui-icon icon={lucideFileText} />
+            </web-ui-segmented-trigger>
+            <web-ui-segmented-trigger value="cart" aria-label="Cart">
+              <web-ui-icon icon={lucideShoppingCart} />
+            </web-ui-segmented-trigger>
+            <web-ui-segmented-trigger value="account" aria-label="Account">
+              <web-ui-icon icon={lucideUser} />
+            </web-ui-segmented-trigger>
+          </web-ui-segmented>
         </div>
       </web-ui-layout>
     </div>
@@ -134,10 +164,32 @@ export default function Demo() {
         </p>
         <div class="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
       </div>
-      <div slot="tabbar" class="flex items-center justify-center px-4 py-2 text-xs">Tabbar</div>
+      <div slot="tabbar" class="flex justify-center p-2">
+        <web-ui-segmented aria-label="Bottom navigation" :value="tab" @input="tab = $event.currentTarget.value">
+          <web-ui-segmented-trigger value="home" aria-label="Home"
+            ><web-ui-icon :icon="lucideHouse"
+          /></web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="orders" aria-label="Orders"
+            ><web-ui-icon :icon="lucideFileText"
+          /></web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="cart" aria-label="Cart"
+            ><web-ui-icon :icon="lucideShoppingCart"
+          /></web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="account" aria-label="Account"
+            ><web-ui-icon :icon="lucideUser"
+          /></web-ui-segmented-trigger>
+        </web-ui-segmented>
+      </div>
     </web-ui-layout>
   </div>
 </template>
+
+<script setup lang="ts">
+import { lucideFileText, lucideHouse, lucideShoppingCart, lucideUser } from '@greypan/web-ui/icons'
+import { ref } from 'vue'
+
+const tab = ref('home')
+</script>
 ```
 
 ### Collapsible sidebar
@@ -166,10 +218,10 @@ export default function Demo() {
           onsidebar-open-change={event => setOpen(event.detail.open)}
         >
           <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-            <span className="rounded-md p-2 text-sm">Overview</span>
-            <span className="rounded-md p-2 text-sm">Components</span>
-            <span className="rounded-md p-2 text-sm">Theme</span>
-            <span className="rounded-md p-2 text-sm">Settings</span>
+            <span className="truncate rounded-md p-2 text-sm">Overview</span>
+            <span className="truncate rounded-md p-2 text-sm">Components</span>
+            <span className="truncate rounded-md p-2 text-sm">Theme</span>
+            <span className="truncate rounded-md p-2 text-sm">Settings</span>
           </nav>
           <div className="p-4">
             <p className="m-0 text-sm">
@@ -199,10 +251,10 @@ export default function Demo() {
         @sidebar-open-change="open = $event.detail.open"
       >
         <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-          <span class="rounded-md p-2 text-sm">Overview</span>
-          <span class="rounded-md p-2 text-sm">Components</span>
-          <span class="rounded-md p-2 text-sm">Theme</span>
-          <span class="rounded-md p-2 text-sm">Settings</span>
+          <span class="truncate rounded-md p-2 text-sm">Overview</span>
+          <span class="truncate rounded-md p-2 text-sm">Components</span>
+          <span class="truncate rounded-md p-2 text-sm">Theme</span>
+          <span class="truncate rounded-md p-2 text-sm">Settings</span>
         </nav>
         <div class="p-4">
           <p class="m-0 text-sm">
@@ -227,6 +279,8 @@ const open = ref(false)
 ### Resize by dragging
 
 With `sidebar-resizable` enabled, a resize handle appears on the right edge of the desktop sidebar (hidden in the collapsed state), and dragging changes the width in real time. After focusing it with the keyboard, ←/→ step by 16px (Shift accelerates to 64px), and Home/End jump to the lower/upper bound.
+
+The handle supports mouse, touch, and pen input, including tablets with a viewport wider than 640px. At 640px or narrower, the sidebar becomes a drawer and the resize handle is not shown.
 
 Releasing the drag or committing with the keyboard Enter dispatches one `sidebar-width-change` carrying the final pixel width. Once your app writes it back, the width is taken over by `sidebar-width` again. Escape reverts an uncommitted adjustment.
 

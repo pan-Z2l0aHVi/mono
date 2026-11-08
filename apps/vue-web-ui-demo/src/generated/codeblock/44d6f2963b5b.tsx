@@ -10,7 +10,7 @@ export default function Demo() {
           slot="banner"
           className="flex items-center justify-center bg-(--wui-color-accent) px-4 py-2 text-sm text-(--wui-color-on-accent)"
         >
-          全宽 Banner
+          Full-width banner
         </div>
         <div slot="header" className="flex items-center px-4 py-2 text-sm font-medium">
           Header
@@ -21,11 +21,16 @@ export default function Demo() {
           <span className="rounded-md p-2 text-sm">Theme</span>
         </nav>
         <div className="p-4">
-          <p className="m-0 text-sm">正文区随内层滚动条滚动，header 与 tabbar 各贴在容器上下缘。</p>
+          <p className="m-0 text-sm">
+            The body scrolls with the inner scrollbar, while the header and tabbar stick to the top and bottom edges of
+            the container.
+          </p>
           <div className="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
         </div>
-        <div slot="tabbar" className="flex items-center justify-center px-4 py-2 text-xs">
-          Tabbar
+        <div slot="tabbar" className="flex justify-center p-2">
+          <div className="w-full max-w-64 rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-6 py-2 text-center text-xs shadow-lg">
+            Tabbar
+          </div>
         </div>
       </web-ui-layout>
     </div>

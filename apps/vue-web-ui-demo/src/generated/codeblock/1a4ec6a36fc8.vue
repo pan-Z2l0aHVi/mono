@@ -11,20 +11,17 @@
         @sidebar-open-change="open = $event.detail.open"
       >
         <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-          <span class="rounded-md p-2 text-sm">Overview</span>
-          <span class="rounded-md p-2 text-sm">Components</span>
-          <span class="rounded-md p-2 text-sm">Theme</span>
-          <span class="rounded-md p-2 text-sm">Settings</span>
+          <span class="truncate rounded-md p-2 text-sm">Overview</span>
+          <span class="truncate rounded-md p-2 text-sm">Components</span>
+          <span class="truncate rounded-md p-2 text-sm">Theme</span>
+          <span class="truncate rounded-md p-2 text-sm">Settings</span>
         </nav>
         <div class="p-4">
-          <p class="m-0 text-sm">
-            Click the Toggle at the bottom of the sidebar to collapse / expand; layout only narrows the desktop aside to
-            60px.
-          </p>
+          <p class="m-0 text-sm">点侧边栏底部的按钮收起 / 展开，layout 只把桌面端 aside 收窄到 60px。</p>
         </div>
       </web-ui-layout>
     </div>
-    <p class="text-sm text-(--wui-color-text-secondary)">sidebar-collapsed: {{ collapsed ? 'true' : 'false' }}</p>
+    <p class="text-sm text-(--wui-color-text-secondary)">sidebar-collapsed：{{ collapsed ? 'true' : 'false' }}</p>
   </div>
 </template>
 

@@ -43,8 +43,10 @@ export default function Demo() {
           <p className="m-0 text-sm">正文区随内层滚动条滚动，header 与 tabbar 各贴在容器上下缘。</p>
           <div className="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
         </div>
-        <div slot="tabbar" className="flex items-center justify-center px-4 py-2 text-xs">
-          Tabbar
+        <div slot="tabbar" className="flex justify-center p-2">
+          <div className="w-full max-w-64 rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-6 py-2 text-center text-xs shadow-lg">
+            Tabbar
+          </div>
         </div>
       </web-ui-layout>
     </div>
@@ -74,7 +76,13 @@ export default function Demo() {
         <p class="m-0 text-sm">正文区随内层滚动条滚动，header 与 tabbar 各贴在容器上下缘。</p>
         <div class="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
       </div>
-      <div slot="tabbar" class="flex items-center justify-center px-4 py-2 text-xs">Tabbar</div>
+      <div slot="tabbar" class="flex justify-center p-2">
+        <div
+          class="w-full max-w-64 rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-6 py-2 text-center text-xs shadow-lg"
+        >
+          Tabbar
+        </div>
+      </div>
     </web-ui-layout>
   </div>
 </template>
@@ -93,7 +101,12 @@ const open = ref(false)
 `sidebar` 插槽随之不渲染，但调用方节点仍留在 light DOM；撤下属性即恢复原布局。
 
 ```tsx
+import { lucideFileText, lucideHouse, lucideShoppingCart, lucideUser } from '@greypan/web-ui/icons'
+import { useState } from 'react'
+
 export default function Demo() {
+  const [tab, setTab] = useState('home')
+
   return (
     <div className="h-[420px] overflow-auto rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:420px]">
       <web-ui-layout no-sidebar header-glow>
@@ -104,8 +117,21 @@ export default function Demo() {
           <p className="m-0 text-sm">no-sidebar 下没有 aside、开关和 Drawer，内容列占满整行。</p>
           <div className="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
         </div>
-        <div slot="tabbar" className="flex items-center justify-center px-4 py-2 text-xs">
-          Tabbar
+        <div slot="tabbar" className="flex justify-center p-2">
+          <web-ui-segmented aria-label="底部导航" value={tab} onInput={event => setTab(event.currentTarget.value)}>
+            <web-ui-segmented-trigger value="home" aria-label="首页">
+              <web-ui-icon icon={lucideHouse} />
+            </web-ui-segmented-trigger>
+            <web-ui-segmented-trigger value="orders" aria-label="订单">
+              <web-ui-icon icon={lucideFileText} />
+            </web-ui-segmented-trigger>
+            <web-ui-segmented-trigger value="cart" aria-label="购物车">
+              <web-ui-icon icon={lucideShoppingCart} />
+            </web-ui-segmented-trigger>
+            <web-ui-segmented-trigger value="account" aria-label="我">
+              <web-ui-icon icon={lucideUser} />
+            </web-ui-segmented-trigger>
+          </web-ui-segmented>
         </div>
       </web-ui-layout>
     </div>
@@ -124,10 +150,32 @@ export default function Demo() {
         <p class="m-0 text-sm">no-sidebar 下没有 aside、开关和 Drawer，内容列占满整行。</p>
         <div class="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
       </div>
-      <div slot="tabbar" class="flex items-center justify-center px-4 py-2 text-xs">Tabbar</div>
+      <div slot="tabbar" class="flex justify-center p-2">
+        <web-ui-segmented aria-label="底部导航" :value="tab" @input="tab = $event.currentTarget.value">
+          <web-ui-segmented-trigger value="home" aria-label="首页"
+            ><web-ui-icon :icon="lucideHouse"
+          /></web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="orders" aria-label="订单"
+            ><web-ui-icon :icon="lucideFileText"
+          /></web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="cart" aria-label="购物车"
+            ><web-ui-icon :icon="lucideShoppingCart"
+          /></web-ui-segmented-trigger>
+          <web-ui-segmented-trigger value="account" aria-label="我"
+            ><web-ui-icon :icon="lucideUser"
+          /></web-ui-segmented-trigger>
+        </web-ui-segmented>
+      </div>
     </web-ui-layout>
   </div>
 </template>
+
+<script setup lang="ts">
+import { lucideFileText, lucideHouse, lucideShoppingCart, lucideUser } from '@greypan/web-ui/icons'
+import { ref } from 'vue'
+
+const tab = ref('home')
+</script>
 ```
 
 ### 可折叠侧边栏
@@ -156,10 +204,10 @@ export default function Demo() {
           onsidebar-open-change={event => setOpen(event.detail.open)}
         >
           <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-            <span className="rounded-md p-2 text-sm">Overview</span>
-            <span className="rounded-md p-2 text-sm">Components</span>
-            <span className="rounded-md p-2 text-sm">Theme</span>
-            <span className="rounded-md p-2 text-sm">Settings</span>
+            <span className="truncate rounded-md p-2 text-sm">Overview</span>
+            <span className="truncate rounded-md p-2 text-sm">Components</span>
+            <span className="truncate rounded-md p-2 text-sm">Theme</span>
+            <span className="truncate rounded-md p-2 text-sm">Settings</span>
           </nav>
           <div className="p-4">
             <p className="m-0 text-sm">点侧边栏底部的按钮收起 / 展开，layout 只把桌面端 aside 收窄到 60px。</p>
@@ -186,10 +234,10 @@ export default function Demo() {
         @sidebar-open-change="open = $event.detail.open"
       >
         <nav slot="sidebar" class="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-          <span class="rounded-md p-2 text-sm">Overview</span>
-          <span class="rounded-md p-2 text-sm">Components</span>
-          <span class="rounded-md p-2 text-sm">Theme</span>
-          <span class="rounded-md p-2 text-sm">Settings</span>
+          <span class="truncate rounded-md p-2 text-sm">Overview</span>
+          <span class="truncate rounded-md p-2 text-sm">Components</span>
+          <span class="truncate rounded-md p-2 text-sm">Theme</span>
+          <span class="truncate rounded-md p-2 text-sm">Settings</span>
         </nav>
         <div class="p-4">
           <p class="m-0 text-sm">点侧边栏底部的按钮收起 / 展开，layout 只把桌面端 aside 收窄到 60px。</p>
@@ -211,6 +259,8 @@ const open = ref(false)
 ### 拖拽调整尺寸
 
 开启 `sidebar-resizable` 后，桌面端侧边栏右缘出现宽度调整手柄（收起状态下隐藏），拖拽实时改宽。键盘聚焦后可用 ←/→ 以 16px 步进（Shift 加速到 64px），Home/End 跳到上下限。
+
+手柄支持鼠标、触摸和触控笔；视口宽度大于 640px 的平板也可拖拽。宽度不超过 640px 时侧边栏切换为抽屉，不显示调宽手柄。
 
 拖拽释放或键盘 Enter 提交时派发一次 `sidebar-width-change`，携带最终像素宽度；调用方回写后宽度重新由 `sidebar-width` 接管，Escape 撤回未提交的调整。
 

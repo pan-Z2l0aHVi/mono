@@ -15,17 +15,20 @@ export default function Demo() {
           onsidebar-open-change={event => setOpen(event.detail.open)}
         >
           <nav slot="sidebar" className="flex h-full min-h-0 flex-col gap-1 overflow-y-auto p-2">
-            <span className="rounded-md p-2 text-sm">Overview</span>
-            <span className="rounded-md p-2 text-sm">Components</span>
-            <span className="rounded-md p-2 text-sm">Theme</span>
-            <span className="rounded-md p-2 text-sm">Settings</span>
+            <span className="truncate rounded-md p-2 text-sm">Overview</span>
+            <span className="truncate rounded-md p-2 text-sm">Components</span>
+            <span className="truncate rounded-md p-2 text-sm">Theme</span>
+            <span className="truncate rounded-md p-2 text-sm">Settings</span>
           </nav>
           <div className="p-4">
-            <p className="m-0 text-sm">点侧边栏底部的按钮收起 / 展开，layout 只把桌面端 aside 收窄到 60px。</p>
+            <p className="m-0 text-sm">
+              Click the Toggle at the bottom of the sidebar to collapse / expand; layout only narrows the desktop aside
+              to 60px.
+            </p>
           </div>
         </web-ui-layout>
       </div>
-      <p className="text-sm text-(--wui-color-text-secondary)">sidebar-collapsed：{collapsed ? 'true' : 'false'}</p>
+      <p className="text-sm text-(--wui-color-text-secondary)">sidebar-collapsed: {collapsed ? 'true' : 'false'}</p>
     </div>
   )
 }

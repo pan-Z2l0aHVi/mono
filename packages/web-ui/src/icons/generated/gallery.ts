@@ -48,6 +48,7 @@ import lucideFolderOpen from './lucide-folder-open'
 import lucideGlobe from './lucide-globe'
 import lucideHeadphones from './lucide-headphones'
 import lucideHeart from './lucide-heart'
+import lucideHouse from './lucide-house'
 import lucideImage from './lucide-image'
 import lucideInbox from './lucide-inbox'
 import lucideInfo from './lucide-info'
@@ -75,6 +76,7 @@ import lucideRotateCwClock from './lucide-rotate-cw-clock'
 import lucideScissors from './lucide-scissors'
 import lucideSearch from './lucide-search'
 import lucideSettings from './lucide-settings'
+import lucideShoppingCart from './lucide-shopping-cart'
 import lucideSlidersHorizontal from './lucide-sliders-horizontal'
 import lucideSparkles from './lucide-sparkles'
 import lucideStar from './lucide-star'
@@ -192,5 +194,7 @@ export const iconGallery: Record<string, IconifyIcon> = {
   lucideLanguages,
   antDesignSyncOutlined,
   icBaselinePhonelink,
-  icRoundMenuOpen
+  icRoundMenuOpen,
+  lucideHouse,
+  lucideShoppingCart
 }

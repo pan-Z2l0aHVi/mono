@@ -365,6 +365,28 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(parseFloat(widthRequests[0])).toBeCloseTo(parseFloat(layout.sidebarWidth) + 60, 0)
     })
 
+    it('平板宽度下触摸拖拽侧栏手柄可请求调宽', async () => {
+      await setViewport(1024, 768)
+      const layout = createLayout()
+      layout.sidebarResizable = true
+      await layout.updateComplete
+      await waitForFrame()
+
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+      handle.dispatchEvent(pointer('pointerdown', { clientX: 240, pointerType: 'touch' }))
+      handle.dispatchEvent(pointer('pointermove', { clientX: 300, pointerType: 'touch' }))
+      await layout.updateComplete
+      handle.dispatchEvent(pointer('pointerup', { clientX: 300, pointerType: 'touch' }))
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(1)
+      expect(parseFloat(widthRequests[0])).toBeCloseTo(parseFloat(layout.sidebarWidth) + 60, 0)
+    })
+
     // 受控契约：拖拽只请求，不自行改 sidebar-width，宽度仍归消费者管。
     it('拖拽只派发请求，不自行改写 sidebarWidth', async () => {
       const layout = await resizableLayout()

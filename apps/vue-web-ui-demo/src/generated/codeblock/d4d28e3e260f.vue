@@ -19,7 +19,13 @@
         <p class="m-0 text-sm">正文区随内层滚动条滚动，header 与 tabbar 各贴在容器上下缘。</p>
         <div class="mt-3 h-[420px] rounded-md bg-(--wui-color-surface-control)" />
       </div>
-      <div slot="tabbar" class="flex items-center justify-center px-4 py-2 text-xs">Tabbar</div>
+      <div slot="tabbar" class="flex justify-center p-2">
+        <div
+          class="w-full max-w-64 rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-6 py-2 text-center text-xs shadow-lg"
+        >
+          Tabbar
+        </div>
+      </div>
     </web-ui-layout>
   </div>
 </template>
