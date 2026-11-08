@@ -54,7 +54,7 @@ packages/monorepo-kit/src/
 | `test-port-call-sites`                                           | 扫描 glob、调用名                                                   |
 | `package-contract`、`turbo-cache-invariant`、`turbo-input-paths` | 无（仓库事实从 `turbo.json` 与 `pnpm-workspace.yaml` 读出来）       |
 
-检查协议住在 `runner/`：判定不声明自己需要哪些能力、也没有注册表，而是自带所需零件——触发层只排判定顺序，不给插件接线。`runner/` 与本仓零耦合，是把一组函数变成协议的那一段，也是复用面里唯一会被每个消费仓库各自重写、随后漂移的东西。
+检查协议住在 `runner/`，由包以 `defineRunner()` 与 `defineCatch()` 两个插件统一交付：判定不声明自己需要哪些能力、也没有注册表，而是 `.use()` 自带所需零件，以 `defineRunner()` 起头按 `.use()` 顺序组成零参嵌套 `run` 链，首个 `Err` 短路、域名前缀归因；组合子 `andThen` 落在 js-kit 范式层。`runner/` 与本仓零耦合，链协议由包统一提供，不再是各消费仓库各自重写、随后漂移的那一段（形状见 ADR-0022）。
 
 本仓策略住在根 `scripts/policies/`，一个检查一个文件，导出配置好的检查实例；判据里每次调用才知道的事实（changeset 的 `base`/`head`）改由工厂接参，实例在入口组装时现造。`scripts/checks/` 仍只做入口。仓库常量集中在这一个目录，「本仓的判据长什么样」只有一处可看，策略源码保持 `.mjs` + JSDoc，与根 `scripts/` 的既有语言一致。
 

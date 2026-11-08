@@ -2,7 +2,7 @@
 
 English | [简体中文](./layout.CN.md)
 
-Responsive page layout with an optional full-width banner, a collapsible sidebar on desktop, and a drawer by default on mobile. Set `no-sidebar` to drop the entire sidebar and keep the content-only layout. The page itself scrolls; once the banner scrolls out, the desktop sidebar and header stay fixed within the viewport.
+Responsive page layout with an optional full-width banner, a collapsible sidebar on desktop, and a drawer when the application sets `mobile` to `true`. Set `no-sidebar` to drop the entire sidebar and keep the content-only layout. The page itself scrolls; once the banner scrolls out, the desktop sidebar and header stay fixed within the viewport.
 
 ## Samples
 
