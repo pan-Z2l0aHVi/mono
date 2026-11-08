@@ -136,7 +136,7 @@ function Home() {
       </div>
 
       <div className="w-full text-left">
-        <div className="flex items-center gap-4 mb-10 text-[16px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)">
+        <div className="flex items-center justify-center gap-2 mb-10 text-[16px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)">
           <web-ui-icon icon={lucideLayoutGrid}></web-ui-icon>
           <span>快速预览</span>
         </div>

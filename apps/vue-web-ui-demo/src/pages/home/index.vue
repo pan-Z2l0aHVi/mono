@@ -146,7 +146,7 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
 
     <div class="w-full text-left">
       <div
-        class="flex items-center gap-4 mb-10 text-[16px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)"
+        class="flex items-center justify-center gap-2 mb-10 text-[16px] font-semibold uppercase tracking-wider text-(--wui-color-text-secondary)"
       >
         <web-ui-icon :icon="lucideLayoutGrid"></web-ui-icon>
         快速预览
