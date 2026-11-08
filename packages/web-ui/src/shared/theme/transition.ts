@@ -328,7 +328,11 @@ export function runThemeTransition({
     if (restoreCapture) cleanup?.()
   }
 
-  const finished = (async () => {
+  // 异步体单独命名：外层入口在下面兜底「任何清理登记之前」的同步段失败——
+  // new CSSStyleSheet() / replaceSync 在受限嵌入环境会抛错，host 盒钉扎同样发生在
+  // state.cleanup 登记之前。没有这层兜底，flight token 永不释放，in-flight gate
+  // 从此关闭，之后的每一次主题切换都走直接落地分支、动画永久消失（docblock 的承诺）。
+  const finishTransition = async () => {
     const transitionName = scope ? `wui-theme-transition-${++transitionSequence}` : undefined
     const styleSheet = new CSSStyleSheet()
     if (transitionName) {
@@ -458,6 +462,18 @@ export function runThemeTransition({
       restoreCapture()
       // disconnected skip 会提前清掉 active；flight token 必须无条件释放。
       if (themeTransitionFlightToken === flightToken) themeTransitionFlightToken = null
+    }
+  }
+
+  const finished = (async () => {
+    try {
+      await finishTransition()
+    } catch (error) {
+      // 内层 catch（startViewTransition / adoptedStyleSheets 写入）已经清理过：这里的
+      // cleanupTransition 对已清理状态是幂等 no-op。同步段失败则由这一层首次清理。
+      cleanupTransition()
+      if (themeTransitionFlightToken === flightToken) themeTransitionFlightToken = null
+      throw error
     }
   })()
 

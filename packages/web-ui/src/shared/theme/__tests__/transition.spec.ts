@@ -136,6 +136,26 @@ describe('shared/theme/transition', () => {
     stub.restore()
   })
 
+  it('样式表构建失败：同步段异常也要释放 flight token，动画 gate 不被永久关闭', async () => {
+    // new CSSStyleSheet() / replaceSync 在受限嵌入环境会抛错。失败点在任何清理登记之前，
+    // 曾经的失败路径不释放 token：之后所有主题切换都走直接落地分支，动画永久消失。
+    const original = globalThis.CSSStyleSheet
+    globalThis.CSSStyleSheet = class {
+      replaceSync(): string {
+        throw new Error('replaceSync unavailable')
+      }
+    } as unknown as typeof CSSStyleSheet
+
+    const host = createHost()
+    try {
+      const session = runThemeTransition({ host, resolvedNext: 'dark', update: async () => undefined })
+      await expect(session.finished).rejects.toThrow('replaceSync unavailable')
+      expect(isThemeTransitionInFlight(), '失败路径同样释放 flight token').toBe(false)
+    } finally {
+      globalThis.CSSStyleSheet = original
+    }
+  })
+
   /*
    * 窗口 blur 清空压制集合（blockedPointers / blockedKeys / 版本计数）的分支不设 jsdom 用例：
    * 该分支判 `event.target === window`，真实浏览器里 window blur 的 target 是 window，
