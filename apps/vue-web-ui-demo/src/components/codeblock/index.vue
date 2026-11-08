@@ -161,7 +161,6 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
     <div class="isolate">
       <!--
         这一层只画边框和圆角，**不裁剪**：工具条里的控件才能把按压态画全。
-        顶部圆角补在工具条这一层：外层不裁剪，工具条的白底会自己溢出到圆角之外。
 
         外框圆角按同心半径取：内圈小圆角（`--wui-radius-menu`）+ 卡片横向内边距
         （`--wui-space-3`），两圈曲率才贴合。
@@ -172,7 +171,8 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
           单围栏的语言标签做成同高的 36px 胶囊，两者都靠 `items-center`；横向 12px 与代码区一致。
         -->
         <div
-          class="relative z-10 flex flex-wrap items-center justify-between gap-3 rounded-t-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 pb-0"
+          class="z-10 flex flex-wrap items-center justify-between gap-3 rounded-t-[var(--codeblock-radius)] p-3"
+          :class="collapsible && expanded ? 'sticky top-[52px]' : 'relative'"
         >
           <web-ui-segmented
             v-if="variants && variants.length > 1"
@@ -258,7 +258,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
         </div>
 
         <!--
-          关闭态露出 128px：12px 上边距 + 4 行 24px + 第 5 行的 20px。末端渐隐/晕染带取
+          关闭态露出 128px：5 行 24px 加第 6 行的 8px。末端渐隐/晕染带取
           peek 的 60%（76.8px），「下面还有内容」由一整段发虚说出来，而不是只把最后一行切一半。
 
           收起态这块露出的代码就是展开触发区（点哪一行都算），展开后它退化成一段可滚动的正文，
@@ -278,7 +278,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
             :id="panelId"
             :options="appScrollbarsOptions"
             :events="codeScrollbarsEvents"
-            class="max-h-[512px] overflow-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 font-mono text-xs leading-6"
+            class="overflow-x-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 pt-0 font-mono text-xs leading-6"
             data-code
           >
             <!-- 生成期的高亮 HTML，不是运行时拼的用户输入。 -->
@@ -291,7 +291,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
           :id="panelId"
           :options="appScrollbarsOptions"
           :events="codeScrollbarsEvents"
-          class="max-h-[512px] overflow-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 font-mono text-xs leading-6"
+          class="overflow-x-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 pt-0 font-mono text-xs leading-6"
           data-code
         >
           <!-- 生成期的高亮 HTML，不是运行时拼的用户输入。 -->

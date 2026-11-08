@@ -15,11 +15,11 @@ export const COPY_IDLE_DELAY = 1600
 /*
  * 关闭态露出 128px，内容不超过这个高度时整段代码本来就看全了：再挂折叠只会让末端的
  * 渐隐带盖住正文，所以这种卡直接铺开，也收起工具条里的展开按钮。
- * 每行 24px 来自代码区的 `leading-6`，四侧内边距各 12px 来自 `pt-3 pb-3 px-3`。
+ * 每行 24px 来自代码区的 `leading-6`，底部内边距 12px 来自 `pb-3`。
  */
 export const PEEK_HEIGHT = 128
 export const CODE_LINE_HEIGHT = 24
-export const CODE_PADDING_HEIGHT = 24
+export const CODE_PADDING_HEIGHT = 12
 export const PEEK_LINES = Math.floor((PEEK_HEIGHT - CODE_PADDING_HEIGHT) / CODE_LINE_HEIGHT)
 
 /** 超过 peek 能露出的行数才挂折叠：更短的代码没有可裁掉的部分，渐隐只会盖住正文。 */
