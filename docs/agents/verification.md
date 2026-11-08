@@ -35,7 +35,7 @@ PR CI 对当前 base/head 复检 required checks，不替代实施阶段已要�
 
 测试框架是 Vitest（通过 `vite-plus`）。根 `pnpm run test` 由 Turbo 编排各 workspace 的 `test` 任务；受影响的包用 `pnpm exec turbo test --filter=@greypan/<name>`。仓库脚本测试是 tracked-only 的 `*.test.mjs`，由 `pnpm test-scripts` 执行，不属于 `pnpm run test`；新增而未跟踪的脚本测试要在实施中显式运行。
 
-要收窄到个别 spec 时，直接跑 `pnpm exec vp test run <路径>`（相对与绝对路径都按路径过滤，以输出 `Test Files 1 passed (1)` 为准）。不要写成 `pnpm run test -- <路径>`：workspace 包的 `test` 脚本本身就是 `vp test run`，而 `pnpm run test` 这一层不透传参数，实测会照常跑整包的 spec 并返回 0，看起来像「收窄的那一档绿了」。判断收窄有没有发生，以输出里的 `Test Files` 计数为准，不以传了什么参数为准。
+要收窄到个别 spec 时，直接跑 `pnpm exec vp test run <路径>`（相对与绝对路径都按路径过滤，以输出 `Test Files 1 passed (1)` 为准）。不要写成 `pnpm run test -- <路径>`：根 `test` 是 `turbo test`，pnpm 保留 `--` 后 turbo 会把参数透传给每个包的 `vp test run`，没匹配到测试文件的包直接失败——行为既不是收窄也不可靠，别走这条路径。判断收窄有没有发生，以输出里的 `Test Files` 计数为准，不以传了什么参数为准。
 
 各包的具体测试环境以包配置和测试文件为准：`web-ui` 用 jsdom 覆盖宿主 API、属性/事件、渲染与非浏览器 DOM 语义，用 browser mode 覆盖 jsdom 无法忠实实现的浏览器原生行为；两个 demo 各有 jsdom 接线层与浏览器层，后者用真实视口验证对齐与几何。`browser-kit` 通过 `@greypan/test-kit` 使用 MSW；共享浏览器状态要求相关 spec 保持独立，除非移除了共享状态，否则不要重新启用文件并行。
 
