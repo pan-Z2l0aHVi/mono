@@ -20,21 +20,21 @@
 
 不同层级可以为路由短暂提及同一主题，但只能有一个流程权威来源；其他位置只说明何时加载或链接到它，不复制完整处方。`docs/agents/` 内部按 concern 切分，同一个 concern 只由一篇拥有；跨切面概念下沉为独立文档。下表列出与根/包级边界交叉的主题。
 
-| 主题                     | 规则边界                                                                        | 流程权威来源                                                                                     | 证据类别                                       |
-| ------------------------ | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| 生成物                   | 根/包级 `AGENTS.md` 只指向清单，不复制路径                                      | [`generated-artifacts.md`](./generated-artifacts.md)                                             | generator diff、构建、消费者类型检查           |
-| 自动与人工审查的范围差   | 根/包级 `AGENTS.md` 只声明两者读的 diff 不同，不复制范围与排除清单              | [`review.md`](./review.md)                                                                       | `review-scope.json`、PR 结论评论               |
-| 真实浏览器取证           | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                          | [`runtime-verification.md`](./runtime-verification.md)                                           | 浏览器用例与 MCP 操作记录                      |
-| 浏览器进程与 profile     | 根/包级 `AGENTS.md` 只路由，不复制归属流程                                      | [`browser-resources.md`](./browser-resources.md)                                                 | 启动记录、profile 查询、回收结果               |
-| 该跑哪些验证             | 根/包级 `AGENTS.md` 只路由，不复制选择矩阵                                      | [`verification.md`](./verification.md)                                                           | 相关测试与聚焦构建                             |
-| 影响面与契约查询         | 根入口不提供查询命令；工具接口见 monorepo-change-impact skill                   | monorepo-change-impact skill 的 SKILL.md                                                         | 契约查询脚本与其测试                           |
-| 任务级别与准入           | 根 [`AGENTS.md`](../../AGENTS.md)「变更准入与登记」只给判定入口，不复制级别表   | task-ledger skill 的 SKILL.md                                                                    | 登记 CLI 的级别校验                            |
-| 本地登记簿与 Task Packet | 根 [`AGENTS.md`](../../AGENTS.md) 只路由，不复制 schema、命令或恢复处方         | task-ledger skill 的 SKILL.md                                                                    | 记录 fixture 与 status 查询                    |
-| 预授权操作               | 根 [`AGENTS.md`](../../AGENTS.md) 只列被允许与需授权的类别                      | [`workflow.md`](./workflow.md)（授权边界）与 request-authorization skill 的 SKILL.md（弹窗形状） | 四项说明与用户选择记录                         |
-| 提交边界与署名           | 根 [`AGENTS.md`](../../AGENTS.md) 只路由授权边界，不复制操作清单                | [`commit.md`](./commit.md)                                                                       | pre-commit 政策检查与 PR CI 的 changeset gate  |
-| worktree 与缓存          | 根 [`AGENTS.md`](../../AGENTS.md) 说明 owner 与 worktree 唯一性                 | [`worktree.md`](./worktree.md)                                                                   | 缓存不变量守卫                                 |
-| 客户端权限               | 根 [`AGENTS.md`](../../AGENTS.md) 只给路由，不复制配置                          | [`environments.md`](./environments.md)                                                           | 客户端配置与线程实际行为                       |
-| 公共 `web-ui` 契约       | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md) 指向受影响消费者 | [`web-ui.md`](./web-ui.md)                                                                       | fixtures、contracts、browser/integration tests |
+| 主题                         | 规则边界                                                                        | 流程权威来源                                                                                     | 证据类别                                       |
+| ---------------------------- | ------------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| 生成物                       | 根/包级 `AGENTS.md` 只指向清单，不复制路径                                      | [`generated-artifacts.md`](./generated-artifacts.md)                                             | generator diff、构建、消费者类型检查           |
+| 自动与人工审查的范围差       | 根/包级 `AGENTS.md` 只声明两者读的 diff 不同，不复制范围与排除清单              | [`review.md`](./review.md)                                                                       | `review-scope.json`、PR 结论评论               |
+| 真实浏览器取证               | 根/包级 `AGENTS.md` 仅声明需要浏览器层                                          | [`runtime-verification.md`](./runtime-verification.md)                                           | 浏览器用例与 MCP 操作记录                      |
+| 浏览器进程与 profile         | 根/包级 `AGENTS.md` 只路由，不复制归属流程                                      | [`browser-resources.md`](./browser-resources.md)                                                 | 启动记录、profile 查询、回收结果               |
+| 该跑哪些验证                 | 根/包级 `AGENTS.md` 只路由，不复制选择矩阵                                      | [`verification.md`](./verification.md)                                                           | 相关测试与聚焦构建                             |
+| 影响面与契约查询             | 根入口不提供查询命令；工具接口见 monorepo-change-impact skill                   | monorepo-change-impact skill 的 SKILL.md                                                         | 契约查询脚本与其测试                           |
+| 任务级别与准入               | 根 [`AGENTS.md`](../../AGENTS.md)「变更准入与登记」只给判定入口，不复制级别表   | task-ledger skill 的 SKILL.md                                                                    | 登记 CLI 的级别校验                            |
+| 本地 task 台账与 Task Packet | 根 [`AGENTS.md`](../../AGENTS.md) 只路由，不复制 schema、命令或恢复处方         | task-ledger skill 的 SKILL.md                                                                    | 记录 fixture 与 status 查询                    |
+| 预授权操作                   | 根 [`AGENTS.md`](../../AGENTS.md) 只列被允许与需授权的类别                      | [`workflow.md`](./workflow.md)（授权边界）与 request-authorization skill 的 SKILL.md（弹窗形状） | 四项说明与用户选择记录                         |
+| 提交边界与署名               | 根 [`AGENTS.md`](../../AGENTS.md) 只路由授权边界，不复制操作清单                | [`commit.md`](./commit.md)                                                                       | pre-commit 政策检查与 PR CI 的 changeset gate  |
+| worktree 与缓存              | 根 [`AGENTS.md`](../../AGENTS.md) 说明 owner 与 worktree 唯一性                 | [`worktree.md`](./worktree.md)                                                                   | 缓存不变量守卫                                 |
+| 客户端权限                   | 根 [`AGENTS.md`](../../AGENTS.md) 只给路由，不复制配置                          | [`environments.md`](./environments.md)                                                           | 客户端配置与线程实际行为                       |
+| 公共 `web-ui` 契约           | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md) 指向受影响消费者 | [`web-ui.md`](./web-ui.md)                                                                       | fixtures、contracts、browser/integration tests |
 
 ## 链接方向
 
@@ -44,7 +44,7 @@
 
 - `docs/agents/**` 不得链接 `.agents/rules/**`：短约束层自己指向正文，路由是入口的事。
 - 非入口层文档之间不得互指。
-- ADR 与指向它的 `docs/agents/` 文档之间只保留单向链接（由后者发出）：ADR 侧用行内 code 指代文档名，不建链接，否则与入站链接构成回路。
+- ADR 与指向它的 `docs/agents/` 文档之间只保留单向链接（由后者发出）：ADR 侧用行内 code 指代文档名，不建链接，否则与入站链接构成双向回路，由互指机检判红。
 
 ### 怎么引用另一篇文档
 
@@ -105,20 +105,20 @@ ADR 记录技术选型、架构设计与工程化决策及其取舍；具体实�
 
 普通源码任务不需要阅读本表。修改以下工程资产时，在同一变更中同步对应权威文档；范围不明确时先查本表和相邻包 `AGENTS.md`。
 
-| 变更类别                                                        | 必须同步的文档                                                                                                         |
-| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------- |
-| 构建脚本、Vite/Turbo、CI/CD                                     | [`build.md`](./build.md)；根命令还更新 [`AGENTS.md`](../../AGENTS.md)                                                  |
-| 包新增、移除或重命名                                            | [`ARCHITECTURE.md`](../../ARCHITECTURE.md)                                                                             |
-| lint、formatter、stylelint、cspell                              | [`lint-format.md`](./lint-format.md)                                                                                   |
-| workspace catalog 与依赖放置策略                                | [`dependencies.md`](./dependencies.md)                                                                                 |
-| Changesets 版本与发布策略                                       | [`release.md`](./release.md)                                                                                           |
-| task 登记、政策检查入口与命令面                                 | task-ledger skill 的 SKILL.md、[`commit.md`](./commit.md)、[`commands.md`](./commands.md)                              |
-| 测试框架或 Vite 测试配置                                        | [`verification.md`](./verification.md)                                                                                 |
-| `packages/web-ui` 组件、icon 或公共契约                         | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md)、[`web-ui.md`](./web-ui.md) 与受影响 ADR                |
-| commitlint 或提交流程                                           | [`commit.md`](./commit.md)                                                                                             |
-| 影响未来工程取舍的架构决定                                      | 对应 ADR，并更新 [`CONTEXT.md`](../../CONTEXT.md) ADR 索引                                                             |
-| CI 审查腿的审查范围、生成物排除清单或两份 diff 的分工           | [`review.md`](./review.md) 与 [`generated-artifacts.md`](./generated-artifacts.md)                                     |
-| client adapter、共享 rules/skills 或 instruction 体系布局与锚点 | 本文件、[`CONTEXT.md`](../../CONTEXT.md)、[ADR-0004](../adr/0004-progressive-agent-context-architecture.md) 与仓库校验 |
+| 变更类别                                                        | 必须同步的文档                                                                                                                                                                                |
+| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
+| 构建脚本、Vite/Turbo、CI/CD                                     | [`build.md`](./build.md)；根命令还更新 [`AGENTS.md`](../../AGENTS.md)                                                                                                                         |
+| 包新增、移除或重命名                                            | [`ARCHITECTURE.md`](../../ARCHITECTURE.md)                                                                                                                                                    |
+| lint、formatter、stylelint、cspell                              | [`lint-format.md`](./lint-format.md)                                                                                                                                                          |
+| workspace catalog 与依赖放置策略                                | [`dependencies.md`](./dependencies.md)                                                                                                                                                        |
+| Changesets 版本与发布策略                                       | [`release.md`](./release.md)                                                                                                                                                                  |
+| task 登记、政策检查入口与命令面                                 | task-ledger skill 的 SKILL.md、[`commit.md`](./commit.md)、[`commands.md`](./commands.md)                                                                                                     |
+| 测试框架或 Vite 测试配置                                        | [`verification.md`](./verification.md)                                                                                                                                                        |
+| `packages/web-ui` 组件、icon 或公共契约                         | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md)、[`web-ui.md`](./web-ui.md) 与受影响 ADR                                                                                       |
+| commitlint 或提交流程                                           | [`commit.md`](./commit.md)                                                                                                                                                                    |
+| 影响未来工程取舍的架构决定                                      | 对应 ADR，并更新 [`CONTEXT.md`](../../CONTEXT.md) ADR 索引                                                                                                                                    |
+| CI 审查腿的审查范围、生成物排除清单或两份 diff 的分工           | [`review.md`](./review.md) 与 [`generated-artifacts.md`](./generated-artifacts.md)；后者「新增生成物时」清单里的 ADR-0021、审查 prompt、`.claude/settings.json` deny 与脚本单测同步项一并适用 |
+| client adapter、共享 rules/skills 或 instruction 体系布局与锚点 | 本文件、[`CONTEXT.md`](../../CONTEXT.md)、[ADR-0004](../adr/0004-progressive-agent-context-architecture.md) 与仓库校验                                                                        |
 
 ## 维护 instruction system
 
