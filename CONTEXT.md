@@ -33,7 +33,7 @@ ADR 只记录技术选型、架构设计与工程化决策；具体实现细节�
 | [0008](docs/adr/0008-interweave-backend.md)                     | Interweave 后端架构                                           | 修改 interweave Go 模块、Wails Service 或 frontend bindings             |
 | [0009](docs/adr/0009-interweave-sqlite.md)                      | SQLite 持久化与 WAL                                           | 修改 interweave 持久化层或 SQLite 并发模型                              |
 | [0010](docs/adr/0010-task-orchestration.md)                     | 编排层承接需求拆分与 task 派发                                | 修改 worktree 分工、T0 判据或编排层边界                                 |
-| [0011](docs/adr/0011-layout-mobile-state.md)                    | （已由 0023 取代）曾让 layout 暴露派生视口状态                | 查 layout `mobile` 契约的旧口径；现行契约见 0023                        |
+| [0011](docs/adr/0011-layout-mobile-state.md)                    | （已由 0023 取代）曾让 layout 暴露派生视口状态                | 查 layout `mobile` 契约的旧口径                                         |
 | [0012](docs/adr/0012-pr-review.md)                              | PR review 结论与人工审查的增量复审                            | 修改 task 台账、政策检查集合、PR changeset gate 或 review/merge 前核验  |
 | [0013](docs/adr/0013-context-authority.md)                      | Context 语料权威与漂移门禁                                    | 修改指令文档的权威标记、漂移门禁或非权威语料标注                        |
 | [0014](docs/adr/0014-script-organization.md)                    | 脚本按执行面分类与统一入口                                    | 修改政策检查集合、pre-commit / CI policy 入口或脚本目录布局             |
