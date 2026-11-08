@@ -1227,6 +1227,39 @@ esac
 }
 
 {
+  // 收口纪律：#519 在 60 分钟上限处被掐断时，prompt 把 changed_paths 当成「逐个文件读完」的硬任务。
+  // 钉住「候选清单 + 风险排序 + uncovered 合法出口 + 不许假 inspected」四件事，防止改回硬目标。
+  const prompt = fs.readFileSync(path.join(import.meta.dirname, '../codex/prompts/review.md'), 'utf8')
+  const closing = prompt.split('## 调查与收口')[1]?.split('## 输出')[0] ?? ''
+  assert.ok(closing, 'the review prompt must have an investigation and closing section')
+  for (const phrase of ['按风险分配', '证据够了就交卷', 'coverage.uncovered', 'coverage.inspected', '人工逐项复核']) {
+    assert.ok(closing.includes(phrase), `the closing discipline must mention ${phrase}`)
+  }
+  assert.match(prompt, /候选清单，不是必须逐条读完的任务清单/)
+  assert.doesNotMatch(
+    prompt,
+    /按 `changed_paths` 逐个文件读/,
+    'the changed-path list must not become a read-everything task again'
+  )
+  const schema = JSON.parse(
+    fs.readFileSync(path.join(import.meta.dirname, '../codex/schemas/review-findings.schema.json'), 'utf8')
+  )
+  assert.match(
+    schema.properties.coverage.properties.uncovered.description,
+    /does not void the conclusion/,
+    'the schema must tell the model that a non-empty uncovered list is a valid close'
+  )
+  assert.match(
+    schema.properties.coverage.properties.inspected.description,
+    /do not add unread paths/,
+    'the schema must forbid padding inspected with unread files'
+  )
+  const rubric = fs.readFileSync(path.join(import.meta.dirname, '../../docs/agents/review.md'), 'utf8')
+  assert.match(rubric, /调查预算按风险分配/, 'the rubric must own the same closing policy as the prompt')
+  assert.match(rubric, /必须由人工逐项复核/, 'the rubric must keep the human recheck duty for uncovered items')
+}
+
+{
   // 从文档的过滤路径表解析清单，与脚本常量做双向比对：单向的字符串包含只能发现
   // 「脚本新增而文档没跟上」，发现不了「文档新增而脚本没跟上」。
   const criteria = fs.readFileSync(path.join(import.meta.dirname, '../../docs/agents/generated-artifacts.md'), 'utf8')
@@ -1236,6 +1269,128 @@ esac
     .filter(line => line.startsWith('| '))
     .flatMap(line => [...(line.split('|')[1] ?? '').matchAll(/`([^`]+)`/gu)].map(match => `:(exclude,glob)${match[1]}`))
   assert.deepEqual(documented, [...REVIEW_EXCLUDE_PATHSPECS])
+}
+
+{
+  // `.claude/settings.json` 的 deny 是「编辑拦截」的路径权威，REVIEW_EXCLUDE_PATHSPECS 是「审查
+  // 滤除」的最小 glob 集：一条 deny 可以由多条 pathspec 联合覆盖（icons/** 拆成 barrel 与
+  // generated/）。三层护栏：显式覆盖表挡单侧增删，真实入库文件集合挡「同步改表」的绕过，
+  // 临时 git 仓库挡 pathspec 写错。覆盖表与样例是人工维护的，新增生成物仍须按判据核对。
+  const settings = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '../../.claude/settings.json'), 'utf8'))
+  assert.ok(
+    settings.permissions && typeof settings.permissions === 'object',
+    'the deny list must live under permissions.deny'
+  )
+  const deny = settings.permissions.deny
+  assert.ok(Array.isArray(deny) && deny.length > 0, 'the deny list must not disappear')
+  const editPrefix = 'Edit(./'
+  const nonEdit = deny.filter(entry => !entry.startsWith(editPrefix))
+  assert.deepEqual(
+    nonEdit,
+    ['Read(./**/.env)', 'Read(./**/.env.local)'],
+    'only the two .env read guards may sit outside the Edit(...) generated-artifact entries'
+  )
+  const deniedPaths = deny
+    .filter(entry => entry.startsWith(editPrefix) && entry.endsWith(')'))
+    .map(entry => entry.slice(editPrefix.length, -1))
+  assert.equal(deniedPaths.length + nonEdit.length, deny.length, 'every deny entry must be classified')
+
+  const coverage = {
+    'apps/*/frontend/bindings/**': {
+      pathspecs: ['apps/*/frontend/bindings/**'],
+      samples: ['apps/interweave/frontend/bindings/github.com/example/service/models.ts']
+    },
+    'apps/*/src/generated/**': {
+      pathspecs: ['**/generated/**'],
+      samples: ['apps/react-web-ui-demo/src/generated/button.meta.js']
+    },
+    '**/auto-imports.d.ts': {
+      pathspecs: ['**/auto-imports.d.ts'],
+      samples: ['apps/interweave/frontend/auto-imports.d.ts']
+    },
+    '**/routeTree.gen.ts': {
+      pathspecs: ['**/routeTree.gen.ts'],
+      samples: ['apps/react-web-ui-demo/src/routeTree.gen.ts']
+    },
+    '**/typed-router.d.ts': {
+      pathspecs: ['**/typed-router.d.ts'],
+      samples: ['apps/vue-web-ui-demo/typed-router.d.ts']
+    },
+    'packages/web-ui/src/icons/**': {
+      pathspecs: ['**/generated/**', 'packages/web-ui/src/icons/index.ts'],
+      samples: ['packages/web-ui/src/icons/index.ts', 'packages/web-ui/src/icons/generated/gallery.ts']
+    }
+  }
+  assert.deepEqual(
+    [...deniedPaths].sort(),
+    Object.keys(coverage).sort(),
+    'a new or renamed Edit(...) deny entry must be matched with review pathspecs in this table'
+  )
+  const pathspecs = REVIEW_EXCLUDE_PATHSPECS.map(entry => entry.replace(':(exclude,glob)', ''))
+  const mapped = Object.values(coverage).flatMap(entry => entry.pathspecs)
+  for (const entry of mapped) {
+    assert.ok(pathspecs.includes(entry), `coverage table points at a pathspec the script does not use: ${entry}`)
+  }
+  assert.deepEqual(
+    [...new Set(mapped)].sort(),
+    [...pathspecs].sort(),
+    'every review pathspec must be justified by a deny entry'
+  )
+
+  // 覆盖表是人工数据：只靠它能「同步改 deny + 覆盖表」绕过。用 git 自己的 glob 引擎把两份
+  // 名单落到真实入库文件上，集合必须完全相同——新增生成物只要已有文件入库，漏改审查侧就红。
+  // 尚无文件入库的新路径不在这道断言的射程内，仍按 docs/agents/generated-artifacts.md 核对。
+  const repository = path.join(import.meta.dirname, '../..')
+  const trackedBy = glob =>
+    new Set(
+      run('git', ['-C', repository, 'ls-files', '-z', '--', `:(glob)${glob}`])
+        .split('\0')
+        .filter(Boolean)
+    )
+  const matchedBy = globs => [...new Set(globs.flatMap(glob => [...trackedBy(glob)]))].sort()
+  const deniedFiles = matchedBy(deniedPaths)
+  const excludedFiles = matchedBy(pathspecs)
+  assert.ok(deniedFiles.length > 0, 'the deny list must match tracked generated files')
+  assert.deepEqual(
+    deniedFiles,
+    excludedFiles,
+    'every tracked file denied for edits must be excluded from the review diff, and vice versa'
+  )
+
+  // 集合断言挡不住 glob 写错：把每条 deny 的样例路径与一个手写源码文件做成真实 diff，
+  // 确认只有源码留在 changed_paths 里。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-deny-'))
+  try {
+    const git = args => run('git', ['-C', directory, ...args])
+    const commit = message =>
+      git(['-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', message])
+    git(['-c', 'init.defaultBranch=main', 'init', '-q'])
+    git(['config', 'user.email', 'deny@example.test'])
+    git(['config', 'user.name', 'Deny Test'])
+    const samples = Object.values(coverage).flatMap(entry => entry.samples)
+    const source = 'packages/web-ui/src/button.ts'
+    for (const file of [...samples, source]) {
+      fs.mkdirSync(path.join(directory, path.dirname(file)), { recursive: true })
+      fs.writeFileSync(path.join(directory, file), 'base\n')
+    }
+    git(['add', '.'])
+    commit('base')
+    const baseSha = git(['rev-parse', 'HEAD']).trim()
+    for (const file of [...samples, source]) {
+      fs.writeFileSync(path.join(directory, file), 'head\n')
+    }
+    git(['add', '-A'])
+    commit('head')
+    const headSha = git(['rev-parse', 'HEAD']).trim()
+    const range = resolveReviewRange({ baseSha, headSha, command: (_name, args) => git(args) })
+    assert.deepEqual(
+      range.changedPaths,
+      [source],
+      'every path guarded by a deny Edit(...) entry must be filtered out of the review scope'
+    )
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true })
+  }
 }
 
 {
