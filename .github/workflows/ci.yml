@@ -324,6 +324,20 @@ jobs:
         with:
           name: codex-review-findings
           path: ${{ runner.temp }}/codex-review
+          # --failed 重跑审查腿时会在同一 run 内再传一次同名产物，不覆盖会撞 409。
+          overwrite: true
+
+      # 模型可能在打开任何改动文件之前就交出 schema 允许的空对象（findings 与 inspected 全空）。
+      # 那时 run_codex 与 validate 都是 success，只有 gate 判红，--failed 就只会重跑 gate、
+      # 拿同一份空壳 artifact 再红一次。这一步让审查腿一起变红，好让 --failed 重跑模型腿。
+      # 脚本从工作区（PR head）读取，改动提出它的 PR 上即生效；它只判红、不判绿，结论仍由
+      # 取自 PR base 的 trusted validate / gate 裁决，作者改它换不来绿色。
+      - name: Reject empty review output
+        if: ${{ always() && steps.config.outputs.configured == 'true' && steps.reuse.outputs.reused != 'true' }}
+        env:
+          CODEX_REVIEW_OUTPUT_PATH: ${{ runner.temp }}/codex-final-message.json
+          CODEX_REVIEW_SCOPE_PATH: ${{ runner.temp }}/codex-review/review-scope.json
+        run: node .github/scripts/check-review-output.mjs
 
   codex-gate:
     name: Codex review gate

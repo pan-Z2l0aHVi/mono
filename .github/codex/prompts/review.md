@@ -34,6 +34,7 @@
 调查预算按风险分配，不按文件数平均分配：
 
 - 先整篇读 `docs/agents/review.md` 与 `review-scope.json`，再决定顺序。优先看改了公共契约、失败路径、权限与用户输入、并发与资源管理、跨包接口，以及测试与文档一致性的改动；纯机械改名与格式调整排在后面。
+- **先打开改动，再输出结论**：`docs/agents/review.md` 里的链接指向授权、合并、worktree 等面向实施 agent 的流程文档，不是审查判据，不要顺着链接一路读下去把调查预算耗光。判据与 `review-scope.json` 读完后，下一步必须实际打开至少一个 `changed_paths` 里的改动（`git diff $CODEX_REVIEW_MERGE_BASE_SHA $CODEX_REVIEW_HEAD_SHA -- <path>`，或读工作树里的当前内容），然后才允许输出 JSON。「只输出符合 schema 的 JSON」说的是最终答复的形式，不是「跳过调查、直接给 JSON」。交一份 `正在检查…` 的过程句，或 `findings` 与 `coverage.inspected` 同时为空的 JSON，等于没审：CI 会把审查腿一并判红并要求重跑模型腿。
 - 证据够了就交卷：已经找到足以定档的 Block / Should fix，或高风险面已查完且从代码本身推不出失效时，直接输出符合 schema 的 JSON。不要把「清单读满」当交卷前提，不要为「再确认没有别的问题」翻遍全仓，也不要重复读同一文件；其余没能判断的改动按下面一条写进 `coverage.uncovered`，不要静默略过。
 - 读不完如实写 `coverage.uncovered`：没能判断的改动处逐条写 `path:line` 加一句原因。非空不会让结论作废，也不会让门变红，它是交人工逐项复核的合法出口；但非空时人工不能只做核对式抽查。判 `missing_coverage` 只看 `coverage` 在不在、`inspected` 有没有真的命中 `changed_paths`，与 `uncovered` 列了多少条无关：别把它当免读凭证，也别以为整份改动都列进去就会被拦下——真没读过文件又给不出 findings，照样作废。
 - 不许用假覆盖收口：`coverage.inspected` 只写真的打开读过的文件，没读过的不能写进去凑命中；空 `findings` 时它至少要有一条命中 `changed_paths` 里的文件，否则整条结论按 `missing_coverage` 作废重跑。被滤除的生成物仍按「审查对象」处理，既不读也不算未覆盖。
@@ -42,7 +43,7 @@
 
 只输出符合 output schema 的 JSON：
 
-- `summary` 用一到两句写这次改动做了什么、总体结论是什么；它是评论顶部的摘要行，不要留空串。它描述的是这次改动，不是你此刻在做什么：`正在检查…`、`接下来要看…` 这类过程句不算摘要。
+- `summary` 用一到两句写这次改动做了什么、总体结论是什么；它是评论顶部的摘要行，不要留空串。它描述的是这次改动，不是你此刻在做什么：`正在检查…`、`接下来要看…` 这类过程句不算摘要。diff 非空时 `findings` 与 `coverage.inspected` 不得同时为空：那不是「没有问题」，是没有审查证据。
 - `coverage.inspected` 列出你实际读过的仓库相对路径；只写真的打开读过的文件，不要写打算读的。
 - `coverage.uncovered` 列出你没能判断的改动处，每条写成 `path:line` 加一句原因；全都看过就给空数组。非空是合法收口，不是失败，但会要求人工逐项复核。
 - `coverage` 是每条结论的必填项，有 findings 也要给；diff 非空时整份结论没带 `coverage` 会被判 `missing_coverage`，作废重跑（diff 为空时没有改动可读，覆盖判定整体豁免，但 schema 仍要求带这个字段）。

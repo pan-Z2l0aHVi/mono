@@ -861,6 +861,18 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       'the review leg must stay write-free'
     )
     assert.match(workflowJob(reportText, 'codex-autofix-apply'), /timeout-minutes: 10/)
+
+    // 空壳结论必须让审查腿一起变红：否则 --failed 只重跑 gate，拿同一份空 artifact 再红一次。
+    const emptyGuard = namedStep(ci, 'Reject empty review output')
+    assert.match(emptyGuard, /if: \$\{\{ always\(\) &&/, 'the guard must run even when the model step fails')
+    assert.match(emptyGuard, /steps\.reuse\.outputs\.reused != 'true'/, 'a reused conclusion is not re-judged here')
+    assert.match(emptyGuard, /node \.github\/scripts\/check-review-output\.mjs/)
+    assert.ok(!/continue-on-error/.test(emptyGuard), 'the guard must be able to fail the review job')
+    assert.match(
+      namedStep(ci, 'Upload review findings'),
+      /overwrite: true/,
+      'a --failed rerun must be able to replace the same-named artifact'
+    )
   }
 
   const version = workflowText['changeset-version.yml']
