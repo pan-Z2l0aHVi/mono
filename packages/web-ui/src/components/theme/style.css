@@ -104,7 +104,12 @@
   --wui-duration-spin: 600ms;
   --wui-duration-spinner: 800ms;
   --wui-theme-transition-duration: 500ms;
-  --wui-theme-transition-easing: ease-in;
+
+  /* 揭示动画走强 ease-out：ease-in 把起步拖慢，推迟了用户最注视的落点段。
+     主题切换是低频的主动作，值得一个完整的可读过程，但过程要「先动起来」。
+     字面值而非 var(--wui-ease-enter)：JS 侧 getPropertyValue 读原始 token 流，
+     var() 引用不会被替换。 */
+  --wui-theme-transition-easing: cubic-bezier(0.23, 1, 0.32, 1);
 
   --wui-ease-enter: cubic-bezier(0.23, 1, 0.32, 1);
   --wui-ease-dialog: cubic-bezier(0.2, 0, 0, 1);

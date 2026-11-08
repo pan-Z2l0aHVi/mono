@@ -359,9 +359,18 @@ dialog.is-nested-lower .wui-drawer-drag-bar {
  * 这两条规则写成后代选择器（.zone:hover .bar）就不满足当前结构——不报错、
  * 只是静默不变色，是本结构最隐蔽的一处回归。
  */
-.wui-drawer-drag-edge:hover ~ .wui-drawer-drag-bar,
+
+/* hover 只在真正的指针设备上生效，避免触屏轻点留下一块常亮灰；
+   :active 保持无门禁——拖拽全程 pointer capture 使 hover/active 恒成立，
+   它是拖拽反馈的必经路径，触屏拖拽也要点亮（理由见上一条注释）。 */
+@media (hover: hover) and (pointer: fine) {
+  .wui-drawer-drag-edge:hover ~ .wui-drawer-drag-bar,
+  .wui-drawer-drag-zone:hover ~ .wui-drawer-drag-bar {
+    background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 40%, transparent);
+  }
+}
+
 .wui-drawer-drag-edge:active ~ .wui-drawer-drag-bar,
-.wui-drawer-drag-zone:hover ~ .wui-drawer-drag-bar,
 .wui-drawer-drag-zone:active ~ .wui-drawer-drag-bar {
   background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 40%, transparent);
 }

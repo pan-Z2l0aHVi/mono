@@ -11,102 +11,105 @@ catalog:
   '@cspell/dict-lorem-ipsum': ^4.0.5
   '@floating-ui/dom': ^1.8.0
   '@iconify-json/akar-icons': ^1.2.7
-  '@iconify-json/andrsrxn': ^1.2.2
+  '@iconify-json/andrsrxn': ^1.2.3
   '@iconify-json/ant-design': ^1.2.9
   '@iconify-json/bi': ^1.2.7
-  '@iconify-json/fluent': ^1.2.58
+  '@iconify-json/fluent': ^1.2.61
   '@iconify-json/heroicons': ^1.2.3
   '@iconify-json/ic': ^1.2.4
   '@iconify-json/jam': ^1.2.3
-  '@iconify-json/lucide': ^1.2.126
+  '@iconify-json/lucide': ^1.2.152
   '@iconify-json/mdi': ^1.2.3
-  '@iconify-json/ooui': ^1.2.20
+  '@iconify-json/ooui': ^1.2.25
   '@iconify-json/radix-icons': ^1.2.6
   '@iconify-json/si': ^1.2.17
-  '@iconify-json/tabler': ^1.2.38
+  '@iconify-json/tabler': ^1.2.43
   '@iconify/types': ^2.0.0
-  '@shadcn/lint': ^0.2.0
-  '@shikijs/transformers': ^4.5.0
-  '@tailwindcss/vite': ^4.3.2
+  '@shadcn/lint': ^0.2.5
+  '@shikijs/transformers': ^4.6.0
+  '@tailwindcss/vite': ^4.3.5
   '@tanstack/react-router': ^1.170.32
   '@tanstack/router-plugin': ^1.168.35
   '@testing-library/react': ^16.3.2
   '@tsconfig/node24': ^24.0.4
   '@types/jsdom': ^30.0.0
-  '@types/node': ^26.3.0
+  '@types/node': ^26.6.6
   '@types/react': ^19.2.17
   '@types/react-dom': ^19.2.5
   '@unhead/vue': ^3.4.0
-  '@vitejs/plugin-legacy': ^8.1.0
-  '@vitejs/plugin-react': ^6.1.0
+  '@vitejs/plugin-legacy': ^8.2.4
+  '@vitejs/plugin-react': ^6.2.1
   '@vitejs/plugin-vue': ^6.0.7
   # vitest 生态版本由 vite-plus 统一供给：browser-playwright 对 vitest 是精确 peer,
   # 必须与 vite-plus 内置的 vitest 版本一字不差，禁止 semver 漂移（否则双 runner 共存）
-  '@vitest/browser-playwright': 5.0.5
+  '@vitest/browser-playwright': 5.1.0
   '@vue/devtools-api': ^8.0.0
-  '@vue/compiler-dom': ^3.5.42
-  '@vue/compiler-sfc': ^3.5.42
+  '@vue/compiler-dom': ^3.5.45
+  '@vue/compiler-sfc': ^3.5.45
   '@vue/test-utils': ^2.4.11
   '@vue/tsconfig': ^0.9.1
   '@vueuse/core': ^15.0.0
-  '@wailsio/runtime': 3.0.0
+  '@wailsio/runtime': 3.1.0
   '@wuchale/jsx': ^0.13.0
   '@lit/context': ^1.1.6
   browserslist: ^4.28.5
   change-case: ^5.4.4
   commitizen: ^4.3.2
   copy-to-clipboard: ^4.0.2
-  cspell: ^10.1.1
+  cspell: ^10.4.1
   cz-git: ^1.14.0
-  glob: ^13.0.6
-  hast-util-to-html: ^9.0.5
-  jsdom: ^30.0.1
+  glob: ^14.0.4
+  hast-util-to-html: ^9.0.6
+  jsdom: ^31.0.0
   lightningcss: ^1.32.0
   lit: ^3.3.3
-  msw: ^3.0.3
+  msw: ^3.0.4
   nanoid: ^6.0.0
   overlayscrollbars: ^2.16.0
   overlayscrollbars-react: ^0.5.6
   overlayscrollbars-vue: ^0.5.10
   # oxc 的 React Compiler（Rust）实现，由 @vitejs/plugin-react 的 `compiler` 选项按需加载。
   # 独立 native 二进制，和 rolldown/vite-plus 内置的 oxc 不同源，不必对齐版本；但
-  # plugin-react@6.1.2 的 peer 段写的是 `^0.152.0`，这里装的
-  # 0.155.0 已超出该段——上游每个 minor 都发新版、peer 声明滞后，实测可用；升级前先看 peer 是否已放宽。
-  oxc-transform-react: ^0.155.0
+  # plugin-react@6.2.1 的 peer 段写的是 `>=0.152.0 <0.157.0`，这里装 0.156.0 顶到上限——
+  # 上游每个 minor 都发新版、peer 声明滞后；再升级前先看 peer 是否已放宽到 >=0.157.0。
+  oxc-transform-react: ^0.156.0
   pinia: ^4.0.2
-  playwright: ^1.61.1
+  playwright: ^1.65.0
   postcss-html: ^2.0.0
   react: ^19.2.7
   react-dom: ^19.2.7
   react-error-boundary: ^6.1.2
   react-hook-form: ^7.86.0
-  remeda: ^2.44.0
+  remeda: ^2.58.0
   remark-parse: ^11.0.0
   remark-rehype: ^11.1.2
-  shiki: ^4.5.0
-  stylelint: ^17.14.0
+  shiki: ^4.6.0
+  stylelint: ^18.0.0
   stylelint-config-clean-order: ^10.0.0
   stylelint-config-html: ^2.0.0
   stylelint-config-recommended-vue: ^2.0.0
-  stylelint-config-standard: ^40.0.0
+  stylelint-config-standard: ^41.0.0
   stylelint-config-standard-vue: ^2.0.0
-  tailwindcss: ^4.3.2
+  tailwindcss: ^4.3.5
   tinyglobby: ^0.2.17
   turbo: ^2.10.11
   typescript: ~6.0.3
   unified: ^11.0.5
-  unplugin: ^3.3.0
+  unplugin: ^3.7.0
   unplugin-auto-import: ^21.0.0
   vee-validate: ^4.15.1
-  virtua: ^0.53.5
-  vite: npm:@voidzero-dev/vite-plus-core@1.4.0
-  vite-plus: 1.4.0
-  vue: ^3.5.39
+  virtua: ^0.54.2
+  vite: npm:@voidzero-dev/vite-plus-core@1.5.0
+  vite-plus: 1.5.0
+  vue: ^3.5.45
   vue-router: ^5.1.0
-  vue-tsc: ^3.3.11
+  # 3.3.14 与 typescript@6.0.3 组合触发 "Debug Failure: parameter should have errors
+  # when reporting errors"（checkExportAssignment 处崩溃），精确 pin 在 3.3.13；
+  # 升级前先在 vue-web-ui-demo 上跑 `vue-tsc --build` 验证。
+  vue-tsc: 3.3.13
   webpack: ^5.99.0
   wuchale: ^0.26.7
-  zustand: ^5.0.14
+  zustand: ^5.1.0
   '@iconify-json/icon-park-outline': ^1.2.4
   '@iconify-json/ci': ^1.2.4
 
@@ -114,6 +117,13 @@ catalogMode: prefer
 
 overrides:
   vite: 'catalog:'
+  # jsdom@31 的 HTML 解析需要 parse5-parser-stream 的 flushCharacters（8.1.1 起才有），
+  # 但其声明范围 ^8.1.0 在 lowest-direct 解析下落到 8.1.0，导致 worker 启动即崩；
+  # 上游若把下限提到 ^8.1.1 可移除本条。
+  'parse5-parser-stream@^8.1.0': ^8.1.1
+  # stylelint-order@8.1.3 起才把 peer 放宽到 ^18.0.0；clean-order@10 声明的 >=6 在
+  # lowest-direct 解析下落到 8.1.2，导致 stylelint 18 出现 unmet peer。
+  stylelint-order: ^8.1.3
 
 peerDependencyRules:
   allowAny:
@@ -124,3 +134,7 @@ peerDependencyRules:
 allowBuilds:
   core-js: false
   msw: false
+
+minimumReleaseAgeExclude:
+  - parse5-parser-stream@8.1.1
+  - parse5@8.1.1

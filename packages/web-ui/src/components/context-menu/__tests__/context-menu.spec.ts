@@ -438,7 +438,11 @@ describe('WebUiContextMenu 组件', () => {
       await waitForMenuOpen(el)
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      vi.useFakeTimers()
+      // jsdom 31 的 rAF 驱动靠惰性 setInterval 推进，而 vitest fake timers 会替换全局
+      // setInterval/clearInterval：fake 期间组件一旦触发 rAF，驱动闭包会记下假 interval
+      // 句柄，useRealTimers 后该句柄失效但驱动以为仍在跑，后续所有 rAF 永不触发。
+      // 被测的悬停延时只走 setTimeout，这里不 fake interval 系，保住驱动。
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
       try {
         const item = getFirstMenuItem()
         item.dispatchEvent(new PointerEvent('pointerenter'))
@@ -466,7 +470,8 @@ describe('WebUiContextMenu 组件', () => {
       await waitForMenuOpen(el)
       await new Promise(resolve => requestAnimationFrame(resolve))
 
-      vi.useFakeTimers()
+      // 同上：不 fake interval 系，避免 fake/real 切换杀死 jsdom 31 的 rAF 驱动
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
       try {
         const item = getFirstMenuItem()
         item.dispatchEvent(touchPointerEvent('pointerenter'))
