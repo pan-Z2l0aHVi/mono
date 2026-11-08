@@ -17,7 +17,7 @@
 
 ## 决策
 
-Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：绿色 CI 不证明 review 完成，模型结论也不证明人工独立 review 已完成。
+Codex 审查承担本仓默认的 PR review 结论（2026-11-06 起；此前的口径是「对 ADR-0012 的补强，不是替代」，见下文同名修订段）。绿色 CI 不证明 review 完成，这道结论也不证明 `check` 通过。两条各证一件事，同时成立才算审过。
 
 **门禁形态**：约定式门禁，不改 GitHub 分支保护。`reviewed` 且 `Block > 0`、`error` 与 `unreviewed` 让这道门变红；`stale`、`not_applicable` 保持绿色。绿色因此只表示「这次运行有结论可读」，不表示结论是「没问题」。`Block` 数量、状态、故障码与缺失配置名一起写进 PR 上同一条持久评论。合并准入仍由人和仓库的 PR review 纪律决定。
 
@@ -27,7 +27,7 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 **覆盖度口径**：`docs/agents/review.md` 一直要求「无发现也要记录审查范围、验证证据和未覆盖风险」，但 schema 在 2026-11-06 之前只有 `summary` 与 `findings`，这条要求在输出里没有落脚处——模型只能把「我正在看什么」塞进 `summary`，于是空 findings 的结论和「没查就收尾」在产物上完全同形。现在 schema 必填 `coverage.inspected` / `coverage.uncovered`：`validate` 在「无 findings、diff 非空、`inspected` 为空」时判 `missing_coverage` 并让门变红，diff 为空时豁免（没有源码改动可读，空清单不是缺证据）。`prepare` 同时把这次改动过的路径写进 `review-scope.json` 的 `changed_paths`：空 findings 时 `inspected` 至少要有**一条等于其中的改动文件**，否则同样判 `missing_coverage`——写父目录（`docs`）不算读过 `docs/agents/review.md`，只读判据文档就交卷，正是要区分的早停；反过来，PR 改的就是那份判据文档时，它当然算被审对象。复用路径还要多一道：`coverage` 是这一版才加的必填字段，没有它的旧产物一律不复用（不论有没有 findings），宁可重跑模型让这个 head 产出证据，也不把一次没有证据的结论洗成绿色——若改成「复用后再判红」，该 head 的重跑会永远红下去。`validate` 的复用分支再用同一判据兜一次，避免别的写入口绕开 `reuse`。`coverage` 是 schema 的必填项，有 findings 也不能省：否则交一条 `Nit` 就绕开整条覆盖规则，因此 diff 非空时 `validate` 一律要求 `coverage` 存在。判 `missing_coverage` 时 findings 仍会写进产物与评论：「结论不可用」由 `status` 表达，把已经看到的 Block 丢掉只会让作者少一条线索，而 `deriveConclusion` 以 `status` 为准，findings 不能把不可用的结论升格成绿色。复用的 artifact 解到独立目录（`$RUNNER_TEMP/codex-review-prior`），不与本轮 `prepare` 写的 `review-scope.json` 同目录——同名文件会把本次范围覆盖成上一轮的，`changed_paths` 就此缺位；缺位时交集为空，判定按红处理而不是放行，范围对不上宁可不给绿色。
 
-**收口纪律**：`coverage.uncovered` 是「读不完」的合法出口：`coverageGap()` 不读它，非空既不判红也不使结论作废，但按 `docs/agents/review.md` 必须人工逐项复核，且不满足「核对式抽查」的前提。2026-11-07 给审查 prompt 补「调查与收口」段（按风险排序、证据够就交卷、如实列 `uncovered`、不许假 `inspected`），并把「按 `changed_paths` 逐个文件读」改成「候选清单 + 分片入口」：#519 在 60 分钟上限处被掐断时，模型把 137 文件清单当成必须读完的任务，93 条命令后仍未收口。这是给大 PR 一个可审计的出口，**不是对上游 `429 model_failed` 的修复**——那几次崩溃与运行时长、token 和模型进度没有稳定关系，属上游网关限速，另案处置。可信 prompt 与 schema 取自 PR base，本修复自身的审查腿仍读旧 prompt；`docs/agents/review.md` 不在可信输入清单里，由模型从工作区（本 PR head）读取，本 PR 即生效，因此这一轮是混合契约（旧 prompt 要求按清单逐文件读、新判据授权早停），按「输入可信来源」条款里已接受的同类风险由人工 review 兜住；prompt / schema 的新行为要等合入 main 后的下一个 PR 才能验证。
+**收口纪律**：`coverage.uncovered` 是「读不完」的合法出口：`coverageGap()` 不读它，非空既不判红也不使结论作废，但按 `docs/agents/review.md` 必须人工逐项复核，且不满足该文件「结论即 review」的完成条件（`uncovered` 为空）。2026-11-07 给审查 prompt 补「调查与收口」段（按风险排序、证据够就交卷、如实列 `uncovered`、不许假 `inspected`），并把「按 `changed_paths` 逐个文件读」改成「候选清单 + 分片入口」：#519 在 60 分钟上限处被掐断时，模型把 137 文件清单当成必须读完的任务，93 条命令后仍未收口。这是给大 PR 一个可审计的出口，**不是对上游 `429 model_failed` 的修复**——那几次崩溃与运行时长、token 和模型进度没有稳定关系，属上游网关限速，另案处置。可信 prompt 与 schema 取自 PR base，本修复自身的审查腿仍读旧 prompt；`docs/agents/review.md` 不在可信输入清单里，由模型从工作区（本 PR head）读取，本 PR 即生效，因此这一轮是混合契约（旧 prompt 要求按清单逐文件读、新判据授权早停），按「输入可信来源」条款里已接受的同类风险由人工 review 兜住；prompt / schema 的新行为要等合入 main 后的下一个 PR 才能验证。
 
 **生成物滤除口径**：审查输入里不该出现生成物。`docs/agents/generated-artifacts.md` 的唯一判据是「能不能由 generator 完整重建」，据此按清单取可表达的最小 glob，由取自 PR base 的 `REVIEW_EXCLUDE_PATHSPECS` 在 `git diff` 入口滤出 `pr.diff` 与 `changed_paths`：目录型 `**/generated/**`、Wails `bindings/**`、单文件生成声明与 icon barrel。此前只滤 `**/generated/**`，其余生成物一旦出现在改动里就会随 `changed_paths` 被逐个读，是不必要的干扰与 token 消耗。实测 `git ls-files` 上这六条 pathspec 共滤掉 2391 个入库生成物（`**/generated/**` 之外只有 19 个）；#519 的 137 文件 diff 里一条生成物都没有，那次 429 属上游网关限速，本次是预防性收敛范围，不是对它的修复。生成物不需要 diff，也不需要 review；它们的正确性仍由 `check-generated` 与消费者类型检查证明，不由结论证明。被滤除的路径不进 `coverage.inspected`，也不算 `coverage.uncovered`（那不是未覆盖，是不需要查），`review-scope.json` 记 `excluded_pathspecs` 供审计。名单不从 PR head 的工作树读取：作者可以改名单把自己的文件排除出审查，所以它必须留在可信脚本里；`inspectConfig` 还把它纳入配置指纹，清单变更后同 head 的旧结论不会借复用回到绿色。**未采用**：按文件名或 `DO NOT EDIT` 标记猜生成物（本仓既有不带标记的生成物，也有带标记却与 generator 无关的上游产物），以及审查脚本运行时加载 `.claude/settings.json` 的 `deny`（那份文件按「输入可信来源」从 PR base 落到 runner 临时目录，autofix 腿已用它校验 patch；但滤除清单是审查契约的一部分，须与 prompt、schema 同源留在可信脚本里，不与编辑拦截共用一份通配；两侧覆盖关系另由脚本单测钉住：显式覆盖表挡单侧增删，用 git 的 glob 引擎比对两份名单命中的真实入库文件集合（当前各 2391 个）挡「同步改表」的绕过；覆盖表与样例仍是人工维护，尚无文件入库的新生成物路径须按判据核对）。
 
@@ -137,14 +137,30 @@ Error: /usr/bin/sudo exited with code 1
 
 **待办**：`prepare` 的任何失败都会跳过 preflight，被 `validate` 记成 `config_missing`；后续把 preflight 前置到 prepare 之前，或引入 `job_failed` / `preflight_missing` 错误码，并同步「状态口径」、`docs/agents/review.md` 的故障码清单、`renderConclusion()` 与相关单测。本次修复后该误归因对 PR #515 的事故不再可达，门「故障即红」不受影响。
 
+## 2026-11-06 修订：这道结论就是本仓默认的 review
+
+引入这道门时的定位是「补强，不是替代」，独立性仍由人或另起的会话在 PR 上兑现一次。落地后按这条口径跑了两个 PR。实测取自 PR #519 的 head `3d990480`：审查范围 `b1a59cef..3d990480`，532,884 字节、130 文件；`Codex review` job 跑 2 分 6 秒，其中 `Run codex exec` 腿 95 秒，是模型真调用而不是产物复用；结论 `Block 0 / Should fix 0 / Nit 0`。同一 head 按旧口径还要再派一次独立审查：85 个文件的增量切成 4 条 lane，每 lane 18–26 个文件分别派出，报告回收后才编号给用户。
+
+**裁决**：门给的结论就是这份 PR 的 review。三条同时成立即完成：reviewed SHA 等于当前 head、`Block` 为 0、`check` 在当前 head 上成功。要不要另起一次本地 agent 或人工审查由 agent 自己判断，仓库文档不规定触发条件，也不禁止。操作口径在 `docs/agents/review.md`「自动审查结论的效力」，本 ADR 只记取舍。
+
+**2026-11-07 补，裁决之后落地的覆盖度契约改了这条的射程**：三条同时成立覆盖的是结论自己声明读过的部分。`coverage.uncovered` 非空时那些位置不在结论射程内，必须逐项人工复核再收口；这一条不算上面那句「不规定触发条件」的例外，因为它不要求任何人重读已覆盖的 diff，只补结论列出的空白。同一次改动里还留下一个证据问题：本修订引用的 head `3d990480` 那次 run，事后复盘归为提前收尾（模型腿 1m35s、268,842 tokens、`findings: []`，自述里留着没查完的线索，见「同日第六次实测」），所以它证明的是模型真调用，不是审查查完。取消固定第二次审查的论证因此不再挂在那一次 run 上，改挂在覆盖证据上：契约要求 `inspected` 命中改动文件，缺证据直接判 `missing_coverage` 变红，绿色从此自带射程。
+
+**为什么这次可以换**：独立性要的是「执行体与实施者叙述隔离」，不是「执行体数量」。门满足隔离（另一个 runner、另一个模型、只读 PR diff、结论绑定 head），第二个人工执行体读的是同一批字节、按同一份三档判据，边际收益是重复劳动而不是新增维度。「同一份判据」不是推测：`.github/codex/prompts/review.md` 要求模型「先读 `docs/agents/review.md`…按它判，不要自创标准」，上面那次 run 的日志里也能看到它把该文件原文读进上下文。
+
+**没有换掉的东西**：
+
+- 覆盖空白仍在，兜法换了。被 `**/generated/**` 剔除的生成物门看不见，此前靠人工核对，现在靠 `check-generated` 与消费者类型检查；只改生成物的 PR（`empty_diff: true`）也按这条走。
+- 拿不到覆盖当前 head 的结论时（`error`、`unreviewed`、`stale`、`not_applicable`、fork PR、自动修推送的新 head、两个兜校验都不适用的产物），PR 上没有 review 结论。
+- 概率性没有被消除。门漏掉的低级遗漏，没有别的执行体会看到；缓解手段是后台可随时换更强的模型与更高强度（配置指纹变了就不复用旧结论），而不是把人工复核写回默认流程。
+
 ## 后果
 
 - 自动修推送的新提交不会触发 checks，PR 上那道必需检查要人重跑一次 CI 才会覆盖新 head；结论对新 head 也随之过期，这是「直推」换来的代价。
-- 门是约定式的：绕开它只需要忽略一次红叉，因此它省的是「等一次人工细看」，不是「替代人工」。
+- 门是约定式的：绕开它只需要忽略一次红叉。2026-11-06 起它是本仓默认的 PR review，忽略这一次红叉就等于合并未经审查的 PR。省掉的是「等一次人工细看」，新增的兜底只剩维护者自己看颜色。
 - 后台配置未填齐时每个 PR 都会红。配置本身成为可观测的门禁输入，代价是配置变更与门的颜色直接绑定。
 - 引入新可信子命令的那个 PR 自身无法完成审查：它的 base 还是旧脚本，模型腿会红。首次落地要先合入脚本、再在后续 PR 上验证全链路。
 - 只读腿与写腿分居两个 workflow，读代码时看到的 YAML 不能解释全部行为；判据在 ADR 与机器断言里，不只在 CI 定义里。
 - 模型结论的可信度受沙箱档位、输入版本与后台配置影响，这三处都由 CI 拓扑测试钉住，改动会被断言挡下来，而不是靠 review 时想起来。
 - 两条模型腿绑定 `ubuntu-24.04`，与本 workflow 其它 Linux job 的 `ubuntu-latest` 不同步；24.04 退役前必须按「Runner 镜像」条款的恢复条件完成迁移，否则审查链路会再次在模型启动前静默失败（表现为 job 绿、gate 红、零模型调用）。这是一笔有到期日的技术债。
-- 只改生成物（滤除清单内任意路径）的 PR 得到空 diff，门不会因此变红：结论是 `reviewed`（`Block 0`）。门本身不区分「审过源码」与「没有源码可审」——`unreviewed` 现在会让门变红，那是「模型没给出可用结论」，不是空 diff 的预期结果。这块覆盖空白由 `docs/agents/review.md`「审查范围与生成物」的人工纪律兜：空 diff 不构成可合并结论，也不适用核对式抽查。
+- 只改生成物（滤除清单内任意路径）的 PR 得到空 diff，门不会因此变红：结论是 `reviewed`（`Block 0`）。门本身不区分「审过源码」与「没有源码可审」——`unreviewed` 现在会让门变红，那是「模型没给出可用结论」，不是空 diff 的预期结果。这块覆盖空白由 `docs/agents/review.md`「审查范围与生成物」的人工纪律兜：`empty_diff: true` 既不算「结论即 review」，也不构成可合并结论，这类 PR 按完整 diff 走人工审查，或至少按清单逐类核对并留下 generator 证据。
 - 仍未实测的项：Linux 上 `--sandbox` 是否如文档生效；120 分钟对 200 文件以上的 PR 是否够（目前已见的最大档是 137 文件、需 95–100 分钟）；`codex-action` 在输出不合 schema 时是否仍以 0 退出（已观测到 schema 合法但 `summary` 为空的输出以 0 退出并落到 `unreviewed`；schema 非法时是重试还是失败仍未观测）；`workflow_run.head_branch` 在各事件下的实际取值；写回腿 403 在补 `pull-requests: write` 后是否彻底消失。403 若仍复现则按「故障可见」条款升级到专用写令牌。

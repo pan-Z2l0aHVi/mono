@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { err, isErr, isOk, ok, to, unwrap } from '../rust'
+import { andThen, err, isErr, isOk, ok, to, unwrap } from '../rust'
 
 describe('Result 工具函数（Rust 风格）测试', () => {
   it('ok() / err() 产出的判别联合可由 isOk / isErr 分流', () => {
@@ -42,5 +42,35 @@ describe('Result 工具函数（Rust 风格）测试', () => {
     // Err 分支返回 error 而非抛出，调用方依赖「永不 throw」的形状自行分支
     const failure = new Error('boom')
     expect(unwrap(err(failure))).toBe(failure)
+  })
+})
+
+describe('andThen 组合（Ok 载荷续跑，Err 短路）', () => {
+  it('前一步 Err 时上浮同一条 Err，后一步一次都不跑', async () => {
+    const failure = err('first failed')
+    let secondRuns = 0
+    const result = await andThen(failure, () => {
+      secondRuns += 1
+      return ok(undefined)
+    })
+
+    expect(result).toBe(failure)
+    expect(secondRuns).toBe(0)
+  })
+
+  it('前一步 Ok 时把载荷交给后一步，结果以后一步为准', async () => {
+    await expect(andThen(ok(3), value => ok(`#${value}`))).resolves.toEqual({ ok: true, value: '#3' })
+    await expect(andThen(ok(3), value => (value > 0 ? err('positive') : ok('from second')))).resolves.toEqual({
+      ok: false,
+      error: 'positive'
+    })
+  })
+
+  it('首参可以是已完成的 Result 或 Promise，后一步同理', async () => {
+    const syncNext = await andThen(Promise.resolve(ok('data')), value => err(`seen ${value}`))
+    const asyncNext = await andThen(ok('data'), async value => ok(`${value}!`))
+
+    expect(syncNext).toEqual({ ok: false, error: 'seen data' })
+    expect(asyncNext).toEqual({ ok: true, value: 'data!' })
   })
 })

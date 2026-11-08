@@ -1,6 +1,4 @@
-import path from 'node:path'
-
-import { runEntrypoint } from '@greypan/monorepo-kit'
+import { defineCatch, defineRunner, getWorkspaceRoot } from '@greypan/monorepo-kit'
 
 import { commandConventions } from '../policies/command-conventions.mjs'
 import { fullCheckout } from '../policies/full-checkout.mjs'
@@ -12,16 +10,22 @@ import { turboCacheInvariant } from '../policies/turbo-cache-invariant.mjs'
 import { turboInputPaths } from '../policies/turbo-input-paths.mjs'
 import { webUiDocsInputs } from '../policies/web-ui-docs-inputs.mjs'
 
-const checks = [
-  commandConventions,
-  fullCheckout,
-  interweaveTurboInputs,
-  noMutualLinks,
-  readmeLocales,
-  testPortCallSites,
-  turboCacheInvariant,
-  turboInputPaths,
-  webUiDocsInputs
-]
+import { runCheck } from './run-check.mjs'
 
-await runEntrypoint(checks, { root: path.resolve(import.meta.dirname, '../..'), mode: 'policy' })
+// 触发层只排顺序：`.use()` 的先后就是判定的先后，首个 `Err` 短路，能力接线在插件内部。
+// 失败语义由 `runCheck` 统一落地：stderr 一行加非零退出码，装配期抛错也收成 `throw: ` 一行；
+// 静默通过不产出任何证据。
+await runCheck(() =>
+  defineRunner()
+    .use(commandConventions)
+    .use(fullCheckout)
+    .use(interweaveTurboInputs)
+    .use(noMutualLinks)
+    .use(readmeLocales)
+    .use(testPortCallSites)
+    .use(turboCacheInvariant)
+    .use(turboInputPaths)
+    .use(webUiDocsInputs)
+    .use(defineCatch())
+    .make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })
+)

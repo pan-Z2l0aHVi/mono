@@ -1,5 +1,5 @@
 import depsReload from '@greypan/deps-reload/vite'
-import { testApiPort } from '@greypan/monorepo-kit'
+import { testPorts } from '@greypan/monorepo-kit/vite'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
 import tailwindcss from '@tailwindcss/vite'
@@ -53,23 +53,6 @@ export default defineConfig({
           include: ['src/**/*.browser.spec.ts'],
           // test-helper 补的是 jsdom 特有的 localStorage 漏洞，浏览器里有真实实现，不加载。
           setupFiles: [],
-          // vitest 5 把 `browser.api` 挪到了 `test.api`，而且要写在 browser project 自己的
-          // `test` 块里：写到根上会连 jsdom project 一起抢这个端口。默认的 63315 会被同机并行的
-          // 其他 worktree、同一轮 turbo test 里其他包的测试进程占住，所以端口从
-          // 根 monorepo.json 的分配表取，多 worktree 时用 GREYPAN_TEST_PORT_OFFSET 错开。
-          //
-          // host 必须显式钉回 loopback：api server 绑哪里只看 `api.host`；而
-          // `resolveApiServerConfig` 只在 `api.host` 是字面量 `localhost` / `127.0.0.1`（或不设）
-          // 时才默认允许写盘与执行（截图、附件要走它们），设成其他值会关掉写/执行——反过来，
-          // 绑到所有网卡时任何能连到这台机器的人也能经 `/@fs` 读走整个 workspace（含
-          // `.herdr-project` 的内部文档）。顶层 `server.host: true` 是给 Wails dev server 的，
-          // 不要拿它代替这里。
-          // strictPort: false 必须显式写出来：vitest 5 的 `vitest:config:server` 把 `api` 合并进
-          // 测试服务器，同时顶层 `server` 的 `strictPort: true` 会被一并带过去——实测占住本包基
-          // 端口后直接 `Startup Error: Port N is already in use`，整包 browser 用例在开跑之前判
-          // 红。dev server 需要它（端口被占就硬失败，否则 webview 指向空气），测试服务器不需要：
-          // vitest 按实际监听地址把浏览器指向过去，端口漂移零代价。
-          api: { host: '127.0.0.1', port: testApiPort('interweave-frontend'), strictPort: false },
           browser: {
             enabled: true,
             headless: true,
@@ -89,6 +72,10 @@ export default defineConfig({
     }
   },
   plugins: [
+    // browser project 的端口段由 testPorts() 写进上面那个 project 的 `test.api`，host 与
+    // strictPort 一起给出：本包顶层 `server.host` 是 `true`（Wails dev server 要它），不显式钉
+    // 回 loopback 时测试服务器会跟着绑通配地址。分配表与偏移见 docs/agents/build.md「测试端口分配」。
+    testPorts({ project: 'interweave-frontend', testName: 'browser' }),
     vueRouter(),
     vue({
       template: {

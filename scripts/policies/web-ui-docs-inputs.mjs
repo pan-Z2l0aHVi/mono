@@ -6,7 +6,6 @@ import { defineDocsInputs } from '@greypan/monorepo-kit'
  * 名单与目录是本仓事实，判据在包里。
  */
 export const webUiDocsInputs = defineDocsInputs({
-  name: 'web-ui-docs-inputs',
   packageDir: 'packages/web-ui',
   corpusDir: 'docs',
   proseNames: ['README.md', 'README.CN.md', 'AGENTS.md', 'CHANGELOG.md']
