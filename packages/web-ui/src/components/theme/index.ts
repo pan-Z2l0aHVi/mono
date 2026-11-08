@@ -19,6 +19,10 @@ export type ThemeMotion = 'full' | 'reduced' | 'system'
 const APPEARANCES = ['light', 'dark', 'system'] as const
 const MOTIONS = ['full', 'reduced', 'system'] as const
 
+// 揭示动画的落点段才是用户注视的时刻：强 ease-out 起步快、末段缓收，
+// ease-in 会把观感最好的那段推迟到动画结尾。与 style.css 的 token 保持一致。
+const DEFAULT_THEME_TRANSITION_EASING = 'cubic-bezier(0.23, 1, 0.32, 1)'
+
 interface ViewTransitionLike {
   readonly ready: Promise<void>
   readonly finished: Promise<void>
@@ -432,8 +436,10 @@ export class WebUiTheme extends LitElement {
   private _transitionMotion(): { duration: number; easing: string } {
     const style = getComputedStyle(this)
     const duration = parseDuration(style.getPropertyValue('--wui-theme-transition-duration')) ?? 500
-    const easing = style.getPropertyValue('--wui-theme-transition-easing').trim() || 'ease-in'
-    const safeEasing = globalThis.CSS?.supports('animation-timing-function', easing) ? easing : 'ease-in'
+    const easing = style.getPropertyValue('--wui-theme-transition-easing').trim() || DEFAULT_THEME_TRANSITION_EASING
+    const safeEasing = globalThis.CSS?.supports('animation-timing-function', easing)
+      ? easing
+      : DEFAULT_THEME_TRANSITION_EASING
     return { duration: Math.max(0, duration), easing: safeEasing }
   }
 
