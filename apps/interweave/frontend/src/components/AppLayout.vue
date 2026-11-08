@@ -12,9 +12,7 @@ const sidebarOpen = ref(false)
 const settingsOpen = ref(false)
 const desktopSidebarWidth = ref('240px')
 
-// 移动端判定由 layout 独占（它同时决定渲染哪一套树）：drawer 宽度跟着同一个值换，
-// 壳里不必再写断点，也不会与 layout 的树切换错开半拍。
-const { mobile, onMobileChange } = useLayoutMobileProvider()
+const { mobile } = useLayoutMobileProvider()
 const sidebarWidth = computed(() => (mobile.value ? 'min(320px, 80vw)' : desktopSidebarWidth.value))
 
 /*
@@ -55,13 +53,13 @@ function closeSidebar() {
     sidebarMinWidth="160px"
     sidebarMaxWidth="320px"
     class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-sidebar-radius:38px]"
+    :mobile="mobile"
     :sidebarCollapsed="sidebarCollapsed"
     :sidebarOpen="sidebarOpen"
     :sidebarWidth="sidebarWidth"
     @sidebar-collapsed-change="updateSidebarCollapsed"
     @sidebar-open-change="updateSidebarOpen"
     @sidebar-width-change="updateSidebarWidth"
-    @mobile-change="onMobileChange"
   >
     <AppNav slot="sidebar" :collapsed="navCollapsed" @navigate="closeSidebar" @open-settings="settingsOpen = true" />
 

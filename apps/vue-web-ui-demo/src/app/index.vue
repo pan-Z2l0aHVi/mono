@@ -39,6 +39,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 import Search from '@/components/search/index.vue'
 import { bootDegraded, currentLocale, loadDemoLocale, localePending } from '@/i18n/locale'
+import { useMobile } from '@/state/mobile'
 
 import SidebarNavLink from './sidebar-nav-link.vue'
 
@@ -81,8 +82,7 @@ const shellLayout = ref<WebUiLayout | null>(null)
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const mobileSidebarWidth = 'min(320px, 80vw)'
-// 移动端判定由 web-ui-layout 给出（它同时决定渲染桌面树还是 drawer）：demo 不自己写断点。
-const isMobileSidebarViewport = ref(false)
+const isMobileSidebarViewport = useMobile()
 const desktopSidebarWidth = ref(getInitialSidebarWidth())
 const sidebarWidth = computed(() => (isMobileSidebarViewport.value ? mobileSidebarWidth : desktopSidebarWidth.value))
 
@@ -100,13 +100,6 @@ const navCollapsed = computed(() => sidebarCollapsed.value && !isMobileSidebarVi
  */
 function isOwnLayoutEvent(event: Event): boolean {
   return event.target === event.currentTarget
-}
-
-// 挂载即移动端时，layout 会在连接那一刻派发一次 mobile-change，模板监听挂在其之前，
-// 因此首帧拿到的就是 layout 自己的判定。
-function updateMobileSidebarViewport(event: WebUiEvent<WebUiLayout, 'mobile-change'>) {
-  if (!isOwnLayoutEvent(event)) return
-  isMobileSidebarViewport.value = event.detail.mobile
 }
 
 function commitThemeAppearance(appearance: ThemeAppearance) {
@@ -184,6 +177,7 @@ onMounted(async () => {
         class="mobile:[--wui-layout-sidebar-radius:38px]"
         header-glow
         sidebar-collapsible
+        :mobile="isMobileSidebarViewport"
         :sidebarCollapsed="sidebarCollapsed"
         :sidebarOpen="sidebarOpen"
         :sidebarWidth="sidebarWidth"
@@ -193,7 +187,6 @@ onMounted(async () => {
         @sidebar-collapsed-change="updateSidebarCollapsed"
         @sidebar-open-change="updateSidebarOpen"
         @sidebar-width-change="updateSidebarWidth"
-        @mobile-change="updateMobileSidebarViewport"
       >
         <div
           v-if="bannerVisible"
