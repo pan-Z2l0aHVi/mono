@@ -8,7 +8,7 @@
 // 1. 只做宿主平台。`build:windows` 在 darwin 上是交叉编译，而它的消费者只有
 //    `wails-verify.yml` / `wails-release.yml` 矩阵里的 `windows-latest` runner——那两边在矩阵里直接调
 //    `build:windows`，在 Windows 宿主上原生编译。
-// 2. 默认不做 DMG 打包。`.dmg` 的消费者同样只有上面那个 `macos-14` 矩阵项；本地启动用 `.app`
+// 2. 默认不做 DMG 打包。`.dmg` 的消费者同样只有上面那个 `macOS ARM64 DMG` 矩阵项；本地启动用 `.app`
 //    bundle 就够，而 `hdiutil` 打包是单步最贵的一段。需要 DMG 时显式跑 `build:macos`。
 //
 // 「CI 完全不碰这个脚本」不是这里的前提，恰恰相反：`ci.yml` 在 ubuntu runner 上跑根 `pnpm run build`，

@@ -2,7 +2,7 @@ import { readFileSync } from 'node:fs'
 import { createRequire } from 'node:module'
 import { resolve } from 'node:path'
 
-import { testApiPort } from '@greypan/monorepo-kit'
+import { testPorts } from '@greypan/monorepo-kit/vite'
 import { defineConfig, type Plugin } from 'vite-plus'
 import { playwright } from 'vite-plus/test/browser-playwright'
 
@@ -36,7 +36,9 @@ export default defineConfig({
     tsconfigPaths: true
   },
   // 浏览器 spec 与 dev server 都走这里的 Vite 插件；构建见 `pack`。
-  plugins: [mswServiceWorker()],
+  // testPorts() 把本包在根 `monorepo.json` 里登记的那一段端口写进下面的 `test.api`，
+  // host 与 strictPort 由它一起给出；分配表与偏移的理由见 docs/agents/build.md 的「测试端口分配」。
+  plugins: [mswServiceWorker(), testPorts({ project: 'browser-kit' })],
   pack: {
     entry: {
       index: resolve(import.meta.dirname, 'src/index.ts'),
@@ -65,11 +67,6 @@ export default defineConfig({
     attachmentsDir: '.vitest-attachments',
     // Tracker specs share browser globals and one MSW service worker.
     fileParallelism: false,
-    // 端口与 host 的理由见 docs/agents/build.md 的「测试端口分配」。本包没有顶层 `server`，
-    // 不写 `api.host` 时默认就是 localhost；显式写出来是为了让绑定落在 loopback——探测只绑
-    // 通配地址、看不见 127.0.0.1 上的占用者，只有绑定同址才会 EADDRINUSE 并前进到下一个端口
-    // ——并且和其他 browser project 用同一套表，多 worktree 并行时能被 offset 一起平移。
-    api: { host: '127.0.0.1', port: testApiPort('browser-kit') },
     browser: {
       provider: playwright(),
       enabled: true,

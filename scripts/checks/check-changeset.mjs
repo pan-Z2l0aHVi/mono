@@ -1,9 +1,9 @@
-import path from 'node:path'
-
-import { runEntrypoint } from '@greypan/monorepo-kit'
+import { defineCatch, defineRunner, getWorkspaceRoot } from '@greypan/monorepo-kit'
 
 import { changesetRequired } from '../policies/changeset-required.mjs'
 import { changesetStatus } from '../policies/changeset-status.mjs'
+
+import { runCheck } from './run-check.mjs'
 
 function parseOptions(argv) {
   const options = {}
@@ -20,9 +20,8 @@ function parseOptions(argv) {
   return options
 }
 
-const root = path.resolve(import.meta.dirname, '../..')
 // 传参坏了（exit 2，要修 workflow）与门禁没过（exit 1，要补 changeset）是两种失效；
-// 判据失败由 runEntrypoint 就地写成一行 stderr 并置 exitCode，不在这里兜。
+// 判据失败交给 `runCheck` 写成一行 stderr，不在这里兜。区间先解析，再作为装配期参数接进链。
 let options
 try {
   options = parseOptions(process.argv.slice(2))
@@ -30,4 +29,12 @@ try {
   process.stderr.write(`check-changeset: ${error instanceof Error ? error.message : String(error)}\n`)
   process.exit(2)
 }
-await runEntrypoint([changesetStatus, changesetRequired], { root, ...options, mode: 'ci' })
+const { base, head } = options
+
+await runCheck(() =>
+  defineRunner()
+    .use(changesetStatus({ base }))
+    .use(changesetRequired({ base, head }))
+    .use(defineCatch())
+    .make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })
+)

@@ -1,7 +1,7 @@
 # ADR-0021: Codex 自动 PR 审查门
 
 - **Date**: 2026-11-04
-- **Revised**: 2026-11-06
+- **Revised**: 2026-11-07
 - **Status**: 已接受
 
 ## 背景
@@ -17,11 +17,19 @@
 
 ## 决策
 
-Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：绿色 CI 不证明 review 完成，模型结论也不证明人工独立 review 已完成。
+Codex 审查承担本仓默认的 PR review 结论（2026-11-06 起；此前的口径是「对 ADR-0012 的补强，不是替代」，见下文同名修订段）。绿色 CI 不证明 review 完成，这道结论也不证明 `check` 通过。两条各证一件事，同时成立才算审过。
 
-**门禁形态**：约定式门禁，不改 GitHub 分支保护。`reviewed` 且 `Block > 0`、以及 `error` 让这道门变红；`unreviewed`、`stale`、`not_applicable` 保持绿色。`Block` 数量、状态、故障码与缺失配置名一起写进 PR 上同一条持久评论。合并准入仍由人和仓库的 PR review 纪律决定。
+**门禁形态**：约定式门禁，不改 GitHub 分支保护。`reviewed` 且 `Block > 0`、`error` 与 `unreviewed` 让这道门变红；`stale`、`not_applicable` 保持绿色。绿色因此只表示「这次运行有结论可读」，不表示结论是「没问题」。`Block` 数量、状态、故障码与缺失配置名一起写进 PR 上同一条持久评论。合并准入仍由人和仓库的 PR review 纪律决定。
 
-**状态口径**：`error` 只表示配置或调用故障，故障码为 `config_missing`、`model_failed`、`artifact_missing` 之一；模型腿正常结束却没产出结论是 `unreviewed`，输出不合 schema 也归 `unreviewed`。`continue-on-error` 只让判定脚本有机会落结论，模型腿的 `steps.<id>.outcome` 仍传给判定脚本，故障不会被掩成「未审查」。review job 被整体跳过时门记 `not_applicable`。
+**状态口径**：`error` 只表示配置或调用故障，故障码为 `config_missing`、`model_failed`、`artifact_missing` 之一；模型腿跑完却没产出可用结论是 `unreviewed`，故障码 `unusable_output`，输出不合 schema 也归这一档；模型给出空 findings 却没交覆盖清单是 `missing_coverage`，同样记 `unreviewed`。两档都让门变红：`unreviewed` 曾经保持绿色，实测中一次空 `summary` 就把整份 findings 丢掉而 PR 上只留一个绿勾，因此「模型没给出可用结论」与「结论是 Block 0」必须用颜色分开，处置是重跑一次，重复出现说明输出契约坏了。`continue-on-error` 只让判定脚本有机会落结论，模型腿的 `steps.<id>.outcome` 仍传给判定脚本，故障不会被掩成「未审查」。review job 被整体跳过时门记 `not_applicable`。
+
+**输出校验口径**：`parseReviewFindings` 把 findings 与 `coverage` 的结构错误都当致命错误（非法 JSON、缺 `findings`、未知档位、未知字段、空 `problem`、非法行号；`coverage` 非对象、缺 `inspected`/`uncovered`、条目不是非空字符串、含未知字段），这类输出由 `validate` 记 `unusable_output`；`coverage` 整个字段缺席则不算结构错误，交给 `validate` 判 `missing_coverage`——一个是「形状坏了」，一个是「没交」，处置不同。`summary` 只是评论顶部一行摘要，模型给空串或没给时结论照常成立，`validate` 在日志里留一行 `review output carries no summary` 并照常写 `reviewed`；prompt 的「输出」段明确要求 1–2 句摘要，但校验不拿装饰性字段当阻断条件——一次空 `summary` 不该让整份 findings 作废。
+
+**覆盖度口径**：`docs/agents/review.md` 一直要求「无发现也要记录审查范围、验证证据和未覆盖风险」，但 schema 在 2026-11-06 之前只有 `summary` 与 `findings`，这条要求在输出里没有落脚处——模型只能把「我正在看什么」塞进 `summary`，于是空 findings 的结论和「没查就收尾」在产物上完全同形。现在 schema 必填 `coverage.inspected` / `coverage.uncovered`：`validate` 在「无 findings、diff 非空、`inspected` 为空」时判 `missing_coverage` 并让门变红，diff 为空时豁免（没有源码改动可读，空清单不是缺证据）。`prepare` 同时把这次改动过的路径写进 `review-scope.json` 的 `changed_paths`：空 findings 时 `inspected` 至少要有**一条等于其中的改动文件**，否则同样判 `missing_coverage`——写父目录（`docs`）不算读过 `docs/agents/review.md`，只读判据文档就交卷，正是要区分的早停；反过来，PR 改的就是那份判据文档时，它当然算被审对象。复用路径还要多一道：`coverage` 是这一版才加的必填字段，没有它的旧产物一律不复用（不论有没有 findings），宁可重跑模型让这个 head 产出证据，也不把一次没有证据的结论洗成绿色——若改成「复用后再判红」，该 head 的重跑会永远红下去。`validate` 的复用分支再用同一判据兜一次，避免别的写入口绕开 `reuse`。`coverage` 是 schema 的必填项，有 findings 也不能省：否则交一条 `Nit` 就绕开整条覆盖规则，因此 diff 非空时 `validate` 一律要求 `coverage` 存在。判 `missing_coverage` 时 findings 仍会写进产物与评论：「结论不可用」由 `status` 表达，把已经看到的 Block 丢掉只会让作者少一条线索，而 `deriveConclusion` 以 `status` 为准，findings 不能把不可用的结论升格成绿色。复用的 artifact 解到独立目录（`$RUNNER_TEMP/codex-review-prior`），不与本轮 `prepare` 写的 `review-scope.json` 同目录——同名文件会把本次范围覆盖成上一轮的，`changed_paths` 就此缺位；缺位时交集为空，判定按红处理而不是放行，范围对不上宁可不给绿色。
+
+**收口纪律**：`coverage.uncovered` 是「读不完」的合法出口：`coverageGap()` 不读它，非空既不判红也不使结论作废，但按 `docs/agents/review.md` 必须人工逐项复核，且不满足该文件「结论即 review」的完成条件（`uncovered` 为空）。2026-11-07 给审查 prompt 补「调查与收口」段（按风险排序、证据够就交卷、如实列 `uncovered`、不许假 `inspected`），并把「按 `changed_paths` 逐个文件读」改成「候选清单 + 分片入口」：#519 在 60 分钟上限处被掐断时，模型把 137 文件清单当成必须读完的任务，93 条命令后仍未收口。这是给大 PR 一个可审计的出口，**不是对上游 `429 model_failed` 的修复**——那几次崩溃与运行时长、token 和模型进度没有稳定关系，属上游网关限速，另案处置。可信 prompt 与 schema 取自 PR base，本修复自身的审查腿仍读旧 prompt；`docs/agents/review.md` 不在可信输入清单里，由模型从工作区（本 PR head）读取，本 PR 即生效，因此这一轮是混合契约（旧 prompt 要求按清单逐文件读、新判据授权早停），按「输入可信来源」条款里已接受的同类风险由人工 review 兜住；prompt / schema 的新行为要等合入 main 后的下一个 PR 才能验证。
+
+**生成物滤除口径**：审查输入里不该出现生成物。`docs/agents/generated-artifacts.md` 的唯一判据是「能不能由 generator 完整重建」，据此按清单取可表达的最小 glob，由取自 PR base 的 `REVIEW_EXCLUDE_PATHSPECS` 在 `git diff` 入口滤出 `pr.diff` 与 `changed_paths`：目录型 `**/generated/**`、Wails `bindings/**`、单文件生成声明与 icon barrel。此前只滤 `**/generated/**`，其余生成物一旦出现在改动里就会随 `changed_paths` 被逐个读，是不必要的干扰与 token 消耗。实测 `git ls-files` 上这六条 pathspec 共滤掉 2391 个入库生成物（`**/generated/**` 之外只有 19 个）；#519 的 137 文件 diff 里一条生成物都没有，那次 429 属上游网关限速，本次是预防性收敛范围，不是对它的修复。生成物不需要 diff，也不需要 review；它们的正确性仍由 `check-generated` 与消费者类型检查证明，不由结论证明。被滤除的路径不进 `coverage.inspected`，也不算 `coverage.uncovered`（那不是未覆盖，是不需要查），`review-scope.json` 记 `excluded_pathspecs` 供审计。名单不从 PR head 的工作树读取：作者可以改名单把自己的文件排除出审查，所以它必须留在可信脚本里；`inspectConfig` 还把它纳入配置指纹，清单变更后同 head 的旧结论不会借复用回到绿色。**未采用**：按文件名或 `DO NOT EDIT` 标记猜生成物（本仓既有不带标记的生成物，也有带标记却与 generator 无关的上游产物），以及审查脚本运行时加载 `.claude/settings.json` 的 `deny`（那份文件按「输入可信来源」从 PR base 落到 runner 临时目录，autofix 腿已用它校验 patch；但滤除清单是审查契约的一部分，须与 prompt、schema 同源留在可信脚本里，不与编辑拦截共用一份通配；两侧覆盖关系另由脚本单测钉住：显式覆盖表挡单侧增删，用 git 的 glob 引擎比对两份名单命中的真实入库文件集合（当前各 2391 个）挡「同步改表」的绕过；覆盖表与样例仍是人工维护，尚无文件入库的新生成物路径须按判据核对）。
 
 **权限分腿**：模型只在 PR 验证的只读 job 里运行；写回（评论、应用并推送 patch）在由 CI 完成事件触发的独立 workflow 里进行，那条 workflow 一次都不调用模型。这条划分是 PR 验证只读不变量成立的前提。该 workflow 显示名为 `Codex Review Report`（文件 `codex-review-report.yml`）：它的产物是一份关于既有结论的报告，不改判结论，所以不叫 publish。
 
@@ -52,11 +60,11 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 **适用范围**：只审同源仓库、base 为 `main`、未关闭且不是版本分支的 PR。fork PR 默认不跑——它拿不到仓库 secret，要审就得逐次为它放行。
 
-**幂等与去重**：同一 head 且配置指纹（端点、模型、强度、版本、密钥有无）一致、且旧结论是 `reviewed` 时，复用前一次 run 的产物；标题编辑与手动重跑不再消耗模型调用。配置变动会让旧结论失效，`error` 与 `unreviewed` 从不复用。并发组按 PR 分支取消更早的 run。不设文件数、行数或改动量阈值，也不给模型加「只看 N 个文件」的采样——体量问题用超时兜住，而不是用少看来兜。
+**幂等与去重**：同一 head 且配置指纹（端点、模型、强度、版本、密钥有无）一致、且旧结论是 `reviewed` 时，复用前一次 run 的产物；标题编辑与手动重跑不再消耗模型调用。配置变动会让旧结论失效，`error` 与 `unreviewed` 从不复用。并发组按 PR 分支取消更早的 run。不设文件数、行数或改动量阈值，也不给模型加「只看 N 个文件」的采样；体量由 120 分钟上限、按风险排序的调查策略与 `coverage.uncovered` 这个如实收口出口共同兜住——出口不是阈值，未判断的改动处仍要逐条列出并交人工复核。
 
 **自动修**：`check` job 失败且 `CODEX_AUTOFIX_ENABLED` 为 `true` 时，模型在 workspace 沙箱里产出一份候选 patch，作为 artifact 交给特权腿；只有它校验通过才提交并直推 PR 分支。patch 只能修改已入库文件，CI 定义、依赖清单、生成物、agent 指令与凭证路径一律整份拒绝。已包含自动修提交的 head 不再规划第二次。开关无值即两条腿都不跑，主审查链路不依赖它。规划腿是尽力而为的旁路，保留 job 级 `continue-on-error`，其失败不让 PR 变红；这与审查腿「故障即红」不矛盾：门只看审查结论，自动修的失败由 artifact 与日志呈现。
 
-**触发收敛**：写回腿只处理同源仓库的 PR run，排除已取消的 run 与版本分支；没有审查 artifact 时跳过发评论，不制造无意义失败——但跳过必须留痕：`Explain the skipped report` 在 Summary 与 notice 里写明原因，并回查触发 run 的 artifact 列表，把「没有可写回的结论」和「写回腿没取到已有产物」分开。只读探测是尽力而为，失败不阻止结论发布，写权限不足由发布步骤的 403 清单报告。门仍不设为分支必需检查。
+**触发收敛**：写回腿只处理同源仓库的 PR run，排除已取消的 run 与版本分支；没有审查 artifact 时跳过发评论，不制造无意义失败——但跳过必须留痕：`Explain the skipped report` 在 Summary 与 notice 里写明原因，并回查触发 run 的 artifact 列表，把「没有可写回的结论」和「写回腿没取到已有产物」分开。同一道留痕也覆盖「head 不属于任何打开的 PR」：这一步的守卫按 `resolve-pull` 是否成功取，不按有没有解析到 PR，否则解析不到 PR 时整条腿一步都不跑、静默变绿。只读探测是尽力而为，失败不阻止结论发布，写权限不足由结论步骤的 403 清单报告。门仍不设为分支必需检查。
 
 **结论产物跨 run 传递**：审查腿上传的 `codex-review-findings` artifact 由写回腿下载，结论复用也会下载历史 run 的同名 artifact。`actions/download-artifact@v7` 只有在**显式给出 `github-token: ${{ github.token }}`** 时才会启用 `repository` / `run-id` 跨 run 查找（上游 `src/download-artifact.ts` 节选：`if (inputs.token) { options.findBy = { workflowRunId: inputs.runID } }`）；缺 token 会静默退化成「只查当前 workflow run」，写回腿因此报 `Artifact not found for name: codex-review-findings` 并跳过发评论。三处跨 run 下载（写回腿两条、`ci.yml` 的复用一条）都必须带 token，由拓扑断言钉住；同 run 的下载不需要。上传用 `upload-artifact@v6`、下载用 `download-artifact@v7` 是各自独立的主版本，二者都基于 v4+ artifact 后端，互相兼容，此次故障与版本差无关。另：写回腿是 `workflow_run`，GitHub 只取**默认分支**上的 workflow 文件，所以本文件的修改必须合入 main 后才生效，PR 自己那轮 CI 无法验证写回修复。
 
@@ -64,9 +72,9 @@ Codex 审查是对 [ADR-0012](./0012-pr-review.md) 的补强，不是替代：�
 
 **引导落地**：可信脚本取自 PR base，因此引入新子命令的那个 PR 自己拿到的仍是 base 里的旧脚本。模型腿的 job 级不设 `continue-on-error`，旧脚本缺少 `preflight` 时该 job 直接变红，而不是又回到全绿静默。合并后的下一个 PR 起，base 带新脚本，链路完整生效。
 
-**时间与成本**：两条模型腿各给 60 分钟上限，这是首批实测用的临时余量，测出真实分布后回收；自动修只在失败时触发，它自己也是消耗模型调用的一条腿。
+**时间与成本**：审查腿给 120 分钟上限，自动修腿保持 60 分钟——前者要覆盖整份改动的风险面，后者产出的是一小片 patch，且只在 `check` 失败时触发。上限是天花板不是预算目标：常规 PR 5–25 分钟，按旧契约只有 130 文件以上的改动会用到后半段（实测见「同日第八次实测」）；收口纪律允许证据足够时提前交卷，也允许把未判断处列进 `coverage.uncovered` 而不硬撑到上限，因此「会用到后半段」不再是新契约下的预测。
 
-**审查范围**：`resolveReviewRange` 的 `git diff` 用 `:(exclude,glob)**/generated/**` 在入口剔掉生成产物，`review-scope.json` 记下 `excluded_pathspecs` 与 `empty_diff` 便于审计。这是路径层面的批量 churn 过滤：md-to-meta 的 meta/codeblock 随 markdown 重建整批换哈希名，`icons/generated` 等入库产物同样只随 generator 变，都只会淹没真实改动；`routeTree.gen.ts` 之类单文件生成物仍留在审查 diff。`prepare` 由审查腿与自动修腿共用，两条腿同时受益。对 PR #515 的 base/head 对象做本地 `git diff` 实测：13.9 MB → 1.29 MB（不是 CI run 观测值；可信脚本取自 base，本修复 PR 的 CI 仍跑旧脚本）。**执行纪律不在本 ADR**：两份 diff 的分工、生成物怎么核对、空 diff 为何不构成可合并结论，由 `docs/agents/review.md`「审查范围与生成物」承载；生成物清单与排除清单的边界由 `docs/agents/generated-artifacts.md` 承载；本 ADR 只记取舍与实测。
+**审查范围**：`resolveReviewRange` 的 `git diff` 用 `REVIEW_EXCLUDE_PATHSPECS` 在入口按 `docs/agents/generated-artifacts.md` 的清单滤除已知入库生成物（六条 pathspec，取舍见上文「生成物滤除口径」），`pr.diff` 与 `review-scope.json` 的 `changed_paths` 都不含它们；scope 记下 `excluded_pathspecs` 与 `empty_diff` 便于审计。`changed_paths` 同时是模型的分片入口：提示词要求先读它，按风险挑出要读的改动，再逐文件 `git diff <merge-base> <head> -- <path>`，而不是一次读完整个 diff；清单里的每一条都按待审源码处理，模型不自行扩大滤除范围。它是候选清单而非必须读完的任务清单，但收口纪律不授权从清单里删条目：没判断的改动处要逐条落进 `coverage.uncovered`，取舍见上文「收口纪律」。滤掉的是干扰信息：md-to-meta 的 meta/codeblock 随 markdown 重建整批换哈希名，`routeTree.gen.ts`、Wails bindings 等生成物同样只随 generator 变，既不需要 diff 也不需要 review。`prepare` 由审查腿与自动修腿共用，两条腿同时受益。对 PR #515 的 base/head 对象做本地 `git diff` 实测：13.9 MB → 1.29 MB（不是 CI run 观测值；可信脚本取自 base，本修复 PR 的 CI 仍跑旧脚本）。**执行纪律不在本 ADR**：两份 diff 的分工、生成物怎么核对、空 diff 为何不构成可合并结论，由 `docs/agents/review.md`「审查范围与生成物」承载；生成物清单与排除清单的边界由 `docs/agents/generated-artifacts.md` 承载；本 ADR 只记取舍与实测。
 
 **同步子进程上限**：`lib/github.mjs` 的 `run()` 与 codex 链路的 `gh` 调用统一给 `spawnSync` 设 64 MiB `maxBuffer`。默认 1 MiB 缓冲在大 PR 上抛 `ENOBUFS`，`prepare` 会在 preflight 之前失败并被下游误判成 `config_missing`；排除生成物后 diff 仍可能超过 1 MiB，两处修复缺一不可。
 
@@ -101,29 +109,58 @@ Error: /usr/bin/sudo exited with code 1
 
 **同日第五次实测（CI run `42059307127`，head `58ac1314`，第 3 次尝试）**：`check` 1m25s、`Codex review` 22m25s、`Codex review gate` 17s 全 pass；`Image: ubuntu-24.04`、`drop-sudo` 成功、`Run codex exec` 以 `deepseek-v4.1-flash` / `high` 真实调用并产出 `codex-final-message.json`，结论 `Block 0, Should fix 0, Nit 0`。该 run 的前两次尝试（attempt 1、2）都在 `Run codex exec` 启动 1.6–1.8 秒后失败，日志为 `server_error: Upstream request failed: [invalid_request_error] this feature is not yet supported by atlas`，零模型调用；模型 job 因步骤级 `continue-on-error` 显示 pass，gate 按「故障即红」记 `model_failed`。同一配置、同一 head 在第 3 次尝试即成功，说明这是上游网关的瞬时故障，不是仓库配置问题——处置是**重跑整条 run**，不能只重跑 failed job（模型 job 表面是绿的）。PR 上仍无结论评论，原因与第四次相同：写回腿取默认分支版本，token 修复尚未合入 main。这次观测也说明 60 分钟上限仍有余量（已见 7m29s 与 22m25s 两档），但回收余量要等真实分布更稳定。
 
+**同日第六次实测（PR #519 三个 head，PR #520 一次重跑；2026-11-06）**：同一份 prompt、同一个 `deepseek-v4.1-flash`，产出差异大到不能当噪声。head `17fe6611` 跑 16m07s、730,547 tokens，给出 2 条 `Should fix` 与一句中文摘要；head `3d990480` 只跑 1m35s、268,842 tokens、49 次命令调用就交卷，`findings: []`，摘要写成 `Inspecting shell i18n and related exec checks.`；PR #520 的重跑更极端，6.5 秒、7,866 tokens、零命令调用，摘要写成 `先读取审查规范与 PR diff，再按仓库的分级标准核对变更。` 后两次的模型自述里都留着没查完的线索（`No bug obvious. Need inspect shell i18n … Could have path bug.`），说明它是**提前收尾**而不是查完没发现。同时暴露第二个问题：结论评论是就地更新的，`created_at` 永远停在第一次写回那一刻（`07:13` vs `updated_at 11:14`），读者据此以为没有新结论。
+
+根因不在模型能力，而在输出契约缺字段：`review.md` 要求「无发现也要记录审查范围、验证证据和未覆盖风险」，schema 却只有 `summary` 与 `findings`——这条要求无处落脚，模型只能把过程句塞进 `summary`；而「空 findings」零成本、且与「查完没问题」在产物上完全同形，早停因此不可观测、门照旧绿。修法见「覆盖度口径」与评论的「结论生成于」行；没有采用换模型或「摘要必须含中文」这类替代判据。
+
+**同日第七次实测（PR #519 head `d96d5d88`，CI run `42260301840` 的两次 attempt）**：`coverage` 让早停可见，但没让它停下来。attempt 1 只跑 4.2 秒、316 tokens、**零命令调用**，摘要写成「正在读取 PR 的源码 diff 与仓库审查判据，随后核对受影响文件及相关调用方。」；attempt 2 跑 11.2 秒、16,589 tokens、6 次命令调用，先把 `review-scope.json` 猜成 `$RUNNER_TEMP/review-scope.json`（实际在同级 `codex-review/` 目录下，输出为空），再 `sed -n '1,200p' pr.diff`（578,836 字节 / 137 个文件），推理里写下 `Diff huge 578k. Need systematically inspect all changed files` 后直接交出 `{"summary":"...","coverage":{"inspected":[],"uncovered":[]},"findings":[]}`。两次都判 `missing_coverage`，门是红的——`coverage` 按设计让这类结论无法变绿，但它只解决「看不见」，不解决「没查」。同一 PR 的上一个 head `9fbda756` 用同一份 prompt 跑 15m39s、读 113 个文件、报出 1 条 `Should fix`（正是 `d96d5d88` 修掉的 `throwIfNoEntry` 缺陷），说明改动本身可审，缺的是可读入口：prompt 只提到 `review-scope.json` 的名字却没给路径，也没说大的 diff 该怎么分片。修法见「审查范围」；评论侧同时把作废结论的覆盖行与「未覆盖」段落一并收掉，不再与「未审查」自相矛盾。
+
+**同日第八次实测（PR #519 head `9a430e74`，CI run `42333032169`）**：新 prompt 生效后的第一轮。模型不再早停——同一份 137 文件 / +4323 −3394 的改动，上一版 prompt 在 11 秒内交白卷，这一版跑满 60 分钟仍在读：93 条命令、无一条重复，读掉 90 个仍存在的源码文件里的 62 个（另有 21 条源码路径是本 PR 删除的旧位置），推理里已在逐条比对实现与判据。但 job 级 `timeout-minutes: 60` 到点掐断了它：`codex-final-message.json` 没写出来，`validate` 记 `unusable_output`（`the review step produced no output file`），门红。**结论**：`changed_paths` 分片入口解决了「不查就收卷」，代价是把「大 PR 读不完」暴露出来；按已读比例推算收口需要 95–100 分钟，审查腿上限因此提到 120 分钟（自动修不受影响）。这一条同时说明「60 分钟余量」不再是猜测：常规 PR 仍在 25 分钟内，只有 130 文件量级的改动会落到后半段。**未采用**：给小 PR 和大 PR 分设两套 prompt（可信输入取自 base，分叉会让同一 head 的结论不可比），或让模型自行截断到某个文件数（截断点无法用判据表达，等于把「查多少」交给运气）。
+
 **验收清单**（后台配置填齐后按 run 日志逐项核对）：
 
 1. `Run codex exec` 出现，`codex-final-message.json` 非空且通过 schema。
 2. PR 上出现 `codex-review-conclusion` 持久评论，`status=reviewed`。
 3. 清掉任一变量后重跑：`codex-gate` 变红，日志只列缺失变量名，评论标 `error` 与 `config_missing`。
 4. 改 `CODEX_REVIEW_MODEL` 后同 head 重跑：旧结论不复用，模型重新调用。
-5. 写回腿成功发出或更新结论评论；workflow_run 列表里没有无产物的失败 run。没有产物的 run 仍为绿色，但 Summary 必须写明「未发布」与原因。
+5. 写回腿成功发出或更新结论评论；workflow_run 列表里没有无产物的失败 run。没有产物的 run 仍为绿色，但 Summary 必须写明「未写回」与原因。
 6. 拓扑断言与脚本单测全绿。
-7. `review-scope.json` 记有 `excluded_pathspecs` 与 `empty_diff`，审查 diff 里没有 `**/generated/**` 路径；大 PR 不因 `ENOBUFS` 让 `prepare` 失败。（**合入 main 后的下一个 PR** 上核对：可信脚本取自 PR base，修复自己的 CI 仍跑旧脚本。）
+7. `review-scope.json` 记有 `excluded_pathspecs`、`changed_paths` 与 `empty_diff`，审查 diff 与 `changed_paths` 里没有 `docs/agents/generated-artifacts.md` 清单里的任何生成物路径（不只 `**/generated/**`）；大 PR 不因 `ENOBUFS` 让 `prepare` 失败。（**合入 main 后的下一个 PR** 上核对：可信脚本取自 PR base，修复自己的 CI 仍跑旧脚本。）另外，`.claude/settings.json` 的 `deny` 编辑拦截名单与六条 pathspec 的覆盖关系由脚本单测钉住：单侧增删或改名会红，已入库文件的覆盖集合不一致也会红；覆盖表与样例为人工维护，新增生成物仍须按判据逐条核对。
 8. 两条模型腿的 `Set up job` 日志出现 `Image: ubuntu-24.04`，且 `Run codex exec` 不再出现 `Could not restrict access to /run/dbus/system_bus_socket`。以审查腿为准，满足第 1 项（有真实模型结论）后再核对此项；autofix 腿只在 `CODEX_AUTOFIX_ENABLED=true` 且 `check` 失败时运行，默认关闭，不必为验收专门打开。
 9. 写回腿 `Download review findings` 不再报 `Artifact not found`，且 `Post conclusion comment` 未被跳过（这两步是可观测的修复点；评论内容本身按第 2 / 5 项核对）。写回腿取默认分支版本，**必须在修复合入 main 后的下一个 PR** 上核对，PR #516 自身无法验证。autofix patch 那处下载同理，但 `CODEX_AUTOFIX_ENABLED=false` 时整条腿被跳过，只能在显式打开开关且 `check` 失败的 run 上验证。
 10. 写回腿改名为 `Codex Review Report` 后：Actions 列表显示新名字，job 为 `report-conclusion`（`Report review conclusion`）；无产物的 run 在 Summary 里有跳过原因与 notice；写回成功时 Summary 记 `已创建/已更新结论评论 #<id>`。「有产物却下载失败」的判红分支只能靠改坏 `run-id` 或断网触发，自然 run 上不必刻意制造，留作未实测项。
+11. 输出校验口径与红色边界：模型给出 `summary: ""` 而 findings 合法时，`Record review conclusion` 照常写 `reviewed`、PR 评论有档位与发现但没有摘要行，`Codex review gate` 的颜色只由 `Block` 决定；`review-meta.json` 为 `unreviewed` 时 gate 必须红，日志为 `Codex review produced no usable conclusion (unusable_output): …`，Summary 里有 `Code: unusable_output`。这两条由脚本单测钉住（`parseReviewFindings` 的容错用例、`gate` 在 `unreviewed` 上退出 1），无需在真实 run 上刻意制造。
+
+12. 覆盖度口径：`review-findings.json` 含 `coverage.inspected` 与 `coverage.uncovered`，`review-scope.json` 含 `changed_paths`，PR 评论头部有「覆盖：检查 N 个文件」；diff 非空时缺 `coverage` 一律判 `missing_coverage`（有 findings 也不例外），空 findings 时还要 `inspected` 至少一条**等于** `changed_paths` 里的文件（写目录不算）；没有 `coverage` 的旧产物不复用，且复用 artifact 解在独立目录、不会覆盖本轮的 `review-scope.json`。评论正文有「结论生成于」且就地更新时该行随新结论变化。这一条由脚本单测钉住（coverage 结构用例、有 findings 缺清单用例、`changed_paths` 相等与缺位用例、`path:line` 与目录条目用例、scope 不被覆盖用例、`missing_coverage` 端到端用例、复用拒绝用例、渲染断言），无需在真实 run 上刻意制造。提示词里的路径与 `scopePath()` 的输出一致，由单测钉住；作废结论的评论不出现「无未覆盖项」，也不渲染「未覆盖」段落。
+
+13. 收口纪律：prompt 把 `changed_paths` 当作候选清单（不是逐条读完的任务清单）、写明按风险排序与「证据够就交卷」；`coverage.uncovered` 非空时 PR 评论渲染「未覆盖」段落并交人工逐项复核，空 findings 时仍按 `missing_coverage` 作废。关键措辞由脚本单测钉住；`coverage.inspected` 是否真读过属模型自述，脚本只能校验结构，真伪由人工复核。prompt / schema 的新行为只能在**合入 main 后的下一个 PR** 上核对（可信输入取自 PR base）；判据文档从工作区读取、本 PR 即生效，这一轮是混合契约，按「输入可信来源」的已接受风险由人工 review 兜住。这一项不用于验证上游 429 是否恢复。
 
 **待办**：`prepare` 的任何失败都会跳过 preflight，被 `validate` 记成 `config_missing`；后续把 preflight 前置到 prepare 之前，或引入 `job_failed` / `preflight_missing` 错误码，并同步「状态口径」、`docs/agents/review.md` 的故障码清单、`renderConclusion()` 与相关单测。本次修复后该误归因对 PR #515 的事故不再可达，门「故障即红」不受影响。
+
+## 2026-11-06 修订：这道结论就是本仓默认的 review
+
+引入这道门时的定位是「补强，不是替代」，独立性仍由人或另起的会话在 PR 上兑现一次。落地后按这条口径跑了两个 PR。实测取自 PR #519 的 head `3d990480`：审查范围 `b1a59cef..3d990480`，532,884 字节、130 文件；`Codex review` job 跑 2 分 6 秒，其中 `Run codex exec` 腿 95 秒，是模型真调用而不是产物复用；结论 `Block 0 / Should fix 0 / Nit 0`。同一 head 按旧口径还要再派一次独立审查：85 个文件的增量切成 4 条 lane，每 lane 18–26 个文件分别派出，报告回收后才编号给用户。
+
+**裁决**：门给的结论就是这份 PR 的 review。三条同时成立即完成：reviewed SHA 等于当前 head、`Block` 为 0、`check` 在当前 head 上成功。要不要另起一次本地 agent 或人工审查由 agent 自己判断，仓库文档不规定触发条件，也不禁止。操作口径在 `docs/agents/review.md`「自动审查结论的效力」，本 ADR 只记取舍。
+
+**2026-11-07 补，裁决之后落地的覆盖度契约改了这条的射程**：三条同时成立覆盖的是结论自己声明读过的部分。`coverage.uncovered` 非空时那些位置不在结论射程内，必须逐项人工复核再收口；这一条不算上面那句「不规定触发条件」的例外，因为它不要求任何人重读已覆盖的 diff，只补结论列出的空白。同一次改动里还留下一个证据问题：本修订引用的 head `3d990480` 那次 run，事后复盘归为提前收尾（模型腿 1m35s、268,842 tokens、`findings: []`，自述里留着没查完的线索，见「同日第六次实测」），所以它证明的是模型真调用，不是审查查完。取消固定第二次审查的论证因此不再挂在那一次 run 上，改挂在覆盖证据上：契约要求 `inspected` 命中改动文件，缺证据直接判 `missing_coverage` 变红，绿色从此自带射程。
+
+**为什么这次可以换**：独立性要的是「执行体与实施者叙述隔离」，不是「执行体数量」。门满足隔离（另一个 runner、另一个模型、只读 PR diff、结论绑定 head），第二个人工执行体读的是同一批字节、按同一份三档判据，边际收益是重复劳动而不是新增维度。「同一份判据」不是推测：`.github/codex/prompts/review.md` 要求模型「先读 `docs/agents/review.md`…按它判，不要自创标准」，上面那次 run 的日志里也能看到它把该文件原文读进上下文。
+
+**没有换掉的东西**：
+
+- 覆盖空白仍在，兜法换了。被 `**/generated/**` 剔除的生成物门看不见，此前靠人工核对，现在靠 `check-generated` 与消费者类型检查；只改生成物的 PR（`empty_diff: true`）也按这条走。
+- 拿不到覆盖当前 head 的结论时（`error`、`unreviewed`、`stale`、`not_applicable`、fork PR、自动修推送的新 head、两个兜校验都不适用的产物），PR 上没有 review 结论。
+- 概率性没有被消除。门漏掉的低级遗漏，没有别的执行体会看到；缓解手段是后台可随时换更强的模型与更高强度（配置指纹变了就不复用旧结论），而不是把人工复核写回默认流程。
 
 ## 后果
 
 - 自动修推送的新提交不会触发 checks，PR 上那道必需检查要人重跑一次 CI 才会覆盖新 head；结论对新 head 也随之过期，这是「直推」换来的代价。
-- 门是约定式的：绕开它只需要忽略一次红叉，因此它省的是「等一次人工细看」，不是「替代人工」。
+- 门是约定式的：绕开它只需要忽略一次红叉。2026-11-06 起它是本仓默认的 PR review，忽略这一次红叉就等于合并未经审查的 PR。省掉的是「等一次人工细看」，新增的兜底只剩维护者自己看颜色。
 - 后台配置未填齐时每个 PR 都会红。配置本身成为可观测的门禁输入，代价是配置变更与门的颜色直接绑定。
 - 引入新可信子命令的那个 PR 自身无法完成审查：它的 base 还是旧脚本，模型腿会红。首次落地要先合入脚本、再在后续 PR 上验证全链路。
 - 只读腿与写腿分居两个 workflow，读代码时看到的 YAML 不能解释全部行为；判据在 ADR 与机器断言里，不只在 CI 定义里。
 - 模型结论的可信度受沙箱档位、输入版本与后台配置影响，这三处都由 CI 拓扑测试钉住，改动会被断言挡下来，而不是靠 review 时想起来。
 - 两条模型腿绑定 `ubuntu-24.04`，与本 workflow 其它 Linux job 的 `ubuntu-latest` 不同步；24.04 退役前必须按「Runner 镜像」条款的恢复条件完成迁移，否则审查链路会再次在模型启动前静默失败（表现为 job 绿、gate 红、零模型调用）。这是一笔有到期日的技术债。
-- 只改 `**/generated/**` 的 PR 得到空 diff，门不会因此变红：通常是 `reviewed`（`Block 0`），也可能是 `unreviewed`，两者都是绿的；门本身不区分「审过源码」与「没有源码可审」。这块覆盖空白由 `docs/agents/review.md`「审查范围与生成物」的人工纪律兜：空 diff 不构成可合并结论，也不适用核对式抽查。
-- 仍未实测的项：Linux 上 `--sandbox` 是否如文档生效；60 分钟余量对应多大的真实耗时；`codex-action` 在输出不合 schema 时是否仍以 0 退出（这决定 `unreviewed` 会不会被 `model_failed` 取代）；`workflow_run.head_branch` 在各事件下的实际取值；写回腿 403 在补 `pull-requests: write` 后是否彻底消失。403 若仍复现则按「故障可见」条款升级到专用写令牌。
+- 只改生成物（滤除清单内任意路径）的 PR 得到空 diff，门不会因此变红：结论是 `reviewed`（`Block 0`）。门本身不区分「审过源码」与「没有源码可审」——`unreviewed` 现在会让门变红，那是「模型没给出可用结论」，不是空 diff 的预期结果。这块覆盖空白由 `docs/agents/review.md`「审查范围与生成物」的人工纪律兜：`empty_diff: true` 既不算「结论即 review」，也不构成可合并结论，这类 PR 按完整 diff 走人工审查，或至少按清单逐类核对并留下 generator 证据。
+- 仍未实测的项：Linux 上 `--sandbox` 是否如文档生效；120 分钟对 200 文件以上的 PR 是否够（目前已见的最大档是 137 文件、需 95–100 分钟）；`codex-action` 在输出不合 schema 时是否仍以 0 退出（已观测到 schema 合法但 `summary` 为空的输出以 0 退出并落到 `unreviewed`；schema 非法时是重试还是失败仍未观测）；`workflow_run.head_branch` 在各事件下的实际取值；写回腿 403 在补 `pull-requests: write` 后是否彻底消失。403 若仍复现则按「故障可见」条款升级到专用写令牌。

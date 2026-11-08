@@ -150,7 +150,7 @@ jobs:
       - name: Check shared agent context
         run: pnpm run check-context
 
-      # 纳入唯一 required context；check-policy 内部并发运行各 policy check，任一失败都会使 job 失败。
+      # 纳入唯一 required context；check-policy 按 .use() 顺序串行跑各 policy 判定，首个 Err 短路并使 job 失败。
       - name: Check repository policies
         shell: bash
         run: |
@@ -212,8 +212,10 @@ jobs:
     # socket ACL 校验误判（openai/codex-action#188，修复 PR #191 未合并），模型腿会在 exec 前退出。
     # 恢复条件见 docs/adr/0021-codex-review-gate.md「Runner 镜像」；改标签会被拓扑断言挡下。
     runs-on: ubuntu-24.04
-    # 60 分钟是首批实测的临时余量，测出真实分布后回收；判定口径见 docs/adr/0021-codex-review-gate.md。
-    timeout-minutes: 60
+    # 120 分钟只兜「大 PR」的尾巴：常规 PR 5–25 分钟，137 文件/4.3k 行的 PR 在 60 分钟处用了
+    # 满额仍未收口（读掉 62/90 个仍存在的源码文件），见 docs/adr/0021-codex-review-gate.md「时间与成本」；
+    # 上限按旧契约的最坏情况留，新契约允许证据足够时提前交卷，见同 ADR「收口纪律」。
+    timeout-minutes: 120
     permissions:
       contents: read
       pull-requests: read
@@ -275,7 +277,9 @@ jobs:
           github-token: ${{ github.token }}
           run-id: ${{ steps.prior.outputs.prior_run_id }}
           repository: ${{ github.repository }}
-          path: ${{ runner.temp }}/codex-review
+          # 上一轮 artifact 必须解到独立目录：它带着上一轮的 review-scope.json，
+          # 与本次 prepare 写的同名文件同目录会覆盖本次范围。
+          path: ${{ runner.temp }}/codex-review-prior
 
       - name: Reuse prior conclusion
         id: reuse
@@ -352,7 +356,7 @@ jobs:
           base-sha: ${{ github.event.pull_request.base.sha }}
 
       - name: Download review findings
-        # review job 被跳过时没有 artifact，那是 unreviewed，不是门禁故障。
+        # review job 被跳过时没有 artifact，那是 not_applicable，不是门禁故障。
         continue-on-error: true
         uses: actions/download-artifact@v7
         with:

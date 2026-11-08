@@ -43,6 +43,19 @@ export async function to<T, E = unknown>(promise: Promise<T>): Promise<Result<Aw
   }
 }
 
+/**
+ * Rust 的 `Result::and_then`：`Ok` 时把载荷交给 `next` 并以其结果为准，`Err` 时原样上浮、
+ * `next` 一次都不跑。与 Rust 唯一的差别是这里收 `result` 作首参而不是方法调用，因为本模块
+ * 的 `ok` / `err` / `unwrap` 都是自由函数。
+ */
+export async function andThen<T, U, E>(
+  result: Result<T, E> | Promise<Result<T, E>>,
+  next: (value: T) => Result<U, E> | Promise<Result<U, E>>
+): Promise<Result<U, E>> {
+  const current = await result
+  return current.ok ? next(current.value) : current
+}
+
 // oxlint-disable-next-line typescript/no-explicit-any -- `S` retains caller types; `any` only admits either Result branch.
 export function unwrap<S extends Result<any, any>>(
   result: S

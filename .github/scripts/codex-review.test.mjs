@@ -1,5 +1,6 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
+import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -20,6 +21,7 @@ import {
   renderConclusion,
   resolveReviewRange,
   reviewTarget,
+  scopePath,
   withPermissionDiagnosis
 } from './codex-review.mjs'
 import { SPAWN_MAX_BUFFER, run } from './lib/github.mjs'
@@ -83,7 +85,11 @@ function writeFixtures(directory, conclusion = conclusionOf('Block'), meta = met
 }
 
 function conclusionOf(...severities) {
-  return { summary: '改动整体可用。', findings: severities.map(finding) }
+  return {
+    summary: '改动整体可用。',
+    coverage: { inspected: ['packages/monorepo-kit/src/runner/runner.ts'], uncovered: [] },
+    findings: severities.map(finding)
+  }
 }
 
 {
@@ -96,13 +102,26 @@ function conclusionOf(...severities) {
     'Should fix': 0,
     Nit: 0
   })
+
+  // summary 只进评论的摘要行：缺了它不能让整份 findings 作废（真实 run 上模型给过空串）。
+  for (const [label, raw] of [
+    ['missing summary', JSON.stringify({ findings: [finding('Should fix')] })],
+    ['empty summary', JSON.stringify({ summary: '', findings: [finding('Should fix')] })],
+    ['blank summary', JSON.stringify({ summary: '  \n ', findings: [finding('Should fix')] })],
+    ['non-string summary', JSON.stringify({ summary: null, findings: [finding('Should fix')] })]
+  ]) {
+    const tolerant = parseReviewFindings(raw)
+    assert.equal(tolerant.summary, '', label)
+    assert.equal(tolerant.findings.length, 1, label)
+    assert.deepEqual(tolerant.counts, { Block: 0, 'Should fix': 1, Nit: 0 }, label)
+  }
 }
 
 for (const [label, value] of [
   ['non JSON', 'not json'],
   ['array root', '[]'],
-  ['empty summary', JSON.stringify({ summary: ' ', findings: [] })],
   ['missing findings', JSON.stringify({ summary: 'ok' })],
+  ['findings not an array', JSON.stringify({ summary: 'ok', findings: {} })],
   ['unknown severity', JSON.stringify({ summary: 'ok', findings: [{ ...finding('Block'), severity: 'Must fix' }] })],
   ['unknown field', JSON.stringify({ summary: 'ok', findings: [{ ...finding('Block'), extra: 1 }] })],
   [
@@ -121,18 +140,35 @@ for (const [label, value] of [
   const command = (name, args) => {
     calls.push([name, ...args])
     if (args[0] === 'merge-base') return `${otherSha}\n`
+    if (args[0] === 'diff' && args.includes('--name-only')) return 'src/a.ts\u0000docs/b.md\u0000'
     if (args[0] === 'diff') return 'diff --git a/x b/x\n'
     return ''
   }
   const range = resolveReviewRange({ baseSha: otherSha, headSha, command })
-  assert.deepEqual(range, { baseSha: otherSha, headSha, mergeBaseSha: otherSha, diff: 'diff --git a/x b/x\n' })
+  assert.deepEqual(range, {
+    baseSha: otherSha,
+    headSha,
+    mergeBaseSha: otherSha,
+    diff: 'diff --git a/x b/x\n',
+    changedPaths: ['src/a.ts', 'docs/b.md']
+  })
+  // 期望值写在测试里，不从实现常量展开：过滤清单变了，这两条断言必须一起红。
+  const excluded = [
+    ':(exclude,glob)**/generated/**',
+    ':(exclude,glob)apps/*/frontend/bindings/**',
+    ':(exclude,glob)**/routeTree.gen.ts',
+    ':(exclude,glob)**/typed-router.d.ts',
+    ':(exclude,glob)**/auto-imports.d.ts',
+    ':(exclude,glob)packages/web-ui/src/icons/index.ts'
+  ]
   assert.deepEqual(calls, [
     ['git', 'cat-file', '-e', `${otherSha}^{commit}`],
     ['git', 'cat-file', '-e', `${headSha}^{commit}`],
     ['git', 'merge-base', otherSha, headSha],
-    ['git', 'diff', '--no-color', otherSha, headSha, '--', ':(exclude,glob)**/generated/**']
+    ['git', 'diff', '--no-color', otherSha, headSha, '--', ...excluded],
+    ['git', 'diff', '--name-only', '-z', otherSha, headSha, '--', ...excluded]
   ])
-  assert.deepEqual([...REVIEW_EXCLUDE_PATHSPECS], [':(exclude,glob)**/generated/**'])
+  assert.deepEqual([...REVIEW_EXCLUDE_PATHSPECS], excluded)
   assert.throws(() => resolveReviewRange({ baseSha: 'main', headSha, command }), /PR base SHA/)
   const missing = []
   const fetchOnDemand = (name, args) => {
@@ -241,7 +277,8 @@ for (const [label, value] of [
     error: ''
   })
   assert.equal(unreviewed.status, 'unreviewed')
-  assert.equal(unreviewed.blocking, false, 'a model that completed without output stays green')
+  assert.equal(unreviewed.code, 'unusable_output')
+  assert.equal(unreviewed.blocking, true, 'a model that completed without a usable conclusion must turn the gate red')
 
   const complete = inspectConfig(configuredEnv)
   assert.equal(complete.present, true)
@@ -286,7 +323,7 @@ for (const [label, value] of [
   assert.match(body, /packages\/web-ui\/src\/button\.ts:12/)
   assert.match(body, /Block 1 · Should fix 1 · Nit 0/)
   assert.match(body, /模型：`configured-model`/)
-  assert.match(body, /Block` 与 `error` 让/)
+  assert.match(body, /Block`、`error` 与「未审查」让/)
   assert.match(body, /run `1234`/)
   assert.ok(body.indexOf('**Block**') < body.indexOf('**Should fix**'), 'Block renders before Should fix')
   assert.deepEqual(
@@ -306,7 +343,133 @@ for (const [label, value] of [
     pullNumber: 54
   })
   assert.ok(!escaped.includes('<script>'), 'model text must not inject HTML into the comment')
-  assert.match(escaped, /scriptalert/)
+  assert.match(escaped, /&lt;script&gt;alert\(1\)&lt;\/script&gt; broke/)
+
+  // 尖括号转义不能吃掉泛型：真实 run 里 Plugin<ToolchainApi, KitCtx> 被删成了 PluginToolchainApi, KitCtx。
+  const genericParsed = parseReviewFindings(
+    JSON.stringify({
+      summary: '比较 Array<T> 与 <div> 的写法',
+      findings: [
+        {
+          ...finding('Should fix'),
+          suggestion: '把返回类型标注为 `Plugin<ToolchainApi, KitCtx>`。'
+        }
+      ]
+    })
+  )
+  const genericMeta = { ...metaOf(), summary: genericParsed.summary, findings: genericParsed.findings }
+  const generic = renderConclusion({
+    conclusion: deriveConclusion({ meta: genericMeta, findings: genericParsed, liveHeadSha: headSha, error: '' }),
+    meta: genericMeta,
+    pullNumber: 54
+  })
+  assert.match(generic, /Array&lt;T&gt; 与 &lt;div&gt;/)
+  assert.match(generic, /<code>Plugin&lt;ToolchainApi, KitCtx&gt;<\/code>/)
+  assert.ok(!generic.includes('PluginToolchainApi'), 'generic parameters must survive escaping')
+  assert.ok(!generic.includes('<div>'), 'summary must not inject HTML either')
+
+  // 代码段之外才转义：反引号里的比较符必须原样保留，否则会显示成实体。
+  const codeSpanParsed = parseReviewFindings(
+    JSON.stringify({
+      summary: '格式化',
+      findings: [{ ...finding('Nit'), problem: '条件 `a < b` 永远为假', suggestion: '' }]
+    })
+  )
+  const codeSpanMeta = { ...metaOf(), summary: codeSpanParsed.summary, findings: codeSpanParsed.findings }
+  const codeSpan = renderConclusion({
+    conclusion: deriveConclusion({ meta: codeSpanMeta, findings: codeSpanParsed, liveHeadSha: headSha, error: '' }),
+    meta: codeSpanMeta,
+    pullNumber: 54
+  })
+  assert.match(codeSpan, /<code>a &lt; b<\/code>/)
+
+  // 未闭合的反引号不是代码段：后面的 <b> 仍要转义。审查在 PR #520 上抓到的正是这个绕过。
+  const unclosedParsed = parseReviewFindings(
+    JSON.stringify({ summary: '边界', findings: [{ ...finding('Nit'), problem: '`<b>hack', suggestion: '' }] })
+  )
+  const unclosedMeta = { ...metaOf(), summary: unclosedParsed.summary, findings: unclosedParsed.findings }
+  const unclosed = renderConclusion({
+    conclusion: deriveConclusion({ meta: unclosedMeta, findings: unclosedParsed, liveHeadSha: headSha, error: '' }),
+    meta: unclosedMeta,
+    pullNumber: 54
+  })
+  assert.ok(!unclosed.includes('<b>'), 'an unclosed backtick must not become a code span')
+  assert.match(unclosed, /`&lt;b&gt;hack/)
+
+  // 长度不匹配的反引号 run 同样不是代码段。
+  const mismatchedParsed = parseReviewFindings(
+    JSON.stringify({ summary: '边界', findings: [{ ...finding('Nit'), problem: '``a` <b>', suggestion: '' }] })
+  )
+  const mismatchedMeta = { ...metaOf(), summary: mismatchedParsed.summary, findings: mismatchedParsed.findings }
+  const mismatched = renderConclusion({
+    conclusion: deriveConclusion({ meta: mismatchedMeta, findings: mismatchedParsed, liveHeadSha: headSha, error: '' }),
+    meta: mismatchedMeta,
+    pullNumber: 54
+  })
+  assert.ok(!mismatched.includes('<b>'), 'a mismatched backtick run must not swallow the following text')
+  assert.match(mismatched, /``a` &lt;b&gt;/)
+
+  // 反斜杠转义的反引号不能开代码段：CommonMark 把它当普通字符，后面的 <b> 仍是 HTML。
+  const escapedTickParsed = parseReviewFindings(
+    JSON.stringify({ summary: '边界', findings: [{ ...finding('Nit'), problem: '\\`<b>`', suggestion: '' }] })
+  )
+  const escapedTickMeta = { ...metaOf(), summary: escapedTickParsed.summary, findings: escapedTickParsed.findings }
+  const escapedTick = renderConclusion({
+    conclusion: deriveConclusion({
+      meta: escapedTickMeta,
+      findings: escapedTickParsed,
+      liveHeadSha: headSha,
+      error: ''
+    }),
+    meta: escapedTickMeta,
+    pullNumber: 54
+  })
+  assert.ok(!escapedTick.includes('<b>'), 'a backslash-escaped backtick must not open a code span')
+  assert.match(escapedTick, /&lt;b&gt;/)
+
+  // 未闭合的反引号之后仍可能有合法代码段：CommonMark 只把该 run 当普通文本，不能吞掉后文。
+  const unmatchedParsed = parseReviewFindings(
+    JSON.stringify({ summary: '边界', findings: [{ ...finding('Nit'), problem: '` ``Plugin<T>``', suggestion: '' }] })
+  )
+  const unmatchedMeta = { ...metaOf(), summary: unmatchedParsed.summary, findings: unmatchedParsed.findings }
+  const unmatched = renderConclusion({
+    conclusion: deriveConclusion({ meta: unmatchedMeta, findings: unmatchedParsed, liveHeadSha: headSha, error: '' }),
+    meta: unmatchedMeta,
+    pullNumber: 54
+  })
+  assert.match(unmatched, /<code>Plugin&lt;T&gt;<\/code>/, 'a later valid code span must still be recognised')
+  assert.ok(!unmatched.includes('<T>'), 'code content must stay escaped')
+
+  // 文件名里的反引号会提前闭合包裹它的代码段；保留原路径，改用更长的围栏。
+  const pathParsed = parseReviewFindings(
+    JSON.stringify({ summary: '路径', findings: [{ ...finding('Nit'), file: 'src/`<b>x.ts' }] })
+  )
+  const pathMeta = { ...metaOf(), summary: pathParsed.summary, findings: pathParsed.findings }
+  const pathBody = renderConclusion({
+    conclusion: deriveConclusion({ meta: pathMeta, findings: pathParsed, liveHeadSha: headSha, error: '' }),
+    meta: pathMeta,
+    pullNumber: 54
+  })
+  assert.ok(
+    pathBody.includes('<code>src/`&lt;b&gt;x.ts:12</code>'),
+    'the path must keep its backtick inside the code element'
+  )
+
+  // 路径里的换行会提前结束段落，代码段随之失效；先折成一行再包。
+  const multilineParsed = parseReviewFindings(
+    JSON.stringify({
+      summary: '路径',
+      findings: [{ ...finding('Nit'), file: 'src/a.ts\n\n<img src=x>', line: 3 }]
+    })
+  )
+  const multilineMeta = { ...metaOf(), summary: multilineParsed.summary, findings: multilineParsed.findings }
+  const multiline = renderConclusion({
+    conclusion: deriveConclusion({ meta: multilineMeta, findings: multilineParsed, liveHeadSha: headSha, error: '' }),
+    meta: multilineMeta,
+    pullNumber: 54
+  })
+  assert.ok(!multiline.includes('\n\n<img'), 'a multi-line path must not break out of the code span')
+  assert.ok(multiline.includes('<code>src/a.ts &lt;img src=x&gt;:3</code>'))
 
   const unreviewedMeta = { status: 'unreviewed', error: 'the review step produced no output file' }
   const unreviewed = renderConclusion({
@@ -316,7 +479,8 @@ for (const [label, value] of [
   })
   assert.match(unreviewed, /sha=none status=unreviewed blocks=0/)
   assert.match(unreviewed, /结论：\*\*未审查\*\*/)
-  assert.match(unreviewed, /没有可用发现/)
+  assert.match(unreviewed, /故障码：`unusable_output`/)
+  assert.match(unreviewed, /本次没有可用结论/)
 
   const failed = renderConclusion({
     conclusion: deriveConclusion({
@@ -541,7 +705,11 @@ function runCli(command, { env = {}, conclusionDir }) {
   writeConfig(runnerTemp)
   fs.writeFileSync(
     path.join(runnerTemp, 'codex-final-message.json'),
-    JSON.stringify({ summary: '有两处要改。', findings: [finding('Block'), finding('Should fix')] })
+    JSON.stringify({
+      summary: '有两处要改。',
+      coverage: { inspected: ['src/app.ts'], uncovered: [] },
+      findings: [finding('Block'), finding('Should fix')]
+    })
   )
   const validated = runCli('validate', { env: validateEnv, conclusionDir })
   assert.equal(validated.result.status, 0, validated.result.stderr)
@@ -557,13 +725,15 @@ function runCli(command, { env = {}, conclusionDir }) {
   fs.rmSync(path.join(conclusionDir, 'review-findings.json'))
   fs.rmSync(path.join(conclusionDir, 'review-meta.json'))
   const broken = runCli('validate', { env: validateEnv, conclusionDir })
-  assert.equal(broken.result.status, 0, 'a model that completed without output stays unreviewed')
+  assert.equal(broken.result.status, 0, 'validate records the gap; the gate is what judges it')
   assert.equal(broken.outputs.blocks, '0')
   assert.match(broken.outputs.reason, /no output file/)
   assert.equal(fs.existsSync(path.join(conclusionDir, 'review-findings.json')), false)
+  assert.equal(readConclusion(conclusionDir).meta.status, 'unreviewed')
   const gateAfterBreak = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha }, conclusionDir })
-  assert.equal(gateAfterBreak.result.status, 0)
+  assert.equal(gateAfterBreak.result.status, 1, 'no usable conclusion must not look like a green review')
   assert.match(gateAfterBreak.summary, /Status: \*\*unreviewed\*\*/)
+  assert.match(gateAfterBreak.summary, /unusable_output/)
 
   // 同一个「没有输出文件」，outcome=failure 说明 action 崩了，必须让 gate 变红。
   const crashed = runCli('validate', {
@@ -574,6 +744,27 @@ function runCli(command, { env = {}, conclusionDir }) {
   const gateAfterCrash = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha }, conclusionDir })
   assert.equal(gateAfterCrash.result.status, 1, 'a crashed model action must not be masked by continue-on-error')
   assert.match(gateAfterCrash.summary, /Status: \*\*error\*\*/)
+
+  // 模型给了 findings 但 summary 是空串：结论照样成立，不会退化成 unreviewed。
+  fs.writeFileSync(
+    path.join(runnerTemp, 'codex-final-message.json'),
+    JSON.stringify({
+      summary: '',
+      coverage: { inspected: ['src/app.ts'], uncovered: [] },
+      findings: [finding('Should fix')]
+    })
+  )
+  const missingSummary = runCli('validate', { env: validateEnv, conclusionDir })
+  assert.equal(missingSummary.result.status, 0, missingSummary.result.stderr)
+  assert.equal(missingSummary.outputs.blocks, '0')
+  assert.equal(readConclusion(conclusionDir).meta.status, 'reviewed')
+  assert.equal(readConclusion(conclusionDir).findings.counts['Should fix'], 1)
+  const gateAfterMissingSummary = runCli('gate', {
+    env: { CODEX_REVIEW_LIVE_HEAD_SHA: headSha },
+    conclusionDir
+  })
+  assert.equal(gateAfterMissingSummary.result.status, 0, 'a cosmetic gap must not invalidate the findings')
+  assert.match(gateAfterMissingSummary.summary, /Status: \*\*reviewed\*\*/)
 
   // 没有配置快照时 validate 不能把 error 结论覆盖成 unreviewed。
   fs.rmSync(path.join(runnerTemp, CONFIG_FILE))
@@ -628,16 +819,45 @@ function runCli(command, { env = {}, conclusionDir }) {
 
 {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-reuse-'))
-  const reuseEnv = { CODEX_REVIEW_HEAD_SHA: headSha, CODEX_REVIEW_PRIOR_RUN_ID: '4321', RUNNER_TEMP: directory }
+  // 上一轮 artifact 解在独立目录：它与本轮结论目录各有自己的 review-scope.json。
+  const priorDirectory = `${directory}-prior`
+  const reuseEnv = {
+    CODEX_REVIEW_HEAD_SHA: headSha,
+    CODEX_REVIEW_PRIOR_RUN_ID: '4321',
+    CODEX_REVIEW_PRIOR_DIR: priorDirectory,
+    RUNNER_TEMP: directory
+  }
   writeConfig(directory)
 
-  writeFixtures(directory, conclusionOf('Nit'), metaOf())
+  writeFixtures(priorDirectory, conclusionOf('Nit'), metaOf())
   const reused = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(reused.result.status, 0, reused.result.stderr)
   assert.equal(reused.outputs.reused, 'true')
   assert.equal(readConclusion(directory).meta.reused_from, '4321')
 
-  writeFixtures(directory, conclusionOf('Nit'), metaOf({ head_sha: otherSha }))
+  // 旧契约产物（没有 coverage）不能复用：否则一次没有证据的空结论会借复用这条路回到绿色。
+  const legacy = conclusionOf('Nit')
+  delete legacy.coverage
+  legacy.findings = []
+  writeFixtures(priorDirectory, legacy, metaOf())
+  const upgraded = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
+  assert.equal(upgraded.outputs.reused, 'false', 'a conclusion written before the coverage contract must not be reused')
+  assert.match(upgraded.outputs.reason, /coverage/)
+  assert.equal(
+    fs.existsSync(path.join(directory, 'review-findings.json')),
+    false,
+    'the stale conclusion is discarded so the model has to produce coverage for this head'
+  )
+
+  // 有 findings 但缺 coverage 同样是旧契约产物：不能因为「有发现」就放过。
+  const legacyFindings = conclusionOf('Nit')
+  delete legacyFindings.coverage
+  writeFixtures(priorDirectory, legacyFindings, metaOf())
+  const stale = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
+  assert.equal(stale.outputs.reused, 'false', 'findings do not excuse a missing coverage list')
+  assert.match(stale.outputs.reason, /coverage/)
+
+  writeFixtures(priorDirectory, conclusionOf('Nit'), metaOf({ head_sha: otherSha }))
   const drifted = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(drifted.outputs.reused, 'false')
   assert.equal(drifted.outputs.reason, '', 'a head mismatch is expected, not a read failure')
@@ -647,14 +867,14 @@ function runCli(command, { env = {}, conclusionDir }) {
     'a mismatched conclusion must not be reused'
   )
 
-  writeFixtures(directory, conclusionOf('Nit'), metaOf())
-  fs.writeFileSync(path.join(directory, 'review-findings.json'), 'not json')
+  writeFixtures(priorDirectory, conclusionOf('Nit'), metaOf())
+  fs.writeFileSync(path.join(priorDirectory, 'review-findings.json'), 'not json')
   const corrupt = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(corrupt.result.status, 0, 'a corrupt conclusion degrades to a fresh model call')
   assert.equal(corrupt.outputs.reused, 'false')
   assert.match(corrupt.outputs.reason, /not valid JSON/)
 
-  writeFixtures(directory, conclusionOf('Nit'), metaOf({ config_fingerprint: 'another-configuration' }))
+  writeFixtures(priorDirectory, conclusionOf('Nit'), metaOf({ config_fingerprint: 'another-configuration' }))
   const reconfigured = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(reconfigured.outputs.reused, 'false')
   assert.match(
@@ -663,17 +883,49 @@ function runCli(command, { env = {}, conclusionDir }) {
     'a changed model or endpoint must force a fresh review'
   )
 
-  writeFixtures(directory, conclusionOf('Nit'), metaOf({ status: 'error', error_code: 'config_missing' }))
+  writeFixtures(priorDirectory, conclusionOf('Nit'), metaOf({ status: 'error', error_code: 'config_missing' }))
   const priorError = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(priorError.outputs.reused, 'false')
   assert.match(priorError.outputs.reason, /no reviewable conclusion/, 'a failed prior run must never be reused')
 
   fs.rmSync(path.join(directory, CONFIG_FILE))
-  writeFixtures(directory, conclusionOf('Nit'), metaOf())
+  writeFixtures(priorDirectory, conclusionOf('Nit'), metaOf())
   const noConfig = runCli('reuse', { env: reuseEnv, conclusionDir: directory })
   assert.equal(noConfig.outputs.reused, 'false')
   assert.match(noConfig.outputs.reason, /configuration snapshot is missing/)
   fs.rmSync(directory, { recursive: true, force: true })
+  fs.rmSync(priorDirectory, { recursive: true, force: true })
+}
+
+{
+  // 上一轮 artifact 带着上一轮的 scope：它不能覆盖本轮 prepare 写的范围，
+  // 否则覆盖判定会拿一份对不上当前 diff 的 changed_paths，旧产物反而更容易变绿。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-scope-'))
+  const priorDirectory = `${directory}-prior`
+  writeConfig(directory)
+  const currentScope = {
+    empty_diff: false,
+    diff_bytes: 8192,
+    changed_paths: ['packages/monorepo-kit/src/runner/runner.ts']
+  }
+  fs.writeFileSync(path.join(directory, 'review-scope.json'), JSON.stringify(currentScope))
+  writeFixtures(priorDirectory, conclusionOf(), metaOf())
+  fs.writeFileSync(
+    path.join(priorDirectory, 'review-scope.json'),
+    JSON.stringify({ empty_diff: false, diff_bytes: 4096 })
+  )
+  const ran = runCli('reuse', {
+    env: { CODEX_REVIEW_HEAD_SHA: headSha, CODEX_REVIEW_PRIOR_DIR: priorDirectory, RUNNER_TEMP: directory },
+    conclusionDir: directory
+  })
+  assert.equal(ran.outputs.reused, 'true', ran.result.stderr)
+  assert.deepEqual(
+    JSON.parse(fs.readFileSync(path.join(directory, 'review-scope.json'), 'utf8')),
+    currentScope,
+    'the current review range survives a reuse artifact download'
+  )
+  fs.rmSync(directory, { recursive: true, force: true })
+  fs.rmSync(priorDirectory, { recursive: true, force: true })
 }
 
 {
@@ -824,6 +1076,514 @@ esac
     /exceeded the configured 1024 bytes buffer/,
     'an overridden maxBuffer must be reported with the actual limit'
   )
+}
+
+{
+  // coverage 是「空 findings」与「没查就收尾」之间唯一的区分依据，结构错误直接作废整份结论。
+  const parsed = parseReviewFindings(
+    JSON.stringify({
+      summary: '把审查契约补上覆盖清单。',
+      coverage: { inspected: [' .github/scripts/codex-review.mjs ', 'docs/agents/review.md'], uncovered: [] },
+      findings: []
+    })
+  )
+  assert.deepEqual(
+    parsed.coverage,
+    { inspected: ['.github/scripts/codex-review.mjs', 'docs/agents/review.md'], uncovered: [] },
+    'coverage entries are trimmed and kept in order'
+  )
+  assert.equal(
+    parseReviewFindings(JSON.stringify({ summary: '', findings: [] })).coverage,
+    null,
+    'an absent coverage block stays null so validate can name the failure'
+  )
+  for (const [payload, expected] of [
+    [{ summary: '', coverage: [], findings: [] }, /coverage must be an object/],
+    [{ summary: '', coverage: { inspected: [], uncovered: [], extra: 1 }, findings: [] }, /unknown fields: extra/],
+    [
+      { summary: '', coverage: { inspected: [], uncovered: [] }, findings: [{ ...finding('Nit'), extra: 1 }] },
+      /unknown fields/
+    ],
+    [{ summary: '', coverage: { uncovered: [] }, findings: [] }, /coverage is missing inspected/],
+    [
+      { summary: '', coverage: { inspected: 'src/a.ts', uncovered: [] }, findings: [] },
+      /coverage\.inspected must be an array/
+    ],
+    [
+      { summary: '', coverage: { inspected: [7], uncovered: [] }, findings: [] },
+      /coverage\.inspected\[0\] must be a non-empty string/
+    ],
+    [
+      { summary: '', coverage: { inspected: ['   '], uncovered: [] }, findings: [] },
+      /coverage\.inspected\[0\] must be a non-empty string/
+    ]
+  ]) {
+    assert.throws(() => parseReviewFindings(JSON.stringify(payload)), expected)
+  }
+}
+
+{
+  // 评论是就地更新的，创建时间不会动；正文必须自己带上生成时间与覆盖度，否则读者无法判断新旧。
+  const parsed = parseReviewFindings(
+    JSON.stringify({
+      summary: '把审查契约补上覆盖清单。',
+      coverage: { inspected: ['src/a.ts', 'src/b.ts'], uncovered: ['src/c.ts:9 打不开'] },
+      findings: []
+    })
+  )
+  const meta = metaOf({ generated_at: '2026-11-06T11:14:38Z' })
+  const body = renderConclusion({
+    conclusion: deriveConclusion({ meta, findings: parsed, liveHeadSha: headSha }),
+    meta: { ...meta, summary: parsed.summary, coverage: parsed.coverage, findings: parsed.findings },
+    pullNumber: 519
+  })
+  assert.match(body, /结论生成于：`2026-11-06 11:14Z`/, 'the generation stamp must survive in-place edits')
+  assert.match(body, /覆盖：检查 2 个文件，另有 1 处未覆盖/, 'coverage counts must be in the header')
+  assert.match(body, /\*\*未覆盖\*\*/)
+  assert.match(body, /- src\/c\.ts:9 打不开/, 'uncovered entries must be listed for the reader')
+
+  const withoutCoverage = renderConclusion({
+    conclusion: deriveConclusion({ meta, findings: parsedConclusion(), liveHeadSha: headSha }),
+    meta: { ...meta, summary: '改动整体可用。', findings: [] },
+    pullNumber: 519
+  })
+  assert.match(
+    withoutCoverage,
+    /覆盖：本次结论没有附覆盖清单/,
+    'a reviewed conclusion without coverage cannot claim coverage'
+  )
+
+  const many = parseReviewFindings(
+    JSON.stringify({
+      summary: '覆盖清单很长。',
+      coverage: {
+        inspected: ['src/a.ts'],
+        uncovered: Array.from({ length: 8 }, (_, index) => `src/f${index}.ts:1 需要判断`)
+      },
+      findings: []
+    })
+  )
+  const capped = renderConclusion({
+    conclusion: deriveConclusion({ meta, findings: many, liveHeadSha: headSha }),
+    meta: { ...meta, summary: many.summary, coverage: many.coverage, findings: many.findings },
+    pullNumber: 519
+  })
+  assert.match(
+    capped,
+    /其余 3 处见 `review-findings\.json`/,
+    'the comment lists a capped slice, the artifact keeps the rest'
+  )
+
+  // 结论作废时清单跟着作废：空清单 +「无未覆盖项」会和上面的「未审查」说反话，
+  // 「未覆盖」段落也会借回「这些位置要人工复核」的含义。
+  const voidedMeta = metaOf({
+    status: 'unreviewed',
+    error_code: 'missing_coverage',
+    error: 'the review reported no findings without listing a single inspected path'
+  })
+  const renderVoided = coverage => {
+    const parsedVoid = parseReviewFindings(JSON.stringify({ summary: '...', coverage, findings: [] }))
+    return renderConclusion({
+      conclusion: deriveConclusion({ meta: voidedMeta, findings: parsedVoid, liveHeadSha: headSha }),
+      meta: {
+        ...voidedMeta,
+        summary: parsedVoid.summary,
+        coverage: parsedVoid.coverage,
+        findings: parsedVoid.findings
+      },
+      pullNumber: 519
+    })
+  }
+
+  // PR #519 的形状：清单是空数组，旧渲染会写成「检查 0 个文件，无未覆盖项」。
+  const emptyVoided = renderVoided({ inspected: [], uncovered: [] })
+  assert.match(emptyVoided, /覆盖：本次结论作废，覆盖清单不构成审查范围/)
+  assert.ok(!emptyVoided.includes('无未覆盖项'), 'a void conclusion may not claim that nothing was left uncovered')
+  assert.ok(!emptyVoided.includes('- 覆盖：检查'), 'a void conclusion may not print coverage counts')
+
+  // 清单里真有未覆盖项时也不能渲染成待复核清单。
+  const listedVoided = renderVoided({ inspected: [], uncovered: ['src/c.ts:9 打不开'] })
+  assert.ok(
+    !listedVoided.includes('**未覆盖**'),
+    'a void conclusion may not ask for the uncovered entries to be rechecked'
+  )
+}
+
+{
+  // 提示词给的路径必须与 prepare 真正写出的位置同源（同一个 scopePath）：只改结论目录不改 prompt，
+  // 模型会自己猜路径、拿到空清单，然后按「diff 太大」提前收尾。
+  const prompt = fs.readFileSync(path.join(import.meta.dirname, '../codex/prompts/review.md'), 'utf8')
+  const expected = scopePath({ RUNNER_TEMP: '$RUNNER_TEMP' })
+  assert.ok(prompt.includes(expected), `the review prompt must point at ${expected}`)
+  assert.ok(prompt.includes('changed_paths'), 'the review prompt must name the changed-path list')
+  assert.ok(
+    prompt.includes('docs/agents/generated-artifacts.md'),
+    'the review prompt must point at the generated-artifact criteria instead of inventing a list'
+  )
+  assert.ok(
+    prompt.includes('coverage.uncovered'),
+    'the review prompt must say filtered artifacts are not uncovered items'
+  )
+}
+
+{
+  // 收口纪律：#519 在 60 分钟上限处被掐断时，prompt 把 changed_paths 当成「逐个文件读完」的硬任务。
+  // 钉住「候选清单 + 风险排序 + uncovered 合法出口 + 不许假 inspected」四件事，防止改回硬目标。
+  const prompt = fs.readFileSync(path.join(import.meta.dirname, '../codex/prompts/review.md'), 'utf8')
+  const closing = prompt.split('## 调查与收口')[1]?.split('## 输出')[0] ?? ''
+  assert.ok(closing, 'the review prompt must have an investigation and closing section')
+  for (const phrase of ['按风险分配', '证据够了就交卷', 'coverage.uncovered', 'coverage.inspected', '人工逐项复核']) {
+    assert.ok(closing.includes(phrase), `the closing discipline must mention ${phrase}`)
+  }
+  assert.match(prompt, /候选清单，不是必须逐条读完的任务清单/)
+  assert.doesNotMatch(
+    prompt,
+    /按 `changed_paths` 逐个文件读/,
+    'the changed-path list must not become a read-everything task again'
+  )
+  const schema = JSON.parse(
+    fs.readFileSync(path.join(import.meta.dirname, '../codex/schemas/review-findings.schema.json'), 'utf8')
+  )
+  assert.match(
+    schema.properties.coverage.properties.uncovered.description,
+    /does not void the conclusion/,
+    'the schema must tell the model that a non-empty uncovered list is a valid close'
+  )
+  assert.match(
+    schema.properties.coverage.properties.inspected.description,
+    /do not add unread paths/,
+    'the schema must forbid padding inspected with unread files'
+  )
+  const rubric = fs.readFileSync(path.join(import.meta.dirname, '../../docs/agents/review.md'), 'utf8')
+  assert.match(rubric, /调查预算按风险分配/, 'the rubric must own the same closing policy as the prompt')
+  assert.match(rubric, /必须由人工逐项复核/, 'the rubric must keep the human recheck duty for uncovered items')
+}
+
+{
+  // 从文档的过滤路径表解析清单，与脚本常量做双向比对：单向的字符串包含只能发现
+  // 「脚本新增而文档没跟上」，发现不了「文档新增而脚本没跟上」。
+  const criteria = fs.readFileSync(path.join(import.meta.dirname, '../../docs/agents/generated-artifacts.md'), 'utf8')
+  const section = criteria.split('## 审查范围与编辑拦截的分工')[1].split('## 新增生成物时')[0]
+  const documented = section
+    .split('\n')
+    .filter(line => line.startsWith('| '))
+    .flatMap(line => [...(line.split('|')[1] ?? '').matchAll(/`([^`]+)`/gu)].map(match => `:(exclude,glob)${match[1]}`))
+  assert.deepEqual(documented, [...REVIEW_EXCLUDE_PATHSPECS])
+}
+
+{
+  // `.claude/settings.json` 的 deny 是「编辑拦截」的路径权威，REVIEW_EXCLUDE_PATHSPECS 是「审查
+  // 滤除」的最小 glob 集：一条 deny 可以由多条 pathspec 联合覆盖（icons/** 拆成 barrel 与
+  // generated/）。三层护栏：显式覆盖表挡单侧增删，真实入库文件集合挡「同步改表」的绕过，
+  // 临时 git 仓库挡 pathspec 写错。覆盖表与样例是人工维护的，新增生成物仍须按判据核对。
+  const settings = JSON.parse(fs.readFileSync(path.join(import.meta.dirname, '../../.claude/settings.json'), 'utf8'))
+  assert.ok(
+    settings.permissions && typeof settings.permissions === 'object',
+    'the deny list must live under permissions.deny'
+  )
+  const deny = settings.permissions.deny
+  assert.ok(Array.isArray(deny) && deny.length > 0, 'the deny list must not disappear')
+  const editPrefix = 'Edit(./'
+  const nonEdit = deny.filter(entry => !entry.startsWith(editPrefix))
+  assert.deepEqual(
+    nonEdit,
+    ['Read(./**/.env)', 'Read(./**/.env.local)'],
+    'only the two .env read guards may sit outside the Edit(...) generated-artifact entries'
+  )
+  const deniedPaths = deny
+    .filter(entry => entry.startsWith(editPrefix) && entry.endsWith(')'))
+    .map(entry => entry.slice(editPrefix.length, -1))
+  assert.equal(deniedPaths.length + nonEdit.length, deny.length, 'every deny entry must be classified')
+
+  const coverage = {
+    'apps/*/frontend/bindings/**': {
+      pathspecs: ['apps/*/frontend/bindings/**'],
+      samples: ['apps/interweave/frontend/bindings/github.com/example/service/models.ts']
+    },
+    'apps/*/src/generated/**': {
+      pathspecs: ['**/generated/**'],
+      samples: ['apps/react-web-ui-demo/src/generated/button.meta.js']
+    },
+    '**/auto-imports.d.ts': {
+      pathspecs: ['**/auto-imports.d.ts'],
+      samples: ['apps/interweave/frontend/auto-imports.d.ts']
+    },
+    '**/routeTree.gen.ts': {
+      pathspecs: ['**/routeTree.gen.ts'],
+      samples: ['apps/react-web-ui-demo/src/routeTree.gen.ts']
+    },
+    '**/typed-router.d.ts': {
+      pathspecs: ['**/typed-router.d.ts'],
+      samples: ['apps/vue-web-ui-demo/typed-router.d.ts']
+    },
+    'packages/web-ui/src/icons/**': {
+      pathspecs: ['**/generated/**', 'packages/web-ui/src/icons/index.ts'],
+      samples: ['packages/web-ui/src/icons/index.ts', 'packages/web-ui/src/icons/generated/gallery.ts']
+    }
+  }
+  assert.deepEqual(
+    [...deniedPaths].sort(),
+    Object.keys(coverage).sort(),
+    'a new or renamed Edit(...) deny entry must be matched with review pathspecs in this table'
+  )
+  const pathspecs = REVIEW_EXCLUDE_PATHSPECS.map(entry => entry.replace(':(exclude,glob)', ''))
+  const mapped = Object.values(coverage).flatMap(entry => entry.pathspecs)
+  for (const entry of mapped) {
+    assert.ok(pathspecs.includes(entry), `coverage table points at a pathspec the script does not use: ${entry}`)
+  }
+  assert.deepEqual(
+    [...new Set(mapped)].sort(),
+    [...pathspecs].sort(),
+    'every review pathspec must be justified by a deny entry'
+  )
+
+  // 覆盖表是人工数据：只靠它能「同步改 deny + 覆盖表」绕过。用 git 自己的 glob 引擎把两份
+  // 名单落到真实入库文件上，集合必须完全相同——新增生成物只要已有文件入库，漏改审查侧就红。
+  // 尚无文件入库的新路径不在这道断言的射程内，仍按 docs/agents/generated-artifacts.md 核对。
+  const repository = path.join(import.meta.dirname, '../..')
+  const trackedBy = glob =>
+    new Set(
+      run('git', ['-C', repository, 'ls-files', '-z', '--', `:(glob)${glob}`])
+        .split('\0')
+        .filter(Boolean)
+    )
+  const matchedBy = globs => [...new Set(globs.flatMap(glob => [...trackedBy(glob)]))].sort()
+  const deniedFiles = matchedBy(deniedPaths)
+  const excludedFiles = matchedBy(pathspecs)
+  assert.ok(deniedFiles.length > 0, 'the deny list must match tracked generated files')
+  assert.deepEqual(
+    deniedFiles,
+    excludedFiles,
+    'every tracked file denied for edits must be excluded from the review diff, and vice versa'
+  )
+
+  // 集合断言挡不住 glob 写错：把每条 deny 的样例路径与一个手写源码文件做成真实 diff，
+  // 确认只有源码留在 changed_paths 里。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-deny-'))
+  try {
+    const git = args => run('git', ['-C', directory, ...args])
+    const commit = message =>
+      git(['-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', message])
+    git(['-c', 'init.defaultBranch=main', 'init', '-q'])
+    git(['config', 'user.email', 'deny@example.test'])
+    git(['config', 'user.name', 'Deny Test'])
+    const samples = Object.values(coverage).flatMap(entry => entry.samples)
+    const source = 'packages/web-ui/src/button.ts'
+    for (const file of [...samples, source]) {
+      fs.mkdirSync(path.join(directory, path.dirname(file)), { recursive: true })
+      fs.writeFileSync(path.join(directory, file), 'base\n')
+    }
+    git(['add', '.'])
+    commit('base')
+    const baseSha = git(['rev-parse', 'HEAD']).trim()
+    for (const file of [...samples, source]) {
+      fs.writeFileSync(path.join(directory, file), 'head\n')
+    }
+    git(['add', '-A'])
+    commit('head')
+    const headSha = git(['rev-parse', 'HEAD']).trim()
+    const range = resolveReviewRange({ baseSha, headSha, command: (_name, args) => git(args) })
+    assert.deepEqual(
+      range.changedPaths,
+      [source],
+      'every path guarded by a deny Edit(...) entry must be filtered out of the review scope'
+    )
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true })
+  }
+}
+
+{
+  // 排除清单属于审查输入：它进了复用指纹，清单变更后同 head 的旧结论才不会借复用回到绿色。
+  const env = {
+    CODEX_RESPONSES_ENDPOINT: 'e',
+    CODEX_REVIEW_MODEL: 'm',
+    CODEX_REVIEW_EFFORT: 'high',
+    CODEX_VERSION: 'v',
+    CODEX_REVIEW_API_KEY: 'k'
+  }
+  const { config } = inspectConfig(env)
+  const values = { endpoint: 'e', model: 'm', effort: 'high', version: 'v', key_present: true }
+  assert.equal(
+    config.fingerprint,
+    createHash('sha256')
+      .update(JSON.stringify({ ...values, excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS }))
+      .digest('hex')
+      .slice(0, 16)
+  )
+  assert.notEqual(
+    config.fingerprint,
+    createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16),
+    'the fingerprint must include the review exclusion scope'
+  )
+}
+
+{
+  // 端到端：没有 findings 又没交覆盖清单 → unreviewed + missing_coverage，门必须变红。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-coverage-'))
+  writeConfig(directory)
+  const runValidate = () =>
+    runCli('validate', {
+      env: { CODEX_REVIEW_HEAD_SHA: headSha, CODEX_REVIEW_BASE_SHA: otherSha, CODEX_REVIEW_STEP_OUTCOME: 'success' },
+      conclusionDir: directory
+    })
+  const metaAfter = () => JSON.parse(fs.readFileSync(path.join(directory, 'review-meta.json'), 'utf8'))
+  const writeOutput = payload => {
+    fs.writeFileSync(path.join(directory, 'codex-final-message.json'), JSON.stringify(payload))
+    for (const name of ['review-meta.json', 'review-findings.json'])
+      fs.rmSync(path.join(directory, name), { force: true })
+  }
+
+  fs.writeFileSync(
+    path.join(directory, 'review-scope.json'),
+    JSON.stringify({
+      empty_diff: false,
+      diff_bytes: 4096,
+      changed_paths: ['packages/monorepo-kit/src/runner/runner.ts']
+    })
+  )
+  // 有 findings 也不能省掉覆盖清单：交一条 Nit 就绕开整条覆盖规则，是这条契约的漏洞。
+  writeOutput({ summary: '有一处小问题。', findings: [finding('Nit')] })
+  runValidate()
+  assert.equal(metaAfter().status, 'unreviewed', 'findings do not excuse a missing coverage list')
+  assert.equal(metaAfter().error_code, 'missing_coverage')
+  // 结论不可用不等于把已经看到的发现丢掉：findings 留着，红色由 status 表达。
+  const preserved = readConclusion(directory)
+  assert.equal(preserved.findings.counts.Nit, 1, 'the findings survive a missing coverage list')
+  assert.equal(
+    deriveConclusion({ meta: preserved.meta, findings: preserved.findings, liveHeadSha: headSha }).status,
+    'unreviewed',
+    'findings must not upgrade an unusable conclusion'
+  )
+
+  writeOutput({ summary: 'Inspecting shell i18n and related exec checks.', findings: [] })
+  runValidate()
+  assert.equal(metaAfter().status, 'unreviewed', 'no findings without coverage is not a reviewed conclusion')
+  assert.equal(metaAfter().error_code, 'missing_coverage')
+
+  // 只读了判据文档不算审查过改动：inspected 必须命中本次 diff 改过的路径。
+  writeOutput({
+    summary: '改动整体可用。',
+    coverage: { inspected: ['docs/agents/review.md'], uncovered: [] },
+    findings: []
+  })
+  runValidate()
+  assert.equal(metaAfter().status, 'unreviewed', 'reading the rubric is not reading the change')
+  assert.equal(metaAfter().error_code, 'missing_coverage')
+
+  // 没有 changed_paths 的 scope（上一轮 artifact 的形状）不能当放行条件：判定必须 fail closed，
+  // 否则覆盖了本次范围的旧 scope 会让任意 inspected 都通过。
+  fs.writeFileSync(path.join(directory, 'review-scope.json'), JSON.stringify({ empty_diff: false, diff_bytes: 4096 }))
+  writeOutput({
+    summary: '改动整体可用。',
+    coverage: { inspected: ['docs/agents/review.md'], uncovered: [] },
+    findings: []
+  })
+  runValidate()
+  assert.equal(metaAfter().status, 'unreviewed', 'a scope without changed paths narrows nothing')
+  assert.equal(metaAfter().error_code, 'missing_coverage')
+  fs.writeFileSync(
+    path.join(directory, 'review-scope.json'),
+    JSON.stringify({
+      empty_diff: false,
+      diff_bytes: 4096,
+      changed_paths: ['packages/monorepo-kit/src/runner/runner.ts']
+    })
+  )
+
+  writeOutput({
+    summary: '改动整体可用。',
+    coverage: { inspected: ['packages/monorepo-kit/src/runner/runner.ts'], uncovered: [] },
+    findings: []
+  })
+  runValidate()
+  assert.equal(metaAfter().status, 'reviewed', 'coverage turns an empty findings list into a reviewable conclusion')
+  assert.ok(metaAfter().generated_at, 'every conclusion records when it was generated')
+
+  // 模型把路径写成 `path:line` 时仍算命中：写法不同不代表没读，判成 miss 只是假红。
+  writeOutput({
+    summary: '改动整体可用。',
+    coverage: { inspected: ['./packages/monorepo-kit/src/runner/runner.ts:42'], uncovered: [] },
+    findings: []
+  })
+  runValidate()
+  assert.equal(metaAfter().status, 'reviewed', 'a path with a line suffix still points at a changed file')
+
+  // 写父目录不等于读过里面的文件：命中必须是改动文件本身。
+  for (const entry of ['packages/monorepo-kit/src/runner', 'packages/monorepo-kit/src/runner:1']) {
+    writeOutput({
+      summary: '改动整体可用。',
+      coverage: { inspected: [entry], uncovered: [] },
+      findings: []
+    })
+    runValidate()
+    assert.equal(
+      metaAfter().status,
+      'unreviewed',
+      `a directory entry (${entry}) must not stand in for the changed file`
+    )
+  }
+
+  // 反过来：PR 改的就是判据文档时，读过该文档就是读过了改动。
+  fs.writeFileSync(
+    path.join(directory, 'review-scope.json'),
+    JSON.stringify({ empty_diff: false, diff_bytes: 1024, changed_paths: ['docs/agents/review.md'] })
+  )
+  writeOutput({
+    summary: '只改了判据文档。',
+    coverage: { inspected: ['docs/agents/review.md'], uncovered: [] },
+    findings: []
+  })
+  runValidate()
+  assert.equal(metaAfter().status, 'reviewed', 'a rubric document is a reviewable change when the diff touches it')
+  fs.writeFileSync(
+    path.join(directory, 'review-scope.json'),
+    JSON.stringify({
+      empty_diff: false,
+      diff_bytes: 4096,
+      changed_paths: ['packages/monorepo-kit/src/runner/runner.ts']
+    })
+  )
+
+  // 空 diff 豁免：没有源码改动可读时，空的 inspected 不是缺证据。
+  fs.writeFileSync(path.join(directory, 'review-scope.json'), JSON.stringify({ empty_diff: true, diff_bytes: 0 }))
+  writeOutput({ summary: '只改了生成物。', findings: [] })
+  runValidate()
+  assert.equal(metaAfter().status, 'reviewed', 'an empty diff needs no coverage evidence')
+
+  // 复用路径的兜底：即使别的写入口塞进一份没有覆盖清单的旧结论，也不能让它变绿。
+  fs.rmSync(path.join(directory, 'codex-final-message.json'), { force: true })
+  fs.writeFileSync(
+    path.join(directory, 'review-scope.json'),
+    JSON.stringify({ empty_diff: false, diff_bytes: 4096, changed_paths: ['src/app.ts'] })
+  )
+  fs.writeFileSync(
+    path.join(directory, 'review-findings.json'),
+    JSON.stringify({ summary: '历史结论。', findings: [] })
+  )
+  fs.writeFileSync(path.join(directory, 'review-meta.json'), JSON.stringify(metaOf({ reused_from: '99' })))
+  runValidate()
+  assert.equal(metaAfter().status, 'unreviewed', 'a reused conclusion without coverage is not a review')
+  assert.equal(metaAfter().error_code, 'missing_coverage')
+
+  // 复用有覆盖清单的结论时沿用上一次的生成时间，不能把旧结论标成刚出炉。
+  const reusable = { summary: '历史结论。', coverage: { inspected: ['src/app.ts'], uncovered: [] }, findings: [] }
+  fs.writeFileSync(path.join(directory, 'review-findings.json'), JSON.stringify(reusable))
+  fs.writeFileSync(
+    path.join(directory, 'review-meta.json'),
+    JSON.stringify(metaOf({ reused_from: '99', generated_at: '2026-11-06T11:14:38Z' }))
+  )
+  runValidate()
+  assert.equal(metaAfter().status, 'reviewed', 'a reused conclusion that carries coverage stays reviewable')
+  assert.equal(metaAfter().generated_at, '2026-11-06T11:14:38Z', 'reuse keeps the earlier generation time')
+
+  // 上一次没记生成时间就不写，不能拿当前时间冒充它的生成时间。
+  fs.writeFileSync(path.join(directory, 'review-findings.json'), JSON.stringify(reusable))
+  fs.writeFileSync(path.join(directory, 'review-meta.json'), JSON.stringify(metaOf({ reused_from: '99' })))
+  runValidate()
+  assert.equal(metaAfter().generated_at, undefined, 'a reused conclusion without a timestamp gets none invented')
+
+  fs.rmSync(directory, { recursive: true, force: true })
 }
 
 console.log('.github/scripts/codex-review.test.mjs: all assertions passed')

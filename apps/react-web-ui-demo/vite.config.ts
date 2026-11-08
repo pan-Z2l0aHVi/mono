@@ -3,7 +3,7 @@ import { join } from 'node:path'
 
 import depsReload from '@greypan/deps-reload/vite'
 import { mdToMeta, type MdToMetaOptions } from '@greypan/md-to-meta'
-import { devHttpsPlugin, testApiPort } from '@greypan/monorepo-kit'
+import { devHttpsPlugin, testPorts } from '@greypan/monorepo-kit/vite'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import tailwindcss from '@tailwindcss/vite'
 import { tanstackRouter } from '@tanstack/router-plugin/vite'
@@ -80,19 +80,6 @@ export default defineConfig({
           // 这一档同样要 act switch（spec 直接 import react 的 `act`）；但 test-helper.ts 里的
           // 滚动替身绝不能进真实浏览器——那会掩盖真实滚动行为，所以只挂 act-setup。
           setupFiles: ['./act-setup.ts'],
-          // vitest 5 把 `browser.api` 挪到了 `test.api`，而且要写在 browser project 自己的
-          // `test` 块里：写到根上会连 jsdom project 一起抢这个端口。默认 63315 会被同机并行的
-          // 其他 worktree（或同一轮 turbo test 里其他包的测试进程）占住——同一进程内的多个
-          // browser project 倒是会各自递增，不冲突；端口分配与多 worktree 的偏移见
-          // 根 monorepo.json 与 GREYPAN_TEST_PORT_OFFSET。
-          //
-          // host 必须钉成 loopback。Vite 的可用性探测只绑通配地址（`isPortAvailable` 遍历
-          // `wildcardHosts`），看不见只占 127.0.0.1 的进程，所以真正把关的是随后那次绑定。
-          // 本应用顶层 `server.host` 是 `true`，不写 `api.host` 时测试服务器会继承成通配绑定：
-          // 别的进程占着 127.0.0.1 上的同号端口不会让它失败，两个服务器同号并行，页面可能被
-          // 导到别人的服务器（ERR_SSL_PROTOCOL_ERROR / ERR_EMPTY_RESPONSE / runtime 永不连回）。
-          // 钉成 127.0.0.1 后绑定目标与占用者同址，才出 EADDRINUSE 并前进到下一个端口。
-          api: { host: '127.0.0.1', port: testApiPort('react-web-ui-demo') },
           browser: {
             enabled: true,
             headless: true,
@@ -104,6 +91,11 @@ export default defineConfig({
     ]
   },
   plugins: [
+    // browser project 的端口段由 testPorts() 写进上面那个 project 的 `test.api`，host 与
+    // strictPort 一起给出：本应用顶层 `server.host` 是 `true`，不显式钉回 loopback 时测试服务器
+    // 会跟着绑通配地址，别的进程占着 127.0.0.1 上的同号端口也不会失败，页面可能被导到对面那份
+    // 服务器上。分配表与偏移见 docs/agents/build.md「测试端口分配」。
+    testPorts({ project: 'react-web-ui-demo', testName: 'browser' }),
     // 壳文案编译期抽取/替换。wuchale 的 transform 声明了 `order: 'pre'`，所以无论它在这个数组里
     // 注册在哪，transform 都排在 React 插件（`enforce: 'pre'`）之前；它按 AST 改写源码并把文案
     // 换成运行时调用，JSX 一旦被 React 降级就再也认不出来了。

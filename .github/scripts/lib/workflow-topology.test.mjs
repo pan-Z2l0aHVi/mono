@@ -6,7 +6,7 @@ import path from 'node:path'
 
 import { readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
 
-import { CONFIG_ENV } from '../codex-review.mjs'
+import { CONFIG_ENV, priorConclusionDirectory } from '../codex-review.mjs'
 
 import {
   CODEX_CONFIG_ENV,
@@ -504,6 +504,32 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     }
   }
 
+  // 复用产物不能解到本轮结论目录：上一轮 artifact 里的 review-scope.json 会盖掉本次 prepare
+  // 写的范围（含 changed_paths）。路径必须与脚本读的位置同源，只改一边会让复用静默失效。
+  {
+    const destination = namedStep(workflowText['ci.yml'], 'Download prior conclusion')
+      .match(/^\s*path:\s*(.+)$/mu)?.[1]
+      ?.trim()
+    const scriptDefault = priorConclusionDirectory({ RUNNER_TEMP: '/tmp/runner' })
+    assert.equal(
+      scriptDefault,
+      '/tmp/runner/codex-review-prior',
+      'the reuse directory must stay a sibling of the conclusion directory'
+    )
+    assert.equal(
+      destination,
+      scriptDefault.replace('/tmp/runner/', '${{ runner.temp }}/'),
+      'the download destination must be the directory `reuse` reads'
+    )
+  }
+
+  // 提示词把 review-scope.json 的位置写成结论目录的默认值。CI 若在这里覆盖目录，
+  // prepare 会写到别处、模型仍读默认路径，覆盖判定直接失效；这条断言逼改动方同时更新提示词。
+  assert.ok(
+    !/^\s*CODEX_REVIEW_CONCLUSION_DIR\s*:/mu.test(workflowText['ci.yml']),
+    'ci.yml may not override CODEX_REVIEW_CONCLUSION_DIR: the review prompt hardcodes the default'
+  )
+
   const pullRequestValidation = Object.entries(parsed).filter(([, workflow]) =>
     workflow.triggers.some(
       trigger =>
@@ -758,6 +784,32 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     )
     assert.match(skippedReport, /::notice /, 'the skipped run must also carry a notice annotation')
 
+    // 解析不到 PR 也是一种跳过：守卫必须按 resolve-pull 的成功取，
+    // 挂在 pull_number 上会让「没解析到 PR」这条路径一步都不跑，整条腿静默变绿。
+    const assertResolveMissIsExplained = text => {
+      const step = namedStep(text, 'Explain the skipped report')
+      assert.match(step, /steps\.pull\.outcome == 'success'/, 'the skip explanation must run whenever resolve-pull ran')
+      assert.ok(!/pull_number != ''/.test(step), 'the skip explanation must not be gated on a resolved pull request')
+      assert.match(
+        step,
+        /PULL_NUMBER: \$\{\{ steps\.pull\.outputs\.pull_number \}\}/,
+        'the step must read the resolved number to tell the two skip reasons apart'
+      )
+      assert.match(step, /## 未解析到 PR/, 'an unresolved head needs its own summary section')
+    }
+    assertResolveMissIsExplained(reportText)
+    assert.throws(
+      () =>
+        assertResolveMissIsExplained(
+          reportText.replace(
+            "if: always() && steps.pull.outcome == 'success' && ",
+            "if: always() && steps.pull.outputs.pull_number != '' && "
+          )
+        ),
+      /must not be gated on a resolved pull request|must run whenever resolve-pull ran/,
+      'the old pull-number guard must be rejected by the assertion itself'
+    )
+
     for (const [, reference] of `${ci}\n${reportText}`.matchAll(/\/trusted\/([^\s"']+)/g)) {
       assert.ok(/^(?:codex|scripts|\.claude)\//.test(reference), `unexpected trusted path ${reference}`)
     }
@@ -798,7 +850,9 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.equal(parsed['ci.yml'].stepContinueOnError['Apply review gate'], undefined)
     assert.equal(parsed['ci.yml'].steps['Apply review gate'], undefined, 'the gate step must run unconditionally')
     assert.equal(parsed['ci.yml'].stepContinueOnError['Record review conclusion'], undefined)
-    assert.match(workflowJob(ci, 'codex-review'), /timeout-minutes: 60/)
+    // 审查腿的上限只兜大 PR 的尾巴：137 文件/4.3k 行的 PR 在 60 分钟处用满额仍未收口。
+    // 自动修保持 60，它只在 check 失败时跑，且产物是一次小 patch。
+    assert.match(workflowJob(ci, 'codex-review'), /timeout-minutes: 120/)
     assert.match(workflowJob(ci, 'codex-autofix-plan'), /timeout-minutes: 60/)
     assert.match(workflowJob(ci, 'codex-gate'), /timeout-minutes: 10/, 'the gate does no model work and stays short')
     assert.match(workflowJob(ci, 'codex-review'), /uses: \.\/\.github\/actions\/stage-codex-inputs/)
@@ -1114,6 +1168,13 @@ function matrixEntries(text) {
   ]) {
     assert.ok(setup.includes(keyPart), `Go cache must remain scoped by ${keyPart}`)
   }
+}
+
+// macOS 14 于 2026-11-02 退役（actions/runner-images#13518）：标签一旦回到工作流，
+// macOS 腿会在 0 秒被取消，而同一 run 的 Linux 腿照常绿，很容易被误判成偶发。
+for (const file of ['wails-verify.yml', 'wails-release.yml']) {
+  assert.match(workflowText[file], /runner: macos-15\b/u, `${file} must build on the supported arm64 macOS runner`)
+  assert.doesNotMatch(workflowText[file], /macos-1[34]/u, `${file} must not target a retired macOS runner`)
 }
 
 console.log('.github/scripts/lib/workflow-topology.test.mjs: all assertions passed')
