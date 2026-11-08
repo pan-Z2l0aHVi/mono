@@ -56,7 +56,7 @@
 - 不加 per-check 超时：整链时长由 CI 的 job 上限兜住，包内不持定时器。
 - 本节与决策段里的毫秒数、spec 例数、判定/`Chain` 出口计数、文件切分条数，以及 [ADR-0012](./0012-pr-review.md)、[ADR-0021](./0021-codex-review-gate.md) 里同类的时点事实，都是 2026-11-07 复核时点「逐个核过」的快照，不是会随改动自动更新的判据，也不作门禁断言。增删判定或改动判据后应同步复核这些数字，读的时候按当时的实测记录看，不要当成长期不变的形状约束。
 - 域名前缀比裁决的 8 个多两个：`i18n:` 与 `port:`。这两域真实存在（壳文案语料由两端 demo app 消费，端口调用点扫 `scripts/` 与 app 配置），并进 `md:` 或 `script:` 会让前缀不再指向判据权威。
-- 公开面收窄：`./vite` 只导出 `testPorts()` 与 `devHttpsPlugin()`（含 `DevHttpsOptions`）；`testApiPort`、`testApiPortNames`、`defineTestPorts` 与 `TestPortsApi` 全部删除——端口取值不再是 js-kit 插件的面，`test.api` 由 `testPorts()` 写，读表与偏移（`readTestPorts`）留在包内给 `test-port-call-sites` 与 Vite 插件共用，不对外；`check-pack` 的 `--quiet`/`--root` 删除；`run` 没有入参类型（中途形态的 `RunOpts` 不成立，`CheckContext`/`CheckUnit`/`CheckResult` 随名单一起删除），`mode` 与 `node` 两个从未有消费者的键一并消失（`script-tests` 直接用 `process.execPath`）。
+- 公开面收窄：`./vite` 导出 `testPorts()`、`devHttpsPlugin()` 及类型 `DevHttpsOptions`、`TestPortsPluginOptions`；`testApiPort`、`testApiPortNames`、`defineTestPorts` 与 `TestPortsApi` 全部删除——端口取值不再是 js-kit 插件的面，`test.api` 由 `testPorts()` 写，读表与偏移（`readTestPorts`）留在包内给 `test-port-call-sites` 与 Vite 插件共用，不对外；`check-pack` 的 `--quiet`/`--root` 删除；`run` 没有入参类型（中途形态的 `RunOpts` 不成立，`CheckContext`/`CheckUnit`/`CheckResult` 随名单一起删除），`mode` 与 `node` 两个从未有消费者的键一并消失（`script-tests` 直接用 `process.execPath`）。
 - `stagedClean` 排到 `check-pre-commit` 链尾：它按暂存文件起整条工具链（`vp check`、stylelint），是这条链上最贵的一条，便宜的判定先拦住。它只判不改写——跑的是 `vp check`，不带 `--fix`，所以这个位置是成本排序，不是防自扰。
 
 ## 替代方案

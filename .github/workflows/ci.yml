@@ -391,7 +391,10 @@ jobs:
   codex-autofix-plan:
     name: Codex autofix plan
     needs: check
-    if: ${{ needs.check.result == 'failure' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' && vars.CODEX_AUTOFIX_ENABLED == 'true' }}
+    # job 级 if 不含状态检查函数时 GitHub 会隐式附加 success()，而本腿恰恰要在 check 失败时跑：
+    # needs.check.result == 'failure' 会在依赖失败时被直接短路成 skipped，字面条件根本不求值。
+    # !cancelled() 既绕过隐式 success()，又不会在 run 被取消时白白启动模型腿；与 codex-review 同款前缀。
+    if: ${{ !cancelled() && needs.check.result == 'failure' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' && vars.CODEX_AUTOFIX_ENABLED == 'true' }}
     continue-on-error: true
     # 与审查腿同一镜像约束：autofix 用 workspace-write + drop-sudo，同样会撞上 #188。
     runs-on: ubuntu-24.04

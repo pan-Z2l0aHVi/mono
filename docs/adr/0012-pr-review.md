@@ -10,7 +10,7 @@
 
 ## 决策
 
-PR review 由一份绑定 head 的结论承担，不由执行体数量承担。ADR-0021 的自动审查门就是这份结论：它只读 PR diff 与仓库判据，不听实施者叙述，结论绑定 reviewed head，每个新 head 重跑一次，用本仓三档判据（`Block` / `Should fix` / `Nit`）。结论的 reviewed SHA 等于当前 head、`Block` 为 0、required context `check` 在当前 head 上成功，三条同时成立即 review 完成。task 台账、实施者自查与单独的 `check` 绿灯都不能替代它。完成的范围由结论自己声明：`coverage.uncovered` 列出的位置不在它的射程内，补这些空白不算追加一次审查（契约见 [ADR-0021](./0021-codex-review-gate.md)「覆盖度口径」）。
+PR review 由一份绑定 head 的结论承担，不由执行体数量承担。ADR-0021 的自动审查门就是这份结论：它只读 PR diff 与仓库判据，不听实施者叙述，结论绑定 reviewed head，每个新 head 重跑一次，用本仓三档判据（`Block` / `Should fix` / `Nit`）。结论的 reviewed SHA 等于当前 head、`Block` 为 0、required context `check` 在当前 head 上成功，且 `coverage.uncovered` 为空，四条同时成立即 review 完成；`uncovered` 非空时结论仍有效、门不因此变红，但这些位置须逐项人工复核收口。task 台账、实施者自查与单独的 `check` 绿灯都不能替代它。完成的范围由结论自己声明：`coverage.uncovered` 列出的位置不在它的射程内，补这些空白不算追加一次审查（契约见 [ADR-0021](./0021-codex-review-gate.md)「覆盖度口径」）。
 
 原决策把「T0/T1 的首次 PR review 由独立 reviewer 检查完整 PR diff」写成固定步骤，并把模型审查列为「补强，不是替代」（ADR-0021 的决策段与后果同口径）。那条前提是这道门还不存在：2026-11-04 之前 PR 上没有任何自动结论，独立性只能由人或另起的会话兑现。门落地后，两个执行体读同一批字节、按同一份判据、结论同样绑定 head，而等待成本按执行体数量累加。实测取自 PR #519 的 head `3d990480`：门一次 2 分 6 秒（模型腿 95 秒，审查 diff 532,884 字节、130 文件）；同一次改动按此前口径要切成 4 条本地 lane，每份 18–26 个文件分别派出。据此取消「第二次审查」这个固定步骤；要不要另起一次，由 agent 判断，仓库文档不列清单，也不禁止。漏检风险没有被消掉，只是改写进后果。
 
@@ -25,7 +25,7 @@ PR review 由一份绑定 head 的结论承担，不由执行体数量承担。A
 - PR 结论必须覆盖当前 base/head；旧 head 的结论或报告不能单独证明新 head 已通过 review。
 - 人工审查的增量复审减少重复工作，同时保留检查关联行为和重新扩大范围的责任。
 - CI 的 `check` 只提供自动检查证据，不代表 review 结论或发布授权，所以三条判据里必须同时有「`check` 在当前 head 上成功」；两条各证一件事，任何一条单独成立都不算。
-- 自动审查的射程是被 `**/generated/**` 剔除后的源码 diff；生成物的正确性由 `check-generated` 的 generator 重建证明，不由审查结论证明。
+- 自动审查的射程是按 `docs/agents/generated-artifacts.md` 清单由 `REVIEW_EXCLUDE_PATHSPECS` 六条 pathspec 滤除生成物后的源码 diff；生成物的正确性由 `check-generated` 的 generator 重建证明，不由审查结论证明。
 - 省掉的是默认那一次人工细看，换来的是把结论质量押在模型、沙箱档位与后台配置上。这三处由 ADR-0021 的 CI 拓扑断言钉住，颜色口径保证「没有可用结论」不会被读成「没有意见」。这份押注的前提是门坏了会变红，而不是被绕开。
 - 独立性从执行体数量改为「结论与实施者叙述隔离」后，仓库只有一个账号也不再构成瓶颈：作者不能在 GitHub 批准自己的 PR，这条平台约束不变。
 - 门没报出的缺陷，可能没有任何执行体看过。以前由固定的第二次审查兜，现在没有这道兜底；仓库文档保留人工审查的执行纪律，但不再规定什么时候用它。
