@@ -62,7 +62,7 @@
 
 ## 机器拦截的覆盖面
 
-[`.claude/settings.json`](../../.claude/settings.json) 的 `permissions.deny` 是这些路径的权威名单：上表每一类**入库**生成物都有对应条目，另外拦截 `.env` 读取。它只挡工具调用，不挡 generator，所以「跑 generator 产生 diff」的正常路径不受影响。
+[`.claude/settings.json`](../../.claude/settings.json) 的 `permissions.deny` 是这些路径的权威名单：上表每一类**入库**生成物都有对应条目，另外拦截 `.env` 读取。它只挡工具调用，不挡 generator，所以「跑 generator 产生 diff」的正常路径不受影响。审查侧的 `REVIEW_EXCLUDE_PATHSPECS` 不是这份名单的复制（见下文「审查范围与编辑拦截的分工」），但两者覆盖的入库生成物必须一致：脚本单测用 git 的 glob 引擎比对两份名单命中的真实入库文件集合，再用一张显式覆盖表挡单侧增删；覆盖表与样例是人工维护的，新增生成物时仍须按判据逐条核对（尚无文件入库的新路径不在集合断言射程内）。
 
 已 gitignore 的编译目录不在名单里（wuchale 的 `src/locales/.wuchale/**`、各包 `dist/**`）：它们永远不进 diff，手改的后果由下一次重编译原样收走，拦不住也不必拦。
 
@@ -91,4 +91,4 @@
 
 ## 新增生成物时
 
-同时更新，缺一处就会漂：本文的表格、turbo inputs 与产出集合守卫、[`.claude/settings.json`](../../.claude/settings.json) 的 `deny`、受影响包的测试、审查侧的 `REVIEW_EXCLUDE_PATHSPECS` 与审查 prompt（只有措辞变化时才动），以及 ADR-0021 的验收项。口径见上文「审查范围与编辑拦截的分工」。根 [`AGENTS.md`](../../AGENTS.md) 只指向本文，不复制清单。
+同时更新，缺一处就会漂：本文的清单表与过滤路径表、turbo inputs 与产出集合守卫、[`.claude/settings.json`](../../.claude/settings.json) 的 `deny`、受影响包的测试、审查侧的 `REVIEW_EXCLUDE_PATHSPECS` 与脚本单测里的 deny 覆盖表及样例、审查 prompt（只有措辞变化时才动），以及 ADR-0021 的生成物滤除口径正文与验收项。口径见上文「审查范围与编辑拦截的分工」。根 [`AGENTS.md`](../../AGENTS.md) 只指向本文，不复制清单。
