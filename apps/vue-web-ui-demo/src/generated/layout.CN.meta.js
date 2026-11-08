@@ -5,7 +5,7 @@
 const meta = [
   { label: 'h1', id: 'section-1', content: "Layout" },
   { label: 'p', content: "<a href=\"./layout.md\">English</a> | 简体中文" },
-  { label: 'p', content: "响应式页面布局：可选全宽横幅、桌面端可折叠侧边栏，移动端默认使用抽屉。设置 <code>no-sidebar</code> 可去掉整块侧边栏，只保留内容布局。页面本身滚动；横幅滚出后，桌面端侧边栏和头部固定在视口内。" },
+  { label: 'p', content: "响应式页面布局：可选全宽横幅、桌面端可折叠侧边栏，应用将 <code>mobile</code> 设为 <code>true</code> 时使用抽屉。设置 <code>no-sidebar</code> 可去掉整块侧边栏，只保留内容布局。页面本身滚动；横幅滚出后，桌面端侧边栏和头部固定在视口内。" },
   { label: 'h2', id: 'section-2', content: "示例" },
   { label: 'h3', id: 'section-3', content: "基础用法" },
   { label: 'p', content: "五个插槽各占一区。<code>banner</code> 在主体上方全宽，<code>header</code> 是内容区的吸顶头部，<code>sidebar</code> 是侧边栏卡片内容，默认插槽是主内容区，<code>tabbar</code> 是底部栏。" },

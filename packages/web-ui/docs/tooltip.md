@@ -4,6 +4,8 @@ English | [简体中文](./tooltip.CN.md)
 
 The gestures that show a tooltip are declared by `trigger`, which defaults to pointer hover only. The `content` attribute supplies plain text, and the `content` slot can hold richer content.
 
+Hover-only is deliberate: keyboard and screen-reader users get the same information from the trigger's own accessible name or visible text, without a transient panel appearing on focus and disturbing normal interaction. Put essential information on the element itself — a visible label or `aria-label` — and treat the tooltip as a supplementary hint for pointer users. Set `trigger="hover focus"` only when the tooltip really is the element's accessible description.
+
 ## Samples
 
 ### Basic

@@ -5,7 +5,7 @@
 const meta = [
   { label: 'h1', id: 'section-1', content: "Layout" },
   { label: 'p', content: "English | <a href=\"./layout.CN.md\">简体中文</a>" },
-  { label: 'p', content: "Responsive page layout with an optional full-width banner, a collapsible sidebar on desktop, and a drawer by default on mobile. Set <code>no-sidebar</code> to drop the entire sidebar and keep the content-only layout. The page itself scrolls; once the banner scrolls out, the desktop sidebar and header stay fixed within the viewport." },
+  { label: 'p', content: "Responsive page layout with an optional full-width banner, a collapsible sidebar on desktop, and a drawer when the application sets <code>mobile</code> to <code>true</code>. Set <code>no-sidebar</code> to drop the entire sidebar and keep the content-only layout. The page itself scrolls; once the banner scrolls out, the desktop sidebar and header stay fixed within the viewport." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },
   { label: 'p', content: "Five slots each take one region. <code>banner</code> spans the full width above the body, <code>header</code> is the sticky header of the content area, <code>sidebar</code> is the sidebar card content, the default slot is the main content area, and <code>tabbar</code> is the bottom bar." },

@@ -7,7 +7,8 @@
 
 Overlay 组件族共享滚动锁定与焦点管理两类横切行为；按组件显式声明，不由全局默认隐式推导。
 
-- `no-scroll-lock` 可选择退出背景文档的滚动锁定；Dialog 保持原生模态行为；Select、Dropdown 和 Context Menu 暴露 `no-scroll-lock`，Popover 和 Tooltip 始终不锁定滚动
+- `no-scroll-lock` 可选择退出背景文档的滚动锁定；Select、Dropdown、Context Menu、Dialog、Drawer 和 Autocomplete 均暴露该属性，Dialog 仍使用原生 `<dialog>` / top layer，Popover 和 Tooltip 始终不锁定滚动
+- Tooltip 的 `trigger` 默认仅 `hover`：键盘与读屏用户从触发器自身的可访问名称或可见文本读取信息，聚焦时不弹出短暂面板干扰正常交互；关键信息放在元素本身，tooltip 只是指针用户的补充提示，只有它确实承担可访问描述时才由调用方显式设置 `hover focus`
 - Select 打开时焦点保持在其 combobox trigger 上，通过 `aria-activedescendant` 暴露当前选中项
 - Dropdown 和 Context Menu 使用循环方向键导航、Home/End 键、submenu 导航、Enter/Space 激活
 - Escape 的归属不是各组件的私有交互策略，由共享仲裁者统一裁决（见 §7）
@@ -53,7 +54,7 @@ Overlay 组件族共享滚动锁定与焦点管理两类横切行为；按组件
 
 Focus token 只定义颜色与宽度：`--wui-color-focus-ring` / `--wui-focus-ring-width`。
 
-中性交互面 `--wui-color-surface-control`；Slider/Switch track `--wui-color-surface-track`；40px 控件尺寸 `--wui-control-size`；浮动 panel 阴影 `--wui-shadow-panel`；overlay 卡片 `--wui-color-surface-overlay`。
+中性交互面 `--wui-color-surface-control`；Slider/Switch track `--wui-color-surface-track`；控件尺寸 `--wui-control-size`（默认 36px，以 theme 样式为准）；浮动 panel 阴影 `--wui-shadow-panel`；overlay 卡片 `--wui-color-surface-overlay`。
 
 对外 CSS custom property 使用 `--wui-*`；内部接线变量使用 `--wui-internal-*` 前缀。
 

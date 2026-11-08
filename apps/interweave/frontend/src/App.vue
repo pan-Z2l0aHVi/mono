@@ -4,7 +4,7 @@ import { useOverlayScrollbars } from 'overlayscrollbars-vue'
 import { computed, onMounted } from 'vue'
 
 import AppLayout from '@/components/AppLayout.vue'
-import { useSettingsStore } from '@/stores/settings'
+import { onAccentFor, useSettingsStore } from '@/stores/settings'
 
 const settings = useSettingsStore()
 
@@ -25,8 +25,14 @@ onMounted(() => {
  * accent 只能靠覆盖 CSS 变量：theme 没有 accent 属性。写成内联 style 而不是 <style> 规则，
  * 是为了赢过 theme 自己那条 :host([appearance=...]) —— 内联样式优先级高于任何作者样式表规则，
  * 于是一处覆盖同时压住 light / dark / system 三个分支。
+ *
+ * --wui-color-on-accent 必须和 accent 一起覆盖：theme 的 light/dark 默认分别是白与黑，
+ * 沿用会让多数预设的 primary button 文字达不到 4.5:1。色板自带前景色后三个分支统一。
  */
-const themeStyle = computed(() => ({ '--wui-color-accent': settings.accent }))
+const themeStyle = computed(() => ({
+  '--wui-color-accent': settings.accent,
+  '--wui-color-on-accent': onAccentFor(settings.accent)
+}))
 </script>
 
 <template>

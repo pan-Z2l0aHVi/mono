@@ -6,6 +6,7 @@ const meta = [
   { label: 'h1', id: 'section-1', content: "Tooltip" },
   { label: 'p', content: "<a href=\"./tooltip.md\">English</a> | 简体中文" },
   { label: 'p', content: "tooltip 的显示手势由 <code>trigger</code> 声明，默认仅由指针悬停触发。<code>content</code> 属性提供纯文本，<code>content</code> 插槽可以放更丰富的内容。" },
+  { label: 'p', content: "仅悬停触发是刻意设计：键盘与读屏用户从触发器自身的可访问名称或可见文本获取同样的信息，不必在聚焦时弹出短暂面板、干扰正常交互。关键信息应放在元素本身（可见标签或 <code>aria-label</code>），tooltip 只是给指针用户的补充提示。只有当 tooltip 确实承担元素的可访问描述时，才设置 <code>trigger=\"hover focus\"</code>。" },
   { label: 'h2', id: 'section-2', content: "示例" },
   { label: 'h3', id: 'section-3', content: "基础用法" },
   { label: 'p', content: "默认插槽是触发器。<code>content</code> 属性给出纯文本提示。" },

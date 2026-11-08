@@ -6,6 +6,7 @@ const meta = [
   { label: 'h1', id: 'section-1', content: "Tooltip" },
   { label: 'p', content: "English | <a href=\"./tooltip.CN.md\">简体中文</a>" },
   { label: 'p', content: "The gestures that show a tooltip are declared by <code>trigger</code>, which defaults to pointer hover only. The <code>content</code> attribute supplies plain text, and the <code>content</code> slot can hold richer content." },
+  { label: 'p', content: "Hover-only is deliberate: keyboard and screen-reader users get the same information from the trigger's own accessible name or visible text, without a transient panel appearing on focus and disturbing normal interaction. Put essential information on the element itself — a visible label or <code>aria-label</code> — and treat the tooltip as a supplementary hint for pointer users. Set <code>trigger=\"hover focus\"</code> only when the tooltip really is the element's accessible description." },
   { label: 'h2', id: 'section-2', content: "Samples" },
   { label: 'h3', id: 'section-3', content: "Basic" },
   { label: 'p', content: "The default slot is the trigger. The <code>content</code> attribute gives the plain-text hint." },

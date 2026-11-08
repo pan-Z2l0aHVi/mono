@@ -34,14 +34,14 @@ markdown ─┬─ <basename>.meta.js    节点数组（label / content / childr
 - **单 output**：多入口、单出口。同一 output 内按解析后绝对路径去重，产物按 md 文件名平铺，重名直接报错（错误信息带两个源文件路径），由调用方改名。
 - **内容寻址的代码文件**：同一段代码跨文档、同文档重复出现都落同一个文件，改一块只换一个文件名，diff 噪音最小。
 - **主题八字契约**：类名前缀 `.mdm-*`，每个 output 一份 `theme.css`，宿主 import 它即可拿到 Markdown 版式与 shiki 双主题取色。
-- **发布面不变**：`private` 包，不出 npm；宿主构建时经 turbo 的 `^build` 拿到新 `dist`。
+- **发布面**：`private` 包，不出 npm；`exports` 有 `.` 与 `./contract` 两个 specifier，根入口给宿主构建（含 shiki/tinyglobby 生成期依赖），`./contract` 只放读产物用的纯契约（`.mdm-*` 类名常量、`visibleText()`、`lineCountOf()`），供浏览器运行时与测试 import，不引入生成期依赖；宿主构建时经 turbo 的 `^build` 拿到新 `dist`。
 
 ## 后果
 
 - 引擎不含任何宿主名字、路径或数据；新增 locale、框架或文档约定不需要改引擎。
 - 宿主要负责把 meta 渲染成页面：通用 meta 渲染器 + 一个代码块组件（有 `load` 时挂成真组件，否则只显示源码）。
 - 语料可以彻底去掉 frontmatter；文件名是唯一身份，`button.CN.md` → `button.CN`，语种由宿主按 `.CN` 判定。
-- `markdown` 子入口（浏览器内运行时 markdown → HTML）删除：changelog 之类页面改为直接消费生成的 `.meta.js`。
+- `markdown` 子入口（浏览器内运行时 markdown → HTML）删除：changelog 之类页面改为直接消费生成的 `.meta.js`；浏览器侧只经 `./contract` 取纯文本与行号契约，不再有 markdown → HTML 运行时。
 - 每个围栏都落一份代码文件，即使它不被任何 `load` 引用；这不是冗余，是「代码与页面同源」的落点。
 
 ## 替代方案

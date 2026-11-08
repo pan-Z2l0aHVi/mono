@@ -16,6 +16,14 @@ export type ThemeAppearance = 'light' | 'dark' | 'system'
 export interface AccentPreset {
   /** 写进 --wui-color-accent 的字面量。 */
   value: string
+  /**
+   * 与 value 一起写进 --wui-color-on-accent 的前景色。
+   *
+   * theme 在 light / dark 下分别给白与黑，直接沿用会让多数预设在 primary button 上
+   * 达不到 4.5:1：色板按 macOS 观感挑，深浅都有。每个预设自带前景色，宿主不用按
+   * appearance 分支猜，也不用为了对比度改掉用户选的颜色。判定见 settings.spec.ts。
+   */
+  onAccent: string
   label: string
 }
 
@@ -25,16 +33,16 @@ const REDUCED_MOTION_STORAGE_KEY = 'theme-reduced-motion'
 
 const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
 
-/** 与 macOS 色板一致的强调色。 */
+/** 与 macOS 色板一致的强调色；每个 onAccent 都按 WCAG AA（≥4.5:1）逐色挑定。 */
 export const ACCENT_PRESETS: readonly AccentPreset[] = [
-  { value: '#007aff', label: '蓝' },
-  { value: '#a54ca4', label: '紫' },
-  { value: '#f54096', label: '粉' },
-  { value: '#ff4b53', label: '红' },
-  { value: '#ff8616', label: '橙' },
-  { value: '#ffbe00', label: '黄' },
-  { value: '#61bf45', label: '绿' },
-  { value: '#8c8c8c', label: '灰' }
+  { value: '#007aff', onAccent: '#000000', label: '蓝' },
+  { value: '#a54ca4', onAccent: '#ffffff', label: '紫' },
+  { value: '#f54096', onAccent: '#000000', label: '粉' },
+  { value: '#ff4b53', onAccent: '#000000', label: '红' },
+  { value: '#ff8616', onAccent: '#000000', label: '橙' },
+  { value: '#ffbe00', onAccent: '#000000', label: '黄' },
+  { value: '#61bf45', onAccent: '#000000', label: '绿' },
+  { value: '#8c8c8c', onAccent: '#000000', label: '灰' }
 ] as const
 
 const LEGACY_ACCENTS: Record<string, string> = {
@@ -47,6 +55,12 @@ const LEGACY_ACCENTS: Record<string, string> = {
 }
 
 const DEFAULT_ACCENT = ACCENT_PRESETS[0].value
+const DEFAULT_ON_ACCENT = ACCENT_PRESETS[0].onAccent
+
+/** accent 与 on-accent 必须成对覆盖，否则 theme 的 light/dark 默认值会破坏对比度。 */
+export function onAccentFor(accent: string): string {
+  return ACCENT_PRESETS.find(preset => preset.value === accent)?.onAccent ?? DEFAULT_ON_ACCENT
+}
 
 function isThemeAppearance(appearance: unknown): appearance is ThemeAppearance {
   return typeof appearance === 'string' && THEME_APPEARANCES.has(appearance as ThemeAppearance)
