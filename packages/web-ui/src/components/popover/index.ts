@@ -17,6 +17,7 @@ import {
   type OverlayPortal
 } from '@/shared/overlay/portal'
 import { defineTriggerController } from '@/shared/overlay/trigger-controller'
+import { defineOverlayDelayProps } from '@/shared/overlay/trigger-delay-props'
 import { normalizeTriggerSet } from '@/shared/overlay/trigger-props'
 
 import style from './style.css?inline'
@@ -27,7 +28,7 @@ const DEFAULT_TRIGGERS = ['click'] as const
 let popoverIdCounter = 0
 
 @customElement('web-ui-popover')
-export class WebUiPopover extends LitElement {
+export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true })
@@ -73,28 +74,6 @@ export class WebUiPopover extends LitElement {
   }
   private _triggerValue: string = DEFAULT_TRIGGERS.join(',')
 
-  @property({ type: Number, attribute: 'show-delay' })
-  get showDelay(): number {
-    return this._showDelay
-  }
-  set showDelay(v: number) {
-    const old = this._showDelay
-    this._showDelay = normalizeNumber(v, 0, 5000, 200)
-    this.requestUpdate('showDelay', old)
-  }
-  private _showDelay = 200
-
-  @property({ type: Number, attribute: 'hide-delay' })
-  get hideDelay(): number {
-    return this._hideDelay
-  }
-  set hideDelay(v: number) {
-    const old = this._hideDelay
-    this._hideDelay = normalizeNumber(v, 0, 5000, 100)
-    this.requestUpdate('hideDelay', old)
-  }
-  private _hideDelay = 100
-
   @property({ type: Boolean, reflect: true }) portal = false
   @property({ attribute: false }) overlayContainer?: OverlayContainer
 
@@ -106,14 +85,10 @@ export class WebUiPopover extends LitElement {
   private readonly _triggerController = defineTriggerController({
     host: this,
     getTrigger: () => this.trigger,
-    isDisabled: () => this.disabled,
-    canOpen: () => true,
+    canOpen: () => !this.disabled,
     getOpen: () => this._openValue,
-    getShowDelay: () => this.showDelay,
-    getHideDelay: () => this.hideDelay,
     hoverOpensInstantly: () => false,
-    isInsidePanel: event => !!this._panel.getHandle()?.containsEvent(event),
-    hasFocusWithin: () => this.matches(':focus-within') || !!this._panel.getHandle()?.hasFocusWithin(),
+    getPanelHandle: () => this._panel.getHandle(),
     requestOpen: meta => this._applyOpen(meta.instant, meta.notify, meta.automatic),
     requestClose: meta => this._applyClose(meta.notify)
   })

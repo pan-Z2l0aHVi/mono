@@ -28,7 +28,10 @@ export default defineConfig({
       // test」，结果就是用例可能重复跑或假失败。预先声明把那次 reload 挡在测试开始之前。
       'overlayscrollbars',
       'overlayscrollbars-vue',
-      'pinia'
+      'pinia',
+      // 资源长按的 browser spec 经它拿 CDP 会话派发真实触控（镜像 web-ui 的 realTouchPress）。
+      // 冷缓存下同样会在用例中途触发 re-optimize + reload，把 spec 的收集直接打断。
+      'vite-plus/test/browser-playwright/context'
     ]
   },
   test: {

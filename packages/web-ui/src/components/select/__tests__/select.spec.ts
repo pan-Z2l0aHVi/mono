@@ -8,12 +8,6 @@ import { cleanupElement, flushSlotChange, queryA11y, spyEvents, waitForFrame, wa
 
 import type { WebUiSelect } from '..'
 
-function touchPointerEvent(type: string): PointerEvent {
-  const event = new PointerEvent(type, { bubbles: true, composed: true })
-  Object.defineProperty(event, 'pointerType', { value: 'touch' })
-  return event
-}
-
 /** 具名 slot 实际投影到的节点数——slot 投影是公开契约（ADR-0005 §5）。 */
 function projectedCount(el: WebUiSelect, slotName: string): number {
   const slot = queryA11y(el, `slot[name="${slotName}"]`) as HTMLSlotElement | null
@@ -548,6 +542,11 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
+    /*
+     * 游标 / typeahead / 锚点语义断言已迁往 shared/option-portal 的
+     * combobox-navigation.spec（迁移不复制）；这里只留键位路由 smoke 与 ARIA 输出断言。
+     */
+
     it('ArrowDown 打开 overlay 并把 aria-activedescendant 指向首个 option', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
@@ -561,174 +560,6 @@ describe('WebUiSelect 组件', () => {
       expect(active?.tagName.toLowerCase()).toBe('web-ui-option')
       expect(active?.getAttribute('role')).toBe('option')
       expect(active?.getAttribute('value')).toBe('apple')
-
-      cleanupElement(el)
-    })
-
-    it('展开态 Home、End 与首字母输入移动激活项但不提交 value', async () => {
-      const el = createSelect(`
-        <web-ui-option value="disabled-start" label="Disabled start" disabled></web-ui-option>
-        <web-ui-option value="apple" label="Apple"></web-ui-option>
-        <web-ui-option value="elm" label="Elm"></web-ui-option>
-        <web-ui-option value="react" label="React"></web-ui-option>
-        <web-ui-option value="raspberry" label="Raspberry"></web-ui-option>
-        <web-ui-option value="cherry" label="Cherry"></web-ui-option>
-        <web-ui-option value="disabled-end" label="Disabled end" disabled></web-ui-option>
-      `)
-      el.value = 'cherry'
-      await waitForUpdate(el)
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await waitForUpdate(el)
-
-      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
-      const activeValue = () => {
-        const activeId = trigger.getAttribute('aria-activedescendant')
-        return activeId ? el.querySelector<WebUiOption>(`#${activeId}`)?.value : undefined
-      }
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home', bubbles: true, cancelable: true }))
-      await waitForUpdate(el)
-      expect(activeValue()).toBe('apple')
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'End', bubbles: true, cancelable: true }))
-      await waitForUpdate(el)
-      expect(activeValue()).toBe('cherry')
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'r', bubbles: true, cancelable: true }))
-      await waitForUpdate(el)
-      expect(activeValue()).toBe('react')
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true, cancelable: true }))
-      await waitForUpdate(el)
-      expect(activeValue()).toBe('react')
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true, cancelable: true }))
-      await waitForUpdate(el)
-      expect(activeValue()).toBe('raspberry')
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'a', bubbles: true, cancelable: true }))
-      await waitForUpdate(el)
-      expect(activeValue()).toBe('apple')
-      expect(el.value).toBe('cherry')
-
-      cleanupElement(el)
-    })
-
-    it('typeahead 将带点大写 I 与 i 匹配', async () => {
-      const dottedI = String.fromCharCode(0x130)
-      const el = createSelect(`
-        <web-ui-option value="alpha" label="Alpha"></web-ui-option>
-        <web-ui-option value="dotted-i" label="${dottedI}tem"></web-ui-option>
-      `)
-      await waitForUpdate(el)
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await waitForUpdate(el)
-      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
-      const activeValue = () => {
-        const activeId = trigger.getAttribute('aria-activedescendant')
-        return activeId ? el.querySelector<WebUiOption>(`#${activeId}`)?.value : undefined
-      }
-      expect(activeValue()).toBe('alpha')
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'i', bubbles: true, cancelable: true }))
-      await waitForUpdate(el)
-
-      expect(activeValue()).toBe('dotted-i')
-      expect(el.value).toBe('')
-
-      cleanupElement(el)
-    })
-
-    it.each([
-      { state: 'disabled', invalidate: (option: WebUiOption) => (option.disabled = true) },
-      { state: 'removed', invalidate: (option: WebUiOption) => option.remove() }
-    ])('多字符 typeahead 不延续到已 $state 的激活项', async ({ invalidate }) => {
-      const el = createSelect(`
-        <web-ui-option value="apple" label="Apple"></web-ui-option>
-        <web-ui-option value="elm" label="Elm"></web-ui-option>
-        <web-ui-option value="react" label="React"></web-ui-option>
-        <web-ui-option value="raspberry" label="Raspberry"></web-ui-option>
-      `)
-      await waitForUpdate(el)
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await waitForUpdate(el)
-
-      const trigger = queryA11y(el, '[role="combobox"]') as HTMLElement
-      const activeValue = () => {
-        const activeId = trigger.getAttribute('aria-activedescendant')
-        return activeId ? el.querySelector<WebUiOption>(`#${activeId}`)?.value : undefined
-      }
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'r', bubbles: true }))
-      await waitForUpdate(el)
-      expect(activeValue()).toBe('react')
-
-      invalidate(el.querySelector<WebUiOption>('[value="react"]')!)
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'e', bubbles: true }))
-      await waitForUpdate(el)
-
-      expect(activeValue()).toBe('elm')
-      cleanupElement(el)
-    })
-
-    it('ArrowUp 打开后再次按下循环到末尾', async () => {
-      const el = createSelect(OPTIONS_HTML)
-      await waitForUpdate(el)
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
-      await waitForUpdate(el)
-      expect(el.open).toBe(true)
-
-      const trigger = queryA11y(el, '[role="combobox"]')!
-      const activeId = trigger.getAttribute('aria-activedescendant')
-      expect(el.querySelector(`#${activeId}`)?.getAttribute('value')).toBe('apple')
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowUp', bubbles: true }))
-      await waitForUpdate(el)
-      const loopedId = trigger.getAttribute('aria-activedescendant')
-      expect(el.querySelector(`#${loopedId}`)?.getAttribute('value')).toBe('cherry')
-
-      cleanupElement(el)
-    })
-
-    it('指针进入 option 后清除键盘激活状态', async () => {
-      const el = createSelect(OPTIONS_HTML)
-      await waitForUpdate(el)
-
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await waitForUpdate(el)
-      const option = el.querySelector<HTMLElement>('web-ui-option')
-      option?.dispatchEvent(new PointerEvent('pointerover', { bubbles: true, composed: true }))
-      await waitForUpdate(el)
-
-      const trigger = queryA11y(el, '[role="combobox"]')
-      expect(trigger?.getAttribute('aria-activedescendant')).toBeFalsy()
-
-      cleanupElement(el)
-    })
-
-    it('触摸指针进入 option 时保留键盘激活状态', async () => {
-      const el = createSelect(OPTIONS_HTML)
-      await waitForUpdate(el)
-
-      // 激活项与触摸目标要错开：都在同一项时，「保留」与「被改写」量出同一个 id，
-      // 判据就退化成 truthy。ArrowDown 两次 → 激活 banana，触摸滑过 apple。
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await waitForUpdate(el)
-      el.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowDown', bubbles: true }))
-      await waitForUpdate(el)
-      const trigger = queryA11y(el, '[role="combobox"]')!
-      const activated = trigger.getAttribute('aria-activedescendant')
-      expect(el.querySelector(`#${activated}`)?.getAttribute('value'), '前置：第二项应为激活项').toBe('banana')
-
-      el.querySelector<HTMLElement>('web-ui-option')!.dispatchEvent(touchPointerEvent('pointerover'))
-      await waitForUpdate(el)
-
-      // 与上一条（鼠标 hover 清除激活）互为对照：触摸不该改写键盘激活项。
-      expect(trigger.getAttribute('aria-activedescendant'), '触摸 pointerover 改写了键盘激活项').toBe(activated)
 
       cleanupElement(el)
     })

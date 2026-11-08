@@ -46,8 +46,8 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 	coreSource := coreLibrary.NewSourceService(db, fetcher)
 	coreTag := coreLibrary.NewTagService(db)
 	resService := service.NewResourceService(coreResource, libraryMedia.NewPendingPreviewRegistry())
-	srcService := service.NewSourceService(coreSource)
-	tagService := service.NewTagService(coreTag)
+	srcService := service.NewSourceService(coreSource, coreResource)
+	tagService := service.NewTagService(coreTag, coreResource)
 
 	ctx := context.Background()
 
@@ -79,14 +79,24 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	srcDTO, err := srcService.AddURLSource(ctx, resDTO.ID, ts.URL)
+	addedRes, err := srcService.AddURLSource(ctx, resDTO.ID, ts.URL)
 	if err != nil {
 		t.Fatalf("AddURLSource error: %v", err)
 	}
-	if srcDTO.IsPreferred {
+	// URL 归一化可能改写输入（如补尾斜杠），新增入口按「不在原视图里」找回。
+	var addedSource *service.SourceDTO
+	for i := range addedRes.Sources {
+		if addedRes.Sources[i].ID != resDTO.Sources[0].ID {
+			addedSource = &addedRes.Sources[i]
+		}
+	}
+	if addedSource == nil {
+		t.Fatalf("expected the added source in the returned resource view, got %+v", addedRes.Sources)
+	}
+	if addedSource.IsPreferred {
 		t.Errorf("expected additional source NOT to be preferred automatically")
 	}
-	if !srcDTO.Available {
+	if !addedSource.Available {
 		t.Errorf("expected url source to be available")
 	}
 
@@ -97,7 +107,7 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 	if len(updatedRes.Sources) != 2 {
 		t.Errorf("expected 2 sources, got %d", len(updatedRes.Sources))
 	}
-	if updatedRes.PreferredID != resDTO.Sources[0].ID {
+	if preferredID(updatedRes) != resDTO.Sources[0].ID {
 		t.Errorf("expected first source to remain preferred")
 	}
 
@@ -120,7 +130,7 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 
 	// 验证首选入口删除后仍保留稳定访问路径。
 	firstSourceID := resDTO.Sources[0].ID
-	if err := srcService.RemoveSource(ctx, firstSourceID); err != nil {
+	if _, err := srcService.RemoveSource(ctx, firstSourceID); err != nil {
 		t.Fatalf("RemoveSource error: %v", err)
 	}
 
@@ -135,7 +145,7 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 		t.Errorf("expected remaining source to become preferred")
 	}
 
-	if err := srcService.RemoveSource(ctx, resAfterRemove.Sources[0].ID); err == nil {
+	if _, err := srcService.RemoveSource(ctx, resAfterRemove.Sources[0].ID); err == nil {
 		t.Errorf("expected error when removing only remaining source, got nil")
 	}
 
@@ -144,9 +154,13 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 	defer os.Remove(newTmpFile.Name())
 	newTmpFile.Close()
 
-	replacedSrc, err := srcService.ReplaceFileSource(ctx, resAfterRemove.Sources[0].ID, newTmpFile.Name())
+	replacedRes, err := srcService.ReplaceFileSource(ctx, resAfterRemove.Sources[0].ID, newTmpFile.Name())
 	if err != nil {
 		t.Fatalf("ReplaceFileSource error: %v", err)
+	}
+	replacedSrc := sourceByID(replacedRes, resAfterRemove.Sources[0].ID)
+	if replacedSrc == nil {
+		t.Fatalf("expected the replaced source in the returned resource view, got %+v", replacedRes.Sources)
 	}
 	if !replacedSrc.IsPreferred {
 		t.Errorf("expected replaced source to keep is_preferred=true")
@@ -242,7 +256,7 @@ func TestMapServiceDerivedExploration(t *testing.T) {
 	coreTag := coreLibrary.NewTagService(db)
 	coreMap := coreLibrary.NewMapService(db)
 	resService := service.NewResourceService(coreResource, libraryMedia.NewPendingPreviewRegistry())
-	tagService := service.NewTagService(coreTag)
+	tagService := service.NewTagService(coreTag, coreResource)
 	mapService := service.NewMapService(coreMap)
 
 	ctx := context.Background()

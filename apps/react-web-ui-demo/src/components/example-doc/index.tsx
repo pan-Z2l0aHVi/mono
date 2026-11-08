@@ -1,5 +1,4 @@
-import { resolveReadmeLinks } from '@greypan/doc-demo-kit'
-
+import { resolveDocLinks } from '@/i18n/examples'
 import { useExampleDoc } from '@/i18n/locale'
 
 import { MetaComp } from '../meta'
@@ -28,9 +27,7 @@ function ExampleDoc({ component }: ExampleDocProps) {
       aria-label="示例文档"
       data-example-doc={component}
     >
-      <MetaComp
-        nodes={resolveReadmeLinks(docNodes, 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs')}
-      />
+      <MetaComp nodes={resolveDocLinks(docNodes)} />
     </section>
   )
 }

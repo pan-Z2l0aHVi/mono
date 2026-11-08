@@ -1,5 +1,6 @@
 import '@/assets/global.css'
 
+import { setViewport } from '@greypan/doc-demo-kit/testing.viewport'
 import { toast, type WebUiIcon, type WebUiLayout, type WebUiToast } from '@greypan/web-ui'
 import { antDesignSyncOutlined, icOutlineMotionPhotosOn, lucideContrast, lucideSun } from '@greypan/web-ui/icons'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router'
@@ -8,7 +9,6 @@ import { act } from 'react'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
-import { setViewport } from '@/__tests__/viewport'
 import { loadShellLocale, LocaleProvider } from '@/i18n/locale'
 
 import { Root } from '..'

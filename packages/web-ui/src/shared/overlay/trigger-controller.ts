@@ -20,7 +20,8 @@
  */
 import { hasTriggerGesture, isTriggerNone, type OverlayTriggerGesture } from '@/shared/overlay/trigger-props'
 
-import type { OverlayArbitration } from './open-overlay'
+import type { OpenOverlayHandle, OverlayArbitration } from './open-overlay'
+import type { OverlayDelayHost } from './trigger-delay-props'
 
 export type TriggerOpenSource =
   | OverlayTriggerGesture
@@ -52,22 +53,28 @@ export function isAutomaticOpenSource(source: TriggerOpenSource): boolean {
 }
 
 export interface TriggerControllerPolicy {
-  /** 手势宿主：事件监听挂载点，也是 outside-click / focus 判定的「内」基准。 */
-  host: HTMLElement
+  /**
+   * 手势宿主：事件监听挂载点，也是 outside-click / focus 判定的「内」基准；
+   * hover 计时的 show-delay / hide-delay 直读它的属性（五家经
+   * `defineOverlayDelayProps` 混入同一份声明）。
+   */
+  host: HTMLElement & OverlayDelayHost
   /** 当前规范串；trigger 属性可在开启期间改写。 */
   getTrigger(): string
-  isDisabled(): boolean
-  /** 额外打开条件（readonly 等）。声明式与程序式都受它约束。 */
+  /**
+   * 打开总闸：disabled 与 readonly 等额外条件的合取。声明式与程序式都受它约束，
+   * 各手势入口的禁用判定也只看它（不再单列 isDisabled）。
+   */
   canOpen(): boolean
   getOpen(): boolean
-  getShowDelay(): number
-  getHideDelay(): number
   /** hover 打开是否免入场动画（tooltip：已有提示在场时指针滑入相邻目标）。 */
   hoverOpensInstantly(): boolean
-  /** 事件是否落在 panel 内（含 portal 后的 panel 与子层）；通常走 handle.containsEvent。 */
-  isInsidePanel(event: Event): boolean
-  /** 焦点是否仍在宿主或 panel 内（含 portal）。 */
-  hasFocusWithin(): boolean
+  /**
+   * 开启会话 handle；panel 未建（未开 / portal 重建窗口）时为 null 或 undefined。
+   * 「事件落在 panel 内」与「焦点在宿主或 panel 内」都由它派生，宿主不再逐家覆写：
+   * `hasFocusWithin = 宿主 :focus-within || handle.hasFocusWithin()`。
+   */
+  getPanelHandle(): Pick<OpenOverlayHandle, 'containsEvent' | 'hasFocusWithin'> | null | undefined
   /** 打开请求；宿主负责 idempotence 与渲染副作用。 */
   requestOpen(meta: TriggerOpenMeta): void
   /** 收起请求；宿主负责 idempotence。 */
@@ -150,7 +157,13 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
 
   const isNone = () => isTriggerNone(policy.getTrigger())
 
-  const canApply = () => !policy.isDisabled() && policy.canOpen()
+  const canApply = () => policy.canOpen()
+
+  /** 事件是否落在 panel 内（含 portal 后的 panel 与子层）；由会话 handle 派生。 */
+  const isInsidePanel = (event: Event) => policy.getPanelHandle()?.containsEvent(event) ?? false
+
+  /** 焦点是否仍在宿主或 panel 内（含 portal）。 */
+  const hasFocusWithin = () => host.matches(':focus-within') || (policy.getPanelHandle()?.hasFocusWithin() ?? false)
 
   const requestOpen = (source: TriggerOpenSource, instant: boolean, notify: boolean) => {
     if (policy.getOpen() || !canApply()) return
@@ -169,11 +182,11 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
     hideTimer = setTimeout(
       () => {
         hideTimer = undefined
-        if (!policy.getOpen() || policy.isDisabled() || isNone()) return
+        if (!policy.getOpen() || !canApply() || isNone()) return
         if (hovering || focusKeepsOpen()) return
         requestClose(source)
       },
-      Math.max(0, policy.getHideDelay())
+      Math.max(0, policy.host.hideDelay)
     )
   }
 
@@ -186,13 +199,13 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
         if (!hovering || !hasTriggerGesture(policy.getTrigger(), 'hover')) return
         requestOpen('hover', instant, true)
       },
-      instant ? 0 : Math.max(0, policy.getShowDelay())
+      instant ? 0 : Math.max(0, policy.host.showDelay)
     )
   }
 
   const onPointerEnter = (event: PointerEvent) => {
     if (event.pointerType === 'touch') return
-    if (policy.isDisabled() || !hasTriggerGesture(policy.getTrigger(), 'hover')) return
+    if (!canApply() || !hasTriggerGesture(policy.getTrigger(), 'hover')) return
     hovering = true
     clearHideTimer()
     clearShowTimer()
@@ -214,7 +227,7 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
   }
 
   const onFocusIn = (event: FocusEvent) => {
-    if (policy.isDisabled() || isNone()) return
+    if (!canApply() || isNone()) return
     focusWithin = true
     if (focusKeepsOpen()) clearHideTimer()
     if (!hasTriggerGesture(policy.getTrigger(), 'focus')) return
@@ -226,8 +239,8 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
     cancelFocusCheck()
     focusCheckFrame = requestAnimationFrame(() => {
       focusCheckFrame = undefined
-      if (!policy.getOpen() || policy.isDisabled() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
-      if (policy.hasFocusWithin()) {
+      if (!policy.getOpen() || !canApply() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
+      if (hasFocusWithin()) {
         focusWithin = true
         return
       }
@@ -238,7 +251,7 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
 
   const onFocusOut = () => {
     if (policy.focusOut === false) return
-    if (policy.isDisabled() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
+    if (!canApply() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
     focusWithin = false
     clearShowTimer()
     scheduleFocusCheck()
@@ -246,15 +259,15 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
 
   const onDocumentClick = (event: MouseEvent) => {
     if (policy.outsideClick === false) return
-    if (policy.isDisabled() || !hasTriggerGesture(policy.getTrigger(), 'click') || !policy.getOpen()) return
+    if (!canApply() || !hasTriggerGesture(policy.getTrigger(), 'click') || !policy.getOpen()) return
     // 在监听器内部判定：composedPath() 在派发结束后会被清空。
     if (isEventInsideHost(host, event)) return
-    if (policy.isInsidePanel(event)) return
+    if (isInsidePanel(event)) return
     requestClose('outside-click')
   }
 
   const handleTriggerClick = (event: MouseEvent) => {
-    if (policy.isDisabled() || isNone()) return
+    if (!canApply() || isNone()) return
     if (!hasTriggerGesture(policy.getTrigger(), 'click')) return
     cancelPending()
     if (policy.getOpen()) {
@@ -319,13 +332,13 @@ export function defineTriggerController(policy: TriggerControllerPolicy): Trigge
         if (policy.getOpen() && !focusKeepsOpen()) armHide('panel-leave')
       }
       const onPanelFocusIn = () => {
-        if (policy.isDisabled() || isNone()) return
+        if (!canApply() || isNone()) return
         focusWithin = true
         if (focusKeepsOpen()) clearHideTimer()
       }
       const onPanelFocusOut = () => {
         if (policy.focusOut === false) return
-        if (policy.isDisabled() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
+        if (!canApply() || !hasTriggerGesture(policy.getTrigger(), 'focus')) return
         scheduleFocusCheck()
       }
       panel.addEventListener('pointerenter', onPanelEnter)

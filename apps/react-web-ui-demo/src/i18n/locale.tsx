@@ -1,4 +1,5 @@
 import {
+  createBrowserLocaleDependencies,
   createLocaleController,
   createShellLocaleLoader,
   detectLocale as detectDemoLocale,
@@ -18,12 +19,9 @@ export type { DemoLocale }
 
 const STORAGE_KEY = 'locale'
 
-/** 本机语种判定：kit 的 `detectLocale` 接本 demo 的偏好存储与浏览器语言（判据见 kit 的 detect 用例）。 */
+/** 本机语种判定：kit 的 `detectLocale` 接本 demo 的偏好存储与浏览器语言（判据见 kit 的用例）。 */
 export function detectLocale(): Locale {
-  return detectDemoLocale({
-    readPreference: () => localStorage.getItem(STORAGE_KEY),
-    languages: () => (navigator.languages?.length ? navigator.languages : [navigator.language])
-  })
+  return detectDemoLocale(createBrowserLocaleDependencies({ storageKey: STORAGE_KEY }))
 }
 
 export { createShellLocaleLoader }
@@ -48,21 +46,15 @@ const LocaleContext = createContext<LocaleContextValue | null>(null)
 /**
  * 壳文案 catalog 来自 wuchale，语料装载来自 `./examples` 的 kit meta loader；引擎的并发、
  * 降级与提交顺序在 kit（`@greypan/doc-demo-kit`）里，这里只剩依赖接线与 React 快照绑定。
+ * 偏好读写、navigator 语言与 document.lang 是两端共同的浏览器默认值，来自 kit。
  */
 function createDemoDependencies(): LocaleDependencies {
   return {
+    ...createBrowserLocaleDependencies({ storageKey: STORAGE_KEY }),
     loadCatalog: locale => loadLocale(locale, false),
     commitCatalog: commitLocale,
     loadDocs: loadMetaDocs,
-    prepareExamples,
-    readPreference: () => localStorage.getItem(STORAGE_KEY),
-    writePreference: locale => {
-      localStorage.setItem(STORAGE_KEY, locale)
-    },
-    languages: () => (navigator.languages?.length ? navigator.languages : [navigator.language]),
-    setDocumentLanguage: locale => {
-      document.documentElement.lang = locale
-    }
+    prepareExamples
   }
 }
 

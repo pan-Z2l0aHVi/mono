@@ -1,11 +1,11 @@
 import '@/assets/global.css'
 
+import { setViewport } from '@greypan/doc-demo-kit/testing.viewport'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { defineComponent, h, nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
-import { setViewport } from '@/__tests__/viewport'
 import Home from '@/pages/home/index.vue'
 
 /*

@@ -889,6 +889,9 @@ importers:
 
   packages/doc-demo-kit:
     dependencies:
+      '@greypan/browser-kit':
+        specifier: workspace:*
+        version: link:../browser-kit
       '@greypan/md-to-meta':
         specifier: workspace:*
         version: link:../md-to-meta

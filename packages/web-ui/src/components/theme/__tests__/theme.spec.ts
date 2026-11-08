@@ -205,6 +205,11 @@ describe('WebUiTheme 组件', () => {
       if (startDescriptor) Object.defineProperty(document, 'startViewTransition', startDescriptor)
     })
 
+    /*
+     * 飞行期间的新请求走「直接落地」分支并推进请求序号，在途 commit 因 stale 守卫作废。
+     * 输入压制（keydown / click / pointerdown 被吞、keyup / pointerup 的延迟消费、
+     * 新 pointerdown 放行）的判据已迁往 shared/theme 的 transition.spec（迁移不复制）。
+     */
     it('同一次 View Transition 内的新请求直接落地为最终 appearance', async () => {
       const original = document.startViewTransition
       const originalAdoptedStyleSheets = document.adoptedStyleSheets
@@ -238,34 +243,19 @@ describe('WebUiTheme 组件', () => {
       await theme.updateComplete
 
       theme.appearance = 'dark'
-      const press = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true })
-      expect(window.dispatchEvent(press)).toBe(false)
-      const click = new MouseEvent('click', { bubbles: true, cancelable: true, detail: 0 })
-      expect(window.dispatchEvent(click)).toBe(false)
-      for (const type of ['auxclick', 'dblclick', 'contextmenu', 'beforeinput']) {
-        const event = new Event(type, { bubbles: true, cancelable: true })
-        expect(window.dispatchEvent(event)).toBe(false)
-      }
-      window.dispatchEvent(new KeyboardEvent('keyup', { key: 'Enter', code: 'Enter', bubbles: true }))
-      const pointer = new PointerEvent('pointerdown', { pointerId: 42, bubbles: true, cancelable: true })
-      expect(window.dispatchEvent(pointer)).toBe(false)
+      await theme.updateComplete
+      expect(startViewTransition).toHaveBeenCalledTimes(1)
+      expect(updateCallback).toBeDefined()
+
       theme.appearance = 'light'
       await theme.updateComplete
       expect(theme.appearance).toBe('light')
+      // 飞行中不二次启动：新请求只落地，不改写 in-flight 的快照。
       expect(startViewTransition).toHaveBeenCalledTimes(1)
-      expect(updateCallback).toBeDefined()
       resolveUpdate?.()
       await Promise.resolve()
       resolveFinished?.()
       await Promise.resolve()
-      window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 42, bubbles: true }))
-      const delayedClick = new PointerEvent('click', { pointerId: 42, detail: 1, bubbles: true, cancelable: true })
-      expect(window.dispatchEvent(delayedClick)).toBe(false)
-      const nextPointer = new PointerEvent('pointerdown', { pointerId: 42, bubbles: true, cancelable: true })
-      expect(window.dispatchEvent(nextPointer)).toBe(true)
-      const nextKey = new KeyboardEvent('keydown', { key: 'Enter', code: 'Enter', bubbles: true, cancelable: true })
-      expect(window.dispatchEvent(nextKey)).toBe(true)
-      window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 42, bubbles: true }))
       theme.remove()
       vi.mocked(startViewTransition).mockRestore()
       document.startViewTransition = original

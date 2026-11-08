@@ -14,12 +14,13 @@
  * 这里等的是**期待值本身**（`window.innerWidth / innerHeight` 等于目标），
  * 而不是「等一段时间没变化」——后者在视口根本没生效时同样成立。
  *
- * ## 为什么这份代码在本 app 里而不是共用一份
+ * ## 放置位置
  *
  * 等价实现在 `packages/web-ui/src/shared/test-utils/viewport.ts`。`test-utils` 不在
  * `@greypan/web-ui` 的 `exports` 里（那是内部测试基础设施，不是发布面），而把它加进
- * exports 会把测试辅助代码变成公开契约。本 app 因此保留自己的一份，与 vue demo 的
- * 同名文件逐字保持一致：三份副本的等待语义、预算与错误文案必须相同，改一处要改三处。
+ * exports 会把测试辅助代码变成公开契约。两个 demo 的同名副本已收敛到本文件
+ * （`@greypan/doc-demo-kit/testing.viewport`）；web-ui 自己的那份留在包内 test-utils，
+ * 等待语义、预算与错误文案以本文件为对齐基准，改语义要两边一起改。
  */
 import { page } from 'vite-plus/test/browser'
 

@@ -77,10 +77,10 @@ func newRealFSWatcher() (fsEvents, error) {
 
 // Watcher 自身状态只有目录引用计数与 fd 成本估算；路径到 Source 的解析一律回查 DB，
 // 不维护易失的内存索引——重复 Source 不去重，内存索引要与 DB 双写才不出错。
+// 可用性写入与事件发射全部委托 gate；watcher 只负责把内核事件收敛成探测批次。
 type Watcher struct {
 	fs   fsEvents
-	sink AvailabilitySink
-	emit Emitter
+	gate *AvailabilityGate
 
 	mu       sync.Mutex
 	dirRefs  map[string]int // 目录 → 引用它的 file source 数
@@ -97,15 +97,14 @@ type Watcher struct {
 	wg       sync.WaitGroup
 }
 
-func NewWatcher(sink AvailabilitySink, emit Emitter) (*Watcher, error) {
+func NewWatcher(gate *AvailabilityGate) (*Watcher, error) {
 	fs, err := newFSWatcher()
 	if err != nil {
 		return nil, err
 	}
 	return &Watcher{
 		fs:       fs,
-		sink:     sink,
-		emit:     emit,
+		gate:     gate,
 		dirRefs:  map[string]int{},
 		dirPaths: map[string]int{},
 		pending:  map[string]*time.Timer{},
@@ -131,7 +130,7 @@ func (w *Watcher) Start(ctx context.Context) error {
 // 从 DB 读出全部文件入口位置，算出目标目录集，与当前监听列表求差，只对差集增删。
 // 幂等，可重复调用。
 func (w *Watcher) SyncSources(ctx context.Context) error {
-	locations, err := w.sink.ListFileSourceLocations(ctx)
+	locations, err := w.gate.ListFileSourceLocations(ctx)
 	if err != nil {
 		return err
 	}
@@ -397,7 +396,7 @@ func (w *Watcher) drainBatch(first string) ([]string, bool) {
 
 // applyBatch 探测一批路径并把「实际发生的翻转」写库后交给发射器。
 func (w *Watcher) applyBatch(ctx context.Context, paths []string) {
-	refs, err := w.sink.FileSourceIDsByLocations(ctx, paths)
+	refs, err := w.gate.FileSourceIDsByLocations(ctx, paths)
 	if err != nil {
 		// 解析失败是 DB 读错误，不是关于文件的结论，因此丢弃本批而不是猜可用性。
 		// 有意不重新排期：无界重试会在 DB 持续故障时按 debounce 窗口反复打库并刷日志，
@@ -455,32 +454,16 @@ func (w *Watcher) clearSuspect(path string) {
 	delete(w.suspects, path)
 }
 
-// applyAvailability 只在写库确实翻转后发事件，保证「事件先到、DB 未落」不可能发生。
+// applyAvailability 经 gate 落库并发事件；「先落库、后发事件、只在真翻转时发」
+// 由 gate 保证，这里不关心是否翻转。
 func (w *Watcher) applyAvailability(ctx context.Context, sourceID string, available bool) {
-	change, err := w.sink.ApplyFileAvailability(ctx, sourceID, available)
-	if err != nil {
-		log.Printf("interweave: apply file availability for %s failed: %v", sourceID, err)
-		return
-	}
-	if change == nil || w.emit == nil {
-		return
-	}
-	w.emit(*change)
+	_, _ = w.gate.Report(ctx, sourceID, available)
 }
 
 // ReportFileUnavailable 让媒体 404 兜底与目录监听共用同一个写入口与发射出口：
-// 媒体路径不需要监听，但两条信号必须遵守同一条「先落库、后发事件」的规则。
-// 返回值表示库内可用性是否真的翻转。
+// 媒体路径不需要监听，两条信号都汇入 gate。返回值表示库内可用性是否真的翻转。
 func (w *Watcher) ReportFileUnavailable(ctx context.Context, sourceID string) (bool, error) {
-	change, err := w.sink.ApplyFileAvailability(ctx, sourceID, false)
-	if err != nil {
-		return false, err
-	}
-	if change == nil || w.emit == nil {
-		return false, nil
-	}
-	w.emit(*change)
-	return true, nil
+	return w.gate.ReportFileUnavailable(ctx, sourceID)
 }
 
 // runReconcile 定期全量对账，覆盖 fsnotify 静默丢失的 watch：

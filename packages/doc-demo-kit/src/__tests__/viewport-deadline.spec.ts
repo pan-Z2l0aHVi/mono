@@ -1,6 +1,7 @@
+// @vitest-environment jsdom
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { setViewport } from './viewport'
+import { setViewport } from '../testing.viewport'
 
 const viewport = vi.hoisted(() => vi.fn<(width: number, height: number) => Promise<void>>())
 vi.mock('vite-plus/test/browser', () => ({ page: { viewport } }))

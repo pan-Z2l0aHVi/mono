@@ -3,6 +3,7 @@
 
 /**
  * 作为 Wails 外观呈现 Source 能力，产品规则由 core 承载。
+ * 变更类方法直接回传变更后的完整 Resource 视图，前端不再二次往返读取。
  * @module
  */
 
@@ -17,7 +18,7 @@ import * as $models from "./models.js";
 /**
  * 补充备用入口不应意外改变用户当前的首选入口。
  */
-export function AddFileSource(resourceID: string, inputPath: string): $CancellablePromise<$models.SourceDTO | null> {
+export function AddFileSource(resourceID: string, inputPath: string): $CancellablePromise<$models.ResourceDTO | null> {
     return $Call.ByID(2051784755, resourceID, inputPath).then(($result: any) => {
         return $$createType1($result);
     });
@@ -26,7 +27,7 @@ export function AddFileSource(resourceID: string, inputPath: string): $Cancellab
 /**
  * 补充 URL 入口不应覆盖用户已维护的资源语义。
  */
-export function AddURLSource(resourceID: string, inputURL: string): $CancellablePromise<$models.SourceDTO | null> {
+export function AddURLSource(resourceID: string, inputURL: string): $CancellablePromise<$models.ResourceDTO | null> {
     return $Call.ByID(1864533572, resourceID, inputURL).then(($result: any) => {
         return $$createType1($result);
     });
@@ -47,7 +48,7 @@ export function ProbeURLSourceOnOpen(sourceID: string): $CancellablePromise<$mod
 /**
  * RefreshFileSource 重新检查同一文件 path 的可用性，不改变 location；文件在原路径恢复后使用。
  */
-export function RefreshFileSource(sourceID: string): $CancellablePromise<$models.SourceDTO | null> {
+export function RefreshFileSource(sourceID: string): $CancellablePromise<$models.ResourceDTO | null> {
     return $Call.ByID(3763081659, sourceID).then(($result: any) => {
         return $$createType1($result);
     });
@@ -56,7 +57,7 @@ export function RefreshFileSource(sourceID: string): $CancellablePromise<$models
 /**
  * RefreshURLSource 重新抓取同一 URL 的展示信息与可用性，不改变 location。
  */
-export function RefreshURLSource(sourceID: string): $CancellablePromise<$models.SourceDTO | null> {
+export function RefreshURLSource(sourceID: string): $CancellablePromise<$models.ResourceDTO | null> {
     return $Call.ByID(477969004, sourceID).then(($result: any) => {
         return $$createType1($result);
     });
@@ -65,14 +66,16 @@ export function RefreshURLSource(sourceID: string): $CancellablePromise<$models.
 /**
  * Resource 必须保留至少一个入口；失去首选入口时按既有顺位延续访问路径。
  */
-export function RemoveSource(sourceID: string): $CancellablePromise<void> {
-    return $Call.ByID(4265096284, sourceID);
+export function RemoveSource(sourceID: string): $CancellablePromise<$models.ResourceDTO | null> {
+    return $Call.ByID(4265096284, sourceID).then(($result: any) => {
+        return $$createType1($result);
+    });
 }
 
 /**
  * ReplaceFileSource 用新路径找回失效文件，保留 Source 身份、顺位与首选角色；它不是同路径刷新。
  */
-export function ReplaceFileSource(sourceID: string, inputPath: string): $CancellablePromise<$models.SourceDTO | null> {
+export function ReplaceFileSource(sourceID: string, inputPath: string): $CancellablePromise<$models.ResourceDTO | null> {
     return $Call.ByID(3092543900, sourceID, inputPath).then(($result: any) => {
         return $$createType1($result);
     });
@@ -81,7 +84,7 @@ export function ReplaceFileSource(sourceID: string, inputPath: string): $Cancell
 /**
  * ReplaceURLSource 用新 URL 找回失效网页入口，保留 Source 身份、顺位与首选角色；它不是同 URL 刷新。
  */
-export function ReplaceURLSource(sourceID: string, inputURL: string): $CancellablePromise<$models.SourceDTO | null> {
+export function ReplaceURLSource(sourceID: string, inputURL: string): $CancellablePromise<$models.ResourceDTO | null> {
     return $Call.ByID(2259197533, sourceID, inputURL).then(($result: any) => {
         return $$createType1($result);
     });
@@ -90,12 +93,14 @@ export function ReplaceURLSource(sourceID: string, inputURL: string): $Cancellab
 /**
  * 首选入口是用户的明确选择，不能出现多个候选。
  */
-export function SetPreferredSource(resourceID: string, sourceID: string): $CancellablePromise<void> {
-    return $Call.ByID(3435919961, resourceID, sourceID);
+export function SetPreferredSource(resourceID: string, sourceID: string): $CancellablePromise<$models.ResourceDTO | null> {
+    return $Call.ByID(3435919961, resourceID, sourceID).then(($result: any) => {
+        return $$createType1($result);
+    });
 }
 
 // Private type creation functions
-const $$createType0 = $models.SourceDTO.createFrom;
+const $$createType0 = $models.ResourceDTO.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
 const $$createType2 = $models.SourceProbeResultDTO.createFrom;
 const $$createType3 = $Create.Nullable($$createType2);

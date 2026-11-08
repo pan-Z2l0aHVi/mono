@@ -211,3 +211,31 @@ export function createShellLocaleLoader(loadLocale: (locale: DemoLocale) => Prom
     return pending
   }
 }
+
+export interface BrowserLocaleDependenciesOptions {
+  /** 偏好存储键；demo 端统一是 `locale`。 */
+  storageKey: string
+}
+
+/**
+ * `LocaleDependencies` 的浏览器默认值：偏好读写（裸字符串落盘，与 detect 的旧数据兼容）、
+ * navigator 语言序列与 `document.lang`。宿主只补框架绑定（wuchale 的 catalog 装载与本端的
+ * meta loader），不复制这些默认值。
+ */
+export function createBrowserLocaleDependencies({
+  storageKey
+}: BrowserLocaleDependenciesOptions): Pick<
+  LocaleDependencies,
+  'readPreference' | 'writePreference' | 'languages' | 'setDocumentLanguage'
+> {
+  return {
+    readPreference: () => localStorage.getItem(storageKey),
+    writePreference: locale => {
+      localStorage.setItem(storageKey, locale)
+    },
+    languages: () => (navigator.languages?.length ? navigator.languages : [navigator.language]),
+    setDocumentLanguage: locale => {
+      document.documentElement.lang = locale
+    }
+  }
+}

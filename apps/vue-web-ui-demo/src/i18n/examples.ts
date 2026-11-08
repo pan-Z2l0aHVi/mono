@@ -1,17 +1,18 @@
-import { createMetaLoader, metaFileOf } from '@greypan/doc-demo-kit'
+import { createDemoMetaLoader } from '@greypan/doc-demo-kit'
 import type { MetaNode } from '@greypan/md-to-meta'
 
 export { prepareExamples, type MetaDocs } from '@greypan/doc-demo-kit'
 
 /*
  * 生成器把所有文档平铺在同一个目录里，语种只体现在文件名后缀（中文 `.CN`、英文无后缀）。
- * 引擎不做语种解释：kit 的 `metaFileOf` 只给文件名，目录前缀由这里的 `resolve` 补。
+ * 目录契约与文件名解析在 kit 的 `createDemoMetaLoader`，这里只给出自己的 glob 模块表与
+ * README 相对链接的仓库基址。
  */
 const modules = import.meta.glob<{ default: MetaNode[] }>('../generated/*.meta.js')
 
-const loader = createMetaLoader({
+const loader = createDemoMetaLoader({
   modules,
-  resolve: (locale, component) => `../generated/${metaFileOf(locale, component)}`
+  readmeBase: 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/web-ui/docs'
 })
 
 /**
@@ -21,3 +22,6 @@ export const loadMeta = loader.loadMeta
 
 /** 装载一组组件的 meta；返回的 Map 就是控制器的文档快照。 */
 export const loadMetaDocs = loader.loadMetaDocs
+
+/** 把文档里的相对 README 链接指向配置的仓库位置。 */
+export const resolveDocLinks = loader.resolveDocLinks

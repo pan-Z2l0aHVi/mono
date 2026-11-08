@@ -1,11 +1,11 @@
 import '@/assets/global.css'
 
+import { setViewport } from '@greypan/doc-demo-kit/testing.viewport'
 import { createMemoryHistory, createRouter, RouterProvider } from '@tanstack/react-router'
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { act } from 'react'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { setViewport } from '@/__tests__/viewport'
 import { loadShellLocale, LocaleProvider } from '@/i18n/locale'
 import { routeTree } from '@/routeTree.gen'
 

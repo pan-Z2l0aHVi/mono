@@ -313,7 +313,7 @@ func TestSourceMutationsResyncIndex(t *testing.T) {
 	if err != nil {
 		t.Fatalf("CreateResource error: %v", err)
 	}
-	if err := sourceSvc.RemoveSource(ctx, fileSrc.ID); err != nil {
+	if _, err := sourceSvc.RemoveSource(ctx, fileSrc.ID); err != nil {
 		t.Fatalf("RemoveSource error: %v", err)
 	}
 	if err := resourceSvc.DeleteResource(ctx, view.Resource.ID); err != nil {

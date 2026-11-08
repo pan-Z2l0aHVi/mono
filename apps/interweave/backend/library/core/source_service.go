@@ -165,13 +165,16 @@ func (s *SourceService) SetPreferredSource(ctx context.Context, resourceID strin
 }
 
 // Resource 必须保留至少一个入口；失去首选入口时按既有顺位延续访问路径。
-func (s *SourceService) RemoveSource(ctx context.Context, sourceID string) error {
+// 返回被删 Source 归属的 ResourceID，供外观层在变更后装配完整资源视图。
+func (s *SourceService) RemoveSource(ctx context.Context, sourceID string) (string, error) {
+	var resourceID string
 	now := time.Now().UnixMilli()
 	err := s.db.WithTx(ctx, func(tx *sql.Tx) error {
 		src, err := s.sources.Get(ctx, tx, sourceID)
 		if err != nil {
 			return mapNotFound(err)
 		}
+		resourceID = src.ResourceID
 
 		count, err := s.sources.CountByResource(ctx, tx, src.ResourceID)
 		if err != nil {
@@ -196,11 +199,11 @@ func (s *SourceService) RemoveSource(ctx context.Context, sourceID string) error
 		return nil
 	})
 	if err != nil {
-		return err
+		return "", err
 	}
 
 	s.resyncIndex(ctx)
-	return nil
+	return resourceID, nil
 }
 
 // 仅在用户明确请求时更新远程展示信息。

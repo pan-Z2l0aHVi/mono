@@ -2,6 +2,8 @@ export interface NavItem {
   readonly path: string
   /** 组件名（Button / Input …），两版都不译。 */
   readonly label: string
+  /** 中文关键词（按钮 / 输入框 …）：搜索用，不是渲染文案（wuchale 只扫宿主 src，见下）。 */
+  readonly zhName: string
 }
 
 export type NavSectionId = 'general' | 'layout' | 'form' | 'display' | 'feedback'
@@ -22,48 +24,48 @@ function section(id: NavSectionId, items: NavItem[]): NavSection {
 /** 两端渲染的是同一份导航数据，冻结后一端误改会立即暴露，而不是静默改掉另一端的导航。 */
 export const NAV_SECTIONS: readonly NavSection[] = Object.freeze([
   section('general', [
-    { path: '/components/button', label: 'Button' },
-    { path: '/components/icon', label: 'Icon' }
+    { path: '/components/button', label: 'Button', zhName: '按钮' },
+    { path: '/components/icon', label: 'Icon', zhName: '图标' }
   ]),
   section('layout', [
-    { path: '/components/layout', label: 'Layout' },
-    { path: '/components/back-top', label: 'BackTop' },
-    { path: '/components/theme', label: 'Theme' }
+    { path: '/components/layout', label: 'Layout', zhName: '布局' },
+    { path: '/components/back-top', label: 'BackTop', zhName: '回到顶部' },
+    { path: '/components/theme', label: 'Theme', zhName: '主题' }
   ]),
   section('form', [
-    { path: '/components/input', label: 'Input' },
-    { path: '/components/textarea', label: 'Textarea' },
-    { path: '/components/input-number', label: 'InputNumber' },
-    { path: '/components/select', label: 'Select' },
-    { path: '/components/autocomplete', label: 'Autocomplete' },
-    { path: '/components/switch', label: 'Switch' },
-    { path: '/components/slider', label: 'Slider' },
-    { path: '/components/radio', label: 'Radio' },
-    { path: '/components/checkbox', label: 'Checkbox' },
-    { path: '/components/segmented', label: 'Segmented' }
+    { path: '/components/input', label: 'Input', zhName: '输入框' },
+    { path: '/components/textarea', label: 'Textarea', zhName: '多行输入框' },
+    { path: '/components/input-number', label: 'InputNumber', zhName: '数字输入框' },
+    { path: '/components/select', label: 'Select', zhName: '选择器' },
+    { path: '/components/autocomplete', label: 'Autocomplete', zhName: '自动补全' },
+    { path: '/components/switch', label: 'Switch', zhName: '开关' },
+    { path: '/components/slider', label: 'Slider', zhName: '滑块' },
+    { path: '/components/radio', label: 'Radio', zhName: '单选' },
+    { path: '/components/checkbox', label: 'Checkbox', zhName: '复选' },
+    { path: '/components/segmented', label: 'Segmented', zhName: '分段控件' }
   ]),
   section('display', [
-    { path: '/components/collapse', label: 'Collapse' },
-    { path: '/components/editable-text', label: 'EditableText' },
-    { path: '/components/empty', label: 'Empty' },
-    { path: '/components/grouped-text', label: 'GroupedText' },
-    { path: '/components/middle-ellipsis', label: 'MiddleEllipsis' },
-    { path: '/components/svg-draw-lines', label: 'SVGDrawLines' },
-    { path: '/components/avatar', label: 'Avatar' },
-    { path: '/components/badge', label: 'Badge' }
+    { path: '/components/collapse', label: 'Collapse', zhName: '折叠' },
+    { path: '/components/editable-text', label: 'EditableText', zhName: '可编辑文本' },
+    { path: '/components/empty', label: 'Empty', zhName: '空状态' },
+    { path: '/components/grouped-text', label: 'GroupedText', zhName: '分组文本' },
+    { path: '/components/middle-ellipsis', label: 'MiddleEllipsis', zhName: '中间省略' },
+    { path: '/components/svg-draw-lines', label: 'SVGDrawLines', zhName: '绘制线条' },
+    { path: '/components/avatar', label: 'Avatar', zhName: '头像' },
+    { path: '/components/badge', label: 'Badge', zhName: '徽标' }
   ]),
   section('feedback', [
-    { path: '/components/dialog', label: 'Dialog' },
-    { path: '/components/drawer', label: 'Drawer' },
-    { path: '/components/tooltip', label: 'Tooltip' },
-    { path: '/components/popover', label: 'Popover' },
-    { path: '/components/dropdown', label: 'Dropdown' },
-    { path: '/components/context-menu', label: 'ContextMenu' },
-    { path: '/components/toast', label: 'Toast' },
-    { path: '/components/image-preview', label: 'ImagePreview' },
-    { path: '/components/shake', label: 'Shake' },
-    { path: '/components/spinner', label: 'Spinner' },
-    { path: '/components/progress', label: 'Progress' }
+    { path: '/components/dialog', label: 'Dialog', zhName: '对话框' },
+    { path: '/components/drawer', label: 'Drawer', zhName: '抽屉' },
+    { path: '/components/tooltip', label: 'Tooltip', zhName: '文字提示' },
+    { path: '/components/popover', label: 'Popover', zhName: '弹出层' },
+    { path: '/components/dropdown', label: 'Dropdown', zhName: '下拉菜单' },
+    { path: '/components/context-menu', label: 'ContextMenu', zhName: '右键菜单' },
+    { path: '/components/toast', label: 'Toast', zhName: '通知' },
+    { path: '/components/image-preview', label: 'ImagePreview', zhName: '图片预览' },
+    { path: '/components/shake', label: 'Shake', zhName: '抖动' },
+    { path: '/components/spinner', label: 'Spinner', zhName: '加载' },
+    { path: '/components/progress', label: 'Progress', zhName: '进度' }
   ])
 ])
 

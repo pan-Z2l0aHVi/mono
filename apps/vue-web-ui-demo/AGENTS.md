@@ -4,3 +4,4 @@
 - 事件 handler 优先使用推导的 `$event.target`/`currentTarget` 类型；命名 handler 使用 `WebUiEvent<WebUiXxx, 'event'>`，不手写 host 类型。
 - 修改集成或交互后，在真实浏览器验证 Vue 表面。
 - 示例代码与 API 表都由 `packages/web-ui/docs/*.md` 生成（中文源 `<name>.CN.md`、英文译文 `<name>.md`；表里的名称 / 说明 / 类型 / 默认值都手写在语料里，组件源码不参与生成），落点是 `src/generated/`：不得手动编辑，改完 markdown 由 `vite.config.ts` 里挂的 `mdToMeta` 插件在 dev 与 build 时重新生成，不必手跑命令；改了组件属性时这张表要人一起手改，没有脚本会提醒。单 output 平铺：中文 `<name>.CN.meta.js`、英文 `<name>.meta.js`，每份并排一份 `.meta.d.ts`，共享 `theme.css`，壳文案的 wuchale 提取必须排除这些生成物。所有围栏都落成 `src/generated/codeblock/<hash>.<语言>`，本端 `exec: ['vue']`，因此只有 `.vue` 围栏带 `load`——那是被真正编译执行的示例 SFC，围栏字节、落盘文件与页面 `<pre>` 显示的必须是同一份。
+- shell 状态（主题 / 动效 / 侧栏 collapsed / open / 宽度的持久化、校验、`sidebar-*-change` 事件过滤与 mobile 派生）由 `@greypan/doc-demo-kit` 的 `createShellState` 拥有，`app/index.vue` 只做快照绑定与渲染；不得自建并行的持久化或事件过滤逻辑，断点判定例外（`useMobile` 留在 app，ADR-0023）。

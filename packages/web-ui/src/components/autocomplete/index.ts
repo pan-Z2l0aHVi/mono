@@ -10,14 +10,14 @@ import scrollbarStyle from '@/assets/scrollbar.css?inline'
 import glass from '@/classes/glass.css?inline'
 import type { WebUiOption } from '@/components/option'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
-import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
+import { normalizeLiteral } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import {
+  createComboboxNavigation,
   createComboboxOpenController,
   createOptionListenerBinding,
   defineComboboxTrigger,
-  defineOptionPortal,
-  nextWrappingIndex
+  defineOptionPortal
 } from '@/shared/option-portal'
 import { defineAnchoredPanel } from '@/shared/overlay/anchored-panel'
 import { hasOverlayContent } from '@/shared/overlay/content-presence'
@@ -30,6 +30,7 @@ import {
   type OverlayPortal
 } from '@/shared/overlay/portal'
 import { defineTriggerController } from '@/shared/overlay/trigger-controller'
+import { defineOverlayDelayProps } from '@/shared/overlay/trigger-delay-props'
 import { isTriggerNone, normalizeTriggerSet } from '@/shared/overlay/trigger-props'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
@@ -70,7 +71,7 @@ function isEmptySlotNode(node: Node): node is Element {
  * 可聚焦元素（README 契约）；包装 div 恒为 tabindex="-1"，不占顺序焦点，避免双 tab 位。
  */
 @customElement('web-ui-autocomplete')
-export class WebUiAutocomplete extends FormAssociated(LitElement) {
+export class WebUiAutocomplete extends defineOverlayDelayProps(FormAssociated(LitElement)) {
   static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(scrollbarStyle), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) placeholder = ''
@@ -129,28 +130,6 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   }
   private _triggerValue: string = DEFAULT_TRIGGERS.join(',')
 
-  @property({ type: Number, attribute: 'show-delay' })
-  get showDelay(): number {
-    return this._showDelay
-  }
-  set showDelay(v: number) {
-    const old = this._showDelay
-    this._showDelay = normalizeNumber(v, 0, 5000, 200)
-    this.requestUpdate('showDelay', old)
-  }
-  private _showDelay = 200
-
-  @property({ type: Number, attribute: 'hide-delay' })
-  get hideDelay(): number {
-    return this._hideDelay
-  }
-  set hideDelay(v: number) {
-    const old = this._hideDelay
-    this._hideDelay = normalizeNumber(v, 0, 5000, 100)
-    this.requestUpdate('hideDelay', old)
-  }
-  private _hideDelay = 100
-
   // value 不反射 attribute，attribute 只参与首次声明式初始化。
   @state() private _value = ''
 
@@ -206,6 +185,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   }
 
   @state() private _isOpen = false
+  /** 游标状态机在 combobox-navigation；这里是供 `aria-activedescendant` 计算的 @state 镜像。 */
   @state() private _activeIndex = -1
   @state() private _focused = false
   @state() private _hasTriggerSlot = false
@@ -217,7 +197,6 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   private _options: WebUiOption[] = []
   private _portal?: OverlayPortal
   private _portalContent?: HTMLElement
-  private _keyboardNavigationActive = false
   private _scrollInteractionElement?: HTMLElement
   private readonly _scrollLock = defineScrollLockLease().make()
 
@@ -285,14 +264,10 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   private readonly _triggerController = defineTriggerController({
     host: this,
     getTrigger: () => this.trigger,
-    isDisabled: () => this._isDisabled,
-    canOpen: () => !this.readonly,
+    canOpen: () => !this._isDisabled && !this.readonly,
     getOpen: () => this._isOpen,
-    getShowDelay: () => this.showDelay,
-    getHideDelay: () => this.hideDelay,
     hoverOpensInstantly: () => false,
-    isInsidePanel: event => !!this._panel.getHandle()?.containsEvent(event),
-    hasFocusWithin: () => this.matches(':focus-within') || !!this._panel.getHandle()?.hasFocusWithin(),
+    getPanelHandle: () => this._panel.getHandle(),
     // 输入框点击只开不关；键入手势与方向键打开保持组件固有行为。
     clickOpensOnly: true,
     requestOpen: meta =>
@@ -515,10 +490,9 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       o.toggleAttribute('data-filtered', !match)
     })
     // 活动项被过滤或禁用时清除键盘激活，避免激活不可见项
-    const active = this._options[this._activeIndex]
-    if (this._activeIndex >= 0 && (!active || active.hasAttribute('data-filtered') || active.disabled)) {
-      this._activeIndex = -1
-      this._syncActiveOption()
+    const active = this._options[this._nav.activeIndex]
+    if (this._nav.activeIndex >= 0 && (!active || active.hasAttribute('data-filtered') || active.disabled)) {
+      this._nav.clearActive()
     }
   }
 
@@ -563,11 +537,28 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   private _bindOption = (option: WebUiOption) => this._optionListeners.bind(option)
   private _unbindOption = (option: WebUiOption) => this._optionListeners.unbind(option)
 
+  // 游标状态机沉在 combobox-navigation（环绕导航 / 锚点 / 键盘导航旗标）；
+  // 键位映射（含 Enter 的 custom value / multiline 分支）留在组件
+  private readonly _nav = createComboboxNavigation({
+    getOptions: () => this._options,
+    isEnabled: option => !option.disabled && !option.hasAttribute('data-filtered'),
+    isOpen: () => this._isOpen,
+    onActiveChange: () => {
+      this._activeIndex = this._nav.activeIndex
+      this._syncActiveOption()
+    },
+    // 无选中锚点：键盘打开锚定首个 enabled 项
+    getInitialAnchor: enabled => (enabled.length ? 0 : -1),
+    // 指针接管走旗标：键盘导航期间悬停不清除，列表 pointermove / wheel 才清除
+    canPointerTakeOver: () => !this._nav.isKeyboardNavigationActive()
+  })
+
   private _refreshOptions() {
-    const activeOption = this._options[this._activeIndex]
+    const activeOption = this._options[this._nav.activeIndex]
     // diff 绑定/解绑与激活索引按 option 身份保持在 shared 内完成
     const next = this._optionPortal.refresh(this._options, activeOption)
     this._options = next.options
+    this._nav.setActiveIndex(next.activeIndex)
     this._activeIndex = next.activeIndex
   }
 
@@ -583,13 +574,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
   }
 
   private _handleOptionPointerOver = (e: PointerEvent) => {
-    if (e.pointerType === 'touch') return
-    if (!this._isOpen || !(e.currentTarget instanceof HTMLElement)) return
-    if (this._keyboardNavigationActive) return
-
-    // 指针接管后只保留 :hover，避免键盘激活项与悬停项同时高亮。
-    this._activeIndex = -1
-    this._syncActiveOption()
+    if (!(e.currentTarget instanceof HTMLElement)) return
+    this._nav.handleOptionPointerOver(e)
   }
 
   private _syncScrollInteractionListeners() {
@@ -603,23 +589,15 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     this._scrollInteractionElement?.addEventListener('wheel', this._handleListWheel)
   }
 
-  private _clearKeyboardNavigation() {
-    if (!this._keyboardNavigationActive) return
-
-    this._keyboardNavigationActive = false
-    this._activeIndex = -1
-    this._syncActiveOption()
-  }
-
   private _handleListPointerMove = () => {
     if (!this._isOpen) return
-    this._clearKeyboardNavigation()
+    this._nav.clearKeyboardNavigation()
   }
 
   private _handleListWheel = () => {
     if (!this._isOpen) return
     // 滚轮是新的用户意图：清除旧键盘激活，避免滚动后 Enter 提交屏幕外选项。
-    this._clearKeyboardNavigation()
+    this._nav.clearKeyboardNavigation()
   }
 
   private _handleOptionPointerDown = (e: PointerEvent) => {
@@ -651,7 +629,7 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
         if (!this._isOpen && isTriggerNone(this.trigger)) break
         e.preventDefault()
         if (!this._isOpen) this._open({ isKeyboardNavigation: true })
-        else this._navigateActive(e.key === 'ArrowDown' ? 1 : -1)
+        else this._nav.navigate(e.key === 'ArrowDown' ? 1 : -1)
         break
       }
       case 'Enter': {
@@ -685,23 +663,6 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
         break
       }
     }
-  }
-
-  private _navigateActive(delta: number) {
-    const enabled = this._options.filter(o => !o.disabled && !o.hasAttribute('data-filtered'))
-    if (!enabled.length) return
-
-    this._keyboardNavigationActive = true
-    const currentIdx = this._activeIndex >= 0 ? enabled.indexOf(this._options[this._activeIndex]) : delta > 0 ? -1 : 0
-    this._activeIndex = this._options.indexOf(enabled[nextWrappingIndex(enabled.length, currentIdx, delta)])
-    this._syncActiveOption()
-  }
-
-  private _setInitialActiveOption() {
-    const firstEnabled = this._options.findIndex(o => !o.disabled && !o.hasAttribute('data-filtered'))
-    this._keyboardNavigationActive = true
-    this._activeIndex = firstEnabled
-    this._syncActiveOption()
   }
 
   private _syncActiveOption() {
@@ -776,9 +737,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     if (this._isDisabled || this.readonly) return
     if (value === this._value) return
     this.value = value
-    this._keyboardNavigationActive = false
-    this._activeIndex = -1
-    this._syncActiveOption()
+    this._nav.markKeyboardNavigation(false)
+    this._nav.clearActive()
     // `none` 只接受程序式开关：键入照常过滤，但不自动展开候选。
     if (!isTriggerNone(this.trigger)) this._open()
   }
@@ -830,8 +790,8 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
     openOverlay: isKeyboardNavigation => this._openOverlay(isKeyboardNavigation),
     closeOverlay: () => void this._closeOverlay(),
     onOpen: isKeyboardNavigation => {
-      this._keyboardNavigationActive = isKeyboardNavigation
-      if (isKeyboardNavigation) this._setInitialActiveOption()
+      this._nav.markKeyboardNavigation(isKeyboardNavigation)
+      if (isKeyboardNavigation) this._nav.activateInitialAnchor()
       else this._syncActiveOption()
     },
     onBeforeClose: () => {
@@ -841,9 +801,9 @@ export class WebUiAutocomplete extends FormAssociated(LitElement) {
       this._optionPortal.syncPortalContent()
     },
     onAfterClose: () => {
-      this._keyboardNavigationActive = false
+      this._nav.resetForClose()
       this._openedWithContent = false
-      this._activeIndex = -1
+      this._activeIndex = this._nav.activeIndex
       this._options.forEach(o => o.removeAttribute('active'))
       this._syncScrollInteractionListeners()
     }

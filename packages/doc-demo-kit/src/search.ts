@@ -1,42 +1,5 @@
 import { NAV_SECTIONS } from './nav'
 
-const chineseNames: Record<string, string> = {
-  Button: '按钮',
-  Icon: '图标',
-  Layout: '布局',
-  BackTop: '回到顶部',
-  Theme: '主题',
-  Input: '输入框',
-  Textarea: '多行输入框',
-  InputNumber: '数字输入框',
-  Select: '选择器',
-  Autocomplete: '自动补全',
-  Switch: '开关',
-  Slider: '滑块',
-  Radio: '单选',
-  Checkbox: '复选',
-  Segmented: '分段控件',
-  Collapse: '折叠',
-  EditableText: '可编辑文本',
-  Empty: '空状态',
-  GroupedText: '分组文本',
-  MiddleEllipsis: '中间省略',
-  SVGDrawLines: '绘制线条',
-  Avatar: '头像',
-  Badge: '徽标',
-  Dialog: '对话框',
-  Drawer: '抽屉',
-  Tooltip: '文字提示',
-  Popover: '弹出层',
-  Dropdown: '下拉菜单',
-  ContextMenu: '右键菜单',
-  Toast: '通知',
-  ImagePreview: '图片预览',
-  Shake: '抖动',
-  Spinner: '加载',
-  Progress: '进度'
-}
-
 export interface SearchItem {
   path: string
   zh: string
@@ -44,17 +7,28 @@ export interface SearchItem {
   keywords?: string
 }
 
+/**
+ * 壳页（首页 / 快速开始 / 更新日志）的搜索条目：两端曾各硬编码一份，收进 kit 后
+ * `searchNavigation` 直接以此为默认 pages，接线只剩一次调用。中文是数据（搜索索引），
+ * 不进 wuchale。
+ */
+export const SHELL_NAV_PAGES: readonly SearchItem[] = Object.freeze([
+  { path: '/home', zh: '组件总览', en: 'Components' },
+  { path: '/getting-started', zh: '快速开始', en: 'Getting Started', keywords: 'quick start' },
+  { path: '/changelog', zh: '更新日志', en: 'Changelog' }
+])
+
 const componentItems: SearchItem[] = NAV_SECTIONS.flatMap(section =>
   section.items.map(item => ({
     path: item.path,
     zh: item.label,
     en: item.label,
-    keywords: chineseNames[item.label]
+    keywords: item.zhName
   }))
 )
 
-/** 搜索导航项目；空查询不产生结果。 */
-export function searchNavigation(query: string, pages: readonly SearchItem[]): SearchItem[] {
+/** 搜索导航项目；空查询不产生结果。pages 缺省用壳页 + 组件导航的全集。 */
+export function searchNavigation(query: string, pages: readonly SearchItem[] = SHELL_NAV_PAGES): SearchItem[] {
   const needle = query.trim().toLocaleLowerCase()
   if (!needle) return []
   return [...pages, ...componentItems].filter(item =>

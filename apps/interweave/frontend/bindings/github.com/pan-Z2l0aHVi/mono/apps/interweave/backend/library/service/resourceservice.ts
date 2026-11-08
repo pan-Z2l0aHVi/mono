@@ -79,15 +79,6 @@ export function ReleaseFilePreview(token: string): $CancellablePromise<void> {
 }
 
 /**
- * 仅搜索用户维护的上下文与来源基础信息，不扩展为内容索引。
- */
-export function SearchResources(query: string): $CancellablePromise<$models.ResourceDTO[]> {
-    return $Call.ByID(2889581653, query).then(($result: any) => {
-        return $$createType4($result);
-    });
-}
-
-/**
  * 仅保存简短个人上下文。
  */
 export function UpdateResourceNote(resourceID: string, note: string): $CancellablePromise<$models.ResourceDTO | null> {

@@ -134,6 +134,32 @@ export class WebUiContextMenu extends LitElement {
    * pointercancel 打断、或组件在抬手前就被卸载时都会走到这条兜底。
    */
   private _longPressGestureEndedAt: number | null = null
+  /**
+   * 这一手长按**确实开出了 menu**（手势内作用域的中间量）。
+   *
+   * 长按计时器到期且 `_openAt` 成功时置位。它**不随 menu 关闭作废**：补发的 click 恰恰
+   * 常发生在 menu 已因 blur / 外点关闭之后，吸收判据读的是「开过」这个已发生的事实，
+   * 不是 menu 当前状态。作废闸只有三个：抬手消费（翻译成吸收器）、下一次 pointerdown、
+   * pointercancel（手势被系统接管，补发 click 不会来）。
+   *
+   * 与 `_longPressOpenedAt` 分开的原因：后者是 `_isLongPressFollowUp()` 的窗口锚点，
+   * 那套窗口管的是 scrim / contextmenu 侧的补发事件，menu 关闭时刻意清零——之后任何
+   * 一次真实右键都必须走正常路径。宿主侧吸收若共用它，close-then-lift 序列（menu 先关、
+   * 手后抬）就武装不起来，回声 click 会激活宿主的行。
+   */
+  private _longPressGestureOpenedMenu = false
+  /**
+   * 长按开 menu 后**宿主一侧**的补发 click 吸收器（capture 阶段一次性 listener）。
+   *
+   * scrim 侧的补发 click 由 `_isLongPressFollowUp()` 窗口吸收（scrim 不在宿主子树里），
+   * 而落到宿主子树的那一个——回声 click 的 target 恒为 pointerdown 落点（宿主内的行），
+   * 会激活宿主的行——由这里吞掉。交互契约的 owner 是本组件：宿主不需要、也不该自己再
+   * 维护一套「开过 menu / 抬过手」的回声机（ADR-0005/0006）。
+   *
+   * 边界：长按开出 menu 的那次手势抬手时武装，下一次 click 消费即撤，下一次 pointerdown
+   * 作废。吸收范围刻意限于宿主子树——document 级吞单有过误吞风险。
+   */
+  private _followUpClickAbsorber?: (event: MouseEvent) => void
   // submenu dialog 定位的唯一写者代数（按 panel 键控）：同帧关闭→重开复用同一 panel
   // 时只允许最新一次定位写入；不同层级 submenu 各有 panel，互不作废。
   private readonly _submenuPositionEpochs = new WeakMap<HTMLElement, number>()
@@ -325,6 +351,8 @@ export class WebUiContextMenu extends LitElement {
     this._cancelLongPress()
     this._longPressOpenedAt = null
     this._longPressGestureEndedAt = null
+    this._longPressGestureOpenedMenu = false
+    this._disarmFollowUpClickAbsorption()
   }
 
   protected override updated(changed: Map<string, unknown>) {
@@ -1065,8 +1093,11 @@ export class WebUiContextMenu extends LitElement {
   private _onPointerDown = (e: PointerEvent) => {
     // 任何一次新的按下都结束「上一次长按的补发事件」窗口：抬手后浏览器合成的
     // click 一定早于下一次 pointerdown，所以这个边界既能吸收补发，又不会误吞
-    // 用户之后真正的点击。
+    // 用户之后真正的点击。宿主子树的 click 吸收器与手势标志随同作废——否则
+    // 抬手时没等到补发 click 的残留会吞掉之后每一次真实的行点击。
     this._clearLongPressFollowUp()
+    this._longPressGestureOpenedMenu = false
+    this._disarmFollowUpClickAbsorption()
     // 鼠标走原生 contextmenu，无需长按；只认触屏指针。
     if (!this.longPress || this.disabled || e.pointerType !== 'touch') return
     this._cancelLongPress()
@@ -1080,7 +1111,10 @@ export class WebUiContextMenu extends LitElement {
         if (this._isOpen) return
         this._longPressOpenedAt = performance.now()
         // 触屏长按：panel 上缘对齐按点、向下展开，水平居中于按点（判据见 `_centerOnPressPoint`）。
-        if (this._openAt(origin.x, origin.y, false, true, true)) this._userOpenChange.mark()
+        if (this._openAt(origin.x, origin.y, false, true, true)) {
+          this._userOpenChange.mark()
+          this._longPressGestureOpenedMenu = true
+        }
       },
       // 属性已被 normalizeNumber 钳到 [0, 5000]，这里直接用；不做二次 Math.max。
       this.longPressDelay
@@ -1108,10 +1142,19 @@ export class WebUiContextMenu extends LitElement {
     if (this._longPressOpenedAt !== null && this._longPressGestureEndedAt === null) {
       this._longPressGestureEndedAt = performance.now()
     }
+    // 长按开出了 menu 的那次手势在此收尾：武装宿主子树的补发 click 吸收器。menu 可能
+    // 在这几十毫秒里因 blur / 外点先关，但吸收不读 menu 当前状态，只认「开过」这个
+    // 已发生的事实。消费即清（一次性），下一手的 pointerdown 是另一条作废闸。
+    if (this._longPressGestureOpenedMenu) {
+      this._longPressGestureOpenedMenu = false
+      this._armFollowUpClickAbsorption()
+    }
     this._cancelLongPress()
   }
 
   private _onPointerCancel = () => {
+    // 手势被系统接管：补发的 click 不会来，长按开出 menu 的事实不必留给下一手。
+    this._longPressGestureOpenedMenu = false
     this._cancelLongPress()
   }
 
@@ -1141,6 +1184,30 @@ export class WebUiContextMenu extends LitElement {
   private _clearLongPressFollowUp() {
     this._longPressOpenedAt = null
     this._longPressGestureEndedAt = null
+  }
+
+  /**
+   * 武装宿主子树的补发 click 吸收器：capture 阶段一次性 listener，吞掉下一次 click
+   * （`preventDefault` + `stopImmediatePropagation`，行激活与宿主自己的后续监听都到不了）。
+   * 幂等：同一手势重复抬手不会叠挂两层。
+   */
+  private _armFollowUpClickAbsorption() {
+    if (this._followUpClickAbsorber) return
+    const absorber = (event: MouseEvent) => {
+      this._disarmFollowUpClickAbsorption()
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+    this._followUpClickAbsorber = absorber
+    this.addEventListener('click', absorber, true)
+  }
+
+  /** 撤吸收器：下一次 click 消费、下一次 pointerdown 作废与断连三条路径共用。 */
+  private _disarmFollowUpClickAbsorption() {
+    const absorber = this._followUpClickAbsorber
+    if (!absorber) return
+    this._followUpClickAbsorber = undefined
+    this.removeEventListener('click', absorber, true)
   }
 
   private _onContextMenu = (e: MouseEvent) => {

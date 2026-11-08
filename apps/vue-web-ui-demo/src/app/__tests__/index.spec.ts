@@ -9,49 +9,9 @@ import { loadDemoLocale } from '@/i18n/locale'
 
 import AppShell from '../index.vue'
 
-// 模拟应用自身的移动端视口状态。
-const MOBILE_QUERY = '(width <= 640px)'
-const DESKTOP_WIDTH = 1280
-const MOBILE_WIDTH = 568
-
+// collapsed 的过滤、派生与持久化判据在 kit 的 shell 用例里；跨视口行为由 browser 套件用真实
+// 视口验证。这里只留一条 jsdom smoke：宿主的事件接线与受控回写确实落到了 layout 上。
 const PageStub = defineComponent({ template: '<div data-testid="page" />' })
-
-function createMatchMediaStub() {
-  const lists = new Map<string, { matches: boolean; listeners: Set<EventListener> }>()
-
-  vi.stubGlobal('matchMedia', (query: string) => {
-    const state = lists.get(query) ?? { matches: false, listeners: new Set<EventListener>() }
-    lists.set(query, state)
-
-    return {
-      media: query,
-      onchange: null,
-      get matches() {
-        return state.matches
-      },
-      addEventListener(type: string, listener: EventListener) {
-        if (type === 'change') state.listeners.add(listener)
-      },
-      removeEventListener(type: string, listener: EventListener) {
-        if (type === 'change') state.listeners.delete(listener)
-      },
-      addListener() {},
-      removeListener() {},
-      dispatchEvent: () => false
-    }
-  })
-
-  return (query: string, matches: boolean) => {
-    const state = lists.get(query)
-    if (!state) throw new Error(`matchMedia(${query}) was never queried`)
-
-    state.matches = matches
-    // demo 侧只读 `mediaQuery.matches`、不看事件载荷，但两处一起改才不会留下只对一半的替身。
-    const event = new Event('change')
-    Object.defineProperty(event, 'matches', { value: matches })
-    for (const listener of state.listeners) listener(event)
-  }
-}
 
 function layoutRoot() {
   const element = document.querySelector('web-ui-layout') as
@@ -70,32 +30,13 @@ function navRoot() {
 /**
  * 这个 jsdom 层不模拟真实布局；折叠态的文字省略、tooltip 与文本布局由 browser spec 验证。
  * 折叠态的公开出口是 `web-ui-tooltip` 的 `content`：可见文字与可访问名都保持完整名称，
- * 折叠时由 tooltip 提供完整名称。两者一起比较，确认桌面 collapsed state 不会泄漏到移动 drawer。
+ * 折叠时由 tooltip 提供完整名称。两者一起比较，确认 collapse 请求真的改了导航渲染。
  */
 function navItemState() {
   const link = navRoot().querySelector('a[aria-label="Button"]')
   if (!link) throw new Error('nav link not found')
   const tooltip = link.closest('web-ui-tooltip') as (HTMLElement & { content?: string }) | null
   return { text: link.textContent?.trim() ?? '', tooltip: tooltip?.content ?? null }
-}
-
-/**
- * layout 是否处于移动端形态。`mobile` 是公开派生属性，与它渲染哪一套树是同一条条件，
- * 移动端那份带 drawer。
- */
-function isDrawerMode() {
-  return layoutRoot().mobile
-}
-
-/**
- * layout 的 mobile 判定挂在一条去抖的 resize 上，所以等的是「布局真的换了形态」而不是一段
- * 固定时长：既不赌去抖的毫秒数，也不去读 layout 的内部实现。
- */
-async function settleViewport(drawerMode: boolean) {
-  await vi.waitFor(() => {
-    if (isDrawerMode() !== drawerMode) throw new Error(`drawer 形态没有变成 ${drawerMode}`)
-  })
-  await nextTick()
 }
 
 function buildRouter(): Router {
@@ -107,14 +48,6 @@ function buildRouter(): Router {
       { path: '/:pathMatch(.*)*', component: PageStub }
     ]
   })
-}
-
-let innerWidthSpy: { mockReturnValue: (value: number) => unknown } | null = null
-
-function setViewportWidth(width: number) {
-  innerWidthSpy ??= vi.spyOn(window, 'innerWidth', 'get')
-  innerWidthSpy.mockReturnValue(width)
-  window.dispatchEvent(new Event('resize'))
 }
 
 let wrapper: VueWrapper | null = null
@@ -136,16 +69,13 @@ async function requestCollapse(collapsed: boolean) {
   await nextTick()
 }
 
-let setMediaMatches: (query: string, matches: boolean) => void
-
-// 每次挂载都要渲染完整导航与 layout 交互；本地实测 0.2–0.4s，CI 并发下实测 5.3–8.6s。
+// 挂载要渲染完整导航与 layout 交互；本地实测 0.2–0.4s，CI 并发下实测 5.3–8.6s。
 // 只在 CI 放宽，本地保留 Vitest 默认 5s。
 const SHELL_TIMEOUT = process.env.CI ? 15_000 : undefined
 
-describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
+describe('应用外壳接线 smoke', () => {
   beforeEach(async () => {
     await loadDemoLocale('en', false)
-    setMediaMatches = createMatchMediaStub()
     // jsdom 没有布局与 ResizeObserver；toast 尺寸变化由 browser spec 验证。
     vi.stubGlobal(
       'ResizeObserver',
@@ -161,63 +91,15 @@ describe('应用外壳：导航 collapsed state 不跨视口泄漏', () => {
     wrapper?.unmount()
     wrapper = null
     vi.unstubAllGlobals()
-    vi.restoreAllMocks()
-    innerWidthSpy = null
   })
 
-  it('桌面端 collapsible sidebar 后导航进入 collapsed state', { timeout: SHELL_TIMEOUT }, async () => {
-    setViewportWidth(DESKTOP_WIDTH)
+  it('layout 的 collapse 请求经 shell 状态机回写为受控属性', { timeout: SHELL_TIMEOUT }, async () => {
     await mountAppShell()
     const expanded = navItemState()
 
     await requestCollapse(true)
 
-    expect(isDrawerMode()).toBe(false)
     expect(layoutRoot().sidebarCollapsed).toBe(true)
     expect(navItemState()).not.toEqual(expanded)
-  })
-
-  it(
-    '移动端断点下同一个 collapse preference 不把 drawer 导航压成 collapsed state',
-    { timeout: SHELL_TIMEOUT },
-    async () => {
-      setViewportWidth(DESKTOP_WIDTH)
-      await mountAppShell()
-      const expanded = navItemState()
-
-      await requestCollapse(true)
-      // 对照：collapse preference 确实改变了导航项的渲染，否则下面那条「与展开态一致」可能只是因为
-      // collapse 从未生效。
-      expect(navItemState()).not.toEqual(expanded)
-
-      setViewportWidth(MOBILE_WIDTH)
-      setMediaMatches(MOBILE_QUERY, true)
-      await settleViewport(true)
-
-      // 前提：collapse preference 仍写在 layout 上。不成立的话下面那条「与展开态一致」只是没 collapse 过的假绿
-      // （drawer 形态由 settleViewport 保证，不另设断言）。
-      expect(layoutRoot().sidebarCollapsed).toBe(true)
-      expect(navItemState()).toEqual(expanded)
-    }
-  )
-
-  it('跨断点往返后 collapsed state 在桌面端恢复生效', { timeout: SHELL_TIMEOUT }, async () => {
-    setViewportWidth(DESKTOP_WIDTH)
-    await mountAppShell()
-    const expanded = navItemState()
-
-    await requestCollapse(true)
-    const collapsed = navItemState()
-
-    setViewportWidth(MOBILE_WIDTH)
-    setMediaMatches(MOBILE_QUERY, true)
-    await settleViewport(true)
-    expect(navItemState()).toEqual(expanded)
-
-    setViewportWidth(DESKTOP_WIDTH)
-    setMediaMatches(MOBILE_QUERY, false)
-    await settleViewport(false)
-
-    expect(navItemState()).toEqual(collapsed)
   })
 })

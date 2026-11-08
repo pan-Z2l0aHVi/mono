@@ -38,7 +38,6 @@ function dto(overrides: ResourceDTOOverride = {}): ResourceDTO {
       }
     ],
     tags: [{ id: 't1', name: 'design', created_at: 1, color: TagColor.TagColorTeal }],
-    preferred_source_id: 's1',
     ...overrides
   } as ResourceDTO
 }
@@ -353,8 +352,7 @@ describe('useLibraryStore（Pinia 集成）', () => {
             is_preferred: false,
             order_index: 1
           }
-        ],
-        preferred_source_id: 's1'
+        ]
       })
     ])
 

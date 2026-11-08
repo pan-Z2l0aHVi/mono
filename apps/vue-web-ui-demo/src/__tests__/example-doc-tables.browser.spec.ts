@@ -1,13 +1,12 @@
 import '@/assets/global.css'
 import '@/generated/theme.css'
 
+import { setViewport } from '@greypan/doc-demo-kit/testing.viewport'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import ExampleDoc from '@/components/example-doc/index.vue'
 import { ensureExampleDoc, loadDemoLocale } from '@/i18n/locale'
-
-import { setViewport } from './viewport'
 
 let wrapper: VueWrapper | null = null
 
