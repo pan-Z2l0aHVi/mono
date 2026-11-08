@@ -481,6 +481,17 @@ for (const [label, value] of [
   assert.match(unreviewed, /结论：\*\*未审查\*\*/)
   assert.match(unreviewed, /故障码：`unusable_output`/)
   assert.match(unreviewed, /本次没有可用结论/)
+  assert.match(unreviewed, /重跑整条 run/, 'unusable_output still needs a full rerun')
+
+  // 只有 missing_coverage 会让审查腿一并判红，才该提示 --failed。
+  const missingMeta = { ...unreviewedMeta, error_code: 'missing_coverage' }
+  const missingCoverage = renderConclusion({
+    conclusion: deriveConclusion({ meta: missingMeta, findings: null, liveHeadSha: headSha, error: '' }),
+    meta: missingMeta,
+    pullNumber: 54
+  })
+  assert.match(missingCoverage, /故障码：`missing_coverage`/)
+  assert.match(missingCoverage, /gh run rerun --failed/, 'missing_coverage points at the failed-job rerun')
 
   const failed = renderConclusion({
     conclusion: deriveConclusion({
@@ -1457,9 +1468,10 @@ esac
   )
 
   writeOutput({ summary: 'Inspecting shell i18n and related exec checks.', findings: [] })
-  runValidate()
+  const emptyVerdict = runValidate()
   assert.equal(metaAfter().status, 'unreviewed', 'no findings without coverage is not a reviewed conclusion')
   assert.equal(metaAfter().error_code, 'missing_coverage')
+  assert.match(emptyVerdict.result.stderr, /rerun --failed/, 'validate must point at the failed-job rerun')
 
   // 只读了判据文档不算审查过改动：inspected 必须命中本次 diff 改过的路径。
   writeOutput({

@@ -142,7 +142,8 @@ describe('PreviewDrawer', () => {
     pointer('pointerup', 2, 125)
     pointer('pointermove', 1, 35)
     await nextTick()
-    expect(image.style.transform).not.toContain('translate(0px, 0px)')
+    // jsdom 31 的 CSSOM 序列化会把 translate(0px, 0px) 规范化成 translate(0px)
+    expect(image.style.transform).not.toMatch(/translate\(0px(?:, 0px)?\)/)
   })
 
   it('放大图片后拖动受图片边界限制', async () => {
@@ -162,7 +163,8 @@ describe('PreviewDrawer', () => {
     pointer('pointerdown', 0)
     pointer('pointermove', 1000)
     await nextTick()
-    expect(image.style.transform).toContain('translate(75px, 0px)')
+    // jsdom 31 的 CSSOM 序列化会把 translate(75px, 0px) 规范化成 translate(75px)
+    expect(image.style.transform).toMatch(/translate\(75px(?:, 0px)?\)/)
   })
 
   it('图片铺满内容区渲染 img，加载失败回落到空态', async () => {

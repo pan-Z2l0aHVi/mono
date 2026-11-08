@@ -219,12 +219,18 @@ function addTransitionInputSkipListeners(transition: ViewTransitionLike, scope?:
   }
 }
 
-/** 飞行的 duration / easing：读宿主计算样式里的主题 token，非法 easing 回退 ease-in。 */
+// 揭示动画的落点段才是用户注视的时刻：强 ease-out 起步快、末段缓收，
+// ease-in 会把观感最好的那段推迟到动画结尾。与 style.css 的 token 保持一致。
+const DEFAULT_THEME_TRANSITION_EASING = 'cubic-bezier(0.23, 1, 0.32, 1)'
+
+/** 飞行的 duration / easing：读宿主计算样式里的主题 token，非法 easing 回退强 ease-out。 */
 export function themeTransitionMotion(host: HTMLElement): { duration: number; easing: string } {
   const style = getComputedStyle(host)
   const duration = parseDuration(style.getPropertyValue('--wui-theme-transition-duration')) ?? 500
-  const easing = style.getPropertyValue('--wui-theme-transition-easing').trim() || 'ease-in'
-  const safeEasing = globalThis.CSS?.supports('animation-timing-function', easing) ? easing : 'ease-in'
+  const easing = style.getPropertyValue('--wui-theme-transition-easing').trim() || DEFAULT_THEME_TRANSITION_EASING
+  const safeEasing = globalThis.CSS?.supports('animation-timing-function', easing)
+    ? easing
+    : DEFAULT_THEME_TRANSITION_EASING
   return { duration: Math.max(0, duration), easing: safeEasing }
 }
 
