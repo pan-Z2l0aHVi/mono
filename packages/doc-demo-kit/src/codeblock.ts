@@ -7,7 +7,7 @@ import { OverlayScrollbars } from 'overlayscrollbars'
 export type DemoThunk = NonNullable<MetaNode['load']>
 
 // 复制成功的描边与 scale 反馈共用同一时长；CSS 里的 `demo-copy-pop` 要同步。
-export const COPY_FEEDBACK_DURATION = 500
+export const COPY_FEEDBACK_DURATION = 300
 
 // 复制反馈回到 idle 前的停留时长；成功态的 aria 播报与 tooltip 文案都在这扇窗内。
 export const COPY_IDLE_DELAY = 1600
@@ -134,9 +134,10 @@ export function createCopyFeedback({ readText, idleDelay = COPY_IDLE_DELAY }: Co
   async function copy(): Promise<void> {
     const text = readText()
     const ok = text !== '' && (await writeClipboard(text))
-    publish({ status: ok ? 'copied' : 'failed', run: snapshot.run + 1 })
     clearTimeout(timer)
-    timer = setTimeout(() => publish({ status: 'idle', run: snapshot.run }), idleDelay)
+    const run = snapshot.run + 1
+    publish({ status: ok ? 'copied' : 'failed', run })
+    timer = setTimeout(() => publish({ status: 'idle', run }), idleDelay)
   }
   return {
     copy,

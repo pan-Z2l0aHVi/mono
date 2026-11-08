@@ -212,7 +212,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
 
           <span
             v-else
-            class="inline-flex h-9 min-w-[var(--wui-control-size,36px)] items-center justify-center rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-2 font-mono text-[11px] leading-none tracking-wide text-(--wui-color-text-secondary) uppercase"
+            class="px-1 font-mono text-[11px] leading-none tracking-wide text-(--wui-color-text-secondary) uppercase"
           >
             {{ active?.lang || 'text' }}
           </span>

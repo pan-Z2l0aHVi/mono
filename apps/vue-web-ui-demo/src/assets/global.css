@@ -93,15 +93,15 @@ body {
 
 /*
  * 复制成功反馈：`web-ui-svg-draw-lines` 负责描边，这里补一个「放大再回原样」的 scale。
- * 时长与 example-doc 的 `COPY_FEEDBACK_DURATION`（500ms）对齐，改一处要同步另一处。
+ * 默认时长与 `COPY_FEEDBACK_DURATION`（300ms）对齐；主题动效 token 在减弱动效时归零。
  */
 @keyframes demo-copy-pop {
   0% {
-    transform: scale(1);
+    transform: scale(0.75);
   }
 
   40% {
-    transform: scale(1.5);
+    transform: scale(2);
   }
 
   100% {
@@ -110,13 +110,18 @@ body {
 }
 
 .demo-copy-pop {
-  animation: demo-copy-pop 500ms ease-out;
+  animation: demo-copy-pop calc(var(--wui-duration-focus, 200ms) * 1.5) ease-out;
 }
 
-@media (prefers-reduced-motion: reduce) {
-  .demo-copy-pop {
-    animation: none;
-  }
+web-ui-button[data-copy] > web-ui-icon,
+web-ui-button[data-copy] > .demo-copy-pop {
+  transition: transform var(--wui-duration-press, 80ms) ease-out;
+}
+
+web-ui-button[data-copy]:active > web-ui-icon,
+web-ui-button[data-copy]:active > .demo-copy-pop {
+  transform: scale(0.75);
+  animation: none;
 }
 
 .demo-search-popover {

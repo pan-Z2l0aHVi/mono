@@ -225,7 +225,7 @@ function Codeblock({ nodes, preview, variants, switchLabel }: CodeblockProps) {
                 ))}
               </web-ui-segmented>
             ) : (
-              <span className="inline-flex h-9 min-w-[var(--wui-control-size,36px)] items-center justify-center rounded-full border border-(--wui-color-border) bg-(--wui-color-surface) px-2 font-mono text-[11px] leading-none tracking-wide text-(--wui-color-text-secondary) uppercase">
+              <span className="px-1 font-mono text-[11px] leading-none tracking-wide text-(--wui-color-text-secondary) uppercase">
                 {active.lang || 'text'}
               </span>
             )}
