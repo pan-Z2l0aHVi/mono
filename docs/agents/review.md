@@ -2,7 +2,7 @@
 
 本文件规定 PR 上 review 结论的读法、有人审查时的执行纪律、结果回写、复审和合并前核对，也是 PR 上自动审查所依据的同一份判据。T2 按影响安排。
 
-PR review 默认由 CI 之后那道自动审查承担：它只看 diff 与仓库判据，不听实施者叙述，结论绑定 head。GitHub 登录身份相同不抹去它的独立性，但作者不能在 GitHub 批准自己的 PR。要不要另起一次本地 agent 或人工审查由实施 agent 自己判断，本文不列触发条件。会话选用的模型与推理强度由编排决定，不写入仓库政策。本文涉及的远端写操作都需用户逐次明确授权；机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。
+PR review 默认由 CI 之后那道自动审查承担：它只看 diff、仓库判据与 head 工作树里的当前文件上下文，不听实施者叙述，结论绑定 head。GitHub 登录身份相同不抹去它的独立性，但作者不能在 GitHub 批准自己的 PR。要不要另起一次本地 agent 或人工审查由实施 agent 自己判断，本文不列触发条件。会话选用的模型与推理强度由编排决定，不写入仓库政策。本文涉及的远端写操作都需用户逐次明确授权；机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。
 
 有人审查时，reviewer 用独立或新鲜上下文，只接收任务验收条件、PR URL/base/head、相关规则和原始证据；实施者摘要算待核线索，其自评结论不算审查依据。GitHub MCP 可以替代 `gh` 读取 PR、评论与 reviews，也可以发表绑定 `commit_id` 的 `COMMENT` review；工具选择不改变 SHA、授权和响应核对要求。Task 台账（见 [`.agents/skills/task-ledger/SKILL.md`](../../.agents/skills/task-ledger/SKILL.md)）不记录 review、approval、verify 或 CI 通过。required context `check` 只证明 CI 中的检查结果，不是 review 结论。远端规则集是否要求 approving review 属于平台状态，以仓库当前规则为准，不改变本文的判据。
 
@@ -11,14 +11,14 @@ PR review 默认由 CI 之后那道自动审查承担：它只看 diff 与仓库
 CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发现，把结论写进 PR 上同一条持久评论。这道结论就是本仓默认的 PR review。它与人工审查读的不是同一份 diff，范围差见下文「审查范围与生成物」；决策与代价见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 
 - 结论绑定被审查的 head。`reviewed` 只覆盖那一份代码；head 变了结论就过期，`stale`、`unreviewed` 与 `not_applicable` 都不代表已审。
-- `reviewed` 且 `Block > 0`、`error` 与 `unreviewed` 让这道门变红。`error` 表示配置或调用故障，不是审查意见，按故障码处置：`config_missing` 按 PR 评论列出的变量名补齐 GitHub 后台的 secrets/variables；`model_failed` 先看 `Run codex exec` 日志，网关 5xx 或瞬时错误重跑整条 run，只有配置或模型侧拒绝才改后台；`artifact_missing` 查审查腿的上传与写回腿的下载。模型腿跑完却没产出可用结论是 `unreviewed`（故障码 `unusable_output`），同样变红：先重跑整条 run，重复出现说明输出契约坏了，改 prompt 或校验而不是当成「没有意见」。没交覆盖清单是 `missing_coverage`，同样记 `unreviewed`：`coverage` 是 schema 的必填项，有 findings 也不能省，否则交一条 Nit 就绕开整条规则；空 findings 时清单还得逐条落到本次 diff 改过的文件上（写到目录不算命中；只读了判据文档、而本次 diff 没改它，同样归这一档）。没有覆盖证据的结论与「没查就收尾」在产物上分不开，不能当作已审查。绿色只留给有结论可读的 run。门是约定式的：不改动 GitHub 的分支规则，红叉由人处置，绿色也不替人签字。
+- `reviewed` 且 `Block > 0`、`error` 与 `unreviewed` 让这道门变红。`error` 表示配置或调用故障，不是审查意见，按故障码处置：`config_missing` 按 PR 评论列出的变量名补齐 GitHub 后台的 secrets/variables；`model_failed` 先看 `Run codex exec` 日志，网关 5xx 或瞬时错误重跑整条 run，只有配置或模型侧拒绝才改后台；`artifact_missing` 查审查腿的上传与写回腿的下载。模型腿跑完却没产出可用结论是 `unreviewed`（故障码 `unusable_output`），同样变红：先重跑整条 run，重复出现说明输出契约坏了，改 prompt 或校验而不是当成「没有意见」。没交覆盖清单是 `missing_coverage`，同样记 `unreviewed`：`coverage` 是 schema 的必填项，有 findings 也不能省，否则交一条 Nit 就绕开整条规则；空 findings 时清单至少要有一条等于本次 diff 改过的文件（写到目录不算命中；只读了判据文档、而本次 diff 没改它，同样归这一档）。没有覆盖证据的结论与「没查就收尾」在产物上分不开，不能当作已审查。绿色只留给有结论可读的 run。门是约定式的：不改动 GitHub 的分支规则，红叉由人处置，绿色也不替人签字。
 - 端点、模型名、思考强度、密钥与 codex 版本由 GitHub 后台提供，仓库不写默认值；配置未填齐时门是红的，这是设计意图。完整契约见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 - **结论即 review**：本次有可审的源码改动、生成物已按下文核对、自动结论的 `coverage.uncovered` 为空，且结论的 reviewed SHA 等于当前 head、`Block` 为 0、required context `check` 在当前 head 上成功时，这份 PR 的 review 已经完成，人工不必逐行重看。要重看的是发现修掉后的新 head，不是同一份结论。自动审查没看过被滤除的生成物，也没能判断 `uncovered` 里列出的改动处；有未覆盖项时这些位置必须逐项人工复核，绿门替代不了它们。
 - `coverage` 说清这份结论的射程：`coverage.inspected` 是模型实际读过的路径，`coverage.uncovered` 是它声明无法判断的改动处。`uncovered` 非空是合法的收口出口：结论仍是 `reviewed`、门也不因此变红，但上一条「结论即 review」的完成条件不成立 —— 这些位置不在结论的覆盖范围内，必须逐项人工复核再收口，绿门替代不了它们。人工补的是结论列出的空白，不是把已覆盖的 diff 重看一遍；两处口径不互斥，区别在「结论有没有效」与「review 算不算完成」。
 - 生成物不需要 diff，也不需要 review：按 [`generated-artifacts.md`](./generated-artifacts.md) 的清单滤除后，自动审查不读也不评注；它们的正确性由 `check-generated` 与消费者类型检查证明。没有 generator 可重建、只能靠人判断的入库产物落在这两份证据之外。
 - 门给不出覆盖当前 head 的结论时，PR 上没有可用的 review，仍要人按本文流程做完整独立审查：`error`、`unreviewed`、`stale`、`not_applicable`；来自 fork 的 PR（那条腿默认不跑）；自动修推送出的新 head；只改生成物、`empty_diff: true` 的 PR（空 diff 不构成可合并结论，也不算「结论即 review」）。`Block > 0` 不属于这一类：它有结论，处置是按三档修掉发现后在新 head 上重取结论。
 - 自动修在 `check` 失败且后台开关开启时产出一份候选 patch，校验通过才提交并推回 PR 分支。机器人提交不会触发 checks，所以新 head 上要等一次人重跑的 CI 才有 CI 证据；已经含自动修提交的 head 不再自动规划第二次。
-- `Codex Review Report` 是写回腿，不改判结论，只把 CI 已产出的结论搬到 PR 上。它的绿色只说明这条腿跑过，不代表发了评论：没有 `codex-review-findings` 产物、或 head 已不属于任何打开的 PR 时它按设计跳过，并在运行页 Summary 与 notice 里写明是哪一种跳过。要判断「这条评论是不是当前 head 的」，仍按第一条核对评论头部的 `sha` 与 `status`；正文另有「结论生成于」，因为这条评论是就地更新的，GitHub 上显示的创建时间永远是第一次写回那一刻。
+- `Codex Review Report` 是写回腿，不改判结论，只把 CI 已产出的结论搬到 PR 上。它的绿色只说明这条腿跑过，不代表发了评论：没有 `codex-review-findings` 产物、或 head 已不属于任何打开的 PR 时它按设计跳过，并在运行页 Summary 与 notice 里写明是哪一种跳过。要判断「这条评论是不是当前 head 的」，仍按第一条核对评论头部的 `sha` 与 `status`；`reviewed` 且带阻断发现时头部写 `status=blocked`，语义与「reviewed 且 `Block > 0`」一致。正文另有「结论生成于」，因为这条评论是就地更新的，GitHub 上显示的创建时间永远是第一次写回那一刻。
 
 ## 审查范围与生成物
 
@@ -52,7 +52,7 @@ GitHub `pull_request` 的 CI 默认 checkout 是 base/head 的临时合并对象
 
 ## 审查内容与发现
 
-检查需求和验收是否实现、行为与失败路径、公共契约、兼容性、测试质量、权限与用户输入安全、竞态、资源管理，以及文档与机检的一致性。指令或 context 改动另核四问：这段是稳定不变量还是外部状态快照？这个 concern 是否只有一个权威？这个 chunk 单独被检索时是否自包含？是否写入了会漂移的命令、路径、版本或实现清单？对每个发现给 `Block`、`Should fix` 或 `Nit`，并列当前文件行、影响、复现条件和证据。Block 未处理时不能给可合并结论；Should fix 若不修，须由维护者留下处置理由；Nit 不冒充阻断问题。无发现也要记录审查范围、验证证据和未覆盖风险。自动审查把这三项落在 `coverage.inspected`（实际读过的路径）与 `coverage.uncovered`（无法判断的改动处）里，人工报告仍按「报告、回写与复审」列字段。
+检查需求和验收是否实现、行为与失败路径、公共契约、兼容性、测试质量、权限与用户输入安全、竞态、资源管理，以及文档与机检的一致性。指令或 context 改动另核四问：这段是稳定不变量还是外部状态快照？这个 concern 是否只有一个权威？这个 chunk 单独被检索时是否自包含？是否写入了会漂移的命令、路径、版本或实现清单？对每个发现给 `Block`、`Should fix` 或 `Nit`，并列当前文件行、影响、复现条件和证据。Block 未处理时不能给可合并结论；Should fix 若不修，须由维护者留下处置理由；Nit 不冒充阻断问题。无发现也要记录审查范围、验证证据和未覆盖风险。自动审查把审查范围与未覆盖风险落在 `coverage.inspected`（实际读过的路径）与 `coverage.uncovered`（无法判断的改动处）里，验证证据只挤进这两处或 `summary`，没有独立字段；人工报告仍按「报告、回写与复审」列字段。
 
 自动审查的调查预算按风险分配，不按文件数平均分配：先看改了公共契约、失败路径、权限、并发与跨包接口的改动，证据足以定档或从代码本身推不出失效即可交卷，不必读完 `changed_paths`。这不是采样阈值，`changed_paths` 仍是本次改动的全集；执行细则在审查 prompt 的「调查与收口」段，判据仍以本文为准。没能判断的改动处列进 `coverage.uncovered`：非空不使结论作废、门也不因此变红，但它是射程空白，必须由人工逐项复核，且不满足上文「结论即 review」的完成条件；`coverage.inspected` 只写真读过的路径，不能用没读过的文件凑命中（空 findings 时仍按 `missing_coverage` 作废）。
 
