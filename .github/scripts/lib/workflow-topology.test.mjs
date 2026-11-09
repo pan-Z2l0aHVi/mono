@@ -650,6 +650,8 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       stateLine && !stateLine.includes('&&'),
       'the recovery state must not depend on expression operand semantics'
     )
+    // 模型 job 故障时结论评论要按需读那条 CI run 的 job 日志，把原始错误抄进评论；缺这个注入就只能退回通用指引。
+    assert.match(commentStep, /WORKFLOW_RUN_ID: \$\{\{ github\.event\.workflow_run\.id \}\}/)
     // 上限、分流与恢复状态解析由可信脚本导出的行为断言钉住，不再靠源码字符串匹配。
     assert.equal(AUTO_RETRY_LIMIT, 1, 'the single-retry ceiling must not drift')
     assert.deepEqual(AUTO_RETRY_STATES, ['none', 'triggered', 'exhausted', 'failed'])

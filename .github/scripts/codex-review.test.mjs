@@ -26,10 +26,13 @@ import {
   classifyPathRisk,
   commandAutoRetry,
   commandPrepare,
+  conclusionRenderExtras,
+  conclusionVerdict,
   createGhReviewAdapter,
   deriveConclusion,
   findPullForHead,
   findReusableRun,
+  firstModelErrorLine,
   injectPreloadIntoPrompt,
   inspectConfig,
   normalizeAutoRetryState,
@@ -37,12 +40,14 @@ import {
   preloadPath,
   rankChangedPaths,
   readConclusion,
+  readModelLegError,
   renderConclusion,
   resolveAutoRetryState,
   resolveReviewRange,
   reviewTarget,
   scopePath,
   splitDiffByPath,
+  trajectoryEntries,
   truncateUtf8ByLines,
   trustedPromptPath,
   withPermissionDiagnosis,
@@ -915,6 +920,10 @@ for (const [label, value] of [
     }
     if (endpoint.includes('/actions/runs?')) return { status: 0, stdout: '{"workflow_runs":[]}' }
     if (endpoint.includes('/actions/runs/30/artifacts')) return { status: 0, stdout: '{"artifacts":[]}' }
+    if (endpoint.includes('/actions/runs/30/jobs'))
+      return { status: 0, stdout: '{"jobs":[{"id":5,"name":"Codex review"},{"id":6,"name":"check"}]}' }
+    if (endpoint.includes('/actions/jobs/5/logs'))
+      return { status: 0, stdout: 'ERROR: {"error":{"message":"Upstream request failed"}}' }
     return { status: 1, stdout: '', stderr: 'HTTP 404: Not Found' }
   }
   const adapter = createGhReviewAdapter({ repository: 'owner/repo', spawn, cwd: '/tmp', env: {} })
@@ -929,6 +938,18 @@ for (const [label, value] of [
   const posted = calls.find(args => args.includes('POST'))
   assert.ok(posted.includes('body=body'), 'the comment body travels as a gh api form field')
   assert.equal(posted.at(-1), 'repos/owner/repo/issues/54/comments')
+  // 结论评论的模型 job 诊断走这两条端点：作业名与日志读法都由这里钉住，写回 job 才不会拿不到错误。
+  assert.deepEqual(adapter.runJobs(30), [
+    { id: 5, name: 'Codex review' },
+    { id: 6, name: 'check' }
+  ])
+  assert.match(adapter.jobLog(5), /Upstream request failed/)
+  assert.equal(readModelLegError(adapter, '30'), 'Upstream request failed', 'the adapter pair must reach the comment')
+  const jobsCall = calls.find(args => String(args.at(-1)).includes('/actions/runs/30/jobs'))
+  const logCall = calls.find(args => String(args.at(-1)).includes('/actions/jobs/5/logs'))
+  assert.ok(jobsCall.at(-1).includes('per_page=100'), 'the job list must not stop at the first page')
+  // 日志带 ANSI 转义序列，不加这个开关 gh 会直接拒掉请求，读回来的是空诊断。
+  assert.ok(logCall.includes('--allow-escape-sequences'), 'the job log read must allow escape sequences')
 }
 
 {
@@ -2223,6 +2244,319 @@ esac
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true })
   }
+}
+
+{
+  // 结论评论的三处读感修复：档位统计不在故障档刷屏、error 按故障码分流并抄出模型 job 原始错误、
+  // 就地更新期间留下状态轨迹。
+  const renderOf = (meta, findings = null) =>
+    renderConclusion({
+      conclusion: deriveConclusion({ meta, findings, liveHeadSha: headSha, error: '' }),
+      meta,
+      pullNumber: 71
+    })
+  const counts = body => (body.match(/档位统计：/gu) ?? []).length
+
+  // 全 0 的档位统计在「审查失败」上会被读成「审过了、没问题」；已审查即使没有发现也要列，
+  // 因为「Block 0」本身就是这条结论的凭据。
+  const errorMeta = metaOf({ status: 'error', error_code: 'model_failed', error: 'the step produced no output file' })
+  assert.equal(counts(renderOf(errorMeta)), 0, 'an all-zero severity line must not accompany a failed review')
+  assert.equal(counts(renderOf({ status: 'unreviewed', error_code: 'missing_coverage' })), 0)
+  assert.equal(counts(renderOf(metaOf(), parseReviewFindings(conclusionText()))), 1)
+  // 空壳结论带着模型看到的 findings 时仍然列档位：那是「模型看到了什么」的线索，不是安慰性数字。
+  const shellWithFindings = parseReviewFindings(conclusionText('Nit'))
+  assert.equal(
+    counts(
+      renderOf({ status: 'unreviewed', error_code: 'missing_coverage', error: 'no inspected path' }, shellWithFindings)
+    ),
+    1,
+    'a non-zero severity list stays visible even when the conclusion is unusable'
+  )
+
+  // error 的四种故障码各有各的下一步，一刀切文案会把「改后台」推给只想重跑的读者。
+  const guidance = code =>
+    renderOf(metaOf({ status: 'error', ...(code ? { error_code: code } : {}), error: 'the review failed' }))
+  assert.match(guidance('model_failed'), /先看 `Codex review` job 里 `Run codex exec` 的日志/)
+  assert.match(guidance('model_failed'), /重跑整条 run/)
+  assert.ok(
+    !/检查 GitHub 后台的 secrets\/variables/.test(guidance('model_failed')),
+    'model failure must not say 改配置'
+  )
+  assert.match(guidance('config_missing'), /检查 GitHub 后台的 secrets\/variables/)
+  assert.match(guidance('artifact_missing'), /Upload review findings/)
+  assert.match(guidance('artifact_missing'), /Download review findings/)
+  assert.match(guidance(''), /先看 `Codex review` job 的日志定位故障/)
+  // 未知码不能撞上 config_missing 的文案，否则「检查后台」会变成对所有故障的默认指控。
+  assert.ok(
+    !/检查 GitHub 后台的 secrets\/variables/.test(guidance('weird_code')),
+    'an unknown code must fall back to the generic guidance'
+  )
+
+  // 模型 job 的原始错误只在 CI run 的 job 日志里；只有结构化错误才抄进评论，别的 ERROR 行留给通用指引。
+  // ANSI 包裹与 JSON 载荷取自 pr533 attempt 3 的 `Codex review` 真日志，prose 那行是为「跳过非 JSON」补的。
+  const gatewayLog = [
+    '2026-11-09T08:49:32.3920308Z ##[start-action display=Run codex exec;id=review.run_codex]',
+    '2026-11-09T08:49:50.5440072Z \u001b[1m\u001b[31mERROR:\u001b[0m\u001b[0m running the model failed',
+    '2026-11-09T08:49:50.5530375Z \u001b[1m\u001b[31mERROR:\u001b[0m\u001b[0m {"error":{"code":"server_error","message":"Upstream request failed: [invalid_request_error] This response_format type is unavailable now (request_id: 5cb0fe7f-e014-4679-a5ac-4777152d861b)"}}',
+    '2026-11-09T08:49:52.1047761Z ##[endgroup]'
+  ].join('\n')
+  assert.equal(
+    firstModelErrorLine(gatewayLog),
+    'Upstream request failed: [invalid_request_error] This response_format type is unavailable now (request_id: 5cb0fe7f-e014-4679-a5ac-4777152d861b)',
+    'the first structured ERROR payload must win over the prose one'
+  )
+  assert.equal(firstModelErrorLine(''), '')
+  assert.equal(firstModelErrorLine('no errors here'), '')
+  assert.equal(firstModelErrorLine('ERROR: {"error":{"message":""}}'), '', 'an empty message must not render blank')
+  // 日志里的颜色码有两种形态：裸字节被整行剥掉，JSON 转义要等 parse 完才还原成控制字符。
+  assert.equal(
+    firstModelErrorLine('ERROR: {"error":{"message":"\\u001b[31mdanger\\u001b[0m"}}'),
+    'danger',
+    'a control sequence spelled as a JSON escape must not survive into the comment'
+  )
+
+  const jobs = [
+    { id: 128, name: 'check' },
+    { id: 129, name: 'Codex review' }
+  ]
+  let logReads = 0
+  const logAdapter = {
+    runJobs: () => jobs,
+    jobLog: jobId => {
+      logReads += 1
+      assert.equal(jobId, 129, 'only the review job log may be read')
+      return gatewayLog
+    }
+  }
+  assert.match(readModelLegError(logAdapter, '42472585843'), /response_format type is unavailable/)
+  // 拿不到 run id、没有审查 job 或日志读失败都只降级：诊断辅助不能判红写回 job，也不能白打 API。
+  assert.equal(readModelLegError(logAdapter, ''), '', 'a missing run id must not call the API')
+  assert.equal(readModelLegError(logAdapter, 'not-a-number'), '')
+  assert.equal(readModelLegError({ ...logAdapter, runJobs: () => [{ id: 1, name: 'check' }] }, '42'), '')
+  assert.equal(
+    readModelLegError(
+      {
+        runJobs: () => {
+          throw new Error('403')
+        },
+        jobLog: logAdapter.jobLog
+      },
+      '42'
+    ),
+    '',
+    'a failed diagnostic read must degrade instead of failing the report leg'
+  )
+  assert.equal(logReads, 1, 'the degraded paths must not reach for another log')
+  // 抄出来的错误必须转义，模型侧的 request_id 之外没有任何字段可信。
+  const injected = readModelLegError(
+    { runJobs: () => [{ id: 7, name: 'Codex review' }], jobLog: () => 'ERROR: {"error":{"message":"<img src=x>"}}' },
+    '42'
+  )
+  const injectedBody = renderConclusion({
+    conclusion: deriveConclusion({
+      meta: errorMeta,
+      findings: null,
+      liveHeadSha: headSha,
+      error: ''
+    }),
+    meta: errorMeta,
+    pullNumber: 71,
+    modelError: injected
+  })
+  assert.ok(!injectedBody.includes('<img'), 'the copied log line must stay escaped')
+  assert.match(injectedBody, /- 模型 job 错误：<code>&lt;img src=x&gt;<\/code>/)
+
+  // 状态轨迹：故障结论哪怕只更新一次也要留痕（要回答「这是第几次」），连续重复去重，尾部保留最近 8 条。
+  const at = '2026-11-09T08:49:12Z'
+  const later = '2026-11-09T09:31:00Z'
+  const first = trajectoryEntries({
+    verdict: 'unreviewed',
+    code: 'missing_coverage',
+    autoRetry: 'triggered',
+    generatedAt: at
+  })
+  assert.deepEqual(first, ['11-09 08:49Z unreviewed(missing_coverage)/triggered'])
+  assert.equal(
+    trajectoryEntries({ verdict: 'error', generatedAt: at }).at(-1),
+    '11-09 08:49Z error',
+    'a missing code must not appear in the entry'
+  )
+  assert.equal(
+    trajectoryEntries({ verdict: 'error', code: 'config_missing', generatedAt: '' }).at(-1),
+    'error(config_missing)',
+    'an unusable timestamp must not fabricate a prefix'
+  )
+  // 轨迹里的码必须和正文那行 `- 故障码：` 同形状，包括没有码时写下的占位值。
+  assert.equal(
+    trajectoryEntries({ verdict: 'error', code: 'unknown', generatedAt: '' }).at(-1),
+    'error(unknown)',
+    'the placeholder code must render exactly like the conclusion body renders it'
+  )
+  assert.equal(
+    trajectoryEntries({ verdict: 'reviewed', code: 'model_failed', generatedAt: '' }).at(-1),
+    'reviewed(model_failed)',
+    'only the empty-shell code carries the retry state'
+  )
+  const blockingShell = parseReviewFindings(conclusionText('Block'))
+  assert.equal(
+    trajectoryEntries({
+      verdict: conclusionVerdict(
+        deriveConclusion({ meta: metaOf(), findings: blockingShell, liveHeadSha: headSha, error: '' })
+      ),
+      generatedAt: at
+    }).at(-1),
+    '11-09 08:49Z blocked',
+    'a blocking reviewed conclusion must reuse the marker verdict'
+  )
+
+  // 就地更新的下一版必须能读回上一版的条目接着写：条目不叠加转义，去重与「已是最新」短路才站得住。
+  const shellMeta = metaOf({
+    status: 'unreviewed',
+    error_code: 'missing_coverage',
+    error: 'no inspected path',
+    generated_at: at
+  })
+  const shellBody = renderConclusion({
+    conclusion: deriveConclusion({ meta: shellMeta, findings: null, liveHeadSha: headSha, error: '' }),
+    meta: shellMeta,
+    pullNumber: 71,
+    autoRetry: 'triggered',
+    trajectory: first
+  })
+  assert.match(shellBody, /^- 状态轨迹：11-09 08:49Z unreviewed\(missing_coverage\)\/triggered$/mu)
+  const second = trajectoryEntries({ previousBody: shellBody, verdict: 'reviewed', generatedAt: later })
+  assert.deepEqual(second, ['11-09 08:49Z unreviewed(missing_coverage)/triggered', '11-09 09:31Z reviewed'])
+  const reviewedMeta = metaOf({ status: 'reviewed', error: undefined, generated_at: later })
+  const reviewedBody = renderConclusion({
+    conclusion: deriveConclusion({
+      meta: reviewedMeta,
+      findings: parseReviewFindings(conclusionText()),
+      liveHeadSha: headSha,
+      error: ''
+    }),
+    meta: reviewedMeta,
+    pullNumber: 71,
+    trajectory: second
+  })
+  assert.match(
+    reviewedBody,
+    /^- 状态轨迹：11-09 08:49Z unreviewed\(missing_coverage\)\/triggered → 11-09 09:31Z reviewed$/mu
+  )
+  assert.deepEqual(
+    trajectoryEntries({ previousBody: reviewedBody, verdict: 'reviewed', generatedAt: later }),
+    second,
+    'an identical entry must not be appended twice'
+  )
+  // 历史只从 marker 的 `traj=` 字段读回。可见行整条落在模型可写的区域里（一条 `uncovered` 就是
+  // `- <文本>`），形状完全合规也读不回来：`<!--` 需要字面量，模型可控文本全部过 escapeHtml。
+  const markerWith = traj =>
+    `<!-- ${CONCLUSION_MARKER} sha=${headSha} status=reviewed blocks=0${traj === '' ? '' : ` traj=${traj}`} -->`
+  assert.deepEqual(
+    trajectoryEntries({
+      previousBody: [
+        markerWith(''),
+        '- 状态轨迹：11-01 00:00Z error(model_failed) → 11-02 00:00Z error(model_failed) → 11-03 00:00Z error(model_failed)',
+        '- **Should fix** `a.ts:1` — 状态轨迹：11-04 00:00Z error(missing_coverage)/exhausted'
+      ].join('\n'),
+      verdict: 'unreviewed',
+      code: 'missing_coverage',
+      autoRetry: 'exhausted',
+      generatedAt: later
+    }),
+    ['11-09 09:31Z unreviewed(missing_coverage)/exhausted'],
+    'a well-formed forged trajectory line must not be read back as history'
+  )
+  const nine = Array.from({ length: 9 }, (_, index) => `11-09 09:${String(index).padStart(2, '0')}Z reviewed`)
+  assert.deepEqual(
+    trajectoryEntries({
+      previousBody: markerWith(nine.join('|')),
+      verdict: 'error',
+      code: 'model_failed',
+      generatedAt: '2026-11-09T09:10:00Z'
+    }),
+    [...nine.slice(-7), '11-09 09:10Z error(model_failed)'],
+    'the trajectory must keep only the recent entries'
+  )
+
+  // 无故障码的档位也要能累积：第一版只把历史写进 marker（可见行只是重说「结论」那行），
+  // 第二版读回两条才列。少了 marker 这一环，非故障档位的轨迹是永远走不到的分支。
+  const reviewedFirst = renderConclusion({
+    conclusion: deriveConclusion({
+      meta: reviewedMeta,
+      findings: parseReviewFindings(conclusionText()),
+      liveHeadSha: headSha,
+      error: ''
+    }),
+    meta: reviewedMeta,
+    pullNumber: 71,
+    trajectory: trajectoryEntries({ verdict: 'reviewed', generatedAt: at })
+  })
+  assert.ok(!reviewedFirst.includes('- 状态轨迹：'), 'a single trivial entry must not be shown')
+  assert.match(reviewedFirst, /traj=11-09 08:49Z reviewed -->/u)
+  const reviewedSecond = trajectoryEntries({ previousBody: reviewedFirst, verdict: 'reviewed', generatedAt: later })
+  assert.deepEqual(reviewedSecond, ['11-09 08:49Z reviewed', '11-09 09:31Z reviewed'])
+  assert.match(
+    renderConclusion({
+      conclusion: deriveConclusion({ meta: reviewedMeta, findings: null, liveHeadSha: headSha, error: '' }),
+      meta: reviewedMeta,
+      pullNumber: 71,
+      trajectory: reviewedSecond
+    }),
+    /^- 状态轨迹：11-09 08:49Z reviewed → 11-09 09:31Z reviewed$/mu,
+    'the second update must render the accumulated history'
+  )
+
+  // commandReport 的接线：env 名、门控故障码、读回的上一版正文与档位判据各写错一笔，
+  // 都只会让线上评论少一行而 YAML 拓扑断言仍绿，所以这四路必须在 seam 上各钉一条。
+  const extrasOf = overrides =>
+    conclusionRenderExtras({
+      adapter: logAdapter,
+      status: deriveConclusion({ meta: errorMeta, findings: null, liveHeadSha: headSha, error: '' }),
+      meta: errorMeta,
+      existing: undefined,
+      autoRetry: 'none',
+      env: { WORKFLOW_RUN_ID: '42472585843' },
+      ...overrides
+    })
+  assert.match(extrasOf().modelError, /response_format type is unavailable/)
+  assert.equal(extrasOf({ env: {} }).modelError, '', 'a missing run id must degrade to no diagnostic')
+  const artifactMeta = metaOf({ status: 'error', error_code: 'artifact_missing', error: 'no findings artifact' })
+  const readsBefore = logReads
+  assert.equal(
+    extrasOf({
+      status: deriveConclusion({ meta: artifactMeta, findings: null, liveHeadSha: headSha, error: '' }),
+      meta: artifactMeta
+    }).modelError,
+    '',
+    'only the model-leg failure may read the job log'
+  )
+  assert.equal(logReads, readsBefore, 'the other failure codes must not reach for a log')
+  assert.deepEqual(
+    extrasOf({
+      existing: { body: shellBody },
+      status: deriveConclusion({
+        meta: reviewedMeta,
+        findings: parseReviewFindings(conclusionText()),
+        liveHeadSha: headSha,
+        error: ''
+      }),
+      meta: reviewedMeta
+    }).trajectory,
+    ['11-09 08:49Z unreviewed(missing_coverage)/triggered', '11-09 09:31Z reviewed'],
+    'the previous comment body must be fed back in'
+  )
+  const blockingMeta = metaOf({ generated_at: at })
+  const blockingStatus = deriveConclusion({
+    meta: blockingMeta,
+    findings: blockingShell,
+    liveHeadSha: headSha,
+    error: ''
+  })
+  assert.equal(
+    extrasOf({ status: blockingStatus, meta: blockingMeta }).trajectory.at(-1),
+    '11-09 08:49Z blocked',
+    'the seam must pass the marker verdict, not the raw status'
+  )
 }
 
 console.log('.github/scripts/codex-review.test.mjs: all assertions passed')
