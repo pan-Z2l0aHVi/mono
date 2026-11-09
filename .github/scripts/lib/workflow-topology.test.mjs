@@ -614,6 +614,19 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.match(autoRetryStep, /id: auto_retry/, 'the conclusion comment must read the retry state from this step')
     assert.match(autoRetryStep, /WORKFLOW_RUN_ID: \$\{\{ github\.event\.workflow_run\.id \}\}/)
     assert.match(autoRetryStep, /WORKFLOW_RUN_ATTEMPT: \$\{\{ github\.event\.workflow_run\.run_attempt \}\}/)
+    assert.match(
+      autoRetryStep,
+      /WORKFLOW_REPORT_ATTEMPT: \$\{\{ github\.run_attempt \}\}/,
+      'the report leg re-run must be visible to the trusted script'
+    )
+    // 门槛放在可信脚本里，不能挂到步骤 if 上：if 被跳过会让 state 落 none，
+    // 结论评论又退回「人工再重跑一次」的旧指引，等于绕过已用掉的上限。
+    // 用白名单等值断言，黑名单子串断言抓不到等价改写（job 级 if、run 命令里判、env 比较等）。
+    assert.equal(
+      report.steps[retryName],
+      "success() && steps.pull.outputs.pull_number != '' && steps.findings.outcome == 'success'",
+      'the retry step must stay unconditional on attempts; the ceiling lives in the trusted script'
+    )
     assert.match(autoRetryStep, /CODEX_REVIEW_RUN_CONCLUSION: \$\{\{ github\.event\.workflow_run\.conclusion \}\}/)
     assert.match(autoRetryStep, /GH_TOKEN: \$\{\{ github\.token \}\}/)
     assert.match(autoRetryStep, /node "\$RUNNER_TEMP\/trusted\/scripts\/codex-review\.mjs" auto-retry/)
@@ -638,16 +651,38 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.equal(AUTO_RETRY_LIMIT, 1, 'the single-retry ceiling must not drift')
     assert.deepEqual(AUTO_RETRY_STATES, ['none', 'triggered', 'exhausted', 'failed'])
     const emptyMeta = { status: 'unreviewed', error_code: 'missing_coverage' }
+    const retryCase = overrides =>
+      autoRetryDecision({ meta: emptyMeta, runAttempt: 1, runConclusion: 'failure', reportAttempt: 1, ...overrides })
     assert.equal(
-      autoRetryDecision({ meta: emptyMeta, runAttempt: 2, runConclusion: 'failure' }).state,
+      autoRetryDecision({ meta: emptyMeta, runAttempt: 2, runConclusion: 'failure', reportAttempt: 1 }).state,
       'exhausted',
       'the second attempt must stop'
     )
     assert.equal(
-      autoRetryDecision({ meta: emptyMeta, runAttempt: undefined, runConclusion: 'failure' }).action,
+      autoRetryDecision({ meta: emptyMeta, runAttempt: 1, runConclusion: 'failure', reportAttempt: 2 }).state,
+      'exhausted',
+      'a re-run of the report leg itself must not start a second auto retry'
+    )
+    assert.equal(retryCase().state, 'triggered', 'both attempts at 1 must still trigger the single retry')
+    assert.equal(
+      retryCase({ reportAttempt: undefined }).action,
+      'skip',
+      'an unreadable report attempt must fall back to manual handling'
+    )
+    assert.equal(
+      autoRetryDecision({ meta: emptyMeta, runAttempt: undefined, runConclusion: 'failure', reportAttempt: 1 }).action,
       'skip',
       'an unreadable run_attempt must fall back to manual handling'
     )
+    // CI 非 failure 与不可读字段都优先于「上限已用尽」，避免误报 exhausted / 诱导人工重跑。
+    for (const overrides of [
+      { runConclusion: 'success', reportAttempt: 2 },
+      { runConclusion: undefined, reportAttempt: 2 },
+      { runAttempt: 2, reportAttempt: 'abc' },
+      { runAttempt: undefined, reportAttempt: 2 }
+    ]) {
+      assert.equal(retryCase(overrides).state, 'none', `${JSON.stringify(overrides)} must not claim exhaustion`)
+    }
     assert.equal(
       resolveAutoRetryState({ CODEX_REVIEW_AUTO_RETRY_STATE: '', CODEX_REVIEW_AUTO_RETRY_OUTCOME: 'failure' }),
       'failed',

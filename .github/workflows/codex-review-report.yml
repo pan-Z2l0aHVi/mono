@@ -128,7 +128,8 @@ jobs:
 
       - name: Auto-rerun empty review output
         id: auto_retry
-        # 判码、上限与「只重跑一次」都在取自默认分支的可信脚本里；attempt 与 conclusion 由 payload 注入。
+        # 判码、上限与「只重跑一次」都在取自默认分支的可信脚本里；两个 attempt 维度都由 payload / context 注入。
+        # CI run 的 attempt 挡住重跑后的新事件，写回腿自身的 attempt 挡住人工 re-run 这条腿。
         # 这条腿只触发重跑，不调用模型，也不改判结论。脚本把异常收敛成 failed 档并正常退出，
         # continue-on-error 再兜住进程级崩溃，保证下游结论评论始终能读到恢复状态。
         if: success() && steps.pull.outputs.pull_number != '' && steps.findings.outcome == 'success'
@@ -137,6 +138,7 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           WORKFLOW_RUN_ID: ${{ github.event.workflow_run.id }}
           WORKFLOW_RUN_ATTEMPT: ${{ github.event.workflow_run.run_attempt }}
+          WORKFLOW_REPORT_ATTEMPT: ${{ github.run_attempt }}
           CODEX_REVIEW_RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
           CODEX_REVIEW_CONCLUSION_DIR: ${{ runner.temp }}/codex-review
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" auto-retry

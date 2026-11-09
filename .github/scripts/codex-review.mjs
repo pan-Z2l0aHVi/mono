@@ -308,26 +308,52 @@ export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplic
 /**
  * 空壳结论是否值得自动重跑一次，以及结论评论该显示哪一档恢复状态。
  *
+ * 上限有两个维度，都钉在 AUTO_RETRY_LIMIT：
+ * - runAttempt 是触发本次写回腿的 CI run 的 attempt（来自 workflow_run payload）；重跑 CI 后的
+ *   新事件里它是 2，用来挡住「第二次写回腿 run」。
+ * - reportAttempt 是写回腿自己这次 run 的 attempt（github.run_attempt）。人工 re-run 写回腿时
+ *   payload 仍是原始事件（runAttempt 依旧是 1），只有这个量会递增；不判它就会再 POST 一次
+ *   rerun-failed-jobs，突破「每个 CI run 只自动重跑一次」。两个量不能互相替代（ADR-0021）。
+ *
+ * 顺序按「先排除不该恢复的情形 → 再判上限是否已用尽 → 才允许重跑」分层：CI 非 failure 时
+ * 不该因 attempt 已用尽就误报「自动重跑 1 次仍不可用」；字段不可读一律优先于「已用尽」，
+ * 否则会拿一个坏掉的值宣称 exhausted，也不符合「任一不可读 → none」的口径。
+ *
  * @param {object} input
  * @param {object|null} input.meta 本轮下载的 review-meta.json。
- * @param {number|string|undefined} input.runAttempt Actions API 返回的 run_attempt；拿不到就不重跑，防循环。
- * @param {string|undefined} input.runConclusion Actions API 返回的 run conclusion。
+ * @param {number|string|undefined} input.runAttempt 触发写回腿的 CI run 的 attempt；拿不到就不重跑。
+ * @param {string|undefined} input.runConclusion 触发写回腿的 CI run 的 conclusion。
+ * @param {number|string|undefined} input.reportAttempt 写回腿自己这次 run 的 attempt；拿不到就不重跑。
  * @returns {{action: 'rerun'|'skip', state: 'triggered'|'exhausted'|'none', reason: string}}
  *   无副作用；真正的 rerun 由调用方按 action 执行。
  */
-export function autoRetryDecision({ meta, runAttempt, runConclusion }) {
+export function autoRetryDecision({ meta, runAttempt, runConclusion, reportAttempt }) {
   if (meta?.status !== 'unreviewed' || meta?.error_code !== AUTO_RETRY_ERROR_CODE) {
     return { action: 'skip', state: 'none', reason: 'the conclusion is not missing_coverage' }
+  }
+  // 总闸门最先判：CI 没判红就谈不上恢复，即便拿到的 artifact 是上一轮的旧空壳。
+  if (runConclusion !== 'failure') {
+    return { action: 'skip', state: 'none', reason: `the CI run concluded ${String(runConclusion)}` }
   }
   const attempt = Number(runAttempt)
   if (!Number.isInteger(attempt) || attempt < 1) {
     return { action: 'skip', state: 'none', reason: `run_attempt is unavailable (${String(runAttempt)})` }
   }
+  const report = Number(reportAttempt)
+  if (!Number.isInteger(report) || report < 1) {
+    return { action: 'skip', state: 'none', reason: `report run_attempt is unavailable (${String(reportAttempt)})` }
+  }
+  // 两个维度都合法、都为 1 才允许重跑；任一大于上限就停在 exhausted。
+  // exhausted 而不是 none：none 会让结论评论退回「人工再重跑一次」的旧指引，把已用掉的上限说成还没用。
   if (attempt > AUTO_RETRY_LIMIT) {
     return { action: 'skip', state: 'exhausted', reason: `run_attempt ${attempt} already used the single auto retry` }
   }
-  if (runConclusion !== 'failure') {
-    return { action: 'skip', state: 'none', reason: `the CI run concluded ${String(runConclusion)}` }
+  if (report > AUTO_RETRY_LIMIT) {
+    return {
+      action: 'skip',
+      state: 'exhausted',
+      reason: `report workflow was re-run (attempt ${report}); the single auto retry is already used`
+    }
   }
   return { action: 'rerun', state: 'triggered', reason: 'first attempt produced an empty review conclusion' }
 }
@@ -463,7 +489,7 @@ export function renderConclusion({ conclusion, meta, pullNumber, autoRetry = 'no
       )
     } else if (conclusion.code === AUTO_RETRY_ERROR_CODE) {
       lines.push(
-        '- 恢复指引：本次没有触发自动重跑；按 `gh run rerun --failed` 人工重跑审查与门禁腿，重复出现就修输出契约。'
+        '- 恢复指引：本次没有触发自动重跑；先看写回腿运行页 Summary 的「原因」，核对是不是 CI 非 `failure`、产物不是空壳、attempt 字段不可读或注入异常。仅当 CI 确实判 `failure` 且本次产物确属空壳时，才必要时用 `gh run rerun --failed` 重跑一次；CI 已成功时不要重跑，先核对评论头部的 `sha` 是否覆盖当前 head。反复出现就修输出契约或 env 注入，不要连续重跑。'
       )
     }
   }
@@ -1035,25 +1061,28 @@ function appendReportSummary({ number, status, meta, outcome }) {
 /**
  * 写回腿唯一的动作类写操作：对第一次 attempt 的空壳结论触发一次 --failed 重跑。
  *
- * run_attempt 与 run conclusion 由 workflow_run payload 注入，不再额外发 GET：
- * github.run_attempt 的「每次重跑递增」直接钉住上限，也少一处限流 / 403 的失败源。
+ * run_attempt 与 run conclusion 由 workflow_run payload 注入，写回腿自身的 attempt 由 github.run_attempt
+ * 注入；两者共同钉住「只重跑一次」，不再额外发 GET。
  * 所有异常都收敛成 state=failed 并以 0 退出（annotation + Summary 留痕），步骤 output 一定写入，
  * 不依赖「失败步骤的 output 是否被 runner 保留」，结论评论也就不会退回误导性的手动重跑指引。
  */
 export function commandAutoRetry({ env = process.env, adapter } = {}) {
   let runId = ''
   let attempt = 'unknown'
+  let reportAttempt = 'unknown'
   let decision = { action: 'skip', state: 'none', reason: 'auto retry did not start' }
   try {
     const required = requireEnv(['GITHUB_REPOSITORY', 'WORKFLOW_RUN_ID'], env)
     runId = required.WORKFLOW_RUN_ID
     attempt = String(env.WORKFLOW_RUN_ATTEMPT ?? 'unknown')
+    reportAttempt = String(env.WORKFLOW_REPORT_ATTEMPT ?? 'unknown')
     const metaPath = path.join(conclusionDirectory(env), META_FILE)
     const meta = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : null
     decision = autoRetryDecision({
       meta,
       runAttempt: env.WORKFLOW_RUN_ATTEMPT,
-      runConclusion: env.CODEX_REVIEW_RUN_CONCLUSION
+      runConclusion: env.CODEX_REVIEW_RUN_CONCLUSION,
+      reportAttempt: env.WORKFLOW_REPORT_ATTEMPT
     })
     if (decision.action === 'rerun') {
       const client = adapter ?? createGhReviewAdapter({ repository: required.GITHUB_REPOSITORY })
@@ -1069,11 +1098,11 @@ export function commandAutoRetry({ env = process.env, adapter } = {}) {
   appendSummary([
     '## Codex 空壳结论自动恢复',
     '',
-    `- 触发 run：\`${runId || 'unknown'}\`（attempt \`${plainText(attempt)}\`）`,
+    `- 触发 run：\`${runId || 'unknown'}\`（CI attempt \`${plainText(attempt)}\` / 写回腿 attempt \`${plainText(reportAttempt)}\`）`,
     `- 动作：**${decision.action === 'rerun' ? '已重跑失败 job 一次' : '跳过'}**`,
     `- 原因：${decision.reason}`,
     `- 恢复状态：\`${decision.state}\``,
-    '- 上限：每个 run 只自动重跑一次；二次仍空壳转人工完整独立审查。'
+    '- 上限：CI run 与写回腿自身的 attempt 都必须为 1；任一已重跑过就转人工完整独立审查。'
   ])
   return decision
 }
