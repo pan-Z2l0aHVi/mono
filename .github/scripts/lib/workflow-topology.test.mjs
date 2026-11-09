@@ -6,7 +6,14 @@ import path from 'node:path'
 
 import { readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
 
-import { CONFIG_ENV, priorConclusionDirectory } from '../codex-review.mjs'
+import {
+  AUTO_RETRY_LIMIT,
+  AUTO_RETRY_STATES,
+  CONFIG_ENV,
+  autoRetryDecision,
+  priorConclusionDirectory,
+  resolveAutoRetryState
+} from '../codex-review.mjs'
 
 import {
   CODEX_CONFIG_ENV,
@@ -576,13 +583,116 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       contents: 'read',
       issues: 'write',
       'pull-requests': 'write',
-      actions: 'read'
+      actions: 'write'
     })
     assert.deepEqual(report.jobs['codex-autofix-apply'].permissions, {
       contents: 'write',
       'pull-requests': 'read',
       actions: 'read'
     })
+
+    // 空壳结论自动恢复：写回腿唯一的动作类写权限只用于触发一次 --failed 重跑，模型仍不在这条腿里。
+    const retryName = 'Auto-rerun empty review output'
+    const commentName = 'Post conclusion comment'
+    const autoRetryStep = namedStep(reportText, retryName)
+    const commentStep = namedStep(reportText, commentName)
+    assert.equal(report.stepJobs[retryName], 'report-conclusion')
+    assert.deepEqual(report.stepIdsByJob['report-conclusion'], ['pull', 'findings', 'auto_retry'])
+    assert.match(report.steps[retryName], /^success\(\)/, 'an earlier failure must not trigger a rerun')
+    assert.match(
+      report.steps[retryName],
+      /steps\.findings\.outcome == 'success'/,
+      'a missing artifact is not an empty conclusion'
+    )
+    assert.match(report.steps[commentName], /^always\(\)/, 'the comment must still post when the retry step fails')
+    assert.equal(report.stepContinueOnError[retryName], 'true', 'a process-level crash must not drop the step output')
+    assert.ok(
+      reportText.indexOf(`- name: ${retryName}`) > reportText.indexOf('- name: Download review findings') &&
+        reportText.indexOf(`- name: ${commentName}`) > reportText.indexOf(`- name: ${retryName}`),
+      'the retry must run after the artifact download and before the comment'
+    )
+    assert.match(autoRetryStep, /id: auto_retry/, 'the conclusion comment must read the retry state from this step')
+    assert.match(autoRetryStep, /WORKFLOW_RUN_ID: \$\{\{ github\.event\.workflow_run\.id \}\}/)
+    assert.match(autoRetryStep, /WORKFLOW_RUN_ATTEMPT: \$\{\{ github\.event\.workflow_run\.run_attempt \}\}/)
+    assert.match(
+      autoRetryStep,
+      /WORKFLOW_REPORT_ATTEMPT: \$\{\{ github\.run_attempt \}\}/,
+      'the report leg re-run must be visible to the trusted script'
+    )
+    // 门槛放在可信脚本里，不能挂到步骤 if 上：if 被跳过会让 state 落 none，
+    // 结论评论又退回「人工再重跑一次」的旧指引，等于绕过已用掉的上限。
+    // 用白名单等值断言，黑名单子串断言抓不到等价改写（job 级 if、run 命令里判、env 比较等）。
+    assert.equal(
+      report.steps[retryName],
+      "success() && steps.pull.outputs.pull_number != '' && steps.findings.outcome == 'success'",
+      'the retry step must stay unconditional on attempts; the ceiling lives in the trusted script'
+    )
+    assert.match(autoRetryStep, /CODEX_REVIEW_RUN_CONCLUSION: \$\{\{ github\.event\.workflow_run\.conclusion \}\}/)
+    assert.match(autoRetryStep, /GH_TOKEN: \$\{\{ github\.token \}\}/)
+    assert.match(autoRetryStep, /node "\$RUNNER_TEMP\/trusted\/scripts\/codex-review\.mjs" auto-retry/)
+    assert.ok(!autoRetryStep.includes('openai/codex-action'), 'the auto retry must not run the model')
+    // 结论目录是同一份 meta：下载、判码与写评论三处必须指向同一个 runner.temp 路径。
+    const conclusionEnv = /CODEX_REVIEW_CONCLUSION_DIR: \$\{\{ runner\.temp \}\}\/codex-review/
+    assert.match(autoRetryStep, conclusionEnv)
+    assert.match(commentStep, conclusionEnv)
+    assert.match(namedStep(reportText, 'Download review findings'), /path: \$\{\{ runner\.temp \}\}\/codex-review/)
+    assert.match(commentStep, /CODEX_REVIEW_AUTO_RETRY_STATE: \$\{\{ steps\.auto_retry\.outputs\.state \}\}/)
+    assert.match(
+      commentStep,
+      /CODEX_REVIEW_AUTO_RETRY_OUTCOME: \$\{\{ steps\.auto_retry\.outcome \}\}/,
+      'a crashed step without an output must still be reported'
+    )
+    const stateLine = commentStep.split('\n').find(line => line.includes('CODEX_REVIEW_AUTO_RETRY_STATE:'))
+    assert.ok(
+      stateLine && !stateLine.includes('&&'),
+      'the recovery state must not depend on expression operand semantics'
+    )
+    // 上限、分流与恢复状态解析由可信脚本导出的行为断言钉住，不再靠源码字符串匹配。
+    assert.equal(AUTO_RETRY_LIMIT, 1, 'the single-retry ceiling must not drift')
+    assert.deepEqual(AUTO_RETRY_STATES, ['none', 'triggered', 'exhausted', 'failed'])
+    const emptyMeta = { status: 'unreviewed', error_code: 'missing_coverage' }
+    const retryCase = overrides =>
+      autoRetryDecision({ meta: emptyMeta, runAttempt: 1, runConclusion: 'failure', reportAttempt: 1, ...overrides })
+    assert.equal(
+      autoRetryDecision({ meta: emptyMeta, runAttempt: 2, runConclusion: 'failure', reportAttempt: 1 }).state,
+      'exhausted',
+      'the second attempt must stop'
+    )
+    assert.equal(
+      autoRetryDecision({ meta: emptyMeta, runAttempt: 1, runConclusion: 'failure', reportAttempt: 2 }).state,
+      'exhausted',
+      'a re-run of the report leg itself must not start a second auto retry'
+    )
+    assert.equal(retryCase().state, 'triggered', 'both attempts at 1 must still trigger the single retry')
+    assert.equal(
+      retryCase({ reportAttempt: undefined }).action,
+      'skip',
+      'an unreadable report attempt must fall back to manual handling'
+    )
+    assert.equal(
+      autoRetryDecision({ meta: emptyMeta, runAttempt: undefined, runConclusion: 'failure', reportAttempt: 1 }).action,
+      'skip',
+      'an unreadable run_attempt must fall back to manual handling'
+    )
+    // CI 非 failure 与不可读字段都优先于「上限已用尽」，避免误报 exhausted / 诱导人工重跑。
+    for (const overrides of [
+      { runConclusion: 'success', reportAttempt: 2 },
+      { runConclusion: undefined, reportAttempt: 2 },
+      { runAttempt: 2, reportAttempt: 'abc' },
+      { runAttempt: undefined, reportAttempt: 2 }
+    ]) {
+      assert.equal(retryCase(overrides).state, 'none', `${JSON.stringify(overrides)} must not claim exhaustion`)
+    }
+    assert.equal(
+      resolveAutoRetryState({ CODEX_REVIEW_AUTO_RETRY_STATE: '', CODEX_REVIEW_AUTO_RETRY_OUTCOME: 'failure' }),
+      'failed',
+      'the trusted script must own the recovery state resolution'
+    )
+    assert.equal(
+      resolveAutoRetryState({ CODEX_REVIEW_AUTO_RETRY_STATE: '', CODEX_REVIEW_AUTO_RETRY_OUTCOME: 'skipped' }),
+      'none',
+      'a skipped retry step must not report a failed retry'
+    )
 
     const eligibilityGuard =
       "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository" +

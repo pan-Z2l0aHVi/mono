@@ -6,19 +6,25 @@ import os from 'node:os'
 import path from 'node:path'
 
 import {
+  AUTO_RETRY_LIMIT,
+  AUTO_RETRY_STATES,
   CONFIG_ENV,
   CONFIG_FILE,
   CONCLUSION_MARKER,
   FINDINGS_ARTIFACT,
   REVIEW_EXCLUDE_PATHSPECS,
+  autoRetryDecision,
+  commandAutoRetry,
   createGhReviewAdapter,
   deriveConclusion,
   findPullForHead,
   findReusableRun,
   inspectConfig,
+  normalizeAutoRetryState,
   parseReviewFindings,
   readConclusion,
   renderConclusion,
+  resolveAutoRetryState,
   resolveReviewRange,
   reviewTarget,
   scopePath,
@@ -507,6 +513,312 @@ for (const [label, value] of [
   assert.match(failed, /结论：\*\*审查失败\*\*/)
   assert.match(failed, /故障码：`config_missing`/)
   assert.match(failed, /检查 GitHub 后台的 secrets\/variables/)
+}
+
+{
+  // 空壳结论的自动恢复：判码、两个 attempt 维度的硬上限与「拿不到 attempt 就不重跑」都在纯函数里，
+  // 真正的 rerun 由 commandAutoRetry 按 action 执行。
+  const emptyMeta = { status: 'unreviewed', error_code: 'missing_coverage', error: 'no inspected path' }
+  const decision = (overrides = {}) =>
+    autoRetryDecision({
+      meta: emptyMeta,
+      runAttempt: 1,
+      runConclusion: 'failure',
+      reportAttempt: 1,
+      ...overrides
+    })
+
+  assert.equal(AUTO_RETRY_LIMIT, 1, 'the auto retry is a single attempt')
+  assert.deepEqual(decision(), {
+    action: 'rerun',
+    state: 'triggered',
+    reason: 'first attempt produced an empty review conclusion'
+  })
+
+  // 重跑完成会再触发一次 workflow_run；第二次必须停下，否则模型腿会被无限重跑。
+  for (const runAttempt of [2, 3, 10, '2']) {
+    assert.deepEqual(
+      decision({ runAttempt }),
+      {
+        action: 'skip',
+        state: 'exhausted',
+        reason: `run_attempt ${runAttempt} already used the single auto retry`
+      },
+      `run_attempt ${runAttempt} must exhaust the auto retry`
+    )
+  }
+
+  // 写回腿自身被人工 re-run 时 payload 仍是原始事件（CI run attempt 仍为 1），
+  // 只有 github.run_attempt 递增。不判它就会再 POST 一次 rerun-failed-jobs，突破硬上限。
+  for (const reportAttempt of [2, 3, 10, '2']) {
+    const result = decision({ reportAttempt })
+    assert.equal(result.action, 'skip', `reportAttempt ${reportAttempt} must not rerun again`)
+    assert.equal(result.state, 'exhausted', 'a re-run report leg must not fall back to the manual hint')
+    assert.match(result.reason, /report workflow was re-run/)
+  }
+
+  // 两个维度都不可信时不重跑：宁可转人工，也不冒循环风险。
+  for (const reportAttempt of [undefined, null, NaN, 0, -1, '', 'abc']) {
+    const result = decision({ reportAttempt })
+    assert.equal(result.action, 'skip', `reportAttempt ${String(reportAttempt)} must not retry`)
+    assert.equal(result.state, 'none')
+  }
+
+  // 两个维度都必须合法且为 1：任一已重跑过就停下，且不会出现「CI attempt=2 但 report attempt=1」误放行。
+  for (const overrides of [
+    { runAttempt: 2, reportAttempt: 1 },
+    { runAttempt: 1, reportAttempt: 2 },
+    { runAttempt: 2, reportAttempt: 2 }
+  ]) {
+    assert.equal(decision(overrides).state, 'exhausted', JSON.stringify(overrides))
+  }
+
+  // 总闸门最先判：CI 没判红时不因 attempt 已用尽误报 exhausted；不可读字段也优先于「已用尽」。
+  for (const runConclusion of ['success', 'cancelled', undefined]) {
+    const result = decision({ runConclusion, reportAttempt: 2 })
+    assert.equal(result.action, 'skip', `a ${String(runConclusion)} run needs no recovery`)
+    assert.equal(result.state, 'none', 'a non-failure CI run must not claim an exhausted auto retry')
+  }
+  for (const overrides of [
+    { runAttempt: 2, reportAttempt: 'abc' },
+    { runAttempt: 2, reportAttempt: undefined },
+    { runAttempt: undefined, reportAttempt: 2 },
+    { runAttempt: undefined, reportAttempt: undefined }
+  ]) {
+    const result = decision(overrides)
+    assert.equal(result.action, 'skip', `${JSON.stringify(overrides)} must not retry`)
+    assert.equal(result.state, 'none', 'any unreadable attempt wins over an exhausted one')
+  }
+
+  // attempt 不可信时不重跑：宁可转人工，也不冒循环风险。
+  for (const runAttempt of [undefined, null, NaN, 0, -1, '', 'abc']) {
+    const result = decision({ runAttempt })
+    assert.equal(result.action, 'skip', `runAttempt ${String(runAttempt)} must not retry`)
+    assert.equal(result.state, 'none')
+  }
+
+  // 分流不变：unusable_output / error / reviewed 一律不进自动重跑。
+  for (const meta of [
+    { status: 'unreviewed', error_code: 'unusable_output' },
+    { status: 'error', error_code: 'model_failed' },
+    { status: 'reviewed' },
+    null
+  ]) {
+    const result = decision({ meta })
+    assert.equal(result.action, 'skip', `meta ${JSON.stringify(meta)} must not retry`)
+    assert.equal(result.state, 'none')
+  }
+  for (const runConclusion of ['success', 'cancelled', undefined]) {
+    assert.equal(decision({ runConclusion }).action, 'skip', `a ${String(runConclusion)} run needs no recovery`)
+  }
+}
+
+{
+  const emptyMeta = { status: 'unreviewed', error_code: 'missing_coverage', error: 'no inspected path' }
+  const render = (autoRetry, meta = emptyMeta) =>
+    renderConclusion({
+      conclusion: deriveConclusion({ meta, findings: null, liveHeadSha: headSha, error: '' }),
+      meta,
+      pullNumber: 54,
+      autoRetry
+    })
+
+  const triggered = render('triggered')
+  assert.match(triggered, /- 自动恢复：写回腿已用 `gh run rerun --failed` 重跑审查与门禁腿一次/)
+  assert.match(triggered, /不要手动再重跑/)
+  assert.match(triggered, /恢复状态见上方「自动恢复」行/)
+
+  const exhausted = render('exhausted')
+  assert.match(exhausted, /自动重跑 1 次仍不可用/)
+  assert.match(exhausted, /完整独立审查/)
+  assert.ok(!exhausted.includes('不要手动再重跑'), 'an exhausted retry must not promise another rerun')
+
+  const failedRetry = render('failed')
+  assert.match(failedRetry, /自动重跑调用失败/)
+  assert.match(failedRetry, /actions: write/)
+
+  const legacy = render('none')
+  // 保留手动重跑出口是有意的可操作指引，但必须带三重限定：先诊断、仅限 CI 判红、不要连续重跑。
+  assert.match(legacy, /gh run rerun --failed/, 'the manual hint stays when no auto retry happened')
+  assert.match(legacy, /- 恢复指引：本次没有触发自动重跑/)
+  assert.match(legacy, /先看写回腿运行页 Summary/, 'a broken env must be diagnosed before a manual rerun')
+  assert.match(legacy, /仅当 CI 确实判 `failure`/, 'a green CI run must not be rerun manually')
+  assert.match(legacy, /不要连续重跑/, 'the hint must not induce an unbounded manual rerun loop')
+  assert.ok(!legacy.includes('- 自动恢复：'), 'no auto retry means no auto recovery line')
+
+  // 步骤被跳过 / output 丢失会传空串：不能冒充某个恢复档，也不能退回误导性的旧文案。
+  const emptyState = render('')
+  assert.match(emptyState, /- 恢复指引：本次没有触发自动重跑/)
+  assert.ok(!emptyState.includes('- 自动恢复：'), 'an empty state must not impersonate a recovery state')
+
+  // unusable_output 不能借 autoRetry 显示自动重跑文案，仍按「重跑整条 run」处置。
+  const unusableMeta = {
+    status: 'unreviewed',
+    error_code: 'unusable_output',
+    error: 'the review step produced no output file'
+  }
+  const unusable = render('triggered', unusableMeta)
+  assert.match(unusable, /重跑整条 run/, 'unusable_output still needs a full rerun')
+  assert.ok(!unusable.includes('- 自动恢复：'), 'only missing_coverage gets an auto recovery line')
+
+  // 空壳结论也可能带 findings：自动恢复行挂在故障码旁，不依赖「无 findings」分支。
+  const withFinding = render('triggered', { ...emptyMeta, findings: [finding('Nit')], summary: 'one nit' })
+  assert.match(withFinding, /- 自动恢复：写回腿已用/, 'a missing_coverage conclusion with findings is still recovered')
+
+  // 带 findings 且没有自动恢复时也得有指引：正文的「无 findings」分支此时不会出现。
+  const withFindingNoRetry = render('none', { ...emptyMeta, findings: [finding('Nit')], summary: 'one nit' })
+  assert.match(withFindingNoRetry, /- 恢复指引：本次没有触发自动重跑/, 'a conclusion with findings still gets a hint')
+}
+
+{
+  // 重跑走 POST；201 空响应体不能触发 JSON.parse。attempt 与 conclusion 改由 payload 注入，不再发 GET。
+  const calls = []
+  const spawn = (command, args) => {
+    calls.push({ command, args })
+    return { status: 0, stdout: '' }
+  }
+  const adapter = createGhReviewAdapter({ repository: 'acme/repo', spawn })
+  assert.equal(adapter.rerunFailed('42'), '', 'an empty 201 body is not parsed as JSON')
+  assert.deepEqual(calls[0].args, ['api', '-X', 'POST', 'repos/acme/repo/actions/runs/42/rerun-failed-jobs'])
+  assert.equal(adapter.run, undefined, 'the removed GET call must not come back')
+}
+
+{
+  // state 的合法档位是白名单：空串（步骤跳过 / output 丢失）与未知值都不能冒充某个恢复档。
+  assert.deepEqual(AUTO_RETRY_STATES, ['none', 'triggered', 'exhausted', 'failed'])
+  for (const value of ['', undefined, null, 'weird', 0]) {
+    assert.equal(normalizeAutoRetryState(value), 'none', `state ${String(value)} must fall back to none`)
+  }
+  for (const value of AUTO_RETRY_STATES) assert.equal(normalizeAutoRetryState(value), value)
+
+  // 恢复状态的最终解析在脚本里求值，不依赖 Actions 表达式的 && / || 返回操作数语义。
+  const resolve = (state, outcome) =>
+    resolveAutoRetryState({ CODEX_REVIEW_AUTO_RETRY_STATE: state, CODEX_REVIEW_AUTO_RETRY_OUTCOME: outcome })
+  for (const outcome of ['success', 'failure', 'skipped']) {
+    for (const value of AUTO_RETRY_STATES.filter(state => state !== 'none')) {
+      assert.equal(resolve(value, outcome), value, `an explicit ${value} state wins over ${outcome}`)
+    }
+  }
+  assert.equal(resolve('', 'failure'), 'failed', 'a crashed step without an output still reports failed')
+  assert.equal(resolve('', 'skipped'), 'none', 'a skipped step must not report a failed retry')
+  assert.equal(resolve('', 'success'), 'none')
+  assert.equal(resolve('weird', 'failure'), 'failed', 'unknown states fall through to the outcome fallback')
+  assert.equal(resolve('weird', 'success'), 'none')
+}
+
+{
+  // commandAutoRetry 是编排层：所有异常路径都必须写出 state=failed，且不能把异常抛给 main。
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-auto-retry-'))
+  const outputPath = path.join(tmp, 'output')
+  const summaryPath = path.join(tmp, 'summary')
+  const conclusionDir = path.join(tmp, 'conclusion')
+  fs.mkdirSync(conclusionDir)
+  const saved = {
+    output: process.env.GITHUB_OUTPUT,
+    summary: process.env.GITHUB_STEP_SUMMARY,
+    error: console.error
+  }
+  process.env.GITHUB_OUTPUT = outputPath
+  process.env.GITHUB_STEP_SUMMARY = summaryPath
+  // ::error 在真实 CI 里会被 runner 解析成 annotation；单测故意走异常路径，这里静音避免假报警。
+  console.error = () => {}
+  const metaPath = path.join(conclusionDir, 'review-meta.json')
+  const emptyMeta = { status: 'unreviewed', error_code: 'missing_coverage', error: 'no inspected path' }
+  const baseEnv = {
+    GITHUB_REPOSITORY: 'acme/repo',
+    WORKFLOW_RUN_ID: '42',
+    WORKFLOW_RUN_ATTEMPT: '1',
+    WORKFLOW_REPORT_ATTEMPT: '1',
+    CODEX_REVIEW_RUN_CONCLUSION: 'failure',
+    CODEX_REVIEW_CONCLUSION_DIR: conclusionDir
+  }
+  const invoke = ({ env = baseEnv, adapter, meta = emptyMeta } = {}) => {
+    fs.writeFileSync(outputPath, '')
+    fs.writeFileSync(summaryPath, '')
+    if (meta === 'broken') fs.writeFileSync(metaPath, '{ not json')
+    else if (meta === null) fs.rmSync(metaPath, { force: true })
+    else fs.writeFileSync(metaPath, JSON.stringify(meta))
+    const result = commandAutoRetry({ env, adapter })
+    return {
+      result,
+      outputs: fs.readFileSync(outputPath, 'utf8'),
+      summary: fs.readFileSync(summaryPath, 'utf8')
+    }
+  }
+  try {
+    const reruns = []
+    const adapter = { rerunFailed: id => reruns.push(id) }
+
+    const triggered = invoke({ adapter })
+    assert.equal(triggered.result.state, 'triggered')
+    assert.deepEqual(reruns, ['42'], 'attempt 1 must rerun exactly once')
+    assert.match(triggered.outputs, /retried=true/)
+    assert.match(triggered.outputs, /state=triggered/)
+
+    const exhausted = invoke({ adapter, env: { ...baseEnv, WORKFLOW_RUN_ATTEMPT: '2' } })
+    assert.equal(exhausted.result.state, 'exhausted')
+    assert.deepEqual(reruns, ['42'], 'attempt 2 must not rerun again')
+    assert.match(exhausted.outputs, /state=exhausted/)
+
+    // 写回腿自身被 re-run：CI run attempt 仍是 1，但这一步必须停在 exhausted，且 Summary 两个维度都留痕。
+    const reRunReport = invoke({ adapter, env: { ...baseEnv, WORKFLOW_REPORT_ATTEMPT: '2' } })
+    assert.equal(reRunReport.result.state, 'exhausted')
+    assert.match(reRunReport.result.reason, /report workflow was re-run/)
+    assert.deepEqual(reruns, ['42'], 'a re-run report leg must not POST rerun-failed-jobs again')
+    assert.match(reRunReport.outputs, /state=exhausted/)
+    assert.match(reRunReport.summary, /CI attempt `1` \/ 写回腿 attempt `2`/)
+
+    // github.run_attempt 缺失时保守跳过；评论会转人工，但绝不能再触发重跑。
+    const missingReportAttempt = invoke({
+      adapter,
+      env: Object.fromEntries(Object.entries(baseEnv).filter(([key]) => key !== 'WORKFLOW_REPORT_ATTEMPT'))
+    })
+    assert.equal(missingReportAttempt.result.state, 'none')
+    assert.deepEqual(reruns, ['42'], 'an unreadable report attempt must not rerun')
+    assert.match(missingReportAttempt.outputs, /state=none/, 'the step output must still be written')
+    assert.match(missingReportAttempt.summary, /写回腿 attempt `unknown`/)
+
+    // CI 已成功 + 写回腿被 re-run：总闸门先判，不再误报 exhausted。
+    const ciSucceeded = invoke({
+      adapter,
+      env: { ...baseEnv, WORKFLOW_REPORT_ATTEMPT: '2', CODEX_REVIEW_RUN_CONCLUSION: 'success' }
+    })
+    assert.equal(ciSucceeded.result.state, 'none')
+    assert.deepEqual(reruns, ['42'], 'a successful CI run must not be recovered')
+
+    const skipped = invoke({ adapter, meta: { status: 'unreviewed', error_code: 'unusable_output' } })
+    assert.equal(skipped.result.state, 'none')
+    assert.deepEqual(reruns, ['42'], 'unusable_output stays out of the auto retry')
+
+    // 三种异常：重跑调用失败、meta 损坏、payload env 缺失；都写 failed 且不抛。
+    const failedCases = [
+      {
+        name: 'rerunFailed throws',
+        adapter: {
+          rerunFailed: id => {
+            reruns.push(id)
+            throw new Error('403 denied')
+          }
+        }
+      },
+      { name: 'broken meta', adapter, meta: 'broken' },
+      { name: 'missing run id', adapter, env: { ...baseEnv, WORKFLOW_RUN_ID: '' } }
+    ]
+    for (const testCase of failedCases) {
+      const outcome = invoke(testCase)
+      assert.equal(outcome.result.state, 'failed', `${testCase.name} must land on failed`)
+      assert.match(outcome.outputs, /state=failed/, `${testCase.name} must write the output`)
+      assert.match(outcome.summary, /恢复状态：`failed`/, `${testCase.name} must leave a Summary trace`)
+    }
+    assert.deepEqual(reruns, ['42', '42'], 'a failed rerun must not silently retry again')
+  } finally {
+    console.error = saved.error
+    if (saved.output === undefined) delete process.env.GITHUB_OUTPUT
+    else process.env.GITHUB_OUTPUT = saved.output
+    if (saved.summary === undefined) delete process.env.GITHUB_STEP_SUMMARY
+    else process.env.GITHUB_STEP_SUMMARY = saved.summary
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
 }
 
 {
