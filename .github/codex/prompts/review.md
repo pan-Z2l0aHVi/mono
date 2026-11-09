@@ -9,11 +9,20 @@
 - 不安装依赖，不运行构建或测试。回写 PR 由另一个 job 用你的输出完成，你只负责结论。
 - 只读的 `git` 与文件读取是你的调查手段。
 
+## 预注入上下文
+
+`prepare` 阶段已在下方区块预注入 `docs/agents/review.md` 的判据速览、按风险排序的 `changed_paths` 概览，以及首批高风险改动的 unified diff 片段（同步落盘于 `$RUNNER_TEMP/codex-review/review-preload.md`）：
+
+<!-- codex-review-preload:start -->
+
+（`prepare` 阶段会在此处注入本次 PR 的判据速览、按风险排序的 `changed_paths` 与高风险改动 diff 片段；若未注入，请读 `$RUNNER_TEMP/codex-review/review-scope.json` 与 `$CODEX_REVIEW_DIFF_PATH`。）
+<!-- codex-review-preload:end -->
+
 ## 审查对象
 
 - 环境变量 `CODEX_REVIEW_DIFF_PATH` 指向本 PR 相对 merge base 的**源码改动** unified diff。该变量不可见时，读 `/home/runner/work/_temp/pr.diff`。
-- 与它同批写出的还有 `review-scope.json`（`$RUNNER_TEMP/codex-review/review-scope.json`）：`changed_paths` 是这份 diff 改动过的仓库相对路径清单，`diff_bytes`、`empty_diff` 与 `excluded_pathspecs` 也在里面。**先读这份清单**，再决定读哪些改动；不要猜它的位置。
-- 改动大时不要试图一次读完整个 diff：单条命令的输出会被截断，不要依赖一条命令读完整份改动。`changed_paths` 是本次改动的候选清单，不是必须逐条读完的任务清单；按「调查与收口」挑出要读的路径，再逐文件取改动，例如 `git diff $CODEX_REVIEW_MERGE_BASE_SHA $CODEX_REVIEW_HEAD_SHA -- <path>`。
+- 与它同批写出的还有 `review-scope.json`（`$RUNNER_TEMP/codex-review/review-scope.json`）：`changed_paths` 是这份 diff 改动过的仓库相对路径清单，`preloaded_paths`、`preload_bytes`、`diff_bytes`、`empty_diff` 与 `excluded_pathspecs` 也在里面。上方预注入段已给出按风险排序的 `changed_paths` 与首批高风险 diff；需要超出预注入范围的完整路径清单时再读 `review-scope.json`，不要猜它的位置。
+- 改动大时不要试图一次读完整个 diff：单条命令的输出会被截断，不要依赖一条命令读完整份改动。`changed_paths` 是本次改动的候选清单，不是必须逐条读完的任务清单；先看上方已预注入的高风险 diff 片段，再按「调查与收口」挑出仍需补充上下文或未预注入的路径，逐文件取改动，例如 `git diff $CODEX_REVIEW_MERGE_BASE_SHA $CODEX_REVIEW_HEAD_SHA -- <path>`。
 - 这份 diff **不是逐字节的完整 diff**：`git diff` 入口按 `docs/agents/generated-artifacts.md` 的清单滤除了已知的入库生成物（`**/generated/**`、Wails `apps/*/frontend/bindings/**`、`routeTree.gen.ts`、`typed-router.d.ts`、`auto-imports.d.ts`、`icons/index.ts` 等）。**生成物由 generator 完整重建，既不需要 diff，也不需要 review**：不读、不逐行评注、不写进 `coverage.inspected`，也不要因为没读它们就列进 `coverage.uncovered`——那不是未覆盖项，是本来就不需要查。把调查预算留给 `changed_paths` 里的源码改动，不要去补齐生成物清单。滤除已由 `review-scope.json` 的 `excluded_pathspecs` 在 `prepare` 阶段完成，**`changed_paths` 里的每一条都按待审源码处理**：不要自己再判一遍生成物、不要以「看起来像生成物」为由把任何一条从清单里删掉，拿不准就按源码审；收口纪律不授权删条目，只授权把没判断的改动如实列出。调查顺序与读不完时怎么收口，见「调查与收口」。`docs/agents/generated-artifacts.md` 的判据是维护清单时用的，不是让你在审查中自行扩大排除范围。人工 review 仍以完整 diff 为准。
 - 生成物的正确性由 `check-generated` 与消费者类型检查证明，不由你的结论证明：不要因 diff 里没有生成物就判定它们缺失或未更新，也不要把结论表述成「已看过 PR 的全部改动」或「生成物已审查」。需要核对时读工作树里的当前内容。
 - 这份 diff 为空时（常见于改动只落在被滤除的路径，或没有源码改动），返回空 `findings` 即可，但不得表述成「生成物已审查」——这份 diff 里没有它们。
@@ -23,21 +32,21 @@
 
 ## 判据
 
-先读 `docs/agents/review.md`：它规定本仓 review 看什么、`Block`、`Should fix`、`Nit` 三档怎么分，以及「审查范围与生成物」里自动审查与人工审查的范围差。按它判，不要自创标准。
+本节与上方「预注入上下文」已内嵌 `docs/agents/review.md` 的核心判据（按它判，不要自创标准；**开局不要再用 `sed` / `cat` 整篇读取 `docs/agents/review.md`**，除非本次 `changed_paths` 改的正是该文件）：
 
-不设数量、行数或文件数门槛，也不因改动大就降级结论——再难的改动也要给出可执行的结论，结论可以如实标注未覆盖范围。可执行的结论不等于读完每个文件：按下面的「调查与收口」把预算投到高风险改动上，证据够了就交卷。
-
-判据文档不长（几十行），整篇读完再判；不要用 `cut` 之类的截断读法——分档标准和「无发现也要记录什么」都写在同一批长段落里，掐掉半行就等于没读。
+- **审查维度**：检查需求与验收是否实现、行为与失败路径、公共契约与兼容性、测试质量、权限与用户输入安全、竞态与资源管理，以及文档与机检的一致性。指令或 context 改动另核四问：这段是稳定不变量还是外部状态快照？这个 concern 是否只有一个权威？这个 chunk 单独被检索时是否自包含？是否写入了会漂移的命令、路径、版本或实现清单？
+- **三档定义**：`Block` 为阻断合并的缺陷（运行失败、回归、公共契约破坏、权限/安全漏洞、竞态/泄漏、或造成假绿）；`Should fix` 为偏离需求或规范、边界/失败路径遗漏、测试或文档失步等应修问题；`Nit` 为非阻断改进，不冒充阻断问题。每个发现列当前文件行、影响、复现条件和证据。
+- **无发现与覆盖要求**：无发现也要记录审查范围（`coverage.inspected`）和未覆盖风险（`coverage.uncovered`）。不设数量、行数或文件数门槛，也不因改动大就降级结论——再难的改动也要给出可执行的结论，结论可以如实标注未覆盖范围。可执行的结论不等于读完每个文件：按下面的「调查与收口」把预算投到高风险改动上，证据够了就交卷。
 
 ## 调查与收口
 
 调查预算按风险分配，不按文件数平均分配：
 
-- 先整篇读 `docs/agents/review.md` 与 `review-scope.json`，再决定顺序。优先看改了公共契约、失败路径、权限与用户输入、并发与资源管理、跨包接口，以及测试与文档一致性的改动；纯机械改名与格式调整排在后面。
-- **先打开改动，再输出结论**：`docs/agents/review.md` 里指向 `workflow.md`、`task-ledger`、worktree、授权与合并的链接是面向实施 agent 的流程文档，不是审查判据，不要顺着它们一路读下去把调查预算耗光；但该文件要求按需核对的 `test-authoring` / `verification.md` 等链接属于审查判据，改动涉及异步测试、helper、历史 flaky 或性能对比时仍要照它核对。**diff 非空时**，判据与 `review-scope.json` 读完后，下一步必须实际打开至少一个 `changed_paths` 里的改动（`git diff $CODEX_REVIEW_MERGE_BASE_SHA $CODEX_REVIEW_HEAD_SHA -- <path>`，或读工作树里的当前内容），然后才允许输出 JSON；`empty_diff: true` 时没有可打开的改动，按「输出」段的豁免直接交空 findings。空 diff 下 `findings` 与 `coverage.inspected` 同时为空是合法结论，CI 的 guard 也整体放行。「只输出符合 schema 的 JSON」说的是最终答复的形式，不是「跳过调查、直接给 JSON」。交一份 `正在检查…` 的过程句，或 diff 非空却给出 `findings` 与 `coverage.inspected` 同时为空的 JSON，等于没审：CI 会把审查腿一并判红并要求重跑模型腿。
+- 直接从上方预注入的高风险 `changed_paths` 与 diff 片段开始审查；优先看改了公共契约、失败路径、权限与用户输入、并发与资源管理、跨包接口，以及测试与文档一致性的改动，纯机械改名与格式调整排在后面。
+- **先核实改动，再输出结论**：`docs/agents/review.md` 里指向 `workflow.md`、`task-ledger`、worktree、授权与合并的链接是面向实施 agent 的流程文档，不是审查判据，不要顺着它们一路读下去把调查预算耗光；但改动涉及异步测试、helper、历史 flaky 或性能对比时，仍要按需核对 `test-authoring` / `verification.md` 的专门判据。**diff 非空时**，必须先实际审查至少一个 `changed_paths` 里的源码改动（已在预注入段读完其完整 diff 并核对所需上下文，或通过 `git diff $CODEX_REVIEW_MERGE_BASE_SHA $CODEX_REVIEW_HEAD_SHA -- <path>` / 读取工作树里的当前内容），然后才允许输出 JSON；`empty_diff: true` 时没有可打开的改动，按「输出」段的豁免直接交空 findings。空 diff 下 `findings` 与 `coverage.inspected` 同时为空是合法结论，CI 的 guard 也整体放行。「只输出符合 schema 的 JSON」说的是最终答复的形式，不是「跳过调查、直接给 JSON」。交一份 `正在检查…` 的过程句，或 diff 非空却给出 `findings` 与 `coverage.inspected` 同时为空的 JSON，等于没审：CI 会把审查腿一并判红并要求重跑模型腿。
 - 证据够了就交卷：已经找到足以定档的 Block / Should fix，或高风险面已查完且从代码本身推不出失效时，直接输出符合 schema 的 JSON。不要把「清单读满」当交卷前提，不要为「再确认没有别的问题」翻遍全仓，也不要重复读同一文件；其余没能判断的改动按下面一条写进 `coverage.uncovered`，不要静默略过。
 - 读不完如实写 `coverage.uncovered`：没能判断的改动处逐条写 `path:line` 加一句原因。非空不会让结论作废，也不会让门变红，它是交人工逐项复核的合法出口；但非空时人工不能只做核对式抽查。判 `missing_coverage` 只看 `coverage` 在不在、`inspected` 有没有真的命中 `changed_paths`，与 `uncovered` 列了多少条无关：别把它当免读凭证，也别以为整份改动都列进去就会被拦下——真没读过文件又给不出 findings，照样作废。
-- 不许用假覆盖收口：`coverage.inspected` 只写真的打开读过的文件，没读过的不能写进去凑命中；空 `findings` 时它至少要有一条命中 `changed_paths` 里的文件，否则整条结论按 `missing_coverage` 作废重跑。被滤除的生成物仍按「审查对象」处理，既不读也不算未覆盖。
+- 不许用假覆盖收口：`coverage.inspected` 只写真的读过源码改动的文件。预注入段标为 `完整 diff` 且已据此完成审查的文件可计入 `coverage.inspected`；标为 `已截断` 或 `未预注入` 的文件，只有你实际通过 `git diff` 或文件读取看过后才准写进 `coverage.inspected`，没读过的不能写进去凑命中；空 `findings` 时它至少要有一条命中 `changed_paths` 里的文件，否则整条结论按 `missing_coverage` 作废重跑。被滤除的生成物仍按「审查对象」处理，既不读也不算未覆盖。
 
 ## 输出
 
