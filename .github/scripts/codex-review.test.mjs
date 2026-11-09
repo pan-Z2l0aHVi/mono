@@ -6,11 +6,13 @@ import os from 'node:os'
 import path from 'node:path'
 
 import {
+  AUTO_RETRY_LIMIT,
   CONFIG_ENV,
   CONFIG_FILE,
   CONCLUSION_MARKER,
   FINDINGS_ARTIFACT,
   REVIEW_EXCLUDE_PATHSPECS,
+  autoRetryDecision,
   createGhReviewAdapter,
   deriveConclusion,
   findPullForHead,
@@ -507,6 +509,113 @@ for (const [label, value] of [
   assert.match(failed, /结论：\*\*审查失败\*\*/)
   assert.match(failed, /故障码：`config_missing`/)
   assert.match(failed, /检查 GitHub 后台的 secrets\/variables/)
+}
+
+{
+  // 空壳结论的自动恢复：判码、硬上限与「拿不到 attempt 就不重跑」都在纯函数里，
+  // 真正的 rerun 由 commandAutoRetry 按 action 执行。
+  const emptyMeta = { status: 'unreviewed', error_code: 'missing_coverage', error: 'no inspected path' }
+  const decision = (overrides = {}) =>
+    autoRetryDecision({ meta: emptyMeta, runAttempt: 1, runConclusion: 'failure', ...overrides })
+
+  assert.equal(AUTO_RETRY_LIMIT, 1, 'the auto retry is a single attempt')
+  assert.deepEqual(decision(), {
+    action: 'rerun',
+    state: 'triggered',
+    reason: 'first attempt produced an empty review conclusion'
+  })
+
+  // 重跑完成会再触发一次 workflow_run；第二次必须停下，否则模型腿会被无限重跑。
+  for (const runAttempt of [2, 3, 10, '2']) {
+    assert.deepEqual(
+      decision({ runAttempt }),
+      {
+        action: 'skip',
+        state: 'exhausted',
+        reason: `run_attempt ${runAttempt} already used the single auto retry`
+      },
+      `run_attempt ${runAttempt} must exhaust the auto retry`
+    )
+  }
+
+  // attempt 不可信时不重跑：宁可转人工，也不冒循环风险。
+  for (const runAttempt of [undefined, null, NaN, 0, -1, '', 'abc']) {
+    const result = decision({ runAttempt })
+    assert.equal(result.action, 'skip', `runAttempt ${String(runAttempt)} must not retry`)
+    assert.equal(result.state, 'none')
+  }
+
+  // 分流不变：unusable_output / error / reviewed 一律不进自动重跑。
+  for (const meta of [
+    { status: 'unreviewed', error_code: 'unusable_output' },
+    { status: 'error', error_code: 'model_failed' },
+    { status: 'reviewed' },
+    null
+  ]) {
+    const result = decision({ meta })
+    assert.equal(result.action, 'skip', `meta ${JSON.stringify(meta)} must not retry`)
+    assert.equal(result.state, 'none')
+  }
+  for (const runConclusion of ['success', 'cancelled', undefined]) {
+    assert.equal(decision({ runConclusion }).action, 'skip', `a ${String(runConclusion)} run needs no recovery`)
+  }
+}
+
+{
+  const emptyMeta = { status: 'unreviewed', error_code: 'missing_coverage', error: 'no inspected path' }
+  const render = (autoRetry, meta = emptyMeta) =>
+    renderConclusion({
+      conclusion: deriveConclusion({ meta, findings: null, liveHeadSha: headSha, error: '' }),
+      meta,
+      pullNumber: 54,
+      autoRetry
+    })
+
+  const triggered = render('triggered')
+  assert.match(triggered, /- 自动恢复：写回腿已用 `gh run rerun --failed` 重跑审查与门禁腿一次/)
+  assert.match(triggered, /不要手动再重跑/)
+  assert.match(triggered, /恢复状态见上方「自动恢复」行/)
+
+  const exhausted = render('exhausted')
+  assert.match(exhausted, /自动重跑 1 次仍不可用/)
+  assert.match(exhausted, /完整独立审查/)
+  assert.ok(!exhausted.includes('不要手动再重跑'), 'an exhausted retry must not promise another rerun')
+
+  const failedRetry = render('failed')
+  assert.match(failedRetry, /自动重跑调用失败/)
+  assert.match(failedRetry, /actions: write/)
+
+  const legacy = render('none')
+  assert.match(legacy, /gh run rerun --failed/, 'the legacy hint stays when no auto retry happened')
+  assert.ok(!legacy.includes('- 自动恢复：'), 'no auto retry means no auto recovery line')
+
+  // unusable_output 不能借 autoRetry 显示自动重跑文案，仍按「重跑整条 run」处置。
+  const unusableMeta = {
+    status: 'unreviewed',
+    error_code: 'unusable_output',
+    error: 'the review step produced no output file'
+  }
+  const unusable = render('triggered', unusableMeta)
+  assert.match(unusable, /重跑整条 run/, 'unusable_output still needs a full rerun')
+  assert.ok(!unusable.includes('- 自动恢复：'), 'only missing_coverage gets an auto recovery line')
+
+  // 空壳结论也可能带 findings：自动恢复行挂在故障码旁，不依赖「无 findings」分支。
+  const withFinding = render('triggered', { ...emptyMeta, findings: [finding('Nit')], summary: 'one nit' })
+  assert.match(withFinding, /- 自动恢复：写回腿已用/, 'a missing_coverage conclusion with findings is still recovered')
+}
+
+{
+  // 新增的 adapter 方法：run_attempt 走 GET，重跑走 POST；201 空响应体不能触发 JSON.parse。
+  const calls = []
+  const spawn = (command, args) => {
+    calls.push({ command, args })
+    if (args.includes('-X')) return { status: 0, stdout: '' }
+    return { status: 0, stdout: JSON.stringify({ run_attempt: 2, conclusion: 'failure' }) }
+  }
+  const adapter = createGhReviewAdapter({ repository: 'acme/repo', spawn })
+  assert.deepEqual(adapter.run('42'), { run_attempt: 2, conclusion: 'failure' })
+  assert.equal(adapter.rerunFailed('42'), '', 'an empty 201 body is not parsed as JSON')
+  assert.deepEqual(calls[1].args, ['api', '-X', 'POST', 'repos/acme/repo/actions/runs/42/rerun-failed-jobs'])
 }
 
 {

@@ -576,13 +576,40 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       contents: 'read',
       issues: 'write',
       'pull-requests': 'write',
-      actions: 'read'
+      actions: 'write'
     })
     assert.deepEqual(report.jobs['codex-autofix-apply'].permissions, {
       contents: 'write',
       'pull-requests': 'read',
       actions: 'read'
     })
+
+    // 空壳结论自动恢复：写回腿唯一的动作类写权限只用于触发一次 --failed 重跑，模型仍不在这条腿里。
+    const autoRetryStep = namedStep(reportText, 'Auto-rerun empty review output')
+    assert.match(autoRetryStep, /id: auto_retry/, 'the conclusion comment must read the retry state from this step')
+    assert.match(
+      autoRetryStep,
+      /steps\.findings\.outcome == 'success'/,
+      'a missing artifact is not an empty conclusion'
+    )
+    assert.match(autoRetryStep, /WORKFLOW_RUN_ID: \$\{\{ github\.event\.workflow_run\.id \}\}/)
+    assert.match(autoRetryStep, /GH_TOKEN: \$\{\{ github\.token \}\}/)
+    assert.match(autoRetryStep, /node "\$RUNNER_TEMP\/trusted\/scripts\/codex-review\.mjs" auto-retry/)
+    assert.ok(!autoRetryStep.includes('openai/codex-action'), 'the auto retry must not run the model')
+    assert.match(
+      namedStep(reportText, 'Post conclusion comment'),
+      /CODEX_REVIEW_AUTO_RETRY_STATE: \$\{\{ steps\.auto_retry\.outputs\.state \}\}/,
+      'the comment must carry the retry state, including a failed rerun'
+    )
+    // 上限与失败兜底都在可信脚本里：改掉其中任何一处，编排断言也要跟着红。
+    const reviewScript = fs.readFileSync(path.join(repoRoot, '.github/scripts/codex-review.mjs'), 'utf8')
+    assert.match(reviewScript, /'auto-retry': commandAutoRetry/, 'the trusted script must own the retry decision')
+    assert.match(reviewScript, /AUTO_RETRY_LIMIT = 1\b/, 'the single-retry ceiling must not drift')
+    assert.match(
+      reviewScript,
+      /run_attempt is unavailable/,
+      'an unreadable run_attempt must fall back to manual handling'
+    )
 
     const eligibilityGuard =
       "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository" +

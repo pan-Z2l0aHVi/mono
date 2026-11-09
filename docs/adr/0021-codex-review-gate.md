@@ -1,7 +1,7 @@
 # ADR-0021: Codex 自动 PR 审查门
 
 - **Date**: 2026-11-04
-- **Revised**: 2026-11-08
+- **Revised**: 2026-11-09
 - **Status**: 已接受
 
 ## 背景
@@ -31,11 +31,19 @@ Codex 审查承担本仓默认的 PR review 结论（2026-11-06 起；此前的�
 
 **空壳结论与恢复**（2026-11-08）：PR #527 连续两轮里，模型在读完判据文档、还没打开任何改动文件时就交出 schema 允许的空对象（`summary` 为空串或写成过程句、`findings=[]`、`coverage.inspected=[]`）；`run_codex` 与 review job 都是 `success`，只有 gate 判 `unreviewed / missing_coverage`。这暴露两处问题：schema 只要求字段存在、不要求内容非空，「没查就收尾」与「查过没发现」在产物上仍可同形；红色只落在 gate，`gh run rerun --failed` 只重跑 gate、不重跑模型腿，必然拿同一份空壳 artifact 再红一次。修法分两层：可信 prompt 补「判据与清单读完后，先实际打开至少一个 `changed_paths` 里的改动才允许输出 JSON」的硬约束，并写明 `docs/agents/review.md` 里指向授权、合并、worktree 的链接是实施 agent 的流程文档、不是审查判据，别顺着读下去耗尽调查预算；CI 编排层新增 `Reject empty review output` 步骤，直接复用 `coverageGap` 判据、检出**所有**会被判 `missing_coverage` 的形态（`coverage` 整个缺席、`inspected` 为空、或 `inspected` 没命中 changed_paths），让审查腿一起变红，使 `--failed` 覆盖模型腿；只覆盖「无 findings + 无 inspected」这一种形态会漏掉「交一条 Nit 但没给 coverage」和「只读了判据文档就收尾」，那两种仍会卡在「review 绿 / gate 红」。该步骤的工作区脚本从 PR head 读取（本 PR 即生效），只判红、不判绿，结论仍由取自 PR base 的 `validate` / `gate` 裁决——作者改它换不来绿色；prompt 的新约束仍按「收口纪律」段的混合契约，要等合入 main 后的下一个 PR 才生效。`docs/agents/review.md`、PR 评论与 gate 日志的恢复指引**仅对 `missing_coverage`** 改指 `--failed`：`unusable_output` 与 `error` 的审查腿仍是绿的，`--failed` 只会重跑门禁腿，这两类保留「重跑整条 run」。`Upload review findings` 补 `overwrite: true`，让 `--failed` 重跑审查腿时能覆盖同 run 内的同名 artifact。**未采用**：在同一 job 里第二次调用 codex-action 做自动重试——`drop-sudo` 在第一次调用后已禁用 sudo，第二次调用的 root phase 会失败；也不给 schema 加 `minItems` / `minLength`，strict structured outputs 不支持这些关键字，加了要么无效要么让整次调用报错。
 
+**空壳复发与自动恢复**（2026-11-09）：`missing_coverage` 在 #527 / #529 / #531 上按 run attempt 累计复发 6 次。`Reject empty review output` 让 guard、审查腿与 gate 一起判红（CI run `42504056711` 实证），`gh run rerun --failed` 因此能覆盖模型腿；防线把「假绿」变成「真红 + 一次人工重跑」，不降低复发频率。根因在带 `--output-schema` 的调用形态：模型一旦产出符合 schema 的 JSON 就结束，#531 在 trusted base 已含「先打开改动」硬约束的前提下，仍花 38,652 tokens 读判据文档，说出「现在去拿 diff 统计」的下一轮就交出 `inspected` / `uncovered` / `findings` 全空的合法对象。自然语言硬约束挡不住「交卷先于调查」，所以要修的是「产生后无需人工」，而不是再加一道检测。
+
+**自动恢复机制**：`Codex Review Report` 的 `report-conclusion` 在 CI 已 completed 时读 `codex-review-findings` 里的 `review-meta.json`，仅当 `status=unreviewed`、`error_code=missing_coverage`、CI run `conclusion=failure` 且 `run_attempt=1` 时调用 `gh run rerun --failed` 一次。`run_attempt` 从 Actions REST API 读，不依赖 `workflow_run` payload；字段不可读时跳过重跑，宁可转人工也不冒循环风险。重跑完成会再次触发 `workflow_run`，此时 attempt 已大于上限，判定落到「自动重跑 1 次仍不可用」，结论评论写明转人工完整独立审查。`overwrite: true` 让新 artifact 覆盖同名产物，新结论更新同一条持久评论；`unusable_output` 与 `error` 的审查腿仍是绿的，恢复指引保持「重跑整条 run」。判定、上限与失败兜底在取自默认分支的可信脚本 `auto-retry` 子命令里，workflow YAML 与可信脚本同源，合入 main 后的下一个 PR 生效。
+
+**权限扩张**：`report-conclusion` 持有 `actions: write`（`codex-autofix-apply` 仍是 `actions: read`），唯一用途是这一次 `rerun-failed-jobs` 调用。与「权限分腿」的张力在此明写：写腿本就是唯一能写 PR 与推 commit 的腿，actions 写权限没有把模型调用或 `contents: write` 带进只读腿，也没有让写回腿改判结论。代价是写腿的 token 能重跑本仓库任意 Actions run，因此把可重跑对象收窄到「同源仓库、base 为 `main`、非版本分支、已解析到 PR」的 CI run，把次数钉在 1，并在结论评论里区分 `triggered` / `exhausted` / `failed` 三档。
+
+**未采用**：A′（`ci.yml` 新增 `codex-review-retry` job 规避权限扩张，但 gate 拓扑与结论复用都要改，回归面更大）；同一 job 第二次调 codex-action（`drop-sudo` 后 sudo 已禁用）；schema 加 `minItems` / `minLength`（strict structured outputs 不支持）；再加一道 guard 或收紧 `coverageGap`（已覆盖全部形态且已有判红实证）；换模型或调 effort（根因不在模型能力）。中期另有 prompt 预注入 PR，与自动恢复分开合入，让可信输入的生效时机可归因。
+
 **自举期脚本缺失**（2026-11-08）：`pull_request` 事件的 workflow YAML 取自 merge ref（base + head 三方合并），不是纯 PR head；本步骤随 #528 合入 main 后，尚未更新的 open PR 的 merge ref 也会带上它，而它们的 `checkout` 显式检出旧 head，工作区里既没有 `check-review-output.mjs`、也没有 `codex-review.mjs` 的 `coverageGap` 导出，直接执行会因模块缺失把审查腿判红。因此该步骤的 `if` 增加 `hashFiles('.github/scripts/check-review-output.mjs') != ''`：脚本缺失就跳过，只让分支已含本改动的 PR 执行。跳过既不判红也不判绿，结论仍由取自 base 的 `validate` / `gate` 裁决；旧 head PR 本就处于「新防线尚未生效」的自举期，其 `missing_coverage` 仍按原有结论处置，不把「分支落后」伪装成模型腿故障。可信输入清单不收这个脚本：旧 head 的 `stage-codex-inputs` 也不会 stage 它，且脚本 import 的是工作区 `codex-review.mjs`，从 trusted 取反而更绕。拓扑断言同时钉住 `hashFiles` 条件，防止回退。
 
 **生成物滤除口径**：审查输入里不该出现生成物。`docs/agents/generated-artifacts.md` 的唯一判据是「能不能由 generator 完整重建」，据此按清单取可表达的最小 glob，由取自 PR base 的 `REVIEW_EXCLUDE_PATHSPECS` 在 `git diff` 入口滤出 `pr.diff` 与 `changed_paths`：目录型 `**/generated/**`、Wails `bindings/**`、单文件生成声明与 icon barrel。此前只滤 `**/generated/**`，其余生成物一旦出现在改动里就会随 `changed_paths` 被逐个读，是不必要的干扰与 token 消耗。实测 `git ls-files` 上这六条 pathspec 滤掉的是全部入库生成物（2026-11-08 实测 2451 个，随仓库演进增长；`**/generated/**` 之外只有 19 个，这个子集自首次实测起未变）；#519 的 137 文件 diff 里一条生成物都没有，那次 429 属上游网关限速，本次是预防性收敛范围，不是对它的修复。生成物不需要 diff，也不需要 review；它们的正确性仍由 `check-generated` 与消费者类型检查证明，不由结论证明。被滤除的路径不进 `coverage.inspected`，也不算 `coverage.uncovered`（那不是未覆盖，是不需要查），`review-scope.json` 记 `excluded_pathspecs` 供审计。名单不从 PR head 的工作树读取：作者可以改名单把自己的文件排除出审查，所以它必须留在可信脚本里；`inspectConfig` 还把它纳入配置指纹，清单变更后同 head 的旧结论不会借复用回到绿色。**未采用**：按文件名或 `DO NOT EDIT` 标记猜生成物（本仓既有不带标记的生成物，也有带标记却与 generator 无关的上游产物），以及审查脚本运行时加载 `.claude/settings.json` 的 `deny`（那份文件按「输入可信来源」从 PR base 落到 runner 临时目录，autofix 腿已用它校验 patch；但滤除清单是审查契约的一部分，须与 prompt、schema 同源留在可信脚本里，不与编辑拦截共用一份通配；两侧覆盖关系另由脚本单测钉住：显式覆盖表挡单侧增删，用 git 的 glob 引擎比对两份名单命中的真实入库文件集合（两侧集合相等；绝对数随仓库演进漂移，单测比对的是集合不是数目）挡「同步改表」的绕过；覆盖表与样例仍是人工维护，尚无文件入库的新生成物路径须按判据核对）。
 
-**权限分腿**：模型只在 PR 验证的只读 job 里运行；写回（评论、应用并推送 patch）在由 CI 完成事件触发的独立 workflow 里进行，那条 workflow 一次都不调用模型。这条划分是 PR 验证只读不变量成立的前提。该 workflow 显示名为 `Codex Review Report`（文件 `codex-review-report.yml`）：它的产物是一份关于既有结论的报告，不改判结论，所以不叫 publish。
+**权限分腿**：模型只在 PR 验证的只读 job 里运行；写回（评论、应用并推送 patch、触发一次失败 job 重跑）在由 CI 完成事件触发的独立 workflow 里进行，那条 workflow 一次都不调用模型。这条划分是 PR 验证只读不变量成立的前提。该 workflow 显示名为 `Codex Review Report`（文件 `codex-review-report.yml`）：它的产物是一份关于既有结论的报告，不改判结论，所以不叫 publish。
 
 **配置契约**：端点、模型名、思考强度、密钥与 codex 版本全部由 GitHub 后台提供，CI 定义只写引用，不写默认值、不写兜底表达式。
 
@@ -138,6 +146,8 @@ Error: /usr/bin/sudo exited with code 1
 12. 覆盖度口径：`review-findings.json` 含 `coverage.inspected` 与 `coverage.uncovered`，`review-scope.json` 含 `changed_paths`，PR 评论头部有「覆盖：检查 N 个文件」；diff 非空时缺 `coverage` 一律判 `missing_coverage`（有 findings 也不例外），空 findings 时还要 `inspected` 至少一条**等于** `changed_paths` 里的文件（写目录不算）；没有 `coverage` 的旧产物不复用，且复用 artifact 解在独立目录、不会覆盖本轮的 `review-scope.json`。评论正文有「结论生成于」且就地更新时该行随新结论变化。这一条由脚本单测钉住（coverage 结构用例、有 findings 缺清单用例、`changed_paths` 相等与缺位用例、`path:line` 与目录条目用例、scope 不被覆盖用例、`missing_coverage` 端到端用例、复用拒绝用例、渲染断言），无需在真实 run 上刻意制造。提示词里的路径与 `scopePath()` 的输出一致，由单测钉住；作废结论的评论不出现「无未覆盖项」，也不渲染「未覆盖」段落。
 
 13. 收口纪律：prompt 把 `changed_paths` 当作候选清单（不是逐条读完的任务清单）、写明按风险排序与「证据够就交卷」；`coverage.uncovered` 非空时 PR 评论渲染「未覆盖」段落并交人工逐项复核，空 findings 时仍按 `missing_coverage` 作废。关键措辞由脚本单测钉住；`coverage.inspected` 是否真读过属模型自述，脚本只能校验结构，真伪由人工复核。prompt / schema 的新行为只能在**合入 main 后的下一个 PR** 上核对（可信输入取自 PR base）；判据文档从工作区读取、本 PR 即生效，这一轮是混合契约，按「输入可信来源」的已接受风险由人工 review 兜住。这一项不用于验证上游 429 是否恢复。
+
+14. 空壳自动恢复：`report-conclusion` 持 `actions: write`，`Auto-rerun empty review output` 只在 `missing_coverage` 且 `run_attempt=1` 上重跑一次；`unusable_output` / `error` 不分流到自动重跑；`run_attempt` 不可读时跳过；重跑调用失败时结论评论写 `failed`。这四路由脚本单测与编排断言钉住，真实空壳复发时核对运行页 Summary 的 `auto retry` 记录与 `CODEX_REVIEW_AUTO_RETRY_STATE` 传参，不主动制造空壳。workflow YAML 与可信脚本都取默认分支版本，**合入 main 后的下一个 PR** 才生效。
 
 **待办**：`prepare` 的任何失败都会跳过 preflight，被 `validate` 记成 `config_missing`；后续把 preflight 前置到 prepare 之前，或引入 `job_failed` / `preflight_missing` 错误码，并同步「状态口径」、`docs/agents/review.md` 的故障码清单、`renderConclusion()` 与相关单测。本次修复后该误归因对 PR #515 的事故不再可达，门「故障即红」不受影响。
 
