@@ -13,8 +13,16 @@ export const CONCLUSION_MARKER = 'codex-review-conclusion'
 export const FINDINGS_FILE = 'review-findings.json'
 export const META_FILE = 'review-meta.json'
 export const SCOPE_FILE = 'review-scope.json'
+export const PRELOAD_FILE = 'review-preload.md'
 export const CONFIG_FILE = 'codex-config.json'
 export const SEVERITIES = Object.freeze(['Block', 'Should fix', 'Nit'])
+export const RISK_TIERS = Object.freeze(['high', 'medium', 'low'])
+export const PRELOAD_START_MARKER = '<!-- codex-review-preload:start -->'
+export const PRELOAD_END_MARKER = '<!-- codex-review-preload:end -->'
+export const PRELOAD_MAX_PATHS = 30
+export const PRELOAD_MAX_FILES = 8
+export const PRELOAD_PER_FILE_BYTES = 4 * 1024
+export const PRELOAD_TOTAL_DIFF_BYTES = 24 * 1024
 
 // 顺序即诊断输出顺序，与 CI 拓扑断言共用同一份名单。密钥只判「有没有」，值从不写进快照、日志或 PR 评论。
 export const CONFIG_ENV = CODEX_CONFIG_ENV
@@ -618,6 +626,380 @@ export function scopePath(env = process.env) {
   return path.join(conclusionDirectory(env), SCOPE_FILE)
 }
 
+export function preloadPath(env = process.env) {
+  return path.join(conclusionDirectory(env), PRELOAD_FILE)
+}
+
+export function trustedPromptPath(env = process.env) {
+  return env.CODEX_REVIEW_PROMPT_PATH ?? path.join(env.RUNNER_TEMP ?? '.', 'trusted/codex/prompts/review.md')
+}
+
+/**
+ * 按审查风险给改动路径定档，供 prepare 预注入排序：
+ * - high (rank 0): CI/工作流、根脚本与配置、权限与代理配置、包 manifest、包公共入口 barrel
+ * - high (rank 1): packages/ 与 apps/ 下的非测试运行时源码
+ * - medium (rank 2): 测试用例、ADR、agent 指令与规则文档
+ * - low (rank 3): 其余文档、样式、changeset 与静态资源
+ *
+ * @param {string} filePath 仓库相对路径。
+ * @returns {{rank: number, tier: 'high'|'medium'|'low', category: string}} 风险分级与类别。
+ */
+export function classifyPathRisk(filePath) {
+  const normalized = String(filePath).trim().replace(/^\.\//u, '')
+  const isTest = /(?:\.|\/)(?:test|spec)\.[^/]+$/u.test(normalized) || /(?:^|\/)(?:__tests__|e2e)\//u.test(normalized)
+  const isDocOrStyle = /\.(?:md|mdx|css|txt|svg|png|jpg|jpeg|webp|ico)$/iu.test(normalized)
+  if (
+    !isTest &&
+    (/^(?:\.github|scripts|\.claude|\.codex)\//u.test(normalized) ||
+      /^(?:\.agents|skills)\/.*\.(?:mjs|cjs|js|ts|sh)$/u.test(normalized) ||
+      /(?:^|\/)(?:package\.json|turbo\.json|tsconfig(?:\.[^/]+)?\.json|vite\.config\.[^/]+)$/u.test(normalized) ||
+      /^(?:pnpm-(?:lock|workspace)\.yaml|\.mise\.toml)$/u.test(normalized) ||
+      /^packages\/[^/]+\/(?:src\/)?index\.[^/]+$/u.test(normalized))
+  ) {
+    return { rank: 0, tier: 'high', category: 'contract-or-infra' }
+  }
+  if (!isTest && !isDocOrStyle && /^(?:packages|apps|src)\//u.test(normalized)) {
+    return { rank: 1, tier: 'high', category: 'runtime-source' }
+  }
+  if (
+    isTest ||
+    /^(?:docs\/(?:adr|agents)|\.agents|skills)\//u.test(normalized) ||
+    /(?:^|\/)AGENTS\.md$/u.test(normalized) ||
+    /^(?:CONTEXT|ARCHITECTURE)\.md$/u.test(normalized)
+  ) {
+    return { rank: 2, tier: 'medium', category: isTest ? 'test' : 'policy-or-adr' }
+  }
+  return { rank: 3, tier: 'low', category: 'other' }
+}
+
+/**
+ * 按风险升序排列改动路径；同档位保留 git diff 的原始相对顺序。
+ *
+ * @param {string[]} changedPaths 滤除生成物后的改动路径列表。
+ * @returns {Array<{path: string, index: number, rank: number, tier: 'high'|'medium'|'low', category: string}>}
+ */
+export function rankChangedPaths(changedPaths) {
+  return (Array.isArray(changedPaths) ? changedPaths : [])
+    .map((filePath, index) => ({ path: filePath, index, ...classifyPathRisk(filePath) }))
+    .sort((left, right) => left.rank - right.rank || left.index - right.index)
+}
+
+function decodeGitQuoted(inner) {
+  const bytes = []
+  let result = ''
+  const flush = () => {
+    if (bytes.length > 0) {
+      result += Buffer.from(bytes).toString('utf8')
+      bytes.length = 0
+    }
+  }
+  for (let index = 0; index < inner.length; index += 1) {
+    if (inner[index] === '\\' && index + 1 < inner.length) {
+      const oct = inner.slice(index + 1, index + 4)
+      if (/^[0-7]{3}$/u.test(oct)) {
+        bytes.push(Number.parseInt(oct, 8))
+        index += 3
+        continue
+      }
+      flush()
+      const next = inner[index + 1]
+      const escapes = { n: '\n', t: '\t', r: '\r', b: '\b', f: '\f', v: '\v', a: '\x07', '\\': '\\', '"': '"' }
+      result += escapes[next] ?? next
+      index += 1
+      continue
+    }
+    flush()
+    result += inner[index]
+  }
+  flush()
+  return result
+}
+
+function unquoteGitPath(raw, prefix) {
+  let text = String(raw ?? '').trim()
+  if (text.startsWith('"') && text.endsWith('"') && text.length >= 2) {
+    text = decodeGitQuoted(text.slice(1, -1))
+  }
+  return prefix && text.startsWith(prefix) ? text.slice(prefix.length) : text
+}
+
+/**
+ * 从已滤除生成物的完整 unified diff 中按文件切出各自区块，不额外启动 git 子进程。
+ *
+ * @param {string} diff unified diff 文本。
+ * @param {string[]} [changedPaths] 已知改动路径列表，用于消歧含空格路径或无 hunk 的模式变更。
+ * @returns {Map<string, string>} 路径到单文件 diff 区块的映射。
+ */
+export function splitDiffByPath(diff, changedPaths = []) {
+  const map = new Map()
+  if (typeof diff !== 'string' || diff === '') return map
+  const known = new Set(changedPaths)
+  const blocks = diff.split(/^(?=diff --git )/mu).filter(block => block.startsWith('diff --git '))
+  for (const block of blocks) {
+    const headerEnd = block.indexOf('\n@@ ')
+    const header = headerEnd === -1 ? block : block.slice(0, headerEnd)
+    const lines = header.split('\n')
+    let matched = null
+    for (const line of lines) {
+      if (line.startsWith('+++ ') && line !== '+++ /dev/null') {
+        const candidate = unquoteGitPath(line.slice(4), 'b/')
+        if (known.size === 0 || known.has(candidate)) {
+          matched = candidate
+          break
+        }
+      }
+      if (line.startsWith('rename to ')) {
+        const candidate = unquoteGitPath(line.slice('rename to '.length), '')
+        if (known.size === 0 || known.has(candidate)) {
+          matched = candidate
+          break
+        }
+      }
+    }
+    if (!matched) {
+      for (const line of lines) {
+        if (line.startsWith('--- ') && line !== '--- /dev/null') {
+          const candidate = unquoteGitPath(line.slice(4), 'a/')
+          if (known.size === 0 || known.has(candidate)) {
+            matched = candidate
+            break
+          }
+        }
+        if (line.startsWith('rename from ')) {
+          const candidate = unquoteGitPath(line.slice('rename from '.length), '')
+          if (known.size === 0 || known.has(candidate)) {
+            matched = candidate
+            break
+          }
+        }
+      }
+    }
+    if (!matched) {
+      const firstLine = lines[0] ?? ''
+      const quotedPair = /^diff --git ("(?:[^"\\]|\\.)+"|\S+)\s+("(?:[^"\\]|\\.)+"|\S+)$/u.exec(firstLine)
+      if (quotedPair) {
+        const candidate = unquoteGitPath(quotedPair[2], 'b/')
+        if (known.size === 0 || known.has(candidate)) matched = candidate
+      }
+      if (!matched) {
+        for (const candidate of known) {
+          if (firstLine === `diff --git a/${candidate} b/${candidate}`) {
+            matched = candidate
+            break
+          }
+        }
+      }
+      if (!matched) {
+        const pair = /^diff --git a\/(.+) b\/\1$/u.exec(firstLine)
+        if (pair && (known.size === 0 || known.has(pair[1]))) matched = pair[1]
+      }
+    }
+    if (matched) map.set(matched, block.trimEnd())
+  }
+  return map
+}
+
+/**
+ * 按行与 UTF-8 码点边界截断文本，避免在多字节字符中间切开产生替换符。
+ *
+ * @param {string} text 待截断文本。
+ * @param {number} maxBytes 最大 UTF-8 字节数。
+ * @returns {{text: string, truncated: boolean, shownBytes: number, totalBytes: number}}
+ */
+export function truncateUtf8ByLines(text, maxBytes) {
+  const source = String(text ?? '')
+  const totalBytes = Buffer.byteLength(source, 'utf8')
+  if (totalBytes <= maxBytes) return { text: source, truncated: false, shownBytes: totalBytes, totalBytes }
+  if (maxBytes <= 0) return { text: '', truncated: true, shownBytes: 0, totalBytes }
+  const lines = source.split('\n')
+  const kept = []
+  let used = 0
+  for (const line of lines) {
+    const separator = kept.length === 0 ? 0 : 1
+    const lineBytes = Buffer.byteLength(line, 'utf8')
+    if (used + separator + lineBytes <= maxBytes) {
+      kept.push(line)
+      used += separator + lineBytes
+      continue
+    }
+    if (kept.length === 0) {
+      let partial = ''
+      let partialBytes = 0
+      for (const char of line) {
+        const charBytes = Buffer.byteLength(char, 'utf8')
+        if (partialBytes + charBytes > maxBytes) break
+        partial += char
+        partialBytes += charBytes
+      }
+      return { text: partial, truncated: true, shownBytes: partialBytes, totalBytes }
+    }
+    break
+  }
+  return { text: kept.join('\n'), truncated: true, shownBytes: used, totalBytes }
+}
+
+/**
+ * 用比内容中任何反引号串都更长的围栏包裹代码块，防止 Markdown 或测试 diff 里的 ``` 提前闭合提示词。
+ *
+ * @param {string} content 代码块正文。
+ * @param {string} [info] 语言标记。
+ * @returns {string}
+ */
+export function wrapCodeFence(content, info = 'diff') {
+  const body = String(content ?? '').replace(/\n+$/u, '')
+  let maxRun = 2
+  for (const match of body.matchAll(/`+/gu)) {
+    if (match[0].length > maxRun) maxRun = match[0].length
+  }
+  const fence = '`'.repeat(Math.max(3, maxRun + 1))
+  return `${fence}${info}\n${body}\n${fence}`
+}
+
+/**
+ * 生成预注入到审查 prompt 开头的内容：判据速览 + 按风险排序的 changed_paths + 高风险 diff 片段。
+ * 模型启动即看到判据与高风险源码改动，不再需要先 sed 整篇 docs/agents/review.md 才去找 diff。
+ *
+ * @param {object} range resolveReviewRange 的输出或同形状对象。
+ * @param {object} [limits] 截断阈值覆盖（供单测验证边界）。
+ * @returns {{
+ *   markdown: string,
+ *   rankedPaths: Array<{path: string, tier: string, category: string}>,
+ *   preloadedPaths: string[],
+ *   truncatedPaths: string[],
+ *   omittedPaths: string[],
+ *   preloadBytes: number
+ * }}
+ */
+export function buildReviewPreload(
+  range,
+  {
+    maxPaths = PRELOAD_MAX_PATHS,
+    maxFiles = PRELOAD_MAX_FILES,
+    perFileBytes = PRELOAD_PER_FILE_BYTES,
+    totalDiffBytes = PRELOAD_TOTAL_DIFF_BYTES
+  } = {}
+) {
+  const diff = String(range?.diff ?? '')
+  const diffBytes = Buffer.byteLength(diff, 'utf8')
+  const ranked = rankChangedPaths(range?.changedPaths ?? [])
+  const emptyDiff = diffBytes === 0 || ranked.length === 0
+  const diffByPath = emptyDiff
+    ? new Map()
+    : splitDiffByPath(
+        diff,
+        ranked.map(entry => entry.path)
+      )
+  const preloaded = []
+  const preloadedPaths = []
+  const truncatedPaths = []
+  let remainingBudget = totalDiffBytes
+
+  if (!emptyDiff) {
+    for (const entry of ranked) {
+      if (preloaded.length >= maxFiles || remainingBudget <= 0) break
+      const rawBlock = diffByPath.get(entry.path)
+      if (!rawBlock) continue
+      const budget = Math.min(perFileBytes, remainingBudget)
+      const slice = truncateUtf8ByLines(rawBlock, budget)
+      if (slice.shownBytes === 0) break
+      preloaded.push({ ...entry, ...slice })
+      preloadedPaths.push(entry.path)
+      if (slice.truncated) truncatedPaths.push(entry.path)
+      remainingBudget -= slice.shownBytes
+    }
+  }
+
+  const preloadedSet = new Set(preloadedPaths)
+  const truncatedSet = new Set(truncatedPaths)
+  const omittedPaths = ranked.filter(entry => !preloadedSet.has(entry.path)).map(entry => entry.path)
+
+  const lines = [
+    '### 判据速览（权威来源：`docs/agents/review.md`，已内嵌无需开局整篇重读）',
+    '',
+    '- **三档标准**：`Block`（运行失败、回归、公共契约破坏、权限/注入漏洞、竞态/资源泄漏、或让检查/门禁假绿的阻断缺陷）；`Should fix`（需求或规范偏离、失败路径未兜住、测试或文档与实现失步等应修问题）；`Nit`（非阻断改进，不冒充阻断）。',
+    '- **审查维度**：需求与验收、行为与失败路径、公共契约与兼容性、测试质量（异步完成信号、失败语义、负向断言边界、退出清理）、权限与用户输入安全、竞态与资源管理、文档与机检一致性；指令/context 改动另核四问（是否稳定不变量而非状态快照、是否单一权威、单块检索是否自包含、是否写入易漂移清单）。',
+    '- **范围与收口**：入库生成物已由 `excluded_pathspecs` 滤除，不读、不评注、不进 `inspected` 或 `uncovered`；`changed_paths` 每条均按待审源码处理。证据足够定档或高风险面查完即可交卷；未判断处写成 `path:line 原因` 列入 `coverage.uncovered`（合法收口，交人工逐项复核），`coverage.inspected` 只写真实读过的改动文件。',
+    '',
+    '### 本次范围与风险排序清单',
+    '',
+    `- 范围：\`${range?.mergeBaseSha ?? 'unknown'}..${range?.headSha ?? 'unknown'}\`（base \`${range?.baseSha ?? 'unknown'}\`）`,
+    `- 源码 diff：\`${diffBytes}\` bytes · \`changed_paths\`：\`${ranked.length}\` 个文件 · \`empty_diff\`：\`${emptyDiff}\``,
+    `- 预注入 diff：\`${preloadedPaths.length}/${ranked.length}\` 个文件（完整 \`${preloadedPaths.length - truncatedPaths.length}\`，截断 \`${truncatedPaths.length}\`，未预注入 \`${omittedPaths.length}\`）`
+  ]
+
+  if (emptyDiff) {
+    lines.push(
+      '',
+      '本次无待审源码改动（`empty_diff: true`）：无需运行 `git diff` 或读取文件，直接按输出契约返回空 `findings` 与空 `coverage.inspected`。'
+    )
+  } else {
+    lines.push('', '**按风险排序的 `changed_paths`**：')
+    const shownPaths = ranked.slice(0, maxPaths)
+    for (const entry of shownPaths) {
+      const status = !preloadedSet.has(entry.path)
+        ? '未预注入，按需 git diff'
+        : truncatedSet.has(entry.path)
+          ? '已预注入截断 diff'
+          : '已预注入完整 diff'
+      lines.push(`- \`[${entry.tier}]\` \`${entry.path}\`（${status}）`)
+    }
+    if (ranked.length > shownPaths.length) {
+      lines.push(
+        `- … 其余 ${ranked.length - shownPaths.length} 个路径见 \`$RUNNER_TEMP/codex-review/review-scope.json\``
+      )
+    }
+
+    if (preloaded.length > 0) {
+      lines.push('', '### 高风险改动 diff 预注入', '')
+      for (const item of preloaded) {
+        const tag = item.truncated
+          ? `已截断：显示前 ${item.shownBytes}/${item.totalBytes} bytes`
+          : `完整 diff：${item.totalBytes} bytes`
+        lines.push(`#### \`${item.path}\`（\`${item.tier}\`，${tag}）`, '', wrapCodeFence(item.text, 'diff'))
+        if (item.truncated) {
+          lines.push(
+            '',
+            `其余部分按需读取：\`git diff $CODEX_REVIEW_MERGE_BASE_SHA $CODEX_REVIEW_HEAD_SHA -- "${item.path}"\``
+          )
+        }
+        lines.push('')
+      }
+      if (lines.at(-1) === '') lines.pop()
+    }
+  }
+
+  const markdown = lines.join('\n')
+  return {
+    markdown,
+    rankedPaths: ranked.map(({ path: filePath, tier, category }) => ({ path: filePath, tier, category })),
+    preloadedPaths,
+    truncatedPaths,
+    omittedPaths,
+    preloadBytes: Buffer.byteLength(markdown, 'utf8')
+  }
+}
+
+/**
+ * 把预注入区块幂等写进提示词模板：存在起止标记时替换标记内部，重复执行不会叠加第二份预注入。
+ *
+ * @param {string} promptText 提示词模板原文。
+ * @param {string} preloadMarkdown buildReviewPreload 生成的 Markdown。
+ * @returns {string}
+ */
+export function injectPreloadIntoPrompt(promptText, preloadMarkdown) {
+  const safeBody = String(preloadMarkdown ?? '')
+    .trim()
+    .replaceAll(PRELOAD_START_MARKER, '<!-- codex-review-preload:start (escaped) -->')
+    .replaceAll(PRELOAD_END_MARKER, '<!-- codex-review-preload:end (escaped) -->')
+  const block = `${PRELOAD_START_MARKER}\n${safeBody}\n${PRELOAD_END_MARKER}`
+  const start = promptText.indexOf(PRELOAD_START_MARKER)
+  const end = promptText.indexOf(PRELOAD_END_MARKER)
+  if (start !== -1 && end !== -1 && end > start) {
+    return `${promptText.slice(0, start)}${block}${promptText.slice(end + PRELOAD_END_MARKER.length)}`
+  }
+  return `${promptText.trimEnd()}\n\n${block}\n`
+}
+
 /**
  * 上一轮 artifact 必须解到独立目录：它带着上一轮的 `review-scope.json`，
  * 与本轮 `prepare` 写的同名文件放在一起会覆盖掉本次范围（其中的 `changed_paths`），
@@ -645,8 +1027,8 @@ export function pullNumberFromRef(ref) {
   return ref.match(/^refs\/pull\/(\d+)\/merge$/u)?.[1] ?? null
 }
 
-function writeOutputs(values) {
-  const target = process.env.GITHUB_OUTPUT
+function writeOutputs(values, env = process.env) {
+  const target = env.GITHUB_OUTPUT
   if (!target) return
   // step output 不是 Markdown：这里只需要压成一行，转义会污染下游读到的原值。
   const body = Object.entries(values)
@@ -732,14 +1114,25 @@ function commandPreflight() {
   console.log(`codex configuration complete (fingerprint ${config.fingerprint}); values are never logged`)
 }
 
-function commandPrepare() {
-  const env = requireEnv(['CODEX_REVIEW_BASE_SHA', 'CODEX_REVIEW_HEAD_SHA', 'RUNNER_TEMP'])
-  const range = resolveReviewRange({ baseSha: env.CODEX_REVIEW_BASE_SHA, headSha: env.CODEX_REVIEW_HEAD_SHA })
-  const directory = conclusionDirectory()
+export function commandPrepare({ env = process.env, command = run } = {}) {
+  const required = requireEnv(['CODEX_REVIEW_BASE_SHA', 'CODEX_REVIEW_HEAD_SHA', 'RUNNER_TEMP'], env)
+  const range = resolveReviewRange({
+    baseSha: required.CODEX_REVIEW_BASE_SHA,
+    headSha: required.CODEX_REVIEW_HEAD_SHA,
+    command
+  })
+  const directory = conclusionDirectory(env)
   fs.mkdirSync(directory, { recursive: true })
-  fs.writeFileSync(path.join(env.RUNNER_TEMP, 'pr.diff'), range.diff)
+  fs.writeFileSync(path.join(required.RUNNER_TEMP, 'pr.diff'), range.diff)
+  const preload = buildReviewPreload(range)
+  fs.writeFileSync(preloadPath(env), `${preload.markdown}\n`)
+  const promptFile = trustedPromptPath(env)
+  if (fs.existsSync(promptFile)) {
+    const currentPrompt = fs.readFileSync(promptFile, 'utf8')
+    fs.writeFileSync(promptFile, injectPreloadIntoPrompt(currentPrompt, preload.markdown))
+  }
   fs.writeFileSync(
-    scopePath(),
+    scopePath(env),
     `${JSON.stringify(
       {
         base_sha: range.baseSha,
@@ -748,20 +1141,29 @@ function commandPrepare() {
         diff_bytes: Buffer.byteLength(range.diff),
         empty_diff: Buffer.byteLength(range.diff) === 0,
         changed_paths: range.changedPaths,
+        preloaded_paths: preload.preloadedPaths,
+        preload_bytes: preload.preloadBytes,
         excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS
       },
       null,
       2
     )}\n`
   )
-  writeOutputs({
-    base_sha: range.baseSha,
-    head_sha: range.headSha,
-    merge_base_sha: range.mergeBaseSha,
-    diff_path: path.join(env.RUNNER_TEMP, 'pr.diff'),
-    diff_bytes: String(Buffer.byteLength(range.diff))
-  })
-  console.log(`review range ${range.mergeBaseSha}..${range.headSha} (${Buffer.byteLength(range.diff)} bytes)`)
+  writeOutputs(
+    {
+      base_sha: range.baseSha,
+      head_sha: range.headSha,
+      merge_base_sha: range.mergeBaseSha,
+      diff_path: path.join(required.RUNNER_TEMP, 'pr.diff'),
+      diff_bytes: String(Buffer.byteLength(range.diff)),
+      preload_path: preloadPath(env)
+    },
+    env
+  )
+  console.log(
+    `review range ${range.mergeBaseSha}..${range.headSha} (${Buffer.byteLength(range.diff)} bytes, preloaded ${preload.preloadedPaths.length}/${range.changedPaths.length} files)`
+  )
+  return { range, preload }
 }
 
 function commandResolvePull() {

@@ -12,23 +12,41 @@ import {
   CONFIG_FILE,
   CONCLUSION_MARKER,
   FINDINGS_ARTIFACT,
+  PRELOAD_END_MARKER,
+  PRELOAD_FILE,
+  PRELOAD_MAX_FILES,
+  PRELOAD_MAX_PATHS,
+  PRELOAD_PER_FILE_BYTES,
+  PRELOAD_START_MARKER,
+  PRELOAD_TOTAL_DIFF_BYTES,
   REVIEW_EXCLUDE_PATHSPECS,
+  RISK_TIERS,
   autoRetryDecision,
+  buildReviewPreload,
+  classifyPathRisk,
   commandAutoRetry,
+  commandPrepare,
   createGhReviewAdapter,
   deriveConclusion,
   findPullForHead,
   findReusableRun,
+  injectPreloadIntoPrompt,
   inspectConfig,
   normalizeAutoRetryState,
   parseReviewFindings,
+  preloadPath,
+  rankChangedPaths,
   readConclusion,
   renderConclusion,
   resolveAutoRetryState,
   resolveReviewRange,
   reviewTarget,
   scopePath,
-  withPermissionDiagnosis
+  splitDiffByPath,
+  truncateUtf8ByLines,
+  trustedPromptPath,
+  withPermissionDiagnosis,
+  wrapCodeFence
 } from './codex-review.mjs'
 import { SPAWN_MAX_BUFFER, run } from './lib/github.mjs'
 import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
@@ -1533,11 +1551,19 @@ esac
 }
 
 {
-  // 提示词给的路径必须与 prepare 真正写出的位置同源（同一个 scopePath）：只改结论目录不改 prompt，
+  // 提示词给的路径必须与 prepare 真正写出的位置同源（同一个 scopePath / preloadPath）：只改结论目录不改 prompt，
   // 模型会自己猜路径、拿到空清单，然后按「diff 太大」提前收尾。
   const prompt = fs.readFileSync(path.join(import.meta.dirname, '../codex/prompts/review.md'), 'utf8')
   const expected = scopePath({ RUNNER_TEMP: '$RUNNER_TEMP' })
+  const expectedPreload = preloadPath({ RUNNER_TEMP: '$RUNNER_TEMP' })
   assert.ok(prompt.includes(expected), `the review prompt must point at ${expected}`)
+  assert.ok(prompt.includes(expectedPreload), `the review prompt must point at ${expectedPreload}`)
+  assert.ok(prompt.includes(PRELOAD_START_MARKER), 'the review prompt must carry the preload start marker')
+  assert.ok(prompt.includes(PRELOAD_END_MARKER), 'the review prompt must carry the preload end marker')
+  assert.ok(
+    prompt.indexOf(PRELOAD_START_MARKER) < prompt.indexOf(PRELOAD_END_MARKER),
+    'the preload start marker must precede the end marker'
+  )
   assert.ok(prompt.includes('changed_paths'), 'the review prompt must name the changed-path list')
   assert.ok(
     prompt.includes('docs/agents/generated-artifacts.md'),
@@ -1908,6 +1934,291 @@ esac
   assert.equal(metaAfter().generated_at, undefined, 'a reused conclusion without a timestamp gets none invented')
 
   fs.rmSync(directory, { recursive: true, force: true })
+}
+
+{
+  // B1 风险分档与排序：CI/脚本/配置/manifest/公共入口 barrel (rank 0, high) →
+  // packages/ & apps/ 运行时源码 (rank 1, high) → 测试/ADR/agent 文档 (rank 2, medium) →
+  // 其余文档/样式/changeset (rank 3, low)；同档保持 git diff 的相对顺序。
+  assert.deepEqual(RISK_TIERS, ['high', 'medium', 'low'])
+  assert.equal(PRELOAD_FILE, 'review-preload.md')
+  assert.equal(PRELOAD_MAX_PATHS, 30)
+  assert.equal(PRELOAD_MAX_FILES, 8)
+  assert.equal(PRELOAD_PER_FILE_BYTES, 4096)
+  assert.equal(PRELOAD_TOTAL_DIFF_BYTES, 24576)
+
+  for (const [filePath, expected] of [
+    ['.github/workflows/ci.yml', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
+    ['.github/scripts/codex-review.mjs', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
+    ['.agents/skills/task-ledger/ledger.mjs', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
+    ['skills/task-ledger/ledger.mjs', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
+    ['package.json', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
+    ['packages/web-ui/package.json', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
+    ['packages/web-ui/src/index.ts', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
+    ['packages/web-ui/src/button.ts', { rank: 1, tier: 'high', category: 'runtime-source' }],
+    ['apps/interweave/main.go', { rank: 1, tier: 'high', category: 'runtime-source' }],
+    ['.github/scripts/codex-review.test.mjs', { rank: 2, tier: 'medium', category: 'test' }],
+    ['packages/web-ui/src/button.test.ts', { rank: 2, tier: 'medium', category: 'test' }],
+    ['docs/adr/0021-codex-review-gate.md', { rank: 2, tier: 'medium', category: 'policy-or-adr' }],
+    ['docs/agents/review.md', { rank: 2, tier: 'medium', category: 'policy-or-adr' }],
+    ['.agents/rules/code-style.md', { rank: 2, tier: 'medium', category: 'policy-or-adr' }],
+    ['skills/task-ledger/SKILL.md', { rank: 2, tier: 'medium', category: 'policy-or-adr' }],
+    ['AGENTS.md', { rank: 2, tier: 'medium', category: 'policy-or-adr' }],
+    ['.changeset/codex-review-preload-b1.md', { rank: 3, tier: 'low', category: 'other' }],
+    ['packages/web-ui/src/button.css', { rank: 3, tier: 'low', category: 'other' }],
+    ['README.md', { rank: 3, tier: 'low', category: 'other' }]
+  ]) {
+    assert.deepEqual(classifyPathRisk(filePath), expected, `risk classification for ${filePath}`)
+  }
+
+  const ranked = rankChangedPaths([
+    '.changeset/note.md',
+    'docs/agents/review.md',
+    'packages/web-ui/src/button.ts',
+    '.github/scripts/codex-review.test.mjs',
+    '.github/scripts/codex-review.mjs',
+    'apps/interweave/service.go',
+    'packages/web-ui/package.json'
+  ])
+  assert.deepEqual(
+    ranked.map(entry => entry.path),
+    [
+      '.github/scripts/codex-review.mjs',
+      'packages/web-ui/package.json',
+      'packages/web-ui/src/button.ts',
+      'apps/interweave/service.go',
+      'docs/agents/review.md',
+      '.github/scripts/codex-review.test.mjs',
+      '.changeset/note.md'
+    ],
+    'rankChangedPaths must sort by risk rank while keeping relative order within each rank'
+  )
+}
+
+{
+  // splitDiffByPath：覆盖修改、新增、删除、重命名、纯 mode 变更与 Git C 风格八进制引号路径，
+  // 且不启动任何额外 git 子进程。
+  const sampleDiff = [
+    'diff --git a/packages/web-ui/src/button.ts b/packages/web-ui/src/button.ts',
+    'index 1111111..2222222 100644',
+    '--- a/packages/web-ui/src/button.ts',
+    '+++ b/packages/web-ui/src/button.ts',
+    '@@ -1 +1 @@',
+    '-export const a = 1',
+    '+export const a = 2',
+    'diff --git a/src/deleted.ts b/src/deleted.ts',
+    'deleted file mode 100644',
+    'index 3333333..0000000',
+    '--- a/src/deleted.ts',
+    '+++ /dev/null',
+    '@@ -1 +0,0 @@',
+    '-gone',
+    'diff --git a/src/old-name.ts b/src/new-name.ts',
+    'similarity index 100%',
+    'rename from src/old-name.ts',
+    'rename to src/new-name.ts',
+    'diff --git a/scripts/mode-only.sh b/scripts/mode-only.sh',
+    'old mode 100644',
+    'new mode 100755',
+    'diff --git "a/scripts/\\344\\270\\255\\346\\226\\207.sh" "b/scripts/\\344\\270\\255\\346\\226\\207.sh"',
+    'old mode 100644',
+    'new mode 100755',
+    // "docs/中文.md" in UTF-8 octal: \344\270\255\346\226\207
+    'diff --git "a/docs/\\344\\270\\255\\346\\226\\207.md" "b/docs/\\344\\270\\255\\346\\226\\207.md"',
+    'new file mode 100644',
+    'index 0000000..4444444',
+    '--- /dev/null',
+    '+++ "b/docs/\\344\\270\\255\\346\\226\\207.md"',
+    '@@ -0,0 +1 @@',
+    '+# 标题'
+  ].join('\n')
+
+  const changedPaths = [
+    'packages/web-ui/src/button.ts',
+    'src/deleted.ts',
+    'src/new-name.ts',
+    'scripts/mode-only.sh',
+    'scripts/中文.sh',
+    'docs/中文.md'
+  ]
+  const byPath = splitDiffByPath(sampleDiff, changedPaths)
+  assert.deepEqual([...byPath.keys()], changedPaths)
+  assert.match(byPath.get('packages/web-ui/src/button.ts'), /\+export const a = 2/)
+  assert.match(byPath.get('src/deleted.ts'), /deleted file mode 100644/)
+  assert.match(byPath.get('src/new-name.ts'), /rename to src\/new-name\.ts/)
+  assert.match(byPath.get('scripts/mode-only.sh'), /new mode 100755/)
+  assert.match(byPath.get('scripts/中文.sh'), /new mode 100755/)
+  assert.match(byPath.get('docs/中文.md'), /\+# 标题/)
+  assert.equal(splitDiffByPath('', changedPaths).size, 0)
+}
+
+{
+  // truncateUtf8ByLines 与 wrapCodeFence：行边界截断、多字节 UTF-8 不产生 U+FFFD、
+  // 动态加长反引号围栏防止 diff 内容里的 ``` 提前闭合代码块。
+  const short = truncateUtf8ByLines('line1\nline2', 100)
+  assert.deepEqual(short, { text: 'line1\nline2', truncated: false, shownBytes: 11, totalBytes: 11 })
+
+  const multiLine = truncateUtf8ByLines('first-line\nsecond-line\nthird-line', 15)
+  assert.equal(multiLine.text, 'first-line')
+  assert.equal(multiLine.truncated, true)
+  assert.equal(multiLine.shownBytes, 10)
+
+  // 单行超长且含多字节中文字符（每字 3 bytes）：10 bytes 预算只能容纳 3 个汉字（9 bytes），不能切出半个字节。
+  const utf8SingleLine = truncateUtf8ByLines('中文字符测试数据', 10)
+  assert.equal(utf8SingleLine.text, '中文字')
+  assert.equal(utf8SingleLine.truncated, true)
+  assert.equal(utf8SingleLine.shownBytes, 9)
+  assert.ok(!utf8SingleLine.text.includes('\uFFFD'), 'UTF-8 truncation must never split a multi-byte codepoint')
+
+  assert.deepEqual(truncateUtf8ByLines('abc', 0), { text: '', truncated: true, shownBytes: 0, totalBytes: 3 })
+
+  assert.equal(wrapCodeFence('+normal line', 'diff'), '```diff\n+normal line\n```')
+  const fencedWithBackticks = wrapCodeFence('+```markdown\n+````nested\n+```', 'diff')
+  assert.ok(
+    fencedWithBackticks.startsWith('`````diff\n') && fencedWithBackticks.endsWith('\n`````'),
+    'wrapCodeFence must use a fence strictly longer than any backtick run inside the diff'
+  )
+}
+
+{
+  // buildReviewPreload：验证按风险排序、单文件与总字节预算截断、路径数上限，以及空 diff 豁免。
+  const diffBlock = (filePath, bodyLine) =>
+    [
+      `diff --git a/${filePath} b/${filePath}`,
+      `--- a/${filePath}`,
+      `+++ b/${filePath}`,
+      '@@ -1 +1 @@',
+      `+${bodyLine}`
+    ].join('\n')
+
+  const lowPath = '.changeset/low.md'
+  const medPath = 'docs/agents/review.md'
+  const highRuntime = 'packages/web-ui/src/button.ts'
+  const highInfra = '.github/scripts/codex-review.mjs'
+  const fullDiff = [
+    diffBlock(lowPath, 'low change'),
+    diffBlock(medPath, 'medium change'),
+    diffBlock(highRuntime, 'x'.repeat(240)),
+    diffBlock(highInfra, 'infra change')
+  ].join('\n')
+
+  const preload = buildReviewPreload(
+    {
+      baseSha: otherSha,
+      headSha,
+      mergeBaseSha: otherSha,
+      diff: fullDiff,
+      changedPaths: [lowPath, medPath, highRuntime, highInfra]
+    },
+    { maxPaths: 3, maxFiles: 2, perFileBytes: 220, totalDiffBytes: 360 }
+  )
+
+  assert.deepEqual(
+    preload.rankedPaths.map(entry => entry.path),
+    [highInfra, highRuntime, medPath, lowPath]
+  )
+  assert.deepEqual(preload.preloadedPaths, [highInfra, highRuntime])
+  assert.deepEqual(preload.truncatedPaths, [highRuntime], 'the oversized runtime file must be marked truncated')
+  assert.deepEqual(preload.omittedPaths, [medPath, lowPath])
+  assert.match(preload.markdown, /### 判据速览/)
+  assert.match(preload.markdown, /`\[high\]`/)
+  assert.match(preload.markdown, /`\.github\/scripts\/codex-review\.mjs`（已预注入完整 diff）/)
+  assert.match(preload.markdown, /`packages\/web-ui\/src\/button\.ts`（已预注入截断 diff）/)
+  assert.match(preload.markdown, /`docs\/agents\/review\.md`（未预注入，按需 git diff）/)
+  assert.match(preload.markdown, /其余 1 个路径见 `\$RUNNER_TEMP\/codex-review\/review-scope\.json`/)
+  assert.ok(preload.preloadBytes > 0)
+
+  const emptyPreload = buildReviewPreload({
+    baseSha: otherSha,
+    headSha,
+    mergeBaseSha: otherSha,
+    diff: '',
+    changedPaths: []
+  })
+  assert.deepEqual(emptyPreload.preloadedPaths, [])
+  assert.deepEqual(emptyPreload.truncatedPaths, [])
+  assert.match(emptyPreload.markdown, /empty_diff: true/)
+}
+
+{
+  // commandPrepare 与 injectPreloadIntoPrompt：写出 pr.diff、review-preload.md、含 preloaded_paths/preload_bytes 的
+  // review-scope.json，并幂等替换 staged prompt 里的 <!-- codex-review-preload:start/end --> 区块。
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-prepare-'))
+  try {
+    const promptPath = trustedPromptPath({ RUNNER_TEMP: tempRoot })
+    fs.mkdirSync(path.dirname(promptPath), { recursive: true })
+    const templatePrompt = fs.readFileSync(path.join(import.meta.dirname, '../codex/prompts/review.md'), 'utf8')
+    fs.writeFileSync(promptPath, templatePrompt)
+    const outputFile = path.join(tempRoot, 'github-output.txt')
+    fs.writeFileSync(outputFile, '')
+
+    const diffText = [
+      'diff --git a/.github/scripts/codex-review.mjs b/.github/scripts/codex-review.mjs',
+      '--- a/.github/scripts/codex-review.mjs',
+      '+++ b/.github/scripts/codex-review.mjs',
+      '@@ -1 +1,3 @@',
+      '-const oldVal = 1',
+      '+const newVal = 2',
+      `+const startMarker = '${PRELOAD_START_MARKER}'`,
+      `+const endMarker = '${PRELOAD_END_MARKER}'`,
+      'diff --git a/packages/web-ui/src/button.ts b/packages/web-ui/src/button.ts',
+      '--- a/packages/web-ui/src/button.ts',
+      '+++ b/packages/web-ui/src/button.ts',
+      '@@ -1 +1 @@',
+      '-export const btn = false',
+      '+export const btn = true',
+      ''
+    ].join('\n')
+
+    const fakeGit = (_name, args) => {
+      if (args[0] === 'merge-base') return `${otherSha}\n`
+      if (args[0] === 'diff' && args.includes('--name-only')) {
+        return 'packages/web-ui/src/button.ts\u0000.github/scripts/codex-review.mjs\u0000'
+      }
+      if (args[0] === 'diff') return diffText
+      return ''
+    }
+
+    const env = {
+      RUNNER_TEMP: tempRoot,
+      CODEX_REVIEW_BASE_SHA: otherSha,
+      CODEX_REVIEW_HEAD_SHA: headSha,
+      GITHUB_OUTPUT: outputFile
+    }
+
+    commandPrepare({ env, command: fakeGit })
+    const firstPrompt = fs.readFileSync(promptPath, 'utf8')
+    // 第二次执行必须幂等，不得叠加第二个预注入块。
+    commandPrepare({ env, command: fakeGit })
+    const secondPrompt = fs.readFileSync(promptPath, 'utf8')
+    assert.equal(secondPrompt, firstPrompt, 'commandPrepare prompt injection must be idempotent')
+    assert.equal(secondPrompt.split(PRELOAD_START_MARKER).length - 1, 1, 'start marker must appear once')
+    assert.equal(secondPrompt.split(PRELOAD_END_MARKER).length - 1, 1, 'end marker must appear once')
+    assert.ok(!secondPrompt.includes('若未注入，请读'), 'placeholder inside markers must be replaced')
+    assert.match(secondPrompt, /\+const newVal = 2/)
+
+    const writtenPreload = fs.readFileSync(preloadPath(env), 'utf8')
+    assert.match(writtenPreload, /\+const newVal = 2/)
+    assert.match(writtenPreload, /\+export const btn = true/)
+
+    const scope = JSON.parse(fs.readFileSync(scopePath(env), 'utf8'))
+    assert.deepEqual(scope.changed_paths, ['packages/web-ui/src/button.ts', '.github/scripts/codex-review.mjs'])
+    assert.deepEqual(scope.preloaded_paths, ['.github/scripts/codex-review.mjs', 'packages/web-ui/src/button.ts'])
+    assert.ok(Number.isInteger(scope.preload_bytes) && scope.preload_bytes > 0)
+
+    const outputs = fs.readFileSync(outputFile, 'utf8')
+    assert.ok(outputs.includes(`preload_path=${preloadPath(env)}`))
+
+    // 没有起止标记的模板也能追加预注入块，再次注入同样保持幂等。
+    const unmarked = '# Title\n\nBody text.'
+    const injectedOnce = injectPreloadIntoPrompt(unmarked, 'Preload body')
+    const injectedTwice = injectPreloadIntoPrompt(injectedOnce, 'Updated preload body')
+    assert.equal(injectedTwice.split(PRELOAD_START_MARKER).length - 1, 1)
+    assert.ok(injectedTwice.includes('Updated preload body'))
+    assert.ok(!injectedTwice.includes('Preload body'))
+  } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true })
+  }
 }
 
 console.log('.github/scripts/codex-review.test.mjs: all assertions passed')

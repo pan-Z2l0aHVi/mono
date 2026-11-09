@@ -10,9 +10,12 @@ import {
   AUTO_RETRY_LIMIT,
   AUTO_RETRY_STATES,
   CONFIG_ENV,
+  PRELOAD_END_MARKER,
+  PRELOAD_START_MARKER,
   autoRetryDecision,
   priorConclusionDirectory,
-  resolveAutoRetryState
+  resolveAutoRetryState,
+  trustedPromptPath
 } from '../codex-review.mjs'
 
 import {
@@ -987,6 +990,32 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       namedStep(ci, 'Upload review findings'),
       /overwrite: true/,
       'a --failed rerun must be able to replace the same-named artifact'
+    )
+
+    // B1 预注入：Prepare review range 必须在 stage-codex-inputs 之后、Review pull request with Codex 之前运行，
+    // 且模型步骤读取的 prompt-file 必须与 trustedPromptPath() 同源，否则 prepare 注入到 staged prompt 的内容不会被模型读到。
+    const reviewJobText = workflowJob(ci, 'codex-review')
+    const stageIndex = reviewJobText.indexOf('uses: ./.github/actions/stage-codex-inputs')
+    const prepareIndex = reviewJobText.indexOf('- name: Prepare review range')
+    const execIndex = reviewJobText.indexOf('- name: Review pull request with Codex')
+    assert.ok(
+      stageIndex !== -1 && prepareIndex > stageIndex && execIndex > prepareIndex,
+      'Prepare review range must run after stage-codex-inputs and before Review pull request with Codex'
+    )
+    assert.match(
+      namedStep(reviewJobText, 'Prepare review range'),
+      /node "\$RUNNER_TEMP\/trusted\/scripts\/codex-review\.mjs" prepare/
+    )
+    const expectedTrustedPrompt = trustedPromptPath({ RUNNER_TEMP: '${{ runner.temp }}' })
+    assert.ok(
+      reviewStep.includes(`prompt-file: ${expectedTrustedPrompt}`),
+      `Review pull request with Codex must read ${expectedTrustedPrompt}`
+    )
+    const reviewPromptText = fs.readFileSync(path.join(repoRoot, '.github/codex/prompts/review.md'), 'utf8')
+    assert.ok(
+      reviewPromptText.includes(PRELOAD_START_MARKER) &&
+        reviewPromptText.indexOf(PRELOAD_END_MARKER) > reviewPromptText.indexOf(PRELOAD_START_MARKER),
+      'the review prompt template must carry the preload markers in order'
     )
   }
 
