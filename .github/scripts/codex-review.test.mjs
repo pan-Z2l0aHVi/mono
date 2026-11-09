@@ -512,7 +512,7 @@ for (const [label, value] of [
   assert.match(unreviewed, /本次没有可用结论/)
   assert.match(unreviewed, /重跑整条 run/, 'unusable_output still needs a full rerun')
 
-  // 只有 missing_coverage 会让审查腿一并判红，才该提示 --failed。
+  // 只有 missing_coverage 会让审查 job 一并判红，才该提示 --failed。
   const missingMeta = { ...unreviewedMeta, error_code: 'missing_coverage' }
   const missingCoverage = renderConclusion({
     conclusion: deriveConclusion({ meta: missingMeta, findings: null, liveHeadSha: headSha, error: '' }),
@@ -558,7 +558,7 @@ for (const [label, value] of [
     reason: 'first attempt produced an empty review conclusion'
   })
 
-  // 重跑完成会再触发一次 workflow_run；第二次必须停下，否则模型腿会被无限重跑。
+  // 重跑完成会再触发一次 workflow_run；第二次必须停下，否则模型 job 会被无限重跑。
   for (const runAttempt of [2, 3, 10, '2']) {
     assert.deepEqual(
       decision({ runAttempt }),
@@ -571,7 +571,7 @@ for (const [label, value] of [
     )
   }
 
-  // 写回腿自身被人工 re-run 时 payload 仍是原始事件（CI run attempt 仍为 1），
+  // 写回 run 自身被人工 re-run 时 payload 仍是原始事件（CI run attempt 仍为 1），
   // 只有 github.run_attempt 递增。不判它就会再 POST 一次 rerun-failed-jobs，突破硬上限。
   for (const reportAttempt of [2, 3, 10, '2']) {
     const result = decision({ reportAttempt })
@@ -647,7 +647,7 @@ for (const [label, value] of [
     })
 
   const triggered = render('triggered')
-  assert.match(triggered, /- 自动恢复：写回腿已用 `gh run rerun --failed` 重跑审查与门禁腿一次/)
+  assert.match(triggered, /- 自动恢复：写回 job 已用 `gh run rerun --failed` 重跑审查与门禁 job 一次/)
   assert.match(triggered, /不要手动再重跑/)
   assert.match(triggered, /恢复状态见上方「自动恢复」行/)
 
@@ -664,7 +664,7 @@ for (const [label, value] of [
   // 保留手动重跑出口是有意的可操作指引，但必须带三重限定：先诊断、仅限 CI 判红、不要连续重跑。
   assert.match(legacy, /gh run rerun --failed/, 'the manual hint stays when no auto retry happened')
   assert.match(legacy, /- 恢复指引：本次没有触发自动重跑/)
-  assert.match(legacy, /先看写回腿运行页 Summary/, 'a broken env must be diagnosed before a manual rerun')
+  assert.match(legacy, /先看写回 run 运行页 Summary/, 'a broken env must be diagnosed before a manual rerun')
   assert.match(legacy, /仅当 CI 确实判 `failure`/, 'a green CI run must not be rerun manually')
   assert.match(legacy, /不要连续重跑/, 'the hint must not induce an unbounded manual rerun loop')
   assert.ok(!legacy.includes('- 自动恢复：'), 'no auto retry means no auto recovery line')
@@ -686,7 +686,11 @@ for (const [label, value] of [
 
   // 空壳结论也可能带 findings：自动恢复行挂在故障码旁，不依赖「无 findings」分支。
   const withFinding = render('triggered', { ...emptyMeta, findings: [finding('Nit')], summary: 'one nit' })
-  assert.match(withFinding, /- 自动恢复：写回腿已用/, 'a missing_coverage conclusion with findings is still recovered')
+  assert.match(
+    withFinding,
+    /- 自动恢复：写回 job 已用/,
+    'a missing_coverage conclusion with findings is still recovered'
+  )
 
   // 带 findings 且没有自动恢复时也得有指引：正文的「无 findings」分支此时不会出现。
   const withFindingNoRetry = render('none', { ...emptyMeta, findings: [finding('Nit')], summary: 'one nit' })
@@ -783,13 +787,13 @@ for (const [label, value] of [
     assert.deepEqual(reruns, ['42'], 'attempt 2 must not rerun again')
     assert.match(exhausted.outputs, /state=exhausted/)
 
-    // 写回腿自身被 re-run：CI run attempt 仍是 1，但这一步必须停在 exhausted，且 Summary 两个维度都留痕。
+    // 写回 run 自身被 re-run：CI run attempt 仍是 1，但这一步必须停在 exhausted，且 Summary 两个维度都留痕。
     const reRunReport = invoke({ adapter, env: { ...baseEnv, WORKFLOW_REPORT_ATTEMPT: '2' } })
     assert.equal(reRunReport.result.state, 'exhausted')
     assert.match(reRunReport.result.reason, /report workflow was re-run/)
     assert.deepEqual(reruns, ['42'], 'a re-run report leg must not POST rerun-failed-jobs again')
     assert.match(reRunReport.outputs, /state=exhausted/)
-    assert.match(reRunReport.summary, /CI attempt `1` \/ 写回腿 attempt `2`/)
+    assert.match(reRunReport.summary, /CI attempt `1` \/ 写回 run attempt `2`/)
 
     // github.run_attempt 缺失时保守跳过；评论会转人工，但绝不能再触发重跑。
     const missingReportAttempt = invoke({
@@ -799,9 +803,9 @@ for (const [label, value] of [
     assert.equal(missingReportAttempt.result.state, 'none')
     assert.deepEqual(reruns, ['42'], 'an unreadable report attempt must not rerun')
     assert.match(missingReportAttempt.outputs, /state=none/, 'the step output must still be written')
-    assert.match(missingReportAttempt.summary, /写回腿 attempt `unknown`/)
+    assert.match(missingReportAttempt.summary, /写回 run attempt `unknown`/)
 
-    // CI 已成功 + 写回腿被 re-run：总闸门先判，不再误报 exhausted。
+    // CI 已成功 + 写回 run 被 re-run：总闸门先判，不再误报 exhausted。
     const ciSucceeded = invoke({
       adapter,
       env: { ...baseEnv, WORKFLOW_REPORT_ATTEMPT: '2', CODEX_REVIEW_RUN_CONCLUSION: 'success' }
@@ -934,7 +938,7 @@ for (const [label, value] of [
   const posted = calls.find(args => args.includes('POST'))
   assert.ok(posted.includes('body=body'), 'the comment body travels as a gh api form field')
   assert.equal(posted.at(-1), 'repos/owner/repo/issues/54/comments')
-  // 结论评论的模型腿诊断走这两条端点：作业名与日志读法都由这里钉住，写回腿才不会拿不到错误。
+  // 结论评论的模型 job 诊断走这两条端点：作业名与日志读法都由这里钉住，写回 job 才不会拿不到错误。
   assert.deepEqual(adapter.runJobs(30), [
     { id: 5, name: 'Codex review' },
     { id: 6, name: 'check' }
@@ -2243,7 +2247,7 @@ esac
 }
 
 {
-  // 结论评论的三处读感修复：档位统计不在故障档刷屏、error 按故障码分流并抄出模型腿原始错误、
+  // 结论评论的三处读感修复：档位统计不在故障档刷屏、error 按故障码分流并抄出模型 job 原始错误、
   // 就地更新期间留下状态轨迹。
   const renderOf = (meta, findings = null) =>
     renderConclusion({
@@ -2288,7 +2292,7 @@ esac
     'an unknown code must fall back to the generic guidance'
   )
 
-  // 模型腿的原始错误只在 CI job 日志里；只有结构化错误才抄进评论，别的 ERROR 行留给通用指引。
+  // 模型 job 的原始错误只在 CI run 的 job 日志里；只有结构化错误才抄进评论，别的 ERROR 行留给通用指引。
   // ANSI 包裹与 JSON 载荷取自 pr533 attempt 3 的 `Codex review` 真日志，prose 那行是为「跳过非 JSON」补的。
   const gatewayLog = [
     '2026-11-09T08:49:32.3920308Z ##[start-action display=Run codex exec;id=review.run_codex]',
@@ -2325,7 +2329,7 @@ esac
     }
   }
   assert.match(readModelLegError(logAdapter, '42472585843'), /response_format type is unavailable/)
-  // 拿不到 run id、没有审查腿或日志读失败都只降级：诊断辅助不能判红写回腿，也不能白打 API。
+  // 拿不到 run id、没有审查 job 或日志读失败都只降级：诊断辅助不能判红写回 job，也不能白打 API。
   assert.equal(readModelLegError(logAdapter, ''), '', 'a missing run id must not call the API')
   assert.equal(readModelLegError(logAdapter, 'not-a-number'), '')
   assert.equal(readModelLegError({ ...logAdapter, runJobs: () => [{ id: 1, name: 'check' }] }, '42'), '')
@@ -2360,7 +2364,7 @@ esac
     modelError: injected
   })
   assert.ok(!injectedBody.includes('<img'), 'the copied log line must stay escaped')
-  assert.match(injectedBody, /- 模型腿错误：<code>&lt;img src=x&gt;<\/code>/)
+  assert.match(injectedBody, /- 模型 job 错误：<code>&lt;img src=x&gt;<\/code>/)
 
   // 状态轨迹：故障结论哪怕只更新一次也要留痕（要回答「这是第几次」），连续重复去重，尾部保留最近 8 条。
   const at = '2026-11-09T08:49:12Z'

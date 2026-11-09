@@ -13,7 +13,7 @@ import { coverageGap, parseReviewFindings } from './codex-review.mjs'
  * 判据直接复用 `coverageGap` / `parseReviewFindings`，与 `validate` 判 `missing_coverage`
  * 的集合逐例对齐：不只是「无 findings + 无 inspected」，还包括整个 coverage 缺席、
  * 以及 inspected 没命中本次 changed_paths（只读了判据文档就收尾）。这一步只让 review
- * job 一起变红，好让 `--failed` 重跑模型腿；它不判绿、不改判结论，结论仍由取自 PR base
+ * job 一起变红，好让 `--failed` 重跑模型 job；它不判绿、不改判结论，结论仍由取自 PR base
  * 的 trusted `validate` / `gate` 裁决。脚本从工作区（PR head）读取，本 PR 即生效。
  */
 export function shouldRejectReviewOutput(raw, scope) {
@@ -22,7 +22,7 @@ export function shouldRejectReviewOutput(raw, scope) {
     parsed = parseReviewFindings(raw)
   } catch {
     // 结构错误（坏 JSON、缺 findings、未知档位…）由 validate 判 unusable_output：
-    // 这里不越权，也不把「模型腿崩了」洗成一次普通的空结论。
+    // 这里不越权，也不把「模型 job 崩了」洗成一次普通的空结论。
     return false
   }
   // scope 读不到时按「非空 diff、无 changed_paths」处理：无法证明 empty_diff，fail closed。

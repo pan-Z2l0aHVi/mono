@@ -230,7 +230,7 @@ function commandPrepare() {
 
 function commandCapture() {
   const env = requireEnv(['CODEX_AUTOFIX_HEAD_SHA', 'RUNNER_TEMP'])
-  // 模型腿没跑成时工作区仍可能有零散改动；没有预检快照就不产出 patch，避免特权腿推一份来路不明的 diff。
+  // 模型 job 没跑成时工作区仍可能有零散改动；没有预检快照就不产出 patch，避免特权 job 推一份来路不明的 diff。
   if (!readConfig()) {
     writeOutputs({
       has_patch: 'false',

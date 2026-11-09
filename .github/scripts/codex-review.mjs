@@ -55,7 +55,7 @@ const TRAJECTORY_PREFIX = '- 状态轨迹：'
 // 轨迹条目会被下一版正文重新解析再写一次，所以只有形状受控的故障码才进条目。
 const TRAJECTORY_CODE_PATTERN = /^[A-Za-z0-9_-]{1,40}$/u
 
-// 模型腿的原始错误只在 CI job 日志里；写回腿读它来做分流指引，job 名与 ci.yml 的 `name:` 一致。
+// 模型 job 的原始错误只在 CI run 的 job 日志里；写回 job 读它来做分流指引，job 名与 ci.yml 的 `name:` 一致。
 const REVIEW_JOB_NAME = 'Codex review'
 // 日志里的 `ERROR:` 被颜色码包住（`ESC[1mESC[31mERROR:`），不先剥掉就找不到 JSON 载荷。
 const ANSI_PATTERN = /\u001b\[[0-9;]*m/gu
@@ -333,9 +333,9 @@ export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplic
  * 空壳结论是否值得自动重跑一次，以及结论评论该显示哪一档恢复状态。
  *
  * 上限有两个维度，都钉在 AUTO_RETRY_LIMIT：
- * - runAttempt 是触发本次写回腿的 CI run 的 attempt（来自 workflow_run payload）；重跑 CI 后的
- *   新事件里它是 2，用来挡住「第二次写回腿 run」。
- * - reportAttempt 是写回腿自己这次 run 的 attempt（github.run_attempt）。人工 re-run 写回腿时
+ * - runAttempt 是触发本次写回 workflow 的 CI run 的 attempt（来自 workflow_run payload）；重跑 CI 后的
+ *   新事件里它是 2，用来挡住「第二次写回 workflow 的 run」。
+ * - reportAttempt 是写回 run 自己的 attempt（github.run_attempt）。人工 re-run 写回 run 时
  *   payload 仍是原始事件（runAttempt 依旧是 1），只有这个量会递增；不判它就会再 POST 一次
  *   rerun-failed-jobs，突破「每个 CI run 只自动重跑一次」。两个量不能互相替代（ADR-0021）。
  *
@@ -345,9 +345,9 @@ export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplic
  *
  * @param {object} input
  * @param {object|null} input.meta 本轮下载的 review-meta.json。
- * @param {number|string|undefined} input.runAttempt 触发写回腿的 CI run 的 attempt；拿不到就不重跑。
- * @param {string|undefined} input.runConclusion 触发写回腿的 CI run 的 conclusion。
- * @param {number|string|undefined} input.reportAttempt 写回腿自己这次 run 的 attempt；拿不到就不重跑。
+ * @param {number|string|undefined} input.runAttempt 触发写回 workflow 的 CI run 的 attempt；拿不到就不重跑。
+ * @param {string|undefined} input.runConclusion 触发写回 workflow 的 CI run 的 conclusion。
+ * @param {number|string|undefined} input.reportAttempt 写回 run 自己的 attempt；拿不到就不重跑。
  * @returns {{action: 'rerun'|'skip', state: 'triggered'|'exhausted'|'none', reason: string}}
  *   无副作用；真正的 rerun 由调用方按 action 执行。
  */
@@ -548,7 +548,7 @@ export function firstModelErrorLine(log) {
   return ''
 }
 
-/** 尽力取模型腿日志里的错误：拿不到 job、日志读失败或没有结构化错误都只降级，不能让诊断辅助判红写回腿。 */
+/** 尽力取模型 job 日志里的错误：拿不到 job、日志读失败或没有结构化错误都只降级，不能让诊断辅助判红写回 job。 */
 export function readModelLegError(adapter, runId) {
   if (typeof runId !== 'string' || !/^\d+$/u.test(runId)) return ''
   try {
@@ -565,13 +565,13 @@ export function readModelLegError(adapter, runId) {
  */
 function errorGuidance(code) {
   if (code === 'model_failed') {
-    return '本次审查没有跑成：模型腿自己没跑完。先看 `Codex review` job 里 `Run codex exec` 的日志——网关 5xx 或瞬时错误重跑整条 run 即可，只有日志指向配置或模型侧拒绝才改 GitHub 后台。'
+    return '本次审查没有跑成：模型 job 自己没跑完。先看 `Codex review` job 里 `Run codex exec` 的日志——网关 5xx 或瞬时错误重跑整条 run 即可，只有日志指向配置或模型侧拒绝才改 GitHub 后台。'
   }
   if (code === 'config_missing') {
     return '本次审查没有跑成：检查 GitHub 后台的 secrets/variables 与 CI 日志，配置齐全后重跑。'
   }
   if (code === 'artifact_missing') {
-    return '本次审查没有跑成：门禁没拿到审查产物。先核对审查腿的 `Upload review findings` 与写回腿的 `Download review findings`，再重跑整条 run。'
+    return '本次审查没有跑成：门禁没拿到审查产物。先核对审查 job 的 `Upload review findings` 与写回 job 的 `Download review findings`，再重跑整条 run。'
   }
   return '本次审查没有跑成：先看 `Codex review` job 的日志定位故障，再重跑整条 run；只有日志指向后台配置才改 secrets/variables。'
 }
@@ -618,22 +618,24 @@ export function renderConclusion({
     if (Array.isArray(meta?.missing) && meta.missing.length > 0) {
       lines.push(`- 缺失配置：\`${meta.missing.map(name => plainText(name)).join('`、`')}\``)
     }
-    // 模型腿的真实故障只在 CI job 日志里；读到了就抄进评论，省掉「自己去翻日志」这一跳。
+    // 模型 job 的真实故障只在 CI run 的 job 日志里；读到了就抄进评论，省掉「自己去翻日志」这一跳。
     if (conclusion.status === 'error' && modelError !== '') {
-      lines.push(`- 模型腿错误：${codeSpan(modelError)}`)
+      lines.push(`- 模型 job 错误：${codeSpan(modelError)}`)
     }
     // 恢复状态统一挂在故障码旁：带 findings 的空壳结论也能看到，不依赖「无 findings」的正文分支。
     if (conclusion.code === AUTO_RETRY_ERROR_CODE && retryState === 'triggered') {
-      lines.push('- 自动恢复：写回腿已用 `gh run rerun --failed` 重跑审查与门禁腿一次；等新结论评论，不要手动再重跑。')
+      lines.push(
+        '- 自动恢复：写回 job 已用 `gh run rerun --failed` 重跑审查与门禁 job 一次；等新结论评论，不要手动再重跑。'
+      )
     } else if (conclusion.code === AUTO_RETRY_ERROR_CODE && retryState === 'exhausted') {
       lines.push('- 自动恢复：自动重跑 1 次仍不可用；按 `docs/agents/review.md` 做完整独立审查，或修输出契约。')
     } else if (conclusion.code === AUTO_RETRY_ERROR_CODE && retryState === 'failed') {
       lines.push(
-        '- 自动恢复：自动重跑调用失败；按 `gh run rerun --failed` 手动重跑，并核对写回腿的 `actions: write` 与运行页错误。'
+        '- 自动恢复：自动重跑调用失败；按 `gh run rerun --failed` 手动重跑，并核对写回 job 的 `actions: write` 与运行页错误。'
       )
     } else if (conclusion.code === AUTO_RETRY_ERROR_CODE) {
       lines.push(
-        '- 恢复指引：本次没有触发自动重跑；先看写回腿运行页 Summary 的「原因」，核对是不是 CI 非 `failure`、产物不是空壳、attempt 字段不可读或注入异常。仅当 CI 确实判 `failure` 且本次产物确属空壳时，才必要时用 `gh run rerun --failed` 重跑一次；CI 已成功时不要重跑，先核对评论头部的 `sha` 是否覆盖当前 head。反复出现就修输出契约或 env 注入，不要连续重跑。'
+        '- 恢复指引：本次没有触发自动重跑；先看写回 run 运行页 Summary 的「原因」，核对是不是 CI 非 `failure`、产物不是空壳、attempt 字段不可读或注入异常。仅当 CI 确实判 `failure` 且本次产物确属空壳时，才必要时用 `gh run rerun --failed` 重跑一次；CI 已成功时不要重跑，先核对评论头部的 `sha` 是否覆盖当前 head。反复出现就修输出契约或 env 注入，不要连续重跑。'
       )
     }
   }
@@ -687,9 +689,9 @@ export function renderConclusion({
       lines.push(
         conclusion.code === 'missing_coverage'
           ? autoRetryExplained
-            ? '本次没有可用结论：模型没交出覆盖证据，审查腿一并判红；恢复状态见上方「自动恢复」行。'
-            : '本次没有可用结论：模型没交出覆盖证据，审查腿一并判红；恢复指引见上方故障码。'
-          : '本次没有可用结论：模型腿跑完了但输出不可用，重跑整条 run；重复出现就按故障码修输出契约。'
+            ? '本次没有可用结论：模型没交出覆盖证据，审查 job 一并判红；恢复状态见上方「自动恢复」行。'
+            : '本次没有可用结论：模型没交出覆盖证据，审查 job 一并判红；恢复指引见上方故障码。'
+          : '本次没有可用结论：模型 job 跑完了但输出不可用，重跑整条 run；重复出现就按故障码修输出契约。'
       )
     else lines.push('没有可用发现：本次没有拿到模型结论，不能当作已审查。')
   }
@@ -724,7 +726,7 @@ export function createGhReviewAdapter({ repository, spawn = spawnSync, cwd = pro
     // rerun-failed-jobs 返回 201 且响应体可能为空，不能走 JSON.parse。
     rerunFailed: runId => gh(['api', '-X', 'POST', `repos/${repository}/actions/runs/${runId}/rerun-failed-jobs`]),
     artifacts: runId => get(`repos/${repository}/actions/runs/${runId}/artifacts`).artifacts ?? [],
-    // jobs 只返回最新 attempt 的那一套；结论评论要的模型腿错误就在这一套里。
+    // jobs 只返回最新 attempt 的那一套；结论评论要的模型 job 错误就在这一套里。
     runJobs: runId => get(`repos/${repository}/actions/runs/${runId}/jobs?per_page=100`).jobs ?? [],
     // job 日志含 ANSI 转义序列，不加 --allow-escape-sequences 会被 gh 拒绝（与 codex-autofix.mjs 同一读法）。
     jobLog: jobId => gh(['api', '--allow-escape-sequences', `repos/${repository}/actions/jobs/${jobId}/logs`])
@@ -1439,7 +1441,7 @@ function commandValidate() {
 
   if (!parsed) {
     fs.rmSync(reusedPath, { force: true })
-    // continue-on-error 掩住的是 conclusion，不是 outcome：模型腿崩了就是故障，不能伪装成「未审查」。
+    // continue-on-error 掩住的是 conclusion，不是 outcome：模型 job 崩了就是故障，不能伪装成「未审查」。
     if (process.env.CODEX_REVIEW_STEP_OUTCOME === 'failure') {
       writeErrorMeta(directory, identity, 'model_failed', error)
       writeOutputs({ blocks: '0', reason: error })
@@ -1549,7 +1551,7 @@ function commandGate() {
       console.error('Fix the repository configuration or the model invocation, then rerun CI.')
     } else if (status.status === 'unreviewed') {
       console.error(`Codex review produced no usable conclusion (${status.code}): ${status.reason}`)
-      // 只有 missing_coverage 会让审查腿一并判红；unusable_output / error 那条腿仍是绿的，
+      // 只有 missing_coverage 会让审查 job 一并判红；unusable_output / error 那条 job 仍是绿的，
       // 此时 --failed 只会重跑 gate，必须提示重跑整条 run 才会再调一次模型。
       console.error(
         status.code === 'missing_coverage'
@@ -1584,7 +1586,7 @@ export function withPermissionDiagnosis(number) {
   }
 }
 
-// 写回腿的绿色必须能读懂：同一个 success，既可能是「发了评论」，也可能是「什么都没发」。
+// 写回 workflow 的绿色必须能读懂：同一个 success，既可能是「发了评论」，也可能是「什么都没发」。
 // 所以每条返回路径都往运行页写一行结果，把「没发」的原因留在 Summary 里而不是只留在日志。
 function appendReportSummary({ number, status, meta, outcome }) {
   const counts = status?.counts
@@ -1607,9 +1609,9 @@ function appendReportSummary({ number, status, meta, outcome }) {
 }
 
 /**
- * 写回腿唯一的动作类写操作：对第一次 attempt 的空壳结论触发一次 --failed 重跑。
+ * 写回 job 唯一的动作类写操作：对第一次 attempt 的空壳结论触发一次 --failed 重跑。
  *
- * run_attempt 与 run conclusion 由 workflow_run payload 注入，写回腿自身的 attempt 由 github.run_attempt
+ * run_attempt 与 run conclusion 由 workflow_run payload 注入，写回 run 自身的 attempt 由 github.run_attempt
  * 注入；两者共同钉住「只重跑一次」，不再额外发 GET。
  * 所有异常都收敛成 state=failed 并以 0 退出（annotation + Summary 留痕），步骤 output 一定写入，
  * 不依赖「失败步骤的 output 是否被 runner 保留」，结论评论也就不会退回误导性的手动重跑指引。
@@ -1646,17 +1648,17 @@ export function commandAutoRetry({ env = process.env, adapter } = {}) {
   appendSummary([
     '## Codex 空壳结论自动恢复',
     '',
-    `- 触发 run：\`${runId || 'unknown'}\`（CI attempt \`${plainText(attempt)}\` / 写回腿 attempt \`${plainText(reportAttempt)}\`）`,
+    `- 触发 run：\`${runId || 'unknown'}\`（CI attempt \`${plainText(attempt)}\` / 写回 run attempt \`${plainText(reportAttempt)}\`）`,
     `- 动作：**${decision.action === 'rerun' ? '已重跑失败 job 一次' : '跳过'}**`,
     `- 原因：${decision.reason}`,
     `- 恢复状态：\`${decision.state}\``,
-    '- 上限：CI run 与写回腿自身的 attempt 都必须为 1；任一已重跑过就转人工完整独立审查。'
+    '- 上限：CI run 与写回 run 自身的 attempt 都必须为 1；任一已重跑过就转人工完整独立审查。'
   ])
   return decision
 }
 
 /**
- * 结论评论的两项附加输入：读回的状态轨迹与按需取的模型腿错误。
+ * 结论评论的两项附加输入：读回的状态轨迹与按需取的模型 job 错误。
  *
  * 单独成函数是为了让 commandReport 的接线可被断言——env 名、门控故障码、`conclusionVerdict`
  * 与上一版正文这几处任何一笔写错，只会在生产评论上静默消失，YAML 侧的拓扑断言拦不住。

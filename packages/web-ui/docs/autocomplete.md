@@ -241,7 +241,7 @@ function onChange(event: WebUiEvent<WebUiAutocomplete, 'change'>) {
 
 `trigger` is a gesture set separated by spaces or commas: `click`, `hover`, `focus`, `none`. It defaults to `click`. Clicking the input only opens the panel, never closes it; a second click does not collapse it, and closing goes through outside clicks, Escape or `hide()`. `hover` opens and closes with pointer entry and exit, and `focus` opens on keyboard focus (`:focus-visible`); gestures can be written side by side.
 
-`none` disables all automatic opening: clicks, typing, arrow keys, focus and hover no longer expand the panel — only the `open` property or `show()` / `hide()` moves it. `none` and gestures are mutually exclusive: when both appear, `none` wins and a development warning is printed.
+`none` disables all automatic opening: clicks, typing, arrow keys, focus and hover no longer expand the panel. Only the `open` property or `show()` / `hide()` moves it. `none` and gestures are mutually exclusive: when both appear, `none` wins and a development warning is printed.
 
 `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, typing, focus and programmatic calls act immediately.
 

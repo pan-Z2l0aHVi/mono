@@ -6,8 +6,6 @@ English | [简体中文](./README.CN.md)
 
 ## What it provides
 
-This package gives the workspace apps one set of overlay scrollbar options.
-
 `@greypan/web-ui` does not depend on it. Web UI components use native CSS scrollbars with the `--wui-scrollbar-handle` token.
 
 `overlayscrollbars` comes from the workspace catalog, so the bundled CSS and the runtime used by each app stay on the same version.

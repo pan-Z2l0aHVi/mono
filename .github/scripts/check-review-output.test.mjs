@@ -109,7 +109,7 @@ function runCli({ output, scope, withScope = true }) {
 }
 
 {
-  // 端到端：空壳必须让 review job 一起变红，`--failed` 才会重跑模型腿。
+  // 端到端：空壳必须让 review job 一起变红，`--failed` 才会重跑模型 job。
   const empty = runCli({ output: { summary: '', coverage: { inspected: [], uncovered: [] }, findings: [] } })
   assert.equal(empty.status, 1, 'an empty conclusion must fail the review job')
   assert.match(empty.stderr, /rerun --failed/)

@@ -383,7 +383,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
 
   // 本地 action 由 job 自己的工作区解析：工作区检出到 base 时，本 PR 新建的 action 在 base 里还不存在，
   // 这道门整个跑不起来；而 stage-codex-inputs 不传 base-sha 就从 head 读脚本，读到的正是被审查的那份改动。
-  // 两种写法都在这条腿上真实红过，所以判据要能双向自证。
+  // 两种写法都在这条 job 上真实红过，所以判据要能双向自证。
   const prLegIf = "${{ github.event.pull_request.base.ref == 'main' }}"
   const runLegIf = "${{ github.event.workflow_run.event == 'pull_request' }}"
   const headRef = '${{ github.event.pull_request.head.sha }}'
@@ -465,7 +465,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   }
 
   // download-artifact@v7 跨 run 下载必须显式给 github-token；PR #516 首次真实模型调用后
-  // 才发现写回腿一直只查当前 run，导致结论评论永远发不出来。
+  // 才发现写回 job 一直只查当前 run，导致结论评论永远发不出来。
   const crossRunStep = ({ token, runId }) =>
     [
       'name: CI',
@@ -503,7 +503,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     const text = workflowText[file]
     const hits = text.split(tokenLine).length - 1
     assert.ok(hits > 0, `${file} must carry at least one cross-run download token`)
-    // 逐个删除，确保写回腿的两处下载（结论与 autofix patch）都被断言覆盖，而不是只测到第一处。
+    // 逐个删除，确保写回 job 的两处下载（结论与 autofix patch）都被断言覆盖，而不是只测到第一处。
     for (let index = 0; index < hits; index++) {
       let seen = 0
       const mutated = text.replaceAll(tokenLine, () => (seen++ === index ? '' : tokenLine))
@@ -594,7 +594,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       actions: 'read'
     })
 
-    // 空壳结论自动恢复：写回腿唯一的动作类写权限只用于触发一次 --failed 重跑，模型仍不在这条腿里。
+    // 空壳结论自动恢复：写回 job 唯一的动作类写权限只用于触发一次 --failed 重跑，模型仍不在这条 job 里。
     const retryName = 'Auto-rerun empty review output'
     const commentName = 'Post conclusion comment'
     const autoRetryStep = namedStep(reportText, retryName)
@@ -650,7 +650,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       stateLine && !stateLine.includes('&&'),
       'the recovery state must not depend on expression operand semantics'
     )
-    // 模型腿故障时结论评论要按需读那条 CI run 的 job 日志，把原始错误抄进评论；缺这个注入就只能退回通用指引。
+    // 模型 job 故障时结论评论要按需读那条 CI run 的 job 日志，把原始错误抄进评论；缺这个注入就只能退回通用指引。
     assert.match(commentStep, /WORKFLOW_RUN_ID: \$\{\{ github\.event\.workflow_run\.id \}\}/)
     // 上限、分流与恢复状态解析由可信脚本导出的行为断言钉住，不再靠源码字符串匹配。
     assert.equal(AUTO_RETRY_LIMIT, 1, 'the single-retry ceiling must not drift')
@@ -749,7 +749,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
 
     // openai/codex-action#188：ubuntu-26.04 的 sudo-rs 忽略 -E、uutils `test -w` 只看 mode bits，
     // drop-sudo 的 socket ACL 校验因此误判并在 Run codex exec 前退出。v1.13 及 main 上都没有修复，
-    // 两条模型腿固定 24.04 并保留 drop-sudo；恢复条件见 ADR-0021「Runner 镜像」。
+    // 两条模型 job 固定 24.04 并保留 drop-sudo；恢复条件见 ADR-0021「Runner 镜像」。
     const CODEX_RUNNER = 'ubuntu-24.04'
     const modelLegs = ['codex-review', 'codex-autofix-plan']
     function assertCodexRunnerPin(text) {
@@ -849,7 +849,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       /vars\.CODEX_AUTOFIX_ENABLED == 'true'/
     )
 
-    // 写腿：403 的定位信息、收敛条件与 smoke 步骤都得在定义里，不能只靠运行时报错。
+    // 写 job：403 的定位信息、收敛条件与 smoke 步骤都得在定义里，不能只靠运行时报错。
     assert.match(
       namedStep(reportText, 'Probe comment permission'),
       /continue-on-error: true/,
@@ -900,7 +900,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.match(skippedReport, /::notice /, 'the skipped run must also carry a notice annotation')
 
     // 解析不到 PR 也是一种跳过：守卫必须按 resolve-pull 的成功取，
-    // 挂在 pull_number 上会让「没解析到 PR」这条路径一步都不跑，整条腿静默变绿。
+    // 挂在 pull_number 上会让「没解析到 PR」这条路径一步都不跑，整条 job 静默变绿。
     const assertResolveMissIsExplained = text => {
       const step = namedStep(text, 'Explain the skipped report')
       assert.match(step, /steps\.pull\.outcome == 'success'/, 'the skip explanation must run whenever resolve-pull ran')
@@ -965,7 +965,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.equal(parsed['ci.yml'].stepContinueOnError['Apply review gate'], undefined)
     assert.equal(parsed['ci.yml'].steps['Apply review gate'], undefined, 'the gate step must run unconditionally')
     assert.equal(parsed['ci.yml'].stepContinueOnError['Record review conclusion'], undefined)
-    // 审查腿的上限只兜大 PR 的尾巴：137 文件/4.3k 行的 PR 在 60 分钟处用满额仍未收口。
+    // 审查 job 的上限只兜大 PR 的尾巴：137 文件/4.3k 行的 PR 在 60 分钟处用满额仍未收口。
     // 自动修保持 60，它只在 check 失败时跑，且产物是一次小 patch。
     assert.match(workflowJob(ci, 'codex-review'), /timeout-minutes: 120/)
     assert.match(workflowJob(ci, 'codex-autofix-plan'), /timeout-minutes: 60/)
@@ -977,7 +977,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     )
     assert.match(workflowJob(reportText, 'codex-autofix-apply'), /timeout-minutes: 10/)
 
-    // 空壳结论必须让审查腿一起变红：否则 --failed 只重跑 gate，拿同一份空 artifact 再红一次。
+    // 空壳结论必须让审查 job 一起变红：否则 --failed 只重跑 gate，拿同一份空 artifact 再红一次。
     const emptyGuard = namedStep(ci, 'Reject empty review output')
     assert.match(emptyGuard, /if: \$\{\{ always\(\) &&/, 'the guard must run even when the model step fails')
     assert.match(emptyGuard, /steps\.reuse\.outputs\.reused != 'true'/, 'a reused conclusion is not re-judged here')
@@ -1329,7 +1329,7 @@ function matrixEntries(text) {
 }
 
 // macOS 14 于 2026-11-02 退役（actions/runner-images#13518）：标签一旦回到工作流，
-// macOS 腿会在 0 秒被取消，而同一 run 的 Linux 腿照常绿，很容易被误判成偶发。
+// macOS job 会在 0 秒被取消，而同一 run 的 Linux job 照常绿，很容易被误判成偶发。
 for (const file of ['wails-verify.yml', 'wails-release.yml']) {
   assert.match(workflowText[file], /runner: macos-15\b/u, `${file} must build on the supported arm64 macOS runner`)
   assert.doesNotMatch(workflowText[file], /macos-1[34]/u, `${file} must not target a retired macOS runner`)
