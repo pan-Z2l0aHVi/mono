@@ -45,6 +45,7 @@ ADR 只记录技术选型、架构设计与工程化决策；具体实现细节�
 | [0020](docs/adr/0020-skill-self-contained.md)                   | 自撰 skill 保持运行时自包含                                   | 提议统一 skill 与 workspace 包的重复实现，或修改 skill 的依赖边界       |
 | [0021](docs/adr/0021-codex-review-gate.md)                      | Codex 自动 PR 审查门：约定式门禁与只读/写回分腿               | 修改 CI 的审查腿、发现分档、自动修边界或这道门的红绿判据                |
 | [0022](docs/adr/0022-monorepo-kit-plugin-chain.md)              | monorepo-kit 判定改为嵌套 `run` 链                            | 修改检查协议、判定插件的组合方式、`runner/` 或门禁入口的组链            |
+| [0023](docs/adr/0023-layout-controlled-mobile.md)               | Layout 移动端状态由应用受控驱动                               | 修改 layout `mobile` 契约、应用侧视口订阅或断点选择                     |
 
 ## 已知边界
 

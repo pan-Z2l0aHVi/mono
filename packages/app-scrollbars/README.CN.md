@@ -6,8 +6,6 @@
 
 ## 提供什么
 
-这是 workspace 应用共用的覆盖式滚动条配置。
-
 `@greypan/web-ui` 不依赖它。Web UI 组件使用原生 CSS 滚动条和 `--wui-scrollbar-handle` token。
 
 `overlayscrollbars` 来自 workspace catalog，因此随包提供的 CSS 与各应用使用的运行时版本一致。

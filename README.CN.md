@@ -4,7 +4,7 @@
 
 [English](./README.md) | 简体中文
 
-本仓库包含跨端、跨技术栈的代码、设计资源与文档，以及 npm 包、workspace 工具和集成应用，可直接配合 Claude、Codex、OpenCode 等 agent 工具使用。按需选择包，再阅读对应 README 了解安装、用法与 API。
+本仓库包含 npm 包、workspace 工具和集成应用，可直接配合 Claude、Codex、OpenCode 等 agent 工具使用。按需选择包，再阅读对应 README 了解安装、用法与 API。
 
 ## 发布到 npm 的包
 

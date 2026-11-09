@@ -4,7 +4,7 @@
 
 English | [简体中文](./README.CN.md)
 
-This repository contains code, design resources, and docs across platforms and stacks, plus npm packages, workspace tooling, and integration apps. It is set up to work with agent tools such as Claude, Codex, and OpenCode.
+This repository contains npm packages, workspace tooling, and integration apps. It is set up to work with agent tools such as Claude, Codex, and OpenCode. Pick a package and read its README for installation, usage, and API.
 
 ## Published packages
 
