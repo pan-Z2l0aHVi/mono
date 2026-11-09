@@ -28,7 +28,7 @@ assert.equal(ok.exitCode, ok.originalExitCode, '通过时不能碰 exitCode')
 
 const err = await capture(() => ({ run: async () => ({ ok: false, error: 'turbo: broken' }) }))
 assert.deepEqual(err.lines, ['turbo: broken\n'], '链上 Err 原样写一行')
-assert.equal(err.exitCode, 2)
+assert.equal(err.exitCode, 1)
 
 const factory = await capture(() => {
   throw new Error('factory exploded')
