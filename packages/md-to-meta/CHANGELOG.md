@@ -2,6 +2,12 @@
 
 > 0.2.1 及更早的记录属于本包的前身 `@greypan/md-to-comp`，编号与内容按当时的接口解释。
 
+## 0.1.0
+
+### Minor Changes
+
+- 85b5052: Export the generated-HTML contract (`LINE_NUMBER_CLASS`, `MDM_*` class constants, `lineCountOf`) from the new `./contract` subpath so hosts consume typed symbols instead of hard-coded class names, and add a headless `md-to-meta` bin (`md-to-meta check|write <app-dir>`) that owns the config import once; the repo check/regenerate scripts become thin forwarders and the Vite plugin resolves its check/write mode through an explicit parameter.
+
 ## 0.0.2
 
 ### Patch Changes

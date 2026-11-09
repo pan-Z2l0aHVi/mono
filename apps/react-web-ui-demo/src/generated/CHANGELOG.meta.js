@@ -4,8 +4,74 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "@greypan/web-ui" },
-  { label: 'h2', id: 'section-2', content: "12.2.0" },
+  { label: 'h2', id: 'section-2', content: "12.3.0" },
   { label: 'h3', id: 'section-3', content: "Minor Changes" },
+  {
+    label: 'ul',
+    children: [
+    { label: 'li', content: "f27a2c1: Allow configuring the default autocomplete input, including clear and prefix/suffix content." },
+    {
+      label: 'li',
+      children: [
+      { label: 'p', content: "f27a2c1: Make the layout mobile mode a controlled boolean property. Applications provide the viewport state and no longer receive <code>mobile-change</code>." },
+      { label: 'p', content: "Removing <code>mobile-change</code> and turning <code>mobile</code> into a caller-provided input is breaking; no known external consumers are affected, so it ships as a minor." }
+      ]
+    },
+    { label: 'li', content: "f27a2c1: Change the default <code>web-ui-icon</code> size from 18px to 16px. Set <code>size</code> explicitly to retain 18px icons." },
+    { label: 'li', content: "f27a2c1: Make overlay dismissal follow enabled triggers: outside clicks require <code>click</code>, and focus loss requires <code>focus</code>. Escape remains available for all non-manual overlays." },
+    { label: 'li', content: "f27a2c1: Add a helper for arrow-key navigation between an input and links in a popover." },
+    { label: 'li', content: "f27a2c1: Allow input autofill hints and configurable popover panel padding." },
+    { label: 'li', content: "f27a2c1: Default tooltip triggers to hover only. Hover-only tooltips close when the pointer leaves even if the trigger remains focused. Set <code>trigger=\"hover focus\"</code> to also show tooltips on keyboard focus and keep them open while focused." },
+    {
+      label: 'li',
+      children: [
+      { label: 'p', content: "f05a76b: Add a <code>separator</code> prop to <code>web-ui-grouped-text</code> that renders a display delimiter between groups. The separator is rendered as CSS generated content (<code>::after</code> fed by <code>content: attr()</code>), never entering the text nodes, so copy, in-page find, double-click word selection and per-character selection still yield the original continuous string. Default is an empty string, which renders node for node identically to before." },
+      { label: 'p', content: "<code>@greypan/web-ui/icons</code> now also exports <code>iconGallery</code>, a <code>Record&lt;string, IconifyIcon></code> aggregating every icon currently shipped by the whitelist generator, keyed by the same camelCase names as the named exports. It is a standalone named export: importing single icons stays tree-shakeable, and only callers that import <code>iconGallery</code> pull in the full set." }
+      ]
+    },
+    { label: 'li', content: "53fa534: Gate every overlay's automatic opening on content presence. <code>web-ui-autocomplete</code> now keeps its panel open whenever there is anything to show — a matching candidate or any other node in the <code>default</code> slot — instead of closing as soon as no candidate matches. <code>web-ui-select</code>, <code>web-ui-dropdown</code>, <code>web-ui-popover</code> and <code>web-ui-tooltip</code> use the same rule: opening gestures do nothing when the panel has nothing to show. <code>show()</code> and writing <code>open</code> still open an empty panel, content added while closed does not open it, and clearing the last content while open collapses the panel immediately without an exit transition. Non-option content in the autocomplete and select <code>default</code> slot counts as panel content, so authors can render a custom empty state there." },
+    {
+      label: 'li',
+      children: [
+      { label: 'p', content: "53fa534: Redesign <code>trigger</code> across the overlay family (<code>web-ui-tooltip</code>, <code>web-ui-popover</code>, <code>web-ui-dropdown</code>, <code>web-ui-select</code>, <code>web-ui-autocomplete</code>) and route every open and close through one shared state machine, <code>defineTriggerController</code>, which replaces <code>defineTriggerGestures</code>." },
+      { label: 'p', content: "The vocabulary is <code>click</code>, <code>hover</code>, <code>focus</code> and <code>none</code>, written space- or comma-separated; the property reads back comma-separated (<code>hover,focus</code>). Unknown tokens are dropped, a value naming no known gesture falls back to the component default, and <code>none</code> is exclusive with the gestures — it wins and a development warning is logged. <code>trigger</code> is string-only: the array form accepted by 12.2.0 no longer applies, and the former <code>manual</code> literal is now an unknown token. <code>none</code> means \"programmatic only\": no gesture opens or closes the layer, outside clicks, Escape and focus loss leave it alone, and the layer does not intercept Escape. <code>web-ui-context-menu</code> has no <code>trigger</code> prop, so right-click and long-press stay dedicated." },
+      { label: 'p', content: "All five components expose <code>show-delay</code> / <code>hide-delay</code> (defaults 200ms / 100ms). The delays apply only to hover-originated opens and closes; click, focus, outside-click, Escape and programmatic calls act immediately. Focus opens on <code>:focus-visible</code>, and focus loss closes every non-<code>none</code> layer. Hover closes only after the pointer has left both the trigger and the panel and focus is outside them, and touch pointers do not trigger hover. Clicking the autocomplete input only opens the panel, never closes it." },
+      { label: 'p', content: "<code>open</code> remains declarative and silent. <code>show()</code>, <code>hide()</code> and <code>toggle()</code> are the imperative entry points and now dispatch <code>open-change</code> on every component; gestures and internal closes dispatch the same event, and <code>detail</code> stays <code>{ open }</code>. On <code>web-ui-dropdown</code>, <code>show()</code> / <code>hide()</code> replace the removed <code>openMenu()</code> / <code>closeAll()</code>. <code>web-ui-select</code> renames its appearance prop from <code>trigger=\"label\"|\"icon\"</code> to <code>variant=\"label\"|\"icon\"</code>." },
+      { label: 'p', content: "Removing <code>manual</code>, the array form, <code>openMenu()</code> / <code>closeAll()</code> and the select <code>trigger</code> appearance is breaking; no known external consumers are affected, so it ships as a minor." }
+      ]
+    }
+    ]
+  },
+  { label: 'h3', id: 'section-4', content: "Patch Changes" },
+  {
+    label: 'ul',
+    children: [
+    { label: 'li', content: "f27a2c1: Export the CI settings-future icon." },
+    { label: 'li', content: "f27a2c1: Add house and shopping cart icons for navigation interfaces.\nUpdate demo copy feedback to replay on activation." },
+    { label: 'li', content: "f27a2c1: Add the <code>tabler:tag-plus</code> icon to the icon exports." },
+    { label: 'li', content: "f4e47c9: Rewrite change-narration comments as current-state statements per the code-style rules. Comment-only change: no behavior, API, or shipped-CSS value changes." },
+    { label: 'li', content: "f27a2c1: Export the Tabler clock-plus icon." },
+    { label: 'li', content: "f27a2c1: Protect theme reveals from repeated user input without requiring consumer-side state or disabled styling." },
+    { label: 'li', content: "53fa534: Fix <code>web-ui-grouped-text</code> separator spacing: the gap at each group boundary is now split into equal halves around the separator, so the separator sits centered between the two groups instead of hugging the preceding text." },
+    { label: 'li', content: "53fa534: Unify keyboard active styling with hover for <code>web-ui-option</code> and <code>web-ui-dropdown-item</code>: keyboard navigation now applies the same subtle neutral background as hover instead of the accent background with inverted text." },
+    { label: 'li', content: "Updated dependencies [7eefb10]" },
+    {
+      label: 'li',
+      children: [
+      { label: 'p', content: "Updated dependencies [f4e47c9]" },
+      {
+        label: 'ul',
+        children: [
+        { label: 'li', content: "@greypan/js-kit@3.2.0" },
+        { label: 'li', content: "@greypan/browser-kit@3.1.1" }
+        ]
+      }
+      ]
+    }
+    ]
+  },
+  { label: 'h2', id: 'section-5', content: "12.2.0" },
+  { label: 'h3', id: 'section-6', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -36,15 +102,15 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-4', content: "Patch Changes" },
+  { label: 'h3', id: 'section-7', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "009b99a: Stop <code>&lt;web-ui-autocomplete></code> from fading out an empty dropdown panel. Typing text that matches no option used to collapse the panel to the height of its own padding first and then fade that strip away, which read as a flicker followed by a leftover shadow under the input. A close with nothing left to show now hides the panel on the spot. Closes that still have visible options — Escape, losing focus, clicking outside, picking an option — keep the exit transition." }
     ]
   },
-  { label: 'h2', id: 'section-5', content: "12.1.0" },
-  { label: 'h3', id: 'section-6', content: "Minor Changes" },
+  { label: 'h2', id: 'section-8', content: "12.1.0" },
+  { label: 'h3', id: 'section-9', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -64,7 +130,7 @@ const meta = [
     { label: 'li', content: "0e77c22: Export <code>icRoundMenuOpen</code>, switch the desktop collapse Toggle to the <code>ghost</code> variant with the menu-open icon (mirrored while collapsed), and set the collapse defaults to a <code>60px</code> sidebar with a <code>36px</code> Toggle." }
     ]
   },
-  { label: 'h3', id: 'section-7', content: "Patch Changes" },
+  { label: 'h3', id: 'section-10', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -72,23 +138,23 @@ const meta = [
     { label: 'li', content: "@greypan/browser-kit@3.1.0" }
     ]
   },
-  { label: 'h2', id: 'section-8', content: "12.0.1" },
-  { label: 'h3', id: 'section-9', content: "Patch Changes" },
+  { label: 'h2', id: 'section-11', content: "12.0.1" },
+  { label: 'h3', id: 'section-12', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "334a2df: Point the dangling ADR numbers in collapse/drawer/overlay/group-management comments at ADRs that resolve today, or drop them; the doc comments shipped in the generated <code>.d.ts</code> change with it." }
     ]
   },
-  { label: 'h2', id: 'section-10', content: "12.0.0" },
-  { label: 'h3', id: 'section-11', content: "Major Changes" },
+  { label: 'h2', id: 'section-13', content: "12.0.0" },
+  { label: 'h3', id: 'section-14', content: "Major Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "137c540: Remove the <code>@greypan/web-ui/scrollbars</code> and <code>@greypan/web-ui/scrollbars.css</code> subpaths and the optional <code>overlayscrollbars</code> peer dependency. Scrollbars are native CSS now: <code>web-ui-theme</code> exposes <code>--wui-scrollbar-handle</code>, components read it inside their shadow roots through <code>scrollbar-color</code> / <code>scrollbar-width</code>, and the outermost theme mirrors the token to <code>documentElement</code> so <code>html { scrollbar-color: var(--wui-scrollbar-handle) transparent }</code> themes the document scroll container." }
     ]
   },
-  { label: 'h3', id: 'section-12', content: "Minor Changes" },
+  { label: 'h3', id: 'section-15', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -112,7 +178,7 @@ const meta = [
     { label: 'li', content: "8cb3f56: Add <code>no-sidebar</code> to <code>web-ui-layout</code>: when set, the component renders no desktop aside, collapse Toggle, resize handle, mobile header Toggle, or Drawer, leaving the banner, header, content, and tabbar regions only. The <code>sidebar</code> slot is not rendered while consumer nodes stay in the light DOM." }
     ]
   },
-  { label: 'h3', id: 'section-13', content: "Patch Changes" },
+  { label: 'h3', id: 'section-16', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -139,8 +205,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-14', content: "11.2.0" },
-  { label: 'h3', id: 'section-15', content: "Minor Changes" },
+  { label: 'h2', id: 'section-17', content: "11.2.0" },
+  { label: 'h3', id: 'section-18', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -175,8 +241,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-16', content: "11.1.0" },
-  { label: 'h3', id: 'section-17', content: "Minor Changes" },
+  { label: 'h2', id: 'section-19', content: "11.1.0" },
+  { label: 'h3', id: 'section-20', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -201,7 +267,7 @@ const meta = [
     { label: 'li', content: "fea85a3: Add a <code>color</code> property to <code>web-ui-spinner</code> and make its default follow the theme text-secondary color." }
     ]
   },
-  { label: 'h3', id: 'section-18', content: "Patch Changes" },
+  { label: 'h3', id: 'section-21', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -256,8 +322,8 @@ const meta = [
     { label: 'li', content: "893f76a: Add radiogroup semantics, accessible naming, and arrow-key navigation to radio groups." }
     ]
   },
-  { label: 'h2', id: 'section-19', content: "11.0.0" },
-  { label: 'h3', id: 'section-20', content: "Major Changes" },
+  { label: 'h2', id: 'section-22', content: "11.0.0" },
+  { label: 'h3', id: 'section-23', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -287,8 +353,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-21', content: "10.2.1" },
-  { label: 'h3', id: 'section-22', content: "Patch Changes" },
+  { label: 'h2', id: 'section-24', content: "10.2.1" },
+  { label: 'h3', id: 'section-25', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -310,8 +376,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-23', content: "10.2.0" },
-  { label: 'h3', id: 'section-24', content: "Minor Changes" },
+  { label: 'h2', id: 'section-26', content: "10.2.0" },
+  { label: 'h3', id: 'section-27', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -324,15 +390,15 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-25', content: "Patch Changes" },
+  { label: 'h3', id: 'section-28', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "3f185aa: Fix which side <code>&lt;web-ui-context-menu></code> opens a submenu on. The left/right decision read the panel's <code>getBoundingClientRect()</code> width, but the panel is always measured before it has animated into place, while its presence <code>transform: scale(var(--wui-scale-enter))</code> is still applied — so the reading was a fraction of the real width, and a submenu that did not fit to the right could be judged as fitting and open on the wrong side. Both the fresh-open path and the reopen-while-closing path were affected." }
     ]
   },
-  { label: 'h2', id: 'section-26', content: "10.1.2" },
-  { label: 'h3', id: 'section-27', content: "Patch Changes" },
+  { label: 'h2', id: 'section-29', content: "10.1.2" },
+  { label: 'h3', id: 'section-30', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -377,8 +443,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-28', content: "10.1.1" },
-  { label: 'h3', id: 'section-29', content: "Patch Changes" },
+  { label: 'h2', id: 'section-31', content: "10.1.1" },
+  { label: 'h3', id: 'section-32', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -447,8 +513,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-30', content: "10.1.0" },
-  { label: 'h3', id: 'section-31', content: "Minor Changes" },
+  { label: 'h2', id: 'section-33', content: "10.1.0" },
+  { label: 'h3', id: 'section-34', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -461,8 +527,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-32', content: "10.0.0" },
-  { label: 'h3', id: 'section-33', content: "Major Changes" },
+  { label: 'h2', id: 'section-35', content: "10.0.0" },
+  { label: 'h3', id: 'section-36', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -496,8 +562,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-34', content: "9.1.0" },
-  { label: 'h3', id: 'section-35', content: "Minor Changes" },
+  { label: 'h2', id: 'section-37', content: "9.1.0" },
+  { label: 'h3', id: 'section-38', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -533,7 +599,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-36', content: "Patch Changes" },
+  { label: 'h3', id: 'section-39', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -590,8 +656,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-37', content: "9.0.0" },
-  { label: 'h3', id: 'section-38', content: "Major Changes" },
+  { label: 'h2', id: 'section-40', content: "9.0.0" },
+  { label: 'h3', id: 'section-41', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -697,7 +763,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-39', content: "Minor Changes" },
+  { label: 'h3', id: 'section-42', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -835,7 +901,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-40', content: "Patch Changes" },
+  { label: 'h3', id: 'section-43', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -1093,8 +1159,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-41', content: "8.1.0" },
-  { label: 'h3', id: 'section-42', content: "Minor Changes" },
+  { label: 'h2', id: 'section-44', content: "8.1.0" },
+  { label: 'h3', id: 'section-45', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -1150,7 +1216,7 @@ const meta = [
     { label: 'li', content: "ed2652b: Expose <code>&lt;web-ui-theme></code>'s resolved color scheme as the read-only reflected <code>resolved-appearance</code> attribute and <code>resolvedAppearance</code> property. The value is always <code>light</code> or <code>dark</code>: explicit appearances pass through, <code>system</code> follows <code>prefers-color-scheme</code> and updates live on OS flips, and a missing <code>appearance</code> reports the default <code>light</code>. The component owns and restores the attribute, so consumers can bind CSS selectors or Tailwind custom variants to it without maintaining a second theme state; existing View Transition behavior is unchanged." }
     ]
   },
-  { label: 'h3', id: 'section-43', content: "Patch Changes" },
+  { label: 'h3', id: 'section-46', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -1178,8 +1244,8 @@ const meta = [
     { label: 'li', content: "ed2652b: Skip the active view transition on first pointer interaction so hit-testing stops targeting the document element during theme switch." }
     ]
   },
-  { label: 'h2', id: 'section-44', content: "8.0.0" },
-  { label: 'h3', id: 'section-45', content: "Major Changes" },
+  { label: 'h2', id: 'section-47', content: "8.0.0" },
+  { label: 'h3', id: 'section-48', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -1205,7 +1271,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-46', content: "Minor Changes" },
+  { label: 'h3', id: 'section-49', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -1225,7 +1291,7 @@ const meta = [
     { label: 'li', content: "62bdbec: <code>&lt;web-ui-theme></code> now mirrors the computed <code>--wui-color-page</code> of its outermost active instance onto <code>document.documentElement</code> as an inline custom property. Custom properties stop inheriting at the document element, so a consumer rule such as <code>body { background: var(--wui-color-page) }</code> colored only the scrollable area and left the canvas behind an overscroll bounce at the user-agent background; with the mirrored property the bounce area follows the theme. The value is written when a theme connects and whenever its appearance changes, including <code>appearance=\"system\"</code> following an OS light/dark flip, and it is the theme's computed value, so an override on the host is mirrored as it stands. Nested themes never write the root value; ownership follows connect order and passes to the next connected theme when the outermost one disconnects, and the value is deliberately kept rather than removed when the last theme disconnects so a page that swaps themes does not flash back to the user-agent background." }
     ]
   },
-  { label: 'h3', id: 'section-47', content: "Patch Changes" },
+  { label: 'h3', id: 'section-50', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -1268,8 +1334,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-48', content: "7.0.0" },
-  { label: 'h3', id: 'section-49', content: "Major Changes" },
+  { label: 'h2', id: 'section-51', content: "7.0.0" },
+  { label: 'h3', id: 'section-52', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -1289,7 +1355,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-50', content: "Minor Changes" },
+  { label: 'h3', id: 'section-53', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -1396,7 +1462,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-51', content: "Patch Changes" },
+  { label: 'h3', id: 'section-54', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -1489,8 +1555,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-52', content: "6.4.0" },
-  { label: 'h3', id: 'section-53', content: "Minor Changes" },
+  { label: 'h2', id: 'section-55', content: "6.4.0" },
+  { label: 'h3', id: 'section-56', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -1531,15 +1597,15 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-54', content: "Patch Changes" },
+  { label: 'h3', id: 'section-57', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "4151251: Flatten the pressed and dragging shadow of <code>switch</code>, <code>segmented</code> and <code>slider</code> to a single soft <code>0 2px 20px rgb(0 0 0 / 0.2)</code> layer, replacing the previous three-layer stack. All three now share the same pressed composition: <code>switch</code> and <code>slider</code> keep the rest of their values, and <code>segmented</code> picks up the inset highlight stroke the other two already had. A pressed thumb or indicator reads as one flat lift instead of a deep stack." }
     ]
   },
-  { label: 'h2', id: 'section-55', content: "6.3.1" },
-  { label: 'h3', id: 'section-56', content: "Patch Changes" },
+  { label: 'h2', id: 'section-58', content: "6.3.1" },
+  { label: 'h3', id: 'section-59', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -1552,8 +1618,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-57', content: "6.3.0" },
-  { label: 'h3', id: 'section-58', content: "Minor Changes" },
+  { label: 'h2', id: 'section-60', content: "6.3.0" },
+  { label: 'h3', id: 'section-61', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -1572,7 +1638,7 @@ const meta = [
     { label: 'li', content: "a00fc1b: Retire <code>--wui-duration-menu-enter/exit</code> and <code>--wui-duration-overlay-enter/exit</code> in favor of dedicated motion tokens. Floating panels (popover, tooltip, select, autocomplete, menu portal) now use <code>--wui-duration-float-enter: 160ms</code> and <code>--wui-duration-float-exit: 120ms</code>; toast uses <code>--wui-duration-toast-enter: 280ms</code> and <code>--wui-duration-toast-exit: 200ms</code>. Floating-panel enter/exit motion becomes faster, so this is a minor behavior change." }
     ]
   },
-  { label: 'h3', id: 'section-59', content: "Patch Changes" },
+  { label: 'h3', id: 'section-62', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -1690,8 +1756,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-60', content: "6.2.0" },
-  { label: 'h3', id: 'section-61', content: "Minor Changes" },
+  { label: 'h2', id: 'section-63', content: "6.2.0" },
+  { label: 'h3', id: 'section-64', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -1710,7 +1776,7 @@ const meta = [
     { label: 'li', content: "e063e5e: Retire <code>--wui-duration-menu-enter/exit</code> and <code>--wui-duration-overlay-enter/exit</code> in favor of dedicated motion tokens. Floating panels (popover, tooltip, select, autocomplete, menu portal) now use <code>--wui-duration-float-enter: 160ms</code> and <code>--wui-duration-float-exit: 120ms</code>; toast uses <code>--wui-duration-toast-enter: 280ms</code> and <code>--wui-duration-toast-exit: 200ms</code>. Floating-panel enter/exit motion becomes faster, so this is a minor behavior change." }
     ]
   },
-  { label: 'h3', id: 'section-62', content: "Patch Changes" },
+  { label: 'h3', id: 'section-65', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -1828,8 +1894,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-63', content: "Unreleased" },
-  { label: 'h3', id: 'section-64', content: "Minor Changes" },
+  { label: 'h2', id: 'section-66', content: "Unreleased" },
+  { label: 'h3', id: 'section-67', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -1840,7 +1906,7 @@ const meta = [
     { label: 'li', content: "Expose drawer section padding tokens: <code>--wui-drawer-header-padding</code> (default <code>16px 20px</code>), <code>--wui-drawer-content-padding</code> (default <code>20px</code>), <code>--wui-drawer-footer-padding</code> (default <code>16px 20px</code>). The content padding token also drives the drag bar visual center via <code>calc(var(--wui-drawer-content-padding) / 2)</code>, so changing content padding automatically repositions the drag bar." }
     ]
   },
-  { label: 'h3', id: 'section-65', content: "Patch Changes" },
+  { label: 'h3', id: 'section-68', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -1852,8 +1918,8 @@ const meta = [
     { label: 'li', content: "Reduce slider thumb default dimensions: width <code>30px</code> → <code>24px</code>, height <code>20px</code> → <code>18px</code>. Add <code>--wui-slider-thumb-radius</code> token (default <code>8px</code>) replacing the auto-derived pill shape. Glass corner radius now uses this token instead of <code>calc(min(width, height) / 2)</code>." }
     ]
   },
-  { label: 'h2', id: 'section-66', content: "6.1.0" },
-  { label: 'h3', id: 'section-67', content: "Minor Changes" },
+  { label: 'h2', id: 'section-69', content: "6.1.0" },
+  { label: 'h3', id: 'section-70', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -1898,7 +1964,7 @@ const meta = [
     { label: 'li', content: "d0a9f32: Add semantic radius tokens <code>--wui-radius-control</code> (pill), <code>--wui-radius-menu</code> (18px) and <code>--wui-radius-overlay</code> (28px) to <code>&lt;web-ui-theme></code>; migrate control/menu/overlay components to them. <code>--wui-drawer-radius</code> and <code>--wui-layout-sidebar-radius</code> now default to <code>--wui-radius-overlay</code> (sidebar default 24px → 28px; dialog 32px → 28px; menu panels, textarea and toast 20px → 18px). Non-pill glass surfaces drive <code>--wui-glass-corner-radius</code> from their semantic radius so border lighting follows token overrides; pill controls keep a finite physical-size-derived corner. Checkbox, avatar square and empty icon shapes stay component-internal (6/12/16px)." }
     ]
   },
-  { label: 'h3', id: 'section-68', content: "Patch Changes" },
+  { label: 'h3', id: 'section-71', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -1936,8 +2002,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-69', content: "6.0.0" },
-  { label: 'h3', id: 'section-70', content: "Major Changes" },
+  { label: 'h2', id: 'section-72', content: "6.0.0" },
+  { label: 'h3', id: 'section-73', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -1956,7 +2022,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-71', content: "Minor Changes" },
+  { label: 'h3', id: 'section-74', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -2104,7 +2170,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-72', content: "Patch Changes" },
+  { label: 'h3', id: 'section-75', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -2268,8 +2334,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-73', content: "5.0.0" },
-  { label: 'h3', id: 'section-74', content: "Major Changes" },
+  { label: 'h2', id: 'section-76', content: "5.0.0" },
+  { label: 'h3', id: 'section-77', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -2288,7 +2354,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-75', content: "Minor Changes" },
+  { label: 'h3', id: 'section-78', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -2436,7 +2502,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-76', content: "Patch Changes" },
+  { label: 'h3', id: 'section-79', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -2584,8 +2650,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-77', content: "4.0.0" },
-  { label: 'h3', id: 'section-78', content: "Major Changes" },
+  { label: 'h2', id: 'section-80', content: "4.0.0" },
+  { label: 'h3', id: 'section-81', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -2614,7 +2680,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-79', content: "Patch Changes" },
+  { label: 'h3', id: 'section-82', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -2635,8 +2701,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-80', content: "3.0.1" },
-  { label: 'h3', id: 'section-81', content: "Patch Changes" },
+  { label: 'h2', id: 'section-83', content: "3.0.1" },
+  { label: 'h3', id: 'section-84', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -2656,8 +2722,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-82', content: "3.0.0" },
-  { label: 'h3', id: 'section-83', content: "Major Changes" },
+  { label: 'h2', id: 'section-85', content: "3.0.0" },
+  { label: 'h3', id: 'section-86', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -2671,7 +2737,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-84', content: "Minor Changes" },
+  { label: 'h3', id: 'section-87', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -2685,15 +2751,15 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-85', content: "Patch Changes" },
+  { label: 'h3', id: 'section-88', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "28a8dc5: 修复 Select、Autocomplete 和 Dropdown overlay 的宽度计算，以及 menu overlay 在主题作用域内的挂载行为，避免长 option 文本裁切和主题样式失效。同步优化 Overlay、Portal 与 Scroll Lock 的共享实现，统一生命周期工厂模式并整理测试目录。" }
     ]
   },
-  { label: 'h2', id: 'section-86', content: "2.1.8" },
-  { label: 'h3', id: 'section-87', content: "Patch Changes" },
+  { label: 'h2', id: 'section-89', content: "2.1.8" },
+  { label: 'h3', id: 'section-90', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -2713,24 +2779,24 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-88', content: "2.1.7" },
-  { label: 'h3', id: 'section-89', content: "Patch Changes" },
+  { label: 'h2', id: 'section-91', content: "2.1.7" },
+  { label: 'h3', id: 'section-92', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "fa0f989: fix(select): portal 模式未打开时 trigger 显示已选值" }
     ]
   },
-  { label: 'h2', id: 'section-90', content: "2.1.6" },
-  { label: 'h3', id: 'section-91', content: "Patch Changes" },
+  { label: 'h2', id: 'section-93', content: "2.1.6" },
+  { label: 'h3', id: 'section-94', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "8d9d809: fix web-ui css token" }
     ]
   },
-  { label: 'h2', id: 'section-92', content: "2.1.5" },
-  { label: 'h3', id: 'section-93', content: "Patch Changes" },
+  { label: 'h2', id: 'section-95', content: "2.1.5" },
+  { label: 'h3', id: 'section-96', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -2748,8 +2814,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-94', content: "2.1.4" },
-  { label: 'h3', id: 'section-95', content: "Patch Changes" },
+  { label: 'h2', id: 'section-97', content: "2.1.4" },
+  { label: 'h3', id: 'section-98', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -2769,63 +2835,63 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-96', content: "2.1.3" },
-  { label: 'h3', id: 'section-97', content: "Patch Changes" },
+  { label: 'h2', id: 'section-99', content: "2.1.3" },
+  { label: 'h3', id: 'section-100', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "5c70639: provide back-top position css var" }
     ]
   },
-  { label: 'h2', id: 'section-98', content: "2.1.2" },
-  { label: 'h3', id: 'section-99', content: "Patch Changes" },
+  { label: 'h2', id: 'section-101', content: "2.1.2" },
+  { label: 'h3', id: 'section-102', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "7db6d3e: Standardize Custom Element boolean attributes and replace default-true properties with semantic opt-out attributes." }
     ]
   },
-  { label: 'h2', id: 'section-100', content: "2.1.1" },
-  { label: 'h3', id: 'section-101', content: "Patch Changes" },
+  { label: 'h2', id: 'section-103', content: "2.1.1" },
+  { label: 'h3', id: 'section-104', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "45a2f38: udpate readme" }
     ]
   },
-  { label: 'h2', id: 'section-102', content: "2.1.0" },
-  { label: 'h3', id: 'section-103', content: "Minor Changes" },
+  { label: 'h2', id: 'section-105', content: "2.1.0" },
+  { label: 'h3', id: 'section-106', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "fff1c60: Correct React Custom Element event typings to use exact JSX keys such as <code>onopen-change</code> and <code>ontoast-close</code>.\nThe previously generated camel-cased keys such as <code>onOpenChange</code> did not match the event dispatched at runtime." }
     ]
   },
-  { label: 'h3', id: 'section-104', content: "Patch Changes" },
+  { label: 'h3', id: 'section-107', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "fff1c60: Make Checkbox Group, Radio Group, and Segmented disabled state inherited without changing child <code>disabled</code> properties. Effective disabled child controls now expose <code>aria-disabled</code> and leave the tab sequence." }
     ]
   },
-  { label: 'h2', id: 'section-105', content: "2.0.2" },
-  { label: 'h3', id: 'section-106', content: "Patch Changes" },
+  { label: 'h2', id: 'section-108', content: "2.0.2" },
+  { label: 'h3', id: 'section-109', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "384c683: some components add user select none" }
     ]
   },
-  { label: 'h2', id: 'section-107', content: "2.0.1" },
-  { label: 'h3', id: 'section-108', content: "Patch Changes" },
+  { label: 'h2', id: 'section-110', content: "2.0.1" },
+  { label: 'h3', id: 'section-111', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "8768a2b: some components add user select none" }
     ]
   },
-  { label: 'h2', id: 'section-109', content: "2.0.0" },
-  { label: 'h3', id: 'section-110', content: "Major Changes" },
+  { label: 'h2', id: 'section-112', content: "2.0.0" },
+  { label: 'h3', id: 'section-113', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -2833,15 +2899,15 @@ const meta = [
       label: 'li',
       children: [
       { label: 'p', content: "0a50d35: 全量契约收敛：统一 Pointer Events、公开事件模型、原生表单关联、公开契约测试。" },
-      { label: 'h2', id: 'section-111', content: "破坏性变更" },
-      { label: 'h3', id: 'section-112', content: "属性重命名" },
+      { label: 'h2', id: 'section-114', content: "破坏性变更" },
+      { label: 'h3', id: 'section-115', content: "属性重命名" },
       {
         label: 'ul',
         children: [
         { label: 'li', content: "<strong>Switch</strong>: <code>open</code> 属性更名为 <code>checked</code>（表示 switch 状态，不再是可见性）" }
         ]
       },
-      { label: 'h3', id: 'section-113', content: "事件变更" },
+      { label: 'h3', id: 'section-116', content: "事件变更" },
       {
         label: 'ul',
         children: [
@@ -2851,14 +2917,14 @@ const meta = [
         { label: 'li', content: "<strong>BackTop</strong>: 移除 <code>visible-change</code>（scroll 驱动可见性是内部行为）" }
         ]
       },
-      { label: 'h3', id: 'section-114', content: "方法移除" },
+      { label: 'h3', id: 'section-117', content: "方法移除" },
       {
         label: 'ul',
         children: [
         { label: 'li', content: "<strong>Switch</strong>: 移除 <code>show()</code>、<code>close()</code> 方法（不再有可见性概念）" }
         ]
       },
-      { label: 'h3', id: 'section-115', content: "Pointer Events 迁移" },
+      { label: 'h3', id: 'section-118', content: "Pointer Events 迁移" },
       {
         label: 'ul',
         children: [
@@ -2866,7 +2932,7 @@ const meta = [
         { label: 'li', content: "<strong>Input, Slider</strong>: <code>mousedown</code> 替换为 <code>pointerdown</code>" }
         ]
       },
-      { label: 'h3', id: 'section-116', content: "新增表单行为" },
+      { label: 'h3', id: 'section-119', content: "新增表单行为" },
       {
         label: 'ul',
         children: [
@@ -2874,7 +2940,7 @@ const meta = [
         { label: 'li', content: "新增 <code>name</code>、<code>required</code> 属性（input, textarea, input-number, select, slider, checkbox, radio, switch, segmented, checkbox-group, radio-group）" }
         ]
       },
-      { label: 'h3', id: 'section-117', content: "类型变更" },
+      { label: 'h3', id: 'section-120', content: "类型变更" },
       {
         label: 'ul',
         children: [
@@ -2882,7 +2948,7 @@ const meta = [
         { label: 'li', content: "移除 <code>onUpdateChecked</code>、<code>onValueChanged</code>、<code>onVisibleChange</code> 事件监听器类型" }
         ]
       },
-      { label: 'h3', id: 'section-118', content: "运行时规范化" },
+      { label: 'h3', id: 'section-121', content: "运行时规范化" },
       {
         label: 'ul',
         children: [
@@ -2893,15 +2959,15 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-119', content: "Patch Changes" },
+  { label: 'h3', id: 'section-122', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "26ca421: fix context-menu click-outside test for jsdom 30 compatibility" }
     ]
   },
-  { label: 'h2', id: 'section-120', content: "1.4.2" },
-  { label: 'h3', id: 'section-121', content: "Patch Changes" },
+  { label: 'h2', id: 'section-123', content: "1.4.2" },
+  { label: 'h3', id: 'section-124', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -2923,8 +2989,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-122', content: "1.4.1" },
-  { label: 'h3', id: 'section-123', content: "Patch Changes" },
+  { label: 'h2', id: 'section-125', content: "1.4.1" },
+  { label: 'h3', id: 'section-126', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -2944,8 +3010,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-124', content: "1.4.0" },
-  { label: 'h3', id: 'section-125', content: "Minor Changes" },
+  { label: 'h2', id: 'section-127', content: "1.4.0" },
+  { label: 'h3', id: 'section-128', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -2968,7 +3034,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-126', content: "Patch Changes" },
+  { label: 'h3', id: 'section-129', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -2987,8 +3053,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-127', content: "1.3.1" },
-  { label: 'h3', id: 'section-128', content: "Patch Changes" },
+  { label: 'h2', id: 'section-130', content: "1.3.1" },
+  { label: 'h3', id: 'section-131', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -3008,15 +3074,15 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-129', content: "1.3.0" },
-  { label: 'h3', id: 'section-130', content: "Minor Changes" },
+  { label: 'h2', id: 'section-132', content: "1.3.0" },
+  { label: 'h3', id: 'section-133', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "a4e7f9b: vp monorepo standardization" }
     ]
   },
-  { label: 'h3', id: 'section-131', content: "Patch Changes" },
+  { label: 'h3', id: 'section-134', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -3035,8 +3101,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-132', content: "1.2.4" },
-  { label: 'h3', id: 'section-133', content: "Patch Changes" },
+  { label: 'h2', id: 'section-135', content: "1.2.4" },
+  { label: 'h3', id: 'section-136', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -3056,8 +3122,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-134', content: "1.2.3" },
-  { label: 'h3', id: 'section-135', content: "Patch Changes" },
+  { label: 'h2', id: 'section-137', content: "1.2.3" },
+  { label: 'h3', id: 'section-138', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -3078,8 +3144,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-136', content: "1.2.2" },
-  { label: 'h3', id: 'section-137', content: "Patch Changes" },
+  { label: 'h2', id: 'section-139', content: "1.2.2" },
+  { label: 'h3', id: 'section-140', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -3098,8 +3164,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-138', content: "1.2.1" },
-  { label: 'h3', id: 'section-139', content: "Patch Changes" },
+  { label: 'h2', id: 'section-141', content: "1.2.1" },
+  { label: 'h3', id: 'section-142', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -3118,15 +3184,15 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-140', content: "1.2.0" },
-  { label: 'h3', id: 'section-141', content: "Minor Changes" },
+  { label: 'h2', id: 'section-143', content: "1.2.0" },
+  { label: 'h3', id: 'section-144', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "8944472: Improve engineering structures" }
     ]
   },
-  { label: 'h3', id: 'section-142', content: "Patch Changes" },
+  { label: 'h3', id: 'section-145', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -3145,8 +3211,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-143', content: "1.1.1" },
-  { label: 'h3', id: 'section-144', content: "Patch Changes" },
+  { label: 'h2', id: 'section-146', content: "1.1.1" },
+  { label: 'h3', id: 'section-147', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -3165,15 +3231,15 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-145', content: "1.1.0" },
-  { label: 'h3', id: 'section-146', content: "Minor Changes" },
+  { label: 'h2', id: 'section-148', content: "1.1.0" },
+  { label: 'h3', id: 'section-149', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "4dfde81: 完善子包依赖，修复依赖缺失" }
     ]
   },
-  { label: 'h3', id: 'section-147', content: "Patch Changes" },
+  { label: 'h3', id: 'section-150', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -3192,8 +3258,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-148', content: "1.0.1" },
-  { label: 'h3', id: 'section-149', content: "Patch Changes" },
+  { label: 'h2', id: 'section-151', content: "1.0.1" },
+  { label: 'h3', id: 'section-152', content: "Patch Changes" },
   {
     label: 'ul',
     children: [

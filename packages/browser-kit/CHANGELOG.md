@@ -1,5 +1,13 @@
 # @greypan/browser-kit
 
+## 3.1.1
+
+### Patch Changes
+
+- f4e47c9: Rewrite change-narration comments as current-state statements per the code-style rules. Comment-only change: no behavior, API, or shipped-CSS value changes.
+- Updated dependencies [7eefb10]
+  - @greypan/js-kit@3.2.0
+
 ## 3.1.0
 
 ### Minor Changes

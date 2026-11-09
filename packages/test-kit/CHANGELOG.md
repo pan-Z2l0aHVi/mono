@@ -1,5 +1,12 @@
 # @greypan/test-kit
 
+## 0.0.2
+
+### Patch Changes
+
+- Updated dependencies [7eefb10]
+  - @greypan/js-kit@3.2.0
+
 ## 0.0.1
 
 ### Patch Changes
