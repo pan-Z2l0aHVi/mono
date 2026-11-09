@@ -117,7 +117,7 @@ ADR 记录技术选型、架构设计与工程化决策及其取舍；具体实�
 | `packages/web-ui` 组件、icon 或公共契约                         | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md)、[`web-ui.md`](./web-ui.md) 与受影响 ADR                                                                                       |
 | commitlint 或提交流程                                           | [`commit.md`](./commit.md)                                                                                                                                                                    |
 | 影响未来工程取舍的架构决定                                      | 对应 ADR，并更新 [`CONTEXT.md`](../../CONTEXT.md) ADR 索引                                                                                                                                    |
-| CI 审查腿的审查范围、生成物排除清单或两份 diff 的分工           | [`review.md`](./review.md) 与 [`generated-artifacts.md`](./generated-artifacts.md)；后者「新增生成物时」清单里的 ADR-0021、审查 prompt、`.claude/settings.json` deny 与脚本单测同步项一并适用 |
+| CI 审查 job 的审查范围、生成物排除清单或两份 diff 的分工        | [`review.md`](./review.md) 与 [`generated-artifacts.md`](./generated-artifacts.md)；后者「新增生成物时」清单里的 ADR-0021、审查 prompt、`.claude/settings.json` deny 与脚本单测同步项一并适用 |
 | client adapter、共享 rules/skills 或 instruction 体系布局与锚点 | 本文件、[`CONTEXT.md`](../../CONTEXT.md)、[ADR-0004](../adr/0004-progressive-agent-context-architecture.md) 与仓库校验                                                                        |
 
 ## 维护 instruction system
