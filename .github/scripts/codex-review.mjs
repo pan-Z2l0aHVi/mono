@@ -44,6 +44,12 @@ const UNCOVERED_LIMIT = 5
 // 空壳结论只自动重跑一次：重跑完成会再触发一次 workflow_run，第二次必须停下来转人工。
 export const AUTO_RETRY_ERROR_CODE = 'missing_coverage'
 export const AUTO_RETRY_LIMIT = 1
+export const AUTO_RETRY_STATES = ['none', 'triggered', 'exhausted', 'failed']
+
+// 步骤被跳过或 output 丢失时 state 会是空串；白名单外的任何值都不能当成某个恢复档渲染。
+export function normalizeAutoRetryState(value) {
+  return AUTO_RETRY_STATES.includes(value) ? value : 'none'
+}
 
 function emptyCounts() {
   return Object.fromEntries(SEVERITIES.map(severity => [severity, 0]))
@@ -408,7 +414,8 @@ function stamp(value) {
 }
 
 export function renderConclusion({ conclusion, meta, pullNumber, autoRetry = 'none' }) {
-  const autoRetryExplained = ['triggered', 'exhausted', 'failed'].includes(autoRetry)
+  const retryState = normalizeAutoRetryState(autoRetry)
+  const autoRetryExplained = retryState !== 'none'
   const labels = {
     reviewed: '已审查',
     unreviewed: '未审查',
@@ -433,14 +440,18 @@ export function renderConclusion({ conclusion, meta, pullNumber, autoRetry = 'no
     if (Array.isArray(meta?.missing) && meta.missing.length > 0) {
       lines.push(`- 缺失配置：\`${meta.missing.map(name => plainText(name)).join('`、`')}\``)
     }
-    // 自动恢复写在故障码旁，带 findings 的空壳结论也能看到；正文恢复指引则只在无 findings 时出现。
-    if (conclusion.code === AUTO_RETRY_ERROR_CODE && autoRetry === 'triggered') {
+    // 恢复状态统一挂在故障码旁：带 findings 的空壳结论也能看到，不依赖「无 findings」的正文分支。
+    if (conclusion.code === AUTO_RETRY_ERROR_CODE && retryState === 'triggered') {
       lines.push('- 自动恢复：写回腿已用 `gh run rerun --failed` 重跑审查与门禁腿一次；等新结论评论，不要手动再重跑。')
-    } else if (conclusion.code === AUTO_RETRY_ERROR_CODE && autoRetry === 'exhausted') {
+    } else if (conclusion.code === AUTO_RETRY_ERROR_CODE && retryState === 'exhausted') {
       lines.push('- 自动恢复：自动重跑 1 次仍不可用；按 `docs/agents/review.md` 做完整独立审查，或修输出契约。')
-    } else if (conclusion.code === AUTO_RETRY_ERROR_CODE && autoRetry === 'failed') {
+    } else if (conclusion.code === AUTO_RETRY_ERROR_CODE && retryState === 'failed') {
       lines.push(
         '- 自动恢复：自动重跑调用失败；按 `gh run rerun --failed` 手动重跑，并核对写回腿的 `actions: write` 与运行页错误。'
+      )
+    } else if (conclusion.code === AUTO_RETRY_ERROR_CODE) {
+      lines.push(
+        '- 恢复指引：本次没有触发自动重跑；按 `gh run rerun --failed` 人工重跑审查与门禁腿，重复出现就修输出契约。'
       )
     }
   }
@@ -489,7 +500,7 @@ export function renderConclusion({ conclusion, meta, pullNumber, autoRetry = 'no
         conclusion.code === 'missing_coverage'
           ? autoRetryExplained
             ? '本次没有可用结论：模型没交出覆盖证据，审查腿一并判红；恢复状态见上方「自动恢复」行。'
-            : '本次没有可用结论：模型没交出覆盖证据，审查腿一并判红，用 `gh run rerun --failed` 只重跑审查与门禁腿；重复出现就按故障码修输出契约。'
+            : '本次没有可用结论：模型没交出覆盖证据，审查腿一并判红；恢复指引见上方故障码。'
           : '本次没有可用结论：模型腿跑完了但输出不可用，重跑整条 run；重复出现就按故障码修输出契约。'
       )
     else lines.push('没有可用发现：本次没有拿到模型结论，不能当作已审查。')
@@ -522,7 +533,6 @@ export function createGhReviewAdapter({ repository, spawn = spawnSync, cwd = pro
     runs: headSha =>
       get(`repos/${repository}/actions/runs?head_sha=${headSha}&event=pull_request&status=completed&per_page=20`)
         .workflow_runs ?? [],
-    run: runId => get(`repos/${repository}/actions/runs/${runId}`),
     // rerun-failed-jobs 返回 201 且响应体可能为空，不能走 JSON.parse。
     rerunFailed: runId => gh(['api', '-X', 'POST', `repos/${repository}/actions/runs/${runId}/rerun-failed-jobs`]),
     artifacts: runId => get(`repos/${repository}/actions/runs/${runId}/artifacts`).artifacts ?? []
@@ -612,10 +622,10 @@ function appendSummary(lines) {
   if (target) fs.appendFileSync(target, `${lines.join('\n')}\n`)
 }
 
-function requireEnv(names) {
+function requireEnv(names, env = process.env) {
   return Object.fromEntries(
     names.map(name => {
-      const value = process.env[name]
+      const value = env[name]
       if (value === undefined || value === '') throw new Error(`${name} is missing`)
       return [name, value]
     })
@@ -992,7 +1002,7 @@ export function withPermissionDiagnosis(number) {
 // 所以每条返回路径都往运行页写一行结果，把「没发」的原因留在 Summary 里而不是只留在日志。
 function appendReportSummary({ number, status, meta, outcome }) {
   const counts = status?.counts
-  const autoRetry = process.env.CODEX_REVIEW_AUTO_RETRY_STATE ?? 'none'
+  const autoRetry = normalizeAutoRetryState(process.env.CODEX_REVIEW_AUTO_RETRY_STATE)
   appendSummary([
     '## Codex 审查结论写回',
     '',
@@ -1012,37 +1022,48 @@ function appendReportSummary({ number, status, meta, outcome }) {
 
 /**
  * 写回腿唯一的动作类写操作：对第一次 attempt 的空壳结论触发一次 --failed 重跑。
- * run_attempt 从 Actions API 读，不依赖 workflow_run payload；读不到就跳过，宁可转人工也不冒循环风险。
- * 重跑完成后新的 workflow_run 事件会再进这条腿，此时 attempt 已大于上限，判定落到 exhausted。
+ *
+ * run_attempt 与 run conclusion 由 workflow_run payload 注入，不再额外发 GET：
+ * github.run_attempt 的「每次重跑递增」直接钉住上限，也少一处限流 / 403 的失败源。
+ * 所有异常都收敛成 state=failed 并以 0 退出（annotation + Summary 留痕），步骤 output 一定写入，
+ * 不依赖「失败步骤的 output 是否被 runner 保留」，结论评论也就不会退回误导性的手动重跑指引。
  */
-function commandAutoRetry() {
-  const env = requireEnv(['GITHUB_REPOSITORY', 'WORKFLOW_RUN_ID'])
-  const adapter = createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY })
-  const metaPath = path.join(conclusionDirectory(), META_FILE)
-  const meta = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : null
-  const info = adapter.run(env.WORKFLOW_RUN_ID)
-  const decision = autoRetryDecision({ meta, runAttempt: info?.run_attempt, runConclusion: info?.conclusion })
-  if (decision.action === 'rerun') {
-    try {
-      adapter.rerunFailed(env.WORKFLOW_RUN_ID)
-    } catch (error) {
-      // 先落 output：结论评论才能写明「自动恢复失败」，不退回误导性的手动重跑指引。
-      writeOutputs({ retried: 'false', state: 'failed' })
-      console.error(`::error title=Codex auto retry failed::${oneLine(error.message)}`)
-      throw error
+export function commandAutoRetry({ env = process.env, adapter } = {}) {
+  let runId = ''
+  let attempt = 'unknown'
+  let decision = { action: 'skip', state: 'none', reason: 'auto retry did not start' }
+  try {
+    const required = requireEnv(['GITHUB_REPOSITORY', 'WORKFLOW_RUN_ID'], env)
+    runId = required.WORKFLOW_RUN_ID
+    attempt = String(env.WORKFLOW_RUN_ATTEMPT ?? 'unknown')
+    const metaPath = path.join(conclusionDirectory(env), META_FILE)
+    const meta = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : null
+    decision = autoRetryDecision({
+      meta,
+      runAttempt: env.WORKFLOW_RUN_ATTEMPT,
+      runConclusion: env.CODEX_REVIEW_RUN_CONCLUSION
+    })
+    if (decision.action === 'rerun') {
+      const client = adapter ?? createGhReviewAdapter({ repository: required.GITHUB_REPOSITORY })
+      client.rerunFailed(runId)
     }
+    console.log(`auto retry for run ${runId}: ${decision.action} (${decision.reason})`)
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    decision = { action: 'skip', state: 'failed', reason: `auto retry failed: ${oneLine(message)}` }
+    console.error(`::error title=Codex auto retry failed::${oneLine(message)}`)
   }
   writeOutputs({ retried: decision.action === 'rerun' ? 'true' : 'false', state: decision.state })
-  console.log(`auto retry for run ${env.WORKFLOW_RUN_ID}: ${decision.action} (${decision.reason})`)
   appendSummary([
     '## Codex 空壳结论自动恢复',
     '',
-    `- 触发 run：\`${env.WORKFLOW_RUN_ID}\`（attempt \`${plainText(String(info?.run_attempt ?? 'unknown'))}\`）`,
+    `- 触发 run：\`${runId || 'unknown'}\`（attempt \`${plainText(attempt)}\`）`,
     `- 动作：**${decision.action === 'rerun' ? '已重跑失败 job 一次' : '跳过'}**`,
     `- 原因：${decision.reason}`,
     `- 恢复状态：\`${decision.state}\``,
     '- 上限：每个 run 只自动重跑一次；二次仍空壳转人工完整独立审查。'
   ])
+  return decision
 }
 
 function commandReport() {
@@ -1064,7 +1085,7 @@ function commandReport() {
     conclusion: status,
     meta,
     pullNumber: number,
-    autoRetry: process.env.CODEX_REVIEW_AUTO_RETRY_STATE ?? 'none'
+    autoRetry: process.env.CODEX_REVIEW_AUTO_RETRY_STATE
   })
   const existing = call(() => adapter.listComments(number)).find(comment =>
     (comment.body ?? '').includes(CONCLUSION_MARKER)

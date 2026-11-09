@@ -7,17 +7,20 @@ import path from 'node:path'
 
 import {
   AUTO_RETRY_LIMIT,
+  AUTO_RETRY_STATES,
   CONFIG_ENV,
   CONFIG_FILE,
   CONCLUSION_MARKER,
   FINDINGS_ARTIFACT,
   REVIEW_EXCLUDE_PATHSPECS,
   autoRetryDecision,
+  commandAutoRetry,
   createGhReviewAdapter,
   deriveConclusion,
   findPullForHead,
   findReusableRun,
   inspectConfig,
+  normalizeAutoRetryState,
   parseReviewFindings,
   readConclusion,
   renderConclusion,
@@ -586,8 +589,14 @@ for (const [label, value] of [
   assert.match(failedRetry, /actions: write/)
 
   const legacy = render('none')
-  assert.match(legacy, /gh run rerun --failed/, 'the legacy hint stays when no auto retry happened')
+  assert.match(legacy, /gh run rerun --failed/, 'the manual hint stays when no auto retry happened')
+  assert.match(legacy, /- 恢复指引：本次没有触发自动重跑/)
   assert.ok(!legacy.includes('- 自动恢复：'), 'no auto retry means no auto recovery line')
+
+  // 步骤被跳过 / output 丢失会传空串：不能冒充某个恢复档，也不能退回误导性的旧文案。
+  const emptyState = render('')
+  assert.match(emptyState, /- 恢复指引：本次没有触发自动重跑/)
+  assert.ok(!emptyState.includes('- 自动恢复：'), 'an empty state must not impersonate a recovery state')
 
   // unusable_output 不能借 autoRetry 显示自动重跑文案，仍按「重跑整条 run」处置。
   const unusableMeta = {
@@ -602,20 +611,120 @@ for (const [label, value] of [
   // 空壳结论也可能带 findings：自动恢复行挂在故障码旁，不依赖「无 findings」分支。
   const withFinding = render('triggered', { ...emptyMeta, findings: [finding('Nit')], summary: 'one nit' })
   assert.match(withFinding, /- 自动恢复：写回腿已用/, 'a missing_coverage conclusion with findings is still recovered')
+
+  // 带 findings 且没有自动恢复时也得有指引：正文的「无 findings」分支此时不会出现。
+  const withFindingNoRetry = render('none', { ...emptyMeta, findings: [finding('Nit')], summary: 'one nit' })
+  assert.match(withFindingNoRetry, /- 恢复指引：本次没有触发自动重跑/, 'a conclusion with findings still gets a hint')
 }
 
 {
-  // 新增的 adapter 方法：run_attempt 走 GET，重跑走 POST；201 空响应体不能触发 JSON.parse。
+  // 重跑走 POST；201 空响应体不能触发 JSON.parse。attempt 与 conclusion 改由 payload 注入，不再发 GET。
   const calls = []
   const spawn = (command, args) => {
     calls.push({ command, args })
-    if (args.includes('-X')) return { status: 0, stdout: '' }
-    return { status: 0, stdout: JSON.stringify({ run_attempt: 2, conclusion: 'failure' }) }
+    return { status: 0, stdout: '' }
   }
   const adapter = createGhReviewAdapter({ repository: 'acme/repo', spawn })
-  assert.deepEqual(adapter.run('42'), { run_attempt: 2, conclusion: 'failure' })
   assert.equal(adapter.rerunFailed('42'), '', 'an empty 201 body is not parsed as JSON')
-  assert.deepEqual(calls[1].args, ['api', '-X', 'POST', 'repos/acme/repo/actions/runs/42/rerun-failed-jobs'])
+  assert.deepEqual(calls[0].args, ['api', '-X', 'POST', 'repos/acme/repo/actions/runs/42/rerun-failed-jobs'])
+  assert.equal(adapter.run, undefined, 'the removed GET call must not come back')
+}
+
+{
+  // state 的合法档位是白名单：空串（步骤跳过 / output 丢失）与未知值都不能冒充某个恢复档。
+  assert.deepEqual(AUTO_RETRY_STATES, ['none', 'triggered', 'exhausted', 'failed'])
+  for (const value of ['', undefined, null, 'weird', 0]) {
+    assert.equal(normalizeAutoRetryState(value), 'none', `state ${String(value)} must fall back to none`)
+  }
+  for (const value of AUTO_RETRY_STATES) assert.equal(normalizeAutoRetryState(value), value)
+}
+
+{
+  // commandAutoRetry 是编排层：所有异常路径都必须写出 state=failed，且不能把异常抛给 main。
+  const tmp = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-auto-retry-'))
+  const outputPath = path.join(tmp, 'output')
+  const summaryPath = path.join(tmp, 'summary')
+  const conclusionDir = path.join(tmp, 'conclusion')
+  fs.mkdirSync(conclusionDir)
+  const saved = {
+    output: process.env.GITHUB_OUTPUT,
+    summary: process.env.GITHUB_STEP_SUMMARY,
+    error: console.error
+  }
+  process.env.GITHUB_OUTPUT = outputPath
+  process.env.GITHUB_STEP_SUMMARY = summaryPath
+  // ::error 在真实 CI 里会被 runner 解析成 annotation；单测故意走异常路径，这里静音避免假报警。
+  console.error = () => {}
+  const metaPath = path.join(conclusionDir, 'review-meta.json')
+  const emptyMeta = { status: 'unreviewed', error_code: 'missing_coverage', error: 'no inspected path' }
+  const baseEnv = {
+    GITHUB_REPOSITORY: 'acme/repo',
+    WORKFLOW_RUN_ID: '42',
+    WORKFLOW_RUN_ATTEMPT: '1',
+    CODEX_REVIEW_RUN_CONCLUSION: 'failure',
+    CODEX_REVIEW_CONCLUSION_DIR: conclusionDir
+  }
+  const invoke = ({ env = baseEnv, adapter, meta = emptyMeta } = {}) => {
+    fs.writeFileSync(outputPath, '')
+    fs.writeFileSync(summaryPath, '')
+    if (meta === 'broken') fs.writeFileSync(metaPath, '{ not json')
+    else if (meta === null) fs.rmSync(metaPath, { force: true })
+    else fs.writeFileSync(metaPath, JSON.stringify(meta))
+    const result = commandAutoRetry({ env, adapter })
+    return {
+      result,
+      outputs: fs.readFileSync(outputPath, 'utf8'),
+      summary: fs.readFileSync(summaryPath, 'utf8')
+    }
+  }
+  try {
+    const reruns = []
+    const adapter = { rerunFailed: id => reruns.push(id) }
+
+    const triggered = invoke({ adapter })
+    assert.equal(triggered.result.state, 'triggered')
+    assert.deepEqual(reruns, ['42'], 'attempt 1 must rerun exactly once')
+    assert.match(triggered.outputs, /retried=true/)
+    assert.match(triggered.outputs, /state=triggered/)
+
+    const exhausted = invoke({ adapter, env: { ...baseEnv, WORKFLOW_RUN_ATTEMPT: '2' } })
+    assert.equal(exhausted.result.state, 'exhausted')
+    assert.deepEqual(reruns, ['42'], 'attempt 2 must not rerun again')
+    assert.match(exhausted.outputs, /state=exhausted/)
+
+    const skipped = invoke({ adapter, meta: { status: 'unreviewed', error_code: 'unusable_output' } })
+    assert.equal(skipped.result.state, 'none')
+    assert.deepEqual(reruns, ['42'], 'unusable_output stays out of the auto retry')
+
+    // 三种异常：重跑调用失败、meta 损坏、payload env 缺失；都写 failed 且不抛。
+    const failedCases = [
+      {
+        name: 'rerunFailed throws',
+        adapter: {
+          rerunFailed: id => {
+            reruns.push(id)
+            throw new Error('403 denied')
+          }
+        }
+      },
+      { name: 'broken meta', adapter, meta: 'broken' },
+      { name: 'missing run id', adapter, env: { ...baseEnv, WORKFLOW_RUN_ID: '' } }
+    ]
+    for (const testCase of failedCases) {
+      const outcome = invoke(testCase)
+      assert.equal(outcome.result.state, 'failed', `${testCase.name} must land on failed`)
+      assert.match(outcome.outputs, /state=failed/, `${testCase.name} must write the output`)
+      assert.match(outcome.summary, /恢复状态：`failed`/, `${testCase.name} must leave a Summary trace`)
+    }
+    assert.deepEqual(reruns, ['42', '42'], 'a failed rerun must not silently retry again')
+  } finally {
+    console.error = saved.error
+    if (saved.output === undefined) delete process.env.GITHUB_OUTPUT
+    else process.env.GITHUB_OUTPUT = saved.output
+    if (saved.summary === undefined) delete process.env.GITHUB_STEP_SUMMARY
+    else process.env.GITHUB_STEP_SUMMARY = saved.summary
+    fs.rmSync(tmp, { recursive: true, force: true })
+  }
 }
 
 {

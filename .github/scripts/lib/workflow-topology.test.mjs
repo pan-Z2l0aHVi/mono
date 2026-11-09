@@ -6,7 +6,14 @@ import path from 'node:path'
 
 import { readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
 
-import { CONFIG_ENV, priorConclusionDirectory } from '../codex-review.mjs'
+import {
+  AUTO_RETRY_LIMIT,
+  AUTO_RETRY_STATES,
+  CONFIG_ENV,
+  autoRetryDecision,
+  commandAutoRetry,
+  priorConclusionDirectory
+} from '../codex-review.mjs'
 
 import {
   CODEX_CONFIG_ENV,
@@ -585,31 +592,59 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     })
 
     // 空壳结论自动恢复：写回腿唯一的动作类写权限只用于触发一次 --failed 重跑，模型仍不在这条腿里。
-    const autoRetryStep = namedStep(reportText, 'Auto-rerun empty review output')
-    assert.match(autoRetryStep, /id: auto_retry/, 'the conclusion comment must read the retry state from this step')
+    const retryName = 'Auto-rerun empty review output'
+    const commentName = 'Post conclusion comment'
+    const autoRetryStep = namedStep(reportText, retryName)
+    const commentStep = namedStep(reportText, commentName)
+    assert.equal(report.stepJobs[retryName], 'report-conclusion')
+    assert.deepEqual(report.stepIdsByJob['report-conclusion'], ['pull', 'findings', 'auto_retry'])
+    assert.match(report.steps[retryName], /^success\(\)/, 'an earlier failure must not trigger a rerun')
     assert.match(
-      autoRetryStep,
+      report.steps[retryName],
       /steps\.findings\.outcome == 'success'/,
       'a missing artifact is not an empty conclusion'
     )
+    assert.match(report.steps[commentName], /^always\(\)/, 'the comment must still post when the retry step fails')
+    assert.equal(report.stepContinueOnError[retryName], 'true', 'a process-level crash must not drop the step output')
+    assert.ok(
+      reportText.indexOf(`- name: ${retryName}`) > reportText.indexOf('- name: Download review findings') &&
+        reportText.indexOf(`- name: ${commentName}`) > reportText.indexOf(`- name: ${retryName}`),
+      'the retry must run after the artifact download and before the comment'
+    )
+    assert.match(autoRetryStep, /id: auto_retry/, 'the conclusion comment must read the retry state from this step')
     assert.match(autoRetryStep, /WORKFLOW_RUN_ID: \$\{\{ github\.event\.workflow_run\.id \}\}/)
+    assert.match(autoRetryStep, /WORKFLOW_RUN_ATTEMPT: \$\{\{ github\.event\.workflow_run\.run_attempt \}\}/)
+    assert.match(autoRetryStep, /CODEX_REVIEW_RUN_CONCLUSION: \$\{\{ github\.event\.workflow_run\.conclusion \}\}/)
     assert.match(autoRetryStep, /GH_TOKEN: \$\{\{ github\.token \}\}/)
     assert.match(autoRetryStep, /node "\$RUNNER_TEMP\/trusted\/scripts\/codex-review\.mjs" auto-retry/)
     assert.ok(!autoRetryStep.includes('openai/codex-action'), 'the auto retry must not run the model')
+    // 结论目录是同一份 meta：下载、判码与写评论三处必须指向同一个 runner.temp 路径。
+    const conclusionEnv = /CODEX_REVIEW_CONCLUSION_DIR: \$\{\{ runner\.temp \}\}\/codex-review/
+    assert.match(autoRetryStep, conclusionEnv)
+    assert.match(commentStep, conclusionEnv)
+    assert.match(namedStep(reportText, 'Download review findings'), /path: \$\{\{ runner\.temp \}\}\/codex-review/)
+    assert.match(commentStep, /CODEX_REVIEW_AUTO_RETRY_STATE: \$\{\{ steps\.auto_retry\.outputs\.state/)
     assert.match(
-      namedStep(reportText, 'Post conclusion comment'),
-      /CODEX_REVIEW_AUTO_RETRY_STATE: \$\{\{ steps\.auto_retry\.outputs\.state \}\}/,
-      'the comment must carry the retry state, including a failed rerun'
+      commentStep,
+      /steps\.auto_retry\.outcome == 'failure' && 'failed'/,
+      'a failed step must not fall back to none'
     )
-    // 上限与失败兜底都在可信脚本里：改掉其中任何一处，编排断言也要跟着红。
-    const reviewScript = fs.readFileSync(path.join(repoRoot, '.github/scripts/codex-review.mjs'), 'utf8')
-    assert.match(reviewScript, /'auto-retry': commandAutoRetry/, 'the trusted script must own the retry decision')
-    assert.match(reviewScript, /AUTO_RETRY_LIMIT = 1\b/, 'the single-retry ceiling must not drift')
-    assert.match(
-      reviewScript,
-      /run_attempt is unavailable/,
+    assert.match(commentStep, /\|\| 'none' \}\}/, 'a skipped step must stay none')
+    // 上限与失败兜底由可信脚本导出的行为断言钉住，不再靠源码字符串匹配。
+    assert.equal(AUTO_RETRY_LIMIT, 1, 'the single-retry ceiling must not drift')
+    assert.deepEqual(AUTO_RETRY_STATES, ['none', 'triggered', 'exhausted', 'failed'])
+    const emptyMeta = { status: 'unreviewed', error_code: 'missing_coverage' }
+    assert.equal(
+      autoRetryDecision({ meta: emptyMeta, runAttempt: 2, runConclusion: 'failure' }).state,
+      'exhausted',
+      'the second attempt must stop'
+    )
+    assert.equal(
+      autoRetryDecision({ meta: emptyMeta, runAttempt: undefined, runConclusion: 'failure' }).action,
+      'skip',
       'an unreadable run_attempt must fall back to manual handling'
     )
+    assert.equal(typeof commandAutoRetry, 'function', 'the trusted script must own the retry decision')
 
     const eligibilityGuard =
       "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository" +
