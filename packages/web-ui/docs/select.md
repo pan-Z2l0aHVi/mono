@@ -181,7 +181,7 @@ const lang = ref('en')
 
 `trigger` is a gesture set separated by spaces or commas: `click`, `hover`, `focus`, `none`. It defaults to `click`. `hover` opens and closes with pointer entry and exit, and `focus` opens on keyboard focus (`:focus-visible`); gestures can be written side by side.
 
-`none` accepts no gesture and takes no part in outside-click closing or Escape; in the closed state, arrow keys, Space, Enter and typeahead no longer auto-open either — only the `open` property or `show()` / `hide()` moves it. `none` and gestures are mutually exclusive: when both appear, `none` wins and a development warning is printed.
+`none` accepts no gesture and takes no part in outside-click closing or Escape; in the closed state, arrow keys, Space, Enter and typeahead no longer auto-open either. Only the `open` property or `show()` / `hide()` moves it. `none` and gestures are mutually exclusive: when both appear, `none` wins and a development warning is printed.
 
 `show-delay` / `hide-delay` only apply to hover-originated opens and closes; clicks, focus and programmatic calls act immediately.
 

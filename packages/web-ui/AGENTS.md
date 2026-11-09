@@ -6,10 +6,10 @@
 - 不承担框架运行时 wrapper 与全局应用样式。
 - 共享状态和行为使用 `defineXxx(...).make(...)` 的 `definePlugin` factory。Lit、Shadow DOM、属性绑定和框架事件类型沿用既有模式。
 - browser-mode 测试覆盖无法由 jsdom 证明的原生行为。UI、UX 和交互改动还必须在真实浏览器验证。
-- 受管组合的成员追踪、下行广播与上行写回统一走 `GroupController`，不要绕开它手搓成员管理。`select` 与 `autocomplete` 的 option 成员走 [`src/shared/option-portal`](./src/shared/option-portal/)，不要把两者的成员管理混写。
+- 受管组合的成员追踪、下行广播与上行写回统一走 `GroupController`。`select` 与 `autocomplete` 的 option 成员走 [`src/shared/option-portal`](./src/shared/option-portal/)。
 - combobox 的键盘交互按三轴分工：`combobox-shell` 拥有开合骨架（guard / 派发顺序 / scroll-lock 配对 / portal rAF dance），`combobox-navigation` 拥有游标语义（activeIndex、环绕导航、Home/End、初始锚点、指针接管、typeahead），组件保留键位映射（keydown switch）、ARIA 输出与成员管理；两组件的语义差异经 navigation 的 hooks 注入，不要把游标状态机抄回组件。
 - 触屏长按开出 menu 后，宿主一侧补发的 click 由 `context-menu` 自己在宿主子树 capture 阶段吸收；宿主不做（也不该做）行激活抑制——「这一手开出了 menu」「手势何时结束」的事实只有组件知道。
-- theme 的 View Transition 引擎（origin 追踪、flight token、输入压制状态机、盒钉扎与清理时序）由 [`src/shared/theme/transition`](./src/shared/theme/transition.ts) 拥有；组件只保留 `_shouldAnimate` 判定、reduced-motion 检查与 appearance property 管线，不要把压制机器写回组件。
+- theme 的 View Transition 引擎（origin 追踪、flight token、输入压制状态机、盒钉扎与清理时序）由 [`src/shared/theme/transition`](./src/shared/theme/transition.ts) 拥有；组件只保留 `_shouldAnimate` 判定、reduced-motion 检查与 appearance property 管线。
 - slot-trigger 组件（popover/dropdown/collapse）的 ARIA 状态（如 `aria-expanded`）不挂在 trigger 包装结构上，按 [ADR-0005](../../docs/adr/0005-web-ui-components.md) 回写。
 - 框架动态绑定布尔属性必须用 camelCase Property；组件内不加 attribute 字符串解析兜底，保持原生 HTML 布尔存在语义。
 

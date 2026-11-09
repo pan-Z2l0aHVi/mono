@@ -1,8 +1,8 @@
 name: Codex Review Report
 
-# 写回腿：ci.yml 的只读不变量不允许任何写操作，所以评论与 autofix 推送住在这里。
+# 写回 workflow：ci.yml 的只读不变量不允许任何写操作，所以评论与 autofix 推送住在这里。
 # 模型一次都不跑在本文件里；它只在 ci.yml 的 contents: read job 里执行。
-# 本腿不改判审查结论，只把 CI 已产出的结论写到 PR 上。
+# 本 workflow 不改判审查结论，只把 CI 已产出的结论写到 PR 上。
 # workflow_run 只在默认分支上存在的这个文件里生效，因此本段的版本由 main 决定。
 on:
   workflow_run:
@@ -28,7 +28,7 @@ jobs:
       contents: read
       issues: write
       pull-requests: write
-      # 只对第一次 attempt 的空壳结论触发一次 --failed 重跑；模型仍不在这条腿里运行。
+      # 只对第一次 attempt 的空壳结论触发一次 --failed 重跑；模型仍不在这条 job 里运行。
       actions: write
 
     steps:
@@ -54,7 +54,7 @@ jobs:
       - name: Download review findings
         id: findings
         # head 不属于任何打开的 PR 时没有可写的对象，下载没有意义。
-        # 其余情况下的缺失说明 review job 没有产出结论：本腿不发结论评论，也不判红。
+        # 其余情况下的缺失说明 review job 没有产出结论：本 job 不发结论评论，也不判红。
         if: steps.pull.outputs.pull_number != ''
         continue-on-error: true
         uses: actions/download-artifact@v7
@@ -67,8 +67,8 @@ jobs:
           path: ${{ runner.temp }}/codex-review
 
       - name: Explain the skipped report
-        # 这一步不判审查结论的颜色，只判写回腿自己的健康度：
-        # 「没有产物」是合法跳过，写清原因后保持绿色；「有产物却下载不下来」是本腿故障，判红。
+        # 这一步不判审查结论的颜色，只判写回 job 自己的健康度：
+        # 「没有产物」是合法跳过，写清原因后保持绿色；「有产物却下载不下来」是本 job 故障，判红。
         # 守卫按 resolve-pull 的成功与否取，不按 pull_number：解析不到 PR 本身也是一种要写明的跳过。
         if: always() && steps.pull.outcome == 'success' && steps.findings.outcome != 'success'
         env:
@@ -97,7 +97,7 @@ jobs:
               echo ''
               echo "触发 run [#$WORKFLOW_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$WORKFLOW_RUN_ID) 上传了 \`codex-review-findings\`，但本运行没能下载。"
               echo ''
-              echo '- 这不是「没有结论」，是写回腿自己的故障：先看 `Download review findings` 的 error 注释。'
+              echo '- 这不是「没有结论」，是写回 job 自己的故障：先看 `Download review findings` 的 error 注释。'
             } >> "$GITHUB_STEP_SUMMARY"
             echo "::error title=Codex review artifacts unreadable::run $WORKFLOW_RUN_ID has codex-review-findings but this run could not download it"
             exit 1
@@ -107,7 +107,7 @@ jobs:
             echo ''
             echo "触发 run [#$WORKFLOW_RUN_ID]($GITHUB_SERVER_URL/$GITHUB_REPOSITORY/actions/runs/$WORKFLOW_RUN_ID) 没有 \`codex-review-findings\` 产物，因此本次没有任何结论可写回（run 结论：\`$WORKFLOW_RUN_CONCLUSION\`）。"
             echo ''
-            echo '- 常见原因：`check` 先失败，`Codex review` 没有运行；或审查腿自己没跑成。'
+            echo '- 常见原因：`check` 先失败，`Codex review` 没有运行；或审查 job 自己没跑成。'
             echo '- 结论是否拦合并由该 CI run 里的 `Codex review gate` 判定，与本运行的颜色无关。'
             echo '- 排查顺序见 `docs/agents/review.md` 的 `error` 处置。'
           } >> "$GITHUB_STEP_SUMMARY"
@@ -129,8 +129,8 @@ jobs:
       - name: Auto-rerun empty review output
         id: auto_retry
         # 判码、上限与「只重跑一次」都在取自默认分支的可信脚本里；两个 attempt 维度都由 payload / context 注入。
-        # CI run 的 attempt 挡住重跑后的新事件，写回腿自身的 attempt 挡住人工 re-run 这条腿。
-        # 这条腿只触发重跑，不调用模型，也不改判结论。脚本把异常收敛成 failed 档并正常退出，
+        # CI run 的 attempt 挡住重跑后的新事件，写回 run 自身的 attempt 挡住人工 re-run 这次写回 run。
+        # 这条 job 只触发重跑，不调用模型，也不改判结论。脚本把异常收敛成 failed 档并正常退出，
         # continue-on-error 再兜住进程级崩溃，保证下游结论评论始终能读到恢复状态。
         if: success() && steps.pull.outputs.pull_number != '' && steps.findings.outcome == 'success'
         continue-on-error: true
@@ -161,7 +161,7 @@ jobs:
     if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.conclusion != 'cancelled' && github.event.workflow_run.head_branch != 'changeset-release/main' && vars.CODEX_AUTOFIX_ENABLED == 'true' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
-    # 只有这一步能写 Git：patch 由只读腿生成，这里只做校验、提交与推送。
+    # 只有这一步能写 Git：patch 由只读 job 生成，这里只做校验、提交与推送。
     permissions:
       contents: write
       pull-requests: read

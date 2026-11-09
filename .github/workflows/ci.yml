@@ -199,8 +199,8 @@ jobs:
         # 表现为随机的等待预算耗尽。只在 CI 收敛任务并发，本地 `pnpm run test` 保持默认。
         run: pnpm exec turbo test --concurrency=2
 
-  # Codex 审查腿全部只读：模型在这里跑，写回（评论、推 patch）只在 codex-review-report.yml 发生。
-  # 两条腿分开是因为 ci.yml 的 permissions 不变量要求 PR 验证不持有任何写权限。
+  # Codex 审查 job 全部只读：模型在这里跑，写回（评论、推 patch）只在 codex-review-report.yml 发生。
+  # 两条 job 分开是因为 ci.yml 的 permissions 不变量要求 PR 验证不持有任何写权限。
   codex-review:
     name: Codex review
     needs: check
@@ -209,7 +209,7 @@ jobs:
     # 模型步骤自己带 continue-on-error；job 级不再吞掉预检、落结论与上传的失败。
     # 首次落地时 base 的可信脚本还没有 preflight 子命令，这一步的红叉是唯一能暴露 bootstrap 的信号。
     # 固定在 24.04：ubuntu-26.04 的 sudo-rs + uutils `test -w` 让 codex-action 的 drop-sudo
-    # socket ACL 校验误判（openai/codex-action#188，修复 PR #191 未合并），模型腿会在 exec 前退出。
+    # socket ACL 校验误判（openai/codex-action#188，修复 PR #191 未合并），模型 job 会在 exec 前退出。
     # 恢复条件见 docs/adr/0021-codex-review-gate.md「Runner 镜像」；改标签会被拓扑断言挡下。
     runs-on: ubuntu-24.04
     # 120 分钟只兜「大 PR」的尾巴：常规 PR 5–25 分钟，137 文件/4.3k 行的 PR 在 60 分钟处用了
@@ -324,17 +324,17 @@ jobs:
         with:
           name: codex-review-findings
           path: ${{ runner.temp }}/codex-review
-          # --failed 重跑审查腿时会在同一 run 内再传一次同名产物，不覆盖会撞 409。
+          # --failed 重跑审查 job 时会在同一 run 内再传一次同名产物，不覆盖会撞 409。
           overwrite: true
 
       # 模型可能在打开任何改动文件之前就交出 schema 允许的空对象（findings 与 inspected 全空）。
       # 那时 run_codex 与 validate 都是 success，只有 gate 判红，--failed 就只会重跑 gate、
-      # 拿同一份空壳 artifact 再红一次。这一步让审查腿一起变红，好让 --failed 重跑模型腿。
+      # 拿同一份空壳 artifact 再红一次。这一步让审查 job 一起变红，好让 --failed 重跑模型 job。
       # 脚本从工作区（PR head）读取，改动提出它的 PR 上即生效；它只判红、不判绿，结论仍由
       # 取自 PR base 的 trusted validate / gate 裁决，作者改它换不来绿色。
       # pull_request 的 workflow YAML 取自 merge ref（base + head），本改动合入 main 后，
       # 尚未更新的 open PR 也会拿到这一步，但它们的 head 里没有该脚本：hashFiles 为空时跳过，
-      # 不把「分支落后」误判成模型腿故障；旧 head 本就处于新防线未生效的自举期。
+      # 不把「分支落后」误判成模型 job 故障；旧 head 本就处于新防线未生效的自举期。
       - name: Reject empty review output
         if: ${{ always() && steps.config.outputs.configured == 'true' && steps.reuse.outputs.reused != 'true' && hashFiles('.github/scripts/check-review-output.mjs') != '' }}
         env:
@@ -391,12 +391,12 @@ jobs:
   codex-autofix-plan:
     name: Codex autofix plan
     needs: check
-    # job 级 if 不含状态检查函数时 GitHub 会隐式附加 success()，而本腿恰恰要在 check 失败时跑：
+    # job 级 if 不含状态检查函数时 GitHub 会隐式附加 success()，而本 job 恰恰要在 check 失败时跑：
     # needs.check.result == 'failure' 会在依赖失败时被直接短路成 skipped，字面条件根本不求值。
-    # !cancelled() 既绕过隐式 success()，又不会在 run 被取消时白白启动模型腿；与 codex-review 同款前缀。
+    # !cancelled() 既绕过隐式 success()，又不会在 run 被取消时白白启动模型 job；与 codex-review 同款前缀。
     if: ${{ !cancelled() && needs.check.result == 'failure' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' && vars.CODEX_AUTOFIX_ENABLED == 'true' }}
     continue-on-error: true
-    # 与审查腿同一镜像约束：autofix 用 workspace-write + drop-sudo，同样会撞上 #188。
+    # 与审查 job 同一镜像约束：autofix 用 workspace-write + drop-sudo，同样会撞上 #188。
     runs-on: ubuntu-24.04
     timeout-minutes: 60
     permissions:

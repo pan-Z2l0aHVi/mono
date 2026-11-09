@@ -322,7 +322,7 @@ for (const file of [
 }
 
 {
-  // 预检没跑成时模型腿被跳过，工作区里的零散改动不能变成 patch 交给特权腿。
+  // 预检没跑成时模型 job 被跳过，工作区里的零散改动不能变成 patch 交给特权 job。
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-autofix-capture-'))
   const outputPath = path.join(directory, 'output')
   fs.writeFileSync(outputPath, '')

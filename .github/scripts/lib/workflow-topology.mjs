@@ -229,8 +229,8 @@ export function jobEnvContextViolations(text) {
 // 本地 action（uses: ./...）从 job 自己的工作区解析。工作区检出到 pull_request.base.sha 时，
 // 本 PR 新建的 action 在 base 里还不存在，action 连解析都过不去——不是某一步失败，是这道门整个跑不起来。
 // 被审查的改动改不了门禁执行的脚本，靠的是 stage-codex-inputs 从 base 的对象里读脚本，而不是把整个工作区检出到 base；
-// 于是 PR 腿必须显式传 base-sha：不传就从工作区（head）读，读到的正是被审查的那份改动。
-// workflow_run 腿没有 PR payload，它的工作区就是默认分支，留空才是对的，所以第二个判据只看 if 里
+// 于是 PR job 必须显式传 base-sha：不传就从工作区（head）读，读到的正是被审查的那份改动。
+// 写回 workflow 由 workflow_run 触发，没有 PR payload，它的工作区就是默认分支，留空才是对的，所以第二个判据只看 if 里
 // 引用了 github.event.pull_request 的 job。
 export function localActionBootstrapViolations(text) {
   const jobs = []
@@ -365,7 +365,7 @@ export function ghTokenStepViolations(text) {
 
 // download-artifact@v7 只有在显式给出 github-token 时才会用 repository/run-id 跨 run 查找：
 // 源码里 `if (inputs.token) { options.findBy = { workflowRunId: inputs.runID } }`。
-// 缺 token 会静默退化成「只查当前 workflow run」，写回腿与结论复用都拿不到产物。
+// 缺 token 会静默退化成「只查当前 workflow run」，写回 job 与结论复用都拿不到产物。
 export function crossRunArtifactViolations(text) {
   const violations = []
   let job = null
