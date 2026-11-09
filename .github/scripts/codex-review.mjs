@@ -49,6 +49,22 @@ const FIELD_LIMIT = 700
 // 未覆盖清单是给人看的行动提示，不是全量报表；超出部分留在 artifact 里，别把评论撑爆。
 const UNCOVERED_LIMIT = 5
 
+// 结论评论只有一条，就地更新会把上一版刷掉。状态轨迹留最近若干条，够回答「这次恢复了吗」。
+const TRAJECTORY_LIMIT = 8
+const TRAJECTORY_PREFIX = '- 状态轨迹：'
+// 轨迹条目会被下一版正文重新解析再写一次，所以只有形状受控的故障码才进条目。
+const TRAJECTORY_CODE_PATTERN = /^[A-Za-z0-9_-]{1,40}$/u
+
+// 模型腿的原始错误只在 CI job 日志里；写回腿读它来做分流指引，job 名与 ci.yml 的 `name:` 一致。
+const REVIEW_JOB_NAME = 'Codex review'
+// 日志里的 `ERROR:` 被颜色码包住（`ESC[1mESC[31mERROR:`），不先剥掉就找不到 JSON 载荷。
+const ANSI_PATTERN = /\u001b\[[0-9;]*m/gu
+// 轨迹历史只从 marker 行的这个字段读回；可见行仅做展示，不参与续写。
+const MARKER_TRAJECTORY_FIELD = / traj=(.+) -->$/u
+// 读回的轨迹条目必须整条符合形状，否则视为被人工编辑过或被拼坏的字段，不给它续写的资格。
+const TRAJECTORY_ENTRY_PATTERN =
+  /^(?:\d{2}-\d{2} \d{2}:\d{2}Z )?(reviewed|blocked|stale|unreviewed|error|not_applicable)(?:\([A-Za-z0-9_-]{1,40}\))?(?:\/(none|triggered|exhausted|failed))?$/u
+
 // 空壳结论只自动重跑一次：重跑完成会再触发一次 workflow_run，第二次必须停下来转人工。
 export const AUTO_RETRY_ERROR_CODE = 'missing_coverage'
 export const AUTO_RETRY_LIMIT = 1
@@ -459,7 +475,115 @@ function stamp(value) {
   return `${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}Z`
 }
 
-export function renderConclusion({ conclusion, meta, pullNumber, autoRetry = 'none' }) {
+/** 结论档位。hidden marker、正文标题与状态轨迹共用这一个判据。 */
+export function conclusionVerdict(status) {
+  return status.status === 'reviewed' && status.blocking ? 'blocked' : status.status
+}
+
+function parseTrajectory(body) {
+  if (typeof body !== 'string' || body === '') return []
+  // 只认 marker 行。可见的 `- 状态轨迹：` 前缀模型能在 `summary` 或一条 `uncovered` 里原样写出来，
+  // 而 marker 需要字面量 `<!--`：所有模型可控文本都过 escapeHtml，产不出这个前缀。
+  const markerLine = body.split('\n').find(line => line.startsWith(`<!-- ${CONCLUSION_MARKER} `))
+  if (!markerLine) return []
+  const field = markerLine.match(MARKER_TRAJECTORY_FIELD)
+  if (!field) return []
+  const entries = field[1]
+    .split('|')
+    .map(entry => entry.trim())
+    .filter(entry => entry !== '')
+  // 形状外置过一次（人工编辑评论）或字段被拼接坏时整行作废，不给它续写的资格。
+  if (!entries.every(entry => TRAJECTORY_ENTRY_PATTERN.test(entry))) return []
+  return entries
+}
+
+/**
+ * 状态轨迹的下一版内容：读上一版 marker 里的历史、追加本次、连续重复只留一次、尾部保留最近若干条。
+ *
+ * 条目形如 `11-09 08:49Z error(model_failed)`；同分钟同档位的重复更新会被去重，所以正文不变时
+ * commandReport 的「已是最新」短路仍然成立。故障码按正文 `- 故障码：` 的同一形状写入，只有码本身
+ * 形状不受控时才省略。
+ *
+ * @param {object} input
+ * @param {string} [input.previousBody] 评论上一版正文，历史从其 marker 行读取；没有则从头开始。
+ * @param {string} input.verdict 本次档位，取 conclusionVerdict。
+ * @param {string} [input.code] 本次故障码。
+ * @param {string} [input.autoRetry] 恢复档位，只在空壳码上附加。
+ * @param {string} [input.generatedAt] 结论生成时间；无效则条目不带时间。
+ * @returns {string[]} 含本次的轨迹条目
+ */
+export function trajectoryEntries({ previousBody = '', verdict, code = '', autoRetry = 'none', generatedAt = '' }) {
+  const generated = stamp(generatedAt)
+  // 分钟级时间戳是「这版结论什么时候生成」的留痕；年月与同一条评论的「结论生成于」重复。
+  const time = generated === '' ? '' : `${generated.slice(5)} `
+  const error = code === '' || !TRAJECTORY_CODE_PATTERN.test(code) ? '' : `(${code})`
+  const retry = code === AUTO_RETRY_ERROR_CODE ? `/${normalizeAutoRetryState(autoRetry)}` : ''
+  const entry = `${time}${verdict}${error}${retry}`
+  const previous = parseTrajectory(previousBody)
+  if (previous.at(-1) === entry) return previous
+  return [...previous, entry].slice(-TRAJECTORY_LIMIT)
+}
+
+/**
+ * 从 codex-action 的 job 日志里取第一条结构化错误。
+ * 日志行带时间戳，且 `ERROR:` 本身被 ANSI 颜色码包住（`ESC[1mESC[31mERROR:ESC[0m {"error":…}`），
+ * 所以先剥控制序列再从 `ERROR:` 起截取；解析不出来就继续找下一行，全都没有则返回空串。
+ */
+export function firstModelErrorLine(log) {
+  if (typeof log !== 'string' || log === '') return ''
+  for (const rawLine of log.split('\n')) {
+    const line = rawLine.replace(ANSI_PATTERN, '')
+    const index = line.indexOf('ERROR:')
+    if (index === -1) continue
+    const payload = line.slice(index + 'ERROR:'.length).trim()
+    if (payload === '' || !payload.startsWith('{')) continue
+    let message
+    try {
+      message = JSON.parse(payload)?.error?.message
+    } catch {
+      continue
+    }
+    if (typeof message === 'string' && message.trim() !== '') return oneLine(message.replace(ANSI_PATTERN, ''))
+  }
+  return ''
+}
+
+/** 尽力取模型腿日志里的错误：拿不到 job、日志读失败或没有结构化错误都只降级，不能让诊断辅助判红写回腿。 */
+export function readModelLegError(adapter, runId) {
+  if (typeof runId !== 'string' || !/^\d+$/u.test(runId)) return ''
+  try {
+    const jobId = adapter.runJobs(runId).find(job => job?.name === REVIEW_JOB_NAME)?.id
+    return jobId === undefined ? '' : firstModelErrorLine(adapter.jobLog(jobId))
+  } catch {
+    return ''
+  }
+}
+
+/**
+ * 同一个「审查失败」背后是四种不同故障，一刀切文案会把「改后台配置」推给只想重跑的读者。
+ * 分流口径与 `docs/agents/review.md` 的 `error` 处置一致。
+ */
+function errorGuidance(code) {
+  if (code === 'model_failed') {
+    return '本次审查没有跑成：模型腿自己没跑完。先看 `Codex review` job 里 `Run codex exec` 的日志——网关 5xx 或瞬时错误重跑整条 run 即可，只有日志指向配置或模型侧拒绝才改 GitHub 后台。'
+  }
+  if (code === 'config_missing') {
+    return '本次审查没有跑成：检查 GitHub 后台的 secrets/variables 与 CI 日志，配置齐全后重跑。'
+  }
+  if (code === 'artifact_missing') {
+    return '本次审查没有跑成：门禁没拿到审查产物。先核对审查腿的 `Upload review findings` 与写回腿的 `Download review findings`，再重跑整条 run。'
+  }
+  return '本次审查没有跑成：先看 `Codex review` job 的日志定位故障，再重跑整条 run；只有日志指向后台配置才改 secrets/variables。'
+}
+
+export function renderConclusion({
+  conclusion,
+  meta,
+  pullNumber,
+  autoRetry = 'none',
+  modelError = '',
+  trajectory = []
+}) {
   const retryState = normalizeAutoRetryState(autoRetry)
   const autoRetryExplained = retryState !== 'none'
   const labels = {
@@ -469,15 +593,23 @@ export function renderConclusion({ conclusion, meta, pullNumber, autoRetry = 'no
     error: '审查失败',
     not_applicable: '不适用'
   }
-  const verdict = conclusion.status === 'reviewed' && conclusion.blocking ? 'blocked' : conclusion.status
+  const verdict = conclusionVerdict(conclusion)
+  const countsTotal = SEVERITIES.reduce((total, severity) => total + (conclusion.counts[severity] ?? 0), 0)
+  const countsLine = `- 档位统计：Block ${conclusion.counts.Block} · Should fix ${conclusion.counts['Should fix']} · Nit ${conclusion.counts.Nit}`
   const lines = [
-    `<!-- ${CONCLUSION_MARKER} sha=${meta?.head_sha ?? 'none'} status=${verdict} blocks=${conclusion.counts.Block} -->`,
+    // 轨迹的历史存在 marker 里而不是正文可见行：可见行的前缀模型能在 `uncovered` 里原样写出来，
+    // 而 marker 需要字面量 `<!--`，所有模型可控文本都过 escapeHtml，伪造不出这一行。
+    `<!-- ${CONCLUSION_MARKER} sha=${meta?.head_sha ?? 'none'} status=${verdict} blocks=${conclusion.counts.Block}${
+      trajectory.length > 0 ? ` traj=${trajectory.join('|')}` : ''
+    } -->`,
     '',
     '## Codex PR 审查',
     '',
     `- 结论：**${labels[conclusion.status]}**${conclusion.reason ? `（原因：${richText(conclusion.reason)}）` : ''}`,
     `- 审查快照：\`${meta?.head_sha ?? '无'}\``,
-    `- 档位统计：Block ${conclusion.counts.Block} · Should fix ${conclusion.counts['Should fix']} · Nit ${conclusion.counts.Nit}`,
+    // 全 0 的档位统计出现在故障或未审查结论上，会被读成「审过了、没问题」。只有结论确实覆盖当前 head，
+    // 或清单里本来就有非零档位（空壳结论会带着模型看到的 findings）时才列。
+    ...(countsTotal > 0 || conclusion.status === 'reviewed' || conclusion.status === 'stale' ? [countsLine] : []),
     '- 合并判据：`Block`、`error` 与「未审查」让 `codex-gate` 变红；已过时与不适用不拦合并，但结论不覆盖当前 head。',
     '- 这是约定式门禁，GitHub 没有把它设为必需检查；合并前按 `docs/agents/review.md` 核对。'
   ]
@@ -485,6 +617,10 @@ export function renderConclusion({ conclusion, meta, pullNumber, autoRetry = 'no
     lines.push(`- 故障码：\`${plainText(conclusion.code)}\``)
     if (Array.isArray(meta?.missing) && meta.missing.length > 0) {
       lines.push(`- 缺失配置：\`${meta.missing.map(name => plainText(name)).join('`、`')}\``)
+    }
+    // 模型腿的真实故障只在 CI job 日志里；读到了就抄进评论，省掉「自己去翻日志」这一跳。
+    if (conclusion.status === 'error' && modelError !== '') {
+      lines.push(`- 模型腿错误：${codeSpan(modelError)}`)
     }
     // 恢复状态统一挂在故障码旁：带 findings 的空壳结论也能看到，不依赖「无 findings」的正文分支。
     if (conclusion.code === AUTO_RETRY_ERROR_CODE && retryState === 'triggered') {
@@ -505,6 +641,13 @@ export function renderConclusion({ conclusion, meta, pullNumber, autoRetry = 'no
   if (meta?.reused_from) lines.push(`- 复用：同一 head 已有结论，来自 run \`${meta.reused_from}\`，未再调用模型`)
   const generated = stamp(meta?.generated_at)
   if (generated) lines.push(`- 结论生成于：\`${generated}\`（评论就地更新，创建时间不会变）`)
+  // 历史一律写进 marker，所以这条可见行没列出来时下一版仍读得回。可见行的门槛按读感定：
+  // 有故障码时即使只有一条也要列（要回答「这是第几次」），其余状态到第二次更新才有信息量，
+  // 单条平凡状态只是把上面「结论」那行重说一遍。
+  const showTrajectory = trajectory.length > 1 || (trajectory.length === 1 && Boolean(conclusion.code))
+  if (showTrajectory) {
+    lines.push(`${TRAJECTORY_PREFIX}${plainText(trajectory.join(' → '))}`)
+  }
   const coverage = meta?.coverage
     ? { inspected: meta.coverage.inspected ?? [], uncovered: meta.coverage.uncovered ?? [] }
     : null
@@ -539,8 +682,7 @@ export function renderConclusion({ conclusion, meta, pullNumber, autoRetry = 'no
   }
   if (findings.length === 0) {
     if (conclusion.status === 'reviewed') lines.push('没有需要改动的发现。')
-    else if (conclusion.status === 'error')
-      lines.push('本次审查没有跑成：检查 GitHub 后台的 secrets/variables 与 CI 日志，配置齐全后重跑。')
+    else if (conclusion.status === 'error') lines.push(errorGuidance(conclusion.code))
     else if (conclusion.status === 'unreviewed')
       lines.push(
         conclusion.code === 'missing_coverage'
@@ -581,7 +723,11 @@ export function createGhReviewAdapter({ repository, spawn = spawnSync, cwd = pro
         .workflow_runs ?? [],
     // rerun-failed-jobs 返回 201 且响应体可能为空，不能走 JSON.parse。
     rerunFailed: runId => gh(['api', '-X', 'POST', `repos/${repository}/actions/runs/${runId}/rerun-failed-jobs`]),
-    artifacts: runId => get(`repos/${repository}/actions/runs/${runId}/artifacts`).artifacts ?? []
+    artifacts: runId => get(`repos/${repository}/actions/runs/${runId}/artifacts`).artifacts ?? [],
+    // jobs 只返回最新 attempt 的那一套；结论评论要的模型腿错误就在这一套里。
+    runJobs: runId => get(`repos/${repository}/actions/runs/${runId}/jobs?per_page=100`).jobs ?? [],
+    // job 日志含 ANSI 转义序列，不加 --allow-escape-sequences 会被 gh 拒绝（与 codex-autofix.mjs 同一读法）。
+    jobLog: jobId => gh(['api', '--allow-escape-sequences', `repos/${repository}/actions/jobs/${jobId}/logs`])
   }
 }
 
@@ -1509,6 +1655,38 @@ export function commandAutoRetry({ env = process.env, adapter } = {}) {
   return decision
 }
 
+/**
+ * 结论评论的两项附加输入：读回的状态轨迹与按需取的模型腿错误。
+ *
+ * 单独成函数是为了让 commandReport 的接线可被断言——env 名、门控故障码、`conclusionVerdict`
+ * 与上一版正文这几处任何一笔写错，只会在生产评论上静默消失，YAML 侧的拓扑断言拦不住。
+ *
+ * @param {object} input
+ * @param {object} input.adapter GitHub 只读/写回适配器
+ * @param {object} input.status deriveConclusion 的结果
+ * @param {object|null} input.meta review-meta.json
+ * @param {object|undefined} input.existing 已存在的持久评论
+ * @param {string} input.autoRetry 归一化后的自动恢复档位
+ * @param {object} [input.env] 注入的环境变量表
+ * @returns {{modelError: string, trajectory: string[]}} renderConclusion 的两个可选入参
+ */
+export function conclusionRenderExtras({ adapter, status, meta, existing, autoRetry, env = process.env }) {
+  const modelError =
+    status.status === 'error' && status.code === 'model_failed'
+      ? readModelLegError(adapter, env.WORKFLOW_RUN_ID ?? '')
+      : ''
+  return {
+    modelError,
+    trajectory: trajectoryEntries({
+      previousBody: existing?.body ?? '',
+      verdict: conclusionVerdict(status),
+      code: status.code ?? '',
+      autoRetry,
+      generatedAt: meta?.generated_at ?? ''
+    })
+  }
+}
+
 function commandReport() {
   const env = requireEnv(['GITHUB_REPOSITORY'])
   const adapter = createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY })
@@ -1524,15 +1702,12 @@ function commandReport() {
   }
   const { conclusion, status } = call(() => evaluateGate(adapter, pull))
   const meta = conclusion?.meta ?? null
-  const body = renderConclusion({
-    conclusion: status,
-    meta,
-    pullNumber: number,
-    autoRetry: resolveAutoRetryState()
-  })
+  const autoRetry = resolveAutoRetryState()
   const existing = call(() => adapter.listComments(number)).find(comment =>
     (comment.body ?? '').includes(CONCLUSION_MARKER)
   )
+  const extras = conclusionRenderExtras({ adapter, status, meta, existing, autoRetry })
+  const body = renderConclusion({ conclusion: status, meta, pullNumber: number, autoRetry, ...extras })
   if (existing?.body === body) {
     console.log(`conclusion comment ${existing.id} already current`)
     appendReportSummary({ number, status, meta, outcome: `结论评论 #${existing.id} 已是最新，未改动` })
