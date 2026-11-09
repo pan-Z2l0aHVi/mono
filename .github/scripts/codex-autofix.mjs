@@ -131,7 +131,7 @@ export function createGhAutofixAdapter({ repository, spawn = spawnSync, cwd = pr
     pull: number => JSON.parse(gh(['api', `repos/${repository}/pulls/${number}`])),
     pullCommits: number => JSON.parse(gh(['api', `repos/${repository}/pulls/${number}/commits?per_page=100`])),
     jobs: runId => JSON.parse(gh(['api', `repos/${repository}/actions/runs/${runId}/jobs?per_page=100`])).jobs ?? [],
-    jobLog: jobId => gh(['api', `repos/${repository}/actions/jobs/${jobId}/logs`])
+    jobLog: jobId => gh(['api', '--allow-escape-sequences', `repos/${repository}/actions/jobs/${jobId}/logs`])
   }
 }
 
