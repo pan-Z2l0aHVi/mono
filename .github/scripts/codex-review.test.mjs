@@ -24,6 +24,7 @@ import {
   parseReviewFindings,
   readConclusion,
   renderConclusion,
+  resolveAutoRetryState,
   resolveReviewRange,
   reviewTarget,
   scopePath,
@@ -637,6 +638,20 @@ for (const [label, value] of [
     assert.equal(normalizeAutoRetryState(value), 'none', `state ${String(value)} must fall back to none`)
   }
   for (const value of AUTO_RETRY_STATES) assert.equal(normalizeAutoRetryState(value), value)
+
+  // 恢复状态的最终解析在脚本里求值，不依赖 Actions 表达式的 && / || 返回操作数语义。
+  const resolve = (state, outcome) =>
+    resolveAutoRetryState({ CODEX_REVIEW_AUTO_RETRY_STATE: state, CODEX_REVIEW_AUTO_RETRY_OUTCOME: outcome })
+  for (const outcome of ['success', 'failure', 'skipped']) {
+    for (const value of AUTO_RETRY_STATES.filter(state => state !== 'none')) {
+      assert.equal(resolve(value, outcome), value, `an explicit ${value} state wins over ${outcome}`)
+    }
+  }
+  assert.equal(resolve('', 'failure'), 'failed', 'a crashed step without an output still reports failed')
+  assert.equal(resolve('', 'skipped'), 'none', 'a skipped step must not report a failed retry')
+  assert.equal(resolve('', 'success'), 'none')
+  assert.equal(resolve('weird', 'failure'), 'failed', 'unknown states fall through to the outcome fallback')
+  assert.equal(resolve('weird', 'success'), 'none')
 }
 
 {

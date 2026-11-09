@@ -51,6 +51,18 @@ export function normalizeAutoRetryState(value) {
   return AUTO_RETRY_STATES.includes(value) ? value : 'none'
 }
 
+/**
+ * 结论评论最终用哪一档恢复状态。
+ * 兜底判定放在脚本里而不是写成 `state || (outcome == 'failure' && 'failed') || 'none'`：
+ * 后者依赖 Actions 表达式「&& / || 返回操作数」这一未明文记录的语义，脚本内判定可做求值级单测。
+ */
+export function resolveAutoRetryState(env = process.env) {
+  const state = normalizeAutoRetryState(env.CODEX_REVIEW_AUTO_RETRY_STATE)
+  if (state !== 'none') return state
+  // 进程级崩溃导致 output 没写出来时，失败步骤的 outcome 仍是 failure；被跳过的步骤是 skipped。
+  return env.CODEX_REVIEW_AUTO_RETRY_OUTCOME === 'failure' ? 'failed' : 'none'
+}
+
 function emptyCounts() {
   return Object.fromEntries(SEVERITIES.map(severity => [severity, 0]))
 }
@@ -1002,7 +1014,7 @@ export function withPermissionDiagnosis(number) {
 // 所以每条返回路径都往运行页写一行结果，把「没发」的原因留在 Summary 里而不是只留在日志。
 function appendReportSummary({ number, status, meta, outcome }) {
   const counts = status?.counts
-  const autoRetry = normalizeAutoRetryState(process.env.CODEX_REVIEW_AUTO_RETRY_STATE)
+  const autoRetry = resolveAutoRetryState()
   appendSummary([
     '## Codex 审查结论写回',
     '',
@@ -1085,7 +1097,7 @@ function commandReport() {
     conclusion: status,
     meta,
     pullNumber: number,
-    autoRetry: process.env.CODEX_REVIEW_AUTO_RETRY_STATE
+    autoRetry: resolveAutoRetryState()
   })
   const existing = call(() => adapter.listComments(number)).find(comment =>
     (comment.body ?? '').includes(CONCLUSION_MARKER)

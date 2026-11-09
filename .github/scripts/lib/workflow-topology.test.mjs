@@ -11,8 +11,8 @@ import {
   AUTO_RETRY_STATES,
   CONFIG_ENV,
   autoRetryDecision,
-  commandAutoRetry,
-  priorConclusionDirectory
+  priorConclusionDirectory,
+  resolveAutoRetryState
 } from '../codex-review.mjs'
 
 import {
@@ -623,14 +623,18 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.match(autoRetryStep, conclusionEnv)
     assert.match(commentStep, conclusionEnv)
     assert.match(namedStep(reportText, 'Download review findings'), /path: \$\{\{ runner\.temp \}\}\/codex-review/)
-    assert.match(commentStep, /CODEX_REVIEW_AUTO_RETRY_STATE: \$\{\{ steps\.auto_retry\.outputs\.state/)
+    assert.match(commentStep, /CODEX_REVIEW_AUTO_RETRY_STATE: \$\{\{ steps\.auto_retry\.outputs\.state \}\}/)
     assert.match(
       commentStep,
-      /steps\.auto_retry\.outcome == 'failure' && 'failed'/,
-      'a failed step must not fall back to none'
+      /CODEX_REVIEW_AUTO_RETRY_OUTCOME: \$\{\{ steps\.auto_retry\.outcome \}\}/,
+      'a crashed step without an output must still be reported'
     )
-    assert.match(commentStep, /\|\| 'none' \}\}/, 'a skipped step must stay none')
-    // 上限与失败兜底由可信脚本导出的行为断言钉住，不再靠源码字符串匹配。
+    const stateLine = commentStep.split('\n').find(line => line.includes('CODEX_REVIEW_AUTO_RETRY_STATE:'))
+    assert.ok(
+      stateLine && !stateLine.includes('&&'),
+      'the recovery state must not depend on expression operand semantics'
+    )
+    // 上限、分流与恢复状态解析由可信脚本导出的行为断言钉住，不再靠源码字符串匹配。
     assert.equal(AUTO_RETRY_LIMIT, 1, 'the single-retry ceiling must not drift')
     assert.deepEqual(AUTO_RETRY_STATES, ['none', 'triggered', 'exhausted', 'failed'])
     const emptyMeta = { status: 'unreviewed', error_code: 'missing_coverage' }
@@ -644,7 +648,16 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       'skip',
       'an unreadable run_attempt must fall back to manual handling'
     )
-    assert.equal(typeof commandAutoRetry, 'function', 'the trusted script must own the retry decision')
+    assert.equal(
+      resolveAutoRetryState({ CODEX_REVIEW_AUTO_RETRY_STATE: '', CODEX_REVIEW_AUTO_RETRY_OUTCOME: 'failure' }),
+      'failed',
+      'the trusted script must own the recovery state resolution'
+    )
+    assert.equal(
+      resolveAutoRetryState({ CODEX_REVIEW_AUTO_RETRY_STATE: '', CODEX_REVIEW_AUTO_RETRY_OUTCOME: 'skipped' }),
+      'none',
+      'a skipped retry step must not report a failed retry'
+    )
 
     const eligibilityGuard =
       "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository" +

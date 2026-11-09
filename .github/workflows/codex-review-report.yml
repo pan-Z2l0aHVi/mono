@@ -146,8 +146,10 @@ jobs:
         env:
           CODEX_REVIEW_PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
           CODEX_REVIEW_RUN_CONCLUSION: ${{ github.event.workflow_run.conclusion }}
-          # 步骤被跳过是 none，步骤失败且没写出 output 是 failed；两者都不能静默退回手动重跑指引。
-          CODEX_REVIEW_AUTO_RETRY_STATE: ${{ steps.auto_retry.outputs.state || (steps.auto_retry.outcome == 'failure' && 'failed') || 'none' }}
+          # 恢复状态由脚本解析：步骤被跳过是 none，进程级崩溃没写出 output 时由 outcome 兜成 failed。
+          # 不用 `state || (outcome == 'failure' && 'failed') || 'none'`，避免依赖 Actions 表达式返回操作数的语义。
+          CODEX_REVIEW_AUTO_RETRY_STATE: ${{ steps.auto_retry.outputs.state }}
+          CODEX_REVIEW_AUTO_RETRY_OUTCOME: ${{ steps.auto_retry.outcome }}
           CODEX_REVIEW_CONCLUSION_DIR: ${{ runner.temp }}/codex-review
           GH_TOKEN: ${{ github.token }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" report
