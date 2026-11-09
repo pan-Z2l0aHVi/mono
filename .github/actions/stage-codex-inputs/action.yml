@@ -2,7 +2,7 @@
 # 用法：
 #   - uses: ./.github/actions/stage-codex-inputs
 #       with:
-# base-sha: ${{ github.event.pull_request.base.sha }} # PR job 传 base；默认分支 job 留空用 HEAD
+#         base-sha: ${{ github.event.pull_request.base.sha }}   # PR job 传 base；默认分支 job 留空用 HEAD
 # 落点在 $RUNNER_TEMP/trusted，后续步骤只执行这里的副本。
 name: 'Stage trusted Codex inputs'
 description: 'Pin the Codex prompts, schema and gate scripts to the PR base commit so a reviewed change cannot rewrite the script contents the gate executes.'

@@ -566,7 +566,7 @@ for (const [label, value] of [
     )
   }
 
-  // 写回 job 自身被人工 re-run 时 payload 仍是原始事件（CI run attempt 仍为 1），
+  // 写回 run 自身被人工 re-run 时 payload 仍是原始事件（CI run attempt 仍为 1），
   // 只有 github.run_attempt 递增。不判它就会再 POST 一次 rerun-failed-jobs，突破硬上限。
   for (const reportAttempt of [2, 3, 10, '2']) {
     const result = decision({ reportAttempt })
@@ -659,7 +659,7 @@ for (const [label, value] of [
   // 保留手动重跑出口是有意的可操作指引，但必须带三重限定：先诊断、仅限 CI 判红、不要连续重跑。
   assert.match(legacy, /gh run rerun --failed/, 'the manual hint stays when no auto retry happened')
   assert.match(legacy, /- 恢复指引：本次没有触发自动重跑/)
-  assert.match(legacy, /先看写回 job 运行页 Summary/, 'a broken env must be diagnosed before a manual rerun')
+  assert.match(legacy, /先看写回 run 运行页 Summary/, 'a broken env must be diagnosed before a manual rerun')
   assert.match(legacy, /仅当 CI 确实判 `failure`/, 'a green CI run must not be rerun manually')
   assert.match(legacy, /不要连续重跑/, 'the hint must not induce an unbounded manual rerun loop')
   assert.ok(!legacy.includes('- 自动恢复：'), 'no auto retry means no auto recovery line')
@@ -782,13 +782,13 @@ for (const [label, value] of [
     assert.deepEqual(reruns, ['42'], 'attempt 2 must not rerun again')
     assert.match(exhausted.outputs, /state=exhausted/)
 
-    // 写回 job 自身被 re-run：CI run attempt 仍是 1，但这一步必须停在 exhausted，且 Summary 两个维度都留痕。
+    // 写回 run 自身被 re-run：CI run attempt 仍是 1，但这一步必须停在 exhausted，且 Summary 两个维度都留痕。
     const reRunReport = invoke({ adapter, env: { ...baseEnv, WORKFLOW_REPORT_ATTEMPT: '2' } })
     assert.equal(reRunReport.result.state, 'exhausted')
     assert.match(reRunReport.result.reason, /report workflow was re-run/)
     assert.deepEqual(reruns, ['42'], 'a re-run report leg must not POST rerun-failed-jobs again')
     assert.match(reRunReport.outputs, /state=exhausted/)
-    assert.match(reRunReport.summary, /CI attempt `1` \/ 写回 job attempt `2`/)
+    assert.match(reRunReport.summary, /CI attempt `1` \/ 写回 run attempt `2`/)
 
     // github.run_attempt 缺失时保守跳过；评论会转人工，但绝不能再触发重跑。
     const missingReportAttempt = invoke({
@@ -798,9 +798,9 @@ for (const [label, value] of [
     assert.equal(missingReportAttempt.result.state, 'none')
     assert.deepEqual(reruns, ['42'], 'an unreadable report attempt must not rerun')
     assert.match(missingReportAttempt.outputs, /state=none/, 'the step output must still be written')
-    assert.match(missingReportAttempt.summary, /写回 job attempt `unknown`/)
+    assert.match(missingReportAttempt.summary, /写回 run attempt `unknown`/)
 
-    // CI 已成功 + 写回 job 被 re-run：总闸门先判，不再误报 exhausted。
+    // CI 已成功 + 写回 run 被 re-run：总闸门先判，不再误报 exhausted。
     const ciSucceeded = invoke({
       adapter,
       env: { ...baseEnv, WORKFLOW_REPORT_ATTEMPT: '2', CODEX_REVIEW_RUN_CONCLUSION: 'success' }

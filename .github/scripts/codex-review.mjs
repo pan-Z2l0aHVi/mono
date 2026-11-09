@@ -317,9 +317,9 @@ export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplic
  * 空壳结论是否值得自动重跑一次，以及结论评论该显示哪一档恢复状态。
  *
  * 上限有两个维度，都钉在 AUTO_RETRY_LIMIT：
- * - runAttempt 是触发本次写回 job 的 CI run 的 attempt（来自 workflow_run payload）；重跑 CI 后的
- *   新事件里它是 2，用来挡住「第二次写回 job 的 run」。
- * - reportAttempt 是写回 job 自己这次 run 的 attempt（github.run_attempt）。人工 re-run 写回 job 时
+ * - runAttempt 是触发本次写回 workflow 的 CI run 的 attempt（来自 workflow_run payload）；重跑 CI 后的
+ *   新事件里它是 2，用来挡住「第二次写回 workflow 的 run」。
+ * - reportAttempt 是写回 run 自己的 attempt（github.run_attempt）。人工 re-run 写回 run 时
  *   payload 仍是原始事件（runAttempt 依旧是 1），只有这个量会递增；不判它就会再 POST 一次
  *   rerun-failed-jobs，突破「每个 CI run 只自动重跑一次」。两个量不能互相替代（ADR-0021）。
  *
@@ -329,9 +329,9 @@ export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplic
  *
  * @param {object} input
  * @param {object|null} input.meta 本轮下载的 review-meta.json。
- * @param {number|string|undefined} input.runAttempt 触发写回 job 的 CI run 的 attempt；拿不到就不重跑。
- * @param {string|undefined} input.runConclusion 触发写回 job 的 CI run 的 conclusion。
- * @param {number|string|undefined} input.reportAttempt 写回 job 自己这次 run 的 attempt；拿不到就不重跑。
+ * @param {number|string|undefined} input.runAttempt 触发写回 workflow 的 CI run 的 attempt；拿不到就不重跑。
+ * @param {string|undefined} input.runConclusion 触发写回 workflow 的 CI run 的 conclusion。
+ * @param {number|string|undefined} input.reportAttempt 写回 run 自己的 attempt；拿不到就不重跑。
  * @returns {{action: 'rerun'|'skip', state: 'triggered'|'exhausted'|'none', reason: string}}
  *   无副作用；真正的 rerun 由调用方按 action 执行。
  */
@@ -499,7 +499,7 @@ export function renderConclusion({ conclusion, meta, pullNumber, autoRetry = 'no
       )
     } else if (conclusion.code === AUTO_RETRY_ERROR_CODE) {
       lines.push(
-        '- 恢复指引：本次没有触发自动重跑；先看写回 job 运行页 Summary 的「原因」，核对是不是 CI 非 `failure`、产物不是空壳、attempt 字段不可读或注入异常。仅当 CI 确实判 `failure` 且本次产物确属空壳时，才必要时用 `gh run rerun --failed` 重跑一次；CI 已成功时不要重跑，先核对评论头部的 `sha` 是否覆盖当前 head。反复出现就修输出契约或 env 注入，不要连续重跑。'
+        '- 恢复指引：本次没有触发自动重跑；先看写回 run 运行页 Summary 的「原因」，核对是不是 CI 非 `failure`、产物不是空壳、attempt 字段不可读或注入异常。仅当 CI 确实判 `failure` 且本次产物确属空壳时，才必要时用 `gh run rerun --failed` 重跑一次；CI 已成功时不要重跑，先核对评论头部的 `sha` 是否覆盖当前 head。反复出现就修输出契约或 env 注入，不要连续重跑。'
       )
     }
   }
@@ -1440,7 +1440,7 @@ export function withPermissionDiagnosis(number) {
   }
 }
 
-// 写回 job 的绿色必须能读懂：同一个 success，既可能是「发了评论」，也可能是「什么都没发」。
+// 写回 workflow 的绿色必须能读懂：同一个 success，既可能是「发了评论」，也可能是「什么都没发」。
 // 所以每条返回路径都往运行页写一行结果，把「没发」的原因留在 Summary 里而不是只留在日志。
 function appendReportSummary({ number, status, meta, outcome }) {
   const counts = status?.counts
@@ -1465,7 +1465,7 @@ function appendReportSummary({ number, status, meta, outcome }) {
 /**
  * 写回 job 唯一的动作类写操作：对第一次 attempt 的空壳结论触发一次 --failed 重跑。
  *
- * run_attempt 与 run conclusion 由 workflow_run payload 注入，写回 job 自身的 attempt 由 github.run_attempt
+ * run_attempt 与 run conclusion 由 workflow_run payload 注入，写回 run 自身的 attempt 由 github.run_attempt
  * 注入；两者共同钉住「只重跑一次」，不再额外发 GET。
  * 所有异常都收敛成 state=failed 并以 0 退出（annotation + Summary 留痕），步骤 output 一定写入，
  * 不依赖「失败步骤的 output 是否被 runner 保留」，结论评论也就不会退回误导性的手动重跑指引。
@@ -1502,11 +1502,11 @@ export function commandAutoRetry({ env = process.env, adapter } = {}) {
   appendSummary([
     '## Codex 空壳结论自动恢复',
     '',
-    `- 触发 run：\`${runId || 'unknown'}\`（CI attempt \`${plainText(attempt)}\` / 写回 job attempt \`${plainText(reportAttempt)}\`）`,
+    `- 触发 run：\`${runId || 'unknown'}\`（CI attempt \`${plainText(attempt)}\` / 写回 run attempt \`${plainText(reportAttempt)}\`）`,
     `- 动作：**${decision.action === 'rerun' ? '已重跑失败 job 一次' : '跳过'}**`,
     `- 原因：${decision.reason}`,
     `- 恢复状态：\`${decision.state}\``,
-    '- 上限：CI run 与写回 job 自身的 attempt 都必须为 1；任一已重跑过就转人工完整独立审查。'
+    '- 上限：CI run 与写回 run 自身的 attempt 都必须为 1；任一已重跑过就转人工完整独立审查。'
   ])
   return decision
 }
