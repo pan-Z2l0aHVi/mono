@@ -223,7 +223,8 @@ for (const file of [
   assert.deepEqual(adapter.jobs(99), [{ id: 2, name: 'check', steps: [] }])
   assert.equal(adapter.jobLog(2), 'log body\n')
   assert.throws(() => adapter.jobLog(7), /HTTP 404/)
-  assert.ok(calls.every(args => args[0] === 'api' && String(args[1]).startsWith('repos/owner/repo/')))
+  assert.ok(calls.every(args => args[0] === 'api' && String(args.at(-1)).startsWith('repos/owner/repo/')))
+  assert.deepEqual(calls[3], ['api', '--allow-escape-sequences', 'repos/owner/repo/actions/jobs/2/logs'])
 }
 
 {
@@ -232,7 +233,7 @@ for (const file of [
   const bin = path.join(directory, 'bin')
   fs.mkdirSync(bin)
   const logFixture = path.join(directory, 'job-log.txt')
-  fs.writeFileSync(logFixture, 'Error: expected 1 to be 2\n')
+  fs.writeFileSync(logFixture, '\u001B[31mError: expected 1 to be 2\u001B[0m\n')
 
   function prepare({ commits, jobs }) {
     const commitsPath = path.join(directory, 'commits.json')
@@ -243,7 +244,7 @@ for (const file of [
     fs.writeFileSync(outputPath, '')
     fs.writeFileSync(
       path.join(bin, 'gh'),
-      `#!/bin/sh\ncase "$*" in\n  */pulls/*/commits*) cat "$FAKE_COMMITS" ;;\n  */actions/runs/*/jobs*) cat "$FAKE_JOBS" ;;\n  */actions/jobs/*/logs*) cat "$FAKE_LOG" ;;\nesac\n`,
+      `#!/bin/sh\ncase "$*" in\n  */pulls/*/commits*) cat "$FAKE_COMMITS" ;;\n  */actions/runs/*/jobs*) cat "$FAKE_JOBS" ;;\n  *--allow-escape-sequences*/actions/jobs/*/logs*) cat "$FAKE_LOG" ;;\n  */actions/jobs/*/logs*) echo "gh: non-JSON response contains control characters; pass --allow-escape-sequences to output it" >&2; exit 1 ;;\nesac\n`,
       { mode: 0o755 }
     )
     const result = spawnSync(process.execPath, [scriptPath, 'prepare'], {
