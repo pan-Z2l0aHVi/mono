@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { WebUiDialog, WebUiEvent, WebUiSegmented, WebUiSwitch } from '@greypan/web-ui'
 import { storeToRefs } from 'pinia'
-import { ref } from 'vue'
+import { ref, watch } from 'vue'
 
 import { metadataLabelClass } from '@/components/library/presentation'
 import { ACCENT_PRESETS, useSettingsStore, type ThemeAppearance } from '@/stores/settings'
 
-defineProps<{
+const props = defineProps<{
   open: boolean
 }>()
 
@@ -22,6 +22,14 @@ type SettingsTab = 'general' | 'appearance' | 'library'
 
 /** panel 选择在会话内保持，不入存储：重开设置回到「常规」才是预期的落点。 */
 const activeTab = ref<SettingsTab>('general')
+
+watch(
+  () => props.open,
+  open => {
+    if (open) activeTab.value = 'general'
+  },
+  { flush: 'sync' }
+)
 
 const THEME_APPEARANCES: readonly { value: ThemeAppearance; label: string }[] = [
   { value: 'light', label: '浅色' },

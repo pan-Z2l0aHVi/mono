@@ -359,6 +359,30 @@ const meta = [
     {
       label: 'tr',
       children: [
+      { label: 'td', content: "<code>--wui-drawer-inset-top</code>" },
+      { label: 'td', content: "左侧浮动抽屉的上方留边" },
+      { label: 'td', content: "<code>--wui-drawer-inset</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>--wui-drawer-inset-left</code>" },
+      { label: 'td', content: "左侧浮动抽屉的左侧留边" },
+      { label: 'td', content: "<code>--wui-drawer-inset</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>--wui-drawer-inset-bottom</code>" },
+      { label: 'td', content: "左侧浮动抽屉的下方留边" },
+      { label: 'td', content: "<code>--wui-drawer-inset</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
       { label: 'td', content: "<code>--wui-drawer-nested-peek-base</code>" },
       { label: 'td', content: "嵌套堆叠露边基准 <code>A</code>（<code>width &lt;= 640px</code> 时为 <code>28.8px</code>）；堆叠总宽按 <code>A · ln(n)</code> 增长，单层因此完全不动，每多一层新增的露边递减。置 <code>0</code> 关闭露边。详见下方说明" },
       { label: 'td', content: "<code>43.2px</code>" }
@@ -440,7 +464,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-drawer-content-padding</code>" },
-      { label: 'td', content: "内容区内边距；同时驱动拖拽条视觉中线（取半值，不低于半个胶囊厚度 + 4px）" },
+      { label: 'td', content: "内容区内边距；拖拽条的位置与内容内边距无关" },
       { label: 'td', content: "<code>20px</code>" }
       ]
     },

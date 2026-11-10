@@ -246,6 +246,82 @@ describe('WebUiLayout 组件（浏览器）', () => {
   })
 
   describe('移动端 drawer', () => {
+    it('抽屉打开和退出期间隐藏导航按钮，关闭后恢复', async () => {
+      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      const layout = createLayout()
+      layout.mobile = true
+      syncControlledSidebarState(layout)
+      await layout.updateComplete
+      const toggle = byLabel(layout, 'Open navigation menu')
+      toggle.click()
+      await layout.updateComplete
+      expect(getComputedStyle(toggle).visibility).toBe('hidden')
+      const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
+      const dialog = drawer.shadowRoot!.querySelector('dialog')!
+      await pollUntil(() => dialog.classList.contains('is-visible'), 'Expected drawer to open')
+      layout.sidebarOpen = false
+      await layout.updateComplete
+      expect(getComputedStyle(toggle).visibility).toBe('hidden')
+      await pollUntil(() => getComputedStyle(toggle).visibility === 'visible', 'Expected toggle to return')
+    })
+
+    it('移动端启用全宽头部时，插槽内容不被导航按钮挤窄', async () => {
+      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      const layout = createLayout()
+      layout.mobile = true
+      layout.mobileHeaderFullWidth = true
+      layout.style.setProperty('--wui-layout-mobile-toggle-inset', '96px')
+      await layout.updateComplete
+      const content = layout.querySelector<HTMLElement>('[slot="header"]')!
+      const header = layout.shadowRoot!.querySelector('header')!
+      expect(content.getBoundingClientRect().width).toBeCloseTo(header.getBoundingClientRect().width)
+    })
+
+    it('移动端侧栏卡片沿用桌面端的上、左、下间距 token', async () => {
+      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      const layout = createLayout()
+      layout.mobile = true
+      layout.sidebarOpen = true
+      layout.style.setProperty('--wui-layout-sidebar-padding-top', '56px')
+      layout.style.setProperty('--wui-layout-sidebar-padding-left', '16px')
+      layout.style.setProperty('--wui-layout-sidebar-padding-bottom', '24px')
+      await layout.updateComplete
+
+      const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
+      await pollUntil(() => drawer.hasAttribute('open'), 'Expected drawer to open')
+      const dialog = drawer.shadowRoot!.querySelector('dialog')!
+      await waitForAnimationsToFinish([dialog], 8_000)
+      const rect = dialog.getBoundingClientRect()
+      expect(rect.top).toBeCloseTo(56)
+      expect(rect.left).toBeCloseTo(16)
+      expect(window.innerHeight - rect.bottom).toBeCloseTo(24)
+    })
+
+    it('移动端 toggle 的位置可通过 token 调整，侧栏内容占满 drawer', async () => {
+      await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+      const layout = createLayout()
+      layout.mobile = true
+      layout.style.setProperty('--wui-layout-mobile-toggle-inset', '80px')
+      layout.style.setProperty('--wui-layout-mobile-toggle-top', '24px')
+      syncControlledSidebarState(layout)
+      await layout.updateComplete
+
+      const toggle = byLabel(layout, 'Open navigation menu')
+      const header = layout.shadowRoot!.querySelector('header')!.getBoundingClientRect()
+      expect(toggle.getBoundingClientRect().left - header.left).toBeCloseTo(80)
+      expect(toggle.getBoundingClientRect().top - header.top).toBeCloseTo(24)
+
+      toggle.click()
+      const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
+      await pollUntil(() => drawer.hasAttribute('open'), 'Expected drawer to open')
+      await waitForAnimationsToFinish([drawer], 8_000)
+      const viewport = layout.shadowRoot!.querySelector<HTMLElement>('.sidebar-viewport')!
+      const content = drawer.shadowRoot!.querySelector<HTMLElement>('.wui-drawer-content')!
+      const style = getComputedStyle(content)
+      const innerHeight = content.clientHeight - parseFloat(style.paddingTop) - parseFloat(style.paddingBottom)
+      expect(viewport.getBoundingClientRect().height).toBeCloseTo(innerHeight)
+    })
+
     // 由调用方选择桌面侧栏或移动端 drawer。
     it('移动端改用受控 drawer，不再渲染桌面 aside', async () => {
       await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)

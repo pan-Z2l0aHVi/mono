@@ -16,6 +16,7 @@ import {
   TagColor
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import { stubLayout } from '../../components/library/__tests__/virtualLayout'
+import { queueWindowFileDrop } from '../../composables/windowFileDrop'
 import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../../services/library'
 import { useLibraryStore } from '../../stores/library'
 import LibraryPage from '../library/index.vue'
@@ -554,6 +555,18 @@ describe('LibraryPage：确认弹窗退场', () => {
     }
   })
 
+  it('窗口拖入文件时打开添加资源并入队', async () => {
+    const mounted = await mountPage()
+    try {
+      queueWindowFileDrop(['/tmp/photo.png'])
+      await flush()
+      expect((addDialog(mounted.host) as WebUiDialog).open).toBe(true)
+      expect(mounted.host.textContent).toContain('photo')
+    } finally {
+      await mounted.close()
+    }
+  })
+
   it('紧凑变体取消后退场期间内容保持原样', async () => {
     const mounted = await mountPage()
 
@@ -561,7 +574,7 @@ describe('LibraryPage：确认弹窗退场', () => {
       // 走「移除待添加项」：compact 由调用点声明、不从标题字符串派生，宽度不会在退场中途跳变。
       mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="添加资源"]')?.click()
       await nextTick()
-      runtimeStub.droppedFilesListener?.(['/tmp/photo.png'])
+      queueWindowFileDrop(['/tmp/photo.png'])
       await flush()
       const remove = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="移除待添加资源"]')
       if (!remove) throw new Error('移除待添加资源 button 未渲染')

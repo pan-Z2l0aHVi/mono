@@ -8,6 +8,22 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
+import { pendingWindowFileDrops } from '@/composables/windowFileDrop'
+
+const fileDrop = vi.hoisted(() => ({ listener: null as ((paths: string[]) => void) | null }))
+vi.mock('@/services/library', () => ({
+  createLibraryRuntime: () => ({
+    events: {
+      onFilesDropped: (listener: (paths: string[]) => void) => {
+        fileDrop.listener = listener
+        return () => {
+          fileDrop.listener = null
+        }
+      }
+    }
+  })
+}))
+
 import AppLayout from '../AppLayout.vue'
 
 /**
@@ -257,6 +273,36 @@ describe('AppLayout：collapse preference 不跨视口泄漏', () => {
     expect(isDrawerMode()).toBe(false)
     expect(layoutRoot().mobile).toBe(false)
     expect(navRoot().textContent).not.toContain('资料库')
+  })
+})
+
+describe('AppLayout：窗口文件拖放', () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', matchMediaStub)
+    pendingWindowFileDrops.value = []
+    router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', redirect: '/library' },
+        { path: '/library', component: LibraryPageStub },
+        { path: '/map', component: MapPageStub }
+      ]
+    })
+  })
+  afterEach(() => {
+    app?.unmount()
+    host?.remove()
+    pendingWindowFileDrops.value = []
+    vi.restoreAllMocks()
+  })
+  it('在其他页面拖入文件时转到资源库并保留路径', async () => {
+    await mountLayout()
+    await navigate('/map')
+    fileDrop.listener?.(['/tmp/photo.png'])
+    await router.isReady()
+    await nextTick()
+    expect(pendingWindowFileDrops.value).toEqual([['/tmp/photo.png']])
+    await vi.waitFor(() => expect(router.currentRoute.value.path).toBe('/library'))
   })
 })
 

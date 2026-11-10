@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WebUiEditableText, WebUiEvent, WebUiTextarea } from '@greypan/web-ui'
-import { computed, nextTick, onMounted, onScopeDispose, ref, type ComponentPublicInstance } from 'vue'
+import { computed, nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AddDialog from '@/components/library/AddDialog.vue'
@@ -25,6 +25,7 @@ import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLayoutMobile } from '@/composables/useLayoutMobile'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
 import { useLibrarySelection } from '@/composables/useLibrarySelection'
+import { pendingWindowFileDrops } from '@/composables/windowFileDrop'
 import type { LibraryQueueItem } from '@/services/library'
 import { useLibraryStore } from '@/stores/library'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
@@ -91,9 +92,17 @@ const confirmOpen = ref(false)
 const confirmRequest = ref<ConfirmRequest | null>(null)
 const confirmError = ref('')
 const addError = ref('')
-const stopDroppedFiles = runtime.events.onFilesDropped(paths => {
-  if (addOpen.value) void addQueue.enqueueFileLocations(paths)
-})
+watch(
+  pendingWindowFileDrops,
+  batches => {
+    if (!batches.length) return
+    pendingWindowFileDrops.value = []
+    addError.value = ''
+    addOpen.value = true
+    for (const paths of batches) void addQueue.enqueueFileLocations(paths)
+  },
+  { immediate: true }
+)
 const stopPasteFileRequest = runtime.events.onPasteFilesRequested(() => {
   addOpen.value = true
   void pasteFilePaths()
@@ -102,7 +111,6 @@ const stopSourceAvailability = runtime.events.onSourceAvailability(event => {
   store.applySourceAvailability(event.source_id, event.available, event.size_bytes)
 })
 onScopeDispose(() => {
-  stopDroppedFiles()
   stopPasteFileRequest()
   stopSourceAvailability()
   void addQueue.close()

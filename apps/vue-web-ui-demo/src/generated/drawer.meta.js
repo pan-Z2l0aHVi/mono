@@ -359,6 +359,30 @@ const meta = [
     {
       label: 'tr',
       children: [
+      { label: 'td', content: "<code>--wui-drawer-inset-top</code>" },
+      { label: 'td', content: "Top inset of a left floating drawer" },
+      { label: 'td', content: "<code>--wui-drawer-inset</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>--wui-drawer-inset-left</code>" },
+      { label: 'td', content: "Left inset of a left floating drawer" },
+      { label: 'td', content: "<code>--wui-drawer-inset</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>--wui-drawer-inset-bottom</code>" },
+      { label: 'td', content: "Bottom inset of a left floating drawer" },
+      { label: 'td', content: "<code>--wui-drawer-inset</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
       { label: 'td', content: "<code>--wui-drawer-nested-peek-base</code>" },
       { label: 'td', content: "Exposed-edge base <code>A</code> for nested stacking (<code>28.8px</code> when <code>width &lt;= 640px</code>); the total stack width grows as <code>A · ln(n)</code>, so a single layer never moves and each additional layer adds a smaller exposed edge. Set to <code>0</code> to disable the exposed edge. See the notes above" },
       { label: 'td', content: "<code>43.2px</code>" }
@@ -440,7 +464,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-drawer-content-padding</code>" },
-      { label: 'td', content: "Content area padding; also drives the drag bar's visual center line (half the value, no less than half the pill thickness + 4px)" },
+      { label: 'td', content: "Content area padding; the drag bar position is independent of content padding" },
       { label: 'td', content: "<code>20px</code>" }
       ]
     },

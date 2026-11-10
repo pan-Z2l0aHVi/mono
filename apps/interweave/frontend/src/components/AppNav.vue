@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 type NavKey = 'library' | 'map'
 
-defineProps<{ collapsed?: boolean }>()
+defineProps<{ collapsed?: boolean; mobile?: boolean }>()
 
 const emit = defineEmits<{
   navigate: [key: NavKey]
@@ -67,7 +67,7 @@ function selectNav(item: (typeof navItems)[number]) {
 </script>
 
 <template>
-  <div class="relative z-20 flex h-full flex-col p-2 pb-0" aria-label="应用导航">
+  <div class="relative z-20 flex h-full flex-col" :class="mobile ? 'p-0' : 'p-2 pb-0'" aria-label="应用导航">
     <nav class="grid gap-1 mb-1" aria-label="主导航">
       <button
         v-for="item in navItems"
