@@ -1,5 +1,7 @@
 import { definePlugin } from '@greypan/js-kit'
 
+import { commitLayout } from '@/shared/transition/commit-layout'
+
 import { getTransitionDuration } from './presence'
 
 export interface NativeDialogPresenceOptions {
@@ -92,7 +94,7 @@ export const defineNativeDialogPresence = () =>
       }
       // 强制计算初始 top-layer 布局，确保 Safari 等浏览器在下一帧切换 class 时
       // 有稳定的 transition 起点，而不是偶发跳过进场过渡。
-      void dialog.offsetWidth
+      commitLayout(dialog)
 
       cancelOpenFrame()
       openFrame = requestAnimationFrame(() => {
@@ -105,7 +107,7 @@ export const defineNativeDialogPresence = () =>
     const startClosingTransition = (dialog: HTMLDialogElement) => {
       // WebKit may coalesce class changes in the same style scope and skip the transition
       // when the previous computed state has not been submitted yet.
-      void dialog.offsetWidth
+      commitLayout(dialog)
       dialog.classList.add('is-closing')
       dialog.classList.remove('is-visible')
       clearCloseFallback()
@@ -137,7 +139,7 @@ export const defineNativeDialogPresence = () =>
         const transitionPriority = dialog.style.getPropertyPriority('transition')
         dialog.style.setProperty('transition', 'none', 'important')
         dialog.classList.add('is-visible')
-        void dialog.offsetWidth
+        commitLayout(dialog)
         if (transition) {
           dialog.style.setProperty('transition', transition, transitionPriority)
         } else {

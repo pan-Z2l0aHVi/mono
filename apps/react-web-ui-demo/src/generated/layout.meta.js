@@ -313,6 +313,30 @@ const meta = [
     {
       label: 'tr',
       children: [
+      { label: 'td', content: "<code>--wui-layout-sidebar-padding-top</code>" },
+      { label: 'td', content: "Space above the desktop sidebar card" },
+      { label: 'td', content: "<code>--wui-space-2</code> (<code>8px</code>)" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>--wui-layout-sidebar-padding-left</code>" },
+      { label: 'td', content: "Space to the left of the desktop sidebar card" },
+      { label: 'td', content: "<code>--wui-space-2</code> (<code>8px</code>)" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>--wui-layout-sidebar-padding-bottom</code>" },
+      { label: 'td', content: "Space below the desktop sidebar card" },
+      { label: 'td', content: "<code>--wui-space-2</code> (<code>8px</code>)" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
       { label: 'td', content: "<code>--wui-layout-mobile-toggle-inset</code>" },
       { label: 'td', content: "Left inset of the mobile header Toggle" },
       { label: 'td', content: "<code>8px</code>" }

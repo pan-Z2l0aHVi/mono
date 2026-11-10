@@ -502,9 +502,12 @@ const open = ref(false)
 
 ### CSS 自定义属性
 
-| 名称                                | 说明                                                            | 默认值             |
-| ----------------------------------- | --------------------------------------------------------------- | ------------------ |
-| `--wui-layout-viewport-height`      | layout 使用的可用视口高度；嵌入限高容器时设为容器高度           | `100vh` / `100dvh` |
-| `--wui-layout-sidebar-radius`       | 侧边栏卡片圆角（桌面端和移动端共用）                            | `24px`             |
-| `--wui-layout-mobile-toggle-inset`  | 移动端头部开关的左缩进                                          | `8px`              |
-| `--wui-layout-sidebar-toggle-width` | 桌面端侧边栏收起按钮的宽度，下限为 `--wui-control-size`（36px） | `36px`             |
+| 名称                                  | 说明                                                            | 默认值                   |
+| ------------------------------------- | --------------------------------------------------------------- | ------------------------ |
+| `--wui-layout-viewport-height`        | layout 使用的可用视口高度；嵌入限高容器时设为容器高度           | `100vh` / `100dvh`       |
+| `--wui-layout-sidebar-radius`         | 侧边栏卡片圆角（桌面端和移动端共用）                            | `24px`                   |
+| `--wui-layout-sidebar-padding-top`    | 桌面端侧边栏卡片上方间距                                        | `--wui-space-2`（`8px`） |
+| `--wui-layout-sidebar-padding-left`   | 桌面端侧边栏卡片左侧间距                                        | `--wui-space-2`（`8px`） |
+| `--wui-layout-sidebar-padding-bottom` | 桌面端侧边栏卡片下方间距                                        | `--wui-space-2`（`8px`） |
+| `--wui-layout-mobile-toggle-inset`    | 移动端头部开关的左缩进                                          | `8px`                    |
+| `--wui-layout-sidebar-toggle-width`   | 桌面端侧边栏收起按钮的宽度，下限为 `--wui-control-size`（36px） | `36px`                   |

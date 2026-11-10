@@ -46,6 +46,18 @@ afterEach(async () => {
 })
 
 describe('WebUiLayout 组件（浏览器）', () => {
+  it('桌面侧边栏卡片的上、左、下间距可分别覆盖', async () => {
+    const layout = createLayout()
+    layout.style.setProperty('--wui-layout-sidebar-padding-top', '40px')
+    layout.style.setProperty('--wui-layout-sidebar-padding-left', '16px')
+    layout.style.setProperty('--wui-layout-sidebar-padding-bottom', '24px')
+    await layout.updateComplete
+    const aside = layout.shadowRoot!.querySelector('aside')!.getBoundingClientRect()
+    const panel = layout.shadowRoot!.querySelector('.aside-panel')!.getBoundingClientRect()
+    expect(panel.top - aside.top).toBeCloseTo(40)
+    expect(panel.left - aside.left).toBeCloseTo(16)
+    expect(aside.bottom - panel.bottom).toBeCloseTo(24)
+  })
   it('--wui-layout-viewport-height 把内嵌 layout 与侧边栏限制在容器高度内', async () => {
     await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
     const container = document.createElement('div')

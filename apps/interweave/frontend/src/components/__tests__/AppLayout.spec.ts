@@ -105,6 +105,19 @@ describe('AppLayout：应用外壳', () => {
     app?.unmount()
     host?.remove()
     vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it.each([
+    ['darwin', true],
+    ['windows', false],
+    ['linux', false]
+  ])('仅 macOS 为系统窗口按钮留出顶部空间（%s）', async (os, expected) => {
+    vi.stubGlobal('_wails', { environment: { OS: os } })
+    await mountLayout()
+    expect([...layoutRoot().classList].some(name => name.startsWith('[--wui-layout-sidebar-padding-top:'))).toBe(
+      expected
+    )
   })
 
   it('切路由不重建 layout 与 AppNav 实例', async () => {

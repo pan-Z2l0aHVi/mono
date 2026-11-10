@@ -3,7 +3,7 @@ import type { WebUiDialog, WebUiEvent, WebUiSegmented, WebUiSwitch } from '@grey
 import { storeToRefs } from 'pinia'
 import { ref } from 'vue'
 
-import { metadataLabelClass, metadataRowClass } from '@/components/library/presentation'
+import { metadataLabelClass } from '@/components/library/presentation'
 import { ACCENT_PRESETS, useSettingsStore, type ThemeAppearance } from '@/stores/settings'
 
 defineProps<{
@@ -16,10 +16,11 @@ const emit = defineEmits<{
 
 const settings = useSettingsStore()
 const { appearance, accent, reducedMotion } = storeToRefs(settings)
+const settingsRowClass = 'flex min-w-0 items-center justify-between gap-4 py-2'
 
 type SettingsTab = 'general' | 'appearance' | 'library'
 
-/** panel 选择在会话内保持，不入存储：重开设置回到「通用」才是预期的落点。 */
+/** panel 选择在会话内保持，不入存储：重开设置回到「常规」才是预期的落点。 */
 const activeTab = ref<SettingsTab>('general')
 
 const THEME_APPEARANCES: readonly { value: ThemeAppearance; label: string }[] = [
@@ -29,7 +30,7 @@ const THEME_APPEARANCES: readonly { value: ThemeAppearance; label: string }[] = 
 ]
 
 const TABS: readonly { value: SettingsTab; label: string }[] = [
-  { value: 'general', label: '通用' },
+  { value: 'general', label: '常规' },
   { value: 'appearance', label: '外观' },
   { value: 'library', label: '资源库' }
 ]
@@ -89,13 +90,14 @@ function pickAccent(value: string) {
     controlled
     closable
     aria-dialog-label="设置"
-    class="[--wui-dialog-width:min(90vw,480px)] [--wui-dialog-max-height:max(0px,calc(min(90vh,408px)_-_160px))]"
+    class="[--wui-dialog-width:min(90vw,480px)] [--wui-dialog-inline-padding:20px] [--wui-dialog-desc-focus-padding:24px] [--wui-dialog-max-height:max(0px,calc(min(90vh,408px)_-_160px))]"
     @open-change="handleOpenChange"
   >
-    <div slot="header" class="-mr-[34px] flex w-[calc(100%+34px)] justify-center pt-10 font-normal">
+    <div slot="header" class="-mr-[38px] flex w-[calc(100%+38px)] flex-col gap-4 font-normal">
+      <h2 class="m-0 text-lg font-semibold text-(--wui-color-text)">设置</h2>
       <web-ui-segmented :value="activeTab" aria-label="设置分区" @change="handleTabChange">
         <web-ui-segmented-trigger v-for="tab in TABS" :key="tab.value" :value="tab.value">
-          <span class="inline-block w-[calc(min(30vw,160px)_-_53.333px)] text-center">{{ tab.label }}</span>
+          <span class="inline-block w-[calc((min(90vw,480px)_-_120px)/3)] text-center">{{ tab.label }}</span>
         </web-ui-segmented-trigger>
       </web-ui-segmented>
     </div>
@@ -105,7 +107,7 @@ function pickAccent(value: string) {
         通用：MCP switch 是纯静态占位。disabled 而非隐藏，是为了让「这一栏存在但还没做」在
         界面上可见；文案承担解释，控件本身不假装可用。
       -->
-      <div v-if="activeTab === 'general'" :class="metadataRowClass">
+      <div v-if="activeTab === 'general'" :class="settingsRowClass">
         <div class="flex min-w-0 flex-col gap-0.5">
           <span class="text-sm text-(--wui-color-text)">MCP server</span>
           <span :class="metadataLabelClass">即将推出</span>
@@ -118,7 +120,7 @@ function pickAccent(value: string) {
           主题三态切到 system 时 web-ui-theme 走自己的圆形揭示过渡：那个动画跟着
           resolved appearance 的变化跑，宿主只改 appearance attribute，不绕过它。
         -->
-        <div :class="[metadataRowClass, 'after:hidden']">
+        <div :class="settingsRowClass">
           <span class="text-sm text-(--wui-color-text)">主题</span>
           <web-ui-segmented :value="appearance" aria-label="主题模式" variant="raised" @change="handleAppearanceChange">
             <web-ui-segmented-trigger v-for="item in THEME_APPEARANCES" :key="item.value" :value="item.value">
@@ -127,7 +129,7 @@ function pickAccent(value: string) {
           </web-ui-segmented>
         </div>
 
-        <fieldset class="flex flex-wrap items-center justify-between gap-3 border-0 px-4 py-3">
+        <fieldset class="flex flex-wrap items-center justify-between gap-3 border-0 px-0 py-2">
           <legend class="sr-only">颜色</legend>
           <span class="text-sm text-(--wui-color-text)" aria-hidden="true">颜色</span>
           <div class="flex flex-wrap items-center justify-end">
@@ -141,19 +143,20 @@ function pickAccent(value: string) {
                 name="accent"
                 :value="preset.value"
                 :checked="accent === preset.value"
+                :tabindex="accent === preset.value ? 0 : -1"
                 :aria-label="`强调色 ${preset.label}`"
-                class="peer sr-only"
+                class="peer absolute inset-0 size-full cursor-pointer opacity-0"
                 @change="pickAccent(preset.value)"
               />
               <span
-                class="size-6 rounded-full peer-checked:outline-2 peer-checked:outline-offset-2 peer-checked:outline-(--wui-color-accent) peer-focus-visible:outline-2 peer-focus-visible:outline-offset-2 peer-focus-visible:outline-(--wui-color-accent)"
+                class="size-6 rounded-full peer-checked:outline-2 peer-checked:outline-offset-2 peer-checked:outline-(--wui-color-accent) peer-focus-visible:ring-3 peer-focus-visible:ring-(--wui-color-focus-ring) peer-focus-visible:ring-offset-4"
                 :style="{ backgroundColor: preset.value }"
                 aria-hidden="true"
               />
             </label>
           </div>
         </fieldset>
-        <div class="flex items-center justify-between gap-4 px-4 py-3">
+        <div :class="settingsRowClass">
           <span class="text-sm text-(--wui-color-text)">减少动画</span>
           <web-ui-switch :checked="reducedMotion" aria-label="减少动画" @change="handleReducedMotionChange" />
         </div>

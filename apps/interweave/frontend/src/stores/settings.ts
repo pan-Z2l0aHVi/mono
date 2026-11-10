@@ -35,7 +35,7 @@ const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
 
 /** 与 macOS 色板一致的强调色；每个 onAccent 都按 WCAG AA（≥4.5:1）逐色挑定。 */
 export const ACCENT_PRESETS: readonly AccentPreset[] = [
-  { value: '#007aff', onAccent: '#000000', label: '蓝' },
+  { value: '#0071e3', onAccent: '#ffffff', label: '蓝' },
   { value: '#a54ca4', onAccent: '#ffffff', label: '紫' },
   { value: '#f54096', onAccent: '#000000', label: '粉' },
   { value: '#ff4b53', onAccent: '#000000', label: '红' },
@@ -46,7 +46,8 @@ export const ACCENT_PRESETS: readonly AccentPreset[] = [
 ] as const
 
 const LEGACY_ACCENTS: Record<string, string> = {
-  '#0a84ff': '#007aff',
+  '#0a84ff': '#0071e3',
+  '#007aff': '#0071e3',
   '#1d8348': '#61bf45',
   '#c64600': '#ff8616',
   '#ff453a': '#ff4b53',

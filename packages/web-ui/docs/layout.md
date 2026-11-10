@@ -524,9 +524,12 @@ It is independent of `--wui-color-surface-overlay`, which dialog, drawer, and to
 
 ### CSS Custom Properties
 
-| Name                                | Description                                                                                                  | Default            |
-| ----------------------------------- | ------------------------------------------------------------------------------------------------------------ | ------------------ |
-| `--wui-layout-viewport-height`      | Available layout viewport height; set it to the container height when embedding layout in a fixed-height box | `100vh` / `100dvh` |
-| `--wui-layout-sidebar-radius`       | Sidebar card radius (shared by desktop and mobile)                                                           | `24px`             |
-| `--wui-layout-mobile-toggle-inset`  | Left inset of the mobile header Toggle                                                                       | `8px`              |
-| `--wui-layout-sidebar-toggle-width` | Width of the desktop sidebar collapse toggle; the lower bound is `--wui-control-size` (36px)                 | `36px`             |
+| Name                                  | Description                                                                                                  | Default                 |
+| ------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------- |
+| `--wui-layout-viewport-height`        | Available layout viewport height; set it to the container height when embedding layout in a fixed-height box | `100vh` / `100dvh`      |
+| `--wui-layout-sidebar-radius`         | Sidebar card radius (shared by desktop and mobile)                                                           | `24px`                  |
+| `--wui-layout-sidebar-padding-top`    | Space above the desktop sidebar card                                                                         | `--wui-space-2` (`8px`) |
+| `--wui-layout-sidebar-padding-left`   | Space to the left of the desktop sidebar card                                                                | `--wui-space-2` (`8px`) |
+| `--wui-layout-sidebar-padding-bottom` | Space below the desktop sidebar card                                                                         | `--wui-space-2` (`8px`) |
+| `--wui-layout-mobile-toggle-inset`    | Left inset of the mobile header Toggle                                                                       | `8px`                   |
+| `--wui-layout-sidebar-toggle-width`   | Width of the desktop sidebar collapse toggle; the lower bound is `--wui-control-size` (36px)                 | `36px`                  |

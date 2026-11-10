@@ -24,12 +24,12 @@ export function Search({ open, onOpenChange }: { open: boolean; onOpenChange: (o
   useEffect(() => {
     const element = input.current
     if (!open || !element) return
-    let cancelled = false
+    const controller = new AbortController()
     void element.updateComplete.then(() => {
-      if (!cancelled) element.focus()
+      if (!controller.signal.aborted) element.focus()
     })
     return () => {
-      cancelled = true
+      controller.abort()
     }
   }, [open])
 

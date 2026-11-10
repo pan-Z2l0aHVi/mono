@@ -313,6 +313,30 @@ const meta = [
     {
       label: 'tr',
       children: [
+      { label: 'td', content: "<code>--wui-layout-sidebar-padding-top</code>" },
+      { label: 'td', content: "桌面端侧边栏卡片上方间距" },
+      { label: 'td', content: "<code>--wui-space-2</code>（<code>8px</code>）" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>--wui-layout-sidebar-padding-left</code>" },
+      { label: 'td', content: "桌面端侧边栏卡片左侧间距" },
+      { label: 'td', content: "<code>--wui-space-2</code>（<code>8px</code>）" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>--wui-layout-sidebar-padding-bottom</code>" },
+      { label: 'td', content: "桌面端侧边栏卡片下方间距" },
+      { label: 'td', content: "<code>--wui-space-2</code>（<code>8px</code>）" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
       { label: 'td', content: "<code>--wui-layout-mobile-toggle-inset</code>" },
       { label: 'td', content: "移动端头部开关的左缩进" },
       { label: 'td', content: "<code>8px</code>" }

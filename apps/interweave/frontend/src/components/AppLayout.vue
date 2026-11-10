@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { WebUiEvent, WebUiLayout } from '@greypan/web-ui'
+import { System } from '@wailsio/runtime'
 import { computed, ref } from 'vue'
 import { RouterView } from 'vue-router'
 
@@ -11,6 +12,7 @@ const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const settingsOpen = ref(false)
 const desktopSidebarWidth = ref('240px')
+const isMac = System.IsMac()
 
 const { mobile } = useLayoutMobileProvider()
 const sidebarWidth = computed(() => (mobile.value ? 'min(320px, 80vw)' : desktopSidebarWidth.value))
@@ -53,6 +55,7 @@ function closeSidebar() {
     sidebarMinWidth="160px"
     sidebarMaxWidth="320px"
     class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-sidebar-radius:38px]"
+    :class="{ '[--wui-layout-sidebar-padding-top:56px]': isMac }"
     :mobile="mobile"
     :sidebarCollapsed="sidebarCollapsed"
     :sidebarOpen="sidebarOpen"

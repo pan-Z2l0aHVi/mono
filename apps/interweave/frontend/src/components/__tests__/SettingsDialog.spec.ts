@@ -91,6 +91,7 @@ describe('SettingsDialog', () => {
       await nextTick()
 
       expect(dialogElement(mounted.host).getAttribute('aria-dialog-label')).toBe('设置')
+      expect(mounted.host.querySelector('h2')?.textContent).toBe('设置')
       expect(dialogElement(mounted.host).closable).toBe(true)
       // 宿主不自绘 header 关闭 button，也没有 footer「关闭」——标题行那一枚由 web-ui-dialog
       // 自己渲染（在其 shadow 内），宿主拿不到那个节点。

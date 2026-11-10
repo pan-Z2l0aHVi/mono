@@ -11,6 +11,7 @@ import { clamp, snapToNearest } from '@/shared/gesture/physics'
 import { defineGroupCoordinator, GroupController } from '@/shared/group-management'
 import { normalizeLiteral } from '@/shared/normalize'
 import { parseDuration } from '@/shared/theme/duration'
+import { commitLayout } from '@/shared/transition/commit-layout'
 
 import type { WebUiSegmentedTrigger } from '../segmented-trigger'
 
@@ -87,6 +88,8 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
   @state() private _isDragging = false
 
   private _dragGestureHandle: DragGestureHandle | null = null
+  private readonly _resizeObserver =
+    typeof ResizeObserver === 'undefined' ? null : new ResizeObserver(() => void this._updateIndicator())
   /*
    * 飞行令牌 + 世代号（与 web-ui-theme 的 View Transition 飞行门同构）。
    *
@@ -105,6 +108,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
 
   override connectedCallback() {
     super.connectedCallback()
+    this._resizeObserver?.observe(this)
     // HTML 解析可先连接 group、后 upgrade trigger；等子项定义完成后再核对一次选中态。
     void customElements.whenDefined('web-ui-segmented-trigger').then(async () => {
       if (!this.isConnected) return
@@ -117,6 +121,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
+    this._resizeObserver?.disconnect()
     this._dragGestureHandle?.destroy()
     this._dragGestureHandle = null
     clearTimeout(this._settleTimer)
@@ -192,9 +197,26 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     if (selectedTrigger) {
       const triggerRect = selectedTrigger.getBoundingClientRect()
       const groupRect = this.getBoundingClientRect()
-      left = triggerRect.left - groupRect.left
-      width = triggerRect.width
+      // dialog 的进场缩放会改变屏幕坐标；指示器使用布局坐标，需还原祖先的缩放比例。
+      const layoutWidth = Number.parseFloat(getComputedStyle(this).width)
+      const scale = layoutWidth > 0 ? groupRect.width / layoutWidth : 1
+      left = scale > 0 ? (triggerRect.left - groupRect.left) / scale : 0
+      width = scale > 0 ? triggerRect.width / scale : 0
     }
+
+    // 隐藏或尚未完成布局时不能把零尺寸当成首次定位，否则显示后会从零宽播放过渡。
+    if (width <= 0) {
+      this._indicatorReady = false
+      this.style.setProperty('--indicator-width', '0px')
+      return
+    }
+
+    if (
+      this._indicatorReady &&
+      this.style.getPropertyValue('--indicator-left') === `${left}px` &&
+      this.style.getPropertyValue('--indicator-width') === `${width}px`
+    )
+      return
 
     // 上一段移动还在飞行 → 这次直接落定（_settling 关掉 left / width 过渡，见 style.css）。
     // 落定这一趟自己也要占飞行窗口，所以放在写定位**之前**开窗：窗口一开，第三次连点
@@ -221,7 +243,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     // 再打开移动动画。若同一趟里 set 定位与启用 transition，浏览器会把 0→option 当作一次过渡。
     if (!this._indicatorReady) {
       const indicator = this.renderRoot.querySelector<HTMLElement>('.wui-segmented-indicator')
-      void indicator?.offsetWidth
+      if (indicator) commitLayout(indicator)
       this._indicatorReady = true
     }
   }
