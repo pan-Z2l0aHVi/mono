@@ -34,8 +34,7 @@
   "dependencies": {
     "@greypan/js-kit": "workspace:*",
     "copy-to-clipboard": "catalog:",
-    "nanoid": "catalog:",
-    "remeda": "catalog:"
+    "nanoid": "catalog:"
   },
   "devDependencies": {
     "@greypan/monorepo-kit": "workspace:*",
