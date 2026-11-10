@@ -352,6 +352,32 @@ const count = ref(3)
 </script>
 ```
 
+### Custom size
+
+Use `--wui-badge-size` (18px by default) for counts and `--wui-badge-dot-size` (8px by default) for dots. The count badge minimum width follows its height.
+
+```tsx
+export default function Demo() {
+  return (
+    <>
+      <web-ui-badge count={8} style={{ '--wui-badge-size': '24px' }}>
+        <web-ui-button>Messages</web-ui-button>
+      </web-ui-badge>
+      <web-ui-badge dot style={{ '--wui-badge-dot-size': '12px' }}>
+        <web-ui-button>Alerts</web-ui-button>
+      </web-ui-badge>
+    </>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-badge :count="8" style="--wui-badge-size: 24px"><web-ui-button>Messages</web-ui-button></web-ui-badge>
+  <web-ui-badge dot style="--wui-badge-dot-size: 12px"><web-ui-button>Alerts</web-ui-button></web-ui-badge>
+</template>
+```
+
 ## API
 
 ### Props
@@ -390,4 +416,4 @@ The host is inline-block; when there is content the badge is positioned absolute
 
 Content is judged by the number of element child nodes: plain text alone does not count as content, so the badge stays in inline flow. When you wrap a piece of text, wrap that text in an element.
 
-The badge has no size or color settings of its own: the background uses `--wui-color-danger`, the text uses `--wui-color-on-danger`, and the outline uses `--wui-color-page`. To change the colors, change the scope of these semantic tokens instead of looking for a property on the badge.
+The badge sizes use `--wui-badge-size` and `--wui-badge-dot-size`. The background uses `--wui-color-danger`, the text uses `--wui-color-on-danger`, and the outline uses `--wui-color-page`. To change the colors, change the scope of these semantic tokens instead of looking for a property on the badge.

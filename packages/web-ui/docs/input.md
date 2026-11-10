@@ -426,6 +426,24 @@ export default function Demo() {
 </template>
 ```
 
+### Custom size
+
+Set the clear button size with `--wui-input-clear-size` (default 20px); its icon scales with it.
+
+```tsx
+export default function Demo() {
+  return (
+    <web-ui-input clearable value="Hello" aria-label="Text" style={{ '--wui-input-clear-size': '24px' }}></web-ui-input>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-input clearable value="Hello" aria-label="Text" style="--wui-input-clear-size: 24px"></web-ui-input>
+</template>
+```
+
 ## API
 
 ### Props

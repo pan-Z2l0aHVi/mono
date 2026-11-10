@@ -279,6 +279,22 @@ function reset() {
 </script>
 ```
 
+### 自定义尺寸
+
+通过 `--wui-switch-height` 设置轨道高度；宽度默认是高度的两倍，也可用 `--wui-switch-width` 单独设置。滑块与拖拽行程随轨道派生。
+
+```tsx
+export default function Demo() {
+  return <web-ui-switch style={{ '--wui-switch-height': '28px' }}>较大开关</web-ui-switch>
+}
+```
+
+```vue
+<template>
+  <web-ui-switch style="--wui-switch-height: 28px">较大开关</web-ui-switch>
+</template>
+```
+
 ## API
 
 ### 属性
@@ -333,12 +349,12 @@ function reset() {
 
 标签与轨道之间默认间距为 `8px`；默认插槽没有可渲染宽度时（空槽位或只放了视觉隐藏的无障碍名），间距收起，宿主宽度不会超过轨道。
 
-轨道是 40×20 的胶囊盒，圆角取 `--wui-radius-control`，底色取 `--wui-color-surface-track`，打开时换成 `--wui-color-accent`。
+轨道默认是 40×20 的胶囊盒，圆角取 `--wui-radius-control`，底色取 `--wui-color-surface-track`，打开时换成 `--wui-color-accent`。
 
-滑块是 16×16 圆点，静止态用 `--wui-color-on-control` 实心加阴影，按压与拖拽时换成 glass 表面并略微放大。
+滑块默认是 16×16 圆点，静止态用 `--wui-color-on-control` 实心加阴影，按压与拖拽时换成 glass 表面并略微放大。
 
 `--wui-switch-drag-offset` 由组件自己驱动，不要当样式钩子写。
 
 禁用与加载整块降到四成不透明度并用 `not-allowed` 光标。
 
-组件没有自有的尺寸或颜色 token，改宽度与颜色要改主题变量本身（如 `--wui-color-surface-track` 与 `--wui-color-accent`），作用范围是所有控件。
+轨道高度由 `--wui-switch-height` 控制（默认 `20px`）；`--wui-switch-width` 默认是高度的两倍。颜色使用主题变量 `--wui-color-surface-track` 与 `--wui-color-accent`。

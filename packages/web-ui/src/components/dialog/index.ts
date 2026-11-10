@@ -316,7 +316,7 @@ export class WebUiDialog extends LitElement {
         aria-label=${resolveBuiltinLabel('close', this.ariaCloseLabel)}
         variant="secondary"
         icon
-        size="26"
+        size="var(--wui-dialog-close-size, 26px)"
       >
         <web-ui-icon size="14" .icon=${oouiClose}></web-ui-icon>
       </web-ui-button>

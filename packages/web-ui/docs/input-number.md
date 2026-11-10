@@ -270,6 +270,22 @@ export default function Demo() {
 </template>
 ```
 
+### Custom size
+
+The step buttons default to 5/6 of the control height. Override `--wui-input-number-button-size` to size them independently; their icons scale with them.
+
+```tsx
+export default function Demo() {
+  return <web-ui-input-number style={{ '--wui-control-size': '48px' }}></web-ui-input-number>
+}
+```
+
+```vue
+<template>
+  <web-ui-input-number style="--wui-control-size: 48px"></web-ui-input-number>
+</template>
+```
+
 ## API
 
 ### Props

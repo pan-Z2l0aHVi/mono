@@ -112,6 +112,20 @@ describe('WebUiSwitch 手势拖拽（浏览器）', () => {
     cleanupElement(el)
   })
 
+  it('自定义轨道尺寸时按实际行程判断拖拽', async () => {
+    const el = createSwitch()
+    el.style.setProperty('--wui-switch-height', '40px')
+    await waitForUpdate(el)
+
+    trackOf(el).dispatchEvent(at(pointer('pointerdown', 10, 10), 1000))
+    window.dispatchEvent(at(pointer('pointermove', 22, 10), 1200))
+    window.dispatchEvent(at(pointer('pointerup', 22, 10), 1400))
+    await waitForUpdate(el)
+
+    expect(el.checked).toBe(false)
+    cleanupElement(el)
+  })
+
   it('disabled 状态下禁止拖拽切换，也不派发事件', async () => {
     const el = createSwitch()
     el.disabled = true

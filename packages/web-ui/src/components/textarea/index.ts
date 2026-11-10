@@ -267,7 +267,7 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
             ? html`<web-ui-button
                 icon
                 variant="ghost"
-                size="20"
+                size="var(--wui-textarea-clear-size, 20px)"
                 aria-label=${resolveBuiltinLabel('clear', this.ariaClearLabel)}
                 @pointerdown=${this.preventMouseDownBlur}
                 @click=${this.handleClear}

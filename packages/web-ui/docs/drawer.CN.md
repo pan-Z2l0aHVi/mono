@@ -827,6 +827,8 @@ function close() {
 
 `headless` 只保留原生 dialog、遮罩、动画、滚动锁定与 Escape / 遮罩关闭，不渲染内置头部、关闭按钮或页脚。调用方负责默认插槽内容的完整样式，并必须提供 `aria-dialog-label`；`headless` 同样支持 `draggable` 拖拽关闭。
 
+React 示例通过 ref 设置 `ariaDialogLabel` property，避免 React 把组件专用名称当作标准 ARIA 属性校验。
+
 ```tsx
 import { useState } from 'react'
 
@@ -842,7 +844,9 @@ export default function Demo() {
         placement="left"
         headless
         draggable
-        aria-dialog-label="自定义面板"
+        ref={element => {
+          if (element) element.ariaDialogLabel = '自定义面板'
+        }}
         onopen-change={event => setOpen(event.detail.open)}
       >
         <div className="box-border h-full w-[min(320px,100vw)] rounded-r-2xl bg-(--wui-color-surface-overlay) p-6 text-(--wui-color-text)">
@@ -1233,6 +1237,52 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
+const open = ref(false)
+</script>
+```
+
+### 自定义关闭按钮尺寸
+
+使用 `--wui-drawer-close-size` 设置关闭按钮尺寸（默认 26px）；图标按比例缩放。
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <web-ui-button onClick={() => setOpen(true)}>打开</web-ui-button>
+      <web-ui-drawer
+        closable
+        open={open}
+        heading="示例"
+        style={{ '--wui-drawer-close-size': '34px' }}
+        onopen-change={event => setOpen(event.detail.open)}
+      >
+        示例
+      </web-ui-drawer>
+    </>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="open = true">打开</web-ui-button>
+  <web-ui-drawer
+    closable
+    :open="open"
+    heading="示例"
+    style="--wui-drawer-close-size: 34px"
+    @open-change="open = $event.detail.open"
+  >
+    示例
+  </web-ui-drawer>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
 const open = ref(false)
 </script>
 ```

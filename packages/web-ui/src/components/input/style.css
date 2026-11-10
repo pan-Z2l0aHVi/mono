@@ -135,3 +135,7 @@ slot.empty {
   margin-right: -4px;
   margin-left: -8px;
 }
+
+.wui-input-inner web-ui-button[variant='ghost'] web-ui-icon {
+  --wui-internal-icon-render-size: calc(var(--wui-input-clear-size, 20px) * 0.7);
+}

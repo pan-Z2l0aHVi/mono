@@ -110,8 +110,8 @@ input {
   align-items: center;
   justify-content: center;
 
-  width: 30px;
-  height: 30px;
+  width: var(--wui-input-number-button-size, calc(var(--wui-control-size, 36px) * 5 / 6));
+  height: var(--wui-input-number-button-size, calc(var(--wui-control-size, 36px) * 5 / 6));
   padding: 0;
   border: none;
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
@@ -145,4 +145,10 @@ input {
 :host([disabled]) .num-btn:disabled,
 :host([data-form-disabled]) .num-btn:disabled {
   opacity: 1;
+}
+
+.num-btn web-ui-icon {
+  --wui-internal-icon-render-size: calc(
+    var(--wui-input-number-button-size, calc(var(--wui-control-size, 36px) * 5 / 6)) * 8 / 15
+  );
 }

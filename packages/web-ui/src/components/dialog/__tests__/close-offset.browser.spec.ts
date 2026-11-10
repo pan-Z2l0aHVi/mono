@@ -114,6 +114,16 @@ describe('WebUiDialog 关闭 button 偏移（浏览器几何）', () => {
     expect(closeOffsets(headlessMode)).toEqual({ top: 30, right: 8 })
   })
 
+  it('放大关闭按钮时标题仍避让按钮', async () => {
+    const el = mount('<span slot="header">这是一条足够长的标题，长到需要换行才能完整展示</span>')
+    el.style.setProperty('--wui-dialog-close-size', '44px')
+    await openAndSettle(el)
+    const close = closeButtonOf(el).getBoundingClientRect()
+    const title = el.querySelector('[slot="header"]')!.getBoundingClientRect()
+    expect(close.width).toBeCloseTo(44, 1)
+    expect(intersectionArea(title, close)).toBe(0)
+  })
+
   it('header 模式：长标题不会钻到关闭 button 下面（矩形不相交）', async () => {
     const el = mount(
       '<span slot="header">这是一条足够长的标题，长到足以在窄卡片里换行并一直排到 button 所在的那一列去</span>'

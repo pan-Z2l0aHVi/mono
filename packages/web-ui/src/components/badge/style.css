@@ -26,8 +26,8 @@
   align-items: center;
   justify-content: center;
 
-  min-width: 18px;
-  height: 18px;
+  min-width: var(--wui-badge-size, 18px);
+  height: var(--wui-badge-size, 18px);
   padding: 0 var(--wui-space-1, 4px);
   border: 1px solid var(--wui-color-page, #fff);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
@@ -78,8 +78,8 @@
 }
 
 .badge-dot {
-  min-width: 8px;
-  height: 8px;
+  min-width: var(--wui-badge-dot-size, 8px);
+  height: var(--wui-badge-dot-size, 8px);
   padding: 0;
   font-size: 0;
 }

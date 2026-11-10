@@ -266,6 +266,22 @@ export default function Demo() {
 </template>
 ```
 
+### 自定义尺寸
+
+步进按钮默认是控件高度的 5/6，可用 `--wui-input-number-button-size` 单独覆盖；图标随按钮缩放。
+
+```tsx
+export default function Demo() {
+  return <web-ui-input-number style={{ '--wui-control-size': '48px' }}></web-ui-input-number>
+}
+```
+
+```vue
+<template>
+  <web-ui-input-number style="--wui-control-size: 48px"></web-ui-input-number>
+</template>
+```
+
 ## API
 
 ### 属性

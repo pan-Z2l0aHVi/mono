@@ -2,7 +2,7 @@ import menuPortalStyle from '@/assets/menu-portal.css?inline'
 import overlayMotion from '@/assets/overlay-motion.css?inline'
 import scrollbarStyle from '@/assets/scrollbar.css?inline'
 import glass from '@/classes/glass.css?inline'
-import { resolveOverlayContainer } from '@/shared/overlay/portal'
+import { applyOverlayVariables, resolveOverlayContainer } from '@/shared/overlay/portal'
 
 export interface MenuPortalOverlay {
   readonly panel: HTMLElement
@@ -40,6 +40,7 @@ export function createMenuPortalOverlay(className: string, target?: Element, scr
   // 与 blur 插值一起过渡（见 overlay-motion.css），无需 blur/surface 双层。
   panel.className = `wui-menu-portal-overlay wui-floating-panel wui-glass ${className}`
   panel.dataset.wuiPresence = 'entering'
+  if (target) applyOverlayVariables(panel, target, ['--wui-menu-item-height', '--wui-dropdown-item-height'])
   const scroll = document.createElement('div')
   scroll.className = 'wui-menu-scroll wui-scroll'
   const content = document.createElement('div')

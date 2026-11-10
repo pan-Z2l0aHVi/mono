@@ -861,6 +861,8 @@ function close() {
 
 `headless` keeps only the native dialog, backdrop, animations, scroll lock, and Escape / backdrop closing, rendering no built-in header, close button, or footer. Your app is responsible for the full styling of the default slot content and must provide `aria-dialog-label`. `headless` supports `draggable` drag-to-close as well.
 
+The React example sets the `ariaDialogLabel` property through a ref so React does not validate the component-specific name as a standard ARIA attribute.
+
 ```tsx
 import { useState } from 'react'
 
@@ -876,7 +878,9 @@ export default function Demo() {
         placement="left"
         headless
         draggable
-        aria-dialog-label="Custom panel"
+        ref={element => {
+          if (element) element.ariaDialogLabel = 'Custom panel'
+        }}
         onopen-change={event => setOpen(event.detail.open)}
       >
         <div className="box-border h-full w-[min(320px,100vw)] rounded-r-2xl bg-(--wui-color-surface-overlay) p-6 text-(--wui-color-text)">
@@ -1281,6 +1285,52 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
+const open = ref(false)
+</script>
+```
+
+### Custom close button size
+
+Set the close button size with `--wui-drawer-close-size` (default 26px); its icon scales proportionally.
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <web-ui-button onClick={() => setOpen(true)}>Open</web-ui-button>
+      <web-ui-drawer
+        closable
+        open={open}
+        heading="Example"
+        style={{ '--wui-drawer-close-size': '34px' }}
+        onopen-change={event => setOpen(event.detail.open)}
+      >
+        Example
+      </web-ui-drawer>
+    </>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="open = true">Open</web-ui-button>
+  <web-ui-drawer
+    closable
+    :open="open"
+    heading="Example"
+    style="--wui-drawer-close-size: 34px"
+    @open-change="open = $event.detail.open"
+  >
+    Example
+  </web-ui-drawer>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
 const open = ref(false)
 </script>
 ```

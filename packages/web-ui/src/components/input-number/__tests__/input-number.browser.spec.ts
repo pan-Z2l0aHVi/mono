@@ -12,6 +12,29 @@ afterEach(() => document.body.replaceChildren())
 const createNumber = (attrs?: Record<string, string>): WebUiInputNumber =>
   mountElement<WebUiInputNumber>('web-ui-input-number', { attrs })
 
+describe('WebUiInputNumber 尺寸（浏览器）', () => {
+  it('默认步进图标保持原有尺寸', async () => {
+    const el = createNumber()
+    await waitForUpdate(el)
+    const icon = el.shadowRoot!.querySelector('web-ui-icon')!
+    await icon.updateComplete
+    expect(icon.shadowRoot!.querySelector('svg')!.getBoundingClientRect().width).toBeCloseTo(16, 1)
+    cleanupElement(el)
+  })
+
+  it('步进按钮随控件高度缩放，仍可步进', async () => {
+    const el = createNumber()
+    el.style.setProperty('--wui-control-size', '24px')
+    await waitForUpdate(el)
+    const buttons = el.shadowRoot!.querySelectorAll<HTMLButtonElement>('.num-btn')
+    expect(buttons[1]!.offsetHeight).toBe(20)
+    buttons[1]!.click()
+    await waitForUpdate(el)
+    expect(el.value).toBe(1)
+    cleanupElement(el)
+  })
+})
+
 describe('WebUiInputNumber 可访问名称（浏览器）', () => {
   it('旧浏览器回退尊重祖先隐藏下标签自身的 visibility 覆盖', async ({ skip }) => {
     const descriptor = Object.getOwnPropertyDescriptor(Element.prototype, 'ariaLabelledByElements')

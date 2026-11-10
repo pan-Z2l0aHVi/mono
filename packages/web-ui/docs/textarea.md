@@ -485,6 +485,29 @@ export default function Demo() {
 </template>
 ```
 
+### Custom size
+
+Set the clear button size with `--wui-textarea-clear-size` (default 20px); its icon scales with it.
+
+```tsx
+export default function Demo() {
+  return (
+    <web-ui-textarea
+      clearable
+      value="Hello"
+      aria-label="Text"
+      style={{ '--wui-textarea-clear-size': '24px' }}
+    ></web-ui-textarea>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-textarea clearable value="Hello" aria-label="Text" style="--wui-textarea-clear-size: 24px"></web-ui-textarea>
+</template>
+```
+
 ## API
 
 ### Props

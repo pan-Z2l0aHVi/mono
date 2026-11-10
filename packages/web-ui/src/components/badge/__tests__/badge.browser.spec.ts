@@ -34,6 +34,24 @@ function expectBadgeInline(el: WebUiBadge): void {
   expect(status.getBoundingClientRect().top).toBeGreaterThanOrEqual(el.getBoundingClientRect().top)
 }
 
+describe('web-ui-badge 尺寸（浏览器）', () => {
+  it('数字与圆点尺寸可分别配置，状态播报保持可用', async () => {
+    const el = createBadge('<span>消息</span>')
+    el.style.setProperty('--wui-badge-size', '24px')
+    el.style.setProperty('--wui-badge-dot-size', '12px')
+    await el.updateComplete
+    const count = queryA11y(el, '[role="status"]') as HTMLElement
+    expect(count.offsetHeight).toBe(24)
+    expect(count.offsetWidth).toBeGreaterThanOrEqual(24)
+    el.dot = true
+    await el.updateComplete
+    const dot = queryA11y(el, '[role="status"]') as HTMLElement
+    expect(dot.offsetHeight).toBe(12)
+    expect(dot.offsetWidth).toBe(12)
+    expect(dot.getAttribute('aria-label')).toBe('Unread')
+  })
+})
+
 describe('web-ui-badge 的默认插槽定位（浏览器）', () => {
   it.each([
     ['纯文本', '收件箱'],

@@ -457,6 +457,16 @@ dialog.is-dragging .wui-drawer-drag-zone {
   line-height: var(--wui-line-height-snug, 1.4);
 }
 
+:host([closable]) .wui-drawer-header::after {
+  content: '';
+  flex: none;
+  width: calc(var(--wui-drawer-close-right, 16px) + var(--wui-drawer-close-size, 26px));
+}
+
+.wui-drawer-header slot {
+  min-width: 0;
+}
+
 .wui-drawer-header[hidden] {
   display: none;
 }
@@ -726,4 +736,8 @@ dialog.is-dragging .wui-drawer-drag-zone {
     translate: none !important;
     scale: none !important;
   }
+}
+
+.wui-drawer-close web-ui-icon {
+  --wui-internal-icon-render-size: calc(var(--wui-drawer-close-size, 26px) * 7 / 13);
 }

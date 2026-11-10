@@ -302,6 +302,8 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 
 There is no built-in heading to associate automatically, so the page must provide `aria-dialog-label`, and it also draws the card appearance and the close button itself.
 
+The React example sets the `ariaDialogLabel` property through a ref so React does not validate the component-specific name as a standard ARIA attribute.
+
 ```tsx
 import { useState } from 'react'
 
@@ -315,7 +317,9 @@ export default function Demo() {
       <web-ui-dialog
         open={open}
         headless
-        aria-dialog-label="Image details"
+        ref={element => {
+          if (element) element.ariaDialogLabel = 'Image details'
+        }}
         onopen-change={event => setOpen(event.detail.open)}
       >
         <div className="flex flex-col gap-4">
@@ -369,6 +373,52 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
+const open = ref(false)
+</script>
+```
+
+### Custom close button size
+
+Set the close button size with `--wui-dialog-close-size` (default 26px); its icon scales proportionally.
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <web-ui-button onClick={() => setOpen(true)}>Open</web-ui-button>
+      <web-ui-dialog
+        closable
+        open={open}
+        heading="Example"
+        style={{ '--wui-dialog-close-size': '34px' }}
+        onopen-change={event => setOpen(event.detail.open)}
+      >
+        Example
+      </web-ui-dialog>
+    </>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="open = true">Open</web-ui-button>
+  <web-ui-dialog
+    closable
+    :open="open"
+    heading="Example"
+    style="--wui-dialog-close-size: 34px"
+    @open-change="open = $event.detail.open"
+  >
+    Example
+  </web-ui-dialog>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
 const open = ref(false)
 </script>
 ```

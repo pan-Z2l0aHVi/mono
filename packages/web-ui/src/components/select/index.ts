@@ -603,7 +603,9 @@ export class WebUiSelect extends defineOverlayDelayProps(FormAssociated(LitEleme
     applyOverlayVariables(portal.panel, this, [
       '--wui-overlay-min-width',
       '--wui-select-max-width',
-      '--wui-select-max-height'
+      '--wui-select-max-height',
+      '--wui-menu-item-height',
+      '--wui-option-height'
     ])
     portal.panel.setAttribute('role', 'listbox')
     this._portalKeepAliveDisposer?.()

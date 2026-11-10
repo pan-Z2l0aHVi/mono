@@ -12,7 +12,9 @@ export default function Demo() {
         placement="left"
         headless
         draggable
-        aria-dialog-label="Custom panel"
+        ref={element => {
+          if (element) element.ariaDialogLabel = 'Custom panel'
+        }}
         onopen-change={event => setOpen(event.detail.open)}
       >
         <div className="box-border h-full w-[min(320px,100vw)] rounded-r-2xl bg-(--wui-color-surface-overlay) p-6 text-(--wui-color-text)">
