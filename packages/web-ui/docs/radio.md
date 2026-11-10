@@ -203,4 +203,4 @@ Members inside a group do not dispatch events outward; the group dispatches `inp
 
 ### Layout
 
-Shares the same selection-control box model rules with `<web-ui-checkbox>`: the host height is opened by its content and does not inherit the page line height; when the label is empty the gap between the indicator and the label collapses; the indicator takes its width and height from `--wui-selection-control-size`.
+Shares the same selection-control box model rules with `<web-ui-checkbox>`: the host height is opened by its content and does not inherit the page line height; when the label is empty the gap between the indicator and the label collapses; the indicator takes its width and height from `--wui-selection-control-size`. Its dot defaults to one third of the indicator size and can be overridden with `--wui-radio-dot-size`.

@@ -1,4 +1,5 @@
 import { DEFAULT_DURATION_MS, pointerOffset, renderTilt, resetTilt, tiltEnabled } from '@greypan/doc-demo-kit'
+import type { WebUiTheme } from '@greypan/web-ui'
 import { Link } from '@tanstack/react-router'
 import type { PointerEvent as ReactPointerEvent } from 'react'
 import { useRef } from 'react'
@@ -57,7 +58,7 @@ export default function QuickLinkCard({
     if (event.pointerType !== 'mouse') return
     const visual = getVisual()
     if (!visual) return
-    if (!tiltEnabled(disabled)) {
+    if (!tiltEnabled(disabled, visual.closest<WebUiTheme>('web-ui-theme')?.isReducedMotion())) {
       resetTilt(visual)
       return
     }
@@ -75,7 +76,7 @@ export default function QuickLinkCard({
   function handlePointerLeave() {
     const visual = getVisual()
     if (!visual || !visual.style.transform) return
-    if (!tiltEnabled(disabled)) {
+    if (!tiltEnabled(disabled, visual.closest<WebUiTheme>('web-ui-theme')?.isReducedMotion())) {
       resetTilt(visual)
       return
     }

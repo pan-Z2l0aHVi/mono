@@ -194,6 +194,9 @@ catalogs:
     '@iconify-json/ci':
       specifier: ^1.2.4
       version: 1.2.4
+    '@iconify-json/codex':
+      specifier: ^1.2.2
+      version: 1.2.2
     '@iconify-json/fluent':
       specifier: ^1.2.61
       version: 1.2.61
@@ -1078,6 +1081,9 @@ importers:
       '@iconify-json/ci':
         specifier: 'catalog:'
         version: 1.2.4
+      '@iconify-json/codex':
+        specifier: 'catalog:'
+        version: 1.2.2
       '@iconify-json/fluent':
         specifier: 'catalog:'
         version: 1.2.61
@@ -2158,6 +2164,9 @@ packages:
 
   '@iconify-json/ci@1.2.4':
     resolution: {integrity: sha512-6qDbPRVWEb9W5yJnbnVaUBNC3O6wWh+7qR34UdGD3Wu8C4W/y7GPieCxQTvCGtcXRGJLYQE5EIgWLRT94o33BA==}
+
+  '@iconify-json/codex@1.2.2':
+    resolution: {integrity: sha512-wCIswgFolslcCOuSw3RW2WB1lBNG56grI5Ji/0jHFlq8Rnn1HHipx1AASyQ1vh25N0Oe50wAbqUA1lHcbDT65g==}
 
   '@iconify-json/fluent@1.2.61':
     resolution: {integrity: sha512-QyXqdW1lR9/zFyAh1Z+aK99DAW/QnMpOZoBjbyJ8YoRa0QVRfEAbyvyBRnYPJJoedHu9JKo8woxV01lHOFV3dA==}
@@ -7527,6 +7536,10 @@ snapshots:
       '@iconify/types': 2.0.0
 
   '@iconify-json/ci@1.2.4':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/codex@1.2.2':
     dependencies:
       '@iconify/types': 2.0.0
 

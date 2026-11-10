@@ -201,4 +201,4 @@ shadow DOM 内的交互 `<span>` 声明 `role="radio"`，`aria-checked`、`aria-
 
 ### 布局
 
-与 `<web-ui-checkbox>` 共用同一套选择控件盒模型规则：宿主高度由内容撑开，不继承页面行高，标签为空时指示器与标签之间的间距收起；指示器宽高取 `--wui-selection-control-size`。
+与 `<web-ui-checkbox>` 共用同一套选择控件盒模型规则：宿主高度由内容撑开，不继承页面行高，标签为空时指示器与标签之间的间距收起；指示器宽高取 `--wui-selection-control-size`；圆点默认是指示器尺寸的三分之一，可用 `--wui-radio-dot-size` 单独覆盖。

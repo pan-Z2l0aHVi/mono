@@ -101,7 +101,7 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     （W3C APG 要求动态加载的集合补这两个属性）。
   -->
   <div
-    class="group relative flex items-center gap-3 px-4 mobile:px-2 py-3 transition-[background-color] duration-100"
+    class="group relative flex items-center gap-3 px-4 mobile:px-2 py-3 transition-[background-color] duration-(--wui-duration-press)"
     :class="[
       rowRadiusClass,
       checked

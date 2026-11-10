@@ -196,7 +196,7 @@ function submit() {
               :key="item.id"
               :class="[
                 metadataRowClass,
-                'items-start transition-colors duration-100',
+                'items-start transition-colors duration-(--wui-duration-press)',
                 activeItemId === item.id
                   ? 'bg-black/3 dark:bg-white/6'
                   : 'hover:bg-black/3 dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]'

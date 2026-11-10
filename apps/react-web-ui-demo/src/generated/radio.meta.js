@@ -133,7 +133,7 @@ const meta = [
   { label: 'p', content: "<code>required</code> blocks native submission while unselected (<code>valueMissing</code>); members inside a group hand that decision to the group." },
   { label: 'p', content: "Members inside a group do not dispatch events outward; the group dispatches <code>input</code> / <code>change</code> once on its host." },
   { label: 'h3', id: 'section-11', content: "Layout" },
-  { label: 'p', content: "Shares the same selection-control box model rules with <code>&lt;web-ui-checkbox></code>: the host height is opened by its content and does not inherit the page line height; when the label is empty the gap between the indicator and the label collapses; the indicator takes its width and height from <code>--wui-selection-control-size</code>." }
+  { label: 'p', content: "Shares the same selection-control box model rules with <code>&lt;web-ui-checkbox></code>: the host height is opened by its content and does not inherit the page line height; when the label is empty the gap between the indicator and the label collapses; the indicator takes its width and height from <code>--wui-selection-control-size</code>. Its dot defaults to one third of the indicator size and can be overridden with <code>--wui-radio-dot-size</code>." }
 ]
 
 export default meta

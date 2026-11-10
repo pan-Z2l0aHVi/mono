@@ -8,6 +8,7 @@ import antDesignSyncOutlined from './ant-design-sync-outlined'
 import biCheck from './bi-check'
 import biCheckLg from './bi-check-lg'
 import ciSettingsFuture from './ci-settings-future'
+import codexCheck from './codex-check'
 import fluentTagSearch24Regular from './fluent-tag-search-24-regular'
 import heroiconsBarsArrowDown16Solid from './heroicons-bars-arrow-down-16-solid'
 import heroiconsBarsArrowUp16Solid from './heroicons-bars-arrow-up-16-solid'
@@ -177,6 +178,7 @@ export const iconGallery: Record<string, IconifyIcon> = {
   lucideListRestart,
   radixIconsReset,
   akarIconsCheck,
+  codexCheck,
   iconParkOutlineTagOne,
   biCheck,
   biCheckLg,

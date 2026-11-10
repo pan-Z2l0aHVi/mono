@@ -235,6 +235,14 @@ describe('WebUiCheckbox 勾画线（浏览器）', () => {
    * 默认档具体是哪支白不由这里钉（那是设计决策，钉住它只会随调色板腐化）：这里钉的是
    * 「描边跟着这枚 token 换」，用一个显式覆盖值来证明依赖关系。
    */
+  it('勾的默认画布为 18px', async () => {
+    const el = mountElement<WebUiCheckbox>('web-ui-checkbox', { attrs: { checked: '' } })
+    await waitForUpdate(el)
+    await expect.poll(() => checkPath(el)?.ownerSVGElement?.getBoundingClientRect().width).toBe(18)
+    expect(checkPath(el)?.ownerSVGElement?.getBoundingClientRect().height).toBe(18)
+    cleanupElement(el)
+  })
+
   it('勾是描边资产，描边色取 on-control 档', async () => {
     const el = mountElement<WebUiCheckbox>('web-ui-checkbox', { attrs: { checked: '' } })
     await waitForUpdate(el)
