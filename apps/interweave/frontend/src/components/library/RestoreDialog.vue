@@ -5,7 +5,12 @@ import { lucideFile, lucideFolderOpen, lucideGlobe, lucideUndo2 } from '@greypan
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { ref, watch } from 'vue'
 
-import { metadataRowClass } from './presentation'
+import {
+  resourceDialogColumnClass,
+  resourceDialogEmptyClass,
+  resourceDialogQueueClass,
+  resourceDialogRowClass
+} from './resourceDialogStyles'
 import type { LibraryRestoreQueueItem } from './restore'
 import { normalizeLibraryURL } from './restore'
 
@@ -129,24 +134,15 @@ function submit() {
       class="grid min-h-0 grid-cols-2 gap-5 mobile:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
       style="height: var(--wui-dialog-max-height)"
     >
-      <section
-        class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-clip [overflow-clip-margin:6px]"
-      >
+      <section :class="resourceDialogColumnClass">
         <p class="m-0 min-w-0 text-[14px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
           为失效资源指定新的位置；文件会按队列顺序选择，链接可直接编辑。
         </p>
         <div
-          class="grid h-full min-h-0 place-content-center justify-items-center rounded-[18px] border border-black/6 bg-[#f0f0f4] px-6 py-7 text-center dark:border-white/8 dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] mobile:px-4 mobile:py-2 max-[900px]:p-5"
+          class="grid h-full min-h-0 place-content-center justify-items-center rounded-[18px] bg-[#f0f0f4] px-6 py-7 text-center dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] mobile:px-4 mobile:py-2 max-[900px]:p-5"
         >
-          <web-ui-empty
-            class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:52px] mobile:[--wui-empty-icon-size:40px]"
-          >
-            <span
-              slot="icon"
-              class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) mobile:size-10 mobile:rounded-xl"
-            >
-              <web-ui-icon :icon="lucideFolderOpen" :size="23" />
-            </span>
+          <web-ui-empty class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:40px]">
+            <web-ui-icon slot="icon" :icon="lucideFolderOpen" :size="40" />
             <span
               class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
             >
@@ -163,7 +159,7 @@ function submit() {
       </section>
 
       <aside
-        class="relative grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-clip [overflow-clip-margin:6px] border-0 bg-transparent p-0"
+        :class="[resourceDialogColumnClass, 'relative border-0 bg-transparent p-0']"
         aria-labelledby="library-restore-queue-title"
       >
         <div class="flex h-7 min-w-0 items-center justify-between gap-2">
@@ -183,7 +179,7 @@ function submit() {
         <OverlayScrollbarsComponent
           v-if="queue.length"
           :options="appScrollbarsOptions"
-          class="h-full min-h-0 overflow-y-auto rounded-[18px] border border-black/6 bg-white dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
+          :class="resourceDialogQueueClass"
         >
           <!--
             scrollbar 接在宿主 div 上，列表留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己
@@ -194,13 +190,7 @@ function submit() {
             <li
               v-for="item in queue"
               :key="item.id"
-              :class="[
-                metadataRowClass,
-                'items-start transition-colors duration-(--wui-duration-press)',
-                activeItemId === item.id
-                  ? 'bg-black/3 dark:bg-white/6'
-                  : 'hover:bg-black/3 dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]'
-              ]"
+              :class="[resourceDialogRowClass, activeItemId === item.id ? 'bg-black/3 dark:bg-white/6' : '']"
             >
               <span
                 class="grid size-8 shrink-0 place-items-center rounded-[10px]"
@@ -212,10 +202,10 @@ function submit() {
               >
                 <web-ui-icon :icon="item.kind === 'file' ? lucideFile : lucideGlobe" />
               </span>
-              <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
+              <span class="grid min-w-0 flex-[1_1_auto] gap-1">
                 <div class="flex min-h-8 items-center gap-2">
                   <span
-                    class="min-w-0 flex-[1_1_auto] truncate text-[14px] font-medium leading-[1.35] text-[#22212a] dark:text-(--wui-color-text)"
+                    class="min-w-0 flex-[1_1_auto] wrap-anywhere text-[14px] font-medium leading-[1.35] text-[#22212a] dark:text-(--wui-color-text)"
                   >
                     {{ item.resourceTitle }}
                   </span>
@@ -228,7 +218,7 @@ function submit() {
                   </span>
                 </div>
                 <span
-                  class="block min-w-0 truncate text-xs leading-5 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+                  class="block min-w-0 wrap-anywhere text-xs leading-4 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
                   :title="item.location"
                 >
                   {{ item.kind === 'file' ? '原文件' : '原链接' }}：{{ item.location }}
@@ -253,10 +243,7 @@ function submit() {
           </ol>
         </OverlayScrollbarsComponent>
 
-        <div
-          v-else
-          class="grid h-full min-h-0 place-items-center rounded-[18px] border border-black/6 bg-white dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
-        >
+        <div v-else :class="resourceDialogEmptyClass">
           <web-ui-empty :size="40" description="暂无待找回资源" />
         </div>
       </aside>

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { WebUiAutocomplete, WebUiEvent, WebUiInput, WebUiSelect } from '@greypan/web-ui'
 import {
-  biCheckLg,
   heroiconsBarsArrowDown16Solid,
   heroiconsBarsArrowUp16Solid,
   lucideChevronLeft,
@@ -119,9 +118,9 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
 <template>
   <div class="w-full">
     <div
-      class="flex gap-4 items-center px-6 py-2 mobile:px-3 mobile:pl-[calc(var(--wui-layout-mobile-toggle-inset,8px)+44px)]"
+      class="flex gap-4 items-center px-8 py-2 mobile:px-3 mobile:pl-[calc(var(--wui-layout-mobile-toggle-inset,8px)+44px)]"
     >
-      <web-ui-button-group aria-label="页面导航" class="mobile:hidden">
+      <web-ui-button-group aria-label="页面导航" class="mobile:hidden [--wui-button-width:44px]">
         <web-ui-button icon variant="glass" aria-label="后退" :disabled="!canGoBack" @click="emit('back')">
           <web-ui-icon :icon="lucideChevronLeft" />
         </web-ui-button>
@@ -152,7 +151,7 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
           <web-ui-tooltip v-if="!(searchOpen && mobile)" content="筛选和排序" portal>
             <web-ui-button
               icon
-              :variant="hasActiveFilter ? 'secondary' : 'glass'"
+              :variant="hasActiveFilter && !filterOpen ? 'secondary' : 'glass'"
               aria-label="筛选和排序"
               aria-controls="library-filter-panel"
               :aria-expanded="filterOpen"
@@ -201,7 +200,15 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
           </web-ui-button-group>
           <web-ui-tooltip content="确认" portal>
             <web-ui-button icon variant="primary" aria-label="确认" @click="emit('select')">
-              <web-ui-icon :icon="biCheckLg" />
+              <!-- bitcoin-icons:check-filled, Bitcoin Design Community (MIT) -->
+              <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
+                <path
+                  fill="currentColor"
+                  fill-rule="evenodd"
+                  d="M18.381 5.354a.75.75 0 0 1 .265 1.027l-7.087 12a.75.75 0 0 1-1.164.16L5.48 13.838a.75.75 0 0 1 1.038-1.084l4.23 4.051L17.353 5.62a.75.75 0 0 1 1.027-.265"
+                  clip-rule="evenodd"
+                />
+              </svg>
             </web-ui-button>
           </web-ui-tooltip>
         </template>
@@ -220,7 +227,7 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
       <div
         id="library-filter-panel"
         slot="content"
-        class="flex flex-wrap gap-3 items-center px-6 mobile:px-3 py-2.5 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
+        class="flex flex-wrap gap-3 items-center px-8 mobile:px-3 py-2.5 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
       >
         <label :class="filterLabelClass">
           <web-ui-select portal :value="filterSource" class="[--wui-input-width:128px]" @change="handleSourceChange">

@@ -28,6 +28,7 @@ function isTabbable(element: HTMLElement): boolean {
   if (element.matches(':disabled')) return false
   if (element.hidden) return false
   if (isInert(element)) return false
+  if (element.getClientRects().length === 0) return false
   if (element.closest('details:not([open])') && element.tagName !== 'SUMMARY') return false
   const style = getComputedStyle(element)
   return style.display !== 'none' && style.visibility !== 'hidden'
@@ -62,7 +63,21 @@ export function getTabbables(root: ParentNode): HTMLElement[] {
   }
 
   visitChildren(root)
-  return tabbables
+  // 原生 Tab 对同名 radio 只停在选中项（无选中项时停在首项）。
+  const ordered = tabbables.filter(element => {
+    if (!(element instanceof HTMLInputElement) || element.type !== 'radio' || !element.name) return true
+    const group = tabbables.filter(
+      candidate =>
+        candidate instanceof HTMLInputElement &&
+        candidate.type === 'radio' &&
+        candidate.name === element.name &&
+        candidate.form === element.form &&
+        candidate.getRootNode() === element.getRootNode()
+    ) as HTMLInputElement[]
+    return element === (group.find(candidate => candidate.checked) ?? group[0])
+  })
+  // HTML 的正 tabindex 先于零值，且按值递增；同值保留 flat tree 顺序。
+  return ordered.sort((a, b) => (a.tabIndex || Infinity) - (b.tabIndex || Infinity))
 }
 
 /** 深入 open shadow root，返回实际持有焦点的元素（document.activeElement 会重定向到宿主）。 */
@@ -72,10 +87,7 @@ export function getDeepActiveElement(root: HTMLElement): Element | null {
   return active
 }
 
-/**
- * 原生 modal dialog 在 Chromium 里从末项 Tab 时会先落到 body。这里在首尾边界显式回卷，
- * 保证焦点始终停在浮层内。
- */
+/** 在模态层内依 flat tree 移动焦点，不依赖 WebKit 的系统键盘导航偏好。 */
 export function trapTabKey(event: KeyboardEvent, root: HTMLElement): void {
   if (event.key !== 'Tab' || event.defaultPrevented) return
 
@@ -86,17 +98,15 @@ export function trapTabKey(event: KeyboardEvent, root: HTMLElement): void {
   }
 
   const active = getDeepActiveElement(root)
-  if (!active || !tabbables.includes(active as HTMLElement)) return
-
-  const first = tabbables[0]
-  const last = tabbables[tabbables.length - 1]
-  if (event.shiftKey && active === first) {
-    event.preventDefault()
-    last.focus()
-  } else if (!event.shiftKey && active === last) {
-    event.preventDefault()
-    first.focus()
-  }
+  const index = active ? tabbables.indexOf(active as HTMLElement) : -1
+  const next =
+    index < 0
+      ? event.shiftKey
+        ? tabbables.length - 1
+        : 0
+      : (index + (event.shiftKey ? -1 : 1) + tabbables.length) % tabbables.length
+  event.preventDefault()
+  tabbables[next]?.focus()
 }
 
 /** 找到 trigger 内真正接收焦点的元素；trigger 本身可聚焦时就是它。 */

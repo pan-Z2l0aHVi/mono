@@ -585,7 +585,7 @@ onMounted(() => {
       虚拟滚动在整页滚动下由 ResourceList 内的 virtua WindowVirtualizer 负责：它自己沿
       offsetParent 链量出列表到文档顶的距离，本页只提供整页滚动的布局，不参与行定位。
     -->
-    <main class="flex-1 min-w-0 px-6 mobile:px-3 pb-[max(64px,env(safe-area-inset-bottom))] pt-2">
+    <main class="flex-1 min-w-0 px-8 mobile:px-3 pb-[max(64px,env(safe-area-inset-bottom))] pt-2">
       <div
         v-if="runtimeError"
         class="mb-3 flex min-h-10 items-center justify-between gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-400/12 dark:text-red-200"

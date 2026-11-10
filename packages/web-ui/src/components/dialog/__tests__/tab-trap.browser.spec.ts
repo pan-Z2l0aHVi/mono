@@ -39,6 +39,37 @@ function lastTabbable(dialog: WebUiDialog): { host: HTMLElement; inner: HTMLElem
 }
 
 describe('WebUiDialog 焦点陷阱回卷（浏览器）', () => {
+  it('Tab 和 Shift+Tab 可依次进入原生按钮及 shadow 内按钮', async () => {
+    const { dialog, first, last } = await mountOpenDialog()
+    const middle = document.createElement('web-ui-button')
+    middle.textContent = 'Middle'
+    first.after(middle)
+    await middle.updateComplete
+    first.focus()
+    await userEvent.keyboard('{Tab}')
+    expect(middle.shadowRoot?.activeElement?.tagName).toBe('BUTTON')
+    await userEvent.keyboard('{Tab}')
+    expect(document.activeElement).toBe(last)
+    await userEvent.keyboard('{Shift>}{Tab}{/Shift}')
+    expect(middle.shadowRoot?.activeElement?.tagName).toBe('BUTTON')
+  })
+
+  it('Tab 只进入 radio 组的选中项', async () => {
+    const { first, last } = await mountOpenDialog()
+    const unchecked = document.createElement('input')
+    unchecked.type = 'radio'
+    unchecked.name = 'choice'
+    const checked = document.createElement('input')
+    checked.type = 'radio'
+    checked.name = 'choice'
+    checked.checked = true
+    first.after(unchecked, checked)
+    first.focus()
+    await userEvent.keyboard('{Tab}')
+    expect(document.activeElement).toBe(checked)
+    await userEvent.keyboard('{Tab}')
+    expect(document.activeElement).toBe(last)
+  })
   it('末项 Tab 回到首项，不会落到 body', async () => {
     const { dialog } = await mountOpenDialog()
 

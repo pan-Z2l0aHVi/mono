@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WebUiAutocomplete, WebUiDialog, WebUiEvent } from '@greypan/web-ui'
-import { heroiconsXMark16Solid, lucideTags, tablerTagPlus } from '@greypan/web-ui/icons'
+import { heroiconsXMark16Solid, tablerTagPlus } from '@greypan/web-ui/icons'
 import { computed, ref, watch } from 'vue'
 
 import type { LibraryQueueItem } from '@/services/library'
@@ -177,9 +177,8 @@ function removeTag(tag: string) {
         </div>
         <div
           v-else
-          class="flex min-h-[36px] items-center gap-2 rounded-[18px] bg-white px-3 py-1.5 text-xs text-[#9a9aa4] dark:bg-(--wui-color-surface-raised) dark:text-(--wui-color-text-tertiary)"
+          class="flex min-h-[36px] items-center rounded-[18px] bg-white px-3 py-1.5 text-sm text-[#9a9aa4] dark:bg-(--wui-color-surface-raised) dark:text-(--wui-color-text-tertiary)"
         >
-          <web-ui-icon :icon="lucideTags" :size="14" />
           暂无标签
         </div>
       </div>

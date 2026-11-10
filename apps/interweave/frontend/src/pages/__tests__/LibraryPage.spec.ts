@@ -430,6 +430,26 @@ describe('LibraryPage：可用性感知接线', () => {
     }
   })
 
+  it('有活动筛选时，展开的筛选按钮仍保持玻璃样式并可收起', async () => {
+    const mounted = await mountPage()
+    try {
+      useLibraryStore().filterSource = SourceType.SourceTypeFile
+      await nextTick()
+      const filterButton = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="筛选和排序"]')!
+      expect(filterButton.getAttribute('variant')).toBe('secondary')
+      filterButton.click()
+      await nextTick()
+      expect(filterButton.getAttribute('aria-expanded')).toBe('true')
+      expect(filterButton.getAttribute('variant')).toBe('glass')
+      filterButton.click()
+      await nextTick()
+      expect(filterButton.getAttribute('aria-expanded')).toBe('false')
+      expect(filterButton.getAttribute('variant')).toBe('secondary')
+    } finally {
+      await mounted.close()
+    }
+  })
+
   /*
    * 进入选择态后筛选按钮被隐藏，展开中的筛选 panel 必须一起收起——否则它既失去可回退的
    * 开关，又继续压缩列表可视高度。jsdom 里 web-ui-collapse 不保证已升级，open 既可能是

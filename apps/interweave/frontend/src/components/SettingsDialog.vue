@@ -157,7 +157,7 @@ function pickAccent(value: string) {
                 @change="pickAccent(preset.value)"
               />
               <span
-                class="size-6 rounded-full peer-checked:outline-2 peer-checked:outline-offset-2 peer-checked:outline-(--wui-color-accent) peer-focus-visible:ring-3 peer-focus-visible:ring-(--wui-color-focus-ring) peer-focus-visible:ring-offset-4"
+                class="size-5 rounded-full peer-checked:outline-2 peer-checked:outline-offset-2 peer-checked:outline-(--wui-color-accent) peer-focus-visible:ring-3 peer-focus-visible:ring-(--wui-color-focus-ring) peer-focus-visible:ring-offset-4"
                 :style="{ backgroundColor: preset.value }"
                 aria-hidden="true"
               />
