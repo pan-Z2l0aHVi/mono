@@ -13,21 +13,21 @@
   "dependencies": {
     "@greypan/app-scrollbars": "workspace:*",
     "@greypan/doc-demo-kit": "workspace:*",
-    "@greypan/js-kit": "workspace:*",
     "@greypan/web-ui": "workspace:*",
     "@tanstack/react-router": "catalog:",
+    "lit": "catalog:",
     "overlayscrollbars": "catalog:",
     "overlayscrollbars-react": "catalog:",
     "react": "catalog:",
     "react-dom": "catalog:",
     "react-error-boundary": "catalog:",
-    "react-hook-form": "catalog:",
-    "zustand": "catalog:"
+    "wuchale": "catalog:"
   },
   "devDependencies": {
     "@greypan/monorepo-kit": "workspace:*",
     "@greypan/unplugin-web-components": "workspace:*",
     "@greypan/deps-reload": "workspace:*",
+    "@greypan/js-kit": "workspace:*",
     "@greypan/md-to-meta": "workspace:*",
     "@greypan/tsconfig": "workspace:*",
     "@testing-library/react": "catalog:",
@@ -40,8 +40,7 @@
     "@tanstack/router-plugin": "catalog:",
     "oxc-transform-react": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:",
-    "wuchale": "catalog:"
+    "vite-plus": "catalog:"
   },
   "browserslist": [
     "Chrome >=111",
