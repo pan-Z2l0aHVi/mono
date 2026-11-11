@@ -21,16 +21,15 @@ import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../../services/
 import { useLibraryStore } from '../../stores/library'
 import LibraryPage from '../library/index.vue'
 
-// context menu 由 web-ui 自己接管渲染，单测只需要它有这两个接口
-if (!customElements.get('web-ui-context-menu')) {
-  customElements.define(
-    'web-ui-context-menu',
-    class extends HTMLElement {
-      openAt() {}
-      close() {}
-    }
-  )
-}
+// 页面测试只验证事件接线；原生弹层行为由组件浏览器测试覆盖。
+vi.mock('@greypan/web-ui/components/context-menu', () => {
+  class WebUiContextMenu extends HTMLElement {
+    openAt() {}
+    close() {}
+  }
+  customElements.define('web-ui-context-menu', WebUiContextMenu)
+  return { WebUiContextMenu }
+})
 
 const runtimeStub = {
   current: null as LibraryRuntime | null,
@@ -293,7 +292,10 @@ function confirmDialog(host: HTMLElement, confirmLabel: string) {
 }
 
 async function openContextMenuAction(host: HTMLElement, resourceId: string, label: string) {
+  row(host, resourceId).focus()
+  await nextTick()
   row(host, resourceId).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
+  await nextTick()
   await nextTick()
   const item = [...host.querySelectorAll<HTMLElement>('web-ui-dropdown-item')].find(
     candidate => candidate.textContent?.trim() === label
@@ -348,9 +350,12 @@ function drawerOpen(host: HTMLElement, label: string) {
  * 详情只从 context menu 进（列表左键是预览）。先右键唤起 menu，再点「详情」那一项。
  */
 async function openDetailFromMenu(host: HTMLElement) {
+  row(host, 'resource-1').focus()
+  await nextTick()
   row(host, 'resource-1').dispatchEvent(
     new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 4, clientY: 4 })
   )
+  await nextTick()
   await nextTick()
   const item = [...host.querySelectorAll('web-ui-dropdown-item')].find(node => node.textContent?.trim() === '详情')
   if (!item) throw new Error('context menu 里没有「详情」项')

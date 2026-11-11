@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { toast, type WebUiEditableText, type WebUiEvent, type WebUiTextarea } from '@greypan/web-ui'
+import { useElementSize } from '@vueuse/core'
 import { Clipboard } from '@wailsio/runtime'
 import { computed, nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useRouter } from 'vue-router'
@@ -67,8 +68,7 @@ const {
 // 页面级 overlay（详情/预览 drawer、各类 dialog）跟着壳的移动端判定走，不自己写断点。
 const mobile = useLayoutMobile()
 const headerRef = ref<HTMLElement | null>(null)
-const headerHeight = ref(0)
-let headerResizeObserver: ResizeObserver | null = null
+const { height: headerHeight } = useElementSize(headerRef)
 const filterOpen = ref(false)
 const searchOpen = ref(false)
 const activeResourceId = ref<string | null>(null)
@@ -119,7 +119,6 @@ const stopSourceAvailability = runtime.events.onSourceAvailability(event => {
 onScopeDispose(() => {
   stopPasteFileRequest()
   stopSourceAvailability()
-  headerResizeObserver?.disconnect()
   void addQueue.close()
 })
 
@@ -516,16 +515,6 @@ async function submitRestoreQueue(items: LibraryRestoreQueueItem[]) {
 }
 
 onMounted(() => {
-  if (headerRef.value) {
-    if (typeof ResizeObserver === 'undefined') {
-      headerHeight.value = headerRef.value.offsetHeight
-    } else {
-      headerResizeObserver = new ResizeObserver(entries => {
-        headerHeight.value = entries[0]?.contentRect.height ?? headerRef.value?.offsetHeight ?? 0
-      })
-      headerResizeObserver.observe(headerRef.value)
-    }
-  }
   void loadResources().catch(() => {
     // 初次加载错误由 runtimeError 呈现，并保留重试入口。
   })
