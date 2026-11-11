@@ -157,9 +157,23 @@ func (h *Handler) serveThumbnailRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	source, err := h.sources.Get(r.Context(), h.query, sourceID)
-	if err != nil || source.Type != storage.SourceTypeFile || !source.Available {
-		// 与媒体读取同一套语义：库内不可用（或已删除）一律 404。
+	if err != nil || source.Type != storage.SourceTypeFile {
 		http.NotFound(w, r)
+		return
+	}
+
+	if !source.Available {
+		if r.Method == http.MethodPost {
+			http.NotFound(w, r)
+			return
+		}
+		if err := h.thumbs.ServeCachedThumbnail(w, r, sourceID); err != nil {
+			if errors.Is(err, os.ErrNotExist) {
+				http.NotFound(w, r)
+			} else {
+				http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
+			}
+		}
 		return
 	}
 

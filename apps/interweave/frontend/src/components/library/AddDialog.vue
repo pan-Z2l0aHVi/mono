@@ -24,6 +24,7 @@ import type { ResourceSourceView, TagColor } from '@/stores/library'
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 import { queueItemTitle } from './addQueue'
+import { linkPlus } from './icons'
 import { tagChipClass, tagClass } from './presentation'
 import type { NameEditorRef } from './rename'
 import {
@@ -32,6 +33,7 @@ import {
   resourceDialogQueueClass,
   resourceDialogRowClass
 } from './resourceDialogStyles'
+import ResourceLinkDialog from './ResourceLinkDialog.vue'
 import ResourceThumbnail from './ResourceThumbnail.vue'
 
 const props = defineProps<{
@@ -50,6 +52,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
   pickFiles: []
+  addUrl: [url: string]
   /** 剪贴板文本一并带上：文件接口对链接返回空数组，页面要靠它兜底（#188）。粘贴 button 没有文本。 */
   requestFilePaths: [clipboardText?: string]
   remove: [itemId: string]
@@ -58,7 +61,11 @@ const emit = defineEmits<{
   submit: []
 }>()
 
+const dialogRef = ref<WebUiDialog | null>(null)
+defineExpose({ toastContainer: () => dialogRef.value?.shadowRoot?.querySelector('dialog') ?? undefined })
+
 const dragActive = ref(false)
+const addUrlOpen = ref(false)
 const editingItemId = ref<string | null>(null)
 const nameEditors = new Map<string, WebUiEditableText>()
 let pendingImagePreview: ImagePreviewHandle | null = null
@@ -71,6 +78,7 @@ watch(
   () => props.open,
   open => {
     if (!open) {
+      addUrlOpen.value = false
       closePendingImagePreview()
       return
     }
@@ -194,6 +202,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
 
 <template>
   <web-ui-dialog
+    ref="dialogRef"
     :open="open"
     controlled
     no-backdrop-close
@@ -250,11 +259,18 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           <p class="m-0 min-w-0 truncate text-[14px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
             支持本地文件与远程链接，支持拖入或粘贴
           </p>
-          <web-ui-tooltip content="粘贴" placement="bottom">
-            <web-ui-button icon size="28" aria-label="粘贴复制的文件" @click="emit('requestFilePaths')">
-              <web-ui-icon :icon="lucideClipboardPaste" :size="15" />
-            </web-ui-button>
-          </web-ui-tooltip>
+          <div class="flex shrink-0 items-center gap-2">
+            <web-ui-tooltip content="添加链接" placement="bottom">
+              <web-ui-button icon size="28" aria-label="添加链接" :disabled="busy" @click="addUrlOpen = true">
+                <web-ui-icon :icon="linkPlus" :size="15" />
+              </web-ui-button>
+            </web-ui-tooltip>
+            <web-ui-tooltip content="从剪切板添加" placement="bottom">
+              <web-ui-button icon size="28" aria-label="粘贴复制的文件" @click="emit('requestFilePaths')">
+                <web-ui-icon :icon="lucideClipboardPaste" :size="15" />
+              </web-ui-button>
+            </web-ui-tooltip>
+          </div>
         </div>
         <button
           type="button"
@@ -340,7 +356,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                 v-if="isImagePreviewItem(item)"
                 data-queue-thumbnail
                 type="button"
-                class="grid size-10 shrink-0 cursor-zoom-in place-items-center overflow-hidden rounded-lg p-0 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))"
+                class="grid size-10 shrink-0 cursor-zoom-in place-items-center overflow-hidden rounded-[10px] p-0 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))"
                 :aria-label="`预览 ${item.title}`"
                 aria-haspopup="dialog"
                 @click="openImagePreview(item, $event)"
@@ -379,7 +395,6 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                     </web-ui-tooltip>
                     <web-ui-tooltip content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
                       <web-ui-button
-                        class="[--wui-button-color:var(--wui-color-accent,#08f)]"
                         icon
                         variant="ghost"
                         size="28"
@@ -389,16 +404,18 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                         <web-ui-icon :icon="lucideTags" :size="14" />
                       </web-ui-button>
                     </web-ui-tooltip>
-                    <web-ui-button
-                      class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
-                      icon
-                      variant="ghost"
-                      size="28"
-                      aria-label="移除待添加资源"
-                      @click="emit('remove', item.id)"
-                    >
-                      <web-ui-icon :icon="lucideTrash2" :size="14" />
-                    </web-ui-button>
+                    <web-ui-tooltip content="移除待添加资源" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                      <web-ui-button
+                        class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
+                        icon
+                        variant="ghost"
+                        size="28"
+                        aria-label="移除待添加资源"
+                        @click="emit('remove', item.id)"
+                      >
+                        <web-ui-icon :icon="lucideTrash2" :size="14" />
+                      </web-ui-button>
+                    </web-ui-tooltip>
                   </span>
                 </div>
                 <div class="flex min-w-0 flex-wrap items-center gap-1.5">
@@ -461,4 +478,5 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       {{ queue.length > 1 ? '批量添加' : '添加' }}
     </web-ui-button>
   </web-ui-dialog>
+  <ResourceLinkDialog v-model:open="addUrlOpen" initial-value="" mode="add" @submit="emit('addUrl', $event)" />
 </template>

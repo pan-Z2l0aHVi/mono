@@ -160,15 +160,27 @@ export function primarySource(resource: ResourceView) {
   return resource.preferred ?? resource.sources[0] ?? null
 }
 
-const timestampFormatter = new Intl.DateTimeFormat('en-CA', {
-  year: 'numeric',
-  month: '2-digit',
-  day: '2-digit'
-})
+/** 接受 Unix 秒或毫秒，按本地日历显示相对日期。 */
+export function timestampMilliseconds(timestamp: number) {
+  return Math.abs(timestamp) < 100_000_000_000 ? timestamp * 1000 : timestamp
+}
 
-export function formatTimestamp(timestamp: number) {
-  if (!timestamp) return '未知时间'
-  return timestampFormatter.format(new Date(timestamp)).replaceAll('/', '-')
+export function formatDate(timestamp: number): string {
+  if (!Number.isFinite(timestamp)) return '未知时间'
+  const date = new Date(timestampMilliseconds(timestamp))
+  if (Number.isNaN(date.getTime())) return '未知时间'
+  const now = new Date()
+  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
+  const sameDay = (other: Date) =>
+    date.getFullYear() === other.getFullYear() &&
+    date.getMonth() === other.getMonth() &&
+    date.getDate() === other.getDate()
+  if (sameDay(now) || sameDay(yesterday)) {
+    const hour = date.getHours()
+    const minutes = String(date.getMinutes()).padStart(2, '0')
+    return `${sameDay(now) ? '今天' : '昨天'}${hour < 12 ? '上午' : '下午'}${hour % 12 || 12}:${minutes}`
+  }
+  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }
 
 export function formatSize(sizeBytes: number | null) {

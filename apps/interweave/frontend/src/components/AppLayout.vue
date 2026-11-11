@@ -66,7 +66,7 @@ function closeSidebar() {
     sidebarMaxWidth="320px"
     mobile-header-full-width
     class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-sidebar-content-padding:8px_20px_8px_8px] mobile:[--wui-layout-sidebar-radius:calc(18px_+_8px)]"
-    :class="{ '[--wui-layout-sidebar-padding-top:56px] mobile:[--wui-layout-mobile-toggle-inset:96px]': isMac }"
+    :class="{ '[--wui-layout-sidebar-padding-top:48px] mobile:[--wui-layout-mobile-toggle-inset:96px]': isMac }"
     :mobile="mobile"
     :sidebarCollapsed="sidebarCollapsed"
     :sidebarOpen="sidebarOpen"

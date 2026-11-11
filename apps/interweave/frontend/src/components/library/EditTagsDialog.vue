@@ -93,7 +93,7 @@ function removeTag(tag: string) {
     :open="open"
     controlled
     no-backdrop-close
-    class="mobile:[--wui-dialog-desc-gap:22px] mobile:[--wui-dialog-footer-gap:12px] mobile:[--wui-dialog-inline-padding:20px] mobile:[--wui-dialog-padding:22px_20px_20px] mobile:[--wui-dialog-title-gap:18px] mobile:[--wui-dialog-width:90vw] [--wui-dialog-width:320px]"
+    class="mobile:[--wui-dialog-desc-gap:22px] mobile:[--wui-dialog-footer-gap:12px] mobile:[--wui-dialog-inline-padding:20px] mobile:[--wui-dialog-padding:22px_20px_20px] mobile:[--wui-dialog-title-gap:18px] [--wui-dialog-width:320px]"
     @open-change="handleOpenChange"
   >
     <span slot="header">标签</span>

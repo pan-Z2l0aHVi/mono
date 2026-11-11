@@ -2,7 +2,7 @@
 import { computed, ref } from 'vue'
 
 defineProps<{ src: string; alt: string }>()
-const emit = defineEmits<{ error: [] }>()
+const emit = defineEmits<{ error: []; load: [] }>()
 const stage = ref<HTMLElement | null>(null)
 const image = ref<HTMLImageElement | null>(null)
 const portrait = ref(false)
@@ -95,6 +95,7 @@ function wheel(event: WheelEvent) {
 function loaded(event: Event) {
   const image = event.target as HTMLImageElement
   portrait.value = image.naturalHeight > image.naturalWidth
+  emit('load')
 }
 </script>
 

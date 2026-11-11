@@ -109,6 +109,7 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
               sourceId: 'source',
               resourceId: 'resource',
               resourceTitle: title,
+              resourceKind: ResourceKind.ResourceKindWeb,
               kind: 'url',
               location,
               replacementLocation: location
@@ -117,7 +118,10 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
           busy: false,
           error: '',
           mobile: false,
-          activeItemId: null
+          activeItemId: null,
+          chooseFilePath: async () => null,
+          prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
+          releaseFilePreview: async () => undefined
         })
     })
     apps.push(app)
@@ -135,6 +139,68 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
       return !!viewport && input.getBoundingClientRect().bottom <= viewport.getBoundingClientRect().bottom - 5
     }, '聚焦时输入框滚入可见区域')
     expectFocusRingFits(input)
+  })
+
+  it('找回弹窗空态在内容区居中，连接箭头随布局转向', async () => {
+    const original = { width: window.innerWidth, height: window.innerHeight }
+    const host = document.createElement('div')
+    document.body.append(host)
+    hosts.push(host)
+    const app = createApp({
+      render: () =>
+        h(RestoreDialog, {
+          open: true,
+          queue: [
+            {
+              id: 's',
+              sourceId: 's',
+              resourceId: 'r',
+              resourceTitle: '文件',
+              resourceKind: ResourceKind.ResourceKindImage,
+              kind: 'file',
+              location: '/old.png',
+              replacementLocation: ''
+            }
+          ],
+          busy: false,
+          error: '',
+          mobile: false,
+          activeItemId: null,
+          chooseFilePath: async () => null,
+          prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
+          releaseFilePreview: async () => undefined
+        })
+    })
+    apps.push(app)
+    app.mount(host)
+    try {
+      for (const width of [1280, 700]) {
+        await page.viewport(width, 800)
+        await waitFor(
+          () =>
+            !!host.querySelector<HTMLElement>('section[aria-label="待确认"] web-ui-empty')?.getBoundingClientRect()
+              .height,
+          '空态已显示'
+        )
+        const sections = [...host.querySelectorAll<HTMLElement>('section[aria-label]')]
+        const surface = sections[1].querySelector<HTMLElement>('web-ui-empty')!.parentElement!
+        const empty = surface.querySelector<HTMLElement>('web-ui-empty')!
+        const a = surface.getBoundingClientRect()
+        const b = empty.getBoundingClientRect()
+        expect(Math.abs((a.left + a.right - b.left - b.right) / 2)).toBeLessThan(2)
+        expect(Math.abs((a.top + a.bottom - b.top - b.bottom) / 2)).toBeLessThan(2)
+        expect(empty.getAttribute('description')).toContain('手动选择')
+        const first = sections[0].getBoundingClientRect()
+        const second = sections[1].getBoundingClientRect()
+        expect(width > 900 ? second.left > first.right : second.top > first.bottom).toBe(true)
+        const arrow = host.querySelector<SVGElement>('section + div svg')!
+        expect(getComputedStyle(arrow).rotate === '90deg' || getComputedStyle(arrow).transform !== 'none').toBe(
+          width < 900
+        )
+      }
+    } finally {
+      await page.viewport(original.width, original.height)
+    }
   })
 
   it('Tab 可依次到达待添加资源的操作按钮', async () => {

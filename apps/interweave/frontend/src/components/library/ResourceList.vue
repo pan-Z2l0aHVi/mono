@@ -14,6 +14,7 @@ import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { FocusNavigator, rowFocusTarget } from './focusNavigator'
+import { arrowUpRight } from './icons'
 import type { NameEditorRef } from './rename'
 import ResourceRow from './ResourceRow.vue'
 import { SweepScrollController } from './sweepScroll'
@@ -49,6 +50,15 @@ const emit = defineEmits<{
   /** 键盘导航/context menu 请求激活某一行：由父级把 activeResourceId 置为该行资源的 id。 */
   activate: [resource: ResourceView]
 }>()
+
+// 菜单打开时透明遮罩位于主题 overlay 中，不再属于列表的 DOM 子树。
+function preventScrimContextMenu(event: MouseEvent) {
+  if (event.composedPath().some(node => node instanceof Element && node.matches('[data-wui-menu-scrim]'))) {
+    event.preventDefault()
+  }
+}
+onMounted(() => window.addEventListener('contextmenu', preventScrimContextMenu, true))
+onBeforeUnmount(() => window.removeEventListener('contextmenu', preventScrimContextMenu, true))
 
 const contextMenuRef = ref<WebUiContextMenu>()
 const contextResource = ref<ResourceView | null>(null)
@@ -458,11 +468,25 @@ function rowIdAt(clientX: number, clientY: number) {
 }
 
 function handleSweepStart(event: PointerEvent) {
+  if (
+    event.pointerType === 'touch' &&
+    event.target instanceof Element &&
+    !event.target.closest('[data-resource-row]')
+  ) {
+    event.stopPropagation()
+  }
   // 长按 menu 要用的 contextResource 在这里落定：这是 pointerdown 冒泡到容器上的第一个监听器，
   // 早于 web-ui-context-menu 自己那个（它在宿主上，我们在容器的后代里）。放在早的那一侧，
   // 长按计时器到期时 contextResource 已经是对的，menu 开出来就有完整项。
   syncTouchContext(event)
   sweep.handlePointerDown(event)
+}
+
+function handleBlankContextMenu(event: MouseEvent) {
+  if (!event.composedPath().some(node => node instanceof Element && node.matches('[data-resource-row]'))) {
+    event.preventDefault()
+    event.stopPropagation()
+  }
 }
 
 function onRowSelect(resource: ResourceView) {
@@ -505,6 +529,8 @@ function handleOpenDefault(resource: ResourceView | null) {
   closeContextMenu()
 }
 
+let contextMenuOpenVersion = 0
+
 async function openContextMenu(resource: ResourceView, event: MouseEvent) {
   // 长按扫选手势会顺带触发系统级 contextmenu，那不是「用户想看 menu」，挡掉
   if (sweep.isContextMenuSuppressed()) {
@@ -518,12 +544,17 @@ async function openContextMenu(resource: ResourceView, event: MouseEvent) {
   //（右键改名时焦点在名字编辑器里）。
   emit('activate', resource)
   const { clientX, clientY } = event
+  const version = ++contextMenuOpenVersion
   contextResource.value = resource
   await nextTick()
-  contextMenuRef.value?.openAt(clientX, clientY)
+  // WebKit 需先结束原生右键事件，再打开模态菜单，避免系统菜单与定位冲突。
+  requestAnimationFrame(() => {
+    if (version === contextMenuOpenVersion) contextMenuRef.value?.openAt(clientX, clientY)
+  })
 }
 
 function closeContextMenu() {
+  contextMenuOpenVersion++
   contextMenuRef.value?.close()
 }
 
@@ -578,7 +609,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
     disabled 绑在「没有条目」上，而不是绑在右键来源上：context-menu 自己监听宿主的
     contextmenu，列表为空时那块空态区域仍在这个宿主里，右键照样命中。不禁用的话会弹出
     一张 contextResource 为 null 的 menu——只剩一条 divider 加一个空「删除」项。禁用后
-    事件在组件内被 return 掉，浏览器原生 menu 正常出现。
+    列表区域的右键由宿主拦截，避免系统菜单与资源菜单冲突。
   -->
   <!--
     long-press 让触屏能长按出行 menu（web-ui-context-menu 的 opt-in 属性，只对 pointerType
@@ -602,7 +633,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
     ref="contextMenuRef"
     :disabled="resources.length === 0"
     :long-press="selectionMode ? undefined : true"
-    class="block w-full h-full min-h-0"
+    class="block w-full flex-1 min-h-0"
   >
     <!--
       容器不参与 v-if，始终挂载，状态只在它内部切换。这是虚拟化的硬前提：载入态与空态若
@@ -612,13 +643,13 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
       即可绕开。
 
       这里**不是**滚动容器：滚动元素是 window，整页滚动（用户裁决）。所以容器上只保留
-      tabindex、role 与事件绑定，不带 overflow-y-auto / h-full / min-h-0 / overscroll-contain。
+      tabindex、role 与事件绑定；高度用于空态居中，不创建内部滚动容器。
       overscroll-contain 尤其要去掉——它原本用于阻断嵌套滚动的链式传递，
       window 模式下没有嵌套滚动，留着只会影响移动端的原生回弹手感。
     -->
     <div
       ref="rowsRef"
-      class="w-full select-none [-webkit-touch-callout:none]"
+      class="w-full h-full select-none [-webkit-touch-callout:none]"
       tabindex="0"
       role="list"
       :aria-busy="loading"
@@ -626,6 +657,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
       @keydown="handleRowsKeydown"
       @focusin="handleRowsFocusin"
       @pointerdown="handleSweepStart"
+      @contextmenu="handleBlankContextMenu"
     >
       <div v-if="loading" class="grid min-h-64 place-items-center" aria-live="polite">
         <div class="grid justify-items-center gap-3 text-sm text-(--wui-color-text-secondary)">
@@ -634,7 +666,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
         </div>
       </div>
 
-      <div v-else-if="resources.length === 0" class="flex flex-col items-center justify-center py-24">
+      <div v-else-if="resources.length === 0" class="flex min-h-full flex-col items-center justify-center">
         <web-ui-empty :size="72" :title="emptyTitle" :description="emptyDescription" />
       </div>
 
@@ -740,7 +772,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
         详情
       </web-ui-dropdown-item>
       <web-ui-dropdown-item v-if="contextResource?.available" submenu>
-        <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />
+        <web-ui-icon slot="prefix" :icon="arrowUpRight" :size="14" />
         打开方式
         <web-ui-dropdown-item @click="handleOpenDefault(contextResource)">
           <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />

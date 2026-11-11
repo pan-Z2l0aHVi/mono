@@ -46,7 +46,10 @@ vi.mock('@/services/library', () => ({
   }
 }))
 
+const toastWarning = vi.hoisted(() => vi.fn())
+
 vi.mock('@greypan/web-ui', () => ({
+  toast: { warning: toastWarning },
   imagePreview: () => {
     throw new Error('图片预览由 AddDialog 组件用例覆盖')
   }
@@ -587,11 +590,9 @@ describe('LibraryPage：确认弹窗退场', () => {
     }
   })
 
-  it('紧凑变体取消后退场期间内容保持原样', async () => {
+  it('移除待添加资源时立即从队列移除', async () => {
     const mounted = await mountPage()
-
     try {
-      // 走「移除待添加项」：compact 由调用点声明、不从标题字符串派生，宽度不会在退场中途跳变。
       mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="添加资源"]')?.click()
       await nextTick()
       queueWindowFileDrop(['/tmp/photo.png'])
@@ -599,19 +600,9 @@ describe('LibraryPage：确认弹窗退场', () => {
       const remove = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="移除待添加资源"]')
       if (!remove) throw new Error('移除待添加资源 button 未渲染')
       remove.click()
-      await nextTick()
-
-      const dialog = confirmDialog(mounted.host, '移除')
-      expect(dialog.open).toBe(true)
-      expect(dialog.textContent).toContain('移除「photo」后不会加入资源库。')
-
-      button(dialog, '取消').click()
-      await nextTick()
-
-      // compact 变体同样在关闭状态回写后保留确认内容。
-      expect(dialog.open).toBe(false)
-      expect(dialog.textContent).toContain('移除「photo」后不会加入资源库。')
-      expect(dialog.querySelector('[role="alert"]')).toBeNull()
+      await flush()
+      expect(addDialog(mounted.host).textContent).not.toContain('photo')
+      expect(mounted.host.textContent).not.toContain('移除待添加项')
     } finally {
       await mounted.close()
     }
@@ -657,6 +648,7 @@ describe('LibraryPage：确认弹窗退场', () => {
  */
 describe('LibraryPage：粘贴链接', () => {
   beforeEach(() => {
+    toastWarning.mockClear()
     setActivePinia(createPinia())
     route.value = { path: '/library' }
     runtimeStub.droppedFilesListener = null
@@ -699,9 +691,7 @@ describe('LibraryPage：粘贴链接', () => {
       await flush()
 
       expect(queueItems(mounted.host)).toHaveLength(0)
-      expect(mounted.host.querySelector('web-ui-dialog [role="alert"]')?.textContent).toContain(
-        '剪贴板里没有文件，也不是有效的 http 或 https 链接'
-      )
+      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接', expect.anything())
     } finally {
       await mounted.close()
     }
@@ -716,7 +706,7 @@ describe('LibraryPage：粘贴链接', () => {
       await flush()
 
       expect(queueItems(mounted.host)).toHaveLength(0)
-      expect(mounted.host.querySelector('web-ui-dialog [role="alert"]')?.textContent).toContain('http 或 https')
+      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接', expect.anything())
     } finally {
       await mounted.close()
     }

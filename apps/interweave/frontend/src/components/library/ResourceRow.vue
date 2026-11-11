@@ -8,7 +8,8 @@ import type { ResourceView } from '@/stores/library'
 import {
   fileExtension,
   formatSize,
-  formatTimestamp,
+  formatDate,
+  timestampMilliseconds,
   primarySource,
   sourceTypeIcon,
   sourceTypeLabel,
@@ -208,7 +209,9 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
           <span>{{ size }}</span>
         </template>
         <span aria-hidden="true" class="text-[#d8d8de] dark:text-(--wui-color-text-tertiary)">·</span>
-        <time :datetime="new Date(resource.createdAt).toISOString()">{{ formatTimestamp(resource.createdAt) }}</time>
+        <time :datetime="new Date(timestampMilliseconds(resource.createdAt)).toISOString()">{{
+          formatDate(resource.createdAt)
+        }}</time>
         <span
           v-if="resource.sources.length > 1"
           aria-hidden="true"

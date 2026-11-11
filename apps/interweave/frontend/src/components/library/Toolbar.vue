@@ -303,7 +303,7 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
                       : lucideRotateCwClock
               "
             />
-            <web-ui-option value="createdAt" label="创建时间">创建时间</web-ui-option>
+            <web-ui-option value="createdAt" label="添加时间">添加时间</web-ui-option>
             <web-ui-option value="updatedAt" label="更新时间">更新时间</web-ui-option>
             <web-ui-option value="name" label="名称">名称</web-ui-option>
             <web-ui-option value="tagName" label="标签">标签</web-ui-option>

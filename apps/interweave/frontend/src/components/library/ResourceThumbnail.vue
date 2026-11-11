@@ -42,17 +42,17 @@ const canRenderMedia = computed(
     props.source.available &&
     (props.kind === 'image' || props.kind === 'video')
 )
-// 缩略图与原图共用可用性语义；视频命中缩略图时连 <video> 都不再加载，这是列表滚动的最大收益。
+// 失效来源仍可读取已有缩略图缓存；原文件只能在来源可用时读取。
 const serverThumbActive = computed(
   () =>
     Boolean(props.thumbnailUrl) &&
     !serverThumbFailed.value &&
     props.source?.type === 'file' &&
-    props.source.available &&
     (props.kind === 'image' || props.kind === 'video')
 )
 const showFallback = computed(() => {
-  if (serverThumbReady.value) return false
+  if (serverThumbActive.value && serverThumbReady.value) return false
+  if (!canRenderMedia.value) return true
   const imageMatchesSource = imageRef.value?.getAttribute('src') === props.mediaUrl
   // reset 清空 imageReady 后，src 未变且已 complete 的 img 不会再触发 load，需保留此逃生通道避免 fallback 叠加。
   return (
@@ -62,7 +62,15 @@ const showFallback = computed(() => {
 })
 
 watch(
-  () => [props.kind, props.source?.id, props.source?.location, props.mediaUrl] as const,
+  () =>
+    [
+      props.kind,
+      props.source?.id,
+      props.source?.location,
+      props.mediaUrl,
+      props.source?.available,
+      props.thumbnailUrl
+    ] as const,
   (next, previous) => {
     /*
      * 调用方可能在每次父组件渲染时新建 source 对象（AddDialog 的 queueSource），props.source
@@ -77,7 +85,9 @@ watch(
       next[0] === previous[0] &&
       next[1] === previous[1] &&
       next[2] === previous[2] &&
-      next[3] === previous[3]
+      next[3] === previous[3] &&
+      next[4] === previous[4] &&
+      next[5] === previous[5]
     ) {
       return
     }
@@ -85,7 +95,7 @@ watch(
     // 只有 location 变化会让「URL 不变、内容变了」：ReplaceFileSource 保留 source id，
     // mediaUrl 不变，旧元素不会重新拉取。其余字段变化由 src 属性更新或 v-if 重建覆盖，
     // 不必再换 key——换 key 会丢掉已加载的 image 状态。
-    if (!previous || next[2] !== previous[2]) mediaKey.value++
+    if (!previous || next[2] !== previous[2] || next[4] !== previous[4] || next[5] !== previous[5]) mediaKey.value++
     thumbnailURL.value = ''
     imageReady.value = false
     mediaFailed.value = false
@@ -224,7 +234,7 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
 
 <template>
   <div
-    class="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-lg"
+    class="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-[10px]"
     :class="resourceKindClass(kind)"
   >
     <video

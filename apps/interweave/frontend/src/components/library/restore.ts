@@ -5,6 +5,7 @@ export interface LibraryRestoreQueueItem {
   sourceId: string
   resourceId: string
   resourceTitle: string
+  resourceKind: ResourceView['kind']
   kind: ResourceSourceView['type']
   location: string
   replacementLocation: string
@@ -12,7 +13,6 @@ export interface LibraryRestoreQueueItem {
 
 export interface LibraryRestoreQueueResult {
   completedIds: string[]
-  cancelledIds: string[]
   failed: {
     item: LibraryRestoreQueueItem
     cause: unknown
@@ -20,7 +20,6 @@ export interface LibraryRestoreQueueResult {
 }
 
 interface LibraryRestoreQueueHandlers {
-  chooseFilePath: () => Promise<string | null>
   replaceFileSource: (sourceId: string, inputPath: string) => Promise<unknown>
   replaceURLSource: (sourceId: string, inputURL: string) => Promise<unknown>
   onItemStart?: (itemId: string) => void
@@ -35,6 +34,7 @@ export function createLibraryRestoreQueueItem(
     sourceId: source.id,
     resourceId: resource.id,
     resourceTitle: resource.title,
+    resourceKind: resource.kind,
     kind: source.type,
     location: source.location,
     replacementLocation: source.type === 'url' ? source.location : ''
@@ -69,26 +69,21 @@ export async function restoreLibraryQueue(
   handlers: LibraryRestoreQueueHandlers
 ): Promise<LibraryRestoreQueueResult> {
   const completedIds: string[] = []
-  const cancelledIds: string[] = []
 
   for (const item of items) {
     handlers.onItemStart?.(item.id)
     try {
       if (item.kind === 'file') {
-        const inputPath = await handlers.chooseFilePath()
-        if (!inputPath) {
-          cancelledIds.push(item.id)
-          continue
-        }
-        await handlers.replaceFileSource(item.sourceId, inputPath)
+        if (!item.replacementLocation) throw new Error('请选择新文件')
+        await handlers.replaceFileSource(item.sourceId, item.replacementLocation)
       } else {
         await handlers.replaceURLSource(item.sourceId, item.replacementLocation)
       }
       completedIds.push(item.id)
     } catch (cause) {
-      return { completedIds, cancelledIds, failed: { item, cause } }
+      return { completedIds, failed: { item, cause } }
     }
   }
 
-  return { completedIds, cancelledIds, failed: null }
+  return { completedIds, failed: null }
 }

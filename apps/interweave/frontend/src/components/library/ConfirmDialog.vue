@@ -28,7 +28,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     :open="open"
     controlled
     no-backdrop-close
-    :class="compact ? 'mobile:[--wui-dialog-width:90vw] [--wui-dialog-width:320px]' : undefined"
+    :class="compact ? '[--wui-dialog-width:320px]' : undefined"
     @open-change="handleOpenChange"
   >
     <div slot="header">{{ title }}</div>
