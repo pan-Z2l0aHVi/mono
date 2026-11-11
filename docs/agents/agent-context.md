@@ -35,6 +35,7 @@
 | worktree 与缓存              | 根 [`AGENTS.md`](../../AGENTS.md) 说明 owner 与 worktree 唯一性                 | [`worktree.md`](./worktree.md)                                                                   | 缓存不变量守卫                                 |
 | 客户端权限                   | 根 [`AGENTS.md`](../../AGENTS.md) 只给路由，不复制配置                          | [`environments.md`](./environments.md)                                                           | 客户端配置与线程实际行为                       |
 | 公共 `web-ui` 契约           | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md) 指向受影响消费者 | [`web-ui.md`](./web-ui.md)                                                                       | fixtures、contracts、browser/integration tests |
+| 跨应用 UI 视觉与颜色原则     | 根 [`AGENTS.md`](../../AGENTS.md) 只路由，不复制颜色处方                        | [`ui-design.md`](./ui-design.md)                                                                 | token 配对、浅/深色模式对比度验证              |
 
 ## 链接方向
 
