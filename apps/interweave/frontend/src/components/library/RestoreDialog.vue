@@ -152,7 +152,7 @@ async function prepare(item: LibraryRestoreQueueItem) {
   }
 }
 
-function unprepare(item: LibraryRestoreQueueItem) {
+function cancelPrepare(item: LibraryRestoreQueueItem) {
   if (locked.value) return
   if (item.kind === 'url') drafts.value[item.id] = prepared.value[item.id]
   delete prepared.value[item.id]
@@ -230,7 +230,7 @@ function submit() {
                 :locked="locked"
                 :active="activeItemId === item.id"
                 @prepare="prepare(item)"
-                @unprepare="unprepare(item)"
+                @cancel-prepare="cancelPrepare(item)"
               />
             </ol>
           </OverlayScrollbarsComponent>

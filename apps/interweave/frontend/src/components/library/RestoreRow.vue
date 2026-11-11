@@ -16,7 +16,7 @@ defineProps<{
   locked: boolean
   active: boolean
 }>()
-const emit = defineEmits<{ prepare: []; unprepare: [] }>()
+const emit = defineEmits<{ prepare: []; cancelPrepare: [] }>()
 </script>
 
 <template>
@@ -48,7 +48,7 @@ const emit = defineEmits<{ prepare: []; unprepare: [] }>()
         size="28"
         :disabled="locked"
         :aria-label="`${pending ? '手动选择' : '撤回'} ${item.resourceTitle}`"
-        @click="pending ? emit('prepare') : emit('unprepare')"
+        @click="pending ? emit('prepare') : emit('cancelPrepare')"
       >
         <web-ui-icon
           :icon="pending ? (item.kind === 'file' ? lucideFolderOpen : lucideLink) : radixIconsReset"
