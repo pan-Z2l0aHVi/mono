@@ -166,7 +166,7 @@ export function timestampMilliseconds(timestamp: number) {
 }
 
 export function formatDate(timestamp: number): string {
-  if (!Number.isFinite(timestamp)) return '未知时间'
+  if (!Number.isFinite(timestamp) || timestamp <= 0) return '未知时间'
   const date = new Date(timestampMilliseconds(timestamp))
   if (Number.isNaN(date.getTime())) return '未知时间'
   const now = new Date()

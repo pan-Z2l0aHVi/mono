@@ -19,6 +19,7 @@ describe('library presentation', () => {
       expect(formatDate(yesterday)).toBe('昨天下午11:05')
       expect(formatDate(older)).toBe('2026-10-30')
       expect(formatDate(Number.NaN)).toBe('未知时间')
+      expect(formatDate(0)).toBe('未知时间')
     } finally {
       vi.useRealTimers()
     }
