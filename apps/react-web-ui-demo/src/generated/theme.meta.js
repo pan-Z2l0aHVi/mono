@@ -848,7 +848,7 @@ const meta = [
       { label: 'td', content: "<code>--wui-color-on-accent</code>" },
       { label: 'td', content: "Foreground color on accent" },
       { label: 'td', content: "<code>#fff</code>" },
-      { label: 'td', content: "<code>#000</code>" }
+      { label: 'td', content: "<code>#fff</code>" }
       ]
     },
     {

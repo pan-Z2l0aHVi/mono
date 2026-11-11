@@ -26,8 +26,8 @@ onMounted(() => {
  * 是为了赢过 theme 自己那条 :host([appearance=...]) —— 内联样式优先级高于任何作者样式表规则，
  * 于是一处覆盖同时压住 light / dark / system 三个分支。
  *
- * --wui-color-on-accent 必须和 accent 一起覆盖：theme 的 light/dark 默认分别是白与黑，
- * 沿用会让多数预设的 primary button 文字达不到 4.5:1。色板自带前景色后三个分支统一。
+ * 强调色背景按 Apple 的 prominent-action 模式使用白色标签，只有白字对比度低于 3:1 时才改黑色。
+ * 这条规则对 light / dark / system 一致；系统主题仍由 web-ui-theme 自己解析。
  */
 const themeStyle = computed(() => ({
   '--wui-color-accent': settings.accent,
