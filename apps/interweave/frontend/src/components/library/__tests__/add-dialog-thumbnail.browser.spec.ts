@@ -93,7 +93,7 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
     for (const button of buttons) expectFocusRingFits(button.shadowRoot!.querySelector('button')!)
   })
 
-  it('找回资源的长标题和原链接换行，新链接输入框保留焦点环空间', async () => {
+  it('找回资源的长标题和原链接截断，新链接输入框保留焦点环空间', async () => {
     const host = document.createElement('div')
     document.body.append(host)
     hosts.push(host)
@@ -129,15 +129,13 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
     await nextTick()
     const name = [...host.querySelectorAll('span')].find(element => element.textContent?.trim() === title)!
     const path = host.querySelector<HTMLElement>(`[title="${location}"]`)!
+    expect(name.scrollWidth).toBeGreaterThan(name.clientWidth)
+    expect(path.scrollWidth).toBeGreaterThan(path.clientWidth)
+    host.querySelector<HTMLElement>('web-ui-button[aria-label^="手动选择"]')!.click()
+    await nextTick()
     const input = host.querySelector<HTMLElement>('web-ui-input')!
     await waitFor(() => input.getBoundingClientRect().height > 0, '找回输入框已渲染')
-    expect(name.getBoundingClientRect().height).toBeGreaterThan(25)
-    expect(path.getBoundingClientRect().height).toBeGreaterThan(20)
     input.shadowRoot!.querySelector('input')!.focus()
-    await waitFor(() => {
-      const viewport = input.closest('[data-overlayscrollbars-viewport]')
-      return !!viewport && input.getBoundingClientRect().bottom <= viewport.getBoundingClientRect().bottom - 5
-    }, '聚焦时输入框滚入可见区域')
     expectFocusRingFits(input)
   })
 
@@ -178,7 +176,7 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
         await page.viewport(width, 800)
         await waitFor(
           () =>
-            !!host.querySelector<HTMLElement>('section[aria-label="待确认"] web-ui-empty')?.getBoundingClientRect()
+            !!host.querySelector<HTMLElement>('section[aria-label="已找到"] web-ui-empty')?.getBoundingClientRect()
               .height,
           '空态已显示'
         )
@@ -189,11 +187,11 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
         const b = empty.getBoundingClientRect()
         expect(Math.abs((a.left + a.right - b.left - b.right) / 2)).toBeLessThan(2)
         expect(Math.abs((a.top + a.bottom - b.top - b.bottom) / 2)).toBeLessThan(2)
-        expect(empty.getAttribute('description')).toContain('手动选择')
+        expect(empty.getAttribute('description')).toContain('手动找回')
         const first = sections[0].getBoundingClientRect()
         const second = sections[1].getBoundingClientRect()
         expect(width > 900 ? second.left > first.right : second.top > first.bottom).toBe(true)
-        const arrow = host.querySelector<SVGElement>('section + div svg')!
+        const arrow = host.querySelector<HTMLElement>('section + div web-ui-icon')!
         expect(getComputedStyle(arrow).rotate === '90deg' || getComputedStyle(arrow).transform !== 'none').toBe(
           width < 900
         )
