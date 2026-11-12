@@ -1,5 +1,14 @@
 # @greypan/interweave
 
+## 0.1.5
+
+### Patch Changes
+
+- fe802db: Use the CodeX check icon for checkboxes, support configurable selection control sizes, and respect reduced motion in application navigation and demo interactions.
+- fe802db: Keep dialog and drawer controls reachable by keyboard, and improve editing pending resources.
+- fe802db: Improve mobile layout and drawer geometry, and refine Interweave navigation, settings reopening, and window-wide file drops.
+- @greypan/interweave-frontend@0.0.0
+
 ## 0.1.4
 
 ### Patch Changes

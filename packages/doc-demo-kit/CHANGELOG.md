@@ -1,5 +1,13 @@
 # @greypan/doc-demo-kit
 
+## 0.1.1
+
+### Patch Changes
+
+- fe802db: Use the CodeX check icon for checkboxes, support configurable selection control sizes, and respect reduced motion in application navigation and demo interactions.
+- Updated dependencies [f966cdc]
+  - @greypan/browser-kit@3.1.2
+
 ## 0.1.0
 
 ### Minor Changes
