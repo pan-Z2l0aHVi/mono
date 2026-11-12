@@ -17,9 +17,9 @@
 
 ## 允许与禁止
 
-patch 只能**修改已入库文件的内容**。以下任一情况都会让整个 patch 被丢弃，不是部分应用：
+patch 只能**修改已入库文件的内容**，唯一例外是失败步骤含 `Check changesets` 时新增 `.changeset/*.md`。以下任一情况都会让整个 patch 被丢弃，不是部分应用：
 
-- 新增文件、删除文件、重命名或移动文件、二进制改动。
+- 新增文件——`Check changesets` 失败时新增的 `.changeset/*.md` 除外；新增其它路径、把 changeset 放到子目录、非普通文件模式都仍然整份拒绝。删除文件、重命名或移动文件、二进制改动一律拒绝。
 - 触碰 `.github/**`（CI 与 workflow 定义）、`package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`、`skills-lock.json`、`.npmrc`、`.mise.toml`、`go.mod`、`go.sum`、`go.work`、`go.work.sum`、`vendor/**`（依赖与供应链）。
 - 触碰生成物：`docs/agents/generated-artifacts.md` 的清单，以及 `.claude/settings.json` 里 `permissions.deny` 登记的 `Edit(...)` 路径。生成物只能由 generator 重写，而你在沙箱里跑不了 generator——失败根因在生成物失步时，**不要改产物**，交回给人。
 - 触碰 `AGENTS.md`、`CLAUDE.md`、`CONTEXT.md`、`ARCHITECTURE.md`、`docs/agents/**`、`docs/adr/**`、`.agents/**`（agent 指令体系与架构决策）。
@@ -30,4 +30,5 @@ patch 只能**修改已入库文件的内容**。以下任一情况都会让整�
 1. 从失败步骤名定位是哪个检查（`Build`、`Check repository policies`、`Format + Lint + Type-check + Go vet`、`Test`、`Check changesets` 等），在日志里找到第一条真正的 error，判断它是不是本 PR 引入的。
 2. 只改导致该失败的最小范围。修根因，不要靠跳过断言、放宽超时、`expect` 改判据或删用例让它变绿——那属于改变判据，必须人来决定。
 3. 类型错误、lint/format 报错、明显的空值与边界遗漏、本 PR 自己写错的断言，都在你的范围内。
-4. 判定不了根因，或者修复必须碰到上面的禁止路径时：什么都不改，在最终消息里说明失败步骤、你看到的证据和为什么要交回给人。空 patch 是正确输出，不是失败。
+4. `Check changesets` 失败时，按 `docs/agents/release.md` 新建一个 `.changeset/<英文短横线名>.md`：只改 docs / test / chore 或根路径时写空壳（正文只有两行 `---`），影响公共包行为时声明包名与 `patch` / `minor` / `major`，描述用英文且与最终实现一致。不要复用或改写 main 上已有的 changeset。
+5. 判定不了根因，或者修复必须碰到上面的禁止路径时：什么都不改，在最终消息里说明失败步骤、你看到的证据和为什么要交回给人。空 patch 是正确输出，不是失败。
