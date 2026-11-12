@@ -288,6 +288,13 @@ jobs:
           CODEX_REVIEW_PRIOR_RUN_ID: ${{ steps.prior.outputs.prior_run_id }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" reuse
 
+      - name: Prepare incremental review
+        id: incremental
+        if: steps.config.outputs.configured == 'true' && steps.reuse.outputs.reused != 'true' && steps.prior.outputs.prior_head_sha != ''
+        env:
+          CODEX_REVIEW_PRIOR_HEAD_SHA: ${{ steps.prior.outputs.prior_head_sha }}
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" prepare-incremental
+
       - name: Review pull request with Codex
         id: review
         if: steps.config.outputs.configured == 'true' && steps.reuse.outputs.reused != 'true'
@@ -296,6 +303,8 @@ jobs:
         uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13
         env:
           CODEX_REVIEW_MERGE_BASE_SHA: ${{ steps.prepare.outputs.merge_base_sha }}
+          CODEX_REVIEW_START_SHA: ${{ steps.incremental.outputs.review_start_sha }}
+          CODEX_REVIEW_PRIOR_DIR: ${{ runner.temp }}/codex-review-prior
           # prompt 把 diff 路径交给模型；runner 上下文只能在 step 级 env 出现，job 级会让整个文件 invalid。
           CODEX_REVIEW_DIFF_PATH: ${{ runner.temp }}/pr.diff
         with:
