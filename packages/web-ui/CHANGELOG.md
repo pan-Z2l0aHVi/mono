@@ -1,5 +1,21 @@
 # @greypan/web-ui
 
+## 12.4.0
+
+### Minor Changes
+
+- fe802db: Improve mobile layout and drawer geometry, and refine Interweave navigation, settings reopening, and window-wide file drops.
+- fe802db: Add configurable component sizing for switches, badges, menu items, step buttons, and built-in clear and close buttons.
+
+### Patch Changes
+
+- fe802db: Use white foregrounds for accent actions in dark mode to match Apple's default accent-control treatment.
+- fe802db: Use the CodeX check icon for checkboxes, support configurable selection control sizes, and respect reduced motion in application navigation and demo interactions.
+- f966cdc: Move `@iconify/types` to `dependencies` in `@greypan/web-ui`: `WebUiIcon` exposes `IconifyIcon` in the published type declarations, so consumers must be able to resolve the type package. Remove the unused `remeda` dependency from `@greypan/browser-kit`.
+- fe802db: Keep dialog and drawer controls reachable by keyboard, and improve editing pending resources.
+- Updated dependencies [f966cdc]
+  - @greypan/browser-kit@3.1.2
+
 ## 12.3.0
 
 ### Minor Changes
