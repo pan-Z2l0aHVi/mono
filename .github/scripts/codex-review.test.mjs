@@ -31,7 +31,9 @@ import {
   createGhReviewAdapter,
   deriveConclusion,
   findPullForHead,
+  findPriorReviewRun,
   findReusableRun,
+  inheritReviewHistory,
   firstModelErrorLine,
   injectPreloadIntoPrompt,
   inspectConfig,
@@ -49,6 +51,7 @@ import {
   splitDiffByPath,
   trajectoryEntries,
   truncateUtf8ByLines,
+  validateIncrementalBaseline,
   trustedPromptPath,
   withPermissionDiagnosis,
   wrapCodeFence
@@ -61,6 +64,239 @@ const otherSha = 'b'.repeat(40)
 const scriptPath = path.join(import.meta.dirname, 'codex-review.mjs')
 const configFingerprint = '0123456789abcdef'
 const configuredEnv = Object.fromEntries(CONFIG_ENV.map(name => [name, `value-for-${name}`]))
+
+{
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'review-incremental-git-'))
+  const git = (...args) => {
+    const result = spawnSync('git', args, { cwd: directory, encoding: 'utf8' })
+    if (result.status !== 0) throw new Error(result.stderr)
+    return result.stdout
+  }
+  const commit = message => git('-c', 'user.name=Test', '-c', 'user.email=test@example.test', 'commit', '-m', message)
+  try {
+    git('init')
+    fs.mkdirSync(path.join(directory, 'src', 'generated'), { recursive: true })
+    fs.writeFileSync(path.join(directory, 'src/a.ts'), 'first\n')
+    fs.writeFileSync(path.join(directory, 'src/generated/file.ts'), 'first\n')
+    git('add', '.')
+    commit('base')
+    const base = git('rev-parse', 'HEAD').trim()
+    fs.writeFileSync(path.join(directory, 'src/a.ts'), 'second\n')
+    git('add', '.')
+    commit('first review')
+    const first = git('rev-parse', 'HEAD').trim()
+    fs.writeFileSync(path.join(directory, 'src/a.ts'), 'third\n')
+    fs.writeFileSync(path.join(directory, 'src/generated/file.ts'), 'generated second\n')
+    git('add', '.')
+    commit('second review')
+    const second = git('rev-parse', 'HEAD').trim()
+    fs.writeFileSync(path.join(directory, 'src/a.ts'), 'fourth\n')
+    git('add', '.')
+    commit('third review')
+    const third = git('rev-parse', 'HEAD').trim()
+    const command = (_name, args) => git(...args)
+    const range = resolveReviewRange({ baseSha: base, headSha: third, priorHeadSha: second, command })
+    assert.equal(range.startSha, second)
+    assert.match(range.diff, /fourth/)
+    assert.doesNotMatch(range.diff, /generated second|first/)
+    assert.deepEqual(range.changedPaths, ['src/a.ts'])
+    const firstIncrement = resolveReviewRange({ baseSha: base, headSha: second, priorHeadSha: first, command })
+    assert.deepEqual(firstIncrement.changedPaths, ['src/a.ts'])
+    assert.doesNotMatch(firstIncrement.diff, /generated second/)
+    assert.throws(() => resolveReviewRange({ baseSha: base, headSha: first, priorHeadSha: second, command }))
+
+    const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'review-incremental-runtime-'))
+    try {
+      const priorDir = path.join(temp, 'prior')
+      writeConfig(temp)
+      writeFixtures(
+        priorDir,
+        { summary: '', findings: [], coverage: { inspected: ['src/a.ts'], uncovered: [] } },
+        metaOf({ head_sha: second, base_sha: base })
+      )
+      fs.writeFileSync(
+        path.join(priorDir, 'review-scope.json'),
+        JSON.stringify({
+          head_sha: second,
+          base_sha: base,
+          excluded_pathspecs: [...REVIEW_EXCLUDE_PATHSPECS],
+          empty_diff: false,
+          changed_paths: ['src/a.ts']
+        })
+      )
+      const env = {
+        ...process.env,
+        RUNNER_TEMP: temp,
+        CODEX_REVIEW_PRIOR_DIR: priorDir,
+        CODEX_REVIEW_BASE_SHA: base,
+        CODEX_REVIEW_HEAD_SHA: third,
+        CODEX_REVIEW_PRIOR_HEAD_SHA: second,
+        GITHUB_OUTPUT: path.join(temp, 'output')
+      }
+      const prepare = () =>
+        spawnSync(process.execPath, [scriptPath, 'prepare-incremental'], { cwd: directory, env, encoding: 'utf8' })
+      let result = prepare()
+      assert.equal(result.status, 0, result.stderr)
+      let scope = JSON.parse(fs.readFileSync(path.join(temp, 'codex-review', 'review-scope.json'), 'utf8'))
+      assert.equal(scope.review_start_sha, second)
+      assert.equal(scope.incremental, true)
+      writeFixtures(
+        priorDir,
+        {
+          summary: '上轮',
+          findings: [finding('Block')],
+          coverage: { inspected: ['src/a.ts'], uncovered: ['src/b:1 待核对'] }
+        },
+        metaOf({ head_sha: second, base_sha: base })
+      )
+      fs.writeFileSync(
+        path.join(temp, 'codex-final-message.json'),
+        JSON.stringify({
+          summary: '复审',
+          findings: [],
+          coverage: { inspected: ['src/a.ts'], uncovered: [] },
+          prior_resolutions: [{ index: 0, resolved: false, evidence: '仍未修复' }]
+        })
+      )
+      const validation = spawnSync(process.execPath, [scriptPath, 'validate'], {
+        cwd: directory,
+        env,
+        encoding: 'utf8'
+      })
+      assert.equal(validation.status, 0, validation.stderr)
+      const carried = JSON.parse(fs.readFileSync(path.join(temp, 'codex-review', 'review-findings.json'), 'utf8'))
+      const carriedMeta = JSON.parse(fs.readFileSync(path.join(temp, 'codex-review', 'review-meta.json'), 'utf8'))
+      assert.equal(carried.findings[0].severity, 'Block')
+      assert.deepEqual(carried.coverage.uncovered, ['src/b:1 待核对'])
+      assert.equal(carriedMeta.review_lineage[0].head_sha, second)
+      fs.writeFileSync(
+        path.join(priorDir, 'review-meta.json'),
+        JSON.stringify(metaOf({ head_sha: second, base_sha: otherSha }))
+      )
+      result = prepare()
+      assert.equal(result.status, 0, result.stderr)
+      scope = JSON.parse(fs.readFileSync(path.join(temp, 'codex-review', 'review-scope.json'), 'utf8'))
+      assert.equal(scope.incremental, undefined)
+      assert.match(fs.readFileSync(path.join(temp, 'pr.diff'), 'utf8'), /first/)
+    } finally {
+      fs.rmSync(temp, { recursive: true, force: true })
+    }
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true })
+  }
+}
+
+{
+  const prior = {
+    meta: { head_sha: headSha, base_sha: otherSha, status: 'reviewed', config_fingerprint: 'fp' },
+    findings: { findings: [], coverage: { inspected: ['src/a'], uncovered: [] } }
+  }
+  const priorScope = {
+    head_sha: headSha,
+    base_sha: otherSha,
+    excluded_pathspecs: [...REVIEW_EXCLUDE_PATHSPECS],
+    empty_diff: false,
+    changed_paths: ['src/a']
+  }
+  const args = { prior, priorScope, expectedHead: headSha, expectedBase: otherSha, config: { fingerprint: 'fp' } }
+  assert.doesNotThrow(() => validateIncrementalBaseline(args))
+  assert.throws(() => validateIncrementalBaseline({ ...args, expectedBase: headSha }), /compatible baseline/)
+  assert.throws(
+    () => validateIncrementalBaseline({ ...args, config: { fingerprint: 'changed' } }),
+    /compatible baseline/
+  )
+  assert.throws(
+    () => validateIncrementalBaseline({ ...args, priorScope: { ...priorScope, excluded_pathspecs: [] } }),
+    /scope/
+  )
+  assert.throws(
+    () => validateIncrementalBaseline({ ...args, priorScope: { ...priorScope, incremental: true } }),
+    /scope/
+  )
+  assert.throws(
+    () =>
+      validateIncrementalBaseline({
+        ...args,
+        prior: { ...prior, findings: { ...prior.findings, coverage: { inspected: [], uncovered: [] } } }
+      }),
+    /coverage/
+  )
+}
+
+{
+  const prior = {
+    findings: [{ severity: 'Block', file: 'src/a', line: 1, problem: '坏', suggestion: '修' }],
+    coverage: { inspected: ['src/a'], uncovered: ['src/b:1 未核对'] }
+  }
+  const current = { findings: [], coverage: { inspected: ['src/c'], uncovered: [] } }
+  const open = inheritReviewHistory(
+    current,
+    JSON.stringify({ prior_resolutions: [{ index: 0, resolved: false, evidence: '仍存在' }] }),
+    prior
+  )
+  assert.equal(open.findings.length, 1)
+  assert.equal(open.counts.Block, 1)
+  const resolved = inheritReviewHistory(
+    current,
+    JSON.stringify({ prior_resolutions: [{ index: 0, resolved: true, evidence: '已修复' }] }),
+    open
+  )
+  assert.equal(resolved.findings.length, 0)
+  assert.deepEqual(resolved.coverage.uncovered, ['src/b:1 未核对'])
+  assert.throws(() => inheritReviewHistory(current, '{"prior_resolutions":[]}', prior), /every prior finding/)
+  assert.throws(
+    () => inheritReviewHistory(current, '{"prior_resolutions":[{"index":0,"resolved":true,"evidence":""}]}', prior),
+    /invalid prior/
+  )
+}
+
+{
+  const adapter = {
+    listComments: () => [
+      {
+        user: { login: 'github-actions[bot]' },
+        body: `<!-- codex-review-conclusion sha=${otherSha} status=reviewed blocks=0 -->`
+      }
+    ],
+    pulls: () => [{ number: 42 }],
+    runs: () => [{ id: 5, name: 'CI', head_sha: otherSha, pull_requests: [] }],
+    runJobs: () => [
+      { name: 'check', conclusion: 'success' },
+      { name: 'Codex review', conclusion: 'success' }
+    ],
+    artifacts: () => [{ name: FINDINGS_ARTIFACT }]
+  }
+  assert.deepEqual(findPriorReviewRun({ adapter, pullNumber: 42, headSha, currentRunId: 6 }), {
+    runId: '5',
+    headSha: otherSha
+  })
+  assert.equal(findPriorReviewRun({ adapter, pullNumber: 43, headSha, currentRunId: 6 }), null)
+  assert.equal(
+    findPriorReviewRun({
+      adapter: { ...adapter, runJobs: () => [{ name: 'check', conclusion: 'failure' }] },
+      pullNumber: 42,
+      headSha,
+      currentRunId: 6
+    }),
+    null
+  )
+  assert.equal(
+    findPriorReviewRun({
+      ...{
+        adapter: {
+          ...adapter,
+          listComments: () => [
+            { user: { login: 'someone' }, body: `<!-- codex-review-conclusion sha=${otherSha} status=reviewed -->` }
+          ]
+        }
+      },
+      pullNumber: 42,
+      headSha,
+      currentRunId: 6
+    }),
+    null
+  )
+}
 
 function writeConfig(directory) {
   fs.writeFileSync(
@@ -198,6 +434,30 @@ for (const [label, value] of [
     ['git', 'diff', '--name-only', '-z', otherSha, headSha, '--', ...excluded]
   ])
   assert.deepEqual([...REVIEW_EXCLUDE_PATHSPECS], excluded)
+  const incrementalCalls = []
+  const incrementalCommand = (name, args) => {
+    incrementalCalls.push([name, ...args])
+    if (args[0] === 'merge-base' && args[1] !== '--is-ancestor') return `${otherSha}\n`
+    if (args[0] === 'diff' && args.includes('--name-only')) return 'src/a.ts\u0000'
+    if (args[0] === 'diff') return 'incremental diff'
+    return ''
+  }
+  const incremental = resolveReviewRange({
+    baseSha: otherSha,
+    headSha,
+    priorHeadSha: 'c'.repeat(40),
+    command: incrementalCommand
+  })
+  assert.equal(incremental.startSha, 'c'.repeat(40))
+  assert.ok(
+    incrementalCalls.some(
+      call => call[1] === 'diff' && call[3] === 'c'.repeat(40) && excluded.every(item => call.includes(item))
+    )
+  )
+  assert.throws(
+    () => resolveReviewRange({ baseSha: otherSha, headSha, priorHeadSha: 'bad', command: incrementalCommand }),
+    /prior review head SHA/
+  )
   assert.throws(() => resolveReviewRange({ baseSha: 'main', headSha, command }), /PR base SHA/)
   const missing = []
   const fetchOnDemand = (name, args) => {
@@ -1946,11 +2206,20 @@ esac
   fs.writeFileSync(path.join(directory, 'review-findings.json'), JSON.stringify(reusable))
   fs.writeFileSync(
     path.join(directory, 'review-meta.json'),
-    JSON.stringify(metaOf({ reused_from: '99', generated_at: '2026-11-06T11:14:38Z' }))
+    JSON.stringify(
+      metaOf({
+        reused_from: '99',
+        generated_at: '2026-11-06T11:14:38Z',
+        review_start_sha: otherSha,
+        review_lineage: [{ head_sha: otherSha, findings: [], resolutions: [] }]
+      })
+    )
   )
   runValidate()
   assert.equal(metaAfter().status, 'reviewed', 'a reused conclusion that carries coverage stays reviewable')
   assert.equal(metaAfter().generated_at, '2026-11-06T11:14:38Z', 'reuse keeps the earlier generation time')
+  assert.equal(metaAfter().review_start_sha, otherSha)
+  assert.equal(metaAfter().review_lineage.length, 1)
 
   // 上一次没记生成时间就不写，不能拿当前时间冒充它的生成时间。
   fs.writeFileSync(path.join(directory, 'review-findings.json'), JSON.stringify(reusable))

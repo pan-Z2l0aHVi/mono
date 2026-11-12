@@ -171,6 +171,40 @@ export function parseReviewFindings(raw) {
   return { summary, coverage, findings, counts }
 }
 
+/** 增量结果必须逐项处置历史发现，覆盖和未覆盖记录跨轮累计。 */
+export function inheritReviewHistory(parsed, raw, prior) {
+  const resolutions = JSON.parse(raw).prior_resolutions
+  if (!Array.isArray(resolutions) || resolutions.length !== prior.findings.length)
+    throw new Error('incremental review must account for every prior finding')
+  const byIndex = new Map()
+  for (const entry of resolutions) {
+    if (
+      !entry ||
+      !Number.isInteger(entry.index) ||
+      entry.index < 0 ||
+      entry.index >= prior.findings.length ||
+      typeof entry.resolved !== 'boolean' ||
+      typeof entry.evidence !== 'string' ||
+      !entry.evidence.trim() ||
+      byIndex.has(entry.index)
+    )
+      throw new Error('invalid prior finding resolution')
+    byIndex.set(entry.index, entry)
+  }
+  const findings = [...parsed.findings, ...prior.findings.filter((_, index) => !byIndex.get(index).resolved)]
+  const counts = emptyCounts()
+  for (const finding of findings) counts[finding.severity]++
+  return {
+    ...parsed,
+    findings,
+    counts,
+    coverage: {
+      inspected: [...new Set([...prior.coverage.inspected, ...parsed.coverage.inspected])],
+      uncovered: [...new Set([...prior.coverage.uncovered, ...parsed.coverage.uncovered])]
+    }
+  }
+}
+
 /**
  * `coverage` 是结论的一部分，不是可选装饰：schema 已列为必填，缺了就是模型没按契约输出，
  * 不论有没有 findings 都判 `missing_coverage`——否则交一条 Nit 就能绕开整条覆盖规则。
@@ -213,7 +247,7 @@ function touchesChangedPath(entry, changed) {
   return changed.includes(normalized)
 }
 
-export function resolveReviewRange({ baseSha, headSha, command = run }) {
+export function resolveReviewRange({ baseSha, headSha, priorHeadSha, command = run }) {
   const base = requireSha(baseSha, 'PR base SHA')
   const head = requireSha(headSha, 'PR head SHA')
   for (const sha of [base, head]) {
@@ -225,11 +259,19 @@ export function resolveReviewRange({ baseSha, headSha, command = run }) {
     }
   }
   const mergeBaseSha = requireSha(command('git', ['merge-base', base, head]).trim(), 'merge base SHA')
-  const diff = command('git', ['diff', '--no-color', mergeBaseSha, head, '--', ...REVIEW_EXCLUDE_PATHSPECS])
+  let startSha = mergeBaseSha
+  if (priorHeadSha) {
+    const prior = requireSha(priorHeadSha, 'prior review head SHA')
+    command('git', ['cat-file', '-e', `${prior}^{commit}`])
+    command('git', ['merge-base', '--is-ancestor', prior, head])
+    command('git', ['merge-base', '--is-ancestor', mergeBaseSha, prior])
+    startSha = prior
+  }
+  const diff = command('git', ['diff', '--no-color', startSha, head, '--', ...REVIEW_EXCLUDE_PATHSPECS])
   // 覆盖度判定需要知道「这次到底改了哪些文件」，否则只读了判据文档也能自称审查过。
-  const names = command('git', ['diff', '--name-only', '-z', mergeBaseSha, head, '--', ...REVIEW_EXCLUDE_PATHSPECS])
+  const names = command('git', ['diff', '--name-only', '-z', startSha, head, '--', ...REVIEW_EXCLUDE_PATHSPECS])
   const changedPaths = names.split('\u0000').filter(name => name !== '')
-  return { baseSha: base, headSha: head, mergeBaseSha, diff, changedPaths }
+  return { baseSha: base, headSha: head, mergeBaseSha, ...(priorHeadSha ? { startSha } : {}), diff, changedPaths }
 }
 
 export function readConclusion(directory) {
@@ -613,6 +655,8 @@ export function renderConclusion({
     '- 合并判据：`Block`、`error` 与「未审查」让 `codex-gate` 变红；已过时与不适用不拦合并，但结论不覆盖当前 head。',
     '- 这是约定式门禁，GitHub 没有把它设为必需检查；合并前按 `docs/agents/review.md` 核对。'
   ]
+  if (meta?.review_start_sha && meta.review_start_sha !== meta.merge_base_sha)
+    lines.push(`- 增量基线：${codeSpan(meta.review_start_sha)}；累计 ${meta.review_lineage?.length ?? 0} 轮历史记录`)
   if (conclusion.code) {
     lines.push(`- 故障码：\`${plainText(conclusion.code)}\``)
     if (Array.isArray(meta?.missing) && meta.missing.length > 0) {
@@ -749,6 +793,37 @@ export function findReusableRun({ adapter, headSha, currentRunId }) {
   for (const entry of candidates) {
     const artifact = adapter.artifacts(entry.id).find(item => item?.name === FINDINGS_ARTIFACT)
     if (artifact) return { runId: String(entry.id), artifactId: artifact.id }
+  }
+  return null
+}
+
+/** 从本 PR 的结论评论定位旧 head，并以运行记录验证所属 PR。 */
+export function findPriorReviewRun({ adapter, pullNumber, headSha, currentRunId }) {
+  if (!pullNumber) return null
+  const comments = adapter.listComments(pullNumber) ?? []
+  for (const comment of [...comments].reverse()) {
+    if (comment?.user?.login !== 'github-actions[bot]') continue
+    const marker = String(comment.body ?? '').match(
+      /<!-- codex-review-conclusion sha=([0-9a-f]{40,64}) status=(?:reviewed|blocked|stale)\b/iu
+    )
+    const priorHead = marker?.[1]
+    if (!priorHead || priorHead === headSha) continue
+    if (!(adapter.pulls(priorHead) ?? []).some(pull => String(pull.number) === String(pullNumber))) continue
+    const runs = adapter
+      .runs(priorHead)
+      .filter(
+        entry => entry?.name === 'CI' && entry?.head_sha === priorHead && String(entry?.id) !== String(currentRunId)
+      )
+      .sort((a, b) => Number(b.id) - Number(a.id))
+    for (const entry of runs) {
+      const jobs = adapter.runJobs(entry.id)
+      if (
+        !['check', REVIEW_JOB_NAME].every(name => jobs.some(job => job.name === name && job.conclusion === 'success'))
+      )
+        continue
+      if (adapter.artifacts(entry.id).some(item => item?.name === FINDINGS_ARTIFACT))
+        return { runId: String(entry.id), headSha: priorHead }
+    }
   }
   return null
 }
@@ -1070,7 +1145,7 @@ export function buildReviewPreload(
     '',
     '### 本次范围与风险排序清单',
     '',
-    `- 范围：\`${range?.mergeBaseSha ?? 'unknown'}..${range?.headSha ?? 'unknown'}\`（base \`${range?.baseSha ?? 'unknown'}\`）`,
+    `- 范围：\`${range?.startSha ?? range?.mergeBaseSha ?? 'unknown'}..${range?.headSha ?? 'unknown'}\`（base \`${range?.baseSha ?? 'unknown'}\`）`,
     `- 源码 diff：\`${diffBytes}\` bytes · \`changed_paths\`：\`${ranked.length}\` 个文件 · \`empty_diff\`：\`${emptyDiff}\``,
     `- 预注入 diff：\`${preloadedPaths.length}/${ranked.length}\` 个文件（完整 \`${preloadedPaths.length - truncatedPaths.length}\`，截断 \`${truncatedPaths.length}\`，未预注入 \`${omittedPaths.length}\`）`
   ]
@@ -1226,6 +1301,7 @@ function identityFromEnv() {
     // 评论是就地更新的，创建时间永远停在第一次写回那一刻；结论自己的生成时间只能记在这里。
     generated_at: new Date().toISOString(),
     merge_base_sha: scope.merge_base_sha ?? '',
+    review_start_sha: scope.review_start_sha ?? scope.merge_base_sha ?? '',
     model: config?.model ?? '',
     effort: config?.effort ?? '',
     config_fingerprint: config?.fingerprint ?? ''
@@ -1262,11 +1338,12 @@ function commandPreflight() {
   console.log(`codex configuration complete (fingerprint ${config.fingerprint}); values are never logged`)
 }
 
-export function commandPrepare({ env = process.env, command = run } = {}) {
+export function commandPrepare({ env = process.env, command = run, priorHeadSha } = {}) {
   const required = requireEnv(['CODEX_REVIEW_BASE_SHA', 'CODEX_REVIEW_HEAD_SHA', 'RUNNER_TEMP'], env)
   const range = resolveReviewRange({
     baseSha: required.CODEX_REVIEW_BASE_SHA,
     headSha: required.CODEX_REVIEW_HEAD_SHA,
+    priorHeadSha,
     command
   })
   const directory = conclusionDirectory(env)
@@ -1286,6 +1363,7 @@ export function commandPrepare({ env = process.env, command = run } = {}) {
         base_sha: range.baseSha,
         head_sha: range.headSha,
         merge_base_sha: range.mergeBaseSha,
+        ...(range.startSha ? { review_start_sha: range.startSha, incremental: true } : {}),
         diff_bytes: Buffer.byteLength(range.diff),
         empty_diff: Buffer.byteLength(range.diff) === 0,
         changed_paths: range.changedPaths,
@@ -1302,6 +1380,7 @@ export function commandPrepare({ env = process.env, command = run } = {}) {
       base_sha: range.baseSha,
       head_sha: range.headSha,
       merge_base_sha: range.mergeBaseSha,
+      review_start_sha: range.startSha ?? range.mergeBaseSha,
       diff_path: path.join(required.RUNNER_TEMP, 'pr.diff'),
       diff_bytes: String(Buffer.byteLength(range.diff)),
       preload_path: preloadPath(env)
@@ -1309,9 +1388,56 @@ export function commandPrepare({ env = process.env, command = run } = {}) {
     env
   )
   console.log(
-    `review range ${range.mergeBaseSha}..${range.headSha} (${Buffer.byteLength(range.diff)} bytes, preloaded ${preload.preloadedPaths.length}/${range.changedPaths.length} files)`
+    `review range ${range.startSha ?? range.mergeBaseSha}..${range.headSha} (${Buffer.byteLength(range.diff)} bytes, preloaded ${preload.preloadedPaths.length}/${range.changedPaths.length} files)`
   )
   return { range, preload }
+}
+
+export function validateIncrementalBaseline({ prior, priorScope, expectedHead, expectedBase, config }) {
+  if (
+    !prior?.findings?.coverage ||
+    prior.meta.status !== 'reviewed' ||
+    prior.meta.head_sha !== expectedHead ||
+    prior.meta.base_sha !== expectedBase ||
+    !config ||
+    prior.meta.config_fingerprint !== config.fingerprint
+  )
+    throw new Error('prior conclusion is not a compatible baseline')
+  if (
+    priorScope.head_sha !== prior.meta.head_sha ||
+    priorScope.base_sha !== prior.meta.base_sha ||
+    JSON.stringify(priorScope.excluded_pathspecs) !== JSON.stringify(REVIEW_EXCLUDE_PATHSPECS) ||
+    (priorScope.incremental &&
+      (!prior.meta.review_lineage?.length || prior.meta.review_start_sha !== priorScope.review_start_sha))
+  )
+    throw new Error('prior scope does not match its conclusion')
+  if (reuseCoverageGap(prior.findings, priorScope)) throw new Error('prior conclusion lacks coverage evidence')
+}
+
+function commandPrepareIncremental() {
+  const env = requireEnv(['CODEX_REVIEW_HEAD_SHA', 'CODEX_REVIEW_BASE_SHA', 'RUNNER_TEMP'])
+  try {
+    if (!process.env.CODEX_REVIEW_PRIOR_HEAD_SHA) throw new Error('no prior review head')
+    env.CODEX_REVIEW_PRIOR_HEAD_SHA = process.env.CODEX_REVIEW_PRIOR_HEAD_SHA
+    const prior = readConclusion(priorConclusionDirectory())
+    const config = readConfig()
+    const priorScope = JSON.parse(fs.readFileSync(path.join(priorConclusionDirectory(), SCOPE_FILE), 'utf8'))
+    validateIncrementalBaseline({
+      prior,
+      priorScope,
+      expectedHead: env.CODEX_REVIEW_PRIOR_HEAD_SHA,
+      expectedBase: env.CODEX_REVIEW_BASE_SHA,
+      config
+    })
+    commandPrepare({ priorHeadSha: env.CODEX_REVIEW_PRIOR_HEAD_SHA })
+    writeOutputs({ incremental: 'true' })
+    console.log(`incremental baseline ${env.CODEX_REVIEW_PRIOR_HEAD_SHA}`)
+  } catch (error) {
+    // prepare 原先生成的全量范围仍是安全的回退；重新生成也防止部分写入留下混合状态。
+    commandPrepare()
+    writeOutputs({ incremental: 'false' })
+    console.log(`using full review: ${error.message}`)
+  }
 }
 
 function commandResolvePull() {
@@ -1328,12 +1454,21 @@ function commandResolvePull() {
 
 function commandPriorRun() {
   const env = requireEnv(['GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'CODEX_REVIEW_HEAD_SHA'])
+  const adapter = createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY })
   const reuse = findReusableRun({
-    adapter: createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY }),
+    adapter,
     headSha: env.CODEX_REVIEW_HEAD_SHA,
     currentRunId: env.GITHUB_RUN_ID
   })
-  writeOutputs({ prior_run_id: reuse?.runId ?? '' })
+  const incremental = reuse
+    ? null
+    : findPriorReviewRun({
+        adapter,
+        pullNumber: pullNumber(),
+        headSha: env.CODEX_REVIEW_HEAD_SHA,
+        currentRunId: env.GITHUB_RUN_ID
+      })
+  writeOutputs({ prior_run_id: reuse?.runId ?? incremental?.runId ?? '', prior_head_sha: incremental?.headSha ?? '' })
   console.log(reuse ? `earlier conclusion available in run ${reuse.runId}` : 'no earlier conclusion for this head')
 }
 
@@ -1353,6 +1488,8 @@ function commandReuse() {
     const conclusion = readConclusion(prior)
     if (!conclusion?.findings) failure = 'no usable conclusion'
     else if (conclusion.meta.head_sha !== env.CODEX_REVIEW_HEAD_SHA) failure = ''
+    else if (process.env.CODEX_REVIEW_BASE_SHA && conclusion.meta.base_sha !== process.env.CODEX_REVIEW_BASE_SHA)
+      failure = 'the PR base changed'
     else if (!config) failure = 'the configuration snapshot is missing'
     else if (conclusion.meta.status === 'error' || conclusion.meta.status === 'unreviewed')
       failure = 'the prior run has no reviewable conclusion'
@@ -1417,6 +1554,8 @@ function commandValidate() {
       return
     }
     const meta = { ...identity, status: 'reviewed', reused_from: process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '' }
+    if (typeof prior.review_start_sha === 'string') meta.review_start_sha = prior.review_start_sha
+    if (Array.isArray(prior.review_lineage)) meta.review_lineage = prior.review_lineage
     // 复用的结论是上一次生成的：它没记时间就不写，绝不拿当前时间冒充它的生成时间。
     if (typeof prior.generated_at === 'string' && prior.generated_at !== '') meta.generated_at = prior.generated_at
     else delete meta.generated_at
@@ -1474,7 +1613,51 @@ function commandValidate() {
     return
   }
 
-  writeConclusion(directory, { findings: parsed, meta: { ...identity, status: 'reviewed', reused_from: '' } })
+  let resolutions
+  let lineage
+  if (scope.incremental) {
+    try {
+      const prior = readConclusion(priorConclusionDirectory())
+      if (!prior?.findings?.coverage || prior.meta.head_sha !== scope.review_start_sha)
+        throw new Error('baseline unavailable')
+      const raw = fs.readFileSync(outputPath, 'utf8')
+      resolutions = JSON.parse(raw).prior_resolutions
+      parsed = inheritReviewHistory(parsed, raw, prior.findings)
+      lineage = [
+        ...(Array.isArray(prior.meta.review_lineage) ? prior.meta.review_lineage : []),
+        {
+          head_sha: prior.meta.head_sha,
+          findings: prior.findings.findings,
+          resolutions
+        }
+      ]
+    } catch (failure) {
+      try {
+        const prior = readConclusion(priorConclusionDirectory())
+        if (prior?.findings?.coverage) {
+          const unresolved = prior.findings.findings.map((_, index) => ({
+            index,
+            resolved: false,
+            evidence: '未能核实'
+          }))
+          parsed = inheritReviewHistory(parsed, JSON.stringify({ prior_resolutions: unresolved }), prior.findings)
+        }
+      } catch {
+        // 没有可读取的历史结论时仍判未审查，不能把缺失数据视作已解决。
+      }
+      writeConclusion(directory, {
+        findings: parsed,
+        meta: { ...identity, status: 'unreviewed', error_code: 'unusable_output', error: failure.message }
+      })
+      writeOutputs({ blocks: String(parsed.counts.Block), reason: failure.message })
+      console.error(`incremental review is unreviewed: ${failure.message}`)
+      return
+    }
+  }
+  writeConclusion(directory, {
+    findings: parsed,
+    meta: { ...identity, status: 'reviewed', reused_from: '', ...(lineage ? { review_lineage: lineage } : {}) }
+  })
   writeOutputs({ blocks: String(parsed.counts.Block), reason: '' })
   if (parsed.summary === '') console.log('review output carries no summary; the conclusion stands on its findings')
   if (parsed.coverage) {
@@ -1730,6 +1913,7 @@ const commands = {
   preflight: commandPreflight,
   prepare: commandPrepare,
   'prior-run': commandPriorRun,
+  'prepare-incremental': commandPrepareIncremental,
   'resolve-pull': commandResolvePull,
   reuse: commandReuse,
   validate: commandValidate,

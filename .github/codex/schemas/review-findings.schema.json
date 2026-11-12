@@ -2,8 +2,22 @@
   "type": "object",
   "description": "A read-only Codex review conclusion for one pull request head snapshot.",
   "additionalProperties": false,
-  "required": ["summary", "coverage", "findings"],
+  "required": ["summary", "coverage", "findings", "prior_resolutions"],
   "properties": {
+    "prior_resolutions": {
+      "type": "array",
+      "description": "For incremental reviews, one entry for every prior finding, indexed from zero; otherwise an empty array.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "resolved", "evidence"],
+        "properties": {
+          "index": { "type": "integer" },
+          "resolved": { "type": "boolean" },
+          "evidence": { "type": "string" }
+        }
+      }
+    },
     "summary": {
       "type": "string",
       "description": "One or two sentences that state what the change does and the overall conclusion. Never describe what you are about to do or what you are reading."

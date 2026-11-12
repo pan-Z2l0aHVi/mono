@@ -8,7 +8,7 @@ PR review 默认由 CI 之后那道自动审查承担：它只看 diff、仓库�
 
 ## 自动审查结论的效力
 
-CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发现，把结论写进 PR 上同一条持久评论。这道结论就是本仓默认的 PR review。它与人工审查读的不是同一份 diff，范围差见下文「审查范围与生成物」；决策与代价见 [ADR-0021](../adr/0021-codex-review-gate.md)。
+CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发现，把结论写进 PR 上同一条持久评论。这道结论就是本仓默认的 PR review。审查范围见下文「审查范围与生成物」；决策与代价见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 
 - 结论绑定被审查的 head。`reviewed` 只覆盖那一份代码；head 变了结论就过期，`stale`、`unreviewed` 与 `not_applicable` 都不代表已审。
 - `reviewed` 且 `Block > 0`、`error` 与 `unreviewed` 让这道门变红。`error` 表示配置或调用故障，不是审查意见，按故障码处置：`config_missing` 按 PR 评论列出的变量名补齐 GitHub 后台的 secrets/variables；`model_failed` 先看 `Run codex exec` 日志，网关 5xx 或瞬时错误重跑整条 run，只有配置或模型侧拒绝才改后台；`artifact_missing` 查审查 job 的上传与写回 job 的下载。模型 job 跑完却没产出可用结论是 `unreviewed`（故障码 `unusable_output`），同样变红：先重跑整条 run，重复出现说明输出契约坏了，改 prompt 或校验而不是当成「没有意见」——这类故障下审查 job 仍是绿的，`gh run rerun --failed` 只会重跑门禁 job。没交覆盖证据是 `missing_coverage`，同样记 `unreviewed`，但审查 job 会一并判红；`Codex Review Report` 在该 CI run 的第一次 attempt、且写回 workflow run 自身也是第一次 attempt 时自动用 `gh run rerun --failed` 重跑审查 job 与门禁 job 一次，重跑后的新结论更新同一条持久评论。任一 attempt 已重跑过（`run_attempt>1`，或人工 re-run 了写回 run 导致 `github.run_attempt>1`），就不再重试、评论标 `exhausted`，按本文做完整独立审查或修输出契约；任一 attempt 字段不可读、或 CI 未判 `failure`，评论标 `none`，按提示先看写回 run 运行页 Summary 的原因再决定是否重跑一次，不要连续重跑；自动重跑自身失败时评论标 `failed`，按提示核对写回 job 的 `actions: write` 与运行页错误，再手动重跑一次：`coverage` 是 schema 的必填项，有 findings 也不能省，否则交一条 Nit 就绕开整条规则；空 findings 时清单至少要有一条等于本次 diff 改过的文件（写到目录不算命中；只读了判据文档、而本次 diff 没改它，同样归这一档）。没有覆盖证据的结论与「没查就收尾」在产物上分不开，不能当作已审查。绿色只留给有结论可读的 run。门是约定式的：不改动 GitHub 的分支规则，红叉由人处置，绿色也不替人签字。
@@ -27,10 +27,12 @@ CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发�
 | 执行体       | diff 面                                                                                                                                         | 生成物                                     |
 | ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
 | Codex 审查门 | 按生成物清单滤除后的源码 diff；`review-scope.json` 记 `excluded_pathspecs`、`changed_paths`、`preloaded_paths`、`preload_bytes` 与 `empty_diff` | 不在 diff 里，不需要 diff，也不需要 review |
-| 人工独立审查 | merge-base..head 的完整 diff                                                                                                                    | 在 diff 里，按清单核对，不逐行评注         |
-| 复审         | 前次已审 head..当前 head 的完整增量                                                                                                             | 同上                                       |
+| 人工独立审查 | merge-base..head 的源码 diff，按清单滤除生成物                                                                                                  | 不在 diff 里，按清单另行核对               |
+| 复审         | 前次已审 head..当前 head 的源码增量，按清单滤除生成物                                                                                           | 不在 diff 里，按清单另行核对               |
 
-每个新 head 都重看一次完整 diff，同 head 且配置指纹一致才复用前一次产物，所以新 head 上的这道结论就是该轮复审。人工审查的后续轮次以前次已审 head 到当前 head 的增量为范围。
+首次审查覆盖完整源码 diff。复审以可信的前次已审 head 为基线，检查该 head 到当前 head 的全部源码增量、前次发现的处置及其受影响行为，并继承仍有效的已审范围和未覆盖项；新结论须标明基线和当前 head。基线不可用、审查范围或 base 变化使先前证据失效，或增量范围无法确定时，重新完整审查源码。
+
+自动审查在可信脚本验证历史产物、base、配置和祖先关系后选择增量；历史发现须逐项记录处置依据，未确认解决的发现及未覆盖项继续保留。结论产物记录每轮基线和处置，实际范围以产物为准。
 
 **生成物不需要 diff，也不需要 review**：它由 generator 完整重建，没有需要人判断的改动，留在审查输入里只会淹没真实源码、吃掉大 PR 的审查预算。自动审查按 [`generated-artifacts.md`](./generated-artifacts.md) 的唯一判据「能否由 generator 完整重建」取最小路径集，把清单里的入库生成物整批滤出 `pr.diff` 与 `changed_paths`；被滤除的路径不进 `coverage.inspected`，也不算 `coverage.uncovered`。清单、generator 入口、逐类核对办法与新增生成物时的同步要求都在该文档，排除理由与实测见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围」。
 
@@ -40,13 +42,13 @@ CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发�
 - Codex 结论不覆盖生成物：`reviewed` 且 `Block 0` 不代表生成物已核对，不能据此跳过 `check-generated` 或人工核对。
 - Codex 也不得因 diff 里没有被滤除的生成物就判定它们缺失或未更新；它们的正确性由 `check-generated` 与消费者类型检查证明，不由审查结论证明。需要核对时读工作树当前内容。
 
-只改生成物（滤除清单内任意路径）的 PR 会得到空 diff（`empty_diff: true`），自动审查只能得出「没有源码改动可审」。这不是对生成物的审查，不构成可合并结论，也不算「结论即 review」：这类 PR 按完整 diff 走人工审查，或至少按清单逐类核对并留下 generator 证据。
+只改生成物（滤除清单内任意路径）的 PR 会得到空 diff（`empty_diff: true`），自动审查只能得出「没有源码改动可审」。这不是对生成物的审查，不构成可合并结论，也不算「结论即 review」：这类 PR 按清单逐类核对并留下 generator 证据。
 
 ## 固定输入与范围
 
-本节和后面两节只在真有人审查时生效；默认路径读 PR 上那条结论评论，不需要这些步骤。由编排层提供 PR URL 与仓库，并负责分配 reviewer worktree；无法分配时，reviewer 按下文只读复用已有 worktree。审查开始时记录 PR 当前 base 与 head 的完整 SHA、目标分支、作者、状态、draft、文件数及合并对象，并读取已有 inline review、review 和普通评论，包括自动审查那条持久评论。首次人工 review 读取完整 diff；同一执行人后续轮次读取增量 diff。文件、评论或提交对象无法完整读取时，报告覆盖不完整，不给出「无问题」或可合并结论。
+本节和后面两节只在真有人审查时生效；默认路径读 PR 上那条结论评论，不需要这些步骤。由编排层提供 PR URL 与仓库，并负责分配 reviewer worktree；无法分配时，reviewer 按下文只读复用已有 worktree。审查开始时记录 PR 当前 base 与 head 的完整 SHA、目标分支、作者、状态、draft、文件数及合并对象，并读取已有 inline review、review 和普通评论，包括自动审查那条持久评论。首次人工 review 读取完整源码 diff；同一执行人后续轮次读取源码增量 diff。文件、评论或提交对象无法完整读取时，报告覆盖不完整，不给出「无问题」或可合并结论。
 
-reviewer 不得切换、覆盖或修改实施者 worktree；除自己专属的 reviewer worktree 外，不修改任何工作树的文件，也不修改被审分支或 Git 索引。需要写盘的验证只使用专属 reviewer worktree，或在系统临时目录中从 PR head 检出的一次性 worktree；后者用完即移除。专属 reviewer worktree 与只读复用的已有 worktree 都要满足：工作树无未提交改动、origin 指向 PR base 仓库、HEAD 等于 PR head、base/head 对象存在。复用已有 worktree 时，被审内容一律取自 merge-base..head 的 Git 对象，不把该工作树里未提交的内容当作 PR 内容；首次审查完整改动；复审以此前已审查 head 到当前 head 的完整增量为范围，而不是只看最新 commit。审查开始和提交报告前都要重新读取 PR base/head 与复用 worktree 的 HEAD；head 变化后旧报告只覆盖旧提交。force push、rebase、base 更新或范围变化后，重新求 merge-base 并判断旧证据是否仍适用，检查完整受影响范围；无法确定范围时重新完整审查。复用条件不满足时，报告无法开始或继续审查，不迁就当前状态。
+reviewer 不得切换、覆盖或修改实施者 worktree；除自己专属的 reviewer worktree 外，不修改任何工作树的文件，也不修改被审分支或 Git 索引。需要写盘的验证只使用专属 reviewer worktree，或在系统临时目录中从 PR head 检出的一次性 worktree；后者用完即移除。专属 reviewer worktree 与只读复用的已有 worktree 都要满足：工作树无未提交改动、origin 指向 PR base 仓库、HEAD 等于 PR head、base/head 对象存在。复用已有 worktree 时，被审内容一律取自 merge-base..head 的 Git 对象，不把该工作树里未提交的内容当作 PR 内容；首次审查完整源码改动；复审以此前已审查 head 到当前 head 的源码增量为范围，而不是只看最新 commit。审查开始和提交报告前都要重新读取 PR base/head 与复用 worktree 的 HEAD；head 变化后旧报告只覆盖旧提交。force push、rebase、base 更新或范围变化后，重新求 merge-base 并判断旧证据是否仍适用，检查完整受影响范围；无法确定范围时重新完整审查。复用条件不满足时，报告无法开始或继续审查，不迁就当前状态。
 
 GitHub `pull_request` 的 CI 默认 checkout 是 base/head 的临时合并对象，代码 review 固定在 PR head。不能把 Actions run/check 关联用的 PR head SHA 当作 runner 实际测试的 checkout SHA。`gh pr checks --json` 不提供 head SHA；改用 run/check 对象或 check-runs API 核对关联的 head。required `check` 必须关联当前 PR head，并在实际执行快照与政策检查后成功；关联 SHA、base/head 或 step 结果不符时，不能证明当前输入已通过 CI。
 
@@ -66,7 +68,7 @@ GitHub `pull_request` 的 CI 默认 checkout 是 base/head 的临时合并对象
 
 没有用户对 PR 外部写入的明确授权时，只交付本地报告，不调用写 API；授权机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。获得授权后使用绑定 reviewed head 的 `COMMENT` review，不自动 `APPROVE` 或 `REQUEST_CHANGES`。调用前重新读取 PR base/head，确认仍等于报告覆盖的 SHA；已漂移则先补审。检查 API 响应的 `commit_id`、state 与 `html_url`，并重读远端 base/head；失败或漂移时报告仍为待发布或旧版本。请求超时或中断时，先分页读取现有 reviews 并核对 `commit_id`、正文和 `html_url`，确认没有重复 review 后才重试。
 
-实施者修复 Block/Should fix 后运行相关验证并推送需另获用户授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。新 head 上的 review 是那道门在新 head 上重跑的结论，它每次都看完整 merge-base..head，核对方式是评论头部的 `sha` 等于当前 head、`Block` 为 0。人工审查走到后续轮次时，复用仍有效的完整审查，以前次已审 head 到当前 head 的 diff 为增量，检查全部新改动、前轮发现的处置及其受影响行为，并更新完整 PR 结论和验证记录。报告写明前后 SHA 与沿用的报告；缺少可信基线、证据不完整或历史与 base 变化使覆盖范围无法确定时重新完整审查。未处理的 Block 不能靠 CI 变绿消除。
+实施者修复 Block/Should fix 后运行相关验证并推送需另获用户授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。复审按「审查范围与生成物」的基线和回退规则进行，核对结论覆盖当前 head、前次发现已处置且 `Block` 为 0。人工报告写明前后 SHA、沿用的报告及验证记录。未处理的 Block 不能靠 CI 变绿消除。
 
 ## 合并前与恢复
 
