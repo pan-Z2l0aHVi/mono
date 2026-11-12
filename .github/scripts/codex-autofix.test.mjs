@@ -12,10 +12,12 @@ import {
   createGhAutofixAdapter,
   createGuardedMatcher,
   failedJobSteps,
+  failedStepAllowsChangeset,
   generatedGuarded,
   globToRegExp,
   hasAutofixCommit,
   inspectPatch,
+  isChangesetAddition,
   tailLog,
   validatePatchFile
 } from './codex-autofix.mjs'
@@ -38,6 +40,19 @@ function modification(file) {
     '@@ -1 +1 @@',
     '-old',
     '+new'
+  ].join('\n')
+}
+
+function addition(file, { mode = '100644' } = {}) {
+  return [
+    `diff --git a/${file} b/${file}`,
+    `new file mode ${mode}`,
+    'index 0000000..e69de29',
+    '--- /dev/null',
+    `+++ b/${file}`,
+    '@@ -0,0 +1,2 @@',
+    '+---',
+    '+---'
   ].join('\n')
 }
 
@@ -120,14 +135,48 @@ for (const file of [
 {
   assert.deepEqual(inspectPatch(modification('packages/web-ui/src/button.ts')), {
     reject: '',
-    files: ['packages/web-ui/src/button.ts']
+    files: ['packages/web-ui/src/button.ts'],
+    added: []
   })
-  assert.deepEqual(inspectPatch(''), { reject: 'patch changes no tracked file', files: [] })
+  assert.deepEqual(inspectPatch(''), { reject: 'patch changes no tracked file', files: [], added: [] })
   assert.match(inspectPatch('diff --git a/x/y.ts b/x/z.ts\n').reject, /renames or moves/)
   assert.match(inspectPatch(`${modification('a.ts')}\nnew file mode 100644\n`).reject, /adds a new file/)
   assert.match(inspectPatch(`${modification('a.ts')}\ndeleted file mode 100644\n`).reject, /deletes a file/)
   assert.match(inspectPatch('diff --git a/x.png b/x.png\nBinary files a/x.png and b/x.png differ\n').reject, /binary/)
   assert.match(inspectPatch('diff --git a/x.png b/x.png\nGIT binary patch\nliteral 12\n').reject, /binary/)
+
+  assert.deepEqual(inspectPatch(addition('.changeset/quiet-fox.md'), { allowNewChangeset: true }), {
+    reject: '',
+    files: ['.changeset/quiet-fox.md'],
+    added: ['.changeset/quiet-fox.md']
+  })
+  assert.match(inspectPatch(addition('.changeset/quiet-fox.md')).reject, /adds a new file/)
+  assert.match(
+    inspectPatch(addition('.changeset/nested/quiet-fox.md'), { allowNewChangeset: true }).reject,
+    /adds a new file/
+  )
+  assert.match(
+    inspectPatch(addition('.changeset/quiet-fox.txt'), { allowNewChangeset: true }).reject,
+    /adds a new file/
+  )
+  assert.match(
+    inspectPatch(addition('packages/web-ui/src/new.ts'), { allowNewChangeset: true }).reject,
+    /adds a new file/
+  )
+  assert.match(
+    inspectPatch(addition('.changeset/quiet-fox.md', { mode: '120000' }), { allowNewChangeset: true }).reject,
+    /non-regular/
+  )
+
+  assert.equal(isChangesetAddition('.changeset/quiet-fox.md'), true)
+  assert.equal(isChangesetAddition('.changeset/nested/quiet-fox.md'), false)
+  assert.equal(isChangesetAddition('.changeset/README.md'), false)
+
+  assert.equal(failedStepAllowsChangeset('Check changesets'), true)
+  assert.equal(failedStepAllowsChangeset('Build, Check changesets'), true)
+  assert.equal(failedStepAllowsChangeset('Test'), false)
+  assert.equal(failedStepAllowsChangeset(''), false)
+  assert.equal(failedStepAllowsChangeset(undefined), false)
 }
 
 {
@@ -142,6 +191,34 @@ for (const file of [
     reject: '',
     files: ['packages/web-ui/src/button.ts']
   })
+
+  const changesetPatch = addition('.changeset/quiet-fox.md')
+  const calls = []
+  const changesetCapture = capturePatch({
+    headSha,
+    patchPath: path.join(directory, 'changeset.patch'),
+    guarded: guarded(),
+    allowNewChangeset: true,
+    command: (name, args) => {
+      calls.push([name, ...args])
+      return changesetPatch
+    }
+  })
+  assert.equal(changesetCapture.reject, '')
+  assert.deepEqual(changesetCapture.files, ['.changeset/quiet-fox.md'])
+  assert.deepEqual(calls[0], ['git', 'add', '--intent-to-add', '--', '.changeset'])
+  assert.deepEqual(validatePatchFile({ patchPath: path.join(directory, 'changeset.patch'), guarded: guarded() }), {
+    reject: 'patch adds a new file: .changeset/quiet-fox.md',
+    files: ['.changeset/quiet-fox.md']
+  })
+  assert.deepEqual(
+    validatePatchFile({
+      patchPath: path.join(directory, 'changeset.patch'),
+      guarded: guarded(),
+      allowNewChangeset: true
+    }),
+    { reject: '', files: ['.changeset/quiet-fox.md'] }
+  )
 
   const guardedPatch = modification('apps/react-web-ui-demo/src/routeTree.gen.ts')
   const rejected = capturePatch({

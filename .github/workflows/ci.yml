@@ -477,6 +477,8 @@ jobs:
         # deny list 从 base 落地的副本读；runner 上下文只能在 step 级 env 用，job 级会让整个文件 invalid。
         env:
           CODEX_TRUSTED_SETTINGS: ${{ runner.temp }}/trusted/.claude/settings.json
+          # 只有 `Check changesets` 失败时才放行新增 `.changeset/*.md`；其余失败仍只许改已入库文件。
+          CODEX_AUTOFIX_FAILED_STEPS: ${{ steps.failure.outputs.failed_steps }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-autofix.mjs" capture
 
       - name: Upload autofix patch
