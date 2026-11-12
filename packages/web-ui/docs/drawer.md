@@ -861,6 +861,8 @@ function close() {
 
 `headless` keeps only the native dialog, backdrop, animations, scroll lock, and Escape / backdrop closing, rendering no built-in header, close button, or footer. Your app is responsible for the full styling of the default slot content and must provide `aria-dialog-label`. `headless` supports `draggable` drag-to-close as well.
 
+The React example sets the `ariaDialogLabel` property through a ref so React does not validate the component-specific name as a standard ARIA attribute.
+
 ```tsx
 import { useState } from 'react'
 
@@ -876,7 +878,9 @@ export default function Demo() {
         placement="left"
         headless
         draggable
-        aria-dialog-label="Custom panel"
+        ref={element => {
+          if (element) element.ariaDialogLabel = 'Custom panel'
+        }}
         onopen-change={event => setOpen(event.detail.open)}
       >
         <div className="box-border h-full w-[min(320px,100vw)] rounded-r-2xl bg-(--wui-color-surface-overlay) p-6 text-(--wui-color-text)">
@@ -1285,6 +1289,52 @@ const open = ref(false)
 </script>
 ```
 
+### Custom close button size
+
+Set the close button size with `--wui-drawer-close-size` (default 26px); its icon scales proportionally.
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <web-ui-button onClick={() => setOpen(true)}>Open</web-ui-button>
+      <web-ui-drawer
+        closable
+        open={open}
+        heading="Example"
+        style={{ '--wui-drawer-close-size': '34px' }}
+        onopen-change={event => setOpen(event.detail.open)}
+      >
+        Example
+      </web-ui-drawer>
+    </>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="open = true">Open</web-ui-button>
+  <web-ui-drawer
+    closable
+    :open="open"
+    heading="Example"
+    style="--wui-drawer-close-size: 34px"
+    @open-change="open = $event.detail.open"
+  >
+    Example
+  </web-ui-drawer>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+const open = ref(false)
+</script>
+```
+
 ## API
 
 ### Props
@@ -1372,6 +1422,9 @@ Drag-to-open is not supported; a closed drawer has no draggable content. Under `
 | `--wui-drawer-bg`                 | Drawer background color                                                                                                                                                                                                                                                          | `var(--wui-color-surface-overlay)`                  |
 | `--wui-drawer-radius`             | Floating card radius (non-headless)                                                                                                                                                                                                                                              | `var(--wui-radius-overlay, 28px)`                   |
 | `--wui-drawer-inset`              | Floating card viewport inset (non-headless); set to `0` for edge-to-edge geometry                                                                                                                                                                                                | `8px`                                               |
+| `--wui-drawer-inset-top`          | Top inset of a left floating drawer                                                                                                                                                                                                                                              | `--wui-drawer-inset`                                |
+| `--wui-drawer-inset-left`         | Left inset of a left floating drawer                                                                                                                                                                                                                                             | `--wui-drawer-inset`                                |
+| `--wui-drawer-inset-bottom`       | Bottom inset of a left floating drawer                                                                                                                                                                                                                                           | `--wui-drawer-inset`                                |
 | `--wui-drawer-nested-peek-base`   | Exposed-edge base `A` for nested stacking (`28.8px` when `width <= 640px`); the total stack width grows as `A · ln(n)`, so a single layer never moves and each additional layer adds a smaller exposed edge. Set to `0` to disable the exposed edge. See the notes above         | `43.2px`                                            |
 | `--wui-drawer-overlay-bg`         | Backdrop background color, taken from `--wui-color-backdrop`                                                                                                                                                                                                                     | `rgb(0 0 0 / 0.12)` light, `rgb(0 0 0 / 0.48)` dark |
 | `--wui-drawer-drag-zone-size`     | Thickness of the drag zone that hit-tests drag-to-close (draggable)                                                                                                                                                                                                              | `20px`                                              |
@@ -1382,5 +1435,5 @@ Drag-to-open is not supported; a closed drawer has no draggable content. Under `
 | `--wui-drawer-header-padding`     | Header area padding                                                                                                                                                                                                                                                              | `16px 20px`                                         |
 | `--wui-drawer-close-top`          | Offset of the built-in close button from the top of the header                                                                                                                                                                                                                   | `16px`                                              |
 | `--wui-drawer-close-right`        | Offset of the built-in close button from the right edge of the drawer                                                                                                                                                                                                            | `16px`                                              |
-| `--wui-drawer-content-padding`    | Content area padding; also drives the drag bar's visual center line (half the value, no less than half the pill thickness + 4px)                                                                                                                                                 | `20px`                                              |
+| `--wui-drawer-content-padding`    | Content area padding; the drag bar position is independent of content padding                                                                                                                                                                                                    | `20px`                                              |
 | `--wui-drawer-footer-padding`     | Footer area padding                                                                                                                                                                                                                                                              | `16px 20px`                                         |

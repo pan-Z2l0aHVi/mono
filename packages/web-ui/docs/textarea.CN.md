@@ -436,6 +436,29 @@ export default function Demo() {
 </template>
 ```
 
+### 自定义尺寸
+
+用 `--wui-textarea-clear-size` 设置清除按钮尺寸（默认 20px），图标随之缩放。
+
+```tsx
+export default function Demo() {
+  return (
+    <web-ui-textarea
+      clearable
+      value="Hello"
+      aria-label="Text"
+      style={{ '--wui-textarea-clear-size': '24px' }}
+    ></web-ui-textarea>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-textarea clearable value="Hello" aria-label="Text" style="--wui-textarea-clear-size: 24px"></web-ui-textarea>
+</template>
+```
+
 ## API
 
 ### 属性

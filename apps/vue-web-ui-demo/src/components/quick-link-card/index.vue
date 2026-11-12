@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import { DEFAULT_DURATION_MS, pointerOffset, renderTilt, resetTilt, tiltEnabled } from '@greypan/doc-demo-kit'
+import type { WebUiTheme } from '@greypan/web-ui'
 import { computed, ref } from 'vue'
 import { RouterLink } from 'vue-router'
 
@@ -59,7 +60,7 @@ function handlePointerMove(event: PointerEvent) {
   if (event.pointerType !== 'mouse') return
   const visual = getVisual()
   if (!visual) return
-  if (!tiltEnabled(props.disabled)) {
+  if (!tiltEnabled(props.disabled, visual.closest<WebUiTheme>('web-ui-theme')?.isReducedMotion())) {
     resetTilt(visual)
     return
   }
@@ -81,7 +82,7 @@ function handlePointerMove(event: PointerEvent) {
 function handlePointerLeave() {
   const visual = getVisual()
   if (!visual || !visual.style.transform) return
-  if (!tiltEnabled(props.disabled)) {
+  if (!tiltEnabled(props.disabled, visual.closest<WebUiTheme>('web-ui-theme')?.isReducedMotion())) {
     resetTilt(visual)
     return
   }

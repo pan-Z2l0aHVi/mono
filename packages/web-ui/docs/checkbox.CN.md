@@ -225,7 +225,7 @@ function reset() {
 
 勾选时对勾从左端画出，取消时沿原路收回；`motion="reduced"` 时直接切换，挂载时已勾选的控件显示静态勾。
 
-对勾颜色取 `--wui-color-on-control`，按 `<web-ui-icon>` 默认的 18px 渲染，不随 `--wui-selection-control-size` 放大。
+对勾颜色取 `--wui-color-on-control`；尺寸默认等于 `--wui-selection-control-size`，可通过 `--wui-checkbox-icon-size` 单独覆盖。
 
 ### 未激活态
 

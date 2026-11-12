@@ -231,7 +231,7 @@ Emptiness is judged by the rendered width, so an assigned-but-invisible accessib
 
 On check the mark is drawn from the left end, and on uncheck it retracts along the same path; with `motion="reduced"` the two states switch directly, and a control already checked at mount shows a static check.
 
-The mark uses `--wui-color-on-control` and renders at the `<web-ui-icon>` default of 18px, so it does not grow with `--wui-selection-control-size`.
+The mark uses `--wui-color-on-control` and defaults to the size of `--wui-selection-control-size`. Override `--wui-checkbox-icon-size` to size it independently.
 
 ### Inactive state
 

@@ -16,20 +16,20 @@ import {
   TagColor
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import { stubLayout } from '../../components/library/__tests__/virtualLayout'
+import { queueWindowFileDrop } from '../../composables/windowFileDrop'
 import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../../services/library'
 import { useLibraryStore } from '../../stores/library'
 import LibraryPage from '../library/index.vue'
 
-// context menu 由 web-ui 自己接管渲染，单测只需要它有这两个接口
-if (!customElements.get('web-ui-context-menu')) {
-  customElements.define(
-    'web-ui-context-menu',
-    class extends HTMLElement {
-      openAt() {}
-      close() {}
-    }
-  )
-}
+// 页面测试只验证事件接线；原生弹层行为由组件浏览器测试覆盖。
+vi.mock('@greypan/web-ui/components/context-menu', () => {
+  class WebUiContextMenu extends HTMLElement {
+    openAt() {}
+    close() {}
+  }
+  customElements.define('web-ui-context-menu', WebUiContextMenu)
+  return { WebUiContextMenu }
+})
 
 const runtimeStub = {
   current: null as LibraryRuntime | null,
@@ -45,7 +45,10 @@ vi.mock('@/services/library', () => ({
   }
 }))
 
+const toastWarning = vi.hoisted(() => vi.fn())
+
 vi.mock('@greypan/web-ui', () => ({
+  toast: { warning: toastWarning },
   imagePreview: () => {
     throw new Error('图片预览由 AddDialog 组件用例覆盖')
   }
@@ -289,7 +292,10 @@ function confirmDialog(host: HTMLElement, confirmLabel: string) {
 }
 
 async function openContextMenuAction(host: HTMLElement, resourceId: string, label: string) {
+  row(host, resourceId).focus()
+  await nextTick()
   row(host, resourceId).dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
+  await nextTick()
   await nextTick()
   const item = [...host.querySelectorAll<HTMLElement>('web-ui-dropdown-item')].find(
     candidate => candidate.textContent?.trim() === label
@@ -344,9 +350,12 @@ function drawerOpen(host: HTMLElement, label: string) {
  * 详情只从 context menu 进（列表左键是预览）。先右键唤起 menu，再点「详情」那一项。
  */
 async function openDetailFromMenu(host: HTMLElement) {
+  row(host, 'resource-1').focus()
+  await nextTick()
   row(host, 'resource-1').dispatchEvent(
     new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 4, clientY: 4 })
   )
+  await nextTick()
   await nextTick()
   const item = [...host.querySelectorAll('web-ui-dropdown-item')].find(node => node.textContent?.trim() === '详情')
   if (!item) throw new Error('context menu 里没有「详情」项')
@@ -424,6 +433,26 @@ describe('LibraryPage：可用性感知接线', () => {
       expect(preview?.getAttribute('title')).toBe('失效链接 网页预览')
       expect(probeOnOpen).not.toHaveBeenCalled()
       mark('assertions:end')
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('有活动筛选时，展开的筛选按钮仍保持玻璃样式并可收起', async () => {
+    const mounted = await mountPage()
+    try {
+      useLibraryStore().filterSource = SourceType.SourceTypeFile
+      await nextTick()
+      const filterButton = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="筛选和排序"]')!
+      expect(filterButton.getAttribute('variant')).toBe('secondary')
+      filterButton.click()
+      await nextTick()
+      expect(filterButton.getAttribute('aria-expanded')).toBe('true')
+      expect(filterButton.getAttribute('variant')).toBe('glass')
+      filterButton.click()
+      await nextTick()
+      expect(filterButton.getAttribute('aria-expanded')).toBe('false')
+      expect(filterButton.getAttribute('variant')).toBe('secondary')
     } finally {
       await mounted.close()
     }
@@ -554,31 +583,31 @@ describe('LibraryPage：确认弹窗退场', () => {
     }
   })
 
-  it('紧凑变体取消后退场期间内容保持原样', async () => {
+  it('窗口拖入文件时打开添加资源并入队', async () => {
     const mounted = await mountPage()
-
     try {
-      // 走「移除待添加项」：compact 由调用点声明、不从标题字符串派生，宽度不会在退场中途跳变。
+      queueWindowFileDrop(['/tmp/photo.png'])
+      await flush()
+      expect((addDialog(mounted.host) as WebUiDialog).open).toBe(true)
+      expect(mounted.host.textContent).toContain('photo')
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('移除待添加资源时立即从队列移除', async () => {
+    const mounted = await mountPage()
+    try {
       mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="添加资源"]')?.click()
       await nextTick()
-      runtimeStub.droppedFilesListener?.(['/tmp/photo.png'])
+      queueWindowFileDrop(['/tmp/photo.png'])
       await flush()
       const remove = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="移除待添加资源"]')
       if (!remove) throw new Error('移除待添加资源 button 未渲染')
       remove.click()
-      await nextTick()
-
-      const dialog = confirmDialog(mounted.host, '移除')
-      expect(dialog.open).toBe(true)
-      expect(dialog.textContent).toContain('移除「photo」后不会加入资源库。')
-
-      button(dialog, '取消').click()
-      await nextTick()
-
-      // compact 变体同样在关闭状态回写后保留确认内容。
-      expect(dialog.open).toBe(false)
-      expect(dialog.textContent).toContain('移除「photo」后不会加入资源库。')
-      expect(dialog.querySelector('[role="alert"]')).toBeNull()
+      await flush()
+      expect(addDialog(mounted.host).textContent).not.toContain('photo')
+      expect(mounted.host.textContent).not.toContain('移除待添加项')
     } finally {
       await mounted.close()
     }
@@ -624,6 +653,7 @@ describe('LibraryPage：确认弹窗退场', () => {
  */
 describe('LibraryPage：粘贴链接', () => {
   beforeEach(() => {
+    toastWarning.mockClear()
     setActivePinia(createPinia())
     route.value = { path: '/library' }
     runtimeStub.droppedFilesListener = null
@@ -666,9 +696,7 @@ describe('LibraryPage：粘贴链接', () => {
       await flush()
 
       expect(queueItems(mounted.host)).toHaveLength(0)
-      expect(mounted.host.querySelector('web-ui-dialog [role="alert"]')?.textContent).toContain(
-        '剪贴板里没有文件，也不是有效的 http 或 https 链接'
-      )
+      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接', expect.anything())
     } finally {
       await mounted.close()
     }
@@ -683,7 +711,7 @@ describe('LibraryPage：粘贴链接', () => {
       await flush()
 
       expect(queueItems(mounted.host)).toHaveLength(0)
-      expect(mounted.host.querySelector('web-ui-dialog [role="alert"]')?.textContent).toContain('http 或 https')
+      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接', expect.anything())
     } finally {
       await mounted.close()
     }

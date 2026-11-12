@@ -97,6 +97,32 @@ func (t *ThumbnailStore) ServeThumbnail(w http.ResponseWriter, r *http.Request, 
 	return t.serveFile(w, r, target, etag)
 }
 
+// ServeCachedThumbnail 在原文件不可用时读取该 Source 最近写入的缓存，不访问原文件。
+func (t *ThumbnailStore) ServeCachedThumbnail(w http.ResponseWriter, r *http.Request, sourceID string) error {
+	entries, err := os.ReadDir(t.dir)
+	if err != nil {
+		return err
+	}
+	var latest os.FileInfo
+	var name string
+	for _, entry := range entries {
+		if entry.IsDir() || !strings.HasPrefix(entry.Name(), sourceID+".") || !strings.HasSuffix(entry.Name(), ".jpg") {
+			continue
+		}
+		info, err := entry.Info()
+		if err != nil {
+			return err
+		}
+		if latest == nil || info.ModTime().After(latest.ModTime()) || (info.ModTime().Equal(latest.ModTime()) && entry.Name() > name) {
+			latest, name = info, entry.Name()
+		}
+	}
+	if latest == nil {
+		return os.ErrNotExist
+	}
+	return t.serveFile(w, r, filepath.Join(t.dir, name), `"`+name+`"`)
+}
+
 // Save 接收前端回填的缩略图（前端 WebKit 能解码 Go 解不了的格式，如 HEIC）：
 // 校验为尺寸合理的 JPEG 后按当前原文件版本落盘，后续读取即可命中。原文件信息或载荷
 // 不合法时返回 false，调用方给 4xx。

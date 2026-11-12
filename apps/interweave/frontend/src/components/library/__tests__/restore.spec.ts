@@ -1,5 +1,6 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
+import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { ResourceSourceView, ResourceView } from '../../../stores/library'
 import {
   createLibraryRestoreQueue,
@@ -45,6 +46,7 @@ function queueItem(id: string, kind: LibraryRestoreQueueItem['kind']): LibraryRe
     sourceId: `source-${id}`,
     resourceId: `resource-${id}`,
     resourceTitle: `Resource ${id}`,
+    resourceKind: ResourceKind.ResourceKindFile,
     kind,
     location: kind === 'file' ? `/old/${id}.txt` : `https://example.com/${id}`,
     replacementLocation: kind === 'file' ? '' : `https://example.com/${id}`
@@ -73,45 +75,21 @@ describe('library restore queue', () => {
     expect(normalizeLibraryURL('not a URL')).toBeNull()
   })
 
-  it('顺序处理队列，取消不报错，失败后停止并保留失败项', async () => {
-    const items = [queueItem('first', 'file'), queueItem('second', 'url'), queueItem('third', 'file')]
-    const calls: string[] = []
-    const chooseFilePath = vi.fn<() => Promise<string | null>>(async () => {
-      calls.push('choose')
-      return null
-    })
-    const replaceFileSource = vi.fn<(sourceId: string, inputPath: string) => Promise<unknown>>(async () => {
-      calls.push('file')
-    })
+  it('按已选位置顺序替换，失败后保留未完成项', async () => {
+    const items = [
+      { ...queueItem('first', 'file'), replacementLocation: '/new/file.txt' },
+      queueItem('second', 'url'),
+      { ...queueItem('third', 'file'), replacementLocation: '/new/third.txt' }
+    ]
+    const replaceFileSource = vi.fn(async () => undefined)
     const failure = new Error('replace failed')
-    const replaceURLSource = vi.fn<(sourceId: string, inputURL: string) => Promise<unknown>>(async () => {
-      calls.push('url')
+    const replaceURLSource = vi.fn(async () => {
       throw failure
     })
-
-    const result = await restoreLibraryQueue(items, { chooseFilePath, replaceFileSource, replaceURLSource })
-
-    expect(calls).toEqual(['choose', 'url'])
-    expect(result.completedIds).toEqual([])
-    expect(result.cancelledIds).toEqual(['first'])
+    const result = await restoreLibraryQueue(items, { replaceFileSource, replaceURLSource })
+    expect(replaceFileSource).toHaveBeenCalledOnce()
+    expect(replaceFileSource).toHaveBeenCalledWith('source-first', '/new/file.txt')
+    expect(result.completedIds).toEqual(['first'])
     expect(result.failed).toEqual({ item: items[1], cause: failure })
-    expect(chooseFilePath).toHaveBeenCalledTimes(1)
-    expect(replaceFileSource).not.toHaveBeenCalled()
-    expect(replaceURLSource).toHaveBeenCalledOnce()
-    expect(replaceURLSource).toHaveBeenCalledWith('source-second', items[1].replacementLocation)
-  })
-
-  it('使用新文件路径替换成功来源', async () => {
-    const item = queueItem('file', 'file')
-    const replaceFileSource = vi.fn<(sourceId: string, inputPath: string) => Promise<unknown>>(async () => undefined)
-
-    const result = await restoreLibraryQueue([item], {
-      chooseFilePath: async () => '/new/file.txt',
-      replaceFileSource,
-      replaceURLSource: async () => undefined
-    })
-
-    expect(replaceFileSource).toHaveBeenCalledWith(item.sourceId, '/new/file.txt')
-    expect(result).toEqual({ completedIds: [item.id], cancelledIds: [], failed: null })
   })
 })

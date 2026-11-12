@@ -22,6 +22,35 @@ function fileSource(location = '/tmp/image.jpg'): ResourceSourceView {
 }
 
 describe('ResourceThumbnail', () => {
+  it('失效来源优先显示缓存，缓存缺失时显示类型图标', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp({
+      render: () =>
+        h(ResourceThumbnail, {
+          kind: ResourceKind.ResourceKindImage,
+          source: { ...fileSource(), available: false },
+          mediaUrl: '/original',
+          thumbnailUrl: '/cached'
+        })
+    })
+    app.mount(host)
+    try {
+      const image = host.querySelector('img')!
+      expect(image.getAttribute('src')).toBe('/cached')
+      image.dispatchEvent(new Event('load'))
+      await nextTick()
+      expect(host.querySelector('web-ui-icon')).toBeNull()
+      image.dispatchEvent(new Event('error'))
+      await nextTick()
+      expect(host.querySelector('img')).toBeNull()
+      expect(host.querySelector('web-ui-icon')).not.toBeNull()
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
   it('source props 对象更换但 src 不变且没有新 load 事件时保持 image 与 fallback 互斥', async () => {
     const host = document.createElement('div')
     document.body.append(host)

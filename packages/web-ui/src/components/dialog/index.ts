@@ -6,6 +6,7 @@ import { customElement, property, state } from 'lit/decorators.js'
 
 import modalSurface from '@/assets/modal-surface.css?inline'
 import scrollbarStyle from '@/assets/scrollbar.css?inline'
+import toastContainers from '@/assets/toast-containers.css?inline'
 import glass from '@/classes/glass.css?inline'
 import { oouiClose } from '@/icons'
 import { UserChangeController } from '@/shared/events/user-change'
@@ -25,7 +26,13 @@ const ALLOWED_FOOTER_ORIENTATIONS = ['vertical', 'horizontal'] as const
 
 @customElement('web-ui-dialog')
 export class WebUiDialog extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(modalSurface), unsafeCSS(scrollbarStyle), unsafeCSS(style)]
+  static override styles = [
+    unsafeCSS(glass),
+    unsafeCSS(modalSurface),
+    unsafeCSS(scrollbarStyle),
+    unsafeCSS(toastContainers),
+    unsafeCSS(style)
+  ]
 
   @property({ type: Boolean, reflect: true }) open = false
   @property({ type: Boolean, reflect: true }) closable = false
@@ -316,7 +323,7 @@ export class WebUiDialog extends LitElement {
         aria-label=${resolveBuiltinLabel('close', this.ariaCloseLabel)}
         variant="secondary"
         icon
-        size="26"
+        size="var(--wui-dialog-close-size, 26px)"
       >
         <web-ui-icon size="14" .icon=${oouiClose}></web-ui-icon>
       </web-ui-button>

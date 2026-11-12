@@ -39,6 +39,7 @@ function mountDialog(
     onRename?: (itemId: string, title: string) => void
     onEditTags?: (item: LibraryQueueItem) => void
     onRequestFilePaths?: (clipboardText?: string) => void
+    onAddUrl?: (url: string) => void
   } = {},
   options: { mobile?: boolean; open?: boolean; tagColors?: Record<string, TagColor> } = {}
 ) {
@@ -102,6 +103,65 @@ function previewHandle(): ImagePreviewHandle {
 describe('AddDialog', () => {
   beforeEach(() => {
     openPreview.mockReset()
+  })
+
+  it('添加链接弹窗校验输入，确认后入队，取消不添加', async () => {
+    const addUrl = vi.fn()
+    const mounted = mountDialog([], { onAddUrl: addUrl })
+    try {
+      button(mounted.host, '添加链接').click()
+      await nextTick()
+      const input = mounted.host.querySelector('web-ui-input[aria-label="新链接"]') as HTMLElement & { value: string }
+      const confirm = [...mounted.host.querySelectorAll<HTMLElement>('web-ui-button')].find(
+        candidate => candidate.textContent?.trim() === '添加链接'
+      )!
+      confirm.click()
+      await nextTick()
+      expect(mounted.host.textContent).toContain('请输入有效的 http 或 https URL')
+      expect(addUrl).not.toHaveBeenCalled()
+      input.value = 'https://example.com/new'
+      input.dispatchEvent(new Event('input', { bubbles: true }))
+      await nextTick()
+      confirm.click()
+      await nextTick()
+      expect(addUrl).toHaveBeenCalledOnce()
+      expect(addUrl).toHaveBeenCalledWith('https://example.com/new')
+      button(mounted.host, '添加链接').click()
+      await nextTick()
+      const dialogs = mounted.host.querySelectorAll('web-ui-dialog')
+      const cancel = [...dialogs[1].querySelectorAll<HTMLElement>('web-ui-button')].find(
+        candidate => candidate.textContent?.trim() === '取消'
+      )!
+      cancel.click()
+      await nextTick()
+      expect(addUrl).toHaveBeenCalledOnce()
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('粘贴链接按钮读取最新剪切板文本并填入输入框', async () => {
+    const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
+    const readText = vi
+      .fn()
+      .mockResolvedValueOnce('https://example.com/first')
+      .mockResolvedValueOnce('https://example.com/latest')
+    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { readText } })
+    const mounted = mountDialog([])
+    try {
+      button(mounted.host, '添加链接').click()
+      await nextTick()
+      const input = mounted.host.querySelector('web-ui-input[aria-label="新链接"]') as HTMLElement & { value: string }
+      button(mounted.host, '粘贴链接').click()
+      await vi.waitFor(() => expect(input.value).toBe('https://example.com/first'))
+      button(mounted.host, '粘贴链接').click()
+      await vi.waitFor(() => expect(input.value).toBe('https://example.com/latest'))
+      expect(readText).toHaveBeenCalledTimes(2)
+    } finally {
+      mounted.close()
+      if (descriptor) Object.defineProperty(navigator, 'clipboard', descriptor)
+      else Reflect.deleteProperty(navigator, 'clipboard')
+    }
   })
 
   it('图片加载后只显示真实缩略图，非媒体项显示 fallback', async () => {

@@ -125,6 +125,17 @@ function requireItemByText(panel: HTMLElement | undefined, text: string): HTMLEl
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiDropdown 组件（浏览器）', () => {
+  it('菜单项迁入 portal 后保留宿主的尺寸变量', async () => {
+    const menu = createDropdown(SIMPLE)
+    menu.style.setProperty('--wui-dropdown-item-height', '44px')
+    await menu.updateComplete
+    menu.querySelector<HTMLElement>('[slot="trigger"]')!.click()
+    await waitFor(() => openRootItems().length === 1, '菜单项没有迁入 portal')
+    const item = openRootItems()[0]!
+    await (item as HTMLElement & { updateComplete: Promise<unknown> }).updateComplete
+    expect(item.shadowRoot!.querySelector<HTMLElement>('.item-inner')!.offsetHeight).toBe(44)
+  })
+
   it('直接设置 open 时根 menu 就位且带 menu 语义', async () => {
     const menu = createDropdown(SIMPLE)
     await menu.updateComplete

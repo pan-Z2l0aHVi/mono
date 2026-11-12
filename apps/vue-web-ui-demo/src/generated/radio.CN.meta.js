@@ -133,7 +133,7 @@ const meta = [
   { label: 'p', content: "<code>required</code> 在未选中时拦截原生提交（<code>valueMissing</code>），组内成员把这个判定交给组。" },
   { label: 'p', content: "组内成员不向外派发事件，由组在宿主上统一派发一次 <code>input</code> / <code>change</code>。" },
   { label: 'h3', id: 'section-11', content: "布局" },
-  { label: 'p', content: "与 <code>&lt;web-ui-checkbox></code> 共用同一套选择控件盒模型规则：宿主高度由内容撑开，不继承页面行高，标签为空时指示器与标签之间的间距收起；指示器宽高取 <code>--wui-selection-control-size</code>。" }
+  { label: 'p', content: "与 <code>&lt;web-ui-checkbox></code> 共用同一套选择控件盒模型规则：宿主高度由内容撑开，不继承页面行高，标签为空时指示器与标签之间的间距收起；指示器宽高取 <code>--wui-selection-control-size</code>；圆点默认是指示器尺寸的三分之一，可用 <code>--wui-radio-dot-size</code> 单独覆盖。" }
 ]
 
 export default meta

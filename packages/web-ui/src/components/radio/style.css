@@ -9,8 +9,8 @@
 .wui-radio-dot {
   transform: scale(0);
 
-  width: 6px;
-  height: 6px;
+  width: var(--wui-radio-dot-size, calc(var(--wui-selection-control-size, 18px) / 3));
+  height: var(--wui-radio-dot-size, calc(var(--wui-selection-control-size, 18px) / 3));
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   opacity: 0;

@@ -147,6 +147,8 @@ func main() {
 		Title:              "Interweave",
 		Width:              1280,
 		Height:             800,
+		MinWidth:           400,
+		MinHeight:          600,
 		EnableFileDrop:     true,
 		UseApplicationMenu: true,
 		Mac: application.MacWindow{

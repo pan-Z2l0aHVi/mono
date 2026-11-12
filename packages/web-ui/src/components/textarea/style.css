@@ -147,7 +147,11 @@ slot.empty {
 
   /* 与首行文字垂直居中对齐：容器 align-items: flex-start 使 button 贴内容区顶部，
     首行中心 = padding-top + 行高/2；24px button 需相对内容区上移 (行高 − button 高度) / 2 */
-  margin-top: calc((var(--wui-font-size, 14px) * 1.5 - 24px) / 2);
+  margin-top: calc((var(--wui-font-size, 14px) * 1.5 - (var(--wui-textarea-clear-size, 20px) + 4px)) / 2);
   margin-right: -4px;
   margin-left: -8px;
+}
+
+.wui-textarea-inner web-ui-button[variant='ghost'] web-ui-icon {
+  --wui-internal-icon-render-size: calc(var(--wui-textarea-clear-size, 20px) * 0.7);
 }

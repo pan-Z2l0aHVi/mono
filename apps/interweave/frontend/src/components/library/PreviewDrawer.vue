@@ -2,7 +2,7 @@
 import type { WebUiDrawer, WebUiEvent } from '@greypan/web-ui'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
-import type { ResourceView } from '@/stores/library'
+import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { resourceIcon } from './presentation'
 import { readTextPreview, resolvePreviewTarget, type PreviewEmptyReason } from './preview'
@@ -14,7 +14,7 @@ const props = defineProps<{
   mobile: boolean
 }>()
 
-const emit = defineEmits<{ 'update:open': [value: boolean] }>()
+const emit = defineEmits<{ 'update:open': [value: boolean]; recover: [source: ResourceSourceView] }>()
 
 type TextState = 'idle' | 'loading' | 'ready' | 'failed'
 
@@ -23,6 +23,7 @@ const target = computed(() => resolvePreviewTarget(props.resource))
 const imageFailed = ref(false)
 const videoFailed = ref(false)
 const videoPortrait = ref(false)
+const mediaLoading = ref(false)
 const textState = ref<TextState>('idle')
 const textPreview = ref<{ text: string; truncated: boolean } | null>(null)
 const textError = ref('')
@@ -65,6 +66,7 @@ watch(
     imageFailed.value = false
     videoFailed.value = false
     videoPortrait.value = false
+    mediaLoading.value = open && ['image', 'video', 'url'].includes(target.value.mode)
     cancelTextRequest()
     textPreview.value = null
     textError.value = ''
@@ -105,6 +107,12 @@ async function loadText() {
 function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
   emit('update:open', event.detail.open)
 }
+
+function handleMediaError(kind: 'image' | 'video') {
+  if (kind === 'image') imageFailed.value = true
+  else videoFailed.value = true
+  mediaLoading.value = false
+}
 </script>
 
 <template>
@@ -144,11 +152,33 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
         <div class="grid min-h-full place-items-center">
           <web-ui-empty :size="72" :title="emptyState.title" :description="emptyState.description">
             <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
+            <web-ui-button
+              v-if="target.emptyReason === 'source-unavailable' && target.source"
+              slot="action"
+              variant="primary"
+              @click="emit('recover', target.source)"
+            >
+              找回资源
+              <svg
+                slot="suffix"
+                width="16"
+                height="16"
+                viewBox="0 0 24 24"
+                fill="none"
+                stroke="currentColor"
+                stroke-width="2"
+                stroke-linecap="round"
+                stroke-linejoin="round"
+                aria-hidden="true"
+              >
+                <path d="M5 12h14m-6-6 6 6-6 6" />
+              </svg>
+            </web-ui-button>
           </web-ui-empty>
         </div>
       </div>
 
-      <div v-else-if="target.mode === 'image'" class="min-h-0 overflow-hidden">
+      <div v-else-if="target.mode === 'image'" class="relative min-h-0 overflow-hidden">
         <web-ui-empty v-if="imageFailed" :size="72" title="无法显示这张图片" description="文件可能已被移动或删除。">
           <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
         </web-ui-empty>
@@ -157,12 +187,22 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
           :key="mediaKey"
           :src="target.mediaUrl ?? ''"
           :alt="resource.title"
-          @error="imageFailed = true"
+          :class="{ invisible: mediaLoading }"
+          @load="mediaLoading = false"
+          @error="handleMediaError('image')"
         />
+        <div
+          v-if="mediaLoading"
+          class="absolute inset-0 grid place-items-center"
+          role="status"
+          aria-label="正在加载预览"
+        >
+          <web-ui-spinner :size="28" />
+        </div>
       </div>
 
-      <div v-else-if="target.mode === 'video'" class="min-h-0 overflow-auto">
-        <div class="grid h-full min-h-full place-items-center">
+      <div v-else-if="target.mode === 'video'" class="relative min-h-0 overflow-hidden">
+        <div class="relative grid size-full place-items-center overflow-hidden">
           <web-ui-empty
             v-if="videoFailed"
             :size="72"
@@ -175,22 +215,37 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
             v-else
             :key="mediaKey"
             :src="target.mediaUrl ?? undefined"
-            :class="videoPortrait ? 'h-full max-w-none' : 'w-full max-w-none'"
-            class="bg-black"
+            :class="videoPortrait ? 'h-full w-auto' : 'h-auto w-full'"
+            :style="{ visibility: mediaLoading ? 'hidden' : 'visible' }"
+            class="absolute top-1/2 left-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 bg-black"
             controls
             playsinline
-            preload="metadata"
+            preload="auto"
             @loadedmetadata="
               videoPortrait =
                 ($event.target as HTMLVideoElement).videoHeight > ($event.target as HTMLVideoElement).videoWidth
             "
-            @error="videoFailed = true"
+            @loadeddata="mediaLoading = false"
+            @error="handleMediaError('video')"
           ></video>
+          <div
+            v-if="mediaLoading"
+            class="absolute inset-0 grid place-items-center"
+            role="status"
+            aria-label="正在加载预览"
+          >
+            <web-ui-spinner :size="28" />
+          </div>
         </div>
       </div>
 
       <div v-else-if="target.mode === 'text'" class="min-h-full">
-        <div v-if="textState === 'loading'" class="grid min-h-0 place-items-center" role="status">
+        <div
+          v-if="textState === 'loading'"
+          class="grid min-h-[calc(100vh-40px)] place-items-center mobile:min-h-(--wui-drawer-height)"
+          role="status"
+          aria-label="正在加载预览"
+        >
           <web-ui-spinner :size="28" />
         </div>
         <web-ui-empty v-else-if="textState === 'failed'" :size="72" title="无法读取这个文件" :description="textError">
@@ -211,15 +266,26 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
         本仓无 CSP/frame 限制，被 X-Frame-Options 拦截的站点只能由用户在浏览器里另开地址。
         该取舍经 Manager checkpoint 批准后留档于此。
       -->
-      <iframe
-        v-else-if="target.mode === 'url'"
-        :key="mediaKey"
-        class="size-full border-0 bg-white"
-        :src="target.source?.location ?? undefined"
-        :title="`${resource.title} 网页预览`"
-        sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
-        referrerpolicy="no-referrer"
-      ></iframe>
+      <div v-else-if="target.mode === 'url'" class="relative size-full">
+        <iframe
+          :key="mediaKey"
+          class="size-full border-0 bg-white"
+          :class="{ invisible: mediaLoading }"
+          :src="target.source?.location ?? undefined"
+          :title="`${resource.title} 网页预览`"
+          sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
+          referrerpolicy="no-referrer"
+          @load="mediaLoading = false"
+        ></iframe>
+        <div
+          v-if="mediaLoading"
+          class="absolute inset-0 grid place-items-center"
+          role="status"
+          aria-label="正在加载预览"
+        >
+          <web-ui-spinner :size="28" />
+        </div>
+      </div>
     </div>
   </web-ui-drawer>
 </template>

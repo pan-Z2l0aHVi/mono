@@ -1,16 +1,28 @@
 <script setup lang="ts">
 import type { WebUiEvent, WebUiLayout } from '@greypan/web-ui'
-import { computed, ref } from 'vue'
-import { RouterView } from 'vue-router'
+import { System } from '@wailsio/runtime'
+import { computed, onScopeDispose, ref } from 'vue'
+import { RouterView, useRouter } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import { useLayoutMobileProvider } from '@/composables/useLayoutMobile'
+import { queueWindowFileDrop } from '@/composables/windowFileDrop'
+import { createLibraryRuntime } from '@/services/library'
+
+const router = useRouter()
+const stopWindowFileDrop = createLibraryRuntime().events.onFilesDropped(paths => {
+  if (!paths.length) return
+  queueWindowFileDrop(paths)
+  if (router.currentRoute.value.path !== '/library') void router.push('/library')
+})
+onScopeDispose(stopWindowFileDrop)
 
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const settingsOpen = ref(false)
 const desktopSidebarWidth = ref('240px')
+const isMac = System.IsMac()
 
 const { mobile } = useLayoutMobileProvider()
 const sidebarWidth = computed(() => (mobile.value ? 'min(320px, 80vw)' : desktopSidebarWidth.value))
@@ -52,7 +64,9 @@ function closeSidebar() {
     sidebarResizable
     sidebarMinWidth="160px"
     sidebarMaxWidth="320px"
-    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-sidebar-radius:38px]"
+    mobile-header-full-width
+    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-sidebar-content-padding:8px_20px_8px_8px] mobile:[--wui-layout-sidebar-radius:calc(18px_+_8px)]"
+    :class="{ '[--wui-layout-sidebar-padding-top:48px] mobile:[--wui-layout-mobile-toggle-inset:96px]': isMac }"
     :mobile="mobile"
     :sidebarCollapsed="sidebarCollapsed"
     :sidebarOpen="sidebarOpen"
@@ -61,7 +75,13 @@ function closeSidebar() {
     @sidebar-open-change="updateSidebarOpen"
     @sidebar-width-change="updateSidebarWidth"
   >
-    <AppNav slot="sidebar" :collapsed="navCollapsed" @navigate="closeSidebar" @open-settings="settingsOpen = true" />
+    <AppNav
+      slot="sidebar"
+      :collapsed="navCollapsed"
+      :mobile="mobile"
+      @navigate="closeSidebar"
+      @open-settings="settingsOpen = true"
+    />
 
     <RouterView />
   </web-ui-layout>

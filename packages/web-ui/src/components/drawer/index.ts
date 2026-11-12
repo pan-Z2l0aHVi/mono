@@ -160,6 +160,16 @@ if (typeof CSS !== 'undefined' && 'registerProperty' in CSS) {
   } catch {
     // 已注册（如 HMR 重复执行）时忽略
   }
+  try {
+    CSS.registerProperty({
+      name: '--wui-internal-drawer-inset',
+      syntax: '<length>',
+      inherits: true,
+      initialValue: '8px'
+    })
+  } catch {
+    // 已注册（如 HMR 重复执行）时忽略
+  }
   /*
    * 嵌套层叠对数曲线的基准 A（shift = A · ln(depth + 1)）：注册为 <length> 后
    * 桌面基准只有这一个真相源，JS 从 computed style 读到的永远是确定值；
@@ -1219,7 +1229,7 @@ export class WebUiDrawer extends LitElement {
                           aria-label=${resolveBuiltinLabel('close', this.ariaCloseLabel)}
                           variant="secondary"
                           icon
-                          size="26"
+                          size="var(--wui-drawer-close-size, 26px)"
                         >
                           <web-ui-icon size="14" .icon=${oouiClose}></web-ui-icon>
                         </web-ui-button>

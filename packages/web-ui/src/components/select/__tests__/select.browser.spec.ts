@@ -32,6 +32,20 @@ const highlightColor = (scope: Element): string => {
 }
 
 describe('WebUiSelect 组件（浏览器）', () => {
+  it('选项迁入 portal 后保留宿主的尺寸变量', async () => {
+    const select = document.createElement('web-ui-select')
+    select.portal = true
+    select.style.setProperty('--wui-option-height', '44px')
+    select.innerHTML = '<web-ui-option value="a">Apple</web-ui-option>'
+    document.body.append(select)
+    await select.updateComplete
+    select.shadowRoot!.querySelector<HTMLElement>('[role="combobox"]')!.click()
+    await pollUntil(() => Boolean(getPortalPanel('listbox')), 'portal 面板没有挂载')
+    const option = getPortalPanel('listbox')!.querySelector('web-ui-option')!
+    await option.updateComplete
+    expect(option.shadowRoot!.querySelector<HTMLElement>('.option-label')!.offsetHeight).toBe(44)
+  })
+
   it('host aria-label gives the combobox an accessible name', async () => {
     const select = document.createElement('web-ui-select')
     select.setAttribute('aria-label', 'Global theme')

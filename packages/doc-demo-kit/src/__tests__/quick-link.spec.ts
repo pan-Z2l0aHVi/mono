@@ -45,6 +45,13 @@ describe('倾斜启用条件', () => {
     expect(tiltEnabled()).toBe(false)
   })
 
+  it('主题动效设置优先于系统偏好', () => {
+    stubMatchMedia(true, false)
+    expect(tiltEnabled(false, true)).toBe(false)
+    stubMatchMedia(true, true)
+    expect(tiltEnabled(false, false)).toBe(true)
+  })
+
   it('触屏等非精确指针下保持静态', () => {
     stubMatchMedia(false, false)
     expect(tiltEnabled()).toBe(false)

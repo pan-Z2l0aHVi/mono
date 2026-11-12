@@ -291,6 +291,22 @@ function reset() {
 </script>
 ```
 
+### Custom size
+
+Set the track height with `--wui-switch-height`. Its width defaults to twice the height and can be overridden with `--wui-switch-width`. The thumb and drag travel follow the track geometry.
+
+```tsx
+export default function Demo() {
+  return <web-ui-switch style={{ '--wui-switch-height': '28px' }}>Larger switch</web-ui-switch>
+}
+```
+
+```vue
+<template>
+  <web-ui-switch style="--wui-switch-height: 28px">Larger switch</web-ui-switch>
+</template>
+```
+
 ## API
 
 ### Props
@@ -345,12 +361,12 @@ The accessible name: the default slot content is the visible label and also the 
 
 The default spacing between the label and the track is `8px`; when the default slot has no renderable width (an empty slot, or only a visually hidden accessible name), the spacing collapses and the host width does not exceed the track.
 
-The track is a 40×20 pill box, taking its radius from `--wui-radius-control` and its background from `--wui-color-surface-track`, switching to `--wui-color-accent` when on.
+The track defaults to a 40×20 pill box, taking its radius from `--wui-radius-control` and its background from `--wui-color-surface-track`, switching to `--wui-color-accent` when on.
 
-The thumb is a 16×16 dot; at rest it is solid `--wui-color-on-control` and slightly raised, and when pressed or dragged it switches to the glass surface and enlarges slightly.
+The thumb defaults to a 16×16 dot; at rest it is solid `--wui-color-on-control` and slightly raised, and when pressed or dragged it switches to the glass surface and enlarges slightly.
 
 `--wui-switch-drag-offset` is driven by the component itself; do not use it as a style hook.
 
 Disabled and loading drop the whole control to forty percent opacity and switch to a `not-allowed` cursor.
 
-The component has no size or color tokens of its own: to change the width or colors, change the theme variables themselves (such as `--wui-color-surface-track` and `--wui-color-accent`), and the effect covers every control.
+The track height is controlled by `--wui-switch-height` (default `20px`); `--wui-switch-width` defaults to twice that height. Colors use the theme variables `--wui-color-surface-track` and `--wui-color-accent`.

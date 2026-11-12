@@ -1,12 +1,30 @@
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 import {
   ResourceKind,
   TagColor
 } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
-import { DEFAULT_TAG_CLASS, formatSize, resourceIcon, resourceKindLabel, tagClass } from '../presentation'
+import { DEFAULT_TAG_CLASS, formatDate, formatSize, resourceIcon, resourceKindLabel, tagClass } from '../presentation'
 
 describe('library presentation', () => {
+  it('按本地日历格式化秒和毫秒，跨月的昨天仍显示相对时间', () => {
+    vi.useFakeTimers()
+    try {
+      vi.setSystemTime(new Date(2026, 10, 1, 14, 0))
+      const today = new Date(2026, 10, 1, 10, 30).getTime()
+      const yesterday = new Date(2026, 9, 31, 23, 5).getTime()
+      const older = new Date(2026, 9, 30, 12, 0).getTime()
+      expect(formatDate(today)).toBe('今天上午10:30')
+      expect(formatDate(today / 1000)).toBe('今天上午10:30')
+      expect(formatDate(yesterday)).toBe('昨天下午11:05')
+      expect(formatDate(older)).toBe('2026-10-30')
+      expect(formatDate(Number.NaN)).toBe('未知时间')
+      expect(formatDate(0)).toBe('未知时间')
+    } finally {
+      vi.useRealTimers()
+    }
+  })
+
   it('size_bytes 按 KB/MB 格式化并保留一位小数', () => {
     expect(formatSize(18 * 1024)).toBe('18 KB')
     expect(formatSize(2_500_000)).toBe('2.4 MB')

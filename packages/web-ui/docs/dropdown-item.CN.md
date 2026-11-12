@@ -124,6 +124,30 @@ export default function Demo() {
 </template>
 ```
 
+### 自定义尺寸
+
+用 `--wui-dropdown-item-height` 设置菜单项高度，未设置时回退到 `--wui-menu-item-height`（默认 32px）。变量可设置在 dropdown 或单个菜单项上。
+
+```tsx
+export default function Demo() {
+  return (
+    <web-ui-dropdown style={{ '--wui-dropdown-item-height': '44px' }}>
+      <web-ui-button slot="trigger">Menu</web-ui-button>
+      <web-ui-dropdown-item>Action</web-ui-dropdown-item>
+    </web-ui-dropdown>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-dropdown style="--wui-dropdown-item-height: 44px"
+    ><web-ui-button slot="trigger">Menu</web-ui-button
+    ><web-ui-dropdown-item>Action</web-ui-dropdown-item></web-ui-dropdown
+  >
+</template>
+```
+
 ## API
 
 ### 属性

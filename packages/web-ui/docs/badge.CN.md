@@ -352,6 +352,32 @@ const count = ref(3)
 </script>
 ```
 
+### 自定义尺寸
+
+数字和圆点分别使用 `--wui-badge-size`（默认 18px）和 `--wui-badge-dot-size`（默认 8px）；数字角标的最小宽度随高度变化。
+
+```tsx
+export default function Demo() {
+  return (
+    <>
+      <web-ui-badge count={8} style={{ '--wui-badge-size': '24px' }}>
+        <web-ui-button>消息</web-ui-button>
+      </web-ui-badge>
+      <web-ui-badge dot style={{ '--wui-badge-dot-size': '12px' }}>
+        <web-ui-button>提醒</web-ui-button>
+      </web-ui-badge>
+    </>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-badge :count="8" style="--wui-badge-size: 24px"><web-ui-button>消息</web-ui-button></web-ui-badge>
+  <web-ui-badge dot style="--wui-badge-dot-size: 12px"><web-ui-button>提醒</web-ui-button></web-ui-badge>
+</template>
+```
+
 ## API
 
 ### 属性
@@ -390,4 +416,4 @@ const count = ref(3)
 
 内容按元素子节点的个数判定：只放纯文本时不算有内容，角标会留在行内流里，所以要「包住一段文字」时，请给文字套一个元素。
 
-角标没有对外的尺寸与颜色设置：底色取 `--wui-color-danger`，文字取 `--wui-color-on-danger`，描边取 `--wui-color-page`。要换颜色，请改这几枚语义 token 的作用域，不要在角标上找属性。
+角标的尺寸由 `--wui-badge-size` 与 `--wui-badge-dot-size` 控制；底色取 `--wui-color-danger`，文字取 `--wui-color-on-danger`，描边取 `--wui-color-page`。要换颜色，请改这几枚语义 token 的作用域，不要在角标上找属性。

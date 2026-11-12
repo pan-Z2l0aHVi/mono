@@ -6,7 +6,7 @@ import { local } from '@greypan/browser-kit'
 import type { WebUiDialog, WebUiRadio, WebUiRadioGroup, WebUiSegmented, WebUiSwitch } from '@greypan/web-ui'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createApp, h, nextTick } from 'vue'
+import { createApp, h, nextTick, ref } from 'vue'
 
 import { useSettingsStore } from '@/stores/settings'
 
@@ -84,6 +84,28 @@ describe('SettingsDialog', () => {
     localStorage.clear()
   })
 
+  it('重新打开设置时回到常规分区', async () => {
+    const open = ref(true)
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp({ render: () => h(SettingsDialog, { open: open.value }) })
+    app.mount(host)
+    try {
+      await nextTick()
+      selectTrigger(segmentedByLabel(host, '设置分区'), 'appearance')
+      await nextTick()
+      expect(segmentedByLabel(host, '设置分区').value).toBe('appearance')
+      open.value = false
+      await nextTick()
+      open.value = true
+      await nextTick()
+      expect(segmentedByLabel(host, '设置分区').value).toBe('general')
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
   it('header 关闭交给组件的 closable，宿主不另画一套关闭入口', async () => {
     const mounted = mountDialog(() => {})
 
@@ -91,6 +113,7 @@ describe('SettingsDialog', () => {
       await nextTick()
 
       expect(dialogElement(mounted.host).getAttribute('aria-dialog-label')).toBe('设置')
+      expect(mounted.host.querySelector('h2')?.textContent).toBe('设置')
       expect(dialogElement(mounted.host).closable).toBe(true)
       // 宿主不自绘 header 关闭 button，也没有 footer「关闭」——标题行那一枚由 web-ui-dialog
       // 自己渲染（在其 shadow 内），宿主拿不到那个节点。

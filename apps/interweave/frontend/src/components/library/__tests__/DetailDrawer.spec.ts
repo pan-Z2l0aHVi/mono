@@ -82,6 +82,34 @@ function button(host: HTMLElement, label: string) {
 }
 
 describe('DetailDrawer', () => {
+  it('失效资源展示每个来源并提供找回入口', async () => {
+    const source = {
+      id: 'source-1',
+      type: 'file' as const,
+      location: '/missing/file.png',
+      available: false,
+      isPreferred: true,
+      orderIndex: 0,
+      mediaUrl: null,
+      thumbnailUrl: null,
+      metadata: null
+    }
+    const resource = resourceView({ available: false, preferred: source, sources: [source] })
+    const recover = vi.fn()
+    const mounted = mountDrawer(resource, { onRecover: recover })
+    try {
+      await nextTick()
+      expect(mounted.host.textContent).toContain('/missing/file.png')
+      expect(mounted.host.textContent).toContain('已失效')
+      const trigger = [...mounted.host.querySelectorAll('button')].find(el => el.textContent?.includes('找回资源'))
+      expect(trigger).toBeDefined()
+      trigger!.click()
+      expect(recover).toHaveBeenCalledExactlyOnceWith(source)
+    } finally {
+      mounted.close()
+    }
+  })
+
   it('重命名 button 点击进入重命名流程', async () => {
     const resource = resourceView()
     const startRename = vi.fn<(target: ResourceView) => void>()
@@ -122,12 +150,15 @@ describe('DetailDrawer', () => {
     }
   })
 
-  it('编辑态下不渲染重命名 button', async () => {
+  it('编辑态保留同一个标题编辑器并隐藏重命名入口', async () => {
     const mounted = mountDrawer(resourceView(), { editingNameKey: '__drawer-title__' })
 
     try {
       await nextTick()
-      expect(mounted.host.querySelector('web-ui-button[aria-label="重命名"]')).toBeNull()
+      expect(mounted.host.querySelector('web-ui-editable-text')).not.toBeNull()
+      const rename = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="重命名"]')
+      expect(rename).not.toBeNull()
+      expect(rename?.getAttribute('aria-hidden')).toBe('true')
     } finally {
       mounted.close()
     }

@@ -827,6 +827,8 @@ function close() {
 
 `headless` 只保留原生 dialog、遮罩、动画、滚动锁定与 Escape / 遮罩关闭，不渲染内置头部、关闭按钮或页脚。调用方负责默认插槽内容的完整样式，并必须提供 `aria-dialog-label`；`headless` 同样支持 `draggable` 拖拽关闭。
 
+React 示例通过 ref 设置 `ariaDialogLabel` property，避免 React 把组件专用名称当作标准 ARIA 属性校验。
+
 ```tsx
 import { useState } from 'react'
 
@@ -842,7 +844,9 @@ export default function Demo() {
         placement="left"
         headless
         draggable
-        aria-dialog-label="自定义面板"
+        ref={element => {
+          if (element) element.ariaDialogLabel = '自定义面板'
+        }}
         onopen-change={event => setOpen(event.detail.open)}
       >
         <div className="box-border h-full w-[min(320px,100vw)] rounded-r-2xl bg-(--wui-color-surface-overlay) p-6 text-(--wui-color-text)">
@@ -1237,6 +1241,52 @@ const open = ref(false)
 </script>
 ```
 
+### 自定义关闭按钮尺寸
+
+使用 `--wui-drawer-close-size` 设置关闭按钮尺寸（默认 26px）；图标按比例缩放。
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <web-ui-button onClick={() => setOpen(true)}>打开</web-ui-button>
+      <web-ui-drawer
+        closable
+        open={open}
+        heading="示例"
+        style={{ '--wui-drawer-close-size': '34px' }}
+        onopen-change={event => setOpen(event.detail.open)}
+      >
+        示例
+      </web-ui-drawer>
+    </>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="open = true">打开</web-ui-button>
+  <web-ui-drawer
+    closable
+    :open="open"
+    heading="示例"
+    style="--wui-drawer-close-size: 34px"
+    @open-change="open = $event.detail.open"
+  >
+    示例
+  </web-ui-drawer>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
+const open = ref(false)
+</script>
+```
+
 ## API
 
 ### 属性
@@ -1324,6 +1374,9 @@ html {
 | `--wui-drawer-bg`                 | 抽屉背景色                                                                                                                                                          | `var(--wui-color-surface-overlay)`             |
 | `--wui-drawer-radius`             | 浮动卡片圆角（非 headless）                                                                                                                                         | `var(--wui-radius-overlay, 28px)`              |
 | `--wui-drawer-inset`              | 浮动卡片视口留边（非 headless）；置 `0` 为贴边几何                                                                                                                  | `8px`                                          |
+| `--wui-drawer-inset-top`          | 左侧浮动抽屉的上方留边                                                                                                                                              | `--wui-drawer-inset`                           |
+| `--wui-drawer-inset-left`         | 左侧浮动抽屉的左侧留边                                                                                                                                              | `--wui-drawer-inset`                           |
+| `--wui-drawer-inset-bottom`       | 左侧浮动抽屉的下方留边                                                                                                                                              | `--wui-drawer-inset`                           |
 | `--wui-drawer-nested-peek-base`   | 嵌套堆叠露边基准 `A`（`width <= 640px` 时为 `28.8px`）；堆叠总宽按 `A · ln(n)` 增长，单层因此完全不动，每多一层新增的露边递减。置 `0` 关闭露边。详见下方说明        | `43.2px`                                       |
 | `--wui-drawer-overlay-bg`         | 遮罩背景色，取 `--wui-color-backdrop`                                                                                                                               | 浅 `rgb(0 0 0 / 0.12)`，深 `rgb(0 0 0 / 0.48)` |
 | `--wui-drawer-drag-zone-size`     | 拖拽关闭（`draggable`）时命中区的厚度                                                                                                                               | `20px`                                         |
@@ -1334,5 +1387,5 @@ html {
 | `--wui-drawer-header-padding`     | 头部区域内边距                                                                                                                                                      | `16px 20px`                                    |
 | `--wui-drawer-close-top`          | 内置关闭按钮相对头部顶部的偏移                                                                                                                                      | `16px`                                         |
 | `--wui-drawer-close-right`        | 内置关闭按钮相对抽屉右缘的偏移                                                                                                                                      | `16px`                                         |
-| `--wui-drawer-content-padding`    | 内容区内边距；同时驱动拖拽条视觉中线（取半值，不低于半个胶囊厚度 + 4px）                                                                                            | `20px`                                         |
+| `--wui-drawer-content-padding`    | 内容区内边距；拖拽条的位置与内容内边距无关                                                                                                                          | `20px`                                         |
 | `--wui-drawer-footer-padding`     | 页脚区域内边距                                                                                                                                                      | `16px 20px`                                    |

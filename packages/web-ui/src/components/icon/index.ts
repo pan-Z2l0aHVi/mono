@@ -25,7 +25,7 @@ export class WebUiIcon extends LitElement {
   override render() {
     if (!this.icon) return nothing
 
-    const svgStyle = this.color ? `color: ${this.color}` : ''
+    const svgStyle = `--wui-internal-icon-default-size: ${this.size}px;${this.color ? ` color: ${this.color}` : ''}`
     const viewBox = `${this.icon.left ?? 0} ${this.icon.top ?? 0} ${this.icon.width ?? ICONIFY_DEFAULT_CANVAS} ${this.icon.height ?? ICONIFY_DEFAULT_CANVAS}`
 
     return html`

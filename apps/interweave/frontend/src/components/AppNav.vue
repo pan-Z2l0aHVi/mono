@@ -6,7 +6,7 @@ import { useRoute, useRouter } from 'vue-router'
 
 type NavKey = 'library' | 'map'
 
-defineProps<{ collapsed?: boolean }>()
+defineProps<{ collapsed?: boolean; mobile?: boolean }>()
 
 const emit = defineEmits<{
   navigate: [key: NavKey]
@@ -36,7 +36,7 @@ const navItemClass =
    * outline-color 的初始计算值是 currentcolor。transition-all 会把它从深色文字色
    * 补间到浅蓝，Tab 过去时边缘先黑一下再变蓝。
    */
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-[background-color] duration-150 text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-[background-color] duration-(--wui-duration-trigger) text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 
 /** web-ui-icon 是 Lit 渲染，shadow root 里的几何要等它首次 update 后才在位，否则 replay() 空转。 */
 async function playDraw(key: NavKey) {
@@ -67,7 +67,7 @@ function selectNav(item: (typeof navItems)[number]) {
 </script>
 
 <template>
-  <div class="relative z-20 flex h-full flex-col p-2 pb-0" aria-label="应用导航">
+  <div class="relative z-20 flex h-full flex-col" :class="mobile ? 'p-0' : 'p-2 pb-0'" aria-label="应用导航">
     <nav class="grid gap-1 mb-1" aria-label="主导航">
       <button
         v-for="item in navItems"

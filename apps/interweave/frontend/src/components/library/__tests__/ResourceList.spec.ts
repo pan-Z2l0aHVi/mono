@@ -221,6 +221,45 @@ describe('ResourceList', () => {
       filled.unmount()
     }
   })
+
+  it('资源菜单遮罩上的右键屏蔽系统菜单，其他区域不受影响', async () => {
+    const mounted = await mountList([resource()])
+    const scrim = document.createElement('dialog')
+    scrim.setAttribute('data-wui-menu-scrim', '')
+    document.body.append(scrim)
+    try {
+      const onScrim = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+      scrim.dispatchEvent(onScrim)
+      expect(onScrim.defaultPrevented).toBe(true)
+      // Wails 本身在 window 冒泡阶段处理系统菜单；此处只观察本组件捕获监听器的作用域。
+      const stop = (event: Event) => event.stopPropagation()
+      document.body.addEventListener('contextmenu', stop, { once: true })
+      const elsewhere = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+      document.body.dispatchEvent(elsewhere)
+      expect(elsewhere.defaultPrevented).toBe(false)
+    } finally {
+      scrim.remove()
+      mounted.unmount()
+    }
+  })
+
+  it('有资源时空白处右键与触屏长按不会打开资源菜单', async () => {
+    const mounted = await mountList([resource()])
+    try {
+      const menu = mounted.contextMenu as HTMLElement & { isOpen: boolean }
+      const event = new MouseEvent('contextmenu', { bubbles: true, cancelable: true })
+      mounted.container!.dispatchEvent(event)
+      expect(event.defaultPrevented).toBe(true)
+      expect(menu.isOpen).toBe(false)
+      vi.useFakeTimers()
+      mounted.container!.dispatchEvent(pointer('pointerdown', { button: 0 }, 'touch'))
+      await vi.advanceTimersByTimeAsync(600)
+      expect(menu.isOpen).toBe(false)
+    } finally {
+      vi.useRealTimers()
+      mounted.unmount()
+    }
+  })
 })
 
 describe('ResourceList：按住拖动批量勾选', () => {

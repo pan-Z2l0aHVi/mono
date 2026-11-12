@@ -48,6 +48,7 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
   private _dragged = false
   private _maxTravel = 20
   private _startOffset = 0
+  private _dragScale = 1
   private _dragGestureHandle: DragGestureHandle | null = null
   private _tabIndexBeforeDisabled: string | null = null
   private _isTabIndexSuppressed = false
@@ -165,12 +166,15 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
 
     const track = this.renderRoot.querySelector<HTMLElement>('.wui-switch-track')
     if (track) {
-      const trackWidth = track.getBoundingClientRect().width || 40
-      // 拖拽时 thumb 的 pressed 布局盒为 20px（scale(1.5) 视觉放大），因此行程按 20px 布局盒钳制；
-      // 释放后的 checked 静止位移为 20px（16px thumb），两者由 transition 衔接。
-      this._maxTravel = Math.max(1, trackWidth - 4 - 20)
+      // 使用布局尺寸而非缩放后的视觉盒，与 CSS 的按压态滑块和内边距保持一致。
+      const computed = getComputedStyle(track)
+      const width = Number.parseFloat(computed.width)
+      const height = Number.parseFloat(computed.height)
+      this._maxTravel = Math.max(1, width - height * 1.2)
+      this._dragScale = track.getBoundingClientRect().width / width || 1
     } else {
       this._maxTravel = 16
+      this._dragScale = 1
     }
 
     this._startOffset = this._checked ? this._maxTravel : 0
@@ -183,7 +187,7 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
       threshold: 6,
       onMove: info => {
         this._isDragging = true
-        const current = clamp(this._startOffset + info.deltaX, 0, this._maxTravel)
+        const current = clamp(this._startOffset + info.deltaX / this._dragScale, 0, this._maxTravel)
         this._dragOffset = current
         this._dragProgress = normalizeProgress(current, 0, this._maxTravel)
         this.requestUpdate()

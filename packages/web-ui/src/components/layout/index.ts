@@ -108,6 +108,10 @@ export class WebUiLayout extends LitElement {
   @property({ type: Boolean, attribute: 'header-glow', reflect: true })
   headerGlow = false
 
+  /** 移动端 header 占满宽度，消费方为悬浮的侧栏开关预留首行空间。 */
+  @property({ type: Boolean, attribute: 'mobile-header-full-width', reflect: true })
+  mobileHeaderFullWidth = false
+
   /** 内置无障碍名的成组覆盖；未提供的 key 回退内置英文文案（见 ADR-0016）。 */
   @property({ attribute: false }) ariaLabels?: LayoutAriaLabels
 
@@ -440,7 +444,11 @@ export class WebUiLayout extends LitElement {
         @open-change="${this._onDrawerChange}"
         style="${styleMap({
           '--wui-drawer-width': this.sidebarWidth,
-          '--wui-drawer-radius': 'var(--wui-layout-sidebar-radius, 24px)'
+          '--wui-drawer-radius': 'var(--wui-layout-sidebar-radius, 24px)',
+          '--wui-drawer-content-padding': 'var(--wui-layout-sidebar-content-padding, var(--wui-space-5, 20px))',
+          '--wui-drawer-inset-top': 'var(--wui-layout-sidebar-padding-top, var(--wui-space-2, 8px))',
+          '--wui-drawer-inset-left': 'var(--wui-layout-sidebar-padding-left, var(--wui-space-2, 8px))',
+          '--wui-drawer-inset-bottom': 'var(--wui-layout-sidebar-padding-bottom, var(--wui-space-2, 8px))'
         })}"
       >
         ${sidebarViewport}

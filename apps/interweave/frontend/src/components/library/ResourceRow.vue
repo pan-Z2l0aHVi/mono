@@ -8,7 +8,8 @@ import type { ResourceView } from '@/stores/library'
 import {
   fileExtension,
   formatSize,
-  formatTimestamp,
+  formatDate,
+  timestampMilliseconds,
   primarySource,
   sourceTypeIcon,
   sourceTypeLabel,
@@ -101,7 +102,7 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     （W3C APG 要求动态加载的集合补这两个属性）。
   -->
   <div
-    class="group relative flex items-center gap-3 px-4 mobile:px-2 py-3 transition-[background-color] duration-100"
+    class="group relative flex items-center gap-3 px-4 mobile:px-2 py-3 transition-[background-color] duration-(--wui-duration-press)"
     :class="[
       rowRadiusClass,
       checked
@@ -208,7 +209,9 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
           <span>{{ size }}</span>
         </template>
         <span aria-hidden="true" class="text-[#d8d8de] dark:text-(--wui-color-text-tertiary)">·</span>
-        <time :datetime="new Date(resource.createdAt).toISOString()">{{ formatTimestamp(resource.createdAt) }}</time>
+        <time :datetime="new Date(timestampMilliseconds(resource.createdAt)).toISOString()">{{
+          formatDate(resource.createdAt)
+        }}</time>
         <span
           v-if="resource.sources.length > 1"
           aria-hidden="true"

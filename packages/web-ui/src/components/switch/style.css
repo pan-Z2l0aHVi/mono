@@ -31,6 +31,9 @@
 }
 
 .wui-switch-track {
+  --wui-switch-height-internal: var(--wui-switch-height, 20px);
+  --wui-switch-inset-internal: calc(var(--wui-switch-height-internal) / 10);
+
   touch-action: none;
   cursor: default;
   user-select: none;
@@ -41,8 +44,8 @@
   align-items: center;
   justify-content: space-between;
 
-  width: 40px;
-  height: 20px;
+  width: var(--wui-switch-width, calc(var(--wui-switch-height-internal) * 2));
+  height: var(--wui-switch-height-internal);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   background-color: var(--wui-color-surface-track, #e5e5ea);
@@ -62,22 +65,22 @@
 }
 
 .wui-switch-thumb {
-  /* 按压态 thumb 是 16px 高的 pill（is-pressed 只加宽到 20px），取短边一半 */
-  --wui-glass-corner-radius: calc(16px / 2);
+  --wui-glass-corner-radius: calc(var(--wui-switch-height-internal) * 0.4);
 
   position: absolute;
-  top: 2px;
-  left: 2px;
+  top: var(--wui-switch-inset-internal);
+  left: var(--wui-switch-inset-internal);
   transform-origin: center center;
-  transform: translateX(0) scale(1);
+  transform: scale(1);
 
   overflow: hidden;
 
-  width: 16px;
-  height: 16px;
+  width: calc(var(--wui-switch-height-internal) * 0.8);
+  height: calc(var(--wui-switch-height-internal) * 0.8);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   transition:
+    left var(--wui-duration-trigger, 160ms) cubic-bezier(0.4, 0, 0.2, 1),
     width var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),
     transform var(--wui-duration-trigger, 160ms) cubic-bezier(0.4, 0, 0.2, 1),
     border-radius var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),
@@ -88,9 +91,9 @@
     /* 环底色随按压态转 transparent：pill 的长边长不过 3R，底色不覆盖中段，
        去掉它只是少一层均匀灰 tint（理由见 menu-portal.css）。 */
     --wui-color-glass-ring: transparent;
-    transform: translateX(0) scale(1.5);
+    transform: scale(1.5);
 
-    width: 20px;
+    width: var(--wui-switch-height-internal);
     border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
     background-color: transparent;
@@ -108,10 +111,16 @@
 }
 
 .wui-switch-track.is-open .wui-switch-thumb {
-  transform: translateX(20px) scale(1);
+  left: max(
+    var(--wui-switch-inset-internal),
+    calc(100% - var(--wui-switch-inset-internal) - var(--wui-switch-height-internal) * 0.8)
+  );
 
   &.is-pressed {
-    transform: translateX(16px) scale(1.5);
+    left: max(
+      var(--wui-switch-inset-internal),
+      calc(100% - var(--wui-switch-inset-internal) - var(--wui-switch-height-internal))
+    );
   }
 }
 
@@ -129,8 +138,13 @@
 
 .wui-switch-track.is-dragging .wui-switch-thumb,
 .wui-switch-track.is-dragging .wui-switch-thumb.is-pressed {
-  transform: translateX(var(--wui-switch-drag-offset, 0)) scale(1.5);
+  left: calc(var(--wui-switch-inset-internal) + var(--wui-switch-drag-offset, 0px));
+  transform: scale(1.5);
   transition: none;
+}
+
+.wui-switch-loading web-ui-icon {
+  --wui-internal-icon-render-size: calc(var(--wui-switch-height-internal) * 0.7);
 }
 
 .wui-switch-loading {

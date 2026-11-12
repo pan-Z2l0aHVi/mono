@@ -1,10 +1,12 @@
 <script setup lang="ts">
-import type { WebUiEditableText, WebUiEvent, WebUiTextarea } from '@greypan/web-ui'
-import { computed, nextTick, onMounted, onScopeDispose, ref, type ComponentPublicInstance } from 'vue'
+import { toast, type WebUiEditableText, type WebUiEvent, type WebUiTextarea } from '@greypan/web-ui'
+import { useElementSize } from '@vueuse/core'
+import { Clipboard } from '@wailsio/runtime'
+import { computed, nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useRouter } from 'vue-router'
 
 import AddDialog from '@/components/library/AddDialog.vue'
-import { createLibraryAddQueue, queueItemTitle } from '@/components/library/addQueue'
+import { createLibraryAddQueue } from '@/components/library/addQueue'
 import ConfirmDialog from '@/components/library/ConfirmDialog.vue'
 import DetailDrawer from '@/components/library/DetailDrawer.vue'
 import DuplicateConfirmDialog from '@/components/library/DuplicateConfirmDialog.vue'
@@ -25,7 +27,9 @@ import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLayoutMobile } from '@/composables/useLayoutMobile'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
 import { useLibrarySelection } from '@/composables/useLibrarySelection'
+import { pendingWindowFileDrops } from '@/composables/windowFileDrop'
 import type { LibraryQueueItem } from '@/services/library'
+import { hasWailsRuntime } from '@/services/library/wails'
 import { useLibraryStore } from '@/stores/library'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
@@ -63,6 +67,8 @@ const {
 
 // 页面级 overlay（详情/预览 drawer、各类 dialog）跟着壳的移动端判定走，不自己写断点。
 const mobile = useLayoutMobile()
+const headerRef = ref<HTMLElement | null>(null)
+const { height: headerHeight } = useElementSize(headerRef)
 const filterOpen = ref(false)
 const searchOpen = ref(false)
 const activeResourceId = ref<string | null>(null)
@@ -82,6 +88,7 @@ const restoreQueue = ref<LibraryRestoreQueueItem[]>([])
 const restoreBusy = ref(false)
 const restoreError = ref('')
 const activeRestoreItemId = ref<string | null>(null)
+const addDialogRef = ref<InstanceType<typeof AddDialog> | null>(null)
 const addQueue = createLibraryAddQueue(runtime)
 const queue = addQueue.queue
 const duplicatePrompt = addQueue.duplicatePrompt
@@ -91,9 +98,17 @@ const confirmOpen = ref(false)
 const confirmRequest = ref<ConfirmRequest | null>(null)
 const confirmError = ref('')
 const addError = ref('')
-const stopDroppedFiles = runtime.events.onFilesDropped(paths => {
-  if (addOpen.value) void addQueue.enqueueFileLocations(paths)
-})
+watch(
+  pendingWindowFileDrops,
+  batches => {
+    if (!batches.length) return
+    pendingWindowFileDrops.value = []
+    addError.value = ''
+    addOpen.value = true
+    for (const paths of batches) void addQueue.enqueueFileLocations(paths)
+  },
+  { immediate: true }
+)
 const stopPasteFileRequest = runtime.events.onPasteFilesRequested(() => {
   addOpen.value = true
   void pasteFilePaths()
@@ -102,7 +117,6 @@ const stopSourceAvailability = runtime.events.onSourceAvailability(event => {
   store.applySourceAvailability(event.source_id, event.available, event.size_bytes)
 })
 onScopeDispose(() => {
-  stopDroppedFiles()
   stopPasteFileRequest()
   stopSourceAvailability()
   void addQueue.close()
@@ -158,8 +172,12 @@ function setNameEditorRef(id: string): NameEditorRef {
 function startResourceRename(resource: ResourceView, surface: 'list' | 'drawer' = 'list') {
   const key = surface === 'drawer' ? DRAWER_TITLE_EDITOR_KEY : resource.id
   editingNameKey.value = key
-  void nextTick(() => {
-    resourceNameEditors.value[key]?.select()
+  void nextTick(async () => {
+    const editor = resourceNameEditors.value[key]
+    await editor?.updateComplete
+    // 等隐藏的触发按钮完成布局，避免 WebKit 把刚交给编辑器的焦点移回 drawer。
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    if (editingNameKey.value === key && resourceNameEditors.value[key] === editor) editor?.select()
   })
 }
 
@@ -281,19 +299,6 @@ function finishDelete(deletedIds: string[]) {
   }
 }
 
-function requestQueueRemoval(itemId: string) {
-  const item = queue.value.find(candidate => candidate.id === itemId)
-  if (!item) return
-  openConfirmDialog({
-    title: '移除待添加项',
-    message: `移除「${queueItemTitle(item)}」后不会加入资源库。`,
-    confirmLabel: '移除',
-    danger: true,
-    compact: true,
-    action: () => addQueue.removeItem(itemId)
-  })
-}
-
 function openConfirmDialog(request: ConfirmRequest) {
   confirmError.value = ''
   confirmRequest.value = request
@@ -348,11 +353,10 @@ function setAddOpen(open: boolean) {
 /*
  * 粘贴（#188）。
  *
- * OS 的剪贴板文件接口只认文件，剪贴板里是网页链接时它返回空数组。剪贴板文本由 paste
- * 事件带上来，拿不到文件时按链接再试一次，文本存在又不是合法链接时给一句可读的错误，
- * 而不是静默吞掉。
+ * OS 的剪贴板文件接口只认文件；没有文件时读取文本并尝试作为链接入队。
+ * paste 事件直接传入文本，按钮入口则读取当前剪贴板。
  */
-async function pasteFilePaths(clipboardText = '') {
+async function pasteFilePaths(clipboardText?: string) {
   try {
     addError.value = ''
     const paths = await runtime.system.getClipboardFilePaths()
@@ -361,14 +365,16 @@ async function pasteFilePaths(clipboardText = '') {
       await addQueue.enqueueFileLocations(paths)
       return
     }
-    const url = normalizeLibraryURL(clipboardText)
+    const text = clipboardText ?? (hasWailsRuntime() ? await Clipboard.Text() : await navigator.clipboard.readText())
+    if (!addOpen.value) return
+    const url = normalizeLibraryURL(text)
     if (url) {
       await addQueue.enqueueURL(url)
       return
     }
-    if (clipboardText.trim()) addError.value = '剪贴板里没有文件，也不是有效的 http 或 https 链接'
-  } catch (cause) {
-    addError.value = takeOperationError(cause, '读取剪贴板文件失败')
+    toast.warning('剪切板中没有可添加的文件或有效链接', { container: addDialogRef.value?.toastContainer() })
+  } catch {
+    toast.warning('无法读取剪切板，请重试', { container: addDialogRef.value?.toastContainer() })
   }
 }
 
@@ -489,7 +495,6 @@ async function submitRestoreQueue(items: LibraryRestoreQueueItem[]) {
   activeRestoreItemId.value = null
   try {
     const result = await restoreLibraryQueue(items, {
-      chooseFilePath: () => runtime.system.chooseFilePath(),
       replaceFileSource,
       replaceURLSource,
       onItemStart: itemId => {
@@ -497,7 +502,7 @@ async function submitRestoreQueue(items: LibraryRestoreQueueItem[]) {
       }
     })
     const completedIds = new Set(result.completedIds)
-    restoreQueue.value = items.filter(item => !completedIds.has(item.id))
+    restoreQueue.value = restoreQueue.value.filter(item => !completedIds.has(item.id))
     if (result.failed) {
       restoreError.value = takeOperationError(result.failed.cause, '找回资源失败，请稍后重试')
       return
@@ -522,7 +527,7 @@ onMounted(() => {
     其余根节点走默认 slot 落进 main。多根 fragment 正是为了这两个 slot 各占一个直属子节点，
     Vue 的 slot 不跨组件边界，页面没法从 AppLayout 那边反向声明。
   -->
-  <header slot="header" class="w-full">
+  <header ref="headerRef" slot="header" class="w-full">
     <Toolbar
       :search-query="store.searchQuery"
       :filter-source="store.filterSource"
@@ -563,10 +568,10 @@ onMounted(() => {
     />
   </header>
 
-  <div class="flex min-h-0 flex-1">
+  <div class="flex min-h-0 flex-1" :style="{ minHeight: `calc(100dvh - ${headerHeight}px)` }">
     <!--
       整页滚动（body/document 滚动），不做内部滚动容器——用户裁决保留原样。因此这里没有
-      overflow-y-auto、没有 min-height 补丁、没有 max-h-dvh。
+      overflow-y-auto 或 max-h-dvh。最小高度扣除实际 header 高度，让空态在可用内容区居中。
 
       底部留白用 max(64px, env(safe-area-inset-bottom))：无安全区的设备上就是 64px，
       与 pb-16 同值；设备有 home indicator 时自动变宽，把最后一行托到安全区上方。
@@ -577,7 +582,10 @@ onMounted(() => {
       虚拟滚动在整页滚动下由 ResourceList 内的 virtua WindowVirtualizer 负责：它自己沿
       offsetParent 链量出列表到文档顶的距离，本页只提供整页滚动的布局，不参与行定位。
     -->
-    <main class="flex-1 min-w-0 px-6 mobile:px-3 pb-[max(64px,env(safe-area-inset-bottom))] pt-2">
+    <main
+      class="flex flex-col flex-1 min-w-0 px-8 mobile:px-3 pb-[max(64px,env(safe-area-inset-bottom))] pt-2"
+      @contextmenu.capture.prevent
+    >
       <div
         v-if="runtimeError"
         class="mb-3 flex min-h-10 items-center justify-between gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-400/12 dark:text-red-200"
@@ -633,10 +641,16 @@ onMounted(() => {
       @preview="previewResource"
       @recover="handleRecoverSource"
     />
-    <PreviewDrawer v-model:open="previewOpen" :resource="selectedResource" :mobile="mobile" />
+    <PreviewDrawer
+      v-model:open="previewOpen"
+      :resource="selectedResource"
+      :mobile="mobile"
+      @recover="handleRecoverSource"
+    />
   </div>
 
   <AddDialog
+    ref="addDialogRef"
     :open="addOpen"
     :queue="queue"
     :busy="submitting"
@@ -644,8 +658,9 @@ onMounted(() => {
     :mobile="mobile"
     :tag-colors="store.tagColors"
     @pick-files="pickFiles"
+    @add-url="addQueue.enqueueURL"
     @request-file-paths="pasteFilePaths"
-    @remove="requestQueueRemoval"
+    @remove="addQueue.removeItem"
     @rename="renameQueueItem"
     @edit-tags="editQueueTags"
     @submit="submitQueue"
@@ -680,6 +695,9 @@ onMounted(() => {
     :error="restoreError"
     :mobile="mobile"
     :active-item-id="activeRestoreItemId"
+    :choose-file-path="runtime.system.chooseFilePath"
+    :prepare-file-preview="runtime.resources.prepareFilePreview"
+    :release-file-preview="runtime.resources.releaseFilePreview"
     @update:open="setRestoreOpen"
     @submit="submitRestoreQueue"
   />

@@ -100,6 +100,29 @@ export default function Demo() {
 </template>
 ```
 
+### Custom size
+
+Set `--wui-option-height` for option height; it falls back to `--wui-menu-item-height` (default 32px). Set either on the select, autocomplete, or individual option.
+
+```tsx
+export default function Demo() {
+  return (
+    <web-ui-select placeholder="Choose" style={{ '--wui-option-height': '44px' }}>
+      <web-ui-option value="one">One</web-ui-option>
+      <web-ui-option value="two">Two</web-ui-option>
+    </web-ui-select>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-select placeholder="Choose" style="--wui-option-height: 44px"
+    ><web-ui-option value="one">One</web-ui-option><web-ui-option value="two">Two</web-ui-option></web-ui-select
+  >
+</template>
+```
+
 ## API
 
 ### Props

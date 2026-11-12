@@ -56,7 +56,9 @@ aside {
   max-width: 50vw;
   height: calc(var(--wui-internal-layout-viewport-height) - var(--wui-layout-visible-banner-height));
   max-height: calc(var(--wui-internal-layout-viewport-height) - var(--wui-layout-visible-banner-height));
-  padding: var(--wui-space-2, 8px) 0 var(--wui-space-2, 8px) var(--wui-space-2, 8px);
+  padding: var(--wui-layout-sidebar-padding-top, var(--wui-space-2, 8px)) 0
+    var(--wui-layout-sidebar-padding-bottom, var(--wui-space-2, 8px))
+    var(--wui-layout-sidebar-padding-left, var(--wui-space-2, 8px));
 
   transition: width var(--wui-duration-layout, 200ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 
@@ -227,7 +229,25 @@ footer {
 
 :host([mobile]) .mobile-toggle {
   align-self: flex-start;
-  margin-top: var(--wui-space-2, 8px);
+  margin-top: var(--wui-layout-mobile-toggle-top, var(--wui-space-2, 8px));
+  transition: visibility 0s var(--wui-duration-drawer-exit, 240ms);
+}
+
+:host([mobile][sidebar-open]) .mobile-toggle {
+  visibility: hidden;
+  transition: none;
+}
+
+:host([mobile][mobile-header-full-width]) .mobile-toggle {
+  position: absolute;
+  z-index: 1;
+  top: 0;
+  left: 0;
+}
+
+:host([mobile][mobile-header-full-width]) ::slotted([slot='header']) {
+  flex: 1;
+  min-width: 0;
 }
 
 @media (prefers-reduced-motion: reduce) {
@@ -238,4 +258,8 @@ footer {
   .sidebar-resize-handle::before {
     transition: none;
   }
+}
+
+:host([mobile]) .sidebar-viewport {
+  height: 100%;
 }

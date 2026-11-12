@@ -124,6 +124,30 @@ export default function Demo() {
 </template>
 ```
 
+### Custom size
+
+Set `--wui-dropdown-item-height` for item height; it falls back to `--wui-menu-item-height` (default 32px). Set either on the dropdown or individual item.
+
+```tsx
+export default function Demo() {
+  return (
+    <web-ui-dropdown style={{ '--wui-dropdown-item-height': '44px' }}>
+      <web-ui-button slot="trigger">Menu</web-ui-button>
+      <web-ui-dropdown-item>Action</web-ui-dropdown-item>
+    </web-ui-dropdown>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-dropdown style="--wui-dropdown-item-height: 44px"
+    ><web-ui-button slot="trigger">Menu</web-ui-button
+    ><web-ui-dropdown-item>Action</web-ui-dropdown-item></web-ui-dropdown
+  >
+</template>
+```
+
 ## API
 
 ### Props

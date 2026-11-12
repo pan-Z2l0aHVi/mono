@@ -64,7 +64,7 @@ body {
     select,
     textarea,
     summary,
-    [tabindex]:not([tabindex='-1']),
+    [tabindex]:not([tabindex='-1'], web-ui-switch),
     [contenteditable]:not([contenteditable='false'])
   ):focus-visible {
   outline: var(--wui-focus-ring-width, 3px) solid var(--wui-color-focus-ring, rgb(0 136 255 / 0.4));

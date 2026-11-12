@@ -352,7 +352,12 @@ import { useState } from 'react'
 export default function Demo() {
   const [open, setOpen] = useState(false)
   return (
-    <web-ui-layout mobile sidebarOpen={open} onsidebar-open-change={event => setOpen(event.detail.open)}>
+    <web-ui-layout
+      mobile
+      style={{ '--wui-layout-mobile-toggle-inset': '24px', '--wui-layout-mobile-toggle-top': '16px' }}
+      sidebarOpen={open}
+      onsidebar-open-change={event => setOpen(event.detail.open)}
+    >
       <div slot="sidebar">导航</div>
       <div>内容</div>
     </web-ui-layout>
@@ -362,7 +367,12 @@ export default function Demo() {
 
 ```vue
 <template>
-  <web-ui-layout :mobile="true" :sidebarOpen="open" @sidebar-open-change="open = $event.detail.open">
+  <web-ui-layout
+    :mobile="true"
+    style="--wui-layout-mobile-toggle-inset: 24px; --wui-layout-mobile-toggle-top: 16px"
+    :sidebarOpen="open"
+    @sidebar-open-change="open = $event.detail.open"
+  >
     <div slot="sidebar">导航</div>
     <div>内容</div>
   </web-ui-layout>
@@ -378,20 +388,21 @@ const open = ref(false)
 
 ### 属性
 
-| 名称                  | 说明                                                                                                                                                               | 类型               | 默认值    |
-| --------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | --------- |
-| `no-sidebar`          | 不渲染任何侧边栏结构：桌面端 aside、收起按钮与宽度调整手柄，移动端头部开关与抽屉；`sidebar` 插槽内容随之不渲染。                                                   | `boolean`          | `false`   |
-| `sidebar-collapsible` | 渲染桌面端收起 / 展开按钮。未声明时不渲染按钮，也不会因点击产生 `sidebar-collapsed-change` 请求；桌面宽度仍由 `sidebar-collapsed` 控制，移动端抽屉的开关不受影响。 | `boolean`          | `false`   |
-| `sidebar-collapsed`   | 桌面端侧边栏的受控收起状态；只收窄桌面端，不影响移动端抽屉。                                                                                                       | `boolean`          | `false`   |
-| `sidebar-open`        | 移动端侧边栏抽屉受控打开状态。                                                                                                                                     | `boolean`          | `false`   |
-| `header-glow`         | 在头部插槽内容背后显示装饰性晕染。                                                                                                                                 | `boolean`          | `false`   |
-| `ariaLabels`          | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖（property）；未提供的键使用内置英文文案，`no-sidebar` 下侧栏相关的键不参与渲染。               | `LayoutAriaLabels` | —         |
-| `mobile`              | 是否使用移动端布局，由调用方控制。                                                                                                                                 | `boolean`          | `false`   |
-| `sidebar-width`       | 桌面端和移动端展开时的侧边栏宽度。                                                                                                                                 | `string`           | `'240px'` |
-| `collapsed-width`     | 桌面端收起时的侧边栏宽度。                                                                                                                                         | `string`           | `'60px'`  |
-| `sidebar-resizable`   | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                                                                                               | `boolean`          | `false`   |
-| `sidebar-min-width`   | 拖拽调整的下限（px）；默认为 `collapsed-width`。                                                                                                                   | `string`           | —         |
-| `sidebar-max-width`   | 拖拽调整的上限（px）；限制在视口一半以内，内置上限优先。                                                                                                           | `string`           | —         |
+| 名称                       | 说明                                                                                                                                                               | 类型               | 默认值    |
+| -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | --------- |
+| `no-sidebar`               | 不渲染任何侧边栏结构：桌面端 aside、收起按钮与宽度调整手柄，移动端头部开关与抽屉；`sidebar` 插槽内容随之不渲染。                                                   | `boolean`          | `false`   |
+| `sidebar-collapsible`      | 渲染桌面端收起 / 展开按钮。未声明时不渲染按钮，也不会因点击产生 `sidebar-collapsed-change` 请求；桌面宽度仍由 `sidebar-collapsed` 控制，移动端抽屉的开关不受影响。 | `boolean`          | `false`   |
+| `sidebar-collapsed`        | 桌面端侧边栏的受控收起状态；只收窄桌面端，不影响移动端抽屉。                                                                                                       | `boolean`          | `false`   |
+| `sidebar-open`             | 移动端侧边栏抽屉受控打开状态。                                                                                                                                     | `boolean`          | `false`   |
+| `mobile-header-full-width` | 移动端头部插槽占满整行，侧栏按钮悬浮其上；消费方负责给首行按钮留出空间。                                                                                           | `boolean`          | `false`   |
+| `header-glow`              | 在头部插槽内容背后显示装饰性晕染。                                                                                                                                 | `boolean`          | `false`   |
+| `ariaLabels`               | 内置无障碍名（侧栏折叠/展开、调宽、打开导航菜单、主导航）的成组覆盖（property）；未提供的键使用内置英文文案，`no-sidebar` 下侧栏相关的键不参与渲染。               | `LayoutAriaLabels` | —         |
+| `mobile`                   | 是否使用移动端布局，由调用方控制。                                                                                                                                 | `boolean`          | `false`   |
+| `sidebar-width`            | 桌面端和移动端展开时的侧边栏宽度。                                                                                                                                 | `string`           | `'240px'` |
+| `collapsed-width`          | 桌面端收起时的侧边栏宽度。                                                                                                                                         | `string`           | `'60px'`  |
+| `sidebar-resizable`        | 启用桌面端侧边栏右边缘拖拽调整宽度。                                                                                                                               | `boolean`          | `false`   |
+| `sidebar-min-width`        | 拖拽调整的下限（px）；默认为 `collapsed-width`。                                                                                                                   | `string`           | —         |
+| `sidebar-max-width`        | 拖拽调整的上限（px）；限制在视口一半以内，内置上限优先。                                                                                                           | `string`           | —         |
 
 ### 事件
 
@@ -502,9 +513,14 @@ const open = ref(false)
 
 ### CSS 自定义属性
 
-| 名称                                | 说明                                                            | 默认值             |
-| ----------------------------------- | --------------------------------------------------------------- | ------------------ |
-| `--wui-layout-viewport-height`      | layout 使用的可用视口高度；嵌入限高容器时设为容器高度           | `100vh` / `100dvh` |
-| `--wui-layout-sidebar-radius`       | 侧边栏卡片圆角（桌面端和移动端共用）                            | `24px`             |
-| `--wui-layout-mobile-toggle-inset`  | 移动端头部开关的左缩进                                          | `8px`              |
-| `--wui-layout-sidebar-toggle-width` | 桌面端侧边栏收起按钮的宽度，下限为 `--wui-control-size`（36px） | `36px`             |
+| 名称                                   | 说明                                                            | 默认值                   |
+| -------------------------------------- | --------------------------------------------------------------- | ------------------------ |
+| `--wui-layout-viewport-height`         | layout 使用的可用视口高度；嵌入限高容器时设为容器高度           | `100vh` / `100dvh`       |
+| `--wui-layout-sidebar-content-padding` | 移动端侧边栏抽屉内容的内边距                                    | `20px`                   |
+| `--wui-layout-sidebar-radius`          | 侧边栏卡片圆角（桌面端和移动端共用）                            | `24px`                   |
+| `--wui-layout-sidebar-padding-top`     | 侧边栏卡片上方间距（桌面及移动端）                              | `--wui-space-2`（`8px`） |
+| `--wui-layout-sidebar-padding-left`    | 侧边栏卡片左侧间距（桌面及移动端）                              | `--wui-space-2`（`8px`） |
+| `--wui-layout-sidebar-padding-bottom`  | 侧边栏卡片下方间距（桌面及移动端）                              | `--wui-space-2`（`8px`） |
+| `--wui-layout-mobile-toggle-inset`     | 移动端头部开关的左缩进                                          | `8px`                    |
+| `--wui-layout-mobile-toggle-top`       | 移动端头部开关的上边距                                          | `8px`                    |
+| `--wui-layout-sidebar-toggle-width`    | 桌面端侧边栏收起按钮的宽度，下限为 `--wui-control-size`（36px） | `36px`                   |

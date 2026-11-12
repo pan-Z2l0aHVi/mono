@@ -9,23 +9,8 @@
 }
 
 dialog {
-  /*
-   * 胶囊中线的唯一定义处。drag zone 与胶囊是 dialog 的两个直接子节点，定义在 dialog 上
-   * 才能被双方读到——胶囊不是 drag zone 的后代，定义在 .wui-drawer-drag-zone 上读不到值，
-   * 定位用的 calc 会整条失效。
-   * 自定义属性沿树继承，drag zone 仍然读得到它，诊断输出不受影响。
-   *
-   * 胶囊中线跟随内容区 padding，consumer 覆盖 --wui-drawer-content-padding 后拖拽条自动居中；
-   * max() 的第二项是下限，分两截来由：
-   *   - 半个胶囊厚度：padding 归零时中线不会压在 panel 内缘上、一半落在 panel 之外
-   *     （dialog 是 overflow: visible，这半截不被裁掉而是骑在 backdrop 上）。
-   *   - 再加 4px 呼吸间距：只兜住「不越界」时胶囊仍贴死 panel 边缘，读作挤在边框阴影线外侧。
-   *     4px 是视觉调参结论（真机反馈），不开放成 consumer token。
-   */
-  --wui-internal-drag-bar-center: max(
-    calc(var(--wui-drawer-content-padding, 20px) / 2),
-    calc(var(--wui-drawer-drag-bar-thickness, 4px) / 2 + 4px)
-  );
+  /* 拖拽条距边缘的距离与内容 padding 独立，且始终完整落在卡片内。 */
+  --wui-internal-drag-bar-center: max(10px, calc(var(--wui-drawer-drag-bar-thickness, 4px) / 2 + 4px));
 
   /* 显式 position: fixed（防御性）：UA 的 dialog:modal 默认 fixed，但作者样式若覆盖
      position 会把它退回文档流——top layer 里的 modal dialog 变成按文档流定位，出现在
@@ -129,8 +114,7 @@ dialog[open].is-visible::backdrop {
 /*
  * drag zone 贴在 drawer 内缘，宽度由 --wui-drawer-drag-zone-size（默认 20px）控制便于触控命中；
  * 胶囊本身由 --wui-drawer-drag-bar-thickness × --wui-drawer-drag-bar-length（默认 4×56px）控制。
- * 胶囊绝对定位在 --wui-drawer-content-padding 的视觉中线（默认 20px → 中线 10px），
- * 并以半个胶囊厚度加 4px 呼吸间距兜底，使 padding 归零的 consumer 也留有可见内缩（见下方 max()）；
+ * 胶囊中线固定距边缘 10px，并以半个胶囊厚度加 4px 呼吸间距兜底；
  * drag zone 仍覆盖内缘起 --wui-drawer-drag-zone-size，保证触控命中面积不随胶囊收窄。
  * 位置随 placement 切换：right 贴在左缘、left 贴在右缘、top 贴在底边、bottom 贴在顶边。
  *
@@ -457,6 +441,16 @@ dialog.is-dragging .wui-drawer-drag-zone {
   line-height: var(--wui-line-height-snug, 1.4);
 }
 
+:host([closable]) .wui-drawer-header::after {
+  content: '';
+  flex: none;
+  width: calc(var(--wui-drawer-close-right, 16px) + var(--wui-drawer-close-size, 26px));
+}
+
+.wui-drawer-header slot {
+  min-width: 0;
+}
+
 .wui-drawer-header[hidden] {
   display: none;
 }
@@ -596,9 +590,11 @@ dialog.is-dragging .wui-drawer-drag-zone {
 }
 
 :host(:not([headless])[placement='left']) dialog {
-  top: var(--wui-internal-drawer-inset);
+  --wui-internal-drawer-inset: var(--wui-drawer-inset-left, var(--wui-drawer-inset, 8px));
+
+  top: var(--wui-drawer-inset-top, var(--wui-drawer-inset, 8px));
   right: auto;
-  bottom: var(--wui-internal-drawer-inset);
+  bottom: var(--wui-drawer-inset-bottom, var(--wui-drawer-inset, 8px));
   left: var(--wui-internal-drawer-inset);
   transform: translateX(calc(-100% - var(--wui-internal-drawer-inset)));
 
@@ -726,4 +722,8 @@ dialog.is-dragging .wui-drawer-drag-zone {
     translate: none !important;
     scale: none !important;
   }
+}
+
+.wui-drawer-close web-ui-icon {
+  --wui-internal-icon-render-size: calc(var(--wui-drawer-close-size, 26px) * 7 / 13);
 }

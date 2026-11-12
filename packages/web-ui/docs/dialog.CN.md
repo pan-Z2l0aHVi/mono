@@ -288,6 +288,8 @@ function onOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 
 此时没有可自动关联的内置标题，页面必须提供 `aria-dialog-label`，卡片外观和关闭按钮也由页面自绘。
 
+React 示例通过 ref 设置 `ariaDialogLabel` property，避免 React 把组件专用名称当作标准 ARIA 属性校验。
+
 ```tsx
 import { useState } from 'react'
 
@@ -303,7 +305,9 @@ export default function Demo() {
       <web-ui-dialog
         open={open}
         headless
-        aria-dialog-label="图片详情"
+        ref={element => {
+          if (element) element.ariaDialogLabel = '图片详情'
+        }}
         onopen-change={event => setOpen(event.detail.open)}
       >
         <div className="flex flex-col gap-4">
@@ -359,6 +363,52 @@ export default function Demo() {
 <script setup lang="ts">
 import { ref } from 'vue'
 
+const open = ref(false)
+</script>
+```
+
+### 自定义关闭按钮尺寸
+
+使用 `--wui-dialog-close-size` 设置关闭按钮尺寸（默认 26px）；图标按比例缩放。
+
+```tsx
+import { useState } from 'react'
+
+export default function Demo() {
+  const [open, setOpen] = useState(false)
+  return (
+    <>
+      <web-ui-button onClick={() => setOpen(true)}>打开</web-ui-button>
+      <web-ui-dialog
+        closable
+        open={open}
+        heading="示例"
+        style={{ '--wui-dialog-close-size': '34px' }}
+        onopen-change={event => setOpen(event.detail.open)}
+      >
+        示例
+      </web-ui-dialog>
+    </>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-button @click="open = true">打开</web-ui-button>
+  <web-ui-dialog
+    closable
+    :open="open"
+    heading="示例"
+    style="--wui-dialog-close-size: 34px"
+    @open-change="open = $event.detail.open"
+  >
+    示例
+  </web-ui-dialog>
+</template>
+
+<script setup lang="ts">
+import { ref } from 'vue'
 const open = ref(false)
 </script>
 ```

@@ -1,4 +1,5 @@
 import { parseDuration } from '@/shared/theme/duration'
+import { commitLayout } from '@/shared/transition/commit-layout'
 
 const DEFAULT_EXIT_DURATION = 160
 const EXIT_FALLBACK_BUFFER = 80
@@ -33,7 +34,7 @@ export function showOverlayPresence(panel: HTMLElement, options: OverlayPresence
   panel.dataset.wuiPresence = 'entering'
 
   // 提交初始状态，让新挂载的 panel 拥有过渡起点。
-  void panel.offsetWidth
+  commitLayout(panel)
 
   requestAnimationFrame(() => {
     if (panel.dataset.wuiPresence === 'entering') panel.dataset.wuiPresence = 'open'

@@ -2,7 +2,7 @@ import { describe, expect, it } from 'vite-plus/test'
 
 import { ACCENT_PRESETS, onAccentFor } from '../settings'
 
-/** WCAG 相对亮度；只认 #rrggbb，色板里的字面量都是这个形状。 */
+/** WCAG relative luminance; the palette values are #rrggbb. */
 function relativeLuminance(hex: string): number {
   const channel = (offset: number): number => {
     const raw = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255
@@ -19,22 +19,18 @@ function contrastRatio(foreground: string, background: string): number {
   return (hi + 0.05) / (lo + 0.05)
 }
 
-describe('accent presets', () => {
-  it('keeps primary button text at WCAG AA contrast for every preset', () => {
+describe('accent foreground', () => {
+  it('prefers white in both appearances and flips to black only below 3:1', () => {
     for (const preset of ACCENT_PRESETS) {
-      expect(contrastRatio(preset.onAccent, preset.value), `${preset.label} ${preset.value}`).toBeGreaterThanOrEqual(
-        4.5
-      )
-    }
-  })
+      const foreground = onAccentFor(preset.value)
+      const expected = contrastRatio('#ffffff', preset.value) >= 3 ? '#ffffff' : '#000000'
 
-  it('resolves the on-accent color from the same preset as the accent', () => {
-    for (const preset of ACCENT_PRESETS) {
-      expect(onAccentFor(preset.value)).toBe(preset.onAccent)
+      expect(foreground).toBe(expected)
+      expect(contrastRatio(foreground, preset.value)).toBeGreaterThanOrEqual(3)
     }
   })
 
   it('falls back to the default preset for unknown accent values', () => {
-    expect(onAccentFor('#123456')).toBe(ACCENT_PRESETS[0].onAccent)
+    expect(onAccentFor('#123456')).toBe(onAccentFor(ACCENT_PRESETS[0].value))
   })
 })

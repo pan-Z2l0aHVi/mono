@@ -76,6 +76,7 @@ export { default as heroiconsBarsArrowUp16Solid } from './generated/heroicons-ba
 export { default as lucideListRestart } from './generated/lucide-list-restart'
 export { default as radixIconsReset } from './generated/radix-icons-reset'
 export { default as akarIconsCheck } from './generated/akar-icons-check'
+export { default as codexCheck } from './generated/codex-check'
 export { default as iconParkOutlineTagOne } from './generated/icon-park-outline-tag-one'
 export { default as biCheck } from './generated/bi-check'
 export { default as biCheckLg } from './generated/bi-check-lg'

@@ -407,6 +407,24 @@ export default function Demo() {
 </template>
 ```
 
+### 自定义尺寸
+
+用 `--wui-input-clear-size` 设置清除按钮尺寸（默认 20px），图标随之缩放。
+
+```tsx
+export default function Demo() {
+  return (
+    <web-ui-input clearable value="Hello" aria-label="Text" style={{ '--wui-input-clear-size': '24px' }}></web-ui-input>
+  )
+}
+```
+
+```vue
+<template>
+  <web-ui-input clearable value="Hello" aria-label="Text" style="--wui-input-clear-size: 24px"></web-ui-input>
+</template>
+```
+
 ## API
 
 ### 属性

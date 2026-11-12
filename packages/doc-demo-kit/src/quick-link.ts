@@ -6,11 +6,11 @@ export const DEFAULT_DURATION_MS = 300
 export const SHADOW_COLOR = /#[0-9a-f]{3,8}|rgba?\([^)]*\)/gi
 
 /** 只有精确指针设备才启用倾斜；触屏与「减少动态效果」偏好下保持静态。 */
-export function tiltEnabled(disabled = false): boolean {
+export function tiltEnabled(disabled = false, reducedMotion?: boolean): boolean {
   if (disabled) return false
   return (
     window.matchMedia('(hover: hover) and (pointer: fine)').matches &&
-    !window.matchMedia('(prefers-reduced-motion: reduce)').matches
+    !(reducedMotion ?? window.matchMedia('(prefers-reduced-motion: reduce)').matches)
   )
 }
 

@@ -16,6 +16,7 @@
     "@greypan/app-scrollbars": "workspace:*",
     "@greypan/browser-kit": "workspace:*",
     "@greypan/web-ui": "workspace:*",
+    "@vueuse/core": "catalog:",
     "@wailsio/runtime": "catalog:",
     "lit": "catalog:",
     "overlayscrollbars": "catalog:",
@@ -26,19 +27,19 @@
     "vue-router": "catalog:"
   },
   "devDependencies": {
-    "@greypan/monorepo-kit": "workspace:*",
     "@greypan/deps-reload": "workspace:*",
     "@greypan/js-kit": "workspace:*",
+    "@greypan/monorepo-kit": "workspace:*",
     "@greypan/tsconfig": "workspace:*",
     "@greypan/unplugin-web-components": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
     "@vitejs/plugin-legacy": "catalog:",
     "@vitejs/plugin-vue": "catalog:",
-    "@tailwindcss/vite": "catalog:",
     "tailwindcss": "catalog:",
     "unplugin-auto-import": "catalog:",
-    "vue-tsc": "catalog:",
     "vite": "catalog:",
-    "vite-plus": "catalog:"
+    "vite-plus": "catalog:",
+    "vue-tsc": "catalog:"
   },
   "browserslist": [
     "Chrome >=111",

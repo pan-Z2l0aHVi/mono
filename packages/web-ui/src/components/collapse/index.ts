@@ -6,6 +6,7 @@ import glow from '@/classes/glow.css?inline'
 import { UserChangeController } from '@/shared/events/user-change'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
 import { getTransitionDuration } from '@/shared/overlay/presence'
+import { commitLayout } from '@/shared/transition/commit-layout'
 
 import style from './style.css?inline'
 
@@ -321,7 +322,7 @@ export class WebUiCollapse extends LitElement {
       return
     }
 
-    void track.offsetWidth
+    commitLayout(track)
 
     requestAnimationFrame(() => {
       if (generation !== this._generation || !this.open) return

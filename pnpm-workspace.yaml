@@ -112,6 +112,7 @@ catalog:
   zustand: ^5.1.0
   '@iconify-json/icon-park-outline': ^1.2.4
   '@iconify-json/ci': ^1.2.4
+  '@iconify-json/codex': ^1.2.2
 
 catalogMode: prefer
 

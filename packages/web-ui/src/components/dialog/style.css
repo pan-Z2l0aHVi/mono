@@ -303,10 +303,12 @@ dialog[open].is-visible .wui-dialog-body {
    预留量取「button 右偏移 + button 宽 + 呼吸间距」，而不是只减掉带自身的 padding——这样即便
    消费者把 --wui-dialog-inline-padding 调到 0，内容右缘也不会越过 button 左缘；跟随
    --wui-dialog-close-right 变化；这里复用正文容器上已解析的内部右侧偏移，与 button 定位同源。
-   26px 对应 index.ts 里 button 的 size="26"，改 button 尺寸时一并改这里。
+   关闭按钮的尺寸与标题留白共用 token。
    只在 closable 时生效：没有 button 就不必留白。 */
 :host([closable]) .header {
-  padding-inline-end: calc(var(--wui-internal-dialog-close-right) + 26px + var(--wui-space-3, 12px));
+  padding-inline-end: calc(
+    var(--wui-internal-dialog-close-right) + var(--wui-dialog-close-size, 26px) + var(--wui-space-3, 12px)
+  );
 }
 
 .desc {
@@ -398,4 +400,8 @@ dialog[open].is-visible .wui-dialog-body {
   gap: var(--wui-space-3, 12px);
   align-items: center;
   justify-content: var(--wui-dialog-footer-justify, center);
+}
+
+.wui-dialog-close web-ui-icon {
+  --wui-internal-icon-render-size: calc(var(--wui-dialog-close-size, 26px) * 7 / 13);
 }

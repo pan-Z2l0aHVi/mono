@@ -23,7 +23,7 @@
   align-items: center;
 
   box-sizing: border-box;
-  height: 32px;
+  height: var(--wui-option-height, var(--wui-menu-item-height, 32px));
   padding: 0 var(--wui-space-2, 8px);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 

@@ -11,6 +11,8 @@
 
 svg {
   display: block;
+  width: var(--wui-internal-icon-render-size, var(--wui-internal-icon-default-size));
+  height: var(--wui-internal-icon-render-size, var(--wui-internal-icon-default-size));
   color: var(--wui-icon-color, inherit);
 }
 

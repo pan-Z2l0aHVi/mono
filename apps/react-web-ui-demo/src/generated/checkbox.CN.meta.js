@@ -139,7 +139,7 @@ const meta = [
   { label: 'p', content: "空不空按渲染宽度判定，有指派但不画盒的无障碍名也算空；不要用 <code>display: none</code> 收掉标签，那会把它从无障碍树里拿掉。" },
   { label: 'h3', id: 'section-12', content: "选中动画" },
   { label: 'p', content: "勾选时对勾从左端画出，取消时沿原路收回；<code>motion=\"reduced\"</code> 时直接切换，挂载时已勾选的控件显示静态勾。" },
-  { label: 'p', content: "对勾颜色取 <code>--wui-color-on-control</code>，按 <code>&lt;web-ui-icon></code> 默认的 18px 渲染，不随 <code>--wui-selection-control-size</code> 放大。" },
+  { label: 'p', content: "对勾颜色取 <code>--wui-color-on-control</code>；尺寸默认等于 <code>--wui-selection-control-size</code>，可通过 <code>--wui-checkbox-icon-size</code> 单独覆盖。" },
   { label: 'h3', id: 'section-13', content: "未激活态" },
   { label: 'p', content: "未选中指示器的底色取 <code>--wui-color-surface-control</code>（与中性按钮使用同一种控件底色），深色模式下也能和 <code>--wui-color-page</code> 分辨开。" },
   { label: 'p', content: "触发区内任意位置（指示器、间距或右侧插槽中的标签）悬停时叠加状态层。" },

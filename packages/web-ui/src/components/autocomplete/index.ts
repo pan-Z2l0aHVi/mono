@@ -891,7 +891,9 @@ export class WebUiAutocomplete extends defineOverlayDelayProps(FormAssociated(Li
     applyOverlayVariables(portal.panel, this, [
       '--wui-overlay-min-width',
       '--wui-autocomplete-max-width',
-      '--wui-autocomplete-max-height'
+      '--wui-autocomplete-max-height',
+      '--wui-menu-item-height',
+      '--wui-option-height'
     ])
     portal.panel.setAttribute('aria-hidden', 'true')
     portal.panel.addEventListener('pointerdown', this._handlePanelPointerDown)

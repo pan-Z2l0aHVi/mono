@@ -89,7 +89,7 @@ const REMOVED_TOKENS = [
 ]
 
 describe('WebUiTheme token contract', () => {
-  it('light 与 dark 的默认 accent 前景满足常规文字 WCAG AA 对比度', () => {
+  it('light 与 dark 的默认 accent action 都使用白色前景并达到 3:1 对比度', () => {
     for (const [appearance, value] of [
       ['light', lightValue],
       ['dark', darkValue]
@@ -98,9 +98,8 @@ describe('WebUiTheme token contract', () => {
       const onAccent = value('--wui-color-on-accent')
       expect(accent, `${appearance} theme 应定义 accent`).not.toBe('')
       expect(onAccent, `${appearance} theme 应定义 on-accent`).not.toBe('')
-      expect(contrastRatio(onAccent, accent), `${appearance} accent 与 on-accent 应达到 4.5:1`).toBeGreaterThanOrEqual(
-        4.5
-      )
+      expect(onAccent).toBe('#fff')
+      expect(contrastRatio(onAccent, accent), `${appearance} accent 与 on-accent 应达到 3:1`).toBeGreaterThanOrEqual(3)
     }
   })
 
@@ -140,8 +139,8 @@ describe('WebUiTheme token contract', () => {
         const background = mixColors(accent, '#000', accentWeight)
         expect(
           contrastRatio(onAccent, background),
-          `${appearance} primary ${index === 0 ? 'hover' : 'active'} text should reach 4.5:1`
-        ).toBeGreaterThanOrEqual(4.5)
+          `${appearance} primary ${index === 0 ? 'hover' : 'active'} text should reach 3:1`
+        ).toBeGreaterThanOrEqual(3)
       }
     }
   })

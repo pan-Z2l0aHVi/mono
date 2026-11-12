@@ -201,6 +201,18 @@ function releaseDrag(target: HTMLElement) {
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiDrawer drag bar 命中（浏览器）', () => {
+  it('内容内边距改变时四个方向的拖拽条仍在原位且可拖', async () => {
+    for (const placement of PLACEMENTS) {
+      const el = await mountDrawer({ placement })
+      const before = capsuleCenter(el)
+      el.style.setProperty('--wui-drawer-content-padding', '0px')
+      const after = capsuleCenter(el)
+      expect(after.x).toBeCloseTo(before.x)
+      expect(after.y).toBeCloseTo(before.y)
+      expect(isDragSurface(el, hitTestAt(el, after.x, after.y))).toBe(true)
+      el.remove()
+    }
+  })
   /*
    * 结构解耦让胶囊与 drag zone 不再互相位移，但没有解决**命中**：胶囊落到让开区里就成了
    * 按不下去、悬停不亮的死装饰。端头 drag edge 补的就是这一段。四条覆盖同时钉住

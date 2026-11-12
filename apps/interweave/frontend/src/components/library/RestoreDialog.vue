@@ -1,13 +1,17 @@
 <script setup lang="ts">
 import appScrollbarsOptions from '@greypan/app-scrollbars'
-import type { WebUiDialog, WebUiEvent, WebUiInput } from '@greypan/web-ui'
-import { lucideFile, lucideFolderOpen, lucideGlobe, lucideUndo2 } from '@greypan/web-ui/icons'
+import { toast, type WebUiDialog, type WebUiEvent } from '@greypan/web-ui'
+import { akarIconsCircleCheck } from '@greypan/web-ui/icons'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
-import { ref, watch } from 'vue'
+import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
-import { metadataRowClass } from './presentation'
+import type { ResourceKind, ResourceSourceView } from '@/stores/library'
+
+import { doubleArrowRight, radarTwo } from './icons'
+import { resourceDialogColumnClass, resourceDialogQueueClass } from './resourceDialogStyles'
+import ResourceLinkDialog from './ResourceLinkDialog.vue'
 import type { LibraryRestoreQueueItem } from './restore'
-import { normalizeLibraryURL } from './restore'
+import RestoreRow from './RestoreRow.vue'
 
 const props = defineProps<{
   open: boolean
@@ -16,70 +20,157 @@ const props = defineProps<{
   error: string
   mobile: boolean
   activeItemId: string | null
+  chooseFilePath: () => Promise<string | null>
+  prepareFilePreview: (path: string) => Promise<{ kind: ResourceKind; token?: string; media_url?: string }>
+  releaseFilePreview: (token: string) => Promise<void>
 }>()
-
 const emit = defineEmits<{
   'update:open': [value: boolean]
   submit: [items: LibraryRestoreQueueItem[]]
 }>()
 
-const replacementLocations = ref<Record<string, string>>({})
+const dialogRef = ref<WebUiDialog | null>(null)
+const drafts = ref<Record<string, string>>({})
+const prepared = ref<Record<string, string>>({})
+const picking = ref<string | null>(null)
 const validationError = ref('')
-
-function resetDrafts() {
-  replacementLocations.value = Object.fromEntries(props.queue.map(item => [item.id, item.replacementLocation]))
-  validationError.value = ''
+const editingUrlItem = ref<LibraryRestoreQueueItem | null>(null)
+const urlDraft = ref('')
+const previews = ref<
+  Record<string, { kind: ResourceKind; token: string | null; mediaUrl: string | null; path: string }>
+>({})
+const previewVersions = new Map<string, number>()
+function releasePreview(id: string) {
+  previewVersions.set(id, (previewVersions.get(id) ?? 0) + 1)
+  const preview = previews.value[id]
+  delete previews.value[id]
+  if (preview?.token) void props.releaseFilePreview(preview.token).catch(console.error)
 }
+function clearPreviews() {
+  for (const id of Object.keys(previews.value)) releasePreview(id)
+}
+function previewSource(id: string): ResourceSourceView | null {
+  const preview = previews.value[id]
+  if (!preview) return null
+  return {
+    id,
+    type: 'file',
+    location: preview.path,
+    available: true,
+    isPreferred: true,
+    orderIndex: 0,
+    mediaUrl: preview.mediaUrl,
+    thumbnailUrl: null,
+    metadata: null
+  }
+}
+async function prepareThumbnail(id: string, path: string, request: number) {
+  const version = (previewVersions.get(id) ?? 0) + 1
+  previewVersions.set(id, version)
+  try {
+    const preview = await props.prepareFilePreview(path)
+    if (
+      request !== generation ||
+      previewVersions.get(id) !== version ||
+      prepared.value[id] !== path ||
+      !props.queue.some(item => item.id === id)
+    ) {
+      if (preview.token) await props.releaseFilePreview(preview.token)
+      return
+    }
+    previews.value[id] = { kind: preview.kind, token: preview.token ?? null, mediaUrl: preview.media_url ?? null, path }
+  } catch (error) {
+    console.error('准备找回资源缩略图失败', error)
+  }
+}
+watch(
+  () => props.queue.map(item => item.id).join('|'),
+  () => {
+    for (const id of Object.keys(previews.value)) {
+      if (!props.queue.some(item => item.id === id)) releasePreview(id)
+    }
+  }
+)
+onBeforeUnmount(() => {
+  generation++
+  clearPreviews()
+})
+let generation = 0
+const pendingItems = computed(() => props.queue.filter(item => !prepared.value[item.id]))
+const readyItems = computed(() => props.queue.filter(item => !!prepared.value[item.id]))
+const locked = computed(() => props.busy || picking.value !== null)
 
 watch(
   () => props.open,
   open => {
-    if (open) resetDrafts()
+    generation++
+    clearPreviews()
+    editingUrlItem.value = null
+    if (open) {
+      drafts.value = {}
+      prepared.value = {}
+      picking.value = null
+      validationError.value = ''
+    }
   },
   { immediate: true }
 )
 
-watch(
-  () => props.queue.map(item => item.id).join('|'),
-  () => {
-    if (props.open) resetDrafts()
-  }
-)
-
 function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
-  if (event.target !== event.currentTarget) return
+  if (event.target !== event.currentTarget || locked.value) return
   emit('update:open', event.detail.open)
 }
 
-function handleInput(itemId: string, event: WebUiEvent<WebUiInput, 'input'>) {
-  replacementLocations.value[itemId] = event.target.value
+function completeUrl(value: string) {
+  const item = editingUrlItem.value
+  if (!item) return
+  drafts.value[item.id] = value
+  prepared.value[item.id] = value
+  editingUrlItem.value = null
+}
+
+async function prepare(item: LibraryRestoreQueueItem) {
+  if (locked.value) return
   validationError.value = ''
+  if (item.kind === 'url') {
+    urlDraft.value = drafts.value[item.id] ?? ''
+    editingUrlItem.value = item
+    return
+  }
+  const request = generation
+  picking.value = item.id
+  try {
+    const path = await props.chooseFilePath()
+    if (request === generation && path) {
+      prepared.value[item.id] = path
+      void prepareThumbnail(item.id, path, request)
+    }
+  } catch (cause) {
+    if (request === generation) validationError.value = cause instanceof Error ? cause.message : '选择文件失败，请重试'
+  } finally {
+    if (request === generation) picking.value = null
+  }
+}
+
+function cancelPrepare(item: LibraryRestoreQueueItem) {
+  if (locked.value) return
+  if (item.kind === 'url') drafts.value[item.id] = prepared.value[item.id]
+  delete prepared.value[item.id]
+  releasePreview(item.id)
 }
 
 function submit() {
-  if (props.busy || !props.queue.length) return
-
-  const items: LibraryRestoreQueueItem[] = []
-  for (const item of props.queue) {
-    if (item.kind === 'url') {
-      const replacementLocation = normalizeLibraryURL(replacementLocations.value[item.id] ?? item.replacementLocation)
-      if (!replacementLocation) {
-        validationError.value = '请输入有效的 http 或 https URL'
-        return
-      }
-      items.push({ ...item, replacementLocation })
-      continue
-    }
-    items.push(item)
-  }
-
-  validationError.value = ''
-  emit('submit', items)
+  if (locked.value || !readyItems.value.length) return
+  emit(
+    'submit',
+    readyItems.value.map(item => ({ ...item, replacementLocation: prepared.value[item.id] }))
+  )
 }
 </script>
 
 <template>
   <web-ui-dialog
+    ref="dialogRef"
     :open="open"
     controlled
     no-backdrop-close
@@ -89,7 +180,6 @@ function submit() {
     @open-change="handleOpenChange"
   >
     <span slot="header">找回资源</span>
-
     <p
       v-if="validationError || error"
       class="m-0 rounded-md bg-red-50 px-3 py-2 text-sm leading-5 text-red-700 dark:bg-red-400/12 dark:text-red-200"
@@ -97,190 +187,104 @@ function submit() {
     >
       {{ validationError || error }}
     </p>
-
-    <!--
-      内层不自己算高度：`--wui-dialog-max-height` 的语义是「内容区高度」（不是「整卡高度」，
-      见 @greypan/web-ui 的 dialog），上限由组件的 `.desc` 承担。
-
-      这里用 var(--wui-dialog-max-height) 而不是 height: 100%：后者在内容不足时会让
-      `.desc` 收缩到内容高，整张卡片跟着变矮，队列有无时又跳一次。token 直接当内层高度，
-      固定高度这个性质才成立（两个栏恒等高）。
-      token 声明在外层 web-ui-dialog 上，内层作为后代继承得到，两个数不会走散。
-
-      token 里减掉的 142 是本 dialog 的 chrome 实测值（Chrome/Chromium，1017×503）：
-        卡片上 padding        20（上）+ 24（下）
-        .header 带外高         37.59（标题 21.59 + 带下 margin 16）
-        .desc margin-top       −6（focus-ring 上余量的成对负 margin，扣回 title 下方间距）
-        .desc padding-block   12（focus-ring 余量）
-        .desc margin-bottom   18
-        .wui-dialog-footer    36（--wui-control-size，两枚 button）
-        ------------------------------------------
-        chrome                 141.59 → 142（向上取整，留亚像素余量）
-
-      与 AddDialog 相同纯属巧合：两者标题都是单行四字，footer 都是两枚 button。
-      SettingsDialog 没有 footer button、标题两字，实测 chrome 是 157.59 → 158，三处不能互相照抄。
-
-      触摸端 `@media (pointer: coarse)` 把 --wui-control-size 抬到 40，chrome 变 145.59。
-      这 4px 由**卡片**吸收：内容区仍等于 token 本身，一像素不缩，长高的是卡片本身。
-      它没有把卡片顶出 dialog 盒子——那正是本轮修掉的 bug。所以 token 减掉的 142 是
-      **内容区预算**，不是整卡定值：整卡高度仍随 --wui-control-size 一起长。
-    -->
     <div
-      class="grid min-h-0 grid-cols-2 gap-5 mobile:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
+      class="grid min-h-0 grid-cols-[minmax(0,1fr)_36px_minmax(0,1fr)] max-[900px]:grid-cols-1 max-[900px]:grid-rows-[minmax(0,1fr)_28px_minmax(0,1fr)]"
       style="height: var(--wui-dialog-max-height)"
     >
-      <section
-        class="grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-clip [overflow-clip-margin:6px]"
-      >
-        <p class="m-0 min-w-0 text-[14px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
-          为失效资源指定新的位置；文件会按队列顺序选择，链接可直接编辑。
-        </p>
+      <template v-for="column in ['pending', 'ready']" :key="column">
+        <section :class="resourceDialogColumnClass" :aria-label="column === 'pending' ? '待找回' : '已找到'">
+          <div class="flex h-7 min-w-0 items-center justify-between gap-2">
+            <h3 class="m-0 text-[14px] font-semibold text-[#22212a] dark:text-(--wui-color-text)">
+              {{ column === 'pending' ? '待找回' : '已找到' }}
+            </h3>
+            <span class="text-xs text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+              >{{ (column === 'pending' ? pendingItems : readyItems).length }} 项</span
+            >
+          </div>
+          <div
+            v-if="!(column === 'pending' ? pendingItems : readyItems).length"
+            class="grid h-full min-h-0 place-items-center rounded-[18px] bg-white p-4 dark:bg-(--wui-color-surface-raised)"
+          >
+            <web-ui-empty
+              :size="40"
+              :description="
+                column === 'pending'
+                  ? readyItems.length
+                    ? '已选好新位置，请确认找回'
+                    : '暂无失效资源，请关闭弹窗'
+                  : '点击失效资源的按钮手动找回'
+              "
+              class="[--wui-empty-min-height:0] [--wui-empty-padding:0]"
+            ></web-ui-empty>
+          </div>
+          <OverlayScrollbarsComponent v-else :options="appScrollbarsOptions" :class="resourceDialogQueueClass">
+            <ol class="m-0 list-none p-0">
+              <RestoreRow
+                v-for="item in column === 'pending' ? pendingItems : readyItems"
+                :key="item.id"
+                :item="item"
+                :pending="column === 'pending'"
+                :location="prepared[item.id] ?? ''"
+                :preview="previews[item.id]"
+                :source="previewSource(item.id)"
+                :locked="locked"
+                :active="activeItemId === item.id"
+                @prepare="prepare(item)"
+                @cancel-prepare="cancelPrepare(item)"
+              />
+            </ol>
+          </OverlayScrollbarsComponent>
+        </section>
         <div
-          class="grid h-full min-h-0 place-content-center justify-items-center rounded-[18px] border border-black/6 bg-[#f0f0f4] px-6 py-7 text-center dark:border-white/8 dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] mobile:px-4 mobile:py-2 max-[900px]:p-5"
+          v-if="column === 'pending'"
+          class="grid place-items-center text-(--wui-color-text-secondary) max-[900px]:pt-1"
+          aria-hidden="true"
         >
-          <web-ui-empty
-            class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:52px] mobile:[--wui-empty-icon-size:40px]"
-          >
-            <span
-              slot="icon"
-              class="grid size-13 place-items-center rounded-[18px] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_10%,transparent)] text-(--wui-color-accent,#08f) dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_8%,transparent)] dark:text-(--wui-color-text-secondary) mobile:size-10 mobile:rounded-xl"
-            >
-              <web-ui-icon :icon="lucideFolderOpen" :size="23" />
-            </span>
-            <span
-              class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
-            >
-              {{ queue.length }} 个资源待找回
-            </span>
-            <span
-              slot="description"
-              class="text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
-            >
-              取消选择不会中断其他项目
-            </span>
-          </web-ui-empty>
+          <web-ui-icon :icon="doubleArrowRight" :size="24" class="max-[900px]:rotate-90" />
         </div>
-      </section>
-
-      <aside
-        class="relative grid min-h-0 min-w-0 grid-rows-[auto_minmax(0,1fr)] gap-2.5 overflow-clip [overflow-clip-margin:6px] border-0 bg-transparent p-0"
-        aria-labelledby="library-restore-queue-title"
-      >
-        <div class="flex h-7 min-w-0 items-center justify-between gap-2">
-          <h3
-            id="library-restore-queue-title"
-            class="m-0 flex items-center gap-1.5 text-[14px] font-semibold text-[#22212a] dark:text-(--wui-color-text)"
-          >
-            将找回
-          </h3>
-          <span
-            class="inline-flex h-7 items-center text-xs leading-none text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
-          >
-            {{ queue.length }} 项
-          </span>
-        </div>
-
-        <OverlayScrollbarsComponent
-          v-if="queue.length"
-          :options="appScrollbarsOptions"
-          class="h-full min-h-0 overflow-y-auto rounded-[18px] border border-black/6 bg-white dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
-        >
-          <!--
-            scrollbar 接在宿主 div 上，列表留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己
-            生成的 viewport，而 <ol> 的内容模型只容得下 <li>——宿主若还是这个 <ol>，搬进去的
-            viewport div 就落进列表里了。
-          -->
-          <ol class="m-0 list-none p-0">
-            <li
-              v-for="item in queue"
-              :key="item.id"
-              :class="[
-                metadataRowClass,
-                'items-start transition-colors duration-100',
-                activeItemId === item.id
-                  ? 'bg-black/3 dark:bg-white/6'
-                  : 'hover:bg-black/3 dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_5%,transparent)]'
-              ]"
-            >
-              <span
-                class="grid size-8 shrink-0 place-items-center rounded-[10px]"
-                :class="
-                  item.kind === 'file'
-                    ? 'bg-[rgb(124_58_237/0.1)] text-[#7c3aed]'
-                    : 'bg-[rgb(5_150_105/0.1)] text-[#059669]'
-                "
-              >
-                <web-ui-icon :icon="item.kind === 'file' ? lucideFile : lucideGlobe" />
-              </span>
-              <span class="grid min-w-0 flex-[1_1_auto] gap-[5px]">
-                <div class="flex min-h-8 items-center gap-2">
-                  <span
-                    class="min-w-0 flex-[1_1_auto] truncate text-[14px] font-medium leading-[1.35] text-[#22212a] dark:text-(--wui-color-text)"
-                  >
-                    {{ item.resourceTitle }}
-                  </span>
-                  <span
-                    v-if="activeItemId === item.id"
-                    class="flex shrink-0 items-center gap-1 text-[11px] leading-4 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
-                  >
-                    <web-ui-spinner :size="12" />
-                    处理中
-                  </span>
-                </div>
-                <span
-                  class="block min-w-0 truncate text-xs leading-5 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
-                  :title="item.location"
-                >
-                  {{ item.kind === 'file' ? '原文件' : '原链接' }}：{{ item.location }}
-                </span>
-                <web-ui-input
-                  v-if="item.kind === 'url'"
-                  :value="replacementLocations[item.id] ?? item.replacementLocation"
-                  type="url"
-                  full
-                  :disabled="busy"
-                  placeholder="https://example.com/page"
-                  :aria-label="`${item.resourceTitle} 的新链接`"
-                  :aria-invalid="validationError ? 'true' : undefined"
-                  @input="handleInput(item.id, $event)"
-                  @keydown.enter="submit"
-                />
-                <span v-else class="text-xs leading-5 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
-                  提交时选择新文件
-                </span>
-              </span>
-            </li>
-          </ol>
-        </OverlayScrollbarsComponent>
-
-        <div
-          v-else
-          class="grid h-full min-h-0 place-items-center rounded-[18px] border border-black/6 bg-white dark:border-white/8 dark:bg-(--wui-color-surface-raised)"
-        >
-          <web-ui-empty :size="40" description="暂无待找回资源" />
-        </div>
-      </aside>
+      </template>
     </div>
-
+    <web-ui-button
+      slot="footer"
+      variant="ghost"
+      class="mr-auto shrink-0 [--wui-button-color:var(--wui-color-accent)]"
+      :disabled="locked"
+      @click="
+        toast.info('一键扫描暂不可用，请手动选择资源位置', {
+          container: dialogRef?.shadowRoot?.querySelector('dialog') ?? undefined
+        })
+      "
+    >
+      <web-ui-icon slot="prefix" :icon="radarTwo" :size="16" />一键扫描
+    </web-ui-button>
     <web-ui-button
       slot="footer"
       :full="mobile"
       variant="secondary"
-      :disabled="busy"
+      :disabled="locked"
       @click="emit('update:open', false)"
+      >取消</web-ui-button
     >
-      取消
-    </web-ui-button>
     <web-ui-button
       slot="footer"
       :full="mobile"
       variant="primary"
       :loading="busy"
-      :disabled="queue.length === 0"
+      :disabled="locked || readyItems.length === 0"
       @click="submit"
     >
-      <web-ui-icon slot="prefix" :icon="lucideUndo2" />
-      {{ queue.length > 1 ? '批量找回' : '找回' }}
+      <web-ui-icon slot="prefix" :icon="akarIconsCircleCheck" />确认找回
     </web-ui-button>
   </web-ui-dialog>
+  <ResourceLinkDialog
+    :open="editingUrlItem !== null"
+    :initial-value="urlDraft"
+    mode="restore"
+    @update:open="
+      value => {
+        if (!value) editingUrlItem = null
+      }
+    "
+    @submit="completeUrl"
+  />
 </template>

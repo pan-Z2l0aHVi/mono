@@ -20,7 +20,7 @@
   gap: var(--wui-space-2, 8px);
   align-items: center;
 
-  height: 32px;
+  height: var(--wui-dropdown-item-height, var(--wui-menu-item-height, 32px));
   padding: 0 var(--wui-space-2, 8px);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 

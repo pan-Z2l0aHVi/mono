@@ -273,7 +273,7 @@ func TestThumbnailRouteSaveAndRejects(t *testing.T) {
 	}
 }
 
-func TestThumbnailRouteRejectsUnavailableSource(t *testing.T) {
+func TestThumbnailRouteServesOnlyCachedUnavailableSource(t *testing.T) {
 	db := openTestDB(t)
 	location := filepath.Join(t.TempDir(), "offline.jpg")
 	if err := os.WriteFile(location, mustJPEG(t, gradientImage(80, 60)), 0o600); err != nil {
@@ -293,6 +293,28 @@ func TestThumbnailRouteRejectsUnavailableSource(t *testing.T) {
 			t.Fatalf("%s: expected 404 for unavailable source, got %d", method, response.Code)
 		}
 	}
+	info, err := os.Stat(location)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := mustJPEG(t, gradientImage(80, 60))
+	if !handler.thumbs.Save("source-offline", info, payload) {
+		t.Fatal("save thumbnail")
+	}
+	if err := os.Remove(location); err != nil {
+		t.Fatal(err)
+	}
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, ThumbnailPathPrefix+"source-offline", nil))
+	if response.Code != http.StatusOK || !bytes.Equal(response.Body.Bytes(), payload) {
+		t.Fatalf("expected cached thumbnail, got %d", response.Code)
+	}
+	post := httptest.NewRecorder()
+	handler.ServeHTTP(post, httptest.NewRequest(http.MethodPost, ThumbnailPathPrefix+"source-offline", bytes.NewReader(payload)))
+	if post.Code != http.StatusNotFound {
+		t.Fatalf("expected unavailable POST 404, got %d", post.Code)
+	}
+
 }
 
 func TestPruneStaleRemovesOutdatedVersions(t *testing.T) {
