@@ -75,6 +75,21 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       ...overrides.resources
     },
     sources: {
+      startRecoveryScan: async () => 'scan',
+      pollRecoveryScan: async () => ({
+        candidates: [],
+        checked: 0,
+        currentDirectory: '',
+        skipped: 0,
+        done: true,
+        cancelled: false,
+        error: ''
+      }),
+      cancelRecoveryScan: async () => undefined,
+      discardRecoveryScan: async () => undefined,
+      replaceScannedFile: async () => {
+        throw new Error('not implemented')
+      },
       // 刷新与替换直接回传变更后的完整 Resource 视图，composable 单调用即可回流。
       refreshURL: async () => createResource(),
       refreshFile: async () => createResource(),
@@ -98,10 +113,12 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       ...overrides.events
     },
     system: {
+      chooseDirectory: async () => null,
       chooseFilePaths: async () => [],
       chooseFilePath: async () => null,
       getClipboardFilePaths: async () => [],
       defaultOpenWith: async () => '',
+      showInFileManager: async () => {},
       openExternal: async () => {},
       ...overrides.system
     }

@@ -6,6 +6,7 @@ import { getTransitionDuration } from './presence'
 
 export interface NativeDialogPresenceOptions {
   getDialog(): HTMLDialogElement | null
+  getTransitionTarget?(): HTMLElement | null
   isConnected(): boolean
   isOpen(): boolean
 }
@@ -111,7 +112,10 @@ export const defineNativeDialogPresence = () =>
       dialog.classList.add('is-closing')
       dialog.classList.remove('is-visible')
       clearCloseFallback()
-      closeFallbackTimer = setTimeout(() => finishClosing(), getTransitionDuration(dialog) + 80)
+      closeFallbackTimer = setTimeout(
+        () => finishClosing(),
+        getTransitionDuration(ctx.getTransitionTarget?.() ?? dialog) + 80
+      )
     }
 
     const startClosing = () => {
@@ -197,7 +201,8 @@ export const defineNativeDialogPresence = () =>
       },
 
       handleTransitionEnd(event) {
-        if (event.target !== ctx.getDialog() || event.propertyName !== 'transform') return
+        if (event.target !== (ctx.getTransitionTarget?.() ?? ctx.getDialog()) || event.propertyName !== 'transform')
+          return
         finishClosing()
       },
 

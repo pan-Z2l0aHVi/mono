@@ -15,8 +15,10 @@ defineProps<{
   source: ResourceSourceView | null
   locked: boolean
   active: boolean
+  candidateCount: number
+  matchReasons: string[]
 }>()
-const emit = defineEmits<{ prepare: []; cancelPrepare: [] }>()
+const emit = defineEmits<{ prepare: []; cancelPrepare: []; chooseCandidates: [] }>()
 </script>
 
 <template>
@@ -39,6 +41,17 @@ const emit = defineEmits<{ prepare: []; cancelPrepare: [] }>()
           pending ? item.location : location
         }}</span
       >
+      <span v-if="!pending && matchReasons.length" class="text-xs text-(--wui-color-text-secondary)"
+        >匹配依据：{{ matchReasons.join('、') }}</span
+      >
+      <button
+        v-if="pending && candidateCount > 1"
+        type="button"
+        class="w-fit text-xs text-(--wui-color-accent) underline"
+        @click="emit('chooseCandidates')"
+      >
+        找到 {{ candidateCount }} 个候选，选择文件
+      </button>
       <span v-if="active" class="text-xs text-(--wui-color-text-secondary)">处理中</span>
     </div>
     <web-ui-tooltip :content="pending ? '手动选择' : '撤回'" placement="bottom">

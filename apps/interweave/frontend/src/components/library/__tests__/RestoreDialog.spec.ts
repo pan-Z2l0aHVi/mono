@@ -36,7 +36,7 @@ describe('RestoreDialog', () => {
     document.body.append(host)
     const chooseFilePath = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce('/new/file')
     const submit = vi.fn()
-    const scanToast = vi.spyOn(toast, 'info').mockReturnValue('scan-toast')
+    const addItems = vi.fn()
     const releaseFilePreview = vi.fn(async () => undefined)
     const prepareFilePreview = vi.fn(async () => ({
       kind: ResourceKind.ResourceKindImage,
@@ -53,9 +53,25 @@ describe('RestoreDialog', () => {
           mobile: false,
           activeItemId: null,
           chooseFilePath,
+          allUnavailableFiles: [{ ...items[0], id: 'other', sourceId: 'other' }],
+          failedIds: [],
+          chooseDirectory: async () => null,
+          startScan: async () => 'scan',
+          pollScan: async () => ({
+            candidates: [],
+            checked: 0,
+            currentDirectory: '',
+            skipped: 0,
+            done: true,
+            cancelled: false,
+            error: ''
+          }),
+          cancelScan: async () => undefined,
+          discardScan: async () => undefined,
           prepareFilePreview,
           releaseFilePreview,
-          onSubmit: submit
+          onSubmit: submit,
+          onAddItems: addItems
         })
     })
     app.mount(host)
@@ -64,7 +80,22 @@ describe('RestoreDialog', () => {
         button.textContent?.includes('一键扫描')
       )!
       scan.click()
-      expect(scanToast).toHaveBeenCalledWith('一键扫描暂不可用，请手动选择资源位置', expect.anything())
+      await nextTick()
+      expect(host.textContent).toContain('选择扫描范围')
+      expect(addItems).not.toHaveBeenCalled()
+      const scanDialog = host.querySelectorAll('web-ui-dialog')[1]
+      ;[...scanDialog.querySelectorAll<HTMLElement>('web-ui-button')]
+        .find(button => button.textContent?.trim() === '取消')!
+        .click()
+      await nextTick()
+      expect(addItems).not.toHaveBeenCalled()
+      scan.click()
+      await nextTick()
+      ;[...scanDialog.querySelectorAll<HTMLElement>('web-ui-button')]
+        .find(button => button.textContent?.trim() === '扫描指定文件夹')!
+        .click()
+      await nextTick()
+      expect(addItems).not.toHaveBeenCalled()
       expect(host.querySelector('[role="alert"]')).toBeNull()
       const find = (label: string) => host.querySelector<HTMLElement>(`web-ui-button[aria-label="${label}"]`)
       find('手动选择 文件')!.click()
@@ -82,7 +113,7 @@ describe('RestoreDialog', () => {
       await nextTick()
       expect(find('手动选择 网页')).not.toBeNull()
       const dialogs = host.querySelectorAll('web-ui-dialog')
-      const urlDialog = dialogs[1]
+      const urlDialog = dialogs[3]
       const cancelUrl = [...urlDialog.querySelectorAll<HTMLElement>('web-ui-button')].find(
         button => button.textContent?.trim() === '取消'
       )!
@@ -112,7 +143,113 @@ describe('RestoreDialog', () => {
       ])
       expect(chooseFilePath).toHaveBeenCalledTimes(2)
     } finally {
-      scanToast.mockRestore()
+      app.unmount()
+      host.remove()
+    }
+  })
+  it('扫描增量候选发生冲突时要求选择，停止后仍接收末批结果', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const candidate = (path: string) => ({
+      sourceID: 'file',
+      path,
+      size: 10,
+      modifiedAt: 1,
+      matchReasons: ['name'],
+      snapshot: path
+    })
+    const startScan = vi.fn(async () => 'scan')
+    const addItems = vi.fn()
+    const notification = vi.spyOn(toast, 'info').mockReturnValue('scan-toast')
+    const cancelScan = vi.fn(async () => undefined)
+    let finish!: (value: {
+      candidates: ReturnType<typeof candidate>[]
+      checked: number
+      currentDirectory: string
+      skipped: number
+      done: boolean
+      cancelled: boolean
+      error: string
+    }) => void
+    const pollScan = vi
+      .fn()
+      .mockResolvedValueOnce({
+        candidates: [candidate('/a')],
+        checked: 1,
+        currentDirectory: '/',
+        skipped: 0,
+        done: false,
+        cancelled: false,
+        error: ''
+      })
+      .mockImplementationOnce(
+        () =>
+          new Promise(resolve => {
+            finish = resolve
+          })
+      )
+    const submit = vi.fn()
+    const app = createApp({
+      render: () =>
+        h(RestoreDialog, {
+          open: true,
+          queue: [items[0]],
+          busy: false,
+          error: '',
+          mobile: false,
+          activeItemId: null,
+          allUnavailableFiles: [{ ...items[0], id: 'other', sourceId: 'other' }],
+          failedIds: [],
+          chooseFilePath: async () => null,
+          chooseDirectory: async () => null,
+          startScan,
+          pollScan,
+          cancelScan,
+          discardScan: async () => undefined,
+          prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindImage }),
+          releaseFilePreview: async () => undefined,
+          onSubmit: submit,
+          onAddItems: addItems
+        })
+    })
+    app.mount(host)
+    try {
+      const button = (text: string) =>
+        [...host.querySelectorAll<HTMLElement>('button, web-ui-button')].find(el => el.textContent?.trim() === text)!
+      button('一键扫描').click()
+      await nextTick()
+      expect(addItems).not.toHaveBeenCalled()
+      button('扫描全盘').click()
+      expect(addItems).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ sourceId: 'other' })]))
+      expect(startScan).toHaveBeenCalledWith(['file', 'other'], '')
+      expect(notification).toHaveBeenCalledWith('已找到 2 条失效资源', expect.anything())
+      await vi.waitFor(() => expect(host.querySelector('[aria-label="撤回 文件"]')).not.toBeNull())
+      await vi.waitFor(() => expect(pollScan).toHaveBeenCalledTimes(2))
+      expect(host.textContent).not.toContain('一键扫描')
+      expect(button('停止扫描').getAttribute('slot')).toBe('footer')
+      button('停止扫描').click()
+      expect(cancelScan).toHaveBeenCalledWith('scan')
+      finish({
+        candidates: [candidate('/b')],
+        checked: 2,
+        currentDirectory: '/',
+        skipped: 0,
+        done: true,
+        cancelled: true,
+        error: ''
+      })
+      await vi.waitFor(() => expect(host.textContent).toContain('找到 2 个候选'))
+      expect(host.textContent).toContain('扫描未完成')
+      button('找到 2 个候选，选择文件').click()
+      await nextTick()
+      expect(host.textContent).toContain('文件名一致')
+      const choice = [...host.querySelectorAll<HTMLButtonElement>('button')].find(el => el.textContent?.includes('/b'))!
+      choice.click()
+      await nextTick()
+      button('确认找回').click()
+      expect(submit).toHaveBeenCalledWith([expect.objectContaining({ replacementLocation: '/b', scanSnapshot: '/b' })])
+    } finally {
+      notification.mockRestore()
       app.unmount()
       host.remove()
     }

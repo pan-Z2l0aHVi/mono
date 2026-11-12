@@ -14,6 +14,8 @@ import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { arrowUpRight } from './icons'
 import {
+  availableFileSource,
+  fileManagerLabel,
   formatSize,
   formatDate,
   resourceKindLabel,
@@ -44,6 +46,7 @@ const emit = defineEmits<{
   preview: [resource: ResourceView]
   recover: [source: ResourceSourceView]
   openDefault: [resource: ResourceView]
+  showInFileManager: [source: ResourceSourceView]
 }>()
 const placement = computed(() => (props.mobile ? 'bottom' : 'right'))
 const unavailableSource = computed(() => props.resource?.sources.find(source => !source.available) ?? null)
@@ -196,6 +199,12 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
                 <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />{{
                   defaultOpenWithName || '系统默认应用'
                 }}
+              </web-ui-dropdown-item>
+              <web-ui-dropdown-item
+                v-if="availableFileSource(resource)"
+                @click="emit('showInFileManager', availableFileSource(resource)!)"
+              >
+                <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />{{ fileManagerLabel() }}
               </web-ui-dropdown-item>
             </web-ui-dropdown>
           </template>

@@ -15,6 +15,7 @@ import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { FocusNavigator, rowFocusTarget } from './focusNavigator'
 import { arrowUpRight } from './icons'
+import { availableFileSource, fileManagerLabel } from './presentation'
 import type { NameEditorRef } from './rename'
 import ResourceRow from './ResourceRow.vue'
 import { SweepScrollController } from './sweepScroll'
@@ -47,6 +48,7 @@ const emit = defineEmits<{
   cancelRename: []
   /** 用系统默认应用打开该资源；由父级经由 runtime 交给操作系统。 */
   openDefault: [resource: ResourceView]
+  showInFileManager: [source: ResourceSourceView]
   /** 键盘导航/context menu 请求激活某一行：由父级把 activeResourceId 置为该行资源的 id。 */
   activate: [resource: ResourceView]
 }>()
@@ -63,7 +65,7 @@ onBeforeUnmount(() => window.removeEventListener('contextmenu', preventScrimCont
 const contextMenuRef = ref<WebUiContextMenu>()
 const contextResource = ref<ResourceView | null>(null)
 const rowsRef = ref<HTMLElement | null>(null)
-const emptyTitle = computed(() => (props.runtimeAvailable ? '资源库为空' : '桌面服务未连接'))
+const emptyTitle = computed(() => (props.runtimeAvailable ? '资源库为空' : '暂时无法打开资源库'))
 const checkedSet = computed(() => new Set(props.checkedIds))
 
 /*
@@ -529,6 +531,12 @@ function handleOpenDefault(resource: ResourceView | null) {
   closeContextMenu()
 }
 
+function handleShowInFileManager(resource: ResourceView | null) {
+  const source = availableFileSource(resource)
+  if (source) emit('showInFileManager', source)
+  closeContextMenu()
+}
+
 let contextMenuOpenVersion = 0
 
 async function openContextMenu(resource: ResourceView, event: MouseEvent) {
@@ -777,6 +785,13 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
         <web-ui-dropdown-item @click="handleOpenDefault(contextResource)">
           <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />
           {{ defaultOpenWithName || '系统默认应用' }}
+        </web-ui-dropdown-item>
+        <web-ui-dropdown-item
+          v-if="availableFileSource(contextResource)"
+          @click="handleShowInFileManager(contextResource)"
+        >
+          <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />
+          {{ fileManagerLabel() }}
         </web-ui-dropdown-item>
       </web-ui-dropdown-item>
       <web-ui-dropdown-divider />

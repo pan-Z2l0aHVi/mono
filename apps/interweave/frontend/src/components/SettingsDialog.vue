@@ -117,10 +117,10 @@ function pickAccent(value: string) {
       -->
       <div v-if="activeTab === 'general'" :class="settingsRowClass">
         <div class="flex min-w-0 flex-col gap-0.5">
-          <span class="text-sm text-(--wui-color-text)">MCP server</span>
+          <span class="text-sm text-(--wui-color-text)">连接智能助手</span>
           <span :class="metadataLabelClass">即将推出</span>
         </div>
-        <web-ui-switch disabled aria-label="MCP server（即将推出）" />
+        <web-ui-switch disabled aria-label="连接智能助手（即将推出）" />
       </div>
 
       <div v-else-if="activeTab === 'appearance'" class="flex flex-col">

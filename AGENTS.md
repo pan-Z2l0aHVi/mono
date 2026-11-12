@@ -6,13 +6,15 @@
 
 改动任何文件前，先读 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)，按变更级别建立 task 并记账。分级、准入与恢复见该 skill；PR review 纪律见 [`docs/agents/review.md`](docs/agents/review.md)，方案到合并的总流程与授权见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。只做只读调查不用建 task。
 
+可变任务建账并完成 worktree 准备后，在读取实施范围的代码、派发实施子任务或修改文件之前，必须加载 [`.agents/skills/turbo-sparse-scope/SKILL.md`](.agents/skills/turbo-sparse-scope/SKILL.md)，按未结 task 的 scope 和必要的包外读取路径判断并处理稀疏范围。无法更改 Git 配置或 worktree 时按该 skill 的只读降级执行并记录原因。
+
 ## 项目身份
 
 这是一个 pnpm + Turborepo monorepo：发布 `@greypan/*` 工具包和 Lit Web Components（`@greypan/web-ui`），并维护 React、Vue 与私有集成应用作为真实集成表面。
 
 ## 不可绕过的仓库边界
 
-- 不得改写 `.npmrc` 或 `.mise.toml` 的 registry/mirror，或任何 Git 配置。
+- 不得改写 `.npmrc` 或 `.mise.toml` 的 registry/mirror，或任何 Git 配置；唯一例外是由 `turbo-sparse-scope` 执行 sparse checkout 时管理所必需的 worktree 配置与 Git 的 worktree-config 开关，不得借此更改其他 Git 配置。
 - 生成文件只经对应 generator 更新：清单、路径与入口见 [`docs/agents/generated-artifacts.md`](docs/agents/generated-artifacts.md)。正确性由 generator 重建证明，不由审查结论证明。
 - `**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是源码产物。除非任务明确要求更新已验证的视觉基线，否则不创建、不编辑、不提交。
 - `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/` 和仓库自撰 skill 的文档用中文。`skills-lock.json` 登记的第三方 skill 与 `.agents/skills-vendored/` 保持上游原文，和仓库规则冲突时以仓库规则为准。技术术语、命令、路径和包名保留英文。

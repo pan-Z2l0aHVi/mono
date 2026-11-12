@@ -15,6 +15,13 @@ export const radarTwo = {
   body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"><path d="M24 20V4C12.954 4 4 12.954 4 24s8.954 20 20 20s20-8.954 20-20"/><path d="M24 28a4 4 0 1 0 0-8a4 4 0 0 0 0 8" clip-rule="evenodd"/></g>'
 }
 
+// Iconify: carbon:stop-filled.
+export const stopFilled = {
+  width: 32,
+  height: 32,
+  body: '<path fill="currentColor" d="M16 2a14 14 0 1 0 14 14A14 14 0 0 0 16 2m6 18a2 2 0 0 1-2 2h-8a2 2 0 0 1-2-2v-8a2 2 0 0 1 2-2h8a2 2 0 0 1 2 2Z"/>'
+}
+
 // Iconify: tabler:link-plus.
 export const linkPlus = {
   width: 24,

@@ -47,7 +47,7 @@ async function openAndSettle(component: WebUiDialog): Promise<void> {
   const dialog = dialogOf(component)
   // 必须等 transform 归位：进场带 scale(1.1)，未落定时 rect 读数虚高 10%。
   await pollUntil(() => {
-    const transform = getComputedStyle(dialog).transform
+    const transform = getComputedStyle(dialog.querySelector<HTMLElement>('.wui-dialog-body')!).transform
     return transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)'
   }, 'enter transform not settled')
   await new Promise(resolve => requestAnimationFrame(resolve))

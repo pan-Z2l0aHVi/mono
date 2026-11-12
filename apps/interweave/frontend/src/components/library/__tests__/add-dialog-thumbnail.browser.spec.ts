@@ -119,6 +119,21 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
           error: '',
           mobile: false,
           activeItemId: null,
+          allUnavailableFiles: [],
+          failedIds: [],
+          chooseDirectory: async () => null,
+          startScan: async () => 'scan',
+          pollScan: async () => ({
+            candidates: [],
+            checked: 0,
+            currentDirectory: '',
+            skipped: 0,
+            done: true,
+            cancelled: false,
+            error: ''
+          }),
+          cancelScan: async () => undefined,
+          discardScan: async () => undefined,
           chooseFilePath: async () => null,
           prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
           releaseFilePreview: async () => undefined
@@ -164,6 +179,21 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
           error: '',
           mobile: false,
           activeItemId: null,
+          allUnavailableFiles: [],
+          failedIds: [],
+          chooseDirectory: async () => null,
+          startScan: async () => 'scan',
+          pollScan: async () => ({
+            candidates: [],
+            checked: 0,
+            currentDirectory: '',
+            skipped: 0,
+            done: true,
+            cancelled: false,
+            error: ''
+          }),
+          cancelScan: async () => undefined,
+          discardScan: async () => undefined,
           chooseFilePath: async () => null,
           prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
           releaseFilePreview: async () => undefined

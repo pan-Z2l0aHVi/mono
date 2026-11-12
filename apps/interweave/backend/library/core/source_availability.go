@@ -85,6 +85,7 @@ func (s *SourceService) FileSourceIDsByLocations(ctx context.Context, locations 
 func (s *SourceService) ApplyFileAvailability(ctx context.Context, sourceID string, available bool) (*AvailabilityChange, error) {
 	now := time.Now().UnixMilli()
 	var change *AvailabilityChange
+	var fileLocation string
 	err := s.db.WithTx(ctx, func(tx *sql.Tx) error {
 		// 读在事务内：与手动刷新的比较-写入保持原子，不丢更新。
 		src, err := s.sources.Get(ctx, tx, sourceID)
@@ -94,6 +95,7 @@ func (s *SourceService) ApplyFileAvailability(ctx context.Context, sourceID stri
 		if src.Type != storage.SourceTypeFile {
 			return ErrOnlyFileSourceRefreshable
 		}
+		fileLocation = src.Location
 		if src.Available == available {
 			// 幂等：既不写 updated_at 也不发事件，否则每次文件写入事件都会刷新时间戳，
 			// 搅乱列表按 created_at 的排序。
@@ -120,6 +122,9 @@ func (s *SourceService) ApplyFileAvailability(ctx context.Context, sourceID stri
 			return nil, nil
 		}
 		return nil, err
+	}
+	if available && fileLocation != "" {
+		recordFingerprint(s.db, sourceID, fileLocation)
 	}
 	return change, nil
 }

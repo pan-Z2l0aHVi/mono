@@ -139,7 +139,7 @@ export function tagClass(color: TagColor | string | null | undefined) {
 }
 
 export function sourceTypeLabel(source: ResourceSourceView) {
-  return source.type === 'file' ? '本地文件' : 'URL'
+  return source.type === 'file' ? '本地文件' : '网页链接'
 }
 
 export function sourceTypeIcon(source: ResourceSourceView) {
@@ -147,7 +147,20 @@ export function sourceTypeIcon(source: ResourceSourceView) {
 }
 
 export function sourceTypeDisplayLabel(source: ResourceSourceView) {
-  return source.type === 'file' ? '文件系统' : '远程链接'
+  return source.type === 'file' ? '本地文件' : '网页链接'
+}
+
+export function availableFileSource(resource: ResourceView | null | undefined) {
+  if (!resource) return null
+  if (resource.preferred?.type === 'file' && resource.preferred.available) return resource.preferred
+  return resource.sources.find(source => source.type === 'file' && source.available) ?? null
+}
+
+export function fileManagerLabel() {
+  const platform = (window as Window & { _wails?: { environment?: { OS?: string } } })._wails?.environment?.OS
+  if (platform === 'darwin' || (!platform && /Macintosh|Mac OS X/.test(navigator.userAgent))) return '在访达中打开'
+  if (platform === 'windows') return '在文件资源管理器中打开'
+  return '在文件管理器中打开'
 }
 
 export function fileExtension(location: string) {

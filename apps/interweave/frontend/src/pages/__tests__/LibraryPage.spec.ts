@@ -156,6 +156,21 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       ...overrides.resources
     },
     sources: {
+      startRecoveryScan: async () => 'scan',
+      pollRecoveryScan: async () => ({
+        candidates: [],
+        checked: 0,
+        currentDirectory: '',
+        skipped: 0,
+        done: true,
+        cancelled: false,
+        error: ''
+      }),
+      cancelRecoveryScan: async () => undefined,
+      discardRecoveryScan: async () => undefined,
+      replaceScannedFile: async () => {
+        throw new Error('not implemented')
+      },
       refreshURL: async () => resource(),
       refreshFile: async () => resource(),
       replaceFile: async () => resource(),
@@ -189,10 +204,12 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       ...overrides.events
     },
     system: {
+      chooseDirectory: async () => null,
       chooseFilePaths: async () => [],
       chooseFilePath: async () => null,
       getClipboardFilePaths: async () => [],
       defaultOpenWith: async () => '',
+      showInFileManager: async () => {},
       openExternal: async () => {},
       ...overrides.system
     }

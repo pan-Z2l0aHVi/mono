@@ -75,7 +75,7 @@ describe('library restore queue', () => {
     expect(normalizeLibraryURL('not a URL')).toBeNull()
   })
 
-  it('按已选位置顺序替换，失败后保留未完成项', async () => {
+  it('逐项替换，失败后继续保存其他项', async () => {
     const items = [
       { ...queueItem('first', 'file'), replacementLocation: '/new/file.txt' },
       queueItem('second', 'url'),
@@ -86,10 +86,11 @@ describe('library restore queue', () => {
     const replaceURLSource = vi.fn(async () => {
       throw failure
     })
-    const result = await restoreLibraryQueue(items, { replaceFileSource, replaceURLSource })
-    expect(replaceFileSource).toHaveBeenCalledOnce()
+    const replaceScannedFileSource = vi.fn(async () => undefined)
+    const result = await restoreLibraryQueue(items, { replaceFileSource, replaceScannedFileSource, replaceURLSource })
+    expect(replaceFileSource).toHaveBeenCalledTimes(2)
     expect(replaceFileSource).toHaveBeenCalledWith('source-first', '/new/file.txt')
-    expect(result.completedIds).toEqual(['first'])
-    expect(result.failed).toEqual({ item: items[1], cause: failure })
+    expect(result.completedIds).toEqual(['first', 'third'])
+    expect(result.failures).toEqual([{ item: items[1], cause: failure }])
   })
 })

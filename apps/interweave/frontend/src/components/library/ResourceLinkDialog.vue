@@ -44,7 +44,7 @@ async function pasteClipboard() {
 function submit() {
   const url = normalizeLibraryURL(draft.value)
   if (!url) {
-    error.value = '请输入有效的 http 或 https URL'
+    error.value = '请输入有效的网页链接'
     return
   }
   emit('submit', url)

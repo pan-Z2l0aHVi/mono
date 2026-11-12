@@ -190,7 +190,7 @@ describe('ResourceList', () => {
 
       const empty = host.querySelector('web-ui-empty')
       expect(empty?.getAttribute('size')).toBe('72')
-      expect(empty?.getAttribute('title')).toBe('桌面服务未连接')
+      expect(empty?.getAttribute('title')).toBe('暂时无法打开资源库')
       expect(empty?.getAttribute('description')).toBe('资源库还是空的')
     } finally {
       app.unmount()
@@ -1029,6 +1029,30 @@ describe('ResourceList：打开方式显示系统默认应用', () => {
       item.dispatchEvent(new MouseEvent('click', { bubbles: true }))
 
       expect(openDefault).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'r1' }))
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it.each([
+    ResourceKind.ResourceKindImage,
+    ResourceKind.ResourceKindVideo,
+    ResourceKind.ResourceKindAudio,
+    ResourceKind.ResourceKindDocument,
+    ResourceKind.ResourceKindJSON,
+    ResourceKind.ResourceKindFile
+  ])('文件类型 %s 可在文件管理器中定位', async kind => {
+    const showInFileManager = vi.fn<(source: ResourceSourceView) => void>()
+    const mounted = await mountList([resource({ kind })], [], {}, { onShowInFileManager: showInFileManager })
+    try {
+      mounted.rows[0].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
+      await flushRenders()
+      const item = [...mounted.host.querySelectorAll<HTMLElement>('web-ui-dropdown-item')].find(candidate =>
+        /^在(访达|文件资源管理器|文件管理器)中打开$/.test(candidate.textContent?.trim() ?? '')
+      )
+      expect(item).toBeDefined()
+      item!.click()
+      expect(showInFileManager).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ location: '/tmp/a.png' }))
     } finally {
       mounted.unmount()
     }

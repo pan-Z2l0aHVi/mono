@@ -121,7 +121,9 @@ describe('WebUiDialog 组件（浏览器）', () => {
     await component.updateComplete
     expect(dialog?.open).toBe(true)
 
-    dialog?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'transform' }))
+    dialog
+      ?.querySelector('.wui-dialog-body')
+      ?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'transform', bubbles: true }))
     await flush()
     expect(dialog?.open).toBe(false)
   })
@@ -214,7 +216,9 @@ describe('WebUiDialog 组件（浏览器）', () => {
     // Consumer 回写 open=false 后才执行关闭；直接赋值不 mark，不补发通知事件（总事件数仍为 2）
     component.open = false
     await component.updateComplete
-    dialog?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'transform' }))
+    dialog
+      ?.querySelector('.wui-dialog-body')
+      ?.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'transform', bubbles: true }))
     await flush()
     expect(component.open).toBe(false)
     expect(dialog?.open).toBe(false)
