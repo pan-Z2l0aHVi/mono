@@ -344,7 +344,7 @@ const open = ref(false)
 
 ### 移动端 drawer
 
-`mobile` 由应用控制。设置为 `true` 时侧边栏使用 drawer，应用可按视口或自己的布局策略决定该值。
+`mobile` 由应用控制。设置为 `true` 时侧边栏使用 drawer，应用可按视口或自己的布局策略决定该值。示例装进限高容器，只展示移动端开关与内容区，避免整屏占用。
 
 ```tsx
 import { useState } from 'react'
@@ -352,30 +352,36 @@ import { useState } from 'react'
 export default function Demo() {
   const [open, setOpen] = useState(false)
   return (
-    <web-ui-layout
-      mobile
-      style={{ '--wui-layout-mobile-toggle-inset': '24px', '--wui-layout-mobile-toggle-top': '16px' }}
-      sidebarOpen={open}
-      onsidebar-open-change={event => setOpen(event.detail.open)}
-    >
-      <div slot="sidebar">导航</div>
-      <div>内容</div>
-    </web-ui-layout>
+    <div className="h-[240px] w-full overflow-hidden rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:240px]">
+      <web-ui-layout
+        mobile
+        style={{ '--wui-layout-mobile-toggle-inset': '24px', '--wui-layout-mobile-toggle-top': '16px' }}
+        sidebarOpen={open}
+        onsidebar-open-change={event => setOpen(event.detail.open)}
+      >
+        <div slot="sidebar">导航</div>
+        <div className="p-4 text-sm">内容</div>
+      </web-ui-layout>
+    </div>
   )
 }
 ```
 
 ```vue
 <template>
-  <web-ui-layout
-    :mobile="true"
-    style="--wui-layout-mobile-toggle-inset: 24px; --wui-layout-mobile-toggle-top: 16px"
-    :sidebarOpen="open"
-    @sidebar-open-change="open = $event.detail.open"
+  <div
+    class="h-[240px] w-full overflow-hidden rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:240px]"
   >
-    <div slot="sidebar">导航</div>
-    <div>内容</div>
-  </web-ui-layout>
+    <web-ui-layout
+      :mobile="true"
+      style="--wui-layout-mobile-toggle-inset: 24px; --wui-layout-mobile-toggle-top: 16px"
+      :sidebarOpen="open"
+      @sidebar-open-change="open = $event.detail.open"
+    >
+      <div slot="sidebar">导航</div>
+      <div class="p-4 text-sm">内容</div>
+    </web-ui-layout>
+  </div>
 </template>
 
 <script setup lang="ts">
