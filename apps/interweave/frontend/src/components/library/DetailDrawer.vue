@@ -20,11 +20,10 @@ import {
   formatSize,
   formatDate,
   resourceKindLabel,
-  sourceTypeDisplayLabel,
-  tagChipClass,
-  tagClass
+  sourceTypeDisplayLabel
 } from './presentation'
 import { DRAWER_TITLE_EDITOR_KEY, type NameEditorRef } from './rename'
+import ResourceTag from './ResourceTag.vue'
 import ResourceThumbnail from './ResourceThumbnail.vue'
 
 const props = defineProps<{
@@ -304,10 +303,8 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
           class="detail-group mb-3 overflow-hidden rounded-[18px] bg-(--wui-color-surface,#fff) detail-tags flex min-h-9 box-border items-center gap-1.5 px-[15px] py-1"
         >
           <div class="detail-tags-list flex min-w-0 flex-1 flex-wrap gap-1.5">
-            <span v-if="!resource.tags.length" class="text-xs text-(--wui-color-text-secondary)">暂未添加标签</span>
-            <span v-for="tag in resource.tags" :key="tag.id" :class="[tagChipClass, tagClass(tag.color)]">{{
-              tag.name
-            }}</span>
+            <span v-if="!resource.tags.length" class="text-sm text-(--wui-color-text-secondary)">暂未添加标签</span>
+            <ResourceTag v-for="tag in resource.tags" :key="tag.id" :name="tag.name" :color="tag.color" />
           </div>
           <web-ui-button
             class="detail-edit-tags -mr-2 [--wui-button-color:#007aff] [--wui-font-size:14px]"
@@ -320,7 +317,8 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
         </div>
         <p class="detail-caption mx-3.5 mt-4 mb-1.5 text-xs text-[#777780]">备注</p>
         <web-ui-textarea
-          class="mb-3 [--wui-shadow-glass:0_0_0_transparent] [--wui-color-accent:transparent] [--wui-color-focus-ring:transparent] [--wui-color-glass-ring:transparent] [--wui-color-glass-ring-shade:transparent] [--wui-color-glass-ring-sheen:transparent] [--wui-color-glass-highlight:transparent]"
+          class="mb-3 rounded-[18px] bg-(--wui-color-surface,#fff) [--wui-shadow-glass:0_0_0_transparent] [--wui-color-accent:transparent] [--wui-color-focus-ring:transparent] [--wui-color-glass-ring:transparent] [--wui-color-glass-ring-shade:transparent] [--wui-color-glass-ring-sheen:transparent] [--wui-color-glass-highlight:transparent]"
+          borderless
           :value="resource.note"
           :rows="2"
           autosize

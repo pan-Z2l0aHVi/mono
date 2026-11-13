@@ -12,11 +12,10 @@ import {
   timestampMilliseconds,
   primarySource,
   sourceTypeIcon,
-  sourceTypeLabel,
-  tagChipClass,
-  tagClass
+  sourceTypeLabel
 } from './presentation'
 import type { NameEditorRef } from './rename'
+import ResourceTag from './ResourceTag.vue'
 import ResourceThumbnail from './ResourceThumbnail.vue'
 
 const props = defineProps<{
@@ -224,9 +223,7 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     </div>
 
     <div v-if="resource.tags.length" class="flex max-w-[25%] flex-wrap justify-end gap-1.5">
-      <span v-for="tag in resource.tags" :key="tag.id" :class="[tagChipClass, tagClass(tag.color)]">
-        {{ tag.name }}
-      </span>
+      <ResourceTag v-for="tag in resource.tags" :key="tag.id" :name="tag.name" :color="tag.color" />
     </div>
   </div>
 </template>

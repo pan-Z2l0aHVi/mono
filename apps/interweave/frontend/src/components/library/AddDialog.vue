@@ -24,8 +24,7 @@ import type { ResourceSourceView, TagColor } from '@/stores/library'
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 import { queueItemTitle } from './addQueue'
-import { linkPlus } from './icons'
-import { tagChipClass, tagClass } from './presentation'
+import { doubleArrowRight, linkPlus } from './icons'
 import type { NameEditorRef } from './rename'
 import {
   resourceDialogColumnClass,
@@ -34,6 +33,7 @@ import {
   resourceDialogRowClass
 } from './resourceDialogStyles'
 import ResourceLinkDialog from './ResourceLinkDialog.vue'
+import ResourceTag from './ResourceTag.vue'
 import ResourceThumbnail from './ResourceThumbnail.vue'
 
 const props = defineProps<{
@@ -250,8 +250,12 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       正是「chrome 由内容撑开」要的结果。
     -->
     <div
-      class="grid h-(--wui-dialog-max-height) min-h-0 gap-5 mobile:gap-4"
-      :class="mobile ? 'grid-cols-1 grid-rows-2' : 'grid-cols-2'"
+      class="grid h-(--wui-dialog-max-height) min-h-0"
+      :class="
+        mobile
+          ? 'grid-cols-1 grid-rows-[minmax(0,1fr)_20px_minmax(0,1fr)]'
+          : 'grid-cols-[minmax(0,1fr)_36px_minmax(0,1fr)]'
+      "
     >
       <section :class="resourceDialogColumnClass">
         <div class="flex h-7 min-w-0 items-center justify-between gap-2">
@@ -320,6 +324,10 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           </web-ui-empty>
         </button>
       </section>
+
+      <div class="grid place-items-center text-(--wui-color-text-secondary)" aria-hidden="true">
+        <web-ui-icon :icon="doubleArrowRight" :size="24" :class="{ 'rotate-90': mobile }" />
+      </div>
 
       <aside
         :class="[resourceDialogColumnClass, 'relative border-0 bg-transparent p-0']"
@@ -426,9 +434,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                     {{ item.location }}
                   </span>
                   <div v-if="item.tags.length" class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
-                    <span v-for="tag in item.tags" :key="tag" :class="[tagChipClass, tagClass(props.tagColors[tag])]">
-                      {{ tag }}
-                    </span>
+                    <ResourceTag v-for="tag in item.tags" :key="tag" :name="tag" :color="props.tagColors[tag]" />
                   </div>
                 </div>
               </span>
@@ -475,7 +481,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       @click="emit('submit')"
     >
       <web-ui-icon slot="prefix" :icon="akarIconsCircleCheck" />
-      {{ queue.length > 1 ? '批量添加' : '添加' }}
+      确认添加
     </web-ui-button>
   </web-ui-dialog>
   <ResourceLinkDialog v-model:open="addUrlOpen" initial-value="" mode="add" @submit="emit('addUrl', $event)" />

@@ -770,7 +770,7 @@ describe('LibraryPage：粘贴链接', () => {
       await openAddDialog(mounted.host)
       paste('https://example.com/article')
       await flush()
-      button(mounted.host, '添加').click()
+      button(mounted.host, '确认添加').click()
       await flush()
 
       expect(createResource).toHaveBeenCalledExactlyOnceWith({
@@ -799,7 +799,7 @@ describe('LibraryPage：粘贴链接', () => {
 
       paste('https://example.com/article')
       await flush()
-      button(mounted.host, '添加').click()
+      button(mounted.host, '确认添加').click()
       await flush()
 
       expect(createResource).toHaveBeenCalledTimes(1)
@@ -821,7 +821,7 @@ describe('LibraryPage：粘贴链接', () => {
       const dialog = addDialog(mounted.host)
       paste('https://example.com/article')
       await flush()
-      button(mounted.host, '添加').click()
+      button(mounted.host, '确认添加').click()
       await flush()
 
       expect(dialogOpen(dialog)).toBe(true)

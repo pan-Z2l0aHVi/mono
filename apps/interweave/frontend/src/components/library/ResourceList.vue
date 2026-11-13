@@ -811,8 +811,8 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
         标签
       </web-ui-dropdown-item>
       <web-ui-dropdown-divider />
-      <web-ui-dropdown-item class="text-(--wui-color-danger,#ef4444)" @click="handleDelete(contextResource)">
-        <web-ui-icon slot="prefix" :icon="lucideTrash2" :size="14" class="text-(--wui-color-danger,#ef4444)" />
+      <web-ui-dropdown-item style="color: var(--wui-color-danger, #ef4444)" @click="handleDelete(contextResource)">
+        <web-ui-icon slot="prefix" :icon="lucideTrash2" :size="14" />
         删除
       </web-ui-dropdown-item>
     </div>
