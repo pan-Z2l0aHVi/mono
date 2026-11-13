@@ -53,7 +53,7 @@ const KIND_TEXT: Partial<Record<string, string>> = {
   file: 'text-orange-600 dark:text-orange-300'
 }
 
-export const DEFAULT_TAG_CLASS = 'bg-black/5 text-gray-500 dark:bg-white/10 dark:text-neutral-300'
+export const DEFAULT_TAG_CLASS = 'bg-[#1b1b20]/5 text-gray-500 dark:bg-white/10 dark:text-neutral-300'
 
 /**
  * 持久化颜色 key → chip 样式。
@@ -89,7 +89,7 @@ const TAG_COLOR_CLASSES = {
 } satisfies Record<TagColor, string>
 
 export const metadataRowClass =
-  "relative flex min-w-0 items-center justify-between gap-4 px-4 py-3 after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-black/6 after:content-[''] last:after:hidden dark:after:bg-white/8"
+  "relative flex min-w-0 items-center justify-between gap-4 px-4 py-3 after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-[#1b1b20]/6 after:content-[''] last:after:hidden dark:after:bg-white/8"
 export const metadataLabelClass = 'shrink-0 text-xs leading-5 text-[#8a8a94] dark:text-(--wui-color-text-secondary)'
 export const metadataValueClass =
   'min-w-0 truncate text-right text-xs leading-5 text-[#22212a] dark:text-(--wui-color-text)'
@@ -114,7 +114,7 @@ export function resourceKindLabel(kind: ResourceKind) {
 }
 
 export function resourceKindClass(kind: ResourceKind) {
-  return KIND_CONTAINERS[kind] ?? 'bg-black/5 text-(--wui-color-text-secondary) dark:bg-white/8'
+  return KIND_CONTAINERS[kind] ?? 'bg-[#1b1b20]/5 text-(--wui-color-text-secondary) dark:bg-white/8'
 }
 
 export function resourceKindTextClass(kind: ResourceKind) {

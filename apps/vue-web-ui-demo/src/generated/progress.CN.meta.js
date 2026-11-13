@@ -108,7 +108,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-progress-track-color</code>" },
       { label: 'td', content: "轨道底色。" },
-      { label: 'td', content: "<code>var(--wui-color-surface-track, #e5e5ea)</code>" }
+      { label: 'td', content: "<code>var(--wui-color-surface-track, #e5e5eb)</code>" }
       ]
     },
     {

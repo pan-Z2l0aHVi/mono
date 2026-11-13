@@ -106,10 +106,10 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     :class="[
       rowRadiusClass,
       checked
-        ? 'bg-black/8 dark:bg-white/12'
+        ? 'bg-[#1b1b20]/8 dark:bg-white/12'
         : active
-          ? 'bg-black/8 dark:bg-white/12'
-          : 'hover:bg-black/3.5 dark:hover:bg-white/5',
+          ? 'bg-[#1b1b20]/8 dark:bg-white/12'
+          : 'hover:bg-[#1b1b20]/3.5 dark:hover:bg-white/5',
       resource.available ? '' : '[&>div]:opacity-60'
     ]"
     data-resource-row

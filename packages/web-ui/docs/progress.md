@@ -139,7 +139,7 @@ export default function Demo() {
 | --------------------------------------- | ------------------------------------------ | ------------------------------------------------- |
 | `--wui-progress-height`                 | Track height.                              | `8px`                                             |
 | `--wui-progress-radius`                 | Radius of the track and completed portion. | `var(--wui-radius-control, calc(infinity * 1px))` |
-| `--wui-progress-track-color`            | Track background.                          | `var(--wui-color-surface-track, #e5e5ea)`         |
+| `--wui-progress-track-color`            | Track background.                          | `var(--wui-color-surface-track, #e5e5eb)`         |
 | `--wui-progress-fill-color`             | Completed-portion color.                   | `var(--wui-color-accent, #0071e3)`                |
 | `--wui-progress-indeterminate-duration` | Loop duration in indeterminate mode.       | `var(--wui-duration-spinner, 800ms)`              |
 

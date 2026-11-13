@@ -367,7 +367,7 @@ function submit() {
               <h3 class="m-0 text-[14px] font-semibold text-[#22212a] dark:text-(--wui-color-text)">
                 {{ column === 'pending' ? '待找回' : '已找到' }}
               </h3>
-              <span class="text-xs text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+              <span class="text-xs text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
                 >{{ (column === 'pending' ? pendingItems : readyItems).length }} 项</span
               >
             </div>

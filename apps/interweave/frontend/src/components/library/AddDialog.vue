@@ -252,7 +252,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
     >
       <section :class="resourceDialogColumnClass">
         <div class="flex h-7 min-w-0 items-center justify-between gap-2">
-          <p class="m-0 min-w-0 truncate text-[14px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
+          <p class="m-0 min-w-0 truncate text-[14px] leading-6 text-[#6a6a70] dark:text-(--wui-color-text-secondary)">
             支持本地文件与远程链接，支持拖入或粘贴
           </p>
           <div class="flex shrink-0 items-center gap-2">
@@ -270,7 +270,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
         </div>
         <button
           type="button"
-          class="grid h-full place-content-center justify-items-center gap-3 rounded-[18px] border-0 bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-(--wui-duration-trigger) hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] mobile:gap-2 mobile:px-4 mobile:py-2 max-[900px]:p-5"
+          class="grid h-full place-content-center justify-items-center gap-3 rounded-[18px] border-0 bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-(--wui-duration-trigger) hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_7%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_7%,transparent)] mobile:gap-2 mobile:px-4 mobile:py-2 max-[900px]:p-5"
           data-file-drop-target="library-add-files"
           :class="dragActive ? 'scale-[1.005] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]' : ''"
           @click="emit('pickFiles')"
@@ -309,7 +309,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           -->
             <span
               slot="description"
-              class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
+              class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a70] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
             >
               <span>支持图片、视频、音频、文档、网页、代码等文件</span>
               <span>可批量添加</span>
@@ -330,7 +330,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             待添加
           </h3>
           <span
-            class="inline-flex h-7 items-center text-xs leading-none text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+            class="inline-flex h-7 items-center text-xs leading-none text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
           >
             {{ queue.length }} 项
           </span>
@@ -416,7 +416,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                 </div>
                 <div class="flex min-w-0 flex-wrap items-center gap-1.5">
                   <span
-                    class="min-w-0 wrap-anywhere text-xs leading-4 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+                    class="min-w-0 wrap-anywhere text-xs leading-4 text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
                     :title="item.location"
                   >
                     {{ item.location }}
@@ -442,7 +442,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             </span>
             <span
               slot="description"
-              class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
+              class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a70] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
             >
               <span>添加的资源将显示在此处</span>
               <span>名称和标签可修改</span>

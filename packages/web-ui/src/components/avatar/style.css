@@ -47,7 +47,7 @@
   align-items: center;
   justify-content: center;
 
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
 }
 
 slot {

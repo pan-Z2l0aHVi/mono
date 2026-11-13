@@ -614,7 +614,7 @@ const meta = [
       { label: 'td', content: "<code>--wui-color-page</code>" },
       { label: 'td', content: "页面背景" },
       { label: 'td', content: "<code>#fff</code>" },
-      { label: 'td', content: "<code>#242628</code>" }
+      { label: 'td', content: "<code>#242428</code>" }
       ]
     },
     {
@@ -640,7 +640,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-control</code>" },
       { label: 'td', content: "中性可交互控件表面" },
-      { label: 'td', content: "<code>#dfdfdf</code>" },
+      { label: 'td', content: "<code>#e5e5eb</code>" },
       { label: 'td', content: "<code>#3a3a3c</code>" }
       ]
     },
@@ -649,7 +649,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-track</code>" },
       { label: 'td', content: "Slider/Switch 轨道表面" },
-      { label: 'td', content: "<code>#e5e5ea</code>" },
+      { label: 'td', content: "<code>#e5e5eb</code>" },
       { label: 'td', content: "<code>#444446</code>" }
       ]
     },
@@ -658,8 +658,8 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-menu</code>" },
       { label: 'td', content: "菜单和浮动面板表面" },
-      { label: 'td', content: "<code>rgb(250 250 250 / 0.76)</code>" },
-      { label: 'td', content: "<code>rgb(49 48 50 / 0.74)</code>" }
+      { label: 'td', content: "<code>rgb(250 250 253 / 0.76)</code>" },
+      { label: 'td', content: "<code>rgb(49 49 53 / 0.74)</code>" }
       ]
     },
     {
@@ -667,7 +667,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-glass</code>" },
       { label: 'td', content: "液态玻璃表面" },
-      { label: 'td', content: "<code>rgb(250 250 250 / 0.34)</code>" },
+      { label: 'td', content: "<code>rgb(250 250 253 / 0.34)</code>" },
       { label: 'td', content: "<code>rgb(44 44 46 / 0.42)</code>" }
       ]
     },
@@ -694,8 +694,8 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-overlay</code>" },
       { label: 'td', content: "半透明覆盖层表面" },
-      { label: 'td', content: "<code>rgb(248 248 248 / 0.92)</code>" },
-      { label: 'td', content: "<code>rgb(32 34 34 / 0.92)</code>" }
+      { label: 'td', content: "<code>rgb(248 248 252 / 0.92)</code>" },
+      { label: 'td', content: "<code>rgb(32 32 36 / 0.92)</code>" }
       ]
     },
     {
@@ -703,7 +703,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-sidebar</code>" },
       { label: 'td', content: "侧边栏面板表面" },
-      { label: 'td', content: "<code>rgb(233 233 233 / 0.82)</code>" },
+      { label: 'td', content: "<code>rgb(233 233 239 / 0.82)</code>" },
       { label: 'td', content: "<code>rgb(44 44 46 / 0.8)</code>" }
       ]
     },
@@ -712,7 +712,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-segmented</code>" },
       { label: 'td', content: "Segmented 凹变种指示器表面（与控件同级）" },
-      { label: 'td', content: "<code>#dfdfdf</code>" },
+      { label: 'td', content: "<code>#e5e5eb</code>" },
       { label: 'td', content: "<code>#3a3a3c</code>" }
       ]
     },
@@ -721,8 +721,8 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-segmented-track</code>" },
       { label: 'td', content: "Segmented 凸变种轨道表面" },
-      { label: 'td', content: "<code>#e5e5ea</code>" },
-      { label: 'td', content: "<code>#17191a</code>" }
+      { label: 'td', content: "<code>#e5e5eb</code>" },
+      { label: 'td', content: "<code>#17171b</code>" }
       ]
     },
     {
@@ -731,7 +731,7 @@ const meta = [
       { label: 'td', content: "<code>--wui-color-surface-selected</code>" },
       { label: 'td', content: "选中面（凸变种指示器，与页面同色）" },
       { label: 'td', content: "<code>#fff</code>" },
-      { label: 'td', content: "<code>#242628</code>" }
+      { label: 'td', content: "<code>#242428</code>" }
       ]
     },
     {
@@ -739,8 +739,8 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-text</code>" },
       { label: 'td', content: "主要文本" },
-      { label: 'td', content: "<code>#1b1b1b</code>" },
-      { label: 'td', content: "<code>#e9eaea</code>" }
+      { label: 'td', content: "<code>#1b1b20</code>" },
+      { label: 'td', content: "<code>#e9e9ed</code>" }
       ]
     },
     {
@@ -748,7 +748,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-text-secondary</code>" },
       { label: 'td', content: "次要文本" },
-      { label: 'td', content: "<code>#6a6a6a</code>" },
+      { label: 'td', content: "<code>#6a6a70</code>" },
       { label: 'td', content: "<code>#a1a1a6</code>" }
       ]
     },

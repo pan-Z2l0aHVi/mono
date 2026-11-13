@@ -36,7 +36,7 @@ const navItemClass =
    * outline-color 的初始计算值是 currentcolor。transition-all 会把它从深色文字色
    * 补间到浅蓝，Tab 过去时边缘先黑一下再变蓝。
    */
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-[background-color] duration-(--wui-duration-trigger) text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-[background-color] duration-(--wui-duration-trigger) text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#e5e5eb) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_90%,var(--wui-color-text,#1b1b20))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_70%,var(--wui-color-text,#1b1b20))]'
 
 /** web-ui-icon 是 Lit 渲染，shadow root 里的几何要等它首次 update 后才在位，否则 replay() 空转。 */
 async function playDraw(key: NavKey) {
@@ -73,7 +73,7 @@ function selectNav(item: (typeof navItems)[number]) {
         v-for="item in navItems"
         :key="item.key"
         type="button"
-        :class="[navItemClass, route.path === item.path ? '' : 'hover:bg-black/4 dark:hover:bg-white/6']"
+        :class="[navItemClass, route.path === item.path ? '' : 'hover:bg-[#1b1b20]/4 dark:hover:bg-white/6']"
         :data-active="route.path === item.path"
         :aria-current="route.path === item.path ? 'page' : undefined"
         :aria-label="item.label"
@@ -101,7 +101,7 @@ function selectNav(item: (typeof navItems)[number]) {
     <web-ui-dropdown-divider class="mt-auto [--wui-space-1:8px]" />
     <button
       type="button"
-      :class="[navItemClass, 'hover:bg-black/4 dark:hover:bg-white/6']"
+      :class="[navItemClass, 'hover:bg-[#1b1b20]/4 dark:hover:bg-white/6']"
       aria-label="设置"
       @click="emit('openSettings')"
     >

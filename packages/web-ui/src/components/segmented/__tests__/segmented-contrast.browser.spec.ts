@@ -3,6 +3,7 @@ import '@/components/segmented-trigger'
 import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { userEvent } from 'vite-plus/test/browser'
 
 import type { WebUiSegmented } from '@/components/segmented'
 import type { WebUiSegmentedTrigger } from '@/components/segmented-trigger'
@@ -92,6 +93,25 @@ function contrastRatio(a: string, b: string): number {
 }
 
 describe('WebUiSegmented 可辨度（浏览器）', () => {
+  it('按住未选中项移出后松开，背景恢复且重新悬停仍可反馈', async () => {
+    const { triggers } = await mount('light')
+    const trigger = triggers[1]!
+    const surface = queryA11y(trigger, '[role="option"]') as HTMLElement
+    const outside = document.createElement('div')
+    outside.id = 'segmented-pointer-outside'
+    outside.style.cssText = 'width: 100px; height: 40px; margin: 48px'
+    document.body.append(outside)
+    await userEvent.hover(outside)
+    const resting = getComputedStyle(surface).backgroundColor
+    await userEvent.pointer([
+      { target: trigger, keys: '[MouseLeft>]' },
+      { target: outside, keys: '[/MouseLeft]' }
+    ])
+    expect(getComputedStyle(surface).backgroundColor).toBe(resting)
+    await userEvent.hover(trigger)
+    expect(getComputedStyle(surface).backgroundColor).not.toBe(resting)
+  })
+
   for (const appearance of ['light', 'dark'] as const) {
     it(`${appearance} 下未选中 label 与 track 底的对比度 ≥ 4.5:1`, async () => {
       const { track, triggers } = await mount(appearance)
@@ -129,7 +149,7 @@ describe('WebUiSegmented 可辨度（浏览器）', () => {
 
   /*
    * 凸变种（raised）的静止 indicator 靠投影与几何读出「浮起」，不靠亮度断层，所以尺子取浅色档：
-   * #e5e5ea track / #fff indicator，比值 1.26。深色档是 #17191a track / #242628 indicator，比值 1.16，
+   * #e5e5eb track / #fff indicator，比值 1.26。深色档是 #17171b track / #242428 indicator，比值 1.16，
    * 比浅色还收敛一点——page 之下能开的空间本来就比 page 之上窄。亮度断层一盖过投影，选中块就读成
    * 一条高亮，而不是一颗浮起的面。
    * 断言拿两档各自量出的比值相比、不写色值字面量：调色板整体重排它仍然成立。
@@ -183,11 +203,10 @@ describe('WebUiSegmented 可辨度（浏览器）', () => {
 
   /*
    * 凹变种那颗走的是另一条等式：静止 indicator 与同主题的中性可交互控件同面，也就是 `secondary`
-   * button 用的那一档（浅色 #dfdfdf、深色 #3a3a3c）。写法与上一条完全对称，只是参照物从 page 换成
+   * button 用的那一档（浅色 #e5e5eb、深色 #3a3a3c）。写法与上一条完全对称，只是参照物从 page 换成
    * control——两个变体各自钉住一档，谁也不跟着谁漂。
    *
-   * 失效模式：把浅色 indicator 调成 #e5e5ea（也正是凸变种轨道现在的颜色）
-   * 这条就红；只把 control 那一档挪走、segmented 留在原地，同样红。两枚 token 在 theme 里是互不引用的
+   * 失效模式：只把 control 或 segmented 的颜色挪走，这条就红。两枚 token 在 theme 里是互不引用的
    * 字面量定义，这条等式没有结构耦合兜着，「要不要一起动」只能由这条用例来逼。
    */
   it('inset 的 indicator 两档下都与同主题 control 面同色', async () => {

@@ -38,7 +38,7 @@ dialog {
   border: none;
 
   font-family: inherit;
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
 
   background: transparent;
 
@@ -275,7 +275,7 @@ dialog.is-nested-lower .wui-drawer-drag-edge {
   height: var(--wui-drawer-drag-bar-length, 56px);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
-  background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 24%, transparent);
+  background: color-mix(in srgb, var(--wui-color-text, #1b1b20) 24%, transparent);
 
   /* 与 drag zone 同一条淡入淡出，嵌套下层退场时两者同步（见下面的 is-nested-lower）。 */
   transition: opacity var(--wui-duration-feedback, 100ms) ease;
@@ -331,13 +331,13 @@ dialog.is-nested-lower .wui-drawer-drag-bar {
 @media (hover: hover) and (pointer: fine) {
   .wui-drawer-drag-edge:hover ~ .wui-drawer-drag-bar,
   .wui-drawer-drag-zone:hover ~ .wui-drawer-drag-bar {
-    background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 40%, transparent);
+    background: color-mix(in srgb, var(--wui-color-text, #1b1b20) 40%, transparent);
   }
 }
 
 .wui-drawer-drag-edge:active ~ .wui-drawer-drag-bar,
 .wui-drawer-drag-zone:active ~ .wui-drawer-drag-bar {
-  background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 40%, transparent);
+  background: color-mix(in srgb, var(--wui-color-text, #1b1b20) 40%, transparent);
 }
 
 /*
@@ -353,7 +353,7 @@ dialog.is-nested-lower .wui-drawer-drag-bar {
  * hover/active 压过，确认态在拖拽全程（capture 使 hover 恒成立）就不再显形。
  */
 dialog.is-drag-close .wui-drawer-drag-zone ~ .wui-drawer-drag-bar {
-  background: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 55%, transparent);
+  background: color-mix(in srgb, var(--wui-color-text, #1b1b20) 55%, transparent);
 }
 
 :host([placement='left']) dialog {
@@ -399,7 +399,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
   display: flex;
   flex-direction: column;
   height: 100%;
-  background-color: var(--wui-drawer-bg, var(--wui-color-surface-overlay, rgb(248 248 248 / 0.92)));
+  background-color: var(--wui-drawer-bg, var(--wui-color-surface-overlay, rgb(248 248 252 / 0.92)));
 }
 
 .wui-drawer-header {
@@ -442,7 +442,7 @@ dialog.is-dragging .wui-drawer-drag-zone {
 
   font-size: var(--wui-font-size, 14px);
   line-height: var(--wui-line-height-normal, 1.5);
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
 }
 
 .wui-drawer-footer {

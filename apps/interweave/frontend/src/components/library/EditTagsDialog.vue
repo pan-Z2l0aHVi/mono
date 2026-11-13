@@ -108,7 +108,7 @@ function removeTag(tag: string) {
 
     <div class="grid gap-4">
       <div class="grid gap-1.5">
-        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">添加标签</span>
+        <span class="text-sm font-medium text-[#6a6a70] dark:text-(--wui-color-text-secondary)">添加标签</span>
         <web-ui-autocomplete
           ref="autocompleteField"
           :value="inputValue"
@@ -148,7 +148,7 @@ function removeTag(tag: string) {
       </div>
 
       <div class="grid gap-2">
-        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">{{
+        <span class="text-sm font-medium text-[#6a6a70] dark:text-(--wui-color-text-secondary)">{{
           hasChanges ? '未保存标签' : '当前标签'
         }}</span>
         <div

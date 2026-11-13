@@ -24,7 +24,7 @@
   height: var(--wui-progress-height, 8px);
   border-radius: var(--wui-progress-radius, var(--wui-radius-control, calc(infinity * 1px)));
 
-  background-color: var(--wui-progress-track-color, var(--wui-color-surface-track, #e5e5ea));
+  background-color: var(--wui-progress-track-color, var(--wui-color-surface-track, #e5e5eb));
 }
 
 .wui-progress-indicator {
@@ -49,7 +49,7 @@
   font-size: var(--wui-font-size-caption, 12px);
   font-variant-numeric: tabular-nums;
   line-height: 1;
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
   text-align: end;
 }
 

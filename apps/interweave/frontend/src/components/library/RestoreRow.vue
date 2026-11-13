@@ -35,7 +35,7 @@ const emit = defineEmits<{ prepare: []; cancelPrepare: []; chooseCandidates: [] 
         >{{ item.resourceTitle }}</span
       >
       <span
-        class="block min-w-0 truncate text-xs leading-4 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+        class="block min-w-0 truncate text-xs leading-4 text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
         :title="pending ? item.location : location"
         >{{ pending ? (item.kind === 'url' ? '原链接' : '原位置') : '新位置' }}：{{
           pending ? item.location : location
