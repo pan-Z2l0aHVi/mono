@@ -15,7 +15,7 @@ import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { FocusNavigator, rowFocusTarget } from './focusNavigator'
 import { arrowUpRight } from './icons'
-import { availableFileSource, fileManagerLabel } from './presentation'
+import { availableFileSource, fileManagerIcon, fileManagerLabel } from './presentation'
 import type { NameEditorRef } from './rename'
 import ResourceRow from './ResourceRow.vue'
 import { SweepScrollController } from './sweepScroll'
@@ -790,7 +790,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
           v-if="availableFileSource(contextResource)"
           @click="handleShowInFileManager(contextResource)"
         >
-          <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />
+          <web-ui-icon slot="prefix" :icon="fileManagerIcon()" :size="14" />
           {{ fileManagerLabel() }}
         </web-ui-dropdown-item>
       </web-ui-dropdown-item>
@@ -811,7 +811,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
         标签
       </web-ui-dropdown-item>
       <web-ui-dropdown-divider />
-      <web-ui-dropdown-item style="color: var(--wui-color-danger, #ef4444)" @click="handleDelete(contextResource)">
+      <web-ui-dropdown-item class="text-(--wui-color-danger,#ef4444)" @click="handleDelete(contextResource)">
         <web-ui-icon slot="prefix" :icon="lucideTrash2" :size="14" class="text-(--wui-color-danger,#ef4444)" />
         删除
       </web-ui-dropdown-item>

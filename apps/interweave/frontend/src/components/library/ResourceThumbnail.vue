@@ -24,6 +24,13 @@ const videoRef = ref<HTMLVideoElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const imageRef = ref<HTMLImageElement | null>(null)
 const thumbnailURL = ref('')
+const faviconReady = ref(false)
+const faviconFailed = ref(false)
+const favicon = computed(() => (props.source?.type === 'url' ? props.source.metadata?.faviconUrl || '' : ''))
+watch(favicon, () => {
+  faviconReady.value = false
+  faviconFailed.value = false
+})
 const imageReady = ref(false)
 const mediaFailed = ref(false)
 const serverThumbFailed = ref(false)
@@ -51,6 +58,7 @@ const serverThumbActive = computed(
     (props.kind === 'image' || props.kind === 'video')
 )
 const showFallback = computed(() => {
+  if (favicon.value && faviconReady.value && !faviconFailed.value) return false
   if (serverThumbActive.value && serverThumbReady.value) return false
   if (!canRenderMedia.value) return true
   const imageMatchesSource = imageRef.value?.getAttribute('src') === props.mediaUrl
@@ -237,6 +245,14 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
     class="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-[10px]"
     :class="resourceKindClass(kind)"
   >
+    <img
+      v-if="favicon && !faviconFailed"
+      :src="favicon"
+      class="absolute size-5 object-contain"
+      alt=""
+      @load="faviconReady = true"
+      @error="faviconFailed = true"
+    />
     <video
       v-if="kind === 'video' && !serverThumbActive && canRenderMedia"
       :key="`video-${mediaKey}`"

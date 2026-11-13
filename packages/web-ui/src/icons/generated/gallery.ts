@@ -9,6 +9,8 @@ import biCheck from './bi-check'
 import biCheckLg from './bi-check-lg'
 import ciSettingsFuture from './ci-settings-future'
 import codexCheck from './codex-check'
+import emojioneMonotoneStopButton from './emojione-monotone-stop-button'
+import fluentFolder24Filled from './fluent-folder-24-filled'
 import fluentTagSearch24Regular from './fluent-tag-search-24-regular'
 import heroiconsBarsArrowDown16Solid from './heroicons-bars-arrow-down-16-solid'
 import heroiconsBarsArrowUp16Solid from './heroicons-bars-arrow-up-16-solid'
@@ -18,10 +20,14 @@ import icBaselinePhonelink from './ic-baseline-phonelink'
 import icOutlineMotionPhotosOff from './ic-outline-motion-photos-off'
 import icOutlineMotionPhotosOn from './ic-outline-motion-photos-on'
 import icRoundMenuOpen from './ic-round-menu-open'
+import iconParkOutlineMacFinder from './icon-park-outline-mac-finder'
 import iconParkOutlineTagOne from './icon-park-outline-tag-one'
+import iconParkSolidRadarTwo from './icon-park-solid-radar-two'
+import ixCircleStop from './ix-circle-stop'
 import jamCloseCircleF from './jam-close-circle-f'
 import lucideAccessibility from './lucide-accessibility'
 import lucideArrowDownToLine from './lucide-arrow-down-to-line'
+import lucideArrowRight from './lucide-arrow-right'
 import lucideArrowUpToLine from './lucide-arrow-up-to-line'
 import lucideBell from './lucide-bell'
 import lucideBoxes from './lucide-boxes'
@@ -101,6 +107,12 @@ import tablerSortAscendingLetters from './tabler-sort-ascending-letters'
 import tablerTagPlus from './tabler-tag-plus'
 
 export const iconGallery: Record<string, IconifyIcon> = {
+  fluentFolder24Filled,
+  lucideArrowRight,
+  iconParkOutlineMacFinder,
+  iconParkSolidRadarTwo,
+  emojioneMonotoneStopButton,
+  ixCircleStop,
   andrsrxnInbox,
   lucideInbox,
   lucideLoaderCircle,

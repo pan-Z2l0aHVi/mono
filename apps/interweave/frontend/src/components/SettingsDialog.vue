@@ -144,7 +144,7 @@ function pickAccent(value: string) {
             <label
               v-for="preset in ACCENT_PRESETS"
               :key="preset.value"
-              class="relative grid size-9 shrink-0 cursor-pointer place-items-center"
+              class="relative grid size-8 shrink-0 cursor-pointer place-items-center"
             >
               <input
                 type="radio"
@@ -165,8 +165,8 @@ function pickAccent(value: string) {
           </div>
         </fieldset>
         <div :class="settingsRowClass">
-          <span class="text-sm text-(--wui-color-text)">减少动画</span>
-          <web-ui-switch :checked="reducedMotion" aria-label="减少动画" @change="handleReducedMotionChange" />
+          <span class="text-sm text-(--wui-color-text)">减少动画效果</span>
+          <web-ui-switch :checked="reducedMotion" aria-label="减少动画效果" @change="handleReducedMotionChange" />
         </div>
       </div>
 

@@ -1,5 +1,8 @@
 import {
+  fluentFolder24Filled,
+  iconParkOutlineMacFinder,
   lucideCode,
+  lucideFolderOpen,
   lucideFile,
   lucideFileText,
   lucideFilm,
@@ -154,6 +157,13 @@ export function availableFileSource(resource: ResourceView | null | undefined) {
   if (!resource) return null
   if (resource.preferred?.type === 'file' && resource.preferred.available) return resource.preferred
   return resource.sources.find(source => source.type === 'file' && source.available) ?? null
+}
+
+export function fileManagerIcon() {
+  const platform = (window as Window & { _wails?: { environment?: { OS?: string } } })._wails?.environment?.OS
+  if (platform === 'darwin' || (!platform && /Macintosh|Mac OS X/.test(navigator.userAgent)))
+    return iconParkOutlineMacFinder
+  return platform === 'windows' ? fluentFolder24Filled : lucideFolderOpen
 }
 
 export function fileManagerLabel() {

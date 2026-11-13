@@ -1,12 +1,35 @@
+import { fluentFolder24Filled, iconParkOutlineMacFinder } from '@greypan/web-ui/icons'
 import { describe, expect, it, vi } from 'vite-plus/test'
 
 import {
   ResourceKind,
   TagColor
 } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
-import { DEFAULT_TAG_CLASS, formatDate, formatSize, resourceIcon, resourceKindLabel, tagClass } from '../presentation'
+import {
+  DEFAULT_TAG_CLASS,
+  fileManagerIcon,
+  fileManagerLabel,
+  formatDate,
+  formatSize,
+  resourceIcon,
+  resourceKindLabel,
+  tagClass
+} from '../presentation'
 
 describe('library presentation', () => {
+  it('根据原生平台显示访达或 Windows 文件资源管理器图标与名称', () => {
+    try {
+      vi.stubGlobal('_wails', { environment: { OS: 'darwin' } })
+      expect(fileManagerLabel()).toBe('在访达中打开')
+      expect(fileManagerIcon()).toBe(iconParkOutlineMacFinder)
+      vi.stubGlobal('_wails', { environment: { OS: 'windows' } })
+      expect(fileManagerLabel()).toBe('在文件资源管理器中打开')
+      expect(fileManagerIcon()).toBe(fluentFolder24Filled)
+    } finally {
+      vi.unstubAllGlobals()
+    }
+  })
+
   it('按本地日历格式化秒和毫秒，跨月的昨天仍显示相对时间', () => {
     vi.useFakeTimers()
     try {

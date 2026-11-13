@@ -713,7 +713,7 @@ describe('LibraryPage：粘贴链接', () => {
       await flush()
 
       expect(queueItems(mounted.host)).toHaveLength(0)
-      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接')
+      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接', { position: 'top-center' })
     } finally {
       await mounted.close()
     }
@@ -728,7 +728,7 @@ describe('LibraryPage：粘贴链接', () => {
       await flush()
 
       expect(queueItems(mounted.host)).toHaveLength(0)
-      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接')
+      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接', { position: 'top-center' })
     } finally {
       await mounted.close()
     }

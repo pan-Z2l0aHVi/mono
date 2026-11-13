@@ -187,7 +187,7 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
           </web-ui-button>
           <web-ui-button-group aria-label="批量操作">
             <web-ui-tooltip portal>
-              <span slot="content" style="color: var(--wui-color-danger)">删除</span>
+              <span slot="content" class="text-(--wui-color-danger)">删除</span>
               <web-ui-button icon aria-label="删除" :disabled="selectedCount === 0" @click="emit('deleteSelected')">
                 <web-ui-icon class="[--wui-icon-color:var(--wui-color-danger)]" :icon="lucideTrash2" />
               </web-ui-button>

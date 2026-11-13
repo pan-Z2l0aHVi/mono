@@ -8,6 +8,7 @@ export interface LibraryRestoreQueueItem {
   resourceKind: ResourceView['kind']
   kind: ResourceSourceView['type']
   location: string
+  source?: ResourceSourceView
   replacementLocation: string
   scanSnapshot?: string
 }
@@ -36,6 +37,7 @@ export function createLibraryRestoreQueueItem(
     resourceKind: resource.kind,
     kind: source.type,
     location: source.location,
+    source,
     replacementLocation: source.type === 'url' ? source.location : ''
   }
 }

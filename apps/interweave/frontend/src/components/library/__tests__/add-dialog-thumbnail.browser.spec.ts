@@ -81,16 +81,22 @@ function expectFocusRingFits(element: HTMLElement) {
 
 describe('AddDialog 队列缩略图（真实浏览器）', () => {
   it('上传区、粘贴和队列操作的焦点环有完整显示空间', async () => {
-    const host = mountDialog([queueItem()])
-    await nextTick()
-    const drop = host.querySelector<HTMLButtonElement>('[data-file-drop-target="library-add-files"]')!
-    const buttons = [...host.querySelectorAll<WebUiButton>('web-ui-button')].filter(button =>
-      ['粘贴复制的文件', '编辑名称', '编辑标签', '移除待添加资源'].includes(button.getAttribute('aria-label') ?? '')
-    )
-    expect(buttons).toHaveLength(4)
-    await waitFor(() => buttons.every(button => !!button.shadowRoot?.querySelector('button')), '按钮已渲染')
-    expectFocusRingFits(drop)
-    for (const button of buttons) expectFocusRingFits(button.shadowRoot!.querySelector('button')!)
+    const original = { width: window.innerWidth, height: window.innerHeight }
+    await page.viewport(1280, 800)
+    try {
+      const host = mountDialog([queueItem()])
+      await nextTick()
+      const drop = host.querySelector<HTMLButtonElement>('[data-file-drop-target="library-add-files"]')!
+      const buttons = [...host.querySelectorAll<WebUiButton>('web-ui-button')].filter(button =>
+        ['粘贴复制的文件', '编辑名称', '编辑标签', '移除待添加资源'].includes(button.getAttribute('aria-label') ?? '')
+      )
+      expect(buttons).toHaveLength(4)
+      await waitFor(() => buttons.every(button => !!button.shadowRoot?.querySelector('button')), '按钮已渲染')
+      expectFocusRingFits(drop)
+      for (const button of buttons) expectFocusRingFits(button.shadowRoot!.querySelector('button')!)
+    } finally {
+      await page.viewport(original.width, original.height)
+    }
   })
 
   it('找回资源的长标题和原链接截断，新链接输入框保留焦点环空间', async () => {
@@ -156,6 +162,7 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
 
   it('找回弹窗空态在内容区居中，连接箭头随布局转向', async () => {
     const original = { width: window.innerWidth, height: window.innerHeight }
+    const mobile = ref(false)
     const host = document.createElement('div')
     document.body.append(host)
     hosts.push(host)
@@ -177,7 +184,7 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
           ],
           busy: false,
           error: '',
-          mobile: false,
+          mobile: mobile.value,
           activeItemId: null,
           allUnavailableFiles: [],
           failedIds: [],
@@ -202,8 +209,10 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
     apps.push(app)
     app.mount(host)
     try {
-      for (const width of [1280, 700]) {
+      for (const width of [1280, 700, 600]) {
         await page.viewport(width, 800)
+        mobile.value = width <= 640
+        await nextTick()
         await waitFor(
           () =>
             !!host.querySelector<HTMLElement>('section[aria-label="已找到"] web-ui-empty')?.getBoundingClientRect()
@@ -220,10 +229,10 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
         expect(empty.getAttribute('description')).toContain('手动找回')
         const first = sections[0].getBoundingClientRect()
         const second = sections[1].getBoundingClientRect()
-        expect(width > 900 ? second.left > first.right : second.top > first.bottom).toBe(true)
+        expect(width > 640 ? second.left > first.right : second.top > first.bottom).toBe(true)
         const arrow = host.querySelector<HTMLElement>('section + div web-ui-icon')!
         expect(getComputedStyle(arrow).rotate === '90deg' || getComputedStyle(arrow).transform !== 'none').toBe(
-          width < 900
+          width <= 640
         )
       }
     } finally {

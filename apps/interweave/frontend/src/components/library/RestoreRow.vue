@@ -25,7 +25,7 @@ const emit = defineEmits<{ prepare: []; cancelPrepare: []; chooseCandidates: [] 
   <li :class="resourceDialogRowClass">
     <ResourceThumbnail
       :kind="!pending && preview ? preview.kind : item.resourceKind"
-      :source="pending ? null : source"
+      :source="item.kind === 'url' ? (item.source ?? null) : pending ? null : source"
       :media-url="pending ? null : (preview?.mediaUrl ?? null)"
     />
     <div class="grid min-w-0 flex-[1_1_auto] grid-cols-[minmax(0,1fr)] gap-1">
@@ -37,9 +37,10 @@ const emit = defineEmits<{ prepare: []; cancelPrepare: []; chooseCandidates: [] 
       <span
         class="block min-w-0 truncate text-xs leading-4 text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
         :title="pending ? item.location : location"
-        >{{ pending ? (item.kind === 'url' ? '原链接' : '原位置') : '新位置' }}：{{
-          pending ? item.location : location
-        }}</span
+        >{{ pending ? (item.kind === 'url' ? '原链接' : '原位置') : '新位置' }}：<span
+          :class="item.kind === 'url' ? 'text-(--wui-color-accent) underline' : ''"
+          >{{ pending ? item.location : location }}</span
+        ></span
       >
       <span v-if="!pending && matchReasons.length" class="text-xs text-(--wui-color-text-secondary)"
         >匹配依据：{{ matchReasons.join('、') }}</span

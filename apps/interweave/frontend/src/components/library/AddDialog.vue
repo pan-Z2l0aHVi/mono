@@ -203,8 +203,11 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
     controlled
     no-backdrop-close
     footer-orientation="horizontal"
-    :style="{ '--wui-dialog-footer-justify': mobile ? undefined : 'flex-end' }"
-    class="[--wui-dialog-width:min(90vw,880px)] [--wui-dialog-max-height:calc(min(82vh,560px)_-_142px)]"
+    :style="{
+      '--wui-dialog-footer-justify': mobile ? undefined : 'flex-end',
+      '--wui-dialog-max-height': mobile ? 'calc(min(90vh, 700px) - 142px)' : 'calc(min(82vh, 560px) - 142px)'
+    }"
+    class="[--wui-dialog-width:min(90vw,880px)]"
     @open-change="handleOpenChange"
   >
     <span slot="header">添加资源</span>
@@ -247,8 +250,8 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       正是「chrome 由内容撑开」要的结果。
     -->
     <div
-      class="grid min-h-0 grid-cols-2 gap-5 mobile:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
-      style="height: var(--wui-dialog-max-height)"
+      class="grid h-(--wui-dialog-max-height) min-h-0 gap-5 mobile:gap-4"
+      :class="mobile ? 'grid-cols-1 grid-rows-2' : 'grid-cols-2'"
     >
       <section :class="resourceDialogColumnClass">
         <div class="flex h-7 min-w-0 items-center justify-between gap-2">
@@ -270,7 +273,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
         </div>
         <button
           type="button"
-          class="grid h-full place-content-center justify-items-center gap-3 rounded-[18px] border-0 bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-(--wui-duration-trigger) hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_7%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_7%,transparent)] mobile:gap-2 mobile:px-4 mobile:py-2 max-[900px]:p-5"
+          class="grid h-full place-content-center justify-items-center gap-3 rounded-[18px] border-0 bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-(--wui-duration-trigger) hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_7%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_7%,transparent)] mobile:gap-2 mobile:px-4 mobile:py-2"
           data-file-drop-target="library-add-files"
           :class="dragActive ? 'scale-[1.005] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]' : ''"
           @click="emit('pickFiles')"
@@ -418,6 +421,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                   <span
                     class="min-w-0 wrap-anywhere text-xs leading-4 text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
                     :title="item.location"
+                    :class="item.kind === 'url' ? 'text-(--wui-color-accent) underline' : ''"
                   >
                     {{ item.location }}
                   </span>

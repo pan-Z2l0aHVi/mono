@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { WebUiDrawer, WebUiEvent } from '@greypan/web-ui'
+import { lucideArrowRight } from '@greypan/web-ui/icons'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
@@ -156,24 +157,20 @@ function handleMediaError(kind: 'image' | 'video') {
             <web-ui-button
               v-if="target.emptyReason === 'source-unavailable' && target.source"
               slot="action"
+              class="group"
               variant="primary"
               @click="emit('recover', target.source)"
             >
-              找回资源
-              <svg
-                slot="suffix"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
+              <span
+                class="inline-block transition-transform duration-150 motion-safe:group-hover:translate-x-0.5 motion-reduce:transition-none"
+                >找回资源</span
               >
-                <path d="M5 12h14m-6-6 6 6-6 6" />
-              </svg>
+              <web-ui-icon
+                slot="suffix"
+                :icon="lucideArrowRight"
+                :size="16"
+                class="transition-transform duration-150 motion-safe:group-hover:-translate-x-0.5 motion-reduce:transition-none"
+              />
             </web-ui-button>
           </web-ui-empty>
         </div>
@@ -216,8 +213,7 @@ function handleMediaError(kind: 'image' | 'video') {
             v-else
             :key="mediaKey"
             :src="target.mediaUrl ?? undefined"
-            :class="videoPortrait ? 'h-full w-auto' : 'h-auto w-full'"
-            :style="{ visibility: mediaLoading ? 'hidden' : 'visible' }"
+            :class="[videoPortrait ? 'h-full w-auto' : 'h-auto w-full', { invisible: mediaLoading }]"
             class="absolute top-1/2 left-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 bg-black"
             controls
             playsinline

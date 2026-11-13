@@ -197,6 +197,9 @@ catalogs:
     '@iconify-json/codex':
       specifier: ^1.2.2
       version: 1.2.2
+    '@iconify-json/emojione-monotone':
+      specifier: ^1.2.1
+      version: 1.2.1
     '@iconify-json/fluent':
       specifier: ^1.2.61
       version: 1.2.61
@@ -209,6 +212,12 @@ catalogs:
     '@iconify-json/icon-park-outline':
       specifier: ^1.2.4
       version: 1.2.4
+    '@iconify-json/icon-park-solid':
+      specifier: ^1.2.2
+      version: 1.2.4
+    '@iconify-json/ix':
+      specifier: ^1.2.14
+      version: 1.2.14
     '@iconify-json/jam':
       specifier: ^1.2.3
       version: 1.2.3
@@ -1060,6 +1069,9 @@ importers:
       '@iconify-json/codex':
         specifier: 'catalog:'
         version: 1.2.2
+      '@iconify-json/emojione-monotone':
+        specifier: 'catalog:'
+        version: 1.2.1
       '@iconify-json/fluent':
         specifier: 'catalog:'
         version: 1.2.61
@@ -1072,6 +1084,12 @@ importers:
       '@iconify-json/icon-park-outline':
         specifier: 'catalog:'
         version: 1.2.4
+      '@iconify-json/icon-park-solid':
+        specifier: 'catalog:'
+        version: 1.2.4
+      '@iconify-json/ix':
+        specifier: 'catalog:'
+        version: 1.2.14
       '@iconify-json/jam':
         specifier: 'catalog:'
         version: 1.2.3
@@ -2141,6 +2159,9 @@ packages:
   '@iconify-json/codex@1.2.2':
     resolution: {integrity: sha512-wCIswgFolslcCOuSw3RW2WB1lBNG56grI5Ji/0jHFlq8Rnn1HHipx1AASyQ1vh25N0Oe50wAbqUA1lHcbDT65g==}
 
+  '@iconify-json/emojione-monotone@1.2.1':
+    resolution: {integrity: sha512-cZSNcPsuiAD6HCzCh/2dYKGh3pNI0jJlxBxQWfC33cQsPtqYZqulGBvlkThXYNvDl8VxgVHT9u+izyX/yeEIkA==}
+
   '@iconify-json/fluent@1.2.61':
     resolution: {integrity: sha512-QyXqdW1lR9/zFyAh1Z+aK99DAW/QnMpOZoBjbyJ8YoRa0QVRfEAbyvyBRnYPJJoedHu9JKo8woxV01lHOFV3dA==}
 
@@ -2152,6 +2173,12 @@ packages:
 
   '@iconify-json/icon-park-outline@1.2.4':
     resolution: {integrity: sha512-NyZxXe2gD2TbTOyoRRMdtEJhr6i2KQCdDlYYoOn5oZLndQjwpIhw79hzeFhXvP38/o40D3gQ+l+IaSJgbB+0TQ==}
+
+  '@iconify-json/icon-park-solid@1.2.4':
+    resolution: {integrity: sha512-030MChSP6lCY7N+U5J5R7YguHTGcm7qQEI/ivBjk77El/i8yJatoj568cwwXGM8c6HEU/kIxEE4m3O/6w0WBGg==}
+
+  '@iconify-json/ix@1.2.14':
+    resolution: {integrity: sha512-cAOb00fbDsRPNG9udWo9jSzmaycRgcLIeHJ9d5mu7G5oAyo/siZRxlryweptV/YVs0LglCUdw7aCIsGETbAp2g==}
 
   '@iconify-json/jam@1.2.3':
     resolution: {integrity: sha512-Kp+OxTzB8xvbaMyIoqEqB96Ik4zv7uo5y1yavjAee0N1K/6u+PCOBwEi+Djn3WJ2trCrNZk+qYw1BJUsZC41Eg==}
@@ -7449,6 +7476,10 @@ snapshots:
     dependencies:
       '@iconify/types': 2.0.0
 
+  '@iconify-json/emojione-monotone@1.2.1':
+    dependencies:
+      '@iconify/types': 2.0.0
+
   '@iconify-json/fluent@1.2.61':
     dependencies:
       '@iconify/types': 2.0.0
@@ -7462,6 +7493,14 @@ snapshots:
       '@iconify/types': 2.0.0
 
   '@iconify-json/icon-park-outline@1.2.4':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/icon-park-solid@1.2.4':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/ix@1.2.14':
     dependencies:
       '@iconify/types': 2.0.0
 

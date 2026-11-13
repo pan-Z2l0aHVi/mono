@@ -234,7 +234,7 @@ async function showInFileManager(source: ResourceSourceView) {
     await runtime.system.showInFileManager(source.location)
   } catch (cause) {
     console.error('无法在文件管理器中打开文件', cause)
-    toast.warning('无法打开文件所在的位置，请检查文件是否还在原处')
+    toast.warning('无法打开文件所在的位置，请检查文件是否还在原处', { position: 'top-center' })
   }
 }
 
@@ -382,9 +382,9 @@ async function pasteFilePaths(clipboardText?: string) {
       await addQueue.enqueueURL(url)
       return
     }
-    toast.warning('剪切板中没有可添加的文件或有效链接')
+    toast.warning('剪切板中没有可添加的文件或有效链接', { position: 'top-center' })
   } catch {
-    toast.warning('无法读取剪切板，请重试')
+    toast.warning('无法读取剪切板，请重试', { position: 'top-center' })
   }
 }
 

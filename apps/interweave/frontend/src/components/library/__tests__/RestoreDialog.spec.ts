@@ -92,7 +92,7 @@ describe('RestoreDialog', () => {
       scan.click()
       await nextTick()
       ;[...scanDialog.querySelectorAll<HTMLElement>('web-ui-button')]
-        .find(button => button.textContent?.trim() === '扫描指定文件夹')!
+        .find(button => button.textContent?.trim() === '扫描选定文件夹')!
         .click()
       await nextTick()
       expect(addItems).not.toHaveBeenCalled()
@@ -222,11 +222,13 @@ describe('RestoreDialog', () => {
       button('扫描全盘').click()
       expect(addItems).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ sourceId: 'other' })]))
       expect(startScan).toHaveBeenCalledWith(['file', 'other'], '')
-      expect(notification).toHaveBeenCalledWith('已找到 2 条失效资源')
+      expect(notification).toHaveBeenCalledWith('已找到 2 条失效资源', { position: 'top-center' })
       await vi.waitFor(() => expect(host.querySelector('[aria-label="撤回 文件"]')).not.toBeNull())
       await vi.waitFor(() => expect(pollScan).toHaveBeenCalledTimes(2))
       expect(host.textContent).not.toContain('一键扫描')
       expect(button('停止扫描').getAttribute('slot')).toBe('footer')
+      expect(button('取消').hasAttribute('disabled')).toBe(true)
+      expect(button('确认找回').hasAttribute('disabled')).toBe(true)
       button('停止扫描').click()
       expect(cancelScan).toHaveBeenCalledWith('scan')
       finish({

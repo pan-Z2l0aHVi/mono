@@ -14,9 +14,12 @@ catalog:
   '@iconify-json/andrsrxn': ^1.2.3
   '@iconify-json/ant-design': ^1.2.9
   '@iconify-json/bi': ^1.2.7
+  '@iconify-json/emojione-monotone': ^1.2.1
   '@iconify-json/fluent': ^1.2.61
   '@iconify-json/heroicons': ^1.2.3
   '@iconify-json/ic': ^1.2.4
+  '@iconify-json/ix': ^1.2.14
+  '@iconify-json/icon-park-solid': ^1.2.2
   '@iconify-json/jam': ^1.2.3
   '@iconify-json/lucide': ^1.2.152
   '@iconify-json/mdi': ^1.2.3

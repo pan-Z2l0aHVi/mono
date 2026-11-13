@@ -1,12 +1,18 @@
 <script setup lang="ts">
 import { toast, type WebUiDialog, type WebUiEvent } from '@greypan/web-ui'
-import { akarIconsCircleCheck } from '@greypan/web-ui/icons'
+import {
+  akarIconsCircleCheck,
+  emojioneMonotoneStopButton,
+  iconParkSolidRadarTwo,
+  lucideChevronRight,
+  lucideFile
+} from '@greypan/web-ui/icons'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { userMessage } from '@/services/library/userMessage'
 import type { ResourceKind, ResourceSourceView } from '@/stores/library'
 
-import { doubleArrowRight, radarTwo, stopFilled } from './icons'
+import { doubleArrowRight } from './icons'
 import { formatSize } from './presentation'
 import { resourceDialogColumnClass, resourceDialogQueueClass } from './resourceDialogStyles'
 import ResourceLinkDialog from './ResourceLinkDialog.vue'
@@ -97,7 +103,7 @@ async function beginScan(directory: string) {
   const items = [...props.queue]
   for (const item of props.allUnavailableFiles) if (!items.some(existing => existing.id === item.id)) items.push(item)
   emit('addItems', items)
-  toast.info(`已找到 ${items.filter(item => item.kind === 'file').length} 条失效资源`)
+  toast.info(`已找到 ${items.filter(item => item.kind === 'file').length} 条失效资源`, { position: 'top-center' })
   try {
     const id = await props.startScan(
       items.filter(item => item.kind === 'file').map(item => item.sourceId),
@@ -280,7 +286,7 @@ watch(
 )
 
 function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
-  if (event.target !== event.currentTarget || locked.value) return
+  if (event.target !== event.currentTarget || locked.value || scanning.value) return
   emit('update:open', event.detail.open)
 }
 
@@ -345,12 +351,15 @@ function submit() {
     controlled
     no-backdrop-close
     footer-orientation="horizontal"
-    :style="{ '--wui-dialog-footer-justify': mobile ? undefined : 'flex-end' }"
-    class="[--wui-dialog-width:min(90vw,880px)] [--wui-dialog-max-height:calc(min(82vh,560px)_-_142px)]"
+    :style="{
+      '--wui-dialog-footer-justify': mobile ? undefined : 'flex-end',
+      '--wui-dialog-max-height': mobile ? 'calc(min(90vh, 700px) - 142px)' : 'calc(min(82vh, 560px) - 142px)'
+    }"
+    class="[--wui-dialog-width:min(90vw,880px)]"
     @open-change="handleOpenChange"
   >
     <span slot="header">找回资源</span>
-    <div class="flex min-h-0 flex-col" style="height: var(--wui-dialog-max-height)">
+    <div class="flex h-(--wui-dialog-max-height) min-h-0 flex-col">
       <p
         v-if="validationError || error"
         class="m-0 rounded-md bg-red-50 px-3 py-2 text-sm leading-5 text-red-700 dark:bg-red-400/12 dark:text-red-200"
@@ -359,7 +368,12 @@ function submit() {
         {{ validationError || error }}
       </p>
       <div
-        class="grid min-h-0 flex-1 grid-cols-[minmax(0,1fr)_36px_minmax(0,1fr)] max-[900px]:grid-cols-1 max-[900px]:grid-rows-[minmax(0,1fr)_20px_minmax(0,1fr)]"
+        class="grid min-h-0 flex-1"
+        :class="
+          mobile
+            ? 'grid-cols-1 grid-rows-[minmax(0,1fr)_20px_minmax(0,1fr)]'
+            : 'grid-cols-[minmax(0,1fr)_36px_minmax(0,1fr)]'
+        "
       >
         <template v-for="column in ['pending', 'ready']" :key="column">
           <section :class="resourceDialogColumnClass" :aria-label="column === 'pending' ? '待找回' : '已找到'">
@@ -382,10 +396,17 @@ function submit() {
                     ? readyItems.length
                       ? '已选好新位置，请确认找回'
                       : '暂无失效资源，请关闭弹窗'
-                    : '点击失效资源的按钮手动找回'
+                    : '手动找回失效资源，或一键扫描找回'
                 "
                 class="[--wui-empty-min-height:0] [--wui-empty-padding:0]"
-              ></web-ui-empty>
+              >
+                <web-ui-icon
+                  v-if="column === 'pending' && readyItems.length"
+                  slot="icon"
+                  :icon="akarIconsCircleCheck"
+                  :size="40"
+                />
+              </web-ui-empty>
             </div>
             <div v-else :class="resourceDialogQueueClass">
               <ol class="m-0 list-none p-0">
@@ -416,28 +437,52 @@ function submit() {
           </section>
           <div
             v-if="column === 'pending'"
-            class="grid place-items-center text-(--wui-color-text-secondary) max-[900px]:pt-1"
+            class="grid place-items-center text-(--wui-color-text-secondary)"
             aria-hidden="true"
           >
-            <web-ui-icon :icon="doubleArrowRight" :size="24" class="max-[900px]:rotate-90" />
+            <web-ui-icon :icon="doubleArrowRight" :size="24" :class="{ 'rotate-90': mobile }" />
           </div>
         </template>
       </div>
       <div
         v-if="scanning || scanProgress || scanIncomplete"
         role="status"
-        class="mt-1 min-w-0 shrink-0 text-sm leading-5 text-(--wui-color-text-secondary)"
+        class="mt-2 shrink-0 items-center gap-4 rounded-[18px] bg-[#eceef4] p-3 dark:bg-white/6"
+        :class="[mobile ? 'block' : 'flex', { 'motion-reduced': !scanning }]"
       >
-        <div class="flex min-w-0 items-center gap-2">
-          <span class="min-w-0 flex-1 truncate">
-            {{ scanning ? '正在扫描' : scanIncomplete ? '扫描未完成' : '扫描完成' }}：已检查
-            {{ scanProgress?.checked ?? 0 }} 个文件，找到
-            {{ Object.values(candidates).filter(items => items.length).length }} 项，跳过
-            {{ scanProgress?.skipped ?? 0 }} 项
-          </span>
+        <div class="flex min-w-0 flex-1 items-center gap-2">
+          <web-ui-spinner v-if="scanning" :size="16" class="shrink-0" />
+          <div class="min-w-0 flex-1">
+            <div class="scan-shimmer font-semibold text-(--wui-color-text)">
+              {{ scanning ? '正在扫描文件' : scanIncomplete ? '扫描未完成' : '扫描完成' }}
+            </div>
+            <div
+              v-if="scanning && scanProgress?.currentDirectory"
+              class="scan-shimmer truncate text-xs text-(--wui-color-text-secondary)"
+              :title="scanProgress.currentDirectory"
+            >
+              正在检查 {{ scanProgress.currentDirectory }}
+            </div>
+          </div>
         </div>
-        <div v-if="scanning" class="h-5 min-w-0 truncate" :title="scanProgress?.currentDirectory">
-          {{ scanProgress?.currentDirectory }}
+        <div
+          class="scan-stats flex shrink-0 gap-4 text-xs text-(--wui-color-text-secondary)"
+          :class="{ 'mt-2': mobile }"
+        >
+          <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
+            ><strong class="text-sm text-(--wui-color-text)">{{ (scanProgress?.checked ?? 0).toLocaleString() }}</strong
+            >已检查</span
+          >
+          <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
+            ><strong class="scan-shimmer text-sm text-(--wui-color-accent)">{{
+              Object.values(candidates).filter(items => items.length).length
+            }}</strong
+            >已找到</span
+          >
+          <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
+            ><strong class="text-sm text-(--wui-color-text)">{{ scanProgress?.skipped ?? 0 }}</strong
+            >已跳过</span
+          >
         </div>
       </div>
     </div>
@@ -449,7 +494,7 @@ function submit() {
       :disabled="locked"
       @click="openScanChoice"
     >
-      <web-ui-icon slot="prefix" :icon="radarTwo" :size="16" />一键扫描
+      <web-ui-icon slot="prefix" :icon="iconParkSolidRadarTwo" :size="16" />一键扫描
     </web-ui-button>
     <web-ui-button
       v-if="scanning"
@@ -458,7 +503,7 @@ function submit() {
       class="mr-auto shrink-0 [--wui-button-color:var(--wui-color-danger)]"
       :disabled="stopping"
       @click="requestStop"
-      ><web-ui-icon slot="prefix" :icon="stopFilled" :size="16" />{{
+      ><web-ui-icon slot="prefix" :icon="emojioneMonotoneStopButton" :size="16" />{{
         stopping ? '正在停止' : '停止扫描'
       }}</web-ui-button
     >
@@ -466,7 +511,8 @@ function submit() {
       slot="footer"
       :full="mobile"
       variant="secondary"
-      :disabled="locked"
+      class="cancel-button"
+      :disabled="locked || scanning"
       @click="emit('update:open', false)"
       >取消</web-ui-button
     >
@@ -484,7 +530,7 @@ function submit() {
   <web-ui-dialog :open="scanChoiceOpen" controlled no-backdrop-close @open-change="scanChoiceOpen = $event.detail.open">
     <span slot="header">选择扫描范围</span>
     <p>选择要查找的位置，包含其中的所有文件夹。</p>
-    <web-ui-button slot="footer" full variant="primary" @click="chooseScanDirectory">扫描指定文件夹</web-ui-button>
+    <web-ui-button slot="footer" full variant="primary" @click="chooseScanDirectory">扫描选定文件夹</web-ui-button>
     <web-ui-button slot="footer" full variant="secondary" @click="scanAllDisks">扫描全盘</web-ui-button>
     <web-ui-button slot="footer" full variant="secondary" @click="scanChoiceOpen = false">取消</web-ui-button>
   </web-ui-dialog>
@@ -495,22 +541,33 @@ function submit() {
     @open-change="!$event.detail.open && (candidateItem = null)"
   >
     <span slot="header">选择找回的文件</span>
-    <ul v-if="candidateItem" class="m-0 list-none p-0">
-      <li
-        v-for="candidate in candidates[candidateItem.id]"
-        :key="candidate.path"
-        class="border-b border-(--wui-color-border) py-2"
-      >
-        <button type="button" class="w-full text-left" @click="chooseCandidate(candidate)">
-          <span class="block break-all">{{ candidate.path }}</span>
-          <span class="text-xs text-(--wui-color-text-secondary)"
-            >{{ formatSize(candidate.size) }} · {{ new Date(candidate.modifiedAt).toLocaleString() }} ·
-            {{ candidate.matchReasons.map(matchReason).join('、') }}</span
-          >
+    <p v-if="candidateItem" class="mt-0 mb-3 text-xs text-(--wui-color-text-secondary)">
+      为「{{ candidateItem.resourceTitle }}」选择匹配的文件
+    </p>
+    <ul v-if="candidateItem" class="m-0 flex list-none flex-col gap-2 p-0">
+      <li v-for="candidate in candidates[candidateItem.id]" :key="candidate.path">
+        <button
+          type="button"
+          class="candidate-option flex w-full cursor-pointer items-center gap-3 rounded-xl border-0 bg-(--wui-color-surface-raised,white) p-3 text-left text-(--wui-color-text) hover:bg-[color-mix(in_srgb,var(--wui-color-accent)_10%,var(--wui-color-surface-raised,white))] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring)"
+          @click="chooseCandidate(candidate)"
+        >
+          <span
+            class="candidate-icon grid size-9 shrink-0 place-items-center rounded-[9px] bg-[color-mix(in_srgb,var(--wui-color-accent)_14%,transparent)] text-(--wui-color-accent)"
+            ><web-ui-icon :icon="lucideFile" :size="18"
+          /></span>
+          <span class="min-w-0 flex-1">
+            <strong class="block truncate text-sm">{{ candidate.path.split('/').pop() || candidate.path }}</strong>
+            <span class="block wrap-anywhere text-xs text-(--wui-color-text-secondary)">{{ candidate.path }}</span>
+            <span class="block text-xs text-(--wui-color-text-secondary)"
+              >{{ formatSize(candidate.size) }} · {{ new Date(candidate.modifiedAt).toLocaleString() }} ·
+              {{ candidate.matchReasons.map(matchReason).join('、') }}</span
+            >
+          </span>
+          <web-ui-icon :icon="lucideChevronRight" :size="16" class="shrink-0 text-(--wui-color-text-secondary)" />
         </button>
       </li>
     </ul>
-    <web-ui-button slot="footer" variant="secondary" @click="candidateItem = null">取消</web-ui-button>
+    <web-ui-button slot="footer" full variant="secondary" @click="candidateItem = null">取消</web-ui-button>
   </web-ui-dialog>
   <ResourceLinkDialog
     :open="editingUrlItem !== null"
@@ -524,3 +581,50 @@ function submit() {
     @submit="completeUrl"
   />
 </template>
+
+<style scoped>
+.cancel-button::part(button) {
+  min-width: 76px;
+}
+
+.scan-shimmer {
+  background: linear-gradient(
+    90deg,
+    currentColor 0%,
+    currentColor 25%,
+    color-mix(in srgb, currentcolor 25%, #fff) 50%,
+    currentColor 75%,
+    currentColor 100%
+  );
+  background-position: 100% 0;
+  background-clip: text;
+  background-size: 250% 100%;
+
+  animation: scan-shimmer 1.8s linear infinite;
+
+  -webkit-text-fill-color: transparent;
+}
+
+@keyframes scan-shimmer {
+  to {
+    background-position: -66.67% 0;
+  }
+}
+
+.motion-reduced .scan-shimmer,
+:global(web-ui-theme[motion='reduced']) .scan-shimmer {
+  background: none;
+  animation: none;
+
+  -webkit-text-fill-color: currentcolor;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  .scan-shimmer {
+    background: none;
+    animation: none;
+
+    -webkit-text-fill-color: currentcolor;
+  }
+}
+</style>
