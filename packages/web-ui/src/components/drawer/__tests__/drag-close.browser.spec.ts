@@ -27,9 +27,10 @@ function settled(el: WebUiDrawer): Promise<void> {
  */
 function ownAnimations(el: WebUiDrawer): Animation[] {
   const dialog = getDialog(el)
+  const motion = dialog.querySelector('.wui-drawer-motion')
   return dialog
     .getAnimations({ subtree: true })
-    .filter(animation => (animation.effect as KeyframeEffect | null)?.target === dialog)
+    .filter(animation => (animation.effect as KeyframeEffect | null)?.target === motion)
 }
 
 function createDrawer(): WebUiDrawer {

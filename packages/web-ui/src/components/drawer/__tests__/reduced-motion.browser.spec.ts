@@ -27,7 +27,8 @@ async function waitForOpenSettled(el: WebUiDrawer) {
   await waitForFrame()
   await waitForFrame()
   await waitForFrame()
-  await pollUntil(() => dialog.getAnimations().length === 0, 'drawer open transition did not settle', 10_000)
+  const motion = dialog.querySelector('.wui-drawer-motion')!
+  await pollUntil(() => motion.getAnimations().length === 0, 'drawer open transition did not settle', 10_000)
 }
 
 /** 在 web-ui-theme 作用域内挂载 drawer；motion 为 null 时不套 theme（走系统 reduce）。 */
@@ -79,14 +80,14 @@ async function dragToClose(el: WebUiDrawer, toX: number) {
 }
 
 /**
- * 在若干帧内采样 dialog 上出现过的过渡属性（§10 S2：动效一律用 WAAPI 观察）。
- * 只采 dialog 自身（含 ::backdrop），不带 subtree——避免把后代元素的动画算进来。
+ * 在若干帧内采样内容层与原生 backdrop 的过渡，不计其他后代动画。
  */
 async function sampleTransitions(el: WebUiDrawer, frames = 12): Promise<string[]> {
   const dialog = getDialog(el)
+  const motion = dialog.querySelector('.wui-drawer-motion')!
   const seen = new Set<string>()
   for (let i = 0; i < frames; i += 1) {
-    for (const animation of dialog.getAnimations()) {
+    for (const animation of [...dialog.getAnimations(), ...motion.getAnimations()]) {
       seen.add((animation as CSSTransition).transitionProperty ?? (animation as CSSAnimation).animationName ?? '?')
     }
     await waitForFrame()

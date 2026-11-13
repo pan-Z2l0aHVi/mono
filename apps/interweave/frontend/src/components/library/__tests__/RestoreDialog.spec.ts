@@ -222,7 +222,7 @@ describe('RestoreDialog', () => {
       button('扫描全盘').click()
       expect(addItems).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ sourceId: 'other' })]))
       expect(startScan).toHaveBeenCalledWith(['file', 'other'], '')
-      expect(notification).toHaveBeenCalledWith('已找到 2 条失效资源', expect.anything())
+      expect(notification).toHaveBeenCalledWith('已找到 2 条失效资源')
       await vi.waitFor(() => expect(host.querySelector('[aria-label="撤回 文件"]')).not.toBeNull())
       await vi.waitFor(() => expect(pollScan).toHaveBeenCalledTimes(2))
       expect(host.textContent).not.toContain('一键扫描')

@@ -90,7 +90,6 @@ const restoreBusy = ref(false)
 const restoreError = ref('')
 const failedRestoreIds = ref<string[]>([])
 const activeRestoreItemId = ref<string | null>(null)
-const addDialogRef = ref<InstanceType<typeof AddDialog> | null>(null)
 const addQueue = createLibraryAddQueue(runtime)
 const queue = addQueue.queue
 const duplicatePrompt = addQueue.duplicatePrompt
@@ -383,9 +382,9 @@ async function pasteFilePaths(clipboardText?: string) {
       await addQueue.enqueueURL(url)
       return
     }
-    toast.warning('剪切板中没有可添加的文件或有效链接', { container: addDialogRef.value?.toastContainer() })
+    toast.warning('剪切板中没有可添加的文件或有效链接')
   } catch {
-    toast.warning('无法读取剪切板，请重试', { container: addDialogRef.value?.toastContainer() })
+    toast.warning('无法读取剪切板，请重试')
   }
 }
 
@@ -672,7 +671,6 @@ onMounted(() => {
   </div>
 
   <AddDialog
-    ref="addDialogRef"
     :open="addOpen"
     :queue="queue"
     :busy="submitting"

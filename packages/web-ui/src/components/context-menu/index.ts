@@ -29,6 +29,7 @@ import {
 } from '@/shared/menu-portal/menu-tree'
 import { normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
+import { registerModalLayer, unregisterModalLayer } from '@/shared/overlay/modal-layer-stack'
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { defineOverlayPositioningGeneration } from '@/shared/overlay/positioning-generation'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
@@ -810,6 +811,7 @@ export class WebUiContextMenu extends LitElement {
     // showModal() 要求元素已在文档中。
     this._scrimParent().append(scrim)
     scrim.showModal()
+    registerModalLayer(scrim)
     this._scrim = scrim
     return scrim
   }
@@ -842,6 +844,7 @@ export class WebUiContextMenu extends LitElement {
     if (!scrim) return
     this._scrim = undefined
     if (scrim.open) scrim.close()
+    unregisterModalLayer(scrim)
     scrim.remove()
   }
 
@@ -858,6 +861,7 @@ export class WebUiContextMenu extends LitElement {
   private _releaseScrimModality() {
     const scrim = this._scrim
     if (scrim?.open) scrim.close()
+    if (scrim) unregisterModalLayer(scrim)
   }
 
   /**

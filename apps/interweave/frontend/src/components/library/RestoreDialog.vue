@@ -37,7 +37,6 @@ const emit = defineEmits<{
   addItems: [items: LibraryRestoreQueueItem[]]
 }>()
 
-const dialogRef = ref<WebUiDialog | null>(null)
 const scanChoiceOpen = ref(false)
 const candidateItem = ref<LibraryRestoreQueueItem | null>(null)
 const candidates = ref<Record<string, RecoveryCandidate[]>>({})
@@ -98,9 +97,7 @@ async function beginScan(directory: string) {
   const items = [...props.queue]
   for (const item of props.allUnavailableFiles) if (!items.some(existing => existing.id === item.id)) items.push(item)
   emit('addItems', items)
-  toast.info(`已找到 ${items.filter(item => item.kind === 'file').length} 条失效资源`, {
-    container: dialogRef.value?.shadowRoot?.querySelector('dialog') ?? undefined
-  })
+  toast.info(`已找到 ${items.filter(item => item.kind === 'file').length} 条失效资源`)
   try {
     const id = await props.startScan(
       items.filter(item => item.kind === 'file').map(item => item.sourceId),
@@ -344,7 +341,6 @@ function submit() {
 
 <template>
   <web-ui-dialog
-    ref="dialogRef"
     :open="open"
     controlled
     no-backdrop-close

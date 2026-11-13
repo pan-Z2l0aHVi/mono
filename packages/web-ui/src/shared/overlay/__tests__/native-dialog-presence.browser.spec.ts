@@ -37,10 +37,11 @@ describe('native dialog presence close path', () => {
     const drawer = createDrawer()
     await drawer.updateComplete
     const dialog = getDialog(drawer)
+    const motion = dialog.querySelector('.wui-drawer-motion')
     let enterEnded = false
     let exitStarted = false
     const onTransition = (event: TransitionEvent) => {
-      if (event.target !== dialog || event.propertyName !== 'transform') return
+      if (event.target !== motion || event.propertyName !== 'transform') return
       if (event.type === 'transitionend' && drawer.open) enterEnded = true
       if (event.type === 'transitionrun' && !drawer.open) exitStarted = true
     }

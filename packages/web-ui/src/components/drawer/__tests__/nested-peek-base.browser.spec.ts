@@ -157,7 +157,9 @@ async function stabilize(drawers: WebUiDrawer[], budget: Budget) {
 }
 
 function readLefts(drawers: WebUiDrawer[]): number[] {
-  return drawers.map(drawer => Number(getDialog(drawer).getBoundingClientRect().left.toFixed(3)))
+  return drawers.map(drawer =>
+    Number(drawer.shadowRoot!.querySelector('.wui-drawer-motion')!.getBoundingClientRect().left.toFixed(3))
+  )
 }
 
 /*
@@ -185,7 +187,7 @@ async function openStack(budget: Budget, ...drawers: WebUiDrawer[]) {
 
 // 由深到浅（先打开的在下层）的左缘序列。
 function leftEdges(drawers: WebUiDrawer[]): number[] {
-  return drawers.map(drawer => getDialog(drawer).getBoundingClientRect().left)
+  return drawers.map(drawer => drawer.shadowRoot!.querySelector('.wui-drawer-motion')!.getBoundingClientRect().left)
 }
 
 /*
