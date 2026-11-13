@@ -43,6 +43,7 @@
 
 import { definePlugin } from '@greypan/js-kit'
 
+import { PAGE_SHIFT_SETTLED_EVENT } from '@/shared/overlay/page-shift-event'
 import { prefersReducedMotion } from '@/shared/theme/reduced-motion'
 
 const ENTER_DURATION_VARIABLE = '--wui-duration-drawer-enter'
@@ -124,6 +125,7 @@ function indexOfHost(host: HTMLElement): number {
 
 function applyPage(host: HTMLElement, motion: PageShiftMotion) {
   const root = document.documentElement
+  const notifySettled = () => root.dispatchEvent(new Event(PAGE_SHIFT_SETTLED_EVENT))
   const target = stack.length > 0 ? restingTranslate() : (takeover?.neutral ?? 'none')
   /*
    * 同一层重复 push 的落点与内联值相同：此时不重启动画，否则会从当前值再跑一遍完整时长。
@@ -142,17 +144,24 @@ function applyPage(host: HTMLElement, motion: PageShiftMotion) {
   for (const animation of root.getAnimations()) {
     if (animation.id === PAGE_SHIFT_ANIMATION_ID) animation.cancel()
   }
-  if (motion === 'instant' || previous === target) return
+  if (motion === 'instant' || previous === target) {
+    notifySettled()
+    return
+  }
 
   const duration = readDuration(
     host,
     motion === 'enter' ? ENTER_DURATION_VARIABLE : EXIT_DURATION_VARIABLE,
     motion === 'enter' ? ENTER_DURATION_FALLBACK : EXIT_DURATION_FALLBACK
   )
-  if (duration <= 0) return
+  if (duration <= 0) {
+    notifySettled()
+    return
+  }
 
   const animation = root.animate([{ translate: previous }, { translate: target }], { duration, easing: readEase(host) })
   animation.id = PAGE_SHIFT_ANIMATION_ID
+  void animation.finished.then(notifySettled, () => {})
 }
 
 export interface PageShiftOptions {

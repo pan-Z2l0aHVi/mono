@@ -51,5 +51,5 @@ if (!Element.prototype.getAnimations) {
   Element.prototype.getAnimations = () => []
 }
 if (!Element.prototype.animate) {
-  Element.prototype.animate = () => ({ id: '', cancel() {} }) as Animation
+  Element.prototype.animate = () => ({ id: '', cancel() {}, finished: Promise.resolve() }) as unknown as Animation
 }
