@@ -5,7 +5,7 @@ import type { WebUiTextarea } from '@greypan/web-ui'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, shallowRef } from 'vue'
 
-import type { ResourceView } from '@/stores/library'
+import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import DetailDrawer from '../DetailDrawer.vue'
@@ -95,7 +95,7 @@ describe('DetailDrawer', () => {
       metadata: null
     }
     const resource = resourceView({ available: false, preferred: source, sources: [source] })
-    const recover = vi.fn()
+    const recover = vi.fn<(source: ResourceSourceView) => void>()
     const mounted = mountDrawer(resource, { onRecover: recover })
     try {
       await nextTick()

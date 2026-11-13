@@ -4,7 +4,7 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick } from 'vue'
 
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
-import type { LibraryRestoreQueueItem } from '../restore'
+import type { LibraryRestoreQueueItem, RecoveryScanUpdate } from '../restore'
 import RestoreDialog from '../RestoreDialog.vue'
 
 const items: LibraryRestoreQueueItem[] = [
@@ -34,11 +34,16 @@ describe('RestoreDialog', () => {
   it('取消文件选择保留失效项，选择后可撤回，确认只提交已准备项', async () => {
     const host = document.createElement('div')
     document.body.append(host)
-    const chooseFilePath = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce('/new/file')
-    const submit = vi.fn()
-    const addItems = vi.fn()
-    const releaseFilePreview = vi.fn(async () => undefined)
-    const prepareFilePreview = vi.fn(async () => ({
+    const chooseFilePath = vi
+      .fn<() => Promise<string | null>>()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce('/new/file')
+    const submit = vi.fn<(items: LibraryRestoreQueueItem[]) => void>()
+    const addItems = vi.fn<(items: LibraryRestoreQueueItem[]) => void>()
+    const releaseFilePreview = vi.fn<(token: string) => Promise<void>>(async () => undefined)
+    const prepareFilePreview = vi.fn<
+      (path: string) => Promise<{ kind: ResourceKind; token?: string; media_url?: string }>
+    >(async () => ({
       kind: ResourceKind.ResourceKindImage,
       token: 'preview-token',
       media_url: '/preview'
@@ -158,10 +163,10 @@ describe('RestoreDialog', () => {
       matchReasons: ['name'],
       snapshot: path
     })
-    const startScan = vi.fn(async () => 'scan')
-    const addItems = vi.fn()
+    const startScan = vi.fn<(ids: string[], directory: string) => Promise<string>>(async () => 'scan')
+    const addItems = vi.fn<(items: LibraryRestoreQueueItem[]) => void>()
     const notification = vi.spyOn(toast, 'info').mockReturnValue('scan-toast')
-    const cancelScan = vi.fn(async () => undefined)
+    const cancelScan = vi.fn<(id: string) => Promise<void>>(async () => undefined)
     let finish!: (value: {
       candidates: ReturnType<typeof candidate>[]
       checked: number
@@ -172,7 +177,7 @@ describe('RestoreDialog', () => {
       error: string
     }) => void
     const pollScan = vi
-      .fn()
+      .fn<(id: string) => Promise<RecoveryScanUpdate>>()
       .mockResolvedValueOnce({
         candidates: [candidate('/a')],
         checked: 1,
@@ -188,7 +193,7 @@ describe('RestoreDialog', () => {
             finish = resolve
           })
       )
-    const submit = vi.fn()
+    const submit = vi.fn<(items: LibraryRestoreQueueItem[]) => void>()
     const app = createApp({
       render: () =>
         h(RestoreDialog, {

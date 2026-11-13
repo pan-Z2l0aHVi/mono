@@ -45,7 +45,7 @@ vi.mock('@/services/library', () => ({
   }
 }))
 
-const toastWarning = vi.hoisted(() => vi.fn())
+const toastWarning = vi.hoisted(() => vi.fn<(message: string, options: { position: string }) => void>())
 
 vi.mock('@greypan/web-ui', () => ({
   toast: { warning: toastWarning },
