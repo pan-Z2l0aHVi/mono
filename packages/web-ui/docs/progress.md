@@ -2,7 +2,7 @@
 
 English | [简体中文](./progress.CN.md)
 
-progress / progress indicator: a linear track for completed work, with an indeterminate mode for operations whose percentage is not known yet.
+progress / progress indicator: a linear track for completed work, with a `sport` loop animation for visual emphasis.
 
 ## Samples
 
@@ -56,16 +56,20 @@ export default function Demo() {
 </template>
 ```
 
-### Indeterminate
+### Sport
 
-Use `indeterminate` when work has started but its percentage cannot be calculated yet. The component removes `aria-valuenow` while keeping the progress name and upper bound. The theme's reduced-motion setting slows the loop and does not stop it completely.
+`sport` turns the completed portion into a short bar that loops from left to right across the track. Its **width** is still the `value / max` percentage, while its **position** comes from the animation; both the first and last frames place the bar fully outside the track, so the loop joins without a jump at a fixed percentage. The bar has square corners. A non-linear easing slows both ends and accelerates through the middle; the period defaults to 1s (1.25 times the theme's spinner token) and slows to 2s under the theme's reduced-motion setting, never stopping.
+
+Progress stays knowable in `sport` mode: the host keeps `aria-valuenow`, and `show-value` still shows the percentage. Changing the value mid-animation updates the bar width and the travel endpoint together.
+
+A `progressbar` only expresses known progress. When work has started but its percentage cannot be calculated yet, use a loading indicator such as `web-ui-spinner` instead. The `indeterminate` prop, the `--wui-progress-indeterminate-duration` custom property and the `wui-progress-indeterminate` animation are no longer available. A leftover `indeterminate` attribute in a template is ignored and **silently degrades to 0% when no `value` is given**; remove it and switch to `web-ui-spinner`.
 
 ```tsx
 export default function Demo() {
   return (
     <div className="grid w-full max-w-xl gap-5">
-      <web-ui-progress aria-label="Connecting to server" indeterminate></web-ui-progress>
-      <web-ui-progress aria-label="Preparing data" indeterminate showValue></web-ui-progress>
+      <web-ui-progress aria-label="Verifying files" value={35} sport></web-ui-progress>
+      <web-ui-progress aria-label="Building index" max={200} value={130} sport showValue></web-ui-progress>
     </div>
   )
 }
@@ -74,8 +78,8 @@ export default function Demo() {
 ```vue
 <template>
   <div class="grid w-full max-w-xl gap-5">
-    <web-ui-progress aria-label="Connecting to server" indeterminate></web-ui-progress>
-    <web-ui-progress aria-label="Preparing data" indeterminate show-value></web-ui-progress>
+    <web-ui-progress aria-label="Verifying files" :value="35" sport></web-ui-progress>
+    <web-ui-progress aria-label="Building index" :max="200" :value="130" sport show-value></web-ui-progress>
   </div>
 </template>
 ```
@@ -126,27 +130,28 @@ export default function Demo() {
 
 ### Props
 
-| Name            | Description                                                                                  | Type      | Default |
-| --------------- | -------------------------------------------------------------------------------------------- | --------- | ------- |
-| `value`         | Current completed amount, clamped to `0..max`; invalid numbers fall back to `0`.             | `number`  | `0`     |
-| `max`           | Upper bound; non-finite or non-positive values fall back to `100`.                           | `number`  | `100`   |
-| `indeterminate` | Unknown-progress mode. Removes `aria-valuenow` and plays the loop animation.                 | `boolean` | `false` |
-| `show-value`    | Shows the rounded percentage beside the track; indeterminate mode shows an ellipsis instead. | `boolean` | `false` |
+| Name         | Description                                                                         | Type      | Default |
+| ------------ | ----------------------------------------------------------------------------------- | --------- | ------- |
+| `value`      | Current completed amount, clamped to `0..max`; invalid numbers fall back to `0`.    | `number`  | `0`     |
+| `max`        | Upper bound; non-finite or non-positive values fall back to `100`.                  | `number`  | `100`   |
+| `sport`      | Sport mode: a square-cornered bar sized by progress loops with a non-linear easing. | `boolean` | `false` |
+| `show-value` | Shows the rounded percentage beside the track.                                      | `boolean` | `false` |
 
 ### CSS Custom Properties
 
-| Name                                    | Description                                | Default                                           |
-| --------------------------------------- | ------------------------------------------ | ------------------------------------------------- |
-| `--wui-progress-height`                 | Track height.                              | `8px`                                             |
-| `--wui-progress-radius`                 | Radius of the track and completed portion. | `var(--wui-radius-control, calc(infinity * 1px))` |
-| `--wui-progress-track-color`            | Track background.                          | `var(--wui-color-surface-track, #e5e5eb)`         |
-| `--wui-progress-fill-color`             | Completed-portion color.                   | `var(--wui-color-accent, #0071e3)`                |
-| `--wui-progress-indeterminate-duration` | Loop duration in indeterminate mode.       | `var(--wui-duration-spinner, 800ms)`              |
+| Name                            | Description                                | Default                                           |
+| ------------------------------- | ------------------------------------------ | ------------------------------------------------- |
+| `--wui-progress-height`         | Track height.                              | `8px`                                             |
+| `--wui-progress-radius`         | Radius of the track and completed portion. | `var(--wui-radius-control, calc(infinity * 1px))` |
+| `--wui-progress-track-color`    | Track background.                          | `var(--wui-color-surface-track, #e5e5eb)`         |
+| `--wui-progress-fill-color`     | Completed-portion color.                   | `var(--wui-color-accent, #0071e3)`                |
+| `--wui-progress-sport-duration` | Loop duration in sport mode.               | `calc(var(--wui-duration-spinner, 800ms) * 1.25)` |
+| `--wui-progress-sport-easing`   | Easing curve in sport mode.                | `cubic-bezier(0.65, 0, 0.35, 1)`                  |
 
 ### Parts
 
-The public style parts are `base`, `track`, `indicator` and `value`. Use `::part(...)` when visual control beyond the CSS Custom Properties is required; keep numeric and sizing updates on the documented properties.
+The public style parts are `base`, `track`, `indicator` and `value`. Use `::part(...)` when visual control beyond the CSS Custom Properties is required; keep numeric and sizing updates on the documented properties. `--wui-progress-percent` and `--wui-progress-sport-shift` are written by the component into the `indicator`'s inline style and cannot be overridden externally.
 
 ### Accessibility
 
-The host carries the `progressbar` role and maintains `aria-valuemin`, `aria-valuemax` and, in determinate mode, `aria-valuenow`. When neither `aria-label` nor `aria-labelledby` is supplied, the name is the built-in English `Progress`. Provide a name that matches the actual task.
+The host carries the `progressbar` role and always maintains `aria-valuemin`, `aria-valuemax` and `aria-valuenow`. `sport` only changes the visual treatment, not the progress semantics. When neither `aria-label` nor `aria-labelledby` is supplied, the name is the built-in English `Progress`. Provide a name that matches the actual task.

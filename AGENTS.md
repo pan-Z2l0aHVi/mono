@@ -15,7 +15,7 @@
 ## 不可绕过的仓库边界
 
 - 不得改写 `.npmrc` 或 `.mise.toml` 的 registry/mirror，或任何 Git 配置；唯一例外是由 `turbo-sparse-scope` 执行 sparse checkout 时管理所必需的 worktree 配置与 Git 的 worktree-config 开关，不得借此更改其他 Git 配置。
-- 生成文件只经对应 generator 更新：清单、路径与入口见 [`docs/agents/generated-artifacts.md`](docs/agents/generated-artifacts.md)。正确性由 generator 重建证明，不由审查结论证明。
+- **禁止手写或修改生成物**：不得手写新建、手工编辑生成文件，也不得用复制、补丁、格式化或 lint 自动改写绕过；唯一允许的写入是跑对应 generator 产生 diff。清单、路径与重新生成入口见 [`docs/agents/generated-artifacts.md`](docs/agents/generated-artifacts.md)，判定方法见该文「[怎么判断一个文件是不是生成的](docs/agents/generated-artifacts.md#怎么判断一个文件是不是生成的)」。正确性由 generator 重建证明，不由审查结论证明。
 - `**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是源码产物。除非任务明确要求更新已验证的视觉基线，否则不创建、不编辑、不提交。
 - `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/` 和仓库自撰 skill 的文档用中文。`skills-lock.json` 登记的第三方 skill 与 `.agents/skills-vendored/` 保持上游原文，和仓库规则冲突时以仓库规则为准。技术术语、命令、路径和包名保留英文。
 - 一个可变 task 只有一个实施 worktree 和 owner，由外部编排层分配。不在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。
