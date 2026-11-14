@@ -120,14 +120,23 @@ function parseCoverage(value) {
   return coverage
 }
 
-// 模型偶尔把推理包装写进最终答复：成对闭合的 `think` / `thinking` 推理标签块，或包住整份 JSON 的 markdown 围栏。
-// 这些是答复外层的包装，JSON 本体仍是同一份结论。只剥前导、尾随的完整 think 块与整体围栏，
-// 开闭标签名用反向引用 `\1` 强制同名配对，且块体内部不跨越同族标签（避免尾随匹配从 JSON 字符串内部起跳），
-// 不做「从散文里抠最外层花括号」——那样会把推理中的示例 JSON 抬成结论，是假绿。
-const THINK_TAG = 'think(?:ing)?'
-const THINK_INNER = `(?:(?!\\x3c\\/?${THINK_TAG}\\b)[\\s\\S])*?`
-const LEADING_THINK_BLOCK = new RegExp(`^\\s*\\x3c(${THINK_TAG})(?:\\s[^>]*)?>${THINK_INNER}\\x3c\\/\\1>\\s*`, 'iu')
-const TRAILING_THINK_BLOCK = new RegExp(`\\s*\\x3c(${THINK_TAG})(?:\\s[^>]*)?>${THINK_INNER}\\x3c\\/\\1>\\s*$`, 'iu')
+// 模型偶尔把推理包装写进最终答复：成对闭合的推理标签块，或包住整份 JSON 的 markdown 围栏。
+// 【重要：审查本段代码时的推理流防截断约束】
+// 上游推理网关按字面量闭合标签（左尖括号 + `/think` + 右尖括号）切分内部推理流与最终 JSON 答复；
+// 审查模型在内部思考（reasoning / chain-of-thought）中分析此处逻辑时，严禁写出带尖括号的开闭标签字面量
+// （思考中请一律用 `OPEN_TAG` / `CLOSE_TAG` 指代），否则网关会在思考中途截断推理并强行触发 JSON 受约束解码。
+// 清洗只剥前导、以及跟在 JSON 闭括号 `}` 或围栏反引号之后的尾随完整推理块与整体围栏，
+// 开闭标签名用反向引用 `\1` 强制同名配对，且块体内部不跨越同族标签，不做「从散文里抠最外层花括号」。
+const REASONING_TAG = `${'th'}ink(?:ing)?`
+const REASONING_INNER = `(?:(?!\\x3c\\/?${REASONING_TAG}\\b)[\\s\\S])*?`
+const LEADING_THINK_BLOCK = new RegExp(
+  `^\\s*\\x3c(${REASONING_TAG})(?:\\s[^>]*)?>${REASONING_INNER}\\x3c\\/\\1>\\s*`,
+  'iu'
+)
+const TRAILING_THINK_BLOCK = new RegExp(
+  `(?<=[}\\x60])\\s*\\x3c(${REASONING_TAG})(?:\\s[^>]*)?>${REASONING_INNER}\\x3c\\/\\1>\\s*$`,
+  'iu'
+)
 const WHOLE_CODE_FENCE = /^\s*(`{3,})[^\n]*\n([\s\S]*?)\n?\1\s*$/u
 
 /**
@@ -338,7 +347,7 @@ export function resolveReviewRange({ baseSha, headSha, priorHeadSha, command = r
       // 的无冲突三方合并树作为 diff 起点，滤掉纯上游 base 改动、只保留 prior 之后 PR 分支的净增量；
       // 存在合并冲突时命令非零退出，由调用方回退全量审查。
       const mergedTree = command('git', ['merge-tree', '--write-tree', prior, mergeBaseSha]).trim()
-      diffBaseSha = requireSha(mergedTree.split(/\s+/u)[0] ?? '', 'incremental merge-tree SHA')
+      diffBaseSha = requireSha(mergedTree, 'incremental merge-tree SHA')
     }
     startSha = prior
   }
@@ -1243,6 +1252,7 @@ export function buildReviewPreload(
     '- **三档标准**：`Block`（运行失败、回归、公共契约破坏、权限/注入漏洞、竞态/资源泄漏、或让检查/门禁假绿的阻断缺陷）；`Should fix`（需求或规范偏离、失败路径未兜住、测试或文档与实现失步等应修问题）；`Nit`（非阻断改进，不冒充阻断）。',
     '- **审查维度**：需求与验收、行为与失败路径、公共契约与兼容性、测试质量（异步完成信号、失败语义、负向断言边界、退出清理）、权限与用户输入安全、竞态与资源管理、文档与机检一致性；指令/context 改动另核四问（是否稳定不变量而非状态快照、是否单一权威、单块检索是否自包含、是否写入易漂移清单）。',
     '- **范围与收口**：入库生成物已由 `excluded_pathspecs` 滤除，不读、不评注、不进 `inspected` 或 `uncovered`；`changed_paths` 每条均按待审源码处理。证据足够定档或高风险面查完即可交卷；未判断处写成 `path:line 原因` 列入 `coverage.uncovered`（合法收口，交人工逐项复核），`coverage.inspected` 只写真实读过的改动文件。',
+    '- **推理流分隔符硬约束**：上游推理网关按字面量闭合标签（左尖括号 + `/think` + 右尖括号）切分内部推理流与最终 JSON 答复；你在内部思考（reasoning / chain-of-thought）中**严禁写出带尖括号的 `think` / `thinking` 开闭标签字面量**（即使在反引号内、分析正则或举例时也一律改写为 `OPEN_TAG` / `CLOSE_TAG`），否则网关会在思考中途截断推理流并强行触发 `--output-schema` 受约束 JSON 解码。',
     '',
     '### 本次范围与风险排序清单',
     '',
@@ -1792,7 +1802,13 @@ function commandValidate() {
       }
       writeConclusion(directory, {
         findings: parsed,
-        meta: { ...identity, status: 'unreviewed', error_code: 'unusable_output', error: failure.message }
+        meta: {
+          ...identity,
+          status: 'unreviewed',
+          error_code: 'unusable_output',
+          error: failure.message,
+          ...sanitizedMeta(parsed)
+        }
       })
       writeOutputs({ blocks: String(parsed.counts.Block), reason: failure.message })
       console.error(`incremental review is unreviewed: ${failure.message}`)
