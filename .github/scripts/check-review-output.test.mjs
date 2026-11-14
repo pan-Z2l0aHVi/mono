@@ -4,7 +4,7 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { shouldRejectReviewOutput } from './check-review-output.mjs'
+import { inspectReviewOutput, shouldRejectReviewOutput } from './check-review-output.mjs'
 import { coverageGap, parseReviewFindings } from './codex-review.mjs'
 
 const scriptPath = path.join(import.meta.dirname, 'check-review-output.mjs')
@@ -64,7 +64,21 @@ const cases = [
     scope: { empty_diff: true, diff_bytes: 0 },
     expected: false
   },
-  { name: 'unparsable output belongs to validate', raw: '{not json', expected: false }
+  { name: 'unparsable output is rejected so --failed reruns the review job', raw: '{not json', expected: true },
+  {
+    name: 'wrapped valid output passes after normalization',
+    raw: [
+      '<' + 'think' + '>先核对改动。</' + 'think' + '>',
+      '```json',
+      JSON.stringify({
+        summary: 'ok',
+        coverage: { inspected: ['packages/web-ui/src/button.ts'], uncovered: [] },
+        findings: []
+      }),
+      '```'
+    ].join('\n'),
+    expected: false
+  }
 ]
 
 {
@@ -72,17 +86,30 @@ const cases = [
     const raw = payload(item.raw)
     const scope = item.scope ?? nonEmptyScope
     assert.equal(shouldRejectReviewOutput(raw, scope), item.expected, item.name)
-    // 与可信判据逐例对齐：guard 判红的集合必须恰好是 validate 判 missing_coverage 的集合，
+    // 与可信判据逐例对齐：guard 判红的集合必须恰好是 validate 判 unreviewed（unusable_output + missing_coverage）的集合，
     // 否则剩下的形态仍会落回「review 绿 / gate 红」，--failed 只重跑 gate。
-    const validateGap = (() => {
+    const validateRejected = (() => {
       try {
         return coverageGap(parseReviewFindings(raw), scope) !== ''
       } catch {
-        return false
+        return true
       }
     })()
-    assert.equal(shouldRejectReviewOutput(raw, scope), validateGap, `${item.name}: must agree with validate`)
+    assert.equal(shouldRejectReviewOutput(raw, scope), validateRejected, `${item.name}: must agree with validate`)
   }
+  assert.equal(
+    inspectReviewOutput('{not json', nonEmptyScope).code,
+    'unusable_output',
+    'unparsable output must be classified as unusable_output'
+  )
+  assert.equal(
+    inspectReviewOutput(
+      payload({ summary: '', coverage: { inspected: [], uncovered: [] }, findings: [] }),
+      nonEmptyScope
+    ).code,
+    'missing_coverage',
+    'empty coverage must be classified as missing_coverage'
+  )
   assert.equal(
     shouldRejectReviewOutput(payload({ summary: '', coverage: { inspected: [], uncovered: [] }, findings: [] }), null),
     true,
@@ -126,7 +153,9 @@ function runCli({ output, scope, withScope = true }) {
   assert.equal(emptyDiff.status, 0, 'an empty diff is exempt')
 
   assert.equal(runCli({ output: undefined }).status, 0, 'a missing output file belongs to validate')
-  assert.equal(runCli({ output: '{not json' }).status, 0, 'unparsable output belongs to validate')
+  const unparsable = runCli({ output: '{not json' })
+  assert.equal(unparsable.status, 1, 'unparsable output must also fail the review job so --failed reruns it')
+  assert.match(unparsable.stderr, /unusable_output/)
 
   const missingScope = runCli({
     output: { summary: '', coverage: { inspected: [], uncovered: [] }, findings: [] },

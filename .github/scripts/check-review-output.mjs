@@ -4,30 +4,40 @@ import path from 'node:path'
 import { coverageGap, parseReviewFindings } from './codex-review.mjs'
 
 /**
- * 空壳结论：diff 非空，模型却交出没有覆盖证据的结论。
+ * 无可用结论：diff 非空而模型交出没有覆盖证据的空壳（`missing_coverage`），或模型写出的文件
+ * 无法通过 JSON / 结构校验（`unusable_output`，例如未闭合 `<think>` 块、工具调用标签泄漏）。
  *
- * PR #527 连续两轮里，模型在读完判据文档、还没打开任何改动文件时就交出 schema 允许的空
- * 对象，`run_codex` 与 review job 都标 `success`，只有 gate 判红。结果是「review 绿 / gate 红」
- * 割裂，且 `gh run rerun --failed` 只会重跑 gate、artifact 还是同一份空壳，必然二次判红。
+ * 这两类故障下 `run_codex` 与 `validate` 原本都以 0 退出，只有 `codex-gate` 判红，造成
+ * 「review 绿 / gate 红」割裂；`gh run rerun --failed` 因此只会重跑 gate、拿同一份坏 artifact
+ * 二次判红。
  *
- * 判据直接复用 `coverageGap` / `parseReviewFindings`，与 `validate` 判 `missing_coverage`
- * 的集合逐例对齐：不只是「无 findings + 无 inspected」，还包括整个 coverage 缺席、
- * 以及 inspected 没命中本次 changed_paths（只读了判据文档就收尾）。这一步只让 review
- * job 一起变红，好让 `--failed` 重跑模型 job；它不判绿、不改判结论，结论仍由取自 PR base
- * 的 trusted `validate` / `gate` 裁决。脚本从工作区（PR head）读取，本 PR 即生效。
+ * 判据直接复用 `parseReviewFindings` 与 `coverageGap`，与 `validate` 判 `unreviewed`
+ * （`unusable_output` + `missing_coverage`）的集合对齐。这一步只让 review job 一起变红，
+ * 好让 `--failed` 重跑模型 job；它不判绿、不改判结论，结论仍由取自 PR base 的 trusted
+ * `validate` / `gate` 裁决。脚本从工作区（PR head）读取，本 PR 即生效。
  */
-export function shouldRejectReviewOutput(raw, scope) {
+export function inspectReviewOutput(raw, scope) {
   let parsed
   try {
     parsed = parseReviewFindings(raw)
-  } catch {
-    // 结构错误（坏 JSON、缺 findings、未知档位…）由 validate 判 unusable_output：
-    // 这里不越权，也不把「模型 job 崩了」洗成一次普通的空结论。
-    return false
+  } catch (error) {
+    return {
+      rejected: true,
+      code: 'unusable_output',
+      reason: error instanceof Error ? error.message : String(error)
+    }
   }
   // scope 读不到时按「非空 diff、无 changed_paths」处理：无法证明 empty_diff，fail closed。
   const effectiveScope = scope ?? { empty_diff: false, changed_paths: [] }
-  return coverageGap(parsed, effectiveScope) !== ''
+  const gap = coverageGap(parsed, effectiveScope)
+  if (gap !== '') {
+    return { rejected: true, code: 'missing_coverage', reason: gap }
+  }
+  return { rejected: false, code: '', reason: '' }
+}
+
+export function shouldRejectReviewOutput(raw, scope) {
+  return inspectReviewOutput(raw, scope).rejected
 }
 
 function readJson(filePath) {
@@ -51,13 +61,14 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     if (scope === null)
       console.error(`check-review-output: scope unavailable at ${scopePath}; assuming a non-empty diff`)
     const raw = fs.readFileSync(outputPath, 'utf8')
-    if (shouldRejectReviewOutput(raw, scope)) {
-      console.error('Codex review returned no usable coverage evidence (missing_coverage).')
+    const verdict = inspectReviewOutput(raw, scope)
+    if (verdict.rejected) {
+      console.error(`Codex review returned no usable conclusion (${verdict.code}): ${verdict.reason}`)
       console.error('The review job fails with the gate so `gh run rerun --failed` reruns the model leg.')
       console.error('A repeat after rerunning means the prompt or the output contract needs fixing.')
       process.exitCode = 1
     } else {
-      console.log('check-review-output: conclusion passes the coverage gap check')
+      console.log('check-review-output: conclusion passes the output and coverage checks')
     }
   }
 }

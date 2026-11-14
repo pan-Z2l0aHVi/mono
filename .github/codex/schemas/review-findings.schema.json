@@ -2,26 +2,8 @@
   "type": "object",
   "description": "A read-only Codex review conclusion for one pull request head snapshot.",
   "additionalProperties": false,
-  "required": ["summary", "coverage", "findings", "prior_resolutions"],
+  "required": ["coverage", "prior_resolutions", "findings", "summary"],
   "properties": {
-    "prior_resolutions": {
-      "type": "array",
-      "description": "For incremental reviews, one entry for every prior finding, indexed from zero; otherwise an empty array.",
-      "items": {
-        "type": "object",
-        "additionalProperties": false,
-        "required": ["index", "resolved", "evidence"],
-        "properties": {
-          "index": { "type": "integer" },
-          "resolved": { "type": "boolean" },
-          "evidence": { "type": "string" }
-        }
-      }
-    },
-    "summary": {
-      "type": "string",
-      "description": "One or two sentences that state what the change does and the overall conclusion. Never describe what you are about to do or what you are reading."
-    },
     "coverage": {
       "type": "object",
       "description": "What the review actually covered. This is the evidence behind an empty findings array, so it may not be empty when nothing was reported.",
@@ -41,6 +23,20 @@
           "items": {
             "type": "string"
           }
+        }
+      }
+    },
+    "prior_resolutions": {
+      "type": "array",
+      "description": "For incremental reviews, one entry for every prior finding, indexed from zero; otherwise an empty array.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "resolved", "evidence"],
+        "properties": {
+          "index": { "type": "integer" },
+          "resolved": { "type": "boolean" },
+          "evidence": { "type": "string" }
         }
       }
     },
@@ -75,6 +71,10 @@
           }
         }
       }
+    },
+    "summary": {
+      "type": "string",
+      "description": "One or two sentences that state what the change does and the overall conclusion. Never describe what you are about to do or what you are reading, and never output placeholder strings like '...'."
     }
   }
 }
