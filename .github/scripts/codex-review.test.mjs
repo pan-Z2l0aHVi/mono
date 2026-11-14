@@ -265,6 +265,11 @@ const configuredEnv = Object.fromEntries(CONFIG_ENV.map(name => [name, `value-fo
       assert.equal(mergedScope.review_start_sha, third)
       assert.equal(mergedScope.diff_base_sha, postMergeRange.diffBaseSha)
       assert.deepEqual(mergedScope.changed_paths, ['src/a.ts'])
+      assert.match(
+        fs.readFileSync(path.join(temp, 'output'), 'utf8'),
+        new RegExp(`review_start_sha=${postMergeRange.diffBaseSha}`),
+        'step output review_start_sha must use diffBaseSha so per-file git diff matches pr.diff'
+      )
     } finally {
       fs.rmSync(temp, { recursive: true, force: true })
     }

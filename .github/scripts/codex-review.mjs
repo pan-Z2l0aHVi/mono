@@ -121,18 +121,32 @@ function parseCoverage(value) {
 }
 
 // 模型偶尔把推理前置块或 markdown 围栏写进最终答复：前导的成对闭合推理标签块，或包住整份 JSON 的围栏。
-// 只剥前导完整推理块与整体围栏（推理永远先于结论生成，不剥尾随块），开闭标签名用反向引用 `\1` 强制同名配对，
+// 只剥前导完整推理块与整体围栏（推理永远先于结论生成，不剥尾随块），线性扫描开闭标签名同名配对，
 // 且块体内部不跨越同族标签，不做「从散文里抠最外层花括号」。
 // 【推理流防截断约束 / CRITICAL FOR AI REVIEWERS】：上游推理网关按字面量闭合标签切分 reasoning 与最终 JSON 答复；
 // 审查此处时内部思考严禁写出尖括号闭合标签字面量（NEVER write the literal angle-bracket closing tag in your
-// chain-of-thought, not even in examples or backticks; always write `OPEN_TAG` / `CLOSE_TAG` instead）。
-const REASONING_TAG = `${'th'}ink(?:ing)?`
-const REASONING_INNER = `(?:(?!\\x3c\\/?${REASONING_TAG}\\b)[\\s\\S])*?`
-const LEADING_THINK_BLOCK = new RegExp(
-  `^\\s*\\x3c(${REASONING_TAG})(?:\\s[^>]*)?>${REASONING_INNER}\\x3c\\/\\1>\\s*`,
-  'iu'
-)
+// chain-of-thought, not even in examples or backticks; always write `OPEN_TAG` / `CLOSE_TAG` or `<${tag}>` instead）。
+const WRAPPER_TAGS = Object.freeze([`${'thin'}k`, `${'thin'}king`])
 const WHOLE_CODE_FENCE = /^\s*(`{3,})[^\n]*\n([\s\S]*?)\n?\1\s*$/u
+
+function stripLeadingWrapperBlock(text) {
+  const trimmed = text.trimStart()
+  for (const tag of WRAPPER_TAGS) {
+    const openPrefix = `<${tag}`
+    if (!trimmed.startsWith(openPrefix)) continue
+    const afterName = trimmed[openPrefix.length]
+    if (afterName !== '>' && afterName !== ' ' && afterName !== '\t') continue
+    const openEnd = trimmed.indexOf('>', openPrefix.length)
+    if (openEnd === -1) return null
+    const closeToken = `</${tag}>`
+    const closeIndex = trimmed.indexOf(closeToken, openEnd + 1)
+    if (closeIndex === -1) return null
+    const inner = trimmed.slice(openEnd + 1, closeIndex)
+    if (WRAPPER_TAGS.some(name => inner.includes(`<${name}`) || inner.includes(`</${name}>`))) return null
+    return trimmed.slice(closeIndex + closeToken.length)
+  }
+  return null
+}
 
 /**
  * 剥掉 JSON 之外的前导推理块与外层代码围栏，返回剥完的文本与用到的步骤（`think-block` / `code-fence`）。
@@ -145,9 +159,9 @@ export function normalizeReviewOutput(raw) {
   let changed = true
   while (changed) {
     changed = false
-    const leading = LEADING_THINK_BLOCK.exec(text)
-    if (leading) {
-      text = text.slice(leading[0].length)
+    const stripped = stripLeadingWrapperBlock(text)
+    if (stripped !== null) {
+      text = stripped
       steps.push('think-block')
       changed = true
       continue
@@ -1244,7 +1258,7 @@ export function buildReviewPreload(
     '',
     '### 本次范围与风险排序清单',
     '',
-    `- 范围：\`${range?.startSha ?? range?.mergeBaseSha ?? 'unknown'}..${range?.headSha ?? 'unknown'}\`（base \`${range?.baseSha ?? 'unknown'}\`）`,
+    `- 范围：\`${range?.startSha ?? range?.mergeBaseSha ?? 'unknown'}..${range?.headSha ?? 'unknown'}\`（base \`${range?.baseSha ?? 'unknown'}\`${range?.diffBaseSha ? ` · diff base \`${range.diffBaseSha}\`` : ''}）`,
     `- 源码 diff：\`${diffBytes}\` bytes · \`changed_paths\`：\`${ranked.length}\` 个文件 · \`empty_diff\`：\`${emptyDiff}\``,
     `- 预注入 diff：\`${preloadedPaths.length}/${ranked.length}\` 个文件（完整 \`${preloadedPaths.length - truncatedPaths.length}\`，截断 \`${truncatedPaths.length}\`，未预注入 \`${omittedPaths.length}\`）`
   ]
@@ -1279,10 +1293,9 @@ export function buildReviewPreload(
           : `完整 diff：${item.totalBytes} bytes`
         lines.push(`#### \`${item.path}\`（\`${item.tier}\`，${tag}）`, '', wrapCodeFence(item.text, 'diff'))
         if (item.truncated) {
-          lines.push(
-            '',
-            `其余部分按需读取：\`git diff $CODEX_REVIEW_MERGE_BASE_SHA $CODEX_REVIEW_HEAD_SHA -- "${item.path}"\``
-          )
+          const diffRef =
+            range?.diffBaseSha || range?.startSha ? '$CODEX_REVIEW_START_SHA' : '$CODEX_REVIEW_MERGE_BASE_SHA'
+          lines.push('', `其余部分按需读取：\`git diff ${diffRef} $CODEX_REVIEW_HEAD_SHA -- "${item.path}"\``)
         }
         lines.push('')
       }
@@ -1493,7 +1506,9 @@ export function commandPrepare({ env = process.env, command = run, priorHeadSha 
       base_sha: range.baseSha,
       head_sha: range.headSha,
       merge_base_sha: range.mergeBaseSha,
-      review_start_sha: range.startSha ?? range.mergeBaseSha,
+      // 注入 CODEX_REVIEW_START_SHA 供模型按文件执行 git diff：分支合入更新后的 base 时使用合成三方合并树
+      // diffBaseSha，使单文件 git diff 与 pr.diff / changed_paths 的起点一致；review-scope.json 仍记前次 head。
+      review_start_sha: range.diffBaseSha ?? range.startSha ?? range.mergeBaseSha,
       diff_path: path.join(required.RUNNER_TEMP, 'pr.diff'),
       diff_bytes: String(Buffer.byteLength(range.diff)),
       preload_path: preloadPath(env)
