@@ -68,6 +68,13 @@ const rowsRef = ref<HTMLElement | null>(null)
 const emptyTitle = computed(() => (props.runtimeAvailable ? '资源库为空' : '暂时无法打开资源库'))
 const checkedSet = computed(() => new Set(props.checkedIds))
 
+function focusNearest(index: number) {
+  if (props.resources.length) void navigator.navigateToIndex(Math.min(Math.max(index, 0), props.resources.length - 1))
+  else rowsRef.value?.focus()
+}
+
+defineExpose({ focusNearest })
+
 /*
  * 行高没有写死。ResourceRow 的标签区会 flex-wrap 换行，进入改名编辑态时表单控件也可能撑高行。
  * 这个 item-size 只是「还没量到之前先用
@@ -217,7 +224,7 @@ function scrollIndexIntoView(index: number) {
  */
 
 /*
- * 焦点成为 contextResource 的第二个来源。键盘呼出 context menu（ContextMenu 键 / Shift+F10）
+ * 焦点成为 contextResource 的第二个来源。键盘呼出 context menu（ContextMenu 键 / 长按空格）
  * 由 web-ui-context-menu 自己监听宿主元素，它不看 contextResource、只按 document.activeElement
  * 的 rect 摆 panel；而 menu item 全部 gate 在 contextResource 上，它只有行上的 contextmenu
  * 事件这一个赋值点。纯键盘呼出时 contextResource 仍是 null，弹出来的是一张紧贴该行、
@@ -266,14 +273,14 @@ const ROW_NAVIGATION_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End'])
 
 /*
  * 容器自己也是 tab stop，所以键盘用户能停在「整个列表」这一层。进列表的键位里带
- * Shift+F10：web-ui-context-menu 认的 context-menu 键（见 packages/web-ui/src/components/
+ * ContextMenu：web-ui-context-menu 认的 context-menu 键（见 packages/web-ui/src/components/
  * context-menu/index.ts 的 _onKeydown），焦点在容器上时它照样会开 menu，并把 panel 锚到容器
  * 自己身上。容器不对应任何一条资源，那种情况下弹出来的只会是一张位置在列表、内容与列表
  * 无关的 menu——和行上的键盘缺陷是同一个毛病，只是从「行」换成了「列表」。所以这里
  * 先把焦点交给行：事件继续冒泡到宿主，宿主再读 document.activeElement 时读到的已经是
  * 那一行，menu 于是既锚在行上、也讲这一行的事。
  */
-const ENTER_LIST_KEYS = new Set(['Enter', ' ', 'ArrowDown', 'F10'])
+const ENTER_LIST_KEYS = new Set(['Enter', ' ', 'ArrowDown', 'ContextMenu'])
 
 /*
  * 行是 div，键盘不像 button 那样补出 click，Enter / Space 在这里翻译成行语义。
@@ -310,8 +317,6 @@ function handleRowsKeydown(event: KeyboardEvent) {
 function enterList(event: KeyboardEvent) {
   if (!ENTER_LIST_KEYS.has(event.key)) return
   if (event.key === ' ' && event.shiftKey) return
-  // F10 只有带 Shift 才是 context-menu 键，裸 F10 留给浏览器的查找快捷键
-  if (event.key === 'F10' && !event.shiftKey) return
   if (!props.resources.length) return
   const active = props.resources.findIndex(resource => resource.id === props.activeResourceId)
   event.preventDefault()

@@ -98,6 +98,8 @@ const confirmBusy = ref(false)
 const confirmOpen = ref(false)
 const confirmRequest = ref<ConfirmRequest | null>(null)
 const confirmError = ref('')
+const resourceListRef = ref<InstanceType<typeof ResourceList>>()
+let pendingDeleteFocus: number | null = null
 const addError = ref('')
 watch(
   pendingWindowFileDrops,
@@ -275,7 +277,9 @@ function requestDeleteResource(resource: ResourceView) {
     confirmLabel: '删除',
     danger: true,
     action: async () => {
+      const index = visibleResources.value.findIndex(item => item.id === resource.id)
       const deletedIds = await deleteResources([resource.id])
+      if (deletedIds.includes(resource.id) && !detailOpen.value) pendingDeleteFocus = Math.max(index, 0)
       finishDelete(deletedIds)
     }
   })
@@ -290,7 +294,9 @@ function requestDeleteSelected() {
     confirmLabel: '删除',
     danger: true,
     action: async () => {
+      const index = visibleResources.value.findIndex(item => ids.includes(item.id))
       const deletedIds = await deleteResources(ids)
+      if (deletedIds.length && !detailOpen.value) pendingDeleteFocus = Math.max(index, 0)
       finishDelete(deletedIds)
       if (deletedIds.length === ids.length) {
         selectionMode.value = false
@@ -339,6 +345,13 @@ function closeConfirmDialog() {
    * 从 320px 跳回默认的 360px。退场期间没有任何一帧的盒子尺寸变化，也不需要在页面侧复述退场时长。
    */
   confirmOpen.value = false
+}
+
+function restoreDeletedFocus() {
+  if (pendingDeleteFocus === null) return
+  const index = pendingDeleteFocus
+  pendingDeleteFocus = null
+  void nextTick(() => resourceListRef.value?.focusNearest(index))
 }
 
 function takeOperationError(cause: unknown, fallback: string) {
@@ -615,6 +628,7 @@ onMounted(() => {
       </div>
 
       <ResourceList
+        ref="resourceListRef"
         :resources="visibleResources"
         :active-resource-id="activeResourceId"
         :checked-ids="checkedIds"
@@ -747,6 +761,7 @@ onMounted(() => {
     :compact="confirmRequest?.compact ?? false"
     @confirm="runConfirmedAction"
     @cancel="closeConfirmDialog"
+    @closed="restoreDeletedFocus"
   />
 
   <web-ui-back-top />

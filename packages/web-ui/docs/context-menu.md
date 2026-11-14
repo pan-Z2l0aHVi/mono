@@ -291,6 +291,8 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 
 Menu items: `web-ui-dropdown-item`, `web-ui-dropdown-divider`, `web-ui-dropdown-header`. Supports keyboard navigation and submenu hover.
 
+When the trigger area has keyboard focus, hold Space for 500 ms or press the ContextMenu key to open the menu. A short Space press keeps the trigger's usual action. Space inside nested interactive or editable controls remains theirs.
+
 While open the menu is modal: the page underneath receives no pointer events, so clicking outside only closes the menu and does not also activate the row, checkbox, or link below it. After a menu item is activated there is a roughly 160ms exit transition, during which the page underneath becomes clickable again.
 
 `long-press` is opt-in and touch-only: after holding for `long-press-delay` (`500` ms by default) the menu opens, the same way as a right-click. Scrolling during the hold cancels it, so the menu does not open by mistake. The `contextmenu` and `click` that the browser re-dispatches for the same touch are ignored, so the menu neither opens twice nor closes right after opening.

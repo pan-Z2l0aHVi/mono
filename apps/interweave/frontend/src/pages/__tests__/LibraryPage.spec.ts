@@ -461,7 +461,8 @@ describe('LibraryPage：可用性感知接线', () => {
       useLibraryStore().filterSource = SourceType.SourceTypeFile
       await nextTick()
       const filterButton = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="筛选和排序"]')!
-      expect(filterButton.getAttribute('variant')).toBe('secondary')
+      expect(filterButton.getAttribute('variant')).toBe('glass')
+      expect(filterButton.querySelector('web-ui-icon')?.className).toContain('--wui-color-accent')
       filterButton.click()
       await nextTick()
       expect(filterButton.getAttribute('aria-expanded')).toBe('true')
@@ -469,7 +470,29 @@ describe('LibraryPage：可用性感知接线', () => {
       filterButton.click()
       await nextTick()
       expect(filterButton.getAttribute('aria-expanded')).toBe('false')
-      expect(filterButton.getAttribute('variant')).toBe('secondary')
+      expect(filterButton.getAttribute('variant')).toBe('glass')
+      expect(filterButton.querySelector('web-ui-icon')?.className).toContain('--wui-color-accent')
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('单独搜索不强调筛选图标，失焦后保留搜索框和条件', async () => {
+    const mounted = await mountPage()
+    try {
+      const store = useLibraryStore()
+      store.searchQuery = '不存在的资源'
+      const searchButton = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="搜索"]')!
+      searchButton.click()
+      await nextTick()
+      const input = mounted.host.querySelector<HTMLElement>('web-ui-input[aria-label="搜索资源"]')!
+      input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+      await nextTick()
+      const filter = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="筛选和排序"]')!
+      expect(filter.getAttribute('variant')).toBe('glass')
+      expect(filter.querySelector('web-ui-icon')?.className).not.toContain('--wui-color-accent')
+      expect(mounted.host.querySelector('web-ui-input[aria-label="搜索资源"]')).not.toBeNull()
+      expect(store.searchQuery).toBe('不存在的资源')
     } finally {
       await mounted.close()
     }
