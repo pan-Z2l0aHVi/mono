@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { WebUiDialog, WebUiEvent } from '@greypan/web-ui'
+import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 defineProps<{
   open: boolean
@@ -15,7 +16,25 @@ defineProps<{
 const emit = defineEmits<{
   confirm: []
   cancel: []
+  closed: []
 }>()
+
+const dialogRef = ref<WebUiDialog>()
+let nativeDialog: HTMLDialogElement | null = null
+let disposed = false
+const handleClosed = () => {
+  if (!nativeDialog?.open) emit('closed')
+}
+onMounted(async () => {
+  await dialogRef.value?.updateComplete
+  if (disposed) return
+  nativeDialog = dialogRef.value?.shadowRoot?.querySelector('dialog') ?? null
+  nativeDialog?.addEventListener('close', handleClosed)
+})
+onBeforeUnmount(() => {
+  disposed = true
+  nativeDialog?.removeEventListener('close', handleClosed)
+})
 
 function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   if (event.target !== event.currentTarget) return
@@ -25,6 +44,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 
 <template>
   <web-ui-dialog
+    ref="dialogRef"
     :open="open"
     controlled
     no-backdrop-close

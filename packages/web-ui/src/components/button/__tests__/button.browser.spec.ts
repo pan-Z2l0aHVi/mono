@@ -33,6 +33,60 @@ afterEach(() => {
 })
 
 describe('WebUiButton 组件（浏览器）', () => {
+  it('指针点击后移出时恢复原有背景，悬停时仍显示悬停反馈', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    theme.style.padding = '64px'
+    const button = document.createElement('web-ui-button') as WebUiButton
+    button.variant = 'secondary'
+    button.textContent = 'Secondary'
+    const outside = document.createElement('div')
+    outside.id = 'pointer-outside'
+    outside.textContent = 'Outside'
+    outside.style.cssText = 'width: 100px; height: 40px; margin-top: 48px'
+    theme.append(button, outside)
+    document.body.append(theme)
+    await Promise.all([waitForUpdate(theme), waitForUpdate(button)])
+    const inner = button.shadowRoot!.querySelector('button')!
+
+    await userEvent.hover(outside)
+    const resting = getComputedStyle(inner).backgroundColor
+    await userEvent.click(button)
+    expect(getComputedStyle(inner).backgroundColor).not.toBe(resting)
+    await userEvent.hover(outside)
+    expect(getComputedStyle(inner).backgroundColor).toBe(resting)
+  })
+
+  it.each(['primary', 'secondary', 'ghost', 'danger', 'glass'] as const)(
+    '%s 按住按钮移出后松开，背景恢复且重新悬停仍可反馈',
+    async variant => {
+      const theme = document.createElement('web-ui-theme')
+      theme.setAttribute('appearance', 'light')
+      theme.setAttribute('motion', 'reduced')
+      const button = document.createElement('web-ui-button') as WebUiButton
+      button.variant = variant
+      button.textContent = 'Secondary'
+      const outside = document.createElement('div')
+      outside.id = 'pointer-outside'
+      outside.textContent = 'Outside'
+      outside.style.cssText = 'width: 100px; height: 40px; margin: 48px'
+      theme.style.padding = '64px'
+      theme.append(button, outside)
+      document.body.append(theme)
+      await Promise.all([waitForUpdate(theme), waitForUpdate(button)])
+      const inner = button.shadowRoot!.querySelector('button')!
+      await userEvent.hover(outside)
+      const resting = getComputedStyle(inner).backgroundColor
+      await userEvent.pointer([
+        { target: button, keys: '[MouseLeft>]' },
+        { target: outside, keys: '[/MouseLeft]' }
+      ])
+      expect(getComputedStyle(inner).backgroundColor).toBe(resting)
+      await userEvent.hover(button)
+      expect(getComputedStyle(inner).backgroundColor).not.toBe(resting)
+    }
+  )
+
   it('接受裸 px 数值与带单位的 CSS 长度，并保持 icon button 正方形', async () => {
     const numeric = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '32' } })
     const decimal = mountElement<WebUiButton>('web-ui-button', { attrs: { size: '.5' } })

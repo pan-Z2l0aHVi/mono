@@ -237,5 +237,8 @@ func (ing *ingestion) write(ctx context.Context, w ingestWrite) (ingestResult, e
 	if err != nil {
 		return ingestResult{}, err
 	}
+	if w.srcType == storage.SourceTypeFile && w.probe.available && w.mode != ingestRefreshSource {
+		recordFingerprint(ing.db, result.sourceID, w.location)
+	}
 	return result, nil
 }

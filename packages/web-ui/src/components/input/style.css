@@ -88,7 +88,7 @@ input {
   /* 表单控件不继承字体；显式继承以对齐宿主排版，避免 UA 默认字体差异 */
   font: inherit;
   font-size: var(--wui-font-size, 14px);
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
 
   background: transparent;
   outline: none;
@@ -99,7 +99,7 @@ input {
        三引擎的 UA 样式表目前都没给 ::placeholder 设字体，所以这行是声明而不是补丁——
        契约由 shared/theme/__tests__/text-control-placeholder-typography.browser.spec.ts 守着。 */
     font: inherit;
-    color: var(--wui-color-text-secondary, #6a6a6a);
+    color: var(--wui-color-text-secondary, #6a6a70);
   }
 
   &:disabled {
@@ -120,7 +120,7 @@ slot {
   align-items: center;
 
   font-size: var(--wui-font-size, 14px);
-  color: var(--wui-color-text-secondary, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a70);
 }
 
 slot.empty {

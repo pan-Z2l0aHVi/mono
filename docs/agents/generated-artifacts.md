@@ -56,7 +56,7 @@
 
 ## 要更新就跑 generator
 
-生成文件不是 source of truth。跑对应 generator 让工具产生 diff，再核对生成结果与消费者；不要用复制、补丁或格式化工具直接改写输出。`packages/web-ui/docs/*.md` 是 demo 组件文档的输入（中文源 `.CN.md`、英文译文 `.md`），`packages/web-ui/CHANGELOG.md` 是 changelog 页的输入，`packages/web-ui/README*.md` 是快速开始页的输入。改组件 API 必须同时改对应 markdown，generator 只负责把 markdown 落到两端产物。
+生成文件不是 source of truth。跑对应 generator 让工具产生 diff，再核对生成结果与消费者；禁止手写新建或手工编辑生成文件，也不要用复制、补丁或格式化工具直接改写输出。`packages/web-ui/docs/*.md` 是 demo 组件文档的输入（中文源 `.CN.md`、英文译文 `.md`），`packages/web-ui/CHANGELOG.md` 是 changelog 页的输入，`packages/web-ui/README*.md` 是快速开始页的输入。改组件 API 必须同时改对应 markdown，generator 只负责把 markdown 落到两端产物。
 
 `apps/interweave/frontend/bindings/**` 只经单一 generator 入口生成：生成过程不得删除已有文件，并用产出集合守卫防止静默少产出，陈旧文件由人工清理。
 

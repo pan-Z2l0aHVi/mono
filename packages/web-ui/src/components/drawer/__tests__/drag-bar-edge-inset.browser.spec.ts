@@ -153,7 +153,7 @@ async function pressDragFromCapsule(el: WebUiDrawer, placement: DrawerPlacement)
   const delta = { right: [1, 0], left: [-1, 0], top: [0, -1], bottom: [0, 1] }[placement]
   const axisSize =
     placement === 'left' || placement === 'right' ? getDialog(el).offsetWidth : getDialog(el).offsetHeight
-  const before = getDialog(el).getBoundingClientRect()
+  const before = getDialog(el).querySelector('.wui-drawer-motion')!.getBoundingClientRect()
 
   target.dispatchEvent(
     new PointerEvent('pointerdown', {
@@ -180,7 +180,7 @@ async function pressDragFromCapsule(el: WebUiDrawer, placement: DrawerPlacement)
     await waitForFrame()
   }
   await el.updateComplete
-  const after = getDialog(el).getBoundingClientRect()
+  const after = getDialog(el).querySelector('.wui-drawer-motion')!.getBoundingClientRect()
   return { displacement: Math.hypot(after.left - before.left, after.top - before.top), target }
 }
 

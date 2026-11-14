@@ -1,4 +1,5 @@
-import { getFallbackOverlayRoot } from '@/shared/overlay/overlay-root'
+import { getTopModalLayer, subscribeModalLayer } from '@/shared/overlay/modal-layer-stack'
+import { applyOverlayRootStyles, getFallbackOverlayRoot, getOverlayContainer } from '@/shared/overlay/overlay-root'
 import { findNearestTheme, findRootTheme } from '@/shared/overlay/theme-overlay-scope'
 
 import type { WebUiToast } from './toast'
@@ -8,6 +9,13 @@ let toastIdCounter = 0
 
 const toastContainers = new Set<HTMLElement>()
 const visibleToasts = new Map<string, WebUiToast>()
+const automaticRoots = new Map<WebUiToast, HTMLElement>()
+interface ModalRoot {
+  root: HTMLElement
+  dispose(): void
+}
+const modalRoots = new WeakMap<HTMLDialogElement, Map<HTMLElement, ModalRoot>>()
+const modalRootsByContainer = new WeakMap<HTMLElement, ModalRoot>()
 
 let pendingBatch: Array<{ id: string; options: ToastInstanceOptions; root: HTMLElement }> | undefined
 let isBatchScheduled = false
@@ -25,6 +33,77 @@ function resolveRoot(options: ToastInstanceOptions): HTMLElement {
   const targetTheme = options.target ? findNearestTheme(options.target) : findRootTheme()
   return options.container ?? targetTheme?.getOverlayRoot() ?? getFallbackOverlayRoot()
 }
+
+function modalRoot(dialog: HTMLDialogElement, fallback: HTMLElement): HTMLElement {
+  let roots = modalRoots.get(dialog)
+  if (!roots) {
+    roots = new Map()
+    modalRoots.set(dialog, roots)
+  }
+  const rootMap = roots
+  const existing = rootMap.get(fallback)
+  if (existing) return existing.root
+  const host = document.createElement('div')
+  host.setAttribute('data-wui-toast-overlay', '')
+  host.style.display = 'contents'
+  host.style.pointerEvents = 'none'
+  const copied = new Set<string>()
+  const syncTheme = () => {
+    const style = getComputedStyle(fallback)
+    const next = new Set<string>()
+    for (const name of Array.from(style)) {
+      if (!name.startsWith('--wui-')) continue
+      next.add(name)
+      const value = style.getPropertyValue(name)
+      if (host.style.getPropertyValue(name) !== value) host.style.setProperty(name, value)
+    }
+    for (const name of copied) if (!next.has(name)) host.style.removeProperty(name)
+    copied.clear()
+    for (const name of next) copied.add(name)
+  }
+  syncTheme()
+  const observer = new MutationObserver(syncTheme)
+  let ancestor: Element | null = fallback
+  while (ancestor) {
+    observer.observe(ancestor, { attributes: true, attributeFilter: ['appearance', 'class', 'style'] })
+    const parent: Element | null = ancestor.parentElement
+    const tree = ancestor.getRootNode()
+    ancestor = parent ?? (tree instanceof ShadowRoot ? tree.host : null)
+  }
+  const scheme = window.matchMedia?.('(prefers-color-scheme: dark)')
+  scheme?.addEventListener('change', syncTheme)
+  window.addEventListener('resize', syncTheme)
+  const shadow = host.attachShadow({ mode: 'open' })
+  applyOverlayRootStyles(shadow)
+  dialog.append(host)
+  const root = getOverlayContainer(shadow)
+  const entry: ModalRoot = {
+    root,
+    dispose() {
+      observer.disconnect()
+      scheme?.removeEventListener('change', syncTheme)
+      window.removeEventListener('resize', syncTheme)
+      rootMap.delete(fallback)
+      host.remove()
+    }
+  }
+  rootMap.set(fallback, entry)
+  modalRootsByContainer.set(root, entry)
+  return root
+}
+
+function currentRoot(fallback: HTMLElement): HTMLElement {
+  const modal = getTopModalLayer()
+  const source = fallback.isConnected ? fallback : getFallbackOverlayRoot()
+  return modal ? modalRoot(modal, source) : source
+}
+
+subscribeModalLayer(() => {
+  for (const [el, fallback] of automaticRoots) {
+    const root = currentRoot(fallback)
+    if (el.parentElement?.parentElement !== root) relocateToast(el, el.position, root)
+  }
+})
 
 function ensureContainer(position: ToastPosition, root: HTMLElement): HTMLElement {
   const existing = Array.from(root.children).find(
@@ -51,8 +130,10 @@ function ensureContainer(position: ToastPosition, root: HTMLElement): HTMLElemen
 
 function pruneContainer(container: HTMLElement | null) {
   if (!container || container.children.length > 0) return
+  const root = container.parentElement
   container.remove()
   toastContainers.delete(container)
+  if (root && root.children.length === 0) modalRootsByContainer.get(root)?.dispose()
 }
 
 function scrollToBottom(container: HTMLElement) {
@@ -77,8 +158,9 @@ function flushBatch() {
   const containersToScroll = new Set<HTMLElement>()
   for (const item of batch) {
     // 容器在挂载时才解析：待挂载条目被 patch 改了 position 也能落到正确容器。
-    const container = ensureContainer(item.options.position || 'top-right', item.root)
-    mountToast(item.id, item.options, container)
+    const root = item.options.container ? item.root : currentRoot(item.root)
+    const container = ensureContainer(item.options.position || 'top-right', root)
+    mountToast(item.id, item.options, container, item.root)
     containersToScroll.add(container)
   }
   for (const container of containersToScroll) scrollToBottom(container)
@@ -114,14 +196,16 @@ function applyPatch(el: WebUiToast, options: ToastInstanceOptions) {
   if (options.position !== undefined && options.position !== el.position) relocateToast(el, options.position)
 }
 
-function relocateToast(el: WebUiToast, position: ToastPosition) {
+function relocateToast(el: WebUiToast, position: ToastPosition, destination?: HTMLElement) {
   const prev = el.parentElement
-  const root = prev?.parentElement
+  const root = destination ?? prev?.parentElement
   if (!root) return
   const next = ensureContainer(position, root)
 
+  if (next === prev) return
+
   const movable = next as MaybeMoveBefore
-  if (typeof movable.moveBefore === 'function') {
+  if (el.isConnected && next.isConnected && typeof movable.moveBefore === 'function') {
     // 不摘出节点，disconnected/connected 都不触发：计时、焦点与动画状态原样保留。
     movable.moveBefore(el, null)
   } else {
@@ -166,7 +250,7 @@ function createToast(options: ToastInstanceOptions): string {
   return id
 }
 
-function mountToast(id: string, options: ToastInstanceOptions, container: HTMLElement) {
+function mountToast(id: string, options: ToastInstanceOptions, container: HTMLElement, fallback: HTMLElement) {
   const el = document.createElement('web-ui-toast')
   const type = options.type || 'info'
   el.toastId = id
@@ -183,6 +267,7 @@ function mountToast(id: string, options: ToastInstanceOptions, container: HTMLEl
 
   container.appendChild(el)
   visibleToasts.set(id, el)
+  if (!options.container) automaticRoots.set(el, fallback)
   requestAnimationFrame(() => {
     // close()/clear() 可能已经在这段窗口里收走了它（见 dismiss 的无退场动画分支）：
     // 不再入场，否则一条孤儿元素会在 duration 之后补派一次同 id 的 toast-close。
@@ -197,6 +282,7 @@ function mountToast(id: string, options: ToastInstanceOptions, container: HTMLEl
  * 一起删掉 —— 与「孤儿元素收不走」是同一类缺陷，只是换了个入口。
  */
 function removeToastElement(el: WebUiToast) {
+  automaticRoots.delete(el)
   if (visibleToasts.get(el.toastId) === el) visibleToasts.delete(el.toastId)
   const container = el.parentElement
   el.remove()
@@ -275,7 +361,11 @@ toast._reset = () => {
   isBatchScheduled = false
   for (const el of visibleToasts.values()) el.remove()
   visibleToasts.clear()
-  for (const container of toastContainers) container.remove()
+  automaticRoots.clear()
+  for (const container of Array.from(toastContainers)) {
+    container.replaceChildren()
+    pruneContainer(container)
+  }
   toastContainers.clear()
 }
 

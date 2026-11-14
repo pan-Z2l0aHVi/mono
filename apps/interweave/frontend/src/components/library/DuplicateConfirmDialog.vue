@@ -48,7 +48,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     <OverlayScrollbarsComponent
       v-if="prompt"
       :options="appScrollbarsOptions"
-      class="mt-3 max-h-56 overflow-y-auto rounded-xl bg-black/3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-offset-2 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4)) dark:bg-white/5"
+      class="mt-3 max-h-56 overflow-y-auto rounded-xl bg-[#1b1b20]/3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-offset-2 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4)) dark:bg-white/5"
     >
       <!--
         scrollbar 接在宿主 div 上，列表留在它里面：OverlayScrollbars 会把宿主的子节点搬进自己
@@ -65,7 +65,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
             {{ match.title }}
           </span>
           <span
-            class="flex min-w-0 items-center gap-1.5 text-xs leading-5 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+            class="flex min-w-0 items-center gap-1.5 text-xs leading-5 text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
             :title="match.location"
           >
             <web-ui-icon :icon="lucideCopy" :size="12" class="shrink-0" />

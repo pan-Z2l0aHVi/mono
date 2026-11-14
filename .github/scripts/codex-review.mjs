@@ -120,19 +120,75 @@ function parseCoverage(value) {
   return coverage
 }
 
+// 模型偶尔把推理包装写进最终答复：`<think…>` / `<thinking…>` 块，或包住整份 JSON 的 markdown 围栏。
+// 这些是答复外层的包装，JSON 本体仍是同一份结论。只剥前导、尾随的完整 think 块与整体围栏，
+// 不做「从散文里抠最外层花括号」——那样会把推理中的示例 JSON 抬成结论，是假绿。
+const LEADING_THINK_BLOCK = /^\s*<think(?:ing)?(?:\s[^>]*)?>[\s\S]*?<\/think(?:ing)?>\s*/iu
+const TRAILING_THINK_BLOCK = /\s*<think(?:ing)?(?:\s[^>]*)?>[\s\S]*?<\/think(?:ing)?>\s*$/iu
+const WHOLE_CODE_FENCE = /^\s*(`{3,})[^\n]*\n([\s\S]*?)\n?\1\s*$/u
+
+/**
+ * 剥掉 JSON 之外的包装层，返回剥完的文本与用到的步骤（`think-block` / `code-fence`）。
+ * 未闭合的 think 块不剥：那时分不清哪一段是推理、哪一段是结论，只能按不可用处理。
+ * 调用方把步骤写进结论 meta，清洗过的事实与原始答复一样可审计。
+ */
+export function normalizeReviewOutput(raw) {
+  let text = String(raw).replace(/^\uFEFF/u, '')
+  const steps = []
+  let changed = true
+  while (changed) {
+    changed = false
+    const leading = LEADING_THINK_BLOCK.exec(text)
+    if (leading) {
+      text = text.slice(leading[0].length)
+      steps.push('think-block')
+      changed = true
+      continue
+    }
+    const trailing = TRAILING_THINK_BLOCK.exec(text)
+    if (trailing) {
+      text = text.slice(0, trailing.index)
+      steps.push('think-block')
+      changed = true
+      continue
+    }
+    const fence = WHOLE_CODE_FENCE.exec(text)
+    if (fence) {
+      text = fence[2]
+      steps.push('code-fence')
+      changed = true
+    }
+  }
+  return { text: text.trim(), steps: [...new Set(steps)] }
+}
+
+/**
+ * 先按原样解析，失败后才剥包装层重试。原样合法的输出永不走清洗分支，
+ * 因此这条路径只影响本来就会被判 `unusable_output` 的输入。
+ */
+function parseReviewJson(raw) {
+  try {
+    return { value: JSON.parse(raw), steps: [] }
+  } catch (error) {
+    const { text, steps } = normalizeReviewOutput(raw)
+    try {
+      return { value: JSON.parse(text), steps }
+    } catch {
+      const wrapper = steps.length > 0 ? ` after removing ${steps.join(' and ')}` : ''
+      throw new Error(`review output is not valid JSON${wrapper}: ${error.message}`)
+    }
+  }
+}
+
 /**
  * 模型输出是门禁的唯一输入，必须先过结构校验：未知档位、未知字段或空文本都会让结论不可信，
  * 宁可判「未审查」，也不带着半截 JSON 去拦或放。
  * `summary` 只是评论顶部的一行摘要，缺它不影响档位与阻断判定，因此不做硬校验：
  * 把装饰性字段判成致命错误，代价是整份 findings 作废、门却在绿色里沉默。
+ * 返回值里的 `sanitized` 记录这次剥掉了哪层包装；结构校验对剥完的文本照常全量执行。
  */
 export function parseReviewFindings(raw) {
-  let value
-  try {
-    value = JSON.parse(raw)
-  } catch (error) {
-    throw new Error(`review output is not valid JSON: ${error.message}`)
-  }
+  const { value, steps } = parseReviewJson(raw)
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('review output must be a JSON object')
   const summary = typeof value.summary === 'string' ? value.summary.trim() : ''
@@ -168,12 +224,13 @@ export function parseReviewFindings(raw) {
 
   const counts = emptyCounts()
   for (const finding of findings) counts[finding.severity] += 1
-  return { summary, coverage, findings, counts }
+  return { summary, coverage, findings, counts, sanitized: steps }
 }
 
 /** 增量结果必须逐项处置历史发现，覆盖和未覆盖记录跨轮累计。 */
 export function inheritReviewHistory(parsed, raw, prior) {
-  const resolutions = JSON.parse(raw).prior_resolutions
+  // 与本轮结论共用同一条解析路径，否则带包装层的增量输出会在这里二次判死。
+  const resolutions = parseReviewJson(raw).value.prior_resolutions
   if (!Array.isArray(resolutions) || resolutions.length !== prior.findings.length)
     throw new Error('incremental review must account for every prior finding')
   const byIndex = new Map()
@@ -684,6 +741,13 @@ export function renderConclusion({
     }
   }
   if (meta?.model) lines.push(`- 模型：\`${meta.model}\`（effort \`${meta.effort || 'default'}\`）`)
+  // 清洗只剥包装层，JSON 本体与结构校验都没变；写出来是为了让「结论来自一份原样不是 JSON 的答复」
+  // 留在可见处，读者不必翻 artifact 才知道这一次发生过什么。
+  if (Array.isArray(meta?.output_sanitized) && meta.output_sanitized.length > 0) {
+    const labels = { 'think-block': 'think 块', 'code-fence': 'markdown 代码围栏' }
+    const steps = meta.output_sanitized.map(step => labels[step] ?? plainText(step))
+    lines.push(`- 输出清洗：模型答复外层带 ${steps.join('、')}，已剥离后重新解析；JSON 本体未改动`)
+  }
   if (meta?.reused_from) lines.push(`- 复用：同一 head 已有结论，来自 run \`${meta.reused_from}\`，未再调用模型`)
   const generated = stamp(meta?.generated_at)
   if (generated) lines.push(`- 结论生成于：\`${generated}\`（评论就地更新，创建时间不会变）`)
@@ -1275,6 +1339,14 @@ function requireEnv(names, env = process.env) {
   )
 }
 
+/**
+ * 清洗过包装层就把步骤写进结论 meta：结论本身不变，但「模型答复原样不是 JSON」这件事
+ * 必须和原始答复一样留在产物里，供评论与 artifact 审计。
+ */
+function sanitizedMeta(parsed) {
+  return Array.isArray(parsed?.sanitized) && parsed.sanitized.length > 0 ? { output_sanitized: parsed.sanitized } : {}
+}
+
 function writeConclusion(directory, { findings, meta }) {
   fs.writeFileSync(
     path.join(directory, FINDINGS_FILE),
@@ -1603,7 +1675,13 @@ function commandValidate() {
     // findings 留着：结论不可用由 status 表达，把已经看到的 Block 丢掉只会让作者少一条线索。
     writeConclusion(directory, {
       findings: parsed,
-      meta: { ...identity, status: 'unreviewed', error_code: 'missing_coverage', error: gap }
+      meta: {
+        ...identity,
+        status: 'unreviewed',
+        error_code: 'missing_coverage',
+        error: gap,
+        ...sanitizedMeta(parsed)
+      }
     })
     writeOutputs({ blocks: String(parsed.counts.Block), reason: gap })
     console.error(`review is unreviewed: ${gap}`)
@@ -1621,7 +1699,9 @@ function commandValidate() {
       if (!prior?.findings?.coverage || prior.meta.head_sha !== scope.review_start_sha)
         throw new Error('baseline unavailable')
       const raw = fs.readFileSync(outputPath, 'utf8')
-      resolutions = JSON.parse(raw).prior_resolutions
+      // 与 `parseReviewFindings` / `inheritReviewHistory` 同一条解析路径：带包装层的增量答复
+      // 不该在这里被判成不可用的输出。
+      resolutions = parseReviewJson(raw).value.prior_resolutions
       parsed = inheritReviewHistory(parsed, raw, prior.findings)
       lineage = [
         ...(Array.isArray(prior.meta.review_lineage) ? prior.meta.review_lineage : []),
@@ -1656,7 +1736,13 @@ function commandValidate() {
   }
   writeConclusion(directory, {
     findings: parsed,
-    meta: { ...identity, status: 'reviewed', reused_from: '', ...(lineage ? { review_lineage: lineage } : {}) }
+    meta: {
+      ...identity,
+      status: 'reviewed',
+      reused_from: '',
+      ...sanitizedMeta(parsed),
+      ...(lineage ? { review_lineage: lineage } : {})
+    }
   })
   writeOutputs({ blocks: String(parsed.counts.Block), reason: '' })
   if (parsed.summary === '') console.log('review output carries no summary; the conclusion stands on its findings')

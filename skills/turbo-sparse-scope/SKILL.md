@@ -7,13 +7,15 @@ description: 按任务 scope 的仓库相对路径把当前 worktree 的 git spa
 
 ## 何时使用
 
-实施 agent 在任务建账、三步准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`、`mise exec -- pnpm run build`）完成后、开始读代码或改代码之前执行。
+实施 owner 在任务建账、三步准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`、`mise exec -- pnpm run build`）完成后、读取实施范围的代码、派发实施子任务或修改文件之前执行。准备与分工由编排层承接；同一个 task 的子任务共用 owner 确定的 worktree 和范围。
 
-- 台账 `scope` 为空且没有实现/验证必需的包外读取时跳过；否则必须执行。不要把「加载无关包」留到实现过程中再说。
+- 台账 `scope` 为空且没有实现/验证必需的包外读取时跳过；否则必须调用本 skill 判断并处理范围。不要把「加载无关包」留到实现过程中再说。
 - 收缩是否到位用 `--check <目标>` 判定，不靠自述：目标是本 worktree 未结任务 `scope` 的并集，加上实现与验证必需的包外读取路径；非零退出意味着「目标非空但工作区从没收缩」或「cone 与目标要求的闭包不一致」。
 - 当前 cone 已覆盖时不必逐任务复查；新任务把读取面扩展到 cone 之外时，先 `--add` 对应包再继续。
 - `scope` 只含根路径时也合法：零个目标包，只保留根依赖闭包与根目录。
 - 不用于全仓影响面分析、全仓 gate，或尚未完成 install/build 的 worktree。
+
+受权限或仓库规则限制而不能更改 Git 配置或 worktree 时，不执行会修改 checkout 的命令：全树使用 `--dry-run`，稀疏树使用 `--status`；在 Task Packet 与交付说明中记录限制和未完成的收缩，按实际检出范围执行后续搜索与验证。稀疏树上的 `--check` 会临时恢复并重装 cone，不属于只读命令。`sparse-checkout init` 会更改 Git 配置，必须服从宿主仓库的 Git 配置边界。
 
 闭包由脚本计算，不靠 agent 猜文件范围。工作区收缩之后，实施 agent 追加下面「稀疏树里的安全规则」。
 

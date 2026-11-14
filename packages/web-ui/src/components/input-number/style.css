@@ -42,7 +42,7 @@ input {
   /* 表单控件不继承字体；显式继承以对齐宿主排版，避免 UA 默认字体差异 */
   font: inherit;
   font-size: var(--wui-font-size, 14px);
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
   text-align: center;
 
   background: transparent;
@@ -59,7 +59,7 @@ input {
      与同系列其它控件的 secondary text token 不一致。 */
   &::placeholder {
     font: inherit;
-    color: var(--wui-color-text-secondary, #6a6a6a);
+    color: var(--wui-color-text-secondary, #6a6a70);
   }
 
   &[type='number'] {
@@ -116,7 +116,7 @@ input {
   border: none;
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
-  color: var(--wui-color-text-secondary, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a70);
 
   background: transparent;
 
@@ -134,12 +134,12 @@ input {
 
 @media (hover: hover) and (pointer: fine) {
   .num-btn:hover:not(:disabled) {
-    background: var(--wui-color-state-layer-hover, color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent));
+    background: var(--wui-color-state-layer-hover, color-mix(in srgb, var(--wui-color-text, #1b1b20) 6%, transparent));
   }
 }
 
 .num-btn:active:not(:disabled) {
-  background: var(--wui-color-state-layer-active, color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent));
+  background: var(--wui-color-state-layer-active, color-mix(in srgb, var(--wui-color-text, #1b1b20) 15%, transparent));
 }
 
 :host([disabled]) .num-btn:disabled,

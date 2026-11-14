@@ -9,7 +9,8 @@ import (
 // 作为 Wails 外观呈现 Source 能力，产品规则由 core 承载。
 // 变更类方法直接回传变更后的完整 Resource 视图，前端不再二次往返读取。
 type SourceService struct {
-	core *core.SourceService
+	recovery recoverySessions
+	core     *core.SourceService
 	// resources 复用 core 现成的视图装配出口（core API 不新增方法）。
 	resources *core.ResourceService
 }

@@ -29,6 +29,7 @@ import {
 } from '@/shared/menu-portal/menu-tree'
 import { normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
+import { registerModalLayer, unregisterModalLayer } from '@/shared/overlay/modal-layer-stack'
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { defineOverlayPositioningGeneration } from '@/shared/overlay/positioning-generation'
 import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
@@ -114,6 +115,10 @@ export class WebUiContextMenu extends LitElement {
   private _activeSubmenus: MenuPortalOverlay[] = []
   private _activeSubmenuItems: HTMLElement[] = []
   private _longPressTimer: ReturnType<typeof setTimeout> | undefined
+  private _spaceTimer: ReturnType<typeof setTimeout> | undefined
+  private _spaceTarget: HTMLElement | undefined
+  private _spaceOpened = false
+  private _replayingSpace = false
   private _longPressOrigin: { x: number; y: number } | undefined
   /**
    * 长按自行开 menu 的时刻。浏览器会为**同一次触摸**补发两个事件，二者都属于
@@ -303,6 +308,11 @@ export class WebUiContextMenu extends LitElement {
     this._hideMenuItems()
     this.addEventListener('contextmenu', this._onContextMenu)
     this.addEventListener('keydown', this._onKeydown)
+    this.addEventListener('keydown', this._onSpaceDown, true)
+    this.addEventListener('focusout', this._onSpaceFocusOut)
+    document.addEventListener('keydown', this._onHeldSpaceRepeat, true)
+    document.addEventListener('keyup', this._onSpaceUp, true)
+    window.addEventListener('blur', this._onWindowBlur)
     this.addEventListener('click', this._onMenuClick)
     this.addEventListener('pointerdown', this._onPointerDown)
     this.addEventListener('pointermove', this._onPointerMove)
@@ -318,6 +328,12 @@ export class WebUiContextMenu extends LitElement {
     super.disconnectedCallback()
     this.removeEventListener('contextmenu', this._onContextMenu)
     this.removeEventListener('keydown', this._onKeydown)
+    this.removeEventListener('keydown', this._onSpaceDown, true)
+    this.removeEventListener('focusout', this._onSpaceFocusOut)
+    document.removeEventListener('keydown', this._onHeldSpaceRepeat, true)
+    document.removeEventListener('keyup', this._onSpaceUp, true)
+    window.removeEventListener('blur', this._onWindowBlur)
+    this._cancelSpacePress()
     this.removeEventListener('click', this._onMenuClick)
     this.removeEventListener('pointerdown', this._onPointerDown)
     this.removeEventListener('pointermove', this._onPointerMove)
@@ -356,6 +372,7 @@ export class WebUiContextMenu extends LitElement {
   }
 
   protected override updated(changed: Map<string, unknown>) {
+    if (changed.has('disabled') && this.disabled && !this._spaceOpened) this._cancelSpacePress()
     // Lit 的已排队更新可在卸载后执行，不能让已失效实例重新获取全局滚动锁。
     if (!this.isConnected) {
       this._syncScrollLock(false)
@@ -810,6 +827,7 @@ export class WebUiContextMenu extends LitElement {
     // showModal() 要求元素已在文档中。
     this._scrimParent().append(scrim)
     scrim.showModal()
+    registerModalLayer(scrim)
     this._scrim = scrim
     return scrim
   }
@@ -842,6 +860,7 @@ export class WebUiContextMenu extends LitElement {
     if (!scrim) return
     this._scrim = undefined
     if (scrim.open) scrim.close()
+    unregisterModalLayer(scrim)
     scrim.remove()
   }
 
@@ -858,6 +877,7 @@ export class WebUiContextMenu extends LitElement {
   private _releaseScrimModality() {
     const scrim = this._scrim
     if (scrim?.open) scrim.close()
+    if (scrim) unregisterModalLayer(scrim)
   }
 
   /**
@@ -1226,10 +1246,120 @@ export class WebUiContextMenu extends LitElement {
     }
   }
 
+  private _cancelSpacePress() {
+    if (this._spaceTimer !== undefined) clearTimeout(this._spaceTimer)
+    this._spaceTimer = undefined
+    this._spaceTarget = undefined
+    this._spaceOpened = false
+  }
+
+  private _onSpaceFocusOut = () => {
+    if (!this._spaceOpened) this._cancelSpacePress()
+  }
+
+  private _onWindowBlur = () => {
+    this._cancelSpacePress()
+  }
+
+  private _onHeldSpaceRepeat = (event: KeyboardEvent) => {
+    if (this._spaceOpened && event.key === ' ') {
+      event.preventDefault()
+      event.stopImmediatePropagation()
+    }
+  }
+
+  private _onSpaceDown = (event: KeyboardEvent) => {
+    if (
+      this._replayingSpace ||
+      this.disabled ||
+      this._isOpen ||
+      event.key !== ' ' ||
+      event.altKey ||
+      event.ctrlKey ||
+      event.metaKey ||
+      event.shiftKey
+    )
+      return
+    const path = event.composedPath()
+    const target = path[0]
+    const scopeTarget = event.target
+    if (!(target instanceof HTMLElement) || !(scopeTarget instanceof HTMLElement) || !this.contains(scopeTarget)) return
+    if (path.slice(0, path.indexOf(this)).some(node => node instanceof WebUiContextMenu)) return
+    const trigger = this.firstElementChild
+    if (!trigger?.contains(scopeTarget)) return
+    if (
+      target.matches(
+        'textarea, select, [contenteditable]:not([contenteditable="false"]), input:not([type="button"]):not([type="submit"]):not([type="checkbox"]):not([type="radio"])'
+      )
+    )
+      return
+    const interactive = scopeTarget.closest(
+      'input, textarea, select, button, a[href], [contenteditable]:not([contenteditable="false"]), [role="button"], [role="checkbox"], [role="textbox"], web-ui-button, web-ui-input, web-ui-textarea, web-ui-checkbox, web-ui-select'
+    )
+    if (interactive && interactive !== trigger) return
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    if (event.repeat || this._spaceTarget) return
+    this._spaceTarget = target
+    this._spaceTimer = setTimeout(() => {
+      this._spaceTimer = undefined
+      if (this._spaceTarget !== target || this.disabled || !target.isConnected) return
+      const rect = target.getBoundingClientRect()
+      this._spaceOpened = this._openAt(rect.left, rect.bottom, true, false)
+      if (this._spaceOpened) this._userOpenChange.mark()
+    }, DEFAULT_LONG_PRESS_DELAY)
+  }
+
+  private _onSpaceUp = (event: KeyboardEvent) => {
+    if (event.key !== ' ' || !this._spaceTarget) return
+    const target = this._spaceTarget
+    const opened = this._spaceOpened
+    this._cancelSpacePress()
+    event.preventDefault()
+    event.stopImmediatePropagation()
+    if (opened || !target.isConnected) return
+    this._replayingSpace = true
+    const replay = new KeyboardEvent('keydown', {
+      key: ' ',
+      code: 'Space',
+      bubbles: true,
+      composed: true,
+      cancelable: true
+    })
+    target.dispatchEvent(replay)
+    const release = new KeyboardEvent('keyup', {
+      key: ' ',
+      code: 'Space',
+      bubbles: true,
+      composed: true,
+      cancelable: true
+    })
+    target.dispatchEvent(release)
+    this._replayingSpace = false
+    if (!replay.defaultPrevented && !release.defaultPrevented) {
+      if (
+        target.matches(
+          'button, input[type="button"], input[type="submit"], input[type="checkbox"], input[type="radio"]'
+        )
+      ) {
+        target.click()
+      } else {
+        let ancestor: HTMLElement | null = target
+        while (ancestor && ancestor !== document.body) {
+          const overflow = getComputedStyle(ancestor).overflowY
+          if (/(auto|scroll)/.test(overflow) && ancestor.scrollHeight > ancestor.clientHeight) break
+          ancestor = ancestor.parentElement
+        }
+        if (ancestor && ancestor !== document.body) ancestor.scrollBy({ top: ancestor.clientHeight * 0.875 })
+        else window.scrollBy({ top: window.innerHeight * 0.875 })
+      }
+    }
+  }
+
   private _onKeydown = (e: KeyboardEvent) => {
     if (this.disabled) return
 
-    if (e.key === 'ContextMenu' || (e.shiftKey && e.key === 'F10')) {
+    if (e.key === 'ContextMenu') {
       e.preventDefault()
       const focused = document.activeElement
       if (focused && focused !== document.body) {

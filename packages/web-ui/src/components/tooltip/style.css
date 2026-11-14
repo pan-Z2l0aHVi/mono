@@ -38,10 +38,10 @@
   border-radius: var(--wui-radius-menu, 18px);
 
   font-size: var(--wui-tooltip-font-size, 13px);
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
 
   /* 玻璃背景：wui-glass 在 panel 自身，这里覆盖其默认玻璃底为 menu surface 色 */
-  background-color: var(--wui-color-surface-menu, rgb(250 250 250 / 0.76));
+  background-color: var(--wui-color-surface-menu, rgb(250 250 253 / 0.76));
 }
 
 .tooltip-panel.portal {

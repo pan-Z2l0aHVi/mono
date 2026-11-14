@@ -30,7 +30,7 @@ async function openDialog(component: WebUiDialog): Promise<HTMLDialogElement> {
   // 进场带 scale(1.1)：transform 未落定前 getBoundingClientRect() 的读数虚高约 10%，
   // 「宽内容不产生横向 scrollbar」那条量的就是它。与 dialog-content-height 的 openAndSettle 同口径。
   await pollUntil(() => {
-    const transform = getComputedStyle(dialog).transform
+    const transform = getComputedStyle(dialog.querySelector<HTMLElement>('.wui-dialog-body')!).transform
     return transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)'
   }, 'enter transform not settled')
   return dialog

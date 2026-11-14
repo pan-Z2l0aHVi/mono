@@ -291,6 +291,8 @@ function onOpenChange(event: WebUiEvent<WebUiContextMenu, 'open-change'>) {
 
 菜单项：`web-ui-dropdown-item`、`web-ui-dropdown-divider`、`web-ui-dropdown-header`。支持键盘导航与子菜单悬停。
 
+触发区域获得键盘焦点时，长按空格 500ms 或按 ContextMenu 键可打开菜单。短按空格保留触发区域原有操作；嵌套的交互控件和编辑区域保留自身的空格行为。
+
 菜单打开期间是模态的：下层页面收不到任何指针事件，所以点外面只会关掉菜单，不会顺带激活下面的那一行、复选框或链接。菜单项激活后有一段约 160ms 的退场过渡，这期间下层页面重新可点。
 
 `long-press` 是可选行为，且只针对触屏：按住 `long-press-delay`（默认 `500` ms）后打开菜单，打开方式与右键相同。按住期间滚动会取消，不会误开。浏览器为同一次按住补发的 `contextmenu` 与 `click` 会被忽略，因此菜单不会重复打开，也不会立刻关掉刚打开的菜单。

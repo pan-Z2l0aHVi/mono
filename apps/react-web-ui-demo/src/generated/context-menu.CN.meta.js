@@ -163,6 +163,7 @@ const meta = [
   },
   { label: 'h3', id: 'section-12', content: "行为说明" },
   { label: 'p', content: "菜单项：<code>web-ui-dropdown-item</code>、<code>web-ui-dropdown-divider</code>、<code>web-ui-dropdown-header</code>。支持键盘导航与子菜单悬停。" },
+  { label: 'p', content: "触发区域获得键盘焦点时，长按空格 500ms 或按 ContextMenu 键可打开菜单。短按空格保留触发区域原有操作；嵌套的交互控件和编辑区域保留自身的空格行为。" },
   { label: 'p', content: "菜单打开期间是模态的：下层页面收不到任何指针事件，所以点外面只会关掉菜单，不会顺带激活下面的那一行、复选框或链接。菜单项激活后有一段约 160ms 的退场过渡，这期间下层页面重新可点。" },
   { label: 'p', content: "<code>long-press</code> 是可选行为，且只针对触屏：按住 <code>long-press-delay</code>（默认 <code>500</code> ms）后打开菜单，打开方式与右键相同。按住期间滚动会取消，不会误开。浏览器为同一次按住补发的 <code>contextmenu</code> 与 <code>click</code> 会被忽略，因此菜单不会重复打开，也不会立刻关掉刚打开的菜单。" },
   { label: 'p', content: "<code>long-press</code> 打开的菜单从按点向下展开，并在水平方向居中于按点。下方空间不够时，菜单翻到按点上方，同时被夹回视口内，并避开 <code>--wui-context-menu-safe-area-bottom</code> 预留的底部区域，避免最下面一项落进主屏幕指示条。" },

@@ -106,7 +106,7 @@ describe('AddDialog', () => {
   })
 
   it('添加链接弹窗校验输入，确认后入队，取消不添加', async () => {
-    const addUrl = vi.fn()
+    const addUrl = vi.fn<(url: string) => void>()
     const mounted = mountDialog([], { onAddUrl: addUrl })
     try {
       button(mounted.host, '添加链接').click()
@@ -117,7 +117,7 @@ describe('AddDialog', () => {
       )!
       confirm.click()
       await nextTick()
-      expect(mounted.host.textContent).toContain('请输入有效的 http 或 https URL')
+      expect(mounted.host.textContent).toContain('请输入有效的网页链接')
       expect(addUrl).not.toHaveBeenCalled()
       input.value = 'https://example.com/new'
       input.dispatchEvent(new Event('input', { bubbles: true }))
@@ -143,7 +143,7 @@ describe('AddDialog', () => {
   it('粘贴链接按钮读取最新剪切板文本并填入输入框', async () => {
     const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
     const readText = vi
-      .fn()
+      .fn<() => Promise<string>>()
       .mockResolvedValueOnce('https://example.com/first')
       .mockResolvedValueOnce('https://example.com/latest')
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { readText } })

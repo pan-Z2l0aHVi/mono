@@ -45,7 +45,7 @@ vi.mock('@/services/library', () => ({
   }
 }))
 
-const toastWarning = vi.hoisted(() => vi.fn())
+const toastWarning = vi.hoisted(() => vi.fn<(message: string, options: { position: string }) => void>())
 
 vi.mock('@greypan/web-ui', () => ({
   toast: { warning: toastWarning },
@@ -156,6 +156,21 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       ...overrides.resources
     },
     sources: {
+      startRecoveryScan: async () => 'scan',
+      pollRecoveryScan: async () => ({
+        candidates: [],
+        checked: 0,
+        currentDirectory: '',
+        skipped: 0,
+        done: true,
+        cancelled: false,
+        error: ''
+      }),
+      cancelRecoveryScan: async () => undefined,
+      discardRecoveryScan: async () => undefined,
+      replaceScannedFile: async () => {
+        throw new Error('not implemented')
+      },
       refreshURL: async () => resource(),
       refreshFile: async () => resource(),
       replaceFile: async () => resource(),
@@ -189,10 +204,12 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       ...overrides.events
     },
     system: {
+      chooseDirectory: async () => null,
       chooseFilePaths: async () => [],
       chooseFilePath: async () => null,
       getClipboardFilePaths: async () => [],
       defaultOpenWith: async () => '',
+      showInFileManager: async () => {},
       openExternal: async () => {},
       ...overrides.system
     }
@@ -444,7 +461,8 @@ describe('LibraryPage：可用性感知接线', () => {
       useLibraryStore().filterSource = SourceType.SourceTypeFile
       await nextTick()
       const filterButton = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="筛选和排序"]')!
-      expect(filterButton.getAttribute('variant')).toBe('secondary')
+      expect(filterButton.getAttribute('variant')).toBe('glass')
+      expect(filterButton.querySelector('web-ui-icon')?.className).toContain('--wui-color-accent')
       filterButton.click()
       await nextTick()
       expect(filterButton.getAttribute('aria-expanded')).toBe('true')
@@ -452,7 +470,29 @@ describe('LibraryPage：可用性感知接线', () => {
       filterButton.click()
       await nextTick()
       expect(filterButton.getAttribute('aria-expanded')).toBe('false')
-      expect(filterButton.getAttribute('variant')).toBe('secondary')
+      expect(filterButton.getAttribute('variant')).toBe('glass')
+      expect(filterButton.querySelector('web-ui-icon')?.className).toContain('--wui-color-accent')
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('单独搜索不强调筛选图标，失焦后保留搜索框和条件', async () => {
+    const mounted = await mountPage()
+    try {
+      const store = useLibraryStore()
+      store.searchQuery = '不存在的资源'
+      const searchButton = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="搜索"]')!
+      searchButton.click()
+      await nextTick()
+      const input = mounted.host.querySelector<HTMLElement>('web-ui-input[aria-label="搜索资源"]')!
+      input.dispatchEvent(new FocusEvent('focusout', { bubbles: true }))
+      await nextTick()
+      const filter = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="筛选和排序"]')!
+      expect(filter.getAttribute('variant')).toBe('glass')
+      expect(filter.querySelector('web-ui-icon')?.className).not.toContain('--wui-color-accent')
+      expect(mounted.host.querySelector('web-ui-input[aria-label="搜索资源"]')).not.toBeNull()
+      expect(store.searchQuery).toBe('不存在的资源')
     } finally {
       await mounted.close()
     }
@@ -696,7 +736,7 @@ describe('LibraryPage：粘贴链接', () => {
       await flush()
 
       expect(queueItems(mounted.host)).toHaveLength(0)
-      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接', expect.anything())
+      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接', { position: 'top-center' })
     } finally {
       await mounted.close()
     }
@@ -711,7 +751,7 @@ describe('LibraryPage：粘贴链接', () => {
       await flush()
 
       expect(queueItems(mounted.host)).toHaveLength(0)
-      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接', expect.anything())
+      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接', { position: 'top-center' })
     } finally {
       await mounted.close()
     }
@@ -753,7 +793,7 @@ describe('LibraryPage：粘贴链接', () => {
       await openAddDialog(mounted.host)
       paste('https://example.com/article')
       await flush()
-      button(mounted.host, '添加').click()
+      button(mounted.host, '确认添加').click()
       await flush()
 
       expect(createResource).toHaveBeenCalledExactlyOnceWith({
@@ -782,7 +822,7 @@ describe('LibraryPage：粘贴链接', () => {
 
       paste('https://example.com/article')
       await flush()
-      button(mounted.host, '添加').click()
+      button(mounted.host, '确认添加').click()
       await flush()
 
       expect(createResource).toHaveBeenCalledTimes(1)
@@ -804,7 +844,7 @@ describe('LibraryPage：粘贴链接', () => {
       const dialog = addDialog(mounted.host)
       paste('https://example.com/article')
       await flush()
-      button(mounted.host, '添加').click()
+      button(mounted.host, '确认添加').click()
       await flush()
 
       expect(dialogOpen(dialog)).toBe(true)

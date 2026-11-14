@@ -7,11 +7,11 @@
 :host {
   --wui-segmented-trigger-bg-hover: var(
     --wui-color-state-layer-hover,
-    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent)
+    color-mix(in srgb, var(--wui-color-text, #1b1b20) 6%, transparent)
   );
   --wui-segmented-trigger-bg-active: var(
     --wui-color-state-layer-active,
-    color-mix(in srgb, var(--wui-color-text, #1b1b1b) 15%, transparent)
+    color-mix(in srgb, var(--wui-color-text, #1b1b20) 15%, transparent)
   );
   touch-action: none;
   display: inline-block;
@@ -40,7 +40,7 @@
   line-height: 1;
 
   /* 所有 label 同用主文本色，确保 indicator 上的文字满足正文对比度；选择状态仍由 indicator 承担。 */
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
   white-space: nowrap;
 
   background-color: transparent;
@@ -59,12 +59,12 @@
      已选中项再叠一层 6%/15% 灰底会盖在透明玻璃 indicator 之上（trigger z-index: 1 >
      indicator z-index: 0），按住已 option 到拖拽结束前 :active 一直不撤，整段手势都是
      「灰底蒙在玻璃上」——即 #150「灰底在 indicator 层」要消除的残留。 */
-  .wui-segmented-trigger:hover:not(.is-checked, .is-disabled) {
+  .wui-segmented-trigger:hover:not(.is-checked, .is-disabled, [data-pointer-outside]) {
     background-color: var(--wui-segmented-trigger-bg-hover);
   }
 }
 
-.wui-segmented-trigger:active:not(.is-checked, .is-disabled) {
+.wui-segmented-trigger:active:not(.is-checked, .is-disabled, [data-pointer-outside]) {
   background-color: var(--wui-segmented-trigger-bg-active);
 }
 

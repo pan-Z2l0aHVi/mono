@@ -2,10 +2,12 @@ import { definePlugin } from '@greypan/js-kit'
 
 import { commitLayout } from '@/shared/transition/commit-layout'
 
+import { registerModalLayer, unregisterModalLayer } from './modal-layer-stack'
 import { getTransitionDuration } from './presence'
 
 export interface NativeDialogPresenceOptions {
   getDialog(): HTMLDialogElement | null
+  getTransitionTarget?(): HTMLElement | null
   isConnected(): boolean
   isOpen(): boolean
 }
@@ -74,6 +76,7 @@ export const defineNativeDialogPresence = () =>
         selfClosePending = true
         dialog.close?.()
       }
+      unregisterModalLayer(dialog)
     }
 
     const startOpening = () => {
@@ -92,6 +95,7 @@ export const defineNativeDialogPresence = () =>
           // 保留未打开状态
         }
       }
+      if (dialog.open && ctx.isConnected()) registerModalLayer(dialog)
       // 强制计算初始 top-layer 布局，确保 Safari 等浏览器在下一帧切换 class 时
       // 有稳定的 transition 起点，而不是偶发跳过进场过渡。
       commitLayout(dialog)
@@ -111,7 +115,10 @@ export const defineNativeDialogPresence = () =>
       dialog.classList.add('is-closing')
       dialog.classList.remove('is-visible')
       clearCloseFallback()
-      closeFallbackTimer = setTimeout(() => finishClosing(), getTransitionDuration(dialog) + 80)
+      closeFallbackTimer = setTimeout(
+        () => finishClosing(),
+        getTransitionDuration(ctx.getTransitionTarget?.() ?? dialog) + 80
+      )
     }
 
     const startClosing = () => {
@@ -135,15 +142,16 @@ export const defineNativeDialogPresence = () =>
       openFrame = requestAnimationFrame(() => {
         openFrame = undefined
         if (!isClosing || ctx.isOpen() || !dialog.open) return
-        const transition = dialog.style.getPropertyValue('transition')
-        const transitionPriority = dialog.style.getPropertyPriority('transition')
-        dialog.style.setProperty('transition', 'none', 'important')
+        const transitionTarget = ctx.getTransitionTarget?.() ?? dialog
+        const transition = transitionTarget.style.getPropertyValue('transition')
+        const transitionPriority = transitionTarget.style.getPropertyPriority('transition')
+        transitionTarget.style.setProperty('transition', 'none', 'important')
         dialog.classList.add('is-visible')
-        commitLayout(dialog)
+        commitLayout(transitionTarget)
         if (transition) {
-          dialog.style.setProperty('transition', transition, transitionPriority)
+          transitionTarget.style.setProperty('transition', transition, transitionPriority)
         } else {
-          dialog.style.removeProperty('transition')
+          transitionTarget.style.removeProperty('transition')
         }
         openFrame = requestAnimationFrame(() => {
           openFrame = undefined
@@ -184,6 +192,7 @@ export const defineNativeDialogPresence = () =>
             selfClosePending = true
             dialog.close()
           }
+          unregisterModalLayer(dialog)
           dialog.classList.remove('is-closing', 'is-visible')
           return
         }
@@ -197,7 +206,8 @@ export const defineNativeDialogPresence = () =>
       },
 
       handleTransitionEnd(event) {
-        if (event.target !== ctx.getDialog() || event.propertyName !== 'transform') return
+        if (event.target !== (ctx.getTransitionTarget?.() ?? ctx.getDialog()) || event.propertyName !== 'transform')
+          return
         finishClosing()
       },
 
@@ -213,6 +223,8 @@ export const defineNativeDialogPresence = () =>
         cancelOpenFrame()
         clearCloseFallback()
         isClosing = false
+        const dialog = ctx.getDialog()
+        if (dialog) unregisterModalLayer(dialog)
         ctx.getDialog()?.classList.remove('is-closing', 'is-visible')
         return false
       },
@@ -222,6 +234,8 @@ export const defineNativeDialogPresence = () =>
         clearCloseFallback()
         isClosing = false
         selfClosePending = false
+        const dialog = ctx.getDialog()
+        if (dialog) unregisterModalLayer(dialog)
       }
     }
   })

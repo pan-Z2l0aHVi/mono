@@ -15,6 +15,7 @@ import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { FocusNavigator, rowFocusTarget } from './focusNavigator'
 import { arrowUpRight } from './icons'
+import { availableFileSource, fileManagerIcon, fileManagerLabel } from './presentation'
 import type { NameEditorRef } from './rename'
 import ResourceRow from './ResourceRow.vue'
 import { SweepScrollController } from './sweepScroll'
@@ -47,6 +48,7 @@ const emit = defineEmits<{
   cancelRename: []
   /** 用系统默认应用打开该资源；由父级经由 runtime 交给操作系统。 */
   openDefault: [resource: ResourceView]
+  showInFileManager: [source: ResourceSourceView]
   /** 键盘导航/context menu 请求激活某一行：由父级把 activeResourceId 置为该行资源的 id。 */
   activate: [resource: ResourceView]
 }>()
@@ -63,12 +65,19 @@ onBeforeUnmount(() => window.removeEventListener('contextmenu', preventScrimCont
 const contextMenuRef = ref<WebUiContextMenu>()
 const contextResource = ref<ResourceView | null>(null)
 const rowsRef = ref<HTMLElement | null>(null)
-const emptyTitle = computed(() => (props.runtimeAvailable ? '资源库为空' : '桌面服务未连接'))
+const emptyTitle = computed(() => (props.runtimeAvailable ? '资源库为空' : '暂时无法打开资源库'))
 const checkedSet = computed(() => new Set(props.checkedIds))
 
+function focusNearest(index: number) {
+  if (props.resources.length) void navigator.navigateToIndex(Math.min(Math.max(index, 0), props.resources.length - 1))
+  else rowsRef.value?.focus()
+}
+
+defineExpose({ focusNearest })
+
 /*
- * 行高没有写死。ResourceRow 的标题会 line-clamp-2 换行、标签区会 flex-wrap 换行、进入改名
- * 编辑态还会从文字换成表单控件，三种情况高度都不同。这个 item-size 只是「还没量到之前先用
+ * 行高没有写死。ResourceRow 的标签区会 flex-wrap 换行，进入改名编辑态时表单控件也可能撑高行。
+ * 这个 item-size 只是「还没量到之前先用
  * 多少」的一阶猜测，真正的值由 virtua 挂在每个条目上的 ResizeObserver 量出来覆盖回去。
  */
 const ROW_ESTIMATE = 64
@@ -160,13 +169,13 @@ onBeforeUnmount(() => {
  * 自己的 scrollIndexIntoView 里（见下），那条路径要把 virtua 的列表内偏移用 listOffset
  * 换算成文档坐标。
  *
- * 行高不固定（标题换行、标签换行、改名编辑态），由 virtua 挂在每个条目上的 ResizeObserver
+ * 行高不固定（标签换行、改名编辑态），由 virtua 挂在每个条目上的 ResizeObserver
  * 自动测量，不需要函数式 ref 与自定义 measureElement：
  *   - virtua 只认「元素 -> 下标」的对应（mount 时注册，条目下标变化时重新注册），高度按
  *     下标写进它自己的尺寸表；
  *   - 重排之后每个条目的下标变了，ListItem 的 watch 会用新下标重新 observe 同一元素，
  *     ResizeObserver.observe() 规范上会立刻投递一次初始回调，真实高度因此落到新下标上——
- *     「改名撑成多行 + 排到列表最前」这条重排路径由库自己兜住，不需要外部触发重算。
+ *     「改名编辑 + 排到列表最前」这条重排路径由库自己兜住，不需要外部触发重算。
  *   - 条目高度只在内容变化时才会变，DOM 摘除/重建（挂载时尚未 attach 的函数式 ref 那条
  *     时序）不构成问题：virtua 是在挂载后由 ResizeObserver 量，不是挂载瞬间同步读 offsetHeight。
  */
@@ -215,7 +224,7 @@ function scrollIndexIntoView(index: number) {
  */
 
 /*
- * 焦点成为 contextResource 的第二个来源。键盘呼出 context menu（ContextMenu 键 / Shift+F10）
+ * 焦点成为 contextResource 的第二个来源。键盘呼出 context menu（ContextMenu 键 / 长按空格）
  * 由 web-ui-context-menu 自己监听宿主元素，它不看 contextResource、只按 document.activeElement
  * 的 rect 摆 panel；而 menu item 全部 gate 在 contextResource 上，它只有行上的 contextmenu
  * 事件这一个赋值点。纯键盘呼出时 contextResource 仍是 null，弹出来的是一张紧贴该行、
@@ -264,14 +273,14 @@ const ROW_NAVIGATION_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End'])
 
 /*
  * 容器自己也是 tab stop，所以键盘用户能停在「整个列表」这一层。进列表的键位里带
- * Shift+F10：web-ui-context-menu 认的 context-menu 键（见 packages/web-ui/src/components/
+ * ContextMenu：web-ui-context-menu 认的 context-menu 键（见 packages/web-ui/src/components/
  * context-menu/index.ts 的 _onKeydown），焦点在容器上时它照样会开 menu，并把 panel 锚到容器
  * 自己身上。容器不对应任何一条资源，那种情况下弹出来的只会是一张位置在列表、内容与列表
  * 无关的 menu——和行上的键盘缺陷是同一个毛病，只是从「行」换成了「列表」。所以这里
  * 先把焦点交给行：事件继续冒泡到宿主，宿主再读 document.activeElement 时读到的已经是
  * 那一行，menu 于是既锚在行上、也讲这一行的事。
  */
-const ENTER_LIST_KEYS = new Set(['Enter', ' ', 'ArrowDown', 'F10'])
+const ENTER_LIST_KEYS = new Set(['Enter', ' ', 'ArrowDown', 'ContextMenu'])
 
 /*
  * 行是 div，键盘不像 button 那样补出 click，Enter / Space 在这里翻译成行语义。
@@ -308,8 +317,6 @@ function handleRowsKeydown(event: KeyboardEvent) {
 function enterList(event: KeyboardEvent) {
   if (!ENTER_LIST_KEYS.has(event.key)) return
   if (event.key === ' ' && event.shiftKey) return
-  // F10 只有带 Shift 才是 context-menu 键，裸 F10 留给浏览器的查找快捷键
-  if (event.key === 'F10' && !event.shiftKey) return
   if (!props.resources.length) return
   const active = props.resources.findIndex(resource => resource.id === props.activeResourceId)
   event.preventDefault()
@@ -526,6 +533,12 @@ watch(contextResource, resource => {
 
 function handleOpenDefault(resource: ResourceView | null) {
   if (resource) emit('openDefault', resource)
+  closeContextMenu()
+}
+
+function handleShowInFileManager(resource: ResourceView | null) {
+  const source = availableFileSource(resource)
+  if (source) emit('showInFileManager', source)
   closeContextMenu()
 }
 
@@ -778,6 +791,13 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
           <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />
           {{ defaultOpenWithName || '系统默认应用' }}
         </web-ui-dropdown-item>
+        <web-ui-dropdown-item
+          v-if="availableFileSource(contextResource)"
+          @click="handleShowInFileManager(contextResource)"
+        >
+          <web-ui-icon slot="prefix" :icon="fileManagerIcon()" :size="14" />
+          {{ fileManagerLabel() }}
+        </web-ui-dropdown-item>
       </web-ui-dropdown-item>
       <web-ui-dropdown-divider />
       <web-ui-dropdown-item v-if="contextResource" @click="handleStartRename(contextResource)">
@@ -797,7 +817,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
       </web-ui-dropdown-item>
       <web-ui-dropdown-divider />
       <web-ui-dropdown-item style="color: var(--wui-color-danger, #ef4444)" @click="handleDelete(contextResource)">
-        <web-ui-icon slot="prefix" :icon="lucideTrash2" :size="14" class="text-(--wui-color-danger,#ef4444)" />
+        <web-ui-icon slot="prefix" :icon="lucideTrash2" :size="14" />
         删除
       </web-ui-dropdown-item>
     </div>

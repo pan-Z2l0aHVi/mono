@@ -319,7 +319,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-dialog-bg</code>" },
-      { label: 'td', content: "玻璃卡片背景色，回退到 <code>rgb(248 248 248 / 0.92)</code>" },
+      { label: 'td', content: "玻璃卡片背景色，回退到 <code>rgb(248 248 252 / 0.92)</code>" },
       { label: 'td', content: "<code>var(--wui-color-surface-overlay)</code>" }
       ]
     },

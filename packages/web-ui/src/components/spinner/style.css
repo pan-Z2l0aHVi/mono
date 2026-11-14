@@ -8,7 +8,7 @@
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  color: var(--wui-color-text-secondary, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a70);
 }
 
 :host(.wui-spinner-overlay) {
@@ -89,7 +89,7 @@
 
   font-size: var(--wui-font-size, 14px);
   line-height: var(--wui-line-height-normal, 1.5);
-  color: var(--wui-color-text-secondary, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a70);
   text-align: center;
 }
 

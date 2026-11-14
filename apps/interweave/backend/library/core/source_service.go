@@ -24,6 +24,11 @@ type SourceService struct {
 
 // 保持 Source 规则与持久化实现解耦。
 func NewSourceService(db *storage.DB, fetcher *remote.Fetcher) *SourceService {
+	db.ScheduleBackground("fingerprint:backfill", func(ctx context.Context) {
+		if ctx.Err() == nil {
+			backfillFingerprints(ctx, db)
+		}
+	})
 	return &SourceService{
 		db:        db,
 		ingest:    newIngestion(db, fetcher),
@@ -252,6 +257,9 @@ func (s *SourceService) RefreshFileSource(ctx context.Context, sourceID string) 
 		return Source{}, err
 	}
 
+	if outcome.available {
+		recordFingerprint(s.db, sourceID, src.Location)
+	}
 	return s.getSource(ctx, sourceID)
 }
 

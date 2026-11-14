@@ -28,9 +28,9 @@ function createDrawer(): WebUiDrawer {
 }
 
 function dispatchTransformTransitionEnd(dialog: HTMLDialogElement) {
-  const event = new Event('transitionend')
+  const event = new Event('transitionend', { bubbles: true })
   Object.defineProperty(event, 'propertyName', { value: 'transform' })
-  dialog.dispatchEvent(event)
+  dialog.querySelector('.wui-drawer-motion')!.dispatchEvent(event)
 }
 
 function dispatchEscapeKey(target: EventTarget) {

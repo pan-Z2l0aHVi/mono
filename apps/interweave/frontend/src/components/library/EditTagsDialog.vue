@@ -1,12 +1,12 @@
 <script setup lang="ts">
 import type { WebUiAutocomplete, WebUiDialog, WebUiEvent } from '@greypan/web-ui'
-import { heroiconsXMark16Solid, tablerTagPlus } from '@greypan/web-ui/icons'
+import { tablerTagPlus } from '@greypan/web-ui/icons'
 import { computed, ref, watch } from 'vue'
 
 import type { LibraryQueueItem } from '@/services/library'
 import type { ResourceView, TagColor } from '@/stores/library'
 
-import { tagClass } from './presentation'
+import ResourceTag from './ResourceTag.vue'
 
 const props = defineProps<{
   open: boolean
@@ -108,7 +108,7 @@ function removeTag(tag: string) {
 
     <div class="grid gap-4">
       <div class="grid gap-1.5">
-        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">添加标签</span>
+        <span class="text-sm font-medium text-[#6a6a70] dark:text-(--wui-color-text-secondary)">添加标签</span>
         <web-ui-autocomplete
           ref="autocompleteField"
           :value="inputValue"
@@ -148,32 +148,22 @@ function removeTag(tag: string) {
       </div>
 
       <div class="grid gap-2">
-        <span class="text-sm font-medium text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">{{
+        <span class="text-sm font-medium text-[#6a6a70] dark:text-(--wui-color-text-secondary)">{{
           hasChanges ? '未保存标签' : '当前标签'
         }}</span>
         <div
           v-if="draft.length"
           class="flex min-h-[36px] flex-wrap items-center gap-1.5 rounded-[18px] bg-white px-3 py-1.5 dark:bg-(--wui-color-surface-raised)"
         >
-          <span
+          <ResourceTag
             v-for="tag in draft"
             :key="tag"
-            class="inline-flex h-[22px] min-w-[22px] items-center gap-0.5 rounded-full px-[7px] text-xs leading-none has-[web-ui-button]:pr-0.5"
-            :class="tagClass(props.tagColors[tag])"
-          >
-            {{ tag }}
-            <web-ui-button
-              class="shrink-0 [--wui-button-color:currentColor]"
-              icon
-              variant="ghost"
-              size="16"
-              :disabled="busy"
-              :aria-label="`移除标签 ${tag}`"
-              @click="removeTag(tag)"
-            >
-              <web-ui-icon :icon="heroiconsXMark16Solid" :size="10" />
-            </web-ui-button>
-          </span>
+            :name="tag"
+            :color="props.tagColors[tag]"
+            :disabled="busy"
+            closable
+            @close="removeTag(tag)"
+          />
         </div>
         <div
           v-else

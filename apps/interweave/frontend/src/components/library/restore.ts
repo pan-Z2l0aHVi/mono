@@ -8,19 +8,19 @@ export interface LibraryRestoreQueueItem {
   resourceKind: ResourceView['kind']
   kind: ResourceSourceView['type']
   location: string
+  source?: ResourceSourceView
   replacementLocation: string
+  scanSnapshot?: string
 }
 
 export interface LibraryRestoreQueueResult {
   completedIds: string[]
-  failed: {
-    item: LibraryRestoreQueueItem
-    cause: unknown
-  } | null
+  failures: { item: LibraryRestoreQueueItem; cause: unknown }[]
 }
 
 interface LibraryRestoreQueueHandlers {
   replaceFileSource: (sourceId: string, inputPath: string) => Promise<unknown>
+  replaceScannedFileSource: (sourceId: string, inputPath: string, snapshot: string) => Promise<unknown>
   replaceURLSource: (sourceId: string, inputURL: string) => Promise<unknown>
   onItemStart?: (itemId: string) => void
 }
@@ -37,6 +37,7 @@ export function createLibraryRestoreQueueItem(
     resourceKind: resource.kind,
     kind: source.type,
     location: source.location,
+    source,
     replacementLocation: source.type === 'url' ? source.location : ''
   }
 }
@@ -69,21 +70,43 @@ export async function restoreLibraryQueue(
   handlers: LibraryRestoreQueueHandlers
 ): Promise<LibraryRestoreQueueResult> {
   const completedIds: string[] = []
+  const failures: LibraryRestoreQueueResult['failures'] = []
 
   for (const item of items) {
     handlers.onItemStart?.(item.id)
     try {
       if (item.kind === 'file') {
         if (!item.replacementLocation) throw new Error('请选择新文件')
-        await handlers.replaceFileSource(item.sourceId, item.replacementLocation)
+        if (item.scanSnapshot)
+          await handlers.replaceScannedFileSource(item.sourceId, item.replacementLocation, item.scanSnapshot)
+        else await handlers.replaceFileSource(item.sourceId, item.replacementLocation)
       } else {
         await handlers.replaceURLSource(item.sourceId, item.replacementLocation)
       }
       completedIds.push(item.id)
     } catch (cause) {
-      return { completedIds, failed: { item, cause } }
+      failures.push({ item, cause })
     }
   }
 
-  return { completedIds, failed: null }
+  return { completedIds, failures }
+}
+
+export interface RecoveryCandidate {
+  sourceID: string
+  path: string
+  size: number
+  modifiedAt: number
+  matchReasons: string[]
+  snapshot: string
+}
+
+export interface RecoveryScanUpdate {
+  candidates: RecoveryCandidate[]
+  checked: number
+  currentDirectory: string
+  skipped: number
+  done: boolean
+  cancelled: boolean
+  error: string
 }

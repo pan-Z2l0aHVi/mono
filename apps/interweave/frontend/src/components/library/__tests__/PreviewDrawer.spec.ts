@@ -114,7 +114,7 @@ afterEach(() => {
 describe('PreviewDrawer', () => {
   it('失效文件可从预览进入当前来源的找回流程', async () => {
     const source = fileSource({ available: false })
-    const onRecover = vi.fn()
+    const onRecover = vi.fn<(source: ResourceSourceView) => void>()
     const { host, setResource } = await mountDrawer(resourceOf(source, ResourceKind.ResourceKindImage), { onRecover })
     const button = host.querySelector<HTMLElement>('web-ui-button[slot="action"]')
     expect(button?.textContent).toContain('找回资源')
@@ -235,7 +235,9 @@ describe('PreviewDrawer', () => {
     )
     await flush()
     expect(host.querySelector('pre')).toBeNull()
-    expect(host.querySelector('web-ui-empty')?.getAttribute('description')).toContain('HTTP 404')
+    expect(host.querySelector('web-ui-empty')?.getAttribute('description')).toContain(
+      '无法读取文件，请检查文件是否还在原处'
+    )
   })
 
   it('切换资源时取消在途文本请求，旧结果不再写回', async () => {
@@ -286,7 +288,7 @@ describe('PreviewDrawer', () => {
 
   it('缺 runtime 时说明预览依赖桌面服务', async () => {
     const { host } = await mountDrawer(resourceOf(fileSource({ mediaUrl: null }), ResourceKind.ResourceKindImage))
-    expect(host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('桌面服务未连接')
+    expect(host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('暂时无法预览')
   })
 
   it('预览未打开时不挂载媒体节点，也不发起文本读取', async () => {

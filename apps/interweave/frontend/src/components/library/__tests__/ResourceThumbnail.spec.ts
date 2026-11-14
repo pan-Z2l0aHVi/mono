@@ -22,6 +22,29 @@ function fileSource(location = '/tmp/image.jpg'): ResourceSourceView {
 }
 
 describe('ResourceThumbnail', () => {
+  it('失效时在缩略图中显示警示标识，恢复后移除', async () => {
+    const host = document.createElement('div')
+    const unavailable = ref(true)
+    const app = createApp({
+      setup: () => () =>
+        h(ResourceThumbnail, {
+          kind: ResourceKind.ResourceKindImage,
+          source: fileSource(),
+          mediaUrl: null,
+          unavailable: unavailable.value
+        })
+    })
+    app.mount(host)
+    try {
+      expect(host.querySelector('web-ui-icon.absolute.bottom-0.left-0')).not.toBeNull()
+      unavailable.value = false
+      await nextTick()
+      expect(host.querySelector('web-ui-icon.absolute.bottom-0.left-0')).toBeNull()
+    } finally {
+      app.unmount()
+    }
+  })
+
   it('失效来源优先显示缓存，缓存缺失时显示类型图标', async () => {
     const host = document.createElement('div')
     document.body.append(host)

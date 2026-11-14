@@ -34,7 +34,7 @@
 
   font-size: var(--wui-font-size, 14px);
   line-height: 1;
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
 
   &:focus-visible {
     border-radius: var(--wui-radius-control, calc(infinity * 1px));
@@ -58,14 +58,14 @@
 
 :where(.wui-radio.is-disabled, .wui-checkbox.is-disabled) {
   cursor: not-allowed;
-  color: var(--wui-color-text-secondary, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a70);
   opacity: 0.4;
 }
 
 /*
- * indicator 底色取控件档。surface-raised 在深色下（#2c2c2e）离页面底色（#242628）只有 8 个
+ * indicator 底色取控件档。surface-raised 在深色下（#2c2c2e）离页面底色（#242428）只有 8 个
  * 亮度点，未选中时几乎看不出有一个圆/方框；surface-control 才是主题里「控件自己的底」
- * 那一档（中性 button 同档），深色比页面高 22 个亮度点，浅色下也从近白的 #f2f2f7 变成可读的 #dfdfdf。
+ * 那一档（中性 button 同档），深色比页面高 22 个亮度点，浅色下也从近白的 #f2f2f7 变成可读的 #e5e5eb。
  */
 :where(.wui-radio-circle, .wui-checkbox-box) {
   isolation: isolate;
@@ -79,7 +79,7 @@
   width: var(--wui-selection-control-size, 18px);
   height: var(--wui-selection-control-size, 18px);
 
-  background-color: var(--wui-color-surface-control, #dfdfdf);
+  background-color: var(--wui-color-surface-control, #e5e5eb);
 
   transition: background-color var(--wui-duration-trigger, 160ms) ease;
 }
@@ -112,6 +112,6 @@
 @media (hover: hover) and (pointer: fine) {
   :where(.wui-radio, .wui-checkbox):hover:not(.is-disabled, .is-checked)
     :where(.wui-radio-circle, .wui-checkbox-box)::before {
-    background-color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 6%, transparent);
+    background-color: color-mix(in srgb, var(--wui-color-text, #1b1b20) 6%, transparent);
   }
 }

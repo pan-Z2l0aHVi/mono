@@ -206,24 +206,25 @@
   --wui-color-page: #fff;
   --wui-color-surface: #fff;
   --wui-color-surface-raised: #f2f2f7;
-  --wui-color-surface-control: #dfdfdf;
-  --wui-color-surface-track: #e5e5ea;
-  --wui-color-surface-menu: rgb(250 250 250 / 0.76);
-  --wui-color-surface-glass: rgb(250 250 250 / 0.34);
+  --wui-color-surface-control: #e5e5eb;
+  --wui-color-surface-control-shade: #1b1b30;
+  --wui-color-surface-track: #e5e5eb;
+  --wui-color-surface-menu: rgb(250 250 253 / 0.76);
+  --wui-color-surface-glass: rgb(250 250 253 / 0.34);
   --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
   --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
-  --wui-color-surface-overlay: rgb(248 248 248 / 0.92);
+  --wui-color-surface-overlay: rgb(248 248 252 / 0.92);
 
   /* 侧边栏专用表面：浅色保持中性分层，深色单独抬升一档（见下方 dark 块注释）。 */
-  --wui-color-surface-sidebar: rgb(233 233 233 / 0.82);
+  --wui-color-surface-sidebar: rgb(233 233 239 / 0.82);
 
   /* 凹变种 indicator 与中性可交互控件同面：浅色与深色的默认值都取 control（= secondary button 的面）。
      凸变种那颗另走一条等式（chip 与 page 同色、track 沉到 page 之下），规则见 segmented/style.css。 */
-  --wui-color-surface-segmented: #dfdfdf;
-  --wui-color-surface-segmented-track: #e5e5ea;
+  --wui-color-surface-segmented: #e5e5eb;
+  --wui-color-surface-segmented-track: #e5e5eb;
   --wui-color-surface-selected: #fff;
-  --wui-color-text: #1b1b1b;
-  --wui-color-text-secondary: #6a6a6a;
+  --wui-color-text: #1b1b20;
+  --wui-color-text-secondary: #6a6a70;
   --wui-color-text-tertiary: color-mix(in srgb, var(--wui-color-text) 35%, transparent);
   --wui-color-text-disabled: color-mix(in srgb, var(--wui-color-text) 32%, transparent);
   --wui-color-state-layer-hover: color-mix(in srgb, var(--wui-color-text) 6%, transparent);
@@ -265,20 +266,21 @@
 }
 
 :host([appearance='dark']) {
-  --wui-color-page: #242628;
+  --wui-color-page: #242428;
   --wui-color-surface: #2c2c2e;
   --wui-color-surface-raised: #2c2c2e;
   --wui-color-surface-control: #3a3a3c;
+  --wui-color-surface-control-shade: #000;
   --wui-color-surface-track: #444446;
-  --wui-color-surface-menu: rgb(49 48 50 / 0.74);
+  --wui-color-surface-menu: rgb(49 49 53 / 0.74);
   --wui-color-surface-glass: rgb(44 44 46 / 0.42);
   --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
   --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
-  --wui-color-surface-overlay: rgb(32 34 34 / 0.92);
+  --wui-color-surface-overlay: rgb(32 32 36 / 0.92);
 
   /* 深色 elevation：浮动 panel 与侧边栏都比 page 浅一档。取 --wui-color-surface
      （#2c2c2e）作为「page 之上一档」的基准色，panel 按自身 alpha 叠在 page 上，
-     合成结果约 rgb(46 45 47)，与 #2c2c2e 相差不超过 2/255。
+     合成结果约 rgb(46 46 50)，与 #2c2c2e 相差不超过 4/255。
      alpha 不取 0.92/0.9：颜色抬升后高 alpha 会让 panel 读成实心纸片，
      取 0.74/0.8 才保留透感（模糊底内容可透出），层级方向不变。
      overlay 是唯一的例外：dialog/drawer/toast 背后的内容是被遮住的主体内容，
@@ -287,16 +289,16 @@
   --wui-color-surface-sidebar: rgb(44 44 46 / 0.8);
 
   /* Segmented 的深色两档。凸变种（raised）复刻浅色那条「indicator 与 page 同色、track 沉一档」的
-     关系：浅色是 chip #fff（= page）浮在 #e5e5ea 上，深色 page（#242628）本来就是阶梯最暗的一档，
-     所以要让 chip 取到 page 色，只能把 track 再往下开一档到 #17191a（比 page 暗 13~14/255，与该主题
+     关系：浅色是 chip #fff（= page）浮在 #e5e5eb 上，深色 page（#242428）本来就是阶梯最暗的一档，
+     所以要让 chip 取到 page 色，只能把 track 再往下开一档到 #17171b（比 page 暗 13~14/255，与该主题
      往上走的档差同量级：page→surface +6~+8、surface→control +14、control→track +10）。凸起方向仍由
      「chip 比 track 亮」读出，WCAG 亮度比 1.16:1，与浅色的 1.26:1 同量级，不会盖过柔投影。
      凹变种（inset）不参与：它的语义是「按下去的灰面」，track 取 surface（#2c2c2e）、indicator 取
      control（#3a3a3c，与浅色那颗同档），与 page 同色反而读不出选中。 */
   --wui-color-surface-segmented: #3a3a3c;
-  --wui-color-surface-segmented-track: #17191a;
-  --wui-color-surface-selected: #242628;
-  --wui-color-text: #e9eaea;
+  --wui-color-surface-segmented-track: #17171b;
+  --wui-color-surface-selected: #242428;
+  --wui-color-text: #e9e9ed;
   --wui-color-text-secondary: #a1a1a6;
   --wui-color-text-tertiary: color-mix(in srgb, var(--wui-color-text) 42%, transparent);
   --wui-color-text-disabled: color-mix(in srgb, var(--wui-color-text) 38%, transparent);
@@ -327,21 +329,22 @@
 
 @media (prefers-color-scheme: dark) {
   :host([appearance='system']) {
-    --wui-color-page: #242628;
+    --wui-color-page: #242428;
     --wui-color-surface: #2c2c2e;
     --wui-color-surface-raised: #2c2c2e;
     --wui-color-surface-control: #3a3a3c;
+    --wui-color-surface-control-shade: #000;
     --wui-color-surface-track: #444446;
-    --wui-color-surface-menu: rgb(49 48 50 / 0.74);
+    --wui-color-surface-menu: rgb(49 49 53 / 0.74);
     --wui-color-surface-glass: rgb(44 44 46 / 0.42);
     --wui-color-surface-glass-hover: color-mix(in srgb, var(--wui-color-text) 6%, var(--wui-color-surface-glass));
     --wui-color-surface-glass-active: color-mix(in srgb, var(--wui-color-text) 15%, var(--wui-color-surface-glass));
-    --wui-color-surface-overlay: rgb(32 34 34 / 0.92);
+    --wui-color-surface-overlay: rgb(32 32 36 / 0.92);
     --wui-color-surface-sidebar: rgb(44 44 46 / 0.8);
     --wui-color-surface-segmented: #3a3a3c;
-    --wui-color-surface-segmented-track: #17191a;
-    --wui-color-surface-selected: #242628;
-    --wui-color-text: #e9eaea;
+    --wui-color-surface-segmented-track: #17171b;
+    --wui-color-surface-selected: #242428;
+    --wui-color-text: #e9e9ed;
     --wui-color-text-secondary: #a1a1a6;
     --wui-color-text-tertiary: color-mix(in srgb, var(--wui-color-text) 42%, transparent);
     --wui-color-text-disabled: color-mix(in srgb, var(--wui-color-text) 38%, transparent);

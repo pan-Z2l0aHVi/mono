@@ -17,6 +17,8 @@ export {
     FilePreviewDTO,
     GlobalMapDTO,
     LocalMapDTO,
+    RecoveryCandidateDTO,
+    RecoveryScanUpdateDTO,
     ResourceDTO,
     ResourceLocationMatchDTO,
     SourceAvailabilityEventDTO,

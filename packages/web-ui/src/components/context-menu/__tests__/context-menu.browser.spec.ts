@@ -1,4 +1,5 @@
 import '..'
+import '@/components/button'
 import '@/components/checkbox'
 import '@/components/dropdown-item'
 import '@/components/editable-text'
@@ -96,6 +97,83 @@ async function waitForItemsReturned(menu: WebUiContextMenu, count: number) {
 afterEach(() => document.body.replaceChildren())
 
 describe('WebUiContextMenu 组件（浏览器）', () => {
+  it('短按空格滚动触发区域，并保留嵌套按钮的长按行为', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    const trigger = document.createElement('div')
+    trigger.tabIndex = 0
+    trigger.style.cssText = 'height: 80px; overflow-y: auto;'
+    const inner = document.createElement('div')
+    inner.style.height = '500px'
+    const nested = document.createElement('button')
+    nested.textContent = '嵌套按钮'
+    let clicks = 0
+    nested.addEventListener('click', () => clicks++)
+    inner.append(nested)
+    trigger.append(inner)
+    menu.append(trigger, document.createElement('web-ui-dropdown-item'))
+    document.body.append(menu)
+    await menu.updateComplete
+    trigger.focus()
+    await userEvent.keyboard('[Space]')
+    await pollUntil(() => trigger.scrollTop > 0, 'Expected Space to scroll the trigger')
+    nested.focus()
+    await userEvent.keyboard('[Space>]')
+    await new Promise(resolve => setTimeout(resolve, 550))
+    expect(menu.isOpen).toBe(false)
+    await userEvent.keyboard('[/Space]')
+    expect(clicks).toBe(1)
+  })
+
+  it('以 web-ui-button 为触发目标时支持空格短按与长按', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    const button = document.createElement('web-ui-button')
+    button.textContent = '打开'
+    let clicks = 0
+    button.addEventListener('click', () => clicks++)
+    const item = document.createElement('web-ui-dropdown-item')
+    item.textContent = '详情'
+    menu.append(button, item)
+    document.body.append(menu)
+    await Promise.all([menu.updateComplete, button.updateComplete])
+    const nativeButton = button.shadowRoot?.querySelector('button')
+    expect(nativeButton).not.toBeNull()
+    nativeButton!.focus()
+    await userEvent.keyboard('[Space]')
+    expect(clicks).toBe(1)
+    await userEvent.keyboard('[Space>]')
+    await pollUntil(() => menu.isOpen, 'Expected a held Space to open the context menu')
+    await userEvent.keyboard('[/Space]')
+    await waitForMenuFocus()
+    expect(clicks).toBe(1)
+  })
+
+  it('空格短按保留按钮点击，长按打开菜单并在 Escape 后恢复焦点', async () => {
+    const menu = document.createElement('web-ui-context-menu')
+    const button = document.createElement('button')
+    button.textContent = '打开'
+    let clicks = 0
+    button.addEventListener('click', () => clicks++)
+    const item = document.createElement('web-ui-dropdown-item')
+    item.textContent = '详情'
+    menu.append(button, item)
+    document.body.append(menu)
+    await menu.updateComplete
+    button.focus()
+
+    await userEvent.keyboard('[Space]')
+    expect(clicks).toBe(1)
+    expect(menu.isOpen).toBe(false)
+
+    await userEvent.keyboard('[Space>]')
+    await pollUntil(() => menu.isOpen, 'Expected a held Space to open the context menu')
+    await userEvent.keyboard('[/Space]')
+    await waitForMenuFocus()
+    expect(clicks).toBe(1)
+    dispatchEscape()
+    await waitForItemsReturned(menu, 1)
+    expect(document.activeElement).toBe(button)
+  })
+
   it('disabled 不把消费者 slotted 内容整体降不透明度', async () => {
     const menu = document.createElement('web-ui-context-menu')
     menu.setAttribute('disabled', '')
@@ -327,7 +405,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     row.focus()
     expect(document.activeElement).toBe(row)
 
-    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true, composed: true }))
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true, composed: true }))
     await menu.updateComplete
     await waitForFrame()
     expect(document.activeElement).not.toBe(row)
@@ -367,7 +445,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
 
     row.focus()
     // 键盘打开路径：menu-behavior 从 document.activeElement 取归还目标，此时焦点必在行上。
-    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'F10', shiftKey: true, bubbles: true, composed: true }))
+    menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true, composed: true }))
     await menu.updateComplete
     await waitForFrame()
 

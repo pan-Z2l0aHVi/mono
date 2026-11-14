@@ -1,3 +1,5 @@
+import type { RecoveryScanUpdate } from '@/components/library/restore'
+
 import type {
   CreateResourceInputDTO,
   FilePreviewDTO,
@@ -45,6 +47,11 @@ export interface LibrarySourceCapabilities {
   refreshURL(sourceId: string): Promise<ResourceDTO>
   refreshFile(sourceId: string): Promise<ResourceDTO>
   replaceFile(sourceId: string, inputPath: string): Promise<ResourceDTO>
+  startRecoveryScan(sourceIds: string[], directory: string): Promise<string>
+  pollRecoveryScan(scanId: string): Promise<RecoveryScanUpdate>
+  cancelRecoveryScan(scanId: string): Promise<void>
+  discardRecoveryScan(scanId: string): Promise<void>
+  replaceScannedFile(sourceId: string, path: string, snapshot: string): Promise<ResourceDTO>
   replaceURL(sourceId: string, inputURL: string): Promise<ResourceDTO>
   probeOnOpen(sourceId: string): Promise<SourceProbeResultDTO>
 }
@@ -65,9 +72,11 @@ export interface LibraryEventCapabilities {
 export interface LibrarySystemCapabilities {
   chooseFilePaths(): Promise<string[]>
   chooseFilePath(): Promise<string | null>
+  chooseDirectory(): Promise<string | null>
   getClipboardFilePaths(): Promise<string[]>
   defaultOpenWith(target: string): Promise<string>
   openExternal(target: string): Promise<void>
+  showInFileManager(path: string): Promise<void>
 }
 
 /**
@@ -118,7 +127,7 @@ export function requireFilePreviewDTO(value: FilePreviewDTO | null, action: stri
 
 export function requireResourceDTO(value: ResourceDTO | null, action: string): ResourceDTO {
   if (value) return value
-  throw new Error(`${action}未返回 Resource`)
+  throw new Error(`${action}没有完成，请重试`)
 }
 
 export function requireSourceProbeResultDTO(value: SourceProbeResultDTO | null, action: string): SourceProbeResultDTO {

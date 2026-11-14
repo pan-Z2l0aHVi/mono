@@ -117,10 +117,10 @@ function pickAccent(value: string) {
       -->
       <div v-if="activeTab === 'general'" :class="settingsRowClass">
         <div class="flex min-w-0 flex-col gap-0.5">
-          <span class="text-sm text-(--wui-color-text)">MCP server</span>
+          <span class="text-sm text-(--wui-color-text)">连接智能助手</span>
           <span :class="metadataLabelClass">即将推出</span>
         </div>
-        <web-ui-switch disabled aria-label="MCP server（即将推出）" />
+        <web-ui-switch disabled aria-label="连接智能助手（即将推出）" />
       </div>
 
       <div v-else-if="activeTab === 'appearance'" class="flex flex-col">
@@ -144,7 +144,7 @@ function pickAccent(value: string) {
             <label
               v-for="preset in ACCENT_PRESETS"
               :key="preset.value"
-              class="relative grid size-9 shrink-0 cursor-pointer place-items-center"
+              class="relative grid size-8 shrink-0 cursor-pointer place-items-center"
             >
               <input
                 type="radio"
@@ -165,8 +165,8 @@ function pickAccent(value: string) {
           </div>
         </fieldset>
         <div :class="settingsRowClass">
-          <span class="text-sm text-(--wui-color-text)">减少动画</span>
-          <web-ui-switch :checked="reducedMotion" aria-label="减少动画" @change="handleReducedMotionChange" />
+          <span class="text-sm text-(--wui-color-text)">减少动画效果</span>
+          <web-ui-switch :checked="reducedMotion" aria-label="减少动画效果" @change="handleReducedMotionChange" />
         </div>
       </div>
 

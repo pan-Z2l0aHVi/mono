@@ -40,7 +40,7 @@ async function openDialog(el: WebUiDialog) {
 async function settleEnterTransform(el: WebUiDialog) {
   const dialog = el.shadowRoot?.querySelector('dialog') as HTMLElement
   await pollUntil(() => {
-    const transform = getComputedStyle(dialog).transform
+    const transform = getComputedStyle(dialog.querySelector<HTMLElement>('.wui-dialog-body')!).transform
     return transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)'
   }, 'Expected the dialog enter transform to settle at scale(1)')
 }

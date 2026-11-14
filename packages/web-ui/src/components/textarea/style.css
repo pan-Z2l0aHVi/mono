@@ -66,7 +66,7 @@ textarea {
   font: inherit;
   font-size: var(--wui-font-size, 14px);
   line-height: var(--wui-line-height-normal, 1.5);
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
 
   background: transparent;
   outline: none;
@@ -74,7 +74,7 @@ textarea {
   &::placeholder {
     /* 同 input：占位文本的排版属于控件，不在这里另写一份 */
     font: inherit;
-    color: var(--wui-color-text-secondary, #6a6a6a);
+    color: var(--wui-color-text-secondary, #6a6a70);
   }
 
   &:disabled {
@@ -132,7 +132,7 @@ slot {
   align-items: center;
 
   font-size: var(--wui-font-size, 14px);
-  color: var(--wui-color-text-secondary, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a70);
 }
 
 slot.empty {
