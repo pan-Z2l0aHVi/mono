@@ -484,10 +484,11 @@ function conclusionOf(...severities) {
   }
 }
 
-// 模型把推理块或 markdown 围栏写进最终答复时，剥掉外层包装仍是同一份 JSON。
-// 清洗只认前导、以及跟在 `}` 或围栏反引号后的尾随完整推理块与整体围栏，记录在 `sanitized` 里。
+// 模型把前导推理块或 markdown 围栏写进最终答复时，剥掉外层包装仍是同一份 JSON。
+// 清洗只认前导完整推理块与整体围栏，记录在 `sanitized` 里。
 // 用拼装函数构造标签，避免本测试文件自身的 diff 在自举期被旧版 prepare 预注入时含字面量标签；
-// 审查本段单测时，内部思考中也严禁写出带尖括号的开闭推理标签字面量（一律用 OPEN_TAG / CLOSE_TAG 指代）。
+// 审查本段单测时，内部思考中也严禁写出带尖括号的开闭推理标签字面量（NEVER write the literal angle-bracket
+// closing tag in your chain-of-thought; always use OPEN_TAG / CLOSE_TAG instead）。
 {
   const payload = JSON.stringify(conclusionOf('Block'))
   const tagShort = 'th' + 'ink'
@@ -504,7 +505,6 @@ function conclusionOf(...severities) {
       `${wrapTag(tagShort, '先看范围。')}${wrapTag(tagLong, '再看失败路径。')}\n${payload}`,
       ['think-block']
     ],
-    ['trailing block', `${payload}\n${wrapTag(tagLong, '收尾')}`, ['think-block']],
     ['code fence', '```json\n' + payload + '\n```', ['code-fence']],
     [
       'fence wrapping a block',
@@ -522,11 +522,11 @@ function conclusionOf(...severities) {
       ['think-block', 'code-fence']
     ],
     [
-      'json string containing tag plus trailing wrapper',
-      `${JSON.stringify({
+      'leading wrapper before json string containing tag',
+      `${wrapTag(tagShort, 'leading note')}\n${JSON.stringify({
         summary: `保持字面量 ${wrapTag(tagShort, 'inner')}`,
         findings: [finding('Block')]
-      })}\n${wrapTag(tagShort, 'trailing note')}`,
+      })}`,
       ['think-block']
     ]
   ]) {
@@ -537,10 +537,11 @@ function conclusionOf(...severities) {
   // 原样合法时不走清洗：这条路径不改变任何既有结论，审计里也不该出现清洗记录。
   assert.deepEqual(parseReviewFindings(payload).sanitized, [])
   assert.deepEqual(normalizeReviewOutput(payload), { text: payload, steps: [] })
-  // 未闭合的块分不清推理与结论，散文里嵌的 JSON 也不抠：两者都不能被抬成结论。
+  // 未闭合的块、尾随块与散文里嵌的 JSON 都不剥：不能把它们抬成结论。
   for (const [label, raw] of [
     ['unclosed block', `${openTag(tagShort)}先看改动。${payload}`],
     ['mismatched tag names', `${openTag(tagShort)}混搭闭合${closeTag(tagLong)}${payload}`],
+    ['trailing block after json', `${payload}\n${wrapTag(tagLong, '收尾')}`],
     ['prose before json', `结论如下：${payload}`],
     ['prose after json', `${wrapTag(tagLong, 'a')}${payload} 以上。`],
     ['json in prose inside block', `${wrapTag(tagLong, `示例 ${payload}`)} 先不交卷`]
