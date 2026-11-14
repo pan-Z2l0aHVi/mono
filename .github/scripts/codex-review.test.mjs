@@ -38,6 +38,7 @@ import {
   injectPreloadIntoPrompt,
   inspectConfig,
   normalizeAutoRetryState,
+  normalizeReviewOutput,
   parseReviewFindings,
   preloadPath,
   rankChangedPaths,
@@ -248,6 +249,13 @@ const configuredEnv = Object.fromEntries(CONFIG_ENV.map(name => [name, `value-fo
     () => inheritReviewHistory(current, '{"prior_resolutions":[{"index":0,"resolved":true,"evidence":""}]}', prior),
     /invalid prior/
   )
+  // 增量输出带包装层时走与本轮结论相同的解析路径，否则清洗过的答复会在这里二次判死。
+  const wrapped = inheritReviewHistory(
+    current,
+    `<thinking>复核历史。</thinking>${JSON.stringify({ prior_resolutions: [{ index: 0, resolved: false, evidence: '仍存在' }] })}`,
+    prior
+  )
+  assert.equal(wrapped.findings.length, 1)
 }
 
 {
@@ -379,6 +387,61 @@ function conclusionOf(...severities) {
     assert.equal(tolerant.summary, '', label)
     assert.equal(tolerant.findings.length, 1, label)
     assert.deepEqual(tolerant.counts, { Block: 0, 'Should fix': 1, Nit: 0 }, label)
+  }
+}
+
+// 模型把推理块或 markdown 围栏写进最终答复时（PR #543 实测：`Unexpected token '<', "<think st"`），
+// 剥掉外层包装仍是同一份 JSON。清洗只认前导、尾随的完整 think 块与整体围栏，记录在 `sanitized` 里。
+{
+  const payload = JSON.stringify(conclusionOf('Block'))
+  for (const [label, raw, expected] of [
+    ['leading think block', `<think>先看改动。</think>\n${payload}`, ['think-block']],
+    ['thinking tag pair', `<thinking>先看改动。</thinking>\n${payload}`, ['think-block']],
+    ['think block with attributes', `<think step-by-step>先看改动。</think>\n${payload}`, ['think-block']],
+    [
+      'stacked think blocks',
+      `<think>先看范围。</think><thinking>再看失败路径。</thinking>\n${payload}`,
+      ['think-block']
+    ],
+    ['trailing think block', `${payload}\n<thinking>收尾</thinking>`, ['think-block']],
+    ['code fence', '```json\n' + payload + '\n```', ['code-fence']],
+    [
+      'fence wrapping a think block',
+      '```json\n' + `<thinking>x</thinking>\n${payload}` + '\n```',
+      ['code-fence', 'think-block']
+    ],
+    [
+      'think block wrapping a fence',
+      `<think>x</think>\n` + '```\n' + payload + '\n```\n',
+      ['think-block', 'code-fence']
+    ],
+    // 真实形态（CI run 43567019012 两次 attempt 的答复头都是它）：开标签后换行、推理正文跨多行、
+    // 收尾句紧贴闭合标签，随后才是围栏。这条用例抄自那次 run 的模型输出，不是构造出来的形状。
+    [
+      'observed run shape',
+      `<think>` +
+        '\n284,413\nLet me finalize the coverage lists.\n\nNow write JSON only.</think>' +
+        '```json\n' +
+        payload +
+        '\n```',
+      ['think-block', 'code-fence']
+    ]
+  ]) {
+    const parsed = parseReviewFindings(raw)
+    assert.deepEqual(parsed.sanitized, expected, label)
+    assert.equal(parsed.counts.Block, 1, label)
+  }
+  // 原样合法时不走清洗：这条路径不改变任何既有结论，审计里也不该出现清洗记录。
+  assert.deepEqual(parseReviewFindings(payload).sanitized, [])
+  assert.deepEqual(normalizeReviewOutput(payload), { text: payload, steps: [] })
+  // 未闭合的 think 块分不清推理与结论，散文里嵌的 JSON 也不抠：两者都不能被抬成结论。
+  for (const [label, raw] of [
+    ['unclosed think block', `<think>先看改动。${payload}`],
+    ['prose before json', `结论如下：${payload}`],
+    ['prose after json', `<thinking>a</thinking>${payload} 以上。`],
+    ['json in prose inside think block', `<thinking>示例 ${payload}</thinking> 先不交卷`]
+  ]) {
+    assert.throws(() => parseReviewFindings(raw), /not valid JSON/u, label)
   }
 }
 
@@ -612,6 +675,19 @@ for (const [label, value] of [
   assert.match(body, /packages\/web-ui\/src\/button\.ts:12/)
   assert.match(body, /Block 1 · Should fix 1 · Nit 0/)
   assert.match(body, /模型：`configured-model`/)
+  // 没有清洗时不该出现清洗行，否则「输出被剥过包装」会变成一条永远在场的噪声。
+  assert.doesNotMatch(body, /输出清洗/u)
+  const sanitized = renderConclusion({
+    conclusion: deriveConclusion({
+      meta: { ...meta, output_sanitized: ['think-block'] },
+      findings: parsed,
+      liveHeadSha: headSha,
+      error: ''
+    }),
+    meta: { ...meta, output_sanitized: ['think-block'] },
+    pullNumber: 54
+  })
+  assert.match(sanitized, /输出清洗：模型答复外层带 think 块/u)
   assert.match(body, /Block`、`error` 与「未审查」让/)
   assert.match(body, /run `1234`/)
   assert.ok(body.indexOf('**Block**') < body.indexOf('**Should fix**'), 'Block renders before Should fix')
