@@ -519,6 +519,14 @@ function conclusionOf(...severities) {
       'observed multi-line shape',
       wrapTag(tagShort, '\n284,413\nFinalize coverage lists.\n\nOutput JSON.') + '```json\n' + payload + '\n```',
       ['think-block', 'code-fence']
+    ],
+    [
+      'json string containing tag plus trailing wrapper',
+      `${JSON.stringify({
+        summary: `保持字面量 ${wrapTag(tagShort, 'inner')}`,
+        findings: [finding('Block')]
+      })}\n${wrapTag(tagShort, 'trailing note')}`,
+      ['think-block']
     ]
   ]) {
     const parsed = parseReviewFindings(raw)
@@ -531,6 +539,7 @@ function conclusionOf(...severities) {
   // 未闭合的块分不清推理与结论，散文里嵌的 JSON 也不抠：两者都不能被抬成结论。
   for (const [label, raw] of [
     ['unclosed block', `${openTag(tagShort)}先看改动。${payload}`],
+    ['mismatched tag names', `${openTag(tagShort)}混搭闭合${closeTag(tagLong)}${payload}`],
     ['prose before json', `结论如下：${payload}`],
     ['prose after json', `${wrapTag(tagLong, 'a')}${payload} 以上。`],
     ['json in prose inside block', `${wrapTag(tagLong, `示例 ${payload}`)} 先不交卷`]

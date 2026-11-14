@@ -117,18 +117,21 @@ const cases = [
   )
 }
 
-function runCli({ output, scope, withScope = true }) {
+function runCli({ output, scope, meta, withScope = true }) {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'check-review-output-'))
   const outputPath = path.join(directory, 'codex-final-message.json')
   const scopePath = path.join(directory, 'review-scope.json')
+  const metaPath = path.join(directory, 'review-meta.json')
   if (output !== undefined) fs.writeFileSync(outputPath, payload(output))
   if (withScope) fs.writeFileSync(scopePath, JSON.stringify(scope ?? nonEmptyScope))
+  if (meta !== undefined) fs.writeFileSync(metaPath, JSON.stringify(meta))
   const result = spawnSync(process.execPath, [scriptPath], {
     encoding: 'utf8',
     env: {
       ...process.env,
       CODEX_REVIEW_OUTPUT_PATH: outputPath,
-      CODEX_REVIEW_SCOPE_PATH: scopePath
+      CODEX_REVIEW_SCOPE_PATH: scopePath,
+      CODEX_REVIEW_META_PATH: metaPath
     }
   })
   fs.rmSync(directory, { recursive: true, force: true })
@@ -152,7 +155,41 @@ function runCli({ output, scope, withScope = true }) {
   })
   assert.equal(emptyDiff.status, 0, 'an empty diff is exempt')
 
-  assert.equal(runCli({ output: undefined }).status, 0, 'a missing output file belongs to validate')
+  assert.equal(runCli({ output: undefined }).status, 0, 'a missing output file without meta belongs to validate')
+  assert.equal(
+    runCli({
+      output: undefined,
+      meta: { status: 'error', error_code: 'model_failed', error: 'the review step produced no output file' }
+    }).status,
+    0,
+    'a missing output file when validate recorded model_failed stays an error rather than unreviewed'
+  )
+  const missingOutputUnreviewed = runCli({
+    output: undefined,
+    meta: { status: 'unreviewed', error_code: 'unusable_output', error: 'the review step produced no output file' }
+  })
+  assert.equal(
+    missingOutputUnreviewed.status,
+    1,
+    'a missing output file classified by validate as unreviewed/unusable_output must fail the review job'
+  )
+  assert.match(missingOutputUnreviewed.stderr, /unusable_output/)
+
+  const incrementalInvalid = runCli({
+    output: { summary: 'ok', coverage: { inspected: ['packages/web-ui/src/button.ts'], uncovered: [] }, findings: [] },
+    meta: {
+      status: 'unreviewed',
+      error_code: 'unusable_output',
+      error: 'prior_resolutions must cover every prior finding'
+    }
+  })
+  assert.equal(
+    incrementalInvalid.status,
+    1,
+    'an incremental prior_resolutions failure recorded by validate must also fail the review job'
+  )
+  assert.match(incrementalInvalid.stderr, /prior_resolutions/)
+
   const unparsable = runCli({ output: '{not json' })
   assert.equal(unparsable.status, 1, 'unparsable output must also fail the review job so --failed reruns it')
   assert.match(unparsable.stderr, /unusable_output/)

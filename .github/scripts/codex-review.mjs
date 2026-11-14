@@ -66,7 +66,6 @@ const TRAJECTORY_ENTRY_PATTERN =
   /^(?:\d{2}-\d{2} \d{2}:\d{2}Z )?(reviewed|blocked|stale|unreviewed|error|not_applicable)(?:\([A-Za-z0-9_-]{1,40}\))?(?:\/(none|triggered|exhausted|failed))?$/u
 
 // 空壳与不可用输出都只自动重跑一次：重跑完成会再触发一次 workflow_run，第二次必须停下来转人工。
-export const AUTO_RETRY_ERROR_CODE = 'missing_coverage'
 export const AUTO_RETRY_ERROR_CODES = Object.freeze(['missing_coverage', 'unusable_output'])
 export const AUTO_RETRY_LIMIT = 1
 export const AUTO_RETRY_STATES = ['none', 'triggered', 'exhausted', 'failed']
@@ -121,11 +120,14 @@ function parseCoverage(value) {
   return coverage
 }
 
-// 模型偶尔把推理包装写进最终答复：`<think…>` / `<thinking…>` 块，或包住整份 JSON 的 markdown 围栏。
+// 模型偶尔把推理包装写进最终答复：成对闭合的 `think` / `thinking` 推理标签块，或包住整份 JSON 的 markdown 围栏。
 // 这些是答复外层的包装，JSON 本体仍是同一份结论。只剥前导、尾随的完整 think 块与整体围栏，
+// 开闭标签名用反向引用 `\1` 强制同名配对，且块体内部不跨越同族标签（避免尾随匹配从 JSON 字符串内部起跳），
 // 不做「从散文里抠最外层花括号」——那样会把推理中的示例 JSON 抬成结论，是假绿。
-const LEADING_THINK_BLOCK = /^\s*<think(?:ing)?(?:\s[^>]*)?>[\s\S]*?<\/think(?:ing)?>\s*/iu
-const TRAILING_THINK_BLOCK = /\s*<think(?:ing)?(?:\s[^>]*)?>[\s\S]*?<\/think(?:ing)?>\s*$/iu
+const THINK_TAG = 'think(?:ing)?'
+const THINK_INNER = `(?:(?!\\x3c\\/?${THINK_TAG}\\b)[\\s\\S])*?`
+const LEADING_THINK_BLOCK = new RegExp(`^\\s*\\x3c(${THINK_TAG})(?:\\s[^>]*)?>${THINK_INNER}\\x3c\\/\\1>\\s*`, 'iu')
+const TRAILING_THINK_BLOCK = new RegExp(`\\s*\\x3c(${THINK_TAG})(?:\\s[^>]*)?>${THINK_INNER}\\x3c\\/\\1>\\s*$`, 'iu')
 const WHOLE_CODE_FENCE = /^\s*(`{3,})[^\n]*\n([\s\S]*?)\n?\1\s*$/u
 
 /**
