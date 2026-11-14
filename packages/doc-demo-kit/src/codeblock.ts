@@ -9,9 +9,6 @@ import type { CodeblockVariant } from './install'
 /** 生成器写进 meta 的字面加载 thunk；同一份 meta 模块里引用同一个函数，可作缓存键。 */
 export type DemoThunk = NonNullable<MetaNode['load']>
 
-// 复制成功的描边与 scale 反馈共用同一时长；CSS 里的 `demo-copy-pop` 要同步。
-export const COPY_FEEDBACK_DURATION = 300
-
 // 复制反馈回到 idle 前的停留时长；成功态的 aria 播报与 tooltip 文案都在这扇窗内。
 export const COPY_IDLE_DELAY = 1600
 
@@ -104,7 +101,7 @@ export type CopyStatus = 'idle' | 'copied' | 'failed'
 
 export interface CopyFeedbackSnapshot {
   status: CopyStatus
-  /** 每次复制递增：宿主拿它当成功态描边的 key，重复复制也能重新挂载、各播一次动画。 */
+  /** 每次复制递增：状态没变也能让订阅方收到新快照，重复复制因此可重播一次反馈。 */
   run: number
 }
 

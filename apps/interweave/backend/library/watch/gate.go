@@ -14,7 +14,7 @@ import (
 //
 // 事件出口要等 window 就绪才能确定，所以 emitter 是晚绑定的：未接线时只落库不发事件，
 // SetEmitter 之后才开始推送。gate 恒存在，不依赖 fsnotify 是否可用——监听不可用时
-// 媒体兜底照常工作（ApplyFileAvailability 是纯 DB 写入口），只降级目录监听方向。
+// 媒体兜底照常工作（ApplyFileAvailability 只写库与指纹，不依赖监听），只降级目录监听方向。
 type AvailabilityGate struct {
 	sink AvailabilitySink
 

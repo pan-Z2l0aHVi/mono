@@ -81,7 +81,9 @@ func (s *SourceService) FileSourceIDsByLocations(ctx context.Context, locations 
 }
 
 // ApplyFileAvailability 是「目录监听」与「媒体请求 404 兜底」共用的唯一可用性写入口。
-// 仅在可用性实际翻转时写库并返回该次翻转的载荷（nil 表示无变化）；其余情况是幂等 no-op。
+// 只在可用性真的翻转时写 availability 并返回该次翻转的载荷（nil 表示无变化）。
+// 但 `available=true` 的调用每次都会 refresh 一遍 source_fingerprints 的幂等 upsert：
+// 文件可用时属性可能已经变了，扫描要靠这份指纹认定身份与内容，所以这条路径不是无 IO 的 no-op。
 func (s *SourceService) ApplyFileAvailability(ctx context.Context, sourceID string, available bool) (*AvailabilityChange, error) {
 	now := time.Now().UnixMilli()
 	var change *AvailabilityChange

@@ -2,6 +2,7 @@ package core
 
 import (
 	"context"
+	"errors"
 	"os"
 	"path/filepath"
 	"testing"
@@ -71,17 +72,48 @@ func TestRecoveryMatchesHashAndNameAndRejectsChangedCandidate(t *testing.T) {
 	}
 }
 
+// 扫描中断由 WalkDir 回调里的 `ctx.Err()` 承担，所以要真的走进遍历：source 得存在且不可用，
+// 目录得有内容，取消发生在 report 首次回调之后。用「已取消的 ctx + 不存在的 source」跑不到那段代码，
+// 错误来自 sources.Get，取消分支等于没有测试证据。
 func TestRecoveryCancelled(t *testing.T) {
-	ctx, cancel := context.WithCancel(context.Background())
-	cancel()
-	db, err := storage.Open(filepath.Join(t.TempDir(), "library.db"))
+	root := t.TempDir()
+	db, err := storage.Open(filepath.Join(root, "library.db"))
 	if err != nil {
 		t.Fatal(err)
 	}
 	defer db.Close()
+	missing := filepath.Join(root, "lost", "gone.txt")
+	_, err = db.SqlDB().Exec(`INSERT INTO resources VALUES ('r','title','',0,0);
+ INSERT INTO sources VALUES ('s','r','file',?,0,1,0,'',0,0)`, missing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.SqlDB().Exec(`INSERT INTO source_fingerprints VALUES ('s',?,0,0,'',0,'')`, missing)
+	if err != nil {
+		t.Fatal(err)
+	}
+	folder := filepath.Join(root, "scan")
+	if err = os.Mkdir(folder, 0700); err != nil {
+		t.Fatal(err)
+	}
+	if err = os.WriteFile(filepath.Join(folder, "candidate.txt"), []byte("candidate"), 0600); err != nil {
+		t.Fatal(err)
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
 	svc := NewSourceService(db, remote.NewFetcher())
-	if err := svc.ScanRecovery(ctx, []string{"missing"}, t.TempDir(), func(RecoveryProgress, *RecoveryCandidate) {}); err == nil {
-		t.Fatal("cancelled scan succeeded")
+	var callbacks int
+	err = svc.ScanRecovery(ctx, []string{"s"}, folder, func(RecoveryProgress, *RecoveryCandidate) {
+		callbacks++
+		// 首个回调意味着已经进了遍历，此后再取消才落在 `ctx.Err()` 上。
+		cancel()
+	})
+	if !errors.Is(err, context.Canceled) {
+		t.Fatalf("cancelled scan error = %v, want context.Canceled", err)
+	}
+	if callbacks == 0 {
+		t.Fatal("cancelled before the walk reported progress")
 	}
 }
 
