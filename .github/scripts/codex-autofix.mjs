@@ -67,28 +67,58 @@ export function createGuardedMatcher({ repositoryFile, parse = JSON.parse }) {
   return filePath => guarded.find(({ matcher }) => matcher.test(filePath)) ?? null
 }
 
+const CHANGESET_FILE = /^\.changeset\/[A-Za-z0-9][A-Za-z0-9._-]*\.md$/u
+const CHANGESET_RESERVED = /^\.changeset\/(?:README|AGENTS|CLAUDE|GEMINI)\.md$/iu
+
 /**
- * 只收「修改已入库文件」的 patch。新增/删除/改名/二进制都拒：autofix 的职责是把红的检查修回绿的，
- * 不是替作者决定文件结构；模型顺手写进工作区的草稿文件也因此进不了 patch。
+ * changeset 门要求本 PR 自己的 `.changeset/*.md`，而 changeset 天然是新增文件。
+ * 允许的唯一新增路径因此收窄到顶层 changeset 声明，且必须是普通文件。
  */
-export function inspectPatch(patch) {
+export function isChangesetAddition(filePath) {
+  return CHANGESET_FILE.test(filePath) && !CHANGESET_RESERVED.test(filePath)
+}
+
+/**
+ * 只收「修改已入库文件」的 patch；唯一例外是 `Check changesets` 失败时新增的 changeset。
+ * 其余新增/删除/改名/二进制都拒：autofix 的职责是把红的检查修回绿的，不是替作者决定文件结构；
+ * 模型顺手写进工作区的草稿文件也因此进不了 patch。
+ */
+export function inspectPatch(patch, { allowNewChangeset = false } = {}) {
   const files = []
+  const added = []
+  let current = ''
   const lines = patch.split(/\r?\n/)
   for (const line of lines) {
     const header = line.match(/^diff --git a\/(.*?) b\/(.*?)$/u)
     if (header) {
       const [, from, to] = header
-      if (from !== to) return { reject: `patch renames or moves ${from} to ${to}`, files }
+      current = from
+      if (from !== to) return { reject: `patch renames or moves ${from} to ${to}`, files, added }
       files.push(from)
       continue
     }
-    if (/^Binary files /u.test(line)) return { reject: `patch contains a binary change: ${line}`, files }
-    if (/^new file mode /u.test(line)) return { reject: 'patch adds a new file', files }
-    if (/^deleted file mode /u.test(line)) return { reject: 'patch deletes a file', files }
+    if (/^Binary files /u.test(line)) return { reject: `patch contains a binary change: ${line}`, files, added }
+    if (/^new file mode /u.test(line)) {
+      if (!allowNewChangeset || !isChangesetAddition(current))
+        return { reject: `patch adds a new file: ${current}`, files, added }
+      if (!/^new file mode 100644$/u.test(line))
+        return { reject: `patch adds a non-regular file: ${current}`, files, added }
+      added.push(current)
+      continue
+    }
+    if (/^deleted file mode /u.test(line)) return { reject: 'patch deletes a file', files, added }
   }
-  if (/\nGIT binary patch\n/u.test(`\n${patch}`)) return { reject: 'patch contains a binary payload', files }
-  if (files.length === 0) return { reject: 'patch changes no tracked file', files }
-  return { reject: '', files }
+  if (/\nGIT binary patch\n/u.test(`\n${patch}`)) return { reject: 'patch contains a binary payload', files, added }
+  if (files.length === 0) return { reject: 'patch changes no tracked file', files, added }
+  return { reject: '', files, added }
+}
+
+/** `Check changesets` 是唯一需要新增文件的失败步骤；其它步骤仍只许改已入库文件。 */
+export function failedStepAllowsChangeset(failedSteps) {
+  return String(failedSteps ?? '')
+    .split(',')
+    .map(step => step.trim())
+    .includes('Check changesets')
 }
 
 function requireSha(value, label) {
@@ -96,10 +126,12 @@ function requireSha(value, label) {
   return value
 }
 
-export function capturePatch({ headSha, patchPath, guarded, command = run }) {
+export function capturePatch({ headSha, patchPath, guarded, allowNewChangeset = false, command = run }) {
   const sha = requireSha(headSha, 'patch base SHA')
+  // `git diff` 默认看不到未跟踪文件；changeset 是新增文件，先记 intent-to-add 才能进 patch。
+  if (allowNewChangeset) command('git', ['add', '--intent-to-add', '--', '.changeset'])
   const patch = command('git', ['diff', '--no-color', sha, '--'])
-  const { reject, files } = inspectPatch(patch)
+  const { reject, files } = inspectPatch(patch, { allowNewChangeset })
   if (reject) return { reject, files: [], bytes: 0, patchPath }
   for (const file of files) {
     const hit = guarded(file)
@@ -109,9 +141,9 @@ export function capturePatch({ headSha, patchPath, guarded, command = run }) {
   return { reject: '', files, bytes: Buffer.byteLength(patch), patchPath }
 }
 
-export function validatePatchFile({ patchPath, guarded }) {
+export function validatePatchFile({ patchPath, guarded, allowNewChangeset = false }) {
   const patch = fs.readFileSync(patchPath, 'utf8')
-  const { reject, files } = inspectPatch(patch)
+  const { reject, files } = inspectPatch(patch, { allowNewChangeset })
   if (reject) return { reject, files }
   for (const file of files) {
     const hit = guarded(file)
@@ -242,7 +274,12 @@ function commandCapture() {
     return
   }
   const patchPath = path.join(env.RUNNER_TEMP, 'autofix.patch')
-  const result = capturePatch({ headSha: env.CODEX_AUTOFIX_HEAD_SHA, patchPath, guarded: guardedMatcher() })
+  const result = capturePatch({
+    headSha: env.CODEX_AUTOFIX_HEAD_SHA,
+    patchPath,
+    guarded: guardedMatcher(),
+    allowNewChangeset: failedStepAllowsChangeset(process.env.CODEX_AUTOFIX_FAILED_STEPS)
+  })
   writeOutputs({
     has_patch: result.reject ? 'false' : 'true',
     reject_reason: result.reject,
@@ -277,7 +314,9 @@ function commandApply() {
     checkoutSha: run('git', ['rev-parse', 'HEAD']).trim()
   })
 
-  const { reject, files } = validatePatchFile({ patchPath, guarded: guardedMatcher() })
+  // capture 只在 `Check changesets` 失败时放行新增 changeset；apply 只认这个已收窄的例外，
+  // 其它新增文件仍由 inspectPatch 拒绝。
+  const { reject, files } = validatePatchFile({ patchPath, guarded: guardedMatcher(), allowNewChangeset: true })
   if (reject) throw new Error(`patch rejected: ${reject}`)
   run('git', ['apply', '--whitespace=nowarn', patchPath])
   run('git', ['add', '--', ...files])

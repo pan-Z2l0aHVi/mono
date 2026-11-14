@@ -17,7 +17,7 @@ CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发�
 - `coverage` 说清这份结论的射程：`coverage.inspected` 是模型实际读过的路径，`coverage.uncovered` 是它声明无法判断的改动处。`uncovered` 非空是合法的收口出口：结论仍是 `reviewed`、门也不因此变红，但上一条「结论即 review」的完成条件不成立 —— 这些位置不在结论的覆盖范围内，必须逐项人工复核再收口，绿门替代不了它们。人工补的是结论列出的空白，不是把已覆盖的 diff 重看一遍；两处口径不互斥，区别在「结论有没有效」与「review 算不算完成」。
 - 生成物不需要 diff，也不需要 review：按 [`generated-artifacts.md`](./generated-artifacts.md) 的清单滤除后，自动审查不读也不评注；它们的正确性由 `check-generated` 与消费者类型检查证明。没有 generator 可重建、只能靠人判断的入库产物落在这两份证据之外。
 - 门给不出覆盖当前 head 的结论时，PR 上没有可用的 review，仍要人按本文流程做完整独立审查：`error`、`unreviewed`、`stale`、`not_applicable`；来自 fork 的 PR（那条 job 默认不跑）；自动修推送出的新 head；只改生成物、`empty_diff: true` 的 PR（空 diff 不构成可合并结论，也不算「结论即 review」）。`Block > 0` 不属于这一类：它有结论，处置是按三档修掉发现后在新 head 上重取结论。
-- 自动修在 `check` 失败且后台开关开启时产出一份候选 patch，校验通过才提交并推回 PR 分支。机器人提交不会触发 checks，所以新 head 上要等一次人重跑的 CI 才有 CI 证据；已经含自动修提交的 head 不再自动规划第二次。
+- 自动修在 `check` 失败且后台开关开启时产出一份候选 patch，校验通过才提交并推回 PR 分支。patch 只改已入库文件，唯一新增例外是 `Check changesets` 失败时的顶层 `.changeset/*.md`，因为 changeset 门要求本 PR 自己的新文件；新增 changeset 仍由随后的 `Check changesets` 与版本 PR 复核。机器人提交不会触发 checks，所以新 head 上要等一次人重跑的 CI 才有 CI 证据；已经含自动修提交的 head 不再自动规划第二次。
 - `Codex Review Report` 是写回 workflow，不改判结论，只把 CI 已产出的结论搬到 PR 上；`missing_coverage` 时另按上文触发一次自动重跑，不跑模型。它的绿色只说明这次写回 run 跑过，不代表发了评论：发评论的是其中的 `report-conclusion` job，没有 `codex-review-findings` 产物、或 head 已不属于任何打开的 PR 时它按设计跳过，并在运行页 Summary 与 notice 里写明是哪一种跳过。要判断「这条评论是不是当前 head 的」，仍按第一条核对评论头部的 `sha` 与 `status`；`reviewed` 且带阻断发现时头部写 `status=blocked`，语义与「reviewed 且 `Block > 0`」一致。正文另有「结论生成于」，因为这条评论是就地更新的，GitHub 上显示的创建时间永远是第一次写回那一刻。写回 workflow 由 CI run 完成后另起一次 run，评论必然晚于 CI 的审查 job 变绿：查不到评论时先读这次写回 run 的 conclusion，再区分「还没落地」与「按设计跳过」；只有后者才说明 PR 上不会有这条镜像，此时结论以审查 job 日志与 `codex-review-findings` 产物为准，产物也缺失就是上文的 `artifact_missing`。
 
 ## 审查范围与生成物

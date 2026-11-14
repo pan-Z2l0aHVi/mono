@@ -366,7 +366,7 @@ const open = ref(false)
 
 ### Mobile drawer
 
-The application controls `mobile`. When it is `true`, the sidebar uses a drawer. The application can choose the value based on its viewport or its own layout policy.
+The application controls `mobile`. When it is `true`, the sidebar uses a drawer. The application can choose the value based on its viewport or its own layout policy. The sample is placed in a height-constrained container so it shows only the mobile toggle and content area instead of taking over the full screen.
 
 ```tsx
 import { useState } from 'react'
@@ -374,30 +374,36 @@ import { useState } from 'react'
 export default function Demo() {
   const [open, setOpen] = useState(false)
   return (
-    <web-ui-layout
-      mobile
-      style={{ '--wui-layout-mobile-toggle-inset': '24px', '--wui-layout-mobile-toggle-top': '16px' }}
-      sidebarOpen={open}
-      onsidebar-open-change={event => setOpen(event.detail.open)}
-    >
-      <div slot="sidebar">Navigation</div>
-      <div>Content</div>
-    </web-ui-layout>
+    <div className="h-[240px] w-full overflow-hidden rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:240px]">
+      <web-ui-layout
+        mobile
+        style={{ '--wui-layout-mobile-toggle-inset': '24px', '--wui-layout-mobile-toggle-top': '16px' }}
+        sidebarOpen={open}
+        onsidebar-open-change={event => setOpen(event.detail.open)}
+      >
+        <div slot="sidebar">Navigation</div>
+        <div className="p-4 text-sm">Content</div>
+      </web-ui-layout>
+    </div>
   )
 }
 ```
 
 ```vue
 <template>
-  <web-ui-layout
-    :mobile="true"
-    style="--wui-layout-mobile-toggle-inset: 24px; --wui-layout-mobile-toggle-top: 16px"
-    :sidebarOpen="open"
-    @sidebar-open-change="open = $event.detail.open"
+  <div
+    class="h-[240px] w-full overflow-hidden rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:240px]"
   >
-    <div slot="sidebar">Navigation</div>
-    <div>Content</div>
-  </web-ui-layout>
+    <web-ui-layout
+      :mobile="true"
+      style="--wui-layout-mobile-toggle-inset: 24px; --wui-layout-mobile-toggle-top: 16px"
+      :sidebarOpen="open"
+      @sidebar-open-change="open = $event.detail.open"
+    >
+      <div slot="sidebar">Navigation</div>
+      <div class="p-4 text-sm">Content</div>
+    </web-ui-layout>
+  </div>
 </template>
 
 <script setup lang="ts">
