@@ -1,16 +1,21 @@
 <script setup lang="ts">
 import type { WebUiEvent, WebUiLayout } from '@greypan/web-ui'
+import { toast } from '@greypan/web-ui'
 import { System } from '@wailsio/runtime'
-import { computed, onScopeDispose, ref } from 'vue'
+import { computed, onMounted, onScopeDispose, ref } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
+import { MENU_ADD_RESOURCE_EVENT, MENU_PASTE_FILES_EVENT, MENU_REFRESH_EVENT } from '@/composables/menuActions'
 import { useLayoutMobileProvider } from '@/composables/useLayoutMobile'
 import { queueWindowFileDrop } from '@/composables/windowFileDrop'
 import { createLibraryRuntime } from '@/services/library'
+import { onMenuCommand } from '@/services/menu'
+import { useSettingsStore } from '@/stores/settings'
 
 const router = useRouter()
+const settings = useSettingsStore()
 const stopWindowFileDrop = createLibraryRuntime().events.onFilesDropped(paths => {
   if (!paths.length) return
   queueWindowFileDrop(paths)
@@ -50,6 +55,63 @@ function updateSidebarWidth(event: WebUiEvent<WebUiLayout, 'sidebar-width-change
 function closeSidebar() {
   sidebarOpen.value = false
 }
+
+/*
+ * 「切换侧边栏」是单向命令：菜单不发勾选状态回来，所以这里只翻一次。
+ * 移动端翻的是 drawer，桌面端翻的是 collapse —— 两者是同一份导航的两种呈现，
+ * 用户按快捷键时期望「打开/收起导航」，不区分是哪一种。
+ */
+function toggleSidebar() {
+  if (mobile.value) sidebarOpen.value = !sidebarOpen.value
+  else sidebarCollapsed.value = !sidebarCollapsed.value
+}
+
+/*
+ * 菜单命令在这里分发而不是在页面里：菜单是应用级的，页面会被切走。
+ * 「添加资源」「粘贴文件」「刷新可用性」落在资源库页，跨页面时先切过去，
+ * 由页面自己订阅 pending 队列执行——壳层不复制页面的领域逻辑。
+ */
+const stopMenuCommands = onMenuCommand({
+  addResource() {
+    void openLibraryThen(() => document.dispatchEvent(new CustomEvent(MENU_ADD_RESOURCE_EVENT)))
+  },
+  pasteFiles() {
+    void openLibraryThen(() => document.dispatchEvent(new CustomEvent(MENU_PASTE_FILES_EVENT)))
+  },
+  refreshAvailability() {
+    void openLibraryThen(() => document.dispatchEvent(new CustomEvent(MENU_REFRESH_EVENT)))
+  },
+  toggleSidebar,
+  openSettings() {
+    settingsOpen.value = true
+  },
+  openDocumentation() {
+    void createLibraryRuntime()
+      .system.openExternal(DOCUMENTATION_URL)
+      .catch(() => toast.warning('无法打开文档链接，请检查系统默认浏览器'))
+  }
+})
+onScopeDispose(stopMenuCommands)
+
+/**
+ * 切到资源库页再执行页面域动作。
+ *
+ * 已经是资源库页时同一帧就执行；否则等路由落定。这里用事件而不是共享 store，
+ * 是为了让页面只暴露「我准备好接收这类动作了」，壳层不必知道页面内部如何实现。
+ */
+async function openLibraryThen(run: () => void) {
+  if (router.currentRoute.value.path !== '/library') await router.push('/library')
+  run()
+}
+
+/** 与 Go 侧 native/menu 的 Help 菜单一致。 */
+const DOCUMENTATION_URL = 'https://github.com/pan-Z2l0aHVi/mono/tree/main/apps/interweave'
+
+onMounted(() => {
+  // 启动期一次性警告（设置文件损坏等）在界面就绪后提示一次。
+  const warnings = settings.takeWarnings()
+  if (warnings.length > 0) toast.warning(warnings.join('\n'))
+})
 </script>
 
 <template>

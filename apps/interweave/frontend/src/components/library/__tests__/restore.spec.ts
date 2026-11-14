@@ -81,9 +81,9 @@ describe('library restore queue', () => {
       queueItem('second', 'url'),
       { ...queueItem('third', 'file'), replacementLocation: '/new/third.txt' }
     ]
-    const replaceFileSource = vi.fn(async () => undefined)
+    const replaceFileSource = vi.fn<(sourceId: string, inputPath: string) => Promise<unknown>>(async () => undefined)
     const failure = new Error('replace failed')
-    const replaceURLSource = vi.fn(async () => {
+    const replaceURLSource = vi.fn<(sourceId: string, inputURL: string) => Promise<unknown>>(async () => {
       throw failure
     })
     const result = await restoreLibraryQueue(items, { replaceFileSource, replaceURLSource })

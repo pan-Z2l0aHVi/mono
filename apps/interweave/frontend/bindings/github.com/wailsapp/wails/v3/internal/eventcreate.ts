@@ -9,16 +9,26 @@ import { Create as $Create } from "@wailsio/runtime";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import * as service$0 from "../../../../pan-Z2l0aHVi/mono/apps/interweave/backend/library/service/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as menu$0 from "../../../../pan-Z2l0aHVi/mono/apps/interweave/backend/menu/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as settings$0 from "../../../../pan-Z2l0aHVi/mono/apps/interweave/backend/settings/models.js";
 
 function configure() {
     Object.freeze(Object.assign($Create.Events, {
         "library:files-dropped": $$createType0,
         "library:source-availability-changed": $$createType1,
+        "menu:command": $$createType2,
+        "settings:changed": $$createType3,
     }));
 }
 
 // Private type creation functions
 const $$createType0 = $Create.Array($Create.Any);
 const $$createType1 = service$0.SourceAvailabilityEventDTO.createFrom;
+const $$createType2 = menu$0.MenuCommand.createFrom;
+const $$createType3 = settings$0.Snapshot.createFrom;
 
 configure();

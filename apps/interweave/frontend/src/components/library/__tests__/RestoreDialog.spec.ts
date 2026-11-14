@@ -34,11 +34,16 @@ describe('RestoreDialog', () => {
   it('取消文件选择保留失效项，选择后可撤回，确认只提交已准备项', async () => {
     const host = document.createElement('div')
     document.body.append(host)
-    const chooseFilePath = vi.fn().mockResolvedValueOnce(null).mockResolvedValueOnce('/new/file')
-    const submit = vi.fn()
+    const chooseFilePath = vi
+      .fn<() => Promise<string | null>>()
+      .mockResolvedValueOnce(null)
+      .mockResolvedValueOnce('/new/file')
+    const submit = vi.fn<(items: LibraryRestoreQueueItem[]) => void>()
     const scanToast = vi.spyOn(toast, 'info').mockReturnValue('scan-toast')
-    const releaseFilePreview = vi.fn(async () => undefined)
-    const prepareFilePreview = vi.fn(async () => ({
+    const releaseFilePreview = vi.fn<(token: string) => Promise<void>>(async () => undefined)
+    const prepareFilePreview = vi.fn<
+      (path: string) => Promise<{ kind: ResourceKind; token?: string; media_url?: string }>
+    >(async () => ({
       kind: ResourceKind.ResourceKindImage,
       token: 'preview-token',
       media_url: '/preview'

@@ -23,6 +23,12 @@ import {
 } from '@/components/library/restore'
 import RestoreDialog from '@/components/library/RestoreDialog.vue'
 import Toolbar from '@/components/library/Toolbar.vue'
+import {
+  MENU_ADD_RESOURCE_EVENT,
+  MENU_PASTE_FILES_EVENT,
+  MENU_REFRESH_EVENT,
+  onMenuAction
+} from '@/composables/menuActions'
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLayoutMobile } from '@/composables/useLayoutMobile'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
@@ -116,9 +122,28 @@ const stopPasteFileRequest = runtime.events.onPasteFilesRequested(() => {
 const stopSourceAvailability = runtime.events.onSourceAvailability(event => {
   store.applySourceAvailability(event.source_id, event.available, event.size_bytes)
 })
+
+/*
+ * 菜单里落在资源库页上的三个动作。壳层负责切路由，页面负责执行领域逻辑：
+ * 开添加对话框、走一遍粘贴入队、重新读库（可用性由后端监听维护，重读即拿到最新状态）。
+ */
+const stopMenuActions = [
+  onMenuAction(MENU_ADD_RESOURCE_EVENT, openAddDialog),
+  onMenuAction(MENU_PASTE_FILES_EVENT, () => {
+    addOpen.value = true
+    void pasteFilePaths()
+  }),
+  onMenuAction(MENU_REFRESH_EVENT, () => {
+    void loadResources().catch(() => {
+      // 错误由 runtimeError 呈现，列表保持当前内容。
+    })
+  })
+]
+
 onScopeDispose(() => {
   stopPasteFileRequest()
   stopSourceAvailability()
+  stopMenuActions.forEach(stop => stop())
   void addQueue.close()
 })
 

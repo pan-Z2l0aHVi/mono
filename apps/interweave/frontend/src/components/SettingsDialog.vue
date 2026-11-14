@@ -4,7 +4,7 @@ import { storeToRefs } from 'pinia'
 import { ref, watch } from 'vue'
 
 import { metadataLabelClass } from '@/components/library/presentation'
-import { ACCENT_PRESETS, useSettingsStore, type ThemeAppearance } from '@/stores/settings'
+import { useSettingsStore, type ThemeAppearance } from '@/stores/settings'
 
 const props = defineProps<{
   open: boolean
@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const settings = useSettingsStore()
-const { appearance, accent, reducedMotion } = storeToRefs(settings)
+const { appearance, accent, reducedMotion, developerOptions, presets } = storeToRefs(settings)
 const settingsRowClass = 'flex min-w-0 items-center justify-between gap-4 py-2'
 
 type SettingsTab = 'general' | 'appearance' | 'library'
@@ -68,15 +68,19 @@ function handleTabChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 function handleAppearanceChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
   const next = event.currentTarget.value
-  if (isThemeAppearance(next)) settings.setAppearance(next)
+  if (isThemeAppearance(next)) void settings.setAppearance(next)
 }
 
 function handleReducedMotionChange(event: Event) {
-  settings.setReducedMotion((event.currentTarget as WebUiSwitch).checked)
+  void settings.setReducedMotion((event.currentTarget as WebUiSwitch).checked)
+}
+
+function handleDeveloperOptionsChange(event: Event) {
+  void settings.setDeveloperOptions((event.currentTarget as WebUiSwitch).checked)
 }
 
 function pickAccent(value: string) {
-  settings.setAccent(value)
+  void settings.setAccent(value)
 }
 </script>
 
@@ -114,13 +118,25 @@ function pickAccent(value: string) {
       <!--
         通用：MCP switch 是纯静态占位。disabled 而非隐藏，是为了让「这一栏存在但还没做」在
         界面上可见；文案承担解释，控件本身不假装可用。
+
+        开发者选项不是占位：它决定「查看」菜单里出不出现重新载入与开发者工具两项，
+        由 Go 侧持有该设置并据此重建菜单。
       -->
-      <div v-if="activeTab === 'general'" :class="settingsRowClass">
-        <div class="flex min-w-0 flex-col gap-0.5">
-          <span class="text-sm text-(--wui-color-text)">MCP server</span>
-          <span :class="metadataLabelClass">即将推出</span>
+      <div v-if="activeTab === 'general'" class="flex flex-col">
+        <div :class="settingsRowClass">
+          <div class="flex min-w-0 flex-col gap-0.5">
+            <span class="text-sm text-(--wui-color-text)">MCP server</span>
+            <span :class="metadataLabelClass">即将推出</span>
+          </div>
+          <web-ui-switch disabled aria-label="MCP server（即将推出）" />
         </div>
-        <web-ui-switch disabled aria-label="MCP server（即将推出）" />
+        <div :class="settingsRowClass">
+          <div class="flex min-w-0 flex-col gap-0.5">
+            <span class="text-sm text-(--wui-color-text)">开发者选项</span>
+            <span :class="metadataLabelClass">在「查看」菜单里显示重新载入与开发者工具</span>
+          </div>
+          <web-ui-switch :checked="developerOptions" aria-label="开发者选项" @change="handleDeveloperOptionsChange" />
+        </div>
       </div>
 
       <div v-else-if="activeTab === 'appearance'" class="flex flex-col">
@@ -142,7 +158,7 @@ function pickAccent(value: string) {
           <span class="text-sm text-(--wui-color-text)" aria-hidden="true">颜色</span>
           <div class="flex flex-wrap items-center justify-end">
             <label
-              v-for="preset in ACCENT_PRESETS"
+              v-for="preset in presets"
               :key="preset.value"
               class="relative grid size-9 shrink-0 cursor-pointer place-items-center"
             >

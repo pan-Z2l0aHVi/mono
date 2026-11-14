@@ -1,0 +1,173 @@
+package settings
+
+import (
+	"encoding/json"
+	"os"
+	"path/filepath"
+	"testing"
+)
+
+func newTestStore(t *testing.T) (*Store, string) {
+	t.Helper()
+	path := filepath.Join(t.TempDir(), "interweave", "settings.json")
+	store, err := NewStore(path)
+	if err != nil {
+		t.Fatalf("new store: %v", err)
+	}
+	return store, path
+}
+
+func TestLoadWithoutFileReturnsDefaults(t *testing.T) {
+	store, _ := newTestStore(t)
+
+	loaded, warnings := store.Load()
+
+	if loaded != Defaults() {
+		t.Fatalf("expected defaults, got %#v", loaded)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("expected no warnings on first launch, got %v", warnings)
+	}
+}
+
+func TestSaveThenLoadRoundTrips(t *testing.T) {
+	store, path := newTestStore(t)
+	want := Settings{
+		Appearance:       AppearanceDark,
+		Accent:           "#f54096",
+		ReducedMotion:    true,
+		DeveloperOptions: true,
+	}
+
+	if err := store.Save(want); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+	loaded, warnings := store.Load()
+	if loaded != want {
+		t.Fatalf("expected %#v, got %#v", want, loaded)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("expected no warnings, got %v", warnings)
+	}
+	if _, err := os.Stat(TempPath(path)); !os.IsNotExist(err) {
+		t.Fatalf("expected the temp file to be renamed away, stat err = %v", err)
+	}
+}
+
+// 设置文件里出现白名单外的值时必须逐字段回落并保留其他有效字段：
+// 一个被手改坏的强调色不该顺带清掉用户选的主题。
+func TestLoadNormalizesOutOfRangeFields(t *testing.T) {
+	store, path := newTestStore(t)
+	raw := `{"settings":{"appearance":"dark","accent":"#123456","reducedMotion":true}}`
+	if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	loaded, warnings := store.Load()
+
+	if loaded.Appearance != AppearanceDark {
+		t.Fatalf("expected the valid appearance to survive, got %q", loaded.Appearance)
+	}
+	if loaded.Accent != defaultAccent {
+		t.Fatalf("expected the invalid accent to fall back, got %q", loaded.Accent)
+	}
+	if !loaded.ReducedMotion {
+		t.Fatal("expected reducedMotion to survive normalization")
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("expected exactly one warning, got %v", warnings)
+	}
+}
+
+func TestLoadCorruptedFileFallsBackWithWarning(t *testing.T) {
+	store, path := newTestStore(t)
+	if err := os.WriteFile(path, []byte("{not json"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	loaded, warnings := store.Load()
+
+	if loaded != Defaults() {
+		t.Fatalf("expected defaults, got %#v", loaded)
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("expected a warning explaining the fallback, got %v", warnings)
+	}
+}
+
+func TestLoadIgnoresEmptyObject(t *testing.T) {
+	store, path := newTestStore(t)
+	if err := os.WriteFile(path, []byte(`{"settings":{}}`), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	loaded, warnings := store.Load()
+
+	if loaded != Defaults() {
+		t.Fatalf("expected an empty object to read as defaults, got %#v", loaded)
+	}
+	if len(warnings) != 0 {
+		t.Fatalf("expected no warnings for an unsaved store, got %v", warnings)
+	}
+}
+
+func TestSaveWritesSingleKeyJSON(t *testing.T) {
+	store, path := newTestStore(t)
+	if err := store.Save(Defaults()); err != nil {
+		t.Fatalf("save: %v", err)
+	}
+
+	raw, err := os.ReadFile(path)
+	if err != nil {
+		t.Fatalf("read settings file: %v", err)
+	}
+	var decoded map[string]json.RawMessage
+	if err := json.Unmarshal(raw, &decoded); err != nil {
+		t.Fatalf("decode settings file: %v", err)
+	}
+	if len(decoded) != 1 {
+		t.Fatalf("expected exactly one key in the store, got %d: %s", len(decoded), raw)
+	}
+	if _, ok := decoded[settingsKey]; !ok {
+		t.Fatalf("expected the %q key, got %s", settingsKey, raw)
+	}
+}
+
+func TestRemoveStaleTempClearsLeftover(t *testing.T) {
+	_, path := newTestStore(t)
+	if err := os.WriteFile(TempPath(path), []byte("partial"), 0o600); err != nil {
+		t.Fatalf("write temp fixture: %v", err)
+	}
+
+	RemoveStaleTemp(path)
+
+	if _, err := os.Stat(TempPath(path)); !os.IsNotExist(err) {
+		t.Fatalf("expected the stale temp file to be removed, stat err = %v", err)
+	}
+}
+
+func TestAccentPresetsExposeForeground(t *testing.T) {
+	presets := AccentPresets()
+	if len(presets) == 0 {
+		t.Fatal("expected a non-empty palette")
+	}
+	for _, preset := range presets {
+		if preset.OnAccent != white && preset.OnAccent != black {
+			t.Fatalf("preset %s has an unexpected foreground %q", preset.Value, preset.OnAccent)
+		}
+		if ratio := contrastRatio(preset.OnAccent, preset.Value); ratio < minAccentForForegroundContrast {
+			t.Fatalf("preset %s with %s only reaches %.2f:1", preset.Value, preset.OnAccent, ratio)
+		}
+	}
+}
+
+// 取副本而不是内部切片：调用方改写返回值不该影响下次下发。
+func TestAccentPresetsAreCopied(t *testing.T) {
+	presets := AccentPresets()
+	original := presets[0].Value
+	presets[0].Value = "#000000"
+
+	if AccentPresets()[0].Value != original {
+		t.Fatal("expected AccentPresets to hand out a copy")
+	}
+}

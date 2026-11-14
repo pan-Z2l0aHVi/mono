@@ -2,7 +2,6 @@
 
 import '@greypan/web-ui'
 
-import { local } from '@greypan/browser-kit'
 import type { WebUiDialog, WebUiRadio, WebUiRadioGroup, WebUiSegmented, WebUiSwitch } from '@greypan/web-ui'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -81,7 +80,6 @@ function selectTrigger(segmented: WebUiSegmented, value: string) {
 describe('SettingsDialog', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
-    localStorage.clear()
   })
 
   it('重新打开设置时回到常规分区', async () => {
@@ -195,8 +193,13 @@ describe('SettingsDialog', () => {
     }
   })
 
-  it('减少动画开关保存偏好并在重新创建 store 后恢复', async () => {
+  // 持久化归 Go：这里只验证「change 到达后调了 store 的方法」，落盘与重启保持由
+  // backend/settings 的 Go 测试覆盖。
+  it('减少动画开关经 change 回写到 store', async () => {
     const mounted = mountDialog(() => {})
+    const settings = useSettingsStore()
+    const setReducedMotion = vi.spyOn(settings, 'setReducedMotion').mockResolvedValue()
+
     try {
       await nextTick()
       selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
@@ -206,10 +209,25 @@ describe('SettingsDialog', () => {
       expect(toggle.checked).toBe(false)
       toggle.checked = true
       toggle.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
-      expect(useSettingsStore().reducedMotion).toBe(true)
-      expect(local.get('theme-reduced-motion')).toBe(true)
-      setActivePinia(createPinia())
-      expect(useSettingsStore().reducedMotion).toBe(true)
+      expect(setReducedMotion).toHaveBeenCalledWith(true)
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('开发者选项开关经 change 回写到 store', async () => {
+    const mounted = mountDialog(() => {})
+    const settings = useSettingsStore()
+    const setDeveloperOptions = vi.spyOn(settings, 'setDeveloperOptions').mockResolvedValue()
+
+    try {
+      await nextTick()
+      const toggle = mounted.host.querySelector<WebUiSwitch>('web-ui-switch[aria-label="开发者选项"]')
+      if (!toggle) throw new Error('开发者选项开关未渲染')
+      expect(toggle.checked).toBe(false)
+      toggle.checked = true
+      toggle.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      expect(setDeveloperOptions).toHaveBeenCalledWith(true)
     } finally {
       mounted.close()
     }
@@ -218,6 +236,9 @@ describe('SettingsDialog', () => {
   it('主题三态经 change 回写到 store 与组件 value', async () => {
     const mounted = mountDialog(() => {})
     const settings = useSettingsStore()
+    const setAppearance = vi.spyOn(settings, 'setAppearance').mockImplementation(async appearance => {
+      settings.applySnapshot({ ...settings.snapshot, appearance: appearance as typeof settings.appearance })
+    })
 
     try {
       await nextTick()
@@ -231,20 +252,18 @@ describe('SettingsDialog', () => {
       selectTrigger(theme, 'dark')
       await nextTick()
 
-      expect(settings.appearance).toBe('dark')
+      expect(setAppearance).toHaveBeenCalledWith('dark')
+      // dialog 不持有主题：主题真相在 store 与 Go，宿主 App.vue 才是把它接到 web-ui-theme 上的那一环。
       expect(segmentedByLabel(mounted.host, '主题模式').value).toBe('dark')
-      // dialog 不持有主题：主题真相在 store，宿主 App.vue 才是把它接到 web-ui-theme 上的那一环。
-      // 读回走 local.get 而不是比对 localStorage 原始串：落盘带一层 browser-kit 自己的信封，
-      // 那层编码是它的实现细节，测试钉它等于把实现当契约。
-      expect(local.get('theme-appearance')).toBe('dark')
     } finally {
       mounted.close()
     }
   })
 
-  it('选择强调色后更新设置并持久化', async () => {
+  it('选择强调色后更新设置', async () => {
     const mounted = mountDialog(() => {})
     const settings = useSettingsStore()
+    const setAccent = vi.spyOn(settings, 'setAccent').mockResolvedValue()
     try {
       await nextTick()
       selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
@@ -253,11 +272,8 @@ describe('SettingsDialog', () => {
       if (!green) throw new Error('强调色 绿未渲染')
       green.click()
       await nextTick()
-      expect(settings.accent).toBe('#61bf45')
-      expect(local.get('theme-accent')).toBe('#61bf45')
+      expect(setAccent).toHaveBeenCalledWith('#61bf45')
       expect(green.checked).toBe(true)
-      settings.setAccent('red')
-      expect(settings.accent).toBe('#61bf45')
     } finally {
       mounted.close()
     }

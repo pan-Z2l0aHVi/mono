@@ -114,7 +114,7 @@ afterEach(() => {
 describe('PreviewDrawer', () => {
   it('失效文件可从预览进入当前来源的找回流程', async () => {
     const source = fileSource({ available: false })
-    const onRecover = vi.fn()
+    const onRecover = vi.fn<(source: ResourceSourceView) => void>()
     const { host, setResource } = await mountDrawer(resourceOf(source, ResourceKind.ResourceKindImage), { onRecover })
     const button = host.querySelector<HTMLElement>('web-ui-button[slot="action"]')
     expect(button?.textContent).toContain('找回资源')

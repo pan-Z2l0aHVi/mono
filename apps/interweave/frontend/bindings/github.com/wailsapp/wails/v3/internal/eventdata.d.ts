@@ -8,6 +8,12 @@ import type { Events } from "@wailsio/runtime";
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
 import type * as service$0 from "../../../../pan-Z2l0aHVi/mono/apps/interweave/backend/library/service/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import type * as menu$0 from "../../../../pan-Z2l0aHVi/mono/apps/interweave/backend/menu/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import type * as settings$0 from "../../../../pan-Z2l0aHVi/mono/apps/interweave/backend/settings/models.js";
 
 declare module "@wailsio/runtime" {
     namespace Events {
@@ -15,6 +21,8 @@ declare module "@wailsio/runtime" {
             "library:files-dropped": string[];
             "library:paste-files-requested": void;
             "library:source-availability-changed": service$0.SourceAvailabilityEventDTO;
+            "menu:command": menu$0.MenuCommand;
+            "settings:changed": settings$0.Snapshot;
         }
     }
 }

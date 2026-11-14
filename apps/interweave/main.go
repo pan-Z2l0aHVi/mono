@@ -16,8 +16,11 @@ import (
 	libraryService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 	libraryWatch "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/watch"
+	menucontract "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu"
+	nativeMenu "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/menu"
 	nativeService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/settings"
 )
 
 // 将前端产物随桌面应用交付，避免运行时依赖外部开发服务器。
@@ -25,16 +28,26 @@ import (
 //go:embed all:frontend/dist
 var assets embed.FS
 
-func getDatabasePath() (string, error) {
-	configDir, err := os.UserConfigDir()
-	if err != nil {
-		configDir = "."
+// documentationURL 是 Help 菜单打开的文档地址。
+const documentationURL = "https://github.com/pan-Z2l0aHVi/mono/tree/main/apps/interweave"
+
+// appDescription 是原生关于面板里 Description 一栏。原生面板只显示 Name / Description / Icon，
+// 版本号没有自己的字段，只能拼进 Description。
+func appDescription(version string) string {
+	return fmt.Sprintf("Interweave %s 桌面应用", version)
+}
+
+// dataDir 返回应用数据目录，并在需要时创建。
+//
+// 路径统一走 Wails 的 PathDataHome：它和 library.db、缩略图同处一个目录，
+// 不再是 os.UserConfigDir 的旧位置。Windows 上两者不同（PathDataHome 落
+// %LOCALAPPDATA%，UserConfigDir 落 %APPDATA%），因此旧库不会被读到——这被视为新库。
+func dataDir() (string, error) {
+	dir := filepath.Join(application.Path(application.PathDataHome), "interweave")
+	if err := os.MkdirAll(dir, 0o755); err != nil {
+		return "", fmt.Errorf("create data directory %s: %w", dir, err)
 	}
-	appDir := filepath.Join(configDir, "interweave")
-	if err := os.MkdirAll(appDir, 0755); err != nil {
-		return "", fmt.Errorf("failed to create data directory %s: %w", appDir, err)
-	}
-	return filepath.Join(appDir, "library.db"), nil
+	return dir, nil
 }
 
 // pruneThumbnails 按库内现行文件 Source 名单清一次过期缩略图。
@@ -57,26 +70,26 @@ func pruneThumbnails(sources storage.SourceStore, query storage.Queryer, thumbs 
 	thumbs.PruneStale(entries)
 }
 
-func addPasteFilesMenuItem(menu *application.Menu, onPaste func()) bool {
-	editMenu := menu.FindByRole(application.EditMenu)
-	if editMenu == nil {
-		return false
-	}
-	editMenu.GetSubmenu().AddSeparator()
-	editMenu.GetSubmenu().
-		Add("Paste Files").
-		SetAccelerator("CmdOrCtrl+Shift+v").
-		OnClick(func(*application.Context) {
-			onPaste()
-		})
-	return true
-}
-
 func main() {
-	dbPath, err := getDatabasePath()
+	version := appVersion(configYAML)
+
+	dir, err := dataDir()
 	if err != nil {
-		log.Fatalf("failed to prepare database location: %v", err)
+		log.Fatalf("failed to prepare application data location: %v", err)
 	}
+	dbPath := filepath.Join(dir, "library.db")
+
+	// 设置要在建菜单之前读到：开发者选项决定菜单里出不出现那两项。
+	settingsStore, err := settings.NewStore(filepath.Join(dir, "settings.json"))
+	if err != nil {
+		log.Fatalf("failed to prepare settings location: %v", err)
+	}
+	initialSettings, settingsWarnings := settingsStore.Load()
+	for _, warning := range settingsWarnings {
+		log.Printf("interweave: %s", warning)
+	}
+	settingsService := settings.NewService(settingsStore, initialSettings, settingsWarnings)
+
 	db, err := storage.Open(dbPath)
 	if err != nil {
 		log.Fatalf("failed to open database at %s: %v", dbPath, err)
@@ -109,7 +122,7 @@ func main() {
 	// 缩略图缓存与库文件同级；目录建不出来只降级缩略图能力（读取一律 404，
 	// 前端回退原图），不影响媒体读取与库本身。
 	var thumbs *libraryMedia.ThumbnailStore
-	if store, err := libraryMedia.NewThumbnailStore(filepath.Join(filepath.Dir(dbPath), "thumbnails")); err != nil {
+	if store, err := libraryMedia.NewThumbnailStore(filepath.Join(dir, "thumbnails")); err != nil {
 		log.Printf("interweave: thumbnail cache unavailable: %v", err)
 	} else {
 		thumbs = store
@@ -125,14 +138,16 @@ func main() {
 
 	// 仅暴露产品与受控原生能力，避免基础设施绕过后端边界。
 	app := application.New(application.Options{
-		Name:        "Interweave",
-		Description: "Interweave desktop application",
+		Name: "Interweave",
+		// 原生关于面板没有版本字段，版本拼进 Description。
+		Description: appDescription(version),
 		Services: []application.Service{
 			application.NewService(resourceService),
 			application.NewService(sourceService),
 			application.NewService(tagService),
 			application.NewService(mapService),
 			application.NewService(osService),
+			application.NewService(settingsService),
 		},
 		Assets: application.AssetOptions{
 			Handler:    application.AssetFileServerFS(assets),
@@ -159,15 +174,49 @@ func main() {
 		BackgroundColour: application.NewRGB(6, 7, 15),
 		URL:              "/",
 	})
+
+	// emitCommand 是菜单与前端之间唯一的通道：菜单点击不直接操作窗口或页面，
+	// 只报告一个命令，由前端按当前上下文执行。
+	emitCommand := func(command menucontract.Command) {
+		window.EmitEvent(menucontract.CommandEventName, menucontract.MenuCommand{
+			Command: command,
+			Payload: map[string]string{},
+		})
+	}
+
+	// menuSink 处理那些必须在 Go 侧完成的命令：重新载入与开发者工具是窗口能力，
+	// 绕过前端反而更稳；其余命令转发给前端。
+	menuSink := func(command menucontract.Command) {
+		switch command {
+		case menucontract.CommandReloadWindow:
+			window.Reload()
+		case menucontract.CommandOpenDevTools:
+			window.OpenDevTools()
+		default:
+			emitCommand(command)
+		}
+	}
+
+	// installMenu 整体重建菜单并重新挂上窗口。Windows 上 Menu.Update 不重绘已存在的
+	// 菜单栏，只有 window.SetMenu 会 SetMenu + DrawMenuBar，所以两条都要做；
+	// macOS 上 window.SetMenu 是 no-op，app.Menu.Set 才是生效点。
+	installMenu := func() {
+		tree := nativeMenu.Build(settingsService.DeveloperOptionsEnabled(), menuSink)
+		app.Menu.Set(tree.Menu)
+		window.SetMenu(tree.Menu)
+	}
+	installMenu()
+
+	// 菜单里有一项随设置出现/消失，所以设置一变就整体重建。监听在设置保存成功后同步触发，
+	// 重建本身是幂等的。
+	settingsService.OnChange(func(settings.Settings) { installMenu() })
+	settingsService.SetEmitter(func(snapshot settings.Snapshot) {
+		window.EmitEvent(settings.SettingsChangedEventName, snapshot)
+	})
+
 	window.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
 		window.EmitEvent(libraryService.FileDropEventName, event.Context().DroppedFiles())
 	})
-	menu := application.DefaultApplicationMenu()
-	if addPasteFilesMenuItem(menu, func() {
-		window.EmitEvent(libraryService.PasteFilesRequestEventName)
-	}) {
-		app.Menu.Set(menu)
-	}
 
 	// watcher 不注册为 Wails Service（ADR-0008 §2 的暴露面 allowlist）：它是产品能力之外的
 	// 基础设施编排，只由 main.go 装配、由 OnShutdown 收尾。window 已就绪，接上事件出口，

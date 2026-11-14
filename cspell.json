@@ -79,6 +79,7 @@
     "indexeddb",
     "ooui",
     "wailsio",
+    "kvstore",
     "WAAPI",
     "ENEEDAUTH",
     "oxfmt",

@@ -23,3 +23,13 @@ export const LibraryPasteFilesRequested = "library:paste-files-requested";
  */
 export const LibrarySourceAvailabilityChanged = "library:source-availability-changed";
 
+/**
+ * Name of the custom event "menu:command".
+ */
+export const MenuCommand = "menu:command";
+
+/**
+ * Name of the custom event "settings:changed".
+ */
+export const SettingsChanged = "settings:changed";
+

@@ -1,128 +1,105 @@
 /**
- * 应用外观设置（主题模式 + accent 预设色）。
+ * 应用设置的外观快照中转。
  *
- * 只存「用户选了什么」，不存派生结果：resolved appearance 由 web-ui-theme 自己算，
- * 宿主读它就够，存一份派生值只会带来两份真相。
+ * 真值在 Go 侧（backend/settings）：本 store 只缓存 Go 下发的快照，并把组件的方法调用
+ * 转发成 UpdateSettings。组件只调这里的方法，不直接碰 bindings；Go 是唯一的校验与持久化方，
+ * 前端不再从 localStorage 读任何设置。
  *
- * 持久化走 @greypan/browser-kit 的 local，与两个 demo（react/vue-web-ui-demo）同一套读写，
- * 不另写一份裸 localStorage 包装。两个 demo 都在用 `watch` 之外的读 + 写两段式，
- * 这里跟着走：设置是本 tab 的即时偏好，跨 tab 联动不是本应用的需求。
+ * resolved appearance 仍由 web-ui-theme 自己按 `appearance` 属性算，本 store 不存派生值。
  */
-import { local } from '@greypan/browser-kit'
 import { defineStore } from 'pinia'
 
-export type ThemeAppearance = 'light' | 'dark' | 'system'
+import {
+  createSettingsRuntime,
+  PLACEHOLDER_SNAPSHOT,
+  type AccentPreset,
+  type Appearance,
+  type SettingsPatchInput,
+  type SettingsRuntime,
+  type Snapshot
+} from '@/services/settings'
 
-export interface AccentPreset {
-  /** 写进 --wui-color-accent 的字面量。 */
-  value: string
-  label: string
-}
-
-const APPEARANCE_STORAGE_KEY = 'theme-appearance'
-const ACCENT_STORAGE_KEY = 'theme-accent'
-const REDUCED_MOTION_STORAGE_KEY = 'theme-reduced-motion'
-
-const THEME_APPEARANCES = new Set<ThemeAppearance>(['light', 'dark', 'system'])
-
-/** 与 macOS 色板一致的强调色。 */
-export const ACCENT_PRESETS: readonly AccentPreset[] = [
-  { value: '#0071e3', label: '蓝' },
-  { value: '#a54ca4', label: '紫' },
-  { value: '#f54096', label: '粉' },
-  { value: '#ff4b53', label: '红' },
-  { value: '#ff8616', label: '橙' },
-  { value: '#ffbe00', label: '黄' },
-  { value: '#61bf45', label: '绿' },
-  { value: '#8c8c8c', label: '灰' }
-] as const
-
-const LEGACY_ACCENTS: Record<string, string> = {
-  '#0a84ff': '#0071e3',
-  '#007aff': '#0071e3',
-  '#1d8348': '#61bf45',
-  '#c64600': '#ff8616',
-  '#ff453a': '#ff4b53',
-  '#bf5af2': '#a54ca4',
-  '#ff375f': '#f54096'
-}
-
-const DEFAULT_ACCENT = ACCENT_PRESETS[0].value
-const WHITE = '#ffffff'
-const BLACK = '#000000'
-/** 低于图标与大号标记的 3:1 对比度时，改用另一侧前景色。 */
-const MIN_ACCENT_FOREGROUND_CONTRAST = 3
-
-function relativeLuminance(hex: string): number {
-  const channel = (offset: number): number => {
-    const raw = Number.parseInt(hex.slice(offset, offset + 2), 16) / 255
-    return raw <= 0.04045 ? raw / 12.92 : ((raw + 0.055) / 1.055) ** 2.4
-  }
-  return 0.2126 * channel(1) + 0.7152 * channel(3) + 0.0722 * channel(5)
-}
-
-function contrastRatio(foreground: string, background: string): number {
-  const a = relativeLuminance(foreground)
-  const b = relativeLuminance(background)
-  const hi = Math.max(a, b)
-  const lo = Math.min(a, b)
-  return (hi + 0.05) / (lo + 0.05)
-}
+export type ThemeAppearance = Appearance
+export type { AccentPreset }
 
 /**
- * Apple-style accent fills use a white label by default in both appearances, with black as a fallback
- * when white would have less than 3:1 contrast. Unknown values use the default preset.
+ * 强调色上的前景色。Go 在快照里一并下发，前端只查表：
+ * 未加载完或色板里没有该值时回白色，与 Apple prominent-action 的默认一致。
  */
-export function onAccentFor(accent: string): string {
-  const color = ACCENT_PRESETS.find(preset => preset.value === accent)?.value ?? DEFAULT_ACCENT
-
-  return contrastRatio(WHITE, color) >= MIN_ACCENT_FOREGROUND_CONTRAST ? WHITE : BLACK
-}
-
-function isThemeAppearance(appearance: unknown): appearance is ThemeAppearance {
-  return typeof appearance === 'string' && THEME_APPEARANCES.has(appearance as ThemeAppearance)
-}
-
-/**
- * 只认色板内的字面量。
- *
- * 这条白名单不是洁癖：读到的值最终会进 --wui-color-accent，认不出的字面量一律回落默认色，
- * 免得旧版本遗留或手改过的存储把任意外部字符串带进内联样式。
- */
-function isAccentPreset(accent: unknown): accent is string {
-  return typeof accent === 'string' && ACCENT_PRESETS.some(preset => preset.value === accent)
-}
-
-function readAppearance(): ThemeAppearance {
-  const appearance = local.get<unknown>(APPEARANCE_STORAGE_KEY)
-  return isThemeAppearance(appearance) ? appearance : 'system'
-}
-
-function readAccent(): string {
-  const accent = local.get<unknown>(ACCENT_STORAGE_KEY)
-  if (isAccentPreset(accent)) return accent
-  return typeof accent === 'string' ? (LEGACY_ACCENTS[accent] ?? DEFAULT_ACCENT) : DEFAULT_ACCENT
+export function onAccentFor(accent: string, presets: readonly AccentPreset[] = []): string {
+  return presets.find(preset => preset.value === accent)?.onAccent ?? '#ffffff'
 }
 
 export const useSettingsStore = defineStore('settings', {
   state: () => ({
-    appearance: readAppearance(),
-    accent: readAccent(),
-    reducedMotion: local.get<unknown>(REDUCED_MOTION_STORAGE_KEY) === true
+    snapshot: PLACEHOLDER_SNAPSHOT as Snapshot,
+    /** 是否已经拿到过 Go 的快照。启动层的退场判据之一。 */
+    loaded: false,
+    /** 最近一次写入失败的原因；界面据此提示，成功后清空。 */
+    error: ''
   }),
+  getters: {
+    appearance: state => state.snapshot.appearance,
+    accent: state => state.snapshot.accent,
+    reducedMotion: state => state.snapshot.reducedMotion,
+    developerOptions: state => state.snapshot.developerOptions,
+    presets: state => state.snapshot.presets,
+    /** 启动期一次性警告；界面取走后由 takeWarnings 清空。 */
+    warnings: state => state.snapshot.warnings
+  },
   actions: {
-    setAppearance(appearance: ThemeAppearance) {
-      this.appearance = appearance
-      local.set(APPEARANCE_STORAGE_KEY, appearance)
+    /** 用 Go 快照整体覆盖本地缓存。事件与初次拉取走同一入口。 */
+    applySnapshot(snapshot: Snapshot) {
+      this.snapshot = snapshot
+      this.loaded = true
     },
-    setReducedMotion(reduced: boolean) {
-      this.reducedMotion = reduced
-      local.set(REDUCED_MOTION_STORAGE_KEY, reduced)
+    /** 取走一次性警告并清空，避免重启提示在会话内重复弹出。 */
+    takeWarnings(): string[] {
+      const warnings = this.snapshot.warnings
+      if (warnings.length === 0) return []
+      this.snapshot = { ...this.snapshot, warnings: [] }
+      return warnings
     },
-    setAccent(accent: string) {
-      if (!isAccentPreset(accent)) return
-      this.accent = accent
-      local.set(ACCENT_STORAGE_KEY, accent)
+    async load(runtime: SettingsRuntime = createSettingsRuntime()) {
+      try {
+        this.applySnapshot(await runtime.get())
+      } catch (cause) {
+        // 读不到就按本地兜底继续启动：界面上以默认外观呈现，原因记在 error 里。
+        this.error = describeError(cause, '读取设置失败')
+      }
+    },
+    async setAppearance(appearance: ThemeAppearance, runtime?: SettingsRuntime) {
+      await this.patch({ appearance }, runtime)
+    },
+    async setAccent(accent: string, runtime?: SettingsRuntime) {
+      await this.patch({ accent }, runtime)
+    },
+    async setReducedMotion(reduced: boolean, runtime?: SettingsRuntime) {
+      await this.patch({ reducedMotion: reduced }, runtime)
+    },
+    async setDeveloperOptions(enabled: boolean, runtime?: SettingsRuntime) {
+      await this.patch({ developerOptions: enabled }, runtime)
+    },
+    /**
+     * 写一次设置。成功后用返回的快照覆盖，失败则保留 Go 已回滚的状态并记下原因——
+     * 界面不能显示一个磁盘上并不存在的设置。
+     *
+     * runtime 可选只是为了测试能注入假实现；生产路径一律走默认的 createSettingsRuntime()。
+     */
+    async patch(patch: SettingsPatchInput, runtime: SettingsRuntime = createSettingsRuntime()) {
+      this.error = ''
+      try {
+        this.applySnapshot(await runtime.update(patch))
+      } catch (cause) {
+        this.error = describeError(cause, '保存设置失败')
+        // 写入失败时回读一次，让界面回到磁盘上的真实状态。
+        await this.load(runtime)
+      }
     }
   }
 })
+
+function describeError(cause: unknown, fallback: string): string {
+  if (cause instanceof Error && cause.message.trim()) return cause.message
+  return fallback
+}

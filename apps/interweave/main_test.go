@@ -1,29 +1,23 @@
 package main
 
 import (
+	"path/filepath"
 	"testing"
-
-	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-func TestAddPasteFilesMenuItem(t *testing.T) {
-	menu := application.NewMenu()
-	menu.AddRole(application.EditMenu)
-
-	if !addPasteFilesMenuItem(menu, func() {}) {
-		t.Fatal("expected Edit menu")
-	}
-	item := menu.FindByLabel("Paste Files")
-	if item == nil {
-		t.Fatal("expected Paste Files menu item")
-	}
-	if accelerator := item.GetAccelerator(); accelerator != "Cmd+Shift+V" && accelerator != "Ctrl+Shift+V" {
-		t.Fatalf("unexpected Paste Files accelerator: %q", accelerator)
+func TestAppDescriptionCarriesVersion(t *testing.T) {
+	if got := appDescription("1.2.3"); got != "Interweave 1.2.3 桌面应用" {
+		t.Fatalf("native about panel has no version field of its own, so the description must carry it; got %q", got)
 	}
 }
 
-func TestAddPasteFilesMenuItemRequiresEditMenu(t *testing.T) {
-	if addPasteFilesMenuItem(application.NewMenu(), func() {}) {
-		t.Fatal("expected missing Edit menu to be rejected")
+// 数据目录固定在 PathDataHome 下的 interweave 子目录：库文件、缩略图与设置同处一处。
+func TestDataDirUsesDataHome(t *testing.T) {
+	dir, err := dataDir()
+	if err != nil {
+		t.Fatalf("dataDir: %v", err)
+	}
+	if base := filepath.Base(dir); base != "interweave" {
+		t.Fatalf("expected the last path segment to be interweave, got %q from %q", base, dir)
 	}
 }

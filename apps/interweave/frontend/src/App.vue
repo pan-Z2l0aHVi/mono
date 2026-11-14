@@ -1,12 +1,39 @@
 <script setup lang="ts">
 import appScrollbarsOptions from '@greypan/app-scrollbars'
 import { useOverlayScrollbars } from 'overlayscrollbars-vue'
-import { computed, onMounted } from 'vue'
+import { computed, onMounted, onScopeDispose, watch } from 'vue'
 
 import AppLayout from '@/components/AppLayout.vue'
+import { dismissStartupLayer, scheduleStartupTimeout } from '@/composables/startupLayer'
+import { createSettingsRuntime } from '@/services/settings'
 import { onAccentFor, useSettingsStore } from '@/stores/settings'
 
 const settings = useSettingsStore()
+const settingsRuntime = createSettingsRuntime()
+
+// 设置由 Go 拥有：启动先拉一次全量快照，之后由 settings:changed 事件覆盖。
+// 拉取失败不阻塞启动，store 会保留默认快照并把原因写进 error。
+void settings.load(settingsRuntime)
+const stopSettingsChanges = settingsRuntime.onChanged(snapshot => settings.applySnapshot(snapshot))
+onScopeDispose(stopSettingsChanges)
+
+/*
+ * 启动层退场的两条路：设置就绪，或超时兜底。
+ *
+ * 必须等设置落定再撤——撤早了就是「先闪一帧默认主题，再跳成用户主题」，
+ * 那正是这一层要解决的问题。超时兜底则是「读不到也不能把人永远挡在 logo 后面」。
+ */
+const cancelStartupTimeout = scheduleStartupTimeout()
+const stopStartupWatch = watch(
+  () => settings.loaded,
+  loaded => {
+    if (!loaded) return
+    cancelStartupTimeout()
+    // 等一帧，让 theme 属性在同一帧内落到 DOM，再开始淡出。
+    requestAnimationFrame(() => dismissStartupLayer())
+    stopStartupWatch()
+  }
+)
 
 // 整页 scrollbar 接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
 // 只能直接初始化 body。资源库列表的 virtua WindowVirtualizer 读的是 document.scrollingElement
@@ -26,12 +53,12 @@ onMounted(() => {
  * 是为了赢过 theme 自己那条 :host([appearance=...]) —— 内联样式优先级高于任何作者样式表规则，
  * 于是一处覆盖同时压住 light / dark / system 三个分支。
  *
- * 强调色背景按 Apple 的 prominent-action 模式使用白色标签，只有白字对比度低于 3:1 时才改黑色。
- * 这条规则对 light / dark / system 一致；系统主题仍由 web-ui-theme 自己解析。
+ * 强调色背景的前景色由 Go 在快照里按对比度算好下发（presets[].onAccent），前端只查表：
+ * 对比度规则是与 macOS 色板绑定的产品事实，不该在前端再实现一遍。
  */
 const themeStyle = computed(() => ({
   '--wui-color-accent': settings.accent,
-  '--wui-color-on-accent': onAccentFor(settings.accent)
+  '--wui-color-on-accent': onAccentFor(settings.accent, settings.presets)
 }))
 </script>
 

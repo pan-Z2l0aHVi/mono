@@ -8,9 +8,32 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
+import { MENU_ADD_RESOURCE_EVENT } from '@/composables/menuActions'
 import { pendingWindowFileDrops } from '@/composables/windowFileDrop'
 
 const fileDrop = vi.hoisted(() => ({ listener: null as ((paths: string[]) => void) | null }))
+/** 截获壳注册的菜单命令处理函数，让测试直接驱动「命令到达」这一侧。 */
+const menuHandlers = vi.hoisted(() => ({
+  handlers: null as Record<string, () => void> | null
+}))
+const openExternal = vi.hoisted(() => vi.fn<() => Promise<void>>(async () => {}))
+
+/** 壳注册的 handlers；用例里直接拿到那一份，避免再造一套映射。 */
+function menuHandlers_(): Record<string, () => void> {
+  const handlers = menuHandlers.handlers
+  if (!handlers) throw new Error('AppLayout did not register menu command handlers')
+  return handlers
+}
+
+/** 等某个断言条件成立，避免用固定次数的 nextTick 猜渲染时机。 */
+async function flushUntil(predicate: () => boolean, message: string) {
+  for (let attempt = 0; attempt < 50 && !predicate(); attempt += 1) {
+    await nextTick()
+    await new Promise(resolve => setTimeout(resolve, 0))
+  }
+  if (!predicate()) throw new Error(message)
+}
+
 vi.mock('@/services/library', () => ({
   createLibraryRuntime: () => ({
     events: {
@@ -20,8 +43,18 @@ vi.mock('@/services/library', () => ({
           fileDrop.listener = null
         }
       }
-    }
+    },
+    system: { openExternal }
   })
+}))
+
+vi.mock('@/services/menu', () => ({
+  onMenuCommand: (handlers: Record<string, () => void>) => {
+    menuHandlers.handlers = handlers
+    return () => {
+      menuHandlers.handlers = null
+    }
+  }
 }))
 
 import AppLayout from '../AppLayout.vue'
@@ -326,14 +359,6 @@ describe('AppLayout：设置 dialog 接线', () => {
   })
 
   /** dialog 受控于宿主的 ref：等它落到期待的状态，而不是假设「一个空 tick」够用。 */
-  async function flushUntil(predicate: () => boolean, message: string) {
-    for (let attempt = 0; attempt < 50 && !predicate(); attempt += 1) {
-      await nextTick()
-      await new Promise(resolve => setTimeout(resolve, 0))
-    }
-    if (!predicate()) throw new Error(message)
-  }
-
   function settingsDialog() {
     const element = host.querySelector('web-ui-dialog')
     if (!element) throw new Error('web-ui-dialog not found')
@@ -361,5 +386,64 @@ describe('AppLayout：设置 dialog 接线', () => {
     settingsDialog().dispatchEvent(new CustomEvent('open-change', { detail: { open: false } }))
     await flushUntil(() => !settingsDialog().open, '关闭请求没有回落到宿主状态')
     expect(settingsDialog().open).toBe(false)
+  })
+})
+
+/*
+ * 菜单命令分发。
+ *
+ * 壳订阅的是 backend/menu 的单一事件，但测试里不能起 Wails runtime，所以直接驱动
+ * 已注册的处理函数：壳把「命令 → 动作」的对应关系建在 onMenuCommand 的 handlers 上，
+ * 这里用模块 mock 截获那份 handlers。
+ */
+describe('AppLayout：菜单命令', () => {
+  it('「设置…」打开设置 dialog', async () => {
+    await mountLayout()
+    const dialog = host.querySelector('web-ui-dialog') as WebUiDialog
+    expect(dialog.open).toBe(false)
+
+    menuHandlers_().openSettings()
+    await flushUntil(() => dialog.open, '菜单命令没有打开设置 dialog')
+    expect(dialog.open).toBe(true)
+  })
+
+  it('「切换侧边栏」在桌面端翻转 collapse', async () => {
+    await mountLayout()
+    expect(layoutRoot().sidebarCollapsed).toBe(false)
+
+    menuHandlers_().toggleSidebar()
+    await nextTick()
+
+    expect(layoutRoot().sidebarCollapsed).toBe(true)
+    menuHandlers_().toggleSidebar()
+    await nextTick()
+    expect(layoutRoot().sidebarCollapsed).toBe(false)
+  })
+
+  // 「添加资源」是页面域动作：壳负责切到资源库页，再把动作交给页面。
+  it('「添加资源」先切到资源库页再派发页面动作', async () => {
+    await mountLayout()
+    await navigate('/map')
+
+    const received: string[] = []
+    const onAdd = () => received.push('add-resource')
+    document.addEventListener(MENU_ADD_RESOURCE_EVENT, onAdd)
+    try {
+      menuHandlers_().addResource()
+      await flushUntil(() => received.length > 0, '页面动作没有派发')
+      expect(router.currentRoute.value.path).toBe('/library')
+      expect(received).toEqual(['add-resource'])
+    } finally {
+      document.removeEventListener(MENU_ADD_RESOURCE_EVENT, onAdd)
+    }
+  })
+
+  it('「Interweave 文档」交给系统打开外链', async () => {
+    await mountLayout()
+
+    menuHandlers_().openDocumentation()
+    await flushUntil(() => openExternal.mock.calls.length > 0, '没有调用外链打开')
+
+    expect(openExternal).toHaveBeenCalledWith('https://github.com/pan-Z2l0aHVi/mono/tree/main/apps/interweave')
   })
 })
