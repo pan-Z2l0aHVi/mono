@@ -34,7 +34,7 @@ function renderRun(run: GroupedRun, separator: string) {
  * 适用面是复制出去要能直接用的连续标识符——银行卡号、手机号、大额金额。间隙走字距而不走字符或
  * 外边距：分隔符一旦写进文本节点，复制、页内查找、双击选词三件事同时坏掉；`margin` 撑出的间隙落在
  * 两个文本片段之外，选区高亮会在每个组间断开一条与间隙等宽的洞，而 `::selection` 用不了布局属性，
- * 补不掉。实测边界与取证见 docs/research/web-ui-grouped-text-261102.md。
+ * 补不掉。
  *
  * 只读显示：没有事件、没有插槽、不参与表单。`value` 始终是那串原文，渲染只是把它切成首尾相接的组
  * 并给每组末位挂上字距，`renderRoot.textContent` 拼回去等于 `value`。

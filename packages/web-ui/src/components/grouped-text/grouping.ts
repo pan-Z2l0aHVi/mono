@@ -5,8 +5,7 @@ import { clusterEnds } from '@/components/middle-ellipsis/truncate'
  *
  * 切分结果首尾相接、拼回去恰好等于原串——组与组之间不含任何补位字符。这不是洁癖：复制路径读的是
  * 文本节点的 data，分隔符一旦进了文本节点，复制、页内查找、双击选词三件事同时坏掉。间隙因此只能
- * 是布局（挂在每组末位簇自己的字距上），不能是字符。实测边界见
- * docs/research/web-ui-grouped-text-261102.md。
+ * 是布局（挂在每组末位簇自己的字距上），不能是字符。
  *
  * 切点一律落在字素簇边界上，与 `web-ui-middle-ellipsis` 同一个口径：按 UTF-16 下标切会把代理对与
  * ZWJ 序列从中间劈开，屏幕上出现半个 emoji 比「这一组少一位」严重得多。

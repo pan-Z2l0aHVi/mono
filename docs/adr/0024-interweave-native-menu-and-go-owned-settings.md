@@ -63,7 +63,11 @@ macOS 用 `app.Menu.Set` 设置全局 NSMenu，Windows 用 `WebviewWindowOptions
 
 ## 实施记录
 
-落地结构、与本文的差异、实施中修掉的缺陷（设置监听器自死锁）与逐项验收结论见 [`docs/research/interweave-top-menu-plan.md`](../research/interweave-top-menu-plan.md)。Windows 端尚未做运行时验证，清单在该文的「未验证的缺口」与调研文档的附录 B。
+落地结构与验收结论的要点已回写本节；完整的实施记录是时点性材料，随 `docs/research/` 一起移出仓库，不作为权威引用。
+
+实施中修掉的缺陷：`UpdateSettings` 原先在持锁状态下调用变更监听器，而菜单重建监听器要回读开发者选项，造成自死锁；现在监听器与事件出口改在锁外调用（状态已提交，回读必然是本次新值），并由 `TestChangeListenerCanReadSettingsBack` 覆盖。
+
+Windows 端尚未做运行时验证：菜单形状由 `Describe("windows")` 的结构断言覆盖，但菜单栏渲染、accelerator 分发与 `window.SetMenu` 重建都没有实机证据。
 
 ## 备选方案
 
