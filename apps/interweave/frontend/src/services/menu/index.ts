@@ -13,28 +13,43 @@ import { hasWailsRuntime } from '../library/wails'
  */
 export interface MenuCommandHandlers {
   addResource(): void
-  pasteFiles(): void
-  refreshAvailability(): void
+  importFromClipboard(): void
+  importFromLink(): void
+  refreshLibrary(): void
   toggleSidebar(): void
+  toggleFilterBar(): void
+  focusSearch(): void
+  navigateBack(): void
+  navigateForward(): void
   openSettings(): void
   openDocumentation(): void
+  copyAsPlainText(): void
+  pasteAsPlainText(): void
 }
 
 /** 命令名 → 处理函数名的映射。纯函数，可在 Node 环境单测。 */
 const HANDLER_BY_COMMAND: Record<string, keyof MenuCommandHandlers> = {
   [Command.CommandAddResource]: 'addResource',
-  [Command.CommandPasteFiles]: 'pasteFiles',
-  [Command.CommandRefreshAvailability]: 'refreshAvailability',
+  [Command.CommandImportFromClipboard]: 'importFromClipboard',
+  [Command.CommandImportFromLink]: 'importFromLink',
+  [Command.CommandRefreshLibrary]: 'refreshLibrary',
   [Command.CommandToggleSidebar]: 'toggleSidebar',
+  [Command.CommandToggleFilterBar]: 'toggleFilterBar',
+  [Command.CommandFocusSearch]: 'focusSearch',
+  [Command.CommandNavigateBack]: 'navigateBack',
+  [Command.CommandNavigateForward]: 'navigateForward',
   [Command.CommandOpenSettings]: 'openSettings',
-  [Command.CommandOpenDocumentation]: 'openDocumentation'
+  [Command.CommandOpenDocumentation]: 'openDocumentation',
+  [Command.CommandCopyAsPlainText]: 'copyAsPlainText',
+  [Command.CommandPasteAsPlainText]: 'pasteAsPlainText'
 }
 
 /**
  * 判断事件载荷是否是已知菜单命令。
  *
  * 推送不可信：一行坏数据不该打断界面，所以畸形载荷一律忽略而不是抛出。
- * reload-window 与 open-devtools 由 Go 侧直接执行，不经前端，因此这里不认它们。
+ * reload-window、open-devtools、maximise-window 与 check-for-updates 由 Go 侧直接执行，
+ * 不经前端，因此这里也不认它们。
  */
 export function isMenuCommand(value: unknown): value is { command: Command } {
   if (typeof value !== 'object' || value === null || Array.isArray(value)) return false

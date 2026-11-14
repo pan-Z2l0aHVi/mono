@@ -12,7 +12,6 @@ import (
 // 的常量与类型，前端订阅时引用生成物而不是重复字面量。
 func init() {
 	application.RegisterEvent[[]string](libraryService.FileDropEventName)
-	application.RegisterEvent[application.Void](libraryService.PasteFilesRequestEventName)
 	application.RegisterEvent[libraryService.SourceAvailabilityEventDTO](libraryService.SourceAvailabilityEventName)
 	application.RegisterEvent[menucontract.MenuCommand](menucontract.CommandEventName)
 	application.RegisterEvent[settings.Snapshot](settings.SettingsChangedEventName)

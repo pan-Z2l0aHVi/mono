@@ -1,10 +1,6 @@
 import { Dialogs, Events } from '@wailsio/runtime'
 
-import {
-  LibraryFilesDropped,
-  LibraryPasteFilesRequested,
-  LibrarySourceAvailabilityChanged
-} from '../../../bindings/events'
+import { LibraryFilesDropped, LibrarySourceAvailabilityChanged } from '../../../bindings/events'
 import {
   ResourceService,
   SourceService,
@@ -84,10 +80,6 @@ class WailsLibraryRuntime implements LibraryRuntime {
         }
       })
     },
-    onPasteFilesRequested: (listener: () => void) => {
-      if (!this.isAvailable) return () => {}
-      return Events.On(LibraryPasteFilesRequested, listener)
-    },
     onSourceAvailability: (listener: (event: SourceAvailabilityEventDTO) => void) => {
       if (!this.isAvailable) return () => {}
       return Events.On(LibrarySourceAvailabilityChanged, event => {
@@ -118,6 +110,10 @@ class WailsLibraryRuntime implements LibraryRuntime {
       return selected ?? null
     },
     getClipboardFilePaths: () => OSService.GetClipboardFilePaths(),
+    readClipboardText: () => OSService.ReadClipboardText(),
+    writeClipboardText: async (text: string) => {
+      await OSService.WriteClipboardText(text)
+    },
     defaultOpenWith: (target: string) => OSService.DefaultOpenWith(target),
     openExternal: async (target: string) => {
       await OSService.OpenExternal(target)

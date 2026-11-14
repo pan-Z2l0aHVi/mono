@@ -9,17 +9,32 @@ func TestCommandValues(t *testing.T) {
 		want    string
 	}{
 		{CommandAddResource, "add-resource"},
-		{CommandPasteFiles, "paste-files"},
-		{CommandRefreshAvailability, "refresh-availability"},
+		{CommandImportFromClipboard, "import-from-clipboard"},
+		{CommandImportFromLink, "import-from-link"},
+		{CommandRefreshLibrary, "refresh-library"},
 		{CommandToggleSidebar, "toggle-sidebar"},
+		{CommandToggleFilterBar, "toggle-filter-bar"},
+		{CommandFocusSearch, "focus-search"},
+		{CommandNavigateBack, "navigate-back"},
+		{CommandNavigateForward, "navigate-forward"},
 		{CommandOpenSettings, "open-settings"},
+		{CommandCheckForUpdates, "check-for-updates"},
+		{CommandOpenDocumentation, "open-documentation"},
 		{CommandReloadWindow, "reload-window"},
 		{CommandOpenDevTools, "open-devtools"},
-		{CommandOpenDocumentation, "open-documentation"},
+		{CommandCopyAsPlainText, "copy-as-plain-text"},
+		{CommandPasteAsPlainText, "paste-as-plain-text"},
+		{CommandMaximiseWindow, "maximise-window"},
+		{CommandZoomIn, "zoom-in"},
+		{CommandZoomOut, "zoom-out"},
+		{CommandZoomReset, "zoom-reset"},
 	}
 	for _, pair := range pairs {
 		if string(pair.command) != pair.want {
 			t.Errorf("expected command %q, got %q", pair.want, pair.command)
+		}
+		if !IsCommand(pair.want) {
+			t.Errorf("expected %q to be a known command", pair.want)
 		}
 	}
 }
@@ -34,10 +49,10 @@ func TestIsCommand(t *testing.T) {
 	if !IsCommand("add-resource") {
 		t.Fatal("expected a known command to be accepted")
 	}
-	if IsCommand("unknown-command") {
-		t.Fatal("expected an unknown command to be rejected")
-	}
-	if IsCommand("") {
-		t.Fatal("expected the empty string to be rejected")
+	// 旧命令名不再合法：前端若还认得它，说明两侧契约漂移了。
+	for _, retired := range []string{"paste-files", "refresh-availability", "unknown-command", ""} {
+		if IsCommand(retired) {
+			t.Fatalf("expected %q to be rejected", retired)
+		}
 	}
 }

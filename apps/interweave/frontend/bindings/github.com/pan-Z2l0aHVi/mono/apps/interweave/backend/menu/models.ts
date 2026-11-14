@@ -15,13 +15,37 @@ export enum Command {
     $zero = "",
 
     CommandAddResource = "add-resource",
-    CommandPasteFiles = "paste-files",
-    CommandRefreshAvailability = "refresh-availability",
+    CommandImportFromClipboard = "import-from-clipboard",
+    CommandImportFromLink = "import-from-link",
+    CommandRefreshLibrary = "refresh-library",
     CommandToggleSidebar = "toggle-sidebar",
+    CommandToggleFilterBar = "toggle-filter-bar",
+    CommandFocusSearch = "focus-search",
+    CommandNavigateBack = "navigate-back",
+    CommandNavigateForward = "navigate-forward",
     CommandOpenSettings = "open-settings",
+    CommandCheckForUpdates = "check-for-updates",
+    CommandOpenDocumentation = "open-documentation",
     CommandReloadWindow = "reload-window",
     CommandOpenDevTools = "open-devtools",
-    CommandOpenDocumentation = "open-documentation",
+    CommandCopyAsPlainText = "copy-as-plain-text",
+    CommandPasteAsPlainText = "paste-as-plain-text",
+
+    /**
+     * CommandMaximiseWindow 只在 Windows 的「窗口 › 最大化」出现：Wails 的 Zoom role
+     * 在 Win32 侧是空实现（windowsWebviewWindow.zoom 直接 Noop），窗口最大化要走
+     * Maximise。与 reload-window、open-devtools 一样由 Go 直接执行，不经前端。
+     */
+    CommandMaximiseWindow = "maximise-window",
+
+    /**
+     * 页内缩放三项也由 Go 直接执行。Wails 的 ZoomIn / ZoomOut / ResetZoom role 在
+     * macOS 没有对应 selector（`roleToSelector` 里没有它们），Win32 侧也不消费 role，
+     * 用 role 建出来的条目两端点了都不动；而 window.ZoomIn/ZoomOut/ZoomReset 是可用 API。
+     */
+    CommandZoomIn = "zoom-in",
+    CommandZoomOut = "zoom-out",
+    CommandZoomReset = "zoom-reset",
 };
 
 /**

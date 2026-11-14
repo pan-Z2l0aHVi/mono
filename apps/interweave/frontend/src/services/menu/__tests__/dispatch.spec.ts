@@ -8,11 +8,18 @@ function handlers(): SpiedHandlers {
   const noop = () => {}
   return {
     addResource: vi.fn<() => void>(noop),
-    pasteFiles: vi.fn<() => void>(noop),
-    refreshAvailability: vi.fn<() => void>(noop),
+    importFromClipboard: vi.fn<() => void>(noop),
+    importFromLink: vi.fn<() => void>(noop),
+    refreshLibrary: vi.fn<() => void>(noop),
     toggleSidebar: vi.fn<() => void>(noop),
+    toggleFilterBar: vi.fn<() => void>(noop),
+    focusSearch: vi.fn<() => void>(noop),
+    navigateBack: vi.fn<() => void>(noop),
+    navigateForward: vi.fn<() => void>(noop),
     openSettings: vi.fn<() => void>(noop),
-    openDocumentation: vi.fn<() => void>(noop)
+    openDocumentation: vi.fn<() => void>(noop),
+    copyAsPlainText: vi.fn<() => void>(noop),
+    pasteAsPlainText: vi.fn<() => void>(noop)
   } as SpiedHandlers
 }
 
@@ -20,11 +27,18 @@ describe('menu command dispatch', () => {
   it('把每条命令打给对应的处理函数', () => {
     const cases: [string, keyof MenuCommandHandlers][] = [
       ['add-resource', 'addResource'],
-      ['paste-files', 'pasteFiles'],
-      ['refresh-availability', 'refreshAvailability'],
+      ['import-from-clipboard', 'importFromClipboard'],
+      ['import-from-link', 'importFromLink'],
+      ['refresh-library', 'refreshLibrary'],
       ['toggle-sidebar', 'toggleSidebar'],
+      ['toggle-filter-bar', 'toggleFilterBar'],
+      ['focus-search', 'focusSearch'],
+      ['navigate-back', 'navigateBack'],
+      ['navigate-forward', 'navigateForward'],
       ['open-settings', 'openSettings'],
-      ['open-documentation', 'openDocumentation']
+      ['open-documentation', 'openDocumentation'],
+      ['copy-as-plain-text', 'copyAsPlainText'],
+      ['paste-as-plain-text', 'pasteAsPlainText']
     ]
     for (const [command, handlerName] of cases) {
       const target = handlers()
@@ -37,12 +51,30 @@ describe('menu command dispatch', () => {
     }
   })
 
-  // reload-window 与 open-devtools 由 Go 侧直接执行窗口方法，不经前端。
+  // reload-window、open-devtools、maximise-window 与 check-for-updates 由 Go 侧直接执行。
   // 前端认了它们反而会多出一条无人接管的命令。
-  it('不认由 Go 侧直接执行的窗口命令', () => {
+  it('不认由 Go 侧直接执行的命令', () => {
     const target = handlers()
-    expect(dispatchMenuCommand({ command: 'reload-window' }, target)).toBe(false)
-    expect(dispatchMenuCommand({ command: 'open-devtools' }, target)).toBe(false)
+    for (const command of [
+      'reload-window',
+      'open-devtools',
+      'maximise-window',
+      'check-for-updates',
+      'zoom-in',
+      'zoom-out',
+      'zoom-reset'
+    ]) {
+      expect(dispatchMenuCommand({ command }, target)).toBe(false)
+    }
+    for (const spy of Object.values(target)) expect(spy).not.toHaveBeenCalled()
+  })
+
+  // 旧命令名不再合法：留着它们会让两侧契约静默漂移。
+  it('不认已删除的旧命令名', () => {
+    const target = handlers()
+    for (const command of ['paste-files', 'refresh-availability']) {
+      expect(dispatchMenuCommand({ command }, target)).toBe(false)
+    }
     for (const spy of Object.values(target)) expect(spy).not.toHaveBeenCalled()
   })
 

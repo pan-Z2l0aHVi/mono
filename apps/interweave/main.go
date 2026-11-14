@@ -31,6 +31,10 @@ var assets embed.FS
 // documentationURL 是 Help 菜单打开的文档地址。
 const documentationURL = "https://github.com/pan-Z2l0aHVi/mono/tree/main/apps/interweave"
 
+// releasesURL 是 App 菜单「检查更新」打开的发布页。不做 Wails updater 接入：
+// 这一项只负责把用户带到能看到版本与变更的地方。
+const releasesURL = "https://github.com/pan-Z2l0aHVi/mono/releases"
+
 // appDescription 是原生关于面板里 Description 一栏。原生面板只显示 Name / Description / Icon，
 // 版本号没有自己的字段，只能拼进 Description。
 func appDescription(version string) string {
@@ -89,6 +93,8 @@ func main() {
 		log.Printf("interweave: %s", warning)
 	}
 	settingsService := settings.NewService(settingsStore, initialSettings, settingsWarnings)
+	// 菜单可用性上报不属于设置：它不落盘、不跨会话，只描述菜单当下的呈现状态。
+	menuService := menucontract.NewService()
 
 	db, err := storage.Open(dbPath)
 	if err != nil {
@@ -148,6 +154,7 @@ func main() {
 			application.NewService(mapService),
 			application.NewService(osService),
 			application.NewService(settingsService),
+			application.NewService(menuService),
 		},
 		Assets: application.AssetOptions{
 			Handler:    application.AssetFileServerFS(assets),
@@ -184,14 +191,27 @@ func main() {
 		})
 	}
 
-	// menuSink 处理那些必须在 Go 侧完成的命令：重新载入与开发者工具是窗口能力，
-	// 绕过前端反而更稳；其余命令转发给前端。
+	// menuSink 处理那些必须在 Go 侧完成的命令：重新载入、开发者控制台、窗口最大化与页内
+	// 缩放是窗口能力，「检查更新」只需要把用户带到发布页——绕过前端反而更稳；
+	// 其余命令转发给前端，由前者按当前路由与历史栈执行。
 	menuSink := func(command menucontract.Command) {
 		switch command {
 		case menucontract.CommandReloadWindow:
 			window.Reload()
 		case menucontract.CommandOpenDevTools:
 			window.OpenDevTools()
+		case menucontract.CommandMaximiseWindow:
+			window.ToggleMaximise()
+		case menucontract.CommandZoomIn:
+			window.ZoomIn()
+		case menucontract.CommandZoomOut:
+			window.ZoomOut()
+		case menucontract.CommandZoomReset:
+			window.ZoomReset()
+		case menucontract.CommandCheckForUpdates:
+			if err := osService.OpenExternal(context.Background(), releasesURL); err != nil {
+				log.Printf("interweave: failed to open the releases page: %v", err)
+			}
 		default:
 			emitCommand(command)
 		}
@@ -201,15 +221,20 @@ func main() {
 	// 菜单栏，只有 window.SetMenu 会 SetMenu + DrawMenuBar，所以两条都要做；
 	// macOS 上 window.SetMenu 是 no-op，app.Menu.Set 才是生效点。
 	installMenu := func() {
-		tree := nativeMenu.Build(settingsService.DeveloperOptionsEnabled(), menuSink)
+		tree := nativeMenu.Build(nativeMenu.State{
+			DeveloperOptions: settingsService.DeveloperOptionsEnabled(),
+			Disabled:         menuService.IsDisabled,
+		}, menuSink)
 		app.Menu.Set(tree.Menu)
 		window.SetMenu(tree.Menu)
 	}
 	installMenu()
 
-	// 菜单里有一项随设置出现/消失，所以设置一变就整体重建。监听在设置保存成功后同步触发，
-	// 重建本身是幂等的。
+	// 菜单里有随设置出现/消失的整组条目，也有随页面与历史栈变化的置灰项，两者都走
+	// 同一个重建入口。设置监听在保存成功后同步触发；禁用集合由前端去重后上报，
+	// 服务侧再兜一次底，重建本身是幂等的。
 	settingsService.OnChange(func(settings.Settings) { installMenu() })
+	menuService.SetChangeHandler(installMenu)
 	settingsService.SetEmitter(func(snapshot settings.Snapshot) {
 		window.EmitEvent(settings.SettingsChangedEventName, snapshot)
 	})

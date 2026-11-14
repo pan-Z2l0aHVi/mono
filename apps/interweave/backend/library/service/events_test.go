@@ -10,7 +10,6 @@ func TestCustomEventNames(t *testing.T) {
 		want string
 	}{
 		{FileDropEventName, "library:files-dropped"},
-		{PasteFilesRequestEventName, "library:paste-files-requested"},
 		{SourceAvailabilityEventName, "library:source-availability-changed"},
 	}
 	for _, pair := range pairs {

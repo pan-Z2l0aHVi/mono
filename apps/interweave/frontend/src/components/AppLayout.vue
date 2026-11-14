@@ -2,21 +2,32 @@
 import type { WebUiEvent, WebUiLayout } from '@greypan/web-ui'
 import { toast } from '@greypan/web-ui'
 import { System } from '@wailsio/runtime'
-import { computed, onMounted, onScopeDispose, ref } from 'vue'
+import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
-import { MENU_ADD_RESOURCE_EVENT, MENU_PASTE_FILES_EVENT, MENU_REFRESH_EVENT } from '@/composables/menuActions'
+import {
+  MENU_ADD_RESOURCE_EVENT,
+  MENU_FOCUS_SEARCH_EVENT,
+  MENU_IMPORT_FROM_CLIPBOARD_EVENT,
+  MENU_IMPORT_FROM_LINK_EVENT,
+  MENU_REFRESH_EVENT,
+  MENU_TOGGLE_FILTER_BAR_EVENT
+} from '@/composables/menuActions'
+import { hasEditableFocus, insertTextAtFocus, readSelectionText } from '@/composables/plainTextClipboard'
+import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLayoutMobileProvider } from '@/composables/useLayoutMobile'
 import { queueWindowFileDrop } from '@/composables/windowFileDrop'
 import { createLibraryRuntime } from '@/services/library'
 import { onMenuCommand } from '@/services/menu'
+import { createMenuStateReporter, createMenuStateRuntime } from '@/services/menu/state'
 import { useSettingsStore } from '@/stores/settings'
 
 const router = useRouter()
 const settings = useSettingsStore()
-const stopWindowFileDrop = createLibraryRuntime().events.onFilesDropped(paths => {
+const libraryRuntime = createLibraryRuntime()
+const stopWindowFileDrop = libraryRuntime.events.onFilesDropped(paths => {
   if (!paths.length) return
   queueWindowFileDrop(paths)
   if (router.currentRoute.value.path !== '/library') void router.push('/library')
@@ -68,30 +79,113 @@ function toggleSidebar() {
 
 /*
  * 菜单命令在这里分发而不是在页面里：菜单是应用级的，页面会被切走。
- * 「添加资源」「粘贴文件」「刷新可用性」落在资源库页，跨页面时先切过去，
- * 由页面自己订阅 pending 队列执行——壳层不复制页面的领域逻辑。
+ * 落在资源库页上的动作跨页面时先切过去，由页面自己订阅事件执行——壳层不复制页面的
+ * 领域逻辑。后退/前进与剪贴板动作在壳层就地完成。
  */
 const stopMenuCommands = onMenuCommand({
   addResource() {
-    void openLibraryThen(() => document.dispatchEvent(new CustomEvent(MENU_ADD_RESOURCE_EVENT)))
+    void openLibraryThen(() => dispatchMenuAction(MENU_ADD_RESOURCE_EVENT))
   },
-  pasteFiles() {
-    void openLibraryThen(() => document.dispatchEvent(new CustomEvent(MENU_PASTE_FILES_EVENT)))
+  importFromClipboard() {
+    void openLibraryThen(() => dispatchMenuAction(MENU_IMPORT_FROM_CLIPBOARD_EVENT))
   },
-  refreshAvailability() {
-    void openLibraryThen(() => document.dispatchEvent(new CustomEvent(MENU_REFRESH_EVENT)))
+  importFromLink() {
+    void openLibraryThen(() => dispatchMenuAction(MENU_IMPORT_FROM_LINK_EVENT))
+  },
+  refreshLibrary() {
+    void openLibraryThen(() => dispatchMenuAction(MENU_REFRESH_EVENT))
   },
   toggleSidebar,
+  toggleFilterBar() {
+    void openLibraryThen(() => dispatchMenuAction(MENU_TOGGLE_FILTER_BAR_EVENT))
+  },
+  focusSearch() {
+    void openLibraryThen(() => dispatchMenuAction(MENU_FOCUS_SEARCH_EVENT))
+  },
+  navigateBack() {
+    if (canGoBack.value) router.back()
+  },
+  navigateForward() {
+    if (canGoForward.value) router.forward()
+  },
   openSettings() {
     settingsOpen.value = true
   },
   openDocumentation() {
-    void createLibraryRuntime()
-      .system.openExternal(DOCUMENTATION_URL)
+    void libraryRuntime.system
+      .openExternal(DOCUMENTATION_URL)
       .catch(() => toast.warning('无法打开文档链接，请检查系统默认浏览器'))
+  },
+  copyAsPlainText() {
+    void copySelectionAsPlainText()
+  },
+  pasteAsPlainText() {
+    void pasteClipboardAsPlainText()
   }
 })
 onScopeDispose(stopMenuCommands)
+
+/*
+ * 纯文本剪贴板。
+ *
+ * 选区为空时「复制为纯文本」什么都不写：往剪贴板写空串会把用户已有的内容清掉，
+ * 那是比「没复制成功」更坏的失败。前端取选区（WebView 内的选区 Go 看不到），
+ * 写入走 Go，避开 navigator.clipboard 在 Wails WebView 里的权限限制。
+ */
+async function copySelectionAsPlainText() {
+  const selection = readSelectionText().trim()
+  if (!selection) {
+    toast.warning('没有可复制的选中文本')
+    return
+  }
+  try {
+    await libraryRuntime.system.writeClipboardText(selection)
+  } catch {
+    toast.warning('无法写入剪贴板，请重试')
+  }
+}
+
+async function pasteClipboardAsPlainText() {
+  if (!hasEditableFocus()) {
+    toast.warning('请先把光标放到可输入的位置')
+    return
+  }
+  try {
+    const text = await libraryRuntime.system.readClipboardText()
+    if (!text) {
+      toast.warning('剪贴板中没有文本')
+      return
+    }
+    if (!insertTextAtFocus(text)) toast.warning('当前输入位置无法插入文本')
+  } catch {
+    toast.warning('无法读取剪贴板，请重试')
+  }
+}
+
+function dispatchMenuAction(eventName: string) {
+  document.dispatchEvent(new CustomEvent(eventName))
+}
+
+/*
+ * 菜单可用性上报：资源库页命令只在资源库页可用，后退/前进取决于历史栈。
+ *
+ * 菜单形状在 Go，判据在 Vue，所以由壳层把差集推上去；reporter 自己去重，
+ * 避免同一集合在路由与历史的连续变化中反复重建菜单。首次上报放在挂载后：
+ * 页面懒加载之前的历史栈此时已经由 installHistoryNav 记录过。
+ */
+const syncMenuState = createMenuStateReporter(disabled => createMenuStateRuntime().reportDisabled(disabled))
+
+onScopeDispose(
+  watch(
+    () => [router.currentRoute.value.path, canGoBack.value, canGoForward.value] as const,
+    ([path, back, forward]) => {
+      // 上报失败只让菜单短暂停在旧状态：不打断界面，下一次路由或历史变化会再报一次。
+      // 错误不能再往里吞——reporter 靠 reject 判断这次没生效，才不会把失败记成已同步。
+      syncMenuState({ path, canGoBack: back, canGoForward: forward }).catch(() => {})
+    },
+    { immediate: true }
+  )
+)
 
 /**
  * 切到资源库页再执行页面域动作。

@@ -37,10 +37,27 @@ export function OpenExternal(target: string): $CancellablePromise<void> {
 }
 
 /**
+ * ReadClipboardText 返回剪贴板中的纯文本。剪贴板没有文本时返回空串而不是错误：
+ * 「没有东西可粘贴」是正常状态，调用方据空串给出提示。富文本（HTML / RTF）不在此范围。
+ */
+export function ReadClipboardText(): $CancellablePromise<string> {
+    return $Call.ByID(393481615);
+}
+
+/**
  * 只定位外部文件，不修改文件系统内容。
  */
 export function ShowInFileManager(filePath: string): $CancellablePromise<void> {
     return $Call.ByID(2523750525, filePath);
+}
+
+/**
+ * WriteClipboardText 用纯文本覆盖剪贴板。空串是 no-op，不报错：调用方在此之前已判定
+ * 没有内容可写（「复制为纯文本」在选区为空时就不该走这里），这里再清一次剪贴板是纯粹的
+ * 破坏性副作用。
+ */
+export function WriteClipboardText(text: string): $CancellablePromise<void> {
+    return $Call.ByID(988171878, text);
 }
 
 // Private type creation functions

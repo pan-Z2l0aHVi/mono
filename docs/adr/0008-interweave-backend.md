@@ -2,7 +2,8 @@
 
 - **Date**: 2026-08-15
 - **Status**: 已接受
-- **修订注记（2026-11-14）**: §2 的 allowlist 按 [ADR-0024](./0024-interweave-native-menu-and-go-owned-settings.md) 扩充，新增 `settings/`；`backend/menu/` 只拥有契约与事件名，不注册 Wails Service。
+- **修订注记（2026-11-14）**: §2 的 allowlist 按 [ADR-0024](./0024-interweave-native-menu-and-go-owned-settings.md) 扩充，新增 `settings/`。
+- **修订注记（2026-11-14，第二轮迭代）**: `backend/menu/` 注册一个窄 Service `ReportDisabledCommands`（菜单可用性上报，不落盘），因此 allowlist 从「`library/`、`native/`、`settings/`」扩为再加上 `menu/`；`backend/native/menu/` 仍不注册 Service。
 
 ## 1. 能力模块边界
 
@@ -15,8 +16,8 @@
 
 ## 2. Wails 暴露面
 
-- frontend 只可通过 Wails 生成的 **Interweave Go Service bindings** 直接调用来自 `library/`、`native/` 和 `settings/` 的 Service
-- `main.go` 的 Wails Service 注册 allowlist 仅包含这三个模块；Wails runtime bindings 不属于业务 allowlist
+- frontend 只可通过 Wails 生成的 **Interweave Go Service bindings** 直接调用来自 `library/`、`native/`、`settings/` 和 `menu/` 的 Service
+- `main.go` 的 Wails Service 注册 allowlist 仅包含这四个模块；Wails runtime bindings 不属于业务 allowlist
 - `remote/` 与 `internal/` 禁止注册 Wails Service，frontend 禁止消费其 bindings
 - 前端的「添加 URL」等操作先调用 `library/`；`library/` 再按产品规则调用 `remote/`
 - 不建立独立的 `bridge/` 目录；Wails-facing Service 就近置于 `library/` 或 `native/`

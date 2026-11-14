@@ -3,6 +3,7 @@
 - **Date**: 2026-11-14
 - **Status**: 已接受
 - **修订**: ADR-0008（Wails 暴露面 allowlist）
+- **修订注记（2026-11-14，第二轮迭代）**: 菜单命令枚举按七菜单结构重排；`backend/menu` 注册一个窄 Service `ReportDisabledCommands`（原文 §2 写着它不注册 Service）；`backend/native/menu` 仍是纯构建包。详见下方「第二轮迭代修订」。
 
 ## 背景
 
@@ -68,6 +69,62 @@ macOS 用 `app.Menu.Set` 设置全局 NSMenu，Windows 用 `WebviewWindowOptions
 实施中修掉的缺陷：`UpdateSettings` 原先在持锁状态下调用变更监听器，而菜单重建监听器要回读开发者选项，造成自死锁；现在监听器与事件出口改在锁外调用（状态已提交，回读必然是本次新值），并由 `TestChangeListenerCanReadSettingsBack` 覆盖。
 
 Windows 端尚未做运行时验证：菜单形状由 `Describe("windows")` 的结构断言覆盖，但菜单栏渲染、accelerator 分发与 `window.SetMenu` 重建都没有实机证据。
+
+## 第二轮迭代修订（2026-11-14）
+
+第一轮落地的是最小菜单（App / 文件 / 编辑 / 查看 / 窗口 / 帮助，开发者分组挂在「查看」末尾）。第二轮把它收敛为完整的七菜单结构，并补上菜单与前端之间的可用性反馈回路。
+
+### 1. 菜单结构
+
+七个顶层菜单：Interweave、文件、编辑、显示、窗口、帮助，以及仅在开发者选项打开时出现的「开发」。
+
+- 「Interweave」两端都存在，但 macOS 上带 AppKit 的服务菜单位与两个隐藏项，Windows 上只有关于 / 设置 / 退出——`popupmenu_windows.go` 根本没有消费 `Hide` / `HideOthers` role 的代码，挂上去只是一个点了没反应的条目。
+- 「编辑」补上「复制为纯文本 / 粘贴为纯文本」；末尾的输入法注入项不写进 `Describe`。「查找」在真机验收后被移除，理由见下文「真机验收」。
+- 「显示」由「查看」改名，新增切换筛选栏、搜索、后退、前进；刷新不挂快捷键，`CmdOrCtrl+R` 只属于开发菜单的「重新载入」。
+- 「窗口」在 Windows 上是我们自己的最小化 / 最大化 / 关闭（没有系统注入）；macOS 上挂 `WindowMenu` role，由 AppKit 追加「填充 / 居中 / 移动与调整大小」等标准项——那几项不在 `Describe` 里，测试也不断言。
+- 「开发」是独立顶层菜单，顺序为「重新载入」「开发者控制台」，关闭开发者选项时整菜单不出现（不是置灰）。
+
+### 2. `backend/menu` 注册 Service
+
+原文 §2 写着「菜单不注册 Service，前端没有可调用入口」。第二轮改变了这一点，理由与边界：
+
+- 需要改变的是**菜单项的启用状态**：刷新 / 切换筛选栏 / 搜索依赖「当前在资源库页」，后退 / 前进依赖历史栈；这些状态都在前端，菜单形状在 Go。
+- 该 Service 只有一个方法 `ReportDisabledCommands(disabled []Command)`，另有两个 `//wails:ignore` 的读取方法给菜单构建器用。没有持久化、没有跨会话语义——禁用集合是菜单的呈现状态，不属于 ADR-0024 §3 的「设置由 Go 拥有」。
+- `backend/native/menu` 依旧不注册 Service：菜单树的形状、文案、快捷键与 role 仍完全由 Go 拥有，前端唯一能做的是「告诉我现在哪些命令不可用」。
+- 重建路径从一条变成三条，全部走 `main.go` 的 `installMenu()`：启动、设置变更、禁用集合变更。Windows 上每次重建仍是 `app.Menu.Set` 加 `window.SetMenu`。
+
+### 3. 命令枚举变更
+
+`paste-files` 与 `refresh-availability` 被删除，分别由 `import-from-clipboard` 与 `refresh-library` 取代；新增 `import-from-link`、`toggle-filter-bar`、`focus-search`、`navigate-back`、`navigate-forward`、`check-for-updates`、`copy-as-plain-text`、`paste-as-plain-text`、`maximise-window`。`library:paste-files-requested` 事件连同其订阅方一并删除，能力由「导入来自 › 剪切板」承担。
+
+`reload-window`、`open-devtools`、`maximise-window` 与 `check-for-updates` 仍由 Go 直接执行，不发往前端。
+
+### 4. 文本剪贴板
+
+`native/service` 新增 `ReadClipboardText` / `WriteClipboardText`（macOS 走 NSPasteboard，Windows 走 `CF_UNICODETEXT`，其余平台显式报不支持）。分工：复制 = 前端取选区、Go 写剪贴板；粘贴 = Go 读剪贴板、前端插到焦点处。理由写在 `backend/native/service/clipboard_text.go` 与 `frontend/src/composables/plainTextClipboard.ts`。
+
+### 5. 未消除的缺口
+
+Windows 端仍无真机验证：菜单形状、「开发」菜单出现与否、置灰与 accelerator 分发都只有 `Describe("windows")` 的结构断言与源码级依据（`SetEnabled(false)` 对应 `MF_GRAYED`）。
+
+macOS 侧已做真机验收（interweave.dev.app，2026-11-14），结论如下：
+
+- 七个顶层菜单的形状、文案与快捷键符合本方案；开发者选项关闭时「开发」菜单不出现、打开后作为第 8 个顶层菜单追加在末尾。
+- 禁用集合上报有效：切到「关系图谱」后「刷新 / 切换筛选栏 / 搜索」置灰，「后退」可用而「前进」不可用；点「显示 › 后退」回到资源库页后四者反向翻转。
+- 「导入来自… › 链接」打开添加对话框并直接翻开链接输入；「切换筛选栏」「搜索」「刷新」「切换侧边栏」「检查更新」均按预期生效。
+- 「复制为纯文本」把 WebView 选区写进系统剪贴板（用哨兵值确认已被替换），「粘贴为纯文本」把剪贴板文本插入到焦点输入框。
+- **「查找」已从编辑菜单移除**：真机验收时点击无任何可见效果。原因是 Wails 的 `Find` role 只把 selector 设成 `performTextFinderAction:`，没有给菜单项打上 `NSFindPanelActionShowFindPanel` 之类的 tag，AppKit 收到的 action 缺参数，WKWebView 因此不弹查找栏。方案给出的两条退路（改成聚焦资源库搜索、删除该项）经用户裁决取后者：`CmdOrCtrl+F` 交还网页原生查找，菜单里不再有条目。
+
+### 6. 用户验收后的修复（2026-11-14，第三轮）
+
+用户按上面第 5 节验收时报告了四处问题，逐条定位后修复：
+
+- **「放大 / 缩小 / 默认缩放」点了没反应**：`ZoomIn` / `ZoomOut` / `ResetZoom` 三个 role 在 `roleToSelector`（macOS 的 role→selector 表）里没有条目，`newMenuItem` 因此落到自定义回调分支，而 role 条目没有回调；Win32 侧也完全不消费 role。两端都是死条目。改为由 Go 直接执行 `window.ZoomIn()` / `ZoomOut()` / `ZoomReset()`，与 `maximise-window` 同一类。
+- **「切换筛选栏」只在筛选栏收起时有效**：页面侧把事件处理写成 `filterOpen = true`，已展开时再点没有任何变化，名不副实。改为真正的切换。
+- **编辑菜单末尾的系统注入项（自动填充 / 开始听写 / 表情与符号）与窗口菜单的系统项（全部最小化、填充、居中、移动与调整大小等）是英文**：这些条目由 AppKit 注入，语言取自宿主 bundle 的本地化声明。两个 `Info.plist` 都没有 `CFBundleLocalizations`，AppKit 于是按开发区域（英文）渲染。补上 `CFBundleDevelopmentRegion = zh_CN` 与 `CFBundleLocalizations = [zh_Hans]` 后全部变成中文；不需要额外的 `.lproj` 目录。
+- 「隐藏 Interweave」在真机上以三种方式（菜单项辅助功能点击、真实鼠标点击、`Cmd+H`）复测均生效（`NSRunningApplication.isHidden` 变为 `true` 并保持），未做改动。
+
+真机复核：重建后逐项验证——放大 / 缩小 / 默认缩放都改变页面缩放，切换筛选栏可开可关，编辑与窗口菜单的系统注入项均为中文。
 
 ## 备选方案
 

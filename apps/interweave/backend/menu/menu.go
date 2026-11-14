@@ -1,5 +1,6 @@
 // Package menu 拥有顶部菜单的跨端契约：事件名与命令枚举。菜单树的构建与平台分支
-// 在 backend/native/menu；本包只放前端与 Go 都要认同一份的词汇，不注册 Wails Service。
+// 在 backend/native/menu；本包还持有菜单可用性 Service——禁用集合是菜单的呈现状态，
+// 不落盘、跨会话无关，所以不放进 backend/settings。
 package menu
 
 // CommandEventName 是菜单命令的推送事件。菜单点击不按项拆事件：载荷统一为 MenuCommand，
@@ -11,13 +12,32 @@ type Command string
 
 const (
 	CommandAddResource         Command = "add-resource"
-	CommandPasteFiles          Command = "paste-files"
-	CommandRefreshAvailability Command = "refresh-availability"
+	CommandImportFromClipboard Command = "import-from-clipboard"
+	CommandImportFromLink      Command = "import-from-link"
+	CommandRefreshLibrary      Command = "refresh-library"
 	CommandToggleSidebar       Command = "toggle-sidebar"
+	CommandToggleFilterBar     Command = "toggle-filter-bar"
+	CommandFocusSearch         Command = "focus-search"
+	CommandNavigateBack        Command = "navigate-back"
+	CommandNavigateForward     Command = "navigate-forward"
 	CommandOpenSettings        Command = "open-settings"
+	CommandCheckForUpdates     Command = "check-for-updates"
+	CommandOpenDocumentation   Command = "open-documentation"
 	CommandReloadWindow        Command = "reload-window"
 	CommandOpenDevTools        Command = "open-devtools"
-	CommandOpenDocumentation   Command = "open-documentation"
+	CommandCopyAsPlainText     Command = "copy-as-plain-text"
+	CommandPasteAsPlainText    Command = "paste-as-plain-text"
+	// CommandMaximiseWindow 只在 Windows 的「窗口 › 最大化」出现：Wails 的 Zoom role
+	// 在 Win32 侧是空实现（windowsWebviewWindow.zoom 直接 Noop），窗口最大化要走
+	// Maximise。与 reload-window、open-devtools 一样由 Go 直接执行，不经前端。
+	CommandMaximiseWindow Command = "maximise-window"
+
+	// 页内缩放三项也由 Go 直接执行。Wails 的 ZoomIn / ZoomOut / ResetZoom role 在
+	// macOS 没有对应 selector（`roleToSelector` 里没有它们），Win32 侧也不消费 role，
+	// 用 role 建出来的条目两端点了都不动；而 window.ZoomIn/ZoomOut/ZoomReset 是可用 API。
+	CommandZoomIn    Command = "zoom-in"
+	CommandZoomOut   Command = "zoom-out"
+	CommandZoomReset Command = "zoom-reset"
 )
 
 // MenuCommand 是菜单命令事件的载荷。
@@ -34,13 +54,25 @@ type MenuCommand struct {
 func IsCommand(value string) bool {
 	switch Command(value) {
 	case CommandAddResource,
-		CommandPasteFiles,
-		CommandRefreshAvailability,
+		CommandImportFromClipboard,
+		CommandImportFromLink,
+		CommandRefreshLibrary,
 		CommandToggleSidebar,
+		CommandToggleFilterBar,
+		CommandFocusSearch,
+		CommandNavigateBack,
+		CommandNavigateForward,
 		CommandOpenSettings,
+		CommandCheckForUpdates,
+		CommandOpenDocumentation,
 		CommandReloadWindow,
 		CommandOpenDevTools,
-		CommandOpenDocumentation:
+		CommandCopyAsPlainText,
+		CommandPasteAsPlainText,
+		CommandMaximiseWindow,
+		CommandZoomIn,
+		CommandZoomOut,
+		CommandZoomReset:
 		return true
 	}
 	return false

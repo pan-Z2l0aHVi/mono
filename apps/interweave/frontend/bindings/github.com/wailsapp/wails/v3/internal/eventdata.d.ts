@@ -19,7 +19,6 @@ declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
             "library:files-dropped": string[];
-            "library:paste-files-requested": void;
             "library:source-availability-changed": service$0.SourceAvailabilityEventDTO;
             "menu:command": menu$0.MenuCommand;
             "settings:changed": settings$0.Snapshot;

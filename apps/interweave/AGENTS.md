@@ -6,7 +6,7 @@
 
 - Go Wails host 入口是 [`main.go`](./main.go)，后端能力边界在 [`backend/`](./backend/)，前端集成在 [`frontend/src/`](./frontend/src/)。
 - [`backend/library/`](./backend/library/) 拥有 Resource、Source、语义标签、Map 与其本地持久化；[`backend/native/`](./backend/native/) 拥有受控的 OS 能力；[`backend/settings/`](./backend/settings/) 拥有应用设置的类型、校验与持久化；[`backend/remote/`](./backend/remote/) 仅供 Go 发起出站 HTTP；[`backend/internal/`](./backend/internal/) 只放跨后端模块复用的工具。
-- 顶部菜单的形状定义在 [`backend/native/menu/`](./backend/native/menu/)（`Describe` 是纯数据，`Build` 物化成 Wails 菜单），跨端命令契约在 [`backend/menu/`](./backend/menu/)。菜单不注册 Service；点击只发 `menu:command` 事件，由前端分发。
+- 顶部菜单的形状定义在 [`backend/native/menu/`](./backend/native/menu/)（`Describe` 是纯数据，`Build` 物化成 Wails 菜单），跨端命令契约与菜单可用性上报在 [`backend/menu/`](./backend/menu/)。点击只发 `menu:command` 事件，由前端分发；`backend/menu` 注册的 Service 只有 `ReportDisabledCommands`——禁用集合是菜单的呈现状态，不落盘，不属于 settings。
 - 前端保留模块边界，即 [`frontend/src/`](./frontend/src/) 下的 [`components/`](./frontend/src/components/)、[`pages/`](./frontend/src/pages/)、[`stores/`](./frontend/src/stores/)、[`composables/`](./frontend/src/composables/) 和 [`services/`](./frontend/src/services/)，以及由 `vue-router/vite` 从 [`frontend/src/pages/`](./frontend/src/pages/) 生成的 file-based 路由表。
 - 应用壳只有一套：[`frontend/src/components/AppLayout.vue`](./frontend/src/components/AppLayout.vue) 独占 `web-ui-layout` 与 [`frontend/src/components/AppNav.vue`](./frontend/src/components/AppNav.vue)，`RouterView` 只往默认 slot 换页面内容。
 - 页面需要顶部工具条时，在多根 fragment 的根节点上写 `slot="header"`，不要自带 `web-ui-layout`，也不要在模板里按 route meta 分叉壳。分叉会让切路由重建 sidebar，掐断正在播放的 icon 画线动画。
@@ -65,7 +65,8 @@ _Avoid_: 文件树、画布编辑器、关系连线器、资源容器
 ## Wails Service 与 bindings allowlist
 
 - 只有 `library`、`native` 与 `settings` 可注册 Wails Service 并生成、消费 Interweave Go Service bindings。`remote` 与 `internal` 禁止注册 Wails Service，也不得被前端直接调用或消费其 bindings。Wails runtime bindings 不属于此业务 allowlist。
-- `backend/menu/` 只拥有事件名与命令契约、`backend/native/menu/` 只被 `main.go` 装配，两者都不注册 Service：菜单由 Go 完全拥有，前端没有可调用入口。
+- `backend/menu/` 拥有事件名、命令契约与菜单可用性 Service（`ReportDisabledCommands`），`backend/native/menu/` 只被 `main.go` 装配、不注册 Service。菜单的形状与置灰由 Go 拥有，前端唯一能做的调用是上报当前不可用的命令集合。
+- 菜单命令的前端分发在 [`frontend/src/services/menu/index.ts`](./frontend/src/services/menu/index.ts)，可用性上报在 [`frontend/src/services/menu/state.ts`](./frontend/src/services/menu/state.ts)；纯文本剪贴板的前端动作在 [`frontend/src/composables/plainTextClipboard.ts`](./frontend/src/composables/plainTextClipboard.ts)。
 - [`frontend/bindings/`](./frontend/bindings/) 是生成目录，不手工编辑。公开 Go API 变更后运行 `pnpm exec turbo build --filter=@greypan/interweave-frontend` 生成 bindings，并核对生成 diff 与前端类型检查。
 
 ## 修改指南

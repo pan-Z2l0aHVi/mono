@@ -16,6 +16,12 @@ import {
   TagColor
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import { stubLayout } from '../../components/library/__tests__/virtualLayout'
+import {
+  MENU_FOCUS_SEARCH_EVENT,
+  MENU_IMPORT_FROM_LINK_EVENT,
+  MENU_REFRESH_EVENT,
+  MENU_TOGGLE_FILTER_BAR_EVENT
+} from '../../composables/menuActions'
 import { queueWindowFileDrop } from '../../composables/windowFileDrop'
 import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../../services/library'
 import { useLibraryStore } from '../../stores/library'
@@ -178,7 +184,6 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
           runtimeStub.droppedFilesListener = null
         }
       },
-      onPasteFilesRequested: () => () => {},
       onSourceAvailability: listener => {
         runtimeStub.availabilityListener = listener
         runtimeStub.availabilityDisposer = () => {
@@ -192,6 +197,8 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       chooseFilePaths: async () => [],
       chooseFilePath: async () => null,
       getClipboardFilePaths: async () => [],
+      readClipboardText: async () => '',
+      writeClipboardText: async () => {},
       defaultOpenWith: async () => '',
       openExternal: async () => {},
       ...overrides.system
@@ -825,6 +832,98 @@ function deferred<T>() {
   })
   return { promise, resolve, reject }
 }
+
+describe('LibraryPage：菜单动作', () => {
+  beforeEach(() => {
+    toastWarning.mockClear()
+    setActivePinia(createPinia())
+    route.value = { path: '/library' }
+    runtimeStub.droppedFilesListener = null
+    runtimeStub.availabilityListener = null
+    runtimeStub.availabilityDisposer = null
+    runtimeStub.current = createRuntime()
+  })
+
+  afterEach(() => {
+    runtimeStub.current = null
+  })
+
+  /** 菜单事件由壳派发在 document 上；页面订阅的是同一个事件名。 */
+  function dispatchMenu(eventName: string) {
+    document.dispatchEvent(new CustomEvent(eventName))
+  }
+
+  async function flushMenu() {
+    // 菜单动作里有两段 nextTick（打开对话框、再翻开链接输入），外加一次微任务链，
+    // 固定等到下一轮宏任务为止，避免按调用次数猜渲染时机。
+    for (let attempt = 0; attempt < 5; attempt += 1) {
+      await nextTick()
+      await new Promise(resolve => setImmediate(resolve))
+    }
+  }
+
+  it('「导入来自 › 链接」打开添加对话框并直接翻开链接输入', async () => {
+    const mounted = await mountPage()
+    try {
+      dispatchMenu(MENU_IMPORT_FROM_LINK_EVENT)
+      await flushMenu()
+
+      const dialog = addDialog(mounted.host)
+      expect(dialogOpen(dialog)).toBe(true)
+      // 链接输入是对话框里唯一的 type=url 控件，它打开即说明用户不必再点一次「添加链接」。
+      // 链接输入封在 web-ui-input 的 shadow root 里，按对话框 header 文案定位。
+      const linkDialog = [...mounted.host.querySelectorAll<HTMLElement & { open?: boolean }>('web-ui-dialog')].find(
+        node => node.querySelector('span[slot="header"]')?.textContent?.trim() === '添加链接'
+      )
+      if (!linkDialog) throw new Error('链接输入 dialog 没有挂载')
+      expect(dialogOpen(linkDialog)).toBe(true)
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('「切换筛选栏」「搜索」翻开对应面板', async () => {
+    const mounted = await mountPage()
+    // 筛选面板是 Toolbar 里的 collapse；搜索框展开时「搜索」按钮本身会消失，用它当判据。
+    const filterCollapseOpen = () => {
+      const attribute = mounted.host.querySelector('web-ui-collapse')?.getAttribute('open')
+      return attribute !== null && attribute !== 'false'
+    }
+    const searchButton = () => mounted.host.querySelector('web-ui-button[aria-label="搜索"]')
+    try {
+      expect(filterCollapseOpen()).toBe(false)
+      dispatchMenu(MENU_TOGGLE_FILTER_BAR_EVENT)
+      await flushMenu()
+      expect(filterCollapseOpen()).toBe(true)
+
+      // 「切换」是双向的：再点一次要收起。单向展开会让已展开时看起来毫无反应。
+      dispatchMenu(MENU_TOGGLE_FILTER_BAR_EVENT)
+      await flushMenu()
+      expect(filterCollapseOpen()).toBe(false)
+
+      expect(searchButton()).not.toBeNull()
+      dispatchMenu(MENU_FOCUS_SEARCH_EVENT)
+      await flushMenu()
+      expect(searchButton()).toBeNull()
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('「刷新」重新读库', async () => {
+    const list = vi.fn<LibraryRuntime['resources']['list']>(async () => [])
+    runtimeStub.current = createRuntime({ resources: { list } })
+    const mounted = await mountPage()
+    list.mockClear()
+    try {
+      dispatchMenu(MENU_REFRESH_EVENT)
+      await flushMenu()
+      expect(list).toHaveBeenCalledTimes(1)
+    } finally {
+      await mounted.close()
+    }
+  })
+})
 
 describe('LibraryPage：备注失败回写', () => {
   beforeEach(() => {
