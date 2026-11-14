@@ -1,6 +1,5 @@
 <script setup lang="ts">
 import type { WebUiCheckbox, WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
-import { lucideTriangleAlert } from '@greypan/web-ui/icons'
 import { computed } from 'vue'
 
 import type { ResourceView } from '@/stores/library'
@@ -62,7 +61,7 @@ const emit = defineEmits<{
 const source = computed(() => primarySource(props.resource))
 const size = computed(() => formatSize(props.resource.sizeBytes))
 const resourceNameClass = computed(() => [
-  'text-sm font-medium leading-snug wrap-break-word line-clamp-2 max-w-[75%] mobile:max-w-full',
+  'min-w-0 flex-1 text-sm font-medium leading-snug',
   props.resource.available
     ? 'text-[#22212a] dark:text-(--wui-color-text)'
     : 'text-[#b0b0b8] line-through dark:text-(--wui-color-text-disabled)'
@@ -144,19 +143,26 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
       @change="handleChange"
     />
 
-    <ResourceThumbnail
-      :kind="resource.kind"
-      :source="source"
-      :media-url="mediaUrl"
-      :thumbnail-url="thumbnailUrl"
-      :save-thumbnail="saveThumbnail"
-    />
+    <span class="shrink-0">
+      <ResourceThumbnail
+        :kind="resource.kind"
+        :source="source"
+        :media-url="mediaUrl"
+        :thumbnail-url="thumbnailUrl"
+        :save-thumbnail="saveThumbnail"
+        :unavailable="!resource.available"
+      />
+    </span>
 
     <div class="flex min-w-0 flex-1 flex-col gap-1">
       <div class="flex min-w-0 items-center gap-1.5">
-        <span v-if="editingNameKey !== resource.id" :class="resourceNameClass">
-          {{ resource.title }}
-        </span>
+        <web-ui-middle-ellipsis
+          v-if="editingNameKey !== resource.id"
+          :class="resourceNameClass"
+          :text="resource.title"
+          :aria-label="resource.title"
+          role="text"
+        />
         <!--
           开启 commit-on-unmount：这一行随时会被虚拟列表回收——离开渲染窗口就整行卸载，行内的
           editable-text 走 disconnectedCallback。它默认的提交只有 Enter / blur 两条：Chromium
@@ -179,12 +185,6 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
           @click.stop
           @change="handleNameChange"
           @cancel="emit('cancelRename')"
-        />
-        <web-ui-icon
-          v-if="!resource.available"
-          :icon="lucideTriangleAlert"
-          :size="14"
-          class="shrink-0 text-amber-500"
         />
       </div>
 

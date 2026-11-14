@@ -55,7 +55,7 @@ const emit = defineEmits<{ prepare: []; cancelPrepare: []; chooseCandidates: [] 
       </button>
       <span v-if="active" class="text-xs text-(--wui-color-text-secondary)">处理中</span>
     </div>
-    <web-ui-tooltip :content="pending ? '手动选择' : '撤回'" placement="bottom">
+    <web-ui-tooltip :content="pending ? '手动选取' : '撤回'" placement="bottom">
       <web-ui-button
         icon
         variant="ghost"

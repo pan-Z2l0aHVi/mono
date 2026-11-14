@@ -5,7 +5,7 @@ import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
-import { resourceIcon } from './presentation'
+import { resourceIcon, unavailableResourceIcon } from './presentation'
 import { readTextPreview, resolvePreviewTarget, type PreviewEmptyReason } from './preview'
 import PreviewImage from './PreviewImage.vue'
 
@@ -153,7 +153,15 @@ function handleMediaError(kind: 'image' | 'video') {
       <div v-if="emptyState" class="min-h-0 overflow-y-auto">
         <div class="grid min-h-full place-items-center">
           <web-ui-empty :size="72" :title="emptyState.title" :description="emptyState.description">
-            <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
+            <web-ui-icon
+              slot="icon"
+              :icon="
+                !resource.available || target.emptyReason === 'source-unavailable'
+                  ? unavailableResourceIcon(resource.kind, target.source)
+                  : resourceIcon(resource.kind)
+              "
+              :size="40"
+            />
             <web-ui-button
               v-if="target.emptyReason === 'source-unavailable' && target.source"
               slot="action"
@@ -178,7 +186,7 @@ function handleMediaError(kind: 'image' | 'video') {
 
       <div v-else-if="target.mode === 'image'" class="relative min-h-0 overflow-hidden">
         <web-ui-empty v-if="imageFailed" :size="72" title="无法显示这张图片" description="文件可能已被移动或删除。">
-          <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
+          <web-ui-icon slot="icon" :icon="unavailableResourceIcon(resource.kind, target.source)" :size="40" />
         </web-ui-empty>
         <PreviewImage
           v-else
@@ -207,7 +215,7 @@ function handleMediaError(kind: 'image' | 'video') {
             title="无法播放这个视频"
             description="文件可能已被移动，或暂时无法显示。"
           >
-            <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
+            <web-ui-icon slot="icon" :icon="unavailableResourceIcon(resource.kind, target.source)" :size="40" />
           </web-ui-empty>
           <video
             v-else

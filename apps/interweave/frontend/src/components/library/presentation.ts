@@ -1,4 +1,10 @@
 import {
+  carbonNoImage,
+  fluentMusicNoteOff220Regular,
+  hugeiconsFileNotFound,
+  hugeiconsLicenseNo,
+  hugeiconsNoInternet,
+  tablerMovieOff,
   fluentFolder24Filled,
   iconParkOutlineMacFinder,
   lucideCode,
@@ -99,6 +105,22 @@ export const metadataValueClass =
 
 export function resourceIcon(kind: ResourceKind) {
   return KIND_ICONS[kind] ?? KIND_ICONS.file
+}
+
+export function unavailableResourceIcon(kind: ResourceKind, source?: ResourceSourceView | null) {
+  if (source?.type === 'url' || kind === 'web') return hugeiconsNoInternet
+  switch (kind) {
+    case 'image':
+      return carbonNoImage
+    case 'video':
+      return tablerMovieOff
+    case 'audio':
+      return fluentMusicNoteOff220Regular
+    case 'document':
+      return hugeiconsLicenseNo
+    default:
+      return hugeiconsFileNotFound
+  }
 }
 
 export function resourceKindLabel(kind: ResourceKind) {

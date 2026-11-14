@@ -1,8 +1,8 @@
 <script setup lang="ts">
-import type { WebUiIcon, WebUiSvgDrawLines } from '@greypan/web-ui'
 import { ciSettingsFuture, lucideFolderOpen, lucideLayoutGrid } from '@greypan/web-ui/icons'
-import { ref } from 'vue'
 import { useRoute, useRouter } from 'vue-router'
+
+import PressDrawIcon from './PressDrawIcon.vue'
 
 type NavKey = 'library' | 'map'
 
@@ -21,46 +21,15 @@ const navItems = [
   { key: 'map', label: '关系图谱', path: '/map', icon: lucideLayoutGrid }
 ] as const
 
-const navDrawRefs = ref<Record<NavKey, WebUiSvgDrawLines | null>>({
-  library: null,
-  map: null
-})
-
-function setNavDrawRef(key: NavKey, element: unknown) {
-  navDrawRefs.value[key] = (element as WebUiSvgDrawLines | null) ?? null
-}
-
 const navItemClass =
   /*
    * 过渡只列 background-color，不写 transition-all：ring 由 global.css 绘制，而
    * outline-color 的初始计算值是 currentcolor。transition-all 会把它从深色文字色
    * 补间到浅蓝，Tab 过去时边缘先黑一下再变蓝。
    */
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-[background-color] duration-(--wui-duration-trigger) text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#e5e5eb) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_90%,var(--wui-color-text,#1b1b20))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_70%,var(--wui-color-text,#1b1b20))]'
-
-/** web-ui-icon 是 Lit 渲染，shadow root 里的几何要等它首次 update 后才在位，否则 replay() 空转。 */
-async function playDraw(key: NavKey) {
-  const host = navDrawRefs.value[key]
-  if (!host) return
-
-  await Promise.all([...host.querySelectorAll<WebUiIcon>('web-ui-icon')].map(icon => icon.updateComplete))
-
-  void host.replay()
-
-  if (
-    host.closest('web-ui-theme')?.getAttribute('motion') === 'reduced' ||
-    window.matchMedia('(prefers-reduced-motion: reduce)').matches
-  )
-    return
-  host.animate([{ transform: 'scale(1)' }, { transform: 'scale(1.3)', offset: 0.4 }, { transform: 'scale(1)' }], {
-    duration: 720,
-    easing: 'ease-out'
-  })
-}
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-[background-color] duration-(--wui-duration-trigger) text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(27_27_48/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_95%,#1b1b30)] dark:data-[active=true]:bg-(--wui-color-surface-control,#e5e5eb) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_90%,#1b1b30)] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_70%,#1b1b30)] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_90%,var(--wui-color-text,#1b1b20))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_70%,var(--wui-color-text,#1b1b20))]'
 
 function selectNav(item: (typeof navItems)[number]) {
-  // shell 挂在 RouterView 之外，切路由不会重建 AppNav，因此这里总能直接播。
-  void playDraw(item.key)
   emit('navigate', item.key)
   if (route.path !== item.path) void router.push(item.path)
 }
@@ -73,40 +42,32 @@ function selectNav(item: (typeof navItems)[number]) {
         v-for="item in navItems"
         :key="item.key"
         type="button"
-        :class="[navItemClass, route.path === item.path ? '' : 'hover:bg-[#1b1b20]/4 dark:hover:bg-white/6']"
+        :class="[navItemClass, route.path === item.path ? '' : 'hover:bg-[#1b1b30]/4 dark:hover:bg-white/6']"
         :data-active="route.path === item.path"
         :aria-current="route.path === item.path ? 'page' : undefined"
         :aria-label="item.label"
         @click="selectNav(item)"
       >
         <web-ui-tooltip portal placement="right" :content="collapsed ? item.label : ''" :disabled="!collapsed">
-          <web-ui-svg-draw-lines
-            :ref="(element: unknown) => setNavDrawRef(item.key, element)"
-            :duration="300"
-            easing="ease-out"
-            no-autoplay
-          >
+          <PressDrawIcon>
             <web-ui-icon :icon="item.icon" :size="18" />
-          </web-ui-svg-draw-lines>
+          </PressDrawIcon>
         </web-ui-tooltip>
         <span v-if="!collapsed" class="text-sm whitespace-nowrap overflow-hidden">{{ item.label }}</span>
       </button>
     </nav>
 
-    <!--
-      复用 navItemClass 而不是另写一份：同宽、同内缩、同 collapse 行为都随它一起成立，collapsed state 因此
-      自动只剩 icon，tooltip 也用与导航项相同的 portal/placement/disabled 组合。icon 不套
-      web-ui-svg-draw-lines——画线动画跟着路由选中语义走，设置不参与导航，就没有可重放的那一次点击。
-    -->
     <web-ui-dropdown-divider class="mt-auto [--wui-space-1:8px]" />
     <button
       type="button"
-      :class="[navItemClass, 'hover:bg-[#1b1b20]/4 dark:hover:bg-white/6']"
+      :class="[navItemClass, 'hover:bg-[#1b1b30]/4 dark:hover:bg-white/6']"
       aria-label="设置"
       @click="emit('openSettings')"
     >
       <web-ui-tooltip portal placement="right" content="设置" :disabled="!collapsed">
-        <web-ui-icon :icon="ciSettingsFuture" :size="18" />
+        <PressDrawIcon>
+          <web-ui-icon :icon="ciSettingsFuture" :size="18" />
+        </PressDrawIcon>
       </web-ui-tooltip>
       <span v-if="!collapsed" class="text-sm whitespace-nowrap overflow-hidden">设置</span>
     </button>

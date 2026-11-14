@@ -116,6 +116,9 @@ catalog:
   '@iconify-json/icon-park-outline': ^1.2.4
   '@iconify-json/ci': ^1.2.4
   '@iconify-json/codex': ^1.2.2
+  '@iconify-json/carbon': ^1.2.30
+  '@iconify-json/codicon': ^1.2.77
+  '@iconify-json/hugeicons': ^1.2.35
 
 catalogMode: prefer
 

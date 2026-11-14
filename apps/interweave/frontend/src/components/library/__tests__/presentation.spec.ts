@@ -1,4 +1,13 @@
-import { fluentFolder24Filled, iconParkOutlineMacFinder } from '@greypan/web-ui/icons'
+import {
+  carbonNoImage,
+  fluentFolder24Filled,
+  fluentMusicNoteOff220Regular,
+  hugeiconsFileNotFound,
+  hugeiconsLicenseNo,
+  hugeiconsNoInternet,
+  iconParkOutlineMacFinder,
+  tablerMovieOff
+} from '@greypan/web-ui/icons'
 import { describe, expect, it, vi } from 'vite-plus/test'
 
 import {
@@ -13,10 +22,19 @@ import {
   formatSize,
   resourceIcon,
   resourceKindLabel,
+  unavailableResourceIcon,
   tagClass
 } from '../presentation'
 
 describe('library presentation', () => {
+  it('失效资源按类型选择图标，未知文件回退到文件未找到', () => {
+    expect(unavailableResourceIcon(ResourceKind.ResourceKindImage)).toBe(carbonNoImage)
+    expect(unavailableResourceIcon(ResourceKind.ResourceKindVideo)).toBe(tablerMovieOff)
+    expect(unavailableResourceIcon(ResourceKind.ResourceKindAudio)).toBe(fluentMusicNoteOff220Regular)
+    expect(unavailableResourceIcon(ResourceKind.ResourceKindDocument)).toBe(hugeiconsLicenseNo)
+    expect(unavailableResourceIcon(ResourceKind.ResourceKindWeb)).toBe(hugeiconsNoInternet)
+    expect(unavailableResourceIcon(ResourceKind.ResourceKindFile)).toBe(hugeiconsFileNotFound)
+  })
   it('根据原生平台显示访达或 Windows 文件资源管理器图标与名称', () => {
     try {
       vi.stubGlobal('_wails', { environment: { OS: 'darwin' } })

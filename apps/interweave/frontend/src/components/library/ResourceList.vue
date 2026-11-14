@@ -69,8 +69,8 @@ const emptyTitle = computed(() => (props.runtimeAvailable ? '资源库为空' : 
 const checkedSet = computed(() => new Set(props.checkedIds))
 
 /*
- * 行高没有写死。ResourceRow 的标题会 line-clamp-2 换行、标签区会 flex-wrap 换行、进入改名
- * 编辑态还会从文字换成表单控件，三种情况高度都不同。这个 item-size 只是「还没量到之前先用
+ * 行高没有写死。ResourceRow 的标签区会 flex-wrap 换行，进入改名编辑态时表单控件也可能撑高行。
+ * 这个 item-size 只是「还没量到之前先用
  * 多少」的一阶猜测，真正的值由 virtua 挂在每个条目上的 ResizeObserver 量出来覆盖回去。
  */
 const ROW_ESTIMATE = 64
@@ -162,13 +162,13 @@ onBeforeUnmount(() => {
  * 自己的 scrollIndexIntoView 里（见下），那条路径要把 virtua 的列表内偏移用 listOffset
  * 换算成文档坐标。
  *
- * 行高不固定（标题换行、标签换行、改名编辑态），由 virtua 挂在每个条目上的 ResizeObserver
+ * 行高不固定（标签换行、改名编辑态），由 virtua 挂在每个条目上的 ResizeObserver
  * 自动测量，不需要函数式 ref 与自定义 measureElement：
  *   - virtua 只认「元素 -> 下标」的对应（mount 时注册，条目下标变化时重新注册），高度按
  *     下标写进它自己的尺寸表；
  *   - 重排之后每个条目的下标变了，ListItem 的 watch 会用新下标重新 observe 同一元素，
  *     ResizeObserver.observe() 规范上会立刻投递一次初始回调，真实高度因此落到新下标上——
- *     「改名撑成多行 + 排到列表最前」这条重排路径由库自己兜住，不需要外部触发重算。
+ *     「改名编辑 + 排到列表最前」这条重排路径由库自己兜住，不需要外部触发重算。
  *   - 条目高度只在内容变化时才会变，DOM 摘除/重建（挂载时尚未 attach 的函数式 ref 那条
  *     时序）不构成问题：virtua 是在挂载后由 ResizeObserver 量，不是挂载瞬间同步读 offsetHeight。
  */

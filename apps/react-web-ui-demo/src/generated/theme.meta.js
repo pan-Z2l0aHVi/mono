@@ -647,6 +647,15 @@ const meta = [
     {
       label: 'tr',
       children: [
+      { label: 'td', content: "<code>--wui-color-surface-control-shade</code>" },
+      { label: 'td', content: "Mixing color for neutral control interaction states" },
+      { label: 'td', content: "<code>#1b1b30</code>" },
+      { label: 'td', content: "<code>#000</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
       { label: 'td', content: "<code>--wui-color-surface-track</code>" },
       { label: 'td', content: "Slider/Switch track surface" },
       { label: 'td', content: "<code>#e5e5eb</code>" },

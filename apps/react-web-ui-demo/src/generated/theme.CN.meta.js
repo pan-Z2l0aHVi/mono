@@ -647,6 +647,15 @@ const meta = [
     {
       label: 'tr',
       children: [
+      { label: 'td', content: "<code>--wui-color-surface-control-shade</code>" },
+      { label: 'td', content: "中性控件交互态混色基准" },
+      { label: 'td', content: "<code>#1b1b30</code>" },
+      { label: 'td', content: "<code>#000</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
       { label: 'td', content: "<code>--wui-color-surface-track</code>" },
       { label: 'td', content: "Slider/Switch 轨道表面" },
       { label: 'td', content: "<code>#e5e5eb</code>" },

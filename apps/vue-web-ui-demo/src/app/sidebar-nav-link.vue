@@ -19,7 +19,7 @@ const linkClass = computed(
   () =>
     props.itemClass +
     (props.collapsed ? ' w-9' : ' w-full') +
-    (props.active ? '' : ' hover:bg-[#1b1b20]/4 dark:hover:bg-white/6')
+    (props.active ? '' : ' hover:bg-[#1b1b30]/4 dark:hover:bg-white/6')
 )
 </script>
 

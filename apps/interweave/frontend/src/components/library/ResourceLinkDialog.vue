@@ -64,17 +64,11 @@ function submit() {
       @input="handleInput"
       @keydown.enter="submit"
     >
-      <web-ui-button
-        slot="suffix"
-        class="-mr-2"
-        icon
-        variant="ghost"
-        size="28"
-        aria-label="粘贴链接"
-        @click="pasteClipboard"
-      >
-        <web-ui-icon :icon="lucideClipboardPaste" :size="16" />
-      </web-ui-button>
+      <web-ui-tooltip slot="suffix" portal content="从剪切板添加">
+        <web-ui-button class="-mr-2" icon variant="ghost" size="28" aria-label="粘贴链接" @click="pasteClipboard">
+          <web-ui-icon :icon="lucideClipboardPaste" :size="16" />
+        </web-ui-button>
+      </web-ui-tooltip>
     </web-ui-input>
     <p v-if="error" role="alert" class="m-0 mt-2 text-sm text-red-700">{{ error }}</p>
     <web-ui-button slot="footer" variant="primary" full @click="submit">{{

@@ -86,7 +86,7 @@ describe('RestoreDialog', () => {
       )!
       scan.click()
       await nextTick()
-      expect(host.textContent).toContain('选择扫描范围')
+      expect(host.textContent).toContain('扫描范围')
       expect(addItems).not.toHaveBeenCalled()
       const scanDialog = host.querySelectorAll('web-ui-dialog')[1]
       ;[...scanDialog.querySelectorAll<HTMLElement>('web-ui-button')]

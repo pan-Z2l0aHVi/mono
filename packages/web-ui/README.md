@@ -86,6 +86,22 @@ Place named slots on child elements, for example `<div slot="header">`. To acces
 
 With Vite, you can install `@greypan/unplugin-web-components` to import components based on the tags you use. Place it before the React plugin in `vite.config.ts`:
 
+```npm
+npm install -D @greypan/unplugin-web-components
+```
+
+```pnpm
+pnpm add -D @greypan/unplugin-web-components
+```
+
+```bun
+bun add -D @greypan/unplugin-web-components
+```
+
+```yarn
+yarn add -D @greypan/unplugin-web-components
+```
+
 ```ts
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import react from '@vitejs/plugin-react'
@@ -141,6 +157,22 @@ Use camelCase property names when dynamically binding booleans and non-string va
 #### Optional: automatic component imports
 
 Install `@greypan/unplugin-web-components` and add the plugin to your Vite configuration. The `isCustomElement` configuration above is still required:
+
+```npm
+npm install -D @greypan/unplugin-web-components
+```
+
+```pnpm
+pnpm add -D @greypan/unplugin-web-components
+```
+
+```bun
+bun add -D @greypan/unplugin-web-components
+```
+
+```yarn
+yarn add -D @greypan/unplugin-web-components
+```
 
 ```ts
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'

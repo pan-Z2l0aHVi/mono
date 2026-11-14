@@ -86,7 +86,7 @@ function SidebarNavLink({ to, label, title, active, collapsed, onNavigate }: Sid
       to={to}
       className={
         NAV_ITEM_CLASS +
-        (active ? '' : ' hover:bg-[#1b1b20]/4 dark:hover:bg-white/6') +
+        (active ? '' : ' hover:bg-[#1b1b30]/4 dark:hover:bg-white/6') +
         (collapsed ? ' w-9 justify-center' : ' w-full')
       }
       data-active={active}

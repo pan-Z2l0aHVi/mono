@@ -3,6 +3,8 @@ import { copyToClipboard } from '@greypan/browser-kit'
 import type { WebUiDrawer, WebUiEditableText, WebUiEvent, WebUiTextarea } from '@greypan/web-ui'
 import {
   akarIconsCircleCheck,
+  akarIconsPlay,
+  codiconEye,
   lucideCopy,
   lucideExternalLink,
   lucidePenLine,
@@ -11,6 +13,8 @@ import {
 import { computed, onScopeDispose, ref, watch } from 'vue'
 
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
+
+import PressDrawIcon from '../PressDrawIcon.vue'
 
 import { arrowUpRight } from './icons'
 import {
@@ -124,13 +128,11 @@ function restoreResource() {
 }
 
 const copiedLocation = ref<string | null>(null)
-const copyRun = ref(0)
 let copiedRevertTimer: ReturnType<typeof setTimeout> | undefined
 
 function copyLocation(location: string) {
   void copyToClipboard(location)
   copiedLocation.value = location
-  copyRun.value++
   // 同一个来源连点时不能让旧的 timer 提前把勾收回，连点不同来源时以最后一次为准。
   clearTimeout(copiedRevertTimer)
   copiedRevertTimer = setTimeout(() => {
@@ -154,14 +156,16 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
   >
     <div
       v-if="resource"
-      class="detail-drawer text-left font-[system-ui,sans-serif] text-[length:var(--wui-font-size,14px)] leading-[1.4] text-(--wui-color-text,#1c1c1e)"
+      class="detail-drawer text-left font-[system-ui,sans-serif] text-[length:var(--wui-font-size,14px)] leading-[1.4] text-(--wui-color-text,#1c1c1e) [--detail-accent:var(--wui-color-accent,#08f)]"
     >
-      <div class="detail-top text-base font-semibold">资源详情</div>
+      <div class="detail-top text-lg font-semibold">资源详情</div>
       <div class="detail-scroll pb-4">
         <div class="detail-profile flex items-center gap-[15px] py-3">
           <ResourceThumbnail
             class="!size-[76px] !rounded-[18px]"
             :kind="resource.kind"
+            detail
+            :unavailable="!resource.available"
             :source="resource.preferred"
             :media-url="resource.preferred?.mediaUrl ?? null"
             :thumbnail-url="resource.preferred?.thumbnailUrl ?? null"
@@ -171,7 +175,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
               :ref="editorRef"
               :value="resource.title"
               :disabled="!editingTitle"
-              class="detail-title text-sm font-bold wrap-anywhere"
+              class="detail-title text-base font-bold wrap-anywhere"
               :aria-label="`修改 ${resource.title} 的标题`"
               @click.stop
               @change="handleTitleChange"
@@ -197,7 +201,10 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
               class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-[#007aff] [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))]"
               @click="emit('preview', resource)"
             >
-              <i class="text-lg not-italic">▶</i>预览
+              <web-ui-icon
+                :icon="resource.kind === 'audio' || resource.kind === 'video' ? akarIconsPlay : codiconEye"
+                :size="18"
+              />预览
             </button>
             <web-ui-dropdown class="detail-quick-dropdown min-w-0" placement="bottom-start">
               <button
@@ -263,15 +270,15 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
                 "
                 @click="copyLocation(itemSource.location)"
               >
-                <web-ui-svg-draw-lines
-                  v-if="copiedLocation === itemSource.location"
-                  :key="copyRun"
-                  class="detail-copy-pop"
-                  :duration="300"
-                >
-                  <web-ui-icon :icon="akarIconsCircleCheck" :size="15" class="text-(--wui-color-success)" />
-                </web-ui-svg-draw-lines>
-                <web-ui-icon v-else :icon="lucideCopy" :size="15" />
+                <PressDrawIcon>
+                  <web-ui-icon
+                    v-if="copiedLocation === itemSource.location"
+                    :icon="akarIconsCircleCheck"
+                    :size="15"
+                    class="text-(--wui-color-success)"
+                  />
+                  <web-ui-icon v-else :icon="lucideCopy" :size="15" />
+                </PressDrawIcon>
               </web-ui-button>
             </web-ui-tooltip>
           </div>
@@ -294,7 +301,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
             ><small class="text-right text-[#8a8a94] [font-size:inherit]">{{ formatDate(resource.createdAt) }}</small>
           </div>
           <div class="detail-row relative box-border flex min-h-9 items-center gap-2.5 px-[15px] py-[7px] text-xs">
-            <span class="flex-1 text-sm">最后修改</span
+            <span class="flex-1 text-sm">最后修改于</span
             ><small class="text-right text-[#8a8a94] [font-size:inherit]">{{ formatDate(resource.updatedAt) }}</small>
           </div>
         </div>
@@ -317,7 +324,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
         </div>
         <p class="detail-caption mx-3.5 mt-4 mb-1.5 text-xs text-[#777780]">备注</p>
         <web-ui-textarea
-          class="mb-3 rounded-[18px] bg-(--wui-color-surface,#fff) [--wui-shadow-glass:0_0_0_transparent] [--wui-color-accent:transparent] [--wui-color-focus-ring:transparent] [--wui-color-glass-ring:transparent] [--wui-color-glass-ring-shade:transparent] [--wui-color-glass-ring-sheen:transparent] [--wui-color-glass-highlight:transparent]"
+          class="mb-3 rounded-[18px] bg-(--wui-color-surface,#fff) caret-(--detail-accent) [--wui-shadow-glass:0_0_0_transparent] [--wui-color-accent:transparent] [--wui-color-focus-ring:transparent] [--wui-color-glass-ring:transparent] [--wui-color-glass-ring-shade:transparent] [--wui-color-glass-ring-sheen:transparent] [--wui-color-glass-highlight:transparent]"
           borderless
           :value="resource.note"
           :rows="2"
@@ -342,41 +349,6 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
 </template>
 
 <style scoped>
-@keyframes detail-copy-pop {
-  0% {
-    transform: scale(0.75);
-  }
-
-  40% {
-    transform: scale(2);
-  }
-
-  100% {
-    transform: scale(1);
-  }
-}
-
-.detail-copy-pop {
-  animation: detail-copy-pop calc(var(--wui-duration-focus, 200ms) * 1.5) ease-out;
-}
-
-.detail-copy > web-ui-icon,
-.detail-copy > .detail-copy-pop {
-  transition: transform var(--wui-duration-press, 80ms) ease-out;
-}
-
-.detail-copy:active > web-ui-icon,
-.detail-copy:active > .detail-copy-pop {
-  transform: scale(0.75);
-  animation: none;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  .detail-copy-pop {
-    animation: none;
-  }
-}
-
 .detail-row + .detail-row::before {
   content: '';
 
@@ -387,6 +359,6 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
 
   height: 1px;
 
-  background: var(--wui-color-border, rgb(0 0 0 / 0.1));
+  background: color-mix(in srgb, var(--wui-color-border, rgb(0 0 0 / 0.1)) 65%, transparent);
 }
 </style>

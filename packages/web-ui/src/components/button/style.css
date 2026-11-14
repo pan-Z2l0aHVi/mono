@@ -98,8 +98,16 @@ button:active:not(:disabled, [data-pointer-outside]) {
 :host([variant='secondary']) {
   --wui-button-color: var(--wui-color-text, #1b1b20);
   --wui-button-bg: var(--wui-color-surface-control, #e5e5eb);
-  --wui-button-bg-hover: color-mix(in srgb, var(--wui-button-bg, #e5e5eb) 92%, black);
-  --wui-button-bg-active: color-mix(in srgb, var(--wui-button-bg, #e5e5eb) 82%, black);
+  --wui-button-bg-hover: color-mix(
+    in srgb,
+    var(--wui-button-bg, #e5e5eb) 92%,
+    var(--wui-color-surface-control-shade, #1b1b30)
+  );
+  --wui-button-bg-active: color-mix(
+    in srgb,
+    var(--wui-button-bg, #e5e5eb) 82%,
+    var(--wui-color-surface-control-shade, #1b1b30)
+  );
 }
 
 :host([variant='ghost']) {

@@ -528,8 +528,8 @@ function submit() {
     </web-ui-button>
   </web-ui-dialog>
   <web-ui-dialog :open="scanChoiceOpen" controlled no-backdrop-close @open-change="scanChoiceOpen = $event.detail.open">
-    <span slot="header">选择扫描范围</span>
-    <p>选择要查找的位置，包含其中的所有文件夹。</p>
+    <span slot="header">扫描范围</span>
+    <p>选择要查找的位置，包含其中所有子文件夹</p>
     <web-ui-button slot="footer" full variant="primary" @click="chooseScanDirectory">扫描选定文件夹</web-ui-button>
     <web-ui-button slot="footer" full variant="secondary" @click="scanAllDisks">扫描全盘</web-ui-button>
     <web-ui-button slot="footer" full variant="secondary" @click="scanChoiceOpen = false">取消</web-ui-button>
