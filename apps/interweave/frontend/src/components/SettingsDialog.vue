@@ -131,10 +131,7 @@ function pickAccent(value: string) {
           <web-ui-switch disabled aria-label="MCP server（即将推出）" />
         </div>
         <div :class="settingsRowClass">
-          <div class="flex min-w-0 flex-col gap-0.5">
-            <span class="text-sm text-(--wui-color-text)">开发者选项</span>
-            <span :class="metadataLabelClass">显示「开发」菜单（重新载入与开发者控制台）</span>
-          </div>
+          <span class="text-sm text-(--wui-color-text)">开发者选项</span>
           <web-ui-switch :checked="developerOptions" aria-label="开发者选项" @change="handleDeveloperOptionsChange" />
         </div>
       </div>

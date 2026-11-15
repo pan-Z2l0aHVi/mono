@@ -11,8 +11,11 @@
        * 窗口会先以默认主题渲染一帧（Windows 上是深色窗口底 + 白底页面），用户看到一次闪白。
        * 本层是纯 HTML/CSS，不依赖任何脚本或组件库：它在 WebView 拿到第一个字节时就能画出来。
        *
-       * 配色取窗口背景色（application.NewRGB(6, 7, 15)）：它与窗口底色一致，
-       * 因此启动层撤掉时背景不会跳变。
+       * 配色跟随系统外观。Wails 3 没有「读当前系统主题」的 API（Darwin 只发
+       * ApplicationDidChangeTheme 这类变更事件，选项里的 Mac.Appearance 只用于写入），
+       * 应用自己的外观设置存放在 Go 侧，首帧读不到；`prefers-color-scheme` 由 WebView 按
+       * 系统外观解析，是首帧唯一可用的信号。取值对齐 web-ui-theme 的 --wui-color-page，
+       * 撤层时背景不跳变；用户设置与系统不一致时，这一层只存在到设置落定，之后由应用重绘。
        */
       #startup-layer {
         position: fixed;
@@ -22,9 +25,15 @@
         display: grid;
         place-items: center;
 
-        background: rgb(6 7 15);
+        background: #fff;
 
         transition: opacity 220ms ease-out;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        #startup-layer {
+          background: #242628;
+        }
       }
 
       #startup-layer[data-leaving='true'] {
