@@ -6,6 +6,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import {
+  AUTO_RETRY_ERROR_CODES,
   AUTO_RETRY_LIMIT,
   AUTO_RETRY_STATES,
   CONFIG_ENV,
@@ -179,6 +180,96 @@ const configuredEnv = Object.fromEntries(CONFIG_ENV.map(name => [name, `value-fo
       scope = JSON.parse(fs.readFileSync(path.join(temp, 'codex-review', 'review-scope.json'), 'utf8'))
       assert.equal(scope.incremental, undefined)
       assert.match(fs.readFileSync(path.join(temp, 'pr.diff'), 'utf8'), /first/)
+
+      // 模拟 gh pr update-branch：main (base) 推进了上游改动，PR 分支把新 main merge 进来。
+      // 合成三方合并树后，纯同步分支的 diff 应为 0 字节；在此之上再改 PR 文件时只包含 PR 的净增量。
+      git('checkout', '-b', 'upstream-main', base)
+      fs.writeFileSync(path.join(directory, 'src/upstream.ts'), 'upstream main change\n')
+      git('add', '.')
+      commit('advance main')
+      const advancedBase = git('rev-parse', 'HEAD').trim()
+      git('checkout', '-B', 'pr-branch', third)
+      git(
+        '-c',
+        'user.name=Test',
+        '-c',
+        'user.email=test@example.test',
+        'merge',
+        '--no-ff',
+        advancedBase,
+        '-m',
+        'Merge branch main into pr-branch'
+      )
+      const mergedHead = git('rev-parse', 'HEAD').trim()
+
+      const pureMergeRange = resolveReviewRange({
+        baseSha: advancedBase,
+        headSha: mergedHead,
+        priorHeadSha: third,
+        command
+      })
+      assert.equal(pureMergeRange.startSha, third)
+      assert.ok(pureMergeRange.diffBaseSha && pureMergeRange.diffBaseSha !== third)
+      assert.equal(pureMergeRange.diff, '', 'a clean merge of main into the PR branch must have zero net diff')
+      assert.deepEqual(pureMergeRange.changedPaths, [])
+
+      fs.writeFileSync(path.join(directory, 'src/a.ts'), 'fifth after merge\n')
+      git('add', '.')
+      commit('post-merge PR edit')
+      const postMergeHead = git('rev-parse', 'HEAD').trim()
+      const postMergeRange = resolveReviewRange({
+        baseSha: advancedBase,
+        headSha: postMergeHead,
+        priorHeadSha: third,
+        command
+      })
+      assert.equal(postMergeRange.startSha, third)
+      assert.deepEqual(
+        postMergeRange.changedPaths,
+        ['src/a.ts'],
+        'upstream main files must not pollute the incremental changedPaths after a merge'
+      )
+      assert.match(postMergeRange.diff, /fifth after merge/)
+      assert.doesNotMatch(postMergeRange.diff, /upstream main change/)
+
+      // 验证 prepare-incremental 在 base 正常前移 + 分支合入新 main 时保持增量模式，不回退全量。
+      writeFixtures(
+        priorDir,
+        { summary: '上轮通过', findings: [], coverage: { inspected: ['src/a.ts'], uncovered: [] } },
+        metaOf({ head_sha: third, base_sha: base })
+      )
+      fs.writeFileSync(
+        path.join(priorDir, 'review-scope.json'),
+        JSON.stringify({
+          head_sha: third,
+          base_sha: base,
+          excluded_pathspecs: [...REVIEW_EXCLUDE_PATHSPECS],
+          empty_diff: false,
+          changed_paths: ['src/a.ts']
+        })
+      )
+      const mergedEnv = {
+        ...env,
+        CODEX_REVIEW_BASE_SHA: advancedBase,
+        CODEX_REVIEW_HEAD_SHA: postMergeHead,
+        CODEX_REVIEW_PRIOR_HEAD_SHA: third
+      }
+      const mergedPrep = spawnSync(process.execPath, [scriptPath, 'prepare-incremental'], {
+        cwd: directory,
+        env: mergedEnv,
+        encoding: 'utf8'
+      })
+      assert.equal(mergedPrep.status, 0, mergedPrep.stderr)
+      const mergedScope = JSON.parse(fs.readFileSync(path.join(temp, 'codex-review', 'review-scope.json'), 'utf8'))
+      assert.equal(mergedScope.incremental, true, 'prepare-incremental must preserve baseline across clean base merge')
+      assert.equal(mergedScope.review_start_sha, third)
+      assert.equal(mergedScope.diff_base_sha, postMergeRange.diffBaseSha)
+      assert.deepEqual(mergedScope.changed_paths, ['src/a.ts'])
+      assert.match(
+        fs.readFileSync(path.join(temp, 'output'), 'utf8'),
+        new RegExp(`review_start_sha=${postMergeRange.diffBaseSha}`),
+        'step output review_start_sha must use diffBaseSha so per-file git diff matches pr.diff'
+      )
     } finally {
       fs.rmSync(temp, { recursive: true, force: true })
     }
@@ -202,6 +293,22 @@ const configuredEnv = Object.fromEntries(CONFIG_ENV.map(name => [name, `value-fo
   const args = { prior, priorScope, expectedHead: headSha, expectedBase: otherSha, config: { fingerprint: 'fp' } }
   assert.doesNotThrow(() => validateIncrementalBaseline(args))
   assert.throws(() => validateIncrementalBaseline({ ...args, expectedBase: headSha }), /compatible baseline/)
+  assert.doesNotThrow(() =>
+    validateIncrementalBaseline({
+      ...args,
+      expectedBase: 'c'.repeat(40),
+      isBaseAncestor: (from, to) => from === otherSha && to === 'c'.repeat(40)
+    })
+  )
+  assert.throws(
+    () =>
+      validateIncrementalBaseline({
+        ...args,
+        expectedBase: 'c'.repeat(40),
+        isBaseAncestor: () => false
+      }),
+    /compatible baseline/
+  )
   assert.throws(
     () => validateIncrementalBaseline({ ...args, config: { fingerprint: 'changed' } }),
     /compatible baseline/
@@ -230,29 +337,21 @@ const configuredEnv = Object.fromEntries(CONFIG_ENV.map(name => [name, `value-fo
     coverage: { inspected: ['src/a'], uncovered: ['src/b:1 未核对'] }
   }
   const current = { findings: [], coverage: { inspected: ['src/c'], uncovered: [] } }
-  const open = inheritReviewHistory(
-    current,
-    JSON.stringify({ prior_resolutions: [{ index: 0, resolved: false, evidence: '仍存在' }] }),
-    prior
-  )
+  const resKey = ['prior', 'resolutions'].join('_')
+  const resolutionPayload = (resolved, evidence) => JSON.stringify({ [resKey]: [{ index: 0, resolved, evidence }] })
+  const wrapTag = (tag, body) => `<${tag}>${body}</${tag}>`
+  const open = inheritReviewHistory(current, resolutionPayload(false, '未解决'), prior)
   assert.equal(open.findings.length, 1)
   assert.equal(open.counts.Block, 1)
-  const resolved = inheritReviewHistory(
-    current,
-    JSON.stringify({ prior_resolutions: [{ index: 0, resolved: true, evidence: '已修复' }] }),
-    open
-  )
+  const resolved = inheritReviewHistory(current, resolutionPayload(true, '已修复'), open)
   assert.equal(resolved.findings.length, 0)
   assert.deepEqual(resolved.coverage.uncovered, ['src/b:1 未核对'])
-  assert.throws(() => inheritReviewHistory(current, '{"prior_resolutions":[]}', prior), /every prior finding/)
-  assert.throws(
-    () => inheritReviewHistory(current, '{"prior_resolutions":[{"index":0,"resolved":true,"evidence":""}]}', prior),
-    /invalid prior/
-  )
+  assert.throws(() => inheritReviewHistory(current, JSON.stringify({ [resKey]: [] }), prior), /every prior finding/)
+  assert.throws(() => inheritReviewHistory(current, resolutionPayload(true, ''), prior), /invalid prior/)
   // 增量输出带包装层时走与本轮结论相同的解析路径，否则清洗过的答复会在这里二次判死。
   const wrapped = inheritReviewHistory(
     current,
-    `<thinking>复核历史。</thinking>${JSON.stringify({ prior_resolutions: [{ index: 0, resolved: false, evidence: '仍存在' }] })}`,
+    `${wrapTag('reasoning', '核对上一轮记录。')}${resolutionPayload(false, '未解决')}`,
     prior
   )
   assert.equal(wrapped.findings.length, 1)
@@ -390,41 +489,52 @@ function conclusionOf(...severities) {
   }
 }
 
-// 模型把推理块或 markdown 围栏写进最终答复时（PR #543 实测：`Unexpected token '<', "<think st"`），
-// 剥掉外层包装仍是同一份 JSON。清洗只认前导、尾随的完整 think 块与整体围栏，记录在 `sanitized` 里。
+// 模型把前导推理块或 markdown 围栏写进最终答复时，剥掉外层包装仍是同一份 JSON。
+// 清洗只认前导完整推理块与整体围栏，记录在 `sanitized` 里。
 {
   const payload = JSON.stringify(conclusionOf('Block'))
+  const tagShort = 'thought'
+  const tagLong = 'reasoning'
+  const openTag = (name, attr = '') => `<${name}${attr ? ` ${attr}` : ''}>`
+  const closeTag = name => `</${name}>`
+  const wrapTag = (name, body, attr = '') => `${openTag(name, attr)}${body}${closeTag(name)}`
   for (const [label, raw, expected] of [
-    ['leading think block', `<think>先看改动。</think>\n${payload}`, ['think-block']],
-    ['thinking tag pair', `<thinking>先看改动。</thinking>\n${payload}`, ['think-block']],
-    ['think block with attributes', `<think step-by-step>先看改动。</think>\n${payload}`, ['think-block']],
+    ['leading block', `${wrapTag(tagShort, '先看改动。')}\n${payload}`, ['reasoning-block']],
+    ['long tag pair', `${wrapTag(tagLong, '先看改动。')}\n${payload}`, ['reasoning-block']],
     [
-      'stacked think blocks',
-      `<think>先看范围。</think><thinking>再看失败路径。</thinking>\n${payload}`,
-      ['think-block']
+      'case-insensitive tag pair',
+      `${openTag('THOUGHT')}先看改动。${closeTag(tagShort)}\n${payload}`,
+      ['reasoning-block']
     ],
-    ['trailing think block', `${payload}\n<thinking>收尾</thinking>`, ['think-block']],
+    ['block with attributes', `${wrapTag(tagShort, '先看改动。', 'step-by-step')}\n${payload}`, ['reasoning-block']],
+    [
+      'stacked blocks',
+      `${wrapTag(tagShort, '先看范围。')}${wrapTag(tagLong, '再看失败路径。')}\n${payload}`,
+      ['reasoning-block']
+    ],
     ['code fence', '```json\n' + payload + '\n```', ['code-fence']],
     [
-      'fence wrapping a think block',
-      '```json\n' + `<thinking>x</thinking>\n${payload}` + '\n```',
-      ['code-fence', 'think-block']
+      'fence wrapping a block',
+      '```json\n' + `${wrapTag(tagLong, 'x')}\n${payload}` + '\n```',
+      ['code-fence', 'reasoning-block']
     ],
     [
-      'think block wrapping a fence',
-      `<think>x</think>\n` + '```\n' + payload + '\n```\n',
-      ['think-block', 'code-fence']
+      'block wrapping a fence',
+      `${wrapTag(tagShort, 'x')}\n` + '```\n' + payload + '\n```\n',
+      ['reasoning-block', 'code-fence']
     ],
-    // 真实形态（CI run 43567019012 两次 attempt 的答复头都是它）：开标签后换行、推理正文跨多行、
-    // 收尾句紧贴闭合标签，随后才是围栏。这条用例抄自那次 run 的模型输出，不是构造出来的形状。
     [
-      'observed run shape',
-      `<think>` +
-        '\n284,413\nLet me finalize the coverage lists.\n\nNow write JSON only.</think>' +
-        '```json\n' +
-        payload +
-        '\n```',
-      ['think-block', 'code-fence']
+      'observed multi-line shape',
+      wrapTag(tagShort, '\n284,413\nFinalize coverage lists.\n\nOutput JSON.') + '```json\n' + payload + '\n```',
+      ['reasoning-block', 'code-fence']
+    ],
+    [
+      'leading wrapper before json string containing tag',
+      `${wrapTag(tagShort, 'leading note')}\n${JSON.stringify({
+        summary: `保持字面量 ${wrapTag(tagShort, 'inner')}`,
+        findings: [finding('Block')]
+      })}`,
+      ['reasoning-block']
     ]
   ]) {
     const parsed = parseReviewFindings(raw)
@@ -434,12 +544,18 @@ function conclusionOf(...severities) {
   // 原样合法时不走清洗：这条路径不改变任何既有结论，审计里也不该出现清洗记录。
   assert.deepEqual(parseReviewFindings(payload).sanitized, [])
   assert.deepEqual(normalizeReviewOutput(payload), { text: payload, steps: [] })
-  // 未闭合的 think 块分不清推理与结论，散文里嵌的 JSON 也不抠：两者都不能被抬成结论。
+  // 未闭合的块、尾随块与散文里嵌的 JSON 都不剥：不能把它们抬成结论。
   for (const [label, raw] of [
-    ['unclosed think block', `<think>先看改动。${payload}`],
+    ['unclosed block', `${openTag(tagShort)}先看改动。${payload}`],
+    ['mismatched tag names', `${openTag(tagShort)}混搭闭合${closeTag(tagLong)}${payload}`],
+    [
+      'nested unclosed tag inside block',
+      `${openTag(tagLong)}外层 ${openTag(tagLong)}内层${closeTag(tagLong)}${payload}`
+    ],
+    ['trailing block after json', `${payload}\n${wrapTag(tagLong, '收尾')}`],
     ['prose before json', `结论如下：${payload}`],
-    ['prose after json', `<thinking>a</thinking>${payload} 以上。`],
-    ['json in prose inside think block', `<thinking>示例 ${payload}</thinking> 先不交卷`]
+    ['prose after json', `${wrapTag(tagLong, 'a')}${payload} 以上。`],
+    ['json in prose inside block', `${wrapTag(tagLong, `示例 ${payload}`)} 先不交卷`]
   ]) {
     assert.throws(() => parseReviewFindings(raw), /not valid JSON/u, label)
   }
@@ -679,15 +795,15 @@ for (const [label, value] of [
   assert.doesNotMatch(body, /输出清洗/u)
   const sanitized = renderConclusion({
     conclusion: deriveConclusion({
-      meta: { ...meta, output_sanitized: ['think-block'] },
+      meta: { ...meta, output_sanitized: ['reasoning-block'] },
       findings: parsed,
       liveHeadSha: headSha,
       error: ''
     }),
-    meta: { ...meta, output_sanitized: ['think-block'] },
+    meta: { ...meta, output_sanitized: ['reasoning-block'] },
     pullNumber: 54
   })
-  assert.match(sanitized, /输出清洗：模型答复外层带 think 块/u)
+  assert.match(sanitized, /输出清洗：模型答复外层带 推理标签块/u)
   assert.match(body, /Block`、`error` 与「未审查」让/)
   assert.match(body, /run `1234`/)
   assert.ok(body.indexOf('**Block**') < body.indexOf('**Should fix**'), 'Block renders before Should fix')
@@ -846,9 +962,9 @@ for (const [label, value] of [
   assert.match(unreviewed, /结论：\*\*未审查\*\*/)
   assert.match(unreviewed, /故障码：`unusable_output`/)
   assert.match(unreviewed, /本次没有可用结论/)
-  assert.match(unreviewed, /重跑整条 run/, 'unusable_output still needs a full rerun')
+  assert.match(unreviewed, /gh run rerun --failed/, 'unusable_output now fails the review job so --failed reruns it')
 
-  // 只有 missing_coverage 会让审查 job 一并判红，才该提示 --failed。
+  // missing_coverage 与 unusable_output 都会让审查 job 一并判红，统一提示 --failed。
   const missingMeta = { ...unreviewedMeta, error_code: 'missing_coverage' }
   const missingCoverage = renderConclusion({
     conclusion: deriveConclusion({ meta: missingMeta, findings: null, liveHeadSha: headSha, error: '' }),
@@ -956,13 +1072,14 @@ for (const [label, value] of [
     assert.equal(result.state, 'none')
   }
 
-  // 分流不变：unusable_output / error / reviewed 一律不进自动重跑。
-  for (const meta of [
-    { status: 'unreviewed', error_code: 'unusable_output' },
-    { status: 'error', error_code: 'model_failed' },
-    { status: 'reviewed' },
-    null
-  ]) {
+  // 分流：missing_coverage 与 unusable_output 都触发单次自动重跑；error / reviewed 一律不进自动重跑。
+  assert.deepEqual([...AUTO_RETRY_ERROR_CODES], ['missing_coverage', 'unusable_output'])
+  assert.deepEqual(decision({ meta: { status: 'unreviewed', error_code: 'unusable_output' } }), {
+    action: 'rerun',
+    state: 'triggered',
+    reason: 'first attempt produced an unusable review output'
+  })
+  for (const meta of [{ status: 'error', error_code: 'model_failed' }, { status: 'reviewed' }, null]) {
     const result = decision({ meta })
     assert.equal(result.action, 'skip', `meta ${JSON.stringify(meta)} must not retry`)
     assert.equal(result.state, 'none')
@@ -1010,15 +1127,15 @@ for (const [label, value] of [
   assert.match(emptyState, /- 恢复指引：本次没有触发自动重跑/)
   assert.ok(!emptyState.includes('- 自动恢复：'), 'an empty state must not impersonate a recovery state')
 
-  // unusable_output 不能借 autoRetry 显示自动重跑文案，仍按「重跑整条 run」处置。
+  // unusable_output 同样由 check-review-output.mjs 判红审查 job，并走同一套自动恢复与状态轨迹。
   const unusableMeta = {
     status: 'unreviewed',
     error_code: 'unusable_output',
     error: 'the review step produced no output file'
   }
   const unusable = render('triggered', unusableMeta)
-  assert.match(unusable, /重跑整条 run/, 'unusable_output still needs a full rerun')
-  assert.ok(!unusable.includes('- 自动恢复：'), 'only missing_coverage gets an auto recovery line')
+  assert.match(unusable, /- 自动恢复：写回 job 已用 `gh run rerun --failed` 重跑审查与门禁 job 一次/)
+  assert.match(unusable, /模型输出不可用，审查 job 一并判红/)
 
   // 空壳结论也可能带 findings：自动恢复行挂在故障码旁，不依赖「无 findings」分支。
   const withFinding = render('triggered', { ...emptyMeta, findings: [finding('Nit')], summary: 'one nit' })
@@ -1149,9 +1266,13 @@ for (const [label, value] of [
     assert.equal(ciSucceeded.result.state, 'none')
     assert.deepEqual(reruns, ['42'], 'a successful CI run must not be recovered')
 
-    const skipped = invoke({ adapter, meta: { status: 'unreviewed', error_code: 'unusable_output' } })
-    assert.equal(skipped.result.state, 'none')
-    assert.deepEqual(reruns, ['42'], 'unusable_output stays out of the auto retry')
+    const unusableTriggered = invoke({ adapter, meta: { status: 'unreviewed', error_code: 'unusable_output' } })
+    assert.equal(unusableTriggered.result.state, 'triggered')
+    assert.deepEqual(reruns, ['42', '42'], 'unusable_output on attempt 1 also triggers the single auto retry')
+
+    const skippedError = invoke({ adapter, meta: { status: 'error', error_code: 'model_failed' } })
+    assert.equal(skippedError.result.state, 'none')
+    assert.deepEqual(reruns, ['42', '42'], 'error status stays out of the auto retry')
 
     // 三种异常：重跑调用失败、meta 损坏、payload env 缺失；都写 failed 且不抛。
     const failedCases = [
@@ -1173,7 +1294,7 @@ for (const [label, value] of [
       assert.match(outcome.outputs, /state=failed/, `${testCase.name} must write the output`)
       assert.match(outcome.summary, /恢复状态：`failed`/, `${testCase.name} must leave a Summary trace`)
     }
-    assert.deepEqual(reruns, ['42', '42'], 'a failed rerun must not silently retry again')
+    assert.deepEqual(reruns, ['42', '42', '42'], 'a failed rerun must not silently retry again')
   } finally {
     console.error = saved.error
     if (saved.output === undefined) delete process.env.GITHUB_OUTPUT
@@ -1954,6 +2075,16 @@ esac
   const schema = JSON.parse(
     fs.readFileSync(path.join(import.meta.dirname, '../codex/schemas/review-findings.schema.json'), 'utf8')
   )
+  assert.deepEqual(
+    schema.required,
+    ['coverage', 'prior_resolutions', 'findings', 'summary'],
+    'schema must require coverage and findings before summary so decoding commits to evidence first'
+  )
+  assert.deepEqual(
+    Object.keys(schema.properties),
+    ['coverage', 'prior_resolutions', 'findings', 'summary'],
+    'schema property order must put coverage first and summary last'
+  )
   assert.match(
     schema.properties.coverage.properties.uncovered.description,
     /does not void the conclusion/,
@@ -2277,7 +2408,7 @@ esac
   assert.equal(metaAfter().status, 'unreviewed', 'a reused conclusion without coverage is not a review')
   assert.equal(metaAfter().error_code, 'missing_coverage')
 
-  // 复用有覆盖清单的结论时沿用上一次的生成时间，不能把旧结论标成刚出炉。
+  // 复用有覆盖清单的结论时沿用上一次的生成时间与清洗痕迹，不能把旧结论标成刚出炉或抹掉清洗记录。
   const reusable = { summary: '历史结论。', coverage: { inspected: ['src/app.ts'], uncovered: [] }, findings: [] }
   fs.writeFileSync(path.join(directory, 'review-findings.json'), JSON.stringify(reusable))
   fs.writeFileSync(
@@ -2287,7 +2418,8 @@ esac
         reused_from: '99',
         generated_at: '2026-11-06T11:14:38Z',
         review_start_sha: otherSha,
-        review_lineage: [{ head_sha: otherSha, findings: [], resolutions: [] }]
+        review_lineage: [{ head_sha: otherSha, findings: [], resolutions: [] }],
+        output_sanitized: ['reasoning-block']
       })
     )
   )
@@ -2296,6 +2428,7 @@ esac
   assert.equal(metaAfter().generated_at, '2026-11-06T11:14:38Z', 'reuse keeps the earlier generation time')
   assert.equal(metaAfter().review_start_sha, otherSha)
   assert.equal(metaAfter().review_lineage.length, 1)
+  assert.deepEqual(metaAfter().output_sanitized, ['reasoning-block'], 'validate reuse keeps output_sanitized')
 
   // 上一次没记生成时间就不写，不能拿当前时间冒充它的生成时间。
   fs.writeFileSync(path.join(directory, 'review-findings.json'), JSON.stringify(reusable))
@@ -2462,11 +2595,13 @@ esac
     ].join('\n')
 
   const lowPath = '.changeset/low.md'
+  const testPath = '.github/scripts/codex-review.test.mjs'
   const medPath = 'docs/agents/review.md'
   const highRuntime = 'packages/web-ui/src/button.ts'
   const highInfra = '.github/scripts/codex-review.mjs'
   const fullDiff = [
     diffBlock(lowPath, 'low change'),
+    diffBlock(testPath, 'test fixture that should not be preloaded'),
     diffBlock(medPath, 'medium change'),
     diffBlock(highRuntime, 'x'.repeat(240)),
     diffBlock(highInfra, 'infra change')
@@ -2478,23 +2613,29 @@ esac
       headSha,
       mergeBaseSha: otherSha,
       diff: fullDiff,
-      changedPaths: [lowPath, medPath, highRuntime, highInfra]
+      changedPaths: [lowPath, testPath, medPath, highRuntime, highInfra]
     },
-    { maxPaths: 3, maxFiles: 2, perFileBytes: 220, totalDiffBytes: 360 }
+    { maxPaths: 4, maxFiles: 3, perFileBytes: 220, totalDiffBytes: 600 }
   )
 
   assert.deepEqual(
     preload.rankedPaths.map(entry => entry.path),
-    [highInfra, highRuntime, medPath, lowPath]
+    [highInfra, highRuntime, testPath, medPath, lowPath]
   )
-  assert.deepEqual(preload.preloadedPaths, [highInfra, highRuntime])
+  assert.deepEqual(
+    preload.preloadedPaths,
+    [highInfra, highRuntime, medPath],
+    'test files must stay in rankedPaths but be skipped when preloading raw diffs'
+  )
   assert.deepEqual(preload.truncatedPaths, [highRuntime], 'the oversized runtime file must be marked truncated')
-  assert.deepEqual(preload.omittedPaths, [medPath, lowPath])
+  assert.deepEqual(preload.omittedPaths, [testPath, lowPath])
   assert.match(preload.markdown, /### 判据速览/)
   assert.match(preload.markdown, /`\[high\]`/)
   assert.match(preload.markdown, /`\.github\/scripts\/codex-review\.mjs`（已预注入完整 diff）/)
   assert.match(preload.markdown, /`packages\/web-ui\/src\/button\.ts`（已预注入截断 diff）/)
-  assert.match(preload.markdown, /`docs\/agents\/review\.md`（未预注入，按需 git diff）/)
+  assert.match(preload.markdown, /`\.github\/scripts\/codex-review\.test\.mjs`（未预注入，按需 git diff）/)
+  assert.match(preload.markdown, /`docs\/agents\/review\.md`（已预注入完整 diff）/)
+  assert.doesNotMatch(preload.markdown, /test fixture that should not be preloaded/)
   assert.match(preload.markdown, /其余 1 个路径见 `\$RUNNER_TEMP\/codex-review\/review-scope\.json`/)
   assert.ok(preload.preloadBytes > 0)
 
