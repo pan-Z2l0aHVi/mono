@@ -1,10 +1,8 @@
-import '..'
-
 import { describe, expect, it } from 'vite-plus/test'
 
 import { cleanupElement, contractReflection, mountElement, waitForUpdate } from '@/shared/test-utils'
 
-import type { WebUiProgress } from '..'
+import { WebUiProgress } from '..'
 
 const createProgress = (attrs?: Record<string, string>): WebUiProgress =>
   mountElement<WebUiProgress>('web-ui-progress', { attrs })
@@ -12,7 +10,8 @@ const createProgress = (attrs?: Record<string, string>): WebUiProgress =>
 describe('WebUiProgress 组件', () => {
   contractReflection('property 写入后同步到宿主 attribute', () => createProgress(), [
     ['value', 42, 'value', '42'],
-    ['max', 240, 'max', '240']
+    ['max', 240, 'max', '240'],
+    ['sport', true, 'sport', '']
   ])
 
   describe('数值范围', () => {
@@ -91,29 +90,8 @@ describe('WebUiProgress 组件', () => {
     })
   })
 
-  describe('indeterminate 与 show-value', () => {
-    it('indeterminate 移除 aria-valuenow，但不丢名称与上限', async () => {
-      const el = createProgress({ indeterminate: '', value: '25', max: '50', 'aria-label': '导入中' })
-      await waitForUpdate(el)
-
-      expect(el.getAttribute('aria-label')).toBe('导入中')
-      expect(el.getAttribute('aria-valuemax')).toBe('50')
-      expect(el.hasAttribute('aria-valuenow')).toBe(false)
-      cleanupElement(el)
-    })
-
-    it('关闭 indeterminate 后恢复当前 aria-valuenow', async () => {
-      const el = createProgress({ indeterminate: '', value: '25' })
-      await waitForUpdate(el)
-
-      el.indeterminate = false
-      await waitForUpdate(el)
-
-      expect(el.getAttribute('aria-valuenow')).toBe('25')
-      cleanupElement(el)
-    })
-
-    it('show-value 显示四舍五入后的百分比，关闭时隐藏文本', async () => {
+  describe('show-value', () => {
+    it('显示四舍五入后的百分比，关闭时隐藏文本', async () => {
       const visible = createProgress({ value: '1', max: '3', 'show-value': '' })
       const hidden = createProgress({ value: '1', max: '3' })
       await Promise.all([waitForUpdate(visible), waitForUpdate(hidden)])
@@ -125,6 +103,53 @@ describe('WebUiProgress 组件', () => {
       expect(hiddenValue?.hasAttribute('hidden')).toBe(true)
       cleanupElement(visible)
       cleanupElement(hidden)
+    })
+  })
+
+  describe('移除 indeterminate', () => {
+    it('不再暴露 indeterminate property，赋值也不再反射 attribute', async () => {
+      const el = createProgress()
+      await waitForUpdate(el)
+
+      expect(Object.prototype.hasOwnProperty.call(WebUiProgress.prototype, 'indeterminate')).toBe(false)
+      expect('indeterminate' in el).toBe(false)
+      const legacy = el as unknown as { indeterminate: boolean }
+      legacy.indeterminate = true
+      expect(el.hasAttribute('indeterminate')).toBe(false)
+      cleanupElement(el)
+    })
+
+    it('旧 indeterminate attribute 不再改变进度语义或可见数值', async () => {
+      const el = createProgress({ indeterminate: '', value: '25', max: '50', 'show-value': '' })
+      await waitForUpdate(el)
+
+      expect(el.getAttribute('aria-valuenow')).toBe('25')
+      expect(el.getAttribute('aria-valuemax')).toBe('50')
+      const value = el.shadowRoot?.querySelector<HTMLElement>('[part="value"]')
+      expect(value?.textContent?.trim()).toBe('50%')
+      cleanupElement(el)
+    })
+
+    it('遗留 indeterminate 且未给 value 时静默降级为 0%', async () => {
+      const el = createProgress({ indeterminate: '', 'show-value': '' })
+      await waitForUpdate(el)
+
+      expect(el.getAttribute('aria-valuenow')).toBe('0')
+      expect(el.shadowRoot?.querySelector<HTMLElement>('[part="value"]')?.textContent?.trim()).toBe('0%')
+      cleanupElement(el)
+    })
+  })
+
+  describe('sport', () => {
+    it('保留确定进度语义：aria-valuenow 与百分比文本', async () => {
+      const el = createProgress({ sport: '', value: '35', 'show-value': '' })
+      await waitForUpdate(el)
+
+      expect(el.sport).toBe(true)
+      expect(el.getAttribute('aria-valuenow')).toBe('35')
+      const value = el.shadowRoot?.querySelector<HTMLElement>('[part="value"]')
+      expect(value?.textContent?.trim()).toBe('35%')
+      cleanupElement(el)
     })
   })
 })

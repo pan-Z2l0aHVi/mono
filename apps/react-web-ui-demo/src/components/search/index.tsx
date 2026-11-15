@@ -114,7 +114,7 @@ export function Search({ open, onOpenChange }: { open: boolean; onOpenChange: (o
                   key={item.path}
                   to={item.path}
                   tabIndex={-1}
-                  className="demo-search-link text-sm hover:bg-black/5 focus:bg-black/5 dark:hover:bg-white/10 dark:focus:bg-white/10"
+                  className="demo-search-link text-sm hover:bg-[#1b1b20]/5 focus:bg-[#1b1b20]/5 dark:hover:bg-white/10 dark:focus:bg-white/10"
                   onClick={event => {
                     if (event.button === 0 && !event.metaKey && !event.ctrlKey && !event.shiftKey && !event.altKey)
                       onOpenChange(false)

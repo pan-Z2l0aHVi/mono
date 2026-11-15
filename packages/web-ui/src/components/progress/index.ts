@@ -11,6 +11,7 @@ const MAX_SAFE = Number.MAX_SAFE_INTEGER
 
 /**
  * 线性进度指示。宿主本身承担 `progressbar` 语义，numeric props 写入后始终按 `0..max` 暴露。
+ * `sport` 让按百分比定宽的 accent 条沿轨道循环滑过。
  *
  * @csspart base - 轨道与可选数值组成的网格
  * @csspart track - 进度槽
@@ -58,7 +59,8 @@ export class WebUiProgress extends LitElement {
 
   private _max = 100
 
-  @property({ type: Boolean, reflect: true }) indeterminate = false
+  /** 循环滑动的进度条：宽度由进度决定，位置由动画决定。 */
+  @property({ type: Boolean, reflect: true }) sport = false
   @property({ type: Boolean, reflect: true, attribute: 'show-value' }) showValue = false
 
   override connectedCallback() {
@@ -80,12 +82,7 @@ export class WebUiProgress extends LitElement {
     this.setAttribute('role', 'progressbar')
     this.setAttribute('aria-valuemin', '0')
     this.setAttribute('aria-valuemax', String(this.max))
-
-    if (this.indeterminate) {
-      this.removeAttribute('aria-valuenow')
-    } else {
-      this.setAttribute('aria-valuenow', String(this.value))
-    }
+    this.setAttribute('aria-valuenow', String(this.value))
 
     if (!this.getAttribute('aria-label')?.trim() && !this.getAttribute('aria-labelledby')?.trim()) {
       this.setAttribute('aria-label', resolveBuiltinLabel('progress'))
@@ -94,7 +91,11 @@ export class WebUiProgress extends LitElement {
 
   override render() {
     const percent = (this.value / this.max) * 100
-    const valueText = this.indeterminate ? '…' : `${Math.round(percent)}%`
+    const valueText = `${Math.round(percent)}%`
+    // translateX 的百分比相对条自身宽度；条宽是轨道的 percent%，滑过整条轨道需 10000/percent 个自身宽度。
+    // percent 为 0 或极小时比值溢出为 Infinity，CSS 会丢弃整条 transform，此时退回 0%（条本身已不可见）。
+    const sportRatio = 10000 / percent
+    const sportShift = Number.isFinite(sportRatio) ? `${sportRatio}%` : '0%'
 
     return html`
       <div class="wui-progress" part="base">
@@ -102,7 +103,10 @@ export class WebUiProgress extends LitElement {
           <div
             class="wui-progress-indicator"
             part="indicator"
-            style=${styleMap({ '--wui-progress-percent': `${percent}%` })}
+            style=${styleMap({
+              '--wui-progress-percent': `${percent}%`,
+              ...(this.sport ? { '--wui-progress-sport-shift': sportShift } : {})
+            })}
           ></div>
         </div>
         <span class="wui-progress-value" part="value" aria-hidden="true" ?hidden=${!this.showValue}>

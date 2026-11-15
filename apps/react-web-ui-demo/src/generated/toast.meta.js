@@ -189,6 +189,7 @@ const meta = [
   },
   { label: 'h3', id: 'section-11', content: "Behavior" },
   { label: 'p', content: "The imperative entry has no other required step. <code>toast()</code> mounts the toast into the nearest theme overlay container itself, falling back to the global default container when there is no theme scope. <code>target</code> resolves the nearest theme scope. <code>container</code> specifies the mount container explicitly and takes precedence over the theme scope." },
+  { label: 'p', content: "When a managed Web UI modal is open, automatically mounted toasts move to the active modal layer so they remain visible at the viewport edge. They return to their original overlay when that layer closes. An explicit <code>container</code> keeps its own mounting behavior; third-party modal layers are not managed automatically." },
   { label: 'p', content: "Toasts that are still unmounted within the same tick can still be rewritten by a call with the same <code>id</code>, producing only one toast." },
   { label: 'p', content: "Hovering pauses the auto-close timer. After the pointer leaves, the timer resumes the remaining time instead of restarting the full count." },
   { label: 'p', content: "If <code>pointerleave</code> is missed during the pause (the pointer is dragged out of the window, or the element is moved or removed while hovered), the timer recovers as well, so the toast never stays on screen forever." },
@@ -207,7 +208,7 @@ const meta = [
   { label: 'p', content: "<code>duration</code> restarts the countdown only when it is passed explicitly (the exception is an active hover pause: the new value only takes effect after the pointer leaves); <code>message</code>, <code>heading</code>, and <code>type</code> do not touch the timer." },
   { label: 'p', content: "The <code>5000</code> default of <code>toast.error</code> is applied at creation time as a fallback and does not count as explicit, so repeated <code>toast.error(msg, { id })</code> calls do not reset the countdown." },
   { label: 'p', content: "A change of <code>position</code> moves the toast to the new position and preserves the remaining time. If the countdown has already expired, the toast exits directly instead of staying on screen." },
-  { label: 'p', content: "<code>container</code> and <code>target</code> are fixed on the first call; moving an existing toast to another overlay container is not supported." },
+  { label: 'p', content: "<code>container</code> and <code>target</code> are fixed on the first call. Automatic migration between managed modal layers preserves the original theme scope." },
   { label: 'h3', id: 'section-13', content: "Close semantics" },
   { label: 'p', content: "<code>toast.close(id)</code> covers every phase a toast can be in, including the two where it is not shown yet. Each item below lists the target state and the result:" },
   {

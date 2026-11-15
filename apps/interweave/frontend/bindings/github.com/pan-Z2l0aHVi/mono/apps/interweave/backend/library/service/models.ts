@@ -7,6 +7,9 @@ import { Create as $Create } from "@wailsio/runtime";
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as core$0 from "../core/models.js";
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as storage$0 from "../storage/models.js";
 
 /**
@@ -173,6 +176,58 @@ export class LocalMapDTO {
     }
 }
 
+export const RecoveryCandidateDTO = core$0.RecoveryCandidate;
+export type RecoveryCandidateDTO = core$0.RecoveryCandidate;
+
+export class RecoveryScanUpdateDTO {
+    "candidates": RecoveryCandidateDTO[];
+    "checked": number;
+    "currentDirectory": string;
+    "skipped": number;
+    "done": boolean;
+    "cancelled": boolean;
+    "error": string;
+
+    /** Creates a new RecoveryScanUpdateDTO instance. */
+    constructor($$source: Partial<RecoveryScanUpdateDTO> = {}) {
+        if (!("candidates" in $$source)) {
+            this["candidates"] = [];
+        }
+        if (!("checked" in $$source)) {
+            this["checked"] = 0;
+        }
+        if (!("currentDirectory" in $$source)) {
+            this["currentDirectory"] = "";
+        }
+        if (!("skipped" in $$source)) {
+            this["skipped"] = 0;
+        }
+        if (!("done" in $$source)) {
+            this["done"] = false;
+        }
+        if (!("cancelled" in $$source)) {
+            this["cancelled"] = false;
+        }
+        if (!("error" in $$source)) {
+            this["error"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new RecoveryScanUpdateDTO instance from a string or object.
+     */
+    static createFrom($$source: any = {}): RecoveryScanUpdateDTO {
+        const $$createField0_0 = $$createType9;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("candidates" in $$parsedSource) {
+            $$parsedSource["candidates"] = $$createField0_0($$parsedSource["candidates"]);
+        }
+        return new RecoveryScanUpdateDTO($$parsedSource as Partial<RecoveryScanUpdateDTO>);
+    }
+}
+
 /**
  * 为前端提供完整但不承载外部内容的资源视图。
  */
@@ -226,8 +281,8 @@ export class ResourceDTO {
      * Creates a new ResourceDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): ResourceDTO {
-        const $$createField7_0 = $$createType9;
-        const $$createField8_0 = $$createType10;
+        const $$createField7_0 = $$createType11;
+        const $$createField8_0 = $$createType12;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("sources" in $$parsedSource) {
             $$parsedSource["sources"] = $$createField7_0($$parsedSource["sources"]);
@@ -393,7 +448,7 @@ export class SourceDTO {
      * Creates a new SourceDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): SourceDTO {
-        const $$createField9_0 = $$createType12;
+        const $$createField9_0 = $$createType14;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("metadata" in $$parsedSource) {
             $$parsedSource["metadata"] = $$createField9_0($$parsedSource["metadata"]);
@@ -489,8 +544,8 @@ export class SourceProbeResultDTO {
      * Creates a new SourceProbeResultDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): SourceProbeResultDTO {
-        const $$createField0_0 = $$createType13;
-        const $$createField1_0 = $$createType14;
+        const $$createField0_0 = $$createType15;
+        const $$createField1_0 = $$createType16;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("source" in $$parsedSource) {
             $$parsedSource["source"] = $$createField0_0($$parsedSource["source"]);
@@ -619,10 +674,12 @@ const $$createType4 = $Create.Array($$createType3);
 const $$createType5 = TagDTO.createFrom;
 const $$createType6 = ResourceDTO.createFrom;
 const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = SourceDTO.createFrom;
+const $$createType8 = core$0.RecoveryCandidate.createFrom;
 const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = $Create.Array($$createType5);
-const $$createType11 = SourceMetadataDTO.createFrom;
-const $$createType12 = $Create.Nullable($$createType11);
-const $$createType13 = $Create.Nullable($$createType8);
-const $$createType14 = $Create.Nullable($$createType6);
+const $$createType10 = SourceDTO.createFrom;
+const $$createType11 = $Create.Array($$createType10);
+const $$createType12 = $Create.Array($$createType5);
+const $$createType13 = SourceMetadataDTO.createFrom;
+const $$createType14 = $Create.Nullable($$createType13);
+const $$createType15 = $Create.Nullable($$createType10);
+const $$createType16 = $Create.Nullable($$createType6);

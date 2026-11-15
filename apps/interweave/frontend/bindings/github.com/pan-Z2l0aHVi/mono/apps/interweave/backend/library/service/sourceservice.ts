@@ -34,6 +34,29 @@ export function AddURLSource(resourceID: string, inputURL: string): $Cancellable
 }
 
 /**
+ * CancelRecoveryScan requests cancellation; poll until done to consume the remaining results.
+ */
+export function CancelRecoveryScan(scanID: string): $CancellablePromise<void> {
+    return $Call.ByID(2401395045, scanID);
+}
+
+/**
+ * DiscardRecoveryScan cancels and releases a scan when its dialog is closed.
+ */
+export function DiscardRecoveryScan(scanID: string): $CancellablePromise<void> {
+    return $Call.ByID(1080191715, scanID);
+}
+
+/**
+ * PollRecoveryScan returns and consumes candidates accumulated since the last poll.
+ */
+export function PollRecoveryScan(scanID: string): $CancellablePromise<$models.RecoveryScanUpdateDTO | null> {
+    return $Call.ByID(88061122, scanID).then(($result: any) => {
+        return $$createType3($result);
+    });
+}
+
+/**
  * ProbeURLSourceOnOpen 在用户打开详情时以短预算重新判定 URL 可用性。
  * 
  * 与手动刷新的差别只在三态：Inconclusive 不落库、不改变失效角标，只回一句用户可见文案。
@@ -41,7 +64,7 @@ export function AddURLSource(resourceID: string, inputURL: string): $Cancellable
  */
 export function ProbeURLSourceOnOpen(sourceID: string): $CancellablePromise<$models.SourceProbeResultDTO | null> {
     return $Call.ByID(515282350, sourceID).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType5($result);
     });
 }
 
@@ -82,6 +105,15 @@ export function ReplaceFileSource(sourceID: string, inputPath: string): $Cancell
 }
 
 /**
+ * ReplaceScannedFileSource verifies the scan snapshot before replacing the source.
+ */
+export function ReplaceScannedFileSource(sourceID: string, path: string, snapshot: string): $CancellablePromise<$models.ResourceDTO | null> {
+    return $Call.ByID(2870592586, sourceID, path, snapshot).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+/**
  * ReplaceURLSource 用新 URL 找回失效网页入口，保留 Source 身份、顺位与首选角色；它不是同 URL 刷新。
  */
 export function ReplaceURLSource(sourceID: string, inputURL: string): $CancellablePromise<$models.ResourceDTO | null> {
@@ -99,8 +131,17 @@ export function SetPreferredSource(resourceID: string, sourceID: string): $Cance
     });
 }
 
+/**
+ * StartRecoveryScan starts one cancellable scan; an empty directory requests local mounted disks.
+ */
+export function StartRecoveryScan(sourceIDs: string[], directory: string): $CancellablePromise<string> {
+    return $Call.ByID(2167756433, sourceIDs, directory);
+}
+
 // Private type creation functions
 const $$createType0 = $models.ResourceDTO.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
-const $$createType2 = $models.SourceProbeResultDTO.createFrom;
+const $$createType2 = $models.RecoveryScanUpdateDTO.createFrom;
 const $$createType3 = $Create.Nullable($$createType2);
+const $$createType4 = $models.SourceProbeResultDTO.createFrom;
+const $$createType5 = $Create.Nullable($$createType4);

@@ -46,7 +46,7 @@
 }
 
 .placeholder {
-  color: var(--wui-color-text-secondary, #6a6a6a);
+  color: var(--wui-color-text-secondary, #6a6a70);
 }
 
 /* 原生控件 reset：不贡献尺寸、无边框背景描边、不可手拖改变大小 */
@@ -88,7 +88,7 @@
   caret-color: var(--wui-color-accent, #0071e3);
 
   &::placeholder {
-    color: var(--wui-color-text-secondary, #6a6a6a);
+    color: var(--wui-color-text-secondary, #6a6a70);
   }
 }
 

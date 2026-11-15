@@ -117,7 +117,7 @@ describe('AddDialog', () => {
       )!
       confirm.click()
       await nextTick()
-      expect(mounted.host.textContent).toContain('请输入有效的 http 或 https URL')
+      expect(mounted.host.textContent).toContain('请输入有效的网页链接')
       expect(addUrl).not.toHaveBeenCalled()
       input.value = 'https://example.com/new'
       input.dispatchEvent(new Event('input', { bubbles: true }))

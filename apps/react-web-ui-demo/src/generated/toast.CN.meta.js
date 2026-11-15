@@ -189,6 +189,7 @@ const meta = [
   },
   { label: 'h3', id: 'section-11', content: "行为说明" },
   { label: 'p', content: "命令式入口没有其他必经步骤。<code>toast()</code> 自行把 toast 挂载到最近的主题的 overlay 容器（没有主题作用域时回退到全局默认容器）。<code>target</code> 用来解析最近的主题作用域。<code>container</code> 显式指定挂载容器，优先级高于主题作用域。" },
+  { label: 'p', content: "当 Web UI 管理的模态层打开时，自动挂载的 toast 会迁移到当前模态层，保持在视口边缘可见；模态层关闭后返回原来的 overlay。显式指定 <code>container</code> 时继续使用该容器；第三方模态层不参与自动管理。" },
   { label: 'p', content: "同一个 tick 内、尚未挂载的 toast 仍能被同 <code>id</code> 的调用改写，最终只产生一条。" },
   { label: 'p', content: "悬停会暂停自动关闭计时器。指针离开后续跑剩余时间，不会重新计满。" },
   { label: 'p', content: "暂停期间如果漏掉 <code>pointerleave</code>（指针拖出窗口，或元素在悬停中被移动、移出），计时也会恢复，不会永久停在屏幕上。" },
@@ -207,7 +208,7 @@ const meta = [
   { label: 'p', content: "<code>duration</code> 只有显式传入才重启倒计时（悬停暂停期间例外：新值要等指针离开后才开始生效）；<code>message</code>、<code>heading</code>、<code>type</code> 不影响计时。" },
   { label: 'p', content: "<code>toast.error</code> 的 5000 默认值在创建时作为回退应用，不算显式传入，因此重复调用 <code>toast.error(msg, { id })</code> 不会重置倒计时。" },
   { label: 'p', content: "<code>position</code> 变化会把 toast 移到新位置，并保留剩余计时。如果倒计时已经到期，它会直接退场，不会一直留着。" },
-  { label: 'p', content: "<code>container</code> 与 <code>target</code> 以首次调用为准，不支持把已存在的 toast 换到另一个 overlay 容器。" },
+  { label: 'p', content: "<code>container</code> 与 <code>target</code> 以首次调用为准。自动迁移到受管理的模态层时保留原有主题作用域。" },
   { label: 'h3', id: 'section-13', content: "关闭语义" },
   { label: 'p', content: "<code>toast.close(id)</code> 覆盖 toast 出现的每个阶段，包括还没开始显示的两种情况，下面每条依次给出目标状态与结果：" },
   {

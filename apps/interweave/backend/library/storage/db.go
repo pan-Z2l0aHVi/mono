@@ -21,8 +21,13 @@ type Queryer interface {
 
 // 为本地单库写入维持可预测的一致性边界。
 type DB struct {
-	db      *sql.DB
-	writeMu sync.Mutex
+	db        *sql.DB
+	writeMu   sync.Mutex
+	jobsMu    sync.Mutex
+	jobs      map[string]func(context.Context)
+	jobWake   chan struct{}
+	jobCancel context.CancelFunc
+	jobDone   chan struct{}
 }
 
 // 以本地优先的可靠性配置打开资源库。
@@ -44,12 +49,15 @@ func Open(dsn string) (*DB, error) {
 		return nil, fmt.Errorf("failed to execute %q: %w", "PRAGMA journal_mode = WAL;", err)
 	}
 
-	sdb := &DB{db: db}
+	sdb := &DB{db: db, jobs: make(map[string]func(context.Context)), jobWake: make(chan struct{}, 1), jobDone: make(chan struct{})}
 	if err := sdb.initSchema(); err != nil {
 		_ = db.Close()
 		return nil, fmt.Errorf("failed to initialize schema: %w", err)
 	}
 
+	jobCtx, cancel := context.WithCancel(context.Background())
+	sdb.jobCancel = cancel
+	go sdb.runJobs(jobCtx)
 	return sdb, nil
 }
 
@@ -65,6 +73,8 @@ func withConnPragmas(dsn string) string {
 
 // 让应用退出时有序释放本地资源。
 func (d *DB) Close() error {
+	d.jobCancel()
+	<-d.jobDone
 	return d.db.Close()
 }
 
@@ -90,6 +100,12 @@ func (d *DB) initSchema() error {
 		created_at INTEGER NOT NULL,
 		updated_at INTEGER NOT NULL,
 		FOREIGN KEY(resource_id) REFERENCES resources(id) ON DELETE CASCADE
+	);
+
+	CREATE TABLE IF NOT EXISTS source_fingerprints (
+		source_id TEXT PRIMARY KEY REFERENCES sources(id) ON DELETE CASCADE,
+		location TEXT NOT NULL, size INTEGER NOT NULL, modified INTEGER NOT NULL,
+		identity TEXT NOT NULL, changed INTEGER NOT NULL, hash TEXT NOT NULL
 	);
 
 	CREATE TABLE IF NOT EXISTS tags (
@@ -163,4 +179,42 @@ func (d *DB) WithTx(ctx context.Context, fn func(tx *sql.Tx) error) error {
 // 只向同一后端边界内暴露只读查询所需的连接。
 func (d *DB) SqlDB() *sql.DB {
 	return d.db
+}
+
+// ScheduleBackground coalesces work by key; pending jobs are discarded on database close.
+func (d *DB) ScheduleBackground(key string, job func(context.Context)) {
+	d.jobsMu.Lock()
+	d.jobs[key] = job
+	d.jobsMu.Unlock()
+	select {
+	case d.jobWake <- struct{}{}:
+	default:
+	}
+}
+func (d *DB) runJobs(ctx context.Context) {
+	defer close(d.jobDone)
+	for {
+		select {
+		case <-ctx.Done():
+			return
+		case <-d.jobWake:
+		}
+		for {
+			if ctx.Err() != nil {
+				return
+			}
+			d.jobsMu.Lock()
+			var job func(context.Context)
+			for k, v := range d.jobs {
+				job = v
+				delete(d.jobs, k)
+				break
+			}
+			d.jobsMu.Unlock()
+			if job == nil {
+				break
+			}
+			job(ctx)
+		}
+	}
 }

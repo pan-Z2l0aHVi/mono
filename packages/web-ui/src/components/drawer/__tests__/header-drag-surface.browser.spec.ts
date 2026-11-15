@@ -210,12 +210,12 @@ async function probeDrag(
   delta: { x: number; y: number },
   steps = 4
 ): Promise<number> {
-  const before = getDialog(el).getBoundingClientRect()
+  const before = getDialog(el).querySelector('.wui-drawer-motion')!.getBoundingClientRect()
   await realPressAt(x, y)
   for (let step = 1; step <= steps; step++) {
     await realMoveTo(x + (delta.x * step) / steps, y + (delta.y * step) / steps)
   }
-  const after = getDialog(el).getBoundingClientRect()
+  const after = getDialog(el).querySelector('.wui-drawer-motion')!.getBoundingClientRect()
   const displacement = Math.hypot(after.left - before.left, after.top - before.top)
   for (let step = steps - 1; step >= 0; step--) {
     await realMoveTo(x + (delta.x * step) / steps, y + (delta.y * step) / steps)
@@ -237,7 +237,7 @@ async function syntheticDragDisplacement(
 ): Promise<number> {
   const rect = target.getBoundingClientRect()
   const start = { x: rect.left + rect.width / 2, y: rect.top + rect.height / 2 }
-  const before = getDialog(el).getBoundingClientRect()
+  const before = getDialog(el).querySelector('.wui-drawer-motion')!.getBoundingClientRect()
   const dispatch = (type: string, x: number, y: number) =>
     target.dispatchEvent(
       new PointerEvent(type, {
@@ -256,7 +256,7 @@ async function syntheticDragDisplacement(
     dispatch('pointermove', start.x + (delta.x * step) / steps, start.y + (delta.y * step) / steps)
     await el.updateComplete
   }
-  const after = getDialog(el).getBoundingClientRect()
+  const after = getDialog(el).querySelector('.wui-drawer-motion')!.getBoundingClientRect()
   dispatch('pointercancel', start.x + delta.x, start.y + delta.y)
   await el.updateComplete
   return Math.hypot(after.left - before.left, after.top - before.top)
@@ -348,7 +348,7 @@ describe('WebUiDrawer header / footer 整块可拖（浏览器）', () => {
   it('R2 没有 header/footer 时 drag zone 回到 panel 端头（让位量为 0）', async () => {
     for (const placement of ['bottom', 'top'] as const) {
       const { el } = await mountDrawer({ placement })
-      const dialog = getDialog(el).getBoundingClientRect()
+      const dialog = getDialog(el).querySelector('.wui-drawer-motion')!.getBoundingClientRect()
       const zone = query(el, '.wui-drawer-drag-zone').getBoundingClientRect()
 
       const yieldAmount = placement === 'bottom' ? zone.top - dialog.top : dialog.bottom - zone.bottom

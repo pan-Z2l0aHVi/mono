@@ -17,7 +17,7 @@ import {
   tablerClockPlus,
   tablerSortAscendingLetters
 } from '@greypan/web-ui/icons'
-import { ref } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
 import { useExpandingField } from '@/composables/useExpandingField'
 import type { AvailabilityFilter, ResourceKind, SortDirection, SortOption, SourceType } from '@/stores/library'
@@ -67,15 +67,45 @@ const emit = defineEmits<{
 
 const searchInputRef = ref<WebUiInput>()
 const controlsRef = ref<HTMLElement>()
+const selectButtonRef = ref<HTMLElement>()
+const selectAllButtonRef = ref<HTMLElement>()
+const confirmButtonRef = ref<HTMLElement>()
+const hasPanelFilter = computed(
+  () =>
+    props.filterSource !== 'all' ||
+    props.filterKind !== 'all' ||
+    props.filterAvailability !== 'all' ||
+    props.filterTag !== ''
+)
+
+function focusButton(button: HTMLElement | undefined) {
+  button?.shadowRoot?.querySelector<HTMLButtonElement>('button')?.focus()
+}
+
+function handleSelectionToggle() {
+  const entering = !props.selectionMode
+  emit('select')
+  void nextTick(() =>
+    focusButton(
+      entering ? (props.visibleCount ? selectAllButtonRef.value : confirmButtonRef.value) : selectButtonRef.value
+    )
+  )
+}
 
 /*
  * 展开/收起、焦点与 Escape 都归 useExpandingField：它自己把监听挂到这两个 ref 上，
  * 这里只交引用，模板里不再需要绑定这些事件。
+ *
+ * 有搜索条件时不收起：条件已经在筛列表，收起搜索框会把它一起藏掉，还会顶掉右侧簇的
+ * 布局。清空条件后再离开（或按 Escape）才回到关闭态，恢复成搜索 button。
  */
 useExpandingField({
   field: searchInputRef,
   controls: controlsRef,
-  close: () => emit('update:searchOpen', false)
+  close: () => {
+    if (props.searchQuery) return
+    emit('update:searchOpen', false)
+  }
 })
 
 function handleSearchInput(event: WebUiEvent<WebUiInput, 'input'>) {
@@ -151,17 +181,22 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
               <web-ui-icon :icon="lucidePlus" />
             </web-ui-button>
           </web-ui-tooltip>
-          <web-ui-button v-if="!(searchOpen && mobile)" @click="emit('select')">选择</web-ui-button>
+          <web-ui-button v-if="!(searchOpen && mobile)" ref="selectButtonRef" @click="handleSelectionToggle"
+            >选择</web-ui-button
+          >
           <web-ui-tooltip v-if="!(searchOpen && mobile)" content="筛选和排序" portal>
             <web-ui-button
               icon
-              :variant="hasActiveFilter && !filterOpen ? 'secondary' : 'glass'"
+              variant="glass"
               aria-label="筛选和排序"
               aria-controls="library-filter-panel"
               :aria-expanded="filterOpen"
               @click="emit('update:filterOpen', !filterOpen)"
             >
-              <web-ui-icon :icon="filterOpen ? lucideChevronUp : lucideListFilter" />
+              <web-ui-icon
+                :class="hasPanelFilter ? '[--wui-icon-color:var(--wui-color-accent)]' : ''"
+                :icon="filterOpen ? lucideChevronUp : lucideListFilter"
+              />
             </web-ui-button>
           </web-ui-tooltip>
           <web-ui-tooltip v-if="!searchOpen" content="搜索" portal>
@@ -169,27 +204,15 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
               <web-ui-icon :icon="lucideSearch" />
             </web-ui-button>
           </web-ui-tooltip>
-          <web-ui-input
-            v-else
-            ref="searchInputRef"
-            :value="searchQuery"
-            clearable
-            placeholder="搜索资源"
-            aria-label="搜索资源"
-            class="min-w-0 w-60 [--wui-input-width:100%]"
-            @input="handleSearchInput"
-          >
-            <web-ui-icon slot="prefix" :icon="lucideSearch" />
-          </web-ui-input>
         </template>
 
         <template v-else>
-          <web-ui-button :disabled="visibleCount === 0" @click="emit('selectAll')">
+          <web-ui-button ref="selectAllButtonRef" :disabled="visibleCount === 0" @click="emit('selectAll')">
             {{ allVisibleSelected ? '取消全选' : '全选' }}
           </web-ui-button>
           <web-ui-button-group aria-label="批量操作">
             <web-ui-tooltip portal>
-              <span slot="content" style="color: var(--wui-color-danger)">删除</span>
+              <span slot="content" class="text-(--wui-color-danger)">删除</span>
               <web-ui-button icon aria-label="删除" :disabled="selectedCount === 0" @click="emit('deleteSelected')">
                 <web-ui-icon class="[--wui-icon-color:var(--wui-color-danger)]" :icon="lucideTrash2" />
               </web-ui-button>
@@ -201,7 +224,13 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
             </web-ui-tooltip>
           </web-ui-button-group>
           <web-ui-tooltip content="确认" portal>
-            <web-ui-button icon variant="primary" aria-label="确认" @click="emit('select')">
+            <web-ui-button
+              ref="confirmButtonRef"
+              icon
+              variant="primary"
+              aria-label="确认"
+              @click="handleSelectionToggle"
+            >
               <!-- bitcoin-icons:check-filled, Bitcoin Design Community (MIT) -->
               <svg width="18" height="18" viewBox="0 0 24 24" aria-hidden="true">
                 <path
@@ -214,6 +243,18 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
             </web-ui-button>
           </web-ui-tooltip>
         </template>
+        <web-ui-input
+          v-if="searchOpen && (!selectionMode || searchQuery)"
+          ref="searchInputRef"
+          :value="searchQuery"
+          clearable
+          placeholder="搜索资源"
+          aria-label="搜索资源"
+          class="min-w-0 w-60 [--wui-input-width:100%]"
+          @input="handleSearchInput"
+        >
+          <web-ui-icon slot="prefix" :icon="lucideSearch" />
+        </web-ui-input>
       </div>
     </div>
 

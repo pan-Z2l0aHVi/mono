@@ -9,6 +9,7 @@ import { styleMap } from 'lit/directives/style-map.js'
 import glass from '@/classes/glass.css?inline'
 import { lucideLoaderCircle } from '@/icons'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
+import { clearPressedPointerOutside, markPressedPointerOutside } from '@/shared/focus/pointer-hover'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { buttonGroupContextKey, defineGroupManaged, type ButtonGroupContext } from '@/shared/group-management'
 import { normalizeLiteral } from '@/shared/normalize'
@@ -164,6 +165,9 @@ export class WebUiButton extends FormAssociated(LitElement) {
         style=${Object.keys(this._sizeStyle).length > 0 ? styleMap(this._sizeStyle) : nothing}
         ?disabled=${this._isDisabled}
         @click=${this.handleClick}
+        @pointerleave=${markPressedPointerOutside}
+        @pointerenter=${clearPressedPointerOutside}
+        @keydown=${clearPressedPointerOutside}
       >
         ${
           this.icon

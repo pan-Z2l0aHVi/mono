@@ -3,6 +3,7 @@ import {
   computePosition,
   flip,
   offset,
+  platform,
   shift,
   size,
   type Middleware,
@@ -11,6 +12,7 @@ import {
 } from '@floating-ui/dom'
 import { definePlugin } from '@greypan/js-kit'
 
+import { PAGE_SHIFT_SETTLED_EVENT } from './page-shift-event'
 import { defineOverlayPositioningGeneration, type OverlayPositioningGeneration } from './positioning-generation'
 
 export interface OverlayOptions {
@@ -144,6 +146,32 @@ function getTransformOrigin(placement: Placement): string {
   return `left ${verticalOrigin}`
 }
 
+function isInModalDialog(element: Element): boolean {
+  let node: Node | null = element
+  while (node) {
+    if (node instanceof HTMLDialogElement && node.matches(':modal')) return true
+    node = node.parentNode ?? (node instanceof ShadowRoot ? node.host : null)
+  }
+  return false
+}
+
+// Floating UI 把 html 的水平 translate 当成滚动条偏移；模态层的 fixed 子节点以视口为基准。
+const modalPlatform: typeof platform = {
+  ...platform,
+  async getElementRects(args) {
+    const rects = await platform.getElementRects.call(this, args)
+    if (args.strategy !== 'fixed' || !isInModalDialog(args.floating)) return rects
+    if ((await platform.getOffsetParent(args.floating)) !== args.floating.ownerDocument.defaultView) return rects
+
+    const root = args.floating.ownerDocument.documentElement
+    const translate = getComputedStyle(root).translate.split(' ')[0]
+    const amount = Number.parseFloat(translate)
+    if (!Number.isFinite(amount)) return rects
+    const x = translate.endsWith('%') ? (amount * root.getBoundingClientRect().width) / 100 : amount
+    return { ...rects, reference: { ...rects.reference, x: rects.reference.x + x } }
+  }
+}
+
 export const defineOverlay = () =>
   definePlugin<OverlayApi, { anchor: OverlayAnchor; overlay: HTMLElement } & OverlayOptions>(ctx => {
     const options: Required<OverlayOptions> = {
@@ -173,6 +201,7 @@ export const defineOverlay = () =>
         void computePosition(currentAnchor, overlay, {
           placement: options.placement,
           strategy: options.strategy,
+          platform: modalPlatform,
           middleware
         }).then(({ x, y, placement }) => {
           if (!positioningGeneration.isCurrent(generation) || !isOpen) return
@@ -198,12 +227,14 @@ export const defineOverlay = () =>
         if (isOpen) return
         isOpen = true
         overlay.style.display = ''
+        overlay.ownerDocument.documentElement.addEventListener(PAGE_SHIFT_SETTLED_EVENT, updatePosition)
         updatePosition()
       },
 
       close() {
         if (!isOpen) return
         isOpen = false
+        overlay.ownerDocument.documentElement.removeEventListener(PAGE_SHIFT_SETTLED_EVENT, updatePosition)
         positioningGeneration.invalidate()
         cleanupAutoUpdate?.()
         cleanupAutoUpdate = null

@@ -439,6 +439,8 @@ onBeforeUnmount(() => toast.clear())
 
 The imperative entry has no other required step. `toast()` mounts the toast into the nearest theme overlay container itself, falling back to the global default container when there is no theme scope. `target` resolves the nearest theme scope. `container` specifies the mount container explicitly and takes precedence over the theme scope.
 
+When a managed Web UI modal is open, automatically mounted toasts move to the active modal layer so they remain visible at the viewport edge. They return to their original overlay when that layer closes. An explicit `container` keeps its own mounting behavior; third-party modal layers are not managed automatically.
+
 Toasts that are still unmounted within the same tick can still be rewritten by a call with the same `id`, producing only one toast.
 
 Hovering pauses the auto-close timer. After the pointer leaves, the timer resumes the remaining time instead of restarting the full count.
@@ -487,7 +489,7 @@ The `5000` default of `toast.error` is applied at creation time as a fallback an
 
 A change of `position` moves the toast to the new position and preserves the remaining time. If the countdown has already expired, the toast exits directly instead of staying on screen.
 
-`container` and `target` are fixed on the first call; moving an existing toast to another overlay container is not supported.
+`container` and `target` are fixed on the first call. Automatic migration between managed modal layers preserves the original theme scope.
 
 ### Close semantics
 

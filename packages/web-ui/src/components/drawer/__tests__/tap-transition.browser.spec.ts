@@ -21,11 +21,12 @@ function getDragZone(el: WebUiDrawer): HTMLElement {
 function observeTransformTransition(dialog: HTMLDialogElement) {
   let started = false
   let ended = false
+  const motion = dialog.querySelector('.wui-drawer-motion')
   dialog.addEventListener('transitionrun', event => {
-    if (event.target === dialog && event.propertyName === 'transform') started = true
+    if (event.target === motion && event.propertyName === 'transform') started = true
   })
   dialog.addEventListener('transitionend', event => {
-    if (event.target === dialog && event.propertyName === 'transform') ended = true
+    if (event.target === motion && event.propertyName === 'transform') ended = true
   })
   return { started: () => started, ended: () => ended }
 }

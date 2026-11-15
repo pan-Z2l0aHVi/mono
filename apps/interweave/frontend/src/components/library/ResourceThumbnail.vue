@@ -1,13 +1,16 @@
 <script setup lang="ts">
+import { lucideTriangleAlert } from '@greypan/web-ui/icons'
 import { computed, nextTick, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { ResourceKind, ResourceSourceView } from '@/stores/library'
 
-import { resourceIcon, resourceKindClass } from './presentation'
+import { resourceIcon, resourceKindClass, unavailableResourceIcon } from './presentation'
 import { THUMBNAIL_JPEG_QUALITY, THUMBNAIL_MAX_EDGE, isBlackFrame, videoFrameCandidates } from './thumbnail'
 
 const props = defineProps<{
   kind: ResourceKind
+  detail?: boolean
+  unavailable?: boolean
   source: ResourceSourceView | null
   mediaUrl: string | null
   /**
@@ -24,6 +27,13 @@ const videoRef = ref<HTMLVideoElement | null>(null)
 const canvasRef = ref<HTMLCanvasElement | null>(null)
 const imageRef = ref<HTMLImageElement | null>(null)
 const thumbnailURL = ref('')
+const faviconReady = ref(false)
+const faviconFailed = ref(false)
+const favicon = computed(() => (props.source?.type === 'url' ? props.source.metadata?.faviconUrl || '' : ''))
+watch(favicon, () => {
+  faviconReady.value = false
+  faviconFailed.value = false
+})
 const imageReady = ref(false)
 const mediaFailed = ref(false)
 const serverThumbFailed = ref(false)
@@ -51,6 +61,7 @@ const serverThumbActive = computed(
     (props.kind === 'image' || props.kind === 'video')
 )
 const showFallback = computed(() => {
+  if (favicon.value && faviconReady.value && !faviconFailed.value) return false
   if (serverThumbActive.value && serverThumbReady.value) return false
   if (!canRenderMedia.value) return true
   const imageMatchesSource = imageRef.value?.getAttribute('src') === props.mediaUrl
@@ -233,45 +244,67 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
 </script>
 
 <template>
-  <div
-    class="relative grid size-10 shrink-0 place-items-center overflow-hidden rounded-[10px]"
-    :class="resourceKindClass(kind)"
-  >
-    <video
-      v-if="kind === 'video' && !serverThumbActive && canRenderMedia"
-      :key="`video-${mediaKey}`"
-      ref="videoRef"
-      :src="mediaUrl ?? undefined"
-      class="pointer-events-none absolute size-px opacity-0"
-      preload="metadata"
-      muted
-      aria-hidden="true"
-      @loadedmetadata="handleLoadedMetadata"
-      @loadeddata="handleLoadedData"
-      @seeked="handleSeeked"
-      @error="handleMediaError"
-    ></video>
-    <canvas ref="canvasRef" class="pointer-events-none absolute size-px opacity-0" aria-hidden="true"></canvas>
-    <img
-      v-if="serverThumbActive"
-      :key="`server-thumb-${mediaKey}`"
-      :src="thumbnailUrl ?? undefined"
-      class="size-full object-cover"
-      alt=""
-      @load="handleServerThumbLoad"
-      @error="handleServerThumbError"
+  <div class="relative size-10 shrink-0 rounded-[10px]">
+    <div
+      class="grid size-full place-items-center overflow-hidden rounded-[inherit]"
+      :class="[resourceKindClass(kind), unavailable && !detail ? 'opacity-60' : '']"
+    >
+      <img
+        v-if="!(detail && unavailable) && favicon && !faviconFailed"
+        :src="favicon"
+        class="absolute size-5 object-contain"
+        alt=""
+        @load="faviconReady = true"
+        @error="faviconFailed = true"
+      />
+      <video
+        v-if="kind === 'video' && !serverThumbActive && canRenderMedia"
+        :key="`video-${mediaKey}`"
+        ref="videoRef"
+        :src="mediaUrl ?? undefined"
+        class="pointer-events-none absolute size-px opacity-0"
+        preload="metadata"
+        muted
+        aria-hidden="true"
+        @loadedmetadata="handleLoadedMetadata"
+        @loadeddata="handleLoadedData"
+        @seeked="handleSeeked"
+        @error="handleMediaError"
+      ></video>
+      <canvas ref="canvasRef" class="pointer-events-none absolute size-px opacity-0" aria-hidden="true"></canvas>
+      <img
+        v-if="!(detail && unavailable) && serverThumbActive"
+        :key="`server-thumb-${mediaKey}`"
+        :src="thumbnailUrl ?? undefined"
+        class="size-full object-cover"
+        alt=""
+        @load="handleServerThumbLoad"
+        @error="handleServerThumbError"
+      />
+      <img
+        v-if="kind === 'image' && !serverThumbActive && canRenderMedia && !mediaFailed"
+        :key="`image-${mediaKey}`"
+        ref="imageRef"
+        :src="mediaUrl ?? undefined"
+        class="size-full object-cover"
+        alt=""
+        @load="handleImageLoad"
+        @error="handleMediaError"
+      />
+      <img v-if="!(detail && unavailable) && thumbnailURL" :src="thumbnailURL" class="size-full object-cover" alt="" />
+      <web-ui-icon v-if="detail && unavailable" :icon="unavailableResourceIcon(kind, source)" :size="32" />
+      <web-ui-icon
+        v-else-if="showFallback"
+        :icon="resourceIcon(kind)"
+        :size="detail ? 32 : 20"
+        :class="mediaFailed ? 'opacity-60' : ''"
+      />
+    </div>
+    <web-ui-icon
+      v-if="unavailable"
+      :icon="lucideTriangleAlert"
+      :size="14"
+      class="absolute bottom-0 left-0 text-amber-500"
     />
-    <img
-      v-if="kind === 'image' && !serverThumbActive && canRenderMedia && !mediaFailed"
-      :key="`image-${mediaKey}`"
-      ref="imageRef"
-      :src="mediaUrl ?? undefined"
-      class="size-full object-cover"
-      alt=""
-      @load="handleImageLoad"
-      @error="handleMediaError"
-    />
-    <img v-if="thumbnailURL" :src="thumbnailURL" class="size-full object-cover" alt="" />
-    <web-ui-icon v-if="showFallback" :icon="resourceIcon(kind)" :size="20" :class="mediaFailed ? 'opacity-60' : ''" />
   </div>
 </template>

@@ -113,7 +113,7 @@ function openSearch() {
             :key="item.path"
             :to="item.path"
             :tabindex="-1"
-            class="demo-search-link text-sm hover:bg-black/5 focus:bg-black/5 dark:hover:bg-white/10 dark:focus:bg-white/10"
+            class="demo-search-link text-sm hover:bg-[#1b1b20]/5 focus:bg-[#1b1b20]/5 dark:hover:bg-white/10 dark:focus:bg-white/10"
             @click="onResultClick"
             >{{ currentLocale === 'zh-CN' ? item.zh : item.en }}</RouterLink
           >

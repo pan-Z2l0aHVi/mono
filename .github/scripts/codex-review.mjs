@@ -65,8 +65,8 @@ const MARKER_TRAJECTORY_FIELD = / traj=(.+) -->$/u
 const TRAJECTORY_ENTRY_PATTERN =
   /^(?:\d{2}-\d{2} \d{2}:\d{2}Z )?(reviewed|blocked|stale|unreviewed|error|not_applicable)(?:\([A-Za-z0-9_-]{1,40}\))?(?:\/(none|triggered|exhausted|failed))?$/u
 
-// 空壳结论只自动重跑一次：重跑完成会再触发一次 workflow_run，第二次必须停下来转人工。
-export const AUTO_RETRY_ERROR_CODE = 'missing_coverage'
+// 空壳与不可用输出都只自动重跑一次：重跑完成会再触发一次 workflow_run，第二次必须停下来转人工。
+export const AUTO_RETRY_ERROR_CODES = Object.freeze(['missing_coverage', 'unusable_output'])
 export const AUTO_RETRY_LIMIT = 1
 export const AUTO_RETRY_STATES = ['none', 'triggered', 'exhausted', 'failed']
 
@@ -120,19 +120,83 @@ function parseCoverage(value) {
   return coverage
 }
 
+// 模型偶尔把前置推理块或 markdown 围栏写进最终答复：前导的成对闭合 XML 推理标签块（4–12 位 ASCII 字母标签名，
+// 如 <reasoning>...</reasoning> 或 <thought>...</thought>），或包住整份 JSON 的围栏。
+// 只剥前导完整推理块与整体围栏（推理永远先于结论生成，不剥尾随块），按开闭标签名同名（忽略大小写）配对，
+// 且块体内部不跨越同名标签，不做「从散文里抠最外层花括号」。
+const LEADING_TAG_OPEN = /^<([a-zA-Z]{4,12})(?:[ \t][^>\n/]*)?>/u
+const WHOLE_CODE_FENCE = /^\s*(`{3,})[^\n]*\n([\s\S]*?)\n?\1\s*$/u
+
+function stripLeadingWrapperBlock(text) {
+  const trimmed = text.trimStart()
+  const match = LEADING_TAG_OPEN.exec(trimmed)
+  if (!match) return null
+  const openRaw = match[0]
+  const tag = match[1]
+  const afterOpen = trimmed.slice(openRaw.length)
+  const closeMatch = new RegExp(`</${tag}>`, 'iu').exec(afterOpen)
+  if (!closeMatch) return null
+  const inner = afterOpen.slice(0, closeMatch.index)
+  if (new RegExp(`</?${tag}(?=[>\\s/])`, 'iu').test(inner)) return null
+  return afterOpen.slice(closeMatch.index + closeMatch[0].length)
+}
+
+/**
+ * 剥掉 JSON 之外的前导推理块与外层代码围栏，返回剥完的文本与用到的步骤（`reasoning-block` / `code-fence`）。
+ * 未闭合的推理块或尾随内容不剥：那时分不清哪一段是推理、哪一段是结论，只能按不可用处理。
+ * 调用方把步骤写进结论 meta，清洗过的事实与原始答复一样可审计。
+ */
+export function normalizeReviewOutput(raw) {
+  let text = String(raw).replace(/^\uFEFF/u, '')
+  const steps = []
+  let changed = true
+  while (changed) {
+    changed = false
+    const stripped = stripLeadingWrapperBlock(text)
+    if (stripped !== null) {
+      text = stripped
+      steps.push('reasoning-block')
+      changed = true
+      continue
+    }
+    const fence = WHOLE_CODE_FENCE.exec(text)
+    if (fence) {
+      text = fence[2]
+      steps.push('code-fence')
+      changed = true
+    }
+  }
+  return { text: text.trim(), steps: [...new Set(steps)] }
+}
+
+/**
+ * 先按原样解析，失败后才剥包装层重试。原样合法的输出永不走清洗分支，
+ * 因此这条路径只影响本来就会被判 `unusable_output` 的输入。
+ */
+function parseReviewJson(raw) {
+  try {
+    return { value: JSON.parse(raw), steps: [] }
+  } catch (error) {
+    const { text, steps } = normalizeReviewOutput(raw)
+    try {
+      return { value: JSON.parse(text), steps }
+    } catch (normalizedError) {
+      const wrapper = steps.length > 0 ? ` after removing ${steps.join(' and ')}` : ''
+      const detail = steps.length > 0 ? normalizedError.message : error.message
+      throw new Error(`review output is not valid JSON${wrapper}: ${detail}`)
+    }
+  }
+}
+
 /**
  * 模型输出是门禁的唯一输入，必须先过结构校验：未知档位、未知字段或空文本都会让结论不可信，
  * 宁可判「未审查」，也不带着半截 JSON 去拦或放。
  * `summary` 只是评论顶部的一行摘要，缺它不影响档位与阻断判定，因此不做硬校验：
  * 把装饰性字段判成致命错误，代价是整份 findings 作废、门却在绿色里沉默。
+ * 返回值里的 `sanitized` 记录这次剥掉了哪层包装；结构校验对剥完的文本照常全量执行。
  */
 export function parseReviewFindings(raw) {
-  let value
-  try {
-    value = JSON.parse(raw)
-  } catch (error) {
-    throw new Error(`review output is not valid JSON: ${error.message}`)
-  }
+  const { value, steps } = parseReviewJson(raw)
   if (!value || typeof value !== 'object' || Array.isArray(value))
     throw new Error('review output must be a JSON object')
   const summary = typeof value.summary === 'string' ? value.summary.trim() : ''
@@ -168,12 +232,13 @@ export function parseReviewFindings(raw) {
 
   const counts = emptyCounts()
   for (const finding of findings) counts[finding.severity] += 1
-  return { summary, coverage, findings, counts }
+  return { summary, coverage, findings, counts, sanitized: steps }
 }
 
 /** 增量结果必须逐项处置历史发现，覆盖和未覆盖记录跨轮累计。 */
 export function inheritReviewHistory(parsed, raw, prior) {
-  const resolutions = JSON.parse(raw).prior_resolutions
+  // 与本轮结论共用同一条解析路径，否则带包装层的增量输出会在这里二次判死。
+  const resolutions = parseReviewJson(raw).value.prior_resolutions
   if (!Array.isArray(resolutions) || resolutions.length !== prior.findings.length)
     throw new Error('incremental review must account for every prior finding')
   const byIndex = new Map()
@@ -260,18 +325,40 @@ export function resolveReviewRange({ baseSha, headSha, priorHeadSha, command = r
   }
   const mergeBaseSha = requireSha(command('git', ['merge-base', base, head]).trim(), 'merge base SHA')
   let startSha = mergeBaseSha
+  let diffBaseSha = mergeBaseSha
   if (priorHeadSha) {
     const prior = requireSha(priorHeadSha, 'prior review head SHA')
-    command('git', ['cat-file', '-e', `${prior}^{commit}`])
+    try {
+      command('git', ['cat-file', '-e', `${prior}^{commit}`])
+    } catch {
+      command('git', ['fetch', '--no-tags', 'origin', prior])
+    }
     command('git', ['merge-base', '--is-ancestor', prior, head])
-    command('git', ['merge-base', '--is-ancestor', mergeBaseSha, prior])
+    try {
+      command('git', ['merge-base', '--is-ancestor', mergeBaseSha, prior])
+      diffBaseSha = prior
+    } catch {
+      // PR 分支通过 merge commit 合入更新后的 base（如 gh pr update-branch）时，merge-base 前移到
+      // 新 base 提交，不再是 prior 的祖先。用 git merge-tree --write-tree 合成 prior 与新 merge-base
+      // 的无冲突三方合并树作为 diff 起点，滤掉纯上游 base 改动、只保留 prior 之后 PR 分支的净增量；
+      // 存在合并冲突时命令非零退出，由调用方回退全量审查。
+      const mergedTree = command('git', ['merge-tree', '--write-tree', prior, mergeBaseSha]).trim()
+      diffBaseSha = requireSha(mergedTree, 'incremental merge-tree SHA')
+    }
     startSha = prior
   }
-  const diff = command('git', ['diff', '--no-color', startSha, head, '--', ...REVIEW_EXCLUDE_PATHSPECS])
+  const diff = command('git', ['diff', '--no-color', diffBaseSha, head, '--', ...REVIEW_EXCLUDE_PATHSPECS])
   // 覆盖度判定需要知道「这次到底改了哪些文件」，否则只读了判据文档也能自称审查过。
-  const names = command('git', ['diff', '--name-only', '-z', startSha, head, '--', ...REVIEW_EXCLUDE_PATHSPECS])
+  const names = command('git', ['diff', '--name-only', '-z', diffBaseSha, head, '--', ...REVIEW_EXCLUDE_PATHSPECS])
   const changedPaths = names.split('\u0000').filter(name => name !== '')
-  return { baseSha: base, headSha: head, mergeBaseSha, ...(priorHeadSha ? { startSha } : {}), diff, changedPaths }
+  return {
+    baseSha: base,
+    headSha: head,
+    mergeBaseSha,
+    ...(priorHeadSha ? { startSha, ...(diffBaseSha !== startSha ? { diffBaseSha } : {}) } : {}),
+    diff,
+    changedPaths
+  }
 }
 
 export function readConclusion(directory) {
@@ -394,8 +481,8 @@ export function deriveConclusion({ meta, findings, liveHeadSha, error, notApplic
  *   无副作用；真正的 rerun 由调用方按 action 执行。
  */
 export function autoRetryDecision({ meta, runAttempt, runConclusion, reportAttempt }) {
-  if (meta?.status !== 'unreviewed' || meta?.error_code !== AUTO_RETRY_ERROR_CODE) {
-    return { action: 'skip', state: 'none', reason: 'the conclusion is not missing_coverage' }
+  if (meta?.status !== 'unreviewed' || !AUTO_RETRY_ERROR_CODES.includes(meta?.error_code)) {
+    return { action: 'skip', state: 'none', reason: 'the conclusion is not a retryable unreviewed output' }
   }
   // 总闸门最先判：CI 没判红就谈不上恢复，即便拿到的 artifact 是上一轮的旧空壳。
   if (runConclusion !== 'failure') {
@@ -421,7 +508,14 @@ export function autoRetryDecision({ meta, runAttempt, runConclusion, reportAttem
       reason: `report workflow was re-run (attempt ${report}); the single auto retry is already used`
     }
   }
-  return { action: 'rerun', state: 'triggered', reason: 'first attempt produced an empty review conclusion' }
+  return {
+    action: 'rerun',
+    state: 'triggered',
+    reason:
+      meta.error_code === 'unusable_output'
+        ? 'first attempt produced an unusable review output'
+        : 'first attempt produced an empty review conclusion'
+  }
 }
 
 /**
@@ -559,7 +653,7 @@ export function trajectoryEntries({ previousBody = '', verdict, code = '', autoR
   // 分钟级时间戳是「这版结论什么时候生成」的留痕；年月与同一条评论的「结论生成于」重复。
   const time = generated === '' ? '' : `${generated.slice(5)} `
   const error = code === '' || !TRAJECTORY_CODE_PATTERN.test(code) ? '' : `(${code})`
-  const retry = code === AUTO_RETRY_ERROR_CODE ? `/${normalizeAutoRetryState(autoRetry)}` : ''
+  const retry = AUTO_RETRY_ERROR_CODES.includes(code) ? `/${normalizeAutoRetryState(autoRetry)}` : ''
   const entry = `${time}${verdict}${error}${retry}`
   const previous = parseTrajectory(previousBody)
   if (previous.at(-1) === entry) return previous
@@ -666,24 +760,31 @@ export function renderConclusion({
     if (conclusion.status === 'error' && modelError !== '') {
       lines.push(`- 模型 job 错误：${codeSpan(modelError)}`)
     }
-    // 恢复状态统一挂在故障码旁：带 findings 的空壳结论也能看到，不依赖「无 findings」的正文分支。
-    if (conclusion.code === AUTO_RETRY_ERROR_CODE && retryState === 'triggered') {
+    // 恢复状态统一挂在故障码旁：带 findings 的空壳结论或不可用输出也能看到，不依赖「无 findings」的正文分支。
+    if (AUTO_RETRY_ERROR_CODES.includes(conclusion.code) && retryState === 'triggered') {
       lines.push(
         '- 自动恢复：写回 job 已用 `gh run rerun --failed` 重跑审查与门禁 job 一次；等新结论评论，不要手动再重跑。'
       )
-    } else if (conclusion.code === AUTO_RETRY_ERROR_CODE && retryState === 'exhausted') {
+    } else if (AUTO_RETRY_ERROR_CODES.includes(conclusion.code) && retryState === 'exhausted') {
       lines.push('- 自动恢复：自动重跑 1 次仍不可用；按 `docs/agents/review.md` 做完整独立审查，或修输出契约。')
-    } else if (conclusion.code === AUTO_RETRY_ERROR_CODE && retryState === 'failed') {
+    } else if (AUTO_RETRY_ERROR_CODES.includes(conclusion.code) && retryState === 'failed') {
       lines.push(
         '- 自动恢复：自动重跑调用失败；按 `gh run rerun --failed` 手动重跑，并核对写回 job 的 `actions: write` 与运行页错误。'
       )
-    } else if (conclusion.code === AUTO_RETRY_ERROR_CODE) {
+    } else if (AUTO_RETRY_ERROR_CODES.includes(conclusion.code)) {
       lines.push(
-        '- 恢复指引：本次没有触发自动重跑；先看写回 run 运行页 Summary 的「原因」，核对是不是 CI 非 `failure`、产物不是空壳、attempt 字段不可读或注入异常。仅当 CI 确实判 `failure` 且本次产物确属空壳时，才必要时用 `gh run rerun --failed` 重跑一次；CI 已成功时不要重跑，先核对评论头部的 `sha` 是否覆盖当前 head。反复出现就修输出契约或 env 注入，不要连续重跑。'
+        '- 恢复指引：本次没有触发自动重跑；先看写回 run 运行页 Summary 的「原因」，核对是不是 CI 非 `failure`、产物不是空壳、attempt 字段不可读或注入异常。仅当 CI 确实判 `failure` 且本次产物确属不可用时，才必要时用 `gh run rerun --failed` 重跑一次；CI 已成功时不要重跑，先核对评论头部的 `sha` 是否覆盖当前 head。反复出现就修输出契约或 env 注入，不要连续重跑。'
       )
     }
   }
   if (meta?.model) lines.push(`- 模型：\`${meta.model}\`（effort \`${meta.effort || 'default'}\`）`)
+  // 清洗只剥包装层，JSON 本体与结构校验都没变；写出来是为了让「结论来自一份原样不是 JSON 的答复」
+  // 留在可见处，读者不必翻 artifact 才知道这一次发生过什么。
+  if (Array.isArray(meta?.output_sanitized) && meta.output_sanitized.length > 0) {
+    const labels = { 'reasoning-block': '推理标签块', 'code-fence': 'markdown 代码围栏' }
+    const steps = meta.output_sanitized.map(step => labels[step] ?? plainText(step))
+    lines.push(`- 输出清洗：模型答复外层带 ${steps.join('、')}，已剥离后重新解析；JSON 本体未改动`)
+  }
   if (meta?.reused_from) lines.push(`- 复用：同一 head 已有结论，来自 run \`${meta.reused_from}\`，未再调用模型`)
   const generated = stamp(meta?.generated_at)
   if (generated) lines.push(`- 结论生成于：\`${generated}\`（评论就地更新，创建时间不会变）`)
@@ -735,7 +836,9 @@ export function renderConclusion({
           ? autoRetryExplained
             ? '本次没有可用结论：模型没交出覆盖证据，审查 job 一并判红；恢复状态见上方「自动恢复」行。'
             : '本次没有可用结论：模型没交出覆盖证据，审查 job 一并判红；恢复指引见上方故障码。'
-          : '本次没有可用结论：模型 job 跑完了但输出不可用，重跑整条 run；重复出现就按故障码修输出契约。'
+          : autoRetryExplained
+            ? '本次没有可用结论：模型输出不可用，审查 job 一并判红；恢复状态见上方「自动恢复」行。'
+            : '本次没有可用结论：模型输出不可用，审查 job 一并判红；恢复指引见上方故障码。'
       )
     else lines.push('没有可用发现：本次没有拿到模型结论，不能当作已审查。')
   }
@@ -1120,6 +1223,9 @@ export function buildReviewPreload(
   if (!emptyDiff) {
     for (const entry of ranked) {
       if (preloaded.length >= maxFiles || remainingBudget <= 0) break
+      // 测试文件常含构造出来的非法 JSON、空壳样例或提示词片段（如 codex-review.test.mjs），
+      // 预注入到提示词开头会诱导模型在结构化输出中直接复读测试夹具；测试改动留在 changed_paths 按需读取。
+      if (entry.category === 'test') continue
       const rawBlock = diffByPath.get(entry.path)
       if (!rawBlock) continue
       const budget = Math.min(perFileBytes, remainingBudget)
@@ -1145,7 +1251,7 @@ export function buildReviewPreload(
     '',
     '### 本次范围与风险排序清单',
     '',
-    `- 范围：\`${range?.startSha ?? range?.mergeBaseSha ?? 'unknown'}..${range?.headSha ?? 'unknown'}\`（base \`${range?.baseSha ?? 'unknown'}\`）`,
+    `- 范围：\`${range?.startSha ?? range?.mergeBaseSha ?? 'unknown'}..${range?.headSha ?? 'unknown'}\`（base \`${range?.baseSha ?? 'unknown'}\`${range?.diffBaseSha ? ` · diff base \`${range.diffBaseSha}\`` : ''}）`,
     `- 源码 diff：\`${diffBytes}\` bytes · \`changed_paths\`：\`${ranked.length}\` 个文件 · \`empty_diff\`：\`${emptyDiff}\``,
     `- 预注入 diff：\`${preloadedPaths.length}/${ranked.length}\` 个文件（完整 \`${preloadedPaths.length - truncatedPaths.length}\`，截断 \`${truncatedPaths.length}\`，未预注入 \`${omittedPaths.length}\`）`
   ]
@@ -1180,10 +1286,9 @@ export function buildReviewPreload(
           : `完整 diff：${item.totalBytes} bytes`
         lines.push(`#### \`${item.path}\`（\`${item.tier}\`，${tag}）`, '', wrapCodeFence(item.text, 'diff'))
         if (item.truncated) {
-          lines.push(
-            '',
-            `其余部分按需读取：\`git diff $CODEX_REVIEW_MERGE_BASE_SHA $CODEX_REVIEW_HEAD_SHA -- "${item.path}"\``
-          )
+          const diffRef =
+            range?.diffBaseSha || range?.startSha ? '$CODEX_REVIEW_START_SHA' : '$CODEX_REVIEW_MERGE_BASE_SHA'
+          lines.push('', `其余部分按需读取：\`git diff ${diffRef} $CODEX_REVIEW_HEAD_SHA -- "${item.path}"\``)
         }
         lines.push('')
       }
@@ -1275,6 +1380,14 @@ function requireEnv(names, env = process.env) {
   )
 }
 
+/**
+ * 清洗过包装层就把步骤写进结论 meta：结论本身不变，但「模型答复原样不是 JSON」这件事
+ * 必须和原始答复一样留在产物里，供评论与 artifact 审计。
+ */
+function sanitizedMeta(parsed) {
+  return Array.isArray(parsed?.sanitized) && parsed.sanitized.length > 0 ? { output_sanitized: parsed.sanitized } : {}
+}
+
 function writeConclusion(directory, { findings, meta }) {
   fs.writeFileSync(
     path.join(directory, FINDINGS_FILE),
@@ -1363,7 +1476,13 @@ export function commandPrepare({ env = process.env, command = run, priorHeadSha 
         base_sha: range.baseSha,
         head_sha: range.headSha,
         merge_base_sha: range.mergeBaseSha,
-        ...(range.startSha ? { review_start_sha: range.startSha, incremental: true } : {}),
+        ...(range.startSha
+          ? {
+              review_start_sha: range.startSha,
+              ...(range.diffBaseSha ? { diff_base_sha: range.diffBaseSha } : {}),
+              incremental: true
+            }
+          : {}),
         diff_bytes: Buffer.byteLength(range.diff),
         empty_diff: Buffer.byteLength(range.diff) === 0,
         changed_paths: range.changedPaths,
@@ -1380,7 +1499,9 @@ export function commandPrepare({ env = process.env, command = run, priorHeadSha 
       base_sha: range.baseSha,
       head_sha: range.headSha,
       merge_base_sha: range.mergeBaseSha,
-      review_start_sha: range.startSha ?? range.mergeBaseSha,
+      // 注入 CODEX_REVIEW_START_SHA 供模型按文件执行 git diff：分支合入更新后的 base 时使用合成三方合并树
+      // diffBaseSha，使单文件 git diff 与 pr.diff / changed_paths 的起点一致；review-scope.json 仍记前次 head。
+      review_start_sha: range.diffBaseSha ?? range.startSha ?? range.mergeBaseSha,
       diff_path: path.join(required.RUNNER_TEMP, 'pr.diff'),
       diff_bytes: String(Buffer.byteLength(range.diff)),
       preload_path: preloadPath(env)
@@ -1393,12 +1514,18 @@ export function commandPrepare({ env = process.env, command = run, priorHeadSha 
   return { range, preload }
 }
 
-export function validateIncrementalBaseline({ prior, priorScope, expectedHead, expectedBase, config }) {
+export function validateIncrementalBaseline({ prior, priorScope, expectedHead, expectedBase, config, isBaseAncestor }) {
+  const baseMatches =
+    prior?.meta?.base_sha === expectedBase ||
+    (typeof isBaseAncestor === 'function' &&
+      SHA_PATTERN.test(String(prior?.meta?.base_sha ?? '')) &&
+      SHA_PATTERN.test(String(expectedBase ?? '')) &&
+      isBaseAncestor(prior.meta.base_sha, expectedBase))
   if (
     !prior?.findings?.coverage ||
     prior.meta.status !== 'reviewed' ||
     prior.meta.head_sha !== expectedHead ||
-    prior.meta.base_sha !== expectedBase ||
+    !baseMatches ||
     !config ||
     prior.meta.config_fingerprint !== config.fingerprint
   )
@@ -1422,12 +1549,28 @@ function commandPrepareIncremental() {
     const prior = readConclusion(priorConclusionDirectory())
     const config = readConfig()
     const priorScope = JSON.parse(fs.readFileSync(path.join(priorConclusionDirectory(), SCOPE_FILE), 'utf8'))
+    const isBaseAncestor = (priorBase, currentBase) => {
+      try {
+        for (const sha of [priorBase, currentBase]) {
+          try {
+            run('git', ['cat-file', '-e', `${sha}^{commit}`])
+          } catch {
+            run('git', ['fetch', '--no-tags', 'origin', sha])
+          }
+        }
+        run('git', ['merge-base', '--is-ancestor', priorBase, currentBase])
+        return true
+      } catch {
+        return false
+      }
+    }
     validateIncrementalBaseline({
       prior,
       priorScope,
       expectedHead: env.CODEX_REVIEW_PRIOR_HEAD_SHA,
       expectedBase: env.CODEX_REVIEW_BASE_SHA,
-      config
+      config,
+      isBaseAncestor
     })
     commandPrepare({ priorHeadSha: env.CODEX_REVIEW_PRIOR_HEAD_SHA })
     writeOutputs({ incremental: 'true' })
@@ -1556,6 +1699,9 @@ function commandValidate() {
     const meta = { ...identity, status: 'reviewed', reused_from: process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '' }
     if (typeof prior.review_start_sha === 'string') meta.review_start_sha = prior.review_start_sha
     if (Array.isArray(prior.review_lineage)) meta.review_lineage = prior.review_lineage
+    if (Array.isArray(prior.output_sanitized) && prior.output_sanitized.length > 0) {
+      meta.output_sanitized = prior.output_sanitized
+    }
     // 复用的结论是上一次生成的：它没记时间就不写，绝不拿当前时间冒充它的生成时间。
     if (typeof prior.generated_at === 'string' && prior.generated_at !== '') meta.generated_at = prior.generated_at
     else delete meta.generated_at
@@ -1603,7 +1749,13 @@ function commandValidate() {
     // findings 留着：结论不可用由 status 表达，把已经看到的 Block 丢掉只会让作者少一条线索。
     writeConclusion(directory, {
       findings: parsed,
-      meta: { ...identity, status: 'unreviewed', error_code: 'missing_coverage', error: gap }
+      meta: {
+        ...identity,
+        status: 'unreviewed',
+        error_code: 'missing_coverage',
+        error: gap,
+        ...sanitizedMeta(parsed)
+      }
     })
     writeOutputs({ blocks: String(parsed.counts.Block), reason: gap })
     console.error(`review is unreviewed: ${gap}`)
@@ -1621,7 +1773,9 @@ function commandValidate() {
       if (!prior?.findings?.coverage || prior.meta.head_sha !== scope.review_start_sha)
         throw new Error('baseline unavailable')
       const raw = fs.readFileSync(outputPath, 'utf8')
-      resolutions = JSON.parse(raw).prior_resolutions
+      // 与 `parseReviewFindings` / `inheritReviewHistory` 同一条解析路径：带包装层的增量答复
+      // 不该在这里被判成不可用的输出。
+      resolutions = parseReviewJson(raw).value.prior_resolutions
       parsed = inheritReviewHistory(parsed, raw, prior.findings)
       lineage = [
         ...(Array.isArray(prior.meta.review_lineage) ? prior.meta.review_lineage : []),
@@ -1647,7 +1801,13 @@ function commandValidate() {
       }
       writeConclusion(directory, {
         findings: parsed,
-        meta: { ...identity, status: 'unreviewed', error_code: 'unusable_output', error: failure.message }
+        meta: {
+          ...identity,
+          status: 'unreviewed',
+          error_code: 'unusable_output',
+          error: failure.message,
+          ...sanitizedMeta(parsed)
+        }
       })
       writeOutputs({ blocks: String(parsed.counts.Block), reason: failure.message })
       console.error(`incremental review is unreviewed: ${failure.message}`)
@@ -1656,7 +1816,13 @@ function commandValidate() {
   }
   writeConclusion(directory, {
     findings: parsed,
-    meta: { ...identity, status: 'reviewed', reused_from: '', ...(lineage ? { review_lineage: lineage } : {}) }
+    meta: {
+      ...identity,
+      status: 'reviewed',
+      reused_from: '',
+      ...sanitizedMeta(parsed),
+      ...(lineage ? { review_lineage: lineage } : {})
+    }
   })
   writeOutputs({ blocks: String(parsed.counts.Block), reason: '' })
   if (parsed.summary === '') console.log('review output carries no summary; the conclusion stands on its findings')
@@ -1734,12 +1900,10 @@ function commandGate() {
       console.error('Fix the repository configuration or the model invocation, then rerun CI.')
     } else if (status.status === 'unreviewed') {
       console.error(`Codex review produced no usable conclusion (${status.code}): ${status.reason}`)
-      // 只有 missing_coverage 会让审查 job 一并判红；unusable_output / error 那条 job 仍是绿的，
-      // 此时 --failed 只会重跑 gate，必须提示重跑整条 run 才会再调一次模型。
+      // missing_coverage 与 unusable_output 都会由 check-review-output.mjs 让审查 job 一并判红，
+      // 统一提示用 --failed 重跑审查与门禁 job。
       console.error(
-        status.code === 'missing_coverage'
-          ? 'Rerun the failed jobs with `gh run rerun --failed`; a repeat means the review output contract needs fixing.'
-          : 'Rerun the whole CI run once; a repeat means the review output contract needs fixing.'
+        'Rerun the failed jobs with `gh run rerun --failed`; a repeat means the review output contract needs fixing.'
       )
     } else {
       console.error(`Block findings must be fixed before merge: ${status.counts.Block} at ${liveHeadSha}`)

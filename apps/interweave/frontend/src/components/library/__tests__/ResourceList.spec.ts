@@ -68,9 +68,11 @@ async function mountList(
   document.body.append(host)
   // activeResourceId 需要响应式更新：navigateToIndex 会 emit activate，测试需模拟父级更新该 prop。
   const activeResourceId = ref<string | null>((overrides.activeResourceId as string | null) ?? null)
+  const listRef = ref<{ focusNearest(index: number): void }>()
   const app = createApp({
     render: () =>
       h(ResourceList, {
+        ref: listRef,
         resources,
         activeResourceId: activeResourceId.value,
         checkedIds,
@@ -99,6 +101,7 @@ async function mountList(
     // 不用 parentElement 顺推。
     container: host.querySelector<HTMLElement>('[role="list"]'),
     contextMenu: host.querySelector('web-ui-context-menu'),
+    listRef,
     // 当前行由父级持有的 activeResourceId 表达：这是组件对外的契约，内部下标不是。
     activeId: () => activeResourceId.value,
     unmount: () => {
@@ -165,6 +168,27 @@ describe('ResourceList', () => {
     document.body.innerHTML = ''
   })
 
+  it('请求焦点回退时选中最近一行，列表为空时回到列表容器', async () => {
+    const populated = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })])
+    try {
+      populated.listRef.value?.focusNearest(10)
+      await nextTick()
+      await nextTick()
+      expect(document.activeElement).toBe(populated.rows[1])
+      expect(populated.activeId()).toBe('r2')
+    } finally {
+      populated.unmount()
+    }
+
+    const empty = await mountList([])
+    try {
+      empty.listRef.value?.focusNearest(0)
+      expect(document.activeElement).toBe(empty.container)
+    } finally {
+      empty.unmount()
+    }
+  })
+
   it('无 bridge 的空资源列表渲染空态', async () => {
     const host = document.createElement('div')
     document.body.append(host)
@@ -190,7 +214,7 @@ describe('ResourceList', () => {
 
       const empty = host.querySelector('web-ui-empty')
       expect(empty?.getAttribute('size')).toBe('72')
-      expect(empty?.getAttribute('title')).toBe('桌面服务未连接')
+      expect(empty?.getAttribute('title')).toBe('暂时无法打开资源库')
       expect(empty?.getAttribute('description')).toBe('资源库还是空的')
     } finally {
       app.unmount()
@@ -1033,11 +1057,35 @@ describe('ResourceList：打开方式显示系统默认应用', () => {
       mounted.unmount()
     }
   })
+
+  it.each([
+    ResourceKind.ResourceKindImage,
+    ResourceKind.ResourceKindVideo,
+    ResourceKind.ResourceKindAudio,
+    ResourceKind.ResourceKindDocument,
+    ResourceKind.ResourceKindJSON,
+    ResourceKind.ResourceKindFile
+  ])('文件类型 %s 可在文件管理器中定位', async kind => {
+    const showInFileManager = vi.fn<(source: ResourceSourceView) => void>()
+    const mounted = await mountList([resource({ kind })], [], {}, { onShowInFileManager: showInFileManager })
+    try {
+      mounted.rows[0].dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, cancelable: true }))
+      await flushRenders()
+      const item = [...mounted.host.querySelectorAll<HTMLElement>('web-ui-dropdown-item')].find(candidate =>
+        /^在(访达|文件资源管理器|文件管理器)中打开$/.test(candidate.textContent?.trim() ?? '')
+      )
+      expect(item).toBeDefined()
+      item!.click()
+      expect(showInFileManager).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ location: '/tmp/a.png' }))
+    } finally {
+      mounted.unmount()
+    }
+  })
 })
 
 /*
  * 键盘呼出 context menu 这条路的回归。web-ui-context-menu 自己在宿主元素上听 ContextMenu 键与
- * Shift+F10，并且只按 document.activeElement 的 rect 摆 panel——它不看 menu item gate 的
+ * ContextMenu 键，并且只按 document.activeElement 的 rect 摆 panel——它不看 menu item gate 的
  * contextResource。contextResource 只有行上的 contextmenu 事件这一个赋值点，纯键盘
  * 呼出时它是 null，于是弹出一张紧贴该行、内容却只有「删除」和两条 divider 的 menu。行成了
  * tab stop 之后这条路径才可达，所以焦点必须成为 contextResource 的第二个来源。
@@ -1146,18 +1194,18 @@ describe('ResourceList：键盘呼出 context menu', () => {
   })
 
   /*
-   * 焦点在容器上按 Shift+F10，宿主照样会开 menu 并把 panel 锚到容器上。容器不对应任何一条资源，
+   * 焦点在容器上按 ContextMenu，宿主照样会开 menu 并把 panel 锚到容器上。容器不对应任何一条资源，
    * 所以这里先把焦点交给行：事件继续冒泡，宿主再读 document.activeElement 时读到的已经是
    * 那一行，menu 于是既锚在行上、也讲这一行的事。
    */
-  it('容器上按 Shift+F10 先把焦点交给行', async () => {
+  it('容器上按 ContextMenu 先把焦点交给行', async () => {
     const mounted = await mountList([resource({ id: 'r1' }), resource({ id: 'r2' })])
     try {
       const container = mounted.container!
       container.focus()
       expect(document.activeElement).toBe(container)
 
-      keydown(container, { key: 'F10', shiftKey: true })
+      keydown(container, { key: 'ContextMenu' })
       // 焦点交接跨一个 tick：scrollIndexIntoView 触发的渲染完成后才落焦，见 focusIndex
       await flushRenders()
 
@@ -1543,6 +1591,7 @@ describe('ResourceList：键盘导航与预览入口', () => {
 
     try {
       const event = keydown(mounted.rows[0]!, { key: ' ' })
+      mounted.rows[0]!.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true, composed: true }))
 
       expect(select).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'r1' }))
       expect(detail).not.toHaveBeenCalled()

@@ -117,6 +117,7 @@ export class WebUiDialog extends LitElement {
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _presence = defineNativeDialogPresence().make({
     getDialog: () => this.dialog,
+    getTransitionTarget: () => this.dialog?.querySelector('.wui-dialog-body') ?? null,
     isConnected: () => this.isConnected,
     isOpen: () => this.open
   })

@@ -1,10 +1,11 @@
 <script setup lang="ts">
 import type { WebUiDrawer, WebUiEvent } from '@greypan/web-ui'
+import { lucideArrowRight } from '@greypan/web-ui/icons'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
-import { resourceIcon } from './presentation'
+import { resourceIcon, unavailableResourceIcon } from './presentation'
 import { readTextPreview, resolvePreviewTarget, type PreviewEmptyReason } from './preview'
 import PreviewImage from './PreviewImage.vue'
 
@@ -34,7 +35,7 @@ const emptyCopy: Record<PreviewEmptyReason, { title: string; description: string
   'no-source': { title: '没有可预览的入口', description: '这个资源没有可用的来源。' },
   'empty-location': { title: '链接地址为空', description: '刷新这个链接来源后才能预览。' },
   'source-unavailable': { title: '文件已失效', description: '原路径已经不存在，找回文件后即可预览。' },
-  'media-unavailable': { title: '桌面服务未连接', description: '预览需要桌面应用提供文件内容。' },
+  'media-unavailable': { title: '暂时无法预览', description: '请稍后重试，或用其他应用打开文件。' },
   'unsupported-kind': { title: '暂不支持预览', description: '可以在系统默认应用中打开这个文件。' }
 }
 
@@ -47,8 +48,8 @@ const emptyState = computed(() => {
 // 编码不做嗅探，所以乱码提示对所有文本预览常驻；超限时再补一句截断说明。
 const textNotice = computed(() =>
   textPreview.value?.truncated
-    ? '文件过大，仅显示开头部分。非 UTF-8 编码的文件可能显示为乱码。'
-    : '非 UTF-8 编码的文件可能显示为乱码。'
+    ? '文件过大，仅显示开头部分。部分文件的文字可能无法正常显示。'
+    : '部分文件的文字可能无法正常显示。'
 )
 
 // 同 URL 再次挂载不会重新触发 load/error，key 让资源切换一定重建媒体元素。
@@ -99,7 +100,8 @@ async function loadText() {
     textState.value = 'ready'
   } catch (cause) {
     if (request !== textRequest) return
-    textError.value = cause instanceof Error && cause.message.trim() ? cause.message : '读取失败，请稍后重试'
+    console.error('读取文件预览失败', cause)
+    textError.value = '无法读取文件，请检查文件是否还在原处'
     textState.value = 'failed'
   }
 }
@@ -151,28 +153,32 @@ function handleMediaError(kind: 'image' | 'video') {
       <div v-if="emptyState" class="min-h-0 overflow-y-auto">
         <div class="grid min-h-full place-items-center">
           <web-ui-empty :size="72" :title="emptyState.title" :description="emptyState.description">
-            <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
+            <web-ui-icon
+              slot="icon"
+              :icon="
+                !resource.available || target.emptyReason === 'source-unavailable'
+                  ? unavailableResourceIcon(resource.kind, target.source)
+                  : resourceIcon(resource.kind)
+              "
+              :size="40"
+            />
             <web-ui-button
               v-if="target.emptyReason === 'source-unavailable' && target.source"
               slot="action"
+              class="group"
               variant="primary"
               @click="emit('recover', target.source)"
             >
-              找回资源
-              <svg
-                slot="suffix"
-                width="16"
-                height="16"
-                viewBox="0 0 24 24"
-                fill="none"
-                stroke="currentColor"
-                stroke-width="2"
-                stroke-linecap="round"
-                stroke-linejoin="round"
-                aria-hidden="true"
+              <span
+                class="inline-block transition-transform duration-150 motion-safe:group-hover:translate-x-0.5 motion-reduce:transition-none"
+                >找回资源</span
               >
-                <path d="M5 12h14m-6-6 6 6-6 6" />
-              </svg>
+              <web-ui-icon
+                slot="suffix"
+                :icon="lucideArrowRight"
+                :size="16"
+                class="transition-transform duration-150 motion-safe:group-hover:-translate-x-0.5 motion-reduce:transition-none"
+              />
             </web-ui-button>
           </web-ui-empty>
         </div>
@@ -180,7 +186,7 @@ function handleMediaError(kind: 'image' | 'video') {
 
       <div v-else-if="target.mode === 'image'" class="relative min-h-0 overflow-hidden">
         <web-ui-empty v-if="imageFailed" :size="72" title="无法显示这张图片" description="文件可能已被移动或删除。">
-          <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
+          <web-ui-icon slot="icon" :icon="unavailableResourceIcon(resource.kind, target.source)" :size="40" />
         </web-ui-empty>
         <PreviewImage
           v-else
@@ -207,16 +213,15 @@ function handleMediaError(kind: 'image' | 'video') {
             v-if="videoFailed"
             :size="72"
             title="无法播放这个视频"
-            description="文件可能已被移动，或编码不受支持。"
+            description="文件可能已被移动，或暂时无法显示。"
           >
-            <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
+            <web-ui-icon slot="icon" :icon="unavailableResourceIcon(resource.kind, target.source)" :size="40" />
           </web-ui-empty>
           <video
             v-else
             :key="mediaKey"
             :src="target.mediaUrl ?? undefined"
-            :class="videoPortrait ? 'h-full w-auto' : 'h-auto w-full'"
-            :style="{ visibility: mediaLoading ? 'hidden' : 'visible' }"
+            :class="[videoPortrait ? 'h-full w-auto' : 'h-auto w-full', { invisible: mediaLoading }]"
             class="absolute top-1/2 left-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 bg-black"
             controls
             playsinline

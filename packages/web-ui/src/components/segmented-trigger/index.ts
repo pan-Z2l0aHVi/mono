@@ -4,6 +4,7 @@ import { classMap } from 'lit/directives/class-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
+import { clearPressedPointerOutside, markPressedPointerOutside } from '@/shared/focus/pointer-hover'
 import { defineGroupManaged, selectionGroupContextKey, type SelectionGroupContext } from '@/shared/group-management'
 
 import style from './style.css?inline'
@@ -45,6 +46,7 @@ export class WebUiSegmentedTrigger extends LitElement {
   }
 
   private handleKeyDown(e: KeyboardEvent) {
+    clearPressedPointerOutside(e)
     if (e.key === 'Enter' || e.key === ' ') {
       e.preventDefault()
       this.handleClick()
@@ -68,6 +70,8 @@ export class WebUiSegmentedTrigger extends LitElement {
         aria-disabled=${String(this._isDisabled)}
         @click=${this.handleClick}
         @keydown=${this.handleKeyDown}
+        @pointerleave=${markPressedPointerOutside}
+        @pointerenter=${clearPressedPointerOutside}
       >
         <slot></slot>
       </div>

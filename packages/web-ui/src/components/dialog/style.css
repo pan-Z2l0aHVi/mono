@@ -19,10 +19,6 @@ dialog {
      backdrop-filter 在该过渡期间被整体禁用。玻璃卡片（.wui-dialog-body）自身
      opacity + backdrop-filter 插值过渡（own opacity 不禁用自身 blur，见下）。 */
 
-  /* 进场由大到小收缩（1.1 → 1），退场反向。取消 .is-visible 后回落到本条起点值，
-     enter/exit 共用同一 token。方向与浮动 panel 的 --wui-scale-enter 相反，故单独成 token。 */
-  transform: scale(var(--wui-dialog-scale-enter, 1.1));
-
   overflow: visible;
 
   box-sizing: border-box;
@@ -37,11 +33,9 @@ dialog {
   border: none;
 
   font-family: inherit;
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
 
   background: transparent;
-
-  transition: transform var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
 
   &::backdrop {
     opacity: 0;
@@ -99,13 +93,8 @@ dialog[open]:has(.desc) {
 
 /* 模态表面的焦点环抑制（<dialog> 壳 + panel 滚动区）集中在 assets/modal-surface.css，见组件 index.ts 的 static styles。 */
 
-dialog[open].is-visible {
-  transform: scale(1);
-}
-
 dialog[open].is-closing {
   pointer-events: none;
-  transition-duration: var(--wui-duration-dialog-exit, 260ms);
 }
 
 dialog.is-closing::backdrop {
@@ -114,14 +103,6 @@ dialog.is-closing::backdrop {
 
 dialog[open].is-visible::backdrop {
   opacity: 1;
-}
-
-@media (prefers-reduced-motion: reduce) {
-  dialog,
-  dialog[open].is-visible {
-    transform: none;
-    transition-duration: var(--wui-duration-feedback, 100ms);
-  }
 }
 
 /* ===== 玻璃卡片主体（样式由 glass.css 提供） ===== */
@@ -134,6 +115,7 @@ dialog[open].is-visible::backdrop {
   --wui-internal-dialog-close-right: var(--wui-dialog-close-right, 20px);
   --wui-internal-glass-shadow: var(--wui-shadow-overlay, 2px 16px 40px rgb(0 0 0 / 0.4));
   --wui-glass-corner-radius: var(--wui-radius-overlay, 28px);
+  transform: scale(var(--wui-dialog-scale-enter, 1.1));
 
   /* 卡片只吃 --wui-dialog-padding 的 block 分量；inline 分量让给各分区
      （.header / .desc / .wui-dialog-footer，由 --wui-dialog-inline-padding 控制），
@@ -143,12 +125,13 @@ dialog[open].is-visible::backdrop {
   border-radius: var(--wui-radius-overlay, 28px);
 
   opacity: 0;
-  background-color: var(--wui-dialog-bg, var(--wui-color-surface-overlay, rgb(248 248 248 / 0.92)));
+  background-color: var(--wui-dialog-bg, var(--wui-color-surface-overlay, rgb(248 248 252 / 0.92)));
   backdrop-filter: blur(0) saturate(var(--wui-glass-saturation, 160%)) brightness(var(--wui-glass-brightness, 1.06));
 
   /* transition 列表需手写 -webkit-backdrop-filter：lightningcss 不会在 transition
    的 value 内追加 -webkit 项，而 iOS 16.4 上 blur 过渡依赖它（属性前缀会自动生成）。 */
   transition:
+    transform var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1)),
     opacity var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1)),
     -webkit-backdrop-filter var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1)),
     backdrop-filter var(--wui-duration-dialog-enter, 320ms) var(--wui-ease-dialog, cubic-bezier(0.2, 0, 0, 1));
@@ -240,9 +223,18 @@ dialog.is-closing .wui-dialog-body {
 }
 
 dialog[open].is-visible .wui-dialog-body {
+  transform: scale(1);
   opacity: 1;
   backdrop-filter: blur(var(--wui-glass-blur, 4px)) saturate(var(--wui-glass-saturation, 160%))
     brightness(var(--wui-glass-brightness, 1.06));
+}
+
+@media (prefers-reduced-motion: reduce) {
+  dialog .wui-dialog-body,
+  dialog[open].is-visible .wui-dialog-body {
+    transform: none;
+    transition-duration: var(--wui-duration-feedback, 100ms);
+  }
 }
 
 /* ===== 关闭 button（绝对定位，两种内容模式同一套规则）=====
@@ -285,7 +277,7 @@ dialog[open].is-visible .wui-dialog-body {
   font-size: var(--wui-font-size-title, 18px);
   font-weight: var(--wui-font-weight-semibold, 600);
   line-height: var(--wui-line-height-tight, 1.2);
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
 }
 
 .header[hidden] {
@@ -366,7 +358,7 @@ dialog[open].is-visible .wui-dialog-body {
 
   font-size: var(--wui-font-size, 14px);
   line-height: var(--wui-line-height-normal, 1.5);
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
 }
 
 /* `--wui-dialog-max-height` 是公开 token（README 有记录），语义是**内容区**高度。

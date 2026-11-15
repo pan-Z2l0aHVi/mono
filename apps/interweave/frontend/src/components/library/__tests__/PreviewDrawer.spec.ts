@@ -235,7 +235,9 @@ describe('PreviewDrawer', () => {
     )
     await flush()
     expect(host.querySelector('pre')).toBeNull()
-    expect(host.querySelector('web-ui-empty')?.getAttribute('description')).toContain('HTTP 404')
+    expect(host.querySelector('web-ui-empty')?.getAttribute('description')).toContain(
+      '无法读取文件，请检查文件是否还在原处'
+    )
   })
 
   it('切换资源时取消在途文本请求，旧结果不再写回', async () => {
@@ -286,7 +288,7 @@ describe('PreviewDrawer', () => {
 
   it('缺 runtime 时说明预览依赖桌面服务', async () => {
     const { host } = await mountDrawer(resourceOf(fileSource({ mediaUrl: null }), ResourceKind.ResourceKindImage))
-    expect(host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('桌面服务未连接')
+    expect(host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('暂时无法预览')
   })
 
   it('预览未打开时不挂载媒体节点，也不发起文本读取', async () => {

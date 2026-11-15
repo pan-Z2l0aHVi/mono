@@ -38,6 +38,7 @@ import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
 import { useLibrarySelection } from '@/composables/useLibrarySelection'
 import { pendingWindowFileDrops } from '@/composables/windowFileDrop'
 import type { LibraryQueueItem } from '@/services/library'
+import { userMessage } from '@/services/library/userMessage'
 import { hasWailsRuntime } from '@/services/runtime'
 import { useLibraryStore } from '@/stores/library'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
@@ -96,8 +97,8 @@ const restoreOpen = ref(false)
 const restoreQueue = ref<LibraryRestoreQueueItem[]>([])
 const restoreBusy = ref(false)
 const restoreError = ref('')
+const failedRestoreIds = ref<string[]>([])
 const activeRestoreItemId = ref<string | null>(null)
-const addDialogRef = ref<InstanceType<typeof AddDialog> | null>(null)
 const addQueue = createLibraryAddQueue(runtime)
 const queue = addQueue.queue
 const duplicatePrompt = addQueue.duplicatePrompt
@@ -106,7 +107,11 @@ const confirmBusy = ref(false)
 const confirmOpen = ref(false)
 const confirmRequest = ref<ConfirmRequest | null>(null)
 const confirmError = ref('')
+const resourceListRef = ref<InstanceType<typeof ResourceList>>()
+let pendingDeleteFocus: number | null = null
 const addError = ref('')
+/** 菜单「导入来自 › 链接」要把 AddDialog 直接翻到链接输入，因此保留组件引用。 */
+const addDialogRef = ref<InstanceType<typeof AddDialog> | null>(null)
 watch(
   pendingWindowFileDrops,
   batches => {
@@ -179,7 +184,7 @@ const {
 // 未连接时给出「为什么是空的」的说明，正常使用为空时才讲资源库本身，否则会出现
 // 「桌面服务未连接」配「资源库还是空的」这种自相矛盾的组合。
 const emptyDescription = computed(() => {
-  if (!runtime.isAvailable) return '浏览器预览无法连接桌面服务，请在桌面应用中使用。'
+  if (!runtime.isAvailable) return '请在桌面应用中打开资源库。'
   return store.hasActiveFilter ? '没有符合条件的资源' : '资源库还是空的'
 })
 const allTagNames = computed(() =>
@@ -260,6 +265,15 @@ async function openResource(resource: ResourceView) {
   await openExternal(target)
 }
 
+async function showInFileManager(source: ResourceSourceView) {
+  try {
+    await runtime.system.showInFileManager(source.location)
+  } catch (cause) {
+    console.error('无法在文件管理器中打开文件', cause)
+    toast.warning('无法打开文件所在的位置，请检查文件是否还在原处', { position: 'top-center' })
+  }
+}
+
 /*
  * 右键「重命名」要把目标行置成激活行。
  *
@@ -297,7 +311,9 @@ function requestDeleteResource(resource: ResourceView) {
     confirmLabel: '删除',
     danger: true,
     action: async () => {
+      const index = visibleResources.value.findIndex(item => item.id === resource.id)
       const deletedIds = await deleteResources([resource.id])
+      if (deletedIds.includes(resource.id) && !detailOpen.value) pendingDeleteFocus = Math.max(index, 0)
       finishDelete(deletedIds)
     }
   })
@@ -312,7 +328,9 @@ function requestDeleteSelected() {
     confirmLabel: '删除',
     danger: true,
     action: async () => {
+      const index = visibleResources.value.findIndex(item => ids.includes(item.id))
       const deletedIds = await deleteResources(ids)
+      if (deletedIds.length && !detailOpen.value) pendingDeleteFocus = Math.max(index, 0)
       finishDelete(deletedIds)
       if (deletedIds.length === ids.length) {
         selectionMode.value = false
@@ -363,8 +381,15 @@ function closeConfirmDialog() {
   confirmOpen.value = false
 }
 
+function restoreDeletedFocus() {
+  if (pendingDeleteFocus === null) return
+  const index = pendingDeleteFocus
+  pendingDeleteFocus = null
+  void nextTick(() => resourceListRef.value?.focusNearest(index))
+}
+
 function takeOperationError(cause: unknown, fallback: string) {
-  const message = cause instanceof Error && cause.message.trim() ? cause.message : runtimeError.value || fallback
+  const message = userMessage(cause, runtimeError.value || fallback)
   runtimeError.value = ''
   return message
 }
@@ -417,9 +442,9 @@ async function pasteFilePaths(clipboardText?: string) {
       await addQueue.enqueueURL(url)
       return
     }
-    toast.warning('剪切板中没有可添加的文件或有效链接', { container: addDialogRef.value?.toastContainer() })
+    toast.warning('剪切板中没有可添加的文件或有效链接', { position: 'top-center' })
   } catch {
-    toast.warning('无法读取剪切板，请重试', { container: addDialogRef.value?.toastContainer() })
+    toast.warning('无法读取剪切板，请重试', { position: 'top-center' })
   }
 }
 
@@ -509,6 +534,7 @@ function openRestoreDialog(items: LibraryRestoreQueueItem[]) {
   if (!items.length || restoreBusy.value) return
   restoreQueue.value = items
   restoreError.value = ''
+  failedRestoreIds.value = []
   activeRestoreItemId.value = null
   restoreOpen.value = true
 }
@@ -541,6 +567,10 @@ async function submitRestoreQueue(items: LibraryRestoreQueueItem[]) {
   try {
     const result = await restoreLibraryQueue(items, {
       replaceFileSource,
+      replaceScannedFileSource: async (sourceId, path, snapshot) => {
+        const updated = await runtime.sources.replaceScannedFile(sourceId, path, snapshot)
+        store.upsertResource(updated)
+      },
       replaceURLSource,
       onItemStart: itemId => {
         activeRestoreItemId.value = itemId
@@ -548,8 +578,12 @@ async function submitRestoreQueue(items: LibraryRestoreQueueItem[]) {
     })
     const completedIds = new Set(result.completedIds)
     restoreQueue.value = restoreQueue.value.filter(item => !completedIds.has(item.id))
-    if (result.failed) {
-      restoreError.value = takeOperationError(result.failed.cause, '找回资源失败，请稍后重试')
+    if (result.failures.length) {
+      failedRestoreIds.value = result.failures.map(failure => failure.item.id)
+      restoreError.value = takeOperationError(
+        result.failures[0].cause,
+        `有 ${result.failures.length} 项找回失败，请重试`
+      )
       return
     }
     if (!restoreQueue.value.length) setRestoreOpen(false)
@@ -641,6 +675,7 @@ onMounted(() => {
       </div>
 
       <ResourceList
+        ref="resourceListRef"
         :resources="visibleResources"
         :active-resource-id="activeResourceId"
         :checked-ids="checkedIds"
@@ -653,6 +688,7 @@ onMounted(() => {
         :save-thumbnail-for="saveSourceThumbnail"
         :resolve-default-open-with="resolveDefaultOpenWith"
         @open-default="openResource"
+        @show-in-file-manager="showInFileManager"
         @select="selectResource"
         @detail="openResourceDetail"
         @start-rename="renameResourceFromMenu"
@@ -677,6 +713,7 @@ onMounted(() => {
       :resolve-default-open-with="resolveDefaultOpenWith"
       @update:open="setDetailOpen"
       @open-default="openResource"
+      @show-in-file-manager="showInFileManager"
       @start-rename="startResourceRename($event, 'drawer')"
       @rename-change="handleResourceNameChange"
       @cancel-rename="stopResourceRename"
@@ -740,10 +777,24 @@ onMounted(() => {
     :error="restoreError"
     :mobile="mobile"
     :active-item-id="activeRestoreItemId"
+    :all-unavailable-files="
+      store.resources.flatMap(resource =>
+        resource.sources
+          .filter(source => source.type === 'file' && !source.available)
+          .map(source => createLibraryRestoreQueueItem(resource, source))
+      )
+    "
+    :failed-ids="failedRestoreIds"
     :choose-file-path="runtime.system.chooseFilePath"
+    :choose-directory="runtime.system.chooseDirectory"
+    :start-scan="runtime.sources.startRecoveryScan"
+    :poll-scan="runtime.sources.pollRecoveryScan"
+    :cancel-scan="runtime.sources.cancelRecoveryScan"
+    :discard-scan="runtime.sources.discardRecoveryScan"
     :prepare-file-preview="runtime.resources.prepareFilePreview"
     :release-file-preview="runtime.resources.releaseFilePreview"
     @update:open="setRestoreOpen"
+    @add-items="restoreQueue = $event"
     @submit="submitRestoreQueue"
   />
 
@@ -758,6 +809,7 @@ onMounted(() => {
     :compact="confirmRequest?.compact ?? false"
     @confirm="runConfirmedAction"
     @cancel="closeConfirmDialog"
+    @closed="restoreDeletedFocus"
   />
 
   <web-ui-back-top />

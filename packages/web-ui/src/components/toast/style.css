@@ -31,10 +31,10 @@
 
   font-size: var(--wui-font-size, 14px);
   line-height: var(--wui-line-height-normal, 1.5);
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
 
   opacity: 0;
-  background-color: var(--wui-color-surface-overlay, rgb(248 248 248 / 0.92));
+  background-color: var(--wui-color-surface-overlay, rgb(248 248 252 / 0.92));
   backdrop-filter: blur(0) saturate(var(--wui-glass-saturation, 160%)) brightness(var(--wui-glass-brightness, 1.06));
 
   /* transition 列表需手写 -webkit-backdrop-filter：lightningcss 不会在 transition
@@ -96,7 +96,7 @@ web-ui-button.toast-close-btn {
 
 /* secondary 变体默认用文本色，让关闭 button 呈现 muted 观感 */
 .toast web-ui-button[icon] {
-  --wui-button-color: var(--wui-color-text-secondary, #6a6a6a);
+  --wui-button-color: var(--wui-color-text-secondary, #6a6a70);
 }
 
 .toast-icon {
@@ -142,7 +142,7 @@ web-ui-button.toast-close-btn {
   font-size: var(--wui-font-size, 14px);
   font-weight: var(--wui-font-weight-semibold, 600);
   line-height: var(--wui-line-height-snug, 1.4);
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
   text-overflow: ellipsis;
   white-space: nowrap;
 }
@@ -155,13 +155,13 @@ web-ui-button.toast-close-btn {
 
   font-size: calc(var(--wui-font-size, 14px) - 1px);
   line-height: var(--wui-line-height-snug, 1.4);
-  color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 55%, transparent);
+  color: color-mix(in srgb, var(--wui-color-text, #1b1b20) 55%, transparent);
   word-break: break-all;
 }
 
 .toast-time {
   font-size: var(--wui-font-size-caption, 12px);
-  color: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 30%, transparent);
+  color: color-mix(in srgb, var(--wui-color-text, #1b1b20) 30%, transparent);
   white-space: nowrap;
 }
 

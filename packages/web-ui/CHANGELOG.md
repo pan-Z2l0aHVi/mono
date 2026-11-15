@@ -1,5 +1,30 @@
 # @greypan/web-ui
 
+## 13.0.0
+
+### Major Changes
+
+- 57f4091: Open context menus with a Space key hold and retain the ContextMenu key; remove the Shift+F10 shortcut. Improve keyboard focus and search behavior in Interweave.
+- 57f4091: Add a `sport` progress mode and remove `indeterminate`.
+  
+  **Breaking:** the `indeterminate` prop, the `--wui-progress-indeterminate-duration` custom property, and the `wui-progress-indeterminate` keyframes (previously reachable through the public `indicator` part) are removed; custom animations must use `wui-progress-sport` instead. A `progressbar` only expresses known progress; for work whose percentage cannot be calculated yet, use a loading indicator such as `web-ui-spinner`. This is a major bump because `indeterminate` shipped in 12.4.0. Remove any leftover `indeterminate` attribute from templates: it is now ignored and, without an explicit `value`, silently degrades to 0% instead of an unknown-progress state. The host always exposes `aria-valuenow`; `show-value` no longer shows an ellipsis and displays the percentage when enabled.
+  
+  `sport` turns the completed portion into a square-cornered bar sized by `value / max` that loops from left to right with non-linear easing. The default period is 1s (1.25 times the theme's spinner token) and slows to 2s under a theme's reduced-motion setting. `--wui-progress-sport-duration` and `--wui-progress-sport-easing` allow tuning; `aria-valuenow` and `show-value` are retained.
+
+### Minor Changes
+
+- 57f4091: Add a neutral control shade token and use subtly blue gray interaction states for light navigation and secondary buttons.
+
+### Patch Changes
+
+- 57f4091: Keep notifications inside modal dialogs positioned relative to the viewport.
+- 57f4091: Fix portal overlays inside modal dialogs aligning incorrectly when a drawer shifts the page.
+- 57f4091: Keep automatic toast notifications visible and interactive above managed modal surfaces while preserving viewport positioning during drawer motion.
+- 57f4091: Unify neutral surfaces and text around a subtly cool gray palette across controls, layouts, and Interweave.
+  Restore button and segmented item feedback when a pressed pointer moves outside in WebKit.
+- 57f4091: Refine unavailable resource icons and interaction feedback.
+- 57f4091: Add shared scan, stop, Finder, and navigation icons to the icon exports.
+
 ## 12.4.0
 
 ### Minor Changes

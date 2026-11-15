@@ -437,6 +437,8 @@ onBeforeUnmount(() => toast.clear())
 
 命令式入口没有其他必经步骤。`toast()` 自行把 toast 挂载到最近的主题的 overlay 容器（没有主题作用域时回退到全局默认容器）。`target` 用来解析最近的主题作用域。`container` 显式指定挂载容器，优先级高于主题作用域。
 
+当 Web UI 管理的模态层打开时，自动挂载的 toast 会迁移到当前模态层，保持在视口边缘可见；模态层关闭后返回原来的 overlay。显式指定 `container` 时继续使用该容器；第三方模态层不参与自动管理。
+
 同一个 tick 内、尚未挂载的 toast 仍能被同 `id` 的调用改写，最终只产生一条。
 
 悬停会暂停自动关闭计时器。指针离开后续跑剩余时间，不会重新计满。
@@ -485,7 +487,7 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 
 `position` 变化会把 toast 移到新位置，并保留剩余计时。如果倒计时已经到期，它会直接退场，不会一直留着。
 
-`container` 与 `target` 以首次调用为准，不支持把已存在的 toast 换到另一个 overlay 容器。
+`container` 与 `target` 以首次调用为准。自动迁移到受管理的模态层时保留原有主题作用域。
 
 ### 关闭语义
 

@@ -294,6 +294,10 @@ export class WebUiDrawer extends LitElement {
     return this.shadowRoot?.querySelector('dialog') ?? null
   }
 
+  private get motionLayer() {
+    return this.shadowRoot?.querySelector<HTMLElement>('.wui-drawer-motion') ?? null
+  }
+
   private _hasHeaderSlot = false
   private _hasFooterSlot = false
   private readonly _userOpenChange = new UserChangeController()
@@ -332,6 +336,7 @@ export class WebUiDrawer extends LitElement {
   private readonly _scrollLock = defineScrollLockLease().make()
   private readonly _presence = defineNativeDialogPresence().make({
     getDialog: () => this.dialog,
+    getTransitionTarget: () => this.motionLayer,
     isConnected: () => this.isConnected,
     isOpen: () => this.open
   })
@@ -510,7 +515,7 @@ export class WebUiDrawer extends LitElement {
     if (!dialog.classList.contains('is-visible')) return
 
     // 先读取动画中的当前位移再取消弹回动画，避免取消后回跳到内联样式值。
-    const currentTransform = getComputedStyle(dialog).transform
+    const currentTransform = this.motionLayer ? getComputedStyle(this.motionLayer).transform : 'none'
     const axisValue =
       currentTransform && currentTransform !== 'none' && typeof DOMMatrixReadOnly === 'function'
         ? new DOMMatrixReadOnly(currentTransform)[this._dragAxis === 'x' ? 'm41' : 'm42']
@@ -642,18 +647,19 @@ export class WebUiDrawer extends LitElement {
     this._clearDragStyles(dialog)
   }
 
-  // 将闭合方向位移映射为 dialog transform，并同步 backdrop 透明度保持跟手反馈。
+  // 内容层承接位移，dialog 保留 backdrop 透明度。
   private _applyDragOffset(dialog: HTMLDialogElement, offset: number) {
     const sign = this._dragCloseSign
     const value = offset * sign
-    dialog.style.transform = this._dragAxis === 'x' ? `translateX(${value}px)` : `translateY(${value}px)`
+    if (this.motionLayer)
+      this.motionLayer.style.transform = this._dragAxis === 'x' ? `translateX(${value}px)` : `translateY(${value}px)`
     const size = this._measureDragSize()
     const progress = size > 0 ? Math.min(1, Math.max(0, offset / size)) : 0
     dialog.style.setProperty('--wui-internal-drag-backdrop-opacity', String(1 - progress))
   }
 
   private _clearDragStyles(dialog: HTMLDialogElement) {
-    dialog.style.removeProperty('transform')
+    this.motionLayer?.style.removeProperty('transform')
     dialog.style.removeProperty('--wui-internal-drag-backdrop-opacity')
   }
 
@@ -741,8 +747,10 @@ export class WebUiDrawer extends LitElement {
     const sign = this._dragCloseSign
     dialog.style.setProperty('--wui-internal-settle-duration', `${duration}ms`)
     dialog.style.setProperty('--wui-internal-settle-easing', easing)
-    dialog.style.transform =
-      this._dragAxis === 'x' ? `translateX(${offset * sign}px)` : `translateY(${offset * sign}px)`
+    if (this.motionLayer) {
+      this.motionLayer.style.transform =
+        this._dragAxis === 'x' ? `translateX(${offset * sign}px)` : `translateY(${offset * sign}px)`
+    }
     dialog.style.setProperty('--wui-internal-drag-backdrop-opacity', String(backdropOpacity))
     dialog.classList.add('is-settling')
     dialog.classList.remove('is-dragging')
@@ -975,9 +983,9 @@ export class WebUiDrawer extends LitElement {
 
   private handleTransitionEnd(e: TransitionEvent) {
     // transitionend 会从后代元素冒泡上来（slotted 消费者内容、嵌套子 drawer）。
-    // 只处理 dialog 自身的事件：presence 与收尾都只认本层 dialog 的过渡，
+    // 只处理本层内容的事件：presence 与收尾都只认动画层的过渡，
     // 后代一条 transform 过渡结束不能提前终结本层收尾（与 presence 内部守卫同规则）。
-    if (e.target !== e.currentTarget) return
+    if (e.target !== this.motionLayer) return
     this._presence.handleTransitionEnd(e)
 
     // 收尾过渡结束：::backdrop 的 opacity 过渡 target 也是 dialog（带 pseudoElement），
@@ -1156,10 +1164,7 @@ export class WebUiDrawer extends LitElement {
     const dialogLabel = this.ariaDialogLabel.trim()
     const dialogLabelledBy = !dialogLabel && !this.headless && showHeader ? 'wui-drawer-heading' : nothing
 
-    // 拖拽 drag zone：仅在打开且 draggable 时渲染；胶囊 + 加宽命中条贴在 drawer 内缘。
-    // 胶囊是 drag zone 的**兄弟节点**而非后代：drag zone 要让开 header / footer（见 style.css），
-    // 胶囊作为后代会连带继承那份让位量，被一起推离 panel 边缘。两者都是 dialog 的直接子节点，
-    // 胶囊因此相对 dialog 定位、恒贴可抓取边缘，drag zone 则继续为端头上的 button 让位。
+    // 胶囊与 drag zone 为动画层中的兄弟节点，让位量只作用于 drag zone。
     //
     // 端头 drag edge 补上解耦留下的空档：胶囊贴回边缘后就不再落在 drag zone 的让开区里
     // （bottom + header 实测胶囊带 [8,12]、drag zone 带 [60,80]），那一段若没有命中层，
@@ -1194,51 +1199,53 @@ export class WebUiDrawer extends LitElement {
         @keydown=${this.handleKeydown}
         @transitionend=${this.handleTransitionEnd}
       >
-        ${
-          this.headless
-            ? html`<slot></slot>${dragBar}`
-            : html`
-                <div class="wui-drawer-body wui-glass">
-                  <div
-                    class="wui-drawer-header"
-                    id="wui-drawer-heading"
-                    ?hidden=${!showHeader}
-                    @pointerdown=${this._handleSectionDragPointerDown}
-                  >
-                    <slot name="header" @slotchange=${this.handleHeaderSlotChange}>
-                      ${this.heading ? html`<span class="wui-drawer-heading">${this.heading}</span>` : nothing}
-                    </slot>
+        <div class="wui-drawer-motion">
+          ${
+            this.headless
+              ? html`<slot></slot>${dragBar}`
+              : html`
+                  <div class="wui-drawer-body wui-glass">
+                    <div
+                      class="wui-drawer-header"
+                      id="wui-drawer-heading"
+                      ?hidden=${!showHeader}
+                      @pointerdown=${this._handleSectionDragPointerDown}
+                    >
+                      <slot name="header" @slotchange=${this.handleHeaderSlotChange}>
+                        ${this.heading ? html`<span class="wui-drawer-heading">${this.heading}</span>` : nothing}
+                      </slot>
+                    </div>
+                    <div class="wui-drawer-content wui-scroll">
+                      <slot></slot>
+                    </div>
+                    <div
+                      class="wui-drawer-footer"
+                      ?hidden=${!this._hasFooterSlot}
+                      @pointerdown=${this._handleSectionDragPointerDown}
+                    >
+                      <slot name="footer" @slotchange=${this.handleFooterSlotChange}></slot>
+                    </div>
                   </div>
-                  <div class="wui-drawer-content wui-scroll">
-                    <slot></slot>
-                  </div>
-                  <div
-                    class="wui-drawer-footer"
-                    ?hidden=${!this._hasFooterSlot}
-                    @pointerdown=${this._handleSectionDragPointerDown}
-                  >
-                    <slot name="footer" @slotchange=${this.handleFooterSlotChange}></slot>
-                  </div>
-                </div>
-                ${
-                  this.closable
-                    ? html`
-                        <web-ui-button
-                          class="wui-drawer-close"
-                          @click=${this._closeFromUser}
-                          aria-label=${resolveBuiltinLabel('close', this.ariaCloseLabel)}
-                          variant="secondary"
-                          icon
-                          size="var(--wui-drawer-close-size, 26px)"
-                        >
-                          <web-ui-icon size="14" .icon=${oouiClose}></web-ui-icon>
-                        </web-ui-button>
-                      `
-                    : nothing
-                }
-                ${dragBar}
-              `
-        }
+                  ${
+                    this.closable
+                      ? html`
+                          <web-ui-button
+                            class="wui-drawer-close"
+                            @click=${this._closeFromUser}
+                            aria-label=${resolveBuiltinLabel('close', this.ariaCloseLabel)}
+                            variant="secondary"
+                            icon
+                            size="var(--wui-drawer-close-size, 26px)"
+                          >
+                            <web-ui-icon size="14" .icon=${oouiClose}></web-ui-icon>
+                          </web-ui-button>
+                        `
+                      : nothing
+                  }
+                  ${dragBar}
+                `
+          }
+        </div>
       </dialog>
     `
   }

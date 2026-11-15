@@ -24,7 +24,7 @@ async function openAndSettle(component: WebUiDialog): Promise<void> {
   await component.updateComplete
   const dialog = component.shadowRoot?.querySelector('dialog') as HTMLElement
   await pollUntil(() => {
-    const transform = getComputedStyle(dialog).transform
+    const transform = getComputedStyle(dialog.querySelector<HTMLElement>('.wui-dialog-body')!).transform
     return transform === 'none' || transform === 'matrix(1, 0, 0, 1, 0, 0)'
   }, 'enter transform not settled')
   // transform 落定后还要让这一步的布局结算完，几何断言读到的才是定稿盒子。
