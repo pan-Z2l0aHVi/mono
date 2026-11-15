@@ -180,9 +180,10 @@ function parseReviewJson(raw) {
     const { text, steps } = normalizeReviewOutput(raw)
     try {
       return { value: JSON.parse(text), steps }
-    } catch {
+    } catch (normalizedError) {
       const wrapper = steps.length > 0 ? ` after removing ${steps.join(' and ')}` : ''
-      throw new Error(`review output is not valid JSON${wrapper}: ${error.message}`)
+      const detail = steps.length > 0 ? normalizedError.message : error.message
+      throw new Error(`review output is not valid JSON${wrapper}: ${detail}`)
     }
   }
 }
@@ -1698,6 +1699,9 @@ function commandValidate() {
     const meta = { ...identity, status: 'reviewed', reused_from: process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '' }
     if (typeof prior.review_start_sha === 'string') meta.review_start_sha = prior.review_start_sha
     if (Array.isArray(prior.review_lineage)) meta.review_lineage = prior.review_lineage
+    if (Array.isArray(prior.output_sanitized) && prior.output_sanitized.length > 0) {
+      meta.output_sanitized = prior.output_sanitized
+    }
     // 复用的结论是上一次生成的：它没记时间就不写，绝不拿当前时间冒充它的生成时间。
     if (typeof prior.generated_at === 'string' && prior.generated_at !== '') meta.generated_at = prior.generated_at
     else delete meta.generated_at

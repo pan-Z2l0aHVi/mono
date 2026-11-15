@@ -2408,7 +2408,7 @@ esac
   assert.equal(metaAfter().status, 'unreviewed', 'a reused conclusion without coverage is not a review')
   assert.equal(metaAfter().error_code, 'missing_coverage')
 
-  // 复用有覆盖清单的结论时沿用上一次的生成时间，不能把旧结论标成刚出炉。
+  // 复用有覆盖清单的结论时沿用上一次的生成时间与清洗痕迹，不能把旧结论标成刚出炉或抹掉清洗记录。
   const reusable = { summary: '历史结论。', coverage: { inspected: ['src/app.ts'], uncovered: [] }, findings: [] }
   fs.writeFileSync(path.join(directory, 'review-findings.json'), JSON.stringify(reusable))
   fs.writeFileSync(
@@ -2418,7 +2418,8 @@ esac
         reused_from: '99',
         generated_at: '2026-11-06T11:14:38Z',
         review_start_sha: otherSha,
-        review_lineage: [{ head_sha: otherSha, findings: [], resolutions: [] }]
+        review_lineage: [{ head_sha: otherSha, findings: [], resolutions: [] }],
+        output_sanitized: ['reasoning-block']
       })
     )
   )
@@ -2427,6 +2428,7 @@ esac
   assert.equal(metaAfter().generated_at, '2026-11-06T11:14:38Z', 'reuse keeps the earlier generation time')
   assert.equal(metaAfter().review_start_sha, otherSha)
   assert.equal(metaAfter().review_lineage.length, 1)
+  assert.deepEqual(metaAfter().output_sanitized, ['reasoning-block'], 'validate reuse keeps output_sanitized')
 
   // 上一次没记生成时间就不写，不能拿当前时间冒充它的生成时间。
   fs.writeFileSync(path.join(directory, 'review-findings.json'), JSON.stringify(reusable))
