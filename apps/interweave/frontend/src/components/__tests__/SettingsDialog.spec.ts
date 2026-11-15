@@ -2,7 +2,14 @@
 
 import '@greypan/web-ui'
 
-import type { WebUiDialog, WebUiRadio, WebUiRadioGroup, WebUiSegmented, WebUiSwitch } from '@greypan/web-ui'
+import type {
+  WebUiDialog,
+  WebUiRadio,
+  WebUiRadioGroup,
+  WebUiSegmented,
+  WebUiSlider,
+  WebUiSwitch
+} from '@greypan/web-ui'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, ref } from 'vue'
@@ -274,6 +281,41 @@ describe('SettingsDialog', () => {
       await nextTick()
       expect(setAccent).toHaveBeenCalledWith('#61bf45')
       expect(green.checked).toBe(true)
+    } finally {
+      mounted.close()
+    }
+  })
+
+  /*
+   * 缩放档位的白名单在 Go（backend/settings）：slider 的 min / max / step 由快照里的
+   * zoomPresets 推导，刻度只写档位名、不写百分比。这里守宿主的接线——change 到达后把
+   * 新档位写回 store，落盘与菜单步进由 Go 测试覆盖。
+   */
+  it('界面缩放 slider 按快照档位渲染，change 回写到 store', async () => {
+    const mounted = mountDialog(() => {})
+    const settings = useSettingsStore()
+    const setZoom = vi.spyOn(settings, 'setZoom').mockResolvedValue()
+
+    try {
+      await nextTick()
+      selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
+      await nextTick()
+
+      const slider = mounted.host.querySelector<WebUiSlider>('web-ui-slider[aria-label="界面缩放"]')
+      if (!slider) throw new Error('界面缩放 slider 未渲染')
+      expect(slider.min).toBe(90)
+      expect(slider.max).toBe(120)
+      expect(slider.step).toBe(10)
+      expect(slider.value).toBe(100)
+      expect(slider.marks).toBe(true)
+
+      const text = mounted.host.textContent ?? ''
+      for (const label of ['全面', '标准', '舒适', '关怀']) expect(text).toContain(label)
+      expect(text).not.toContain('90%')
+
+      slider.value = 110
+      slider.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      expect(setZoom).toHaveBeenCalledWith(110)
     } finally {
       mounted.close()
     }

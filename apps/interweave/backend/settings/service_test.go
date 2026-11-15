@@ -32,6 +32,12 @@ func TestGetSettingsReturnsNormalizedSnapshot(t *testing.T) {
 	if len(snapshot.Appearances) != 3 {
 		t.Fatalf("expected three appearances, got %v", snapshot.Appearances)
 	}
+	if snapshot.Zoom != defaultZoom {
+		t.Fatalf("expected the default zoom of %d, got %d", defaultZoom, snapshot.Zoom)
+	}
+	if len(snapshot.ZoomPresets) != len(zoomPresets) {
+		t.Fatalf("expected the zoom presets to ship with the snapshot, got %v", snapshot.ZoomPresets)
+	}
 	if snapshot.Warnings == nil {
 		t.Fatal("expected an empty, non-nil warnings slice so the frontend can iterate unconditionally")
 	}
@@ -149,6 +155,45 @@ func TestUpdateSettingsRejectsValueOutsideWhitelist(t *testing.T) {
 	}
 	if snapshot.Accent != defaultAccent {
 		t.Fatalf("expected the accent to fall back to the default, got %q", snapshot.Accent)
+	}
+
+	snapshot, err = service.UpdateSettings(context.Background(), SettingsPatch{Zoom: ptr(95)})
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if snapshot.Zoom != defaultZoom {
+		t.Fatalf("expected the zoom to fall back to the default, got %d", snapshot.Zoom)
+	}
+}
+
+// 菜单的放大 / 缩小只在档位之间步进：到端点停住，不越界也不回绕；每次改档都落盘。
+func TestZoomStepsClampAtPresetBounds(t *testing.T) {
+	service, store := newTestService(t)
+
+	for _, step := range []struct {
+		name string
+		run  func() (Snapshot, error)
+		want int
+	}{
+		{"in", func() (Snapshot, error) { return service.ZoomIn(context.Background()) }, 110},
+		{"in", func() (Snapshot, error) { return service.ZoomIn(context.Background()) }, 120},
+		{"in at max", func() (Snapshot, error) { return service.ZoomIn(context.Background()) }, 120},
+		{"out", func() (Snapshot, error) { return service.ZoomOut(context.Background()) }, 110},
+		{"out", func() (Snapshot, error) { return service.ZoomOut(context.Background()) }, 100},
+		{"out", func() (Snapshot, error) { return service.ZoomOut(context.Background()) }, 90},
+		{"out at min", func() (Snapshot, error) { return service.ZoomOut(context.Background()) }, 90},
+		{"reset", func() (Snapshot, error) { return service.ZoomReset(context.Background()) }, defaultZoom},
+	} {
+		snapshot, err := step.run()
+		if err != nil {
+			t.Fatalf("%s: %v", step.name, err)
+		}
+		if snapshot.Zoom != step.want {
+			t.Fatalf("%s: expected zoom %d, got %d", step.name, step.want, snapshot.Zoom)
+		}
+		if loaded, _ := store.Load(); loaded.Zoom != step.want {
+			t.Fatalf("%s: expected zoom %d to be persisted, got %d", step.name, step.want, loaded.Zoom)
+		}
 	}
 }
 

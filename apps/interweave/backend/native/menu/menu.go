@@ -154,8 +154,9 @@ func viewMenu() Node {
 		// 刷新不挂快捷键：CmdOrCtrl+R 留给开发菜单的「重新载入」，二者语义不同。
 		commandNode("刷新", "", menucontract.CommandRefreshLibrary),
 		separator(),
-		// 缩放三项由 Go 直接执行：Wails 的 ZoomIn / ZoomOut / ResetZoom role 在 macOS
-		// 没有 selector、Win32 也不消费 role，用 role 建出来的条目点了没反应。
+		// 缩放三项改的是 Go 拥有的缩放档位（设置里的固定四档），前端拿到快照后把档位落到
+		// 窗口上。Wails 的 ZoomIn / ZoomOut / ResetZoom role 在 macOS 没有 selector、Win32
+		// 也不消费 role，用 role 建出来的条目点了没反应。
 		commandNode("放大", "CmdOrCtrl+plus", menucontract.CommandZoomIn),
 		commandNode("缩小", "CmdOrCtrl+-", menucontract.CommandZoomOut),
 		commandNode("默认缩放", "CmdOrCtrl+0", menucontract.CommandZoomReset),

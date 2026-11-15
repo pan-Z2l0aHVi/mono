@@ -448,11 +448,11 @@ const open = ref(false)
 
 ### 侧边栏调整宽度
 
-启用 `sidebar-resizable` 后，桌面端侧边栏右边缘会出现宽度调整手柄（收起状态下隐藏）；悬停或拖拽时显示 3px 宽的强调色垂直线和 `col-resize` 光标。
+启用 `sidebar-resizable` 后，桌面端侧边栏右边缘会出现宽度调整手柄（收起状态下隐藏）；悬停、键盘聚焦或拖拽时显示 3px 宽的强调色垂直线和 `col-resize` 光标。
 
 - 拖拽时实时更新宽度（禁止过渡动画，限制在 `[min, max]` 和视口范围内）。
 - 释放时触发 `sidebar-width-change` 事件并携带最终像素宽度，调用方回写后宽度重新由 `sidebar-width` 属性接管。`pointercancel` 会恢复属性控制的宽度，且不触发事件。
-- 键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回未提交的调整。
+- 键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回未提交的调整。键盘焦点只用那条垂直线标示，不画焦点环。
 - 移动端抽屉始终通过其内置 `draggable` 抽屉支持拖拽关闭，并启用 `page-shift`。打开时整页朝抽屉的进场方向（向右）移动 `16vw`，拖拽期间页面不跟手，关闭后归位。
 
 ### 行为说明

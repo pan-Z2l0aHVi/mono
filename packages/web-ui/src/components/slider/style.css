@@ -89,8 +89,6 @@
 }
 
 .wui-slider-marks {
-  pointer-events: none;
-
   position: absolute;
   z-index: 2;
   top: calc(100% + 2px);
@@ -102,6 +100,17 @@
   margin-left: 2px;
 }
 
+/*
+ * 刻度行也是取值入口：点中刻度点（或它周围）与点中轨道同义，按最近的刻度取值。
+ * 4px 的点太小，用一层透明命中区扩大到 16px，方向沿轨道；命中区不越过轨道，
+ * 也不会伸进下面的文案行。
+ */
+.wui-slider-marks::before {
+  content: '';
+  position: absolute;
+  inset: -8px 0 -4px;
+}
+
 :host([vertical]) .wui-slider-marks {
   top: var(--wui-slider-marks-inset, 0);
   right: auto;
@@ -111,6 +120,10 @@
   width: 4px;
   height: auto;
   margin: 2px 0;
+}
+
+:host([vertical]) .wui-slider-marks::before {
+  inset: 0 -8px 0 -4px;
 }
 
 .wui-slider-mark {
@@ -142,6 +155,15 @@
    * 描边光影需要有限半径，取厚度的一半：正圆与胶囊两端的圆角都是它。
    */
   --wui-glass-corner-radius: calc(var(--wui-slider-thumb-thickness, 20px) / 2);
+
+  /*
+   * 玻璃环在明色下默认只有 5% 黑。thumb 是白色，纵向时 20px 圆只盖住 6–8px 轨宽，
+   * 左右两半全落在白底上——只靠默认环时圆两侧几乎不可见，剩下的向下投影会被读成
+   * 一枚竖椭圆。这里用与其它玻璃面同色系的发丝环（文本色 8%，明色下约 5.5% 黑），
+   * 补齐圆的轮廓，又不比 segmented / switch 的玻璃边缘更抢眼。
+   *（按压态仍由下方规则把该变量置为 transparent。）
+   */
+  --wui-color-glass-ring: color-mix(in srgb, var(--wui-color-text, #1b1b1b) 8%, transparent);
 
   cursor: inherit;
 

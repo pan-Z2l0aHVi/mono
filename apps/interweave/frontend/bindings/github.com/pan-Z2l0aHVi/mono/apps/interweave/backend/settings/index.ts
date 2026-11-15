@@ -10,5 +10,6 @@ export {
     AccentPreset,
     Appearance,
     SettingsPatch,
-    Snapshot
+    Snapshot,
+    ZoomPreset
 } from "./models.js";

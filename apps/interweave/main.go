@@ -190,9 +190,14 @@ func main() {
 		})
 	}
 
-	// menuSink 处理那些必须在 Go 侧完成的命令：重新载入、开发者控制台、窗口最大化与页内
-	// 缩放是窗口能力，「检查更新」只需要把用户带到发布页——绕过前端反而更稳；
-	// 其余命令转发给前端，由前者按当前路由与历史栈执行。
+	// menuSink 处理那些必须在 Go 侧完成的命令：重新载入、开发者控制台、窗口最大化与
+	// 「检查更新」是窗口 / OS 能力，绕过前端反而更稳；缩放三项改的是 Go 拥有的缩放档位，
+	// 前端拿到快照后才会把档位落到窗口上；其余命令转发给前端，由前者按当前路由与历史栈执行。
+	zoom := func(change func(context.Context) (settings.Snapshot, error)) {
+		if _, err := change(context.Background()); err != nil {
+			log.Printf("interweave: failed to change the interface zoom: %v", err)
+		}
+	}
 	menuSink := func(command menucontract.Command) {
 		switch command {
 		case menucontract.CommandReloadWindow:
@@ -202,11 +207,11 @@ func main() {
 		case menucontract.CommandMaximiseWindow:
 			window.ToggleMaximise()
 		case menucontract.CommandZoomIn:
-			window.ZoomIn()
+			zoom(settingsService.ZoomIn)
 		case menucontract.CommandZoomOut:
-			window.ZoomOut()
+			zoom(settingsService.ZoomOut)
 		case menucontract.CommandZoomReset:
-			window.ZoomReset()
+			zoom(settingsService.ZoomReset)
 		case menucontract.CommandCheckForUpdates:
 			if err := osService.OpenExternal(context.Background(), releasesURL); err != nil {
 				log.Printf("interweave: failed to open the releases page: %v", err)

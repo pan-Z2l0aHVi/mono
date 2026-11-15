@@ -470,11 +470,11 @@ The caller continues to control `mobile`. Switching into this mode ends an ongoi
 
 ### Sidebar resizing
 
-After enabling `sidebar-resizable`, a resize handle appears on the right edge of the desktop sidebar (hidden in the collapsed state). Hovering or dragging shows a 3px-wide accent vertical line and a `col-resize` cursor.
+After enabling `sidebar-resizable`, a resize handle appears on the right edge of the desktop sidebar (hidden in the collapsed state). Hovering, keyboard-focusing or dragging shows a 3px-wide accent vertical line and a `col-resize` cursor.
 
 - Dragging updates the width in real time (transitions are disabled, and the width is limited to `[min, max]` and to the viewport).
 - On release it fires the `sidebar-width-change` event carrying the final pixel width. After your app writes it back, the width is taken over by the `sidebar-width` attribute again. `pointercancel` restores the attribute-controlled width and fires no event.
-- Keyboard operation (WAI-ARIA splitter pattern): after focusing, use ←/→ to step by 16px (Shift accelerates to 64px), Home/End to jump to min/max, Enter to commit through the same `sidebar-width-change` request, and Escape to revert an uncommitted adjustment.
+- Keyboard operation (WAI-ARIA splitter pattern): after focusing, use ←/→ to step by 16px (Shift accelerates to 64px), Home/End to jump to min/max, Enter to commit through the same `sidebar-width-change` request, and Escape to revert an uncommitted adjustment. Keyboard focus is indicated only by the vertical line; no focus ring is drawn.
 - The mobile Drawer always supports drag-to-close through its built-in `draggable` drawer, and enables `page-shift`. Opening it slides the page toward the Drawer's entry direction (to the right) by `16vw`, the page does not follow the drag, and closing restores it.
 
 ### Behavior

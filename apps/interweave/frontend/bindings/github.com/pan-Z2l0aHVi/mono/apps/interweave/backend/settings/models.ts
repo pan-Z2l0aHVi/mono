@@ -64,6 +64,7 @@ export class SettingsPatch {
     "accent": string | null;
     "reducedMotion": boolean | null;
     "developerOptions": boolean | null;
+    "zoom": number | null;
 
     /** Creates a new SettingsPatch instance. */
     constructor($$source: Partial<SettingsPatch> = {}) {
@@ -78,6 +79,9 @@ export class SettingsPatch {
         }
         if (!("developerOptions" in $$source)) {
             this["developerOptions"] = null;
+        }
+        if (!("zoom" in $$source)) {
+            this["zoom"] = null;
         }
 
         Object.assign(this, $$source);
@@ -94,7 +98,7 @@ export class SettingsPatch {
 
 /**
  * Snapshot 是发给前端的全量设置视图：用户选项加上渲染所需的派生事实。
- * AccentPresets 一并下发，前端只渲染不校验；新增色板不必改前端。
+ * AccentPresets 与 ZoomPresets 一并下发，前端只渲染不校验；新增色板或档位不必改前端。
  */
 export class Snapshot {
     "appearance": Appearance;
@@ -103,12 +107,22 @@ export class Snapshot {
     "developerOptions": boolean;
 
     /**
+     * Zoom 是界面缩放百分比，取值来自 ZoomPresets。
+     */
+    "zoom": number;
+
+    /**
      * Warnings 是启动期累积、尚未送达界面的一次性提示（设置文件损坏、字段被修正等）。
      * 首帧之后产生的警告走 SettingsChanged 事件，不在这里重复。
      */
     "warnings": string[];
     "presets": AccentPreset[];
     "appearances": Appearance[];
+
+    /**
+     * ZoomPresets 是缩放的档位白名单，顺序即 slider 刻度顺序。
+     */
+    "zoomPresets": ZoomPreset[];
 
     /** Creates a new Snapshot instance. */
     constructor($$source: Partial<Snapshot> = {}) {
@@ -124,6 +138,9 @@ export class Snapshot {
         if (!("developerOptions" in $$source)) {
             this["developerOptions"] = false;
         }
+        if (!("zoom" in $$source)) {
+            this["zoom"] = 0;
+        }
         if (!("warnings" in $$source)) {
             this["warnings"] = [];
         }
@@ -133,6 +150,9 @@ export class Snapshot {
         if (!("appearances" in $$source)) {
             this["appearances"] = [];
         }
+        if (!("zoomPresets" in $$source)) {
+            this["zoomPresets"] = [];
+        }
 
         Object.assign(this, $$source);
     }
@@ -141,20 +161,53 @@ export class Snapshot {
      * Creates a new Snapshot instance from a string or object.
      */
     static createFrom($$source: any = {}): Snapshot {
-        const $$createField4_0 = $$createType0;
-        const $$createField5_0 = $$createType2;
-        const $$createField6_0 = $$createType3;
+        const $$createField5_0 = $$createType0;
+        const $$createField6_0 = $$createType2;
+        const $$createField7_0 = $$createType3;
+        const $$createField8_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("warnings" in $$parsedSource) {
-            $$parsedSource["warnings"] = $$createField4_0($$parsedSource["warnings"]);
+            $$parsedSource["warnings"] = $$createField5_0($$parsedSource["warnings"]);
         }
         if ("presets" in $$parsedSource) {
-            $$parsedSource["presets"] = $$createField5_0($$parsedSource["presets"]);
+            $$parsedSource["presets"] = $$createField6_0($$parsedSource["presets"]);
         }
         if ("appearances" in $$parsedSource) {
-            $$parsedSource["appearances"] = $$createField6_0($$parsedSource["appearances"]);
+            $$parsedSource["appearances"] = $$createField7_0($$parsedSource["appearances"]);
+        }
+        if ("zoomPresets" in $$parsedSource) {
+            $$parsedSource["zoomPresets"] = $$createField8_0($$parsedSource["zoomPresets"]);
         }
         return new Snapshot($$parsedSource as Partial<Snapshot>);
+    }
+}
+
+/**
+ * ZoomPreset 是一个界面缩放档位。Value 是百分比，也是持久化的值；Label 是设置里的刻度文案。
+ * 切片顺序即菜单「放大 / 缩小」的步进方向与 slider 的刻度顺序。
+ */
+export class ZoomPreset {
+    "value": number;
+    "label": string;
+
+    /** Creates a new ZoomPreset instance. */
+    constructor($$source: Partial<ZoomPreset> = {}) {
+        if (!("value" in $$source)) {
+            this["value"] = 0;
+        }
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ZoomPreset instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ZoomPreset {
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        return new ZoomPreset($$parsedSource as Partial<ZoomPreset>);
     }
 }
 
@@ -163,3 +216,5 @@ const $$createType0 = $Create.Array($Create.Any);
 const $$createType1 = AccentPreset.createFrom;
 const $$createType2 = $Create.Array($$createType1);
 const $$createType3 = $Create.Array($Create.Any);
+const $$createType4 = ZoomPreset.createFrom;
+const $$createType5 = $Create.Array($$createType4);

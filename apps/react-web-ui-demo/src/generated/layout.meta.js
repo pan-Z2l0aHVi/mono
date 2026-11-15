@@ -261,13 +261,13 @@ const meta = [
   { label: 'p', content: "The <code>sidebar</code> slot has no render outlet, while your app nodes stay in the light DOM. In this mode <code>sidebar-collapsed</code>, <code>sidebar-open</code>, <code>sidebar-width</code>, and the other <code>sidebar-*</code> attributes and events have no visible effect. Sidebar-related <code>ariaLabels</code> keys and CSS custom properties have no visible effect either." },
   { label: 'p', content: "The caller continues to control <code>mobile</code>. Switching into this mode ends an ongoing drag gesture and any uncommitted width change. Removing the attribute returns to the layout governed by the <code>sidebar-*</code> attributes." },
   { label: 'h3', id: 'section-15', content: "Sidebar resizing" },
-  { label: 'p', content: "After enabling <code>sidebar-resizable</code>, a resize handle appears on the right edge of the desktop sidebar (hidden in the collapsed state). Hovering or dragging shows a 3px-wide accent vertical line and a <code>col-resize</code> cursor." },
+  { label: 'p', content: "After enabling <code>sidebar-resizable</code>, a resize handle appears on the right edge of the desktop sidebar (hidden in the collapsed state). Hovering, keyboard-focusing or dragging shows a 3px-wide accent vertical line and a <code>col-resize</code> cursor." },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "Dragging updates the width in real time (transitions are disabled, and the width is limited to <code>[min, max]</code> and to the viewport)." },
     { label: 'li', content: "On release it fires the <code>sidebar-width-change</code> event carrying the final pixel width. After your app writes it back, the width is taken over by the <code>sidebar-width</code> attribute again. <code>pointercancel</code> restores the attribute-controlled width and fires no event." },
-    { label: 'li', content: "Keyboard operation (WAI-ARIA splitter pattern): after focusing, use ←/→ to step by 16px (Shift accelerates to 64px), Home/End to jump to min/max, Enter to commit through the same <code>sidebar-width-change</code> request, and Escape to revert an uncommitted adjustment." },
+    { label: 'li', content: "Keyboard operation (WAI-ARIA splitter pattern): after focusing, use ←/→ to step by 16px (Shift accelerates to 64px), Home/End to jump to min/max, Enter to commit through the same <code>sidebar-width-change</code> request, and Escape to revert an uncommitted adjustment. Keyboard focus is indicated only by the vertical line; no focus ring is drawn." },
     { label: 'li', content: "The mobile Drawer always supports drag-to-close through its built-in <code>draggable</code> drawer, and enables <code>page-shift</code>. Opening it slides the page toward the Drawer's entry direction (to the right) by <code>16vw</code>, the page does not follow the drag, and closing restores it." }
     ]
   },

@@ -440,3 +440,50 @@ describe('WebUiSlider 值规整不越界（浏览器）', () => {
     cleanupElement(el)
   })
 })
+
+describe('WebUiSlider 刻度点按（浏览器）', () => {
+  /*
+   * 刻度行与轨道一样是取值入口：点中刻度点按最近的刻度取值。
+   * 用真实点击而不是合成事件——刻度行原先 pointer-events: none，只有真实命中测试
+   * 才能证明它现在收得到点击；点中后仍走 track 的 tap 路径，按指针横向位置取最近刻度。
+   */
+  it('点中刻度点按该刻度取值并派发 change', async () => {
+    const el = createSlider() as Updatable & { min: number; max: number; step: number; marks: boolean }
+    el.min = 0
+    el.max = 100
+    el.step = 25
+    el.value = 0
+    el.marks = true
+    await el.updateComplete
+
+    const changes: Event[] = []
+    el.addEventListener('change', event => changes.push(event))
+    const marks = [...el.shadowRoot!.querySelectorAll<HTMLElement>('.wui-slider-mark')]
+    expect(marks, '刻度点数量应与刻度数量一致').toHaveLength(5)
+
+    await userEvent.click(marks[2])
+
+    expect(el.value).toBe(50)
+    expect(changes).toHaveLength(1)
+    expect(trackOf(el).getAttribute('aria-valuenow')).toBe('50')
+    cleanupElement(el)
+  })
+})
+
+describe('WebUiSlider 纵向 thumb（浏览器）', () => {
+  // 明色下 thumb 与页面同色、纵向轨道只有几像素宽：几何一旦被拉成椭圆就会被看成竖条。
+  // 这条钉住静止态 thumb 是 20×20 的正圆，宽高相等。
+  it('静止态 thumb 是正圆，宽高相等', async () => {
+    const el = createSlider() as Updatable & { vertical: boolean }
+    el.vertical = true
+    await el.updateComplete
+
+    const thumb = el.shadowRoot!.querySelector<HTMLElement>('.wui-slider-thumb')
+    if (!thumb) throw new Error('未渲染 thumb')
+    const rect = thumb.getBoundingClientRect()
+
+    expect(Math.round(rect.width)).toBe(20)
+    expect(rect.height).toBeCloseTo(rect.width, 2)
+    cleanupElement(el)
+  })
+})

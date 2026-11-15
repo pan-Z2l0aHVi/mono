@@ -11,12 +11,19 @@ function snapshot(overrides: Partial<Snapshot> = {}): Snapshot {
     accent: '#0071e3',
     reducedMotion: false,
     developerOptions: false,
+    zoom: 100,
     warnings: [],
     presets: [
       { value: '#0071e3', label: '蓝', onAccent: '#ffffff' },
       { value: '#ffbe00', label: '黄', onAccent: '#000000' }
     ],
     appearances: ['light', 'dark', 'system'],
+    zoomPresets: [
+      { value: 90, label: '全面' },
+      { value: 100, label: '标准' },
+      { value: 110, label: '舒适' },
+      { value: 120, label: '关怀' }
+    ],
     ...overrides
   } as Snapshot
 }
@@ -68,12 +75,14 @@ describe('settings store', () => {
     await store.setAccent('#ffbe00', runtime)
     await store.setReducedMotion(true, runtime)
     await store.setDeveloperOptions(true, runtime)
+    await store.setZoom(110, runtime)
 
     expect(updates).toEqual([
       { appearance: 'dark' },
       { accent: '#ffbe00' },
       { reducedMotion: true },
-      { developerOptions: true }
+      { developerOptions: true },
+      { zoom: 110 }
     ])
   })
 
@@ -160,5 +169,7 @@ describe('snapshot guard', () => {
     expect(isSnapshot([])).toBe(false)
     expect(isSnapshot({ appearance: 'dark' })).toBe(false)
     expect(isSnapshot({ ...snapshot(), presets: 'nope' })).toBe(false)
+    expect(isSnapshot({ ...snapshot(), zoom: '110' })).toBe(false)
+    expect(isSnapshot({ ...snapshot(), zoomPresets: 'nope' })).toBe(false)
   })
 })

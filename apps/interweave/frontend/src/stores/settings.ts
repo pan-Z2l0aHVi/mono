@@ -16,11 +16,12 @@ import {
   type Appearance,
   type SettingsPatchInput,
   type SettingsRuntime,
-  type Snapshot
+  type Snapshot,
+  type ZoomPreset
 } from '@/services/settings'
 
 export type ThemeAppearance = Appearance
-export type { AccentPreset }
+export type { AccentPreset, ZoomPreset }
 
 /**
  * 强调色上的前景色。Go 在快照里一并下发，前端只查表：
@@ -44,6 +45,8 @@ export const useSettingsStore = defineStore('settings', {
     reducedMotion: state => state.snapshot.reducedMotion,
     developerOptions: state => state.snapshot.developerOptions,
     presets: state => state.snapshot.presets,
+    zoom: state => state.snapshot.zoom,
+    zoomPresets: state => state.snapshot.zoomPresets,
     /** 启动期一次性警告；界面取走后由 takeWarnings 清空。 */
     warnings: state => state.snapshot.warnings
   },
@@ -79,6 +82,9 @@ export const useSettingsStore = defineStore('settings', {
     },
     async setDeveloperOptions(enabled: boolean, runtime?: SettingsRuntime) {
       await this.patch({ developerOptions: enabled }, runtime)
+    },
+    async setZoom(zoom: number, runtime?: SettingsRuntime) {
+      await this.patch({ zoom }, runtime)
     },
     /**
      * 写一次设置。成功后用返回的快照覆盖，失败则保留 Go 已回滚的状态并记下原因——

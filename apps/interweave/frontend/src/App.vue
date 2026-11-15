@@ -1,10 +1,12 @@
 <script setup lang="ts">
 import appScrollbarsOptions from '@greypan/app-scrollbars'
+import { Window } from '@wailsio/runtime'
 import { useOverlayScrollbars } from 'overlayscrollbars-vue'
 import { computed, onMounted, onScopeDispose, watch } from 'vue'
 
 import AppLayout from '@/components/AppLayout.vue'
 import { dismissStartupLayer, scheduleStartupTimeout } from '@/composables/startupLayer'
+import { hasWailsRuntime } from '@/services/runtime'
 import { createSettingsRuntime } from '@/services/settings'
 import { onAccentFor, useSettingsStore } from '@/stores/settings'
 
@@ -60,6 +62,20 @@ const themeStyle = computed(() => ({
   '--wui-color-accent': settings.accent,
   '--wui-color-on-accent': onAccentFor(settings.accent, settings.presets)
 }))
+
+/*
+ * 界面缩放的档位由 Go 拥有（菜单改档、设置面板选档都走 settings service），窗口缩放只能经
+ * Wails runtime 执行：快照里每出现一个新档位就把它落到窗口上。immediate 那一跳发生在占位
+ * 快照（100%），真正的档位随首次读取到达，此时启动层还盖着，用户看不到未缩放的界面。
+ */
+watch(
+  () => settings.zoom,
+  zoom => {
+    if (!hasWailsRuntime()) return
+    void Window.SetZoom(zoom / 100)
+  },
+  { immediate: true }
+)
 </script>
 
 <template>

@@ -37,6 +37,7 @@ func TestSaveThenLoadRoundTrips(t *testing.T) {
 		Accent:           "#f54096",
 		ReducedMotion:    true,
 		DeveloperOptions: true,
+		Zoom:             110,
 	}
 
 	if err := store.Save(want); err != nil {
@@ -74,8 +75,33 @@ func TestLoadNormalizesOutOfRangeFields(t *testing.T) {
 	if !loaded.ReducedMotion {
 		t.Fatal("expected reducedMotion to survive normalization")
 	}
+	// 老设置文件没有 zoom 键，零值按缺省档补齐，且不该为此再报一条警告。
+	if loaded.Zoom != defaultZoom {
+		t.Fatalf("expected a missing zoom to fall back to %d, got %d", defaultZoom, loaded.Zoom)
+	}
 	if len(warnings) != 1 {
 		t.Fatalf("expected exactly one warning, got %v", warnings)
+	}
+}
+
+// 白名单外的缩放值（例如手改成 95）按字段修正：回落默认档，其余字段不受影响。
+func TestLoadNormalizesOutOfRangeZoom(t *testing.T) {
+	store, path := newTestStore(t)
+	raw := `{"settings":{"appearance":"dark","accent":"#0071e3","reducedMotion":true,"zoom":95}}`
+	if err := os.WriteFile(path, []byte(raw), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+
+	loaded, warnings := store.Load()
+
+	if loaded.Zoom != defaultZoom {
+		t.Fatalf("expected zoom to fall back to %d, got %d", defaultZoom, loaded.Zoom)
+	}
+	if !loaded.ReducedMotion || loaded.Appearance != AppearanceDark {
+		t.Fatalf("expected the valid fields to survive, got %#v", loaded)
+	}
+	if len(warnings) != 1 {
+		t.Fatalf("expected one warning for the zoom fallback, got %v", warnings)
 	}
 }
 

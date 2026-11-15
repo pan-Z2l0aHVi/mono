@@ -36,6 +36,8 @@ export default function Demo() {
 
 `marks` draws tick points along the track, spaced by `step`. At most 100 segments are drawn; when `step` is too dense relative to `min` to `max`, only the first 100 appear.
 
+With `marks` on, the tick row is an input target just like the track: clicking the track or a tick point selects the nearest tick, and a click halfway between two ticks rounds to the closer one.
+
 ```tsx
 export default function Demo() {
   return (
@@ -356,7 +358,7 @@ Supports ArrowLeft/Right/Up/Down, Home/End, and PageUp/PageDown keyboard navigat
 
 The component uses pointer capture for mouse, stylus, and touch interaction. Both the host and the touch track declare `touch-action: none`; while a drag is active the component also prevents the default `touchmove` scrolling, so iOS Safari does not take over the gesture during a horizontal or vertical drag.
 
-At rest the thumb is a full circle with a diameter of `--wui-slider-thumb-thickness`. While pressed or dragged it expands into a pill along the track direction; its thickness stays the same and the long edge comes from `--wui-slider-thumb-length`. A horizontal slider expands along the width and a vertical slider along the height.
+At rest the thumb is a full circle with a diameter of `--wui-slider-thumb-thickness`. Pressing or dragging the thumb itself expands it into a pill along the track direction; its thickness stays the same and the long edge comes from `--wui-slider-thumb-length`. A horizontal slider expands along the width and a vertical slider along the height. Pressing the track or a tick only selects a value — the thumb stays at rest.
 
 ### CSS Custom Properties
 

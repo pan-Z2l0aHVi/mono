@@ -36,6 +36,8 @@ export default function Demo() {
 
 `marks` 沿轨道画出刻度点，间距取自 `step`。最多画 100 段；`step` 相对 `min` 到 `max` 太密时，只画前 100 段。
 
+开启 `marks` 时刻度行与轨道一样是取值入口：点击轨道或刻度点都按最近的刻度取值，落在两个刻度之间时按半格就近取整。
+
 ```tsx
 export default function Demo() {
   return (
@@ -356,7 +358,7 @@ export default function Demo() {
 
 组件用指针捕获处理鼠标、触控笔和触摸交互。宿主和接收触摸的轨道都声明 `touch-action: none`；拖拽激活期间还会阻止 `touchmove` 的默认滚动，避免 iOS Safari 在横向或纵向拖拽中接管手势。
 
-滑块静止时是正圆，直径取自 `--wui-slider-thumb-thickness`。按压或拖拽时，它沿轨道方向展开成胶囊，厚度不变，长边取自 `--wui-slider-thumb-length`。横向 slider 沿宽度方向展开，纵向 slider 沿高度方向展开。
+滑块静止时是正圆，直径取自 `--wui-slider-thumb-thickness`。按压或拖拽它本身时，它沿轨道方向展开成胶囊，厚度不变，长边取自 `--wui-slider-thumb-length`；横向 slider 沿宽度方向展开，纵向 slider 沿高度方向展开。按在轨道或刻度上只取值，thumb 保持静止。
 
 ### CSS 自定义属性
 

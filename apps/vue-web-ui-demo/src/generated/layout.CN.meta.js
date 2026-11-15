@@ -261,13 +261,13 @@ const meta = [
   { label: 'p', content: "<code>sidebar</code> 插槽没有渲染出口，但调用方节点仍留在 light DOM。该模式下 <code>sidebar-collapsed</code>、<code>sidebar-open</code>、<code>sidebar-width</code> 等属性与 <code>sidebar-*</code> 事件都不产生可见效果。侧边栏相关的 <code>ariaLabels</code> key 与 CSS Custom Properties 也不产生可见效果。" },
   { label: 'p', content: "<code>mobile</code> 仍由调用方控制。切换进该模式时，进行中的拖拽手势与未提交的宽度调整会被终止，撤下属性后回到 <code>sidebar-*</code> 属性管辖的布局。" },
   { label: 'h3', id: 'section-15', content: "侧边栏调整宽度" },
-  { label: 'p', content: "启用 <code>sidebar-resizable</code> 后，桌面端侧边栏右边缘会出现宽度调整手柄（收起状态下隐藏）；悬停或拖拽时显示 3px 宽的强调色垂直线和 <code>col-resize</code> 光标。" },
+  { label: 'p', content: "启用 <code>sidebar-resizable</code> 后，桌面端侧边栏右边缘会出现宽度调整手柄（收起状态下隐藏）；悬停、键盘聚焦或拖拽时显示 3px 宽的强调色垂直线和 <code>col-resize</code> 光标。" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "拖拽时实时更新宽度（禁止过渡动画，限制在 <code>[min, max]</code> 和视口范围内）。" },
     { label: 'li', content: "释放时触发 <code>sidebar-width-change</code> 事件并携带最终像素宽度，调用方回写后宽度重新由 <code>sidebar-width</code> 属性接管。<code>pointercancel</code> 会恢复属性控制的宽度，且不触发事件。" },
-    { label: 'li', content: "键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 <code>sidebar-width-change</code> 请求提交，Escape 撤回未提交的调整。" },
+    { label: 'li', content: "键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 <code>sidebar-width-change</code> 请求提交，Escape 撤回未提交的调整。键盘焦点只用那条垂直线标示，不画焦点环。" },
     { label: 'li', content: "移动端抽屉始终通过其内置 <code>draggable</code> 抽屉支持拖拽关闭，并启用 <code>page-shift</code>。打开时整页朝抽屉的进场方向（向右）移动 <code>16vw</code>，拖拽期间页面不跟手，关闭后归位。" }
     ]
   },

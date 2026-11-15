@@ -115,6 +115,66 @@ func isAccentPreset(value string) bool {
 	return false
 }
 
+// ZoomPreset 是一个界面缩放档位。Value 是百分比，也是持久化的值；Label 是设置里的刻度文案。
+// 切片顺序即菜单「放大 / 缩小」的步进方向与 slider 的刻度顺序。
+type ZoomPreset struct {
+	Value int    `json:"value"`
+	Label string `json:"label"`
+}
+
+// zoomPresets 是缩放档位白名单。菜单与设置面板都只认这四个值，不放开任意百分比。
+var zoomPresets = []ZoomPreset{
+	{Value: 90, Label: "全面"},
+	{Value: 100, Label: "标准"},
+	{Value: 110, Label: "舒适"},
+	{Value: 120, Label: "关怀"},
+}
+
+// defaultZoom 是标准档：缺省、非法值与「默认缩放」命令都落到它。
+const defaultZoom = 100
+
+// ZoomPresets 返回缩放档位的副本，调用方改写返回值不影响包内状态。
+func ZoomPresets() []ZoomPreset {
+	presets := make([]ZoomPreset, len(zoomPresets))
+	copy(presets, zoomPresets)
+	return presets
+}
+
+func isZoomPreset(value int) bool {
+	for _, preset := range zoomPresets {
+		if preset.Value == value {
+			return true
+		}
+	}
+	return false
+}
+
+// nextZoom 从当前档位走 delta 档。到端点时停在端点；current 不在白名单内时从默认档起算。
+func nextZoom(current int, delta int) int {
+	index := zoomPresetIndex(current)
+	if index < 0 {
+		index = zoomPresetIndex(defaultZoom)
+	}
+	index += delta
+	if index < 0 {
+		index = 0
+	}
+	if index >= len(zoomPresets) {
+		index = len(zoomPresets) - 1
+	}
+	return zoomPresets[index].Value
+}
+
+// zoomPresetIndex 返回档位在 zoomPresets 里的下标，不在白名单内时返回 -1。
+func zoomPresetIndex(value int) int {
+	for i, preset := range zoomPresets {
+		if preset.Value == value {
+			return i
+		}
+	}
+	return -1
+}
+
 func isAppearance(value Appearance) bool {
 	switch value {
 	case AppearanceLight, AppearanceDark, AppearanceSystem:
@@ -129,6 +189,8 @@ type Settings struct {
 	Accent           string     `json:"accent"`
 	ReducedMotion    bool       `json:"reducedMotion"`
 	DeveloperOptions bool       `json:"developerOptions"`
+	// Zoom 是界面缩放的百分比，只能取 zoomPresets 里的值。
+	Zoom int `json:"zoom"`
 }
 
 // Defaults 返回首次启动（或设置损坏）时的取值。
@@ -136,6 +198,7 @@ func Defaults() Settings {
 	return Settings{
 		Appearance: AppearanceSystem,
 		Accent:     defaultAccent,
+		Zoom:       defaultZoom,
 	}
 }
 
@@ -150,6 +213,13 @@ func (s Settings) normalize() (Settings, []string) {
 	if !isAccentPreset(s.Accent) {
 		warnings = append(warnings, fmt.Sprintf("强调色 %q 不在色板内，已回落到默认色", s.Accent))
 		s.Accent = defaultAccent
+	}
+	// 0 是设置文件里没有 zoom 键时的零值：按缺省档补齐，不当成用户改坏的值报警告。
+	if s.Zoom == 0 {
+		s.Zoom = defaultZoom
+	} else if !isZoomPreset(s.Zoom) {
+		warnings = append(warnings, fmt.Sprintf("界面缩放 %d%% 不在档位内，已回落到 %d%%", s.Zoom, defaultZoom))
+		s.Zoom = defaultZoom
 	}
 	return s, warnings
 }

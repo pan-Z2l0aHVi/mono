@@ -660,6 +660,24 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(handle.getAttribute('aria-orientation')).toBe('vertical')
     })
 
+    /*
+     * 键盘焦点只由竖线表达：handle 自己不画 outline——显式 none 是必要的，只删掉
+     * outline 规则时浏览器会补上默认焦点环；同时 3px 竖线在 :focus-visible 下显形。
+     * 合成 focus() 不带键盘模态，先 Tab 建立模态（与桌面 toggle 的 focus ring 用例同手法）。
+     */
+    it('键盘聚焦只点亮竖线，不画焦点环', async () => {
+      const layout = await resizableLayout()
+      const handle = handleOf(layout)
+
+      await userEvent.tab()
+      handle.focus()
+      await waitForAnimationsToFinish([handle], 2_000)
+
+      expect(handle.matches(':focus-visible'), '需要键盘模态才算 focus-visible').toBe(true)
+      expect(getComputedStyle(handle).outlineStyle).toBe('none')
+      expect(getComputedStyle(handle, '::before').opacity).toBe('1')
+    })
+
     it('键盘步进只改临时宽度，Enter 才提交一次请求', async () => {
       const layout = await resizableLayout()
       const widthRequests: string[] = []
