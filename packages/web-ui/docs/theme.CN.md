@@ -802,7 +802,7 @@ Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近�
 
 - `--wui-image-preview-edge-gap`
 - `--wui-toast-viewport-gap`
-- `--wui-layout-mobile-toggle-inset`
+- `--wui-layout-mobile-toggle-left`
 - `--wui-back-top-right` / `--wui-back-top-left` / `--wui-back-top-bottom`
 - `--wui-drawer-inset`
 - `--wui-drawer-close-right`

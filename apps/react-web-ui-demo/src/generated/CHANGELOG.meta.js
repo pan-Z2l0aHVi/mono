@@ -618,7 +618,7 @@ const meta = [
       { label: 'p', content: "617457a: 新增 <code>&lt;web-ui-middle-ellipsis></code>：单行中间省略，保留首尾、丢掉中间（<code>very-long-file-…-abcdefghij.txt</code>），补上 <code>text-overflow: ellipsis</code> 只能保住头部的那块缺口。" },
       { label: 'p', content: "属性 <code>text</code> / <code>marker</code> / <code>marker-position</code>。<code>marker-position</code> 与 CSSWG css-overflow-5 的 <code>text-overflow: ellipsis &lt;length-percentage></code> 同向（<code>0</code> 贴行末、<code>100</code> 贴行首、默认 <code>50</code> 居中），将来该特性落地时消费方的取值可以直接搬过去。切点只落在字素簇边界上，代理对、组合符序列与 ZWJ emoji 不会被劈开；容器尺寸变化后重算。" },
       { label: 'p', content: "使用条件与 <code>text-overflow: ellipsis</code> 相同：单行，且有确定行内尺寸。" },
-      { label: 'p', content: "已知限制：元素里装的是屏幕上那串，因此选中复制拿到的是截断后的文本（原文经 <code>title</code> 提供）；宿主需为 <code>direction: ltr</code>。可行性与方案对比见 <code>docs/research/web-ui-middle-ellipsis-261007.md</code>。" }
+      { label: 'p', content: "已知限制：元素里装的是屏幕上那串，因此选中复制拿到的是截断后的文本（原文经 <code>title</code> 提供）；宿主需为 <code>direction: ltr</code>。可行性与方案对比见组件的实现注释。" }
       ]
     },
     {

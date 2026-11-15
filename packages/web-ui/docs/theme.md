@@ -832,7 +832,7 @@ Offsets that align to a viewport or host content edge are not part of the scale,
 
 - `--wui-image-preview-edge-gap`
 - `--wui-toast-viewport-gap`
-- `--wui-layout-mobile-toggle-inset`
+- `--wui-layout-mobile-toggle-left`
 - `--wui-back-top-right` / `--wui-back-top-left` / `--wui-back-top-bottom`
 - `--wui-drawer-inset`
 - `--wui-drawer-close-right`

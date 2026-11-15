@@ -207,10 +207,14 @@ header {
   align-items: center;
 }
 
-/* 移动端 Toggle 属于组件自身，不随 Consumer 的 header 内边距缩进；
-   默认 8px 使其脱离视口边缘，Consumer 可用同名变量对齐自身内容左缘。 */
+/*
+ * 移动端 Toggle 属于组件自身，不随 Consumer 的 header 内边距缩进。四个方向各有一个偏移 token：
+ * 左、上默认 8px，让它脱离视口边缘；右、下默认 0。Consumer 按自己的头部内边距对齐。
+ * `mobile-header-full-width` 下 Toggle 是绝对定位的，同一组 token 照样生效。
+ */
 .mobile-toggle {
-  margin-left: var(--wui-layout-mobile-toggle-inset, 8px);
+  margin: var(--wui-layout-mobile-toggle-top, var(--wui-space-2, 8px)) var(--wui-layout-mobile-toggle-right, 0)
+    var(--wui-layout-mobile-toggle-bottom, 0) var(--wui-layout-mobile-toggle-left, var(--wui-space-2, 8px));
 }
 
 main {
@@ -229,7 +233,6 @@ footer {
 
 :host([mobile]) .mobile-toggle {
   align-self: flex-start;
-  margin-top: var(--wui-layout-mobile-toggle-top, var(--wui-space-2, 8px));
   transition: visibility 0s var(--wui-duration-drawer-exit, 240ms);
 }
 

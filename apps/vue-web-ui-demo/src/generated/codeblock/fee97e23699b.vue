@@ -4,12 +4,12 @@
   >
     <web-ui-layout
       :mobile="true"
-      style="--wui-layout-mobile-toggle-inset: 24px; --wui-layout-mobile-toggle-top: 16px"
+      style="--wui-layout-mobile-toggle-left: 24px; --wui-layout-mobile-toggle-top: 16px"
       :sidebarOpen="open"
       @sidebar-open-change="open = $event.detail.open"
     >
-      <div slot="sidebar">Navigation</div>
-      <div class="p-4 text-sm">Content</div>
+      <div slot="sidebar">导航</div>
+      <div class="p-4 text-sm">内容</div>
     </web-ui-layout>
   </div>
 </template>

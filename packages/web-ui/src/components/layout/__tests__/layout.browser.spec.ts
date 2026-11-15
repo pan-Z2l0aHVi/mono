@@ -270,7 +270,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       const layout = createLayout()
       layout.mobile = true
       layout.mobileHeaderFullWidth = true
-      layout.style.setProperty('--wui-layout-mobile-toggle-inset', '96px')
+      layout.style.setProperty('--wui-layout-mobile-toggle-left', '96px')
       await layout.updateComplete
       const content = layout.querySelector<HTMLElement>('[slot="header"]')!
       const header = layout.shadowRoot!.querySelector('header')!
@@ -301,8 +301,10 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
       layout.mobile = true
-      layout.style.setProperty('--wui-layout-mobile-toggle-inset', '80px')
+      layout.style.setProperty('--wui-layout-mobile-toggle-left', '80px')
       layout.style.setProperty('--wui-layout-mobile-toggle-top', '24px')
+      layout.style.setProperty('--wui-layout-mobile-toggle-right', '16px')
+      layout.style.setProperty('--wui-layout-mobile-toggle-bottom', '12px')
       syncControlledSidebarState(layout)
       await layout.updateComplete
 
@@ -310,6 +312,10 @@ describe('WebUiLayout 组件（浏览器）', () => {
       const header = layout.shadowRoot!.querySelector('header')!.getBoundingClientRect()
       expect(toggle.getBoundingClientRect().left - header.left).toBeCloseTo(80)
       expect(toggle.getBoundingClientRect().top - header.top).toBeCloseTo(24)
+      // 右侧与底部没有对齐锚点，断言的就是 token 落到对应外边距这一步。
+      const toggleStyle = getComputedStyle(toggle)
+      expect(toggleStyle.marginRight).toBe('16px')
+      expect(toggleStyle.marginBottom).toBe('12px')
 
       toggle.click()
       const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement

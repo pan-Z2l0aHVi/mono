@@ -220,7 +220,8 @@ onMounted(() => {
     `slot="header"`（LibraryPage 就是这么做的），不需要自己再渲染一套 layout。
 
     工具条行的首行内边距是 12px，移动端那个浮动开关的 top token 跟着对齐，否则它与行内
-    控件差 4px。
+    控件差 4px。左偏移别按平台各写一条：macOS 的窗口左上角是红绿灯，开关要右移到 96px 才
+    不压在灯上，其余平台与行首内边距对齐用 12px——两条同时存在就只能靠样式表顺序决胜。
   -->
   <web-ui-layout
     header-glow
@@ -230,8 +231,11 @@ onMounted(() => {
     sidebarMaxWidth="320px"
     mobile-header-full-width
     collapsedWidth="60px"
-    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-sidebar-content-padding:8px_20px_8px_8px] mobile:[--wui-layout-sidebar-radius:calc(18px_+_8px)] mobile:[--wui-layout-mobile-toggle-top:12px]"
-    :class="{ '[--wui-layout-sidebar-padding-top:48px] mobile:[--wui-layout-mobile-toggle-inset:96px]': isMac }"
+    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-mobile-toggle-top:12px] mobile:[--wui-layout-sidebar-content-padding:8px_20px_8px_8px] mobile:[--wui-layout-sidebar-radius:calc(18px_+_8px)]"
+    :class="{
+      '[--wui-layout-sidebar-padding-top:48px] mobile:[--wui-layout-mobile-toggle-left:96px]': isMac,
+      'mobile:[--wui-layout-mobile-toggle-left:12px]': !isMac
+    }"
     :mobile="mobile"
     :sidebarCollapsed="sidebarCollapsed"
     :sidebarOpen="sidebarOpen"

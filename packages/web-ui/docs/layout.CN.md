@@ -355,7 +355,7 @@ export default function Demo() {
     <div className="h-[240px] w-full overflow-hidden rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:240px]">
       <web-ui-layout
         mobile
-        style={{ '--wui-layout-mobile-toggle-inset': '24px', '--wui-layout-mobile-toggle-top': '16px' }}
+        style={{ '--wui-layout-mobile-toggle-left': '24px', '--wui-layout-mobile-toggle-top': '16px' }}
         sidebarOpen={open}
         onsidebar-open-change={event => setOpen(event.detail.open)}
       >
@@ -374,7 +374,7 @@ export default function Demo() {
   >
     <web-ui-layout
       :mobile="true"
-      style="--wui-layout-mobile-toggle-inset: 24px; --wui-layout-mobile-toggle-top: 16px"
+      style="--wui-layout-mobile-toggle-left: 24px; --wui-layout-mobile-toggle-top: 16px"
       :sidebarOpen="open"
       @sidebar-open-change="open = $event.detail.open"
     >
@@ -493,7 +493,7 @@ const open = ref(false)
 
 移动端抽屉的宽度跟随 `sidebar-width`，圆角跟随 `--wui-layout-sidebar-radius`。
 
-移动端开关以玻璃变体位于头部行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与调用方自身的头部内边距对齐。
+移动端开关以玻璃变体位于头部行内。四个方向各有一个偏移 token，左、上默认 `8px`，右、下默认 `0`；用它们把开关与调用方自身的头部内边距对齐。
 
 `header-glow` 会在头部插槽内容和移动端开关的背后添加 `pointer-events: none` 的装饰性晕染。它属于头部背景层，不在前景层，因此插槽内容始终位于其上方。
 
@@ -527,6 +527,8 @@ const open = ref(false)
 | `--wui-layout-sidebar-padding-top`     | 侧边栏卡片上方间距（桌面及移动端）                              | `--wui-space-2`（`8px`） |
 | `--wui-layout-sidebar-padding-left`    | 侧边栏卡片左侧间距（桌面及移动端）                              | `--wui-space-2`（`8px`） |
 | `--wui-layout-sidebar-padding-bottom`  | 侧边栏卡片下方间距（桌面及移动端）                              | `--wui-space-2`（`8px`） |
-| `--wui-layout-mobile-toggle-inset`     | 移动端头部开关的左缩进                                          | `8px`                    |
 | `--wui-layout-mobile-toggle-top`       | 移动端头部开关的上边距                                          | `8px`                    |
+| `--wui-layout-mobile-toggle-right`     | 移动端头部开关的右边距                                          | `0`                      |
+| `--wui-layout-mobile-toggle-bottom`    | 移动端头部开关的下边距                                          | `0`                      |
+| `--wui-layout-mobile-toggle-left`      | 移动端头部开关的左缩进                                          | `8px`                    |
 | `--wui-layout-sidebar-toggle-width`    | 桌面端侧边栏收起按钮的宽度，下限为 `--wui-control-size`（36px） | `36px`                   |
