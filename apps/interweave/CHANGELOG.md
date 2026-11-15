@@ -1,5 +1,21 @@
 # @greypan/interweave
 
+## 0.1.6
+
+### Patch Changes
+
+- 57f4091: Improve navigation icon press feedback and use middle ellipsis for resource titles.
+- 57f4091: Polish resource tags, detail surfaces, and the add-resource dialog.
+- 57f4091: Open context menus with a Space key hold and retain the ContextMenu key; remove the Shift+F10 shortcut. Improve keyboard focus and search behavior in Interweave.
+- 57f4091: Add a neutral control shade token and use subtly blue gray interaction states for light navigation and secondary buttons.
+- 57f4091: Keep automatic toast notifications visible and interactive above managed modal surfaces while preserving viewport positioning during drawer motion.
+- 57f4091: Unify neutral surfaces and text around a subtly cool gray palette across controls, layouts, and Interweave.
+  Restore button and segmented item feedback when a pressed pointer moves outside in WebKit.
+- 57f4091: Refresh resource recovery dialogs and improve link and appearance presentation.
+- 57f4091: Drop `COPY_FEEDBACK_DURATION`, which lost its last consumer when the demo copy feedback moved to `PressDrawIcon`, and align the availability docs with what `ApplyFileAvailability` actually does on every `available=true` call. `TestRecoveryCancelled` now cancels after the walk starts and asserts `context.Canceled`, so it covers the interruption path that `ServiceShutdown` relies on.
+- 57f4091: Refine unavailable resource icons and interaction feedback.
+- @greypan/interweave-frontend@0.0.0
+
 ## 0.1.5
 
 ### Patch Changes
