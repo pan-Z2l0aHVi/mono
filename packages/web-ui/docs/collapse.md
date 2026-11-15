@@ -1274,6 +1274,8 @@ function removeRow() {
 
 A panel mounted with the `open` attribute shows the expanded state directly and plays no enter animation. Only later changes go through the transition. The expanded height is always decided by the content; when the content grows or shrinks, the panel grows or shrinks with it.
 
+Once fully expanded and the transition has finished, the content area no longer clips (`overflow: visible`): the panel then behaves like a plain container, so focus rings, shadows and intentional horizontal overflow stay visible. While a transition is running, or while collapsed, it still clips — otherwise content would spill out of a box that has not finished growing.
+
 Durations come from `--wui-duration-collapse-enter` / `--wui-duration-collapse-exit` (200ms / 160ms, defined by `<web-ui-theme>`). With theme `motion="reduced"` or the system `prefers-reduced-motion`, no animation plays and the panel goes straight to the final state.
 
 `open-change` is dispatched only after a user gesture (`bubbles` and `composed`). `show()` / `close()` / `toggle()` and writing `open` directly are all silent.

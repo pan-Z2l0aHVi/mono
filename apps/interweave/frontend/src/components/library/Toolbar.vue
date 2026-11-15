@@ -229,7 +229,7 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
       <div
         id="library-filter-panel"
         slot="content"
-        class="flex flex-wrap gap-3 items-center px-8 mobile:px-3 py-3 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
+        class="flex flex-wrap gap-3 items-center px-8 mobile:px-3 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
       >
         <label :class="filterLabelClass">
           <web-ui-select portal :value="filterSource" class="[--wui-input-width:128px]" @change="handleSourceChange">
