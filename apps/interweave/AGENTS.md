@@ -44,7 +44,7 @@ v1 不做全局 Source 去重：即使文件路径或 URL 完全相同，用户�
 _Avoid_: 添加时自动去重、重复定位、隐式合并或转移 Source
 
 **Source 可用性**:
-以 `available: boolean` 持久化：`true` 为可用，`false` 为不可用。新建 URL 必须在 10 秒总时限内完成基础元数据抓取再写入；失败或超时仍写入为 `false`，非 HTML 或展示元数据缺失不影响 `true`，后续非元数据数据加载不阻塞写入。新建文件先做轻量 `stat`，成功或失败分别写入 `true` 或 `false`，但都纳入；可访问文件的身份、属性与内容 hash 在后台采集，不阻塞纳入。
+以 `available: boolean` 持久化：`true` 为可用，`false` 为不可用。新建 URL 必须在 10 秒总时限内完成基础元数据抓取再写入；失败或超时仍写入为 `false`，非 HTML 或展示元数据缺失不影响 `true`，后续非元数据数据加载不阻塞写入。新建文件先做轻量 `stat`，成功或失败分别写入 `true` 或 `false`，但都纳入；可访问文件的身份与属性在纳入或替换后同步记录，内容 hash 在后台采集，不阻塞纳入。
 已登记的 file source 只监听其所在目录：`available` 随文件增删自动翻转并恢复，媒体读取确认不可达时立即改判为 `false`。URL 不做监听，只在用户打开详情时按需重新判定；该次判定无法得出结论时保留原值。
 可用性写入统一经 [`backend/library/watch/`](./backend/library/watch/) 的 AvailabilityGate：它是目录监听与媒体 404 兜底共用的唯一写入口，「先落库、后发事件、只在真翻转时发」由 gate 的 implementation 保证，调用方不得绕开它自行落库或发事件。
 _Avoid_: `unknown`、独立状态枚举、以元数据完整性替代可用性、后台轮询探测、把无法判定写成不可用、绕开 gate 的可用性写入

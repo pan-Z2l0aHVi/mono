@@ -28,6 +28,7 @@ type recoverySession struct {
 type recoverySessions struct {
 	wg        sync.WaitGroup
 	mu        sync.Mutex
+	closed    bool
 	currentID string
 	sessions  map[string]*recoverySession
 }
@@ -36,6 +37,9 @@ type recoverySessions struct {
 func (s *SourceService) StartRecoveryScan(_ context.Context, sourceIDs []string, directory string) (string, error) {
 	s.recovery.mu.Lock()
 	defer s.recovery.mu.Unlock()
+	if s.recovery.closed {
+		return "", errors.New("recovery service is shut down")
+	}
 	if s.recovery.currentID != "" {
 		active := s.recovery.sessions[s.recovery.currentID]
 		active.mu.Lock()
@@ -130,6 +134,7 @@ func (s *SourceService) ReplaceScannedFileSource(ctx context.Context, sourceID, 
 // ServiceShutdown stops and joins scans before the database is closed.
 func (s *SourceService) ServiceShutdown() error {
 	s.recovery.mu.Lock()
+	s.recovery.closed = true
 	for _, session := range s.recovery.sessions {
 		session.cancel()
 	}
