@@ -10,11 +10,12 @@ export default defineConfig({
   resolve: {
     tsconfigPaths: true
   },
-  // 两个 browser project 同时跑，各自占一段端口；host 与 strictPort 由 testPorts() 一起给出，
+  // 三个 browser project 同时跑，各自占一段端口；host 与 strictPort 由 testPorts() 一起给出，
   // 分配表与偏移的理由见 docs/agents/build.md 的「测试端口分配」。
   plugins: [
     testPorts({ project: 'web-ui', testName: 'browser' }),
-    testPorts({ project: 'web-ui-reduced-motion', testName: 'browser-reduced-motion' })
+    testPorts({ project: 'web-ui-reduced-motion', testName: 'browser-reduced-motion' }),
+    testPorts({ project: 'web-ui-touch', testName: 'browser-touch' })
   ],
   pack: {
     entry: {
@@ -83,7 +84,17 @@ export default defineConfig({
         test: {
           name: 'browser',
           include: ['src/**/*.browser.spec.ts'],
-          exclude: ['src/**/reduced-motion.browser.spec.ts'],
+          /*
+           * 会改页面级输入能力的 spec 不与其他文件同页：`Emulation.setTouchEmulationEnabled`
+           * 与 `Emulation.setEmulatedMedia` 会翻转整个页面的 `hover` / `pointer` 媒体查询，
+           * 并行文件里的 CSS hover 断言会读到 `hover: none` 而偶发失败。它们单独成 project，
+           * 拿到自己的页面；其余 hover 断言照常并行。
+           */
+          exclude: [
+            'src/**/reduced-motion.browser.spec.ts',
+            'src/components/context-menu/__tests__/long-press.browser.spec.ts',
+            'src/components/toast/__tests__/toast-mobile.browser.spec.ts'
+          ],
           // browser runtime 没有 process.env；test.env 在这里映射到 import.meta.env，
           // 供需要在 CI 放宽等待预算的 spec 判断环境。
           env: { CI: process.env.CI ?? '' },
@@ -101,6 +112,25 @@ export default defineConfig({
                 args: ['--disable-lcd-text']
               }
             }),
+            instances: [{ browser: 'chromium' }]
+          }
+        }
+      },
+      {
+        extends: true,
+        test: {
+          // 输入能力仿真（触屏 / hover: none）只在这里跑，见 browser project 的 exclude 说明。
+          name: 'browser-touch',
+          include: [
+            'src/components/context-menu/__tests__/long-press.browser.spec.ts',
+            'src/components/toast/__tests__/toast-mobile.browser.spec.ts'
+          ],
+          env: { CI: process.env.CI ?? '' },
+          browser: {
+            enabled: true,
+            headless: true,
+            screenshotFailures: true,
+            provider: playwright({ launchOptions: { args: ['--disable-lcd-text'] } }),
             instances: [{ browser: 'chromium' }]
           }
         }
