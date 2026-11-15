@@ -17,8 +17,9 @@ import {
   tablerClockPlus,
   tablerSortAscendingLetters
 } from '@greypan/web-ui/icons'
-import { nextTick, ref, watch } from 'vue'
+import { ref } from 'vue'
 
+import { useExpandingField } from '@/composables/useExpandingField'
 import type { AvailabilityFilter, ResourceKind, SortDirection, SortOption, SourceType } from '@/stores/library'
 
 const props = defineProps<{
@@ -65,27 +66,20 @@ const emit = defineEmits<{
 }>()
 
 const searchInputRef = ref<WebUiInput>()
+const controlsRef = ref<HTMLElement>()
 
-watch(
-  () => props.searchOpen,
-  open => {
-    if (!open) return
-    void nextTick(() => searchInputRef.value?.focus())
-  }
-)
+/*
+ * 展开/收起、焦点与 Escape 都归 useExpandingField：它自己把监听挂到这两个 ref 上，
+ * 这里只交引用，模板里不再需要绑定这些事件。
+ */
+useExpandingField({
+  field: searchInputRef,
+  controls: controlsRef,
+  close: () => emit('update:searchOpen', false)
+})
 
 function handleSearchInput(event: WebUiEvent<WebUiInput, 'input'>) {
   emit('update:searchQuery', event.target.value)
-}
-
-function handleSearchKeydown(event: KeyboardEvent) {
-  if (event.key !== 'Escape') return
-  event.preventDefault()
-  emit('update:searchOpen', false)
-}
-
-function handleSearchBlur() {
-  emit('update:searchOpen', false)
 }
 
 function handleSourceChange(event: WebUiEvent<WebUiSelect, 'change'>) {
@@ -146,7 +140,11 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
        * max-content 贡献仍按内容算（约 206px），宽屏下拿不到 240。
        * 两者缺一，窄屏下都会退回"整组溢出被裁"。
        -->
-      <div class="flex min-w-0 gap-3 items-center ml-auto">
+      <!--
+        这一簇同时是「搜索上下文」的边界：按在里面时不收起搜索框（见 useExpandingSearch），
+        所以簇内新增控件不需要任何标记，行为自动成立。
+      -->
+      <div ref="controlsRef" class="flex min-w-0 gap-3 items-center ml-auto">
         <template v-if="!selectionMode">
           <web-ui-tooltip v-if="!(searchOpen && mobile)" content="添加资源" portal>
             <web-ui-button icon variant="primary" aria-label="添加资源" @click="emit('add')">
@@ -180,8 +178,6 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
             aria-label="搜索资源"
             class="min-w-0 w-60 [--wui-input-width:100%]"
             @input="handleSearchInput"
-            @keydown="handleSearchKeydown"
-            @focusout="handleSearchBlur"
           >
             <web-ui-icon slot="prefix" :icon="lucideSearch" />
           </web-ui-input>
