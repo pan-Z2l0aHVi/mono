@@ -10,7 +10,10 @@ import { createApp, h, nextTick, ref, type ComponentPublicInstance, type Ref } f
 
 import type { ResourceView } from '@/stores/library'
 
-import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import {
+  ResourceKind,
+  TagColor
+} from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { NameEditorRef } from '../rename'
 import ResourceList from '../ResourceList.vue'
 
@@ -54,9 +57,16 @@ function resource(overrides: Partial<ResourceView> = {}): ResourceView {
   }
 }
 
-/** 长标题：会把标题挤成两行，行高因此与单行行不同——被测的正是这个差值。 */
+/** 改名后的长标题仍应按单行中间省略。 */
 const LONG_TITLE =
   '屏幕截图 2025-08-20 183810123123123123123123213132323331231232132131231231231231231231更多更多更多更多更多更多更多更多...'
+
+/** 多行标签提供不同的真实行高，以验证虚拟列表重排时的高度归属。 */
+const WRAPPED_TAGS = Array.from({ length: 8 }, (_, index) => ({
+  id: `tag-${index}`,
+  name: `较长标签${index}`,
+  color: TagColor.TagColorBlue
+}))
 
 /** 有界轮询：条件成立即刻通过，帧预算耗尽才失败（对齐 rename-focus.browser.spec.ts）。 */
 async function waitFor(condition: () => boolean, label: string, maxFrames = 180): Promise<void> {
@@ -195,7 +205,7 @@ function rowGeometries(host: HTMLElement): RowGeometry[] {
   return [...host.querySelectorAll<HTMLElement>('[data-resource-row]')].map(row => {
     const wrapper = row.parentElement!.getBoundingClientRect()
     const rect = row.getBoundingClientRect()
-    const title = row.querySelector('span')
+    const title = row.querySelector('web-ui-middle-ellipsis')
     const titleRect = title?.getBoundingClientRect()
     return {
       index: Number(row.getAttribute('data-resource-index')),
@@ -213,8 +223,8 @@ describe('ResourceList：行高测量（真实浏览器）', () => {
     const resources = Array.from({ length: 40 }, (_, index) =>
       resource({ id: `r${index}`, title: `资源 ${index}`, updatedAt: 1_700_000_000_000 + index })
     )
-    // 把长标题放在列表前部：它换行后的额外高度必须被后面的行认出来。
-    resources[1] = resource({ id: 'r1', title: LONG_TITLE, updatedAt: 1_700_000_001_000 })
+    // 多行标签撑高一行，后面的行必须按真实高度定位。
+    resources[1] = resource({ id: 'r1', title: LONG_TITLE, tags: WRAPPED_TAGS, updatedAt: 1_700_000_001_000 })
 
     const host = mountList(resources, 'r3')
     await nextTick()
@@ -265,7 +275,7 @@ describe('ResourceList：行高测量（真实浏览器）', () => {
   })
 
   /*
-   * 改名把标题撑成多行之后，行高必须重算。
+   * 改名并重排后，不同行高必须继续跟随各自的资源。
    *
    * 这条路径的难点全在「改名是一次 props 的连续变动」，不是一次静态布局：
    *   1. 进编辑态（editingNameKey 置上，行内换成 editable-text）；
@@ -276,18 +286,14 @@ describe('ResourceList：行高测量（真实浏览器）', () => {
    * 就会挂到别的资源上：被改名的行停在旧的一行高度上，它之后的每一行按旧累计值定位，
    * 于是那一行叠到下一行身上——用户看到的重叠。
    */
-  it('改名把标题撑成多行后行高重算：被改名行与其后各行不错位、不重叠', async () => {
+  it('改名重排时，不同行高的资源不错位、不重叠', async () => {
     // updatedAt 递减，r0 最新排在最前——与 stores/library 的 'latest' 排序一致。
     const base = Array.from({ length: 40 }, (_, index) =>
       resource({ id: `r${index}`, title: `资源 ${index}`, updatedAt: 1_700_000_000_000 - index })
     )
-    // 让 r1 带上会被 line-clamp-2 撑成两行的长标题。宿主重建的是 [r2, ...其余]，所以重排时
-    // 只有 r0（0→1）与 r1（1→2）真的移位——后移行的高度必须跟着身份一起挪。若库按旧下标摆放
-    // 尺寸（身份映射串号），下标 0 会拿到 r0 的旧单行高度、而该处的元素 r2 实为两行，接缝立刻
-    // 量到重叠；若后移的这几行等高，这个差值在数值上不存在，接缝判据会白白放过。
-    // 只让 r1 变高而不是 r0、r1 都变高：两行都高时新旧尺寸表在下标 0/1 上恰好同为两行高度，
-    // 串号在数值上重合，又会退化成测不出来。
-    base[1] = resource({ id: 'r1', title: LONG_TITLE, updatedAt: 1_700_000_000_000 - 1 })
+    // r1 和待改名的 r2 通过多行标签变高，r0 保持普通高度，以便检测重排时尺寸串号。
+    base[1] = resource({ id: 'r1', title: LONG_TITLE, tags: WRAPPED_TAGS, updatedAt: 1_700_000_000_000 - 1 })
+    base[2] = resource({ id: 'r2', tags: WRAPPED_TAGS, updatedAt: 1_700_000_000_000 - 2 })
     const resources = ref(base)
     const editingNameKey = ref<string | null>(null)
     // 与 pages/library 的 handleResourceNameChange 同序：先同步退出编辑态（stopResourceRename），
@@ -305,7 +311,7 @@ describe('ResourceList：行高测量（真实浏览器）', () => {
     await nextTick()
     await waitForGeometriesSettled(host)
 
-    // 1. 进入编辑态，并在草稿里打出长标题：这一行在编辑期就已经变高。
+    // 1. 进入编辑态并输入长标题；多行标签使该行保持较高的尺寸。
     editingNameKey.value = 'r2'
     await nextTick()
     const editor = host.querySelector<WebUiEditableText>('web-ui-editable-text')
@@ -325,7 +331,7 @@ describe('ResourceList：行高测量（真实浏览器）', () => {
       return (
         editingNameKey.value === null &&
         first?.getAttribute('data-resource-id') === 'r2' &&
-        first.textContent?.includes(LONG_TITLE) === true
+        first.querySelector('web-ui-middle-ellipsis')?.getAttribute('aria-label') === LONG_TITLE
       )
     })
 
@@ -334,11 +340,11 @@ describe('ResourceList：行高测量（真实浏览器）', () => {
     expect(sorted.length, '虚拟窗口里渲染出了多行').toBeGreaterThan(1)
     expect(sorted[0]!.index, '列表顶部的第一行必须是第 0 行').toBe(0)
 
-    // 被改名的行现在排在第 0 位，且确实被长标题撑成了多行。
+    // 被改名的行现在排在第 0 位，多行标签使其高度不同于普通行。
     const renamed = sorted[0]!
     const neighbor = sorted.find(row => row.index === 1)
     expect(neighbor, '第 1 行在窗口里').toBeDefined()
-    expect(renamed.height, '长标题把被改名的行撑高').toBeGreaterThan(neighbor!.height + 8)
+    expect(renamed.height, '多行标签把被改名的行撑高').toBeGreaterThan(neighbor!.height + 8)
 
     // 相邻行必须首尾相接：上一行的底就是下一行的顶。行高没被重算时，这里量到的是
     // 重叠（current.top < previous.bottom），即用户看到的现象。
@@ -352,10 +358,8 @@ describe('ResourceList：行高测量（真实浏览器）', () => {
       ).toBeLessThan(1)
     }
 
-    // r1（后移的两行行）必须与它前后的单行行同时出现在窗口里，上面那条接缝判据才有分辨力：
-    // 尺寸若按旧下标摆放，两行行会拿到单行高度、单行行拿到两行高度，接缝立刻量到重叠或留缝。
-    // 全等高的话这个差值在数值上不存在，用例会退化成「换个写法也照样通过」。
+    // 两个高行和普通行同时存在，才能让尺寸串号产生可观察的接缝差异。
     const wrappedCount = rows.filter(row => row.height > neighbor!.height + 8).length
-    expect(wrappedCount, '重排后窗口里仍有被撑成两行的行').toBeGreaterThanOrEqual(2)
+    expect(wrappedCount, '重排后窗口里仍有被多行标签撑高的行').toBeGreaterThanOrEqual(2)
   })
 })

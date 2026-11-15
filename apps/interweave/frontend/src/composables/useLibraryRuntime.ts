@@ -1,14 +1,14 @@
 import { computed, ref } from 'vue'
 
 import { createLibraryRuntime, type LibraryQueueItem, type LibraryRuntime } from '@/services/library'
+import { userMessage } from '@/services/library/userMessage'
 import { useLibraryStore, type ResourceSourceView } from '@/stores/library'
 
 import { SourceProbeOutcome } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import { SourceType } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 function errorMessage(error: unknown) {
-  if (error instanceof Error && error.message.trim()) return error.message
-  return '操作失败，请稍后重试'
+  return userMessage(error, '操作失败，请稍后重试')
 }
 
 export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {

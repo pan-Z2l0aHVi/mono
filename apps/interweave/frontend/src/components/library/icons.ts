@@ -9,12 +9,6 @@ export const doubleArrowRight = {
   height: 24,
   body: '<path fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="1.5" d="m13 16l4-4l-4-4m-6 8l4-4l-4-4"/>'
 }
-export const radarTwo = {
-  width: 48,
-  height: 48,
-  body: '<g fill="none" stroke="currentColor" stroke-linecap="round" stroke-linejoin="round" stroke-width="4"><path d="M24 20V4C12.954 4 4 12.954 4 24s8.954 20 20 20s20-8.954 20-20"/><path d="M24 28a4 4 0 1 0 0-8a4 4 0 0 0 0 8" clip-rule="evenodd"/></g>'
-}
-
 // Iconify: tabler:link-plus.
 export const linkPlus = {
   width: 24,

@@ -141,7 +141,7 @@ func (h *Handler) ServeHTTP(w http.ResponseWriter, r *http.Request) {
 
 	source, err := h.sources.Get(r.Context(), h.query, sourceID)
 	if err != nil || source.Type != storage.SourceTypeFile || !source.Available {
-		// 库内已经是不可用（或已删除），无需回写：ApplyFileAvailability 会是幂等 no-op。
+		// 库内已经是不可用（或已删除），无需回写：这条路径连指纹刷新也不会发生。
 		http.NotFound(w, r)
 		return
 	}

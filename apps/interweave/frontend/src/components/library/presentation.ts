@@ -1,5 +1,14 @@
 import {
+  carbonNoImage,
+  fluentMusicNoteOff220Regular,
+  hugeiconsFileNotFound,
+  hugeiconsLicenseNo,
+  hugeiconsNoInternet,
+  tablerMovieOff,
+  fluentFolder24Filled,
+  iconParkOutlineMacFinder,
   lucideCode,
+  lucideFolderOpen,
   lucideFile,
   lucideFileText,
   lucideFilm,
@@ -53,7 +62,7 @@ const KIND_TEXT: Partial<Record<string, string>> = {
   file: 'text-orange-600 dark:text-orange-300'
 }
 
-export const DEFAULT_TAG_CLASS = 'bg-black/5 text-gray-500 dark:bg-white/10 dark:text-neutral-300'
+export const DEFAULT_TAG_CLASS = 'bg-[#1b1b20]/5 text-gray-500 dark:bg-white/10 dark:text-neutral-300'
 
 /**
  * 持久化颜色 key → chip 样式。
@@ -89,24 +98,29 @@ const TAG_COLOR_CLASSES = {
 } satisfies Record<TagColor, string>
 
 export const metadataRowClass =
-  "relative flex min-w-0 items-center justify-between gap-4 px-4 py-3 after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-black/6 after:content-[''] last:after:hidden dark:after:bg-white/8"
+  "relative flex min-w-0 items-center justify-between gap-4 px-4 py-3 after:absolute after:inset-x-4 after:bottom-0 after:h-px after:bg-[#1b1b20]/6 after:content-[''] last:after:hidden dark:after:bg-white/8"
 export const metadataLabelClass = 'shrink-0 text-xs leading-5 text-[#8a8a94] dark:text-(--wui-color-text-secondary)'
 export const metadataValueClass =
   'min-w-0 truncate text-right text-xs leading-5 text-[#22212a] dark:text-(--wui-color-text)'
 
-/*
- * 标签 chip 的统一外形：全 app 固定 22px 高。
- *
- * 用 inline-flex + items-center 而不是 inline-block + py-0.5：高度由 h-[22px] 唯一决定，
- * 标签文字再长也不会靠行内 padding 把行高撑开，列表行因此保持等高。
- *
- * min-w-[22px] 与高度同值：一两个字的短标签不会被 px-2 之后的文字宽度压成窄条，
- * 底色始终是直径不小于高的圆角，扫一眼列表时短标签不会退化成一个点。
- */
-export const tagChipClass = 'inline-flex h-[22px] min-w-[22px] items-center px-2 rounded-full text-xs whitespace-nowrap'
-
 export function resourceIcon(kind: ResourceKind) {
   return KIND_ICONS[kind] ?? KIND_ICONS.file
+}
+
+export function unavailableResourceIcon(kind: ResourceKind, source?: ResourceSourceView | null) {
+  if (source?.type === 'url' || kind === 'web') return hugeiconsNoInternet
+  switch (kind) {
+    case 'image':
+      return carbonNoImage
+    case 'video':
+      return tablerMovieOff
+    case 'audio':
+      return fluentMusicNoteOff220Regular
+    case 'document':
+      return hugeiconsLicenseNo
+    default:
+      return hugeiconsFileNotFound
+  }
 }
 
 export function resourceKindLabel(kind: ResourceKind) {
@@ -114,7 +128,7 @@ export function resourceKindLabel(kind: ResourceKind) {
 }
 
 export function resourceKindClass(kind: ResourceKind) {
-  return KIND_CONTAINERS[kind] ?? 'bg-black/5 text-(--wui-color-text-secondary) dark:bg-white/8'
+  return KIND_CONTAINERS[kind] ?? 'bg-[#1b1b20]/5 text-(--wui-color-text-secondary) dark:bg-white/8'
 }
 
 export function resourceKindTextClass(kind: ResourceKind) {
@@ -139,7 +153,7 @@ export function tagClass(color: TagColor | string | null | undefined) {
 }
 
 export function sourceTypeLabel(source: ResourceSourceView) {
-  return source.type === 'file' ? '本地文件' : 'URL'
+  return source.type === 'file' ? '本地文件' : '网页链接'
 }
 
 export function sourceTypeIcon(source: ResourceSourceView) {
@@ -147,7 +161,27 @@ export function sourceTypeIcon(source: ResourceSourceView) {
 }
 
 export function sourceTypeDisplayLabel(source: ResourceSourceView) {
-  return source.type === 'file' ? '文件系统' : '远程链接'
+  return source.type === 'file' ? '本地文件' : '网页链接'
+}
+
+export function availableFileSource(resource: ResourceView | null | undefined) {
+  if (!resource) return null
+  if (resource.preferred?.type === 'file' && resource.preferred.available) return resource.preferred
+  return resource.sources.find(source => source.type === 'file' && source.available) ?? null
+}
+
+export function fileManagerIcon() {
+  const platform = (window as Window & { _wails?: { environment?: { OS?: string } } })._wails?.environment?.OS
+  if (platform === 'darwin' || (!platform && /Macintosh|Mac OS X/.test(navigator.userAgent)))
+    return iconParkOutlineMacFinder
+  return platform === 'windows' ? fluentFolder24Filled : lucideFolderOpen
+}
+
+export function fileManagerLabel() {
+  const platform = (window as Window & { _wails?: { environment?: { OS?: string } } })._wails?.environment?.OS
+  if (platform === 'darwin' || (!platform && /Macintosh|Mac OS X/.test(navigator.userAgent))) return '在访达中打开'
+  if (platform === 'windows') return '在文件资源管理器中打开'
+  return '在文件管理器中打开'
 }
 
 export function fileExtension(location: string) {

@@ -48,7 +48,7 @@
   height: var(--wui-switch-height-internal);
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
-  background-color: var(--wui-color-surface-track, #e5e5ea);
+  background-color: var(--wui-color-surface-track, #e5e5eb);
   outline: var(--wui-focus-ring-width, 3px) solid transparent;
   outline-offset: 2px;
 

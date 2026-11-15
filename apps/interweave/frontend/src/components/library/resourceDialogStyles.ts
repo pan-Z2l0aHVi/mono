@@ -5,4 +5,4 @@ export const resourceDialogQueueClass =
 export const resourceDialogEmptyClass =
   'grid h-full min-h-0 place-items-center rounded-[18px] bg-white dark:bg-(--wui-color-surface-raised)'
 export const resourceDialogRowClass =
-  "relative flex min-w-0 items-start justify-between gap-4 px-2.5 py-2 after:absolute after:inset-x-2.5 after:bottom-0 after:h-px after:bg-black/6 after:content-[''] last:after:hidden dark:after:bg-white/8"
+  "relative flex min-w-0 items-start justify-between gap-4 px-2.5 py-2 after:absolute after:inset-x-2.5 after:bottom-0 after:h-px after:bg-[#1b1b20]/6 after:content-[''] last:after:hidden dark:after:bg-white/8"

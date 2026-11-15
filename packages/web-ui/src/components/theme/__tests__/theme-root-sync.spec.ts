@@ -14,7 +14,7 @@ import { WebUiTheme } from '..'
  * 「登记表清空后移除系统配色监听」这条数监听器增删的用例。
  */
 const LIGHT_PAGE = '#ffffff'
-const DARK_PAGE = '#242628'
+const DARK_PAGE = '#242428'
 const FIXTURE_PAGE = '#123456'
 const FIXTURE_STYLE_ID = 'web-ui-theme-root-sync-fixture'
 

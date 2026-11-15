@@ -201,7 +201,7 @@ describe('SettingsDialog', () => {
       await nextTick()
       selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
       await nextTick()
-      const toggle = mounted.host.querySelector<WebUiSwitch>('web-ui-switch[aria-label="减少动画"]')
+      const toggle = mounted.host.querySelector<WebUiSwitch>('web-ui-switch[aria-label="减少动画效果"]')
       if (!toggle) throw new Error('减少动画开关未渲染')
       expect(toggle.checked).toBe(false)
       toggle.checked = true

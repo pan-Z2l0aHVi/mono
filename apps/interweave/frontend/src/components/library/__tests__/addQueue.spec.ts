@@ -39,6 +39,21 @@ function createRuntime(
       ...resourceOverrides
     },
     sources: {
+      startRecoveryScan: async () => 'scan',
+      pollRecoveryScan: async () => ({
+        candidates: [],
+        checked: 0,
+        currentDirectory: '',
+        skipped: 0,
+        done: true,
+        cancelled: false,
+        error: ''
+      }),
+      cancelRecoveryScan: async () => undefined,
+      discardRecoveryScan: async () => undefined,
+      replaceScannedFile: async () => {
+        throw new Error('not implemented')
+      },
       refreshURL: async () => {
         throw new Error('未使用')
       },
@@ -62,12 +77,14 @@ function createRuntime(
       onSourceAvailability: () => () => {}
     },
     system: {
+      chooseDirectory: async () => null,
       chooseFilePaths: async () => [],
       chooseFilePath: async () => null,
       getClipboardFilePaths: async () => [],
       defaultOpenWith: async () => {
         throw new Error('未使用')
       },
+      showInFileManager: async () => {},
       openExternal: async () => {
         throw new Error('未使用')
       }

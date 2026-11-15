@@ -776,6 +776,58 @@ describe('WebUiContextMenu 组件', () => {
   })
 
   describe('键盘 ContextMenu 键', () => {
+    it('焦点离开时取消空格长按，嵌套输入框不被拦截', async () => {
+      const el = createContextMenu({}, '<div tabindex="0"><input></div>' + SIMPLE)
+      await waitForUpdate(el)
+      const row = el.firstElementChild as HTMLElement
+      const input = row.querySelector('input')!
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      try {
+        row.focus()
+        row.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, composed: true, cancelable: true }))
+        input.focus()
+        await vi.advanceTimersByTimeAsync(500)
+        expect(el.isOpen).toBe(false)
+        const event = new KeyboardEvent('keydown', { key: ' ', bubbles: true, composed: true, cancelable: true })
+        input.dispatchEvent(event)
+        await vi.advanceTimersByTimeAsync(500)
+        expect(event.defaultPrevented).toBe(false)
+        expect(el.isOpen).toBe(false)
+      } finally {
+        vi.useRealTimers()
+        cleanupElement(el)
+      }
+    })
+
+    it('空格短按保留行操作，长按只打开菜单', async () => {
+      const el = createContextMenu({}, '<div tabindex="0">资源</div>' + SIMPLE)
+      await waitForUpdate(el)
+      const row = el.firstElementChild as HTMLElement
+      const activate = vi.fn<(event: KeyboardEvent) => void>(event => event.preventDefault())
+      row.addEventListener('keydown', activate)
+      vi.useFakeTimers({ toFake: ['setTimeout', 'clearTimeout'] })
+      try {
+        row.focus()
+        row.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, composed: true, cancelable: true }))
+        await vi.advanceTimersByTimeAsync(200)
+        row.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true, composed: true, cancelable: true }))
+        expect(activate).toHaveBeenCalledTimes(1)
+        expect(el.isOpen).toBe(false)
+
+        row.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, composed: true, cancelable: true }))
+        await vi.advanceTimersByTimeAsync(500)
+        expect(el.isOpen).toBe(true)
+        const repeated = new KeyboardEvent('keydown', { key: ' ', repeat: true, bubbles: true, cancelable: true })
+        document.dispatchEvent(repeated)
+        expect(repeated.defaultPrevented).toBe(true)
+        row.dispatchEvent(new KeyboardEvent('keyup', { key: ' ', bubbles: true, composed: true, cancelable: true }))
+        expect(activate).toHaveBeenCalledTimes(1)
+      } finally {
+        vi.useRealTimers()
+        cleanupElement(el)
+      }
+    })
+
     it('ContextMenu 键打开 menu', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
@@ -787,7 +839,7 @@ describe('WebUiContextMenu 组件', () => {
       cleanupElement(el)
     })
 
-    it('Shift+F10 打开 menu', async () => {
+    it('Shift+F10 不打开 menu', async () => {
       const el = createContextMenu({}, SIMPLE)
       await waitForUpdate(el)
 
@@ -798,8 +850,8 @@ describe('WebUiContextMenu 组件', () => {
           bubbles: true
         })
       )
-      await waitForMenuOpen(el)
-      expect(el.isOpen).toBe(true)
+      await el.updateComplete
+      expect(el.isOpen).toBe(false)
 
       cleanupElement(el)
     })

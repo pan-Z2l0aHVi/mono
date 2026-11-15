@@ -74,6 +74,17 @@ Radius 按控件、menu 和 overlay 的用途命名，避免将用途绑定到�
 
 Presence、滚动锁与 drawer 层序仍由各自模块负责。会话生命周期及断连清理的实现以源码和测试为准。
 
+## 8. Toast 与原生模态层
+
+命令式 toast 默认按视口定位。普通文档中的 fixed 元素不能越过原生模态 dialog 的 top layer；Floating UI 的 virtual element 只能提供定位参考，不能提升层级或解除模态层外的 inert。对 web-ui 管理的原生模态层，toast 的自动挂载与定位由库协调，调用方无需指定容器。
+
+- 每个受管原生模态层提供透明、无动画的 toast 定位层；dialog、drawer、image-preview 等的视觉动画作用于独立内容层，避免动画 transform 改变 toast 的视口定位。drawer 的滑入、退出和拖拽期间也保持视口定位，不通过逐帧坐标计算补偿。
+- 自动 toast 跟随最上层受管原生模态层；嵌套层打开或退出时迁移仍存续的 toast，保留内容与剩余时间。关闭动画期间，原生 dialog 仍在 top layer 时 toast 保持可交互；实际退出后迁移到下一层或普通文档。迁移不承诺恢复焦点，尽量避免重复的屏幕阅读器播报。
+- 显式 `container` 保留现有优先级与挂载行为，不参与自动迁移；是否弃用留待自动方案验证后决定。主题和无障碍语义仍须保留。
+- 不包装全局原生 dialog 方法，不使用 Popover API，也不创建模态 toast。第三方原生 dialog 不保证自动支持：尤其封闭 Shadow DOM 与第三方裁剪无法由库可靠发现或控制。
+
+透明定位层不能仅凭结构假定其正确。变更须验证 top layer、点击命中、backdrop、四方向 drawer 拖拽与动画、嵌套与快速切换、容器销毁、视口变化、toast 存续及无障碍，并覆盖 WebKit 和 Interweave 原生应用。若不能同时保持既有交互和视口定位，应报告未满足的条件，不以逐帧计算暗中替代该决策。
+
 ## 后果
 
 - 每个 Overlay 遵循明确的焦点模型；定位引擎唯一，私有路径需满足三条准入条件

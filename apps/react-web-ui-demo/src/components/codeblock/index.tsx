@@ -1,6 +1,5 @@
 import appScrollbarsOptions from '@greypan/app-scrollbars'
 import {
-  COPY_FEEDBACK_DURATION,
   createCodeblockController,
   createThunkCache,
   codeScrollbarsEvents,
@@ -24,6 +23,8 @@ import {
 } from '@greypan/web-ui/icons'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-react'
 import { Suspense, lazy, useEffect, useId, useState, useSyncExternalStore, type ComponentType } from 'react'
+
+import { PressDrawIcon } from '../PressDrawIcon'
 
 // 本站框架既是切换器的第一项，也是打开页面时显示的源码。
 const NATIVE_FLAVOR: Flavor = 'react'
@@ -77,7 +78,7 @@ function Codeblock({ nodes, preview, variants, switchLabel }: CodeblockProps) {
   useEffect(() => () => controller.dispose(), [controller])
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
   const { flavor, expanded, active, collapsible, preview: previewNode, copy: copySnapshot } = snapshot
-  const { status: copied, run: copyRun } = copySnapshot
+  const { status: copied } = copySnapshot
 
   const Demo = preview && previewNode?.load ? demoOf(previewNode.load) : null
 
@@ -205,23 +206,21 @@ function Codeblock({ nodes, preview, variants, switchLabel }: CodeblockProps) {
                     aria-label={copyLabel}
                     onClick={() => void controller.copy()}
                   >
-                    {/* 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次；
-                      key 跟着每次复制递增，重复复制也会重新挂载并重播描边与 scale。 */}
-                    {copied === 'copied' ? (
-                      <web-ui-svg-draw-lines key={copyRun} className="demo-copy-pop" duration={COPY_FEEDBACK_DURATION}>
+                    <PressDrawIcon>
+                      {copied === 'copied' ? (
                         <web-ui-icon
                           icon={akarIconsCircleCheck}
                           size={15}
                           className="text-(--wui-color-success)"
                         ></web-ui-icon>
-                      </web-ui-svg-draw-lines>
-                    ) : (
-                      <web-ui-icon
-                        icon={copyIcon}
-                        size={15}
-                        className={copied === 'failed' ? 'text-(--wui-color-danger)' : ''}
-                      ></web-ui-icon>
-                    )}
+                      ) : (
+                        <web-ui-icon
+                          icon={copyIcon}
+                          size={15}
+                          className={copied === 'failed' ? 'text-(--wui-color-danger)' : ''}
+                        ></web-ui-icon>
+                      )}
+                    </PressDrawIcon>
                   </web-ui-button>
                 </web-ui-tooltip>
                 {collapsible ? (

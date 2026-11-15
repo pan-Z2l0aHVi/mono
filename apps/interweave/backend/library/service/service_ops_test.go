@@ -458,3 +458,36 @@ func TestEdgeErrorPathsAndRemoval(t *testing.T) {
 		t.Errorf("expected single Dedup tag, got %+v", tagged.Tags)
 	}
 }
+
+func TestRecoveryScanShutdownRejectsNewScan(t *testing.T) {
+	resService, srcService, _, _, cleanup := newTestServices(t)
+	defer cleanup()
+	ctx := context.Background()
+
+	dir := t.TempDir()
+	path := filepath.Join(dir, "lost.txt")
+	if err := os.WriteFile(path, []byte("lost-content"), 0o644); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	res, err := addFileResource(ctx, resService, path)
+	if err != nil {
+		t.Fatalf("addFileResource error: %v", err)
+	}
+	sourceID := res.Sources[0].ID
+	if err := os.Remove(path); err != nil {
+		t.Fatalf("remove fixture: %v", err)
+	}
+	if _, err := srcService.RefreshFileSource(ctx, sourceID); err != nil {
+		t.Fatalf("RefreshFileSource error: %v", err)
+	}
+
+	if _, err := srcService.StartRecoveryScan(ctx, []string{sourceID}, dir); err != nil {
+		t.Fatalf("StartRecoveryScan before shutdown error: %v", err)
+	}
+	if err := srcService.ServiceShutdown(); err != nil {
+		t.Fatalf("ServiceShutdown error: %v", err)
+	}
+	if _, err := srcService.StartRecoveryScan(ctx, []string{sourceID}, dir); err == nil || err.Error() != "recovery service is shut down" {
+		t.Fatalf("expected shutdown rejection error, got %v", err)
+	}
+}

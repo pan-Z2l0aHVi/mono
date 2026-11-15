@@ -470,6 +470,11 @@ export function createMockLibraryRuntime(): LibraryRuntime {
       refreshURL: () => unsupported('刷新网页入口'),
       refreshFile: () => unsupported('刷新文件入口'),
       replaceFile: () => unsupported('替换文件入口'),
+      startRecoveryScan: () => unsupported('扫描文件'),
+      pollRecoveryScan: () => unsupported('扫描文件'),
+      cancelRecoveryScan: () => Promise.resolve(),
+      discardRecoveryScan: () => Promise.resolve(),
+      replaceScannedFile: () => unsupported('替换文件入口'),
       replaceURL: () => unsupported('替换网页入口'),
       probeOnOpen: () => unsupported('探测网页入口')
     },
@@ -487,10 +492,12 @@ export function createMockLibraryRuntime(): LibraryRuntime {
     system: {
       chooseFilePaths: () => Promise.resolve([]),
       chooseFilePath: () => Promise.resolve(null),
+      chooseDirectory: () => Promise.resolve(null),
       getClipboardFilePaths: () => Promise.resolve([]),
 
       // 浏览器没有「系统默认应用」这个概念：返回空名，UI 回落到通用文案。
       defaultOpenWith: () => Promise.resolve(''),
+      showInFileManager: () => Promise.resolve(),
 
       // 浏览器里唯一能真实生效的动作就是开新标签；file 入口没有对应的系统打开方式。
       openExternal: target => {

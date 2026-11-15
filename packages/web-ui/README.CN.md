@@ -86,6 +86,22 @@ export function App() {
 
 使用 Vite 时，可安装 `@greypan/unplugin-web-components`，让插件根据标签导入组件。在 `vite.config.ts` 中将它放在 React 插件之前：
 
+```npm
+npm install -D @greypan/unplugin-web-components
+```
+
+```pnpm
+pnpm add -D @greypan/unplugin-web-components
+```
+
+```bun
+bun add -D @greypan/unplugin-web-components
+```
+
+```yarn
+yarn add -D @greypan/unplugin-web-components
+```
+
 ```ts
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import react from '@vitejs/plugin-react'
@@ -141,6 +157,22 @@ function greet() {
 #### 可选：自动导入组件
 
 安装 `@greypan/unplugin-web-components`，并将插件加入 Vite 配置；上面的 `isCustomElement` 配置仍然需要：
+
+```npm
+npm install -D @greypan/unplugin-web-components
+```
+
+```pnpm
+pnpm add -D @greypan/unplugin-web-components
+```
+
+```bun
+bun add -D @greypan/unplugin-web-components
+```
+
+```yarn
+yarn add -D @greypan/unplugin-web-components
+```
 
 ```ts
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'

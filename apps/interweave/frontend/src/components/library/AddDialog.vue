@@ -24,8 +24,7 @@ import type { ResourceSourceView, TagColor } from '@/stores/library'
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 import { queueItemTitle } from './addQueue'
-import { linkPlus } from './icons'
-import { tagChipClass, tagClass } from './presentation'
+import { doubleArrowRight, linkPlus } from './icons'
 import type { NameEditorRef } from './rename'
 import {
   resourceDialogColumnClass,
@@ -34,6 +33,7 @@ import {
   resourceDialogRowClass
 } from './resourceDialogStyles'
 import ResourceLinkDialog from './ResourceLinkDialog.vue'
+import ResourceTag from './ResourceTag.vue'
 import ResourceThumbnail from './ResourceThumbnail.vue'
 
 const props = defineProps<{
@@ -60,9 +60,6 @@ const emit = defineEmits<{
   editTags: [item: LibraryQueueItem]
   submit: []
 }>()
-
-const dialogRef = ref<WebUiDialog | null>(null)
-defineExpose({ toastContainer: () => dialogRef.value?.shadowRoot?.querySelector('dialog') ?? undefined })
 
 const dragActive = ref(false)
 const addUrlOpen = ref(false)
@@ -202,13 +199,15 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
 
 <template>
   <web-ui-dialog
-    ref="dialogRef"
     :open="open"
     controlled
     no-backdrop-close
     footer-orientation="horizontal"
-    :style="{ '--wui-dialog-footer-justify': mobile ? undefined : 'flex-end' }"
-    class="[--wui-dialog-width:min(90vw,880px)] [--wui-dialog-max-height:calc(min(82vh,560px)_-_142px)]"
+    :style="{
+      '--wui-dialog-footer-justify': mobile ? undefined : 'flex-end',
+      '--wui-dialog-max-height': mobile ? 'calc(min(90vh, 700px) - 142px)' : 'calc(min(82vh, 560px) - 142px)'
+    }"
+    class="[--wui-dialog-width:min(90vw,880px)]"
     @open-change="handleOpenChange"
   >
     <span slot="header">添加资源</span>
@@ -251,12 +250,16 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       正是「chrome 由内容撑开」要的结果。
     -->
     <div
-      class="grid min-h-0 grid-cols-2 gap-5 mobile:gap-4 max-[900px]:grid-cols-1 max-[900px]:grid-rows-2"
-      style="height: var(--wui-dialog-max-height)"
+      class="grid h-(--wui-dialog-max-height) min-h-0"
+      :class="
+        mobile
+          ? 'grid-cols-1 grid-rows-[minmax(0,1fr)_20px_minmax(0,1fr)]'
+          : 'grid-cols-[minmax(0,1fr)_36px_minmax(0,1fr)]'
+      "
     >
       <section :class="resourceDialogColumnClass">
         <div class="flex h-7 min-w-0 items-center justify-between gap-2">
-          <p class="m-0 min-w-0 truncate text-[14px] leading-6 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)">
+          <p class="m-0 min-w-0 truncate text-[14px] leading-6 text-[#6a6a70] dark:text-(--wui-color-text-secondary)">
             支持本地文件与远程链接，支持拖入或粘贴
           </p>
           <div class="flex shrink-0 items-center gap-2">
@@ -274,7 +277,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
         </div>
         <button
           type="button"
-          class="grid h-full place-content-center justify-items-center gap-3 rounded-[18px] border-0 bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-(--wui-duration-trigger) hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b1b)_7%,transparent)] mobile:gap-2 mobile:px-4 mobile:py-2 max-[900px]:p-5"
+          class="grid h-full place-content-center justify-items-center gap-3 rounded-[18px] border-0 bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-(--wui-duration-trigger) hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_7%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_7%,transparent)] mobile:gap-2 mobile:px-4 mobile:py-2"
           data-file-drop-target="library-add-files"
           :class="dragActive ? 'scale-[1.005] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]' : ''"
           @click="emit('pickFiles')"
@@ -313,7 +316,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           -->
             <span
               slot="description"
-              class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
+              class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a70] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
             >
               <span>支持图片、视频、音频、文档、网页、代码等文件</span>
               <span>可批量添加</span>
@@ -321,6 +324,10 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           </web-ui-empty>
         </button>
       </section>
+
+      <div class="grid place-items-center text-(--wui-color-text-secondary)" aria-hidden="true">
+        <web-ui-icon :icon="doubleArrowRight" :size="24" :class="{ 'rotate-90': mobile }" />
+      </div>
 
       <aside
         :class="[resourceDialogColumnClass, 'relative border-0 bg-transparent p-0']"
@@ -334,7 +341,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             待添加
           </h3>
           <span
-            class="inline-flex h-7 items-center text-xs leading-none text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+            class="inline-flex h-7 items-center text-xs leading-none text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
           >
             {{ queue.length }} 项
           </span>
@@ -420,15 +427,14 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                 </div>
                 <div class="flex min-w-0 flex-wrap items-center gap-1.5">
                   <span
-                    class="min-w-0 wrap-anywhere text-xs leading-4 text-[#6a6a6a] dark:text-(--wui-color-text-secondary)"
+                    class="min-w-0 wrap-anywhere text-xs leading-4 text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
                     :title="item.location"
+                    :class="item.kind === 'url' ? 'text-(--wui-color-accent) underline' : ''"
                   >
                     {{ item.location }}
                   </span>
                   <div v-if="item.tags.length" class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
-                    <span v-for="tag in item.tags" :key="tag" :class="[tagChipClass, tagClass(props.tagColors[tag])]">
-                      {{ tag }}
-                    </span>
+                    <ResourceTag v-for="tag in item.tags" :key="tag" :name="tag" :color="props.tagColors[tag]" />
                   </div>
                 </div>
               </span>
@@ -446,7 +452,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             </span>
             <span
               slot="description"
-              class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a6a] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
+              class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a70] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
             >
               <span>添加的资源将显示在此处</span>
               <span>名称和标签可修改</span>
@@ -475,7 +481,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       @click="emit('submit')"
     >
       <web-ui-icon slot="prefix" :icon="akarIconsCircleCheck" />
-      {{ queue.length > 1 ? '批量添加' : '添加' }}
+      确认添加
     </web-ui-button>
   </web-ui-dialog>
   <ResourceLinkDialog v-model:open="addUrlOpen" initial-value="" mode="add" @submit="emit('addUrl', $event)" />

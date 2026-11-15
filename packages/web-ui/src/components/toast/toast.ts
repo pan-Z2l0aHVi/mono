@@ -86,8 +86,11 @@ export class WebUiToast extends LitElement {
     this.removeEventListener('pointerenter', this._onPointerEnter)
     this.removeEventListener('pointerleave', this._onPointerLeave)
     this._detachHoverFallback()
-    this._clearTimer()
-    this._cancelDismiss?.()
+    this.pauseAutoClose()
+    // 模态宿主断连可能紧接着触发同步迁移；迁移完成前保留退场，真正移除后再清理。
+    queueMicrotask(() => {
+      if (!this.isConnected) this._cancelDismiss?.()
+    })
   }
 
   /**

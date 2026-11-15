@@ -42,7 +42,7 @@
    * 二次合成、局部变深，看起来像"角上笔画发黑"。淡一档由图形的
    * group opacity 负责——那是在整颗图形合成之后一次性施加的，重叠处不起变化。
    */
-  color: var(--wui-empty-icon-color, var(--wui-color-text-secondary, #6a6a6a));
+  color: var(--wui-empty-icon-color, var(--wui-color-text-secondary, #6a6a70));
 }
 
 /*
@@ -78,7 +78,7 @@
   font-size: var(--wui-empty-title-font-size, 16px);
   font-weight: var(--wui-font-weight-semibold, 600);
   line-height: var(--wui-line-height-normal, 1.5);
-  color: var(--wui-empty-title-color, var(--wui-color-text, #1b1b1b));
+  color: var(--wui-empty-title-color, var(--wui-color-text, #1b1b20));
   overflow-wrap: anywhere;
 }
 
@@ -87,7 +87,7 @@
 
   font-size: var(--wui-empty-description-font-size, 14px);
   line-height: var(--wui-line-height-relaxed, 1.6);
-  color: var(--wui-empty-description-color, var(--wui-color-text-secondary, #6a6a6a));
+  color: var(--wui-empty-description-color, var(--wui-color-text-secondary, #6a6a70));
   overflow-wrap: anywhere;
 }
 

@@ -28,14 +28,13 @@ class WailsLibraryRuntime implements LibraryRuntime {
 
   readonly resources = {
     list: () => ResourceService.ListResources(),
-    get: async (resourceId: string) =>
-      requireResourceDTO(await ResourceService.GetResource(resourceId), '读取 Resource'),
+    get: async (resourceId: string) => requireResourceDTO(await ResourceService.GetResource(resourceId), '读取资源'),
     create: async (input: CreateResourceInputDTO) =>
-      requireResourceDTO(await ResourceService.CreateResource(input), '创建 Resource'),
+      requireResourceDTO(await ResourceService.CreateResource(input), '创建资源'),
     updateTitle: async (resourceId: string, newTitle: string) =>
-      requireResourceDTO(await ResourceService.UpdateResourceTitle(resourceId, newTitle), '更新 Resource 标题'),
+      requireResourceDTO(await ResourceService.UpdateResourceTitle(resourceId, newTitle), '更新资源名称'),
     updateNote: async (resourceId: string, note: string) =>
-      requireResourceDTO(await ResourceService.UpdateResourceNote(resourceId, note), '更新 Resource 备注'),
+      requireResourceDTO(await ResourceService.UpdateResourceNote(resourceId, note), '更新资源备注'),
     remove: async (resourceId: string) => {
       await ResourceService.DeleteResource(resourceId)
     },
@@ -52,15 +51,30 @@ class WailsLibraryRuntime implements LibraryRuntime {
 
   readonly sources = {
     refreshURL: async (sourceId: string) =>
-      requireResourceDTO(await SourceService.RefreshURLSource(sourceId), '刷新 URL Source'),
+      requireResourceDTO(await SourceService.RefreshURLSource(sourceId), '检查网页链接'),
     refreshFile: async (sourceId: string) =>
-      requireResourceDTO(await SourceService.RefreshFileSource(sourceId), '刷新文件 Source'),
+      requireResourceDTO(await SourceService.RefreshFileSource(sourceId), '检查文件'),
     replaceFile: async (sourceId: string, inputPath: string) =>
-      requireResourceDTO(await SourceService.ReplaceFileSource(sourceId, inputPath), '替换文件 Source'),
+      requireResourceDTO(await SourceService.ReplaceFileSource(sourceId, inputPath), '更新文件位置'),
+    startRecoveryScan: (sourceIds: string[], directory: string) =>
+      SourceService.StartRecoveryScan(sourceIds, directory),
+    pollRecoveryScan: async (scanId: string) => {
+      const result = await SourceService.PollRecoveryScan(scanId)
+      if (!result) throw new Error('读取扫描进度未返回结果')
+      return result
+    },
+    cancelRecoveryScan: async (scanId: string) => {
+      await SourceService.CancelRecoveryScan(scanId)
+    },
+    discardRecoveryScan: async (scanId: string) => {
+      await SourceService.DiscardRecoveryScan(scanId)
+    },
+    replaceScannedFile: async (sourceId: string, path: string, snapshot: string) =>
+      requireResourceDTO(await SourceService.ReplaceScannedFileSource(sourceId, path, snapshot), '更新文件位置'),
     replaceURL: async (sourceId: string, inputURL: string) =>
-      requireResourceDTO(await SourceService.ReplaceURLSource(sourceId, inputURL), '替换 URL Source'),
+      requireResourceDTO(await SourceService.ReplaceURLSource(sourceId, inputURL), '更新网页链接'),
     probeOnOpen: async (sourceId: string) =>
-      requireSourceProbeResultDTO(await SourceService.ProbeURLSourceOnOpen(sourceId), '探测 URL Source')
+      requireSourceProbeResultDTO(await SourceService.ProbeURLSourceOnOpen(sourceId), '检查网页链接')
   }
 
   readonly media = {
@@ -117,8 +131,21 @@ class WailsLibraryRuntime implements LibraryRuntime {
       if (Array.isArray(selected)) return selected[0] ?? null
       return selected ?? null
     },
+    chooseDirectory: async () => {
+      const selected = await Dialogs.OpenFile({
+        Title: '选择扫描文件夹',
+        CanChooseFiles: false,
+        CanChooseDirectories: true,
+        AllowsMultipleSelection: false
+      })
+      if (Array.isArray(selected)) return selected[0] ?? null
+      return selected ?? null
+    },
     getClipboardFilePaths: () => OSService.GetClipboardFilePaths(),
     defaultOpenWith: (target: string) => OSService.DefaultOpenWith(target),
+    showInFileManager: async (path: string) => {
+      await OSService.ShowInFileManager(path)
+    },
     openExternal: async (target: string) => {
       await OSService.OpenExternal(target)
     }

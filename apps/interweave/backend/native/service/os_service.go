@@ -4,6 +4,7 @@ import (
 	"context"
 	"fmt"
 	"os/exec"
+	"path/filepath"
 	"runtime"
 )
 
@@ -49,7 +50,7 @@ func (s *OSService) ShowInFileManager(ctx context.Context, filePath string) erro
 	case "windows":
 		cmd = exec.CommandContext(ctx, "explorer", "/select,", filePath)
 	case "linux":
-		cmd = exec.CommandContext(ctx, "xdg-open", filePath)
+		cmd = exec.CommandContext(ctx, "xdg-open", filepath.Dir(filePath))
 	default:
 		return fmt.Errorf("unsupported operating system: %s", runtime.GOOS)
 	}

@@ -28,7 +28,7 @@
   border-radius: var(--wui-radius-control, calc(infinity * 1px));
 
   font-size: var(--wui-font-size, 14px);
-  color: var(--wui-color-text, #1b1b1b);
+  color: var(--wui-color-text, #1b1b20);
   text-overflow: ellipsis;
   white-space: nowrap;
 }

@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import appScrollbarsOptions from '@greypan/app-scrollbars'
 import {
-  COPY_FEEDBACK_DURATION,
   createCodeblockController,
   createThunkCache,
   codeScrollbarsEvents,
@@ -25,6 +24,8 @@ import {
 } from '@greypan/web-ui/icons'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { computed, defineAsyncComponent, onBeforeUnmount, shallowRef, useId, watch, type Component } from 'vue'
+
+import PressDrawIcon from '../PressDrawIcon.vue'
 
 // 本站框架既是切换器的第一项，也是打开页面时显示的源码；其余顺序由 kit 的 FLAVORS 决定。
 const NATIVE_FLAVOR: Flavor = 'vue'
@@ -82,8 +83,6 @@ const active = computed(() => snapshot.value.active)
 const collapsible = computed(() => snapshot.value.collapsible)
 const demo = () => (props.preview && snapshot.value.preview?.load ? demoOf(snapshot.value.preview.load) : null)
 const copied = computed(() => snapshot.value.copy.status)
-// 每次复制都换 key，让成功态的描边与 scale 动画重新挂载、各播一次。
-const copyRun = computed(() => snapshot.value.copy.run)
 
 function selectFlavorFromEvent(event: Event) {
   const target = event.currentTarget as { value?: string } | null
@@ -192,22 +191,20 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
             <web-ui-button-group>
               <web-ui-tooltip :content="copyLabel()">
                 <web-ui-button icon variant="ghost" data-copy :aria-label="copyLabel()" @click="copyCode()">
-                  <!-- 成功态才包进描边宿主：`web-ui-svg-draw-lines` 在 slot 内容稳定时自动播一次；
-                    key 跟着每次复制递增，重复复制也会重新挂载并重播描边与 scale。 -->
-                  <web-ui-svg-draw-lines
-                    v-if="copied === 'copied'"
-                    :key="copyRun"
-                    class="demo-copy-pop"
-                    :duration="COPY_FEEDBACK_DURATION"
-                  >
-                    <web-ui-icon :icon="akarIconsCircleCheck" :size="15" class="text-(--wui-color-success)" />
-                  </web-ui-svg-draw-lines>
-                  <web-ui-icon
-                    v-else
-                    :icon="copyIcon()"
-                    :size="15"
-                    :class="copied === 'failed' ? 'text-(--wui-color-danger)' : ''"
-                  />
+                  <PressDrawIcon>
+                    <web-ui-icon
+                      v-if="copied === 'copied'"
+                      :icon="akarIconsCircleCheck"
+                      :size="15"
+                      class="text-(--wui-color-success)"
+                    />
+                    <web-ui-icon
+                      v-else
+                      :icon="copyIcon()"
+                      :size="15"
+                      :class="copied === 'failed' ? 'text-(--wui-color-danger)' : ''"
+                    />
+                  </PressDrawIcon>
                 </web-ui-button>
               </web-ui-tooltip>
               <web-ui-tooltip v-if="collapsible" :content="expanded ? '收起代码' : '展开代码'">

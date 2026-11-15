@@ -51,5 +51,12 @@ if (!Element.prototype.getAnimations) {
   Element.prototype.getAnimations = () => []
 }
 if (!Element.prototype.animate) {
-  Element.prototype.animate = () => ({ id: '', cancel() {} }) as Animation
+  Element.prototype.animate = () => ({ id: '', cancel() {}, finished: Promise.resolve() }) as unknown as Animation
+}
+
+// jsdom 不提供文字范围的布局；列表中的 middle-ellipsis 需要可重复的宽度量具。
+if (!Range.prototype.getBoundingClientRect) {
+  Range.prototype.getBoundingClientRect = function () {
+    return new DOMRect(0, 0, this.toString().length * 8, 16)
+  }
 }

@@ -18,11 +18,18 @@ it('弹窗中显示 toast 不改变弹窗的位置和尺寸', async () => {
   component.open = true
   await component.updateComplete
   const dialog = component.shadowRoot!.querySelector('dialog')!
-  await pollUntil(() => getComputedStyle(dialog).transform === 'matrix(1, 0, 0, 1, 0, 0)', 'dialog not settled')
+  await pollUntil(
+    () =>
+      getComputedStyle(dialog.querySelector<HTMLElement>('.wui-dialog-body')!).transform === 'matrix(1, 0, 0, 1, 0, 0)',
+    'dialog not settled'
+  )
   const before = dialog.getBoundingClientRect()
   toast.warning('提示', { container: dialog, duration: 0 })
   await pollUntil(() => !!dialog.querySelector('web-ui-toast'), 'toast not mounted')
   const after = dialog.getBoundingClientRect()
   for (const key of ['x', 'y', 'width', 'height'] as const) expect(after[key]).toBeCloseTo(before[key], 1)
   expect(getComputedStyle(dialog.querySelector('.wui-toast-container')!).position).toBe('fixed')
+  const notice = dialog.querySelector('web-ui-toast')!.getBoundingClientRect()
+  expect(notice.right).toBeCloseTo(window.innerWidth - 16, 0)
+  expect(notice.top).toBeCloseTo(16, 0)
 })
