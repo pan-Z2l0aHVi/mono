@@ -46,6 +46,19 @@ describe('复制反馈', () => {
     vi.advanceTimersByTime(1600)
     expect(listener).toHaveBeenCalledTimes(1)
   })
+
+  // StrictMode 在开发期对同一次挂载跑 setup → cleanup → setup，控制器不会重建：
+  // cleanup 里的 dispose 只应取消待触发的 idle 回退，不能拆掉控制器挂上的订阅桥。
+  it('释放后再次复制仍会发布：StrictMode 会复用同一个控制器', async () => {
+    const feedback = createCopyFeedback({ readText: () => 'code' })
+    const listener = vi.fn<() => void>()
+    feedback.subscribe(listener)
+    feedback.dispose()
+    await feedback.copy()
+    expect(feedback.getSnapshot()).toMatchObject({ status: 'copied', run: 1 })
+    expect(listener).toHaveBeenCalledTimes(1)
+    feedback.dispose()
+  })
 })
 
 /*

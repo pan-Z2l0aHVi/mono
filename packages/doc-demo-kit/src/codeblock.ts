@@ -144,10 +144,15 @@ export function createCopyFeedback({ readText, idleDelay = COPY_IDLE_DELAY }: Co
   }
   return {
     copy,
+    /*
+     * 只取消未到点的 idle 定时器，不清 listener：StrictMode 在开发期对同一次挂载跑
+     * setup → cleanup → setup，而控制器是 useState 的实例、不会重建，清掉 listener 会把
+     * controller 在构造时挂上的 copyFeedback → publish 桥一并拆掉，之后复制永远不发布。
+     * 框架卸载时自己会取消订阅，剩下的桥只被控制器引用，随控制器一起回收。
+     */
     dispose: () => {
       clearTimeout(timer)
       timer = undefined
-      listeners.clear()
     },
     getSnapshot: () => snapshot,
     subscribe: listener => {

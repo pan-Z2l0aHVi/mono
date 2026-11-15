@@ -33,6 +33,24 @@ const INSTALL_COMMANDS = [
 const PRODUCT_NAME = 'Web UI'
 const LOGO_ALT = 'Bo Logo'
 
+// 组件名是专有名词，中英两版一致。留在模块级还有一层原因：wuchale 只提取组件体内的文案，
+// 这些标识不该进语料，放进渲染体就会被当成待译壳文案。
+const QUICK_LINK_LABELS = {
+  button: 'Button',
+  input: 'Input',
+  switch: 'Switch',
+  segmented: 'Segmented',
+  dialog: 'Dialog',
+  drawer: 'Drawer',
+  select: 'Select',
+  tooltip: 'Tooltip',
+  toast: 'Toast',
+  imagePreview: 'ImagePreview',
+  spinner: 'Spinner',
+  layout: 'Layout',
+  theme: 'Theme'
+} as const
+
 interface QuickLink {
   path: string
   label: string
@@ -46,64 +64,73 @@ interface QuickLinkGroup {
   links: QuickLink[]
 }
 
-// 标题与描述延迟到渲染期求值：wuchale 的译文随当前语种变化，模块初始化的常量不会跟着更新。
-const quickLinkGroups: QuickLinkGroup[] = [
-  {
-    id: 'core',
-    title: () => '基础控件',
-    description: () => '点击、输入、选择、切换',
-    links: [
-      { path: '/components/button', label: 'Button', desc: () => '变体、尺寸、图标、加载状态' },
-      { path: '/components/input', label: 'Input', desc: () => '输入、清除、前后缀' },
-      { path: '/components/switch', label: 'Switch', desc: () => '开关状态、拖拽切换' },
-      { path: '/components/segmented', label: 'Segmented', desc: () => '分段选择、拖拽切换' }
-    ]
-  },
-  {
-    id: 'overlay',
-    title: () => '交互与浮层',
-    description: () => '对话框、抽屉、浮层',
-    links: [
-      { path: '/components/dialog', label: 'Dialog', desc: () => '弹窗、确认、信息展示' },
-      { path: '/components/drawer', label: 'Drawer', desc: () => '侧滑面板、拖拽关闭' },
-      { path: '/components/select', label: 'Select', desc: () => '下拉选择、键盘导航' },
-      { path: '/components/tooltip', label: 'Tooltip', desc: () => '悬停提示、焦点说明' }
-    ]
-  },
-  {
-    id: 'imperative',
-    title: () => '命令式',
-    description: () => '函数调用触发',
-    links: [
-      { path: '/components/toast', label: 'Toast', desc: () => '轻量、响应式的全局通知' },
-      { path: '/components/image-preview', label: 'ImagePreview', desc: () => '多图预览、滑动切换、手势缩放' },
-      { path: '/components/spinner', label: 'Spinner', desc: () => '加载中的等待提示' }
-    ]
-  },
-  {
-    id: 'foundation',
-    title: () => '应用基础',
-    description: () => '页面骨架、外观偏好',
-    links: [
-      { path: '/components/layout', label: 'Layout', desc: () => '响应式布局' },
-      { path: '/components/theme', label: 'Theme', desc: () => '深浅外观、动效偏好' }
-    ]
-  }
-]
-
-// 能力项同样延迟到渲染期取文案，切语种时随页面重新求值。
-const features = [
-  { id: 'cross-framework', icon: lucideCode, label: () => '跨框架一致' },
-  { id: 'typescript', icon: tablerBrandTypescript, label: () => 'TypeScript 类型安全' },
-  { id: 'atomic', icon: lucideBoxes, label: () => '原子组件' },
-  { id: 'pointer', icon: icBaselinePhonelink, label: () => '响应式设计' },
-  { id: 'touch', icon: lucideSlidersHorizontal, label: () => '支持触摸&手势' },
-  { id: 'accessibility', icon: lucideAccessibility, label: () => '无障碍' },
-  { id: 'keyboard', icon: lucideKeyboard, label: () => '键盘友好' },
-  { id: 'motion', icon: lucideSparkles, label: () => '丝滑动效' }
-]
-
 function Home() {
+  /*
+   * 标题与描述在组件体内求值，而不是放在模块级常量里：wuchale 的译文随当前语种变化，
+   * 模块初始化只求值一次；而 React Compiler 又会把「模块级常量上的函数调用」当成无依赖
+   * 的纯计算缓存住，切语种后这些文案会停在首帧语言。放进渲染体后，注入的 runtime 读取
+   * 成为组件的依赖，语种变化时随其它壳文案一起重算。
+   */
+  const quickLinkGroups: QuickLinkGroup[] = [
+    {
+      id: 'core',
+      title: () => '基础控件',
+      description: () => '点击、输入、选择、切换',
+      links: [
+        { path: '/components/button', label: QUICK_LINK_LABELS.button, desc: () => '变体、尺寸、图标、加载状态' },
+        { path: '/components/input', label: QUICK_LINK_LABELS.input, desc: () => '输入、清除、前后缀' },
+        { path: '/components/switch', label: QUICK_LINK_LABELS.switch, desc: () => '开关状态、拖拽切换' },
+        { path: '/components/segmented', label: QUICK_LINK_LABELS.segmented, desc: () => '分段选择、拖拽切换' }
+      ]
+    },
+    {
+      id: 'overlay',
+      title: () => '交互与浮层',
+      description: () => '对话框、抽屉、浮层',
+      links: [
+        { path: '/components/dialog', label: QUICK_LINK_LABELS.dialog, desc: () => '弹窗、确认、信息展示' },
+        { path: '/components/drawer', label: QUICK_LINK_LABELS.drawer, desc: () => '侧滑面板、拖拽关闭' },
+        { path: '/components/select', label: QUICK_LINK_LABELS.select, desc: () => '下拉选择、键盘导航' },
+        { path: '/components/tooltip', label: QUICK_LINK_LABELS.tooltip, desc: () => '悬停提示、焦点说明' }
+      ]
+    },
+    {
+      id: 'imperative',
+      title: () => '命令式',
+      description: () => '函数调用触发',
+      links: [
+        { path: '/components/toast', label: QUICK_LINK_LABELS.toast, desc: () => '轻量、响应式的全局通知' },
+        {
+          path: '/components/image-preview',
+          label: QUICK_LINK_LABELS.imagePreview,
+          desc: () => '多图预览、滑动切换、手势缩放'
+        },
+        { path: '/components/spinner', label: QUICK_LINK_LABELS.spinner, desc: () => '加载中的等待提示' }
+      ]
+    },
+    {
+      id: 'foundation',
+      title: () => '应用基础',
+      description: () => '页面骨架、外观偏好',
+      links: [
+        { path: '/components/layout', label: QUICK_LINK_LABELS.layout, desc: () => '响应式布局' },
+        { path: '/components/theme', label: QUICK_LINK_LABELS.theme, desc: () => '深浅外观、动效偏好' }
+      ]
+    }
+  ]
+
+  // 能力项与卡片文案同一理由：在渲染体内求值，wuchale runtime 才是组件的依赖。
+  const features = [
+    { id: 'cross-framework', icon: lucideCode, label: () => '跨框架一致' },
+    { id: 'typescript', icon: tablerBrandTypescript, label: () => 'TypeScript 类型安全' },
+    { id: 'atomic', icon: lucideBoxes, label: () => '原子组件' },
+    { id: 'pointer', icon: icBaselinePhonelink, label: () => '响应式设计' },
+    { id: 'touch', icon: lucideSlidersHorizontal, label: () => '支持触摸&手势' },
+    { id: 'accessibility', icon: lucideAccessibility, label: () => '无障碍' },
+    { id: 'keyboard', icon: lucideKeyboard, label: () => '键盘友好' },
+    { id: 'motion', icon: lucideSparkles, label: () => '丝滑动效' }
+  ]
+
   return (
     <div className="max-w-4xl mx-auto px-6 py-12 flex flex-col items-center text-center">
       <div className="relative group mb-8">

@@ -30,13 +30,13 @@ function setNavDrawRef(key: NavKey, element: unknown) {
   navDrawRefs.value[key] = (element as WebUiSvgDrawLines | null) ?? null
 }
 
+/*
+ * 底色不参与过渡：hover / active / selected 之间直接切换。不写 transition-all 也是这个
+ * 理由的延伸——ring 由 global.css 绘制，outline-color 的初始计算值是 currentcolor，
+ * 全属性过渡会把它从深色文字色补间到浅蓝，Tab 过去时边缘先黑一下再变蓝。
+ */
 const navItemClass =
-  /*
-   * 过渡只列 background-color，不写 transition-all：ring 由 global.css 绘制，而
-   * outline-color 的初始计算值是 currentcolor。transition-all 会把它从深色文字色
-   * 补间到浅蓝，Tab 过去时边缘先黑一下再变蓝。
-   */
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-[background-color] duration-(--wui-duration-trigger) text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(34_33_42/0.12)] dark:active:bg-white/15 data-[active=true]:bg-(--wui-color-surface-control,#dfdfdf) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_90%,var(--wui-color-text,#1b1b1b))] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#dfdfdf)_70%,var(--wui-color-text,#1b1b1b))]'
 
 /** web-ui-icon 是 Lit 渲染，shadow root 里的几何要等它首次 update 后才在位，否则 replay() 空转。 */
 async function playDraw(key: NavKey) {
