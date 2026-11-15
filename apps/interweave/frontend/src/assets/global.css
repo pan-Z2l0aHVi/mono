@@ -89,6 +89,27 @@ body {
 }
 
 /*
+ * 窗口拖动区。
+ *
+ * macOS 的无边框窗口原先靠 `InvisibleTitleBarHeight` 拖动：它按鼠标的 y 坐标命中一条横贯
+ * 整窗的带子，与 DOM 无关，所以按住 header 上的按钮也会拖走窗口——header 按钮密集，按下与
+ * 拖动必然互相干扰。现在只剩按元素声明的 CSS 拖动区：只有带 `data-window-drag` 的元素自身
+ * 拖动窗口，其余位置保持普通点击语义。
+ *
+ * 拖动区做成「与控件同级、只铺容器里的空白」的透明底（`absolute inset-0 -z-10`），而不是给
+ * 容器加标记再让控件逐个退出：`--wails-draggable` 会被继承，而 Wails 只读事件目标自己的计算值，
+ * 控件一旦是拖动区的后代就都得显式退出。底层与控件是兄弟，控件压在它上面，按下自然落不到
+ * 拖动区，空白与内边距也照常能拖。
+ *
+ * 光标用 default：拖动区不是文本，I 形光标在这里会让人以为可以选字。
+ */
+[data-window-drag] {
+  --wails-draggable: drag;
+
+  cursor: default;
+}
+
+/*
  * 触摸设备的最小可点尺寸：控件从 36px 抬到 40px。
  *
  * 写在 `web-ui-theme` 而不是 `:root`：36px 这个默认值由 theme 的 shadow 内 `:host` 提供，

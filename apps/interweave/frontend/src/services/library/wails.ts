@@ -9,6 +9,7 @@ import {
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import type { SourceType } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import { OSService } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service'
+import { hasWailsRuntime } from '../runtime'
 
 import {
   isSourceAvailabilityEvent,
@@ -119,21 +120,6 @@ class WailsLibraryRuntime implements LibraryRuntime {
       await OSService.OpenExternal(target)
     }
   }
-}
-
-interface WailsWindow {
-  _wails?: {
-    environment?: {
-      OS?: string
-      Arch?: string
-    }
-  }
-}
-
-export function hasWailsRuntime(): boolean {
-  if (typeof window === 'undefined') return false
-  const environment = (window as Window & WailsWindow)._wails?.environment
-  return typeof environment?.OS === 'string' && typeof environment.Arch === 'string'
 }
 
 export function createWailsLibraryRuntime(): LibraryRuntime {

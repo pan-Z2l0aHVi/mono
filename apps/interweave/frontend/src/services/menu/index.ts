@@ -2,7 +2,7 @@ import { Events } from '@wailsio/runtime'
 
 import { MenuCommand as MenuCommandEvent } from '../../../bindings/events'
 import { Command } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu'
-import { hasWailsRuntime } from '../library/wails'
+import { hasWailsRuntime } from '../runtime'
 
 /**
  * 菜单命令的分发面。

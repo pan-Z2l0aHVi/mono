@@ -75,3 +75,5 @@ _Avoid_: 文件树、画布编辑器、关系连线器、资源容器
 - 修改 Go/Wails API 时，先查 Wails 3 官方文档，再核对 Go 测试、frontend bindings 和消费端调用。公开 API 变更遵循上文 allowlist 与生成边界。
 - 文件选择等可取消操作应明确取消语义。class-mode bindings 已将顶层 Wails slice 返回值规范化为非 nullable 数组，前端应消费生成类型而不重复添加 `?? []`。仅 DTO 中仍为可选或 nullable 的字段按其生成类型处理，且不得手改生成 bindings。
 - 修改前端页面、store、组件或交互时，按 [`docs/agents/runtime-verification.md`](../../docs/agents/runtime-verification.md) 在真实 Wails/浏览器集成表面验证。
+- 平台、flags 与 bindings 都要在 runtime core 注入之后才读：Go 侧在 `WebViewDidFinishNavigation` 之后才注入 `window._wails`，早于它的 setup 调用读到的是空值。启动序在挂载前等 `waitForRuntimeConfig()`（[`frontend/src/services/runtime.ts`](./frontend/src/services/runtime.ts)，判据与事件名都只有这一份），所以壳里可以一次性取平台；不要改成「先渲染再补」的响应式重读。
+- 窗口拖动区按元素声明，不按坐标：`data-window-drag` 必须挂在**与控件同级**的一层透明底上（`absolute inset-0 -z-10`），只铺容器里没人占的空白；不要给容器挂标记再让控件退出——`--wails-draggable` 会被继承。规则在 [`frontend/src/assets/global.css`](./frontend/src/assets/global.css)。现有两处拖动区是资源库工具条行内的透明底与 macOS 侧栏顶部给红绿灯留的 48px 区；页面若要自己的 header 参与拖动，就在里面加一层同样的底，不要在窗口选项里用 `Mac.InvisibleTitleBarHeight`——它按 y 坐标命中整条带子，会把 header 上的按钮一并变成拖窗口。

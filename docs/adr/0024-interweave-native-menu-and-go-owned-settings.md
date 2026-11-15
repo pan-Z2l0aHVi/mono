@@ -126,6 +126,33 @@ macOS 侧已做真机验收（interweave.dev.app，2026-11-14），结论如下�
 
 真机复核：重建后逐项验证——放大 / 缩小 / 默认缩放都改变页面缩放，切换筛选栏可开可关，编辑与窗口菜单的系统注入项均为中文。
 
+### 7. 窗口拖动区改为按元素声明（2026-11-15）
+
+用户验收时报告：按住 header 上的 action buttons 会误触发窗口拖拽，而这一行按钮密集，按下与拖动必然互相干扰。
+
+原因是窗口选项里的 `Mac.InvisibleTitleBarHeight: 50`：它让 AppKit 按鼠标的 y 坐标命中一条横贯整窗、高 50px 的带子，与 DOM 无关。header 正好落在这条带子里，于是任何按下都会被 `performWindowDragWithEvent:` 接管。
+
+修复：
+
+- 删除 `InvisibleTitleBarHeight`，窗口不再有按坐标的拖动带。
+- 拖动改为按元素声明：`data-window-drag` 标记可拖窗口的元素，它必须是**与控件同级**的一层透明底（`absolute inset-0 -z-10`），只铺容器里没人占的空白，而不是给容器加标记再让控件逐个退出——`--wails-draggable` 会被继承，而 Wails 只读事件目标自己的计算值，控件压在拖动底上，按下就落不到它。规则在 `frontend/src/assets/global.css`，光标固定 `default`，免得空白处出现 I 形光标。
+
+现有两处拖动区：资源库工具条行内的一层透明底（`absolute inset-0 -z-10`，控件压在它上面，空白与内边距能拖、按钮与输入框不能），以及 macOS 侧栏顶部给红绿灯留的 48px padding 区——那是 layout shadow 里的空白，用一个透明覆盖层声明。两处都是独立元素，所以控件不需要任何退出标记。
+
+「帮助」菜单顶部的搜索框是 AppKit 按标题认领帮助菜单后注入的：试着按 `NSApp.helpMenu` 清掉无效，仅当顶层菜单标题不等于本地化「Help」时它才不出现；而菜单栏显示的正是那个标题，所以没有既保留「帮助」又去掉搜索框的公开做法。结论是接受系统行为（用户裁决），把理由记在 `backend/native/menu/menu.go` 的 `helpMenu` 上，避免后来者再试一遍。
+
+真机验收顺带查出一处一直没生效的判定：`System.IsMac()` 读 `window._wails.environment`，而 Wails 在 `WebViewDidFinishNavigation` 之后才注入 runtime core，壳的 setup 早于它，所以首次读到的必然是 `false`——「给系统窗口按钮留顶部空间」那条从落地起就没应用过，红绿灯一直压在「资料库」上。
+
+修复不放宽到「读到后再补」，而是把首次渲染挡在注入之后：平台、flags 与 bindings 都是注入之后才可信的进程事实，先渲染再补，轻则布局跳变（顶部留白恰好在 header 上），重则启动期的桥接调用直接失败。`frontend/src/services/runtime.ts` 因此成为「runtime 就绪」的唯一判据（`hasWailsRuntime` / `waitForRuntimeConfig`，后者等 `wails:runtime-config-ready` 事件，超时 1.5s 按浏览器预览放行），`frontend/src/main.ts` 在挂载前等它；壳里读平台回到一次性取值。启动层（§4）本来就盖住首帧，这段等待不改变用户看到的东西。
+
+后果：
+
+- 双击拖动区仍按系统偏好缩放或最小化（Wails runtime 的 `wails:drag:doubleclick`）；拖动区之外的双击不再触发窗口操作。
+- 没有 header 的页面只能用侧栏顶部那条带子拖窗口。页面要更宽的拖动面，就在自己的 header 里加一层同样的透明底，这条约定写进了 `apps/interweave/AGENTS.md`。
+- Windows 不受影响：窗口带原生标题栏，没有 web 层拖动区。
+
+真机复核（interweave.dev.app，2026-11-15）：按住「添加资源 / 选择 / 筛选和排序 / 搜索 / 后退」拖动，窗口不动；从工具条的行空白与侧栏顶部带子拖动，窗口跟随；双击行空白按系统偏好缩放、再双击复原；在搜索框与筛选面板的空白处拖动同样不动窗口，按钮点击照常。
+
 ## 备选方案
 
 - **Windows 自绘菜单栏**：需要 frameless 窗口加 `NonClientRegionSupport` 与自绘窗口控件，且 Wails 的 frameless 路径不为 Win32 菜单栏预留高度，组合无支持；也要在 web-ui 里新增 menubar 组件、键盘焦点与拖拽区。放弃。

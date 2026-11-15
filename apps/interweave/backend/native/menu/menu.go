@@ -205,6 +205,9 @@ func windowMenu(mac bool) Node {
 }
 
 // 两者都只有文档入口，平台差异不在帮助菜单。
+//
+// 标题必须是「帮助」：AppKit 按标题把顶层菜单认成帮助菜单并加一个只查 macOS 帮助的搜索框，
+// 那是系统行为，没有公开 API 可关（改标题会同时改掉菜单栏上显示的名字）。
 func helpMenu() Node {
 	return submenu("帮助",
 		commandNode("Interweave 文档", "", menucontract.CommandOpenDocumentation),

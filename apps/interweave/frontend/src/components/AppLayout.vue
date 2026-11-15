@@ -38,7 +38,12 @@ const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)
 const settingsOpen = ref(false)
 const desktopSidebarWidth = ref('240px')
+
+/* 首次渲染已等过 runtime core 注入（见 main.ts 的启动序），这里读到的平台就是终值。 */
 const isMac = System.IsMac()
+
+/** 与 web-ui-layout 的 collapsedWidth 一致：收窄后 aside 的宽度，拖动条与它同宽。 */
+const COLLAPSED_SIDEBAR_WIDTH = '60px'
 
 const { mobile } = useLayoutMobileProvider()
 const sidebarWidth = computed(() => (mobile.value ? 'min(320px, 80vw)' : desktopSidebarWidth.value))
@@ -213,6 +218,9 @@ onMounted(() => {
     shell 在这里，页面在 RouterView 里：web-ui-layout 与 AppNav 挂在 RouterView 之外，
     切路由只换默认 slot 的内容，不重建 sidebar。页面若要占 header slot，让自己的根节点带
     `slot="header"`（LibraryPage 就是这么做的），不需要自己再渲染一套 layout。
+
+    工具条行的首行内边距是 12px，移动端那个浮动开关的 top token 跟着对齐，否则它与行内
+    控件差 4px。
   -->
   <web-ui-layout
     header-glow
@@ -221,7 +229,8 @@ onMounted(() => {
     sidebarMinWidth="160px"
     sidebarMaxWidth="320px"
     mobile-header-full-width
-    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-sidebar-content-padding:8px_20px_8px_8px] mobile:[--wui-layout-sidebar-radius:calc(18px_+_8px)]"
+    collapsedWidth="60px"
+    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-sidebar-content-padding:8px_20px_8px_8px] mobile:[--wui-layout-sidebar-radius:calc(18px_+_8px)] mobile:[--wui-layout-mobile-toggle-top:12px]"
     :class="{ '[--wui-layout-sidebar-padding-top:48px] mobile:[--wui-layout-mobile-toggle-inset:96px]': isMac }"
     :mobile="mobile"
     :sidebarCollapsed="sidebarCollapsed"
@@ -241,6 +250,21 @@ onMounted(() => {
 
     <RouterView />
   </web-ui-layout>
+
+  <!--
+    macOS 上窗口左上角那条 48px 高的空白是 aside 的 padding 区（给红绿灯留的位置），
+    web-ui-layout 的 shadow 里没有可挂载的元素，这里用一层透明覆盖把它声明成窗口拖动区：
+    红绿灯所在的一整条带子在任何页面都能拖窗口，与被拖动的 header 相邻。宽度跟随 aside，
+    高度与 `--wui-layout-sidebar-padding-top` 的 48px 一致；不覆盖内容区，也放行红绿灯
+    （那是原生 button，不在 web 层）。
+  -->
+  <div
+    v-if="isMac && !mobile"
+    data-window-drag
+    aria-hidden="true"
+    class="fixed top-0 left-0 z-[600] h-12"
+    :style="{ width: sidebarCollapsed ? COLLAPSED_SIDEBAR_WIDTH : desktopSidebarWidth }"
+  />
 
   <!--
     dialog 是应用壳级 overlay，不是侧边栏的子节点：挂在 AppNav 内部会在 ≤640px 时随 aside 一起

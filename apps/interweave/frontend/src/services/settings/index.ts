@@ -6,7 +6,7 @@ import type {
   Snapshot as SnapshotDTO
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/settings'
 import { Service as SettingsService } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/settings'
-import { hasWailsRuntime } from '../library/wails'
+import { hasWailsRuntime } from '../runtime'
 
 /**
  * 设置的真值在 Go 侧；这里只做绑定封装。

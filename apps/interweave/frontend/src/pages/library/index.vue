@@ -38,7 +38,7 @@ import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
 import { useLibrarySelection } from '@/composables/useLibrarySelection'
 import { pendingWindowFileDrops } from '@/composables/windowFileDrop'
 import type { LibraryQueueItem } from '@/services/library'
-import { hasWailsRuntime } from '@/services/library/wails'
+import { hasWailsRuntime } from '@/services/runtime'
 import { useLibraryStore } from '@/stores/library'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 

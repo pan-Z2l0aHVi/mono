@@ -1,6 +1,6 @@
 import { Command } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu'
 import * as MenuService from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu/service'
-import { hasWailsRuntime } from '../library/wails'
+import { hasWailsRuntime } from '../runtime'
 
 /**
  * 菜单可用性上报。

@@ -1,6 +1,8 @@
+import { hasWailsRuntime } from '../runtime'
+
 import { createMockLibraryRuntime } from './mock'
 import type { LibraryRuntime } from './types'
-import { createWailsLibraryRuntime, hasWailsRuntime } from './wails'
+import { createWailsLibraryRuntime } from './wails'
 
 export function createLibraryRuntime(): LibraryRuntime {
   /*

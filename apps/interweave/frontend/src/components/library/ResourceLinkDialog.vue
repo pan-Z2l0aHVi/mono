@@ -4,7 +4,7 @@ import { lucideClipboardPaste } from '@greypan/web-ui/icons'
 import { Clipboard } from '@wailsio/runtime'
 import { ref, watch } from 'vue'
 
-import { hasWailsRuntime } from '@/services/library/wails'
+import { hasWailsRuntime } from '@/services/runtime'
 
 import { normalizeLibraryURL } from './restore'
 
