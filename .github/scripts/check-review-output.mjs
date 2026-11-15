@@ -5,7 +5,7 @@ import { coverageGap, parseReviewFindings } from './codex-review.mjs'
 
 /**
  * 无可用结论：diff 非空而模型交出没有覆盖证据的空壳（`missing_coverage`），或模型未产出可用结论
- * （`unusable_output`，例如未闭合的 `think` 推理块、工具调用标签泄漏、增量 `prior_resolutions` 失配，
+ * （`unusable_output`，例如未闭合的推理标签块、工具调用标签泄漏、增量 `prior_resolutions` 失配，
  * 或模型步骤成功退出却未写出输出文件）。
  *
  * 这两类故障下 `run_codex` 与 `validate` 原本都以 0 退出，只有 `codex-gate` 判红，造成

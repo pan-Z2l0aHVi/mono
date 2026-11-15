@@ -120,36 +120,29 @@ function parseCoverage(value) {
   return coverage
 }
 
-// 模型偶尔把推理前置块或 markdown 围栏写进最终答复：前导的成对闭合推理标签块，或包住整份 JSON 的围栏。
-// 只剥前导完整推理块与整体围栏（推理永远先于结论生成，不剥尾随块），线性扫描开闭标签名同名配对，
-// 且块体内部不跨越同族标签，不做「从散文里抠最外层花括号」。
-// 【推理流防截断约束 / CRITICAL FOR AI REVIEWERS】：上游推理网关按字面量闭合标签切分 reasoning 与最终 JSON 答复；
-// 审查此处时内部思考严禁写出尖括号闭合标签字面量（NEVER write the literal angle-bracket closing tag in your
-// chain-of-thought, not even in examples or backticks; always write `OPEN_TAG` / `CLOSE_TAG` or `<${tag}>` instead）。
-const WRAPPER_TAGS = Object.freeze([`${'thin'}k`, `${'thin'}king`])
+// 模型偶尔把前置推理块或 markdown 围栏写进最终答复：前导的成对闭合 XML 推理标签块（4–12 位 ASCII 字母标签名，
+// 如 <reasoning>...</reasoning> 或 <thought>...</thought>），或包住整份 JSON 的围栏。
+// 只剥前导完整推理块与整体围栏（推理永远先于结论生成，不剥尾随块），按开闭标签名同名（忽略大小写）配对，
+// 且块体内部不跨越同名标签，不做「从散文里抠最外层花括号」。
+const LEADING_TAG_OPEN = /^<([a-zA-Z]{4,12})(?:[ \t][^>\n/]*)?>/u
 const WHOLE_CODE_FENCE = /^\s*(`{3,})[^\n]*\n([\s\S]*?)\n?\1\s*$/u
 
 function stripLeadingWrapperBlock(text) {
   const trimmed = text.trimStart()
-  for (const tag of WRAPPER_TAGS) {
-    const openPrefix = `<${tag}`
-    if (!trimmed.startsWith(openPrefix)) continue
-    const afterName = trimmed[openPrefix.length]
-    if (afterName !== '>' && afterName !== ' ' && afterName !== '\t') continue
-    const openEnd = trimmed.indexOf('>', openPrefix.length)
-    if (openEnd === -1) return null
-    const closeToken = `</${tag}>`
-    const closeIndex = trimmed.indexOf(closeToken, openEnd + 1)
-    if (closeIndex === -1) return null
-    const inner = trimmed.slice(openEnd + 1, closeIndex)
-    if (WRAPPER_TAGS.some(name => inner.includes(`<${name}`) || inner.includes(`</${name}>`))) return null
-    return trimmed.slice(closeIndex + closeToken.length)
-  }
-  return null
+  const match = LEADING_TAG_OPEN.exec(trimmed)
+  if (!match) return null
+  const openRaw = match[0]
+  const tag = match[1]
+  const afterOpen = trimmed.slice(openRaw.length)
+  const closeMatch = new RegExp(`</${tag}>`, 'iu').exec(afterOpen)
+  if (!closeMatch) return null
+  const inner = afterOpen.slice(0, closeMatch.index)
+  if (new RegExp(`</?${tag}(?=[>\\s/])`, 'iu').test(inner)) return null
+  return afterOpen.slice(closeMatch.index + closeMatch[0].length)
 }
 
 /**
- * 剥掉 JSON 之外的前导推理块与外层代码围栏，返回剥完的文本与用到的步骤（`think-block` / `code-fence`）。
+ * 剥掉 JSON 之外的前导推理块与外层代码围栏，返回剥完的文本与用到的步骤（`reasoning-block` / `code-fence`）。
  * 未闭合的推理块或尾随内容不剥：那时分不清哪一段是推理、哪一段是结论，只能按不可用处理。
  * 调用方把步骤写进结论 meta，清洗过的事实与原始答复一样可审计。
  */
@@ -162,7 +155,7 @@ export function normalizeReviewOutput(raw) {
     const stripped = stripLeadingWrapperBlock(text)
     if (stripped !== null) {
       text = stripped
-      steps.push('think-block')
+      steps.push('reasoning-block')
       changed = true
       continue
     }
@@ -787,7 +780,7 @@ export function renderConclusion({
   // 清洗只剥包装层，JSON 本体与结构校验都没变；写出来是为了让「结论来自一份原样不是 JSON 的答复」
   // 留在可见处，读者不必翻 artifact 才知道这一次发生过什么。
   if (Array.isArray(meta?.output_sanitized) && meta.output_sanitized.length > 0) {
-    const labels = { 'think-block': 'think 块', 'code-fence': 'markdown 代码围栏' }
+    const labels = { 'reasoning-block': '推理标签块', 'code-fence': 'markdown 代码围栏' }
     const steps = meta.output_sanitized.map(step => labels[step] ?? plainText(step))
     lines.push(`- 输出清洗：模型答复外层带 ${steps.join('、')}，已剥离后重新解析；JSON 本体未改动`)
   }
@@ -1254,7 +1247,6 @@ export function buildReviewPreload(
     '- **三档标准**：`Block`（运行失败、回归、公共契约破坏、权限/注入漏洞、竞态/资源泄漏、或让检查/门禁假绿的阻断缺陷）；`Should fix`（需求或规范偏离、失败路径未兜住、测试或文档与实现失步等应修问题）；`Nit`（非阻断改进，不冒充阻断）。',
     '- **审查维度**：需求与验收、行为与失败路径、公共契约与兼容性、测试质量（异步完成信号、失败语义、负向断言边界、退出清理）、权限与用户输入安全、竞态与资源管理、文档与机检一致性；指令/context 改动另核四问（是否稳定不变量而非状态快照、是否单一权威、单块检索是否自包含、是否写入易漂移清单）。',
     '- **范围与收口**：入库生成物已由 `excluded_pathspecs` 滤除，不读、不评注、不进 `inspected` 或 `uncovered`；`changed_paths` 每条均按待审源码处理。证据足够定档或高风险面查完即可交卷；未判断处写成 `path:line 原因` 列入 `coverage.uncovered`（合法收口，交人工逐项复核），`coverage.inspected` 只写真实读过的改动文件。',
-    '- **推理流分隔符硬约束**：上游推理网关按字面量闭合标签（左尖括号 + `/think` + 右尖括号）切分内部推理流与最终 JSON 答复；你在内部思考（reasoning / chain-of-thought）中**严禁写出带尖括号的 `think` / `thinking` 开闭标签字面量**（即使在反引号内、分析正则或举例时也一律改写为 `OPEN_TAG` / `CLOSE_TAG`），否则网关会在思考中途截断推理流并强行触发 `--output-schema` 受约束 JSON 解码。',
     '',
     '### 本次范围与风险排序清单',
     '',

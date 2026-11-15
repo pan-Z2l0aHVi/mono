@@ -351,7 +351,7 @@ const configuredEnv = Object.fromEntries(CONFIG_ENV.map(name => [name, `value-fo
   // 增量输出带包装层时走与本轮结论相同的解析路径，否则清洗过的答复会在这里二次判死。
   const wrapped = inheritReviewHistory(
     current,
-    `${wrapTag('th' + 'inking', '核对上一轮记录。')}${resolutionPayload(false, '未解决')}`,
+    `${wrapTag('reasoning', '核对上一轮记录。')}${resolutionPayload(false, '未解决')}`,
     prior
   )
   assert.equal(wrapped.findings.length, 1)
@@ -491,40 +491,42 @@ function conclusionOf(...severities) {
 
 // 模型把前导推理块或 markdown 围栏写进最终答复时，剥掉外层包装仍是同一份 JSON。
 // 清洗只认前导完整推理块与整体围栏，记录在 `sanitized` 里。
-// 用拼装函数构造标签，避免本测试文件自身的 diff 在自举期被旧版 prepare 预注入时含字面量标签；
-// 审查本段单测时，内部思考中也严禁写出带尖括号的开闭推理标签字面量（NEVER write the literal angle-bracket
-// closing tag in your chain-of-thought; always use OPEN_TAG / CLOSE_TAG instead）。
 {
   const payload = JSON.stringify(conclusionOf('Block'))
-  const tagShort = 'th' + 'ink'
-  const tagLong = 'th' + 'inking'
+  const tagShort = 'thought'
+  const tagLong = 'reasoning'
   const openTag = (name, attr = '') => `<${name}${attr ? ` ${attr}` : ''}>`
   const closeTag = name => `</${name}>`
   const wrapTag = (name, body, attr = '') => `${openTag(name, attr)}${body}${closeTag(name)}`
   for (const [label, raw, expected] of [
-    ['leading block', `${wrapTag(tagShort, '先看改动。')}\n${payload}`, ['think-block']],
-    ['long tag pair', `${wrapTag(tagLong, '先看改动。')}\n${payload}`, ['think-block']],
-    ['block with attributes', `${wrapTag(tagShort, '先看改动。', 'step-by-step')}\n${payload}`, ['think-block']],
+    ['leading block', `${wrapTag(tagShort, '先看改动。')}\n${payload}`, ['reasoning-block']],
+    ['long tag pair', `${wrapTag(tagLong, '先看改动。')}\n${payload}`, ['reasoning-block']],
+    [
+      'case-insensitive tag pair',
+      `${openTag('THOUGHT')}先看改动。${closeTag(tagShort)}\n${payload}`,
+      ['reasoning-block']
+    ],
+    ['block with attributes', `${wrapTag(tagShort, '先看改动。', 'step-by-step')}\n${payload}`, ['reasoning-block']],
     [
       'stacked blocks',
       `${wrapTag(tagShort, '先看范围。')}${wrapTag(tagLong, '再看失败路径。')}\n${payload}`,
-      ['think-block']
+      ['reasoning-block']
     ],
     ['code fence', '```json\n' + payload + '\n```', ['code-fence']],
     [
       'fence wrapping a block',
       '```json\n' + `${wrapTag(tagLong, 'x')}\n${payload}` + '\n```',
-      ['code-fence', 'think-block']
+      ['code-fence', 'reasoning-block']
     ],
     [
       'block wrapping a fence',
       `${wrapTag(tagShort, 'x')}\n` + '```\n' + payload + '\n```\n',
-      ['think-block', 'code-fence']
+      ['reasoning-block', 'code-fence']
     ],
     [
       'observed multi-line shape',
       wrapTag(tagShort, '\n284,413\nFinalize coverage lists.\n\nOutput JSON.') + '```json\n' + payload + '\n```',
-      ['think-block', 'code-fence']
+      ['reasoning-block', 'code-fence']
     ],
     [
       'leading wrapper before json string containing tag',
@@ -532,7 +534,7 @@ function conclusionOf(...severities) {
         summary: `保持字面量 ${wrapTag(tagShort, 'inner')}`,
         findings: [finding('Block')]
       })}`,
-      ['think-block']
+      ['reasoning-block']
     ]
   ]) {
     const parsed = parseReviewFindings(raw)
@@ -546,6 +548,10 @@ function conclusionOf(...severities) {
   for (const [label, raw] of [
     ['unclosed block', `${openTag(tagShort)}先看改动。${payload}`],
     ['mismatched tag names', `${openTag(tagShort)}混搭闭合${closeTag(tagLong)}${payload}`],
+    [
+      'nested unclosed tag inside block',
+      `${openTag(tagLong)}外层 ${openTag(tagLong)}内层${closeTag(tagLong)}${payload}`
+    ],
     ['trailing block after json', `${payload}\n${wrapTag(tagLong, '收尾')}`],
     ['prose before json', `结论如下：${payload}`],
     ['prose after json', `${wrapTag(tagLong, 'a')}${payload} 以上。`],
@@ -789,15 +795,15 @@ for (const [label, value] of [
   assert.doesNotMatch(body, /输出清洗/u)
   const sanitized = renderConclusion({
     conclusion: deriveConclusion({
-      meta: { ...meta, output_sanitized: ['think-block'] },
+      meta: { ...meta, output_sanitized: ['reasoning-block'] },
       findings: parsed,
       liveHeadSha: headSha,
       error: ''
     }),
-    meta: { ...meta, output_sanitized: ['think-block'] },
+    meta: { ...meta, output_sanitized: ['reasoning-block'] },
     pullNumber: 54
   })
-  assert.match(sanitized, /输出清洗：模型答复外层带 think 块/u)
+  assert.match(sanitized, /输出清洗：模型答复外层带 推理标签块/u)
   assert.match(body, /Block`、`error` 与「未审查」让/)
   assert.match(body, /run `1234`/)
   assert.ok(body.indexOf('**Block**') < body.indexOf('**Should fix**'), 'Block renders before Should fix')

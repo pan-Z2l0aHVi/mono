@@ -68,7 +68,7 @@ const cases = [
   {
     name: 'wrapped valid output passes after normalization',
     raw: [
-      '<' + 'think' + '>先核对改动。</' + 'think' + '>',
+      '<reasoning>先核对改动。</reasoning>',
       '```json',
       JSON.stringify({
         summary: 'ok',
