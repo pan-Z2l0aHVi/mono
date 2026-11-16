@@ -976,6 +976,16 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       'the review leg must stay write-free'
     )
     assert.match(workflowJob(reportText, 'codex-autofix-apply'), /timeout-minutes: 10/)
+    assert.match(
+      workflowJob(reportText, 'codex-autofix-apply'),
+      /token:\s*\$\{\{\s*secrets\.CODEX_AUTOFIX_PUSH_TOKEN\s*\|\|\s*github\.token\s*\}\}/,
+      'codex-autofix-apply must use CODEX_AUTOFIX_PUSH_TOKEN when configured so autofix pushes can trigger CI and pass write-access checks'
+    )
+    assert.ok(
+      !ci.includes('CODEX_AUTOFIX_PUSH_TOKEN') &&
+        !workflowJob(reportText, 'report-conclusion').includes('CODEX_AUTOFIX_PUSH_TOKEN'),
+      'read-only CI and report-conclusion jobs must never reference CODEX_AUTOFIX_PUSH_TOKEN'
+    )
 
     // 空壳结论必须让审查 job 一起变红：否则 --failed 只重跑 gate，拿同一份空 artifact 再红一次。
     const emptyGuard = namedStep(ci, 'Reject empty review output')
