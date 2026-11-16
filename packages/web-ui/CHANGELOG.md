@@ -1,5 +1,22 @@
 # @greypan/web-ui
 
+## 14.0.0
+
+### Major Changes
+
+- c04b96d: Rename `--wui-layout-mobile-toggle-inset` to `--wui-layout-mobile-toggle-left`, with no compatibility layer for the old name, and give the mobile header Toggle the remaining sides: `--wui-layout-mobile-toggle-top` (already present), `--wui-layout-mobile-toggle-right` and `--wui-layout-mobile-toggle-bottom`. All four are margins on the Toggle; top and left default to `8px`, right and bottom to `0`, so a layout that only sets the old left inset maps one-to-one onto the new name.
+
+### Minor Changes
+
+- c04b96d: Stop clipping the `<web-ui-collapse>` content area once the expand transition has finished. A fully expanded panel now behaves like a plain container: focus rings, shadows and intentional horizontal overflow of its content stay visible instead of being cut at the panel edge. The clipping the height animation needs is unchanged — it is only lifted when the track has settled at its final height, and it comes back as soon as a collapse starts.
+- c04b96d: Clicking a tick point on a `<web-ui-slider>` with `marks` enabled now selects the nearest tick, exactly like clicking the track. The tick row is no longer pointer-transparent: each 4px dot gets a transparent hit area along the track, and clicks between two ticks round to the closer one.
+- c04b96d: The `<web-ui-slider>` thumb now expands into its pressed pill only when the press starts on the thumb itself. Pressing the track or a tick still selects the nearest value, but the thumb stays at rest, including for a drag that begins on the track.
+
+### Patch Changes
+
+- c04b96d: The `<web-ui-layout>` sidebar resize handle no longer draws a focus ring. Keyboard focus is now indicated by the same 3px accent line that hover and dragging show, and the handle suppresses the browser default outline so no second indicator appears.
+- c04b96d: The `<web-ui-slider>` thumb now draws a theme-aware hairline ring instead of the 5%-black glass ring, so its circular outline stays readable on light surfaces. On a vertical slider the white 20px thumb only overhangs a 6–8px track, and with an invisible edge it previously read as a vertical ellipse built from its downward shadow.
+
 ## 13.0.0
 
 ### Major Changes
