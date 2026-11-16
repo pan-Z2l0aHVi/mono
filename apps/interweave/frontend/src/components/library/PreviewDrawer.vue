@@ -24,6 +24,7 @@ const placement = computed(() => (props.mobile ? 'bottom' : 'right'))
 const target = computed(() => resolvePreviewTarget(props.resource))
 const imageFailed = ref(false)
 const videoFailed = ref(false)
+const audioFailed = ref(false)
 const videoPortrait = ref(false)
 const mediaLoading = ref(false)
 const textState = ref<TextState>('idle')
@@ -67,8 +68,9 @@ watch(
   ([open]) => {
     imageFailed.value = false
     videoFailed.value = false
+    audioFailed.value = false
     videoPortrait.value = false
-    mediaLoading.value = open && ['image', 'video', 'url'].includes(target.value.mode)
+    mediaLoading.value = open && ['image', 'video', 'audio', 'url'].includes(target.value.mode)
     cancelTextRequest()
     textPreview.value = null
     textError.value = ''
@@ -111,9 +113,18 @@ function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
   emit('update:open', event.detail.open)
 }
 
-function handleMediaError(kind: 'image' | 'video') {
+function handleMediaLoaded(event: Event) {
+  mediaLoading.value = false
+  const element = event.target
+  if (element instanceof HTMLMediaElement && element.paused) {
+    void element.play?.().catch(() => {})
+  }
+}
+
+function handleMediaError(kind: 'image' | 'video' | 'audio') {
   if (kind === 'image') imageFailed.value = true
-  else videoFailed.value = true
+  else if (kind === 'video') videoFailed.value = true
+  else audioFailed.value = true
   mediaLoading.value = false
 }
 </script>
@@ -218,13 +229,14 @@ function handleMediaError(kind: 'image' | 'video') {
             :class="[videoPortrait ? 'h-full w-auto' : 'h-auto w-full', { invisible: mediaLoading }]"
             class="absolute top-1/2 left-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 bg-black"
             controls
+            autoplay
             playsinline
             preload="auto"
             @loadedmetadata="
               videoPortrait =
                 ($event.target as HTMLVideoElement).videoHeight > ($event.target as HTMLVideoElement).videoWidth
             "
-            @loadeddata="mediaLoading = false"
+            @loadeddata="handleMediaLoaded($event)"
             @error="handleMediaError('video')"
           ></video>
           <div
@@ -235,6 +247,47 @@ function handleMediaError(kind: 'image' | 'video') {
           >
             <web-ui-spinner :size="28" />
           </div>
+        </div>
+      </div>
+
+      <div v-else-if="target.mode === 'audio'" class="relative grid min-h-0 place-items-center overflow-hidden p-6">
+        <web-ui-empty
+          v-if="audioFailed"
+          :size="72"
+          title="无法播放这个音频"
+          description="文件可能已被移动，或暂时无法显示。"
+        >
+          <web-ui-icon slot="icon" :icon="unavailableResourceIcon(resource.kind, target.source)" :size="40" />
+        </web-ui-empty>
+        <div v-else class="grid w-full max-w-md justify-items-center gap-5">
+          <div
+            class="grid size-24 place-items-center rounded-3xl bg-[#1b1b20]/5 text-(--wui-color-text-secondary) dark:bg-white/8"
+            aria-hidden="true"
+          >
+            <web-ui-icon :icon="resourceIcon(resource.kind)" :size="40" />
+          </div>
+          <p class="m-0 max-w-full truncate text-base font-medium text-(--wui-color-text)">
+            {{ resource.title }}
+          </p>
+          <audio
+            :key="mediaKey"
+            :src="target.mediaUrl ?? undefined"
+            class="w-full"
+            :class="{ invisible: mediaLoading }"
+            controls
+            autoplay
+            preload="auto"
+            @loadeddata="handleMediaLoaded($event)"
+            @error="handleMediaError('audio')"
+          ></audio>
+        </div>
+        <div
+          v-if="mediaLoading"
+          class="absolute inset-0 grid place-items-center"
+          role="status"
+          aria-label="正在加载预览"
+        >
+          <web-ui-spinner :size="28" />
         </div>
       </div>
 
