@@ -2,7 +2,7 @@
 import type { WebUiEvent, WebUiLayout } from '@greypan/web-ui'
 import { toast } from '@greypan/web-ui'
 import { System } from '@wailsio/runtime'
-import { computed, onMounted, onScopeDispose, ref, watch } from 'vue'
+import { computed, onScopeDispose, ref, watch } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
@@ -138,8 +138,9 @@ onScopeDispose(stopMenuCommands)
  * 写入走 Go，避开 navigator.clipboard 在 Wails WebView 里的权限限制。
  */
 async function copySelectionAsPlainText() {
-  const selection = readSelectionText().trim()
-  if (!selection) {
+  const selection = readSelectionText()
+  // 只拿 trim 后的结果判空：写入的必须是用户选中的原文，缩进与首尾空白都属于选区内容。
+  if (!selection.trim()) {
     toast.warning('没有可复制的选中文本')
     return
   }
@@ -206,11 +207,35 @@ async function openLibraryThen(run: () => void) {
 /** 与 Go 侧 native/menu 的 Help 菜单一致。 */
 const DOCUMENTATION_URL = 'https://github.com/pan-Z2l0aHVi/mono/tree/main/apps/interweave'
 
-onMounted(() => {
-  // 启动期一次性警告（设置文件损坏等）在界面就绪后提示一次。
-  const warnings = settings.takeWarnings()
-  if (warnings.length > 0) toast.warning(warnings.join('\n'))
-})
+/*
+ * 启动期一次性警告（设置文件损坏、字段被修正等）随首次快照到达。必须等 settings.load
+ * 落定后再取：load 是异步的，挂载时就 takeWarnings 读到的是占位快照里的空数组，真正的
+ * 警告会在 applySnapshot 时被一起换掉、永远没人提示。
+ */
+let warningsTaken = false
+watch(
+  () => settings.loaded,
+  loaded => {
+    if (!loaded || warningsTaken) return
+    warningsTaken = true
+    const warnings = settings.takeWarnings()
+    if (warnings.length > 0) toast.warning(warnings.join('\n'))
+  },
+  { immediate: true }
+)
+
+/*
+ * 设置读写失败要让用户看见：各 setter 都是 void 调用，失败只落在 store.error 上，
+ * 不集中提示就只剩「控件静默回滚」。提示一次后清空，下一次失败会再次触发。
+ */
+watch(
+  () => settings.error,
+  () => {
+    const error = settings.takeError()
+    if (error) toast.error(error)
+  },
+  { immediate: true }
+)
 </script>
 
 <template>

@@ -172,6 +172,25 @@ func TestRemoveStaleTempClearsLeftover(t *testing.T) {
 	}
 }
 
+// 清理必须接在生产路径上：NewStore 建好目录后顺手清掉上次异常退出留下的中转文件。
+func TestNewStoreClearsLeftoverTemp(t *testing.T) {
+	path := filepath.Join(t.TempDir(), "interweave", "settings.json")
+	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
+		t.Fatalf("create settings directory: %v", err)
+	}
+	if err := os.WriteFile(TempPath(path), []byte("partial"), 0o600); err != nil {
+		t.Fatalf("write temp fixture: %v", err)
+	}
+
+	if _, err := NewStore(path); err != nil {
+		t.Fatalf("new store: %v", err)
+	}
+
+	if _, err := os.Stat(TempPath(path)); !os.IsNotExist(err) {
+		t.Fatalf("expected NewStore to clear the stale temp file, stat err = %v", err)
+	}
+}
+
 func TestAccentPresetsExposeForeground(t *testing.T) {
 	presets := AccentPresets()
 	if len(presets) == 0 {

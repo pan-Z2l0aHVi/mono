@@ -88,6 +88,7 @@
     "tabbables",
     "hresult",
     "shlwapi",
+    "HGLOBAL",
     "retarget",
     "retargeted",
     "reattributed",

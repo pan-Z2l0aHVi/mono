@@ -10,6 +10,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"runtime"
 	"testing"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
@@ -347,5 +348,25 @@ func TestPruneStaleRemovesOutdatedVersions(t *testing.T) {
 		if _, err := os.Stat(filepath.Join(dir, name)); !os.IsNotExist(err) {
 			t.Fatalf("expected %s to be pruned", name)
 		}
+	}
+}
+
+// 缩略图是用户图片的派生数据：落盘权限必须是 owner-only，不能因为数据目录可遍历
+// 就让同机其他账号读到缓存。
+func TestWriteAtomicallyKeepsOwnerOnlyPermissions(t *testing.T) {
+	target := filepath.Join(t.TempDir(), "thumb.jpg")
+	if err := writeAtomically(target, []byte("jpeg")); err != nil {
+		t.Fatalf("write atomically: %v", err)
+	}
+	info, err := os.Stat(target)
+	if err != nil {
+		t.Fatalf("stat thumbnail: %v", err)
+	}
+	if runtime.GOOS == "windows" {
+		// Windows 的 Mode().Perm() 是合成值，不反映 ACL。
+		return
+	}
+	if perm := info.Mode().Perm(); perm != 0o600 {
+		t.Fatalf("expected owner-only permissions 0600, got %#o", perm)
 	}
 }

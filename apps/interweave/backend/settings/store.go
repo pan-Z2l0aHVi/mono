@@ -32,6 +32,9 @@ func NewStore(path string) (*Store, error) {
 	if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
 		return nil, fmt.Errorf("create settings directory for %s: %w", path, err)
 	}
+	// 上次异常退出可能留下写了一半的中转文件。正常路径的 .tmp 在 Save 里当场 rename，
+	// 这里启动清一次就够；否则它要等到下一次成功保存才会被覆盖。
+	RemoveStaleTemp(path)
 	return &Store{
 		kvs:  kvstore.NewWithConfig(&kvstore.Config{Filename: path, AutoSave: false}),
 		path: path,

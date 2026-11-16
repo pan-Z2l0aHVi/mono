@@ -2,7 +2,7 @@
 
 import '@greypan/web-ui'
 
-import type { WebUiDialog } from '@greypan/web-ui'
+import { toast, type WebUiDialog } from '@greypan/web-ui'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, defineComponent, nextTick } from 'vue'
@@ -14,6 +14,7 @@ import {
   MENU_TOGGLE_FILTER_BAR_EVENT
 } from '@/composables/menuActions'
 import { pendingWindowFileDrops } from '@/composables/windowFileDrop'
+import { useSettingsStore } from '@/stores/settings'
 
 const fileDrop = vi.hoisted(() => ({ listener: null as ((paths: string[]) => void) | null }))
 /** 截获壳注册的菜单命令处理函数，让测试直接驱动「命令到达」这一侧。 */
@@ -21,6 +22,7 @@ const menuHandlers = vi.hoisted(() => ({
   handlers: null as Record<string, () => void> | null
 }))
 const openExternal = vi.hoisted(() => vi.fn<() => Promise<void>>(async () => {}))
+const writeClipboardText = vi.hoisted(() => vi.fn<(text: string) => Promise<void>>(async () => {}))
 
 /** 壳注册的 handlers；用例里直接拿到那一份，避免再造一套映射。 */
 function menuHandlers_(): Record<string, () => void> {
@@ -48,7 +50,7 @@ vi.mock('@/services/library', () => ({
         }
       }
     },
-    system: { openExternal }
+    system: { openExternal, writeClipboardText }
   })
 }))
 
@@ -445,6 +447,54 @@ describe('AppLayout：设置 dialog 接线', () => {
   })
 })
 
+describe('AppLayout：设置启动提示', () => {
+  beforeEach(() => {
+    vi.stubGlobal('matchMedia', matchMediaStub)
+    router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', redirect: '/library' },
+        { path: '/library', component: LibraryPageStub },
+        { path: '/map', component: MapPageStub }
+      ]
+    })
+  })
+
+  afterEach(() => {
+    app?.unmount()
+    host?.remove()
+    vi.restoreAllMocks()
+    vi.unstubAllGlobals()
+  })
+
+  it('启动警告在 settings.load 落定后提示一次', async () => {
+    const warning = vi.spyOn(toast, 'warning').mockReturnValue('')
+    await mountLayout()
+    const store = useSettingsStore()
+
+    // 模拟 GetSettings 返回：警告随首次快照到达，loaded 同时翻真。
+    store.applySnapshot({ ...store.snapshot, warnings: ['设置文件损坏'] })
+    await nextTick()
+
+    expect(warning).toHaveBeenCalledTimes(1)
+    expect(warning).toHaveBeenCalledWith('设置文件损坏')
+    expect(store.warnings).toEqual([])
+  })
+
+  it('设置读写失败提示一次并清空 error', async () => {
+    const error = vi.spyOn(toast, 'error').mockReturnValue('')
+    await mountLayout()
+    const store = useSettingsStore()
+
+    store.error = '保存设置失败'
+    await nextTick()
+
+    expect(error).toHaveBeenCalledTimes(1)
+    expect(error).toHaveBeenCalledWith('保存设置失败')
+    expect(store.error).toBe('')
+  })
+})
+
 /*
  * 菜单命令分发。
  *
@@ -470,6 +520,7 @@ describe('AppLayout：菜单命令', () => {
     })
     if (history.canGoBack) history.canGoBack.value = false
     if (history.canGoForward) history.canGoForward.value = false
+    writeClipboardText.mockClear()
   })
 
   it('「设置…」打开设置 dialog', async () => {
@@ -599,6 +650,28 @@ describe('AppLayout：菜单命令', () => {
     } finally {
       document.removeEventListener(MENU_TOGGLE_FILTER_BAR_EVENT, onFilter)
       document.removeEventListener(MENU_FOCUS_SEARCH_EVENT, onSearch)
+    }
+  })
+
+  // 「复制为纯文本」只去掉富文本格式，不改写文本：缩进与首尾空白都属于选区内容。
+  it('「复制为纯文本」写入选区原文，保留首尾空白', async () => {
+    await mountLayout()
+    const paragraph = document.createElement('p')
+    paragraph.textContent = '  缩进的片段\n'
+    document.body.append(paragraph)
+    const selection = window.getSelection()
+    if (!selection) throw new Error('Selection API unavailable')
+    const range = document.createRange()
+    range.selectNodeContents(paragraph)
+    selection.removeAllRanges()
+    selection.addRange(range)
+    try {
+      menuHandlers_().copyAsPlainText()
+      await flushUntil(() => writeClipboardText.mock.calls.length > 0, '没有写入剪贴板')
+      expect(writeClipboardText).toHaveBeenLastCalledWith('  缩进的片段\n')
+    } finally {
+      selection.removeAllRanges()
+      paragraph.remove()
     }
   })
 })

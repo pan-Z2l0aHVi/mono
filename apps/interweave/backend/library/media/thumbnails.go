@@ -199,7 +199,9 @@ func (t *ThumbnailStore) serveFile(w http.ResponseWriter, r *http.Request, path 
 // writeAtomically 先写同目录临时文件再 rename：并发生成同一版本时最后写入者胜出，
 // 读侧永远见到完整的 JPEG。
 func writeAtomically(target string, data []byte) error {
-	return atomicfile.WriteFile(target, data, 0o644)
+	// 0o600：缩略图是用户图片的派生数据，数据目录可能对其他账号可遍历；
+	// 沿用临时文件的 owner-only 默认权限，不给组与其他用户读权限。
+	return atomicfile.WriteFile(target, data, 0o600)
 }
 
 // buildThumbnail 解码原文件并产出缩略图字节。格式不受支持时返回 ErrUnsupportedThumbnail。

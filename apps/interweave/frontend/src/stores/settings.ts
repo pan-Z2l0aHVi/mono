@@ -63,6 +63,12 @@ export const useSettingsStore = defineStore('settings', {
       this.snapshot = { ...this.snapshot, warnings: [] }
       return warnings
     },
+    /** 取走最近的错误并清空；界面提示一次后调用，避免同一原因每次重渲染都弹。 */
+    takeError(): string {
+      const error = this.error
+      if (error) this.error = ''
+      return error
+    },
     async load(runtime: SettingsRuntime = createSettingsRuntime()) {
       try {
         this.applySnapshot(await runtime.get())

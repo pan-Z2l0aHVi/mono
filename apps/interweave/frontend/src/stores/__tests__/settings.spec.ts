@@ -104,6 +104,16 @@ describe('settings store', () => {
     expect(store.takeWarnings()).toEqual([])
   })
 
+  // 同一失败只提示一次：壳取走原因后清空，下一次失败会重新写入。
+  it('错误取走后不再重复返回', () => {
+    const store = useSettingsStore()
+    store.error = '保存设置失败'
+
+    expect(store.takeError()).toBe('保存设置失败')
+    expect(store.takeError()).toBe('')
+    expect(store.error).toBe('')
+  })
+
   // 写入失败不能让界面显示一个磁盘上并不存在的值：store 记下原因并回读运行时。
   it('写入失败时记录原因并回读', async () => {
     let failNext = true
