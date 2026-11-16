@@ -191,12 +191,15 @@ func developerMenu() Node {
 func windowMenu(mac bool) Node {
 	if !mac {
 		return submenu("窗口",
+			commandNode("切换窗口模式", "", menucontract.CommandToggleWindowMode),
 			roleNode(application.Minimise, "最小化", "CmdOrCtrl+M"),
 			commandNode("最大化", "", menucontract.CommandMaximiseWindow),
 			roleNode(application.CloseWindow, "关闭窗口", "CmdOrCtrl+W"),
 		)
 	}
 	return roleMenu(application.WindowMenu, "窗口",
+		commandNode("切换窗口模式", "", menucontract.CommandToggleWindowMode),
+		separator(),
 		roleNode(application.Minimise, "最小化", "CmdOrCtrl+M"),
 		roleNode(application.Zoom, "缩放", ""),
 		separator(),

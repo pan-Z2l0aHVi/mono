@@ -335,9 +335,10 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
           @input="handleNoteInput($event)"
           @change="handleNoteChange($event)"
         />
-        <div class="detail-group mb-3 overflow-hidden rounded-[18px] bg-(--wui-color-surface,#fff) detail-delete">
+        <div class="detail-group mb-3 rounded-[18px] bg-(--wui-color-surface,#fff) detail-delete">
           <button
-            class="h-9 w-full cursor-pointer border-0 bg-transparent px-[15px] text-left text-[#e43535] [font:inherit] hover:bg-black/5 active:bg-black/10"
+            type="button"
+            class="h-9 w-full cursor-pointer rounded-[18px] border-0 bg-transparent px-[15px] text-left text-[#e43535] [font:inherit] hover:bg-black/5 active:bg-black/10"
             @click="emit('delete', resource)"
           >
             删除资源

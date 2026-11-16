@@ -35,6 +35,13 @@ const documentationURL = "https://github.com/pan-Z2l0aHVi/mono/tree/main/apps/in
 // 这一项只负责把用户带到能看到版本与变更的地方。
 const releasesURL = "https://github.com/pan-Z2l0aHVi/mono/releases"
 
+const (
+	defaultWindowWidth  = 1280
+	defaultWindowHeight = 800
+	minWindowWidth      = 400
+	minWindowHeight     = 600
+)
+
 // appDescription 是原生关于面板里 Description 一栏。原生面板只显示 Name / Description / Icon，
 // 版本号没有自己的字段，只能拼进 Description。
 func appDescription(version string) string {
@@ -167,10 +174,10 @@ func main() {
 
 	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
 		Title:              "Interweave",
-		Width:              1280,
-		Height:             800,
-		MinWidth:           400,
-		MinHeight:          600,
+		Width:              defaultWindowWidth,
+		Height:             defaultWindowHeight,
+		MinWidth:           minWindowWidth,
+		MinHeight:          minWindowHeight,
 		EnableFileDrop:     true,
 		UseApplicationMenu: true,
 		Mac: application.MacWindow{
@@ -180,6 +187,10 @@ func main() {
 		BackgroundColour: application.NewRGB(6, 7, 15),
 		URL:              "/",
 	})
+	windowMode := newWindowModeToggler(
+		windowSize{width: minWindowWidth, height: minWindowHeight},
+		windowSize{width: defaultWindowWidth, height: defaultWindowHeight},
+	)
 
 	// emitCommand 是菜单与前端之间唯一的通道：菜单点击不直接操作窗口或页面，
 	// 只报告一个命令，由前端按当前上下文执行。
@@ -190,8 +201,8 @@ func main() {
 		})
 	}
 
-	// menuSink 处理那些必须在 Go 侧完成的命令：重新载入、开发者控制台、窗口最大化与
-	// 「检查更新」是窗口 / OS 能力，绕过前端反而更稳；缩放三项改的是 Go 拥有的缩放档位，
+	// menuSink 处理那些必须在 Go 侧完成的命令：重新载入、开发者控制台、窗口最大化、
+	// 切换窗口模式与「检查更新」是窗口 / OS 能力，绕过前端反而更稳；缩放三项改的是 Go 拥有的缩放档位，
 	// 前端拿到快照后才会把档位落到窗口上；其余命令转发给前端，由前者按当前路由与历史栈执行。
 	zoom := func(change func(context.Context) (settings.Snapshot, error)) {
 		if _, err := change(context.Background()); err != nil {
@@ -206,6 +217,8 @@ func main() {
 			window.OpenDevTools()
 		case menucontract.CommandMaximiseWindow:
 			window.ToggleMaximise()
+		case menucontract.CommandToggleWindowMode:
+			windowMode.Toggle(webviewWindowAdapter{window: window})
 		case menucontract.CommandZoomIn:
 			zoom(settingsService.ZoomIn)
 		case menucontract.CommandZoomOut:
