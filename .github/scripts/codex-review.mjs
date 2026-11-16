@@ -1195,7 +1195,7 @@ export function wrapCodeFence(content, info = 'diff') {
 }
 
 const ANIMATION_DIFF_PATTERN =
-  /\b(?:transition(?:Duration|TimingFunction|Property|Delay)?|animation(?:Duration|TimingFunction|Name|Delay)?|keyframes|cubic-bezier|prefers-reduced-motion|prefersReducedMotion|transform(?:Origin)?|transform-origin|will-change|willChange|clip-path|clipPath|requestAnimationFrame|useReducedMotion|ease-in|ease-out|easeIn|easeOut)\b|@(?:keyframes|starting-style)|:active\b|\bscale\s*\(\s*0\b|\banimate\s*\(/iu
+  /\b(?:(?:on)?(?:transition|animation)(?:end|run|start|cancel|iteration|duration|timingfunction|property|delay|name)?|keyframes|cubic-bezier|prefers-reduced-motion|prefersReducedMotion|transform(?:Origin)?|transform-origin|will-change|willChange|clip-path|clipPath|requestAnimationFrame|useReducedMotion|ease-in|ease-out|easeIn|easeOut)\b|@(?:keyframes|starting-style)|:active\b|\bscale\s*\(\s*0\b|\banimate\s*\(/iu
 const GESTURE_SPRING_DIFF_PATTERN =
   /\b(?:onPointer(?:Down|Move|Up|Cancel)|pointer(?:down|move|up|cancel)|setPointerCapture|releasePointerCapture|damping(?:Ratio)?|stiffness|velocity|onDrag(?:Start|Move|End|Over|Enter|Leave)?|useDrag|useGesture|useSpring|drag|swipe|gesture|inertia|momentum|overshoot|rubberband|spring)\b/iu
 const DOC_EXTENSION_PATTERN = /\.(?:md|mdx|txt)$/iu
@@ -1321,20 +1321,23 @@ export function selectReviewSkills(range, { diffByPath } = {}) {
     routed.push({
       name: 'review-animations',
       mode: 'pointer',
-      pointerFiles: ['.agents/skills/review-animations/SKILL.md', '.agents/skills/review-animations/STANDARDS.md'],
+      pointerFiles: [
+        '$RUNNER_TEMP/trusted/.agents/skills-vendored/review-animations/SKILL.md',
+        '$RUNNER_TEMP/trusted/.agents/skills-vendored/review-animations/STANDARDS.md'
+      ],
       paths: animationPaths,
       reason: '前端非测试源码变更行命中动效/CSS 过渡关键词',
       focus:
-        '检查是否出现 `transition: all`、`scale(0)`、`ease-in`、UI 时长 > 300ms、布局属性动画、`transform-origin` 错位、缺少 `prefers-reduced-motion` 或未用 `@media (hover: hover) and (pointer: fine)` 门控；按需读 `.agents/skills/review-animations/STANDARDS.md` 取精确阈值。'
+        '检查是否出现 `transition: all`、`scale(0)`、`ease-in`、UI 时长 > 300ms、布局属性动画、`transform-origin` 错位、缺少 `prefers-reduced-motion` 或未用 `@media (hover: hover) and (pointer: fine)` 门控；按需读 `$RUNNER_TEMP/trusted/.agents/skills-vendored/review-animations/STANDARDS.md` 取精确阈值（禁止读工作区 `.agents/skills`）。'
     })
     routed.push({
       name: 'emil-design-eng',
       mode: 'pointer',
-      pointerFiles: ['.agents/skills/emil-design-eng/SKILL.md'],
+      pointerFiles: ['$RUNNER_TEMP/trusted/.agents/skills-vendored/emil-design-eng/SKILL.md'],
       paths: animationPaths,
       reason: '前端非测试源码变更行命中动效/交互反馈关键词',
       focus:
-        '检查交互频率与克制原则（高频/快捷键不加动画）、强自定义 ease-out 曲线、`:active` 按压反馈、可打断性与弹窗/提示过渡一致；仅采纳判据，按需读 `.agents/skills/emil-design-eng/SKILL.md`。'
+        '检查交互频率与克制原则（高频/快捷键不加动画）、强自定义 ease-out 曲线、`:active` 按压反馈、可打断性与弹窗/提示过渡一致；仅采纳判据，按需读 `$RUNNER_TEMP/trusted/.agents/skills-vendored/emil-design-eng/SKILL.md`（禁止读工作区 `.agents/skills`）。'
     })
   }
 
@@ -1342,11 +1345,11 @@ export function selectReviewSkills(range, { diffByPath } = {}) {
     routed.push({
       name: 'apple-design',
       mode: 'pointer',
-      pointerFiles: ['.agents/skills/apple-design/SKILL.md'],
+      pointerFiles: ['$RUNNER_TEMP/trusted/.agents/skills-vendored/apple-design/SKILL.md'],
       paths: gesturePaths,
       reason: '前端非测试源码变更行命中手势/指针/弹簧物理关键词',
       focus:
-        '检查 `pointerdown` 即时反馈、`setPointerCapture` 1:1 跟随与抓取偏移、中断时从当前展示值无缝衔接速度、`damping`/`response` 与动量投影及进出路径对称；按需读 `.agents/skills/apple-design/SKILL.md`。'
+        '检查 `pointerdown` 即时反馈、`setPointerCapture` 1:1 跟随与抓取偏移、中断时从当前展示值无缝衔接速度、`damping`/`response` 与动量投影及进出路径对称；按需读 `$RUNNER_TEMP/trusted/.agents/skills-vendored/apple-design/SKILL.md`（禁止读工作区 `.agents/skills`）。'
     })
   }
 
