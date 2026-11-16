@@ -133,11 +133,20 @@ export function createCopyFeedback({ readText, idleDelay = COPY_IDLE_DELAY }: Co
   }
   async function copy(): Promise<void> {
     const text = readText()
-    const ok = text !== '' && (await writeClipboard(text))
     clearTimeout(timer)
     const run = snapshot.run + 1
-    publish({ status: ok ? 'copied' : 'failed', run })
+    if (text === '') {
+      publish({ status: 'failed', run })
+      timer = setTimeout(() => publish({ status: 'idle', run }), idleDelay)
+      return
+    }
+    // 同步乐观切换为 copied，保证点击同帧即可切图标并触发画线重播；仅在真正写入失败时回退 failed。
+    publish({ status: 'copied', run })
     timer = setTimeout(() => publish({ status: 'idle', run }), idleDelay)
+    const ok = await writeClipboard(text)
+    if (!ok && snapshot.run === run && snapshot.status !== 'idle') {
+      publish({ status: 'failed', run })
+    }
   }
   return {
     copy,
