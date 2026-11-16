@@ -51,6 +51,8 @@ export default defineConfig({
     // 产物保持与源码树一一对应：exports 的 `./*` 通配依赖这个目录结构。
     unbundle: true,
     root: resolve(import.meta.dirname, 'src'),
+    platform: 'browser',
+    target: ['chrome111', 'edge111', 'safari16.4', 'ios16.4', 'firefox128'],
     // pack 在 node 平台默认输出 `.mjs` / `.d.mts`，而 exports 指向 `.js` / `.d.ts`。
     fixedExtension: false,
     sourcemap: true,

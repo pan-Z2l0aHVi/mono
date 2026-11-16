@@ -112,3 +112,8 @@ body {
   place-items: center;
   min-height: 120px;
 }
+
+/* Tailwind Preflight 将全局 img 设为 block，导致 Markdown 行内徽章（p > a > img）竖向堆叠。 */
+p > a > img {
+  display: inline-block;
+}

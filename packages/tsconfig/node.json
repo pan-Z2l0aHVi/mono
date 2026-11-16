@@ -1,6 +1,8 @@
 {
   "extends": ["@tsconfig/node24/tsconfig.json", "./base.json"],
   "compilerOptions": {
+    "lib": ["ES2023"],
+    "target": "ES2023",
     "types": ["node"]
   }
 }
