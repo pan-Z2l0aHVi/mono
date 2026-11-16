@@ -3,6 +3,7 @@ import type { WebUiDrawer, WebUiEvent } from '@greypan/web-ui'
 import { lucideArrowRight } from '@greypan/web-ui/icons'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
+import ConvergeButton from '@/components/ConvergeButton.vue'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { resourceIcon, unavailableResourceIcon } from './presentation'
@@ -162,24 +163,17 @@ function handleMediaError(kind: 'image' | 'video') {
               "
               :size="40"
             />
-            <web-ui-button
+            <ConvergeButton
               v-if="target.emptyReason === 'source-unavailable' && target.source"
               slot="action"
-              class="group"
               variant="primary"
               @click="emit('recover', target.source)"
             >
-              <span
-                class="inline-block transition-transform duration-150 motion-safe:group-hover:translate-x-[3px] motion-reduce:transition-none"
-                >找回资源</span
-              >
-              <web-ui-icon
-                slot="suffix"
-                :icon="lucideArrowRight"
-                :size="16"
-                class="transition-transform duration-150 motion-safe:group-hover:-translate-x-[3px] motion-reduce:transition-none"
-              />
-            </web-ui-button>
+              <template #suffix>
+                <web-ui-icon :icon="lucideArrowRight" :size="16" />
+              </template>
+              找回资源
+            </ConvergeButton>
           </web-ui-empty>
         </div>
       </div>

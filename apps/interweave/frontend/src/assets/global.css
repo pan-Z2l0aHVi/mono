@@ -129,3 +129,13 @@ body {
     --wui-control-size: 40px;
   }
 }
+
+/*
+ * ConvergeButton 的收拢距离与过渡时长：应用内「减少动效」开关由 theme 的 motion 属性表达，
+ * 系统偏好由组件自己的 @media 处理。这里把应用内开关接进同一条 CSS 变量，距离与时长一起
+ * 归零，避免切换开关时仍在做过渡位移。
+ */
+web-ui-theme[motion='reduced'] {
+  --interweave-converge-distance: 0px;
+  --interweave-converge-duration: 0ms;
+}
