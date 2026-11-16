@@ -23,6 +23,8 @@ export const PRELOAD_MAX_PATHS = 30
 export const PRELOAD_MAX_FILES = 8
 export const PRELOAD_PER_FILE_BYTES = 4 * 1024
 export const PRELOAD_TOTAL_DIFF_BYTES = 24 * 1024
+export const REPO_QUERY_TIMEOUT_MS = 10_000
+export const REPO_QUERY_MAX_PATHS = 200
 
 // 顺序即诊断输出顺序，与 CI 拓扑断言共用同一份名单。密钥只判「有没有」，值从不写进快照、日志或 PR 评论。
 export const CONFIG_ENV = CODEX_CONFIG_ENV
@@ -960,6 +962,13 @@ export function trustedPromptPath(env = process.env) {
   return env.CODEX_REVIEW_PROMPT_PATH ?? path.join(env.RUNNER_TEMP ?? '.', 'trusted/codex/prompts/review.md')
 }
 
+export function trustedRepoQueryPath(env = process.env) {
+  return (
+    env.CODEX_REVIEW_REPO_QUERY_PATH ??
+    path.join(env.RUNNER_TEMP ?? '.', 'trusted/skills/monorepo-change-impact/repo-query.mjs')
+  )
+}
+
 /**
  * 按审查风险给改动路径定档，供 prepare 预注入排序：
  * - high (rank 0): CI/工作流、根脚本与配置、权限与代理配置、包 manifest、包公共入口 barrel
@@ -1181,15 +1190,355 @@ export function wrapCodeFence(content, info = 'diff') {
   return `${fence}${info}\n${body}\n${fence}`
 }
 
+const ANIMATION_DIFF_PATTERN =
+  /\b(?:transition|animation|keyframes|cubic-bezier|prefers-reduced-motion|transform|transform-origin|will-change|clip-path|requestAnimationFrame|useReducedMotion|ease-in|ease-out)\b|@(?:keyframes|starting-style)|:active\b|\bscale\s*\(\s*0\b|\banimate\s*\(/iu
+const GESTURE_SPRING_DIFF_PATTERN =
+  /\b(?:pointerdown|pointermove|pointerup|pointercancel|setPointerCapture|releasePointerCapture|damping|stiffness|velocity|drag|swipe|gesture|inertia|momentum|overshoot|spring)\b/iu
+const DOC_EXTENSION_PATTERN = /\.(?:md|mdx|txt)$/iu
+const FRONTEND_SOURCE_PATTERN =
+  /^(?:packages\/web-ui|apps\/(?:react-web-ui-demo|vue-web-ui-demo|interweave\/frontend))\/.*\.(?:[cm]?[jt]sx?|vue|css|scss|less|html)$/iu
+const TEST_HELPER_PATTERN =
+  /(?:^|\/)(?:vitest|playwright)\.config\.[^/]+$|^packages\/test-kit\/|(?:^|\/)(?:test-utils|test-helpers)\//u
+const PUBLIC_BOUNDARY_PATTERN =
+  /^packages\/[^/]+\/(?:package\.json|vite\.config\.[^/]+|(?:src\/)?index\.[^/]+|src\/(?:components|adapters|types)\/.*)$|^(?:pnpm-workspace\.yaml|turbo\.json|package\.json)$/u
+
+function extractWorkspaceRoot(filePath) {
+  if (filePath === 'apps/interweave/frontend' || filePath.startsWith('apps/interweave/frontend/')) {
+    return 'apps/interweave/frontend'
+  }
+  const match = /^(packages|apps)\/([^/]+)(?:\/|$)/u.exec(filePath)
+  return match ? `${match[1]}/${match[2]}` : null
+}
+
+function extractChangedDiffLines(fileDiff) {
+  if (typeof fileDiff !== 'string' || fileDiff === '') return ''
+  const hunkStart = fileDiff.indexOf('\n@@ ')
+  if (hunkStart === -1) return ''
+  return fileDiff
+    .slice(hunkStart + 1)
+    .split('\n')
+    .filter(
+      line => (line.startsWith('+') && !line.startsWith('+++')) || (line.startsWith('-') && !line.startsWith('---'))
+    )
+    .map(line => line.slice(1))
+    .filter(line => !/^\s*(?:\/\/|\/\*|\*+\/|\*\s)/u.test(line))
+    .join('\n')
+}
+
 /**
- * 生成预注入到审查 prompt 开头的内容：判据速览 + 按风险排序的 changed_paths + 高风险 diff 片段。
- * 模型启动即看到判据与高风险源码改动，不再需要先 sed 整篇 docs/agents/review.md 才去找 diff。
+ * 根据改动路径与源码 diff 确定性路由审校类 skill：
+ * - 自撰审校 skill（test-authoring / monorepo-change-impact）通过 `$skill-name` 直接注入；
+ * - 第三方 vendored UI/动效 skill 只注入轻量检查要点与路径指针（绝不写 `$skill-name`，避免输出表格/问候格式冲突与上下文膨胀）；
+ * - 严格过滤测试文件与文档 diff，防止测试夹具或文档词汇误触发；empty_diff 时跳过。
  *
  * @param {object} range resolveReviewRange 的输出或同形状对象。
- * @param {object} [limits] 截断阈值覆盖（供单测验证边界）。
+ * @param {object} [options]
+ * @param {Map<string, string>} [options.diffByPath] 预先切分好的单文件 diff 映射。
+ * @returns {Array<{
+ *   name: string,
+ *   mode: 'inject'|'pointer',
+ *   token?: string,
+ *   pointerFiles?: string[],
+ *   reason: string,
+ *   paths: string[],
+ *   focus: string
+ * }>}
+ */
+export function selectReviewSkills(range, { diffByPath } = {}) {
+  const changedPaths = (Array.isArray(range?.changedPaths) ? range.changedPaths : [])
+    .map(item => String(item).trim().replace(/^\.\//u, ''))
+    .filter(Boolean)
+  const diff = String(range?.diff ?? '')
+  if (changedPaths.length === 0 || Buffer.byteLength(diff, 'utf8') === 0) return []
+
+  const splitDiff = diffByPath ?? splitDiffByPath(diff, changedPaths)
+  const routed = []
+
+  const testPaths = changedPaths.filter(
+    filePath =>
+      classifyPathRisk(filePath).category === 'test' ||
+      (TEST_HELPER_PATTERN.test(filePath) && !DOC_EXTENSION_PATTERN.test(filePath))
+  )
+  if (testPaths.length > 0) {
+    routed.push({
+      name: 'test-authoring',
+      mode: 'inject',
+      token: '$test-authoring',
+      paths: testPaths,
+      reason: '改动包含测试文件、测试配置或测试 helper',
+      focus: '核对真实回归价值、行为优先于实现、异步完成信号/超时/退出清理、负向断言边界与测试生命周期。'
+    })
+  }
+
+  const publicBoundaryPaths = changedPaths.filter(
+    filePath =>
+      PUBLIC_BOUNDARY_PATTERN.test(filePath) &&
+      classifyPathRisk(filePath).category !== 'test' &&
+      !DOC_EXTENSION_PATTERN.test(filePath)
+  )
+  const workspaceCodePaths = changedPaths.filter(
+    filePath =>
+      extractWorkspaceRoot(filePath) &&
+      classifyPathRisk(filePath).category !== 'test' &&
+      !DOC_EXTENSION_PATTERN.test(filePath)
+  )
+  const touchedWorkspaces = [...new Set(workspaceCodePaths.map(extractWorkspaceRoot).filter(Boolean))]
+  if (publicBoundaryPaths.length > 0 || touchedWorkspaces.length >= 2) {
+    const reason =
+      publicBoundaryPaths.length > 0 && touchedWorkspaces.length >= 2
+        ? '改动涉及公开包边界且跨 ≥ 2 个 workspace'
+        : publicBoundaryPaths.length > 0
+          ? '改动命中公开包导出、manifest、类型适配或根编排配置'
+          : `改动跨 ${touchedWorkspaces.length} 个 workspace（${touchedWorkspaces.join('、')}）`
+    routed.push({
+      name: 'monorepo-change-impact',
+      mode: 'inject',
+      token: '$monorepo-change-impact',
+      paths: publicBoundaryPaths.length > 0 ? publicBoundaryPaths : workspaceCodePaths,
+      reason,
+      focus: '核对公共 exports、peerDependencies、sideEffects、类型适配、直接消费者兼容性及 changeset semver 决策。'
+    })
+  }
+
+  const frontendSourcePaths = changedPaths.filter(
+    filePath => FRONTEND_SOURCE_PATTERN.test(filePath) && classifyPathRisk(filePath).category !== 'test'
+  )
+  const animationPaths = []
+  const gesturePaths = []
+  for (const filePath of frontendSourcePaths) {
+    const changedLines = extractChangedDiffLines(splitDiff.get(filePath))
+    if (!changedLines) continue
+    if (ANIMATION_DIFF_PATTERN.test(changedLines)) animationPaths.push(filePath)
+    if (GESTURE_SPRING_DIFF_PATTERN.test(changedLines)) gesturePaths.push(filePath)
+  }
+
+  if (animationPaths.length > 0) {
+    routed.push({
+      name: 'review-animations',
+      mode: 'pointer',
+      pointerFiles: ['.agents/skills/review-animations/SKILL.md', '.agents/skills/review-animations/STANDARDS.md'],
+      paths: animationPaths,
+      reason: '前端非测试源码变更行命中动效/CSS 过渡关键词',
+      focus:
+        '检查是否出现 `transition: all`、`scale(0)`、`ease-in`、UI 时长 > 300ms、布局属性动画、`transform-origin` 错位、缺少 `prefers-reduced-motion` 或未用 `@media (hover: hover) and (pointer: fine)` 门控；按需读 `.agents/skills/review-animations/STANDARDS.md` 取精确阈值。'
+    })
+    routed.push({
+      name: 'emil-design-eng',
+      mode: 'pointer',
+      pointerFiles: ['.agents/skills/emil-design-eng/SKILL.md'],
+      paths: animationPaths,
+      reason: '前端非测试源码变更行命中动效/交互反馈关键词',
+      focus:
+        '检查交互频率与克制原则（高频/快捷键不加动画）、强自定义 ease-out 曲线、`:active` 按压反馈、可打断性与弹窗/提示过渡一致；仅采纳判据，按需读 `.agents/skills/emil-design-eng/SKILL.md`。'
+    })
+  }
+
+  if (gesturePaths.length > 0) {
+    routed.push({
+      name: 'apple-design',
+      mode: 'pointer',
+      pointerFiles: ['.agents/skills/apple-design/SKILL.md'],
+      paths: gesturePaths,
+      reason: '前端非测试源码变更行命中手势/指针/弹簧物理关键词',
+      focus:
+        '检查 `pointerdown` 即时反馈、`setPointerCapture` 1:1 跟随与抓取偏移、中断时从当前展示值无缝衔接速度、`damping`/`response` 与动量投影及进出路径对称；按需读 `.agents/skills/apple-design/SKILL.md`。'
+    })
+  }
+
+  return routed
+}
+
+function execRepoQuery(scriptPath, args, { cwd, env, timeoutMs = REPO_QUERY_TIMEOUT_MS, spawn = spawnSync }) {
+  const result = spawn(process.execPath, [scriptPath, ...args], {
+    cwd,
+    env,
+    encoding: 'utf8',
+    timeout: timeoutMs,
+    maxBuffer: SPAWN_MAX_BUFFER
+  })
+  if (result.status !== 0) throw commandError(scriptPath, args, result, SPAWN_MAX_BUFFER)
+  return JSON.parse(result.stdout ?? '{}')
+}
+
+/**
+ * 命中 `monorepo-change-impact` 时，在 prepare 阶段只读运行 staged 的 `repo-query.mjs`，
+ * 把结构化影响面摘要预注入 prompt；加超时与降级兜底，绝不阻塞审查流程。
+ *
+ * @param {object} range resolveReviewRange 的输出。
+ * @param {object} [options]
+ * @returns {{
+ *   available: boolean,
+ *   reason?: string,
+ *   verify?: object,
+ *   contracts?: object[],
+ *   contractDiff?: object,
+ *   warnings: string[],
+ *   truncatedPathsCount: number
+ * }}
+ */
+export function runRepoImpactQuery(
+  range,
+  {
+    env = process.env,
+    repoRoot = process.cwd(),
+    repoQueryPath = trustedRepoQueryPath(env),
+    timeoutMs = REPO_QUERY_TIMEOUT_MS,
+    spawn = spawnSync
+  } = {}
+) {
+  const changedPaths = Array.isArray(range?.changedPaths) ? range.changedPaths : []
+  if (changedPaths.length === 0)
+    return { available: false, reason: 'no changed paths', warnings: [], truncatedPathsCount: 0 }
+  if (!repoQueryPath || !fs.existsSync(repoQueryPath)) {
+    return {
+      available: false,
+      reason: 'staged repo-query.mjs is unavailable',
+      warnings: [],
+      truncatedPathsCount: 0
+    }
+  }
+
+  const warnings = []
+  const queryPaths = changedPaths.slice(0, REPO_QUERY_MAX_PATHS)
+  const truncatedPathsCount = Math.max(0, changedPaths.length - queryPaths.length)
+  try {
+    const verify = execRepoQuery(repoQueryPath, ['verify', '--root', repoRoot, '--json', '--', ...queryPaths], {
+      cwd: repoRoot,
+      env,
+      timeoutMs,
+      spawn
+    })
+
+    const contracts = []
+    const contractCandidates = (Array.isArray(verify.directWorkspaces) ? verify.directWorkspaces : []).slice(0, 5)
+    for (const workspaceName of contractCandidates) {
+      try {
+        contracts.push(
+          execRepoQuery(repoQueryPath, ['contract', '--root', repoRoot, '--json', workspaceName], {
+            cwd: repoRoot,
+            env,
+            timeoutMs,
+            spawn
+          })
+        )
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        if (!/is not a published package/u.test(message)) {
+          warnings.push(`contract(${workspaceName}): ${oneLine(message)}`)
+        }
+      }
+    }
+
+    let contractDiff = null
+    const baseRef = range?.diffBaseSha ?? range?.startSha ?? range?.mergeBaseSha ?? ''
+    if (baseRef) {
+      try {
+        contractDiff = execRepoQuery(
+          repoQueryPath,
+          ['contract-diff', '--root', repoRoot, '--json', '--base', baseRef],
+          {
+            cwd: repoRoot,
+            env,
+            timeoutMs,
+            spawn
+          }
+        )
+      } catch (error) {
+        const message = error instanceof Error ? error.message : String(error)
+        warnings.push(`contract-diff(${baseRef}): ${oneLine(message)}`)
+      }
+    }
+
+    return { available: true, verify, contracts, contractDiff, warnings, truncatedPathsCount }
+  } catch (error) {
+    const message = error instanceof Error ? error.message : String(error)
+    return { available: false, reason: oneLine(message), warnings, truncatedPathsCount }
+  }
+}
+
+function formatImpactSummary(impactAnalysis) {
+  if (!impactAnalysis) return []
+  if (!impactAnalysis.available) {
+    return impactAnalysis.reason && impactAnalysis.reason !== 'staged repo-query.mjs is unavailable'
+      ? ['', `  - 影响面预计算降级：${impactAnalysis.reason}（请按需手动核查）`]
+      : []
+  }
+
+  const lines = ['', '  - **影响面预计算（来自可信 `repo-query.mjs`）**：']
+  const verify = impactAnalysis.verify ?? {}
+  const direct =
+    Array.isArray(verify.directWorkspaces) && verify.directWorkspaces.length > 0
+      ? verify.directWorkspaces
+      : ['(root only)']
+  const affected =
+    Array.isArray(verify.affectedWorkspaces) && verify.affectedWorkspaces.length > 0
+      ? verify.affectedWorkspaces
+      : ['(none)']
+  lines.push(`    - 直接 workspace：${direct.map(item => `\`${item}\``).join('、')}`)
+  lines.push(`    - 受影响闭包：${affected.map(item => `\`${item}\``).join('、')}`)
+  if (impactAnalysis.truncatedPathsCount > 0) {
+    lines.push(`    - 注意：输入路径超过 ${REPO_QUERY_MAX_PATHS} 条上限，仅基于前 ${REPO_QUERY_MAX_PATHS} 条预计算`)
+  }
+  const risk = verify.risk ?? {}
+  const activeRisks = Object.entries(risk)
+    .filter(([, value]) => Boolean(value))
+    .map(([key]) => `\`${key}\``)
+  lines.push(`    - 风险标记：${activeRisks.length > 0 ? activeRisks.join('、') : '无特殊跨包风险'}`)
+
+  for (const contract of impactAnalysis.contracts ?? []) {
+    const pkg = contract.package ?? {}
+    const consumers =
+      Array.isArray(contract.directConsumers) && contract.directConsumers.length > 0
+        ? contract.directConsumers.map(item => `\`${item}\``).join('、')
+        : '(none)'
+    const exportKeys = Object.keys(pkg.exports ?? {})
+    const shownExports = exportKeys
+      .slice(0, 12)
+      .map(item => `\`${item}\``)
+      .join('、')
+    const moreExports = exportKeys.length > 12 ? ` 等 ${exportKeys.length} 项` : ''
+    lines.push(
+      `    - 可发布契约 \`${pkg.name}\`（\`sideEffects: ${JSON.stringify(pkg.sideEffects)}\`）：直接消费者 ${consumers}；exports ${shownExports || '(none)'}${moreExports}`
+    )
+  }
+
+  const diff = impactAnalysis.contractDiff
+  if (diff) {
+    if (Array.isArray(diff.changes) && diff.changes.length > 0) {
+      lines.push(`    - \`contract-diff\`（\`requiresSemverReview=${Boolean(diff.requiresSemverReview)}\`）：`)
+      for (const change of diff.changes.slice(0, 8)) {
+        const flags = [
+          ...(change.semverReview?.breakingCandidates ?? []).map(item => `breaking: ${item}`),
+          ...(change.semverReview?.additiveCandidates ?? []).map(item => `additive: ${item}`)
+        ]
+        lines.push(`      - \`${change.name}\`：${flags.join('；') || 'manifest 字段变更'}`)
+      }
+    } else {
+      lines.push('    - `contract-diff`：无已发布包 manifest 契约变化')
+    }
+  }
+
+  const requiredChecks = (verify.verification ?? []).filter(item => item.level === 'required').slice(0, 6)
+  if (requiredChecks.length > 0) {
+    lines.push(`    - 应核对验证面：${requiredChecks.map(item => `\`${item.command}\``).join('、')}`)
+  }
+
+  for (const warning of impactAnalysis.warnings ?? []) {
+    lines.push(`    - 预计算子查询降级：${warning}`)
+  }
+  return lines
+}
+
+/**
+ * 生成预注入到审查 prompt 开头的内容：判据速览 + 按需 Skill 路由 + 按风险排序的 changed_paths + 高风险 diff 片段。
+ * 模型启动即看到判据、按需路由的 skill 与高风险源码改动，不再需要先 sed 整篇 docs/agents/review.md 才去找 diff。
+ *
+ * @param {object} range resolveReviewRange 的输出或同形状对象。
+ * @param {object} [limits] 截断阈值覆盖与可选影响面预计算结果（供单测验证边界）。
  * @returns {{
  *   markdown: string,
  *   rankedPaths: Array<{path: string, tier: string, category: string}>,
+ *   routedSkills: Array<{name: string, mode: 'inject'|'pointer', token?: string, pointerFiles?: string[], reason: string, paths: string[], focus: string}>,
  *   preloadedPaths: string[],
  *   truncatedPaths: string[],
  *   omittedPaths: string[],
@@ -1202,7 +1551,8 @@ export function buildReviewPreload(
     maxPaths = PRELOAD_MAX_PATHS,
     maxFiles = PRELOAD_MAX_FILES,
     perFileBytes = PRELOAD_PER_FILE_BYTES,
-    totalDiffBytes = PRELOAD_TOTAL_DIFF_BYTES
+    totalDiffBytes = PRELOAD_TOTAL_DIFF_BYTES,
+    impactAnalysis = null
   } = {}
 ) {
   const diff = String(range?.diff ?? '')
@@ -1215,6 +1565,7 @@ export function buildReviewPreload(
         diff,
         ranked.map(entry => entry.path)
       )
+  const routedSkills = emptyDiff ? [] : selectReviewSkills(range, { diffByPath })
   const preloaded = []
   const preloadedPaths = []
   const truncatedPaths = []
@@ -1247,14 +1598,48 @@ export function buildReviewPreload(
     '',
     '- **三档标准**：`Block`（运行失败、回归、公共契约破坏、权限/注入漏洞、竞态/资源泄漏、或让检查/门禁假绿的阻断缺陷）；`Should fix`（需求或规范偏离、失败路径未兜住、测试或文档与实现失步等应修问题）；`Nit`（非阻断改进，不冒充阻断）。',
     '- **审查维度**：需求与验收、行为与失败路径、公共契约与兼容性、测试质量（异步完成信号、失败语义、负向断言边界、退出清理）、权限与用户输入安全、竞态与资源管理、文档与机检一致性；指令/context 改动另核四问（是否稳定不变量而非状态快照、是否单一权威、单块检索是否自包含、是否写入易漂移清单）。',
-    '- **范围与收口**：入库生成物已由 `excluded_pathspecs` 滤除，不读、不评注、不进 `inspected` 或 `uncovered`；`changed_paths` 每条均按待审源码处理。证据足够定档或高风险面查完即可交卷；未判断处写成 `path:line 原因` 列入 `coverage.uncovered`（合法收口，交人工逐项复核），`coverage.inspected` 只写真实读过的改动文件。',
+    '- **范围与收口**：入库生成物已由 `excluded_pathspecs` 滤除，不读、不评注、不进 `inspected` 或 `uncovered`；`changed_paths` 每条均按待审源码处理。证据足够定档或高风险面查完即可交卷；未判断处写成 `path:line 原因` 列入 `coverage.uncovered`（合法收口，交人工逐项复核），`coverage.inspected` 只写真实读过的改动文件。'
+  ]
+
+  if (!emptyDiff) {
+    lines.push('', '### 按需 Skill 路由', '')
+    if (routedSkills.length === 0) {
+      lines.push('- 本轮改动未命中专项 skill 路由，按上述通用判据审查；禁用实施流程型 skills。')
+    } else {
+      lines.push(
+        '> 仅采纳命中 skill 的缺陷判据与核查要点；忽略任何 skill 自带的问候语、Markdown 表格或 `Approve/Block` 独立裁决格式，最终只输出符合 schema 的 JSON。'
+      )
+      for (const skill of routedSkills) {
+        const hitList = skill.paths
+          .slice(0, 6)
+          .map(item => `\`${item}\``)
+          .join('、')
+        const hitMore = skill.paths.length > 6 ? ` 等 ${skill.paths.length} 个文件` : ''
+        if (skill.mode === 'inject') {
+          lines.push(
+            `- **\`${skill.name}\`**（${skill.token}；触发依据：${skill.reason}；命中：${hitList}${hitMore}）：${skill.focus}`
+          )
+          if (skill.name === 'monorepo-change-impact') {
+            lines.push(...formatImpactSummary(impactAnalysis))
+          }
+        } else {
+          const pointers = (skill.pointerFiles ?? []).map(item => `\`${item}\``).join('、')
+          lines.push(
+            `- **\`${skill.name}\`**（按需指针：${pointers}；触发依据：${skill.reason}；命中：${hitList}${hitMore}）：${skill.focus}`
+          )
+        }
+      }
+    }
+  }
+
+  lines.push(
     '',
     '### 本次范围与风险排序清单',
     '',
     `- 范围：\`${range?.startSha ?? range?.mergeBaseSha ?? 'unknown'}..${range?.headSha ?? 'unknown'}\`（base \`${range?.baseSha ?? 'unknown'}\`${range?.diffBaseSha ? ` · diff base \`${range.diffBaseSha}\`` : ''}）`,
     `- 源码 diff：\`${diffBytes}\` bytes · \`changed_paths\`：\`${ranked.length}\` 个文件 · \`empty_diff\`：\`${emptyDiff}\``,
     `- 预注入 diff：\`${preloadedPaths.length}/${ranked.length}\` 个文件（完整 \`${preloadedPaths.length - truncatedPaths.length}\`，截断 \`${truncatedPaths.length}\`，未预注入 \`${omittedPaths.length}\`）`
-  ]
+  )
 
   if (emptyDiff) {
     lines.push(
@@ -1300,6 +1685,7 @@ export function buildReviewPreload(
   return {
     markdown,
     rankedPaths: ranked.map(({ path: filePath, tier, category }) => ({ path: filePath, tier, category })),
+    routedSkills,
     preloadedPaths,
     truncatedPaths,
     omittedPaths,
@@ -1451,7 +1837,15 @@ function commandPreflight() {
   console.log(`codex configuration complete (fingerprint ${config.fingerprint}); values are never logged`)
 }
 
-export function commandPrepare({ env = process.env, command = run, priorHeadSha } = {}) {
+export function commandPrepare({
+  env = process.env,
+  command = run,
+  priorHeadSha,
+  repoRoot = process.cwd(),
+  repoQueryPath,
+  timeoutMs = REPO_QUERY_TIMEOUT_MS,
+  spawn = spawnSync
+} = {}) {
   const required = requireEnv(['CODEX_REVIEW_BASE_SHA', 'CODEX_REVIEW_HEAD_SHA', 'RUNNER_TEMP'], env)
   const range = resolveReviewRange({
     baseSha: required.CODEX_REVIEW_BASE_SHA,
@@ -1462,7 +1856,17 @@ export function commandPrepare({ env = process.env, command = run, priorHeadSha 
   const directory = conclusionDirectory(env)
   fs.mkdirSync(directory, { recursive: true })
   fs.writeFileSync(path.join(required.RUNNER_TEMP, 'pr.diff'), range.diff)
-  const preload = buildReviewPreload(range)
+  const routed = selectReviewSkills(range)
+  const impactAnalysis = routed.some(skill => skill.name === 'monorepo-change-impact')
+    ? runRepoImpactQuery(range, {
+        env,
+        repoRoot,
+        repoQueryPath: repoQueryPath ?? trustedRepoQueryPath(env),
+        timeoutMs,
+        spawn
+      })
+    : null
+  const preload = buildReviewPreload(range, { impactAnalysis })
   fs.writeFileSync(preloadPath(env), `${preload.markdown}\n`)
   const promptFile = trustedPromptPath(env)
   if (fs.existsSync(promptFile)) {
@@ -1488,6 +1892,7 @@ export function commandPrepare({ env = process.env, command = run, priorHeadSha 
         changed_paths: range.changedPaths,
         preloaded_paths: preload.preloadedPaths,
         preload_bytes: preload.preloadBytes,
+        routed_skills: preload.routedSkills.map(item => item.name),
         excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS
       },
       null,
@@ -1509,9 +1914,9 @@ export function commandPrepare({ env = process.env, command = run, priorHeadSha 
     env
   )
   console.log(
-    `review range ${range.startSha ?? range.mergeBaseSha}..${range.headSha} (${Buffer.byteLength(range.diff)} bytes, preloaded ${preload.preloadedPaths.length}/${range.changedPaths.length} files)`
+    `review range ${range.startSha ?? range.mergeBaseSha}..${range.headSha} (${Buffer.byteLength(range.diff)} bytes, preloaded ${preload.preloadedPaths.length}/${range.changedPaths.length} files, routed ${preload.routedSkills.length} skills)`
   )
-  return { range, preload }
+  return { range, preload, impactAnalysis }
 }
 
 export function validateIncrementalBaseline({ prior, priorScope, expectedHead, expectedBase, config, isBaseAncestor }) {

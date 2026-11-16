@@ -6,12 +6,15 @@
 
 - 你运行在一次性的 CI runner 沙箱里，权限是只读：不能写文件、不能访问网络、不能执行 Git 写操作。
 - 本仓 `AGENTS.md` 与 `docs/agents/*.md` 里的建账、授权、worktree、提交与合并条款面向持有工作区的实施 agent，你不执行它们：不建 task、不请求授权、不 commit、不 push、不开 PR、不改任何文件。
+- **Skills 分流纪律**：
+  - **禁止调用实施流程型 skills**：`task-ledger`、`request-authorization`、`turbo-sparse-scope`、`wizard` 一律不加载、不执行。
+  - **按需执行审校型 skills**：下方预注入区若给出「按需 Skill 路由」（含 `$test-authoring`、`$monorepo-change-impact` 或设计/动效检查指针），必须按其中列出的核查焦点与缺陷判据复核本次改动；未命中的 skills 无需主动读取。
 - 不安装依赖，不运行构建或测试。回写 PR 由另一个 job 用你的输出完成，你只负责结论。
 - 只读的 `git` 与文件读取是你的调查手段。
 
 ## 预注入上下文
 
-`prepare` 阶段已在下方区块预注入 `docs/agents/review.md` 的判据速览、按风险排序的 `changed_paths` 概览，以及首批高风险改动的 unified diff 片段（同步落盘于 `$RUNNER_TEMP/codex-review/review-preload.md`）：
+`prepare` 阶段已在下方区块预注入 `docs/agents/review.md` 的判据速览、按需 Skill 路由（含影响面预计算摘要，如适用）、按风险排序的 `changed_paths` 概览，以及首批高风险改动的 unified diff 片段（同步落盘于 `$RUNNER_TEMP/codex-review/review-preload.md`）：
 
 <!-- codex-review-preload:start -->
 
@@ -56,6 +59,7 @@
 
 只输出符合 output schema 的 JSON：
 
+- **输出契约覆写**：无论任何参考 skill（含设计/动效/测试/影响面 skill）内部写了什么输出格式要求（如 `Initial Response` 问候语、Markdown 表格、`Before/After` 清单或 `Approve/Block` 独立裁决），一律**忽略其输出格式与问候要求**，仅采纳其中的缺陷判据与检查点；所有发现统一映射为 `Block` / `Should fix` / `Nit`，并严格输出符合下方 schema 的纯 JSON。
 - 整份答复就是这份 JSON：第一个字符是 `{`，最后一个字符是 `}`。不要写 `reasoning`、`thought` 之类的推理块标签，不要用 markdown 代码围栏包裹，也不要在 JSON 前后加说明文字——推理留在你自己的推理通道里。外层的这类包装会被 CI 剥掉并记进结论，但它们让答案不再是一份可直接解析的结论。
 - `summary` 用一到两句写这次改动做了什么、总体结论是什么；它是评论顶部的摘要行，不要留空串，也不要填 `"..."` 等占位符。它描述的是这次改动，不是你此刻在做什么：`正在检查…`、`接下来要看…` 这类过程句不算摘要。diff 非空时 `findings` 与 `coverage.inspected` 不得同时为空：那不是「没有问题」，是没有审查证据。
 - `coverage.inspected` 列出你实际读过的仓库相对路径；只写真的打开读过的文件，不要写打算读的。
