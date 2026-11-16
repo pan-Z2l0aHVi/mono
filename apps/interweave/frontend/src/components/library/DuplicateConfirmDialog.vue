@@ -1,12 +1,16 @@
 <script setup lang="ts">
 import appScrollbarsOptions from '@greypan/app-scrollbars'
+import { copyToClipboard } from '@greypan/browser-kit'
 import type { WebUiDialog, WebUiEvent } from '@greypan/web-ui'
-import { lucideCopy, lucideTriangleAlert } from '@greypan/web-ui/icons'
+import { akarIconsCircleCheck, lucideCopy, lucideTriangleAlert } from '@greypan/web-ui/icons'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
+import { onScopeDispose, ref, watch } from 'vue'
+
+import PressDrawIcon from '../PressDrawIcon.vue'
 
 import type { LibraryDuplicatePrompt } from './addQueue'
 
-defineProps<{
+const props = defineProps<{
   open: boolean
   prompt: LibraryDuplicatePrompt | null
 }>()
@@ -15,6 +19,41 @@ const emit = defineEmits<{
   accept: []
   cancel: []
 }>()
+
+const renderedPrompt = ref<LibraryDuplicatePrompt | null>(null)
+const copiedResourceId = ref<string | null>(null)
+let copiedRevertTimer: ReturnType<typeof setTimeout> | undefined
+
+watch(
+  () => props.prompt,
+  value => {
+    if (value) renderedPrompt.value = value
+  },
+  { immediate: true }
+)
+
+function clearCopiedState() {
+  clearTimeout(copiedRevertTimer)
+  copiedResourceId.value = null
+}
+
+function copyLocation(resourceId: string, location: string) {
+  void copyToClipboard(location)
+  copiedResourceId.value = resourceId
+  clearTimeout(copiedRevertTimer)
+  copiedRevertTimer = setTimeout(() => {
+    copiedResourceId.value = null
+  }, 1200)
+}
+
+watch(
+  () => props.open,
+  open => {
+    if (!open) clearCopiedState()
+  }
+)
+
+onScopeDispose(clearCopiedState)
 
 function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   if (event.target !== event.currentTarget) return
@@ -32,11 +71,11 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   >
     <span slot="header" class="flex items-center gap-2">
       <web-ui-icon :icon="lucideTriangleAlert" class="text-[#b45309] dark:text-[#fcd34d]" />
-      资源库中已有这个文件
+      {{ renderedPrompt?.kind === 'url' ? '资源库中已有这个链接' : '资源库中已有这个文件' }}
     </span>
 
     <p class="m-0 text-[14px] leading-6 text-[#5b5b66] dark:text-(--wui-color-text-secondary)">
-      继续添加会创建一条新的资源记录，库中将存在两个指向同一位置的条目。
+      继续导入会创建一条新的资源记录，库中将存在多个指向同一位置的条目。
     </p>
 
     <!--
@@ -46,7 +85,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
       实心环换成 web-ui 统一的 focus ring。键盘用户仍可以靠这个焦点 + 方向键滚列表。
     -->
     <OverlayScrollbarsComponent
-      v-if="prompt"
+      v-if="renderedPrompt"
       :options="appScrollbarsOptions"
       class="mt-3 max-h-56 overflow-y-auto rounded-xl bg-[#1b1b20]/3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-offset-2 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4)) dark:bg-white/5"
     >
@@ -57,7 +96,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
       -->
       <ul class="m-0 list-none p-0">
         <li
-          v-for="match in prompt.matches"
+          v-for="match in renderedPrompt.matches"
           :key="match.resource_id"
           class="grid min-w-0 gap-0.5 px-3 py-2 not-last:border-b not-last:border-black/6 not-last:dark:border-white/8"
         >
@@ -65,10 +104,30 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
             {{ match.title }}
           </span>
           <span
-            class="flex min-w-0 items-center gap-1.5 text-xs leading-5 text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
+            class="flex min-w-0 items-center gap-1 text-xs leading-5 text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
             :title="match.location"
           >
-            <web-ui-icon :icon="lucideCopy" :size="12" class="shrink-0" />
+            <web-ui-tooltip class="shrink-0" :content="copiedResourceId === match.resource_id ? '已复制' : '复制路径'">
+              <web-ui-button
+                icon
+                variant="ghost"
+                size="20"
+                :aria-label="
+                  copiedResourceId === match.resource_id ? `已复制 ${match.location}` : `复制 ${match.location}`
+                "
+                @click="copyLocation(match.resource_id, match.location)"
+              >
+                <PressDrawIcon>
+                  <web-ui-icon
+                    v-if="copiedResourceId === match.resource_id"
+                    :icon="akarIconsCircleCheck"
+                    :size="12"
+                    class="text-(--wui-color-success)"
+                  />
+                  <web-ui-icon v-else :icon="lucideCopy" :size="12" />
+                </PressDrawIcon>
+              </web-ui-button>
+            </web-ui-tooltip>
             <span class="min-w-0 truncate">{{ match.location }}</span>
           </span>
         </li>
@@ -76,8 +135,8 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     </OverlayScrollbarsComponent>
 
     <div slot="footer" class="flex gap-3">
-      <web-ui-button full variant="secondary" @click="emit('cancel')">取消</web-ui-button>
-      <web-ui-button full variant="primary" @click="emit('accept')">仍要添加</web-ui-button>
+      <web-ui-button full variant="secondary" @click="emit('accept')">仍要导入</web-ui-button>
+      <web-ui-button full variant="primary" @click="emit('cancel')">取消</web-ui-button>
     </div>
   </web-ui-dialog>
 </template>

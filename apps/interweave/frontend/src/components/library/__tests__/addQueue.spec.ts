@@ -248,7 +248,7 @@ describe('library add queue duplicate confirmation', () => {
     await vi.waitFor(() => {
       expect(queue.duplicatePrompt.value).not.toBeNull()
     })
-    expect(queue.duplicatePrompt.value).toEqual({ location: '/tmp/photo.png', matches })
+    expect(queue.duplicatePrompt.value).toEqual({ kind: 'file', location: '/tmp/photo.png', matches })
     // 提示挂起期间该项尚未入队，其余项也还没轮到。
     expect(queue.queue.value).toEqual([])
 

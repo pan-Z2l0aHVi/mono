@@ -20,6 +20,7 @@ const KIND_BY_SOURCE: Record<QueueKind, { sourceType: SourceType; resourceKind: 
 
 /** 单个待入队位置的重复提示：库里已登记该入口的资源。 */
 export interface LibraryDuplicatePrompt {
+  kind: QueueKind
   location: string
   matches: ResourceLocationMatchDTO[]
 }
@@ -151,7 +152,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
       // 查询在途时用户可能已经关掉添加 dialog：此时弹窗会成为没有归属的悬空确认，
       // 按取消放行。调用方的代次检查在 await 之后才发生，那时弹窗已经弹出，来不及。
       if (startedAt !== generation) return false
-      return await askDuplicate({ location, matches })
+      return await askDuplicate({ kind, location, matches })
     } catch {
       // 查询失败按未命中处理：这条提示是轻提示，真正的纳入仍由 CreateResource 校验路径把关，
       // 与 prepareItem 的失败降级同理，不因此让用户无法添加。

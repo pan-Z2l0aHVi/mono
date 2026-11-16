@@ -88,7 +88,7 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
       await nextTick()
       const drop = host.querySelector<HTMLButtonElement>('[data-file-drop-target="library-add-files"]')!
       const buttons = [...host.querySelectorAll<WebUiButton>('web-ui-button')].filter(button =>
-        ['粘贴复制的文件', '编辑名称', '编辑标签', '移除待添加资源'].includes(button.getAttribute('aria-label') ?? '')
+        ['粘贴复制的文件', '重命名', '编辑标签', '移除待导入资源'].includes(button.getAttribute('aria-label') ?? '')
       )
       expect(buttons).toHaveLength(4)
       await waitFor(() => buttons.every(button => !!button.shadowRoot?.querySelector('button')), '按钮已渲染')
@@ -240,12 +240,12 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
     }
   })
 
-  it('Tab 可依次到达待添加资源的操作按钮', async () => {
+  it('Tab 可依次到达待导入资源的操作按钮', async () => {
     const host = mountDialog([queueItem()])
     await nextTick()
-    const edit = host.querySelector<WebUiButton>('web-ui-button[aria-label="编辑名称"]')!
+    const edit = host.querySelector<WebUiButton>('web-ui-button[aria-label="重命名"]')!
     const tags = host.querySelector<WebUiButton>('web-ui-button[aria-label="编辑标签"]')!
-    const remove = host.querySelector<WebUiButton>('web-ui-button[aria-label="移除待添加资源"]')!
+    const remove = host.querySelector<WebUiButton>('web-ui-button[aria-label="移除待导入资源"]')!
     await waitFor(() => !!edit.shadowRoot?.querySelector('button'), '操作按钮已渲染')
     edit.shadowRoot!.querySelector('button')!.focus()
     await userEvent.tab()
@@ -293,7 +293,7 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
     expect(name.getBoundingClientRect().height).toBeGreaterThan(25)
     expect(path.getBoundingClientRect().height).toBeGreaterThan(20)
     expect(path.scrollWidth).toBeLessThanOrEqual(path.clientWidth + 1)
-    const edit = host.querySelector<WebUiButton>('web-ui-button[aria-label="编辑名称"]')!
+    const edit = host.querySelector<WebUiButton>('web-ui-button[aria-label="重命名"]')!
     edit.click()
     await waitFor(() => !!host.querySelector('web-ui-editable-text'), '进入名称编辑')
     const editor = host.querySelector('web-ui-editable-text')!
@@ -308,7 +308,7 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
   it('短标题右侧依次显示编辑名称、标签和删除操作', async () => {
     const host = mountDialog([queueItem({ title: '短名称' })])
     await nextTick()
-    const actions = ['编辑名称', '编辑标签', '移除待添加资源'].map(label =>
+    const actions = ['重命名', '编辑标签', '移除待导入资源'].map(label =>
       host.querySelector<HTMLElement>(`web-ui-button[aria-label="${label}"]`)!
     )
     expect(actions.every(Boolean)).toBe(true)
@@ -362,7 +362,7 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
     await waitFor(() => thumbnails.every(thumbnail => !thumbnail.querySelector('web-ui-icon')), '加载后 fallback 退场')
 
     const editButton = [...host.querySelectorAll<WebUiButton>('web-ui-button')].find(
-      candidate => candidate.getAttribute('aria-label') === '编辑名称'
+      candidate => candidate.getAttribute('aria-label') === '重命名'
     )!
     editButton.click()
     await nextTick()

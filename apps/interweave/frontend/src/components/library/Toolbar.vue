@@ -185,8 +185,8 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
       -->
       <div ref="controlsRef" class="flex min-w-0 gap-3 items-center ml-auto">
         <template v-if="!selectionMode">
-          <web-ui-tooltip v-if="!(searchOpen && mobile)" content="添加资源" portal>
-            <web-ui-button icon variant="primary" aria-label="添加资源" @click="emit('add')">
+          <web-ui-tooltip v-if="!(searchOpen && mobile)" content="导入资源" portal>
+            <web-ui-button icon variant="primary" aria-label="导入资源" @click="emit('add')">
               <web-ui-icon :icon="lucidePlus" />
             </web-ui-button>
           </web-ui-tooltip>
@@ -361,7 +361,7 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
                       : lucideRotateCwClock
               "
             />
-            <web-ui-option value="createdAt" label="添加时间">添加时间</web-ui-option>
+            <web-ui-option value="createdAt" label="导入时间">导入时间</web-ui-option>
             <web-ui-option value="updatedAt" label="更新时间">更新时间</web-ui-option>
             <web-ui-option value="name" label="名称">名称</web-ui-option>
             <web-ui-option value="tagName" label="标签">标签</web-ui-option>

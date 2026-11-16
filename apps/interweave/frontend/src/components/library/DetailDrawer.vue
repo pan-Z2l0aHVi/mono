@@ -53,7 +53,15 @@ const emit = defineEmits<{
   showInFileManager: [source: ResourceSourceView]
 }>()
 const placement = computed(() => (props.mobile ? 'bottom' : 'right'))
-const unavailableSource = computed(() => props.resource?.sources.find(source => !source.available) ?? null)
+const renderedResource = ref<ResourceView | null>(null)
+watch(
+  () => props.resource,
+  value => {
+    if (value) renderedResource.value = value
+  },
+  { immediate: true }
+)
+const unavailableSource = computed(() => renderedResource.value?.sources.find(source => !source.available) ?? null)
 const editingTitle = computed(() => props.editingNameKey === DRAWER_TITLE_EDITOR_KEY)
 const renameButtonRef = ref<HTMLElement>()
 
@@ -83,9 +91,9 @@ watch(
   () => [props.open, props.resource?.id] as const,
   ([open]) => {
     const request = ++defaultOpenWithRequest
-    defaultOpenWithName.value = ''
     const resource = props.resource
     if (!open || !resource) return
+    defaultOpenWithName.value = ''
     void props.resolveDefaultOpenWith(resource).then(name => {
       if (request !== defaultOpenWithRequest) return
       defaultOpenWithName.value = name
@@ -171,7 +179,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
     @open-change="handleOpenChange"
   >
     <div
-      v-if="resource"
+      v-if="renderedResource"
       class="detail-drawer text-left font-[system-ui,sans-serif] text-[length:var(--wui-font-size,14px)] leading-[1.4] text-(--wui-color-text,#1c1c1e) [--detail-accent:var(--wui-color-accent,#08f)]"
     >
       <div class="detail-top text-lg font-semibold">资源详情</div>
@@ -179,20 +187,20 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
         <div class="detail-profile flex items-center gap-[15px] py-3">
           <ResourceThumbnail
             class="!size-[76px] !rounded-[18px]"
-            :kind="resource.kind"
+            :kind="renderedResource.kind"
             detail
-            :unavailable="!resource.available"
-            :source="resource.preferred"
-            :media-url="resource.preferred?.mediaUrl ?? null"
-            :thumbnail-url="resource.preferred?.thumbnailUrl ?? null"
+            :unavailable="!renderedResource.available"
+            :source="renderedResource.preferred"
+            :media-url="renderedResource.preferred?.mediaUrl ?? null"
+            :thumbnail-url="renderedResource.preferred?.thumbnailUrl ?? null"
           />
           <div class="detail-profile-content grid min-w-0 gap-[5px]">
             <web-ui-editable-text
               :ref="editorRef"
-              :value="resource.title"
+              :value="renderedResource.title"
               :disabled="!editingTitle"
               class="detail-title text-base font-bold wrap-anywhere"
-              :aria-label="`修改 ${resource.title} 的标题`"
+              :aria-label="`修改 ${renderedResource.title} 的标题`"
               @click.stop
               @change="handleTitleChange"
               @cancel="emit('cancelRename')"
@@ -206,21 +214,23 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
               variant="ghost"
               size="24"
               aria-label="重命名"
-              @click="emit('startRename', resource)"
+              @click="emit('startRename', renderedResource)"
             >
               <web-ui-icon slot="prefix" :icon="lucidePenLine" :size="14" />重命名
             </web-ui-button>
           </div>
         </div>
         <div class="detail-quick mb-3 grid grid-cols-2 gap-2.5">
-          <template v-if="resource.available">
+          <template v-if="renderedResource.available">
             <button
               type="button"
               class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-[#007aff] [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))]"
-              @click="emit('preview', resource)"
+              @click="emit('preview', renderedResource)"
             >
               <web-ui-icon
-                :icon="resource.kind === 'audio' || resource.kind === 'video' ? akarIconsPlay : codiconEye"
+                :icon="
+                  renderedResource.kind === 'audio' || renderedResource.kind === 'video' ? akarIconsPlay : codiconEye
+                "
                 :size="18"
               />预览
             </button>
@@ -232,14 +242,14 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
               >
                 <web-ui-icon :icon="arrowUpRight" :size="18" />打开
               </button>
-              <web-ui-dropdown-item @click="emit('openDefault', resource)">
+              <web-ui-dropdown-item @click="emit('openDefault', renderedResource)">
                 <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />{{
                   defaultOpenWithName || '系统默认应用'
                 }}
               </web-ui-dropdown-item>
               <web-ui-dropdown-item
-                v-if="availableFileSource(resource)"
-                @click="emit('showInFileManager', availableFileSource(resource)!)"
+                v-if="availableFileSource(renderedResource)"
+                @click="emit('showInFileManager', availableFileSource(renderedResource)!)"
               >
                 <web-ui-icon slot="prefix" :icon="fileManagerIcon()" :size="14" />{{ fileManagerLabel() }}
               </web-ui-dropdown-item>
@@ -258,7 +268,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
         <p class="detail-caption mx-3.5 mt-4 mb-1.5 text-xs text-[#777780]">来源</p>
         <div class="detail-group mb-3 overflow-hidden rounded-[18px] bg-(--wui-color-surface,#fff)">
           <div
-            v-for="itemSource in resource.sources"
+            v-for="itemSource in renderedResource.sources"
             :key="itemSource.id"
             class="detail-source grid grid-cols-[minmax(0,1fr)_36px] items-center gap-x-2 gap-y-[5px] px-[15px] py-2.5 [&+.detail-source]:border-t [&+.detail-source]:border-(--wui-color-border,rgba(0,0,0,0.1))"
           >
@@ -307,22 +317,30 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
         <div class="detail-group mb-3 overflow-hidden rounded-[18px] bg-(--wui-color-surface,#fff)">
           <div class="detail-row relative box-border flex min-h-9 items-center gap-2.5 px-[15px] py-[7px] text-xs">
             <span class="flex-1 text-sm">类型</span
-            ><small class="text-right text-[#8a8a94] [font-size:inherit]">{{ resourceKindLabel(resource.kind) }}</small>
+            ><small class="text-right text-[#8a8a94] [font-size:inherit]">{{
+              resourceKindLabel(renderedResource.kind)
+            }}</small>
           </div>
           <div
-            v-if="resource.sizeBytes !== null"
+            v-if="renderedResource.sizeBytes !== null"
             class="detail-row relative box-border flex min-h-9 items-center gap-2.5 px-[15px] py-[7px] text-xs"
           >
             <span class="flex-1 text-sm">大小</span
-            ><small class="text-right text-[#8a8a94] [font-size:inherit]">{{ formatSize(resource.sizeBytes) }}</small>
+            ><small class="text-right text-[#8a8a94] [font-size:inherit]">{{
+              formatSize(renderedResource.sizeBytes)
+            }}</small>
           </div>
           <div class="detail-row relative box-border flex min-h-9 items-center gap-2.5 px-[15px] py-[7px] text-xs">
             <span class="flex-1 text-sm">创建于</span
-            ><small class="text-right text-[#8a8a94] [font-size:inherit]">{{ formatDate(resource.createdAt) }}</small>
+            ><small class="text-right text-[#8a8a94] [font-size:inherit]">{{
+              formatDate(renderedResource.createdAt)
+            }}</small>
           </div>
           <div class="detail-row relative box-border flex min-h-9 items-center gap-2.5 px-[15px] py-[7px] text-xs">
             <span class="flex-1 text-sm">最后修改于</span
-            ><small class="text-right text-[#8a8a94] [font-size:inherit]">{{ formatDate(resource.updatedAt) }}</small>
+            ><small class="text-right text-[#8a8a94] [font-size:inherit]">{{
+              formatDate(renderedResource.updatedAt)
+            }}</small>
           </div>
         </div>
         <p class="detail-caption mx-3.5 mt-4 mb-1.5 text-xs text-[#777780]">标签</p>
@@ -330,15 +348,17 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
           class="detail-group mb-3 overflow-hidden rounded-[18px] bg-(--wui-color-surface,#fff) detail-tags flex min-h-9 box-border items-center gap-1.5 px-[15px] py-1"
         >
           <div class="detail-tags-list flex min-w-0 flex-1 flex-wrap gap-1.5">
-            <span v-if="!resource.tags.length" class="text-sm text-(--wui-color-text-secondary)">暂未添加标签</span>
-            <ResourceTag v-for="tag in resource.tags" :key="tag.id" :name="tag.name" :color="tag.color" />
+            <span v-if="!renderedResource.tags.length" class="text-sm text-(--wui-color-text-secondary)"
+              >暂未添加标签</span
+            >
+            <ResourceTag v-for="tag in renderedResource.tags" :key="tag.id" :name="tag.name" :color="tag.color" />
           </div>
           <web-ui-button
             class="detail-edit-tags -mr-2 [--wui-button-color:#007aff] [--wui-font-size:14px]"
             variant="ghost"
             size="24"
             aria-label="编辑标签"
-            @click="emit('editTags', resource)"
+            @click="emit('editTags', renderedResource)"
             >编辑</web-ui-button
           >
         </div>
@@ -346,7 +366,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
         <web-ui-textarea
           class="mb-3 rounded-[18px] bg-(--wui-color-surface,#fff) caret-(--detail-accent) [--wui-shadow-glass:0_0_0_transparent] [--wui-color-accent:transparent] [--wui-color-focus-ring:transparent] [--wui-color-glass-ring:transparent] [--wui-color-glass-ring-shade:transparent] [--wui-color-glass-ring-sheen:transparent] [--wui-color-glass-highlight:transparent]"
           borderless
-          :value="resource.note"
+          :value="renderedResource.note"
           :rows="2"
           autosize
           full
@@ -359,7 +379,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
           <button
             type="button"
             class="h-9 w-full cursor-pointer rounded-[18px] border-0 bg-transparent px-[15px] text-left text-[#e43535] [font:inherit] hover:bg-black/5 active:bg-black/10"
-            @click="emit('delete', resource)"
+            @click="emit('delete', renderedResource)"
           >
             删除资源
           </button>

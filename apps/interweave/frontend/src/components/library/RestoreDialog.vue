@@ -45,6 +45,14 @@ const emit = defineEmits<{
 
 const scanChoiceOpen = ref(false)
 const candidateItem = ref<LibraryRestoreQueueItem | null>(null)
+const renderedCandidateItem = ref<LibraryRestoreQueueItem | null>(null)
+watch(
+  candidateItem,
+  value => {
+    if (value) renderedCandidateItem.value = value
+  },
+  { immediate: true }
+)
 const candidates = ref<Record<string, RecoveryCandidate[]>>({})
 const manual = ref<Record<string, boolean>>({})
 const snapshots = ref<Record<string, string>>({})
@@ -269,13 +277,14 @@ watch(
     clearPreviews()
     scanChoiceOpen.value = false
     candidateItem.value = null
-    candidates.value = {}
-    manual.value = {}
-    snapshots.value = {}
-    scanProgress.value = null
-    scanIncomplete.value = false
     editingUrlItem.value = null
     if (open) {
+      renderedCandidateItem.value = null
+      candidates.value = {}
+      manual.value = {}
+      snapshots.value = {}
+      scanProgress.value = null
+      scanIncomplete.value = false
       drafts.value = {}
       prepared.value = {}
       picking.value = null
@@ -541,11 +550,11 @@ function submit() {
     @open-change="!$event.detail.open && (candidateItem = null)"
   >
     <span slot="header">选择找回的文件</span>
-    <p v-if="candidateItem" class="mt-0 mb-3 text-xs text-(--wui-color-text-secondary)">
-      为「{{ candidateItem.resourceTitle }}」选择匹配的文件
+    <p v-if="renderedCandidateItem" class="mt-0 mb-3 text-xs text-(--wui-color-text-secondary)">
+      为「{{ renderedCandidateItem.resourceTitle }}」选择匹配的文件
     </p>
-    <ul v-if="candidateItem" class="m-0 flex list-none flex-col gap-2 p-0">
-      <li v-for="candidate in candidates[candidateItem.id]" :key="candidate.path">
+    <ul v-if="renderedCandidateItem" class="m-0 flex list-none flex-col gap-2 p-0">
+      <li v-for="candidate in candidates[renderedCandidateItem.id]" :key="candidate.path">
         <button
           type="button"
           class="candidate-option flex w-full cursor-pointer items-center gap-3 rounded-xl border-0 bg-(--wui-color-surface-raised,white) p-3 text-left text-(--wui-color-text) hover:bg-[color-mix(in_srgb,var(--wui-color-accent)_10%,var(--wui-color-surface-raised,white))] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring)"

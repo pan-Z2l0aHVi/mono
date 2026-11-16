@@ -59,9 +59,25 @@ const emit = defineEmits<{
   rename: [itemId: string, title: string]
   editTags: [item: LibraryQueueItem]
   submit: []
+  closed: []
 }>()
 
 const dialogRef = ref<WebUiDialog | null>(null)
+let nativeDialog: HTMLDialogElement | null = null
+let disposed = false
+function handleNativeClosed() {
+  if (!nativeDialog?.open) emit('closed')
+}
+onMounted(async () => {
+  await dialogRef.value?.updateComplete
+  if (disposed) return
+  nativeDialog = dialogRef.value?.shadowRoot?.querySelector('dialog') ?? null
+  nativeDialog?.addEventListener('close', handleNativeClosed)
+})
+onScopeDispose(() => {
+  disposed = true
+  nativeDialog?.removeEventListener('close', handleNativeClosed)
+})
 defineExpose({
   toastContainer: () => dialogRef.value?.shadowRoot?.querySelector('dialog') ?? undefined,
   /** 供菜单的「导入来自 › 链接」直接翻开链接输入，不必让用户再点一次。 */
@@ -243,7 +259,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
     class="[--wui-dialog-width:min(90vw,880px)]"
     @open-change="handleOpenChange"
   >
-    <span slot="header">添加资源</span>
+    <span slot="header">导入资源</span>
 
     <p
       v-if="error"
@@ -296,12 +312,12 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             支持本地文件与远程链接，支持拖入或粘贴
           </p>
           <div class="flex shrink-0 items-center gap-2">
-            <web-ui-tooltip content="添加链接" placement="bottom">
-              <web-ui-button icon size="28" aria-label="添加链接" :disabled="busy" @click="addUrlOpen = true">
+            <web-ui-tooltip content="导入链接" placement="bottom">
+              <web-ui-button icon size="28" aria-label="导入链接" :disabled="busy" @click="addUrlOpen = true">
                 <web-ui-icon :icon="linkPlus" :size="15" />
               </web-ui-button>
             </web-ui-tooltip>
-            <web-ui-tooltip content="从剪切板添加" placement="bottom">
+            <web-ui-tooltip content="从剪切板导入" placement="bottom">
               <web-ui-button icon size="28" aria-label="粘贴复制的文件" @click="emit('requestFilePaths')">
                 <web-ui-icon :icon="lucideClipboardPaste" :size="15" />
               </web-ui-button>
@@ -352,7 +368,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
               class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a70] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
             >
               <span>支持图片、视频、音频、文档、网页、代码等文件</span>
-              <span>可批量添加</span>
+              <span>可批量导入</span>
             </span>
           </web-ui-empty>
         </button>
@@ -371,7 +387,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             id="library-add-queue-title"
             class="m-0 flex items-center gap-1.5 text-[14px] font-semibold text-[#22212a] dark:text-(--wui-color-text)"
           >
-            待添加
+            待导入
           </h3>
           <span
             class="inline-flex h-7 items-center text-xs leading-none text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
@@ -429,13 +445,13 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                   </span>
                   <span class="flex shrink-0 items-center gap-1">
                     <span v-if="editingItemId === item.id" class="size-7" aria-hidden="true" />
-                    <web-ui-tooltip v-else content="编辑名称" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                    <web-ui-tooltip v-else content="重命名" :placement="itemIndex < 5 ? 'bottom' : 'top'">
                       <web-ui-button
                         :ref="setRenameButtonRef(item.id)"
                         icon
                         variant="ghost"
                         size="28"
-                        aria-label="编辑名称"
+                        aria-label="重命名"
                         @click="startRename(item)"
                       >
                         <web-ui-icon :icon="lucidePenLine" :size="14" />
@@ -452,13 +468,13 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                         <web-ui-icon :icon="lucideTags" :size="14" />
                       </web-ui-button>
                     </web-ui-tooltip>
-                    <web-ui-tooltip content="移除待添加资源" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                    <web-ui-tooltip content="移除待导入资源" :placement="itemIndex < 5 ? 'bottom' : 'top'">
                       <web-ui-button
                         class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
                         icon
                         variant="ghost"
                         size="28"
-                        aria-label="移除待添加资源"
+                        aria-label="移除待导入资源"
                         @click="emit('remove', item.id)"
                       >
                         <web-ui-icon :icon="lucideTrash2" :size="14" />
@@ -489,13 +505,13 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             <span
               class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
             >
-              暂无待添加资源
+              暂无待导入资源
             </span>
             <span
               slot="description"
               class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a70] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
             >
-              <span>添加的资源将显示在此处</span>
+              <span>导入的资源将显示在此处</span>
               <span>名称和标签可修改</span>
             </span>
           </web-ui-empty>
@@ -522,7 +538,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       @click="emit('submit')"
     >
       <web-ui-icon slot="prefix" :icon="akarIconsCircleCheck" />
-      确认添加
+      确认导入
     </web-ui-button>
   </web-ui-dialog>
   <ResourceLinkDialog v-model:open="addUrlOpen" initial-value="" mode="add" @submit="emit('addUrl', $event)" />

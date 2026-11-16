@@ -264,4 +264,31 @@ describe('DetailDrawer', () => {
       mounted.close()
     }
   })
+
+  it('关闭抽屉使 resource 置空时仍保留已渲染内容，待下次有新数据时覆盖', async () => {
+    const mounted = mountDrawer(resourceView({ id: 'res-1', title: '旧资源标题' }))
+
+    try {
+      await nextTick()
+      expect(mounted.host.querySelector('.detail-drawer')).not.toBeNull()
+      expect(mounted.host.querySelector('web-ui-editable-text')?.getAttribute('aria-label')).toBe(
+        '修改 旧资源标题 的标题'
+      )
+
+      mounted.setResource(null)
+      await nextTick()
+      expect(mounted.host.querySelector('.detail-drawer')).not.toBeNull()
+      expect(mounted.host.querySelector('web-ui-editable-text')?.getAttribute('aria-label')).toBe(
+        '修改 旧资源标题 的标题'
+      )
+
+      mounted.setResource(resourceView({ id: 'res-2', title: '新资源标题' }))
+      await nextTick()
+      expect(mounted.host.querySelector('web-ui-editable-text')?.getAttribute('aria-label')).toBe(
+        '修改 新资源标题 的标题'
+      )
+    } finally {
+      mounted.close()
+    }
+  })
 })

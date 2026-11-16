@@ -414,10 +414,13 @@ function openAddLinkDialog() {
 
 function setAddOpen(open: boolean) {
   addOpen.value = open
-  if (!open) {
-    addError.value = ''
-    void addQueue.close()
-  }
+  if (!open) addQueue.resolveDuplicate(false)
+}
+
+function handleAddDialogClosed() {
+  if (addOpen.value) return
+  addError.value = ''
+  void addQueue.close()
 }
 
 /*
@@ -442,7 +445,7 @@ async function pasteFilePaths(clipboardText?: string) {
       await addQueue.enqueueURL(url)
       return
     }
-    toast.warning('剪切板中没有可添加的文件或有效链接', { position: 'top-center' })
+    toast.warning('剪切板中没有可导入的文件或有效链接', { position: 'top-center' })
   } catch {
     toast.warning('无法读取剪切板，请重试', { position: 'top-center' })
   }
@@ -475,7 +478,7 @@ async function submitQueue() {
     })
     if (completed) addOpen.value = false
   } catch (cause) {
-    addError.value = takeOperationError(cause, '添加资源失败，请稍后重试')
+    addError.value = takeOperationError(cause, '导入资源失败，请稍后重试')
   }
 }
 
@@ -541,11 +544,6 @@ function openRestoreDialog(items: LibraryRestoreQueueItem[]) {
 
 function setRestoreOpen(open: boolean) {
   restoreOpen.value = open
-  if (!open && !restoreBusy.value) {
-    restoreQueue.value = []
-    restoreError.value = ''
-    activeRestoreItemId.value = null
-  }
 }
 
 function handleRecoverSource(source: ResourceSourceView) {
@@ -747,6 +745,7 @@ onMounted(() => {
     @edit-tags="editQueueTags"
     @submit="submitQueue"
     @update:open="setAddOpen"
+    @closed="handleAddDialogClosed"
   />
 
   <!--

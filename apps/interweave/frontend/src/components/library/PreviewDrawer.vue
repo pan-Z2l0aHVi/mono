@@ -170,14 +170,14 @@ function handleMediaError(kind: 'image' | 'video') {
               @click="emit('recover', target.source)"
             >
               <span
-                class="inline-block transition-transform duration-150 motion-safe:group-hover:translate-x-0.5 motion-reduce:transition-none"
+                class="inline-block transition-transform duration-150 motion-safe:group-hover:translate-x-[3px] motion-reduce:transition-none"
                 >找回资源</span
               >
               <web-ui-icon
                 slot="suffix"
                 :icon="lucideArrowRight"
                 :size="16"
-                class="transition-transform duration-150 motion-safe:group-hover:-translate-x-0.5 motion-reduce:transition-none"
+                class="transition-transform duration-150 motion-safe:group-hover:-translate-x-[3px] motion-reduce:transition-none"
               />
             </web-ui-button>
           </web-ui-empty>

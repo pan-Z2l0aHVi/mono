@@ -250,7 +250,7 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
       :class="[resourceKindClass(kind), unavailable && !detail ? 'opacity-60' : '']"
     >
       <img
-        v-if="!(detail && unavailable) && favicon && !faviconFailed"
+        v-if="favicon && !faviconFailed"
         :src="favicon"
         class="absolute size-5 object-contain"
         alt=""
@@ -273,7 +273,8 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
       ></video>
       <canvas ref="canvasRef" class="pointer-events-none absolute size-px opacity-0" aria-hidden="true"></canvas>
       <img
-        v-if="!(detail && unavailable) && serverThumbActive"
+        v-if="serverThumbActive"
+        v-show="serverThumbReady"
         :key="`server-thumb-${mediaKey}`"
         :src="thumbnailUrl ?? undefined"
         class="size-full object-cover"
@@ -291,20 +292,21 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
         @load="handleImageLoad"
         @error="handleMediaError"
       />
-      <img v-if="!(detail && unavailable) && thumbnailURL" :src="thumbnailURL" class="size-full object-cover" alt="" />
-      <web-ui-icon v-if="detail && unavailable" :icon="unavailableResourceIcon(kind, source)" :size="32" />
+      <img v-if="thumbnailURL" :src="thumbnailURL" class="size-full object-cover" alt="" />
       <web-ui-icon
-        v-else-if="showFallback"
-        :icon="resourceIcon(kind)"
+        v-if="showFallback"
+        :icon="detail && unavailable ? unavailableResourceIcon(kind, source) : resourceIcon(kind)"
         :size="detail ? 32 : 20"
         :class="mediaFailed ? 'opacity-60' : ''"
       />
     </div>
-    <web-ui-icon
+    <span
       v-if="unavailable"
-      :icon="lucideTriangleAlert"
-      :size="14"
-      class="absolute bottom-0 left-0 text-amber-500"
-    />
+      data-unavailable-badge
+      class="pointer-events-none absolute flex items-center justify-center rounded-full bg-orange-100/95 text-orange-600 shadow-[0_1px_3px_rgb(0_0_0/0.14)] backdrop-blur-xs dark:bg-orange-950/90 dark:text-orange-400"
+      :class="detail ? 'bottom-1.5 left-1.5 size-6' : 'bottom-[3px] left-[3px] size-4'"
+    >
+      <web-ui-icon :icon="lucideTriangleAlert" :size="detail ? 14 : 11" class="block" />
+    </span>
   </div>
 </template>

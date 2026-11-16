@@ -106,7 +106,7 @@ class WailsLibraryRuntime implements LibraryRuntime {
   readonly system = {
     chooseFilePaths: async () => {
       const selected = await Dialogs.OpenFile({
-        Title: '选择要添加的文件',
+        Title: '选择要导入的文件',
         CanChooseFiles: true,
         CanChooseDirectories: false,
         AllowsMultipleSelection: true
