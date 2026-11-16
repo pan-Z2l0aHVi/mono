@@ -42,6 +42,30 @@ const (
 	minWindowHeight     = 600
 )
 
+func mainWindowOptions() application.WebviewWindowOptions {
+	return application.WebviewWindowOptions{
+		Title:              "Interweave",
+		Width:              defaultWindowWidth,
+		Height:             defaultWindowHeight,
+		MinWidth:           minWindowWidth,
+		MinHeight:          minWindowHeight,
+		EnableFileDrop:     true,
+		UseApplicationMenu: true,
+		Mac: application.MacWindow{
+			Backdrop: application.MacBackdropTranslucent,
+			TitleBar: application.MacTitleBarHiddenInset,
+			// macOS 默认关闭系统级「键盘导航」时，WKWebView 会把未显式声明 tabindex="0" 的
+			// button 与链接排除在 Tab 序之外（例如侧栏导航按钮与 web-ui-button）。
+			// 开启 TabFocusesLinks（对应 WKPreferences.tabFocusesLinks）让原生控件可直接经 Tab 聚焦。
+			WebviewPreferences: application.MacWebviewPreferences{
+				TabFocusesLinks: application.Enabled,
+			},
+		},
+		BackgroundColour: application.NewRGB(6, 7, 15),
+		URL:              "/",
+	}
+}
+
 // appDescription 是原生关于面板里 Description 一栏。原生面板只显示 Name / Description / Icon，
 // 版本号没有自己的字段，只能拼进 Description。
 func appDescription(version string) string {
@@ -172,21 +196,7 @@ func main() {
 		},
 	})
 
-	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:              "Interweave",
-		Width:              defaultWindowWidth,
-		Height:             defaultWindowHeight,
-		MinWidth:           minWindowWidth,
-		MinHeight:          minWindowHeight,
-		EnableFileDrop:     true,
-		UseApplicationMenu: true,
-		Mac: application.MacWindow{
-			Backdrop: application.MacBackdropTranslucent,
-			TitleBar: application.MacTitleBarHiddenInset,
-		},
-		BackgroundColour: application.NewRGB(6, 7, 15),
-		URL:              "/",
-	})
+	window := app.Window.NewWithOptions(mainWindowOptions())
 	windowMode := newWindowModeToggler(
 		windowSize{width: minWindowWidth, height: minWindowHeight},
 		windowSize{width: defaultWindowWidth, height: defaultWindowHeight},

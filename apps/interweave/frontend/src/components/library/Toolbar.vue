@@ -66,6 +66,7 @@ const emit = defineEmits<{
 }>()
 
 const searchInputRef = ref<WebUiInput>()
+const searchButtonRef = ref<HTMLElement>()
 const controlsRef = ref<HTMLElement>()
 const selectButtonRef = ref<HTMLElement>()
 const selectAllButtonRef = ref<HTMLElement>()
@@ -105,6 +106,14 @@ useExpandingField({
   close: () => {
     if (props.searchQuery) return
     emit('update:searchOpen', false)
+  },
+  onEscapeClose: () => {
+    if (props.searchQuery) return
+    void nextTick(async () => {
+      const btn = searchButtonRef.value as (HTMLElement & { updateComplete?: Promise<unknown> }) | undefined
+      await btn?.updateComplete
+      focusButton(btn)
+    })
   }
 })
 
@@ -200,7 +209,13 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
             </web-ui-button>
           </web-ui-tooltip>
           <web-ui-tooltip v-if="!searchOpen" content="搜索" portal>
-            <web-ui-button icon variant="glass" aria-label="搜索" @click="emit('update:searchOpen', true)">
+            <web-ui-button
+              ref="searchButtonRef"
+              icon
+              variant="glass"
+              aria-label="搜索"
+              @click="emit('update:searchOpen', true)"
+            >
               <web-ui-icon :icon="lucideSearch" />
             </web-ui-button>
           </web-ui-tooltip>

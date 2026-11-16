@@ -10,7 +10,7 @@ import {
   lucidePenLine,
   lucideRefreshCw
 } from '@greypan/web-ui/icons'
-import { computed, onScopeDispose, ref, watch } from 'vue'
+import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
 
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
@@ -55,6 +55,22 @@ const emit = defineEmits<{
 const placement = computed(() => (props.mobile ? 'bottom' : 'right'))
 const unavailableSource = computed(() => props.resource?.sources.find(source => !source.available) ?? null)
 const editingTitle = computed(() => props.editingNameKey === DRAWER_TITLE_EDITOR_KEY)
+const renameButtonRef = ref<HTMLElement>()
+
+watch(
+  editingTitle,
+  (next, prev) => {
+    if (!prev || next) return
+    const active = document.activeElement
+    if (!(active instanceof Element) || !active.classList.contains('detail-title')) return
+    void nextTick(async () => {
+      const btn = renameButtonRef.value as (HTMLElement & { updateComplete?: Promise<unknown> }) | undefined
+      await btn?.updateComplete
+      btn?.shadowRoot?.querySelector<HTMLButtonElement>('button')?.focus()
+    })
+  },
+  { flush: 'pre' }
+)
 
 /*
  * 「打开方式」显示系统默认应用的真实名字。drawer 会切资源，异步查询用请求序号作废旧结果；
@@ -182,6 +198,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
               @cancel="emit('cancelRename')"
             />
             <web-ui-button
+              ref="renameButtonRef"
               class="detail-edit-name justify-self-start -ml-2 [--wui-button-color:#007aff] [--wui-font-size:14px]"
               :class="{ invisible: editingTitle }"
               :aria-hidden="editingTitle ? 'true' : undefined"
@@ -198,6 +215,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
         <div class="detail-quick mb-3 grid grid-cols-2 gap-2.5">
           <template v-if="resource.available">
             <button
+              type="button"
               class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-[#007aff] [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))]"
               @click="emit('preview', resource)"
             >
@@ -209,6 +227,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
             <web-ui-dropdown class="detail-quick-dropdown min-w-0" placement="bottom-start">
               <button
                 slot="trigger"
+                type="button"
                 class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-[#007aff] [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))]"
               >
                 <web-ui-icon :icon="arrowUpRight" :size="18" />打开
@@ -228,6 +247,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
           </template>
           <button
             v-else
+            type="button"
             class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-[#007aff] [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))] col-span-full"
             :disabled="!unavailableSource || replacingSourceIds.includes(unavailableSource?.id ?? '')"
             @click="restoreResource"

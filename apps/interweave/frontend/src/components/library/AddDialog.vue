@@ -74,6 +74,7 @@ const dragActive = ref(false)
 const addUrlOpen = ref(false)
 const editingItemId = ref<string | null>(null)
 const nameEditors = new Map<string, WebUiEditableText>()
+const renameButtons = new Map<string, HTMLElement>()
 let pendingImagePreview: ImagePreviewHandle | null = null
 
 /* 静态态与编辑态共用排版，长名称在两态下保持相同换行。 */
@@ -171,6 +172,28 @@ function setNameEditorRef(itemId: string): NameEditorRef {
     else nameEditors.delete(itemId)
   }
 }
+
+function setRenameButtonRef(itemId: string) {
+  return (element: Element | ComponentPublicInstance | null) => {
+    if (element instanceof Element) renameButtons.set(itemId, element as HTMLElement)
+    else renameButtons.delete(itemId)
+  }
+}
+
+watch(
+  editingItemId,
+  (next, prev) => {
+    if (!prev || next !== null) return
+    const editor = nameEditors.get(prev)
+    if (!editor || document.activeElement !== editor) return
+    void nextTick(async () => {
+      const btn = renameButtons.get(prev) as (HTMLElement & { updateComplete?: Promise<unknown> }) | undefined
+      await btn?.updateComplete
+      btn?.shadowRoot?.querySelector<HTMLButtonElement>('button')?.focus()
+    })
+  },
+  { flush: 'pre' }
+)
 
 function queueSource(item: LibraryQueueItem): ResourceSourceView {
   return {
@@ -361,6 +384,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           v-if="queue.length"
           :options="appScrollbarsOptions"
           :class="resourceDialogQueueClass"
+          class="[&_[data-overlayscrollbars-viewport]:focus-visible]:rounded-[18px] [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-offset-2 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))"
         >
           <!--
             scrollbar 接在宿主 div 上，列表本身留在它里面：OverlayScrollbars 会把宿主的子节点搬进
@@ -406,7 +430,14 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                   <span class="flex shrink-0 items-center gap-1">
                     <span v-if="editingItemId === item.id" class="size-7" aria-hidden="true" />
                     <web-ui-tooltip v-else content="编辑名称" :placement="itemIndex < 5 ? 'bottom' : 'top'">
-                      <web-ui-button icon variant="ghost" size="28" aria-label="编辑名称" @click="startRename(item)">
+                      <web-ui-button
+                        :ref="setRenameButtonRef(item.id)"
+                        icon
+                        variant="ghost"
+                        size="28"
+                        aria-label="编辑名称"
+                        @click="startRename(item)"
+                      >
                         <web-ui-icon :icon="lucidePenLine" :size="14" />
                       </web-ui-button>
                     </web-ui-tooltip>

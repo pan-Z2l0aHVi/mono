@@ -21,3 +21,10 @@ func TestDataDirUsesDataHome(t *testing.T) {
 		t.Fatalf("expected the last path segment to be interweave, got %q from %q", base, dir)
 	}
 }
+
+func TestMainWindowEnablesMacTabFocus(t *testing.T) {
+	opts := mainWindowOptions()
+	if !opts.Mac.WebviewPreferences.TabFocusesLinks.IsSet() || !opts.Mac.WebviewPreferences.TabFocusesLinks.Get() {
+		t.Fatalf("expected Mac.WebviewPreferences.TabFocusesLinks to be enabled so Tab reaches buttons and links on macOS")
+	}
+}

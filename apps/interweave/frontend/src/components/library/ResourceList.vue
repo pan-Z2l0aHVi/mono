@@ -59,8 +59,100 @@ function preventScrimContextMenu(event: MouseEvent) {
     event.preventDefault()
   }
 }
-onMounted(() => window.addEventListener('contextmenu', preventScrimContextMenu, true))
-onBeforeUnmount(() => window.removeEventListener('contextmenu', preventScrimContextMenu, true))
+const LONG_PRESS_SPACE_DELAY_MS = 500
+let containerSpaceTimer: number | undefined
+let containerSpaceMenuOpened = false
+
+function clearContainerSpaceTimer() {
+  if (containerSpaceTimer !== undefined) {
+    window.clearTimeout(containerSpaceTimer)
+    containerSpaceTimer = undefined
+  }
+}
+
+function resetContainerSpaceState() {
+  clearContainerSpaceTimer()
+  containerSpaceMenuOpened = false
+}
+
+/*
+ * 容器自身也是 tab stop（Tab 停在列表大区域时，长按 Space 与 ContextMenu 键一致地把右键菜单
+ * 委托给当前活动行）：web-ui-context-menu 在捕获阶段只认事件目标本身（rowsRef），长按时会以
+ * contextResource=null 弹出一张锚在列表底部的残缺菜单。这里在 window 捕获阶段接管「焦点停在
+ * 列表容器时的 Space」：短按松开仍按 enterList 进入活动行；长按到 500ms 则激活并聚焦该行，再
+ * 经同一条 ContextMenu 键通路打开属于该行的菜单，并吞掉长按期间的 repeat 直到松开。
+ */
+function handleWindowSpaceKeydown(event: KeyboardEvent) {
+  if (event.key !== ' ') return
+  if (containerSpaceMenuOpened) {
+    event.preventDefault()
+    event.stopPropagation()
+    return
+  }
+  if (
+    event.shiftKey ||
+    event.ctrlKey ||
+    event.metaKey ||
+    event.altKey ||
+    event.target !== rowsRef.value ||
+    !props.resources.length
+  ) {
+    return
+  }
+  event.preventDefault()
+  event.stopPropagation()
+  if (event.repeat || containerSpaceTimer !== undefined) return
+  containerSpaceTimer = window.setTimeout(() => {
+    containerSpaceTimer = undefined
+    if (document.activeElement !== rowsRef.value || !props.resources.length) return
+    const index = activeIndex.value
+    const resource = props.resources[index]
+    if (!resource) return
+    containerSpaceMenuOpened = true
+    void (async () => {
+      await navigator.navigateToIndex(index)
+      contextResource.value = resource
+      await nextTick()
+      const anchor = rowElementAt(index)
+      if (!anchor) return
+      anchor.dispatchEvent(
+        new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true, composed: true, cancelable: true })
+      )
+    })()
+  }, LONG_PRESS_SPACE_DELAY_MS)
+}
+
+function handleWindowSpaceKeyup(event: KeyboardEvent) {
+  if (event.key !== ' ') return
+  if (containerSpaceMenuOpened) {
+    event.preventDefault()
+    event.stopPropagation()
+    containerSpaceMenuOpened = false
+    return
+  }
+  if (containerSpaceTimer === undefined) return
+  clearContainerSpaceTimer()
+  event.preventDefault()
+  event.stopPropagation()
+  if (document.activeElement === rowsRef.value && props.resources.length) {
+    const active = props.resources.findIndex(resource => resource.id === props.activeResourceId)
+    void (active >= 0 ? navigator.focusIndex(active) : navigator.navigateToIndex(0))
+  }
+}
+
+onMounted(() => {
+  window.addEventListener('contextmenu', preventScrimContextMenu, true)
+  window.addEventListener('keydown', handleWindowSpaceKeydown, true)
+  window.addEventListener('keyup', handleWindowSpaceKeyup, true)
+  window.addEventListener('blur', resetContainerSpaceState)
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('contextmenu', preventScrimContextMenu, true)
+  window.removeEventListener('keydown', handleWindowSpaceKeydown, true)
+  window.removeEventListener('keyup', handleWindowSpaceKeyup, true)
+  window.removeEventListener('blur', resetContainerSpaceState)
+  resetContainerSpaceState()
+})
 
 const contextMenuRef = ref<WebUiContextMenu>()
 const contextResource = ref<ResourceView | null>(null)
@@ -238,6 +330,7 @@ function scrollIndexIntoView(index: number) {
 function handleRowsFocusin(event: FocusEvent) {
   const target = event.target
   if (!(target instanceof HTMLElement)) return
+  if (target !== rowsRef.value) clearContainerSpaceTimer()
   const row = target.closest<HTMLElement>('[data-resource-row]')
   contextResource.value = row ? resourceForRow(row) : null
 }
@@ -320,7 +413,7 @@ function enterList(event: KeyboardEvent) {
   if (!props.resources.length) return
   const active = props.resources.findIndex(resource => resource.id === props.activeResourceId)
   event.preventDefault()
-  void navigator.focusIndex(active >= 0 ? active : 0)
+  void (active >= 0 ? navigator.focusIndex(active) : navigator.navigateToIndex(0))
 }
 
 function handleRowKeydown(event: KeyboardEvent, row: HTMLElement) {
@@ -404,6 +497,21 @@ function clampEditingRowIntoView() {
  *     而卸载（草稿由 commit-on-unmount 兜底提交，但用户仍会对着一个看不见的编辑器继续打字）。
  *     两者都靠这一手夹回来。window 模式下滚动事件在 window 上，不在列表容器上。
  */
+watch(
+  () => props.editingNameKey,
+  (next, prev) => {
+    if (!prev || next !== null) return
+    const active = document.activeElement
+    if (!(active instanceof Element) || active.tagName !== 'WEB-UI-EDITABLE-TEXT') return
+    const row = active.closest<HTMLElement>('[data-resource-row]')
+    if (!row || row.dataset.resourceId !== prev || !rowsRef.value?.contains(row)) return
+    void nextTick(() => {
+      rowsRef.value?.querySelector<HTMLElement>(`[data-resource-id="${prev}"]`)?.focus()
+    })
+  },
+  { flush: 'pre' }
+)
+
 watch(editingIndex, clampEditingRowIntoView, { immediate: true })
 watch(rowsRef, () => clampEditingRowIntoView(), { immediate: true })
 onMounted(() => window.addEventListener('scroll', clampEditingRowIntoView, { passive: true }))
@@ -662,7 +770,7 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
     -->
     <div
       ref="rowsRef"
-      class="w-full h-full select-none [-webkit-touch-callout:none]"
+      class="w-full h-full rounded-[14px] select-none [-webkit-touch-callout:none]"
       tabindex="0"
       role="list"
       :aria-busy="loading"
