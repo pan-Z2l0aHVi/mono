@@ -1,5 +1,9 @@
 # Mono
 
+[![CI](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml/badge.svg)](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml)
+[![Deploy Pages](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/deploy-pages.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/pan-Z2l0aHVi/mono)
+
 > An open, cross-platform, cross-stack, cross-agent monorepo engineering project for code, design resources, and docs.
 
 English | [简体中文](./README.CN.md)
