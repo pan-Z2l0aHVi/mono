@@ -969,6 +969,10 @@ export function trustedRepoQueryPath(env = process.env) {
   )
 }
 
+export function trustedSkillPath(skillName, env = process.env) {
+  return path.join(env.RUNNER_TEMP ?? '.', 'trusted/skills', skillName, 'SKILL.md')
+}
+
 /**
  * 按审查风险给改动路径定档，供 prepare 预注入排序：
  * - high (rank 0): CI/工作流、根脚本与配置、权限与代理配置、包 manifest、包公共入口 barrel
@@ -1191,9 +1195,9 @@ export function wrapCodeFence(content, info = 'diff') {
 }
 
 const ANIMATION_DIFF_PATTERN =
-  /\b(?:transition|animation|keyframes|cubic-bezier|prefers-reduced-motion|transform|transform-origin|will-change|clip-path|requestAnimationFrame|useReducedMotion|ease-in|ease-out)\b|@(?:keyframes|starting-style)|:active\b|\bscale\s*\(\s*0\b|\banimate\s*\(/iu
+  /\b(?:transition(?:Duration|TimingFunction|Property|Delay)?|animation(?:Duration|TimingFunction|Name|Delay)?|keyframes|cubic-bezier|prefers-reduced-motion|prefersReducedMotion|transform(?:Origin)?|transform-origin|will-change|willChange|clip-path|clipPath|requestAnimationFrame|useReducedMotion|ease-in|ease-out|easeIn|easeOut)\b|@(?:keyframes|starting-style)|:active\b|\bscale\s*\(\s*0\b|\banimate\s*\(/iu
 const GESTURE_SPRING_DIFF_PATTERN =
-  /\b(?:pointerdown|pointermove|pointerup|pointercancel|setPointerCapture|releasePointerCapture|damping|stiffness|velocity|drag|swipe|gesture|inertia|momentum|overshoot|spring)\b/iu
+  /\b(?:onPointer(?:Down|Move|Up|Cancel)|pointer(?:down|move|up|cancel)|setPointerCapture|releasePointerCapture|damping(?:Ratio)?|stiffness|velocity|onDrag(?:Start|Move|End|Over|Enter|Leave)?|useDrag|useGesture|useSpring|drag|swipe|gesture|inertia|momentum|overshoot|rubberband|spring)\b/iu
 const DOC_EXTENSION_PATTERN = /\.(?:md|mdx|txt)$/iu
 const FRONTEND_SOURCE_PATTERN =
   /^(?:packages\/web-ui|apps\/(?:react-web-ui-demo|vue-web-ui-demo|interweave\/frontend))\/.*\.(?:[cm]?[jt]sx?|vue|css|scss|less|html)$/iu
@@ -1227,7 +1231,8 @@ function extractChangedDiffLines(fileDiff) {
 
 /**
  * 根据改动路径与源码 diff 确定性路由审校类 skill：
- * - 自撰审校 skill（test-authoring / monorepo-change-impact）通过 `$skill-name` 直接注入；
+ * - 自撰审校 skill（test-authoring / monorepo-change-impact）只引用并内嵌 `$RUNNER_TEMP/trusted/skills/`
+ *   中的 BASE_SHA 可信副本（不输出 `$skill-name`，防止触发 host skill discovery 加载 PR head 的篡改副本）；
  * - 第三方 vendored UI/动效 skill 只注入轻量检查要点与路径指针（绝不写 `$skill-name`，避免输出表格/问候格式冲突与上下文膨胀）；
  * - 严格过滤测试文件与文档 diff，防止测试夹具或文档词汇误触发；empty_diff 时跳过。
  *
@@ -1236,8 +1241,8 @@ function extractChangedDiffLines(fileDiff) {
  * @param {Map<string, string>} [options.diffByPath] 预先切分好的单文件 diff 映射。
  * @returns {Array<{
  *   name: string,
- *   mode: 'inject'|'pointer',
- *   token?: string,
+ *   mode: 'trusted'|'pointer',
+ *   trustedRelativePath?: string,
  *   pointerFiles?: string[],
  *   reason: string,
  *   paths: string[],
@@ -1262,8 +1267,8 @@ export function selectReviewSkills(range, { diffByPath } = {}) {
   if (testPaths.length > 0) {
     routed.push({
       name: 'test-authoring',
-      mode: 'inject',
-      token: '$test-authoring',
+      mode: 'trusted',
+      trustedRelativePath: 'skills/test-authoring/SKILL.md',
       paths: testPaths,
       reason: '改动包含测试文件、测试配置或测试 helper',
       focus: '核对真实回归价值、行为优先于实现、异步完成信号/超时/退出清理、负向断言边界与测试生命周期。'
@@ -1292,8 +1297,8 @@ export function selectReviewSkills(range, { diffByPath } = {}) {
           : `改动跨 ${touchedWorkspaces.length} 个 workspace（${touchedWorkspaces.join('、')}）`
     routed.push({
       name: 'monorepo-change-impact',
-      mode: 'inject',
-      token: '$monorepo-change-impact',
+      mode: 'trusted',
+      trustedRelativePath: 'skills/monorepo-change-impact/SKILL.md',
       paths: publicBoundaryPaths.length > 0 ? publicBoundaryPaths : workspaceCodePaths,
       reason,
       focus: '核对公共 exports、peerDependencies、sideEffects、类型适配、直接消费者兼容性及 changeset semver 决策。'
@@ -1529,6 +1534,18 @@ function formatImpactSummary(impactAnalysis) {
   return lines
 }
 
+function readTrustedSkillBody(skillName, { env, trustedSkills } = {}) {
+  let raw = ''
+  if (trustedSkills && typeof trustedSkills === 'object' && typeof trustedSkills[skillName] === 'string') {
+    raw = trustedSkills[skillName]
+  } else if (env?.RUNNER_TEMP) {
+    const filePath = trustedSkillPath(skillName, env)
+    if (fs.existsSync(filePath)) raw = fs.readFileSync(filePath, 'utf8')
+  }
+  if (!raw) return ''
+  return raw.replace(/^---\r?\n[\s\S]*?\r?\n---\r?\n?/u, '').trim()
+}
+
 /**
  * 生成预注入到审查 prompt 开头的内容：判据速览 + 按需 Skill 路由 + 按风险排序的 changed_paths + 高风险 diff 片段。
  * 模型启动即看到判据、按需路由的 skill 与高风险源码改动，不再需要先 sed 整篇 docs/agents/review.md 才去找 diff。
@@ -1538,7 +1555,7 @@ function formatImpactSummary(impactAnalysis) {
  * @returns {{
  *   markdown: string,
  *   rankedPaths: Array<{path: string, tier: string, category: string}>,
- *   routedSkills: Array<{name: string, mode: 'inject'|'pointer', token?: string, pointerFiles?: string[], reason: string, paths: string[], focus: string}>,
+ *   routedSkills: Array<{name: string, mode: 'trusted'|'pointer', trustedRelativePath?: string, pointerFiles?: string[], reason: string, paths: string[], focus: string}>,
  *   preloadedPaths: string[],
  *   truncatedPaths: string[],
  *   omittedPaths: string[],
@@ -1552,7 +1569,9 @@ export function buildReviewPreload(
     maxFiles = PRELOAD_MAX_FILES,
     perFileBytes = PRELOAD_PER_FILE_BYTES,
     totalDiffBytes = PRELOAD_TOTAL_DIFF_BYTES,
-    impactAnalysis = null
+    impactAnalysis = null,
+    env = null,
+    trustedSkills = null
   } = {}
 ) {
   const diff = String(range?.diff ?? '')
@@ -1615,10 +1634,15 @@ export function buildReviewPreload(
           .map(item => `\`${item}\``)
           .join('、')
         const hitMore = skill.paths.length > 6 ? ` 等 ${skill.paths.length} 个文件` : ''
-        if (skill.mode === 'inject') {
+        if (skill.mode === 'trusted') {
+          const stagedLocation = `$RUNNER_TEMP/trusted/${skill.trustedRelativePath ?? `skills/${skill.name}/SKILL.md`}`
           lines.push(
-            `- **\`${skill.name}\`**（${skill.token}；触发依据：${skill.reason}；命中：${hitList}${hitMore}）：${skill.focus}`
+            `- **\`${skill.name}\`**（可信副本：\`${stagedLocation}\`；触发依据：${skill.reason}；命中：${hitList}${hitMore}）：${skill.focus}`
           )
+          const body = readTrustedSkillBody(skill.name, { env, trustedSkills })
+          if (body) {
+            lines.push('', wrapCodeFence(body, 'markdown'))
+          }
           if (skill.name === 'monorepo-change-impact') {
             lines.push(...formatImpactSummary(impactAnalysis))
           }
@@ -1866,7 +1890,7 @@ export function commandPrepare({
         spawn
       })
     : null
-  const preload = buildReviewPreload(range, { impactAnalysis })
+  const preload = buildReviewPreload(range, { impactAnalysis, env })
   fs.writeFileSync(preloadPath(env), `${preload.markdown}\n`)
   const promptFile = trustedPromptPath(env)
   if (fs.existsSync(promptFile)) {
