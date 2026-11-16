@@ -86,6 +86,9 @@ export class WebUiSlider extends FormAssociated(LitElement) {
 
   @state() private _dragging = false
   @state() private _pressed = false
+  // 本次手势是否起于 thumb：按压态的放大玻璃只跟随「按在 thumb 上」的手势，
+  // 按在轨道或刻度上只取值，不改变 thumb 的外观。
+  private _pressedOnThumb = false
   // 避免未改变数值的点击被误认为一次表单提交
   private _interactionStartValue: number | undefined
   private _dragGestureHandle: DragGestureHandle | null = null
@@ -412,7 +415,8 @@ export class WebUiSlider extends FormAssociated(LitElement) {
 
   private _handlePointerDown(event: PointerEvent) {
     if (this._isDisabled) return
-    this._pressed = true
+    this._pressedOnThumb = this._isPointerOnThumb(event)
+    this._pressed = this._pressedOnThumb
     this._interactionStartValue = this.value
 
     this._dragGestureHandle?.destroy()
@@ -425,8 +429,7 @@ export class WebUiSlider extends FormAssociated(LitElement) {
       },
       onEnd: (_info, e) => {
         this._setValueFromPointer(e)
-        this._pressed = false
-        this._dragging = false
+        this._resetGestureState()
         if (this._interactionStartValue !== this.value) {
           this.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
         }
@@ -434,6 +437,7 @@ export class WebUiSlider extends FormAssociated(LitElement) {
       },
       onTap: (info, e) => {
         const crossAxisDelta = this.vertical ? info.deltaX : info.deltaY
+        this._resetGestureState()
         if (Math.abs(crossAxisDelta) >= POINTER_DRAG_THRESHOLD) return
 
         this._setValueFromPointer(e)
@@ -442,11 +446,29 @@ export class WebUiSlider extends FormAssociated(LitElement) {
         }
       },
       onCancel: () => {
-        this._pressed = false
-        this._dragging = false
+        this._resetGestureState()
         this._interactionStartValue = undefined
       }
     })
+  }
+
+  private _resetGestureState() {
+    this._pressed = false
+    this._dragging = false
+    this._pressedOnThumb = false
+  }
+
+  /** 指针是否落在 thumb 的盒内：管脚是 20px 的圆，只按在它身上才算按压。 */
+  private _isPointerOnThumb(event: PointerEvent): boolean {
+    const thumb = this.renderRoot.querySelector<HTMLElement>('.wui-slider-thumb')
+    if (!thumb) return false
+    const rect = thumb.getBoundingClientRect()
+    return (
+      event.clientX >= rect.left &&
+      event.clientX <= rect.right &&
+      event.clientY >= rect.top &&
+      event.clientY <= rect.bottom
+    )
   }
 
   private _handleKeyDown(event: KeyboardEvent) {
@@ -478,7 +500,8 @@ export class WebUiSlider extends FormAssociated(LitElement) {
       'wui-slider-thumb': true,
       'wui-glass': true,
       'is-pressed': this._pressed,
-      'is-dragging': this._dragging
+      // 拖拽只在起于 thumb 的手势里展开；从轨道 / 刻度拖过来的手势 thumb 保持静止。
+      'is-dragging': this._dragging && this._pressedOnThumb
     })
     const trackStyle = styleMap({ '--percent': `${this._percent}%` })
     const labelledbyText = this._getLabelledbyText()

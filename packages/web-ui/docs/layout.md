@@ -377,7 +377,7 @@ export default function Demo() {
     <div className="h-[240px] w-full overflow-hidden rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:240px]">
       <web-ui-layout
         mobile
-        style={{ '--wui-layout-mobile-toggle-inset': '24px', '--wui-layout-mobile-toggle-top': '16px' }}
+        style={{ '--wui-layout-mobile-toggle-left': '24px', '--wui-layout-mobile-toggle-top': '16px' }}
         sidebarOpen={open}
         onsidebar-open-change={event => setOpen(event.detail.open)}
       >
@@ -396,7 +396,7 @@ export default function Demo() {
   >
     <web-ui-layout
       :mobile="true"
-      style="--wui-layout-mobile-toggle-inset: 24px; --wui-layout-mobile-toggle-top: 16px"
+      style="--wui-layout-mobile-toggle-left: 24px; --wui-layout-mobile-toggle-top: 16px"
       :sidebarOpen="open"
       @sidebar-open-change="open = $event.detail.open"
     >
@@ -470,11 +470,11 @@ The caller continues to control `mobile`. Switching into this mode ends an ongoi
 
 ### Sidebar resizing
 
-After enabling `sidebar-resizable`, a resize handle appears on the right edge of the desktop sidebar (hidden in the collapsed state). Hovering or dragging shows a 3px-wide accent vertical line and a `col-resize` cursor.
+After enabling `sidebar-resizable`, a resize handle appears on the right edge of the desktop sidebar (hidden in the collapsed state). Hovering, keyboard-focusing or dragging shows a 3px-wide accent vertical line and a `col-resize` cursor.
 
 - Dragging updates the width in real time (transitions are disabled, and the width is limited to `[min, max]` and to the viewport).
 - On release it fires the `sidebar-width-change` event carrying the final pixel width. After your app writes it back, the width is taken over by the `sidebar-width` attribute again. `pointercancel` restores the attribute-controlled width and fires no event.
-- Keyboard operation (WAI-ARIA splitter pattern): after focusing, use ←/→ to step by 16px (Shift accelerates to 64px), Home/End to jump to min/max, Enter to commit through the same `sidebar-width-change` request, and Escape to revert an uncommitted adjustment.
+- Keyboard operation (WAI-ARIA splitter pattern): after focusing, use ←/→ to step by 16px (Shift accelerates to 64px), Home/End to jump to min/max, Enter to commit through the same `sidebar-width-change` request, and Escape to revert an uncommitted adjustment. Keyboard focus is indicated only by the vertical line; no focus ring is drawn.
 - The mobile Drawer always supports drag-to-close through its built-in `draggable` drawer, and enables `page-shift`. Opening it slides the page toward the Drawer's entry direction (to the right) by `16vw`, the page does not follow the drag, and closing restores it.
 
 ### Behavior
@@ -515,7 +515,7 @@ When `mobile` is `true`, the sidebar switches to a `web-ui-drawer` with the buil
 
 The mobile Drawer's width follows `sidebar-width`, and its radius follows `--wui-layout-sidebar-radius`.
 
-The mobile Toggle sits inline in the header row as the glass variant. Its left inset defaults to `8px` and can be aligned with your app's own header padding through `--wui-layout-mobile-toggle-inset`.
+The mobile Toggle sits inline in the header row as the glass variant. Each side has its own offset token — top and left default to `8px`, right and bottom to `0` — so the Toggle can line up with your app's own header padding.
 
 `header-glow` adds a decorative glow with `pointer-events: none` behind the header slot content and the mobile Toggle. It belongs to the header background rather than the foreground layer, so the slot content always sits above it.
 
@@ -549,6 +549,8 @@ It is independent of `--wui-color-surface-overlay`, which dialog, drawer, and to
 | `--wui-layout-sidebar-padding-top`     | Space above the sidebar card on desktop and mobile                                                           | `--wui-space-2` (`8px`) |
 | `--wui-layout-sidebar-padding-left`    | Space to the left of the sidebar card on desktop and mobile                                                  | `--wui-space-2` (`8px`) |
 | `--wui-layout-sidebar-padding-bottom`  | Space below the sidebar card on desktop and mobile                                                           | `--wui-space-2` (`8px`) |
-| `--wui-layout-mobile-toggle-inset`     | Left inset of the mobile header Toggle                                                                       | `8px`                   |
 | `--wui-layout-mobile-toggle-top`       | Top margin of the mobile header Toggle                                                                       | `8px`                   |
+| `--wui-layout-mobile-toggle-right`     | Right margin of the mobile header Toggle                                                                     | `0`                     |
+| `--wui-layout-mobile-toggle-bottom`    | Bottom margin of the mobile header Toggle                                                                    | `0`                     |
+| `--wui-layout-mobile-toggle-left`      | Left inset of the mobile header Toggle                                                                       | `8px`                   |
 | `--wui-layout-sidebar-toggle-width`    | Width of the desktop sidebar collapse toggle; the lower bound is `--wui-control-size` (36px)                 | `36px`                  |

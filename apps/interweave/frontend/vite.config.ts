@@ -54,7 +54,25 @@ export default defineConfig({
         test: {
           name: 'browser',
           include: ['src/**/*.browser.spec.ts'],
+          // 触屏仿真会翻转整个页面的 hover / pointer 媒体查询，单独成 project 拿自己的页面，
+          // 不与其他文件的 CSS hover 断言抢同一页。
+          exclude: ['src/components/library/__tests__/resource-long-press.browser.spec.ts'],
           // test-helper 补的是 jsdom 特有的 localStorage 漏洞，浏览器里有真实实现，不加载。
+          setupFiles: [],
+          browser: {
+            enabled: true,
+            headless: true,
+            provider: playwright(),
+            instances: [{ browser: 'chromium' }]
+          }
+        }
+      },
+      {
+        extends: true,
+        test: {
+          // 输入能力仿真用例独立成 project，见 browser project 的 exclude 说明。
+          name: 'browser-touch',
+          include: ['src/components/library/__tests__/resource-long-press.browser.spec.ts'],
           setupFiles: [],
           browser: {
             enabled: true,
@@ -79,6 +97,7 @@ export default defineConfig({
     // strictPort 一起给出：本包顶层 `server.host` 是 `true`（Wails dev server 要它），不显式钉
     // 回 loopback 时测试服务器会跟着绑通配地址。分配表与偏移见 docs/agents/build.md「测试端口分配」。
     testPorts({ project: 'interweave-frontend', testName: 'browser' }),
+    testPorts({ project: 'interweave-frontend-touch', testName: 'browser-touch' }),
     vueRouter(),
     vue({
       template: {

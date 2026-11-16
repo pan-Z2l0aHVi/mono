@@ -17,8 +17,9 @@ import {
   tablerClockPlus,
   tablerSortAscendingLetters
 } from '@greypan/web-ui/icons'
-import { computed, nextTick, ref, watch } from 'vue'
+import { computed, nextTick, ref } from 'vue'
 
+import { useExpandingField } from '@/composables/useExpandingField'
 import type { AvailabilityFilter, ResourceKind, SortDirection, SortOption, SourceType } from '@/stores/library'
 
 const props = defineProps<{
@@ -65,6 +66,7 @@ const emit = defineEmits<{
 }>()
 
 const searchInputRef = ref<WebUiInput>()
+const controlsRef = ref<HTMLElement>()
 const selectButtonRef = ref<HTMLElement>()
 const selectAllButtonRef = ref<HTMLElement>()
 const confirmButtonRef = ref<HTMLElement>()
@@ -90,28 +92,24 @@ function handleSelectionToggle() {
   )
 }
 
-watch(
-  () => props.searchOpen,
-  open => {
-    if (!open) return
-    void nextTick(() => searchInputRef.value?.focus())
+/*
+ * 展开/收起、焦点与 Escape 都归 useExpandingField：它自己把监听挂到这两个 ref 上，
+ * 这里只交引用，模板里不再需要绑定这些事件。
+ *
+ * 有搜索条件时不收起：条件已经在筛列表，收起搜索框会把它一起藏掉，还会顶掉右侧簇的
+ * 布局。清空条件后再离开（或按 Escape）才回到关闭态，恢复成搜索 button。
+ */
+useExpandingField({
+  field: searchInputRef,
+  controls: controlsRef,
+  close: () => {
+    if (props.searchQuery) return
+    emit('update:searchOpen', false)
   }
-)
+})
 
 function handleSearchInput(event: WebUiEvent<WebUiInput, 'input'>) {
   emit('update:searchQuery', event.target.value)
-}
-
-function handleSearchKeydown(event: KeyboardEvent) {
-  if (event.key !== 'Escape') return
-  if (event.composedPath()[0] !== searchInputRef.value?.shadowRoot?.querySelector('input')) return
-  event.preventDefault()
-  event.stopPropagation()
-  searchInputRef.value?.blur()
-}
-
-function handleSearchBlur() {
-  if (!props.searchQuery) emit('update:searchOpen', false)
 }
 
 function handleSourceChange(event: WebUiEvent<WebUiSelect, 'change'>) {
@@ -143,9 +141,15 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
 
 <template>
   <div class="w-full">
+    <!--
+      窗口拖动区是行内一层透明底：它只铺这一行自己的盒子，控件压在它上面，所以按下永远落不到
+      拖动区——空白与内边距能拖窗口，按钮与输入框不会。不再需要给控件逐个标退出（见 global.css）。
+    -->
     <div
-      class="flex gap-4 items-center px-8 py-2 mobile:px-3 mobile:pl-[calc(var(--wui-layout-mobile-toggle-inset,8px)+44px)]"
+      class="relative isolate flex gap-4 items-center px-8 py-3 mobile:px-3 mobile:pl-[calc(var(--wui-layout-mobile-toggle-left,8px)+44px)]"
     >
+      <div data-window-drag aria-hidden="true" class="absolute inset-0 -z-10" />
+
       <web-ui-button-group aria-label="页面导航" class="mobile:hidden">
         <web-ui-button icon variant="glass" aria-label="后退" :disabled="!canGoBack" @click="emit('back')">
           <web-ui-icon :icon="lucideChevronLeft" />
@@ -166,7 +170,11 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
        * max-content 贡献仍按内容算（约 206px），宽屏下拿不到 240。
        * 两者缺一，窄屏下都会退回"整组溢出被裁"。
        -->
-      <div class="flex min-w-0 gap-3 items-center ml-auto">
+      <!--
+        这一簇同时是「搜索上下文」的边界：按在里面时不收起搜索框（见 useExpandingSearch），
+        所以簇内新增控件不需要任何标记，行为自动成立。
+      -->
+      <div ref="controlsRef" class="flex min-w-0 gap-3 items-center ml-auto">
         <template v-if="!selectionMode">
           <web-ui-tooltip v-if="!(searchOpen && mobile)" content="添加资源" portal>
             <web-ui-button icon variant="primary" aria-label="添加资源" @click="emit('add')">
@@ -244,8 +252,6 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
           aria-label="搜索资源"
           class="min-w-0 w-60 [--wui-input-width:100%]"
           @input="handleSearchInput"
-          @keydown="handleSearchKeydown"
-          @focusout="handleSearchBlur"
         >
           <web-ui-icon slot="prefix" :icon="lucideSearch" />
         </web-ui-input>
@@ -264,7 +270,7 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
       <div
         id="library-filter-panel"
         slot="content"
-        class="flex flex-wrap gap-3 items-center px-8 mobile:px-3 py-2.5 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
+        class="flex flex-wrap gap-3 items-center px-8 mobile:px-3 text-sm text-[#5b5b66] dark:text-(--wui-color-text-secondary)"
       >
         <label :class="filterLabelClass">
           <web-ui-select portal :value="filterSource" class="[--wui-input-width:128px]" @change="handleSourceChange">

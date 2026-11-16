@@ -270,7 +270,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       const layout = createLayout()
       layout.mobile = true
       layout.mobileHeaderFullWidth = true
-      layout.style.setProperty('--wui-layout-mobile-toggle-inset', '96px')
+      layout.style.setProperty('--wui-layout-mobile-toggle-left', '96px')
       await layout.updateComplete
       const content = layout.querySelector<HTMLElement>('[slot="header"]')!
       const header = layout.shadowRoot!.querySelector('header')!
@@ -301,8 +301,10 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
       const layout = createLayout()
       layout.mobile = true
-      layout.style.setProperty('--wui-layout-mobile-toggle-inset', '80px')
+      layout.style.setProperty('--wui-layout-mobile-toggle-left', '80px')
       layout.style.setProperty('--wui-layout-mobile-toggle-top', '24px')
+      layout.style.setProperty('--wui-layout-mobile-toggle-right', '16px')
+      layout.style.setProperty('--wui-layout-mobile-toggle-bottom', '12px')
       syncControlledSidebarState(layout)
       await layout.updateComplete
 
@@ -310,6 +312,10 @@ describe('WebUiLayout 组件（浏览器）', () => {
       const header = layout.shadowRoot!.querySelector('header')!.getBoundingClientRect()
       expect(toggle.getBoundingClientRect().left - header.left).toBeCloseTo(80)
       expect(toggle.getBoundingClientRect().top - header.top).toBeCloseTo(24)
+      // 右侧与底部没有对齐锚点，断言的就是 token 落到对应外边距这一步。
+      const toggleStyle = getComputedStyle(toggle)
+      expect(toggleStyle.marginRight).toBe('16px')
+      expect(toggleStyle.marginBottom).toBe('12px')
 
       toggle.click()
       const drawer = queryA11y(layout, 'web-ui-drawer') as HTMLElement
@@ -652,6 +658,24 @@ describe('WebUiLayout 组件（浏览器）', () => {
       // 再读一次 getAttribute('role') 读的是选择器自己钉住的那个值。
       expect(handle.getAttribute('tabindex')).toBe('0')
       expect(handle.getAttribute('aria-orientation')).toBe('vertical')
+    })
+
+    /*
+     * 键盘焦点只由竖线表达：handle 自己不画 outline——显式 none 是必要的，只删掉
+     * outline 规则时浏览器会补上默认焦点环；同时 3px 竖线在 :focus-visible 下显形。
+     * 合成 focus() 不带键盘模态，先 Tab 建立模态（与桌面 toggle 的 focus ring 用例同手法）。
+     */
+    it('键盘聚焦只点亮竖线，不画焦点环', async () => {
+      const layout = await resizableLayout()
+      const handle = handleOf(layout)
+
+      await userEvent.tab()
+      handle.focus()
+      await waitForAnimationsToFinish([handle], 2_000)
+
+      expect(handle.matches(':focus-visible'), '需要键盘模态才算 focus-visible').toBe(true)
+      expect(getComputedStyle(handle).outlineStyle).toBe('none')
+      expect(getComputedStyle(handle, '::before').opacity).toBe('1')
     })
 
     it('键盘步进只改临时宽度，Enter 才提交一次请求', async () => {

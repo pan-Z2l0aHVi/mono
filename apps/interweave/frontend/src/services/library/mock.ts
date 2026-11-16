@@ -485,7 +485,6 @@ export function createMockLibraryRuntime(): LibraryRuntime {
 
     events: {
       onFilesDropped: () => () => {},
-      onPasteFilesRequested: () => () => {},
       onSourceAvailability: () => () => {}
     },
 
@@ -494,6 +493,10 @@ export function createMockLibraryRuntime(): LibraryRuntime {
       chooseFilePath: () => Promise.resolve(null),
       chooseDirectory: () => Promise.resolve(null),
       getClipboardFilePaths: () => Promise.resolve([]),
+
+      // 浏览器预览没有 Go 侧文本剪贴板；预览态下「粘贴为纯文本」因此给出提示而不是静默失败。
+      readClipboardText: () => Promise.reject(new Error('剪贴板文本在浏览器预览中不可用')),
+      writeClipboardText: () => Promise.reject(new Error('剪贴板文本在浏览器预览中不可用')),
 
       // 浏览器没有「系统默认应用」这个概念：返回空名，UI 回落到通用文案。
       defaultOpenWith: () => Promise.resolve(''),

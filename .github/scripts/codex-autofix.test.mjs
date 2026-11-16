@@ -126,7 +126,7 @@ for (const file of [
   'packages/web-ui/go.mod.bak',
   'packages/md-to-meta/src/index.ts',
   'apps/interweave/frontend/wails.json',
-  'docs/research/notes.md',
+  'docs/design/notes.md',
   'packages/web-ui/README.md'
 ]) {
   assert.equal(guarded()(file), null, `${file} is ordinary source that autofix may repair`)

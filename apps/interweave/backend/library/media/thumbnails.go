@@ -22,6 +22,8 @@ import (
 	_ "golang.org/x/image/bmp" // 注册 bmp 解码器
 	"golang.org/x/image/draw"
 	_ "golang.org/x/image/tiff" // 注册 tiff 解码器
+
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/internal/atomicfile"
 )
 
 // ThumbnailPathPrefix 是 Source 缩略图的 AssetServer 路由前缀：GET/HEAD 读取，POST 回填。
@@ -197,25 +199,9 @@ func (t *ThumbnailStore) serveFile(w http.ResponseWriter, r *http.Request, path 
 // writeAtomically 先写同目录临时文件再 rename：并发生成同一版本时最后写入者胜出，
 // 读侧永远见到完整的 JPEG。
 func writeAtomically(target string, data []byte) error {
-	tmp, err := os.CreateTemp(filepath.Dir(target), ".thumbnail-*")
-	if err != nil {
-		return err
-	}
-	tmpName := tmp.Name()
-	if _, err := tmp.Write(data); err != nil {
-		tmp.Close()
-		os.Remove(tmpName)
-		return err
-	}
-	if err := tmp.Close(); err != nil {
-		os.Remove(tmpName)
-		return err
-	}
-	if err := os.Rename(tmpName, target); err != nil {
-		os.Remove(tmpName)
-		return err
-	}
-	return nil
+	// 0o600：缩略图是用户图片的派生数据，数据目录可能对其他账号可遍历；
+	// 沿用临时文件的 owner-only 默认权限，不给组与其他用户读权限。
+	return atomicfile.WriteFile(target, data, 0o600)
 }
 
 // buildThumbnail 解码原文件并产出缩略图字节。格式不受支持时返回 ErrUnsupportedThumbnail。

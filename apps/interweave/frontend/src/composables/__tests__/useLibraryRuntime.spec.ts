@@ -108,7 +108,6 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
     },
     events: {
       onFilesDropped: () => () => {},
-      onPasteFilesRequested: () => () => {},
       onSourceAvailability: () => () => {},
       ...overrides.events
     },
@@ -117,6 +116,8 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       chooseFilePaths: async () => [],
       chooseFilePath: async () => null,
       getClipboardFilePaths: async () => [],
+      readClipboardText: async () => '',
+      writeClipboardText: async () => {},
       defaultOpenWith: async () => '',
       showInFileManager: async () => {},
       openExternal: async () => {},

@@ -107,7 +107,7 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
         ? 'bg-[#1b1b20]/8 dark:bg-white/12'
         : active
           ? 'bg-[#1b1b20]/8 dark:bg-white/12'
-          : 'hover:bg-[#1b1b20]/3.5 dark:hover:bg-white/5',
+          : 'hover:bg-[#1b1b20]/[3.5%] dark:hover:bg-white/5',
       resource.available ? '' : '[&>div]:opacity-60'
     ]"
     data-resource-row

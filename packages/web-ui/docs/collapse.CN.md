@@ -1220,6 +1220,8 @@ function removeRow() {
 
 挂载时已经带 `open` attribute 的面板直接显示展开状态，不播放进入动画；之后的变化才有过渡。展开高度始终由内容决定，内容变高或变矮时，面板随之伸缩。
 
+完全展开且动画结束后，内容区不再裁剪（`overflow: visible`）：此时折叠区就是个普通容器，内容的焦点环、投影与必要的横向溢出都会照常显示。动画进行中与收起态仍然裁剪——否则内容会从还没长开的窗口里溢出去。
+
 时长取 `--wui-duration-collapse-enter` / `--wui-duration-collapse-exit`（200ms / 160ms，由 `<web-ui-theme>` 定义）；主题 `motion="reduced"` 或系统 `prefers-reduced-motion` 下不播放动画，直接进入最终状态。
 
 `open-change` 只在用户手势后派发（带有 `bubbles` 和 `composed`）；`show()` / `close()` / `toggle()` 与直接写 `open` 都不派发事件。

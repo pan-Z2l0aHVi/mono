@@ -355,7 +355,7 @@ export default function Demo() {
     <div className="h-[240px] w-full overflow-hidden rounded-lg border border-(--wui-color-border) [--wui-layout-viewport-height:240px]">
       <web-ui-layout
         mobile
-        style={{ '--wui-layout-mobile-toggle-inset': '24px', '--wui-layout-mobile-toggle-top': '16px' }}
+        style={{ '--wui-layout-mobile-toggle-left': '24px', '--wui-layout-mobile-toggle-top': '16px' }}
         sidebarOpen={open}
         onsidebar-open-change={event => setOpen(event.detail.open)}
       >
@@ -374,7 +374,7 @@ export default function Demo() {
   >
     <web-ui-layout
       :mobile="true"
-      style="--wui-layout-mobile-toggle-inset: 24px; --wui-layout-mobile-toggle-top: 16px"
+      style="--wui-layout-mobile-toggle-left: 24px; --wui-layout-mobile-toggle-top: 16px"
       :sidebarOpen="open"
       @sidebar-open-change="open = $event.detail.open"
     >
@@ -448,11 +448,11 @@ const open = ref(false)
 
 ### 侧边栏调整宽度
 
-启用 `sidebar-resizable` 后，桌面端侧边栏右边缘会出现宽度调整手柄（收起状态下隐藏）；悬停或拖拽时显示 3px 宽的强调色垂直线和 `col-resize` 光标。
+启用 `sidebar-resizable` 后，桌面端侧边栏右边缘会出现宽度调整手柄（收起状态下隐藏）；悬停、键盘聚焦或拖拽时显示 3px 宽的强调色垂直线和 `col-resize` 光标。
 
 - 拖拽时实时更新宽度（禁止过渡动画，限制在 `[min, max]` 和视口范围内）。
 - 释放时触发 `sidebar-width-change` 事件并携带最终像素宽度，调用方回写后宽度重新由 `sidebar-width` 属性接管。`pointercancel` 会恢复属性控制的宽度，且不触发事件。
-- 键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回未提交的调整。
+- 键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回未提交的调整。键盘焦点只用那条垂直线标示，不画焦点环。
 - 移动端抽屉始终通过其内置 `draggable` 抽屉支持拖拽关闭，并启用 `page-shift`。打开时整页朝抽屉的进场方向（向右）移动 `16vw`，拖拽期间页面不跟手，关闭后归位。
 
 ### 行为说明
@@ -493,7 +493,7 @@ const open = ref(false)
 
 移动端抽屉的宽度跟随 `sidebar-width`，圆角跟随 `--wui-layout-sidebar-radius`。
 
-移动端开关以玻璃变体位于头部行内。其左缩进默认 `8px`，可通过 `--wui-layout-mobile-toggle-inset` 与调用方自身的头部内边距对齐。
+移动端开关以玻璃变体位于头部行内。四个方向各有一个偏移 token，左、上默认 `8px`，右、下默认 `0`；用它们把开关与调用方自身的头部内边距对齐。
 
 `header-glow` 会在头部插槽内容和移动端开关的背后添加 `pointer-events: none` 的装饰性晕染。它属于头部背景层，不在前景层，因此插槽内容始终位于其上方。
 
@@ -527,6 +527,8 @@ const open = ref(false)
 | `--wui-layout-sidebar-padding-top`     | 侧边栏卡片上方间距（桌面及移动端）                              | `--wui-space-2`（`8px`） |
 | `--wui-layout-sidebar-padding-left`    | 侧边栏卡片左侧间距（桌面及移动端）                              | `--wui-space-2`（`8px`） |
 | `--wui-layout-sidebar-padding-bottom`  | 侧边栏卡片下方间距（桌面及移动端）                              | `--wui-space-2`（`8px`） |
-| `--wui-layout-mobile-toggle-inset`     | 移动端头部开关的左缩进                                          | `8px`                    |
 | `--wui-layout-mobile-toggle-top`       | 移动端头部开关的上边距                                          | `8px`                    |
+| `--wui-layout-mobile-toggle-right`     | 移动端头部开关的右边距                                          | `0`                      |
+| `--wui-layout-mobile-toggle-bottom`    | 移动端头部开关的下边距                                          | `0`                      |
+| `--wui-layout-mobile-toggle-left`      | 移动端头部开关的左缩进                                          | `8px`                    |
 | `--wui-layout-sidebar-toggle-width`    | 桌面端侧边栏收起按钮的宽度，下限为 `--wui-control-size`（36px） | `36px`                   |

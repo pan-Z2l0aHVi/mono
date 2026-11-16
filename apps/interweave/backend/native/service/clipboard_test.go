@@ -1,6 +1,7 @@
 package service
 
 import (
+	"context"
 	"os"
 	"path/filepath"
 	"runtime"
@@ -65,5 +66,25 @@ func TestDecodeUTF16BufferStopsAtTerminator(t *testing.T) {
 	}
 	if actual := decodeUTF16Buffer(buffer); actual != longPath {
 		t.Fatalf("expected first terminated path %q, got %q", longPath, actual)
+	}
+}
+
+// 空串写剪贴板是 no-op：调用方在没有内容可写时就该跳过，这里再清一次是破坏性副作用。
+func TestWriteClipboardTextIgnoresEmptyText(t *testing.T) {
+	if err := NewOSService().WriteClipboardText(context.Background(), ""); err != nil {
+		t.Fatalf("expected empty text to be a no-op, got %v", err)
+	}
+}
+
+// 取消后的请求不触碰系统剪贴板。
+func TestClipboardTextHonoursCancellation(t *testing.T) {
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	service := NewOSService()
+	if _, err := service.ReadClipboardText(ctx); err == nil {
+		t.Fatal("expected a cancelled read to fail")
+	}
+	if err := service.WriteClipboardText(ctx, "text"); err == nil {
+		t.Fatal("expected a cancelled write to fail")
 	}
 }

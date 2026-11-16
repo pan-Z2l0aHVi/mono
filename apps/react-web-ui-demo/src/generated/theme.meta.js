@@ -311,7 +311,7 @@ const meta = [
     children: [
     { label: 'li', content: "<code>--wui-image-preview-edge-gap</code>" },
     { label: 'li', content: "<code>--wui-toast-viewport-gap</code>" },
-    { label: 'li', content: "<code>--wui-layout-mobile-toggle-inset</code>" },
+    { label: 'li', content: "<code>--wui-layout-mobile-toggle-left</code>" },
     { label: 'li', content: "<code>--wui-back-top-right</code> / <code>--wui-back-top-left</code> / <code>--wui-back-top-bottom</code>" },
     { label: 'li', content: "<code>--wui-drawer-inset</code>" },
     { label: 'li', content: "<code>--wui-drawer-close-right</code>" }

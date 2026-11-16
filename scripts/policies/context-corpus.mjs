@@ -36,7 +36,8 @@ export const contextCorpus = defineContextCorpus({
   workspaces: readPnpmWorkspaceDirectories(repoRoot),
   // 哪些容器目录放应用是语义划分，`pnpm-workspace.yaml` 里没有这一层，只能手写。
   applicationDirs: ['apps'],
-  referenceDirs: ['docs/research', 'docs/design'],
+  // 时点性研究与方案草稿不入库（见 .gitignore），只剩设计资产需要非权威标记。
+  referenceDirs: ['docs/design'],
   requiredScripts: ['check-context', 'check-pack', 'test-scripts'],
   clientPermissions: '.claude/settings.local.json',
   sessionRoles: '.claude/agents',

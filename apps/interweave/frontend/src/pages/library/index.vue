@@ -23,6 +23,15 @@ import {
 } from '@/components/library/restore'
 import RestoreDialog from '@/components/library/RestoreDialog.vue'
 import Toolbar from '@/components/library/Toolbar.vue'
+import {
+  MENU_ADD_RESOURCE_EVENT,
+  MENU_FOCUS_SEARCH_EVENT,
+  MENU_IMPORT_FROM_CLIPBOARD_EVENT,
+  MENU_IMPORT_FROM_LINK_EVENT,
+  MENU_REFRESH_EVENT,
+  MENU_TOGGLE_FILTER_BAR_EVENT,
+  onMenuAction
+} from '@/composables/menuActions'
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLayoutMobile } from '@/composables/useLayoutMobile'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
@@ -30,7 +39,7 @@ import { useLibrarySelection } from '@/composables/useLibrarySelection'
 import { pendingWindowFileDrops } from '@/composables/windowFileDrop'
 import type { LibraryQueueItem } from '@/services/library'
 import { userMessage } from '@/services/library/userMessage'
-import { hasWailsRuntime } from '@/services/library/wails'
+import { hasWailsRuntime } from '@/services/runtime'
 import { useLibraryStore } from '@/stores/library'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
@@ -101,6 +110,8 @@ const confirmError = ref('')
 const resourceListRef = ref<InstanceType<typeof ResourceList>>()
 let pendingDeleteFocus: number | null = null
 const addError = ref('')
+/** 菜单「导入来自 › 链接」要把 AddDialog 直接翻到链接输入，因此保留组件引用。 */
+const addDialogRef = ref<InstanceType<typeof AddDialog> | null>(null)
 watch(
   pendingWindowFileDrops,
   batches => {
@@ -112,16 +123,39 @@ watch(
   },
   { immediate: true }
 )
-const stopPasteFileRequest = runtime.events.onPasteFilesRequested(() => {
-  addOpen.value = true
-  void pasteFilePaths()
-})
 const stopSourceAvailability = runtime.events.onSourceAvailability(event => {
   store.applySourceAvailability(event.source_id, event.available, event.size_bytes)
 })
+
+/*
+ * 菜单里落在资源库页上的动作。壳层负责切路由，页面负责执行领域逻辑：
+ * 开添加对话框、从剪贴板或链接导入、重新读库（可用性由后端监听维护，重读即拿到最新状态）、
+ * 翻开筛选栏与聚焦搜索。
+ */
+const stopMenuActions = [
+  onMenuAction(MENU_ADD_RESOURCE_EVENT, openAddDialog),
+  onMenuAction(MENU_IMPORT_FROM_CLIPBOARD_EVENT, () => {
+    addOpen.value = true
+    void pasteFilePaths()
+  }),
+  onMenuAction(MENU_IMPORT_FROM_LINK_EVENT, openAddLinkDialog),
+  onMenuAction(MENU_REFRESH_EVENT, () => {
+    void loadResources().catch(() => {
+      // 错误由 runtimeError 呈现，列表保持当前内容。
+    })
+  }),
+  onMenuAction(MENU_TOGGLE_FILTER_BAR_EVENT, () => {
+    // 「切换」名副其实：开着就收起。单向展开会让菜单项在筛选栏已开时看起来毫无反应。
+    filterOpen.value = !filterOpen.value
+  }),
+  onMenuAction(MENU_FOCUS_SEARCH_EVENT, () => {
+    searchOpen.value = true
+  })
+]
+
 onScopeDispose(() => {
-  stopPasteFileRequest()
   stopSourceAvailability()
+  stopMenuActions.forEach(stop => stop())
   void addQueue.close()
 })
 
@@ -363,6 +397,19 @@ function takeOperationError(cause: unknown, fallback: string) {
 function openAddDialog() {
   addError.value = ''
   addOpen.value = true
+}
+
+/*
+ * 「导入来自 › 链接」打开添加对话框并直接翻开链接输入。
+ *
+ * 用户已经声明了要从链接导入，不该再让他在对话框里点一次「添加链接」；仍然保留外层
+ * 对话框，是因为链接提交后它会被并入同一个待添加队列，用户还能在提交前改名称与标签。
+ */
+function openAddLinkDialog() {
+  openAddDialog()
+  // 同步调用是安全的：AddDialog 的 open watch 复位的是它自己的子面板状态，
+  // 而 openLinkDialog 写的是同一个 ref，后写的这一次才是用户要的结果。
+  addDialogRef.value?.openLinkDialog()
 }
 
 function setAddOpen(open: boolean) {
@@ -685,6 +732,7 @@ onMounted(() => {
   </div>
 
   <AddDialog
+    ref="addDialogRef"
     :open="addOpen"
     :queue="queue"
     :busy="submitting"

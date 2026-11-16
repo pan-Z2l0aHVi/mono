@@ -28,9 +28,17 @@ export function PressDrawIcon({ children }: { children: ReactNode }) {
           { duration: 420, easing: 'cubic-bezier(.23,1,.32,1)' }
         )
       }
-      queueMicrotask(async () => {
-        await Promise.all([...el.querySelectorAll<WebUiIcon>('web-ui-icon')].map(icon => icon.updateComplete))
-        if (el.isConnected) void el.replay()
+      /*
+       * 点击可能同时换掉 light DOM 里的 icon（复制成功把复制图标换成对勾）。replay 收集的是
+       * 当下的几何，必须等宿主提交之后再跑：release 里的 microtask 早于 React 处理外部
+       * store 的提交，会画在即将被替换的旧 icon 上，新 icon 就整段没有描边。下一帧再收集，
+       * 新 icon 已经挂上；`updateComplete` 等它自己的 shadow SVG 就位。
+       */
+      requestAnimationFrame(() => {
+        void (async () => {
+          await Promise.all([...el.querySelectorAll<WebUiIcon>('web-ui-icon')].map(icon => icon.updateComplete))
+          if (el.isConnected) void el.replay()
+        })()
       })
     }
     trigger?.addEventListener('pointerdown', press)

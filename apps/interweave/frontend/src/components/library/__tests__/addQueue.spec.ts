@@ -73,7 +73,6 @@ function createRuntime(
     media: { saveThumbnail: async () => {} },
     events: {
       onFilesDropped: () => () => {},
-      onPasteFilesRequested: () => () => {},
       onSourceAvailability: () => () => {}
     },
     system: {
@@ -81,6 +80,8 @@ function createRuntime(
       chooseFilePaths: async () => [],
       chooseFilePath: async () => null,
       getClipboardFilePaths: async () => [],
+      readClipboardText: async () => '',
+      writeClipboardText: async () => {},
       defaultOpenWith: async () => {
         throw new Error('未使用')
       },

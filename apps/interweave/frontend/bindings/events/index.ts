@@ -14,12 +14,17 @@ import "../github.com/wailsapp/wails/v3/internal/eventcreate.js";
 export const LibraryFilesDropped = "library:files-dropped";
 
 /**
- * Name of the custom event "library:paste-files-requested".
- */
-export const LibraryPasteFilesRequested = "library:paste-files-requested";
-
-/**
  * Name of the custom event "library:source-availability-changed".
  */
 export const LibrarySourceAvailabilityChanged = "library:source-availability-changed";
+
+/**
+ * Name of the custom event "menu:command".
+ */
+export const MenuCommand = "menu:command";
+
+/**
+ * Name of the custom event "settings:changed".
+ */
+export const SettingsChanged = "settings:changed";
 

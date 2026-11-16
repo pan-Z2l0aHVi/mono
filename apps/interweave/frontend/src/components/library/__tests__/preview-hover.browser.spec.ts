@@ -58,6 +58,23 @@ describe('失效资源预览操作', () => {
         const origin = button.getBoundingClientRect().left
         return [text.getBoundingClientRect().left - origin, icon.getBoundingClientRect().left - origin]
       }
+      /*
+       * 悬停反馈是过渡：指针动作返回时首帧样式可能还没落定，等一个可观察位置再断言，
+       * 不赌固定时长。超时信息带上 :hover 与 media，区分「过渡没开始」与「hover 没命中」。
+       */
+      const waitForPositions = async (
+        expected: (current: [number, number]) => boolean,
+        label: string
+      ): Promise<void> => {
+        for (let frame = 0; frame < 300; frame++) {
+          if (expected(positions() as [number, number])) return
+          await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+        }
+        throw new Error(
+          `300 帧内未满足：${label}（:hover=${button.matches(':hover')}，` +
+            `hover media=${matchMedia('(hover: hover)').matches}）`
+        )
+      }
       const drawer = host.querySelector('web-ui-drawer')!
       const panel = drawer.shadowRoot!.querySelector('dialog')!
       for (let frame = 0; !panel.open && frame < 300; frame++)
@@ -73,6 +90,10 @@ describe('失效资源预览操作', () => {
       await settle()
       const initial = positions()
       await userEvent.hover(button)
+      await waitForPositions(
+        ([textLeft, iconLeft]) => textLeft > initial[0] && iconLeft < initial[1],
+        '悬停后文字与箭头应相互靠近'
+      )
       await settle()
       expect(button.matches(':hover')).toBe(true)
       expect(matchMedia('(hover: hover)').matches).toBe(true)
@@ -81,6 +102,10 @@ describe('失效资源预览操作', () => {
       expect(hovered[0]).toBeGreaterThan(initial[0])
       expect(hovered[1]).toBeLessThan(initial[1])
       await userEvent.hover(host.querySelector<HTMLElement>('web-ui-empty > web-ui-icon[slot=icon]')!)
+      await waitForPositions(
+        ([textLeft, iconLeft]) => Math.abs(textLeft - initial[0]) < 0.5 && Math.abs(iconLeft - initial[1]) < 0.5,
+        '离开后文字与箭头应复原'
+      )
       await settle()
       const restored = positions()
       expect(Math.abs(restored[0] - initial[0])).toBeLessThan(0.5)

@@ -5,12 +5,13 @@
 ## 导航
 
 - Go Wails host 入口是 [`main.go`](./main.go)，后端能力边界在 [`backend/`](./backend/)，前端集成在 [`frontend/src/`](./frontend/src/)。
-- [`backend/library/`](./backend/library/) 拥有 Resource、Source、语义标签、Map 与其本地持久化；[`backend/native/`](./backend/native/) 拥有受控的 OS 能力；[`backend/remote/`](./backend/remote/) 仅供 Go 发起出站 HTTP；[`backend/internal/`](./backend/internal/) 只放跨后端模块复用的工具。
+- [`backend/library/`](./backend/library/) 拥有 Resource、Source、语义标签、Map 与其本地持久化；[`backend/native/`](./backend/native/) 拥有受控的 OS 能力；[`backend/settings/`](./backend/settings/) 拥有应用设置的类型、校验与持久化；[`backend/remote/`](./backend/remote/) 仅供 Go 发起出站 HTTP；[`backend/internal/`](./backend/internal/) 只放跨后端模块复用的工具。
+- 顶部菜单的形状定义在 [`backend/native/menu/`](./backend/native/menu/)（`Describe` 是纯数据，`Build` 物化成 Wails 菜单），跨端命令契约与菜单可用性上报在 [`backend/menu/`](./backend/menu/)。点击只发 `menu:command` 事件，由前端分发；`backend/menu` 注册的 Service 只有 `ReportDisabledCommands`——禁用集合是菜单的呈现状态，不落盘，不属于 settings。
 - 前端保留模块边界，即 [`frontend/src/`](./frontend/src/) 下的 [`components/`](./frontend/src/components/)、[`pages/`](./frontend/src/pages/)、[`stores/`](./frontend/src/stores/)、[`composables/`](./frontend/src/composables/) 和 [`services/`](./frontend/src/services/)，以及由 `vue-router/vite` 从 [`frontend/src/pages/`](./frontend/src/pages/) 生成的 file-based 路由表。
 - 应用壳只有一套：[`frontend/src/components/AppLayout.vue`](./frontend/src/components/AppLayout.vue) 独占 `web-ui-layout` 与 [`frontend/src/components/AppNav.vue`](./frontend/src/components/AppNav.vue)，`RouterView` 只往默认 slot 换页面内容。
 - 页面需要顶部工具条时，在多根 fragment 的根节点上写 `slot="header"`，不要自带 `web-ui-layout`，也不要在模板里按 route meta 分叉壳。分叉会让切路由重建 sidebar，掐断正在播放的 icon 画线动画。
 - 页面是否已实现以 [`frontend/src/pages/`](./frontend/src/pages/) 下的当前代码为准；未实现页面用 `web-ui-empty` 占位。
-- 不保留泛化的 `@api/*` 或 `@bindings/*` alias。第一个公开 Service 生成后，再按实际生成路径只为 `library` 或 `native` 建立显式 alias。
+- 不保留泛化的 `@api/*` 或 `@bindings/*` alias。第一个公开 Service 生成后，再按实际生成路径只为 `library`、`native` 或 `settings` 建立显式 alias。
 
 ## 领域与产品边界
 
@@ -63,7 +64,9 @@ _Avoid_: 文件树、画布编辑器、关系连线器、资源容器
 
 ## Wails Service 与 bindings allowlist
 
-- 只有 `library` 与 `native` 可注册 Wails Service 并生成、消费 Interweave Go Service bindings。`remote` 与 `internal` 禁止注册 Wails Service，也不得被前端直接调用或消费其 bindings。Wails runtime bindings 不属于此业务 allowlist。
+- 只有 `library`、`native` 与 `settings` 可注册 Wails Service 并生成、消费 Interweave Go Service bindings。`remote` 与 `internal` 禁止注册 Wails Service，也不得被前端直接调用或消费其 bindings。Wails runtime bindings 不属于此业务 allowlist。
+- `backend/menu/` 拥有事件名、命令契约与菜单可用性 Service（`ReportDisabledCommands`），`backend/native/menu/` 只被 `main.go` 装配、不注册 Service。菜单的形状与置灰由 Go 拥有，前端唯一能做的调用是上报当前不可用的命令集合。
+- 菜单命令的前端分发在 [`frontend/src/services/menu/index.ts`](./frontend/src/services/menu/index.ts)，可用性上报在 [`frontend/src/services/menu/state.ts`](./frontend/src/services/menu/state.ts)；纯文本剪贴板的前端动作在 [`frontend/src/composables/plainTextClipboard.ts`](./frontend/src/composables/plainTextClipboard.ts)。
 - [`frontend/bindings/`](./frontend/bindings/) 是生成目录，不手工编辑。公开 Go API 变更后运行 `pnpm exec turbo build --filter=@greypan/interweave-frontend` 生成 bindings，并核对生成 diff 与前端类型检查。
 
 ## 修改指南
@@ -72,3 +75,8 @@ _Avoid_: 文件树、画布编辑器、关系连线器、资源容器
 - 修改 Go/Wails API 时，先查 Wails 3 官方文档，再核对 Go 测试、frontend bindings 和消费端调用。公开 API 变更遵循上文 allowlist 与生成边界。
 - 文件选择等可取消操作应明确取消语义。class-mode bindings 已将顶层 Wails slice 返回值规范化为非 nullable 数组，前端应消费生成类型而不重复添加 `?? []`。仅 DTO 中仍为可选或 nullable 的字段按其生成类型处理，且不得手改生成 bindings。
 - 修改前端页面、store、组件或交互时，按 [`docs/agents/runtime-verification.md`](../../docs/agents/runtime-verification.md) 在真实 Wails/浏览器集成表面验证。
+- 工具条里展开式字段（搜索框、筛选字段等）的开关策略（按在「字段上下文」容器里不收起、簇内点击后把焦点交还字段、被弹层接管焦点时让位）在 [`frontend/src/composables/useExpandingField.ts`](./frontend/src/composables/useExpandingField.ts)。页面的 header 需要同样行为时，把字段与容器 ref 交给它；判据只用 ref 与 `document.activeElement`，不要在组件里按 `closest('web-ui-…')` 枚举组件类型——header 里的控件会随页面变化。
+
+- 平台、flags 与 bindings 都要在 runtime core 注入之后才读：Go 侧在 `WebViewDidFinishNavigation` 之后才注入 `window._wails`，早于它的 setup 调用读到的是空值。启动序在挂载前等 `waitForRuntimeConfig()`（[`frontend/src/services/runtime.ts`](./frontend/src/services/runtime.ts)，判据与事件名都只有这一份），所以壳里可以一次性取平台；不要改成「先渲染再补」的响应式重读。
+- 界面缩放的档位（90/100/110/120）是 [`backend/settings/`](./backend/settings/) 拥有的一项设置，菜单与设置面板都只改档位：菜单走 service 的 `ZoomIn` / `ZoomOut` / `ZoomReset`，面板走 `UpdateSettings`。窗口缩放只由前端按快照调 `Window.SetZoom`（[`frontend/src/App.vue`](./frontend/src/App.vue)），不要在 Go 里直接调 `window.ZoomIn/Out/Reset`，也不要在前端另存一份档位。
+- 窗口拖动区按元素声明，不按坐标：`data-window-drag` 必须挂在**与控件同级**的一层透明底上（`absolute inset-0 -z-10`），只铺容器里没人占的空白；不要给容器挂标记再让控件退出——`--wails-draggable` 会被继承。规则在 [`frontend/src/assets/global.css`](./frontend/src/assets/global.css)。现有两处拖动区是资源库工具条行内的透明底与 macOS 侧栏顶部给红绿灯留的 48px 区；页面若要自己的 header 参与拖动，就在里面加一层同样的底，不要在窗口选项里用 `Mac.InvisibleTitleBarHeight`——它按 y 坐标命中整条带子，会把 header 上的按钮一并变成拖窗口。

@@ -15,6 +15,19 @@ function press() {
 function cancel() {
   if (lines.value) lines.value.style.transform = ''
 }
+/*
+ * 点击可能同时换掉 light DOM 里的 icon。replay 收集的是当下的几何，必须等宿主提交之后再跑：
+ * 同一次点击里先排队的 microtask 可能还早于框架的提交，会画在即将被替换的旧 icon 上。
+ * 下一帧再收集，新 icon 已经挂上；`updateComplete` 等它自己的 shadow SVG 就位。
+ */
+function replayNextFrame(el: WebUiSvgDrawLines) {
+  requestAnimationFrame(() => {
+    void (async () => {
+      await Promise.all([...el.querySelectorAll<WebUiIcon>('web-ui-icon')].map(icon => icon.updateComplete))
+      if (el.isConnected) void el.replay()
+    })()
+  })
+}
 function release() {
   const el = lines.value
   if (!el) return
@@ -27,10 +40,7 @@ function release() {
       { duration: 420, easing: 'cubic-bezier(.23,1,.32,1)' }
     )
   }
-  queueMicrotask(async () => {
-    await Promise.all([...el.querySelectorAll<WebUiIcon>('web-ui-icon')].map(icon => icon.updateComplete))
-    if (el.isConnected) void el.replay()
-  })
+  replayNextFrame(el)
 }
 onMounted(() => {
   trigger = lines.value?.closest('button,web-ui-button') ?? null

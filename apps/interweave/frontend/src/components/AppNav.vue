@@ -21,13 +21,13 @@ const navItems = [
   { key: 'map', label: '关系图谱', path: '/map', icon: lucideLayoutGrid }
 ] as const
 
+/*
+ * 底色不参与过渡：hover / active / selected 之间直接切换。不写 transition-all 也是这个
+ * 理由的延伸——ring 由 global.css 绘制，outline-color 的初始计算值是 currentcolor，
+ * 全属性过渡会把它从深色文字色补间到浅蓝，Tab 过去时边缘先黑一下再变蓝。
+ */
 const navItemClass =
-  /*
-   * 过渡只列 background-color，不写 transition-all：ring 由 global.css 绘制，而
-   * outline-color 的初始计算值是 currentcolor。transition-all 会把它从深色文字色
-   * 补间到浅蓝，Tab 过去时边缘先黑一下再变蓝。
-   */
-  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left transition-[background-color] duration-(--wui-duration-trigger) text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(27_27_48/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_95%,#1b1b30)] dark:data-[active=true]:bg-(--wui-color-surface-control,#e5e5eb) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_90%,#1b1b30)] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_70%,#1b1b30)] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_90%,var(--wui-color-text,#1b1b20))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_70%,var(--wui-color-text,#1b1b20))]'
+  'flex items-center gap-2 w-full min-w-9 min-h-9 px-2.5 border-0 rounded-full cursor-pointer text-left text-(--wui-color-text) [--wui-icon-color:var(--wui-color-accent,#08f)] active:bg-[rgb(27_27_48/0.12)] dark:active:bg-white/15 data-[active=true]:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_95%,#1b1b30)] dark:data-[active=true]:bg-(--wui-color-surface-control,#e5e5eb) data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_90%,#1b1b30)] data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_70%,#1b1b30)] dark:data-[active=true]:hover:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_90%,var(--wui-color-text,#1b1b20))] dark:data-[active=true]:active:bg-[color-mix(in_srgb,var(--wui-color-surface-control,#e5e5eb)_70%,var(--wui-color-text,#1b1b20))]'
 
 function selectNav(item: (typeof navItems)[number]) {
   emit('navigate', item.key)

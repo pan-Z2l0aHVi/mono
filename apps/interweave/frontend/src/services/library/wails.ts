@@ -1,10 +1,6 @@
 import { Dialogs, Events } from '@wailsio/runtime'
 
-import {
-  LibraryFilesDropped,
-  LibraryPasteFilesRequested,
-  LibrarySourceAvailabilityChanged
-} from '../../../bindings/events'
+import { LibraryFilesDropped, LibrarySourceAvailabilityChanged } from '../../../bindings/events'
 import {
   ResourceService,
   SourceService,
@@ -13,6 +9,7 @@ import {
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import type { SourceType } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import { OSService } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service'
+import { hasWailsRuntime } from '../runtime'
 
 import {
   isSourceAvailabilityEvent,
@@ -98,10 +95,6 @@ class WailsLibraryRuntime implements LibraryRuntime {
         }
       })
     },
-    onPasteFilesRequested: (listener: () => void) => {
-      if (!this.isAvailable) return () => {}
-      return Events.On(LibraryPasteFilesRequested, listener)
-    },
     onSourceAvailability: (listener: (event: SourceAvailabilityEventDTO) => void) => {
       if (!this.isAvailable) return () => {}
       return Events.On(LibrarySourceAvailabilityChanged, event => {
@@ -142,6 +135,10 @@ class WailsLibraryRuntime implements LibraryRuntime {
       return selected ?? null
     },
     getClipboardFilePaths: () => OSService.GetClipboardFilePaths(),
+    readClipboardText: () => OSService.ReadClipboardText(),
+    writeClipboardText: async (text: string) => {
+      await OSService.WriteClipboardText(text)
+    },
     defaultOpenWith: (target: string) => OSService.DefaultOpenWith(target),
     showInFileManager: async (path: string) => {
       await OSService.ShowInFileManager(path)
@@ -150,21 +147,6 @@ class WailsLibraryRuntime implements LibraryRuntime {
       await OSService.OpenExternal(target)
     }
   }
-}
-
-interface WailsWindow {
-  _wails?: {
-    environment?: {
-      OS?: string
-      Arch?: string
-    }
-  }
-}
-
-export function hasWailsRuntime(): boolean {
-  if (typeof window === 'undefined') return false
-  const environment = (window as Window & WailsWindow)._wails?.environment
-  return typeof environment?.OS === 'string' && typeof environment.Arch === 'string'
 }
 
 export function createWailsLibraryRuntime(): LibraryRuntime {

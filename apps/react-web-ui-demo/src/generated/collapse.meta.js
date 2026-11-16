@@ -220,6 +220,7 @@ const meta = [
   },
   { label: 'h3', id: 'section-21', content: "Behavior" },
   { label: 'p', content: "A panel mounted with the <code>open</code> attribute shows the expanded state directly and plays no enter animation. Only later changes go through the transition. The expanded height is always decided by the content; when the content grows or shrinks, the panel grows or shrinks with it." },
+  { label: 'p', content: "Once fully expanded and the transition has finished, the content area no longer clips (<code>overflow: visible</code>): the panel then behaves like a plain container, so focus rings, shadows and intentional horizontal overflow stay visible. While a transition is running, or while collapsed, it still clips — otherwise content would spill out of a box that has not finished growing." },
   { label: 'p', content: "Durations come from <code>--wui-duration-collapse-enter</code> / <code>--wui-duration-collapse-exit</code> (200ms / 160ms, defined by <code>&lt;web-ui-theme></code>). With theme <code>motion=\"reduced\"</code> or the system <code>prefers-reduced-motion</code>, no animation plays and the panel goes straight to the final state." },
   { label: 'p', content: "<code>open-change</code> is dispatched only after a user gesture (<code>bubbles</code> and <code>composed</code>). <code>show()</code> / <code>close()</code> / <code>toggle()</code> and writing <code>open</code> directly are all silent." },
   { label: 'p', content: "Not writing it back will not revert the value, but the page state then disagrees with the panel." },

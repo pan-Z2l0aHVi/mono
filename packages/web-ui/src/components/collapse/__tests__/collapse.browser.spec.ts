@@ -48,6 +48,29 @@ afterEach(() => document.body.replaceChildren())
  * 本文件只保留浏览器里才能观察到的契约：真实的过渡生命周期（中断/续接/落稳态）、
  * 真实布局下的内容挂载与滚动位置、真实焦点归宿、真实 inert 阻断。
  */
+/*
+ * 内容区在展开动画结束后不再裁剪：稳定展开时行高就等于内容高度，overflow: hidden 只会
+ * 顺手切掉内容自己的焦环、投影和横向溢出。动画期间必须继续裁剪，所以判据是「已落稳态」。
+ */
+describe('WebUiCollapse 内容区裁剪', () => {
+  it('展开动画结束后放开裁剪，动画期间与收起时仍然裁剪', async () => {
+    const el = createCollapse('<button class="trigger">Trigger</button><div slot="content">Content</div>')
+    await el.updateComplete
+
+    el.open = true
+    await el.updateComplete
+    // 动画开始那一帧起 track 还在长，内容必须被裁——此时不能放开。
+    expect(getComputedStyle(queryInner(el)).overflow).toBe('hidden')
+
+    await settle(el)
+    expect(getComputedStyle(queryInner(el)).overflow).toBe('visible')
+
+    el.open = false
+    await el.updateComplete
+    expect(getComputedStyle(queryInner(el)).overflow).toBe('hidden')
+  })
+})
+
 describe('WebUiCollapse 组件（浏览器）', () => {
   it('web-ui-button trigger 的开合状态出现在可访问 button 上', async () => {
     const el = createCollapse('<web-ui-button>Trigger</web-ui-button><div slot="content">Content</div>')

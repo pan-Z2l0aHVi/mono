@@ -135,7 +135,7 @@ function updateMeasurementText(target: Element, text: string): void {
  *
  * 被丢掉的是中间那段，因此**选中复制拿到的是屏幕上这串**，不是原文；原文经 `title` 暴露，
  * 悬停可见。这条与 CSS 的 `text-overflow` 不同（那里文本节点没被动过、复制得到全文），是
- * JS 方案绕不开的代价，见 docs/research/web-ui-middle-ellipsis-261007.md。
+ * JS 方案绕不开的代价。
  */
 @customElement('web-ui-middle-ellipsis')
 export class WebUiMiddleEllipsis extends LitElement {

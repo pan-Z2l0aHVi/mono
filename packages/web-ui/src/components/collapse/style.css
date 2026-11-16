@@ -107,6 +107,18 @@
   transition-property: max-width, --wui-collapse-peek-edge-active;
 }
 
+/*
+ * 展开动画结束后不再裁剪。
+ *
+ * 稳定展开时 track 的 1fr 行高就等于内容高度，没有需要裁的东西；而 overflow: hidden 会连带
+ * 切掉内容自己的焦环、投影与横向溢出，并把这层变成滚动容器。展开态的折叠区应当和普通容器
+ * 一样，所以只在「已落稳态」时放开——不能按 `data-wui-presence='open'` 判断：它在动画开始的
+ * 那一帧就置上了，此时 track 还在长，内容必须继续被裁。
+ */
+.wui-collapse-track[data-wui-settled] .wui-collapse-inner {
+  overflow: visible;
+}
+
 .wui-collapse-track[data-wui-presence='closing'] .wui-collapse-inner {
   transition-duration: var(--wui-duration-collapse-exit, 160ms);
 }

@@ -1,10 +1,10 @@
 <script setup lang="ts">
-import type { WebUiDialog, WebUiEvent, WebUiSegmented, WebUiSwitch } from '@greypan/web-ui'
+import type { WebUiDialog, WebUiEvent, WebUiSegmented, WebUiSlider, WebUiSwitch } from '@greypan/web-ui'
 import { storeToRefs } from 'pinia'
-import { ref, watch } from 'vue'
+import { computed, ref, watch } from 'vue'
 
 import { metadataLabelClass } from '@/components/library/presentation'
-import { ACCENT_PRESETS, useSettingsStore, type ThemeAppearance } from '@/stores/settings'
+import { useSettingsStore, type ThemeAppearance } from '@/stores/settings'
 
 const props = defineProps<{
   open: boolean
@@ -15,7 +15,7 @@ const emit = defineEmits<{
 }>()
 
 const settings = useSettingsStore()
-const { appearance, accent, reducedMotion } = storeToRefs(settings)
+const { appearance, accent, reducedMotion, developerOptions, presets, zoom, zoomPresets } = storeToRefs(settings)
 const settingsRowClass = 'flex min-w-0 items-center justify-between gap-4 py-2'
 
 type SettingsTab = 'general' | 'appearance' | 'library'
@@ -68,15 +68,38 @@ function handleTabChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 function handleAppearanceChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
   const next = event.currentTarget.value
-  if (isThemeAppearance(next)) settings.setAppearance(next)
+  if (isThemeAppearance(next)) void settings.setAppearance(next)
 }
 
 function handleReducedMotionChange(event: Event) {
-  settings.setReducedMotion((event.currentTarget as WebUiSwitch).checked)
+  void settings.setReducedMotion((event.currentTarget as WebUiSwitch).checked)
+}
+
+function handleDeveloperOptionsChange(event: Event) {
+  void settings.setDeveloperOptions((event.currentTarget as WebUiSwitch).checked)
 }
 
 function pickAccent(value: string) {
-  settings.setAccent(value)
+  void settings.setAccent(value)
+}
+
+/*
+ * slider 的 min / max / step 由 Go 下发的档位推导，前端不另写一份 90–120 的契约。
+ * 刻度文案就是档位名，所以刻度下只展示文字，不出现百分比数字。
+ */
+const zoomMin = computed(() => zoomPresets.value[0]?.value ?? 100)
+const zoomMax = computed(() => zoomPresets.value.at(-1)?.value ?? zoomMin.value)
+const zoomStep = computed(() => (zoomPresets.value[1]?.value ?? zoomMin.value) - zoomMin.value)
+
+/** 刻度文案以刻度点中心对齐；两端文案会越出轨道半个字宽，由控件列的左右留白容纳。 */
+function zoomTickStyle(value: number): Record<string, string> {
+  const percent =
+    zoomMax.value === zoomMin.value ? 0 : ((value - zoomMin.value) / (zoomMax.value - zoomMin.value)) * 100
+  return { left: `${percent}%`, transform: 'translateX(-50%)' }
+}
+
+function handleZoomChange(event: WebUiEvent<WebUiSlider, 'change'>) {
+  void settings.setZoom(event.currentTarget.value)
 }
 </script>
 
@@ -112,15 +135,24 @@ function pickAccent(value: string) {
 
     <div class="flex min-h-(--wui-dialog-max-height) flex-col">
       <!--
-        通用：MCP switch 是纯静态占位。disabled 而非隐藏，是为了让「这一栏存在但还没做」在
+        通用：「连接智能助手」switch 是纯静态占位。disabled 而非隐藏，是为了让「这一栏存在但还没做」在
         界面上可见；文案承担解释，控件本身不假装可用。
+
+        开发者选项不是占位：它决定「开发」菜单出不出现，也就是重新载入与开发者控制台两项，
+        由 Go 侧持有该设置并据此重建菜单。
       -->
-      <div v-if="activeTab === 'general'" :class="settingsRowClass">
-        <div class="flex min-w-0 flex-col gap-0.5">
-          <span class="text-sm text-(--wui-color-text)">连接智能助手</span>
-          <span :class="metadataLabelClass">即将推出</span>
+      <div v-if="activeTab === 'general'" class="flex flex-col">
+        <div :class="settingsRowClass">
+          <div class="flex min-w-0 flex-col gap-0.5">
+            <span class="text-sm text-(--wui-color-text)">连接智能助手</span>
+            <span :class="metadataLabelClass">即将推出</span>
+          </div>
+          <web-ui-switch disabled aria-label="连接智能助手（即将推出）" />
         </div>
-        <web-ui-switch disabled aria-label="连接智能助手（即将推出）" />
+        <div :class="settingsRowClass">
+          <span class="text-sm text-(--wui-color-text)">开发者选项</span>
+          <web-ui-switch :checked="developerOptions" aria-label="开发者选项" @change="handleDeveloperOptionsChange" />
+        </div>
       </div>
 
       <div v-else-if="activeTab === 'appearance'" class="flex flex-col">
@@ -142,7 +174,7 @@ function pickAccent(value: string) {
           <span class="text-sm text-(--wui-color-text)" aria-hidden="true">颜色</span>
           <div class="flex flex-wrap items-center justify-end">
             <label
-              v-for="preset in ACCENT_PRESETS"
+              v-for="preset in presets"
               :key="preset.value"
               class="relative grid size-8 shrink-0 cursor-pointer place-items-center"
             >
@@ -164,6 +196,40 @@ function pickAccent(value: string) {
             </label>
           </div>
         </fieldset>
+
+        <!--
+          与其它设置行同一布局：标题与轨道同行，控件在右侧。轨道宽 224px，右端从内容右缘
+          左移 10px（文案半宽 12px 减去刻度点 2px 内缩），于是最后一个刻度文案的右缘正好
+          落在内容右缘，与其它控件的右缘对齐。文案以刻度点中心对齐，与刻度点相隔 8px，
+          只写档位名，悬停时不显示文本光标。
+        -->
+        <div class="flex items-center justify-between gap-4 pt-2 pb-8">
+          <span class="text-sm text-(--wui-color-text)">界面缩放</span>
+          <div class="relative mr-2.5 w-56 shrink-0">
+            <web-ui-slider
+              class="block [--wui-slider-width:100%]"
+              :min="zoomMin"
+              :max="zoomMax"
+              :step="zoomStep"
+              :value="zoom"
+              marks
+              aria-label="界面缩放"
+              @change="handleZoomChange"
+            />
+            <div
+              class="absolute inset-x-0.5 top-full mt-3.5 h-4 cursor-default text-xs text-(--wui-color-text-secondary)"
+            >
+              <span
+                v-for="preset in zoomPresets"
+                :key="preset.value"
+                class="absolute top-0 whitespace-nowrap"
+                :style="zoomTickStyle(preset.value)"
+                >{{ preset.label }}</span
+              >
+            </div>
+          </div>
+        </div>
+
         <div :class="settingsRowClass">
           <span class="text-sm text-(--wui-color-text)">减少动画效果</span>
           <web-ui-switch :checked="reducedMotion" aria-label="减少动画效果" @change="handleReducedMotionChange" />

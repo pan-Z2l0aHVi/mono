@@ -61,6 +61,15 @@ const emit = defineEmits<{
   submit: []
 }>()
 
+const dialogRef = ref<WebUiDialog | null>(null)
+defineExpose({
+  toastContainer: () => dialogRef.value?.shadowRoot?.querySelector('dialog') ?? undefined,
+  /** 供菜单的「导入来自 › 链接」直接翻开链接输入，不必让用户再点一次。 */
+  openLinkDialog: () => {
+    addUrlOpen.value = true
+  }
+})
+
 const dragActive = ref(false)
 const addUrlOpen = ref(false)
 const editingItemId = ref<string | null>(null)
@@ -199,6 +208,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
 
 <template>
   <web-ui-dialog
+    ref="dialogRef"
     :open="open"
     controlled
     no-backdrop-close

@@ -8,7 +8,7 @@
  * 为什么这一层不能由 CSS 承担：`text-overflow` 渲染的是行盒里**一段连续**的内容，结构上
  * 不可能同时显示首尾而丢掉中间。能靠 `direction` / 双值写法挪动的只是省略号落在行的哪一
  * 端，而且 `direction: rtl` 那条路还会按双向算法重排内容（`2026-report.pdf` → `report.pdf-2026`）。
- * 完整调研见 docs/research/web-ui-middle-ellipsis-261007.md。
+ * 字素簇边界与双向算法的细节见 `web-ui-middle-ellipsis` 组件模块的既有测试。
  *
  * 宽度口径：两端额度按 `position` 从可用空间里分出来，各自用「前 i 簇 / 后 i 簇」的**实测**
  * 宽度二分逼近。实测走调用方给的探针（Range 读取，不写 DOM），所以重算一次只有若干次读取，

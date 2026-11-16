@@ -5,8 +5,77 @@
     <link rel="icon" type="image/png" href="/interweave-transparent.png" />
     <meta name="viewport" content="width=device-width, initial-scale=1.0, viewport-fit=cover" />
     <title>Interweave</title>
+    <style>
+      /*
+       * 静态启动层：设置由 Go 拥有，首帧拿不到已持久化的外观。若这里不留一层不透明画面，
+       * 窗口会先以默认主题渲染一帧（Windows 上是深色窗口底 + 白底页面），用户看到一次闪白。
+       * 本层是纯 HTML/CSS，不依赖任何脚本或组件库：它在 WebView 拿到第一个字节时就能画出来。
+       *
+       * 配色跟随系统外观。Wails 3 没有「读当前系统主题」的 API（Darwin 只发
+       * ApplicationDidChangeTheme 这类变更事件，选项里的 Mac.Appearance 只用于写入），
+       * 应用自己的外观设置存放在 Go 侧，首帧读不到；`prefers-color-scheme` 由 WebView 按
+       * 系统外观解析，是首帧唯一可用的信号。取值对齐 web-ui-theme 的 --wui-color-page，
+       * 撤层时背景不跳变；用户设置与系统不一致时，这一层只存在到设置落定，之后由应用重绘。
+       */
+      #startup-layer {
+        position: fixed;
+        z-index: 2147483647;
+        inset: 0;
+
+        display: grid;
+        place-items: center;
+
+        background: #fff;
+
+        transition: opacity 220ms ease-out;
+      }
+
+      @media (prefers-color-scheme: dark) {
+        #startup-layer {
+          background: #242628;
+        }
+      }
+
+      #startup-layer[data-leaving='true'] {
+        pointer-events: none;
+        opacity: 0;
+      }
+
+      #startup-layer img {
+        width: 120px;
+        height: 120px;
+        border-radius: 26px;
+        animation: startup-pulse 1600ms ease-in-out infinite;
+      }
+
+      @keyframes startup-pulse {
+        0%,
+        100% {
+          opacity: 0.72;
+        }
+
+        50% {
+          opacity: 1;
+        }
+      }
+
+      /* 用户的减少动画偏好与本应用自己的设置一致：两者任一为真都不播放脉冲。 */
+      @media (prefers-reduced-motion: reduce) {
+        #startup-layer img {
+          opacity: 1;
+          animation: none;
+        }
+      }
+    </style>
   </head>
   <body data-overlayscrollbars-initialize>
+    <!--
+      logo 复用应用图标（与 build/appicon.png 同源），不另画一份启动图。
+      aria-hidden：它只是遮住首帧的过渡物，对读屏用户没有意义，读屏器应直接进入应用。
+    -->
+    <div id="startup-layer" aria-hidden="true">
+      <img src="/interweave-transparent.png" alt="" />
+    </div>
     <div id="app"></div>
     <script type="module" src="/src/main.ts"></script>
   </body>

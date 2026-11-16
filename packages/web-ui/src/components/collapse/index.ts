@@ -266,6 +266,7 @@ export class WebUiCollapse extends LitElement {
     const track = this._contentTrack()
     if (container) container.hidden = false
     if (track) track.dataset.wuiPresence = 'open'
+    this._setSettled(true)
     this._clearInnerClamp()
     this._setInnerInert(false)
   }
@@ -276,6 +277,7 @@ export class WebUiCollapse extends LitElement {
     const container = this._contentContainer()
     const track = this._contentTrack()
     if (track) delete track.dataset.wuiPresence
+    this._setSettled(false)
     this._clearInnerClamp()
     if (this.keepMounted || this._peeks) {
       if (container) container.hidden = false
@@ -294,6 +296,8 @@ export class WebUiCollapse extends LitElement {
     if (!container || !track) return
 
     const generation = this._generation
+    // 动画期间内容要重新被裁剪（track 还在长），「已落稳态」标记先撤掉。
+    this._setSettled(false)
     // 中断关闭动画时 inner 已 inert：先恢复可交互，内容随展开重新可见。
     this._setInnerInert(false)
     // 从 display:none 进入时无先前计算样式可过渡：提交 0fr 起点后再翻转。
@@ -339,6 +343,8 @@ export class WebUiCollapse extends LitElement {
 
     // 收起期间立即阻断交互，防止焦点落入正在消失的区域。
     this._setInnerInert(true)
+    // 收起动画同样需要裁剪，撤掉「已落稳态」标记。
+    this._setSettled(false)
     const generation = this._generation
 
     if (this._peeks) {
@@ -371,6 +377,7 @@ export class WebUiCollapse extends LitElement {
   private _settle(open: boolean) {
     this._clearExitTimer()
     const track = this._contentTrack()
+    this._setSettled(open)
     // peek 过渡以显式长度写入 inner：落稳态一律清除，交回 CSS 稳态规则（长度声明）。
     this._clearInnerClamp()
     if (open) {
@@ -471,6 +478,18 @@ export class WebUiCollapse extends LitElement {
     if (!inner) return
     inner.style.removeProperty('max-height')
     inner.style.removeProperty('max-width')
+  }
+
+  /*
+   * 「已落稳态」标记：只有展开动画结束、track 的行高与内容高度相等之后，内容才不需要裁剪。
+   * 不能按 `data-wui-presence='open'` 判断——它在动画开始那一帧就置上了，那时 track 还在长。
+   * 样式侧的裁剪规则见 style.css。
+   */
+  private _setSettled(settled: boolean) {
+    const track = this._contentTrack()
+    if (!track) return
+    if (settled) track.dataset.wuiSettled = 'open'
+    else delete track.dataset.wuiSettled
   }
 
   private _setInnerInert(inert: boolean) {

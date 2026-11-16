@@ -309,6 +309,29 @@ describe('WebUiCollapse 组件', () => {
       cleanupElement(el)
     })
 
+    /*
+     * 「已落稳态」标记：样式据此在展开动画结束后放开内容裁剪（见 style.css）。jsdom 没有
+     * 过渡时长，一开一合直接落稳态，这里钉住标记的完整生命周期。
+     */
+    it('只有展开落稳态带 settled 标记，关闭稳态与收起后都没有', async () => {
+      const el = createCollapse()
+      await waitForUpdate(el)
+      const track = el.shadowRoot!.querySelector<HTMLElement>('.wui-collapse-track')!
+
+      expect(track.hasAttribute('data-wui-settled')).toBe(false)
+
+      el.open = true
+      await waitForUpdate(el)
+      // 展开动画的起点提交与落稳态都排在 rAF 里（与 peek 动画同一套时序）。
+      await waitForFrame()
+      expect(track.getAttribute('data-wui-settled')).toBe('open')
+
+      el.open = false
+      await waitForUpdate(el)
+      expect(track.hasAttribute('data-wui-settled')).toBe(false)
+      cleanupElement(el)
+    })
+
     // 运行态改 keep-mounted / peek 时关闭稳态必须在三态之间重新落地，否则会残留上一种模式的痕迹。
     it('关闭稳态下切换 keep-mounted 会重新落地', async () => {
       const el = createCollapse()

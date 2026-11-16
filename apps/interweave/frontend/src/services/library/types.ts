@@ -64,16 +64,19 @@ export interface LibraryMediaCapabilities {
 /** 订阅返回 unsubscribe；不可用的运行时返回空 disposer，调用方无需自行判空。 */
 export interface LibraryEventCapabilities {
   onFilesDropped(listener: (paths: string[]) => void): () => void
-  onPasteFilesRequested(listener: () => void): () => void
   onSourceAvailability(listener: (event: SourceAvailabilityEventDTO) => void): () => void
 }
 
-/** 与操作系统交互：文件选择、剪贴板、默认应用与外链。 */
+/** 与操作系统交互：文件选择、文本剪贴板、默认应用与外链。 */
 export interface LibrarySystemCapabilities {
   chooseFilePaths(): Promise<string[]>
   chooseFilePath(): Promise<string | null>
   chooseDirectory(): Promise<string | null>
   getClipboardFilePaths(): Promise<string[]>
+  /** 纯文本读取走 Go：WebView 里的 navigator.clipboard 受安全上下文与权限约束。 */
+  readClipboardText(): Promise<string>
+  /** 纯文本写入；失败必须抛出，界面据此提示而不是假装复制成功。 */
+  writeClipboardText(text: string): Promise<void>
   defaultOpenWith(target: string): Promise<string>
   openExternal(target: string): Promise<void>
   showInFileManager(path: string): Promise<void>

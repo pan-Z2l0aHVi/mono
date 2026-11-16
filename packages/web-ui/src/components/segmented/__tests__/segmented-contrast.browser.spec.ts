@@ -92,6 +92,23 @@ function contrastRatio(a: string, b: string): number {
   return (hi + 0.05) / (lo + 0.05)
 }
 
+/**
+ * 按帧等背景落到期望的一侧。hover 底色带 80ms 过渡：指针动作返回时首帧样式可能还没落定，
+ * 立刻读数会读到过渡起点。等可观察值而不是固定延时；超时信息带上 :hover 与 marker，便于区分
+ * 「过渡没跑完」与「hover 根本没命中」。
+ */
+async function waitForBackground(el: HTMLElement, expected: (value: string) => boolean, label: string): Promise<void> {
+  for (let frame = 0; frame < 300; frame++) {
+    if (expected(getComputedStyle(el).backgroundColor)) return
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+  }
+  const media = matchMedia('(hover: hover) and (pointer: fine)').matches
+  throw new Error(
+    `300 帧内未满足：${label}（:hover=${el.matches(':hover')}，hover media=${media}，` +
+      `pointerOutside=${el.hasAttribute('data-pointer-outside')}）`
+  )
+}
+
 describe('WebUiSegmented 可辨度（浏览器）', () => {
   it('按住未选中项移出后松开，背景恢复且重新悬停仍可反馈', async () => {
     const { triggers } = await mount('light')
@@ -107,8 +124,9 @@ describe('WebUiSegmented 可辨度（浏览器）', () => {
       { target: trigger, keys: '[MouseLeft>]' },
       { target: outside, keys: '[/MouseLeft]' }
     ])
-    expect(getComputedStyle(surface).backgroundColor).toBe(resting)
+    await waitForBackground(surface, value => value === resting, '松开后背景应回到静止值')
     await userEvent.hover(trigger)
+    await waitForBackground(surface, value => value !== resting, '重新悬停后背景应与静止值不同')
     expect(getComputedStyle(surface).backgroundColor).not.toBe(resting)
   })
 

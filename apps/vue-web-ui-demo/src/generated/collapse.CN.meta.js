@@ -220,6 +220,7 @@ const meta = [
   },
   { label: 'h3', id: 'section-21', content: "行为说明" },
   { label: 'p', content: "挂载时已经带 <code>open</code> attribute 的面板直接显示展开状态，不播放进入动画；之后的变化才有过渡。展开高度始终由内容决定，内容变高或变矮时，面板随之伸缩。" },
+  { label: 'p', content: "完全展开且动画结束后，内容区不再裁剪（<code>overflow: visible</code>）：此时折叠区就是个普通容器，内容的焦点环、投影与必要的横向溢出都会照常显示。动画进行中与收起态仍然裁剪——否则内容会从还没长开的窗口里溢出去。" },
   { label: 'p', content: "时长取 <code>--wui-duration-collapse-enter</code> / <code>--wui-duration-collapse-exit</code>（200ms / 160ms，由 <code>&lt;web-ui-theme></code> 定义）；主题 <code>motion=\"reduced\"</code> 或系统 <code>prefers-reduced-motion</code> 下不播放动画，直接进入最终状态。" },
   { label: 'p', content: "<code>open-change</code> 只在用户手势后派发（带有 <code>bubbles</code> 和 <code>composed</code>）；<code>show()</code> / <code>close()</code> / <code>toggle()</code> 与直接写 <code>open</code> 都不派发事件。" },
   { label: 'p', content: "不回写不会被回退，但页面状态会与面板不一致。" },
