@@ -1,6 +1,6 @@
 import { Dialogs, Events } from '@wailsio/runtime'
 
-import { LibraryFilesDropped, LibrarySourceAvailabilityChanged } from '../../../bindings/events'
+import { LibraryFilesDropped, LibrarySourceAvailabilityChanged, LibraryUrlsDropped } from '../../../bindings/events'
 import {
   ResourceService,
   SourceService,
@@ -91,6 +91,14 @@ class WailsLibraryRuntime implements LibraryRuntime {
       if (!this.isAvailable) return () => {}
       return Events.On(LibraryFilesDropped, event => {
         if (Array.isArray(event.data) && event.data.every(path => typeof path === 'string')) {
+          listener(event.data)
+        }
+      })
+    },
+    onURLsDropped: (listener: (urls: string[]) => void) => {
+      if (!this.isAvailable) return () => {}
+      return Events.On(LibraryUrlsDropped, event => {
+        if (Array.isArray(event.data) && event.data.every(url => typeof url === 'string')) {
           listener(event.data)
         }
       })

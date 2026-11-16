@@ -105,6 +105,23 @@ func pruneThumbnails(sources storage.SourceStore, query storage.Queryer, thumbs 
 	thumbs.PruneStale(entries)
 }
 
+type windowDockDropSink struct {
+	window *application.WebviewWindow
+}
+
+func (s windowDockDropSink) EmitFiles(paths []string) {
+	s.window.EmitEvent(libraryService.FileDropEventName, paths)
+}
+
+func (s windowDockDropSink) EmitURLs(urls []string) {
+	s.window.EmitEvent(libraryService.URLDropEventName, urls)
+}
+
+func (s windowDockDropSink) PresentWindow() {
+	s.window.Show()
+	s.window.Focus()
+}
+
 func main() {
 	version := appVersion(configYAML)
 
@@ -268,6 +285,23 @@ func main() {
 
 	window.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
 		window.EmitEvent(libraryService.FileDropEventName, event.Context().DroppedFiles())
+	})
+
+	dockDrop := newDockDropDispatcher(windowDockDropSink{window: window})
+	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(_ *application.WindowEvent) {
+		dockDrop.MarkReady()
+	})
+	app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
+		files := event.Context().OpenedFiles()
+		if len(files) == 0 {
+			if filename := event.Context().Filename(); filename != "" {
+				files = []string{filename}
+			}
+		}
+		dockDrop.HandleOpenedFiles(files)
+	})
+	app.Event.OnApplicationEvent(events.Common.ApplicationLaunchedWithUrl, func(event *application.ApplicationEvent) {
+		dockDrop.HandleLaunchedURL(event.Context().URL())
 	})
 
 	// watcher 不注册为 Wails Service（ADR-0008 §2 的暴露面 allowlist）：它是产品能力之外的

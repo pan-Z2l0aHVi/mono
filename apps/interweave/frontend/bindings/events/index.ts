@@ -19,6 +19,11 @@ export const LibraryFilesDropped = "library:files-dropped";
 export const LibrarySourceAvailabilityChanged = "library:source-availability-changed";
 
 /**
+ * Name of the custom event "library:urls-dropped".
+ */
+export const LibraryUrlsDropped = "library:urls-dropped";
+
+/**
  * Name of the custom event "menu:command".
  */
 export const MenuCommand = "menu:command";

@@ -485,6 +485,7 @@ export function createMockLibraryRuntime(): LibraryRuntime {
 
     events: {
       onFilesDropped: () => () => {},
+      onURLsDropped: () => () => {},
       onSourceAvailability: () => () => {}
     },
 

@@ -18,7 +18,7 @@ import {
 import { hasEditableFocus, insertTextAtFocus, readSelectionText } from '@/composables/plainTextClipboard'
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLayoutMobileProvider } from '@/composables/useLayoutMobile'
-import { queueWindowFileDrop } from '@/composables/windowFileDrop'
+import { queueWindowFileDrop, queueWindowURLDrop } from '@/composables/windowFileDrop'
 import { createLibraryRuntime } from '@/services/library'
 import { onMenuCommand } from '@/services/menu'
 import { createMenuStateReporter, createMenuStateRuntime } from '@/services/menu/state'
@@ -32,7 +32,15 @@ const stopWindowFileDrop = libraryRuntime.events.onFilesDropped(paths => {
   queueWindowFileDrop(paths)
   if (router.currentRoute.value.path !== '/library') void router.push('/library')
 })
-onScopeDispose(stopWindowFileDrop)
+const stopWindowURLDrop = libraryRuntime.events.onURLsDropped(urls => {
+  if (!urls.length) return
+  queueWindowURLDrop(urls)
+  if (router.currentRoute.value.path !== '/library') void router.push('/library')
+})
+onScopeDispose(() => {
+  stopWindowFileDrop()
+  stopWindowURLDrop()
+})
 
 const sidebarCollapsed = ref(false)
 const sidebarOpen = ref(false)

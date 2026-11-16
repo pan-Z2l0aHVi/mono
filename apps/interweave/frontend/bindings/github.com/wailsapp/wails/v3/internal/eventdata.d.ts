@@ -20,6 +20,7 @@ declare module "@wailsio/runtime" {
         interface CustomEvents {
             "library:files-dropped": string[];
             "library:source-availability-changed": service$0.SourceAvailabilityEventDTO;
+            "library:urls-dropped": string[];
             "menu:command": menu$0.MenuCommand;
             "settings:changed": settings$0.Snapshot;
         }

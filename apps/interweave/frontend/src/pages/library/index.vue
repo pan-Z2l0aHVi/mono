@@ -36,7 +36,7 @@ import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLayoutMobile } from '@/composables/useLayoutMobile'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
 import { useLibrarySelection } from '@/composables/useLibrarySelection'
-import { pendingWindowFileDrops } from '@/composables/windowFileDrop'
+import { pendingWindowFileDrops, pendingWindowURLDrops } from '@/composables/windowFileDrop'
 import type { LibraryQueueItem } from '@/services/library'
 import { userMessage } from '@/services/library/userMessage'
 import { hasWailsRuntime } from '@/services/runtime'
@@ -120,6 +120,19 @@ watch(
     addError.value = ''
     addOpen.value = true
     for (const paths of batches) void addQueue.enqueueFileLocations(paths)
+  },
+  { immediate: true }
+)
+watch(
+  pendingWindowURLDrops,
+  batches => {
+    if (!batches.length) return
+    pendingWindowURLDrops.value = []
+    addError.value = ''
+    addOpen.value = true
+    for (const urls of batches) {
+      for (const url of urls) void addQueue.enqueueURL(url)
+    }
   },
   { immediate: true }
 )

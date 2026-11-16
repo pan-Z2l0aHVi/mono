@@ -20,6 +20,7 @@ function configure() {
     Object.freeze(Object.assign($Create.Events, {
         "library:files-dropped": $$createType0,
         "library:source-availability-changed": $$createType1,
+        "library:urls-dropped": $$createType0,
         "menu:command": $$createType2,
         "settings:changed": $$createType3,
     }));

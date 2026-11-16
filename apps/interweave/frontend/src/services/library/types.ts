@@ -64,6 +64,7 @@ export interface LibraryMediaCapabilities {
 /** 订阅返回 unsubscribe；不可用的运行时返回空 disposer，调用方无需自行判空。 */
 export interface LibraryEventCapabilities {
   onFilesDropped(listener: (paths: string[]) => void): () => void
+  onURLsDropped(listener: (urls: string[]) => void): () => void
   onSourceAvailability(listener: (event: SourceAvailabilityEventDTO) => void): () => void
 }
 

@@ -6,6 +6,7 @@ import "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 // 绑定生成器会把同名常量写进前端 bindings/events，两端不再各自硬编码字面量。
 const (
 	FileDropEventName           = "library:files-dropped"
+	URLDropEventName            = "library:urls-dropped"
 	SourceAvailabilityEventName = "library:source-availability-changed"
 )
 

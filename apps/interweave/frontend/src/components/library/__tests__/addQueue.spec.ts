@@ -73,6 +73,7 @@ function createRuntime(
     media: { saveThumbnail: async () => {} },
     events: {
       onFilesDropped: () => () => {},
+      onURLsDropped: () => () => {},
       onSourceAvailability: () => () => {}
     },
     system: {

@@ -199,6 +199,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
           runtimeStub.droppedFilesListener = null
         }
       },
+      onURLsDropped: () => () => {},
       onSourceAvailability: listener => {
         runtimeStub.availabilityListener = listener
         runtimeStub.availabilityDisposer = () => {
