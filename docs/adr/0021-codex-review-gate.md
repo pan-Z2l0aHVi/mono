@@ -59,7 +59,7 @@ Codex 审查承担本仓默认的 PR review 结论（2026-11-06 起；此前的�
 
 **权限拆 workflow**：模型只在 PR 验证的只读 job 里运行；写回（评论、应用并推送 patch、触发一次失败 job 重跑）在由 CI 完成事件触发的独立 workflow 里进行，那条 workflow 一次都不调用模型。这条划分是 PR 验证只读不变量成立的前提。该 workflow 显示名为 `Codex Review Report`（文件 `codex-review-report.yml`）：它的产物是一份关于既有结论的报告，不改判结论，所以不叫 publish。
 
-**配置契约**：端点、模型名、思考强度、密钥与 codex 版本全部由 GitHub 后台提供，CI 定义只写引用，不写默认值、不写兜底表达式。
+**配置契约**：端点、模型名、思考强度、密钥与 codex 版本全部由 GitHub 后台提供，CI 定义只写引用，不写默认值、不写兜底表达式。**唯一例外**：`codex-autofix-apply` 的 `actions/checkout@v7` 允许使用 `token: ${{ secrets.CODEX_AUTOFIX_PUSH_TOKEN || github.token }}` 显式兜底——因为 `CODEX_AUTOFIX_PUSH_TOKEN` 为可选 secret，未配置（或为空）时必须回落默认 `GITHUB_TOKEN` 以免阻断 checkout，其后果是推送不会触发后续 `ci.yml` checks，需人工重跑一次 CI。
 
 | 名称                       | 载体     | 用途                                                                   |
 | -------------------------- | -------- | ---------------------------------------------------------------------- |
@@ -85,7 +85,7 @@ Codex 审查承担本仓默认的 PR review 结论（2026-11-06 起；此前的�
 
 **输入可信来源**：prompt、schema、判定脚本（含预检）、生成物禁令清单、影响面查询脚本/自撰审校 `SKILL.md`（`skills/monorepo-change-impact/repo-query.mjs` 与自撰审校 skill 文档）以及第三方 vendored 审校参考文件（`.agents/skills-vendored/{review-animations,emil-design-eng,apple-design}` 下的 `SKILL.md` / `STANDARDS.md`）从 PR base（写 job 从默认分支）取版本落到 runner 临时目录，执行与参考只用那份副本，禁止读取 PR head 工作区中的 `.agents/skills/` 与 `.agents/skills-vendored/`。工作区本身仍检出 PR head：`uses: ./...` 的复合 action 由 job 工作区解析，检出 base 会让本 PR 新建的 action 解析不到，这道门整个跑不起来——固定的是脚本内容的来源，不是工作区的来源。残留的篡改面是 workflow YAML 与 PR job 由工作区解析的复合 action（`setup-deps` 与 `stage-codex-inputs`，前者还先于后者运行）：它们必须由 head 提供，所以改它们仍在被审查的 diff 里明写，与「模型能读到 worktree 里的 review 判据文档」归在同一类已接受风险里，由人工 review 和「只审同源仓库、base 为 `main`」的范围一起兜住。CI 定义由机器断言同时钉住工作区来源与 `base-sha` 这两侧。2026-11-08 起 review job 另有一条从工作区直接执行的 `check-review-output.mjs`（空壳检测）：它不进 trusted 清单，但只写退出码、不注入 secret、排在上传之后且不接触 artifact 内容，结论仍由取自 base 的 `validate` / `gate` 裁决；改它最多让审查 job 不跟着变红、换不来绿色，归入同一类已接受风险。
 
-**按需 Skill 路由与影响面预注入**（2026-11-16）：线上 `Codex review` 虽通过项目 `.agents/skills/` 发现了仓库 skills，但开局防跑偏条款让模型一刀切跳过所有 skills，在 `--output-schema` 与早停收口约束下几乎不触发隐式读取。因此将 `.agents/skills/` 分为三层路由：① 禁用实施流程型（`task-ledger`、`request-authorization`、`turbo-sparse-scope`、`wizard`）；② 自撰审校型（`test-authoring`、`monorepo-change-impact`）由 `codex-review.mjs` 的 `selectReviewSkills` 根据 `changedPaths` 与源码 diff 确定性路由后，直接从 `$RUNNER_TEMP/trusted/skills/<name>/SKILL.md` 读取并内嵌 staged 可信副本（不输出 `$skill-name` 避免触发 host skill discovery 去读 PR head 工作区的 `.agents/skills/` 造成门禁绕过），并在命中 `monorepo-change-impact` 时由 `prepare` 直接调用 staged 的 `repo-query.mjs`（支持 `--root <dir>`，`verify` 传已滤除生成物的 `changedPaths`、`contract` 查直接变更的可发布包、`contract-diff` 用基线/合并树 ref，配 10 秒超时与降级兜底）把结构化影响面摘要预注入 `review-preload.md`；③ 第三方 vendored UI/动效 skills（`review-animations`、`emil-design-eng`、`apple-design`，受 `skills-lock.json` 约束不得改写，且含问候语、Markdown 表格或 `Approve/Block` 裁决）仅在前端非测试/非文档源码 diff 命中对应关键词（含 camelCase 变体如 `onPointerDown`、`onDragStart`、`onTransitionEnd`、`onAnimationEnd`、`useSpring`、`transformOrigin`、`clipPath`）时注入轻量要点与 `$RUNNER_TEMP/trusted/.agents/skills-vendored/` 可信副本指针（禁止读取工作区 `.agents/skills/`），**不注入 `$skill-name`**，同时 prompt 明确覆写所有 skill 的输出格式要求，统一映射为 schema JSON。`empty_diff: true` 时跳过路由，审计字段 `routed_skills` 记入 `review-scope.json`（不修改 `review-findings.schema.json`）。只有被 staging 的脚本、prompt、自撰审校 `SKILL.md` 与第三方 vendored `SKILL.md` / `STANDARDS.md` 内容自 PR base 读取，工作区 `.agents/skills/` 与 `.agents/skills-vendored/` 均不可读取；`stage-codex-inputs` action 定义及其文件清单仍由 PR head 工作区提供并归入上文同一类已接受风险，新路由与预计算行为在合入 `main` 后的下一张 PR 生效。
+**按需 Skill 路由与影响面预注入**（2026-11-16）：线上 `Codex review` 虽通过项目 `.agents/skills/` 发现了仓库 skills，但开局防跑偏条款让模型一刀切跳过所有 skills，在 `--output-schema` 与早停收口约束下几乎不触发隐式读取。因此将 `.agents/skills/` 分为三层路由：① 禁用实施流程型（`task-ledger`、`request-authorization`、`turbo-sparse-scope`、`wizard`）；② 自撰审校型（`test-authoring`、`monorepo-change-impact`）由 `codex-review.mjs` 的 `selectReviewSkills` 根据 `changedPaths` 与源码 diff 确定性路由后，直接从 `$RUNNER_TEMP/trusted/skills/<name>/SKILL.md` 读取并内嵌 staged 可信副本（不输出 `$skill-name` 避免触发 host skill discovery 去读 PR head 工作区的 `.agents/skills/` 造成门禁绕过），并在命中 `monorepo-change-impact` 时由 `prepare` 直接调用 staged 的 `repo-query.mjs`（支持 `--root <dir>`，`verify` 传已滤除生成物的 `changedPaths`、`contract` 查直接变更的可发布包、`contract-diff` 用基线/合并树 ref，配 10 秒超时与降级兜底）把结构化影响面摘要预注入 `review-preload.md`；③ 第三方 vendored UI/动效 skills（`review-animations`、`emil-design-eng`、`apple-design`，受 `skills-lock.json` 约束不得改写，且含问候语、Markdown 表格或 `Approve/Block` 裁决）仅在前端非测试/非文档源码 diff 命中对应关键词（含 camelCase 变体如 `onPointerDown`、`onDragStart`、`onTransitionEnd`、`onAnimationEnd`、`useSpring`、`transformOrigin`、`clipPath`）时注入轻量要点与 `$RUNNER_TEMP/trusted/.agents/skills-vendored/` 可信副本指针（禁止读取工作区 `.agents/skills/`），**不注入 `$skill-name`**，同时 prompt 明确覆写所有 skill 的输出格式要求，统一映射为 schema JSON。`empty_diff: true` 时跳过路由，审计字段 `routed_skills` 记入 `review-scope.json`（不修改 `review-findings.schema.json`）。只有被 staging 的脚本、prompt、自撰审校 `SKILL.md` 与第三方 vendored `SKILL.md` / `STANDARDS.md` 内容自 PR base 读取；工作区本身仍检出 PR head，仅由 prompt 禁止读取工作区 `.agents/skills/` 与 `.agents/skills-vendored/`（无文件系统级隔离，归入上文同一类已接受风险）；`stage-codex-inputs` action 定义及其文件清单仍由 PR head 工作区提供并归入上文同一类已接受风险，新路由与预计算行为在合入 `main` 后的下一张 PR 生效。
 
 **适用范围**：只审同源仓库、base 为 `main`、未关闭且不是版本分支的 PR。fork PR 默认不跑——它拿不到仓库 secret，要审就得逐次为它放行。
 
@@ -184,12 +184,12 @@ Error: /usr/bin/sudo exited with code 1
 **没有换掉的东西**：
 
 - 覆盖空白仍在，兜法换了。被 `**/generated/**` 剔除的生成物门看不见，此前靠人工核对，现在靠 `check-generated` 与消费者类型检查；只改生成物的 PR（`empty_diff: true`）也按这条走。
-- 拿不到覆盖当前 head 的结论时（`error`、`unreviewed`、`stale`、`not_applicable`、fork PR、自动修推送的新 head、两个兜校验都不适用的产物），PR 上没有 review 结论。
+- 拿不到覆盖当前 head 的结论时（`error`、`unreviewed`、`stale`、`not_applicable`、fork PR、未配置 `CODEX_AUTOFIX_PUSH_TOKEN` 时自动修推送的新 head、两个兜校验都不适用的产物），PR 上没有 review 结论。
 - 概率性没有被消除。门漏掉的低级遗漏，没有别的执行体会看到；缓解手段是后台可随时换更强的模型与更高强度（配置指纹变了就不复用旧结论），而不是把人工复核写回默认流程。
 
 ## 后果
 
-- 自动修推送的新提交不会触发 checks，PR 上那道必需检查要人重跑一次 CI 才会覆盖新 head；结论对新 head 也随之过期，这是「直推」换来的代价。
+- 配置了 `CODEX_AUTOFIX_PUSH_TOKEN` 时，自动修推送的新提交会以该 PAT 触发后续 `ci.yml` checks 与审查门；未配置（或为空）时回落默认 `GITHUB_TOKEN`，推送的新提交不会触发 checks，PR 上那道必需检查要人重跑一次 CI 才会覆盖新 head，结论对新 head 也随之过期，这是「直推」换来的代价。
 - 门是约定式的：绕开它只需要忽略一次红叉。2026-11-06 起它是本仓默认的 PR review，忽略这一次红叉就等于合并未经审查的 PR。省掉的是「等一次人工细看」，新增的兜底只剩维护者自己看颜色。
 - 后台配置未填齐时每个 PR 都会红。配置本身成为可观测的门禁输入，代价是配置变更与门的颜色直接绑定。
 - 引入新可信子命令的那个 PR 自身无法完成审查：它的 base 还是旧脚本，模型 job 会红。首次落地要先合入脚本、再在后续 PR 上验证全链路。

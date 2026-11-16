@@ -975,11 +975,19 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       !/persist-credentials: 'true'|git push/.test(workflowJob(ci, 'codex-review')),
       'the review leg must stay write-free'
     )
-    assert.match(workflowJob(reportText, 'codex-autofix-apply'), /timeout-minutes: 10/)
+    const autofixJobText = workflowJob(reportText, 'codex-autofix-apply')
+    assert.match(autofixJobText, /timeout-minutes: 10/)
+    const autofixCheckoutMatch = autofixJobText.match(/- uses: actions\/checkout@v7\n([\s\S]*?)(?=\n\s+- |\n*$)/)
+    assert.ok(autofixCheckoutMatch, 'codex-autofix-apply must run actions/checkout@v7')
+    const autofixCheckoutStep = autofixCheckoutMatch[0]
     assert.match(
-      workflowJob(reportText, 'codex-autofix-apply'),
-      /token:\s*\$\{\{\s*secrets\.CODEX_AUTOFIX_PUSH_TOKEN\s*\|\|\s*github\.token\s*\}\}/,
-      'codex-autofix-apply must use CODEX_AUTOFIX_PUSH_TOKEN when configured so autofix pushes can trigger CI and pass write-access checks'
+      autofixCheckoutStep,
+      /^\s+token:\s*\$\{\{\s*secrets\.CODEX_AUTOFIX_PUSH_TOKEN\s*\|\|\s*github\.token\s*\}\}$/m,
+      'codex-autofix-apply checkout step must use CODEX_AUTOFIX_PUSH_TOKEN with github.token fallback'
+    )
+    assert.ok(
+      !/^\s+persist-credentials:\s*'?false'?/m.test(autofixCheckoutStep),
+      'codex-autofix-apply checkout step must keep persisted credentials enabled for autofix push'
     )
     assert.ok(
       !ci.includes('CODEX_AUTOFIX_PUSH_TOKEN') &&
