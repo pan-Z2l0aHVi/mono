@@ -11,6 +11,7 @@ import {
 } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryQueueItem } from '../../../services/library'
 import AddDialog from '../AddDialog.vue'
+import type { PreviewLeaseEntry } from '../previewLease'
 
 vi.mock('@greypan/web-ui', async importOriginal => {
   const actual = await importOriginal<typeof import('@greypan/web-ui')>()
@@ -31,6 +32,22 @@ function queueItem(overrides: Partial<LibraryQueueItem> = {}): LibraryQueueItem 
     mediaUrl: '/pending-resource-media/opaque-token',
     ...overrides
   }
+}
+
+/** 渲染读 lease.entries：单测按队列项的结算簿记构造等价条目。 */
+function previewsFor(queue: LibraryQueueItem[]) {
+  const previews: Record<string, PreviewLeaseEntry | undefined> = {}
+  for (const item of queue) {
+    if (item.previewToken && item.mediaUrl) {
+      previews[item.id] = {
+        kind: item.resourceKind,
+        token: item.previewToken,
+        mediaUrl: item.mediaUrl,
+        path: item.location
+      }
+    }
+  }
+  return previews
 }
 
 function mountDialog(
@@ -55,6 +72,7 @@ function mountDialog(
         error: '',
         mobile: options.mobile ?? false,
         tagColors: options.tagColors ?? {},
+        previews: previewsFor(queue),
         ...listeners
       })
   })

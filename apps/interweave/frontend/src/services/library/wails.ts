@@ -1,6 +1,11 @@
 import { Dialogs, Events } from '@wailsio/runtime'
 
-import { LibraryFilesDropped, LibrarySourceAvailabilityChanged, LibraryUrlsDropped } from '../../../bindings/events'
+import {
+  LibraryFilesDropped,
+  LibraryPreviewsRevoked,
+  LibrarySourceAvailabilityChanged,
+  LibraryUrlsDropped
+} from '../../../bindings/events'
 import {
   ResourceService,
   SourceService,
@@ -12,6 +17,7 @@ import { OSService } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/i
 import { hasWailsRuntime } from '../runtime'
 
 import {
+  isPreviewRevokedEvent,
   isSourceAvailabilityEvent,
   requireFilePreviewDTO,
   requireResourceDTO,
@@ -103,6 +109,12 @@ class WailsLibraryRuntime implements LibraryRuntime {
       if (!this.isAvailable) return () => {}
       return Events.On(LibrarySourceAvailabilityChanged, event => {
         if (isSourceAvailabilityEvent(event.data)) listener(event.data)
+      })
+    },
+    onPreviewRevoked: (listener: (tokens: string[]) => void) => {
+      if (!this.isAvailable) return () => {}
+      return Events.On(LibraryPreviewsRevoked, event => {
+        if (isPreviewRevokedEvent(event.data)) listener(event.data)
       })
     }
   }

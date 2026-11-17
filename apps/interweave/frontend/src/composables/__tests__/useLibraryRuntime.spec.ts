@@ -108,6 +108,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       onFilesDropped: () => () => {},
       onURLsDropped: () => () => {},
       onSourceAvailability: () => () => {},
+      onPreviewRevoked: () => () => {},
       ...overrides.events
     },
     system: {

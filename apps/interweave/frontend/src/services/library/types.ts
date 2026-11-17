@@ -65,6 +65,8 @@ export interface LibraryEventCapabilities {
   onFilesDropped(listener: (paths: string[]) => void): () => void
   onURLsDropped(listener: (urls: string[]) => void): () => void
   onSourceAvailability(listener: (event: SourceAvailabilityEventDTO) => void): () => void
+  /** 后端 LRU 淘汰的 pending 预览 token；持有方据此卸载预览而不是把 404 当成文件消失。 */
+  onPreviewRevoked(listener: (tokens: string[]) => void): () => void
 }
 
 /** 与操作系统交互：文件选择、文本剪贴板、默认应用与外链。 */
@@ -110,6 +112,11 @@ export function isSourceAvailabilityEvent(value: unknown): value is SourceAvaila
   // size_bytes 缺省即「这次翻转与 size 无关」，有值时必须是数字。
   if (event.size_bytes !== undefined && event.size_bytes !== null && typeof event.size_bytes !== 'number') return false
   return true
+}
+
+/** 预览淘汰事件载荷是失效 token 列表；畸形载荷静默忽略，与可用性事件同一口径。 */
+export function isPreviewRevokedEvent(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(token => typeof token === 'string' && token.length > 0)
 }
 
 export interface LibraryQueueItem {

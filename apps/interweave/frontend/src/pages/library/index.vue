@@ -11,6 +11,7 @@ import DetailDrawer from '@/components/library/DetailDrawer.vue'
 import DuplicateConfirmDialog from '@/components/library/DuplicateConfirmDialog.vue'
 import EditTagsDialog from '@/components/library/EditTagsDialog.vue'
 import PreviewDrawer from '@/components/library/PreviewDrawer.vue'
+import { createPreviewLease } from '@/components/library/previewLease'
 import { DRAWER_TITLE_EDITOR_KEY, type NameEditorRef } from '@/components/library/rename'
 import ResourceList from '@/components/library/ResourceList.vue'
 import {
@@ -96,7 +97,10 @@ const restoreBusy = ref(false)
 const restoreError = ref('')
 const failedRestoreIds = ref<string[]>([])
 const activeRestoreItemId = ref<string | null>(null)
-const addQueue = createLibraryAddQueue(runtime)
+// 添加队列与找回弹窗共用一本预览账本：token 结算、驱逐对账都只在 lease 里发生。
+const previewLease = createPreviewLease(runtime)
+const previewEntries = previewLease.entries
+const addQueue = createLibraryAddQueue(runtime, previewLease)
 const queue = addQueue.queue
 const duplicatePrompt = addQueue.duplicatePrompt
 const submitting = addQueue.submitting
@@ -167,6 +171,8 @@ onScopeDispose(() => {
   stopSourceAvailability()
   stopMenuActions.forEach(stop => stop())
   void addQueue.close()
+  void previewLease.clear()
+  previewLease.dispose()
 })
 
 const visibleResources = computed(() => store.filteredResources)
@@ -746,6 +752,7 @@ onMounted(() => {
     :error="addError"
     :mobile="mobile"
     :tag-colors="store.tagColors"
+    :previews="previewEntries"
     @pick-files="pickFiles"
     @add-url="addQueue.enqueueURL"
     @request-file-paths="pasteFilePaths"
@@ -799,8 +806,7 @@ onMounted(() => {
     :poll-scan="runtime.sources.pollRecoveryScan"
     :cancel-scan="runtime.sources.cancelRecoveryScan"
     :discard-scan="runtime.sources.discardRecoveryScan"
-    :prepare-file-preview="runtime.resources.prepareFilePreview"
-    :release-file-preview="runtime.resources.releaseFilePreview"
+    :lease="previewLease"
     @update:open="setRestoreOpen"
     @add-items="restoreQueue = $event"
     @submit="submitRestoreQueue"

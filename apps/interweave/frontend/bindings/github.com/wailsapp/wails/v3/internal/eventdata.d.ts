@@ -19,6 +19,7 @@ declare module "@wailsio/runtime" {
     namespace Events {
         interface CustomEvents {
             "library:files-dropped": string[];
+            "library:previews-revoked": string[];
             "library:source-availability-changed": service$0.SourceAvailabilityEventDTO;
             "library:urls-dropped": string[];
             "menu:command": menu$0.MenuCommand;

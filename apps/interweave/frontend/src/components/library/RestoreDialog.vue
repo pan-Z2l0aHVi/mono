@@ -10,10 +10,11 @@ import {
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { userMessage } from '@/services/library/userMessage'
-import type { ResourceKind, ResourceSourceView } from '@/stores/library'
+import type { ResourceSourceView } from '@/stores/library'
 
 import { doubleArrowRight } from './icons'
 import { formatSize } from './presentation'
+import type { PreviewLease } from './previewLease'
 import { resourceDialogColumnClass, resourceDialogQueueClass } from './resourceDialogStyles'
 import ResourceLinkDialog from './ResourceLinkDialog.vue'
 import type { LibraryRestoreQueueItem, RecoveryCandidate, RecoveryScanUpdate } from './restore'
@@ -34,8 +35,8 @@ const props = defineProps<{
   pollScan: (id: string) => Promise<RecoveryScanUpdate>
   cancelScan: (id: string) => Promise<void>
   discardScan: (id: string) => Promise<void>
-  prepareFilePreview: (path: string) => Promise<{ kind: ResourceKind; token?: string; media_url?: string }>
-  releaseFilePreview: (token: string) => Promise<void>
+  /** 与添加队列共用一本预览账本：prepare/revoke/驱逐对账都由它承担。 */
+  lease: PreviewLease
 }>()
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -192,18 +193,15 @@ const picking = ref<string | null>(null)
 const validationError = ref('')
 const editingUrlItem = ref<LibraryRestoreQueueItem | null>(null)
 const urlDraft = ref('')
-const previews = ref<
-  Record<string, { kind: ResourceKind; token: string | null; mediaUrl: string | null; path: string }>
->({})
-const previewVersions = new Map<string, number>()
+const previews = computed(() => props.lease.entries.value)
+// lease 与添加队列共用，这里记下本弹窗发起过的 key，关闭时只撤销自己的授权。
+const previewKeys = new Set<string>()
 function releasePreview(id: string) {
-  previewVersions.set(id, (previewVersions.get(id) ?? 0) + 1)
-  const preview = previews.value[id]
-  delete previews.value[id]
-  if (preview?.token) void props.releaseFilePreview(preview.token).catch(console.error)
+  previewKeys.delete(id)
+  void props.lease.revoke(id).catch(console.error)
 }
 function clearPreviews() {
-  for (const id of Object.keys(previews.value)) releasePreview(id)
+  for (const id of [...previewKeys]) releasePreview(id)
 }
 function previewSource(id: string): ResourceSourceView | null {
   const preview = previews.value[id]
@@ -220,24 +218,15 @@ function previewSource(id: string): ResourceSourceView | null {
     metadata: null
   }
 }
-async function prepareThumbnail(id: string, path: string, request: number) {
-  const version = (previewVersions.get(id) ?? 0) + 1
-  previewVersions.set(id, version)
-  try {
-    const preview = await props.prepareFilePreview(path)
-    if (
-      request !== generation ||
-      previewVersions.get(id) !== version ||
-      prepared.value[id] !== path ||
-      !props.queue.some(item => item.id === id)
-    ) {
-      if (preview.token) await props.releaseFilePreview(preview.token)
-      return
-    }
-    previews.value[id] = { kind: preview.kind, token: preview.token ?? null, mediaUrl: preview.media_url ?? null, path }
-  } catch (error) {
-    console.error('准备找回资源缩略图失败', error)
-  }
+function prepareThumbnail(id: string, path: string, request: number) {
+  previewKeys.add(id)
+  void props.lease
+    .prepare(
+      id,
+      path,
+      () => request === generation && prepared.value[id] === path && props.queue.some(item => item.id === id)
+    )
+    .catch(console.error)
 }
 watch(
   () => props.failedIds,
@@ -254,7 +243,7 @@ watch(
 watch(
   () => props.queue.map(item => item.id).join('|'),
   () => {
-    for (const id of Object.keys(previews.value)) {
+    for (const id of [...previewKeys]) {
       if (!props.queue.some(item => item.id === id)) releasePreview(id)
     }
   }

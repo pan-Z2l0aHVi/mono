@@ -1,6 +1,11 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { LibraryFilesDropped, LibrarySourceAvailabilityChanged, LibraryUrlsDropped } from '../../../../bindings/events'
+import {
+  LibraryFilesDropped,
+  LibraryPreviewsRevoked,
+  LibrarySourceAvailabilityChanged,
+  LibraryUrlsDropped
+} from '../../../../bindings/events'
 
 // 事件名由 Go 侧的 RegisterEvent 生成；这里钉住线上字符串，改名必须同时改测试。
 describe('library 事件名', () => {
@@ -8,11 +13,13 @@ describe('library 事件名', () => {
     expect({
       LibraryFilesDropped,
       LibraryUrlsDropped,
-      LibrarySourceAvailabilityChanged
+      LibrarySourceAvailabilityChanged,
+      LibraryPreviewsRevoked
     }).toEqual({
       LibraryFilesDropped: 'library:files-dropped',
       LibraryUrlsDropped: 'library:urls-dropped',
-      LibrarySourceAvailabilityChanged: 'library:source-availability-changed'
+      LibrarySourceAvailabilityChanged: 'library:source-availability-changed',
+      LibraryPreviewsRevoked: 'library:previews-revoked'
     })
   })
 })

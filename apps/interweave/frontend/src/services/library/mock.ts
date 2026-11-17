@@ -484,7 +484,9 @@ export function createMockLibraryRuntime(): LibraryRuntime {
     events: {
       onFilesDropped: () => () => {},
       onURLsDropped: () => () => {},
-      onSourceAvailability: () => () => {}
+      onSourceAvailability: () => () => {},
+      // 浏览器预览没有后端 LRU，pending 预览永不驱逐。
+      onPreviewRevoked: () => () => {}
     },
 
     system: {

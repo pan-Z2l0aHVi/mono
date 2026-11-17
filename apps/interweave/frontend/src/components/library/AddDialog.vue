@@ -25,6 +25,7 @@ import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/app
 
 import { queueItemTitle } from './addQueue'
 import { doubleArrowRight, linkPlus } from './icons'
+import type { PreviewLeaseEntry } from './previewLease'
 import type { NameEditorRef } from './rename'
 import {
   resourceDialogColumnClass,
@@ -47,6 +48,8 @@ const props = defineProps<{
    * 因此按名回查已确定的那个；查不到就是尚未创建，展示中性档。
    */
   tagColors: Record<string, TagColor>
+  /** lease 里的有效预览；渲染只看这里，驱逐后立即回落通用 fallback。 */
+  previews: Readonly<Record<string, PreviewLeaseEntry | undefined>>
 }>()
 
 const emit = defineEmits<{
@@ -148,8 +151,12 @@ onScopeDispose(() => {
   closePendingImagePreview()
 })
 
-function isImagePreviewItem(item: LibraryQueueItem): item is LibraryQueueItem & { mediaUrl: string } {
-  return item.resourceKind === ResourceKind.ResourceKindImage && Boolean(item.mediaUrl)
+function itemMediaUrl(item: LibraryQueueItem): string | null {
+  return props.previews[item.id]?.mediaUrl ?? null
+}
+
+function isImagePreviewItem(item: LibraryQueueItem) {
+  return item.resourceKind === ResourceKind.ResourceKindImage && Boolean(itemMediaUrl(item))
 }
 
 function closePendingImagePreview() {
@@ -162,9 +169,11 @@ function openImagePreview(item: LibraryQueueItem, event: Event) {
   if (!isImagePreviewItem(item)) return
   // imagePreview 在打开时复制 images 且 handle 不支持替换；预览作为顶层模态阻止底层队列操作，
   // 因此本次使用快照，关闭后的下一次打开再从最新队列重建集合。
-  const entries = props.queue.flatMap(candidate =>
-    isImagePreviewItem(candidate) ? [{ item: candidate, image: { src: candidate.mediaUrl, alt: candidate.title } }] : []
-  )
+  const entries = props.queue.flatMap(candidate => {
+    if (candidate.resourceKind !== ResourceKind.ResourceKindImage) return []
+    const mediaUrl = itemMediaUrl(candidate)
+    return mediaUrl ? [{ item: candidate, image: { src: mediaUrl, alt: candidate.title } }] : []
+  })
   const index = entries.findIndex(candidate => candidate.item.id === item.id)
   if (index < 0) return
 
@@ -219,7 +228,7 @@ function queueSource(item: LibraryQueueItem): ResourceSourceView {
     available: true,
     isPreferred: true,
     orderIndex: 0,
-    mediaUrl: item.mediaUrl,
+    mediaUrl: itemMediaUrl(item),
     thumbnailUrl: null,
     metadata: null
   }
@@ -418,14 +427,18 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                 aria-haspopup="dialog"
                 @click="openImagePreview(item, $event)"
               >
-                <ResourceThumbnail :kind="item.resourceKind" :source="queueSource(item)" :media-url="item.mediaUrl" />
+                <ResourceThumbnail
+                  :kind="item.resourceKind"
+                  :source="queueSource(item)"
+                  :media-url="itemMediaUrl(item)"
+                />
               </button>
               <ResourceThumbnail
                 v-else
                 data-queue-thumbnail
                 :kind="item.resourceKind"
                 :source="queueSource(item)"
-                :media-url="item.mediaUrl"
+                :media-url="itemMediaUrl(item)"
               />
               <span class="grid min-w-0 flex-[1_1_auto] gap-1">
                 <div class="flex min-w-0 items-center gap-2">

@@ -8,9 +8,10 @@ import { page, userEvent } from 'vite-plus/test/browser'
 import { createApp, h, nextTick, ref } from 'vue'
 
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
-import type { LibraryQueueItem } from '../../../services/library'
+import type { LibraryQueueItem, LibraryRuntime } from '../../../services/library'
 import AddDialog from '../AddDialog.vue'
 import EditTagsDialog from '../EditTagsDialog.vue'
+import { createPreviewLease, type PreviewLeaseEntry } from '../previewLease'
 import RestoreDialog from '../RestoreDialog.vue'
 
 const PIXEL =
@@ -38,12 +39,49 @@ afterEach(() => {
   for (const host of hosts.splice(0)) host.remove()
 })
 
+/** 渲染读 lease.entries：浏览器用例按队列项的结算簿记构造等价条目。 */
+function previewsFor(queue: LibraryQueueItem[]) {
+  const previews: Record<string, PreviewLeaseEntry | undefined> = {}
+  for (const item of queue) {
+    if (item.previewToken && item.mediaUrl) {
+      previews[item.id] = {
+        kind: item.resourceKind,
+        token: item.previewToken,
+        mediaUrl: item.mediaUrl,
+        path: item.location
+      }
+    }
+  }
+  return previews
+}
+
+function createLease(
+  prepareFilePreview: LibraryRuntime['resources']['prepareFilePreview'],
+  releaseFilePreview: LibraryRuntime['resources']['releaseFilePreview']
+) {
+  const runtime = {
+    isAvailable: true,
+    resources: { prepareFilePreview, releaseFilePreview },
+    events: { onPreviewRevoked: () => () => {} }
+  } as unknown as LibraryRuntime
+  return createPreviewLease(runtime)
+}
+
 function mountDialog(queue: LibraryQueueItem[]) {
   const host = document.createElement('div')
   document.body.append(host)
   hosts.push(host)
   const app = createApp({
-    render: () => h(AddDialog, { open: true, queue, busy: false, error: '', mobile: false, tagColors: {} })
+    render: () =>
+      h(AddDialog, {
+        open: true,
+        queue,
+        busy: false,
+        error: '',
+        mobile: false,
+        tagColors: {},
+        previews: previewsFor(queue)
+      })
   })
   apps.push(app)
   app.mount(host)
@@ -141,8 +179,10 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
           cancelScan: async () => undefined,
           discardScan: async () => undefined,
           chooseFilePath: async () => null,
-          prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
-          releaseFilePreview: async () => undefined
+          lease: createLease(
+            async () => ({ kind: ResourceKind.ResourceKindFile }),
+            async () => undefined
+          )
         })
     })
     apps.push(app)
@@ -202,8 +242,10 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
           cancelScan: async () => undefined,
           discardScan: async () => undefined,
           chooseFilePath: async () => null,
-          prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
-          releaseFilePreview: async () => undefined
+          lease: createLease(
+            async () => ({ kind: ResourceKind.ResourceKindFile }),
+            async () => undefined
+          )
         })
     })
     apps.push(app)

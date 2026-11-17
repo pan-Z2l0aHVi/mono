@@ -205,6 +205,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
         }
         return runtimeStub.availabilityDisposer
       },
+      onPreviewRevoked: () => () => {},
       ...overrides.events
     },
     system: {
