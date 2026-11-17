@@ -105,6 +105,26 @@ describe('recovery scan controller', () => {
     expect(scan.scanning.value).toBe(false)
   })
 
+  it('start 未决时停止且 cancel 失败：清扫已启动的会话', async () => {
+    const host = createHost()
+    const started = deferred<string>()
+    host.start.mockReturnValue(started.promise)
+    host.cancel.mockRejectedValue(new Error('cancel failed'))
+    const onError = vi.fn<(stage: RecoveryScanErrorStage, cause: unknown) => void>()
+    const scan = createRecoveryScanController(host, { timers: createTimers().timers, onError })
+
+    const beginning = scan.beginScan('', ['s1'])
+    scan.requestStop()
+    started.resolve('scan')
+    await beginning
+
+    // cancel 失败后会话仍在后端跑：必须 discard，否则 runner 一直报 already running。
+    expect(host.discard).toHaveBeenCalledWith('scan')
+    expect(onError).toHaveBeenCalledWith('start', expect.any(Error))
+    expect(scan.scanning.value).toBe(false)
+    expect(scan.stopping.value).toBe(false)
+  })
+
   it('停止请求早于 scan id 时，拿到 id 后补发 cancel', async () => {
     const host = createHost()
     const started = deferred<string>()

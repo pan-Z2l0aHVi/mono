@@ -120,7 +120,10 @@ export function createRecoveryScanController(
       if (request !== generation) return
       scanning.value = false
       stopping.value = false
+      // start 已落地但停止/轮询失败：会话仍在后端跑，必须清扫，否则它会一直占住 runner。
+      const failedId = scanId
       scanId = null
+      if (failedId) discard(failedId)
       ports.onError?.('start', cause)
     }
   }
