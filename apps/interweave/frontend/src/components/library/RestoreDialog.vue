@@ -15,6 +15,7 @@ import type { ResourceSourceView } from '@/stores/library'
 import { doubleArrowRight } from './icons'
 import { formatSize } from './presentation'
 import type { PreviewLease } from './previewLease'
+import { createRecoveryScanController } from './recoveryScan'
 import { resourceDialogColumnClass, resourceDialogQueueClass } from './resourceDialogStyles'
 import ResourceLinkDialog from './ResourceLinkDialog.vue'
 import type { LibraryRestoreQueueItem, RecoveryCandidate, RecoveryScanUpdate } from './restore'
@@ -57,35 +58,34 @@ watch(
 const candidates = ref<Record<string, RecoveryCandidate[]>>({})
 const manual = ref<Record<string, boolean>>({})
 const snapshots = ref<Record<string, string>>({})
-const scanning = ref(false)
 const scanProgress = ref<RecoveryScanUpdate | null>(null)
-const scanIncomplete = ref(false)
-let scanId: string | null = null
-let stopRequested = false
-const stopping = ref(false)
-let scanGeneration = 0
-let pollTimer: ReturnType<typeof setTimeout> | null = null
-function stopScan() {
-  scanGeneration++
-  if (pollTimer) clearTimeout(pollTimer)
-  pollTimer = null
-  const id = scanId
-  scanId = null
-  scanning.value = false
-  stopping.value = false
-  stopRequested = false
-  if (id) void props.discardScan(id).catch(console.error)
-}
-function requestStop() {
-  stopRequested = true
-  stopping.value = true
-  scanIncomplete.value = true
-  if (scanId)
-    void props.cancelScan(scanId).catch(cause => {
-      validationError.value = userMessage(cause, '停止扫描失败，请重试')
-      stopping.value = false
-    })
-}
+// 单次会话、代次作废、250ms 轮询与停止竞态都由控制器拥有；这里只提供 UI 回调。
+const scan = createRecoveryScanController(
+  {
+    start: (ids, directory) => props.startScan(ids, directory),
+    poll: id => props.pollScan(id),
+    cancel: id => props.cancelScan(id),
+    discard: id => props.discardScan(id)
+  },
+  {
+    onProgress: update => {
+      scanProgress.value = update
+      for (const candidate of update.candidates) mergeCandidate(candidate)
+    },
+    onDone: update => {
+      if (update.error) validationError.value = userMessage(update.error, '扫描失败，请重试')
+    },
+    onError: (stage, cause) => {
+      if (stage === 'start') validationError.value = userMessage(cause, '启动扫描失败，请重试')
+      else if (stage === 'poll') validationError.value = userMessage(cause, '扫描失败，请重试')
+      else validationError.value = userMessage(cause, '停止扫描失败，请重试')
+    }
+  }
+)
+const scanning = scan.scanning
+const stopping = scan.stopping
+const scanIncomplete = scan.incomplete
+const requestStop = scan.requestStop
 function mergeCandidate(candidate: RecoveryCandidate) {
   const list = candidates.value[candidate.sourceID] ?? []
   const next = [...list.filter(item => item.path !== candidate.path), candidate]
@@ -105,58 +105,15 @@ function openScanChoice() {
   scanChoiceOpen.value = true
 }
 async function beginScan(directory: string) {
-  const request = ++scanGeneration
-  scanning.value = true
-  scanIncomplete.value = false
   validationError.value = ''
   const items = [...props.queue]
   for (const item of props.allUnavailableFiles) if (!items.some(existing => existing.id === item.id)) items.push(item)
   emit('addItems', items)
   toast.info(`已找到 ${items.filter(item => item.kind === 'file').length} 条失效资源`, { position: 'top-center' })
-  try {
-    const id = await props.startScan(
-      items.filter(item => item.kind === 'file').map(item => item.sourceId),
-      directory
-    )
-    if (request !== scanGeneration) {
-      void props.discardScan(id).catch(console.error)
-      return
-    }
-    scanId = id
-    if (stopRequested) await props.cancelScan(id)
-    const poll = async () => {
-      try {
-        const update = await props.pollScan(id)
-        if (request !== scanGeneration) return
-        scanProgress.value = update
-        for (const candidate of update.candidates) mergeCandidate(candidate)
-        if (update.done) {
-          scanId = null
-          scanning.value = false
-          stopping.value = false
-          stopRequested = false
-          scanIncomplete.value = update.cancelled || !!update.error
-          if (update.error) validationError.value = userMessage(update.error, '扫描失败，请重试')
-        } else pollTimer = setTimeout(() => void poll(), 250)
-      } catch (cause) {
-        if (request !== scanGeneration) return
-        scanning.value = false
-        stopping.value = false
-        scanIncomplete.value = true
-        scanId = null
-        void props.discardScan(id).catch(console.error)
-        validationError.value = userMessage(cause, '扫描失败，请重试')
-      }
-    }
-    await poll()
-  } catch (cause) {
-    if (request !== scanGeneration) return
-    scanning.value = false
-    stopping.value = false
-    if (scanId) void props.discardScan(scanId).catch(console.error)
-    scanId = null
-    validationError.value = userMessage(cause, '启动扫描失败，请重试')
-  }
+  await scan.beginScan(
+    directory,
+    items.filter(item => item.kind === 'file').map(item => item.sourceId)
+  )
 }
 function scanAllDisks() {
   scanChoiceOpen.value = false
@@ -250,7 +207,7 @@ watch(
 )
 onBeforeUnmount(() => {
   generation++
-  stopScan()
+  scan.dispose()
   clearPreviews()
 })
 let generation = 0
@@ -262,7 +219,7 @@ watch(
   () => props.open,
   open => {
     generation++
-    stopScan()
+    scan.stop()
     clearPreviews()
     scanChoiceOpen.value = false
     candidateItem.value = null
