@@ -143,6 +143,32 @@ assert.throws(() => runFailure('contract-diff', '--json'))
 assert.throws(() => runFailure('contract-diff', '--base', 'HEAD', '--staged'))
 assert.throws(() => runFailure('contract', '--json', '--base', 'HEAD', '@greypan/web-ui'))
 assert.throws(() => runFailure('contract', '@greypan/web-ui', 'extra-path'))
+assert.throws(() => runFailure('verify', '--root'))
+assert.throws(() => runFailure('verify', '--root', '--json', 'packages/web-ui/src/index.ts'))
+assert.throws(() =>
+  runFailure('verify', '--root', path.join(os.tmpdir(), `missing-repo-root-${process.pid}`), 'packages/web-ui/src/index.ts')
+)
+
+// staged 副本场景：把 repo-query.mjs 复制到仓库外的临时目录执行时，--root <repoRoot>
+// 必须与原地执行产出同一份结果（stage-codex-inputs 把脚本放到 $RUNNER_TEMP/trusted/ 下运行）。
+const stagedRootDir = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-repo-query-staged-'))
+try {
+  const copiedScript = path.join(stagedRootDir, 'repo-query.mjs')
+  fs.copyFileSync(script, copiedScript)
+  assert.throws(
+    () => execFileSync(process.execPath, [copiedScript, 'contract', '--json', '@greypan/web-ui'], { stdio: 'pipe' }),
+    /cannot load pnpm workspace manifests/
+  )
+  const stagedContract = JSON.parse(
+    execFileSync(process.execPath, [copiedScript, 'contract', '--root', process.cwd(), '--json', '@greypan/web-ui'], {
+      cwd: stagedRootDir,
+      encoding: 'utf8'
+    })
+  )
+  assert.deepEqual(stagedContract, webUiContract)
+} finally {
+  fs.rmSync(stagedRootDir, { recursive: true, force: true })
+}
 
 // 默认文本报告与 --json 暴露同一份契约：SKILL.md 要求用 contract 报告确认 exports、
 // peerDependencies、sideEffects、直接消费者与最小验证，缺字段就等于报告口径不完整。

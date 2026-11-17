@@ -176,6 +176,10 @@ jobs:
 
     steps:
       - uses: actions/checkout@v7
+        with:
+          # 配有 CODEX_AUTOFIX_PUSH_TOKEN 时用专用 PAT 推送 autofix，使后续 CI 以用户身份触发并放行审查；
+          # 未配置时回退默认 github.token，不阻断主链路。
+          token: ${{ secrets.CODEX_AUTOFIX_PUSH_TOKEN || github.token }}
 
       - uses: ./.github/actions/setup-deps
         with:

@@ -59,16 +59,17 @@ Codex 审查承担本仓默认的 PR review 结论（2026-11-06 起；此前的�
 
 **权限拆 workflow**：模型只在 PR 验证的只读 job 里运行；写回（评论、应用并推送 patch、触发一次失败 job 重跑）在由 CI 完成事件触发的独立 workflow 里进行，那条 workflow 一次都不调用模型。这条划分是 PR 验证只读不变量成立的前提。该 workflow 显示名为 `Codex Review Report`（文件 `codex-review-report.yml`）：它的产物是一份关于既有结论的报告，不改判结论，所以不叫 publish。
 
-**配置契约**：端点、模型名、思考强度、密钥与 codex 版本全部由 GitHub 后台提供，CI 定义只写引用，不写默认值、不写兜底表达式。
+**配置契约**：端点、模型名、思考强度、密钥与 codex 版本全部由 GitHub 后台提供，CI 定义只写引用，不写默认值、不写兜底表达式。**唯一例外**：`codex-autofix-apply` 的 `actions/checkout@v7` 允许使用 `token: ${{ secrets.CODEX_AUTOFIX_PUSH_TOKEN || github.token }}` 显式兜底——因为 `CODEX_AUTOFIX_PUSH_TOKEN` 为可选 secret，未配置（或为空）时必须回落默认 `GITHUB_TOKEN` 以免阻断 checkout，其后果是推送不会触发后续 `ci.yml` checks，需人工重跑一次 CI。
 
-| 名称                       | 载体     | 用途                              |
-| -------------------------- | -------- | --------------------------------- |
-| `CODEX_REVIEW_API_KEY`     | Secret   | 模型凭据                          |
-| `CODEX_RESPONSES_ENDPOINT` | Variable | 公网可达的 Responses API 兼容端点 |
-| `CODEX_REVIEW_MODEL`       | Variable | 模型名                            |
-| `CODEX_REVIEW_EFFORT`      | Variable | 思考强度                          |
-| `CODEX_VERSION`            | Variable | codex CLI 与本地代理版本          |
-| `CODEX_AUTOFIX_ENABLED`    | Variable | 仅 `true` 启用两条自动修 job      |
+| 名称                       | 载体     | 用途                                                                   |
+| -------------------------- | -------- | ---------------------------------------------------------------------- |
+| `CODEX_REVIEW_API_KEY`     | Secret   | 模型凭据                                                               |
+| `CODEX_RESPONSES_ENDPOINT` | Variable | 公网可达的 Responses API 兼容端点                                      |
+| `CODEX_REVIEW_MODEL`       | Variable | 模型名                                                                 |
+| `CODEX_REVIEW_EFFORT`      | Variable | 思考强度                                                               |
+| `CODEX_VERSION`            | Variable | codex CLI 与本地代理版本                                               |
+| `CODEX_AUTOFIX_ENABLED`    | Variable | 仅 `true` 启用两条自动修 job                                           |
+| `CODEX_AUTOFIX_PUSH_TOKEN` | Secret   | 可选：专用 autofix 推送 PAT（仅限写回 `codex-autofix-apply` 推送使用） |
 
 密钥只出现在预检步骤的 `env` 与模型 action 的 `openai-api-key` 输入里，不下放到 job 级 `env`：job 级会把它带进模型进程，本地代理的隔离就不成立。调用经由 action 自带的本地代理，模型进程拿不到密钥本身。端点必须是 GitHub-hosted runner 能到达的 Responses API 兼容网关；本机 loopback 代理不在可达范围内。合法模型名由该网关决定，仓库不预设。
 
@@ -82,7 +83,9 @@ Codex 审查承担本仓默认的 PR review 结论（2026-11-06 起；此前的�
 
 **Runner 镜像**：两条模型 job 固定 `runs-on: ubuntu-24.04`，且保留 `safety-strategy: 'drop-sudo'`；本 workflow 其余 Linux job 仍用 `ubuntu-latest`。原因是 `ubuntu-latest` 已滚动到 `ubuntu-26.04`：该镜像的 `sudo` 是 sudo-rs（忽略 `-E`）、`/usr/bin/test` 是 uutils coreutils（`-w` 只读 mode bits），`openai/codex-action@v1.13` 的 `drop-sudo` 在 `restrictRootServiceSocket()` 里给 `/run/dbus/system_bus_socket` 设好 deny ACL 后仍被误判为「runner 仍可写」，在 `Run codex exec` 启动 Codex 之前就抛错退出。上游 issue [#188](https://github.com/openai/codex-action/issues/188) 同款报错，修复 PR [#191](https://github.com/openai/codex-action/pull/191) 尚未合并，v1.13 之后的 main 提交也未包含该修复。固定 24.04 而非改用 `safety-strategy: read-only`：后者会被上游 `determinePermissionSelection()` 强制成 read-only sandbox，直接废掉 autofix job 的 `workspace-write`，且放弃 sudo 剥离；也不选 `unprivileged-user`，它要额外处理 checkout、`CODEX_HOME`、prompt 与输出文件权限，落地成本远高于收益。代价是依赖一个终会退役的旧镜像。**恢复条件**：上游发布含 #191 修复的 `codex-action` 版本后，把两条 job 恢复为 `ubuntu-latest`、同步删掉拓扑断言里的固定值，并在真实 run 上按验收清单第 8 项复核。若 24.04 先退役而上游仍未修，不能直接回 `ubuntu-latest`（会重现同一故障），必须走备选：升级到已修复的 action、改用 `unprivileged-user` 并补齐权限准备，或停用 `drop-sudo` 并同时重构 autofix job 的沙箱。`check` 与 Wails job 不受此约束。CI 拓扑断言同时钉住镜像标签与 `drop-sudo`，任一被改都会让脚本单测变红。
 
-**输入可信来源**：prompt、schema、判定脚本（含预检）与生成物禁令清单从 PR base（写 job 从默认分支）取版本落到 runner 临时目录，执行只用那份副本。工作区本身仍检出 PR head：`uses: ./...` 的复合 action 由 job 工作区解析，检出 base 会让本 PR 新建的 action 解析不到，这道门整个跑不起来——固定的是脚本内容的来源，不是工作区的来源。残留的篡改面是 workflow YAML 与 PR job 由工作区解析的复合 action（`setup-deps` 与 `stage-codex-inputs`，前者还先于后者运行）：它们必须由 head 提供，所以改它们仍在被审查的 diff 里明写，与「模型能读到 worktree 里的 review 判据文档」归在同一类已接受风险里，由人工 review 和「只审同源仓库、base 为 `main`」的范围一起兜住。CI 定义由机器断言同时钉住工作区来源与 `base-sha` 这两侧。2026-11-08 起 review job 另有一条从工作区直接执行的 `check-review-output.mjs`（空壳检测）：它不进 trusted 清单，但只写退出码、不注入 secret、排在上传之后且不接触 artifact 内容，结论仍由取自 base 的 `validate` / `gate` 裁决；改它最多让审查 job 不跟着变红、换不来绿色，归入同一类已接受风险。
+**输入可信来源**：prompt、schema、判定脚本（含预检）、生成物禁令清单、影响面查询脚本/自撰审校 `SKILL.md`（`skills/monorepo-change-impact/repo-query.mjs` 与自撰审校 skill 文档）以及第三方 vendored 审校参考文件（`.agents/skills-vendored/{review-animations,emil-design-eng,apple-design}` 下的 `SKILL.md` / `STANDARDS.md`）从 PR base（写 job 从默认分支）取版本落到 runner 临时目录，执行与参考只用那份副本，禁止读取 PR head 工作区中的 `.agents/skills/` 与 `.agents/skills-vendored/`。工作区本身仍检出 PR head：`uses: ./...` 的复合 action 由 job 工作区解析，检出 base 会让本 PR 新建的 action 解析不到，这道门整个跑不起来——固定的是脚本内容的来源，不是工作区的来源。残留的篡改面是 workflow YAML 与 PR job 由工作区解析的复合 action（`setup-deps` 与 `stage-codex-inputs`，前者还先于后者运行）：它们必须由 head 提供，所以改它们仍在被审查的 diff 里明写，与「模型能读到 worktree 里的 review 判据文档」归在同一类已接受风险里，由人工 review 和「只审同源仓库、base 为 `main`」的范围一起兜住。CI 定义由机器断言同时钉住工作区来源与 `base-sha` 这两侧。2026-11-08 起 review job 另有一条从工作区直接执行的 `check-review-output.mjs`（空壳检测）：它不进 trusted 清单，但只写退出码、不注入 secret、排在上传之后且不接触 artifact 内容，结论仍由取自 base 的 `validate` / `gate` 裁决；改它最多让审查 job 不跟着变红、换不来绿色，归入同一类已接受风险。
+
+**按需 Skill 路由与影响面预注入**（2026-11-16）：线上 `Codex review` 虽通过项目 `.agents/skills/` 发现了仓库 skills，但开局防跑偏条款让模型一刀切跳过所有 skills，在 `--output-schema` 与早停收口约束下几乎不触发隐式读取。因此将 `.agents/skills/` 分为三层路由：① 禁用实施流程型（`task-ledger`、`request-authorization`、`turbo-sparse-scope`、`wizard`）；② 自撰审校型（`test-authoring`、`monorepo-change-impact`）由 `codex-review.mjs` 的 `selectReviewSkills` 根据 `changedPaths` 与源码 diff 确定性路由后，直接从 `$RUNNER_TEMP/trusted/skills/<name>/SKILL.md` 读取并内嵌 staged 可信副本（不输出 `$skill-name` 避免触发 host skill discovery 去读 PR head 工作区的 `.agents/skills/` 造成门禁绕过），并在命中 `monorepo-change-impact` 时由 `prepare` 直接调用 staged 的 `repo-query.mjs`（支持 `--root <dir>`，`verify` 传已滤除生成物的 `changedPaths`、`contract` 查直接变更的可发布包、`contract-diff` 用基线/合并树 ref，配 10 秒超时与降级兜底）把结构化影响面摘要预注入 `review-preload.md`；③ 第三方 vendored UI/动效 skills（`review-animations`、`emil-design-eng`、`apple-design`，受 `skills-lock.json` 约束不得改写，且含问候语、Markdown 表格或 `Approve/Block` 裁决）仅在前端非测试/非文档源码 diff 命中对应关键词（含 camelCase 变体如 `onPointerDown`、`onDragStart`、`onTransitionEnd`、`onAnimationEnd`、`useSpring`、`transformOrigin`、`clipPath`）时注入轻量要点与 `$RUNNER_TEMP/trusted/.agents/skills-vendored/` 可信副本指针（禁止读取工作区 `.agents/skills/`），**不注入 `$skill-name`**，同时 prompt 明确覆写所有 skill 的输出格式要求，统一映射为 schema JSON。`empty_diff: true` 时跳过路由，审计字段 `routed_skills` 记入 `review-scope.json`（不修改 `review-findings.schema.json`）。只有被 staging 的脚本、prompt、自撰审校 `SKILL.md` 与第三方 vendored `SKILL.md` / `STANDARDS.md` 内容自 PR base 读取；工作区本身仍检出 PR head，仅由 prompt 禁止读取工作区 `.agents/skills/` 与 `.agents/skills-vendored/`（无文件系统级隔离，归入上文同一类已接受风险）；`stage-codex-inputs` action 定义及其文件清单仍由 PR head 工作区提供并归入上文同一类已接受风险，新路由与预计算行为在合入 `main` 后的下一张 PR 生效。
 
 **适用范围**：只审同源仓库、base 为 `main`、未关闭且不是版本分支的 PR。fork PR 默认不跑——它拿不到仓库 secret，要审就得逐次为它放行。
 
@@ -164,6 +167,7 @@ Error: /usr/bin/sudo exited with code 1
 14. 空壳自动恢复：`report-conclusion` 持 `actions: write`，`Auto-rerun empty review output` 只在 `missing_coverage` 或 `unusable_output`（`AUTO_RETRY_ERROR_CODES`）、CI run `failure`，且 CI run attempt 与写回 run 自身 attempt **都为 1** 时重跑一次；任一大过上限停在 `exhausted`，任一不可读或 CI 非 `failure` 停在 `none`（`none` 档要求先核对运行页原因、不要连续重跑）。判定顺序把「不该恢复」的三类检查放在「上限已用尽」之前，单测钉住 `CI success + reportAttempt=2`、`runConclusion` 不可读 + `reportAttempt=2` 与「一个维度不可读、另一个已 >1」都不误报 `exhausted`。`missing_coverage` 与 `unusable_output` 均经 `check-review-output.mjs` 判红审查 job 并分流到自动重跑，`error` 不分流到自动重跑；两个 attempt 分别由 payload 与 `github.run_attempt` 注入，不额外发 GET。重跑调用失败、meta 损坏或 env 缺失时结论评论写 `failed`，步骤失败且无 output 时由 `CODEX_REVIEW_AUTO_RETRY_OUTCOME` 交给 `resolveAutoRetryState()` 兜底。判定、分流与「写回 run 自身被 re-run 不再 POST」由纯函数与可注入的 `commandAutoRetry` 行为单测钉住，恢复状态解析有求值级单测，权限、步骤顺序、两个 env、门槛不落在步骤 `if` 与可信子命令由编排断言钉住。真实空壳复发时核对运行页 Summary 的两个 attempt、`CODEX_REVIEW_AUTO_RETRY_STATE` / `CODEX_REVIEW_AUTO_RETRY_OUTCOME` 两个传参与结论评论档位，不主动制造空壳。workflow YAML 与可信脚本都取默认分支版本，**合入 main 后的下一个 PR** 才生效。
 
 15. 判据与高风险 diff 预注入（B1）：`prepare` 在结论目录写出 `review-preload.md`，`review-scope.json` 含 `preloaded_paths` 与 `preload_bytes`，且当 `$RUNNER_TEMP/trusted/codex/prompts/review.md` 存在时按 `<!-- codex-review-preload:start/end -->` 标记幂等注入预注入块；`.github/codex/prompts/review.md` 含该起止标记、`preloadPath()` 路径与内嵌三档判据。风险分档排序、C 引号 UTF-8 路径解析、新增/删除/重命名/mode-only diff 切分、行级 UTF-8 截断、动态代码围栏防闭合、预算截断（`PRELOAD_MAX_PATHS=30` / `PRELOAD_MAX_FILES=8` / `PRELOAD_PER_FILE_BYTES=4096` / `PRELOAD_TOTAL_DIFF_BYTES=24576`）、空 diff 豁免与 `commandPrepare` 重复调用幂等性由脚本单测钉住；`stage-codex-inputs` → `Prepare review range` → `Review pull request with Codex` 的步骤顺序与 `trustedPromptPath()` 一致性由拓扑断言钉住。可信脚本与 prompt 取自 `BASE_SHA`，真实 run 上的预注入产物在**合入 main 后的下一个 PR** 上核对。
+16. 按需 Skill 路由与影响面预计算：`review.md` 明确禁用实施流程型 skills、按需执行审校型 skills 并覆写为纯 JSON 输出；`selectReviewSkills` 与 `buildReviewPreload` 正负例（含 camelCase 变体、测试夹具/注释/文档/后端代码防误触发、禁止输出任何 `$skill-name` 与 PR head `SKILL.md` 篡改负向测试）由 `codex-review.test.mjs` 钉住；`repo-query.mjs --root` 跨目录执行、`stage-codex-inputs` staging 清单、`review-scope.json` 的 `routed_skills` 与 `runRepoImpactQuery` 超时降级由单测钉住，真实 CI 生效时机在**合入 main 后的下一个 PR** 上核对。
 
 **待办**：`prepare` 的任何失败都会跳过 preflight，被 `validate` 记成 `config_missing`；后续把 preflight 前置到 prepare 之前，或引入 `job_failed` / `preflight_missing` 错误码，并同步「状态口径」、`docs/agents/review.md` 的故障码清单、`renderConclusion()` 与相关单测。本次修复后该误归因对 PR #515 的事故不再可达，门「故障即红」不受影响。
 
@@ -180,12 +184,12 @@ Error: /usr/bin/sudo exited with code 1
 **没有换掉的东西**：
 
 - 覆盖空白仍在，兜法换了。被 `**/generated/**` 剔除的生成物门看不见，此前靠人工核对，现在靠 `check-generated` 与消费者类型检查；只改生成物的 PR（`empty_diff: true`）也按这条走。
-- 拿不到覆盖当前 head 的结论时（`error`、`unreviewed`、`stale`、`not_applicable`、fork PR、自动修推送的新 head、两个兜校验都不适用的产物），PR 上没有 review 结论。
+- 拿不到覆盖当前 head 的结论时（`error`、`unreviewed`、`stale`、`not_applicable`、fork PR、未配置 `CODEX_AUTOFIX_PUSH_TOKEN` 时自动修推送的新 head、两个兜校验都不适用的产物），PR 上没有 review 结论。
 - 概率性没有被消除。门漏掉的低级遗漏，没有别的执行体会看到；缓解手段是后台可随时换更强的模型与更高强度（配置指纹变了就不复用旧结论），而不是把人工复核写回默认流程。
 
 ## 后果
 
-- 自动修推送的新提交不会触发 checks，PR 上那道必需检查要人重跑一次 CI 才会覆盖新 head；结论对新 head 也随之过期，这是「直推」换来的代价。
+- 配置了 `CODEX_AUTOFIX_PUSH_TOKEN` 时，自动修推送的新提交会以该 PAT 触发后续 `ci.yml` checks 与审查门；未配置（或为空）时回落默认 `GITHUB_TOKEN`，推送的新提交不会触发 checks，PR 上那道必需检查要人重跑一次 CI 才会覆盖新 head，结论对新 head 也随之过期，这是「直推」换来的代价。
 - 门是约定式的：绕开它只需要忽略一次红叉。2026-11-06 起它是本仓默认的 PR review，忽略这一次红叉就等于合并未经审查的 PR。省掉的是「等一次人工细看」，新增的兜底只剩维护者自己看颜色。
 - 后台配置未填齐时每个 PR 都会红。配置本身成为可观测的门禁输入，代价是配置变更与门的颜色直接绑定。
 - 引入新可信子命令的那个 PR 自身无法完成审查：它的 base 还是旧脚本，模型 job 会红。首次落地要先合入脚本、再在后续 PR 上验证全链路。

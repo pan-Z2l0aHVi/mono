@@ -36,7 +36,14 @@ runs:
           .github/scripts/codex-autofix.mjs \
           .github/scripts/lib/github.mjs \
           .github/scripts/lib/workflow-topology.mjs \
-          .claude/settings.json; do
+          .claude/settings.json \
+          skills/monorepo-change-impact/repo-query.mjs \
+          skills/monorepo-change-impact/SKILL.md \
+          skills/test-authoring/SKILL.md \
+          .agents/skills-vendored/review-animations/SKILL.md \
+          .agents/skills-vendored/review-animations/STANDARDS.md \
+          .agents/skills-vendored/emil-design-eng/SKILL.md \
+          .agents/skills-vendored/apple-design/SKILL.md; do
           target="$RUNNER_TEMP/trusted/${tracked#.github/}"
           mkdir -p "$(dirname "$target")"
           if git cat-file -e "$source_ref:$tracked" 2>/dev/null; then

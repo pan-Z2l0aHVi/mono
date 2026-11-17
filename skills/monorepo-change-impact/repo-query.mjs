@@ -6,20 +6,20 @@
 // 的段落是宿主仓库的 context 与验证策略，其他 monorepo 采纳本 skill 时按自己的约定调整。
 //
 // Usage:
-//   node skills/monorepo-change-impact/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...
-//   node skills/monorepo-change-impact/repo-query.mjs contract [--json] <workspace-name>
-//   node skills/monorepo-change-impact/repo-query.mjs contract-diff --base <git-ref> [--json]
+//   node skills/monorepo-change-impact/repo-query.mjs verify [--root <dir>] [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...
+//   node skills/monorepo-change-impact/repo-query.mjs contract [--root <dir>] [--json] <workspace-name>
+//   node skills/monorepo-change-impact/repo-query.mjs contract-diff [--root <dir>] --base <git-ref> [--json]
 
 import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-const root = path.resolve(import.meta.dirname, '../..')
 const GIT_MAX_BUFFER = 64 * 1024 * 1024
 const rawArgs = process.argv.slice(2)
 const compareText = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
 const command = rawArgs.shift() ?? 'verify'
 const options = parseOptions(rawArgs)
+const root = options.root ? path.resolve(options.root) : path.resolve(import.meta.dirname, '../..')
 const contractTarget = command === 'contract' ? (options.paths.shift() ?? '') : ''
 
 const VALID_COMMANDS = ['verify', 'contract', 'contract-diff']
@@ -32,17 +32,25 @@ if (
   (command === 'verify' && options.paths.length === 0 && !options.base && !options.staged && !options.worktree)
 ) {
   console.error(
-    'Usage: node skills/monorepo-change-impact/repo-query.mjs verify [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...\n       node skills/monorepo-change-impact/repo-query.mjs contract [--json] <workspace-name>\n       node skills/monorepo-change-impact/repo-query.mjs contract-diff --base <git-ref> [--json]'
+    'Usage: node skills/monorepo-change-impact/repo-query.mjs verify [--root <dir>] [--json] [--base <git-ref> | --staged | --worktree] <changed-path>...\n       node skills/monorepo-change-impact/repo-query.mjs contract [--root <dir>] [--json] <workspace-name>\n       node skills/monorepo-change-impact/repo-query.mjs contract-diff [--root <dir>] --base <git-ref> [--json]'
   )
   process.exit(1)
 }
 
+if (!fs.existsSync(root) || !fs.statSync(root).isDirectory()) {
+  console.error(`repo-query: --root directory does not exist: ${root}`)
+  process.exit(1)
+}
+
 function parseOptions(args) {
-  const result = { base: '', json: false, paths: [], staged: false, worktree: false }
+  const result = { base: '', json: false, paths: [], root: '', staged: false, worktree: false }
 
   for (let index = 0; index < args.length; index += 1) {
     const argument = args[index]
-    if (argument === '--') continue
+    if (argument === '--') {
+      result.paths.push(...args.slice(index + 1))
+      break
+    }
     if (argument === '--json') {
       result.json = true
       continue
@@ -53,6 +61,16 @@ function parseOptions(args) {
     }
     if (argument === '--worktree') {
       result.worktree = true
+      continue
+    }
+    if (argument === '--root') {
+      const directory = args[index + 1]
+      if (!directory || directory.startsWith('--')) {
+        console.error('repo-query: --root requires a directory path')
+        process.exit(1)
+      }
+      result.root = directory
+      index += 1
       continue
     }
     if (argument === '--base') {
