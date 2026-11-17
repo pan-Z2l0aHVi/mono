@@ -18,6 +18,7 @@ import { FocusNavigator, rowFocusTarget } from './focusNavigator'
 import { arrowUpRight } from './icons'
 import { availableFileSource, fileManagerIcon, fileManagerLabel } from './presentation'
 import type { NameEditorRef } from './rename'
+import { createResourceContextMenu } from './resourceContextMenu'
 import ResourceRow from './ResourceRow.vue'
 import { SweepScrollController } from './sweepScroll'
 
@@ -60,103 +61,7 @@ function preventScrimContextMenu(event: MouseEvent) {
     event.preventDefault()
   }
 }
-const LONG_PRESS_SPACE_DELAY_MS = 500
-let containerSpaceTimer: number | undefined
-let containerSpaceMenuOpened = false
-
-function clearContainerSpaceTimer() {
-  if (containerSpaceTimer !== undefined) {
-    window.clearTimeout(containerSpaceTimer)
-    containerSpaceTimer = undefined
-  }
-}
-
-function resetContainerSpaceState() {
-  clearContainerSpaceTimer()
-  containerSpaceMenuOpened = false
-}
-
-/*
- * 容器自身也是 tab stop（Tab 停在列表大区域时，长按 Space 与 ContextMenu 键一致地把右键菜单
- * 委托给当前活动行）：web-ui-context-menu 在捕获阶段只认事件目标本身（rowsRef），长按时会以
- * contextResource=null 弹出一张锚在列表底部的残缺菜单。这里在 window 捕获阶段接管「焦点停在
- * 列表容器时的 Space」：短按松开仍按 enterList 进入活动行；长按到 500ms 则激活并聚焦该行，再
- * 经同一条 ContextMenu 键通路打开属于该行的菜单，并吞掉长按期间的 repeat 直到松开。
- */
-function handleWindowSpaceKeydown(event: KeyboardEvent) {
-  if (event.key !== ' ') return
-  if (containerSpaceMenuOpened) {
-    event.preventDefault()
-    event.stopPropagation()
-    return
-  }
-  if (
-    event.shiftKey ||
-    event.ctrlKey ||
-    event.metaKey ||
-    event.altKey ||
-    event.target !== rowsRef.value ||
-    !props.resources.length
-  ) {
-    return
-  }
-  event.preventDefault()
-  event.stopPropagation()
-  if (event.repeat || containerSpaceTimer !== undefined) return
-  containerSpaceTimer = window.setTimeout(() => {
-    containerSpaceTimer = undefined
-    if (document.activeElement !== rowsRef.value || !props.resources.length) return
-    const index = activeIndex.value
-    const resource = props.resources[index]
-    if (!resource) return
-    containerSpaceMenuOpened = true
-    void (async () => {
-      await navigator.navigateToIndex(index)
-      contextResource.value = resource
-      await nextTick()
-      const anchor = rowElementAt(index)
-      if (!anchor) return
-      anchor.dispatchEvent(
-        new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true, composed: true, cancelable: true })
-      )
-    })()
-  }, LONG_PRESS_SPACE_DELAY_MS)
-}
-
-function handleWindowSpaceKeyup(event: KeyboardEvent) {
-  if (event.key !== ' ') return
-  if (containerSpaceMenuOpened) {
-    event.preventDefault()
-    event.stopPropagation()
-    containerSpaceMenuOpened = false
-    return
-  }
-  if (containerSpaceTimer === undefined) return
-  clearContainerSpaceTimer()
-  event.preventDefault()
-  event.stopPropagation()
-  if (document.activeElement === rowsRef.value && props.resources.length) {
-    const active = props.resources.findIndex(resource => resource.id === props.activeResourceId)
-    void (active >= 0 ? navigator.focusIndex(active) : navigator.navigateToIndex(0))
-  }
-}
-
-onMounted(() => {
-  window.addEventListener('contextmenu', preventScrimContextMenu, true)
-  window.addEventListener('keydown', handleWindowSpaceKeydown, true)
-  window.addEventListener('keyup', handleWindowSpaceKeyup, true)
-  window.addEventListener('blur', resetContainerSpaceState)
-})
-onBeforeUnmount(() => {
-  window.removeEventListener('contextmenu', preventScrimContextMenu, true)
-  window.removeEventListener('keydown', handleWindowSpaceKeydown, true)
-  window.removeEventListener('keyup', handleWindowSpaceKeyup, true)
-  window.removeEventListener('blur', resetContainerSpaceState)
-  resetContainerSpaceState()
-})
-
 const contextMenuRef = ref<WebUiContextMenu>()
-const contextResource = ref<ResourceView | null>(null)
 const rowsRef = ref<HTMLElement | null>(null)
 const emptyTitle = computed(() => (props.runtimeAvailable ? '资源库为空' : '暂时无法打开资源库'))
 const checkedSet = computed(() => new Set(props.checkedIds))
@@ -315,53 +220,6 @@ function scrollIndexIntoView(index: number) {
  * 当前资源被筛选/搜索筛掉时，activeResourceId 由父级置 null（见决策 8），派生会自动回退到 0。
  * 列表内容变化时当前行按 id 跟随（决策 7）——派生天然满足：activeResourceId 不变则下标随顺序变化而变化。
  */
-
-/*
- * 焦点成为 contextResource 的第二个来源。键盘呼出 context menu（ContextMenu 键 / 长按空格）
- * 由 web-ui-context-menu 自己监听宿主元素，它不看 contextResource、只按 document.activeElement
- * 的 rect 摆 panel；而 menu item 全部 gate 在 contextResource 上，它只有行上的 contextmenu
- * 事件这一个赋值点。纯键盘呼出时 contextResource 仍是 null，弹出来的是一张紧贴该行、
- * 内容却只有「删除」和两条 divider 的 menu：位置在说「这一行」，内容在说别的资源。
- *
- * 用 focusin 而不是给 ResourceRow 加一个 focus emit：focusin 会冒泡，容器上一个监听就够，
- * 行内的勾选框与改名编辑器获焦时也会顺带把所属行同步上，不必为一个纯内部的状态同步再扩
- * 一条对外 emit 契约。落焦到容器自己身上时置空，免得拿上一条资源的 menu item 去填一张锚在
- * 列表上的 menu。
- */
-function handleRowsFocusin(event: FocusEvent) {
-  const target = event.target
-  if (!(target instanceof HTMLElement)) return
-  if (target !== rowsRef.value) clearContainerSpaceTimer()
-  const row = target.closest<HTMLElement>('[data-resource-row]')
-  contextResource.value = row ? resourceForRow(row) : null
-}
-
-/*
- * 触屏长按是 contextResource 的第三个来源。
- *
- * 开了 long-press 之后 menu 有两个开法：鼠标走原生 contextmenu（行上的事件），触屏走组件
- * 自己在宿主上计时打开。后者不发事件、也不认行——它只知道「在哪儿按的」，menu item 却全部
- * gate 在 contextResource 上。若只补属性不补这个赋值，长按弹出来的是一张位置在某一行的
- * 空 menu：只剩两条 divider 和一个删除「null」的空项。
- *
- * 为什么在 pointerdown 就落定、而不是等 menu 要开了再补：长按的判定归组件的计时器，我们
- * 没有「即将开 menu」这个时刻可挂。此时 menu 还没开，v-if 渲染的是最终形态，组件搬运项的
- * 那一整套（capture → 移入 portal → 关闭时搬回）拿到的也是完整项集。等开之后再改
- * contextResource 就是在 panel 里增删节点，正是本组件上方那段 wrapper 注释里记的那个
- * 会把锚点搞丢、且无法自愈的坑。
- *
- * 长按抬手后浏览器补发的 click 不用宿主管：web-ui-context-menu 自己在宿主子树 capture
- * 阶段吸收它（组件知道「这次长按开出了 menu」「手势何时结束」，宿主推导的每个事实都是
- * 冗余推导），行激活不会被补发的 click 误触。
- */
-
-function syncTouchContext(event: PointerEvent) {
-  if (event.pointerType !== 'touch') return
-  const target = event.target
-  if (!(target instanceof HTMLElement)) return
-  const row = target.closest<HTMLElement>('[data-resource-row]')
-  contextResource.value = row ? resourceForRow(row) : null
-}
 
 const ROW_NAVIGATION_KEYS = new Set(['ArrowDown', 'ArrowUp', 'Home', 'End'])
 
@@ -579,6 +437,42 @@ function rowIdAt(clientX: number, clientY: number) {
   return row?.dataset.resourceId ?? null
 }
 
+/*
+ * 右键菜单的身份机收在 createResourceContextMenu：四个 contextResource 来源（原生
+ * contextmenu、行内 focusin、触屏 pointerdown、容器长按 Space）与锚点/序号/「打开方式」
+ * 名字的异步作废都在那里，本组件只提供行解析、导航与路资源。
+ */
+const contextMenu = createResourceContextMenu({
+  rowsElement: () => rowsRef.value,
+  resolveForRow: resourceForRow,
+  activate: resource => emit('activate', resource),
+  resolveDefaultOpenWith: resource => (resource ? props.resolveDefaultOpenWith(resource) : Promise.resolve('')),
+  anchor: () => contextMenuRef.value ?? null,
+  rowAnchor: index => rowElementAt(index),
+  navigateToIndex: index => navigator.navigateToIndex(index),
+  focusIndex: index => navigator.focusIndex(index),
+  activeIndex: () => activeIndex.value,
+  activeResource: () => props.resources[activeIndex.value] ?? null,
+  activeResourceId: () => props.activeResourceId,
+  suppressed: () => sweep.isContextMenuSuppressed(),
+  resources: () => props.resources
+})
+const contextResource = contextMenu.contextResource
+const defaultOpenWithName = contextMenu.defaultOpenWithName
+const openContextMenu = contextMenu.openFromRow
+const closeContextMenu = contextMenu.close
+const handleRowsFocusin = contextMenu.onRowsFocusin
+
+let stopWindowSpaceMachine: (() => void) | null = null
+onMounted(() => {
+  window.addEventListener('contextmenu', preventScrimContextMenu, true)
+  stopWindowSpaceMachine = contextMenu.bindWindowSpaceMachine()
+})
+onBeforeUnmount(() => {
+  window.removeEventListener('contextmenu', preventScrimContextMenu, true)
+  stopWindowSpaceMachine?.()
+})
+
 function handleSweepStart(event: PointerEvent) {
   if (
     event.pointerType === 'touch' &&
@@ -590,7 +484,7 @@ function handleSweepStart(event: PointerEvent) {
   // 长按 menu 要用的 contextResource 在这里落定：这是 pointerdown 冒泡到容器上的第一个监听器，
   // 早于 web-ui-context-menu 自己那个（它在宿主上，我们在容器的后代里）。放在早的那一侧，
   // 长按计时器到期时 contextResource 已经是对的，menu 开出来就有完整项。
-  syncTouchContext(event)
+  contextMenu.onTouchPointerDown(event)
   sweep.handlePointerDown(event)
 }
 
@@ -615,27 +509,6 @@ function onBeforeUnmountHooks() {
 
 onBeforeUnmount(onBeforeUnmountHooks)
 
-/*
- * 「打开方式」显示系统默认应用的真实名字。名字是异步查出来的，而右键可以连续落到不同行上，
- * 因此用请求序号作废旧结果——否则慢的那次查询会把后一行的名字盖回去。
- * 名字只影响文案：查不到时回落「系统默认应用」，点击仍交给系统按默认关联打开。
- */
-const defaultOpenWithName = ref('')
-let defaultOpenWithRequest = 0
-
-async function loadDefaultOpenWith(resource: ResourceView | null) {
-  const request = ++defaultOpenWithRequest
-  defaultOpenWithName.value = ''
-  if (!resource) return
-  const name = await props.resolveDefaultOpenWith(resource)
-  if (request !== defaultOpenWithRequest) return
-  defaultOpenWithName.value = name
-}
-
-watch(contextResource, resource => {
-  void loadDefaultOpenWith(resource)
-})
-
 function handleOpenDefault(resource: ResourceView | null) {
   if (resource) emit('openDefault', resource)
   closeContextMenu()
@@ -645,35 +518,6 @@ function handleShowInFileManager(resource: ResourceView | null) {
   const source = availableFileSource(resource)
   if (source) emit('showInFileManager', source)
   closeContextMenu()
-}
-
-let contextMenuOpenVersion = 0
-
-async function openContextMenu(resource: ResourceView, event: MouseEvent) {
-  // 长按扫选手势会顺带触发系统级 contextmenu，那不是「用户想看 menu」，挡掉
-  if (sweep.isContextMenuSuppressed()) {
-    event.preventDefault()
-    return
-  }
-  event.preventDefault()
-  event.stopPropagation()
-  // 右键呼出 menu 本身也写当前行（决策 4 后半句）：emit activate 让父级把 activeResourceId
-  // 置为该行资源 id。不调用 focusIndex()——它会 scrollIndexIntoView + row.focus()，会抢走焦点
-  //（右键改名时焦点在名字编辑器里）。
-  emit('activate', resource)
-  const { clientX, clientY } = event
-  const version = ++contextMenuOpenVersion
-  contextResource.value = resource
-  await nextTick()
-  // WebKit 需先结束原生右键事件，再打开模态菜单，避免系统菜单与定位冲突。
-  requestAnimationFrame(() => {
-    if (version === contextMenuOpenVersion) contextMenuRef.value?.openAt(clientX, clientY)
-  })
-}
-
-function closeContextMenu() {
-  contextMenuOpenVersion++
-  contextMenuRef.value?.close()
 }
 
 function contextUnavailableSource(resource: ResourceView | null) {
