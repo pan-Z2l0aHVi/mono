@@ -158,7 +158,8 @@ function releasePreview(id: string) {
   void props.lease.revoke(id).catch(console.error)
 }
 function clearPreviews() {
-  for (const id of [...previewKeys]) releasePreview(id)
+  // releasePreview 会改动集合，先取快照再逐个撤销。
+  for (const id of Array.from(previewKeys)) releasePreview(id)
 }
 function previewSource(id: string): ResourceSourceView | null {
   const preview = previews.value[id]
@@ -200,7 +201,7 @@ watch(
 watch(
   () => props.queue.map(item => item.id).join('|'),
   () => {
-    for (const id of [...previewKeys]) {
+    for (const id of Array.from(previewKeys)) {
       if (!props.queue.some(item => item.id === id)) releasePreview(id)
     }
   }
