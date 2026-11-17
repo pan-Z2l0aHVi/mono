@@ -442,6 +442,15 @@ export class WebUiDrawer extends LitElement {
     return this._placement === 'left' || this._placement === 'right' ? 'x' : 'y'
   }
 
+  /*
+   * 本层是否处于嵌套下层（depth > 0）。下层禁止进入 full：它被上层盖住，
+   * 吸附全屏只会顶进上层背后，且拖拽守卫跳过收起后没有任何后续重算能救回。
+   * full 的两个进入口（行程触发与甩动展开）都必须经过这一道排除。
+   */
+  private get _nestedLower(): boolean {
+    return this.dialog?.classList.contains('is-nested-lower') ?? false
+  }
+
   // 位移正方向 = drawer 的闭合方向（拖出屏幕为正）。
   private get _dragCloseSign(): number {
     switch (this._placement) {
@@ -647,8 +656,10 @@ export class WebUiDrawer extends LitElement {
             }
           }
           // raw < 0：出屏方向橡皮筋（dampOverscroll 自限幅，400px 行程剩 20px）。
-        } else if (this._fullArmed && raw <= -FULL_ENTER_TRAVEL) {
+        } else if (this._fullArmed && !this._nestedLower && raw <= -FULL_ENTER_TRAVEL) {
           // 吸附 full：不要求松手，同一指针继续可拉回（两段式）。
+          // 嵌套下层排除：拖拽进行中上层新开时本层已变 nested-lower，
+          // 继续外拉不得切入 full（否则松手兜底之外没有机制救回）。
           this._enterFull(dialog, axisPos)
         }
         this._trackSwipeCancel(axisPos, raw)
@@ -696,6 +707,7 @@ export class WebUiDrawer extends LitElement {
           this._fullArmed &&
           !shouldClose &&
           !this._swipeCancelled &&
+          !this._nestedLower &&
           velocity <= -DRAG_FLICK_VELOCITY &&
           this._dragOffset <= 0
         ) {

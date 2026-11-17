@@ -521,6 +521,57 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await waitFor(() => getDialog(parent).offsetWidth < 340)
     expect(parent.open).toBe(true)
     expect(child.open).toBe(true)
+
+    // 重算必须真的发生：露边数学按 base 宽度重写。期望的嵌套偏移 =
+    // shrink(320×0.025 = 8) + sizeDiff(子层同宽，0) + peek(公开 token × ln2)，
+    // scale 0.95 居中收缩的 (320×0.05)/2 = 8 与 shrink 恰好抵消，motion 层
+    // left = dialogLeft − peek·ln2。若仍是被 full 宽度污染的旧值，shrink 按
+    // 1264 算会大 23.6px，这条 toBeCloseTo(±0.5) 断言会红——删掉 recalculate()
+    // 即可验证它承重。
+    await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
+    const parentDialog = getDialog(parent)
+    const peekBase = Number.parseFloat(getComputedStyle(parentDialog).getPropertyValue('--wui-drawer-nested-peek-base'))
+    const motionRect = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect()
+    const expectedLeft = parentDialog.getBoundingClientRect().left - peekBase * Math.log(2)
+    expect(motionRect.left).toBeCloseTo(expectedLeft, 0)
+  })
+
+  it('拖拽中上层新开（尚未吸附）：行程触发与外甩展开都被嵌套排除拦下', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    document.body.append(theme)
+
+    const parent = createDrawer()
+    theme.append(parent)
+    parent.draggable = true
+    parent.fullable = true
+    parent.open = true
+    await parent.updateComplete
+    await waitForOpenTransition(parent)
+
+    // 外拉 30px（未越阈值，仍是 base）时上层新开：parent 变 nested-lower。
+    await holdAndMove(parent, [
+      { x: 500, y: 300, at: 0 },
+      { x: 470, y: 300, at: STEP_MS }
+    ])
+    const child = createDrawer()
+    theme.append(child)
+    child.open = true
+    await child.updateComplete
+    await waitForOpenTransition(child)
+
+    // 继续快甩外拉（净行程 140px 越过 96px 行程阈值、释放速度远超甩动阈值）：
+    // 行程触发与甩动展开都被嵌套排除拦下 → 普通弹回，不得切入 full。
+    await continueMove(parent, [
+      { x: 350, y: 300, at: 2 * STEP_MS },
+      { x: 330, y: 300, at: 3 * STEP_MS }
+    ])
+    await releaseAt(parent, 330, 300, 4 * STEP_MS)
+    await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
+
+    expect(parent.open).toBe(true)
+    expect(getDialog(parent).offsetWidth).toBe(320)
+    expect(child.open).toBe(true)
   })
 
   it('嵌套：full 态的 drawer 上层新开一层 → 同步瞬时恢复原尺寸', async () => {
