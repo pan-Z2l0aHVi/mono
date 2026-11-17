@@ -81,14 +81,18 @@ it('web-ui-docs-inputs', async () => {
   const wrongExtends = makeFixture({ extendsValue: ['//', 'packages/web-ui'] })
   assert.match(await failure(wrongExtends.root), /^turbo: packages\/web-ui: turbo\.json extends must be \["\/\/"\]/)
 
-  const missingDefault = makeFixture({ buildInputs: ['!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md'] })
+  // build 不再被语料策略约束：糟糕的 build inputs 不应让本检查失败。
+  const buildUnpoliced = makeFixture({ buildInputs: [] })
+  assert.ok((await run(buildUnpoliced.root)).ok)
+
+  const missingDefault = makeFixture({ testInputs: ['!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md'] })
   assert.match(
     await failure(missingDefault.root),
-    /^turbo: packages\/web-ui: tasks\.build\.inputs is missing \$TURBO_DEFAULT\$/
+    /^turbo: packages\/web-ui: tasks\.test\.inputs is missing \$TURBO_DEFAULT\$/
   )
 
   const coversDocs = makeFixture({
-    buildInputs: ['$TURBO_DEFAULT$', '!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md', '!**/docs/**']
+    testInputs: ['$TURBO_DEFAULT$', '!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md', '!**/docs/**']
   })
   assert.match(await failure(coversDocs.root), /^turbo: packages\/web-ui: .*covers the docs\/ corpus/)
 
@@ -98,7 +102,7 @@ it('web-ui-docs-inputs', async () => {
   assert.match(await failure(missesProse.root), /^turbo: packages\/web-ui: tasks\.test\.inputs is missing !README\.md/)
 
   const unsupported = makeFixture({
-    buildInputs: ['$TURBO_DEFAULT$', '!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md', '!{docs,x}/**']
+    testInputs: ['$TURBO_DEFAULT$', '!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md', '!{docs,x}/**']
   })
   assert.match(await failure(unsupported.root), /^turbo: packages\/web-ui: .*covers the docs\/ corpus/)
 })

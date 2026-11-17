@@ -11,10 +11,10 @@ import { defineTurbo, type TurboApi } from './turbo'
 
 const { andThen, err, ok } = rust
 
-// 文档语料住在被发布包里的仓库：那批示例 md 是 build 与 test 的真输入。根 turbo.json 的
-// `!**/*.md` 把这批 md 排掉，包级 turbo.json 必须重新纳入，并按名字排掉散文 md。本检查守两个
-// 方向：包里每篇 md 都在名单里；覆写后的排除项不会盖回语料目录。包目录、语料目录与散文名单
-// 都是消费仓库的事实，经 options 传入。
+// 文档语料住在被发布包里的仓库：那批示例 md 是 test 的真输入（build 不读 docs，dist 不含它）。
+// 根 turbo.json 的 `!**/*.md` 把这批 md 排掉，包级 turbo.json 的 test 必须重新纳入，并按名字排掉
+// 散文 md。本检查守两个方向：包里每篇 md 都在名单里；覆写后的排除项不会盖回语料目录。包目录、
+// 语料目录与散文名单都是消费仓库的事实，经 options 传入。
 
 export interface DocsInputsOptions {
   /** 带独立 `turbo.json` 的包目录，仓库相对 */
@@ -30,6 +30,8 @@ export interface DocsInputsOptions {
    * 下的完整判定由不开此选项的调用方保证。
    */
   readonly allowSparsePackages?: boolean
+  /** 语料必须成为输入的任务名，缺省只校验 `test`：build 不读 docs，不该被语料策略约束。 */
+  readonly corpusTasks?: readonly string[]
 }
 
 function collectMarkdown(directory: string, base: string, files: string[]): void {
@@ -98,7 +100,8 @@ export const defineDocsInputs = ({
   packageDir,
   corpusDir,
   proseNames,
-  allowSparsePackages
+  allowSparsePackages,
+  corpusTasks = ['test']
 }: DocsInputsOptions): Chain =>
   defineRunner()
     .use(defineTurbo())
@@ -146,13 +149,13 @@ export const defineDocsInputs = ({
 
             const turboFile = `${packageDir}/turbo.json`
             if (!fs.existsSync(path.join(packageRoot, 'turbo.json')))
-              return fail('has no turbo.json: without it the corpus is not an input to build or test')
+              return fail('has no turbo.json: without it the corpus is not an input to test')
             const config = ctx.config<{ extends?: unknown; tasks?: Record<string, unknown> }>(turboFile)
             if (JSON.stringify(config.extends) !== '["//"]')
               return fail('turbo.json extends must be ["//"], otherwise the override drops task definitions')
 
             const probes = [...corpusMarkdown, corpusDir, `${corpusDir}/`]
-            for (const taskName of ['build', 'test']) {
+            for (const taskName of corpusTasks) {
               const inputs = requireInputs(turboFile, config.tasks?.[taskName], taskName)
               if (!inputs.ok) return err(inputs.error)
               if (!inputs.value.includes('$TURBO_DEFAULT$'))
