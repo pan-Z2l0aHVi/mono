@@ -6,6 +6,7 @@ import { interweaveTurboInputs } from '../policies/interweave-turbo-inputs.mjs'
 import { noMutualLinks } from '../policies/no-mutual-links.mjs'
 import { readmeLocales } from '../policies/readme-locales.mjs'
 import { testPortCallSites } from '../policies/test-port-call-sites.mjs'
+import { themeTokenParity } from '../policies/theme-token-parity.mjs'
 import { turboCacheInvariant } from '../policies/turbo-cache-invariant.mjs'
 import { turboInputPaths } from '../policies/turbo-input-paths.mjs'
 import { webUiDocsInputs } from '../policies/web-ui-docs-inputs.mjs'
@@ -26,6 +27,7 @@ await runCheck(() =>
     .use(turboCacheInvariant)
     .use(turboInputPaths)
     .use(webUiDocsInputs)
+    .use(themeTokenParity)
     .use(defineCatch())
     .make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })
 )
