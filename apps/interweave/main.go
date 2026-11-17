@@ -198,6 +198,11 @@ func main() {
 	})
 
 	window := app.Window.NewWithOptions(mainWindowOptions())
+	// pending 预览的 LRU 驱逐只发生在后端，前端无从感知；被淘汰的 token 必须显式推给
+	// 窗口，否则预览 404 与「文件消失」在前端不可区分。
+	pendingPreviews.SetEvictHandler(func(token string) {
+		window.EmitEvent(libraryService.PreviewRevokedEventName, []string{token})
+	})
 	windowMode := newWindowModeToggler(
 		windowSize{width: minWindowWidth, height: minWindowHeight},
 		windowSize{width: defaultWindowWidth, height: defaultWindowHeight},

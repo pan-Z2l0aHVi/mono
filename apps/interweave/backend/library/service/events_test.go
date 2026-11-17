@@ -12,6 +12,7 @@ func TestCustomEventNames(t *testing.T) {
 		{FileDropEventName, "library:files-dropped"},
 		{URLDropEventName, "library:urls-dropped"},
 		{SourceAvailabilityEventName, "library:source-availability-changed"},
+		{PreviewRevokedEventName, "library:previews-revoked"},
 	}
 	for _, pair := range pairs {
 		if pair.name != pair.want {
