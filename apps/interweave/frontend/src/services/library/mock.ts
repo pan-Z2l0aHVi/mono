@@ -467,15 +467,13 @@ export function createMockLibraryRuntime(): LibraryRuntime {
 
     // 下面这些都依赖桌面服务或真实文件系统，浏览器预览里给出明确失败而不是假装成功。
     sources: {
-      refreshURL: () => unsupported('刷新网页入口'),
-      refreshFile: () => unsupported('刷新文件入口'),
-      replaceFile: () => unsupported('替换文件入口'),
+      refreshSource: () => unsupported('刷新入口'),
+      replaceSource: () => unsupported('替换入口'),
       startRecoveryScan: () => unsupported('扫描文件'),
       pollRecoveryScan: () => unsupported('扫描文件'),
       cancelRecoveryScan: () => Promise.resolve(),
       discardRecoveryScan: () => Promise.resolve(),
       replaceScannedFile: () => unsupported('替换文件入口'),
-      replaceURL: () => unsupported('替换网页入口'),
       probeOnOpen: () => unsupported('探测网页入口')
     },
 

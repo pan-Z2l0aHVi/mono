@@ -295,19 +295,19 @@ func TestSourceMutationsResyncIndex(t *testing.T) {
 	writeFixture(t, spare)
 	seedResource(t, db, "resource-anchor")
 
-	fileSrc, err := sourceSvc.AddFileSource(ctx, "resource-anchor", primary)
+	fileSrc, err := sourceSvc.AddSource(ctx, "resource-anchor", storage.SourceTypeFile, primary)
 	if err != nil {
-		t.Fatalf("AddFileSource error: %v", err)
+		t.Fatalf("AddSource error: %v", err)
 	}
-	urlSrc, err := sourceSvc.AddURLSource(ctx, "resource-anchor", "https://example.com/a")
+	urlSrc, err := sourceSvc.AddSource(ctx, "resource-anchor", storage.SourceTypeURL, "https://example.com/a")
 	if err != nil {
-		t.Fatalf("AddURLSource error: %v", err)
+		t.Fatalf("AddSource error: %v", err)
 	}
-	if _, err := sourceSvc.ReplaceFileSource(ctx, fileSrc.ID, spare); err != nil {
-		t.Fatalf("ReplaceFileSource error: %v", err)
+	if _, err := sourceSvc.ReplaceSource(ctx, fileSrc.ID, spare); err != nil {
+		t.Fatalf("ReplaceSource error: %v", err)
 	}
-	if _, err := sourceSvc.ReplaceURLSource(ctx, urlSrc.ID, "https://example.com/b"); err != nil {
-		t.Fatalf("ReplaceURLSource error: %v", err)
+	if _, err := sourceSvc.ReplaceSource(ctx, urlSrc.ID, "https://example.com/b"); err != nil {
+		t.Fatalf("ReplaceSource error: %v", err)
 	}
 	view, err := resourceSvc.CreateResource(ctx, CreateResourceInput{Kind: storage.SourceTypeFile, Location: primary})
 	if err != nil {
@@ -335,9 +335,9 @@ func TestIndexSyncFailureDoesNotFailMutation(t *testing.T) {
 	svc := NewSourceService(db, remote.NewFetcher())
 	svc.SetIndexSync(sync)
 
-	src, err := svc.AddFileSource(context.Background(), "resource-anchor", present)
+	src, err := svc.AddSource(context.Background(), "resource-anchor", storage.SourceTypeFile, present)
 	if err != nil {
-		t.Fatalf("expected AddFileSource to succeed despite index sync failure, got %v", err)
+		t.Fatalf("expected AddSource to succeed despite index sync failure, got %v", err)
 	}
 	if !src.Available {
 		t.Fatalf("expected source persisted as available, got %+v", src)

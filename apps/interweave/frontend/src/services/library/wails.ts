@@ -47,12 +47,10 @@ class WailsLibraryRuntime implements LibraryRuntime {
   }
 
   readonly sources = {
-    refreshURL: async (sourceId: string) =>
-      requireResourceDTO(await SourceService.RefreshURLSource(sourceId), '检查网页链接'),
-    refreshFile: async (sourceId: string) =>
-      requireResourceDTO(await SourceService.RefreshFileSource(sourceId), '检查文件'),
-    replaceFile: async (sourceId: string, inputPath: string) =>
-      requireResourceDTO(await SourceService.ReplaceFileSource(sourceId, inputPath), '更新文件位置'),
+    refreshSource: async (sourceId: string) =>
+      requireResourceDTO(await SourceService.RefreshSource(sourceId), '检查入口'),
+    replaceSource: async (sourceId: string, input: string) =>
+      requireResourceDTO(await SourceService.ReplaceSource(sourceId, input), '更新入口位置'),
     startRecoveryScan: (sourceIds: string[], directory: string) =>
       SourceService.StartRecoveryScan(sourceIds, directory),
     pollRecoveryScan: async (scanId: string) => {
@@ -68,8 +66,6 @@ class WailsLibraryRuntime implements LibraryRuntime {
     },
     replaceScannedFile: async (sourceId: string, path: string, snapshot: string) =>
       requireResourceDTO(await SourceService.ReplaceScannedFileSource(sourceId, path, snapshot), '更新文件位置'),
-    replaceURL: async (sourceId: string, inputURL: string) =>
-      requireResourceDTO(await SourceService.ReplaceURLSource(sourceId, inputURL), '更新网页链接'),
     probeOnOpen: async (sourceId: string) =>
       requireSourceProbeResultDTO(await SourceService.ProbeURLSourceOnOpen(sourceId), '检查网页链接')
   }

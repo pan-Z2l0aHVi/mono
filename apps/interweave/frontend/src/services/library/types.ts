@@ -40,19 +40,18 @@ export interface LibraryResourceCapabilities {
 }
 
 /**
- * 单个入口的刷新与替换：直接回传变更后的完整 Resource 视图，调用方 upsert 后即完成回流，
+ * 单个入口的刷新与替换（入口类型沿用存量行，不能经替换改变）：直接回传变更后的完整 Resource 视图，调用方 upsert 后即完成回流，
  * 变更后的 Source 在 resource.sources 里按 id 可取。
  */
 export interface LibrarySourceCapabilities {
-  refreshURL(sourceId: string): Promise<ResourceDTO>
-  refreshFile(sourceId: string): Promise<ResourceDTO>
-  replaceFile(sourceId: string, inputPath: string): Promise<ResourceDTO>
+  /** 类型由后端按存量入口派生，调用方不再区分文件与网页。 */
+  refreshSource(sourceId: string): Promise<ResourceDTO>
+  replaceSource(sourceId: string, input: string): Promise<ResourceDTO>
   startRecoveryScan(sourceIds: string[], directory: string): Promise<string>
   pollRecoveryScan(scanId: string): Promise<RecoveryScanUpdate>
   cancelRecoveryScan(scanId: string): Promise<void>
   discardRecoveryScan(scanId: string): Promise<void>
   replaceScannedFile(sourceId: string, path: string, snapshot: string): Promise<ResourceDTO>
-  replaceURL(sourceId: string, inputURL: string): Promise<ResourceDTO>
   probeOnOpen(sourceId: string): Promise<SourceProbeResultDTO>
 }
 

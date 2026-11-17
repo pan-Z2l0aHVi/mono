@@ -91,10 +91,8 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
         throw new Error('not implemented')
       },
       // 刷新与替换直接回传变更后的完整 Resource 视图，composable 单调用即可回流。
-      refreshURL: async () => createResource(),
-      refreshFile: async () => createResource(),
-      replaceFile: async () => createResource(),
-      replaceURL: async () => createResource(),
+      refreshSource: async () => createResource(),
+      replaceSource: async () => createResource(),
       probeOnOpen: async () => ({
         source: createResource().sources[0]!,
         resource: createResource(),

@@ -67,8 +67,7 @@ const {
   updateResourceNote,
   deleteResources,
   saveTags,
-  replaceFileSource,
-  replaceURLSource,
+  replaceSource,
   defaultOpenWith,
   openExternal,
   saveSourceThumbnail,
@@ -577,12 +576,11 @@ async function submitRestoreQueue(items: LibraryRestoreQueueItem[]) {
   activeRestoreItemId.value = null
   try {
     const result = await restoreLibraryQueue(items, {
-      replaceFileSource,
+      replaceSource,
       replaceScannedFileSource: async (sourceId, path, snapshot) => {
         const updated = await runtime.sources.replaceScannedFile(sourceId, path, snapshot)
         store.upsertResource(updated)
       },
-      replaceURLSource,
       onItemStart: itemId => {
         activeRestoreItemId.value = itemId
       }

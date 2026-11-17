@@ -177,10 +177,8 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       replaceScannedFile: async () => {
         throw new Error('not implemented')
       },
-      refreshURL: async () => resource(),
-      refreshFile: async () => resource(),
-      replaceFile: async () => resource(),
-      replaceURL: async () => resource(),
+      refreshSource: async () => resource(),
+      replaceSource: async () => resource(),
       probeOnOpen: async () => ({
         source: source(),
         resource: resource(),

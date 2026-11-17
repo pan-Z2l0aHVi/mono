@@ -119,8 +119,8 @@ func TestCoreErrorIdentityAndEmptySlices(t *testing.T) {
 	if _, err := srcService.RemoveSource(ctx, view.Sources[0].ID); !errors.Is(err, core.ErrCannotRemoveOnlySource) {
 		t.Errorf("expected core.ErrCannotRemoveOnlySource, got %v", err)
 	}
-	if _, err := srcService.RefreshURLSource(ctx, view.Sources[0].ID); !errors.Is(err, core.ErrOnlyURLSourceRefreshable) {
-		t.Errorf("expected core.ErrOnlyURLSourceRefreshable, got %v", err)
+	if _, err := srcService.RefreshSource(ctx, "missing"); !errors.Is(err, core.ErrSourceNotFound) {
+		t.Errorf("expected core.ErrSourceNotFound, got %v", err)
 	}
 
 	// 空库的全局 Map 与列表保持非 nil 空切片，避免前端收到 null。
@@ -192,8 +192,8 @@ func TestFindResourceLocationMatchesNormalizesBeforeComparing(t *testing.T) {
 	}
 
 	// 同一 Resource 在同一位置登记多条 Source（CONTEXT.md「重复 Source」）时按 Resource 去重。
-	if _, err := srcService.AddFileSource(ctx, view.Resource.ID, path); err != nil {
-		t.Fatalf("AddFileSource error: %v", err)
+	if _, err := srcService.AddSource(ctx, view.Resource.ID, storage.SourceTypeFile, path); err != nil {
+		t.Fatalf("AddSource error: %v", err)
 	}
 	deduped, err := resService.FindResourceLocationMatches(ctx, path, storage.SourceTypeFile)
 	if err != nil {
@@ -280,7 +280,7 @@ func TestFindResourceLocationMatchesOrdersNewestFirst(t *testing.T) {
 	}
 }
 
-// 纳入 Source 前必须确认归属目标存在，且 URL 路径在抓取前短路，不为无效目标等待 10 秒。
+// 三个变更方法都必须先确认目标存在；纳入 Source 前必须确认归属目标存在，且 URL 路径在抓取前短路，不为无效目标等待 10 秒。
 func TestSourceAddChecksExistenceBeforeFetch(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
@@ -289,8 +289,8 @@ func TestSourceAddChecksExistenceBeforeFetch(t *testing.T) {
 	srcService := core.NewSourceService(db, remote.NewFetcher())
 	ctx := context.Background()
 
-	if _, err := srcService.AddFileSource(ctx, "missing", tempFile(t, "add-*.txt")); !errors.Is(err, core.ErrResourceNotFound) {
-		t.Errorf("expected core.ErrResourceNotFound for AddFileSource on missing resource, got %v", err)
+	if _, err := srcService.AddSource(ctx, "missing", storage.SourceTypeFile, tempFile(t, "add-*.txt")); !errors.Is(err, core.ErrResourceNotFound) {
+		t.Errorf("expected core.ErrResourceNotFound for AddSource(file) on missing resource, got %v", err)
 	}
 
 	// 计数桩服务器：只要发出请求就说明短路失败。
@@ -301,14 +301,14 @@ func TestSourceAddChecksExistenceBeforeFetch(t *testing.T) {
 	}))
 	defer srv.Close()
 
-	if _, err := srcService.AddURLSource(ctx, "missing", srv.URL); !errors.Is(err, core.ErrResourceNotFound) {
-		t.Errorf("expected core.ErrResourceNotFound for AddURLSource on missing resource, got %v", err)
+	if _, err := srcService.AddSource(ctx, "missing", storage.SourceTypeURL, srv.URL); !errors.Is(err, core.ErrResourceNotFound) {
+		t.Errorf("expected core.ErrResourceNotFound for AddSource(URL) on missing resource, got %v", err)
 	}
-	if _, err := srcService.ReplaceURLSource(ctx, "missing", srv.URL); !errors.Is(err, core.ErrSourceNotFound) {
-		t.Errorf("expected core.ErrSourceNotFound for ReplaceURLSource on missing source, got %v", err)
+	if _, err := srcService.ReplaceSource(ctx, "missing", srv.URL); !errors.Is(err, core.ErrSourceNotFound) {
+		t.Errorf("expected core.ErrSourceNotFound for ReplaceSource on missing source, got %v", err)
 	}
-	if _, err := srcService.ReplaceFileSource(ctx, "missing", tempFile(t, "replace-*.txt")); !errors.Is(err, core.ErrSourceNotFound) {
-		t.Errorf("expected core.ErrSourceNotFound for ReplaceFileSource on missing source, got %v", err)
+	if _, err := srcService.RefreshSource(ctx, "missing"); !errors.Is(err, core.ErrSourceNotFound) {
+		t.Errorf("expected core.ErrSourceNotFound for RefreshSource on missing source, got %v", err)
 	}
 	if got := atomic.LoadInt32(&requests); got != 0 {
 		t.Errorf("expected no fetch for missing targets, got %d requests", got)
@@ -319,8 +319,8 @@ func TestSourceAddChecksExistenceBeforeFetch(t *testing.T) {
 	if err != nil {
 		t.Fatalf("addFileResource error: %v", err)
 	}
-	if _, err := srcService.AddFileSource(ctx, view.Resource.ID, tempFile(t, "second-*.txt")); err != nil {
-		t.Errorf("AddFileSource on existing resource error: %v", err)
+	if _, err := srcService.AddSource(ctx, view.Resource.ID, storage.SourceTypeFile, tempFile(t, "second-*.txt")); err != nil {
+		t.Errorf("AddSource on existing resource error: %v", err)
 	}
 }
 

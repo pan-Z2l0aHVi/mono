@@ -88,7 +88,7 @@ watch(
      * 的身份变化会触发本 watch，但四个字段都没变。这种「仅身份变化」不能走重置：重置会清掉
      * 已捕获的视频帧并重建媒体元素，缩略图会闪回 fallback。
      *
-     * location 也参与判定：ReplaceFileSource 会保留 source id，只换 location；mediaUrl 不变，
+     * location 也参与判定：ReplaceSource 会保留 source id，只换 location；mediaUrl 不变，
      * 但旧元素不会自行重新拉取，必须靠 mediaKey 重建才能显示替换后的文件。
      */
     if (
@@ -103,7 +103,7 @@ watch(
       return
     }
     mediaVersion++
-    // 只有 location 变化会让「URL 不变、内容变了」：ReplaceFileSource 保留 source id，
+    // 只有 location 变化会让「URL 不变、内容变了」：ReplaceSource 保留 source id，
     // mediaUrl 不变，旧元素不会重新拉取。其余字段变化由 src 属性更新或 v-if 重建覆盖，
     // 不必再换 key——换 key 会丢掉已加载的 image 状态。
     if (!previous || next[2] !== previous[2] || next[4] !== previous[4] || next[5] !== previous[5]) mediaKey.value++

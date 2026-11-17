@@ -222,7 +222,7 @@ func (s *SourceService) ReplaceScannedFileSource(ctx context.Context, sourceID, 
 	if src.Type != storage.SourceTypeFile || src.Available {
 		return Source{}, errors.New("source is no longer an unavailable file")
 	}
-	return s.ReplaceFileSource(ctx, sourceID, path)
+	return s.ReplaceSource(ctx, sourceID, path)
 }
 
 // cleanMountPath decodes mountinfo's escaped whitespace and backslashes.

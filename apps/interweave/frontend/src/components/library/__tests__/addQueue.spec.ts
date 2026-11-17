@@ -54,16 +54,10 @@ function createRuntime(
       replaceScannedFile: async () => {
         throw new Error('not implemented')
       },
-      refreshURL: async () => {
+      refreshSource: async () => {
         throw new Error('未使用')
       },
-      refreshFile: async () => {
-        throw new Error('未使用')
-      },
-      replaceFile: async () => {
-        throw new Error('未使用')
-      },
-      replaceURL: async () => {
+      replaceSource: async () => {
         throw new Error('未使用')
       },
       probeOnOpen: async () => {
