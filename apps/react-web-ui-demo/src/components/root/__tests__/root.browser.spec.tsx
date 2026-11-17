@@ -205,6 +205,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     await act(async () => {
       await userEvent.fill(input, '输入框')
     })
+    await waitFor(() => expect(document.querySelector('web-ui-popover')?.open).toBe(true))
     await act(async () => {
       await userEvent.keyboard('{Enter}')
     })
@@ -218,6 +219,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       await userEvent.keyboard('{Escape}')
     })
     expect(document.activeElement?.tagName).toBe('WEB-UI-INPUT')
+    await waitFor(() => expect(document.querySelector('web-ui-popover')?.open).toBe(false))
     await act(async () => {
       await userEvent.keyboard('{ArrowDown}')
     })
