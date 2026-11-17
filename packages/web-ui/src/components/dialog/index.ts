@@ -13,7 +13,7 @@ import { UserChangeController } from '@/shared/events/user-change'
 import { trapTabKey } from '@/shared/focus/tabbable'
 import { resolveBuiltinLabel } from '@/shared/locale/builtin-labels'
 import { normalizeLiteral } from '@/shared/normalize'
-import { dispatchOpenChangeEvent } from '@/shared/open-state'
+import { dispatchClosedEvent, dispatchOpenChangeEvent } from '@/shared/open-state'
 import { defineNativeDialogPresence } from '@/shared/overlay/native-dialog-presence'
 import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
@@ -119,7 +119,8 @@ export class WebUiDialog extends LitElement {
     getDialog: () => this.dialog,
     getTransitionTarget: () => this.dialog?.querySelector('.wui-dialog-body') ?? null,
     isConnected: () => this.isConnected,
-    isOpen: () => this.open
+    isOpen: () => this.open,
+    onClosed: () => dispatchClosedEvent(this)
   })
 
   private get dialog() {
@@ -378,6 +379,7 @@ export class WebUiDialog extends LitElement {
 
   declare readonly $events: {
     'open-change': CustomEvent<{ open: boolean }>
+    closed: CustomEvent<void>
   }
 }
 

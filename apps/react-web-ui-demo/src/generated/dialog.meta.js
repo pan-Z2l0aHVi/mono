@@ -172,6 +172,13 @@ const meta = [
       { label: 'td', content: "<code>open-change</code>" },
       { label: 'td', content: "The open state changed; <code>detail.open</code> is the requested target state." }
       ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>closed</code>" },
+      { label: 'td', content: "Dispatched after the close animation ends and the native dialog leaves the top layer." }
+      ]
     }
     ]
   },

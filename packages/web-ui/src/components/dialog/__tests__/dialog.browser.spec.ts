@@ -296,4 +296,34 @@ describe('WebUiDialog 组件（浏览器）', () => {
       await setViewport(1280, 720)
     }
   })
+
+  it('closed 在退场动画结束后派发，此刻原生 dialog 已离开 top layer', async () => {
+    const component = createDialog()
+    const events: Event[] = []
+    component.addEventListener('closed', event => events.push(event))
+    component.open = true
+    await component.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const dialog = component.shadowRoot?.querySelector('dialog') as HTMLDialogElement
+    expect(dialog.matches(':modal')).toBe(true)
+
+    component.close()
+    await component.updateComplete
+    // 退场动画仍在播放：closed 不能先于 top layer 退出到达。
+    expect(events).toHaveLength(0)
+
+    await pollUntil(() => events.length === 1, '等待 closed 事件')
+    expect(dialog.open).toBe(false)
+    expect(dialog.matches(':modal')).toBe(false)
+
+    component.open = true
+    await component.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    expect(dialog.matches(':modal')).toBe(true)
+
+    component.close()
+    await pollUntil(() => events.length === 2, '重开后再次关闭也应派发 closed')
+    expect(dialog.matches(':modal')).toBe(false)
+  })
 })

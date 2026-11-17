@@ -1,4 +1,4 @@
-import { afterEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { waitForFrame } from '@/shared/test-utils'
 
@@ -25,14 +25,15 @@ afterEach(() => {
   document.body.replaceChildren()
 })
 
-function setup() {
+function setup(onClosed?: () => void) {
   const dialog = document.createElement('dialog')
   document.body.append(dialog)
   let open = true
   const presence = defineNativeDialogPresence().make({
     getDialog: () => dialog,
     isConnected: () => true,
-    isOpen: () => open
+    isOpen: () => open,
+    onClosed
   })
   return {
     dialog,
@@ -54,6 +55,39 @@ function settleCloseTransition(dialog: HTMLDialogElement, presence: NativeDialog
 }
 
 describe('native dialog presence', () => {
+  it('收尾关闭时回调 onClosed，重开再关各一次', async () => {
+    const onClosed = vi.fn<() => void>()
+    const { dialog, presence, setOpen } = setup(onClosed)
+
+    presence.sync(true)
+    await waitForFrame()
+    setOpen(false)
+    presence.sync(false)
+    expect(onClosed).not.toHaveBeenCalled()
+    settleCloseTransition(dialog, presence)
+    expect(onClosed).toHaveBeenCalledTimes(1)
+
+    setOpen(true)
+    presence.sync(true)
+    await waitForFrame()
+    setOpen(false)
+    presence.sync(false)
+    settleCloseTransition(dialog, presence)
+    expect(onClosed).toHaveBeenCalledTimes(2)
+  })
+
+  it('reconcile 的关闭收敛不再回调 onClosed（宿主已知 open=false）', () => {
+    const onClosed = vi.fn<() => void>()
+    const { dialog, presence, setOpen } = setup(onClosed)
+    presence.sync(true)
+    expect(dialog.open).toBe(true)
+
+    setOpen(false)
+    presence.reconcile()
+
+    expect(dialog.open).toBe(false)
+    expect(onClosed).not.toHaveBeenCalled()
+  })
   it('sync(true) 使原生 dialog 进入 open 状态', () => {
     const { dialog, presence } = setup()
 
