@@ -30,10 +30,12 @@ func (FingerprintStore) Upsert(ctx context.Context, q Queryer, sourceID, locatio
 	return err
 }
 
-// Get 读取 sourceID 的指纹；没有记录时返回零值与 nil 错误。
+// Get 读取 sourceID 指向当前位置的指纹；没有记录、source 已不是文件入口或记录的位置
+// 与 source 当前位置不一致（入口被替换后旧快照尚未刷新）时返回零值与 nil 错误。
 func (FingerprintStore) Get(ctx context.Context, q Queryer, sourceID string) (FingerprintState, error) {
 	var state FingerprintState
-	err := q.QueryRowContext(ctx, `SELECT size,modified,identity,changed,hash FROM source_fingerprints WHERE source_id=?`, sourceID).
+	err := q.QueryRowContext(ctx, `SELECT f.size,f.modified,f.identity,f.changed,f.hash FROM source_fingerprints f
+ JOIN sources s ON s.id = f.source_id WHERE f.source_id=? AND s.type='file' AND s.location=f.location`, sourceID).
 		Scan(&state.Size, &state.Modified, &state.Identity, &state.Changed, &state.Hash)
 	if errors.Is(err, sql.ErrNoRows) {
 		return FingerprintState{}, nil

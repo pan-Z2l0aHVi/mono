@@ -127,17 +127,30 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     })
   }
 
-  async function confirmBeforeEnqueue(location: string, kind: QueueKind, queried: Set<string>, startedAt: number) {
-    // 无 Wails bridge 时没有库可查，直接入队；同一批次内的同一位置只查一次。
-    if (!runtime.isAvailable || queried.has(location)) return true
-    queried.add(location)
+  // decisions 记录同一批次内每个位置已给出的裁决：同一位置只查、只问一次，
+  // 且取消过的位置在后续重复项上继续跳过，不会被自动放行。
+  async function confirmBeforeEnqueue(
+    location: string,
+    kind: QueueKind,
+    decisions: Map<string, boolean>,
+    startedAt: number
+  ) {
+    // 无 Wails bridge 时没有库可查，直接入队。
+    if (!runtime.isAvailable) return true
+    const decided = decisions.get(location)
+    if (decided !== undefined) return decided
     try {
       const matches = await runtime.resources.findLocationMatches(location, KIND_BY_SOURCE[kind].sourceType)
-      if (!matches.length) return true
+      if (!matches.length) {
+        decisions.set(location, true)
+        return true
+      }
       // 查询在途时用户可能已经关掉添加 dialog：此时弹窗会成为没有归属的悬空确认，
       // 按取消放行。调用方的代次检查在 await 之后才发生，那时弹窗已经弹出，来不及。
       if (startedAt !== generation) return false
-      return await askDuplicate({ kind, location, matches })
+      const accept = await askDuplicate({ kind, location, matches })
+      decisions.set(location, accept)
+      return accept
     } catch {
       // 查询失败按未命中处理：这条提示是轻提示，真正的纳入仍由 CreateResource 校验路径把关，
       // 与 prepareItem 的失败降级同理，不因此让用户无法添加。
@@ -147,12 +160,12 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
 
   async function enqueueLocations(kind: QueueKind, locations: string[], startedAt: number) {
     const queued = new Set(queue.value.map(item => item.location))
-    const queried = new Set<string>()
+    const decisions = new Map<string, boolean>()
     for (const value of locations) {
       if (startedAt !== generation) return
       const location = value.trim()
       if (!location || queued.has(location)) continue
-      if (!(await confirmBeforeEnqueue(location, kind, queried, startedAt))) continue
+      if (!(await confirmBeforeEnqueue(location, kind, decisions, startedAt))) continue
       if (startedAt !== generation) return
       const item: LibraryQueueItem = {
         id: queueId(kind),

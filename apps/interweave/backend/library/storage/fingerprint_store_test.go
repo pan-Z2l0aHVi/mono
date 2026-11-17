@@ -73,6 +73,29 @@ func TestFingerprintStoreGuardedUpdateRejectsStaleState(t *testing.T) {
 	}
 }
 
+func TestFingerprintStoreGetHidesRecordForReplacedLocation(t *testing.T) {
+	ctx := context.Background()
+	db := openStoreTestDB(t)
+	store := FingerprintStore{}
+	seedStoreSource(t, db, "s1", "r1", SourceTypeFile, "/lib/a.bin")
+	state := FingerprintState{Size: 3, Modified: 10, Identity: "id", Changed: 7}
+	if err := store.Upsert(ctx, db.SqlDB(), "s1", "/lib/a.bin", state); err != nil {
+		t.Fatalf("Upsert error: %v", err)
+	}
+	if err := store.UpdateHashIfStateMatches(ctx, db.SqlDB(), "s1", "/lib/a.bin", state, "h1"); err != nil {
+		t.Fatalf("UpdateHashIfStateMatches error: %v", err)
+	}
+
+	// 入口被替换到一个暂时不可用的新路径，且没有新的 Record 写入：
+	// 旧位置与旧 hash 不得再被读出，否则找回扫描会拿旧文件的内容给新入口做匹配。
+	if err := (SourceStore{}).Replace(ctx, db.SqlDB(), "s1", SourceTypeFile, "/lib/missing.bin", false, "", 1); err != nil {
+		t.Fatalf("Replace error: %v", err)
+	}
+	if got, err := store.Get(ctx, db.SqlDB(), "s1"); err != nil || got != (FingerprintState{}) {
+		t.Fatalf("expected stale fingerprint hidden after replace, got %+v %v", got, err)
+	}
+}
+
 func TestFingerprintStoreRequiresLiveFileSource(t *testing.T) {
 	ctx := context.Background()
 	db := openStoreTestDB(t)

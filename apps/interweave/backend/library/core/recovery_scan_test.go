@@ -137,6 +137,36 @@ func TestRecoveryRunnerDiscardReleasesSessionAndCancels(t *testing.T) {
 	}
 }
 
+func TestRecoveryRunnerDiscardKeepsGateUntilScanExits(t *testing.T) {
+	release := make(chan struct{})
+	// 忽略取消，模拟仍停在 WalkDir 或 hashFile 里的扫描。
+	r := NewRecoveryScanRunner(func(context.Context, []string, string, func(RecoveryProgress, *RecoveryCandidate)) error {
+		<-release
+		return nil
+	})
+	t.Cleanup(r.Shutdown)
+	id, err := r.Start(nil, "")
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	r.Discard(id)
+	if _, err := r.Start(nil, ""); err == nil {
+		t.Fatal("discarded scan still running: start must be rejected")
+	}
+	close(release)
+	deadline := time.Now().Add(3 * time.Second)
+	for {
+		if _, err := r.Start(nil, ""); err == nil {
+			return
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("expected start to succeed after the discarded scan exited")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+}
+
 func TestRecoveryRunnerShutdownCancelsJoinsAndRejectsStart(t *testing.T) {
 	r := NewRecoveryScanRunner(blockingScan(make(chan struct{}), nil))
 	if _, err := r.Start(nil, ""); err != nil {

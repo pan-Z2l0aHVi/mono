@@ -349,6 +349,23 @@ describe('library add queue duplicate confirmation', () => {
     expect(queue.queue.value.map(item => item.location)).toEqual(['/tmp/photo.png'])
   })
 
+  it('同一批次内重复位置的取消裁决延续到后续重复项', async () => {
+    const findLocationMatches = vi.fn<LibraryRuntime['resources']['findLocationMatches']>(async () => [match()])
+    const queue = createQueue(createRuntime({ findLocationMatches }))
+
+    const enqueued = queue.enqueueFileLocations(['/tmp/photo.png', '/tmp/photo.png'])
+    await vi.waitFor(() => {
+      expect(queue.duplicatePrompt.value).not.toBeNull()
+    })
+    queue.resolveDuplicate(false)
+    await enqueued
+
+    // 取消过的位置不再查询，也不再弹窗，后续同一位置同样不入队。
+    expect(findLocationMatches).toHaveBeenCalledTimes(1)
+    expect(queue.duplicatePrompt.value).toBeNull()
+    expect(queue.queue.value).toEqual([])
+  })
+
   it('查询失败按未命中处理，项照常入队', async () => {
     const queue = createQueue(
       createRuntime({

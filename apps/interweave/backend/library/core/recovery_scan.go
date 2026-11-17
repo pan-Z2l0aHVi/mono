@@ -35,9 +35,12 @@ type recoverySession struct {
 type RecoveryScanRunner struct {
 	scan ScanFunc
 
-	wg        sync.WaitGroup
-	mu        sync.Mutex
-	closed    bool
+	wg     sync.WaitGroup
+	mu     sync.Mutex
+	closed bool
+	// running 是单飞 gate：非 nil 且未关闭表示仍有扫描 goroutine 在跑，
+	// 与会话是否已被 Discard 无关——会话可以提前释放，磁盘遍历必须等它真正退出。
+	running   chan struct{}
 	currentID string
 	sessions  map[string]*recoverySession
 }
@@ -46,7 +49,7 @@ func NewRecoveryScanRunner(scan ScanFunc) *RecoveryScanRunner {
 	return &RecoveryScanRunner{scan: scan, sessions: map[string]*recoverySession{}}
 }
 
-// Start 启动一次可取消的扫描并返回扫描 id；已有未完成扫描或已 Shutdown 时拒绝。
+// Start 启动一次可取消的扫描并返回扫描 id；已有扫描 goroutine 未退出或已 Shutdown 时拒绝。
 // 上一个已完成但未被 Poll 消费的会话在此被驱逐。
 func (r *RecoveryScanRunner) Start(sourceIDs []string, directory string) (string, error) {
 	r.mu.Lock()
@@ -54,15 +57,17 @@ func (r *RecoveryScanRunner) Start(sourceIDs []string, directory string) (string
 	if r.closed {
 		return "", errors.New("recovery service is shut down")
 	}
-	if r.currentID != "" {
-		active := r.sessions[r.currentID]
-		active.mu.Lock()
-		done := active.update.Done
-		active.mu.Unlock()
-		if !done {
+	if r.running != nil {
+		select {
+		case <-r.running:
+			r.running = nil
+		default:
 			return "", errors.New("a recovery scan is already running")
 		}
+	}
+	if r.currentID != "" {
 		delete(r.sessions, r.currentID)
+		r.currentID = ""
 	}
 
 	ctx, cancel := context.WithCancel(context.Background())
@@ -70,10 +75,13 @@ func (r *RecoveryScanRunner) Start(sourceIDs []string, directory string) (string
 	session := &recoverySession{cancel: cancel, update: RecoveryScanUpdate{Candidates: []RecoveryCandidate{}}}
 	r.sessions[scanID] = session
 	r.currentID = scanID
+	running := make(chan struct{})
+	r.running = running
 
 	r.wg.Add(1)
 	go func() {
 		defer r.wg.Done()
+		defer close(running)
 		err := r.scan(ctx, sourceIDs, directory, func(p RecoveryProgress, c *RecoveryCandidate) {
 			session.mu.Lock()
 			defer session.mu.Unlock()
@@ -134,6 +142,7 @@ func (r *RecoveryScanRunner) Cancel(scanID string) error {
 }
 
 // Discard 取消并释放会话（对话框关闭时）；未知 id 为空操作。
+// 会话立刻不可 Poll，但扫描 goroutine 仍占用单飞 gate 直到真正退出，避免旧扫描与新扫描重叠。
 func (r *RecoveryScanRunner) Discard(scanID string) {
 	r.mu.Lock()
 	session := r.sessions[scanID]
