@@ -3,6 +3,7 @@ import path from 'node:path'
 
 import { definePlugin, rust } from '@greypan/js-kit'
 
+import { defineGit, type GitApi } from '../git/git'
 import { type Chain, type KitCtx, type Run, defineRunner } from '../runner/runner'
 import { byCodeUnit } from '../shared/order'
 
@@ -22,6 +23,13 @@ export interface DocsInputsOptions {
   readonly corpusDir: string
   /** 包根按文件名排除的散文 md */
   readonly proseNames: readonly string[]
+  /**
+   * 允许包整包被稀疏检出隐藏：`packageDir/package.json` 带 skip-worktree 位且目录缺失时跳过
+   * 判定，而不是失败。稀疏信号只认 manifest 的 skip-worktree 位——cone 模式整包同进同出，
+   * 手动只 skip 一部分文件不会点亮这个信号；本地误删与 untracked 目录仍然失败。全 checkout
+   * 下的完整判定由不开此选项的调用方保证。
+   */
+  readonly allowSparsePackages?: boolean
 }
 
 function collectMarkdown(directory: string, base: string, files: string[]): void {
@@ -86,18 +94,31 @@ function requireInputs(configPath: string, task: unknown, taskName: string): rus
 /**
  * 包级文档语料输入面的判定，链上以 `turbo: ` 起头归因，文案带上包目录。
  */
-export const defineDocsInputs = ({ packageDir, corpusDir, proseNames }: DocsInputsOptions): Chain =>
+export const defineDocsInputs = ({
+  packageDir,
+  corpusDir,
+  proseNames,
+  allowSparsePackages
+}: DocsInputsOptions): Chain =>
   defineRunner()
     .use(defineTurbo())
+    .use(defineGit())
     .use(
-      definePlugin<{ run: Run }, KitCtx & { run: Run } & TurboApi>(ctx => ({
+      definePlugin<{ run: Run }, KitCtx & { run: Run } & TurboApi & GitApi>(ctx => ({
         run: () =>
           andThen(ctx.run(), async () => {
             const fail = (message: string): rust.Result<void, string> => err(`turbo: ${packageDir}: ${message}`)
+            const sparseHidden = (): boolean => ctx.skipWorktreeFiles().includes(`${packageDir}/package.json`)
             const packageRoot = path.join(ctx.root, packageDir)
-            if (!fs.existsSync(packageRoot)) return fail('does not exist (run from the repository root)')
+            if (!fs.existsSync(packageRoot)) {
+              if (allowSparsePackages === true && sparseHidden()) return ok(undefined)
+              return fail('does not exist (run from the repository root)')
+            }
             const corpusRoot = path.join(packageRoot, corpusDir)
-            if (!fs.existsSync(corpusRoot)) return fail(`${corpusDir}/ does not exist: this check would idle`)
+            if (!fs.existsSync(corpusRoot)) {
+              if (allowSparsePackages === true && sparseHidden()) return ok(undefined)
+              return fail(`${corpusDir}/ does not exist: this check would idle`)
+            }
 
             const allMarkdown: string[] = []
             collectMarkdown(packageRoot, packageRoot, allMarkdown)
