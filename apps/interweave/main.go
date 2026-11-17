@@ -85,26 +85,6 @@ func dataDir() (string, error) {
 	return dir, nil
 }
 
-// pruneThumbnails 按库内现行文件 Source 名单清一次过期缩略图。
-// 原文件暂不可 stat 的 Source（离线归档盘）全部保留，等可用后再清。
-func pruneThumbnails(sources storage.SourceStore, query storage.Queryer, thumbs *libraryMedia.ThumbnailStore) {
-	ctx := context.Background()
-	models, err := sources.ListFileSources(ctx, query)
-	if err != nil {
-		log.Printf("interweave: thumbnail prune skipped: %v", err)
-		return
-	}
-	entries := make([]libraryMedia.ThumbnailPruneEntry, 0, len(models))
-	for _, source := range models {
-		entry := libraryMedia.ThumbnailPruneEntry{SourceID: source.ID}
-		if info, err := os.Stat(source.Location); err == nil && info.Mode().IsRegular() {
-			entry.Version = libraryMedia.ThumbnailVersion(info)
-		}
-		entries = append(entries, entry)
-	}
-	thumbs.PruneStale(entries)
-}
-
 type windowDockDropSink struct {
 	window *application.WebviewWindow
 }
@@ -189,7 +169,9 @@ func main() {
 	// 启动清理一次过期版本：文件被外部改写或 Source 被删除后，旧文件名不会再生效。
 	// 失败只留垃圾不留错误，不阻塞启动。
 	if thumbs != nil {
-		go pruneThumbnails(storage.SourceStore{}, db.SqlDB(), thumbs)
+		go thumbs.Prune(context.Background(), func(ctx context.Context) ([]storage.SourceModel, error) {
+			return storage.SourceStore{}.ListFileSources(ctx, db.SqlDB())
+		})
 	}
 
 	// 仅暴露产品与受控原生能力，避免基础设施绕过后端边界。
