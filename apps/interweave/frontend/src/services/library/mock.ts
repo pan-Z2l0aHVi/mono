@@ -493,8 +493,15 @@ export function createMockLibraryRuntime(): LibraryRuntime {
       chooseDirectory: () => Promise.resolve(null),
       getClipboardFilePaths: () => Promise.resolve([]),
 
-      // 浏览器预览没有 Go 侧文本剪贴板；预览态下「粘贴为纯文本」因此给出提示而不是静默失败。
-      readClipboardText: () => Promise.reject(new Error('剪贴板文本在浏览器预览中不可用')),
+      // 浏览器预览没有 Go 侧文本剪贴板，退回 Web 剪贴板；权限或安全上下文不允许时
+      // 抛出带原因的失败，调用方据此提示而不是静默。
+      readClipboardText: async () => {
+        try {
+          return await navigator.clipboard.readText()
+        } catch (cause) {
+          throw new Error('浏览器预览中无法读取剪贴板文本', { cause })
+        }
+      },
       writeClipboardText: () => Promise.reject(new Error('剪贴板文本在浏览器预览中不可用')),
 
       // 浏览器没有「系统默认应用」这个概念：返回空名，UI 回落到通用文案。

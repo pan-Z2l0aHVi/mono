@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { toast, type WebUiEditableText, type WebUiEvent, type WebUiTextarea } from '@greypan/web-ui'
 import { useElementSize } from '@vueuse/core'
-import { Clipboard } from '@wailsio/runtime'
 import { computed, nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -39,7 +38,6 @@ import { useLibrarySelection } from '@/composables/useLibrarySelection'
 import { pendingWindowFileDrops, pendingWindowURLDrops } from '@/composables/windowFileDrop'
 import type { LibraryQueueItem } from '@/services/library'
 import { userMessage } from '@/services/library/userMessage'
-import { hasWailsRuntime } from '@/services/runtime'
 import { useLibraryStore } from '@/stores/library'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
@@ -450,7 +448,7 @@ async function pasteFilePaths(clipboardText?: string) {
       await addQueue.enqueueFileLocations(paths)
       return
     }
-    const text = clipboardText ?? (hasWailsRuntime() ? await Clipboard.Text() : await navigator.clipboard.readText())
+    const text = clipboardText ?? (await runtime.system.readClipboardText())
     if (!addOpen.value) return
     const url = normalizeLibraryURL(text)
     if (url) {

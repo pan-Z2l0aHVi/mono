@@ -1,15 +1,15 @@
 <script setup lang="ts">
 import type { WebUiDialog, WebUiEvent, WebUiInput } from '@greypan/web-ui'
 import { lucideClipboardPaste } from '@greypan/web-ui/icons'
-import { Clipboard } from '@wailsio/runtime'
 import { ref, watch } from 'vue'
 
-import { hasWailsRuntime } from '@/services/runtime'
+import { createLibraryRuntime } from '@/services/library'
 
 import { normalizeLibraryURL } from './restore'
 
 const props = defineProps<{ open: boolean; initialValue: string; mode: 'add' | 'restore' }>()
 const emit = defineEmits<{ 'update:open': [value: boolean]; submit: [url: string] }>()
+const runtime = createLibraryRuntime()
 const draft = ref('')
 const error = ref('')
 
@@ -33,7 +33,7 @@ function handleInput(event: WebUiEvent<WebUiInput, 'input'>) {
 }
 async function pasteClipboard() {
   try {
-    const value = hasWailsRuntime() ? await Clipboard.Text() : await navigator.clipboard.readText()
+    const value = await runtime.system.readClipboardText()
     if (!props.open) return
     draft.value = value
     error.value = ''
