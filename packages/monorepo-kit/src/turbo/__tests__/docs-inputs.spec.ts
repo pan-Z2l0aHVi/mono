@@ -82,8 +82,8 @@ it('web-ui-docs-inputs', async () => {
   assert.match(await failure(wrongExtends.root), /^turbo: packages\/web-ui: turbo\.json extends must be \["\/\/"\]/)
 
   // build 不再被语料策略约束：糟糕的 build inputs 不应让本检查失败。
-  const buildUnpoliced = makeFixture({ buildInputs: [] })
-  assert.ok((await run(buildUnpoliced.root)).ok)
+  const badBuildInputs = makeFixture({ buildInputs: [] })
+  assert.ok((await run(badBuildInputs.root)).ok)
 
   const missingDefault = makeFixture({ testInputs: ['!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md'] })
   assert.match(
