@@ -33,7 +33,7 @@ PR CI 对当前 base/head 复检 required checks，不替代实施阶段已要�
 
 ## 测试环境与命令
 
-测试框架是 Vitest（通过 `vite-plus`）。根 `pnpm run test` 由 Turbo 编排各 workspace 的 `test` 任务；受影响的包用 `pnpm exec turbo test --filter=@greypan/<name>`。仓库脚本测试是 tracked-only 的 `*.test.mjs`，由 `pnpm test-scripts` 执行，不属于 `pnpm run test`；新增而未跟踪的脚本测试要在实施中显式运行。
+测试框架是 Vitest（通过 `vite-plus`）。根 `pnpm run test` 由 Turbo 编排各 workspace 的 `test` 任务；受影响的包用 `pnpm exec turbo test --filter=@greypan/<name>`。仓库脚本测试是 tracked-only 的 `*.test.mjs`，由 `pnpm test-scripts` 执行，不属于 `pnpm run test`；新增而未跟踪的脚本测试要在实施中显式运行。两个 demo 的生成物与页面对齐（parity）也不在 `pnpm run test` 里：涉及 `apps/{react,vue}-web-ui-demo` 的 `src/generated/**` 或页面目录的改动，全 checkout 验证必须显式运行 `pnpm run check-generated-parity`（CI 在 Build 之前跑同一任务）。
 
 要收窄到个别 spec 时，直接跑 `pnpm exec vp test run <路径>`（相对与绝对路径都按路径过滤，以输出 `Test Files 1 passed (1)` 为准）。不要写成 `pnpm run test -- <路径>`：根 `test` 是 `turbo test`，pnpm 保留 `--` 后 turbo 会把参数透传给每个包的 `vp test run`，没匹配到测试文件的包直接失败——行为既不是收窄也不可靠，别走这条路径。判断收窄有没有发生，以输出里的 `Test Files` 计数为准，不以传了什么参数为准。
 
