@@ -118,6 +118,8 @@ func (s windowDockDropSink) EmitURLs(urls []string) {
 }
 
 func (s windowDockDropSink) PresentWindow() {
+	// macOS 的 Show 只做 makeKeyAndOrderFront，最小化的窗口要先显式恢复。
+	s.window.UnMinimise()
 	s.window.Show()
 	s.window.Focus()
 }
