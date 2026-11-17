@@ -57,14 +57,14 @@ func (r realFSEvents) ErrorChan() <-chan error          { return r.Errors }
 // var 仅为测试注入（缩短预算、替换探测判定、塞入假 watcher 验证内核无关的语义）；
 // 生产代码不得在运行期改写。
 var (
-	newFSWatcher       = func() (fsEvents, error) { return newRealFSWatcher() }
-	probeFileServable  = core.ProbeFileServable
-	probeDebounce      = 300 * time.Millisecond
-	reconcileInterval  = 60 * time.Second
-	maxWatchedDirs     = 512
-	maxWatchedPaths    = 4096
-	probeQueueCapacity = 256
-	maxProbeBatch      = 64
+	newFSWatcher         = func() (fsEvents, error) { return newRealFSWatcher() }
+	probeFileServability = core.ProbeFileServability
+	probeDebounce        = 300 * time.Millisecond
+	reconcileInterval    = 60 * time.Second
+	maxWatchedDirs       = 512
+	maxWatchedPaths      = 4096
+	probeQueueCapacity   = 256
+	maxProbeBatch        = 64
 )
 
 func newRealFSWatcher() (fsEvents, error) {
@@ -417,7 +417,12 @@ func (w *Watcher) applyBatch(ctx context.Context, paths []string) {
 			// 与库内已登记入口无关的目录变动：同一个目录里还有别的文件是正常的。
 			continue
 		}
-		servable, _ := probeFileServable(path)
+		verdict, _ := probeFileServability(path)
+		if verdict == core.FileInconclusive {
+			// 权限/I/O 错误不是关于文件的结论：不翻转可用性，也不累计失效嫌疑。
+			continue
+		}
+		servable := verdict == core.FileServable
 		if servable {
 			w.clearSuspect(path)
 		} else if !w.confirmUnavailable(path) {

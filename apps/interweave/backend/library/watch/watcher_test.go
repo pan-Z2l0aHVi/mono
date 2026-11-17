@@ -250,15 +250,15 @@ func useDebounce(t *testing.T, d time.Duration) {
 
 func useServabilityProbe(t *testing.T, servable bool) {
 	t.Helper()
-	original := probeFileServable
-	probeFileServable = func(string) (bool, *int64) {
+	original := probeFileServability
+	probeFileServability = func(string) (core.FileServability, *int64) {
 		if !servable {
-			return false, nil
+			return core.FileDefinitelyUnavailable, nil
 		}
 		size := int64(1)
-		return true, &size
+		return core.FileServable, &size
 	}
-	t.Cleanup(func() { probeFileServable = original })
+	t.Cleanup(func() { probeFileServability = original })
 }
 
 // 同一目录被多个入口引用时只监听一次；引用归零后才停止监听。
@@ -499,17 +499,17 @@ func TestWatcherSelfHealWithinOneEventDoesNotWriteUnavailable(t *testing.T) {
 		fs := newFakeFS()
 		useFakeFS(t, fs)
 		useDebounce(t, 20*time.Millisecond)
-		original := probeFileServable
+		original := probeFileServability
 		var probes int
-		probeFileServable = func(string) (bool, *int64) {
+		probeFileServability = func(string) (core.FileServability, *int64) {
 			probes++
 			if probes == 1 {
-				return false, nil
+				return core.FileDefinitelyUnavailable, nil
 			}
 			size := int64(1)
-			return true, &size
+			return core.FileServable, &size
 		}
-		t.Cleanup(func() { probeFileServable = original })
+		t.Cleanup(func() { probeFileServability = original })
 		file := filepath.Join("/library/flaky", "one.mp4")
 		sink := newFakeSink([]string{file})
 		watcher, err := NewWatcher(NewAvailabilityGate(sink))

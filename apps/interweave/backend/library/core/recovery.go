@@ -47,7 +47,7 @@ func (s *SourceService) ScanRecovery(ctx context.Context, sourceIDs []string, di
 		if src.Type != storage.SourceTypeFile || src.Available {
 			continue
 		}
-		fp, err := getFingerprint(ctx, s.db, id)
+		fp, err := s.ingest.fingerprints.Get(ctx, id)
 		if err != nil {
 			return err
 		}

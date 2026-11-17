@@ -109,17 +109,17 @@ func resourceViewMetadata(sources []Source) (storage.ResourceKind, *int64) {
 		return kind, nil
 	}
 
-	info, err := os.Stat(preferred.Location)
-	if err != nil || !info.Mode().IsRegular() {
+	verdict, size := ProbeFileServability(preferred.Location)
+	if verdict != FileServable {
 		return kind, nil
 	}
+	// 展示型 size 只信任可读文件：额外的 Open 探针保留。
 	file, err := os.Open(preferred.Location)
 	if err != nil {
 		return kind, nil
 	}
 	_ = file.Close()
-	size := info.Size()
-	return kind, &size
+	return kind, size
 }
 
 func resourceKindForFile(location string) storage.ResourceKind {

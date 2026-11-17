@@ -6,8 +6,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"os"
 	"sync"
+
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
 )
 
 const (
@@ -46,12 +47,12 @@ func newPendingPreviewRegistry(capacity int) *PendingPreviewRegistry {
 
 // Register 授权读取一个已存在的普通文件；容量不足时淘汰最久未使用的授权。
 func (r *PendingPreviewRegistry) Register(location string) (string, error) {
-	info, err := os.Stat(location)
-	if err != nil {
-		return "", fmt.Errorf("stat pending preview: %w", err)
-	}
-	if !info.Mode().IsRegular() {
-		return "", errors.New("pending preview is not a regular file")
+	switch verdict, _ := core.ProbeFileServability(location); verdict {
+	case core.FileServable:
+	case core.FileDefinitelyUnavailable:
+		return "", errors.New("pending preview is not an existing regular file")
+	default:
+		return "", errors.New("pending preview is unreadable right now")
 	}
 
 	for {

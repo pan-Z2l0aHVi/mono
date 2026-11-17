@@ -344,8 +344,8 @@ func TestIndexSyncFailureDoesNotFailMutation(t *testing.T) {
 	}
 }
 
-// 「确实不可服务」与「此刻读不到」必须可区分：权限错误不等于文件消失。
-func TestFileDefinitelyUnavailableTriage(t *testing.T) {
+// 三态必须可区分：权限错误不等于文件消失，目录/管道不是可服务文件。
+func TestClassifyFileStat(t *testing.T) {
 	directory := t.TempDir()
 	dirInfo, err := os.Stat(directory)
 	if err != nil {
@@ -362,19 +362,35 @@ func TestFileDefinitelyUnavailableTriage(t *testing.T) {
 		name string
 		err  error
 		info os.FileInfo
-		want bool
+		want FileServability
 	}{
-		{name: "absent", err: &fs.PathError{Op: "stat", Path: present, Err: fs.ErrNotExist}, want: true},
-		{name: "directory", info: dirInfo, want: true},
-		{name: "permission", err: &fs.PathError{Op: "stat", Path: present, Err: fs.ErrPermission}, want: false},
-		{name: "io error", err: &fs.PathError{Op: "stat", Path: present, Err: syscall.EIO}, want: false},
-		{name: "regular file", info: fileInfo, want: false},
+		{name: "absent", err: &fs.PathError{Op: "stat", Path: present, Err: fs.ErrNotExist}, want: FileDefinitelyUnavailable},
+		{name: "directory", info: dirInfo, want: FileDefinitelyUnavailable},
+		{name: "permission", err: &fs.PathError{Op: "stat", Path: present, Err: fs.ErrPermission}, want: FileInconclusive},
+		{name: "io error", err: &fs.PathError{Op: "stat", Path: present, Err: syscall.EIO}, want: FileInconclusive},
+		{name: "regular file", info: fileInfo, want: FileServable},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if got := FileDefinitelyUnavailable(test.err, test.info); got != test.want {
+			if got := ClassifyFileStat(test.err, test.info); got != test.want {
 				t.Fatalf("expected %v, got %v", test.want, got)
 			}
 		})
+	}
+}
+
+func TestProbeFileServabilityReportsSizeOnlyWhenServable(t *testing.T) {
+	directory := t.TempDir()
+	present := filepath.Join(directory, "here.txt")
+	writeFixture(t, present)
+
+	if verdict, size := ProbeFileServability(present); verdict != FileServable || size == nil {
+		t.Fatalf("expected servable with size, got %v %v", verdict, size)
+	}
+	if verdict, size := ProbeFileServability(directory); verdict != FileDefinitelyUnavailable || size != nil {
+		t.Fatalf("expected directory unavailable, got %v %v", verdict, size)
+	}
+	if verdict, _ := ProbeFileServability(filepath.Join(directory, "gone.txt")); verdict != FileDefinitelyUnavailable {
+		t.Fatalf("expected absent unavailable, got %v", verdict)
 	}
 }
 

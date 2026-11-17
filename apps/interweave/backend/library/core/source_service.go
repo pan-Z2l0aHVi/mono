@@ -24,17 +24,18 @@ type SourceService struct {
 
 // 保持 Source 规则与持久化实现解耦。
 func NewSourceService(db *storage.DB, fetcher *remote.Fetcher) *SourceService {
-	db.ScheduleBackground("fingerprint:backfill", func(ctx context.Context) {
-		if ctx.Err() == nil {
-			backfillFingerprints(ctx, db)
-		}
-	})
 	return &SourceService{
 		db:        db,
 		ingest:    newIngestion(db, fetcher),
 		resources: storage.ResourceStore{},
 		sources:   storage.SourceStore{},
 	}
+}
+
+// BackfillFingerprints 为库内已可用的文件 Source 补齐指纹。构造函数不再隐藏调度：
+// 由装配层（main.go）决定何时在后台启动它。
+func (s *SourceService) BackfillFingerprints(ctx context.Context) {
+	s.ingest.fingerprints.Backfill(ctx)
 }
 
 // SetIndexSync 注入入口集合的对账回调，使增删改 Source 后监听集合能立即重建。
@@ -258,7 +259,7 @@ func (s *SourceService) RefreshFileSource(ctx context.Context, sourceID string) 
 	}
 
 	if outcome.available {
-		recordFingerprint(s.db, sourceID, src.Location)
+		s.ingest.fingerprints.Record(sourceID, src.Location)
 	}
 	return s.getSource(ctx, sourceID)
 }

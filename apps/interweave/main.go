@@ -312,6 +312,8 @@ func main() {
 	gate.SetEmitter(func(change coreLibrary.AvailabilityChange) {
 		window.EmitEvent(libraryService.SourceAvailabilityEventName, libraryService.NewSourceAvailabilityEventDTO(change))
 	})
+	// 指纹回填是启动期后台补账，不在构造函数里隐藏调度。
+	db.ScheduleBackground("fingerprint:backfill", coreSourceService.BackfillFingerprints)
 	if watcher != nil {
 		coreSourceService.SetIndexSync(watcher)
 		coreResourceService.SetIndexSync(watcher)
