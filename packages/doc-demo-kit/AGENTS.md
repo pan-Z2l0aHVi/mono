@@ -8,5 +8,5 @@
 - 纯逻辑优先、依赖注入：locale、语料、校验与几何函数接收依赖或数据，不自己读全局；`quick-link` 需要 DOM/window 时也只通过显式参数或可替身的窄接口访问，保证 Node 环境可单测。
 - 语料契约在 `testing` 子入口（`src/testing.ts`）：宿主注入自己的 meta loader、语料目录、生成物目录与执行语言，只检查「页面显示代码 == markdown 围栏」和「围栏落成可编译文件且 exec 语言带 load」。中英文结构/标题一致性与页面接线不由它强约束，双语对齐允许少量差异。
 - Tailwind 的自动源检测止步于 workspace 边界。本包的类串要在 demo 构建里生效，宿主必须在自己的 `global.css` 用 `@source` 显式登记本包 `src`。
-- 测试放 `src/__tests__/*.spec.ts`，由包自己的 `vp test run` 运行；默认只测纯逻辑与几何，不锁像素、类名拼写或展示计数。跨两个 demo 的生成物与页面结构对齐判据由根级 turbo 任务 `//#check-generated-parity` 持有（本地入口 `pnpm run check-generated-parity`）；本包读取仓库文件的契约测试是 `nav.spec.ts`（读 `web-ui/docs` 语料目录）。
+- 测试放 `src/__tests__/*.spec.ts`，由包自己的 `vp test run` 运行；默认只测纯逻辑与几何，不锁像素、类名拼写或展示计数。跨两个 demo 的生成物与页面结构对齐判据由根级 turbo 任务 `//#check-generated-parity` 持有（本地入口 `pnpm run check-generated-parity`）；`nav.spec.ts` 是本包保留的语料契约测试：每个 nav 条目在 `web-ui/docs` 必须有同名 `.md` 与 `.CN.md`。这条真实的跨包读取显式登记在本包 [`turbo.json`](./turbo.json) 的 `test.inputs`（`$TURBO_ROOT$/packages/web-ui/docs/**`，稀疏 cone 内运行该测试仍需 `web-ui`），不能用根配置的 `!**/*.md` 排除项，否则语料改动会静默命中旧缓存。
 - 私有包，不出 npm；仍参与 Changesets 版本计算。导出面以 `src/index.ts` 与 `./testing` 为准，新增模块同步入口。
