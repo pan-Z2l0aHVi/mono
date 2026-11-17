@@ -57,6 +57,7 @@ function mountDialog(
     onEditTags?: (item: LibraryQueueItem) => void
     onRequestFilePaths?: (clipboardText?: string) => void
     onAddUrl?: (url: string) => void
+    onClosed?: () => void
   } = {},
   options: { mobile?: boolean; open?: boolean; tagColors?: Record<string, TagColor> } = {}
 ) {
@@ -121,6 +122,18 @@ function previewHandle(): ImagePreviewHandle {
 describe('AddDialog', () => {
   beforeEach(() => {
     openPreview.mockReset()
+  })
+
+  it('内部 web-ui-dialog 的 closed 事件透传给宿主', async () => {
+    const onClosed = vi.fn<() => void>()
+    const mounted = mountDialog([queueItem()], { onClosed })
+    try {
+      mounted.host.querySelector('web-ui-dialog')!.dispatchEvent(new CustomEvent('closed'))
+      await nextTick()
+      expect(onClosed).toHaveBeenCalledOnce()
+    } finally {
+      mounted.close()
+    }
   })
 
   it('导入链接弹窗校验输入，确认后入队，取消不导入', async () => {

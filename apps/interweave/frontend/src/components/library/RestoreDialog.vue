@@ -9,9 +9,11 @@ import {
 } from '@greypan/web-ui/icons'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
+import { useLingering } from '@/composables/useLingering'
 import { userMessage } from '@/services/library/userMessage'
 import type { ResourceSourceView } from '@/stores/library'
 
+import ErrorBanner from './ErrorBanner.vue'
 import { doubleArrowRight } from './icons'
 import { formatSize } from './presentation'
 import type { PreviewLease } from './previewLease'
@@ -47,14 +49,7 @@ const emit = defineEmits<{
 
 const scanChoiceOpen = ref(false)
 const candidateItem = ref<LibraryRestoreQueueItem | null>(null)
-const renderedCandidateItem = ref<LibraryRestoreQueueItem | null>(null)
-watch(
-  candidateItem,
-  value => {
-    if (value) renderedCandidateItem.value = value
-  },
-  { immediate: true }
-)
+const renderedCandidateItem = useLingering(candidateItem)
 const candidates = ref<Record<string, RecoveryCandidate[]>>({})
 const manual = ref<Record<string, boolean>>({})
 const snapshots = ref<Record<string, string>>({})
@@ -316,13 +311,7 @@ function submit() {
   >
     <span slot="header">找回资源</span>
     <div class="flex h-(--wui-dialog-max-height) min-h-0 flex-col">
-      <p
-        v-if="validationError || error"
-        class="m-0 rounded-md bg-red-50 px-3 py-2 text-sm leading-5 text-red-700 dark:bg-red-400/12 dark:text-red-200"
-        role="alert"
-      >
-        {{ validationError || error }}
-      </p>
+      <ErrorBanner :message="validationError || error" />
       <div
         class="grid min-h-0 flex-1"
         :class="

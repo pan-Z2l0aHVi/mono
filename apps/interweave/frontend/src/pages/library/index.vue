@@ -386,13 +386,7 @@ async function runConfirmedAction() {
 }
 
 function closeConfirmDialog() {
-  /*
-   * 只翻 open，不清内容（#189）。
-   *
-   * dialog 关闭后仍有 260ms 退场动画，期间弹窗保持可见。内容必须留到下一次打开时整体替换：
-   * 标题、说明、button 文案一清空，弹窗高度单帧掉 61.6px；紧凑变体还因为宽度从标题字符串派生，
-   * 从 320px 跳回默认的 360px。退场期间没有任何一帧的盒子尺寸变化，也不需要在页面侧复述退场时长。
-   */
+  // 只翻 open、不清内容：退场期间保留上次内容的合同见 useLingering。
   confirmOpen.value = false
 }
 

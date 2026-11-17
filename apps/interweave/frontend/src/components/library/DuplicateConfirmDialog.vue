@@ -6,6 +6,8 @@ import { akarIconsCircleCheck, lucideCopy, lucideTriangleAlert } from '@greypan/
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { onScopeDispose, ref, watch } from 'vue'
 
+import { useLingering } from '@/composables/useLingering'
+
 import PressDrawIcon from '../PressDrawIcon.vue'
 
 import type { LibraryDuplicatePrompt } from './addQueue'
@@ -20,17 +22,9 @@ const emit = defineEmits<{
   cancel: []
 }>()
 
-const renderedPrompt = ref<LibraryDuplicatePrompt | null>(null)
+const renderedPrompt = useLingering(() => props.prompt)
 const copiedResourceId = ref<string | null>(null)
 let copiedRevertTimer: ReturnType<typeof setTimeout> | undefined
-
-watch(
-  () => props.prompt,
-  value => {
-    if (value) renderedPrompt.value = value
-  },
-  { immediate: true }
-)
 
 function clearCopiedState() {
   clearTimeout(copiedRevertTimer)

@@ -323,28 +323,45 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
   })
 
   it('长名称和路径完整换行，编辑名称仍可操作', async () => {
-    const title = 'long-name-'.repeat(16)
-    const location = `/tmp/${'long-path-'.repeat(20)}file.png`
-    const host = mountDialog([queueItem({ title, location })])
-    await nextTick()
-    const name = [...host.querySelectorAll('span')].find(element => element.textContent?.trim() === title)!
-    const path = host.querySelector<HTMLElement>(`[title="${location}"]`)!
-    await waitFor(() => name.getBoundingClientRect().height > 0, '名称可见')
-    const before = name.getBoundingClientRect()
-    const beforeRow = name.closest('li')!.getBoundingClientRect()
-    expect(name.getBoundingClientRect().height).toBeGreaterThan(25)
-    expect(path.getBoundingClientRect().height).toBeGreaterThan(20)
-    expect(path.scrollWidth).toBeLessThanOrEqual(path.clientWidth + 1)
-    const edit = host.querySelector<WebUiButton>('web-ui-button[aria-label="重命名"]')!
-    edit.click()
-    await waitFor(() => !!host.querySelector('web-ui-editable-text'), '进入名称编辑')
-    const editor = host.querySelector('web-ui-editable-text')!
-    await waitFor(() => editor.hasAttribute('editing'), '名称编辑器获得焦点')
-    const after = editor.getBoundingClientRect()
-    expect(after.height).toBeCloseTo(before.height, 0)
-    const afterRow = editor.closest('li')!.getBoundingClientRect()
-    expect(after.top - afterRow.top).toBeCloseTo(before.top - beforeRow.top, 0)
-    expect(after.left).toBeCloseTo(before.left, 0)
+    const original = { width: window.innerWidth, height: window.innerHeight }
+    await page.viewport(1280, 800)
+    await waitFor(() => window.innerWidth === 1280, '桌面视口生效')
+    try {
+      const title = 'long-name-'.repeat(16)
+      const location = `/tmp/${'long-path-'.repeat(20)}file.png`
+      const host = mountDialog([queueItem({ title, location })])
+      await nextTick()
+      // 字体换装会改变长文本的换行行数：先等字体就绪，before/after 才是同一套度量。
+      await document.fonts.ready
+      const name = [...host.querySelectorAll('span')].find(element => element.textContent?.trim() === title)!
+      const path = host.querySelector<HTMLElement>(`[title="${location}"]`)!
+      await waitFor(() => name.getBoundingClientRect().height > 0, '名称可见')
+      const before = name.getBoundingClientRect()
+      const beforeRow = name.closest('li')!.getBoundingClientRect()
+      expect(name.getBoundingClientRect().height).toBeGreaterThan(25)
+      expect(path.getBoundingClientRect().height).toBeGreaterThan(20)
+      expect(path.scrollWidth).toBeLessThanOrEqual(path.clientWidth + 1)
+      const edit = host.querySelector<WebUiButton>('web-ui-button[aria-label="重命名"]')!
+      edit.click()
+      await waitFor(() => !!host.querySelector('web-ui-editable-text'), '进入名称编辑')
+      const editor = host.querySelector('web-ui-editable-text')!
+      await waitFor(() => editor.hasAttribute('editing'), '名称编辑器获得焦点')
+      // 编辑器进入 editing 与 textarea 完成换行布局不在同一帧：连续两帧尺寸一致再量。
+      let previous = editor.getBoundingClientRect()
+      await waitFor(() => {
+        const current = editor.getBoundingClientRect()
+        const stable = current.height === previous.height && current.top === previous.top
+        previous = current
+        return stable
+      }, '编辑器布局稳定')
+      const after = editor.getBoundingClientRect()
+      expect(after.height).toBeCloseTo(before.height, 0)
+      const afterRow = editor.closest('li')!.getBoundingClientRect()
+      expect(after.top - afterRow.top).toBeCloseTo(before.top - beforeRow.top, 0)
+      expect(after.left).toBeCloseTo(before.left, 0)
+    } finally {
+      await page.viewport(original.width, original.height)
+    }
   })
 
   it('短标题右侧依次显示编辑名称、标签和删除操作', async () => {

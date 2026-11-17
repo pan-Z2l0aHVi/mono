@@ -25,6 +25,7 @@ import type { ResourceSourceView, TagColor } from '@/stores/library'
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 import { queueItemTitle } from './addQueue'
+import ErrorBanner from './ErrorBanner.vue'
 import { doubleArrowRight, linkPlus } from './icons'
 import type { PreviewLeaseEntry } from './previewLease'
 import type { NameEditorRef } from './rename'
@@ -66,24 +67,7 @@ const emit = defineEmits<{
   closed: []
 }>()
 
-const dialogRef = ref<WebUiDialog | null>(null)
-let nativeDialog: HTMLDialogElement | null = null
-let disposed = false
-function handleNativeClosed() {
-  if (!nativeDialog?.open) emit('closed')
-}
-onMounted(async () => {
-  await dialogRef.value?.updateComplete
-  if (disposed) return
-  nativeDialog = dialogRef.value?.shadowRoot?.querySelector('dialog') ?? null
-  nativeDialog?.addEventListener('close', handleNativeClosed)
-})
-onScopeDispose(() => {
-  disposed = true
-  nativeDialog?.removeEventListener('close', handleNativeClosed)
-})
 defineExpose({
-  toastContainer: () => dialogRef.value?.shadowRoot?.querySelector('dialog') ?? undefined,
   /** 供菜单的「导入来自 › 链接」直接翻开链接输入，不必让用户再点一次。 */
   openLinkDialog: () => {
     addUrlOpen.value = true
@@ -252,7 +236,6 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
 
 <template>
   <web-ui-dialog
-    ref="dialogRef"
     :open="open"
     controlled
     no-backdrop-close
@@ -263,16 +246,11 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
     }"
     class="[--wui-dialog-width:min(90vw,880px)]"
     @open-change="handleOpenChange"
+    @closed="emit('closed')"
   >
     <span slot="header">导入资源</span>
 
-    <p
-      v-if="error"
-      class="m-0 rounded-md bg-red-50 px-3 py-2 text-sm leading-5 text-red-700 dark:bg-red-400/12 dark:text-red-200"
-      role="alert"
-    >
-      {{ error }}
-    </p>
+    <ErrorBanner :message="error" />
 
     <!--
       内层不自己算高度：`--wui-dialog-max-height` 的语义是「内容区高度」（不是「整卡高度」，

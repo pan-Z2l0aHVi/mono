@@ -13,6 +13,7 @@ import {
 import { computed, onScopeDispose, ref, watch } from 'vue'
 
 import { useEditorFocusRestore } from '@/composables/useEditorFocusRestore'
+import { useLingering } from '@/composables/useLingering'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import PressDrawIcon from '../PressDrawIcon.vue'
@@ -54,14 +55,7 @@ const emit = defineEmits<{
   showInFileManager: [source: ResourceSourceView]
 }>()
 const placement = computed(() => (props.mobile ? 'bottom' : 'right'))
-const renderedResource = ref<ResourceView | null>(null)
-watch(
-  () => props.resource,
-  value => {
-    if (value) renderedResource.value = value
-  },
-  { immediate: true }
-)
+const renderedResource = useLingering(() => props.resource)
 const unavailableSource = computed(() => renderedResource.value?.sources.find(source => !source.available) ?? null)
 const editingTitle = computed(() => props.editingNameKey === DRAWER_TITLE_EDITOR_KEY)
 const renameButtonRef = ref<HTMLElement>()

@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { WebUiDialog, WebUiEvent } from '@greypan/web-ui'
-import { onBeforeUnmount, onMounted, ref } from 'vue'
+
+import ErrorBanner from './ErrorBanner.vue'
 
 defineProps<{
   open: boolean
@@ -19,23 +20,6 @@ const emit = defineEmits<{
   closed: []
 }>()
 
-const dialogRef = ref<WebUiDialog>()
-let nativeDialog: HTMLDialogElement | null = null
-let disposed = false
-const handleClosed = () => {
-  if (!nativeDialog?.open) emit('closed')
-}
-onMounted(async () => {
-  await dialogRef.value?.updateComplete
-  if (disposed) return
-  nativeDialog = dialogRef.value?.shadowRoot?.querySelector('dialog') ?? null
-  nativeDialog?.addEventListener('close', handleClosed)
-})
-onBeforeUnmount(() => {
-  disposed = true
-  nativeDialog?.removeEventListener('close', handleClosed)
-})
-
 function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   if (event.target !== event.currentTarget) return
   if (!event.detail.open) emit('cancel')
@@ -44,21 +28,15 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 
 <template>
   <web-ui-dialog
-    ref="dialogRef"
     :open="open"
     controlled
     no-backdrop-close
     :class="compact ? '[--wui-dialog-width:320px]' : undefined"
     @open-change="handleOpenChange"
+    @closed="emit('closed')"
   >
     <div slot="header">{{ title }}</div>
-    <p
-      v-if="error"
-      class="m-0 rounded-md bg-red-50 px-3 py-2 text-sm leading-5 text-red-700 dark:bg-red-400/12 dark:text-red-200"
-      role="alert"
-    >
-      {{ error }}
-    </p>
+    <ErrorBanner :message="error" />
     <p class="m-0 text-[14px] leading-6 text-[#5b5b66] dark:text-(--wui-color-text-secondary)">{{ message }}</p>
     <div slot="footer" class="flex gap-3">
       <web-ui-button full variant="secondary" :disabled="busy" @click="emit('cancel')">取消</web-ui-button>
