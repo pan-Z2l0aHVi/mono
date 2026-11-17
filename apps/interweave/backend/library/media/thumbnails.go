@@ -3,6 +3,7 @@ package media
 import (
 	"bufio"
 	"bytes"
+	"context"
 	"encoding/binary"
 	"errors"
 	"fmt"
@@ -12,6 +13,7 @@ import (
 	"image/jpeg"
 	_ "image/png" // 注册 png 解码器
 	"io"
+	"log"
 	"math"
 	"net/http"
 	"os"
@@ -24,6 +26,8 @@ import (
 	_ "golang.org/x/image/tiff" // 注册 tiff 解码器
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/internal/atomicfile"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 )
 
 // ThumbnailPathPrefix 是 Source 缩略图的 AssetServer 路由前缀：GET/HEAD 读取，POST 回填。
@@ -64,11 +68,6 @@ func NewThumbnailStore(dir string) (*ThumbnailStore, error) {
 // thumbnailVersion 由原文件的修改时间与字节数派生缩略图版本。
 func thumbnailVersion(info os.FileInfo) string {
 	return fmt.Sprintf("%x-%x", info.ModTime().UnixNano(), info.Size())
-}
-
-// ThumbnailVersion 是 thumbnailVersion 的导出形态：启动清理方按同一算法计算当前版本。
-func ThumbnailVersion(info os.FileInfo) string {
-	return thumbnailVersion(info)
 }
 
 func (t *ThumbnailStore) path(sourceID string, info os.FileInfo) string {
@@ -144,19 +143,42 @@ func (t *ThumbnailStore) Save(sourceID string, info os.FileInfo, data []byte) bo
 	return writeAtomically(t.path(sourceID, info), data) == nil
 }
 
-// ThumbnailPruneEntry 描述一个文件 Source 在清理时的身份与当前版本。
-type ThumbnailPruneEntry struct {
+// thumbnailPruneEntry 描述一个文件 Source 在清理时的身份与当前版本。
+type thumbnailPruneEntry struct {
 	SourceID string
 	// Version 是按当前 mtime+size 派生的版本；原文件暂不可 stat（如离线归档盘）时为空，
 	// 该 Source 的现存缩略图全部保留，等下次可用时再清。
 	Version string
 }
 
-// PruneStale 删除不再匹配当前版本的缩略图文件，启动时跑一次即可：运行期的版本失效
+// FileSourceLister 列出库内全部文件 Source；由装配层绑定到具体存储，使 media 不依赖查询句柄。
+type FileSourceLister func(ctx context.Context) ([]storage.SourceModel, error)
+
+// Prune 按库内现行文件 Source 名单清一次过期缩略图，启动时跑一次即可。
+// 原文件暂不可 stat 的 Source（离线归档盘）Version 为空，其缩略图全部保留，等可用后再清。
+// 名单读取失败时整次跳过，只留垃圾不留错误。
+func (t *ThumbnailStore) Prune(ctx context.Context, list FileSourceLister) {
+	models, err := list(ctx)
+	if err != nil {
+		log.Printf("interweave: thumbnail prune skipped: %v", err)
+		return
+	}
+	entries := make([]thumbnailPruneEntry, 0, len(models))
+	for _, source := range models {
+		entry := thumbnailPruneEntry{SourceID: source.ID}
+		if info, err := os.Stat(source.Location); core.ClassifyFileStat(err, info) == core.FileServable {
+			entry.Version = thumbnailVersion(info)
+		}
+		entries = append(entries, entry)
+	}
+	t.pruneStale(entries)
+}
+
+// pruneStale 删除不再匹配当前版本的缩略图文件：运行期的版本失效
 // 靠文件名天然错开，不产生需要即时回收的垃圾。无点分隔、无法归属的文件不动，
 // 避免误删并行写入的临时产物；已删除 Source 的遗留文件归属明确，属于清理目标。
-func (t *ThumbnailStore) PruneStale(entries []ThumbnailPruneEntry) {
-	byID := make(map[string]ThumbnailPruneEntry, len(entries))
+func (t *ThumbnailStore) pruneStale(entries []thumbnailPruneEntry) {
+	byID := make(map[string]thumbnailPruneEntry, len(entries))
 	for _, entry := range entries {
 		byID[entry.SourceID] = entry
 	}

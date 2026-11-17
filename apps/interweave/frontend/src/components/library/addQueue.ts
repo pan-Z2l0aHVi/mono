@@ -8,6 +8,8 @@ import {
   SourceType
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
+import type { PreviewLease } from './previewLease'
+
 type PreviewRuntime = Pick<LibraryRuntime, 'isAvailable' | 'resources'>
 
 type QueueKind = LibraryQueueItem['kind']
@@ -20,6 +22,7 @@ const KIND_BY_SOURCE: Record<QueueKind, { sourceType: SourceType; resourceKind: 
 
 /** 单个待入队位置的重复提示：库里已登记该入口的资源。 */
 export interface LibraryDuplicatePrompt {
+  kind: QueueKind
   location: string
   matches: ResourceLocationMatchDTO[]
 }
@@ -77,54 +80,37 @@ export function queueItemTitle(item: LibraryQueueItem) {
   }
 }
 
-export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueController {
+export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLease): LibraryAddQueueController {
   const queue = ref<LibraryQueueItem[]>([])
   const duplicatePrompt = ref<LibraryDuplicatePrompt | null>(null)
   const submitting = ref(false)
-  const preparations = new Map<string, Promise<void>>()
   let settleDuplicate: ((accept: boolean) => void) | null = null
   // 逐项查询与逐项确认都是异步的：串在一条链上，弹窗才不会叠加，顺序也与提交顺序一致。
   let chain: Promise<void> = Promise.resolve()
   // close() 递增代次，让链上尚未处理的位置作废：添加 dialog 已经关掉，剩余项不再弹窗。
   let generation = 0
 
-  function releaseToken(token: string | null) {
-    if (!token || !runtime.isAvailable) return Promise.resolve()
-    return runtime.resources.releaseFilePreview(token)
-  }
-
   function replaceItem(itemId: string, update: (item: LibraryQueueItem) => LibraryQueueItem) {
     queue.value = queue.value.map(item => (item.id === itemId ? update(item) : item))
   }
 
-  function trackPreparation(itemId: string, preparation: Promise<void>) {
-    preparations.set(itemId, preparation)
-    void preparation.then(() => {
-      if (preparations.get(itemId) === preparation) preparations.delete(itemId)
-    })
-  }
-
   function prepareItem(item: LibraryQueueItem) {
-    const preparation = (async () => {
-      if (!runtime.isAvailable) return
-      try {
-        const preview = await runtime.resources.prepareFilePreview(item.location)
+    void lease
+      .prepare(item.id, item.location, () =>
+        queue.value.some(candidate => candidate.id === item.id && candidate.location === item.location)
+      )
+      .then(entry => {
+        if (!entry) return
         const current = queue.value.find(candidate => candidate.id === item.id)
-        if (!current || current.location !== item.location) {
-          await releaseToken(preview.token ?? null)
-          return
-        }
+        if (!current || current.location !== item.location) return
+        // previewToken/mediaUrl 只作结算簿记；渲染读 lease.entries，驱逐后立即回落 fallback。
         replaceItem(item.id, candidate => ({
           ...candidate,
-          resourceKind: preview.kind,
-          previewToken: preview.token ?? null,
-          mediaUrl: preview.media_url ?? null
+          resourceKind: entry.kind,
+          previewToken: entry.token,
+          mediaUrl: entry.mediaUrl
         }))
-      } catch {
-        // 预览失败时保留 generic fallback；真正的纳入仍由 CreateResource 校验路径。
-      }
-    })()
-    trackPreparation(item.id, preparation)
+      })
   }
 
   function resolveDuplicate(accept: boolean) {
@@ -141,17 +127,30 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
     })
   }
 
-  async function confirmBeforeEnqueue(location: string, kind: QueueKind, queried: Set<string>, startedAt: number) {
-    // 无 Wails bridge 时没有库可查，直接入队；同一批次内的同一位置只查一次。
-    if (!runtime.isAvailable || queried.has(location)) return true
-    queried.add(location)
+  // decisions 记录同一批次内每个位置已给出的裁决：同一位置只查、只问一次，
+  // 且取消过的位置在后续重复项上继续跳过，不会被自动放行。
+  async function confirmBeforeEnqueue(
+    location: string,
+    kind: QueueKind,
+    decisions: Map<string, boolean>,
+    startedAt: number
+  ) {
+    // 无 Wails bridge 时没有库可查，直接入队。
+    if (!runtime.isAvailable) return true
+    const decided = decisions.get(location)
+    if (decided !== undefined) return decided
     try {
       const matches = await runtime.resources.findLocationMatches(location, KIND_BY_SOURCE[kind].sourceType)
-      if (!matches.length) return true
+      if (!matches.length) {
+        decisions.set(location, true)
+        return true
+      }
       // 查询在途时用户可能已经关掉添加 dialog：此时弹窗会成为没有归属的悬空确认，
       // 按取消放行。调用方的代次检查在 await 之后才发生，那时弹窗已经弹出，来不及。
       if (startedAt !== generation) return false
-      return await askDuplicate({ location, matches })
+      const accept = await askDuplicate({ kind, location, matches })
+      decisions.set(location, accept)
+      return accept
     } catch {
       // 查询失败按未命中处理：这条提示是轻提示，真正的纳入仍由 CreateResource 校验路径把关，
       // 与 prepareItem 的失败降级同理，不因此让用户无法添加。
@@ -161,12 +160,12 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
 
   async function enqueueLocations(kind: QueueKind, locations: string[], startedAt: number) {
     const queued = new Set(queue.value.map(item => item.location))
-    const queried = new Set<string>()
+    const decisions = new Map<string, boolean>()
     for (const value of locations) {
       if (startedAt !== generation) return
       const location = value.trim()
       if (!location || queued.has(location)) continue
-      if (!(await confirmBeforeEnqueue(location, kind, queried, startedAt))) continue
+      if (!(await confirmBeforeEnqueue(location, kind, decisions, startedAt))) continue
       if (startedAt !== generation) return
       const item: LibraryQueueItem = {
         id: queueId(kind),
@@ -211,16 +210,18 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
   }
 
   async function waitForPreview(itemId: string) {
-    await preparations.get(itemId)
+    await lease.awaitSettled(itemId)
   }
 
   async function releasePreview(itemId: string) {
     await waitForPreview(itemId)
     const item = queue.value.find(candidate => candidate.id === itemId)
-    if (!item?.previewToken) return
-    const token = item.previewToken
+    if (!item?.previewToken) {
+      await lease.revoke(itemId)
+      return
+    }
     replaceItem(item.id, candidate => ({ ...candidate, previewToken: null, mediaUrl: null }))
-    await releaseToken(token)
+    await lease.revoke(item.id)
   }
 
   async function removeItem(itemId: string) {
@@ -230,7 +231,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
     const current = queue.value.find(candidate => candidate.id === itemId)
     if (!current) return
     queue.value = queue.value.filter(candidate => candidate.id !== itemId)
-    await releaseToken(current.previewToken)
+    await lease.revoke(itemId)
   }
 
   async function close() {
@@ -238,11 +239,10 @@ export function createLibraryAddQueue(runtime: PreviewRuntime): LibraryAddQueueC
     // 挂着的提示按「取消」裁决，链才不会停在这一项上。
     resolveDuplicate(false)
     await chain
-    const items = [...queue.value]
-    const pending = [...preparations.values()]
+    const itemIds = queue.value.map(item => item.id)
     queue.value = []
-    await Promise.allSettled(pending)
-    await Promise.allSettled(items.map(item => releaseToken(item.previewToken)))
+    // lease 与找回弹窗共用，这里只撤销本队列的 key，不整体清空。
+    await Promise.allSettled(itemIds.map(itemId => lease.revoke(itemId)))
   }
 
   async function submit(create: (item: LibraryQueueItem) => Promise<void>): Promise<boolean> {

@@ -9,11 +9,15 @@ import {
 } from '@greypan/web-ui/icons'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
+import { useLingering } from '@/composables/useLingering'
 import { userMessage } from '@/services/library/userMessage'
-import type { ResourceKind, ResourceSourceView } from '@/stores/library'
+import type { ResourceSourceView } from '@/stores/library'
 
+import ErrorBanner from './ErrorBanner.vue'
 import { doubleArrowRight } from './icons'
 import { formatSize } from './presentation'
+import type { PreviewLease } from './previewLease'
+import { createRecoveryScanController } from './recoveryScan'
 import { resourceDialogColumnClass, resourceDialogQueueClass } from './resourceDialogStyles'
 import ResourceLinkDialog from './ResourceLinkDialog.vue'
 import type { LibraryRestoreQueueItem, RecoveryCandidate, RecoveryScanUpdate } from './restore'
@@ -34,8 +38,8 @@ const props = defineProps<{
   pollScan: (id: string) => Promise<RecoveryScanUpdate>
   cancelScan: (id: string) => Promise<void>
   discardScan: (id: string) => Promise<void>
-  prepareFilePreview: (path: string) => Promise<{ kind: ResourceKind; token?: string; media_url?: string }>
-  releaseFilePreview: (token: string) => Promise<void>
+  /** 与添加队列共用一本预览账本：prepare/revoke/驱逐对账都由它承担。 */
+  lease: PreviewLease
 }>()
 const emit = defineEmits<{
   'update:open': [value: boolean]
@@ -45,38 +49,38 @@ const emit = defineEmits<{
 
 const scanChoiceOpen = ref(false)
 const candidateItem = ref<LibraryRestoreQueueItem | null>(null)
+const renderedCandidateItem = useLingering(candidateItem)
 const candidates = ref<Record<string, RecoveryCandidate[]>>({})
 const manual = ref<Record<string, boolean>>({})
 const snapshots = ref<Record<string, string>>({})
-const scanning = ref(false)
 const scanProgress = ref<RecoveryScanUpdate | null>(null)
-const scanIncomplete = ref(false)
-let scanId: string | null = null
-let stopRequested = false
-const stopping = ref(false)
-let scanGeneration = 0
-let pollTimer: ReturnType<typeof setTimeout> | null = null
-function stopScan() {
-  scanGeneration++
-  if (pollTimer) clearTimeout(pollTimer)
-  pollTimer = null
-  const id = scanId
-  scanId = null
-  scanning.value = false
-  stopping.value = false
-  stopRequested = false
-  if (id) void props.discardScan(id).catch(console.error)
-}
-function requestStop() {
-  stopRequested = true
-  stopping.value = true
-  scanIncomplete.value = true
-  if (scanId)
-    void props.cancelScan(scanId).catch(cause => {
-      validationError.value = userMessage(cause, '停止扫描失败，请重试')
-      stopping.value = false
-    })
-}
+// 单次会话、代次作废、250ms 轮询与停止竞态都由控制器拥有；这里只提供 UI 回调。
+const scan = createRecoveryScanController(
+  {
+    start: (ids, directory) => props.startScan(ids, directory),
+    poll: id => props.pollScan(id),
+    cancel: id => props.cancelScan(id),
+    discard: id => props.discardScan(id)
+  },
+  {
+    onProgress: update => {
+      scanProgress.value = update
+      for (const candidate of update.candidates) mergeCandidate(candidate)
+    },
+    onDone: update => {
+      if (update.error) validationError.value = userMessage(update.error, '扫描失败，请重试')
+    },
+    onError: (stage, cause) => {
+      if (stage === 'start') validationError.value = userMessage(cause, '启动扫描失败，请重试')
+      else if (stage === 'poll') validationError.value = userMessage(cause, '扫描失败，请重试')
+      else validationError.value = userMessage(cause, '停止扫描失败，请重试')
+    }
+  }
+)
+const scanning = scan.scanning
+const stopping = scan.stopping
+const scanIncomplete = scan.incomplete
+const requestStop = scan.requestStop
 function mergeCandidate(candidate: RecoveryCandidate) {
   const list = candidates.value[candidate.sourceID] ?? []
   const next = [...list.filter(item => item.path !== candidate.path), candidate]
@@ -96,58 +100,15 @@ function openScanChoice() {
   scanChoiceOpen.value = true
 }
 async function beginScan(directory: string) {
-  const request = ++scanGeneration
-  scanning.value = true
-  scanIncomplete.value = false
   validationError.value = ''
   const items = [...props.queue]
   for (const item of props.allUnavailableFiles) if (!items.some(existing => existing.id === item.id)) items.push(item)
   emit('addItems', items)
   toast.info(`已找到 ${items.filter(item => item.kind === 'file').length} 条失效资源`, { position: 'top-center' })
-  try {
-    const id = await props.startScan(
-      items.filter(item => item.kind === 'file').map(item => item.sourceId),
-      directory
-    )
-    if (request !== scanGeneration) {
-      void props.discardScan(id).catch(console.error)
-      return
-    }
-    scanId = id
-    if (stopRequested) await props.cancelScan(id)
-    const poll = async () => {
-      try {
-        const update = await props.pollScan(id)
-        if (request !== scanGeneration) return
-        scanProgress.value = update
-        for (const candidate of update.candidates) mergeCandidate(candidate)
-        if (update.done) {
-          scanId = null
-          scanning.value = false
-          stopping.value = false
-          stopRequested = false
-          scanIncomplete.value = update.cancelled || !!update.error
-          if (update.error) validationError.value = userMessage(update.error, '扫描失败，请重试')
-        } else pollTimer = setTimeout(() => void poll(), 250)
-      } catch (cause) {
-        if (request !== scanGeneration) return
-        scanning.value = false
-        stopping.value = false
-        scanIncomplete.value = true
-        scanId = null
-        void props.discardScan(id).catch(console.error)
-        validationError.value = userMessage(cause, '扫描失败，请重试')
-      }
-    }
-    await poll()
-  } catch (cause) {
-    if (request !== scanGeneration) return
-    scanning.value = false
-    stopping.value = false
-    if (scanId) void props.discardScan(scanId).catch(console.error)
-    scanId = null
-    validationError.value = userMessage(cause, '启动扫描失败，请重试')
-  }
+  await scan.beginScan(
+    directory,
+    items.filter(item => item.kind === 'file').map(item => item.sourceId)
+  )
 }
 function scanAllDisks() {
   scanChoiceOpen.value = false
@@ -184,18 +145,16 @@ const picking = ref<string | null>(null)
 const validationError = ref('')
 const editingUrlItem = ref<LibraryRestoreQueueItem | null>(null)
 const urlDraft = ref('')
-const previews = ref<
-  Record<string, { kind: ResourceKind; token: string | null; mediaUrl: string | null; path: string }>
->({})
-const previewVersions = new Map<string, number>()
+const previews = computed(() => props.lease.entries.value)
+// lease 与添加队列共用，这里记下本弹窗发起过的 key，关闭时只撤销自己的授权。
+const previewKeys = new Set<string>()
 function releasePreview(id: string) {
-  previewVersions.set(id, (previewVersions.get(id) ?? 0) + 1)
-  const preview = previews.value[id]
-  delete previews.value[id]
-  if (preview?.token) void props.releaseFilePreview(preview.token).catch(console.error)
+  previewKeys.delete(id)
+  void props.lease.revoke(id).catch(console.error)
 }
 function clearPreviews() {
-  for (const id of Object.keys(previews.value)) releasePreview(id)
+  // releasePreview 会改动集合，先取快照再逐个撤销。
+  for (const id of Array.from(previewKeys)) releasePreview(id)
 }
 function previewSource(id: string): ResourceSourceView | null {
   const preview = previews.value[id]
@@ -212,24 +171,15 @@ function previewSource(id: string): ResourceSourceView | null {
     metadata: null
   }
 }
-async function prepareThumbnail(id: string, path: string, request: number) {
-  const version = (previewVersions.get(id) ?? 0) + 1
-  previewVersions.set(id, version)
-  try {
-    const preview = await props.prepareFilePreview(path)
-    if (
-      request !== generation ||
-      previewVersions.get(id) !== version ||
-      prepared.value[id] !== path ||
-      !props.queue.some(item => item.id === id)
-    ) {
-      if (preview.token) await props.releaseFilePreview(preview.token)
-      return
-    }
-    previews.value[id] = { kind: preview.kind, token: preview.token ?? null, mediaUrl: preview.media_url ?? null, path }
-  } catch (error) {
-    console.error('准备找回资源缩略图失败', error)
-  }
+function prepareThumbnail(id: string, path: string, request: number) {
+  previewKeys.add(id)
+  void props.lease
+    .prepare(
+      id,
+      path,
+      () => request === generation && prepared.value[id] === path && props.queue.some(item => item.id === id)
+    )
+    .catch(console.error)
 }
 watch(
   () => props.failedIds,
@@ -246,14 +196,14 @@ watch(
 watch(
   () => props.queue.map(item => item.id).join('|'),
   () => {
-    for (const id of Object.keys(previews.value)) {
+    for (const id of Array.from(previewKeys)) {
       if (!props.queue.some(item => item.id === id)) releasePreview(id)
     }
   }
 )
 onBeforeUnmount(() => {
   generation++
-  stopScan()
+  scan.dispose()
   clearPreviews()
 })
 let generation = 0
@@ -265,17 +215,18 @@ watch(
   () => props.open,
   open => {
     generation++
-    stopScan()
+    scan.stop()
     clearPreviews()
     scanChoiceOpen.value = false
     candidateItem.value = null
-    candidates.value = {}
-    manual.value = {}
-    snapshots.value = {}
-    scanProgress.value = null
-    scanIncomplete.value = false
     editingUrlItem.value = null
     if (open) {
+      renderedCandidateItem.value = null
+      candidates.value = {}
+      manual.value = {}
+      snapshots.value = {}
+      scanProgress.value = null
+      scanIncomplete.value = false
       drafts.value = {}
       prepared.value = {}
       picking.value = null
@@ -360,13 +311,7 @@ function submit() {
   >
     <span slot="header">找回资源</span>
     <div class="flex h-(--wui-dialog-max-height) min-h-0 flex-col">
-      <p
-        v-if="validationError || error"
-        class="m-0 rounded-md bg-red-50 px-3 py-2 text-sm leading-5 text-red-700 dark:bg-red-400/12 dark:text-red-200"
-        role="alert"
-      >
-        {{ validationError || error }}
-      </p>
+      <ErrorBanner :message="validationError || error" />
       <div
         class="grid min-h-0 flex-1"
         :class="
@@ -541,11 +486,11 @@ function submit() {
     @open-change="!$event.detail.open && (candidateItem = null)"
   >
     <span slot="header">选择找回的文件</span>
-    <p v-if="candidateItem" class="mt-0 mb-3 text-xs text-(--wui-color-text-secondary)">
-      为「{{ candidateItem.resourceTitle }}」选择匹配的文件
+    <p v-if="renderedCandidateItem" class="mt-0 mb-3 text-xs text-(--wui-color-text-secondary)">
+      为「{{ renderedCandidateItem.resourceTitle }}」选择匹配的文件
     </p>
-    <ul v-if="candidateItem" class="m-0 flex list-none flex-col gap-2 p-0">
-      <li v-for="candidate in candidates[candidateItem.id]" :key="candidate.path">
+    <ul v-if="renderedCandidateItem" class="m-0 flex list-none flex-col gap-2 p-0">
+      <li v-for="candidate in candidates[renderedCandidateItem.id]" :key="candidate.path">
         <button
           type="button"
           class="candidate-option flex w-full cursor-pointer items-center gap-3 rounded-xl border-0 bg-(--wui-color-surface-raised,white) p-3 text-left text-(--wui-color-text) hover:bg-[color-mix(in_srgb,var(--wui-color-accent)_10%,var(--wui-color-surface-raised,white))] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring)"

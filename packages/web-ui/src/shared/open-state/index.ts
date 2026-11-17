@@ -24,3 +24,11 @@ export function dispatchOpenChangeEvent(host: LitElement, open: boolean): void {
     })
   )
 }
+
+/**
+ * `closed` 是关闭完成的通知语义：视觉退场结束、原生 dialog 已离开 top layer。
+ * 它与 `open-change` 的请求语义并行，只供宿主做「关闭之后」的收尾（恢复焦点、清内容）。
+ */
+export function dispatchClosedEvent(host: LitElement): void {
+  host.dispatchEvent(new CustomEvent<void>('closed', { bubbles: true, composed: true }))
+}

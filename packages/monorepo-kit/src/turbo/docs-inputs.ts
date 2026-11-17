@@ -3,6 +3,7 @@ import path from 'node:path'
 
 import { definePlugin, rust } from '@greypan/js-kit'
 
+import { defineGit, type GitApi } from '../git/git'
 import { type Chain, type KitCtx, type Run, defineRunner } from '../runner/runner'
 import { byCodeUnit } from '../shared/order'
 
@@ -10,10 +11,10 @@ import { defineTurbo, type TurboApi } from './turbo'
 
 const { andThen, err, ok } = rust
 
-// 文档语料住在被发布包里的仓库：那批示例 md 是 build 与 test 的真输入。根 turbo.json 的
-// `!**/*.md` 把这批 md 排掉，包级 turbo.json 必须重新纳入，并按名字排掉散文 md。本检查守两个
-// 方向：包里每篇 md 都在名单里；覆写后的排除项不会盖回语料目录。包目录、语料目录与散文名单
-// 都是消费仓库的事实，经 options 传入。
+// 文档语料住在被发布包里的仓库：那批示例 md 是 test 的真输入（build 不读 docs，dist 不含它）。
+// 根 turbo.json 的 `!**/*.md` 把这批 md 排掉，包级 turbo.json 的 test 必须重新纳入，并按名字排掉
+// 散文 md。本检查守两个方向：包里每篇 md 都在名单里；覆写后的排除项不会盖回语料目录。包目录、
+// 语料目录与散文名单都是消费仓库的事实，经 options 传入。
 
 export interface DocsInputsOptions {
   /** 带独立 `turbo.json` 的包目录，仓库相对 */
@@ -22,6 +23,15 @@ export interface DocsInputsOptions {
   readonly corpusDir: string
   /** 包根按文件名排除的散文 md */
   readonly proseNames: readonly string[]
+  /**
+   * 允许包整包被稀疏检出隐藏：`packageDir/package.json` 带 skip-worktree 位且目录缺失时跳过
+   * 判定，而不是失败。稀疏信号只认 manifest 的 skip-worktree 位——cone 模式整包同进同出，
+   * 手动只 skip 一部分文件不会点亮这个信号；本地误删与 untracked 目录仍然失败。全 checkout
+   * 下的完整判定由不开此选项的调用方保证。
+   */
+  readonly allowSparsePackages?: boolean
+  /** 语料必须成为输入的任务名，缺省只校验 `test`：build 不读 docs，不该被语料策略约束。 */
+  readonly corpusTasks?: readonly string[]
 }
 
 function collectMarkdown(directory: string, base: string, files: string[]): void {
@@ -86,18 +96,32 @@ function requireInputs(configPath: string, task: unknown, taskName: string): rus
 /**
  * 包级文档语料输入面的判定，链上以 `turbo: ` 起头归因，文案带上包目录。
  */
-export const defineDocsInputs = ({ packageDir, corpusDir, proseNames }: DocsInputsOptions): Chain =>
+export const defineDocsInputs = ({
+  packageDir,
+  corpusDir,
+  proseNames,
+  allowSparsePackages,
+  corpusTasks = ['test']
+}: DocsInputsOptions): Chain =>
   defineRunner()
     .use(defineTurbo())
+    .use(defineGit())
     .use(
-      definePlugin<{ run: Run }, KitCtx & { run: Run } & TurboApi>(ctx => ({
+      definePlugin<{ run: Run }, KitCtx & { run: Run } & TurboApi & GitApi>(ctx => ({
         run: () =>
           andThen(ctx.run(), async () => {
             const fail = (message: string): rust.Result<void, string> => err(`turbo: ${packageDir}: ${message}`)
+            const sparseHidden = (): boolean => ctx.skipWorktreeFiles().includes(`${packageDir}/package.json`)
             const packageRoot = path.join(ctx.root, packageDir)
-            if (!fs.existsSync(packageRoot)) return fail('does not exist (run from the repository root)')
+            if (!fs.existsSync(packageRoot)) {
+              if (allowSparsePackages === true && sparseHidden()) return ok(undefined)
+              return fail('does not exist (run from the repository root)')
+            }
             const corpusRoot = path.join(packageRoot, corpusDir)
-            if (!fs.existsSync(corpusRoot)) return fail(`${corpusDir}/ does not exist: this check would idle`)
+            if (!fs.existsSync(corpusRoot)) {
+              if (allowSparsePackages === true && sparseHidden()) return ok(undefined)
+              return fail(`${corpusDir}/ does not exist: this check would idle`)
+            }
 
             const allMarkdown: string[] = []
             collectMarkdown(packageRoot, packageRoot, allMarkdown)
@@ -125,13 +149,13 @@ export const defineDocsInputs = ({ packageDir, corpusDir, proseNames }: DocsInpu
 
             const turboFile = `${packageDir}/turbo.json`
             if (!fs.existsSync(path.join(packageRoot, 'turbo.json')))
-              return fail('has no turbo.json: without it the corpus is not an input to build or test')
+              return fail('has no turbo.json: without it the corpus is not an input to test')
             const config = ctx.config<{ extends?: unknown; tasks?: Record<string, unknown> }>(turboFile)
             if (JSON.stringify(config.extends) !== '["//"]')
               return fail('turbo.json extends must be ["//"], otherwise the override drops task definitions')
 
             const probes = [...corpusMarkdown, corpusDir, `${corpusDir}/`]
-            for (const taskName of ['build', 'test']) {
+            for (const taskName of corpusTasks) {
               const inputs = requireInputs(turboFile, config.tasks?.[taskName], taskName)
               if (!inputs.ok) return err(inputs.error)
               if (!inputs.value.includes('$TURBO_DEFAULT$'))

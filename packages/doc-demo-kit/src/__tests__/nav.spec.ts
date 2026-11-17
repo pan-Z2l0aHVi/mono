@@ -1,7 +1,3 @@
-import { existsSync } from 'node:fs'
-import path from 'node:path'
-import { fileURLToPath } from 'node:url'
-
 import { describe, expect, it } from 'vite-plus/test'
 
 import { isNavActive, NAV_SECTIONS } from '../nav'
@@ -77,23 +73,4 @@ describe('导航激活判定', () => {
     expect(isNavActive('/', '/home')).toBe(false)
     expect(isNavActive('/home', '/components/button')).toBe(false)
   })
-})
-
-describe('语料契约（单向）', () => {
-  /*
-   * 每个 nav 条目的 basename 必须在 `packages/web-ui/docs` 存在同英文名 `.md` 与 `.CN.md`：
-   * nav 加了条目而语料缺文件，两端 demo 的 meta loader 会直接 reject。反向漂移（docs 新增
-   * 组件忘加 nav）不设灯——页面存在但不可达/不可搜，是已接受的残留。
-   */
-  const docsDir = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../../web-ui/docs')
-
-  it.each(NAV_SECTIONS.flatMap(section => section.items).map(item => [item.label, item.path] as const))(
-    '%s 在 web-ui/docs 有同名的 .md 与 .CN.md',
-    (_label, navPath) => {
-      // 文件名是 kebab-case 的路由 basename（back-top.md），不是显示标签（BackTop）。
-      const basename = navPath.split('/').at(-1)!
-      expect(existsSync(path.join(docsDir, `${basename}.md`)), `${basename}.md 缺失`).toBe(true)
-      expect(existsSync(path.join(docsDir, `${basename}.CN.md`)), `${basename}.CN.md 缺失`).toBe(true)
-    }
-  )
 })

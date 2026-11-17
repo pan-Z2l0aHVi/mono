@@ -19,7 +19,9 @@ import * as settings$0 from "../../../../pan-Z2l0aHVi/mono/apps/interweave/backe
 function configure() {
     Object.freeze(Object.assign($Create.Events, {
         "library:files-dropped": $$createType0,
+        "library:previews-revoked": $$createType0,
         "library:source-availability-changed": $$createType1,
+        "library:urls-dropped": $$createType0,
         "menu:command": $$createType2,
         "settings:changed": $$createType3,
     }));

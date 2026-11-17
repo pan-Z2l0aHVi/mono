@@ -6,7 +6,7 @@ import { readmeLocales } from '../policies/readme-locales.mjs'
 import { stagedClean } from '../policies/staged-clean.mjs'
 import { turboCacheInvariant } from '../policies/turbo-cache-invariant.mjs'
 import { turboInputPaths } from '../policies/turbo-input-paths.mjs'
-import { webUiDocsInputs } from '../policies/web-ui-docs-inputs.mjs'
+import { webUiDocsInputsSparseTolerant } from '../policies/web-ui-docs-inputs.mjs'
 
 import { runCheck } from './run-check.mjs'
 
@@ -18,7 +18,7 @@ await runCheck(() =>
     .use(readmeLocales)
     .use(turboCacheInvariant)
     .use(turboInputPaths)
-    .use(webUiDocsInputs)
+    .use(webUiDocsInputsSparseTolerant)
     .use(stagedClean)
     .use(defineCatch())
     .make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })

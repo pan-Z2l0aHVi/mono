@@ -140,6 +140,9 @@ tasks:
       - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents/MacOS"
       - cp build/darwin/Info.plist "{{.BIN_DIR}}/{{.APP_NAME}}.app/Contents"
       - task: codesign:adhoc
+      # LaunchServices 按 bundle id + 版本缓存 Info.plist：同 id 同版本覆盖 bundle 不会刷新缓存，
+      # Dock 拖放高亮读的是缓存里的 CFBundleDocumentTypes，必须显式注册。
+      - /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "{{.BIN_DIR}}/{{.APP_NAME}}.app"
 
   codesign:adhoc:
     summary: Ad-hoc signs the app bundle (macOS only)
@@ -155,6 +158,8 @@ tasks:
       - cp "{{.BIN_DIR}}/{{.APP_NAME}}" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS"
       - cp "build/darwin/Info.dev.plist" "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/Info.plist"
       - codesign --force --deep --sign - "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
+      # 同 create:app:bundle：不刷新 LaunchServices 缓存，Dock 拖放读到的仍是旧 Info.plist。
+      - /System/Library/Frameworks/CoreServices.framework/Frameworks/LaunchServices.framework/Support/lsregister -f "{{.BIN_DIR}}/{{.APP_NAME}}.dev.app"
       - '"{{.BIN_DIR}}/{{.APP_NAME}}.dev.app/Contents/MacOS/{{.APP_NAME}}"'
 
   sign:

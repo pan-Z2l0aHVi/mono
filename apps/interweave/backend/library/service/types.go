@@ -6,7 +6,11 @@ import "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 // 绑定生成器会把同名常量写进前端 bindings/events，两端不再各自硬编码字面量。
 const (
 	FileDropEventName           = "library:files-dropped"
+	URLDropEventName            = "library:urls-dropped"
 	SourceAvailabilityEventName = "library:source-availability-changed"
+	// PreviewRevokedEventName 推送被容量淘汰的 pending media token；
+	// 持有方收到后卸载对应预览，避免把 404 误读为文件消失。
+	PreviewRevokedEventName = "library:previews-revoked"
 )
 
 // ResourceKind 是 Resource 展示分类的闭集；文件分类由 Go 侧维护，URL 固定为 web。

@@ -134,8 +134,9 @@ describe('ResourceList：行不画 focus ring（真实读数，浏览器）', ()
       container.focus()
       await nextTick()
 
-      // 容器是普通 tab stop，获焦时页面级 focus ring 照常画在它身上
+      // 容器是普通 tab stop，获焦时页面级 focus ring 照常画在它身上，且容器保留圆角以贴合圆角 focus ring
       expect(getComputedStyle(container).outlineStyle, '容器应有页面级 focus ring').not.toBe('none')
+      expect(getComputedStyle(container).borderRadius, '容器应带圆角，使 focus ring 呈圆角').toBe('14px')
 
       // 用真实输入模拟 Enter 键：enterList 会把焦点交给当前活动行（r1）
       await userEvent.keyboard('{Enter}')
@@ -289,6 +290,32 @@ describe('ResourceList：行不画 focus ring（真实读数，浏览器）', ()
       expect(document.activeElement).toBe(rows[0])
       expect(rows[0].getAttribute('tabindex')).toBe('0')
       expect(rows[2].getAttribute('tabindex')).toBe('-1')
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('未激活状态下直接聚焦首行时保留 focus ring，按 Space 激活后退回暗底指示', async () => {
+    const resources = ['r1', 'r2'].map(id => resource({ id }))
+    const mounted = await mountList(resources, null)
+    hosts.push(mounted.host)
+
+    try {
+      const container = mounted.container!
+      container.focus()
+      await nextTick()
+
+      // 直接 Tab 跳过容器落到首行（尚未激活，activeResourceId 为 null）
+      await userEvent.tab()
+      const firstRow = mounted.rows()[0]!
+      await waitFor(() => document.activeElement === firstRow, 'Tab 落到首行')
+      expect(firstRow.hasAttribute('data-active')).toBe(false)
+      expect(getComputedStyle(firstRow).outlineStyle, '未激活行没有暗底，应保留 focus ring').not.toBe('none')
+
+      // 按 Space 激活该行后有暗底指示，focus ring 按裁决退出
+      await userEvent.keyboard(' ')
+      await waitFor(() => firstRow.hasAttribute('data-active'), 'Space 激活该行')
+      expect(getComputedStyle(firstRow).outlineStyle, '已激活行只保留暗底，不画 focus ring').toBe('none')
     } finally {
       mounted.unmount()
     }

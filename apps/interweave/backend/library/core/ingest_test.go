@@ -7,6 +7,7 @@ import (
 	"net/url"
 	"os"
 	"path/filepath"
+	"syscall"
 	"testing"
 	"time"
 
@@ -47,6 +48,25 @@ func TestProbeFileAvailability(t *testing.T) {
 	}
 	if outcome.defaultTitle != "present.txt" {
 		t.Errorf("expected file name as default title, got %q", outcome.defaultTitle)
+	}
+}
+
+// stat 成功但不是常规文件（目录、管道）时媒体请求必然无法服务，纳入时就不能记为可用。
+func TestProbeFileRejectsNonRegularFiles(t *testing.T) {
+	ing := &ingestion{}
+	ctx := context.Background()
+	dir := t.TempDir()
+
+	if outcome := ing.probe(ctx, dir, storage.SourceTypeFile); outcome.available {
+		t.Errorf("expected directory to be unavailable, got %+v", outcome)
+	}
+
+	fifo := filepath.Join(dir, "pipe")
+	if err := syscall.Mkfifo(fifo, 0o644); err != nil {
+		t.Fatalf("failed to create fifo: %v", err)
+	}
+	if outcome := ing.probe(ctx, fifo, storage.SourceTypeFile); outcome.available {
+		t.Errorf("expected fifo to be unavailable, got %+v", outcome)
 	}
 }
 

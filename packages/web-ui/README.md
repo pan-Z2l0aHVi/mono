@@ -1,8 +1,18 @@
 # @greypan/web-ui
 
+<img src="https://pub-fe49512858e84a0c900227d3a9c9404a.r2.dev/markdown/bo-transparent.png" alt="web-ui-logo" width="160" />
+
+[![npm version](https://img.shields.io/npm/v/@greypan/web-ui)](https://www.npmjs.com/package/@greypan/web-ui)
+[![npm downloads](https://img.shields.io/npm/dm/@greypan/web-ui)](https://www.npmjs.com/package/@greypan/web-ui)
+[![node version](https://img.shields.io/node/v/@greypan/web-ui)](https://www.npmjs.com/package/@greypan/web-ui)
+[![CI](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml/badge.svg)](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/npm/l/@greypan/web-ui)](https://www.npmjs.com/package/@greypan/web-ui)
+
 English | [简体中文](./README.CN.md)
 
 ## Live demos
+
+![overview](https://pub-fe49512858e84a0c900227d3a9c9404a.r2.dev/markdown/SnowShot_2026-11-16_08-58-15.png)
 
 - [React demo](https://pan-z2l0ahvi.github.io/mono/react-web-ui-demo)
 - [Vue demo](https://pan-z2l0ahvi.github.io/mono/vue-web-ui-demo)

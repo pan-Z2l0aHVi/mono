@@ -81,17 +81,16 @@ describe('library restore queue', () => {
       queueItem('second', 'url'),
       { ...queueItem('third', 'file'), replacementLocation: '/new/third.txt' }
     ]
-    const replaceFileSource = vi.fn<(sourceId: string, inputPath: string) => Promise<unknown>>(async () => undefined)
     const failure = new Error('replace failed')
-    const replaceURLSource = vi.fn<(sourceId: string, inputURL: string) => Promise<unknown>>(async () => {
-      throw failure
+    const replaceSource = vi.fn<(sourceId: string, input: string) => Promise<unknown>>(async sourceId => {
+      if (sourceId === 'source-second') throw failure
     })
     const replaceScannedFileSource = vi.fn<(sourceId: string, inputPath: string, snapshot: string) => Promise<unknown>>(
       async () => undefined
     )
-    const result = await restoreLibraryQueue(items, { replaceFileSource, replaceScannedFileSource, replaceURLSource })
-    expect(replaceFileSource).toHaveBeenCalledTimes(2)
-    expect(replaceFileSource).toHaveBeenCalledWith('source-first', '/new/file.txt')
+    const result = await restoreLibraryQueue(items, { replaceSource, replaceScannedFileSource })
+    expect(replaceSource).toHaveBeenCalledTimes(3)
+    expect(replaceSource).toHaveBeenCalledWith('source-first', '/new/file.txt')
     expect(result.completedIds).toEqual(['first', 'third'])
     expect(result.failures).toEqual([{ item: items[1], cause: failure }])
   })

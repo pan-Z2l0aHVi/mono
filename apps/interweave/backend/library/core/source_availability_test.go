@@ -295,19 +295,19 @@ func TestSourceMutationsResyncIndex(t *testing.T) {
 	writeFixture(t, spare)
 	seedResource(t, db, "resource-anchor")
 
-	fileSrc, err := sourceSvc.AddFileSource(ctx, "resource-anchor", primary)
+	fileSrc, err := sourceSvc.AddSource(ctx, "resource-anchor", storage.SourceTypeFile, primary)
 	if err != nil {
-		t.Fatalf("AddFileSource error: %v", err)
+		t.Fatalf("AddSource error: %v", err)
 	}
-	urlSrc, err := sourceSvc.AddURLSource(ctx, "resource-anchor", "https://example.com/a")
+	urlSrc, err := sourceSvc.AddSource(ctx, "resource-anchor", storage.SourceTypeURL, "https://example.com/a")
 	if err != nil {
-		t.Fatalf("AddURLSource error: %v", err)
+		t.Fatalf("AddSource error: %v", err)
 	}
-	if _, err := sourceSvc.ReplaceFileSource(ctx, fileSrc.ID, spare); err != nil {
-		t.Fatalf("ReplaceFileSource error: %v", err)
+	if _, err := sourceSvc.ReplaceSource(ctx, fileSrc.ID, spare); err != nil {
+		t.Fatalf("ReplaceSource error: %v", err)
 	}
-	if _, err := sourceSvc.ReplaceURLSource(ctx, urlSrc.ID, "https://example.com/b"); err != nil {
-		t.Fatalf("ReplaceURLSource error: %v", err)
+	if _, err := sourceSvc.ReplaceSource(ctx, urlSrc.ID, "https://example.com/b"); err != nil {
+		t.Fatalf("ReplaceSource error: %v", err)
 	}
 	view, err := resourceSvc.CreateResource(ctx, CreateResourceInput{Kind: storage.SourceTypeFile, Location: primary})
 	if err != nil {
@@ -335,17 +335,17 @@ func TestIndexSyncFailureDoesNotFailMutation(t *testing.T) {
 	svc := NewSourceService(db, remote.NewFetcher())
 	svc.SetIndexSync(sync)
 
-	src, err := svc.AddFileSource(context.Background(), "resource-anchor", present)
+	src, err := svc.AddSource(context.Background(), "resource-anchor", storage.SourceTypeFile, present)
 	if err != nil {
-		t.Fatalf("expected AddFileSource to succeed despite index sync failure, got %v", err)
+		t.Fatalf("expected AddSource to succeed despite index sync failure, got %v", err)
 	}
 	if !src.Available {
 		t.Fatalf("expected source persisted as available, got %+v", src)
 	}
 }
 
-// 「确实不可服务」与「此刻读不到」必须可区分：权限错误不等于文件消失。
-func TestFileDefinitelyUnavailableTriage(t *testing.T) {
+// 三态必须可区分：权限错误不等于文件消失，目录/管道不是可服务文件。
+func TestClassifyFileStat(t *testing.T) {
 	directory := t.TempDir()
 	dirInfo, err := os.Stat(directory)
 	if err != nil {
@@ -362,19 +362,35 @@ func TestFileDefinitelyUnavailableTriage(t *testing.T) {
 		name string
 		err  error
 		info os.FileInfo
-		want bool
+		want FileServability
 	}{
-		{name: "absent", err: &fs.PathError{Op: "stat", Path: present, Err: fs.ErrNotExist}, want: true},
-		{name: "directory", info: dirInfo, want: true},
-		{name: "permission", err: &fs.PathError{Op: "stat", Path: present, Err: fs.ErrPermission}, want: false},
-		{name: "io error", err: &fs.PathError{Op: "stat", Path: present, Err: syscall.EIO}, want: false},
-		{name: "regular file", info: fileInfo, want: false},
+		{name: "absent", err: &fs.PathError{Op: "stat", Path: present, Err: fs.ErrNotExist}, want: FileDefinitelyUnavailable},
+		{name: "directory", info: dirInfo, want: FileDefinitelyUnavailable},
+		{name: "permission", err: &fs.PathError{Op: "stat", Path: present, Err: fs.ErrPermission}, want: FileInconclusive},
+		{name: "io error", err: &fs.PathError{Op: "stat", Path: present, Err: syscall.EIO}, want: FileInconclusive},
+		{name: "regular file", info: fileInfo, want: FileServable},
 	} {
 		t.Run(test.name, func(t *testing.T) {
-			if got := FileDefinitelyUnavailable(test.err, test.info); got != test.want {
+			if got := ClassifyFileStat(test.err, test.info); got != test.want {
 				t.Fatalf("expected %v, got %v", test.want, got)
 			}
 		})
+	}
+}
+
+func TestProbeFileServabilityReportsSizeOnlyWhenServable(t *testing.T) {
+	directory := t.TempDir()
+	present := filepath.Join(directory, "here.txt")
+	writeFixture(t, present)
+
+	if verdict, size := ProbeFileServability(present); verdict != FileServable || size == nil {
+		t.Fatalf("expected servable with size, got %v %v", verdict, size)
+	}
+	if verdict, size := ProbeFileServability(directory); verdict != FileDefinitelyUnavailable || size != nil {
+		t.Fatalf("expected directory unavailable, got %v %v", verdict, size)
+	}
+	if verdict, _ := ProbeFileServability(filepath.Join(directory, "gone.txt")); verdict != FileDefinitelyUnavailable {
+		t.Fatalf("expected absent unavailable, got %v", verdict)
 	}
 }
 

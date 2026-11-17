@@ -6,6 +6,7 @@ import { computed, ref, watch } from 'vue'
 import type { LibraryQueueItem } from '@/services/library'
 import type { ResourceView, TagColor } from '@/stores/library'
 
+import ErrorBanner from './ErrorBanner.vue'
 import ResourceTag from './ResourceTag.vue'
 
 const props = defineProps<{
@@ -98,13 +99,7 @@ function removeTag(tag: string) {
   >
     <span slot="header">标签</span>
 
-    <p
-      v-if="error"
-      class="m-0 rounded-md bg-red-50 px-3 py-2 text-sm leading-5 text-red-700 dark:bg-red-400/12 dark:text-red-200"
-      role="alert"
-    >
-      {{ error }}
-    </p>
+    <ErrorBanner :message="error" />
 
     <div class="grid gap-4">
       <div class="grid gap-1.5">

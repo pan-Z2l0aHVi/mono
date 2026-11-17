@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
@@ -79,9 +80,9 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 	}))
 	defer ts.Close()
 
-	addedRes, err := srcService.AddURLSource(ctx, resDTO.ID, ts.URL)
+	addedRes, err := srcService.AddSource(ctx, resDTO.ID, storage.SourceTypeURL, ts.URL)
 	if err != nil {
-		t.Fatalf("AddURLSource error: %v", err)
+		t.Fatalf("AddSource error: %v", err)
 	}
 	// URL 归一化可能改写输入（如补尾斜杠），新增入口按「不在原视图里」找回。
 	var addedSource *service.SourceDTO
@@ -149,14 +150,11 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 		t.Errorf("expected error when removing only remaining source, got nil")
 	}
 
-	// 验证替换只改变入口本身。
-	newTmpFile, _ := os.CreateTemp("", "new-test-*.txt")
-	defer os.Remove(newTmpFile.Name())
-	newTmpFile.Close()
-
-	replacedRes, err := srcService.ReplaceFileSource(ctx, resAfterRemove.Sources[0].ID, newTmpFile.Name())
+	// 验证替换只改变入口本身，类型沿用存量行（此时剩下的是 URL 入口）。
+	replacedLocation := ts.URL + "/moved"
+	replacedRes, err := srcService.ReplaceSource(ctx, resAfterRemove.Sources[0].ID, replacedLocation)
 	if err != nil {
-		t.Fatalf("ReplaceFileSource error: %v", err)
+		t.Fatalf("ReplaceSource error: %v", err)
 	}
 	replacedSrc := sourceByID(replacedRes, resAfterRemove.Sources[0].ID)
 	if replacedSrc == nil {
@@ -165,8 +163,8 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 	if !replacedSrc.IsPreferred {
 		t.Errorf("expected replaced source to keep is_preferred=true")
 	}
-	if replacedSrc.Location != newTmpFile.Name() {
-		t.Errorf("expected location to be updated to %s, got %s", newTmpFile.Name(), replacedSrc.Location)
+	if replacedSrc.Type != storage.SourceTypeURL || !strings.HasSuffix(replacedSrc.Location, "/moved") {
+		t.Errorf("expected URL source relocated to %s, got %+v", replacedLocation, replacedSrc)
 	}
 }
 

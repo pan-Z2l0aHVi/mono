@@ -97,7 +97,7 @@ export default function QuickLinkCard({
   return (
     <Link
       to={path}
-      className="relative block text-left"
+      className="demo-quick-link relative block rounded-3xl text-left"
       onPointerEnter={handlePointerEnter}
       onPointerMove={handlePointerMove}
       onPointerLeave={handlePointerLeave}

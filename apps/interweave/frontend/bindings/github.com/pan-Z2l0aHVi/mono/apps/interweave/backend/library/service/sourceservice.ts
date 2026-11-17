@@ -13,22 +13,17 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 
 // eslint-disable-next-line @typescript-eslint/ban-ts-comment
 // @ts-ignore: Unused imports
+import * as storage$0 from "../storage/models.js";
+
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
 import * as $models from "./models.js";
 
 /**
- * 补充备用入口不应意外改变用户当前的首选入口。
+ * AddSource 补充备用入口，不改变用户当前的首选入口，也不覆盖已维护的资源语义。
  */
-export function AddFileSource(resourceID: string, inputPath: string): $CancellablePromise<$models.ResourceDTO | null> {
-    return $Call.ByID(2051784755, resourceID, inputPath).then(($result: any) => {
-        return $$createType1($result);
-    });
-}
-
-/**
- * 补充 URL 入口不应覆盖用户已维护的资源语义。
- */
-export function AddURLSource(resourceID: string, inputURL: string): $CancellablePromise<$models.ResourceDTO | null> {
-    return $Call.ByID(1864533572, resourceID, inputURL).then(($result: any) => {
+export function AddSource(resourceID: string, srcType: storage$0.SourceType, input: string): $CancellablePromise<$models.ResourceDTO | null> {
+    return $Call.ByID(114979709, resourceID, srcType, input).then(($result: any) => {
         return $$createType1($result);
     });
 }
@@ -69,19 +64,10 @@ export function ProbeURLSourceOnOpen(sourceID: string): $CancellablePromise<$mod
 }
 
 /**
- * RefreshFileSource 重新检查同一文件 path 的可用性，不改变 location；文件在原路径恢复后使用。
+ * RefreshSource 重新检查同一位置的可用性与展示信息，不改变 location；类型由存量 Source 决定。
  */
-export function RefreshFileSource(sourceID: string): $CancellablePromise<$models.ResourceDTO | null> {
-    return $Call.ByID(3763081659, sourceID).then(($result: any) => {
-        return $$createType1($result);
-    });
-}
-
-/**
- * RefreshURLSource 重新抓取同一 URL 的展示信息与可用性，不改变 location。
- */
-export function RefreshURLSource(sourceID: string): $CancellablePromise<$models.ResourceDTO | null> {
-    return $Call.ByID(477969004, sourceID).then(($result: any) => {
+export function RefreshSource(sourceID: string): $CancellablePromise<$models.ResourceDTO | null> {
+    return $Call.ByID(283161253, sourceID).then(($result: any) => {
         return $$createType1($result);
     });
 }
@@ -96,15 +82,6 @@ export function RemoveSource(sourceID: string): $CancellablePromise<$models.Reso
 }
 
 /**
- * ReplaceFileSource 用新路径找回失效文件，保留 Source 身份、顺位与首选角色；它不是同路径刷新。
- */
-export function ReplaceFileSource(sourceID: string, inputPath: string): $CancellablePromise<$models.ResourceDTO | null> {
-    return $Call.ByID(3092543900, sourceID, inputPath).then(($result: any) => {
-        return $$createType1($result);
-    });
-}
-
-/**
  * ReplaceScannedFileSource verifies the scan snapshot before replacing the source.
  */
 export function ReplaceScannedFileSource(sourceID: string, path: string, snapshot: string): $CancellablePromise<$models.ResourceDTO | null> {
@@ -114,10 +91,10 @@ export function ReplaceScannedFileSource(sourceID: string, path: string, snapsho
 }
 
 /**
- * ReplaceURLSource 用新 URL 找回失效网页入口，保留 Source 身份、顺位与首选角色；它不是同 URL 刷新。
+ * ReplaceSource 用新位置找回失效入口，保留 Source 身份、顺位、类型与首选角色；它不是同位置刷新。
  */
-export function ReplaceURLSource(sourceID: string, inputURL: string): $CancellablePromise<$models.ResourceDTO | null> {
-    return $Call.ByID(2259197533, sourceID, inputURL).then(($result: any) => {
+export function ReplaceSource(sourceID: string, input: string): $CancellablePromise<$models.ResourceDTO | null> {
+    return $Call.ByID(1305346986, sourceID, input).then(($result: any) => {
         return $$createType1($result);
     });
 }

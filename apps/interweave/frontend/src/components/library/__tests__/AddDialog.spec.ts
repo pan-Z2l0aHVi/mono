@@ -11,6 +11,7 @@ import {
 } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryQueueItem } from '../../../services/library'
 import AddDialog from '../AddDialog.vue'
+import type { PreviewLeaseEntry } from '../previewLease'
 
 vi.mock('@greypan/web-ui', async importOriginal => {
   const actual = await importOriginal<typeof import('@greypan/web-ui')>()
@@ -33,6 +34,22 @@ function queueItem(overrides: Partial<LibraryQueueItem> = {}): LibraryQueueItem 
   }
 }
 
+/** 渲染读 lease.entries：单测按队列项的结算簿记构造等价条目。 */
+function previewsFor(queue: LibraryQueueItem[]) {
+  const previews: Record<string, PreviewLeaseEntry | undefined> = {}
+  for (const item of queue) {
+    if (item.previewToken && item.mediaUrl) {
+      previews[item.id] = {
+        kind: item.resourceKind,
+        token: item.previewToken,
+        mediaUrl: item.mediaUrl,
+        path: item.location
+      }
+    }
+  }
+  return previews
+}
+
 function mountDialog(
   queue: LibraryQueueItem[],
   listeners: {
@@ -40,6 +57,7 @@ function mountDialog(
     onEditTags?: (item: LibraryQueueItem) => void
     onRequestFilePaths?: (clipboardText?: string) => void
     onAddUrl?: (url: string) => void
+    onClosed?: () => void
   } = {},
   options: { mobile?: boolean; open?: boolean; tagColors?: Record<string, TagColor> } = {}
 ) {
@@ -55,6 +73,7 @@ function mountDialog(
         error: '',
         mobile: options.mobile ?? false,
         tagColors: options.tagColors ?? {},
+        previews: previewsFor(queue),
         ...listeners
       })
   })
@@ -105,15 +124,27 @@ describe('AddDialog', () => {
     openPreview.mockReset()
   })
 
-  it('添加链接弹窗校验输入，确认后入队，取消不添加', async () => {
+  it('内部 web-ui-dialog 的 closed 事件透传给宿主', async () => {
+    const onClosed = vi.fn<() => void>()
+    const mounted = mountDialog([queueItem()], { onClosed })
+    try {
+      mounted.host.querySelector('web-ui-dialog')!.dispatchEvent(new CustomEvent('closed'))
+      await nextTick()
+      expect(onClosed).toHaveBeenCalledOnce()
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('导入链接弹窗校验输入，确认后入队，取消不导入', async () => {
     const addUrl = vi.fn<(url: string) => void>()
     const mounted = mountDialog([], { onAddUrl: addUrl })
     try {
-      button(mounted.host, '添加链接').click()
+      button(mounted.host, '导入链接').click()
       await nextTick()
       const input = mounted.host.querySelector('web-ui-input[aria-label="新链接"]') as HTMLElement & { value: string }
       const confirm = [...mounted.host.querySelectorAll<HTMLElement>('web-ui-button')].find(
-        candidate => candidate.textContent?.trim() === '添加链接'
+        candidate => candidate.textContent?.trim() === '导入链接'
       )!
       confirm.click()
       await nextTick()
@@ -126,7 +157,7 @@ describe('AddDialog', () => {
       await nextTick()
       expect(addUrl).toHaveBeenCalledOnce()
       expect(addUrl).toHaveBeenCalledWith('https://example.com/new')
-      button(mounted.host, '添加链接').click()
+      button(mounted.host, '导入链接').click()
       await nextTick()
       const dialogs = mounted.host.querySelectorAll('web-ui-dialog')
       const cancel = [...dialogs[1].querySelectorAll<HTMLElement>('web-ui-button')].find(
@@ -149,7 +180,7 @@ describe('AddDialog', () => {
     Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { readText } })
     const mounted = mountDialog([])
     try {
-      button(mounted.host, '添加链接').click()
+      button(mounted.host, '导入链接').click()
       await nextTick()
       const input = mounted.host.querySelector('web-ui-input[aria-label="新链接"]') as HTMLElement & { value: string }
       button(mounted.host, '粘贴链接').click()
@@ -205,12 +236,12 @@ describe('AddDialog', () => {
 
     try {
       await nextTick()
-      button(mounted.host, '编辑名称').click()
+      button(mounted.host, '重命名').click()
       await nextTick()
       await nextTick()
       expect(mounted.host.querySelectorAll('web-ui-editable-text')).toHaveLength(1)
 
-      button(mounted.host, '编辑名称').click()
+      button(mounted.host, '重命名').click()
       await nextTick()
       await nextTick()
       const editors = mounted.host.querySelectorAll<WebUiEditableText>('web-ui-editable-text')
@@ -226,7 +257,7 @@ describe('AddDialog', () => {
       expect(rename).toHaveBeenCalledWith('second', '改名后的第二项')
       expect(mounted.host.querySelector('web-ui-editable-text')).toBeNull()
 
-      button(mounted.host, '编辑名称').click()
+      button(mounted.host, '重命名').click()
       await nextTick()
       await nextTick()
       const cancelled = mounted.host.querySelector<WebUiEditableText>('web-ui-editable-text')
@@ -258,7 +289,7 @@ describe('AddDialog', () => {
       await nextTick()
       expect(mounted.host.textContent).toContain('example.com')
 
-      button(mounted.host, '编辑名称').click()
+      button(mounted.host, '重命名').click()
       await nextTick()
       await nextTick()
       const editor = mounted.host.querySelector<WebUiEditableText>('web-ui-editable-text')
@@ -269,7 +300,7 @@ describe('AddDialog', () => {
       await nextTick()
       expect(rename).not.toHaveBeenCalled()
 
-      button(mounted.host, '编辑名称').click()
+      button(mounted.host, '重命名').click()
       await nextTick()
       await nextTick()
       const renamed = mounted.host.querySelector<WebUiEditableText>('web-ui-editable-text')

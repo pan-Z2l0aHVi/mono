@@ -40,19 +40,18 @@ export interface LibraryResourceCapabilities {
 }
 
 /**
- * 单个入口的刷新与替换：直接回传变更后的完整 Resource 视图，调用方 upsert 后即完成回流，
+ * 单个入口的刷新与替换（入口类型沿用存量行，不能经替换改变）：直接回传变更后的完整 Resource 视图，调用方 upsert 后即完成回流，
  * 变更后的 Source 在 resource.sources 里按 id 可取。
  */
 export interface LibrarySourceCapabilities {
-  refreshURL(sourceId: string): Promise<ResourceDTO>
-  refreshFile(sourceId: string): Promise<ResourceDTO>
-  replaceFile(sourceId: string, inputPath: string): Promise<ResourceDTO>
+  /** 类型由后端按存量入口派生，调用方不再区分文件与网页。 */
+  refreshSource(sourceId: string): Promise<ResourceDTO>
+  replaceSource(sourceId: string, input: string): Promise<ResourceDTO>
   startRecoveryScan(sourceIds: string[], directory: string): Promise<string>
   pollRecoveryScan(scanId: string): Promise<RecoveryScanUpdate>
   cancelRecoveryScan(scanId: string): Promise<void>
   discardRecoveryScan(scanId: string): Promise<void>
   replaceScannedFile(sourceId: string, path: string, snapshot: string): Promise<ResourceDTO>
-  replaceURL(sourceId: string, inputURL: string): Promise<ResourceDTO>
   probeOnOpen(sourceId: string): Promise<SourceProbeResultDTO>
 }
 
@@ -64,7 +63,10 @@ export interface LibraryMediaCapabilities {
 /** 订阅返回 unsubscribe；不可用的运行时返回空 disposer，调用方无需自行判空。 */
 export interface LibraryEventCapabilities {
   onFilesDropped(listener: (paths: string[]) => void): () => void
+  onURLsDropped(listener: (urls: string[]) => void): () => void
   onSourceAvailability(listener: (event: SourceAvailabilityEventDTO) => void): () => void
+  /** 后端 LRU 淘汰的 pending 预览 token；持有方据此卸载预览而不是把 404 当成文件消失。 */
+  onPreviewRevoked(listener: (tokens: string[]) => void): () => void
 }
 
 /** 与操作系统交互：文件选择、文本剪贴板、默认应用与外链。 */
@@ -110,6 +112,11 @@ export function isSourceAvailabilityEvent(value: unknown): value is SourceAvaila
   // size_bytes 缺省即「这次翻转与 size 无关」，有值时必须是数字。
   if (event.size_bytes !== undefined && event.size_bytes !== null && typeof event.size_bytes !== 'number') return false
   return true
+}
+
+/** 预览淘汰事件载荷是失效 token 列表；畸形载荷静默忽略，与可用性事件同一口径。 */
+export function isPreviewRevokedEvent(value: unknown): value is string[] {
+  return Array.isArray(value) && value.every(token => typeof token === 'string' && token.length > 0)
 }
 
 export interface LibraryQueueItem {

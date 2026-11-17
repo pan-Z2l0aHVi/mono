@@ -36,10 +36,10 @@ describe('ResourceThumbnail', () => {
     })
     app.mount(host)
     try {
-      expect(host.querySelector('web-ui-icon.absolute.bottom-0.left-0')).not.toBeNull()
+      expect(host.querySelector('[data-unavailable-badge] web-ui-icon')).not.toBeNull()
       unavailable.value = false
       await nextTick()
-      expect(host.querySelector('web-ui-icon.absolute.bottom-0.left-0')).toBeNull()
+      expect(host.querySelector('[data-unavailable-badge]')).toBeNull()
     } finally {
       app.unmount()
     }
@@ -68,6 +68,38 @@ describe('ResourceThumbnail', () => {
       await nextTick()
       expect(host.querySelector('img')).toBeNull()
       expect(host.querySelector('web-ui-icon')).not.toBeNull()
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
+  it('详情页失效来源优先显示缓存，缓存缺失或加载失败时显示失效图标', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp({
+      render: () =>
+        h(ResourceThumbnail, {
+          kind: ResourceKind.ResourceKindImage,
+          source: { ...fileSource(), available: false },
+          mediaUrl: '/original',
+          thumbnailUrl: '/cached',
+          detail: true,
+          unavailable: true
+        })
+    })
+    app.mount(host)
+    try {
+      const inner = host.firstElementChild?.firstElementChild
+      const image = host.querySelector('img')!
+      expect(image.getAttribute('src')).toBe('/cached')
+      image.dispatchEvent(new Event('load'))
+      await nextTick()
+      expect(inner?.querySelector('web-ui-icon')).toBeNull()
+      image.dispatchEvent(new Event('error'))
+      await nextTick()
+      expect(host.querySelector('img')).toBeNull()
+      expect(inner?.querySelector('web-ui-icon')).not.toBeNull()
     } finally {
       app.unmount()
       host.remove()

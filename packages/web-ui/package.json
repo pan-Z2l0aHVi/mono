@@ -109,5 +109,8 @@
     "iOS >=16.4",
     "Firefox >=128",
     "not dead"
-  ]
+  ],
+  "engines": {
+    "node": ">=20.11.0"
+  }
 }

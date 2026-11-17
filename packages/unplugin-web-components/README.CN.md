@@ -1,5 +1,11 @@
 # @greypan/unplugin-web-components
 
+[![npm version](https://img.shields.io/npm/v/@greypan/unplugin-web-components)](https://www.npmjs.com/package/@greypan/unplugin-web-components)
+[![npm downloads](https://img.shields.io/npm/dm/@greypan/unplugin-web-components)](https://www.npmjs.com/package/@greypan/unplugin-web-components)
+[![node version](https://img.shields.io/node/v/@greypan/unplugin-web-components)](https://www.npmjs.com/package/@greypan/unplugin-web-components)
+[![CI](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml/badge.svg)](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/npm/l/@greypan/unplugin-web-components)](https://www.npmjs.com/package/@greypan/unplugin-web-components)
+
 > 在标签出现时自动导入 Web Components 的 Vite/Webpack 插件。
 
 [English](./README.md) | 简体中文

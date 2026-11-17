@@ -1,7 +1,7 @@
 import path from 'node:path'
 
 import { fenceGroupVariants, groupedMetaNodes } from '@greypan/doc-demo-kit'
-import { runExampleDocsContractTests } from '@greypan/doc-demo-kit/testing'
+import { runExampleDocsContractTests, runNavCorpusContractTests } from '@greypan/doc-demo-kit/testing'
 import type { MetaNode } from '@greypan/md-to-meta'
 import { visibleText } from '@greypan/md-to-meta/contract'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -20,13 +20,18 @@ const INSTALL_COMMANDS = fenceGroupVariants(
 
 // 语料接线的轻量 contract 断言（围栏同源 / 落盘文件）收拢在 `@greypan/doc-demo-kit/testing`；
 // 这里只注入 Vue 侧的宿主事实。生成器判据在 `@greypan/md-to-meta` 单测里。
+const docsDir = path.resolve(import.meta.dirname, '../../../../packages/web-ui/docs')
+
 runExampleDocsContractTests({
   loadMeta,
-  docsDir: path.resolve(import.meta.dirname, '../../../../packages/web-ui/docs'),
+  docsDir,
   generatedDir: path.resolve(import.meta.dirname, '../generated'),
   /** 本端只执行 vue 围栏：它们才是真组件；其余围栏只是源码。 */
   execLanguage: 'vue'
 })
+
+// nav 是两端共享的侧栏与搜索入口；宿主注入语料目录，kit 不硬编码仓库路径。
+runNavCorpusContractTests({ docsDir })
 
 describe('通用 meta 渲染', () => {
   const sampleNodes = (content: string) =>

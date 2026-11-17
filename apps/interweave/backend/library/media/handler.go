@@ -213,8 +213,8 @@ func (h *Handler) saveThumbnail(w http.ResponseWriter, r *http.Request, sourceID
 // statAvailableOriginal 复用媒体读取的可用性语义：stat 失败时把结论回写并给 404。
 func (h *Handler) statAvailableOriginal(w http.ResponseWriter, r *http.Request, sourceID string, location string) (os.FileInfo, bool) {
 	info, err := statFile(location)
-	if err != nil || !info.Mode().IsRegular() {
-		if sourceID != "" && core.FileDefinitelyUnavailable(err, info) {
+	if verdict := core.ClassifyFileStat(err, info); verdict != core.FileServable {
+		if sourceID != "" && verdict == core.FileDefinitelyUnavailable {
 			h.enqueueUnavailable(sourceID)
 		}
 		http.NotFound(w, r)
@@ -245,8 +245,8 @@ func (h *Handler) servePendingPreview(w http.ResponseWriter, r *http.Request) {
 func (h *Handler) serveLocalFileForSource(w http.ResponseWriter, r *http.Request, sourceID string, location string) {
 	w.Header().Set("Cache-Control", "no-store")
 	info, err := statFile(location)
-	if err != nil || !info.Mode().IsRegular() {
-		if sourceID != "" && core.FileDefinitelyUnavailable(err, info) {
+	if verdict := core.ClassifyFileStat(err, info); verdict != core.FileServable {
+		if sourceID != "" && verdict == core.FileDefinitelyUnavailable {
 			h.enqueueUnavailable(sourceID)
 		}
 		http.NotFound(w, r)

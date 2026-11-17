@@ -24,7 +24,7 @@
 
 `agent:*` 与 `ci:*` 的分界看命令失效后谁先受影响，而不是谁调用它。作用于整个工作树、不依赖 task 状态或 CI 的整理命令（如 `fix-code`）归入无 namespace 的基础命令。
 
-仓库门禁入口使用无 namespace 的 `check-*` 基础命令：`check-pre-commit`、`check-policy`、`check-changeset`、`check-context`、`check-pack`；脚本测试入口 `test-scripts` 同样不带 namespace。它们同时服务本地实施、pre-commit 与 CI，按“作用于整个工作树的自检”归类；`ci:*` 保留给 CI 编排。
+仓库门禁入口使用无 namespace 的 `check-*` 基础命令：`check-pre-commit`、`check-policy`、`check-changeset`、`check-context`、`check-pack`、`check-generated-parity`；脚本测试入口 `test-scripts` 同样不带 namespace。它们同时服务本地实施、pre-commit 与 CI，按“作用于整个工作树的自检”归类；`ci:*` 保留给 CI 编排。
 
 ## 机检
 

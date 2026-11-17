@@ -4,8 +4,11 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "@greypan/web-ui" },
+  { label: 'p', content: "<img src=\"https://pub-fe49512858e84a0c900227d3a9c9404a.r2.dev/markdown/bo-transparent.png\" alt=\"web-ui-logo\" width=\"160\" />" },
+  { label: 'p', content: "<a href=\"https://www.npmjs.com/package/@greypan/web-ui\"><img src=\"https://img.shields.io/npm/v/@greypan/web-ui\" alt=\"npm version\"></a>\n<a href=\"https://www.npmjs.com/package/@greypan/web-ui\"><img src=\"https://img.shields.io/npm/dm/@greypan/web-ui\" alt=\"npm downloads\"></a>\n<a href=\"https://www.npmjs.com/package/@greypan/web-ui\"><img src=\"https://img.shields.io/node/v/@greypan/web-ui\" alt=\"node version\"></a>\n<a href=\"https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml\"><img src=\"https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml/badge.svg\" alt=\"CI\"></a>\n<a href=\"https://www.npmjs.com/package/@greypan/web-ui\"><img src=\"https://img.shields.io/npm/l/@greypan/web-ui\" alt=\"License: MIT\"></a>" },
   { label: 'p', content: "<a href=\"./README.md\">English</a> | 简体中文" },
   { label: 'h2', id: 'section-2', content: "在线体验" },
+  { label: 'img', src: "https://pub-fe49512858e84a0c900227d3a9c9404a.r2.dev/markdown/SnowShot_2026-11-16_08-57-41.png", alt: "预览" },
   {
     label: 'ul',
     children: [

@@ -599,4 +599,42 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     expect(navItemAlignment()).toEqual(collapsed)
   })
+
+  it('内容区底部留有呼吸空白', async () => {
+    await mountAppShell()
+    const contentShell = layoutRoot().querySelector<HTMLElement>(':scope > div:not([slot])')
+    if (!contentShell) throw new Error('content shell not found')
+
+    expect(parseFloat(getComputedStyle(contentShell).paddingBottom)).toBeGreaterThanOrEqual(64)
+  })
+
+  it('桌面展开与折叠态下键盘 Tab 可聚焦导航链接并显示 focus ring', async () => {
+    await mountAppShell()
+
+    const expectNavTabFocus = async () => {
+      let focused: HTMLElement | null = null
+      for (let step = 0; step < 10; step++) {
+        await userEvent.tab()
+        const active = document.activeElement
+        if (active instanceof HTMLElement && navRoot().contains(active) && active.tagName === 'A') {
+          focused = active
+          break
+        }
+      }
+      if (!focused) throw new Error('未能通过 Tab 聚焦到侧边栏导航链接')
+
+      expect(focused.matches(':focus-visible')).toBe(true)
+      const style = getComputedStyle(focused)
+      expect(style.outlineStyle).toBe('solid')
+      expect(style.outlineWidth).toBe('3px')
+      expect(style.outlineOffset).toBe('-3px')
+    }
+
+    await expectNavTabFocus()
+
+    // 重置焦点到 body，再切到折叠态验证 tooltip 包裹的窄轨链接同样可聚焦且内描边不被裁切
+    ;(document.activeElement as HTMLElement | null)?.blur()
+    await requestCollapse(true)
+    await expectNavTabFocus()
+  })
 })

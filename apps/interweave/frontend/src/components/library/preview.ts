@@ -2,7 +2,7 @@ import type { ResourceKind, ResourceSourceView, ResourceView } from '@/stores/li
 
 import { fileExtension, primarySource } from './presentation'
 
-export type PreviewMode = 'image' | 'video' | 'text' | 'url' | 'empty'
+export type PreviewMode = 'image' | 'video' | 'audio' | 'text' | 'url' | 'empty'
 
 export type PreviewEmptyReason =
   | 'no-source'
@@ -50,6 +50,7 @@ export const TEXT_PREVIEW_BYTE_LIMIT = 512 * 1024
 function filePreviewMode(kind: ResourceKind, extension: string): PreviewMode {
   if (kind === 'image') return 'image'
   if (kind === 'video') return 'video'
+  if (kind === 'audio') return 'audio'
   // 刻意让 kind==='unknown'（旧客户端或后端未识别的扩展名）也走扩展名判定：
   // 白名单是按「以字符为单位阅读」的文本类型收敛的，命中即安全展示，
   // 比 unknown 直接落进空态更符合「文本类尽量能读」的预期。

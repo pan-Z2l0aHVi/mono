@@ -294,7 +294,7 @@ onMounted(async () => {
             </div>
           </nav>
         </OverlayScrollbarsComponent>
-        <div class="p-3 sm:px-6 md:px-8 lg:px-10">
+        <div class="p-3 pb-12 sm:px-6 sm:pb-16 md:px-8 lg:px-10">
           <!-- 正文 gutter 归 shell 所有：web-ui-layout 的 main 不带 padding，逐页加会漏页。 -->
           <RouterView />
         </div>

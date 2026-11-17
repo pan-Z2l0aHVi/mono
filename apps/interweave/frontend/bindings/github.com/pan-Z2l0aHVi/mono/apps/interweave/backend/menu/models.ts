@@ -39,6 +39,12 @@ export enum Command {
     CommandMaximiseWindow = "maximise-window",
 
     /**
+     * CommandToggleWindowMode 在两端「窗口」菜单首位出现，用于切换最小窗口尺寸与恢复原尺寸。
+     * 直接操作 Wails 窗口尺寸，由 Go 侧执行，不经前端。
+     */
+    CommandToggleWindowMode = "toggle-window-mode",
+
+    /**
      * 页内缩放三项也由 Go 直接执行：它们改的是 backend/settings 里的缩放档位，前端拿到
      * 快照后把档位落到窗口上。Wails 的 ZoomIn / ZoomOut / ResetZoom role 在 macOS 没有
      * 对应 selector（`roleToSelector` 里没有它们），Win32 侧也不消费 role，用 role 建出来的

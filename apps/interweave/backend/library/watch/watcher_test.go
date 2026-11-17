@@ -250,15 +250,15 @@ func useDebounce(t *testing.T, d time.Duration) {
 
 func useServabilityProbe(t *testing.T, servable bool) {
 	t.Helper()
-	original := probeFileServable
-	probeFileServable = func(string) (bool, *int64) {
+	original := probeFileServability
+	probeFileServability = func(string) (core.FileServability, *int64) {
 		if !servable {
-			return false, nil
+			return core.FileDefinitelyUnavailable, nil
 		}
 		size := int64(1)
-		return true, &size
+		return core.FileServable, &size
 	}
-	t.Cleanup(func() { probeFileServable = original })
+	t.Cleanup(func() { probeFileServability = original })
 }
 
 // 同一目录被多个入口引用时只监听一次；引用归零后才停止监听。
@@ -493,23 +493,78 @@ func TestWatcherConfirmsUnavailableTwice(t *testing.T) {
 	})
 }
 
+// 权限/I/O 错误（macOS TCC 等）不是关于文件的结论：既不翻转可用性，也不累计失效嫌疑。
+// 否则一次 inconclusive 会让下一次单次失败直接越过「两次确认」。
+func TestWatcherIgnoresInconclusiveProbe(t *testing.T) {
+	synctest.Test(t, func(t *testing.T) {
+		fs := newFakeFS()
+		useFakeFS(t, fs)
+		useDebounce(t, 20*time.Millisecond)
+		original := probeFileServability
+		verdict := core.FileInconclusive
+		probeFileServability = func(string) (core.FileServability, *int64) {
+			return verdict, nil
+		}
+		t.Cleanup(func() { probeFileServability = original })
+		file := filepath.Join("/library/restricted", "one.mp4")
+		sink := newFakeSink([]string{file})
+		watcher, err := NewWatcher(NewAvailabilityGate(sink))
+		if err != nil {
+			t.Fatalf("NewWatcher error: %v", err)
+		}
+		t.Cleanup(watcher.Stop)
+		if err := watcher.Start(context.Background()); err != nil {
+			t.Fatalf("Start error: %v", err)
+		}
+
+		fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Remove}
+		advanceProbeWindow()
+		if got := sink.probeCountFor(file); got != 1 {
+			t.Fatalf("expected exactly one probe, got %d", got)
+		}
+		if got := sink.changeCount(); got != 0 {
+			t.Fatalf("inconclusive probe must not flip availability, got %d", got)
+		}
+		// 也不得留下嫌疑：没有安排复探，下一次窗口不会再有批次。
+		advanceProbeWindow()
+		if got := sink.batchCount(); got != 1 {
+			t.Fatalf("inconclusive probe must not schedule a retry, got %d batches", got)
+		}
+
+		// 换成确定的不可用：第一次仍只记嫌疑，第二次才落库。
+		verdict = core.FileDefinitelyUnavailable
+		fs.events <- fsnotify.Event{Name: file, Op: fsnotify.Remove}
+		advanceProbeWindow()
+		if got := sink.changeCount(); got != 0 {
+			t.Fatalf("inconclusive window must not pre-confirm a suspect, got %d changes", got)
+		}
+		advanceProbeWindow()
+		if got := sink.changeCount(); got != 1 {
+			t.Fatalf("expected exactly 1 flip after two confirmed failures, got %d", got)
+		}
+		if sink.availabilityOf("source-a") {
+			t.Fatal("expected the source to be recorded as unavailable")
+		}
+	})
+}
+
 // 第一次失败后文件自愈时不得写入失效：可用方向不需要确认。
 func TestWatcherSelfHealWithinOneEventDoesNotWriteUnavailable(t *testing.T) {
 	synctest.Test(t, func(t *testing.T) {
 		fs := newFakeFS()
 		useFakeFS(t, fs)
 		useDebounce(t, 20*time.Millisecond)
-		original := probeFileServable
+		original := probeFileServability
 		var probes int
-		probeFileServable = func(string) (bool, *int64) {
+		probeFileServability = func(string) (core.FileServability, *int64) {
 			probes++
 			if probes == 1 {
-				return false, nil
+				return core.FileDefinitelyUnavailable, nil
 			}
 			size := int64(1)
-			return true, &size
+			return core.FileServable, &size
 		}
-		t.Cleanup(func() { probeFileServable = original })
+		t.Cleanup(func() { probeFileServability = original })
 		file := filepath.Join("/library/flaky", "one.mp4")
 		sink := newFakeSink([]string{file})
 		watcher, err := NewWatcher(NewAvailabilityGate(sink))

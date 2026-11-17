@@ -1,5 +1,11 @@
 # @greypan/deps-reload
 
+[![npm version](https://img.shields.io/npm/v/@greypan/deps-reload)](https://www.npmjs.com/package/@greypan/deps-reload)
+[![npm downloads](https://img.shields.io/npm/dm/@greypan/deps-reload)](https://www.npmjs.com/package/@greypan/deps-reload)
+[![node version](https://img.shields.io/node/v/@greypan/deps-reload)](https://www.npmjs.com/package/@greypan/deps-reload)
+[![CI](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml/badge.svg)](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml)
+[![License: MIT](https://img.shields.io/npm/l/@greypan/deps-reload)](https://www.npmjs.com/package/@greypan/deps-reload)
+
 > 依赖构建产物变化时刷新页面。
 
 [English](./README.md) | 简体中文

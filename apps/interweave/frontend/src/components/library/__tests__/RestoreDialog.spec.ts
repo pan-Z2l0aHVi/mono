@@ -4,8 +4,22 @@ import { describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick } from 'vue'
 
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import type { LibraryRuntime } from '../../../services/library'
+import { createPreviewLease } from '../previewLease'
 import type { LibraryRestoreQueueItem, RecoveryScanUpdate } from '../restore'
 import RestoreDialog from '../RestoreDialog.vue'
+
+function createLease(
+  prepareFilePreview: LibraryRuntime['resources']['prepareFilePreview'],
+  releaseFilePreview: LibraryRuntime['resources']['releaseFilePreview']
+) {
+  const runtime = {
+    isAvailable: true,
+    resources: { prepareFilePreview, releaseFilePreview },
+    events: { onPreviewRevoked: () => () => {} }
+  } as unknown as LibraryRuntime
+  return createPreviewLease(runtime)
+}
 
 const items: LibraryRestoreQueueItem[] = [
   {
@@ -73,8 +87,7 @@ describe('RestoreDialog', () => {
           }),
           cancelScan: async () => undefined,
           discardScan: async () => undefined,
-          prepareFilePreview,
-          releaseFilePreview,
+          lease: createLease(prepareFilePreview, releaseFilePreview),
           onSubmit: submit,
           onAddItems: addItems
         })
@@ -111,7 +124,7 @@ describe('RestoreDialog', () => {
       await vi.waitFor(() => expect(find('撤回 文件')).not.toBeNull())
       await vi.waitFor(() => expect(host.querySelector('img')?.getAttribute('src')).toBe('/preview'))
       find('撤回 文件')!.click()
-      expect(releaseFilePreview).toHaveBeenCalledWith('preview-token')
+      await vi.waitFor(() => expect(releaseFilePreview).toHaveBeenCalledWith('preview-token'))
       await nextTick()
       expect(find('手动选择 文件')).not.toBeNull()
       find('手动选择 网页')!.click()
@@ -211,8 +224,10 @@ describe('RestoreDialog', () => {
           pollScan,
           cancelScan,
           discardScan: async () => undefined,
-          prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindImage }),
-          releaseFilePreview: async () => undefined,
+          lease: createLease(
+            async () => ({ kind: ResourceKind.ResourceKindImage }),
+            async () => undefined
+          ),
           onSubmit: submit,
           onAddItems: addItems
         })

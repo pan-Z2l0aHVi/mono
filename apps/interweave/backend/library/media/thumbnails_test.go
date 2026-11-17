@@ -2,6 +2,8 @@ package media
 
 import (
 	"bytes"
+	"context"
+	"errors"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -334,7 +336,7 @@ func TestPruneStaleRemovesOutdatedVersions(t *testing.T) {
 			t.Fatalf("write fixture %s: %v", name, err)
 		}
 	}
-	store.PruneStale([]ThumbnailPruneEntry{
+	store.pruneStale([]thumbnailPruneEntry{
 		{SourceID: "source-1", Version: current},
 		{SourceID: "source-3", Version: ""},
 	})
@@ -368,5 +370,66 @@ func TestWriteAtomicallyKeepsOwnerOnlyPermissions(t *testing.T) {
 	}
 	if perm := info.Mode().Perm(); perm != 0o600 {
 		t.Fatalf("expected owner-only permissions 0600, got %#o", perm)
+	}
+}
+
+func pruneFixture(t *testing.T) (*ThumbnailStore, string) {
+	t.Helper()
+	dir := t.TempDir()
+	return &ThumbnailStore{dir: dir}, dir
+}
+
+func touchThumbnail(t *testing.T, dir, name string) {
+	t.Helper()
+	if err := os.WriteFile(filepath.Join(dir, name), []byte("x"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+}
+
+func TestPruneKeepsOfflineStalesOutdatedAndDropsDeletedSources(t *testing.T) {
+	store, dir := pruneFixture(t)
+	present := filepath.Join(t.TempDir(), "a.png")
+	if err := os.WriteFile(present, []byte("png"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	info, err := os.Stat(present)
+	if err != nil {
+		t.Fatal(err)
+	}
+	current := thumbnailVersion(info)
+	touchThumbnail(t, dir, "online."+current+".jpg")
+	touchThumbnail(t, dir, "online.old.jpg")
+	touchThumbnail(t, dir, "offline.whatever.jpg")
+	touchThumbnail(t, dir, "deleted.whatever.jpg")
+
+	store.Prune(context.Background(), func(context.Context) ([]storage.SourceModel, error) {
+		return []storage.SourceModel{
+			{ID: "online", Location: present},
+			{ID: "offline", Location: filepath.Join(t.TempDir(), "missing.png")}, // stat 失败：保留
+		}, nil
+	})
+
+	for _, name := range []string{"online." + current + ".jpg", "offline.whatever.jpg"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); err != nil {
+			t.Fatalf("expected %s to survive: %v", name, err)
+		}
+	}
+	for _, name := range []string{"online.old.jpg", "deleted.whatever.jpg"} {
+		if _, err := os.Stat(filepath.Join(dir, name)); !os.IsNotExist(err) {
+			t.Fatalf("expected %s to be pruned", name)
+		}
+	}
+}
+
+func TestPruneSkipsEverythingWhenListingFails(t *testing.T) {
+	store, dir := pruneFixture(t)
+	touchThumbnail(t, dir, "x.v.jpg")
+
+	store.Prune(context.Background(), func(context.Context) ([]storage.SourceModel, error) {
+		return nil, errors.New("db down")
+	})
+
+	if _, err := os.Stat(filepath.Join(dir, "x.v.jpg")); err != nil {
+		t.Fatalf("a failed listing must not prune anything: %v", err)
 	}
 }

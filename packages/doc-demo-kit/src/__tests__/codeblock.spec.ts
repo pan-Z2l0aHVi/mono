@@ -59,6 +59,27 @@ describe('复制反馈', () => {
     expect(listener).toHaveBeenCalledTimes(1)
     feedback.dispose()
   })
+
+  it('点击后同步乐观切为 copied，仅在写入真正失败时回退 failed', async () => {
+    let rejectWrite: ((reason?: unknown) => void) | undefined
+    vi.stubGlobal('navigator', {
+      clipboard: {
+        writeText: vi.fn<(text: string) => Promise<void>>(
+          () =>
+            new Promise((_resolve, reject) => {
+              rejectWrite = reject
+            })
+        )
+      }
+    })
+    const feedback = createCopyFeedback({ readText: () => 'code' })
+    const promise = feedback.copy()
+    expect(feedback.getSnapshot()).toMatchObject({ status: 'copied', run: 1 })
+    rejectWrite?.(new Error('denied'))
+    await promise
+    expect(feedback.getSnapshot()).toMatchObject({ status: 'failed', run: 1 })
+    feedback.dispose()
+  })
 })
 
 /*

@@ -18,13 +18,16 @@ import {
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 
+import { selectLitEditor, useEditorFocusRestore } from '@/composables/useEditorFocusRestore'
 import type { LibraryQueueItem } from '@/services/library'
 import type { ResourceSourceView, TagColor } from '@/stores/library'
 
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 import { queueItemTitle } from './addQueue'
+import ErrorBanner from './ErrorBanner.vue'
 import { doubleArrowRight, linkPlus } from './icons'
+import type { PreviewLeaseEntry } from './previewLease'
 import type { NameEditorRef } from './rename'
 import {
   resourceDialogColumnClass,
@@ -47,6 +50,8 @@ const props = defineProps<{
    * 因此按名回查已确定的那个；查不到就是尚未创建，展示中性档。
    */
   tagColors: Record<string, TagColor>
+  /** lease 里的有效预览；渲染只看这里，驱逐后立即回落通用 fallback。 */
+  previews: Readonly<Record<string, PreviewLeaseEntry | undefined>>
 }>()
 
 const emit = defineEmits<{
@@ -59,11 +64,10 @@ const emit = defineEmits<{
   rename: [itemId: string, title: string]
   editTags: [item: LibraryQueueItem]
   submit: []
+  closed: []
 }>()
 
-const dialogRef = ref<WebUiDialog | null>(null)
 defineExpose({
-  toastContainer: () => dialogRef.value?.shadowRoot?.querySelector('dialog') ?? undefined,
   /** 供菜单的「导入来自 › 链接」直接翻开链接输入，不必让用户再点一次。 */
   openLinkDialog: () => {
     addUrlOpen.value = true
@@ -74,6 +78,7 @@ const dragActive = ref(false)
 const addUrlOpen = ref(false)
 const editingItemId = ref<string | null>(null)
 const nameEditors = new Map<string, WebUiEditableText>()
+const renameButtons = new Map<string, HTMLElement>()
 let pendingImagePreview: ImagePreviewHandle | null = null
 
 /* 静态态与编辑态共用排版，长名称在两态下保持相同换行。 */
@@ -131,8 +136,12 @@ onScopeDispose(() => {
   closePendingImagePreview()
 })
 
-function isImagePreviewItem(item: LibraryQueueItem): item is LibraryQueueItem & { mediaUrl: string } {
-  return item.resourceKind === ResourceKind.ResourceKindImage && Boolean(item.mediaUrl)
+function itemMediaUrl(item: LibraryQueueItem): string | null {
+  return props.previews[item.id]?.mediaUrl ?? null
+}
+
+function isImagePreviewItem(item: LibraryQueueItem) {
+  return item.resourceKind === ResourceKind.ResourceKindImage && Boolean(itemMediaUrl(item))
 }
 
 function closePendingImagePreview() {
@@ -145,9 +154,11 @@ function openImagePreview(item: LibraryQueueItem, event: Event) {
   if (!isImagePreviewItem(item)) return
   // imagePreview 在打开时复制 images 且 handle 不支持替换；预览作为顶层模态阻止底层队列操作，
   // 因此本次使用快照，关闭后的下一次打开再从最新队列重建集合。
-  const entries = props.queue.flatMap(candidate =>
-    isImagePreviewItem(candidate) ? [{ item: candidate, image: { src: candidate.mediaUrl, alt: candidate.title } }] : []
-  )
+  const entries = props.queue.flatMap(candidate => {
+    if (candidate.resourceKind !== ResourceKind.ResourceKindImage) return []
+    const mediaUrl = itemMediaUrl(candidate)
+    return mediaUrl ? [{ item: candidate, image: { src: mediaUrl, alt: candidate.title } }] : []
+  })
   const index = entries.findIndex(candidate => candidate.item.id === item.id)
   if (index < 0) return
 
@@ -172,6 +183,22 @@ function setNameEditorRef(itemId: string): NameEditorRef {
   }
 }
 
+function setRenameButtonRef(itemId: string) {
+  return (element: Element | ComponentPublicInstance | null) => {
+    if (element instanceof Element) renameButtons.set(itemId, element as HTMLElement)
+    else renameButtons.delete(itemId)
+  }
+}
+
+useEditorFocusRestore(editingItemId, {
+  // 编辑器仍持有焦点才归还；用户已经点到别处时不再抢回来。
+  heldFocus: key => {
+    const editor = nameEditors.get(key)
+    return Boolean(editor) && document.activeElement === editor
+  },
+  target: key => renameButtons.get(key)
+})
+
 function queueSource(item: LibraryQueueItem): ResourceSourceView {
   return {
     id: `pending-source-${item.id}`,
@@ -180,7 +207,7 @@ function queueSource(item: LibraryQueueItem): ResourceSourceView {
     available: true,
     isPreferred: true,
     orderIndex: 0,
-    mediaUrl: item.mediaUrl,
+    mediaUrl: itemMediaUrl(item),
     thumbnailUrl: null,
     metadata: null
   }
@@ -188,7 +215,8 @@ function queueSource(item: LibraryQueueItem): ResourceSourceView {
 
 function startRename(item: LibraryQueueItem) {
   editingItemId.value = item.id
-  void nextTick(() => nameEditors.get(item.id)?.select())
+  // WebKit 下要等控件自身布局完成再 select，否则焦点会被弹窗收回去。
+  void nextTick(() => selectLitEditor(nameEditors.get(item.id), () => editingItemId.value === item.id))
 }
 
 function stopRename() {
@@ -208,7 +236,6 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
 
 <template>
   <web-ui-dialog
-    ref="dialogRef"
     :open="open"
     controlled
     no-backdrop-close
@@ -219,16 +246,11 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
     }"
     class="[--wui-dialog-width:min(90vw,880px)]"
     @open-change="handleOpenChange"
+    @closed="emit('closed')"
   >
-    <span slot="header">添加资源</span>
+    <span slot="header">导入资源</span>
 
-    <p
-      v-if="error"
-      class="m-0 rounded-md bg-red-50 px-3 py-2 text-sm leading-5 text-red-700 dark:bg-red-400/12 dark:text-red-200"
-      role="alert"
-    >
-      {{ error }}
-    </p>
+    <ErrorBanner :message="error" />
 
     <!--
       内层不自己算高度：`--wui-dialog-max-height` 的语义是「内容区高度」（不是「整卡高度」，
@@ -273,12 +295,12 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             支持本地文件与远程链接，支持拖入或粘贴
           </p>
           <div class="flex shrink-0 items-center gap-2">
-            <web-ui-tooltip content="添加链接" placement="bottom">
-              <web-ui-button icon size="28" aria-label="添加链接" :disabled="busy" @click="addUrlOpen = true">
+            <web-ui-tooltip content="导入链接" placement="bottom">
+              <web-ui-button icon size="28" aria-label="导入链接" :disabled="busy" @click="addUrlOpen = true">
                 <web-ui-icon :icon="linkPlus" :size="15" />
               </web-ui-button>
             </web-ui-tooltip>
-            <web-ui-tooltip content="从剪切板添加" placement="bottom">
+            <web-ui-tooltip content="从剪切板导入" placement="bottom">
               <web-ui-button icon size="28" aria-label="粘贴复制的文件" @click="emit('requestFilePaths')">
                 <web-ui-icon :icon="lucideClipboardPaste" :size="15" />
               </web-ui-button>
@@ -329,7 +351,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
               class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a70] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
             >
               <span>支持图片、视频、音频、文档、网页、代码等文件</span>
-              <span>可批量添加</span>
+              <span>可批量导入</span>
             </span>
           </web-ui-empty>
         </button>
@@ -348,7 +370,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             id="library-add-queue-title"
             class="m-0 flex items-center gap-1.5 text-[14px] font-semibold text-[#22212a] dark:text-(--wui-color-text)"
           >
-            待添加
+            待导入
           </h3>
           <span
             class="inline-flex h-7 items-center text-xs leading-none text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
@@ -361,6 +383,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           v-if="queue.length"
           :options="appScrollbarsOptions"
           :class="resourceDialogQueueClass"
+          class="[&_[data-overlayscrollbars-viewport]:focus-visible]:rounded-[18px] [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-offset-2 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))"
         >
           <!--
             scrollbar 接在宿主 div 上，列表本身留在它里面：OverlayScrollbars 会把宿主的子节点搬进
@@ -378,14 +401,18 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                 aria-haspopup="dialog"
                 @click="openImagePreview(item, $event)"
               >
-                <ResourceThumbnail :kind="item.resourceKind" :source="queueSource(item)" :media-url="item.mediaUrl" />
+                <ResourceThumbnail
+                  :kind="item.resourceKind"
+                  :source="queueSource(item)"
+                  :media-url="itemMediaUrl(item)"
+                />
               </button>
               <ResourceThumbnail
                 v-else
                 data-queue-thumbnail
                 :kind="item.resourceKind"
                 :source="queueSource(item)"
-                :media-url="item.mediaUrl"
+                :media-url="itemMediaUrl(item)"
               />
               <span class="grid min-w-0 flex-[1_1_auto] gap-1">
                 <div class="flex min-w-0 items-center gap-2">
@@ -405,8 +432,15 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                   </span>
                   <span class="flex shrink-0 items-center gap-1">
                     <span v-if="editingItemId === item.id" class="size-7" aria-hidden="true" />
-                    <web-ui-tooltip v-else content="编辑名称" :placement="itemIndex < 5 ? 'bottom' : 'top'">
-                      <web-ui-button icon variant="ghost" size="28" aria-label="编辑名称" @click="startRename(item)">
+                    <web-ui-tooltip v-else content="重命名" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                      <web-ui-button
+                        :ref="setRenameButtonRef(item.id)"
+                        icon
+                        variant="ghost"
+                        size="28"
+                        aria-label="重命名"
+                        @click="startRename(item)"
+                      >
                         <web-ui-icon :icon="lucidePenLine" :size="14" />
                       </web-ui-button>
                     </web-ui-tooltip>
@@ -421,13 +455,13 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                         <web-ui-icon :icon="lucideTags" :size="14" />
                       </web-ui-button>
                     </web-ui-tooltip>
-                    <web-ui-tooltip content="移除待添加资源" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                    <web-ui-tooltip content="移除待导入资源" :placement="itemIndex < 5 ? 'bottom' : 'top'">
                       <web-ui-button
                         class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
                         icon
                         variant="ghost"
                         size="28"
-                        aria-label="移除待添加资源"
+                        aria-label="移除待导入资源"
                         @click="emit('remove', item.id)"
                       >
                         <web-ui-icon :icon="lucideTrash2" :size="14" />
@@ -458,13 +492,13 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             <span
               class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
             >
-              暂无待添加资源
+              暂无待导入资源
             </span>
             <span
               slot="description"
               class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a70] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
             >
-              <span>添加的资源将显示在此处</span>
+              <span>导入的资源将显示在此处</span>
               <span>名称和标签可修改</span>
             </span>
           </web-ui-empty>
@@ -491,7 +525,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       @click="emit('submit')"
     >
       <web-ui-icon slot="prefix" :icon="akarIconsCircleCheck" />
-      确认添加
+      确认导入
     </web-ui-button>
   </web-ui-dialog>
   <ResourceLinkDialog v-model:open="addUrlOpen" initial-value="" mode="add" @submit="emit('addUrl', $event)" />

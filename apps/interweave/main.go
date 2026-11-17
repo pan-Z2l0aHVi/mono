@@ -35,6 +35,37 @@ const documentationURL = "https://github.com/pan-Z2l0aHVi/mono/tree/main/apps/in
 // 这一项只负责把用户带到能看到版本与变更的地方。
 const releasesURL = "https://github.com/pan-Z2l0aHVi/mono/releases"
 
+const (
+	defaultWindowWidth  = 1280
+	defaultWindowHeight = 800
+	minWindowWidth      = 400
+	minWindowHeight     = 600
+)
+
+func mainWindowOptions() application.WebviewWindowOptions {
+	return application.WebviewWindowOptions{
+		Title:              "Interweave",
+		Width:              defaultWindowWidth,
+		Height:             defaultWindowHeight,
+		MinWidth:           minWindowWidth,
+		MinHeight:          minWindowHeight,
+		EnableFileDrop:     true,
+		UseApplicationMenu: true,
+		Mac: application.MacWindow{
+			Backdrop: application.MacBackdropTranslucent,
+			TitleBar: application.MacTitleBarHiddenInset,
+			// macOS 默认关闭系统级「键盘导航」时，WKWebView 会把未显式声明 tabindex="0" 的
+			// button 与链接排除在 Tab 序之外（例如侧栏导航按钮与 web-ui-button）。
+			// 开启 TabFocusesLinks（对应 WKPreferences.tabFocusesLinks）让原生控件可直接经 Tab 聚焦。
+			WebviewPreferences: application.MacWebviewPreferences{
+				TabFocusesLinks: application.Enabled,
+			},
+		},
+		BackgroundColour: application.NewRGB(6, 7, 15),
+		URL:              "/",
+	}
+}
+
 // appDescription 是原生关于面板里 Description 一栏。原生面板只显示 Name / Description / Icon，
 // 版本号没有自己的字段，只能拼进 Description。
 func appDescription(version string) string {
@@ -54,24 +85,23 @@ func dataDir() (string, error) {
 	return dir, nil
 }
 
-// pruneThumbnails 按库内现行文件 Source 名单清一次过期缩略图。
-// 原文件暂不可 stat 的 Source（离线归档盘）全部保留，等可用后再清。
-func pruneThumbnails(sources storage.SourceStore, query storage.Queryer, thumbs *libraryMedia.ThumbnailStore) {
-	ctx := context.Background()
-	models, err := sources.ListFileSources(ctx, query)
-	if err != nil {
-		log.Printf("interweave: thumbnail prune skipped: %v", err)
-		return
-	}
-	entries := make([]libraryMedia.ThumbnailPruneEntry, 0, len(models))
-	for _, source := range models {
-		entry := libraryMedia.ThumbnailPruneEntry{SourceID: source.ID}
-		if info, err := os.Stat(source.Location); err == nil && info.Mode().IsRegular() {
-			entry.Version = libraryMedia.ThumbnailVersion(info)
-		}
-		entries = append(entries, entry)
-	}
-	thumbs.PruneStale(entries)
+type windowDockDropSink struct {
+	window *application.WebviewWindow
+}
+
+func (s windowDockDropSink) EmitFiles(paths []string) {
+	s.window.EmitEvent(libraryService.FileDropEventName, paths)
+}
+
+func (s windowDockDropSink) EmitURLs(urls []string) {
+	s.window.EmitEvent(libraryService.URLDropEventName, urls)
+}
+
+func (s windowDockDropSink) PresentWindow() {
+	// macOS 的 Show 只做 makeKeyAndOrderFront，最小化的窗口要先显式恢复。
+	s.window.UnMinimise()
+	s.window.Show()
+	s.window.Focus()
 }
 
 func main() {
@@ -139,7 +169,9 @@ func main() {
 	// 启动清理一次过期版本：文件被外部改写或 Source 被删除后，旧文件名不会再生效。
 	// 失败只留垃圾不留错误，不阻塞启动。
 	if thumbs != nil {
-		go pruneThumbnails(storage.SourceStore{}, db.SqlDB(), thumbs)
+		go thumbs.Prune(context.Background(), func(ctx context.Context) ([]storage.SourceModel, error) {
+			return storage.SourceStore{}.ListFileSources(ctx, db.SqlDB())
+		})
 	}
 
 	// 仅暴露产品与受控原生能力，避免基础设施绕过后端边界。
@@ -165,21 +197,16 @@ func main() {
 		},
 	})
 
-	window := app.Window.NewWithOptions(application.WebviewWindowOptions{
-		Title:              "Interweave",
-		Width:              1280,
-		Height:             800,
-		MinWidth:           400,
-		MinHeight:          600,
-		EnableFileDrop:     true,
-		UseApplicationMenu: true,
-		Mac: application.MacWindow{
-			Backdrop: application.MacBackdropTranslucent,
-			TitleBar: application.MacTitleBarHiddenInset,
-		},
-		BackgroundColour: application.NewRGB(6, 7, 15),
-		URL:              "/",
+	window := app.Window.NewWithOptions(mainWindowOptions())
+	// pending 预览的 LRU 驱逐只发生在后端，前端无从感知；被淘汰的 token 必须显式推给
+	// 窗口，否则预览 404 与「文件消失」在前端不可区分。
+	pendingPreviews.SetEvictHandler(func(token string) {
+		window.EmitEvent(libraryService.PreviewRevokedEventName, []string{token})
 	})
+	windowMode := newWindowModeToggler(
+		windowSize{width: minWindowWidth, height: minWindowHeight},
+		windowSize{width: defaultWindowWidth, height: defaultWindowHeight},
+	)
 
 	// emitCommand 是菜单与前端之间唯一的通道：菜单点击不直接操作窗口或页面，
 	// 只报告一个命令，由前端按当前上下文执行。
@@ -190,8 +217,8 @@ func main() {
 		})
 	}
 
-	// menuSink 处理那些必须在 Go 侧完成的命令：重新载入、开发者控制台、窗口最大化与
-	// 「检查更新」是窗口 / OS 能力，绕过前端反而更稳；缩放三项改的是 Go 拥有的缩放档位，
+	// menuSink 处理那些必须在 Go 侧完成的命令：重新载入、开发者控制台、窗口最大化、
+	// 切换窗口模式与「检查更新」是窗口 / OS 能力，绕过前端反而更稳；缩放三项改的是 Go 拥有的缩放档位，
 	// 前端拿到快照后才会把档位落到窗口上；其余命令转发给前端，由前者按当前路由与历史栈执行。
 	zoom := func(change func(context.Context) (settings.Snapshot, error)) {
 		if _, err := change(context.Background()); err != nil {
@@ -206,6 +233,8 @@ func main() {
 			window.OpenDevTools()
 		case menucontract.CommandMaximiseWindow:
 			window.ToggleMaximise()
+		case menucontract.CommandToggleWindowMode:
+			windowMode.Toggle(webviewWindowAdapter{window: window})
 		case menucontract.CommandZoomIn:
 			zoom(settingsService.ZoomIn)
 		case menucontract.CommandZoomOut:
@@ -247,12 +276,31 @@ func main() {
 		window.EmitEvent(libraryService.FileDropEventName, event.Context().DroppedFiles())
 	})
 
+	dockDrop := newDockDropDispatcher(windowDockDropSink{window: window})
+	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(_ *application.WindowEvent) {
+		dockDrop.MarkReady()
+	})
+	app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
+		files := event.Context().OpenedFiles()
+		if len(files) == 0 {
+			if filename := event.Context().Filename(); filename != "" {
+				files = []string{filename}
+			}
+		}
+		dockDrop.HandleOpenedFiles(files)
+	})
+	app.Event.OnApplicationEvent(events.Common.ApplicationLaunchedWithUrl, func(event *application.ApplicationEvent) {
+		dockDrop.HandleLaunchedURL(event.Context().URL())
+	})
+
 	// watcher 不注册为 Wails Service（ADR-0008 §2 的暴露面 allowlist）：它是产品能力之外的
 	// 基础设施编排，只由 main.go 装配、由 OnShutdown 收尾。window 已就绪，接上事件出口，
 	// 且必须在 watcher.Start 之前（见上方 gate 的时序说明）。
 	gate.SetEmitter(func(change coreLibrary.AvailabilityChange) {
 		window.EmitEvent(libraryService.SourceAvailabilityEventName, libraryService.NewSourceAvailabilityEventDTO(change))
 	})
+	// 指纹回填是启动期后台补账，不在构造函数里隐藏调度。
+	db.ScheduleBackground("fingerprint:backfill", coreSourceService.BackfillFingerprints)
 	if watcher != nil {
 		coreSourceService.SetIndexSync(watcher)
 		coreResourceService.SetIndexSync(watcher)

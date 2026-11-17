@@ -29,9 +29,11 @@ export interface ExpandingFieldRefs {
   controls: Ref<HTMLElement | undefined>
   /** 收起字段。由调用方决定是改本地状态还是往上 emit。 */
   close: () => void
+  /** Escape 关闭字段后的焦点收尾（仅键盘 Escape 路径触发，不影响失焦或点击外部）。 */
+  onEscapeClose?: () => void
 }
 
-export function useExpandingField({ field, controls, close }: ExpandingFieldRefs) {
+export function useExpandingField({ field, controls, close, onEscapeClose }: ExpandingFieldRefs) {
   let pressedInsideControls = false
 
   /*
@@ -76,6 +78,7 @@ export function useExpandingField({ field, controls, close }: ExpandingFieldRefs
     if (!(event instanceof KeyboardEvent) || event.key !== 'Escape') return
     event.preventDefault()
     close()
+    onEscapeClose?.()
   }
 
   /*
