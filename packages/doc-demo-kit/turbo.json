@@ -1,0 +1,16 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "$TURBO_ROOT$/apps/react-web-ui-demo/src/generated/**",
+        "$TURBO_ROOT$/apps/react-web-ui-demo/src/routes/components/**",
+        "$TURBO_ROOT$/apps/vue-web-ui-demo/src/generated/**",
+        "$TURBO_ROOT$/apps/vue-web-ui-demo/src/pages/components/**"
+      ]
+    }
+  }
+}
