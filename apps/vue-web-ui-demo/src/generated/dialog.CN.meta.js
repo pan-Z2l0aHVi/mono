@@ -172,6 +172,13 @@ const meta = [
       { label: 'td', content: "<code>open-change</code>" },
       { label: 'td', content: "<code>open</code> 状态变化，<code>detail.open</code> 是请求的目标状态。" }
       ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>closed</code>" },
+      { label: 'td', content: "关闭动画结束、原生 dialog 离开 top layer 后派发，不携带 detail。" }
+      ]
     }
     ]
   },
@@ -243,6 +250,7 @@ const meta = [
   { label: 'p', content: "<code>footer</code> 只负责方向、间距、对齐和内边距，不改动子元素的样式。默认纵向排列，按钮仍按自身内容宽度渲染，并在行内居中。需要占满操作区的按钮，由调用方显式设置 <code>full</code>。设置 <code>footer-orientation=\"horizontal\"</code> 后，按钮排成一行，间距固定取全局 <code>--wui-space-3</code>，整行默认居中。" },
   { label: 'p', content: "<code>headless</code> 下整张卡片就是一个滚动层。<code>header</code>、内容区和 <code>footer</code> 都不渲染，<code>heading</code> 一并失效。" },
   { label: 'p', content: "未设置 <code>no-escape-close</code> 时，Escape 会关闭对话框；未设置 <code>no-backdrop-close</code> 时，点击遮罩会关闭。启用 <code>controlled</code> 后，两者都只派发关闭请求，不会自行关闭。" },
+  { label: 'p', content: "关闭完成后会再派发一次 <code>closed</code>（<code>CustomEvent&lt;void></code>）。它在视觉退场结束、原生 <code>&lt;dialog></code> 离开 top layer 之后到达，供宿主做关闭后的收尾（恢复焦点、清空内容）；<code>controlled</code> 下同样在调用方回写 <code>open=false</code> 并播完退场后派发。它不替代 <code>open-change</code>：后者表达请求与状态，<code>closed</code> 只表示「已经关完」。" },
   { label: 'p', content: "启用 <code>closable</code> 后，默认模式和 <code>headless</code> 模式都会渲染内置关闭按钮。它和 Escape、遮罩点击使用同一条关闭路径（<code>controlled</code> 对它同样生效）。" },
   { label: 'p', content: "关闭按钮位于卡片右上角，距上沿和右沿的偏移由 <code>--wui-dialog-close-top</code> / <code>--wui-dialog-close-right</code> 控制（默认都是 <code>20px</code>）。" },
   { label: 'p', content: "默认模式下，标题栏会为按钮留出空间，长内容不会延伸到按钮下方。" },

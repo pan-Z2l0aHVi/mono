@@ -177,10 +177,8 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       replaceScannedFile: async () => {
         throw new Error('not implemented')
       },
-      refreshURL: async () => resource(),
-      refreshFile: async () => resource(),
-      replaceFile: async () => resource(),
-      replaceURL: async () => resource(),
+      refreshSource: async () => resource(),
+      replaceSource: async () => resource(),
       probeOnOpen: async () => ({
         source: source(),
         resource: resource(),
@@ -199,6 +197,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
           runtimeStub.droppedFilesListener = null
         }
       },
+      onURLsDropped: () => () => {},
       onSourceAvailability: listener => {
         runtimeStub.availabilityListener = listener
         runtimeStub.availabilityDisposer = () => {
@@ -206,6 +205,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
         }
         return runtimeStub.availabilityDisposer
       },
+      onPreviewRevoked: () => () => {},
       ...overrides.events
     },
     system: {
@@ -337,8 +337,8 @@ function paste(text: string) {
 }
 
 async function openAddDialog(host: HTMLElement) {
-  const trigger = host.querySelector<HTMLElement>('web-ui-button[aria-label="添加资源"]')
-  if (!trigger) throw new Error('添加资源 button 未渲染')
+  const trigger = host.querySelector<HTMLElement>('web-ui-button[aria-label="导入资源"]')
+  if (!trigger) throw new Error('导入资源 button 未渲染')
   trigger.click()
   await nextTick()
 }
@@ -347,12 +347,12 @@ function queueItems(host: HTMLElement) {
   return [...host.querySelectorAll('web-ui-dialog ol > li')]
 }
 
-/** AddDialog 是页面上唯一带「添加资源」header 的 dialog；按 slot 文本定位。 */
+/** AddDialog 是页面上唯一带「导入资源」header 的 dialog；按 slot 文本定位。 */
 function addDialog(host: HTMLElement): HTMLElement {
   const dialog = [...host.querySelectorAll('web-ui-dialog')].find(node =>
-    node.querySelector('span[slot="header"]')?.textContent?.trim().includes('添加资源')
+    node.querySelector('span[slot="header"]')?.textContent?.trim().includes('导入资源')
   )
-  if (!(dialog instanceof HTMLElement)) throw new Error('没有找到添加资源 dialog')
+  if (!(dialog instanceof HTMLElement)) throw new Error('没有找到导入资源 dialog')
   return dialog
 }
 
@@ -642,15 +642,15 @@ describe('LibraryPage：确认弹窗退场', () => {
     }
   })
 
-  it('移除待添加资源时立即从队列移除', async () => {
+  it('移除待导入资源时立即从队列移除', async () => {
     const mounted = await mountPage()
     try {
-      mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="添加资源"]')?.click()
+      mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="导入资源"]')?.click()
       await nextTick()
       queueWindowFileDrop(['/tmp/photo.png'])
       await flush()
-      const remove = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="移除待添加资源"]')
-      if (!remove) throw new Error('移除待添加资源 button 未渲染')
+      const remove = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="移除待导入资源"]')
+      if (!remove) throw new Error('移除待导入资源 button 未渲染')
       remove.click()
       await flush()
       expect(addDialog(mounted.host).textContent).not.toContain('photo')
@@ -743,7 +743,7 @@ describe('LibraryPage：粘贴链接', () => {
       await flush()
 
       expect(queueItems(mounted.host)).toHaveLength(0)
-      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接', { position: 'top-center' })
+      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可导入的文件或有效链接', { position: 'top-center' })
     } finally {
       await mounted.close()
     }
@@ -758,7 +758,7 @@ describe('LibraryPage：粘贴链接', () => {
       await flush()
 
       expect(queueItems(mounted.host)).toHaveLength(0)
-      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可添加的文件或有效链接', { position: 'top-center' })
+      expect(toastWarning).toHaveBeenCalledWith('剪切板中没有可导入的文件或有效链接', { position: 'top-center' })
     } finally {
       await mounted.close()
     }
@@ -800,7 +800,7 @@ describe('LibraryPage：粘贴链接', () => {
       await openAddDialog(mounted.host)
       paste('https://example.com/article')
       await flush()
-      button(mounted.host, '确认添加').click()
+      button(mounted.host, '确认导入').click()
       await flush()
 
       expect(createResource).toHaveBeenCalledExactlyOnceWith({
@@ -829,7 +829,7 @@ describe('LibraryPage：粘贴链接', () => {
 
       paste('https://example.com/article')
       await flush()
-      button(mounted.host, '确认添加').click()
+      button(mounted.host, '确认导入').click()
       await flush()
 
       expect(createResource).toHaveBeenCalledTimes(1)
@@ -851,7 +851,7 @@ describe('LibraryPage：粘贴链接', () => {
       const dialog = addDialog(mounted.host)
       paste('https://example.com/article')
       await flush()
-      button(mounted.host, '确认添加').click()
+      button(mounted.host, '确认导入').click()
       await flush()
 
       expect(dialogOpen(dialog)).toBe(true)
@@ -913,7 +913,7 @@ describe('LibraryPage：菜单动作', () => {
       // 链接输入是对话框里唯一的 type=url 控件，它打开即说明用户不必再点一次「添加链接」。
       // 链接输入封在 web-ui-input 的 shadow root 里，按对话框 header 文案定位。
       const linkDialog = [...mounted.host.querySelectorAll<HTMLElement & { open?: boolean }>('web-ui-dialog')].find(
-        node => node.querySelector('span[slot="header"]')?.textContent?.trim() === '添加链接'
+        node => node.querySelector('span[slot="header"]')?.textContent?.trim() === '导入链接'
       )
       if (!linkDialog) throw new Error('链接输入 dialog 没有挂载')
       expect(dialogOpen(linkDialog)).toBe(true)

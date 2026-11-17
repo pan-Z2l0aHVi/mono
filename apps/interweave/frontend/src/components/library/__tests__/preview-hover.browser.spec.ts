@@ -48,8 +48,8 @@ describe('失效资源预览操作', () => {
       app.mount(host)
       await nextTick()
       const button = host.querySelector<HTMLElement>('web-ui-button[slot="action"]')!
-      const text = button.querySelector<HTMLElement>('span')!
-      const icon = button.querySelector<HTMLElement>('web-ui-icon[slot="suffix"]')!
+      const text = button.querySelector<HTMLElement>('.converge-label')!
+      const icon = button.querySelector<HTMLElement>('.converge-suffix')!
       const settle = async () => {
         await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
         await Promise.all([text, icon].flatMap(element => element.getAnimations().map(animation => animation.finished)))

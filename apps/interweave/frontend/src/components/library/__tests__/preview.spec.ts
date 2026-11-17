@@ -71,6 +71,12 @@ describe('resolvePreviewTarget', () => {
         resource({ kind: ResourceKind.ResourceKindVideo, preferred: source({ location: '/tmp/a.mp4' }) })
       )
     ).toMatchObject({ mode: 'video', mediaUrl: '/resource-media/source-1', externalTarget: '/tmp/a.mp4' })
+
+    expect(
+      resolvePreviewTarget(
+        resource({ kind: ResourceKind.ResourceKindAudio, preferred: source({ location: '/tmp/a.mp3' }) })
+      )
+    ).toMatchObject({ mode: 'audio', mediaUrl: '/resource-media/source-1', externalTarget: '/tmp/a.mp3' })
   })
 
   it('文本类扩展名走 text，pdf 等二进制文档落到 unsupported 且仍可外跳', () => {

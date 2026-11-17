@@ -15,6 +15,7 @@ export function createLibraryRuntime(): LibraryRuntime {
 }
 
 export {
+  isPreviewRevokedEvent,
   isSourceAvailabilityEvent,
   type LibraryQueueItem,
   type LibraryRuntime,

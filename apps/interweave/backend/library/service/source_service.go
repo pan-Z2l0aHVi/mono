@@ -4,13 +4,13 @@ import (
 	"context"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 )
 
 // 作为 Wails 外观呈现 Source 能力，产品规则由 core 承载。
 // 变更类方法直接回传变更后的完整 Resource 视图，前端不再二次往返读取。
 type SourceService struct {
-	recovery recoverySessions
-	core     *core.SourceService
+	core *core.SourceService
 	// resources 复用 core 现成的视图装配出口（core API 不新增方法）。
 	resources *core.ResourceService
 }
@@ -29,34 +29,17 @@ func (s *SourceService) resourceDTO(ctx context.Context, resourceID string) (*Re
 	return resourceViewToDTO(view), nil
 }
 
-// 补充备用入口不应意外改变用户当前的首选入口。
-func (s *SourceService) AddFileSource(ctx context.Context, resourceID string, inputPath string) (*ResourceDTO, error) {
-	if _, err := s.core.AddFileSource(ctx, resourceID, inputPath); err != nil {
+// AddSource 补充备用入口，不改变用户当前的首选入口，也不覆盖已维护的资源语义。
+func (s *SourceService) AddSource(ctx context.Context, resourceID string, srcType storage.SourceType, input string) (*ResourceDTO, error) {
+	if _, err := s.core.AddSource(ctx, resourceID, srcType, input); err != nil {
 		return nil, err
 	}
 	return s.resourceDTO(ctx, resourceID)
 }
 
-// 补充 URL 入口不应覆盖用户已维护的资源语义。
-func (s *SourceService) AddURLSource(ctx context.Context, resourceID string, inputURL string) (*ResourceDTO, error) {
-	if _, err := s.core.AddURLSource(ctx, resourceID, inputURL); err != nil {
-		return nil, err
-	}
-	return s.resourceDTO(ctx, resourceID)
-}
-
-// ReplaceFileSource 用新路径找回失效文件，保留 Source 身份、顺位与首选角色；它不是同路径刷新。
-func (s *SourceService) ReplaceFileSource(ctx context.Context, sourceID string, inputPath string) (*ResourceDTO, error) {
-	src, err := s.core.ReplaceFileSource(ctx, sourceID, inputPath)
-	if err != nil {
-		return nil, err
-	}
-	return s.resourceDTO(ctx, src.ResourceID)
-}
-
-// ReplaceURLSource 用新 URL 找回失效网页入口，保留 Source 身份、顺位与首选角色；它不是同 URL 刷新。
-func (s *SourceService) ReplaceURLSource(ctx context.Context, sourceID string, inputURL string) (*ResourceDTO, error) {
-	src, err := s.core.ReplaceURLSource(ctx, sourceID, inputURL)
+// ReplaceSource 用新位置找回失效入口，保留 Source 身份、顺位、类型与首选角色；它不是同位置刷新。
+func (s *SourceService) ReplaceSource(ctx context.Context, sourceID string, input string) (*ResourceDTO, error) {
+	src, err := s.core.ReplaceSource(ctx, sourceID, input)
 	if err != nil {
 		return nil, err
 	}
@@ -80,18 +63,9 @@ func (s *SourceService) RemoveSource(ctx context.Context, sourceID string) (*Res
 	return s.resourceDTO(ctx, resourceID)
 }
 
-// RefreshURLSource 重新抓取同一 URL 的展示信息与可用性，不改变 location。
-func (s *SourceService) RefreshURLSource(ctx context.Context, sourceID string) (*ResourceDTO, error) {
-	src, err := s.core.RefreshURLSource(ctx, sourceID)
-	if err != nil {
-		return nil, err
-	}
-	return s.resourceDTO(ctx, src.ResourceID)
-}
-
-// RefreshFileSource 重新检查同一文件 path 的可用性，不改变 location；文件在原路径恢复后使用。
-func (s *SourceService) RefreshFileSource(ctx context.Context, sourceID string) (*ResourceDTO, error) {
-	src, err := s.core.RefreshFileSource(ctx, sourceID)
+// RefreshSource 重新检查同一位置的可用性与展示信息，不改变 location；类型由存量 Source 决定。
+func (s *SourceService) RefreshSource(ctx context.Context, sourceID string) (*ResourceDTO, error) {
+	src, err := s.core.RefreshSource(ctx, sourceID)
 	if err != nil {
 		return nil, err
 	}

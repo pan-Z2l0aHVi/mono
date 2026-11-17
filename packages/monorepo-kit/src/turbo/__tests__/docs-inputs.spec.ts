@@ -1,4 +1,5 @@
 import assert from 'node:assert/strict'
+import { execFileSync } from 'node:child_process'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -11,6 +12,13 @@ const docsInputs = defineDocsInputs({
   packageDir: 'packages/web-ui',
   corpusDir: 'docs',
   proseNames: ['README.md', 'README.CN.md', 'AGENTS.md', 'CHANGELOG.md']
+})
+
+const sparseTolerant = defineDocsInputs({
+  packageDir: 'packages/web-ui',
+  corpusDir: 'docs',
+  proseNames: ['README.md', 'README.CN.md', 'AGENTS.md', 'CHANGELOG.md'],
+  allowSparsePackages: true
 })
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-web-ui-docs-'))
@@ -73,14 +81,18 @@ it('web-ui-docs-inputs', async () => {
   const wrongExtends = makeFixture({ extendsValue: ['//', 'packages/web-ui'] })
   assert.match(await failure(wrongExtends.root), /^turbo: packages\/web-ui: turbo\.json extends must be \["\/\/"\]/)
 
-  const missingDefault = makeFixture({ buildInputs: ['!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md'] })
+  // build 不再被语料策略约束：糟糕的 build inputs 不应让本检查失败。
+  const badBuildInputs = makeFixture({ buildInputs: [] })
+  assert.ok((await run(badBuildInputs.root)).ok)
+
+  const missingDefault = makeFixture({ testInputs: ['!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md'] })
   assert.match(
     await failure(missingDefault.root),
-    /^turbo: packages\/web-ui: tasks\.build\.inputs is missing \$TURBO_DEFAULT\$/
+    /^turbo: packages\/web-ui: tasks\.test\.inputs is missing \$TURBO_DEFAULT\$/
   )
 
   const coversDocs = makeFixture({
-    buildInputs: ['$TURBO_DEFAULT$', '!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md', '!**/docs/**']
+    testInputs: ['$TURBO_DEFAULT$', '!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md', '!**/docs/**']
   })
   assert.match(await failure(coversDocs.root), /^turbo: packages\/web-ui: .*covers the docs\/ corpus/)
 
@@ -90,11 +102,54 @@ it('web-ui-docs-inputs', async () => {
   assert.match(await failure(missesProse.root), /^turbo: packages\/web-ui: tasks\.test\.inputs is missing !README\.md/)
 
   const unsupported = makeFixture({
-    buildInputs: ['$TURBO_DEFAULT$', '!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md', '!{docs,x}/**']
+    testInputs: ['$TURBO_DEFAULT$', '!README.md', '!README.CN.md', '!AGENTS.md', '!CHANGELOG.md', '!{docs,x}/**']
   })
   assert.match(await failure(unsupported.root), /^turbo: packages\/web-ui: .*covers the docs\/ corpus/)
 })
 
 afterAll(() => {
   fs.rmSync(tempRoot, { recursive: true, force: true })
+})
+
+// 稀疏容忍的判定走 Git 索引，fixture 必须是真仓库；`git add` 不需要提交身份。
+function git(root: string, ...args: string[]): void {
+  execFileSync('git', args, { cwd: root, stdio: ['ignore', 'pipe', 'pipe'] })
+}
+
+async function sparseFailure(root: string): Promise<string> {
+  const result = await sparseTolerant.make({ root, env: { ...process.env } }).run()
+  if (result.ok) assert.fail('expected the sparse-tolerant web-ui-docs-inputs to fail')
+  return result.error
+}
+
+it('web-ui-docs-inputs sparse tolerance', async () => {
+  // 包目录缺失但 tracked + skip-worktree（稀疏 cone 外）：容忍版通过，严格版仍失败。
+  // makeFixture 不写 manifest，稀疏信号判的就是它，这里补上再进 index。
+  const hidden = makeFixture()
+  fs.writeFileSync(path.join(hidden.packageRoot, 'package.json'), '{ "name": "web-ui" }\n')
+  git(hidden.root, 'init', '--quiet')
+  git(hidden.root, 'add', '--all')
+  git(hidden.root, 'update-index', '--skip-worktree', 'packages/web-ui/package.json')
+  fs.rmSync(hidden.packageRoot, { recursive: true })
+  assert.ok((await sparseTolerant.make({ root: hidden.root, env: { ...process.env } }).run()).ok)
+  assert.match(await failure(hidden.root), /^turbo: packages\/web-ui: does not exist/)
+
+  // 包目录缺失、tracked、没有 skip-worktree 位：本地误删不能被当成稀疏。
+  const removed = makeFixture()
+  git(removed.root, 'init', '--quiet')
+  git(removed.root, 'add', '--all')
+  fs.rmSync(removed.packageRoot, { recursive: true })
+  assert.match(await sparseFailure(removed.root), /^turbo: packages\/web-ui: does not exist/)
+
+  // 包目录缺失且 untracked：从来没有过这个包。
+  const unknown = makeFixture()
+  git(unknown.root, 'init', '--quiet')
+  fs.rmSync(unknown.packageRoot, { recursive: true })
+  assert.match(await sparseFailure(unknown.root), /^turbo: packages\/web-ui: does not exist/)
+
+  // 目录存在时容忍版照常判定：语料缺失仍失败。
+  const present = makeFixture({ docs: false })
+  git(present.root, 'init', '--quiet')
+  git(present.root, 'add', '--all')
+  assert.match(await sparseFailure(present.root), /^turbo: packages\/web-ui: docs\/ does not exist/)
 })

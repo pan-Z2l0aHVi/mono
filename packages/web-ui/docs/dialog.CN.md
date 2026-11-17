@@ -433,9 +433,10 @@ const open = ref(false)
 
 ### 事件
 
-| 名称          | 说明                                              |
-| ------------- | ------------------------------------------------- |
-| `open-change` | `open` 状态变化，`detail.open` 是请求的目标状态。 |
+| 名称          | 说明                                                             |
+| ------------- | ---------------------------------------------------------------- |
+| `open-change` | `open` 状态变化，`detail.open` 是请求的目标状态。                |
+| `closed`      | 关闭动画结束、原生 dialog 离开 top layer 后派发，不携带 detail。 |
 
 ### Slot
 
@@ -465,6 +466,8 @@ const open = ref(false)
 `headless` 下整张卡片就是一个滚动层。`header`、内容区和 `footer` 都不渲染，`heading` 一并失效。
 
 未设置 `no-escape-close` 时，Escape 会关闭对话框；未设置 `no-backdrop-close` 时，点击遮罩会关闭。启用 `controlled` 后，两者都只派发关闭请求，不会自行关闭。
+
+关闭完成后会再派发一次 `closed`（`CustomEvent<void>`）。它在视觉退场结束、原生 `<dialog>` 离开 top layer 之后到达，供宿主做关闭后的收尾（恢复焦点、清空内容）；`controlled` 下同样在调用方回写 `open=false` 并播完退场后派发。它不替代 `open-change`：后者表达请求与状态，`closed` 只表示「已经关完」。
 
 启用 `closable` 后，默认模式和 `headless` 模式都会渲染内置关闭按钮。它和 Escape、遮罩点击使用同一条关闭路径（`controlled` 对它同样生效）。
 

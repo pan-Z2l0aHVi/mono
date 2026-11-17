@@ -486,4 +486,31 @@ describe('WebUiSlider 纵向 thumb（浏览器）', () => {
     expect(rect.height).toBeCloseTo(rect.width, 2)
     cleanupElement(el)
   })
+
+  it('静止态不挂 wui-glass（无 ::before 光环），按压 thumb 时才挂上 wui-glass', async () => {
+    const el = createSlider() as Updatable & { vertical: boolean }
+    el.vertical = true
+    await el.updateComplete
+
+    const thumb = el.shadowRoot!.querySelector<HTMLElement>('.wui-slider-thumb')
+    if (!thumb) throw new Error('未渲染 thumb')
+
+    expect(thumb.classList.contains('wui-glass')).toBe(false)
+    expect(getComputedStyle(thumb, '::before').content).toBe('none')
+
+    const rect = thumb.getBoundingClientRect()
+    const cx = rect.left + rect.width / 2
+    const cy = rect.top + rect.height / 2
+    trackOf(el).dispatchEvent(pointer('pointerdown', cx, cy))
+    await el.updateComplete
+
+    expect(thumb.classList.contains('wui-glass')).toBe(true)
+    expect(getComputedStyle(thumb, '::before').content).not.toBe('none')
+
+    window.dispatchEvent(pointer('pointerup', cx, cy))
+    await el.updateComplete
+
+    expect(thumb.classList.contains('wui-glass')).toBe(false)
+    cleanupElement(el)
+  })
 })

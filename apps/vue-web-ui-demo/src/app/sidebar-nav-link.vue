@@ -17,6 +17,7 @@ const emit = defineEmits<{ navigate: [] }>()
 // 按内容收缩，链接不显式定宽会被文字撑开，active 底色与点击区域也会跟着缩水。
 const linkClass = computed(
   () =>
+    'demo-nav-link ' +
     props.itemClass +
     (props.collapsed ? ' w-9' : ' w-full') +
     (props.active ? '' : ' hover:bg-[#1b1b30]/4 dark:hover:bg-white/6')

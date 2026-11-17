@@ -48,7 +48,7 @@ const emit = defineEmits<{ prepare: []; cancelPrepare: []; chooseCandidates: [] 
       <button
         v-if="pending && candidateCount > 1"
         type="button"
-        class="w-fit text-xs text-(--wui-color-accent) underline"
+        class="w-fit rounded-sm text-xs text-(--wui-color-accent) underline"
         @click="emit('chooseCandidates')"
       >
         找到 {{ candidateCount }} 个候选，选择文件

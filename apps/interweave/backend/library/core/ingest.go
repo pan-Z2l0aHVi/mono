@@ -6,7 +6,6 @@ import (
 	"encoding/json"
 	"fmt"
 	"net/url"
-	"os"
 	"path/filepath"
 	"time"
 
@@ -27,17 +26,18 @@ var probeBudgetOnOpen = 3 * time.Second
 // ingestion 汇聚全部纳入路径共享的输入归一化、可用性探测与事务写入，
 // 使“归一化 → 探测 → 事务写入”在 core 内只有一份实现。
 type ingestion struct {
-	db        *storage.DB
-	fetcher   *remote.Fetcher
-	resources storage.ResourceStore
-	sources   storage.SourceStore
-	tags      storage.TagStore
-	taggings  storage.TaggingStore
+	db           *storage.DB
+	fetcher      *remote.Fetcher
+	fingerprints *FingerprintRecorder
+	resources    storage.ResourceStore
+	sources      storage.SourceStore
+	tags         storage.TagStore
+	taggings     storage.TaggingStore
 }
 
 // 保持纳入规则与持久化实现解耦。
 func newIngestion(db *storage.DB, fetcher *remote.Fetcher) *ingestion {
-	return &ingestion{db: db, fetcher: fetcher}
+	return &ingestion{db: db, fetcher: fetcher, fingerprints: newFingerprintRecorder(db)}
 }
 
 type probeOutcome struct {
@@ -74,7 +74,8 @@ func (ing *ingestion) probe(ctx context.Context, location string, srcType storag
 	switch srcType {
 	case storage.SourceTypeFile:
 		outcome := probeOutcome{defaultTitle: fileDefaultTitle(location)}
-		if _, err := os.Stat(location); err == nil {
+		// 目录/管道 stat 成功也不可服务，纳入时就判失效，与监听、媒体读取同一口径。
+		if verdict, _ := ProbeFileServability(location); verdict == FileServable {
 			outcome.available = true
 		}
 		return outcome
@@ -238,7 +239,7 @@ func (ing *ingestion) write(ctx context.Context, w ingestWrite) (ingestResult, e
 		return ingestResult{}, err
 	}
 	if w.srcType == storage.SourceTypeFile && w.probe.available && w.mode != ingestRefreshSource {
-		recordFingerprint(ing.db, result.sourceID, w.location)
+		ing.fingerprints.Record(result.sourceID, w.location)
 	}
 	return result, nil
 }

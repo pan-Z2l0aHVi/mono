@@ -65,6 +65,8 @@ describe('资源详情抽屉', () => {
       const preview = [...host.querySelectorAll('button')].find(element => element.textContent?.includes('预览'))!
       const open = host.querySelector<HTMLElement>('web-ui-dropdown button[slot="trigger"]')!
       expect(open.getBoundingClientRect().left).toBeGreaterThan(preview.getBoundingClientRect().right)
+      const deleteGroup = host.querySelector<HTMLElement>('.detail-delete')!
+      expect(getComputedStyle(deleteGroup).overflow).not.toBe('hidden')
     } finally {
       app.unmount()
       host.remove()

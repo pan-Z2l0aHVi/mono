@@ -496,12 +496,13 @@ export class WebUiSlider extends FormAssociated(LitElement) {
       'is-dragging': this._dragging,
       'is-disabled': this._isDisabled
     })
+    const isDraggingOnThumb = this._dragging && this._pressedOnThumb
     const thumbClass = classMap({
       'wui-slider-thumb': true,
-      'wui-glass': true,
+      'wui-glass': this._pressed || isDraggingOnThumb,
       'is-pressed': this._pressed,
       // 拖拽只在起于 thumb 的手势里展开；从轨道 / 刻度拖过来的手势 thumb 保持静止。
-      'is-dragging': this._dragging && this._pressedOnThumb
+      'is-dragging': isDraggingOnThumb
     })
     const trackStyle = styleMap({ '--percent': `${this._percent}%` })
     const labelledbyText = this._getLabelledbyText()

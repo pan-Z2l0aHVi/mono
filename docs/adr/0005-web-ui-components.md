@@ -30,11 +30,12 @@
 
 ### 2.4 统一事件模型
 
-| 组件类型 | 事件               | 说明                             |
-| -------- | ------------------ | -------------------------------- |
-| 值类控件 | `input` + `change` | 用户交互触发；直接设属性不派发   |
-| 开闭组件 | `open-change`      | `CustomEvent<{ open: boolean }>` |
-| 通知     | `toast-close`      | `CustomEvent<{ id; reason }>`    |
+| 组件类型 | 事件               | 说明                                                          |
+| -------- | ------------------ | ------------------------------------------------------------- |
+| 值类控件 | `input` + `change` | 用户交互触发；直接设属性不派发                                |
+| 开闭组件 | `open-change`      | `CustomEvent<{ open: boolean }>`                              |
+| 关闭完成 | `closed`           | `CustomEvent<void>`，仅 dialog；视觉退场与 top layer 退出之后 |
+| 通知     | `toast-close`      | `CustomEvent<{ id; reason }>`                                 |
 
 - 统一使用 Pointer Events：`pointerenter`/`pointerleave`/`pointerdown`，拖拽场景使用 `setPointerCapture`
 - 复合控件中 group 管理的子项事件以 `bubbles: false, composed: false` 派发；group 只派发一次自己的 `input` 再 `change`

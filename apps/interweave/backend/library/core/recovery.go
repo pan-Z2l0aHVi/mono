@@ -47,7 +47,7 @@ func (s *SourceService) ScanRecovery(ctx context.Context, sourceIDs []string, di
 		if src.Type != storage.SourceTypeFile || src.Available {
 			continue
 		}
-		fp, err := getFingerprint(ctx, s.db, id)
+		fp, err := s.ingest.fingerprints.Get(ctx, id)
 		if err != nil {
 			return err
 		}
@@ -222,7 +222,7 @@ func (s *SourceService) ReplaceScannedFileSource(ctx context.Context, sourceID, 
 	if src.Type != storage.SourceTypeFile || src.Available {
 		return Source{}, errors.New("source is no longer an unavailable file")
 	}
-	return s.ReplaceFileSource(ctx, sourceID, path)
+	return s.ReplaceSource(ctx, sourceID, path)
 }
 
 // cleanMountPath decodes mountinfo's escaped whitespace and backslashes.

@@ -24,7 +24,8 @@
   },
   "dependencies": {
     "@greypan/js-kit": "workspace:*",
-    "glob": "catalog:"
+    "glob": "catalog:",
+    "minimatch": "catalog:"
   },
   "devDependencies": {
     "@greypan/tsconfig": "workspace:*",

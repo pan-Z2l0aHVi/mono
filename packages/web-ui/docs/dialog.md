@@ -443,9 +443,10 @@ const open = ref(false)
 
 ### Events
 
-| Name          | Description                                                          |
-| ------------- | -------------------------------------------------------------------- |
-| `open-change` | The open state changed; `detail.open` is the requested target state. |
+| Name          | Description                                                                           |
+| ------------- | ------------------------------------------------------------------------------------- |
+| `open-change` | The open state changed; `detail.open` is the requested target state.                  |
+| `closed`      | Dispatched after the close animation ends and the native dialog leaves the top layer. |
 
 ### Slots
 

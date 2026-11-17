@@ -142,6 +142,11 @@ jobs:
       - name: Check generated artifacts
         run: pnpm exec turbo run check-generated --filter=@greypan/react-web-ui-demo --filter=@greypan/vue-web-ui-demo
 
+      # 跨 app 的生成物 parity 同样抢在 Build 前：判据在根任务 //#check-generated-parity，
+      # 只用 Node 内置模块，不依赖任何 workspace 产物（门禁 dist 那时还不存在）。
+      - name: Check generated parity
+        run: pnpm exec turbo run check-generated-parity
+
       # 门禁实现住在 @greypan/monorepo-kit 的 dist 里：context/policy/changeset/pack 都消费构建产物，
       # 干净 runner 上必须先构建，否则门禁读到的是不存在的入口。
       - name: Build

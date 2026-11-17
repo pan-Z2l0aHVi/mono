@@ -113,7 +113,7 @@ func (s *SourceService) ApplyFileAvailability(ctx context.Context, sourceID stri
 			Available:  available,
 			ChangedAt:  now,
 		}
-		if servable, size := ProbeFileServable(src.Location); src.IsPreferred && available && servable {
+		if verdict, size := ProbeFileServability(src.Location); src.IsPreferred && available && verdict == FileServable {
 			change.SizeBytes = size
 		}
 		return nil
@@ -126,32 +126,49 @@ func (s *SourceService) ApplyFileAvailability(ctx context.Context, sourceID stri
 		return nil, err
 	}
 	if available && fileLocation != "" {
-		recordFingerprint(s.db, sourceID, fileLocation)
+		s.ingest.fingerprints.Record(sourceID, fileLocation)
 	}
 	return change, nil
 }
 
-// ProbeFileServable 判定文件入口当前是否可服务并取回字节数，是文件可用性监听
-// 与媒体 404 兜底共用的判定口径。
-// 「必须是常规文件」与媒体读取路径、视图装配的 size 派生共用同一判据：
-// stat 成功但路径是目录或管道时媒体请求必然无法服务，不能算作可用。
-func ProbeFileServable(location string) (bool, *int64) {
-	info, err := os.Stat(location)
-	if err != nil || !info.Mode().IsRegular() {
-		return false, nil
+// FileServability 是「文件入口此刻能否服务」的三态结论。
+// 纳入探测、目录监听、媒体读取、视图装配与 pending 预览共用这一口径。
+type FileServability int
+
+const (
+	// FileServable：常规文件，可服务。
+	FileServable FileServability = iota
+	// FileDefinitelyUnavailable：不存在，或 stat 到目录/管道等非常规文件，可放心判失效。
+	FileDefinitelyUnavailable
+	// FileInconclusive：权限与 I/O 错误，无从判断文件是否存在，
+	// 不得据此翻转可用性（误判会让 macOS TCC 拒绝访问把整片资源库标成失效）。
+	FileInconclusive
+)
+
+// ClassifyFileStat 是纯分类器：把一次 stat 结果翻译成三态结论。
+// 媒体读取路径的 statFile 注入点复用它，因此测试可以不碰真实文件系统。
+func ClassifyFileStat(err error, info os.FileInfo) FileServability {
+	if err != nil {
+		if errors.Is(err, os.ErrNotExist) {
+			return FileDefinitelyUnavailable
+		}
+		return FileInconclusive
 	}
-	size := info.Size()
-	return true, &size
+	if info == nil || !info.Mode().IsRegular() {
+		return FileDefinitelyUnavailable
+	}
+	return FileServable
 }
 
-// FileDefinitelyUnavailable 把一次 stat 结果翻译成「文件确实不可服务」。
-// 调用方必须区分「内容不可服务」与「此刻读不到」：权限与 I/O 错误无从判断文件是否存在，
-// 误判成失效会让 macOS TCC 拒绝访问把整片资源库标成失效。
-func FileDefinitelyUnavailable(err error, info os.FileInfo) bool {
-	if err != nil {
-		return errors.Is(err, os.ErrNotExist)
+// ProbeFileServability stat 一次 location 并返回三态结论；仅 FileServable 时带回字节数。
+func ProbeFileServability(location string) (FileServability, *int64) {
+	info, err := os.Stat(location)
+	verdict := ClassifyFileStat(err, info)
+	if verdict != FileServable {
+		return verdict, nil
 	}
-	return info != nil && !info.Mode().IsRegular()
+	size := info.Size()
+	return verdict, &size
 }
 
 // resyncIndex 在入口集合变化后请求监听重建。对账失败不回滚已提交的事务：

@@ -113,6 +113,7 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     data-resource-row
     :data-resource-id="resource.id"
     :data-resource-index="index"
+    :data-active="active || checked ? '' : undefined"
     :data-selection-mode="selectionMode ? '' : undefined"
     role="listitem"
     :aria-setsize="total"

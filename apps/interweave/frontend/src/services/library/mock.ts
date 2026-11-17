@@ -467,15 +467,13 @@ export function createMockLibraryRuntime(): LibraryRuntime {
 
     // 下面这些都依赖桌面服务或真实文件系统，浏览器预览里给出明确失败而不是假装成功。
     sources: {
-      refreshURL: () => unsupported('刷新网页入口'),
-      refreshFile: () => unsupported('刷新文件入口'),
-      replaceFile: () => unsupported('替换文件入口'),
+      refreshSource: () => unsupported('刷新入口'),
+      replaceSource: () => unsupported('替换入口'),
       startRecoveryScan: () => unsupported('扫描文件'),
       pollRecoveryScan: () => unsupported('扫描文件'),
       cancelRecoveryScan: () => Promise.resolve(),
       discardRecoveryScan: () => Promise.resolve(),
       replaceScannedFile: () => unsupported('替换文件入口'),
-      replaceURL: () => unsupported('替换网页入口'),
       probeOnOpen: () => unsupported('探测网页入口')
     },
 
@@ -485,7 +483,10 @@ export function createMockLibraryRuntime(): LibraryRuntime {
 
     events: {
       onFilesDropped: () => () => {},
-      onSourceAvailability: () => () => {}
+      onURLsDropped: () => () => {},
+      onSourceAvailability: () => () => {},
+      // 浏览器预览没有后端 LRU，pending 预览永不驱逐。
+      onPreviewRevoked: () => () => {}
     },
 
     system: {
@@ -494,8 +495,15 @@ export function createMockLibraryRuntime(): LibraryRuntime {
       chooseDirectory: () => Promise.resolve(null),
       getClipboardFilePaths: () => Promise.resolve([]),
 
-      // 浏览器预览没有 Go 侧文本剪贴板；预览态下「粘贴为纯文本」因此给出提示而不是静默失败。
-      readClipboardText: () => Promise.reject(new Error('剪贴板文本在浏览器预览中不可用')),
+      // 浏览器预览没有 Go 侧文本剪贴板，退回 Web 剪贴板；权限或安全上下文不允许时
+      // 抛出带原因的失败，调用方据此提示而不是静默。
+      readClipboardText: async () => {
+        try {
+          return await navigator.clipboard.readText()
+        } catch (cause) {
+          throw new Error('浏览器预览中无法读取剪贴板文本', { cause })
+        }
+      },
       writeClipboardText: () => Promise.reject(new Error('剪贴板文本在浏览器预览中不可用')),
 
       // 浏览器没有「系统默认应用」这个概念：返回空名，UI 回落到通用文案。

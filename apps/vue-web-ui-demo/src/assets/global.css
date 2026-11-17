@@ -67,10 +67,22 @@ body {
  * 统一的 focus ring，否则键盘焦点没有可见反馈。偏移取负：代码卡外层有圆角并且 overflow-hidden，
  * 向外描边会被裁掉。
  */
-[data-code] [data-overlayscrollbars-viewport]:focus-visible {
+[data-code] [data-overlayscrollbars-viewport]:focus-visible,
+.demo-nav-link:focus-visible {
   outline: var(--wui-focus-ring-width, 3px) solid
     var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
   outline-offset: -3px;
+}
+
+.demo-quick-link-card:focus-visible,
+.mdm-markdown a:focus-visible {
+  outline: var(--wui-focus-ring-width, 3px) solid
+    var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
+  outline-offset: 2px;
+}
+
+.mdm-markdown a:focus-visible {
+  border-radius: 4px;
 }
 
 .demo-search-popover {
@@ -111,4 +123,9 @@ body {
   display: grid;
   place-items: center;
   min-height: 120px;
+}
+
+/* Tailwind Preflight 将全局 img 设为 block，导致 Markdown 行内徽章（p > a > img）竖向堆叠。 */
+p > a > img {
+  display: inline-block;
 }

@@ -192,13 +192,28 @@ describe('PreviewDrawer', () => {
     expect(host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('无法显示这张图片')
   })
 
-  it('视频渲染原生 controls，Range 拖动由媒体端点负责', async () => {
+  it('视频渲染原生 controls 与 autoplay，Range 拖动由媒体端点负责', async () => {
     const { host } = await mountDrawer(
       resourceOf(fileSource({ location: '/tmp/a.mp4' }), ResourceKind.ResourceKindVideo)
     )
     const video = host.querySelector('video')
     expect(video?.getAttribute('src')).toBe('/resource-media/source-1')
     expect(video?.hasAttribute('controls')).toBe(true)
+    expect(video?.hasAttribute('autoplay')).toBe(true)
+  })
+
+  it('音频渲染原生 controls 与 autoplay，失败时展示空态', async () => {
+    const { host } = await mountDrawer(
+      resourceOf(fileSource({ location: '/tmp/a.mp3' }), ResourceKind.ResourceKindAudio)
+    )
+    const audio = host.querySelector('audio')
+    expect(audio?.getAttribute('src')).toBe('/resource-media/source-1')
+    expect(audio?.hasAttribute('controls')).toBe(true)
+    expect(audio?.hasAttribute('autoplay')).toBe(true)
+
+    audio?.dispatchEvent(new Event('error'))
+    await nextTick()
+    expect(host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('无法播放这个音频')
   })
 
   it('文本来源读取内容并以 pre 展示', async () => {

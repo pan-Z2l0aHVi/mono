@@ -17,6 +17,10 @@ export interface GitApi {
   readonly stagedFiles: () => string[]
   /** tracked 且匹配 pathspec 的文件，`-z` 分隔以支持空格与非 ASCII 名字 */
   readonly files: (pattern: string) => string[]
+  /** 全部 tracked 文件（index 视角，含稀疏检出 cone 外的条目），仓库相对 */
+  readonly trackedFiles: () => string[]
+  /** 读 index 里 stage-0 的 blob；用于磁盘上被稀疏检出隐藏的 tracked 文件 */
+  readonly indexFile: (file: string) => string
   /** 带 skip-worktree 位的 tracked 文件：稀疏检出 cone 外的已跟踪文件，index 里还在，磁盘上没有 */
   readonly skipWorktreeFiles: () => string[]
   readonly changedFiles: (options: ChangedFilesOptions) => string[]
@@ -52,6 +56,9 @@ export const defineGit = (): Plugin<GitApi, KitCtx> =>
             .split(/\r?\n/)
             .filter(Boolean),
         files: pattern => nulSeparated(raw(['ls-files', '-z', pattern])),
+        trackedFiles: () => nulSeparated(raw(['ls-files', '-z'])),
+        // `:<path>` 是 index 的 stage-0 引用；与 `show` 的 `<commit>:<path>` 同一语法族。
+        indexFile: file => raw(['show', `:${file}`]),
         // `-v` 在路径前加一位状态码：`H` 是普通条目，`S` 是 skip-worktree（cone 外），小写是 assume-unchanged。
         skipWorktreeFiles: () =>
           nulSeparated(raw(['ls-files', '-v', '-z']))

@@ -86,6 +86,7 @@ function SidebarNavLink({ to, label, title, active, collapsed, onNavigate }: Sid
       to={to}
       className={
         NAV_ITEM_CLASS +
+        ' demo-nav-link' +
         (active ? '' : ' hover:bg-[#1b1b30]/4 dark:hover:bg-white/6') +
         (collapsed ? ' w-9 justify-center' : ' w-full')
       }
@@ -349,7 +350,7 @@ export function Root() {
               </nav>
             </OverlayScrollbarsComponent>
             {/* 正文 gutter 归 shell 所有：`web-ui-layout` 的 main 不带 padding，逐页加会漏页。 */}
-            <div className="p-3 sm:px-6 md:px-8 lg:px-10">
+            <div className="p-3 pb-16 sm:px-6 md:px-8 lg:px-10">
               <Outlet />
             </div>
           </web-ui-layout>

@@ -104,7 +104,7 @@ function handlePointerLeave() {
 <template>
   <RouterLink
     :to="path"
-    class="relative block text-left"
+    class="demo-quick-link-card relative block rounded-3xl text-left"
     @pointerenter="handlePointerEnter"
     @pointermove="handlePointerMove"
     @pointerleave="handlePointerLeave"
