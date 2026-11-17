@@ -28,6 +28,17 @@
       "cache": false,
       "outputs": []
     },
+    "//#check-generated-parity": {
+      "cache": true,
+      "inputs": [
+        "scripts/checks/**",
+        "apps/react-web-ui-demo/src/generated/**",
+        "apps/react-web-ui-demo/src/routes/components/**",
+        "apps/vue-web-ui-demo/src/generated/**",
+        "apps/vue-web-ui-demo/src/pages/components/**"
+      ],
+      "outputs": []
+    },
     "dev": {
       "dependsOn": ["^build"],
       "cache": false,

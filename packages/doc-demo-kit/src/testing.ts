@@ -131,3 +131,5 @@ export function runExampleDocsContractTests(options: ExampleDocsContractOptions)
     }
   })
 }
+
+export { runNavCorpusContractTests, type NavCorpusContractOptions } from './nav-corpus'

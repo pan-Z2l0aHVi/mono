@@ -66,6 +66,7 @@ catalog:
   jsdom: ^31.0.0
   lightningcss: ^1.32.0
   lit: ^3.3.3
+  minimatch: ^11.0.5
   msw: ^3.0.4
   nanoid: ^6.0.0
   overlayscrollbars: ^2.16.0

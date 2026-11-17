@@ -20,21 +20,31 @@ type SourceService struct {
 	sources   storage.SourceStore
 	// indexSync 只在装配期注入一次（main.go），运行期只读，无需加锁。
 	indexSync SourceIndexSync
+	// recovery 拥有找回扫描的会话状态机；扫描算法是本服务的 ScanRecovery。
+	recovery *RecoveryScanRunner
 }
 
 // 保持 Source 规则与持久化实现解耦。
 func NewSourceService(db *storage.DB, fetcher *remote.Fetcher) *SourceService {
-	db.ScheduleBackground("fingerprint:backfill", func(ctx context.Context) {
-		if ctx.Err() == nil {
-			backfillFingerprints(ctx, db)
-		}
-	})
-	return &SourceService{
+	svc := &SourceService{
 		db:        db,
 		ingest:    newIngestion(db, fetcher),
 		resources: storage.ResourceStore{},
 		sources:   storage.SourceStore{},
 	}
+	svc.recovery = NewRecoveryScanRunner(svc.ScanRecovery)
+	return svc
+}
+
+// RecoveryScans 返回找回扫描的会话 runner，外观层只做传递与 DTO 映射。
+func (s *SourceService) RecoveryScans() *RecoveryScanRunner {
+	return s.recovery
+}
+
+// BackfillFingerprints 为库内已可用的文件 Source 补齐指纹。构造函数不再隐藏调度：
+// 由装配层（main.go）决定何时在后台启动它。
+func (s *SourceService) BackfillFingerprints(ctx context.Context) {
+	s.ingest.fingerprints.Backfill(ctx)
 }
 
 // SetIndexSync 注入入口集合的对账回调，使增删改 Source 后监听集合能立即重建。
@@ -42,78 +52,54 @@ func (s *SourceService) SetIndexSync(h SourceIndexSync) {
 	s.indexSync = h
 }
 
-// 补充备用入口不应意外改变用户当前的首选入口。
-func (s *SourceService) AddFileSource(ctx context.Context, resourceID string, inputPath string) (Source, error) {
-	location, err := s.ingest.normalizeInput(inputPath, storage.SourceTypeFile)
+// AddSource 为既有 Resource 补充备用入口；补充入口不应意外改变用户当前的首选入口，
+// 也不应覆盖用户已维护的资源语义。
+//
+// 三个变更方法共享同一编排：归一化 → 存在性检查 → 探测 → 写入 → 对账监听 → 回读。
+// 存在性检查必须先于探测：URL 探测最多阻塞 10 秒，不能在不存在的目标上白等。
+func (s *SourceService) AddSource(ctx context.Context, resourceID string, srcType storage.SourceType, input string) (Source, error) {
+	location, err := s.ingest.normalizeInput(input, srcType)
 	if err != nil {
 		return Source{}, err
 	}
-
 	// 归属目标的存在性是产品规则，不依赖外键约束兜底。
 	if err := s.requireResource(ctx, resourceID); err != nil {
 		return Source{}, err
 	}
 
-	outcome := s.ingest.probe(ctx, location, storage.SourceTypeFile)
+	outcome := s.ingest.probe(ctx, location, srcType)
 	result, err := s.ingest.write(ctx, ingestWrite{
 		mode:       ingestAppendSource,
 		resourceID: resourceID,
-		srcType:    storage.SourceTypeFile,
+		srcType:    srcType,
 		location:   location,
 		probe:      outcome,
 	})
 	if err != nil {
-		return Source{}, fmt.Errorf("failed to add file source: %w", err)
+		return Source{}, fmt.Errorf("failed to add %s source: %w", sourceTypeLabel(srcType), err)
 	}
 
 	s.resyncIndex(ctx)
 	return s.getSource(ctx, result.sourceID)
 }
 
-// 补充 URL 入口不应覆盖用户已维护的资源语义。
-func (s *SourceService) AddURLSource(ctx context.Context, resourceID string, inputURL string) (Source, error) {
-	location, err := s.ingest.normalizeInput(inputURL, storage.SourceTypeURL)
+// ReplaceSource 用新输入找回失效入口，保留其身份、顺位与首选角色；它不是同位置刷新。
+// 类型由存量行派生：行是类型的权威，替换不会把文件入口变成 URL 入口。
+func (s *SourceService) ReplaceSource(ctx context.Context, sourceID string, input string) (Source, error) {
+	existing, err := s.getSource(ctx, sourceID)
+	if err != nil {
+		return Source{}, err
+	}
+	location, err := s.ingest.normalizeInput(input, existing.Type)
 	if err != nil {
 		return Source{}, err
 	}
 
-	// 抓取最多阻塞 10 秒，必须在不存在的归属目标上先短路。
-	if err := s.requireResource(ctx, resourceID); err != nil {
-		return Source{}, err
-	}
-
-	outcome := s.ingest.probe(ctx, location, storage.SourceTypeURL)
-	result, err := s.ingest.write(ctx, ingestWrite{
-		mode:       ingestAppendSource,
-		resourceID: resourceID,
-		srcType:    storage.SourceTypeURL,
-		location:   location,
-		probe:      outcome,
-	})
-	if err != nil {
-		return Source{}, fmt.Errorf("failed to add URL source: %w", err)
-	}
-
-	s.resyncIndex(ctx)
-	return s.getSource(ctx, result.sourceID)
-}
-
-// 替换入口时保留其在 Resource 中的角色与顺位。
-func (s *SourceService) ReplaceFileSource(ctx context.Context, sourceID string, inputPath string) (Source, error) {
-	location, err := s.ingest.normalizeInput(inputPath, storage.SourceTypeFile)
-	if err != nil {
-		return Source{}, err
-	}
-
-	if err := s.requireSource(ctx, sourceID); err != nil {
-		return Source{}, err
-	}
-
-	outcome := s.ingest.probe(ctx, location, storage.SourceTypeFile)
+	outcome := s.ingest.probe(ctx, location, existing.Type)
 	_, err = s.ingest.write(ctx, ingestWrite{
 		mode:     ingestReplaceSource,
 		sourceID: sourceID,
-		srcType:  storage.SourceTypeFile,
+		srcType:  existing.Type,
 		location: location,
 		probe:    outcome,
 	})
@@ -125,32 +111,35 @@ func (s *SourceService) ReplaceFileSource(ctx context.Context, sourceID string, 
 	return s.getSource(ctx, sourceID)
 }
 
-// 替换入口时保留其在 Resource 中的角色与顺位。
-func (s *SourceService) ReplaceURLSource(ctx context.Context, sourceID string, inputURL string) (Source, error) {
-	location, err := s.ingest.normalizeInput(inputURL, storage.SourceTypeURL)
+// RefreshSource 仅在用户明确请求时重新检查同一位置的可用性与展示信息，不改变 location，
+// 不回写 Resource 标题（AGENTS.md「Resource 标题」）。类型由存量行派生；
+// 文件入口可用时同时记录指纹。
+func (s *SourceService) RefreshSource(ctx context.Context, sourceID string) (Source, error) {
+	src, err := s.getSource(ctx, sourceID)
 	if err != nil {
 		return Source{}, err
 	}
 
-	// 抓取最多阻塞 10 秒，必须在不存在的 Source 上先短路。
-	if err := s.requireSource(ctx, sourceID); err != nil {
-		return Source{}, err
-	}
-
-	outcome := s.ingest.probe(ctx, location, storage.SourceTypeURL)
-	_, err = s.ingest.write(ctx, ingestWrite{
-		mode:     ingestReplaceSource,
+	outcome := s.ingest.probe(ctx, src.Location, src.Type)
+	if _, err := s.ingest.write(ctx, ingestWrite{
+		mode:     ingestRefreshSource,
 		sourceID: sourceID,
-		srcType:  storage.SourceTypeURL,
-		location: location,
 		probe:    outcome,
-	})
-	if err != nil {
-		return Source{}, fmt.Errorf("failed to replace source: %w", err)
+	}); err != nil {
+		return Source{}, err
 	}
 
-	s.resyncIndex(ctx)
+	if src.Type == storage.SourceTypeFile && outcome.available {
+		s.ingest.fingerprints.Record(sourceID, src.Location)
+	}
 	return s.getSource(ctx, sourceID)
+}
+
+func sourceTypeLabel(srcType storage.SourceType) string {
+	if srcType == storage.SourceTypeURL {
+		return "URL"
+	}
+	return string(srcType)
 }
 
 // 首选入口是用户的明确选择，不能出现多个候选。
@@ -211,58 +200,6 @@ func (s *SourceService) RemoveSource(ctx context.Context, sourceID string) (stri
 	return resourceID, nil
 }
 
-// 仅在用户明确请求时更新远程展示信息。
-func (s *SourceService) RefreshURLSource(ctx context.Context, sourceID string) (Source, error) {
-	src, err := s.sources.Get(ctx, s.db.SqlDB(), sourceID)
-	if err != nil {
-		return Source{}, mapNotFound(err)
-	}
-
-	if src.Type != storage.SourceTypeURL {
-		return Source{}, ErrOnlyURLSourceRefreshable
-	}
-
-	// 位置在纳入时已归一化，刷新直接探测原位置，不回写 Resource 标题（AGENTS.md「Resource 标题」）。
-	outcome := s.ingest.probe(ctx, src.Location, storage.SourceTypeURL)
-	_, err = s.ingest.write(ctx, ingestWrite{
-		mode:     ingestRefreshSource,
-		sourceID: sourceID,
-		probe:    outcome,
-	})
-	if err != nil {
-		return Source{}, err
-	}
-
-	return s.getSource(ctx, sourceID)
-}
-
-// RefreshFileSource 重新检查同一文件路径的可用性，不改变 location；文件在原路径恢复后由用户显式调用。
-func (s *SourceService) RefreshFileSource(ctx context.Context, sourceID string) (Source, error) {
-	src, err := s.sources.Get(ctx, s.db.SqlDB(), sourceID)
-	if err != nil {
-		return Source{}, mapNotFound(err)
-	}
-
-	if src.Type != storage.SourceTypeFile {
-		return Source{}, ErrOnlyFileSourceRefreshable
-	}
-
-	outcome := s.ingest.probe(ctx, src.Location, storage.SourceTypeFile)
-	_, err = s.ingest.write(ctx, ingestWrite{
-		mode:     ingestRefreshSource,
-		sourceID: sourceID,
-		probe:    outcome,
-	})
-	if err != nil {
-		return Source{}, err
-	}
-
-	if outcome.available {
-		recordFingerprint(s.db, sourceID, src.Location)
-	}
-	return s.getSource(ctx, sourceID)
-}
-
 // ProbeURLSourceOnOpen 是打开详情时的短预算重新判定：与纳入/手动刷新的 10 秒预算分开，
 // 前台交互不能等 10 秒。
 //
@@ -320,13 +257,6 @@ func (s *SourceService) requireResource(ctx context.Context, resourceID string) 
 	}
 	if !exists {
 		return ErrResourceNotFound
-	}
-	return nil
-}
-
-func (s *SourceService) requireSource(ctx context.Context, sourceID string) error {
-	if _, err := s.sources.Get(ctx, s.db.SqlDB(), sourceID); err != nil {
-		return mapNotFound(err)
 	}
 	return nil
 }

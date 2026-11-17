@@ -100,9 +100,9 @@ func TestDescribeViewMenu(t *testing.T) {
 }
 
 func TestDescribeWindowMenu(t *testing.T) {
-	// macOS 的窗口菜单只写应用自己的两项；填充 / 居中 / 移动与调整大小由 AppKit 注入。
-	assertOrder(t, labelsOf(Describe("darwin"), "窗口"), []string{"最小化", "缩放", "全屏", "前置全部窗口"})
-	assertOrder(t, labelsOf(Describe("windows"), "窗口"), []string{"最小化", "最大化", "关闭窗口"})
+	// macOS 的窗口菜单在首位放应用自己的「切换窗口模式」；填充 / 居中 / 移动与调整大小由 AppKit 注入。
+	assertOrder(t, labelsOf(Describe("darwin"), "窗口"), []string{"切换窗口模式", "最小化", "缩放", "全屏", "前置全部窗口"})
+	assertOrder(t, labelsOf(Describe("windows"), "窗口"), []string{"切换窗口模式", "最小化", "最大化", "关闭窗口"})
 }
 
 func TestDescribeHelpMenu(t *testing.T) {
@@ -170,6 +170,7 @@ func TestDescribeAccelerators(t *testing.T) {
 		"前进":            "",
 		"复制为纯文本":        "",
 		"粘贴为纯文本":        "",
+		"切换窗口模式":        "",
 		"Interweave 文档": "",
 	}
 	nodes := Describe("darwin")
@@ -321,6 +322,7 @@ func TestEveryCommandIsKnownToTheContract(t *testing.T) {
 		menucontract.CommandCopyAsPlainText,
 		menucontract.CommandPasteAsPlainText,
 		menucontract.CommandMaximiseWindow,
+		menucontract.CommandToggleWindowMode,
 		menucontract.CommandZoomIn,
 		menucontract.CommandZoomOut,
 		menucontract.CommandZoomReset,

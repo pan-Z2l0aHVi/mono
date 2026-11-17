@@ -30,5 +30,27 @@
 		<string>true</string>
 		<key>NSHumanReadableCopyright</key>
 		<string>(c) 2026, greypan</string>
+		<key>CFBundleDocumentTypes</key>
+		<array>
+			<dict>
+				<key>CFBundleTypeName</key>
+				<string>All Files</string>
+				<key>CFBundleTypeRole</key>
+				<string>Viewer</string>
+				<key>LSHandlerRank</key>
+				<string>Alternate</string>
+				<key>LSItemContentTypes</key>
+				<array>
+					<string>public.item</string>
+					<string>public.data</string>
+					<string>public.content</string>
+					<string>public.folder</string>
+				</array>
+				<key>CFBundleTypeExtensions</key>
+				<array>
+					<string>*</string>
+				</array>
+			</dict>
+		</array>
 	</dict>
 </plist>

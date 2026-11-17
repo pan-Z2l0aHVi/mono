@@ -19,9 +19,8 @@ export interface LibraryRestoreQueueResult {
 }
 
 interface LibraryRestoreQueueHandlers {
-  replaceFileSource: (sourceId: string, inputPath: string) => Promise<unknown>
+  replaceSource: (sourceId: string, input: string) => Promise<unknown>
   replaceScannedFileSource: (sourceId: string, inputPath: string, snapshot: string) => Promise<unknown>
-  replaceURLSource: (sourceId: string, inputURL: string) => Promise<unknown>
   onItemStart?: (itemId: string) => void
 }
 
@@ -79,9 +78,9 @@ export async function restoreLibraryQueue(
         if (!item.replacementLocation) throw new Error('请选择新文件')
         if (item.scanSnapshot)
           await handlers.replaceScannedFileSource(item.sourceId, item.replacementLocation, item.scanSnapshot)
-        else await handlers.replaceFileSource(item.sourceId, item.replacementLocation)
+        else await handlers.replaceSource(item.sourceId, item.replacementLocation)
       } else {
-        await handlers.replaceURLSource(item.sourceId, item.replacementLocation)
+        await handlers.replaceSource(item.sourceId, item.replacementLocation)
       }
       completedIds.push(item.id)
     } catch (cause) {

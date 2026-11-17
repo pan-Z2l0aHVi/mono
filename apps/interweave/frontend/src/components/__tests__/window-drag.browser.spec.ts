@@ -83,7 +83,7 @@ describe('Toolbar：窗口拖动区（真实读数，浏览器）', () => {
       expect(draggableValue(mounted.find('web-ui-button[aria-label="后退"]'))).toBe('')
       expect(draggableValue(mounted.find('web-ui-button[aria-label="前进"]'))).toBe('')
       expect(draggableValue(mounted.find('.ml-auto'))).toBe('')
-      expect(draggableValue(mounted.find('web-ui-button[aria-label="添加资源"]'))).toBe('')
+      expect(draggableValue(mounted.find('web-ui-button[aria-label="导入资源"]'))).toBe('')
       expect(draggableValue(mounted.find('web-ui-button[aria-label="筛选和排序"]'))).toBe('')
       expect(draggableValue(mounted.find('web-ui-button[aria-label="搜索"]'))).toBe('')
 

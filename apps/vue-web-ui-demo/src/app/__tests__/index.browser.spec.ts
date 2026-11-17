@@ -650,4 +650,47 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
 
     expect(navItemAlignment()).toEqual(collapsed)
   })
+
+  it('正文容器在桌面与移动端均保留底部呼吸留白', async () => {
+    await mountAppShell()
+    const contentWrapper = layoutRoot().querySelector<HTMLElement>(':scope > div.p-3')
+    expect(contentWrapper).not.toBeNull()
+    expect(Number.parseFloat(getComputedStyle(contentWrapper!).paddingBottom)).toBeGreaterThanOrEqual(64)
+
+    await setViewport(MOBILE_VIEWPORT.width, MOBILE_VIEWPORT.height)
+    await settleViewport(true)
+    expect(Number.parseFloat(getComputedStyle(contentWrapper!).paddingBottom)).toBeGreaterThanOrEqual(48)
+  })
+
+  it('键盘 Tab 可聚焦侧栏导航项并显示统一 focus ring（展开态与折叠态）', async () => {
+    await mountAppShell()
+    const firstNavLink = navRoot().querySelector<HTMLAnchorElement>('a')!
+    expect(firstNavLink).not.toBeNull()
+
+    // 从 banner 关闭按钮按 Tab，应顺次落到侧栏首条导航链接。
+    const closeInner = bannerCloseButton().shadowRoot?.querySelector<HTMLButtonElement>('button')
+    expect(closeInner).not.toBeNull()
+    closeInner!.focus()
+    expect(document.activeElement).toBe(bannerCloseButton())
+    await userEvent.tab()
+    expect(document.activeElement).toBe(firstNavLink)
+    expect(firstNavLink.matches(':focus-visible')).toBe(true)
+    const expandedStyle = getComputedStyle(firstNavLink)
+    expect(expandedStyle.outlineStyle).toBe('solid')
+    expect(expandedStyle.outlineWidth).toBe('3px')
+    expect(expandedStyle.outlineOffset).toBe('-3px')
+
+    // 切到折叠态后，wrapped 在 web-ui-tooltip 里的导航链接同样可 Tab 聚焦并保留 focus ring。
+    await requestCollapse(true)
+    const collapsedNavLink = navRoot().querySelector<HTMLAnchorElement>('a')!
+    closeInner!.focus()
+    expect(document.activeElement).toBe(bannerCloseButton())
+    await userEvent.tab()
+    expect(document.activeElement).toBe(collapsedNavLink)
+    expect(collapsedNavLink.matches(':focus-visible')).toBe(true)
+    const collapsedStyle = getComputedStyle(collapsedNavLink)
+    expect(collapsedStyle.outlineStyle).toBe('solid')
+    expect(collapsedStyle.outlineWidth).toBe('3px')
+    expect(collapsedStyle.outlineOffset).toBe('-3px')
+  })
 })

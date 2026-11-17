@@ -51,7 +51,7 @@ describe('menu command dispatch', () => {
     }
   })
 
-  // reload-window、open-devtools、maximise-window 与 check-for-updates 由 Go 侧直接执行。
+  // reload-window、open-devtools、maximise-window、toggle-window-mode 与 check-for-updates 由 Go 侧直接执行。
   // 前端认了它们反而会多出一条无人接管的命令。
   it('不认由 Go 侧直接执行的命令', () => {
     const target = handlers()
@@ -59,6 +59,7 @@ describe('menu command dispatch', () => {
       'reload-window',
       'open-devtools',
       'maximise-window',
+      'toggle-window-mode',
       'check-for-updates',
       'zoom-in',
       'zoom-out',

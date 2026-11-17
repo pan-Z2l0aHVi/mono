@@ -13,13 +13,8 @@ import (
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 )
 
-type fileFingerprint struct {
-	Size     int64  `json:"size"`
-	Modified int64  `json:"modified"`
-	Identity string `json:"identity"`
-	Changed  int64  `json:"changed"`
-	Hash     string `json:"hash"`
-}
+// fileFingerprint 是 storage 层快照类型在 core 内的惯用名。
+type fileFingerprint = storage.FingerprintState
 
 func fingerprintInfo(path string, info os.FileInfo) fileFingerprint {
 	identity, changed := fileIdentity(path, info)
@@ -54,53 +49,67 @@ func hashFile(ctx context.Context, path string) (string, error) {
 	return hex.EncodeToString(h.Sum(nil)), nil
 }
 
-// recordFingerprint snapshots inexpensive attributes synchronously, then hashes outside the caller's critical path.
-func recordFingerprint(db *storage.DB, sourceID, path string) {
-	info, err := os.Stat(path)
-	if err != nil || !info.Mode().IsRegular() {
+// FingerprintRecorder 拥有 source_fingerprints 的全部写入时机：
+// 同步快照便宜的文件属性，再把内容哈希交给后台，不占用调用方的关键路径。
+// 触发条件（纳入、手动刷新、可用性恢复）仍由各产品入口决定，机制只在这里有一份。
+type FingerprintRecorder struct {
+	db    *storage.DB
+	store storage.FingerprintStore
+}
+
+func newFingerprintRecorder(db *storage.DB) *FingerprintRecorder {
+	return &FingerprintRecorder{db: db}
+}
+
+// Record 为仍可服务的文件快照属性并调度哈希；不可服务（含权限/I/O 错误）时不记录。
+func (r *FingerprintRecorder) Record(sourceID, location string) {
+	info, err := os.Stat(location)
+	if ClassifyFileStat(err, info) != FileServable {
 		return
 	}
-	state := fingerprintInfo(path, info)
+	state := fingerprintInfo(location, info)
 	ctx := context.Background()
-	err = db.WithTx(ctx, func(tx *sql.Tx) error {
-		_, err := tx.ExecContext(ctx, `INSERT INTO source_fingerprints (source_id, location, size, modified, identity, changed, hash)
- SELECT id, location, ?, ?, ?, ?, '' FROM sources WHERE id = ? AND type = 'file' AND location = ?
- ON CONFLICT(source_id) DO UPDATE SET location=excluded.location, size=excluded.size, modified=excluded.modified, identity=excluded.identity, changed=excluded.changed,
- hash=CASE WHEN source_fingerprints.location=excluded.location AND source_fingerprints.size=excluded.size AND source_fingerprints.modified=excluded.modified AND source_fingerprints.identity=excluded.identity AND source_fingerprints.changed=excluded.changed THEN source_fingerprints.hash ELSE '' END`, state.Size, state.Modified, state.Identity, state.Changed, sourceID, path)
-		return err
+	err = r.db.WithTx(ctx, func(tx *sql.Tx) error {
+		return r.store.Upsert(ctx, tx, sourceID, location, state)
 	})
 	if err != nil {
 		log.Printf("interweave: fingerprint attributes: %v", err)
 		return
 	}
-	db.ScheduleBackground("fingerprint:"+sourceID, func(ctx context.Context) {
-		var currentHash string
-		err := db.SqlDB().QueryRowContext(ctx, `SELECT hash FROM source_fingerprints WHERE source_id=? AND location=? AND size=? AND modified=? AND identity=? AND changed=?`, sourceID, path, state.Size, state.Modified, state.Identity, state.Changed).Scan(&currentHash)
-		if err != nil || currentHash != "" {
-			return
-		}
-		hash, err := hashFile(ctx, path)
-		if err != nil {
-			if ctx.Err() == nil {
-				log.Printf("interweave: fingerprint hash %s: %v", path, err)
-			}
-			return
-		}
-		after, err := os.Stat(path)
-		if err != nil || !after.Mode().IsRegular() || !sameFileState(state, fingerprintInfo(path, after)) {
-			return
-		}
-		err = db.WithTx(ctx, func(tx *sql.Tx) error {
-			_, err := tx.ExecContext(ctx, `UPDATE source_fingerprints SET hash=? WHERE source_id=? AND location=? AND size=? AND modified=? AND identity=? AND changed=? AND EXISTS (SELECT 1 FROM sources WHERE id=? AND type='file' AND location=?)`, hash, sourceID, path, state.Size, state.Modified, state.Identity, state.Changed, sourceID, path)
-			return err
-		})
-		if err != nil {
-			log.Printf("interweave: fingerprint hash: %v", err)
-		}
+	r.db.ScheduleBackground("fingerprint:"+sourceID, func(ctx context.Context) {
+		r.hashIfStillCurrent(ctx, sourceID, location, state)
 	})
 }
-func backfillFingerprints(ctx context.Context, db *storage.DB) {
-	sources, err := (storage.SourceStore{}).ListFileSources(ctx, db.SqlDB())
+
+// hashIfStillCurrent 只在记录仍对应 state 且尚无 hash 时计算并写入；
+// 读完文件后属性变化则放弃，下一次 Record 会针对新属性重来。
+func (r *FingerprintRecorder) hashIfStillCurrent(ctx context.Context, sourceID, location string, state fileFingerprint) {
+	current, ok, err := r.store.HashIfStateMatches(ctx, r.db.SqlDB(), sourceID, location, state)
+	if err != nil || !ok || current != "" {
+		return
+	}
+	hash, err := hashFile(ctx, location)
+	if err != nil {
+		if ctx.Err() == nil {
+			log.Printf("interweave: fingerprint hash %s: %v", location, err)
+		}
+		return
+	}
+	after, err := os.Stat(location)
+	if ClassifyFileStat(err, after) != FileServable || !sameFileState(state, fingerprintInfo(location, after)) {
+		return
+	}
+	err = r.db.WithTx(ctx, func(tx *sql.Tx) error {
+		return r.store.UpdateHashIfStateMatches(ctx, tx, sourceID, location, state, hash)
+	})
+	if err != nil {
+		log.Printf("interweave: fingerprint hash: %v", err)
+	}
+}
+
+// Backfill 为库内已可用的文件 Source 补齐指纹，由装配层在启动时调度。
+func (r *FingerprintRecorder) Backfill(ctx context.Context) {
+	sources, err := (storage.SourceStore{}).ListFileSources(ctx, r.db.SqlDB())
 	if err != nil {
 		log.Printf("interweave: fingerprint backfill: %v", err)
 		return
@@ -110,18 +119,16 @@ func backfillFingerprints(ctx context.Context, db *storage.DB) {
 			return
 		}
 		if src.Available {
-			recordFingerprint(db, src.ID, src.Location)
+			r.Record(src.ID, src.Location)
 		}
 	}
 }
-func getFingerprint(ctx context.Context, db *storage.DB, id string) (fileFingerprint, error) {
-	var f fileFingerprint
-	err := db.SqlDB().QueryRowContext(ctx, `SELECT size,modified,identity,changed,hash FROM source_fingerprints WHERE source_id=?`, id).Scan(&f.Size, &f.Modified, &f.Identity, &f.Changed, &f.Hash)
-	if err == sql.ErrNoRows {
-		return f, nil
-	}
+
+// Get 读取 sourceID 的指纹；没有记录时返回零值。
+func (r *FingerprintRecorder) Get(ctx context.Context, sourceID string) (fileFingerprint, error) {
+	state, err := r.store.Get(ctx, r.db.SqlDB(), sourceID)
 	if err != nil {
-		return f, fmt.Errorf("read fingerprint: %w", err)
+		return fileFingerprint{}, fmt.Errorf("read fingerprint: %w", err)
 	}
-	return f, nil
+	return state, nil
 }

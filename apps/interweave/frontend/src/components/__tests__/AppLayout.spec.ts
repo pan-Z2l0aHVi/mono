@@ -48,7 +48,8 @@ vi.mock('@/services/library', () => ({
         return () => {
           fileDrop.listener = null
         }
-      }
+      },
+      onURLsDropped: () => () => {}
     },
     system: { openExternal, writeClipboardText }
   })

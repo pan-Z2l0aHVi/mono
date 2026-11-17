@@ -10,6 +10,8 @@ export interface NativeDialogPresenceOptions {
   getTransitionTarget?(): HTMLElement | null
   isConnected(): boolean
   isOpen(): boolean
+  /** 视觉退场完成、原生 dialog 离开 top layer 的时刻；不参与 reconcile 的打开收敛。 */
+  onClosed?: () => void
 }
 
 export interface NativeDialogPresenceApi {
@@ -77,6 +79,7 @@ export const defineNativeDialogPresence = () =>
         dialog.close?.()
       }
       unregisterModalLayer(dialog)
+      ctx.onClosed?.()
     }
 
     const startOpening = () => {

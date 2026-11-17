@@ -1,5 +1,9 @@
 # Mono
 
+[![CI](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml/badge.svg)](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml)
+[![Deploy Pages](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/deploy-pages.yml/badge.svg)](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/deploy-pages.yml)
+[![License: MIT](https://img.shields.io/badge/license-MIT-blue)](https://github.com/pan-Z2l0aHVi/mono)
+
 > 跨端、跨技术栈、跨 agent 的开源 monorepo 工程项目，包含代码、设计资源与文档。
 
 [English](./README.md) | 简体中文

@@ -5,6 +5,7 @@ export { defineContextCorpus, type ContextCorpusOptions, type SkillsSurface } fr
 export { defineNoMutualLinks, type NoMutualLinksOptions } from './no-mutual-links'
 export { definePackageContract } from './package-contract'
 export { defineReadmeLocales, type ReadmeLocalesOptions } from './readme-locales'
+export { defineThemeTokenParity, type ThemeTokenParityOptions } from './theme-token-parity'
 export {
   defineWorkspace,
   listPnpmWorkspaceManifests,

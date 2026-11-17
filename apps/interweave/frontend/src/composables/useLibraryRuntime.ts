@@ -141,15 +141,12 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     }
   }
 
-  async function refreshSource(source: Pick<ResourceSourceView, 'id' | 'type'>) {
+  async function refreshSource(source: Pick<ResourceSourceView, 'id'>) {
     const sourceId = source.id
     refreshingSourceIds.value = [...new Set([...refreshingSourceIds.value, sourceId])]
     error.value = ''
     try {
-      const updated =
-        source.type === 'file'
-          ? await runtime.sources.refreshFile(sourceId)
-          : await runtime.sources.refreshURL(sourceId)
+      const updated = await runtime.sources.refreshSource(sourceId)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
@@ -160,26 +157,11 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     }
   }
 
-  async function replaceFileSource(sourceId: string, inputPath: string) {
+  async function replaceSource(sourceId: string, input: string) {
     replacingSourceIds.value = [...new Set([...replacingSourceIds.value, sourceId])]
     error.value = ''
     try {
-      const updated = await runtime.sources.replaceFile(sourceId, inputPath)
-      store.upsertResource(updated)
-      return updated
-    } catch (cause) {
-      error.value = errorMessage(cause)
-      throw cause
-    } finally {
-      replacingSourceIds.value = replacingSourceIds.value.filter(id => id !== sourceId)
-    }
-  }
-
-  async function replaceURLSource(sourceId: string, inputURL: string) {
-    replacingSourceIds.value = [...new Set([...replacingSourceIds.value, sourceId])]
-    error.value = ''
-    try {
-      const updated = await runtime.sources.replaceURL(sourceId, inputURL)
+      const updated = await runtime.sources.replaceSource(sourceId, input)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
@@ -271,8 +253,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     deleteResources,
     saveTags,
     refreshSource,
-    replaceFileSource,
-    replaceURLSource,
+    replaceSource,
     defaultOpenWith,
     openExternal,
     saveSourceThumbnail,

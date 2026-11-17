@@ -15,6 +15,7 @@
     "check-changeset": "node scripts/checks/check-changeset.mjs",
     "check-context": "node scripts/checks/check-context.mjs",
     "check-pack": "node scripts/checks/check-pack.mjs",
+    "check-generated-parity": "node scripts/checks/check-generated-parity.mjs",
     "check-code": "pnpm run check-cspell && vp check && pnpm run check-go && pnpm run check-stylelint",
     "check-go": "node scripts/checks/check-go.mjs",
     "check-stylelint": "pnpm exec stylelint --allow-empty-input \"**/*.{css,scss,less,html,vue}\"",

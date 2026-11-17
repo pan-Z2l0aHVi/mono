@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { isSourceAvailabilityEvent } from '../types'
+import { isPreviewRevokedEvent, isSourceAvailabilityEvent } from '../types'
 
 describe('isSourceAvailabilityEvent（事件载荷守卫）', () => {
   it('接受完整载荷，size_bytes 缺省也接受', () => {
@@ -47,5 +47,16 @@ describe('isSourceAvailabilityEvent（事件载荷守卫）', () => {
     expect(isSourceAvailabilityEvent({ ...base, changed_at: undefined })).toBe(false)
     expect(isSourceAvailabilityEvent({ ...base, source_id: '' })).toBe(false)
     expect(isSourceAvailabilityEvent({ ...base, size_bytes: '128' })).toBe(false)
+  })
+})
+
+describe('isPreviewRevokedEvent（预览驱逐载荷守卫）', () => {
+  it('接受非空 token 列表，拒绝畸形载荷', () => {
+    expect(isPreviewRevokedEvent(['token-a', 'token-b'])).toBe(true)
+    expect(isPreviewRevokedEvent([])).toBe(true)
+    expect(isPreviewRevokedEvent(null)).toBe(false)
+    expect(isPreviewRevokedEvent('token-a')).toBe(false)
+    expect(isPreviewRevokedEvent([1])).toBe(false)
+    expect(isPreviewRevokedEvent([''])).toBe(false)
   })
 })

@@ -193,33 +193,51 @@ func TestURLSourceOperations(t *testing.T) {
 		t.Errorf("expected URL resource kind web without size, got kind=%q size=%v", res.Kind, res.SizeBytes)
 	}
 
-	refreshed, err := srcService.RefreshURLSource(ctx, res.Sources[0].ID)
+	refreshed, err := srcService.RefreshSource(ctx, res.Sources[0].ID)
 	if err != nil {
-		t.Fatalf("RefreshURLSource error: %v", err)
+		t.Fatalf("RefreshSource(url) error: %v", err)
 	}
 	if refreshedSource := sourceByID(refreshed, res.Sources[0].ID); refreshedSource == nil || !refreshedSource.Available {
 		t.Errorf("expected refreshed source to stay available, got %+v", refreshed.Sources)
 	}
 
 	filePath := tempFile(t, "src-*.txt")
-	added, err := srcService.AddFileSource(ctx, res.ID, filePath)
+	added, err := srcService.AddSource(ctx, res.ID, storage.SourceTypeFile, filePath)
 	if err != nil {
-		t.Fatalf("AddFileSource error: %v", err)
+		t.Fatalf("AddSource error: %v", err)
 	}
 	fileSrc := sourceByLocation(added, filePath)
 	if fileSrc == nil {
 		t.Fatalf("expected the added source in the returned resource view, got %+v", added.Sources)
 	}
-	if _, err := srcService.RefreshURLSource(ctx, fileSrc.ID); err == nil || err.Error() != "only URL sources can be refreshed" {
-		t.Errorf("expected only URL sources error, got %v", err)
+	// RefreshSource 的类型由存量行派生：文件入口同样可以刷新，且类型不变。
+	refreshedFile, err := srcService.RefreshSource(ctx, fileSrc.ID)
+	if err != nil {
+		t.Fatalf("RefreshSource(file) error: %v", err)
+	}
+	if got := sourceByID(refreshedFile, fileSrc.ID); got == nil || got.Type != storage.SourceTypeFile || !got.Available {
+		t.Errorf("expected refreshed file source to stay an available file, got %+v", got)
 	}
 
-	// 替换 URL 保留顺位与首选角色，只改变入口本身。
-	replaced, err := srcService.ReplaceURLSource(ctx, fileSrc.ID, ts.URL)
+	// 替换保留类型、顺位与首选角色，只改变入口本身。
+	withURL, err := srcService.AddSource(ctx, res.ID, storage.SourceTypeURL, ts.URL+"/spare")
 	if err != nil {
-		t.Fatalf("ReplaceURLSource error: %v", err)
+		t.Fatalf("AddSource(url) error: %v", err)
 	}
-	replacedSource := sourceByID(replaced, fileSrc.ID)
+	var spareID string
+	for _, candidate := range withURL.Sources {
+		if candidate.Type == storage.SourceTypeURL && candidate.ID != res.Sources[0].ID {
+			spareID = candidate.ID
+		}
+	}
+	if spareID == "" {
+		t.Fatalf("expected the added URL source, got %+v", withURL.Sources)
+	}
+	replaced, err := srcService.ReplaceSource(ctx, spareID, ts.URL+"/replaced")
+	if err != nil {
+		t.Fatalf("ReplaceSource error: %v", err)
+	}
+	replacedSource := sourceByID(replaced, spareID)
 	if replacedSource == nil {
 		t.Fatalf("expected the replaced source in the returned resource view, got %+v", replaced.Sources)
 	}
@@ -270,9 +288,9 @@ func TestFileResourceDisplayMetadataAndRefresh(t *testing.T) {
 	if err := os.Remove(path); err != nil {
 		t.Fatalf("failed to remove fixture: %v", err)
 	}
-	refreshed, err := srcService.RefreshFileSource(ctx, sourceID)
+	refreshed, err := srcService.RefreshSource(ctx, sourceID)
 	if err != nil {
-		t.Fatalf("RefreshFileSource unavailable error: %v", err)
+		t.Fatalf("RefreshSource unavailable error: %v", err)
 	}
 	if refreshedSource := sourceByID(refreshed, sourceID); refreshedSource == nil || refreshedSource.Available {
 		t.Errorf("expected missing file to be unavailable after refresh, got %+v", refreshed.Sources)
@@ -281,9 +299,9 @@ func TestFileResourceDisplayMetadataAndRefresh(t *testing.T) {
 	if err := os.WriteFile(path, []byte("123456789"), 0o644); err != nil {
 		t.Fatalf("failed to restore fixture: %v", err)
 	}
-	refreshed, err = srcService.RefreshFileSource(ctx, sourceID)
+	refreshed, err = srcService.RefreshSource(ctx, sourceID)
 	if err != nil {
-		t.Fatalf("RefreshFileSource restored error: %v", err)
+		t.Fatalf("RefreshSource restored error: %v", err)
 	}
 	restoredSource := sourceByID(refreshed, sourceID)
 	if restoredSource == nil || !restoredSource.Available || restoredSource.Location != path ||
@@ -316,10 +334,10 @@ func TestFileSourceRefreshTypeAndErrorPaths(t *testing.T) {
 	if err != nil {
 		t.Fatalf("addURLResource error: %v", err)
 	}
-	if _, err := srcService.RefreshFileSource(ctx, res.Sources[0].ID); err == nil || err.Error() != "only file sources can be refreshed" {
-		t.Errorf("expected file refresh type error, got %v", err)
+	if _, err := srcService.RefreshSource(ctx, res.Sources[0].ID); err != nil {
+		t.Errorf("expected URL source refresh to succeed through RefreshSource, got %v", err)
 	}
-	if _, err := srcService.RefreshFileSource(ctx, "missing"); err == nil || err.Error() != "source not found" {
+	if _, err := srcService.RefreshSource(ctx, "missing"); err == nil || err.Error() != "source not found" {
 		t.Errorf("expected source not found for missing file refresh, got %v", err)
 	}
 }
@@ -337,9 +355,9 @@ func TestPreferredSourceSwitching(t *testing.T) {
 	firstID := res.Sources[0].ID
 
 	secondPath := tempFile(t, "pref2-*.txt")
-	secondRes, err := srcService.AddFileSource(ctx, res.ID, secondPath)
+	secondRes, err := srcService.AddSource(ctx, res.ID, storage.SourceTypeFile, secondPath)
 	if err != nil {
-		t.Fatalf("AddFileSource error: %v", err)
+		t.Fatalf("AddSource error: %v", err)
 	}
 	second := sourceByLocation(secondRes, secondPath)
 	if second == nil {
@@ -414,7 +432,7 @@ func TestEdgeErrorPathsAndRemoval(t *testing.T) {
 	defer cleanup()
 	ctx := context.Background()
 
-	if _, err := srcService.RefreshURLSource(ctx, "missing"); err == nil || err.Error() != "source not found" {
+	if _, err := srcService.RefreshSource(ctx, "missing"); err == nil || err.Error() != "source not found" {
 		t.Errorf("expected source not found for refresh, got %v", err)
 	}
 
@@ -430,9 +448,9 @@ func TestEdgeErrorPathsAndRemoval(t *testing.T) {
 
 	// 删除非首选 Source 不触发回退，首选保持原样。
 	secondPath := tempFile(t, "edge2-*.txt")
-	secondRes, err := srcService.AddFileSource(ctx, res.ID, secondPath)
+	secondRes, err := srcService.AddSource(ctx, res.ID, storage.SourceTypeFile, secondPath)
 	if err != nil {
-		t.Fatalf("AddFileSource error: %v", err)
+		t.Fatalf("AddSource error: %v", err)
 	}
 	second := sourceByLocation(secondRes, secondPath)
 	if second == nil {
@@ -477,8 +495,8 @@ func TestRecoveryScanShutdownRejectsNewScan(t *testing.T) {
 	if err := os.Remove(path); err != nil {
 		t.Fatalf("remove fixture: %v", err)
 	}
-	if _, err := srcService.RefreshFileSource(ctx, sourceID); err != nil {
-		t.Fatalf("RefreshFileSource error: %v", err)
+	if _, err := srcService.RefreshSource(ctx, sourceID); err != nil {
+		t.Fatalf("RefreshSource error: %v", err)
 	}
 
 	if _, err := srcService.StartRecoveryScan(ctx, []string{sourceID}, dir); err != nil {

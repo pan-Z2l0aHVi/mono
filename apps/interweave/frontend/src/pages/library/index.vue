@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import { toast, type WebUiEditableText, type WebUiEvent, type WebUiTextarea } from '@greypan/web-ui'
 import { useElementSize } from '@vueuse/core'
-import { Clipboard } from '@wailsio/runtime'
 import { computed, nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 import { useRouter } from 'vue-router'
 
@@ -12,6 +11,7 @@ import DetailDrawer from '@/components/library/DetailDrawer.vue'
 import DuplicateConfirmDialog from '@/components/library/DuplicateConfirmDialog.vue'
 import EditTagsDialog from '@/components/library/EditTagsDialog.vue'
 import PreviewDrawer from '@/components/library/PreviewDrawer.vue'
+import { createPreviewLease } from '@/components/library/previewLease'
 import { DRAWER_TITLE_EDITOR_KEY, type NameEditorRef } from '@/components/library/rename'
 import ResourceList from '@/components/library/ResourceList.vue'
 import {
@@ -32,14 +32,14 @@ import {
   MENU_TOGGLE_FILTER_BAR_EVENT,
   onMenuAction
 } from '@/composables/menuActions'
+import { selectLitEditor } from '@/composables/useEditorFocusRestore'
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLayoutMobile } from '@/composables/useLayoutMobile'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
 import { useLibrarySelection } from '@/composables/useLibrarySelection'
-import { pendingWindowFileDrops } from '@/composables/windowFileDrop'
+import { pendingWindowFileDrops, pendingWindowURLDrops } from '@/composables/windowFileDrop'
 import type { LibraryQueueItem } from '@/services/library'
 import { userMessage } from '@/services/library/userMessage'
-import { hasWailsRuntime } from '@/services/runtime'
 import { useLibraryStore } from '@/stores/library'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
@@ -67,8 +67,7 @@ const {
   updateResourceNote,
   deleteResources,
   saveTags,
-  replaceFileSource,
-  replaceURLSource,
+  replaceSource,
   defaultOpenWith,
   openExternal,
   saveSourceThumbnail,
@@ -99,7 +98,10 @@ const restoreBusy = ref(false)
 const restoreError = ref('')
 const failedRestoreIds = ref<string[]>([])
 const activeRestoreItemId = ref<string | null>(null)
-const addQueue = createLibraryAddQueue(runtime)
+// 添加队列与找回弹窗共用一本预览账本：token 结算、驱逐对账都只在 lease 里发生。
+const previewLease = createPreviewLease(runtime)
+const previewEntries = previewLease.entries
+const addQueue = createLibraryAddQueue(runtime, previewLease)
 const queue = addQueue.queue
 const duplicatePrompt = addQueue.duplicatePrompt
 const submitting = addQueue.submitting
@@ -120,6 +122,19 @@ watch(
     addError.value = ''
     addOpen.value = true
     for (const paths of batches) void addQueue.enqueueFileLocations(paths)
+  },
+  { immediate: true }
+)
+watch(
+  pendingWindowURLDrops,
+  batches => {
+    if (!batches.length) return
+    pendingWindowURLDrops.value = []
+    addError.value = ''
+    addOpen.value = true
+    for (const urls of batches) {
+      for (const url of urls) void addQueue.enqueueURL(url)
+    }
   },
   { immediate: true }
 )
@@ -157,6 +172,8 @@ onScopeDispose(() => {
   stopSourceAvailability()
   stopMenuActions.forEach(stop => stop())
   void addQueue.close()
+  void previewLease.clear()
+  previewLease.dispose()
 })
 
 const visibleResources = computed(() => store.filteredResources)
@@ -209,12 +226,10 @@ function setNameEditorRef(id: string): NameEditorRef {
 function startResourceRename(resource: ResourceView, surface: 'list' | 'drawer' = 'list') {
   const key = surface === 'drawer' ? DRAWER_TITLE_EDITOR_KEY : resource.id
   editingNameKey.value = key
-  void nextTick(async () => {
+  // 编辑器实例要等本轮渲染挂上；selectLitEditor 负责 updateComplete + WebKit 单帧等待。
+  void nextTick(() => {
     const editor = resourceNameEditors.value[key]
-    await editor?.updateComplete
-    // 等隐藏的触发按钮完成布局，避免 WebKit 把刚交给编辑器的焦点移回 drawer。
-    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-    if (editingNameKey.value === key && resourceNameEditors.value[key] === editor) editor?.select()
+    void selectLitEditor(editor, () => editingNameKey.value === key && resourceNameEditors.value[key] === editor)
   })
 }
 
@@ -371,13 +386,7 @@ async function runConfirmedAction() {
 }
 
 function closeConfirmDialog() {
-  /*
-   * 只翻 open，不清内容（#189）。
-   *
-   * dialog 关闭后仍有 260ms 退场动画，期间弹窗保持可见。内容必须留到下一次打开时整体替换：
-   * 标题、说明、button 文案一清空，弹窗高度单帧掉 61.6px；紧凑变体还因为宽度从标题字符串派生，
-   * 从 320px 跳回默认的 360px。退场期间没有任何一帧的盒子尺寸变化，也不需要在页面侧复述退场时长。
-   */
+  // 只翻 open、不清内容：退场期间保留上次内容的合同见 useLingering。
   confirmOpen.value = false
 }
 
@@ -414,10 +423,13 @@ function openAddLinkDialog() {
 
 function setAddOpen(open: boolean) {
   addOpen.value = open
-  if (!open) {
-    addError.value = ''
-    void addQueue.close()
-  }
+  if (!open) addQueue.resolveDuplicate(false)
+}
+
+function handleAddDialogClosed() {
+  if (addOpen.value) return
+  addError.value = ''
+  void addQueue.close()
 }
 
 /*
@@ -435,14 +447,14 @@ async function pasteFilePaths(clipboardText?: string) {
       await addQueue.enqueueFileLocations(paths)
       return
     }
-    const text = clipboardText ?? (hasWailsRuntime() ? await Clipboard.Text() : await navigator.clipboard.readText())
+    const text = clipboardText ?? (await runtime.system.readClipboardText())
     if (!addOpen.value) return
     const url = normalizeLibraryURL(text)
     if (url) {
       await addQueue.enqueueURL(url)
       return
     }
-    toast.warning('剪切板中没有可添加的文件或有效链接', { position: 'top-center' })
+    toast.warning('剪切板中没有可导入的文件或有效链接', { position: 'top-center' })
   } catch {
     toast.warning('无法读取剪切板，请重试', { position: 'top-center' })
   }
@@ -475,7 +487,7 @@ async function submitQueue() {
     })
     if (completed) addOpen.value = false
   } catch (cause) {
-    addError.value = takeOperationError(cause, '添加资源失败，请稍后重试')
+    addError.value = takeOperationError(cause, '导入资源失败，请稍后重试')
   }
 }
 
@@ -541,11 +553,6 @@ function openRestoreDialog(items: LibraryRestoreQueueItem[]) {
 
 function setRestoreOpen(open: boolean) {
   restoreOpen.value = open
-  if (!open && !restoreBusy.value) {
-    restoreQueue.value = []
-    restoreError.value = ''
-    activeRestoreItemId.value = null
-  }
 }
 
 function handleRecoverSource(source: ResourceSourceView) {
@@ -566,12 +573,11 @@ async function submitRestoreQueue(items: LibraryRestoreQueueItem[]) {
   activeRestoreItemId.value = null
   try {
     const result = await restoreLibraryQueue(items, {
-      replaceFileSource,
+      replaceSource,
       replaceScannedFileSource: async (sourceId, path, snapshot) => {
         const updated = await runtime.sources.replaceScannedFile(sourceId, path, snapshot)
         store.upsertResource(updated)
       },
-      replaceURLSource,
       onItemStart: itemId => {
         activeRestoreItemId.value = itemId
       }
@@ -739,6 +745,7 @@ onMounted(() => {
     :error="addError"
     :mobile="mobile"
     :tag-colors="store.tagColors"
+    :previews="previewEntries"
     @pick-files="pickFiles"
     @add-url="addQueue.enqueueURL"
     @request-file-paths="pasteFilePaths"
@@ -747,6 +754,7 @@ onMounted(() => {
     @edit-tags="editQueueTags"
     @submit="submitQueue"
     @update:open="setAddOpen"
+    @closed="handleAddDialogClosed"
   />
 
   <!--
@@ -791,8 +799,7 @@ onMounted(() => {
     :poll-scan="runtime.sources.pollRecoveryScan"
     :cancel-scan="runtime.sources.cancelRecoveryScan"
     :discard-scan="runtime.sources.discardRecoveryScan"
-    :prepare-file-preview="runtime.resources.prepareFilePreview"
-    :release-file-preview="runtime.resources.releaseFilePreview"
+    :lease="previewLease"
     @update:open="setRestoreOpen"
     @add-items="restoreQueue = $event"
     @submit="submitRestoreQueue"

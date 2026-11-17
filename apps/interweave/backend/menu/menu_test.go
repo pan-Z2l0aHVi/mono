@@ -25,6 +25,7 @@ func TestCommandValues(t *testing.T) {
 		{CommandCopyAsPlainText, "copy-as-plain-text"},
 		{CommandPasteAsPlainText, "paste-as-plain-text"},
 		{CommandMaximiseWindow, "maximise-window"},
+		{CommandToggleWindowMode, "toggle-window-mode"},
 		{CommandZoomIn, "zoom-in"},
 		{CommandZoomOut, "zoom-out"},
 		{CommandZoomReset, "zoom-reset"},

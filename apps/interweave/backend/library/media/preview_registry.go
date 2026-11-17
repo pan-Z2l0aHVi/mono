@@ -6,8 +6,9 @@ import (
 	"encoding/base64"
 	"errors"
 	"fmt"
-	"os"
 	"sync"
+
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
 )
 
 const (
@@ -22,10 +23,11 @@ type pendingPreviewEntry struct {
 
 // PendingPreviewRegistry 为尚未持久化的本地媒体提供有界、不可推断的读取授权。
 type PendingPreviewRegistry struct {
-	mu       sync.Mutex
-	capacity int
-	entries  map[string]*list.Element
-	recent   *list.List
+	mu          sync.Mutex
+	capacity    int
+	entries     map[string]*list.Element
+	recent      *list.List
+	evictHandle func(token string)
 }
 
 // NewPendingPreviewRegistry 创建使用默认容量的 pending media 注册表。
@@ -44,14 +46,24 @@ func newPendingPreviewRegistry(capacity int) *PendingPreviewRegistry {
 	}
 }
 
+// SetEvictHandler 注册 LRU 驱逐回调。容量淘汰的 token 已失效，宿主需通知持有方
+// 撤销对应预览；回调在锁外执行，可安全调用宿主自身的发送路径。
+//
+// Clear 不触发回调：它只在应用退出时全量撤销，此时窗口已亡，通知没有接收方。
+func (r *PendingPreviewRegistry) SetEvictHandler(handler func(token string)) {
+	r.mu.Lock()
+	defer r.mu.Unlock()
+	r.evictHandle = handler
+}
+
 // Register 授权读取一个已存在的普通文件；容量不足时淘汰最久未使用的授权。
 func (r *PendingPreviewRegistry) Register(location string) (string, error) {
-	info, err := os.Stat(location)
-	if err != nil {
-		return "", fmt.Errorf("stat pending preview: %w", err)
-	}
-	if !info.Mode().IsRegular() {
-		return "", errors.New("pending preview is not a regular file")
+	switch verdict, _ := core.ProbeFileServability(location); verdict {
+	case core.FileServable:
+	case core.FileDefinitelyUnavailable:
+		return "", errors.New("pending preview is not an existing regular file")
+	default:
+		return "", errors.New("pending preview is unreadable right now")
 	}
 
 	for {
@@ -67,12 +79,18 @@ func (r *PendingPreviewRegistry) Register(location string) (string, error) {
 		}
 		element := r.recent.PushBack(pendingPreviewEntry{token: token, location: location})
 		r.entries[token] = element
+		evicted := ""
 		if r.recent.Len() > r.capacity {
 			oldest := r.recent.Front()
-			delete(r.entries, oldest.Value.(pendingPreviewEntry).token)
+			evicted = oldest.Value.(pendingPreviewEntry).token
+			delete(r.entries, evicted)
 			r.recent.Remove(oldest)
 		}
+		handler := r.evictHandle
 		r.mu.Unlock()
+		if evicted != "" && handler != nil {
+			handler(evicted)
+		}
 		return token, nil
 	}
 }

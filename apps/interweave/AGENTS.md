@@ -71,9 +71,10 @@ _Avoid_: 文件树、画布编辑器、关系连线器、资源容器
 
 ## 修改指南
 
-- 添加资源的 preview token 结算时序（waitForPreview → create → releasePreview → close）由 `frontend/src/components/library/addQueue.ts` 的 controller 拥有，页面经 `submit` 提交整个队列，不得自组提交循环。
+- 添加资源的 preview token 结算时序（waitForPreview → create → releasePreview → close）由 `frontend/src/components/library/addQueue.ts` 的 controller 拥有，页面经 `submit` 提交整个队列，不得自组提交循环。token 的发放、驱逐对账与释放由页面持有的 `frontend/src/components/library/previewLease.ts` 统一记账，添加队列与找回弹窗共用同一本 lease。
 - 修改 Go/Wails API 时，先查 Wails 3 官方文档，再核对 Go 测试、frontend bindings 和消费端调用。公开 API 变更遵循上文 allowlist 与生成边界。
 - 文件选择等可取消操作应明确取消语义。class-mode bindings 已将顶层 Wails slice 返回值规范化为非 nullable 数组，前端应消费生成类型而不重复添加 `?? []`。仅 DTO 中仍为可选或 nullable 的字段按其生成类型处理，且不得手改生成 bindings。
+- 文本剪贴板读取走 `runtime.system.readClipboardText`；WebView 的 `navigator.clipboard` 只在浏览器预览适配器（`frontend/src/services/library/mock.ts`）里作为回退使用，leaf 组件不直接 import `@wailsio/runtime`。
 - 修改前端页面、store、组件或交互时，按 [`docs/agents/runtime-verification.md`](../../docs/agents/runtime-verification.md) 在真实 Wails/浏览器集成表面验证。
 - 工具条里展开式字段（搜索框、筛选字段等）的开关策略（按在「字段上下文」容器里不收起、簇内点击后把焦点交还字段、被弹层接管焦点时让位）在 [`frontend/src/composables/useExpandingField.ts`](./frontend/src/composables/useExpandingField.ts)。页面的 header 需要同样行为时，把字段与容器 ref 交给它；判据只用 ref 与 `document.activeElement`，不要在组件里按 `closest('web-ui-…')` 枚举组件类型——header 里的控件会随页面变化。
 

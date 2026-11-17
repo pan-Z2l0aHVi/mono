@@ -64,7 +64,7 @@ function lineOf(code: string, index: number): string {
 }
 
 /** 域名前缀表与 `defineCatch` 的 `throw: ` 一起构成链上全部的归因来源。 */
-const DOMAIN_PREFIX = /^(?:go|git|turbo|md|changeset|pack|script|i18n|port): /
+const DOMAIN_PREFIX = /^(?:go|git|turbo|md|changeset|pack|script|i18n|port|theme): /
 
 it('能力插件的键互不相交，且都不占用链上唯一允许重名的键', () => {
   const owners = new Map<string, string>()
