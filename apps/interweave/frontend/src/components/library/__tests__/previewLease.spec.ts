@@ -109,6 +109,22 @@ describe('preview lease', () => {
     expect(await pending).toBeNull()
   })
 
+  it('驱逐事件早于 prepare 兑现时，晚到的 token 不入账也不再释放', async () => {
+    const preparation = deferred<Awaited<ReturnType<PreparePreview>>>()
+    const releaseFilePreview = vi.fn<ReleasePreview>(async () => {})
+    const { lease, emitRevoked } = createLease(() => preparation.promise, releaseFilePreview)
+
+    const pending = lease.prepare('row', '/tmp/a.png', () => true)
+    // 后端在响应到达前就淘汰了这个 token：事件先到，entries 里还没有 key。
+    emitRevoked(['token-a'])
+    preparation.resolve(preview('/tmp/a.png', 'token-a'))
+
+    expect(await pending).toBeNull()
+    expect(lease.entries.value.row).toBeUndefined()
+    // 后端已删除授权，重复 release 没有意义。
+    expect(releaseFilePreview).not.toHaveBeenCalled()
+  })
+
   it('驱逐事件只移除命中的条目，后端已撤销的 token 不再重复释放', async () => {
     const releaseFilePreview = vi.fn<ReleasePreview>(async () => {})
     const { lease, emitRevoked } = createLease(async path => preview(path, `token-${path}`), releaseFilePreview)

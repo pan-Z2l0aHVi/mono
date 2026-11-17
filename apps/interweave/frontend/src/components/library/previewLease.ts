@@ -46,6 +46,10 @@ export function createPreviewLease(runtime: LeaseRuntime): PreviewLease {
   // per-key 版本让同一 key 的新一轮 prepare 作废旧一轮；全局代次让 clear() 作废所有在途请求。
   const versions = new Map<string, number>()
   const preparations = new Map<string, Promise<PreviewLeaseEntry | null>>()
+  // 已被后端驱逐、但对应 prepare 还没兑现的 token。驱逐事件只按 entries 对账，
+  // 突发入队时 token 可能先被 LRU 淘汰、prepare 的响应后到；没有这份 tombstone
+  // 就会把已吊销的授权写进 entries，渲染方只能拿到 404。
+  const revokedTokens = new Set<string>()
   let generation = 0
 
   function bump(key: string) {
@@ -79,6 +83,10 @@ export function createPreviewLease(runtime: LeaseRuntime): PreviewLease {
       try {
         const preview = await runtime.resources.prepareFilePreview(path)
         const token = preview.token ?? null
+        if (token && revokedTokens.delete(token)) {
+          // 授权在响应到达前就被 LRU 驱逐：后端已删除它，不入账也不再释放。
+          return null
+        }
         if (!token || startedAt !== generation || versions.get(key) !== version || !validity()) {
           await releaseToken(token)
           return null
@@ -118,6 +126,7 @@ export function createPreviewLease(runtime: LeaseRuntime): PreviewLease {
     entries.value = {}
     // 在途 prepare 看到代次变化会自行释放晚到的 token；等它们结算后上一轮 entries 的 token 也已释放完毕。
     await Promise.allSettled(pending)
+    revokedTokens.clear()
     await Promise.allSettled(Object.values(previous).map(entry => releaseToken(entry?.token ?? null)))
   }
 
@@ -127,13 +136,24 @@ export function createPreviewLease(runtime: LeaseRuntime): PreviewLease {
 
   const unsubscribe = runtime.events.onPreviewRevoked(tokens => {
     const revoked = new Set(tokens)
+    const landed = new Set<string>()
     for (const [key, entry] of Object.entries(entries.value)) {
       if (!entry || !revoked.has(entry.token)) continue
+      landed.add(entry.token)
       // 后端已删除授权，无需再调用 release；只让渲染方看到预览消失。
       bump(key)
       dropEntry(key)
     }
+    // 命中不到条目的 token 属于仍在途的 prepare：先记下，等它兑现时拒收。
+    for (const token of revoked) {
+      if (!landed.has(token)) revokedTokens.add(token)
+    }
   })
+
+  function dispose() {
+    unsubscribe()
+    revokedTokens.clear()
+  }
 
   return {
     entries,
@@ -141,6 +161,6 @@ export function createPreviewLease(runtime: LeaseRuntime): PreviewLease {
     revoke,
     clear,
     awaitSettled,
-    dispose: unsubscribe
+    dispose
   }
 }
