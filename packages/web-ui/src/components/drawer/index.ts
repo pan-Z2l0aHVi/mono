@@ -65,6 +65,22 @@ const DRAG_REQUEST_WINDOW_MS = 120
 const BACKDROP_TAP_DISTANCE = 10
 
 /*
+ * fullable 两段手势的行程阈值（判据是**未阻尼指针行程**，不是视觉位移——视觉走
+ * dampOverscroll 的 sqrt 压缩，96px 行程只剩 ~10px 视觉，阻力感来自阻尼本身，
+ * 「拉到底」的判据挂在行程上才不会被阻尼曲线偷走）：
+ *
+ * - 外拉（`raw ≤ -FULL_ENTER_TRAVEL`）→ 吸附 full：不要求松手，同一指针继续可拉回。
+ *   阈值取 96px 是真机调参的起点（§12 第 6 步的手感清单项），不是从尺寸推导的——
+ *   「外拉展开」是方向语义，与 drawer 多宽无关。
+ * - full 态内拉（`raw ≥ FULL_EXIT_TRAVEL`）→ 恢复 base：full 态闭合方向 1:1 跟手，
+ *   行程即位移，两个阈值同值保证「拉出去」与「拉回来」的力度感一致。
+ * - 两个值曾经合并成一个常量；拆开是给真机调参留独立旋钮（展开比恢复更难触发
+ *   是常见的手感诉求），当前取等。
+ */
+const FULL_ENTER_TRAVEL = 96
+const FULL_EXIT_TRAVEL = 96
+
+/*
  * header / footer 让开给「可点控件」的选择器（上下 placement 专用）。
  *
  * 上下 placement 的端头整块可拖后，让开靠**逐个控件**在事件层判断，不靠几何切割：
@@ -281,6 +297,15 @@ export class WebUiDrawer extends LitElement {
   @property({ type: Boolean, reflect: true }) override draggable = false
 
   /**
+   * 拖拽全屏（需同时开启 `draggable`）：打开态向外拖拽（背离闭合方向）过行程阈值，
+   * 或快速向外甩动后松手，drawer 吸附为占满视口（非 headless 减去四周留边）的全屏态。
+   * 同一按住的手势往回拉先恢复原尺寸，继续朝闭合方向拉过半尺寸阈值才关闭；
+   * full 态下按钮 / Escape / backdrop 照常直接关闭。
+   * 默认关闭：现有 `draggable` 消费方行为不变，显式开启才获得该手势。
+   */
+  @property({ type: Boolean, reflect: true }) fullable = false
+
+  /**
    * 打开时整页朝 drawer 进场方向让开一段距离：横向 1 个轴单位 a 是 `1vw`、纵向是 `1vh`，
    * 第 1 层让开 16a，之后每层减半，等比和收敛到 32a、不会超过。
    * 位移写在 `documentElement` 上：页面里的 fixed 内容会一起走，top layer 中的
@@ -341,9 +366,12 @@ export class WebUiDrawer extends LitElement {
     isOpen: () => this.open
   })
   // nested 层序：打开后纳入全局栈，上层打开/关闭时本层缩放平移。
+  // depth 变化回调先于 applyLayers 的 size 收集执行（见 nested-drawer-layers.ts），
+  // full 态在此同步瞬时收起，露边数学不被 full 宽度污染。
   private readonly _nestedLayers = defineNestedDrawerLayers().make({
     getDialog: () => this.dialog,
-    getPlacement: () => this._placement
+    getPlacement: () => this._placement,
+    onDepthChange: depth => this._collapseFullForNested(depth)
   })
   /*
    * 整页让开（page-shift）。轴向与符号都取自拖拽那套：页面朝 drawer 的**进场方向**移动，
@@ -385,6 +413,23 @@ export class WebUiDrawer extends LitElement {
   private _swipeIntentDisp = -1
   // 已判定为「改主意」，甩动分支据此拒绝关闭。
   private _swipeCancelled = false
+  /*
+   * fullable 两段手势的状态（方案 §3）：
+   *
+   * - `_stage` 决定 onMove 走哪个分支；'full' 跨手势持久（full 态松手弹回后仍 full），
+   *   复位只经 `_resetStage()`（调用点全集见它的注释）。
+   * - `_stageOrigin` 是本段手势的指针轴零点：首个 pointermove 校准时设置（与手势层
+   *   `calibrateOnFirstMove` 同拍，吸收按下到首个 move 的空隙），enter-full 时重设——
+   *   两次拉动（base→full→close）的判定零点因此随吸附点换段。
+   * - `_baseDragSize` 是 base 阶段的判定尺寸：exit-full 后 260ms 宽度回位窗口内，
+   *   阈值不读过渡中的中途值。判定一律走 `_judgeSize()`，禁止裸读本字段。
+   * - `_fullArmed` 在 pointerdown 一次性判定（见 `_handleDragPointerDown`），
+   *   是 enter 与甩动展开共用的唯一开关。
+   */
+  private _stage: 'base' | 'full' = 'base'
+  private _stageOrigin: number | null = null
+  private _baseDragSize = 0
+  private _fullArmed = false
   // 释放后的 CSS transition 收尾：完成回调，以及终值与当前值相同时
   // 不会派发 transitionend 的兜底定时器。
   private _settleFinish: (() => void) | null = null
@@ -417,6 +462,19 @@ export class WebUiDrawer extends LitElement {
     return this._dragAxis === 'x' ? dialog.offsetWidth : dialog.offsetHeight
   }
 
+  /*
+   * 判定用尺寸：手势会话内冻结的 base 尺寸优先，清零后回落实时测量（= 现状语义）。
+   *
+   * 冻结解决 exit-full 后 260ms 宽度回位窗口内的中途测量：阈值与收尾终点都不读
+   * 过渡中的值。回落存在的原因是 `_resetStage()` 可能在手势仍活跃时清零（运行时
+   * 翻转 fullable / draggable / placement——真实触发源是消费方随断点计算的
+   * placement），此时回落实测恰好是翻转前的现状行为，阈值不会塌缩到 10px 下限。
+   * 回落是刻意降级：close→reopen 边界同样清零，重开 260ms 内抓取读实测（= 现状）。
+   */
+  private _judgeSize(): number {
+    return this._baseDragSize || this._measureDragSize()
+  }
+
   // 关闭距离阈值：尺寸的一半，下限 10px。
   // 胶囊的 accent 视觉确认与实际判定共用同一阈值，两者不会漂移。
   private _dragCloseThreshold(size: number): number {
@@ -433,8 +491,12 @@ export class WebUiDrawer extends LitElement {
 
   // 闭合方向上的完全出屏距离：drawer 尺寸 + 浮动留边（headless 下即尺寸本身）。
   // CSS 闭合态 transform、controlled 悬停终态与弹簧终点共用同一数学，避免衔接跳变。
+  // 尺寸走 `_judgeSize()`（冻结优先）：受控回写弹回路径在 exit-full 的宽度回位窗口内
+  // 到达时（:808/:933），实测值是过渡中途值，终点会偏离 CSS 闭合基线；
+  // 冻结值恰是回位完成后的精确终点。原先这条路只靠 180+120ms > 260ms 的常量
+  // 巧合不出错，改为冻结读后不再依赖时序假设。
   private _dragCloseDistance(dialog: HTMLDialogElement): number {
-    return this._measureDragSize() + this._readDrawerInset(dialog)
+    return this._judgeSize() + this._readDrawerInset(dialog)
   }
 
   private _isDragging(): boolean {
@@ -533,6 +595,28 @@ export class WebUiDrawer extends LitElement {
     this._lastAxisPos = axisPos
     this._swipeIntentDisp = -1
     this._swipeCancelled = false
+    /*
+     * fullable 会话捕获（方案 §2.3 / §4）：
+     * - armed 收口 opt-in（fullable && draggable）与抓取瞬间静位：弹回/收尾中途
+     *   抓取只做平移跟手，永不触发 full——否则触发瞬间的 translate 归零会从
+     *   大位移直接跳到全幅展开。语义：从静止起手的外拉才可能展开。
+     * - 尺寸会话冻结：宽度/高度过渡进行中（上一手势 exit-full 或弹回未完的
+     *   260ms 窗口内再抓取）沿用上一会话的冻结值；full 态跨手势持久同理沿用；
+     *   其余会话重新实测。
+     */
+    const hasSizeTransition =
+      typeof dialog.getAnimations === 'function' &&
+      dialog.getAnimations().some(animation => {
+        // 本仓 TS lib 未声明 CSSTransition.propertyName，按结构读。
+        const property = (animation as Animation & { propertyName?: string }).propertyName
+        return property === 'width' || property === 'height'
+      })
+    this._fullArmed = this.fullable && this.draggable && Math.abs(this._dragInitialOffset) < 1
+    this._stageOrigin = null
+    this._baseDragSize =
+      this._stage === 'full' || hasSizeTransition
+        ? this._baseDragSize || this._measureDragSize()
+        : this._measureDragSize()
     dialog.classList.add('is-dragging')
     // 收尾过渡进行中重新抓取时内联还停在收尾终值（打开位/闭合位），不写回当前位移
     // 会在抑制生效的瞬间跳到终值。写回后计算值 == 抓取瞬间的视觉位置，无跳变。
@@ -543,18 +627,35 @@ export class WebUiDrawer extends LitElement {
       // 拖拽零点与判定时钟一起重置到首个 move。
       calibrateOnFirstMove: true,
       onMove: info => {
-        // info 的 delta/duration 已以校准点为零点。
-        const pointerDelta = this._dragAxis === 'x' ? info.deltaX : info.deltaY
-        // 本次手势自校准点起的**增量**（朝闭合方向为正，未阻尼）。
-        const dragDelta = pointerDelta * this._dragCloseSign
-        // 阻尼只作用于增量，再叠加抓取瞬间的基准位移。对总位移做阻尼会在「从弹回中
-        // 重新抓取」时差出可见位移——基准位移本身会被一起压缩，元素不再接着视觉位置走。
-        this._dragOffset = this._dragInitialOffset + dampOverscroll(dragDelta)
-        this._trackSwipeCancel(this._dragAxis === 'x' ? info.clientX : info.clientY, dragDelta)
+        const axisPos = this._dragAxis === 'x' ? info.clientX : info.clientY
+        // 本段零点与手势层校准同拍：首个 move 即原点（吸收按下到首个 move 的空隙）。
+        if (this._stageOrigin === null) this._stageOrigin = axisPos
+        // 自本段原点起的**未阻尼行程**（朝闭合方向为正）。base 态两支公式相同
+        //（dampOverscroll 正区间恒等），分支只为 full 的触发与退出服务；
+        // 阻尼只作用于增量，再叠加抓取瞬间的基准位移——对总位移做阻尼会在
+        //「从弹回中重新抓取」时差出可见位移，基准位移会被一起压缩。
+        const raw = (axisPos - this._stageOrigin) * this._dragCloseSign
+        this._dragOffset = this._dragInitialOffset + dampOverscroll(raw)
+        if (this._stage === 'full') {
+          if (raw >= 0) {
+            // full 态闭合方向 1:1 跟手（full 态 `_dragInitialOffset` 恒为 0）。
+            // 0 ≤ raw < 阈值即 1:1 跟手段：松手弹回 full，无死区、无 rebase。
+            this._dragOffset = raw
+            if (raw >= FULL_EXIT_TRAVEL) {
+              this._exitFull(dialog, axisPos)
+              // 不 rebase：offset 与判定连续，「已恢复尺寸、被内拉 raw」自洽。
+            }
+          }
+          // raw < 0：出屏方向橡皮筋（dampOverscroll 自限幅，400px 行程剩 20px）。
+        } else if (this._fullArmed && raw <= -FULL_ENTER_TRAVEL) {
+          // 吸附 full：不要求松手，同一指针继续可拉回（两段式）。
+          this._enterFull(dialog, axisPos)
+        }
+        this._trackSwipeCancel(axisPos, raw)
 
         // 达到关闭阈值时胶囊换成更实的中性灰作视觉确认。与距离分支共用同一量
         //（自抓取瞬间起的净位移）与同一阈值，视觉确认与实际判定不会漂移。
-        const dragSize = this._measureDragSize()
+        const dragSize = this._judgeSize()
         const dragDisplacement = this._dragOffset - this._dragInitialOffset
         dialog.classList.toggle('is-drag-close', dragDisplacement > this._dragCloseThreshold(dragSize))
         this._applyDragOffset(dialog, this._dragOffset)
@@ -563,7 +664,7 @@ export class WebUiDrawer extends LitElement {
         this._dragGesture = null
         this._syncDragInert()
         dialog.classList.remove('is-dragging', 'is-drag-close')
-        const size = this._measureDragSize()
+        const size = this._judgeSize()
         const velocity = (this._dragAxis === 'x' ? info.velocityX : info.velocityY) * this._dragCloseSign
         // 净位移从抓取瞬间的位移起算（弹回/收尾过渡中被重新抓取时起点非 0）。
         const displacement = this._dragOffset - this._dragInitialOffset
@@ -579,10 +680,43 @@ export class WebUiDrawer extends LitElement {
         // `_dragOffset` 只留给收尾的起点使用。
         const shouldClose = displacement > this._dragCloseThreshold(size) || flicked
 
+        // full 态松手一律弹回：保持 open 与 full，绝不关闭（两段式的「第一段」归宿）。
+        if (this._stage === 'full') {
+          this._settleRebound(dialog, velocity, this._dragOffset)
+          return
+        }
+
+        // 甩动展开：armed 会话的快速外甩（与「快速内甩 = 关闭」对称）。
+        // `!_swipeCancelled` 与关闭甩动同一条改主意守卫：内拉后反悔的高速回扫是
+        // 同一种噪声，关闭被拦、展开同拦不豁免。复用 `_enterFull` 的第 1/3 步
+        //（origin 置 null——松手后无后续 move），跳过第 2 步：不写 translate 0，
+        // ≤10px 的阻尼残余交给 `_settleRebound` 平滑归零，与宽度展开并行动画。
+        if (
+          this._fullArmed &&
+          !shouldClose &&
+          !this._swipeCancelled &&
+          velocity <= -DRAG_FLICK_VELOCITY &&
+          this._dragOffset <= 0
+        ) {
+          const from = this._dragOffset
+          this._stage = 'full'
+          this._stageOrigin = null
+          this._dragInitialOffset = 0
+          this._cancelBaseline = 0
+          this._swipeIntentDisp = -1
+          this._swipeCancelled = false
+          dialog.classList.add('is-full')
+          this._settleRebound(dialog, velocity, from)
+          return
+        }
+
         if (shouldClose) this._settleToClose(dialog, velocity)
         else this._settleRebound(dialog, velocity, this._dragOffset)
       },
       onCancel: () => {
+        // pointercancel / 轴向冲突 / lostpointercapture 的终结路径。
+        // stage 刻意不重置：弹回语义要求状态保留（full 态被取消 → 弹回后仍 full；
+        // base 同理）。复位只归 `_resetStage()` 的调用点全集管。
         this._dragGesture = null
         this._syncDragInert()
         dialog.classList.remove('is-dragging', 'is-drag-close')
@@ -636,6 +770,8 @@ export class WebUiDrawer extends LitElement {
 
   // 受控状态写入等外部原因强制终结拖拽：清手势状态与拖拽样式，不弹回，
   // 后续管线（关闭/打开）由调用方继续执行。
+  // fullable stage 不在这里复位：唯一调用点在 updated() 的 !open 分支内、
+  // 紧邻其后就是 `_resetStage({ keepFullClass: true })`，同拍幂等，复位归 state 的 owner。
   private _cancelActiveDrag() {
     if (!this._isDragging()) return
     this._dragGesture?.destroy()
@@ -645,6 +781,85 @@ export class WebUiDrawer extends LitElement {
     if (!dialog) return
     dialog.classList.remove('is-dragging', 'is-drag-close')
     this._clearDragStyles(dialog)
+  }
+
+  /*
+   * fullable 两段手势的唯一复位入口（方案 §3.7）。调用点全集：
+   *
+   * 1. updated() open→false：字段归位，`keepFullClass` 保留 is-full 穿越退出动画
+   *    （闭合基线 translateX(calc(100% + inset)) 是百分比、随自身宽度解析，
+   *    退出全程 full 宽度终点自洽）；类由 close 完成钩子摘除（见下）。
+   * 2. updated() open→true：防御性全清（快速重开、异常残留一律清）。
+   * 3. updated() fullable/draggable/placement 变化（仅 open 时）：立即全清；
+   *    fullable/draggable 摘除时 CSS 过渡门同时失效，宽度瞬归位。
+   * 4. disconnectedCallback：shadow 跨断连保留，不摘会在重挂载时带 full 态回来。
+   * 5. close 完成摘类（transitionend + native close 双钩子，幂等）。
+   *
+   * 不调用点：onCancel（弹回语义要求 stage 保留：full 弹回后仍 full）；
+   * `_cancelActiveDrag`（唯一调用点紧邻调用点 1，同拍覆盖）。
+   */
+  private _resetStage(options: { keepFullClass?: boolean } = {}) {
+    this._stage = 'base'
+    this._stageOrigin = null
+    this._baseDragSize = 0
+    this._fullArmed = false
+    if (!options.keepFullClass) this.dialog?.classList.remove('is-full')
+  }
+
+  /*
+   * 吸附全屏（armed 会话、行程越限到达；方案 §3.4）。
+   *
+   * translate 从阻尼残余（96px 行程 ≈ 10px 视觉）归零：同帧被 260ms 宽度展开掩盖，
+   * 这是一次有意的硬归位——full 的几何是「无位移贴满」，残余位移不能带进 full 态。
+   * `_baseDragSize` 已在 pointerdown 捕获，此处不动（full 态的 close 阈值仍按
+   * 恢复后的 base 尺寸算，才与 base 态直拉的判定一致）。
+   */
+  private _enterFull(dialog: HTMLDialogElement, axisPos: number) {
+    this._stage = 'full'
+    this._stageOrigin = axisPos
+    this._dragInitialOffset = 0
+    this._dragOffset = 0
+    this._cancelBaseline = axisPos
+    this._swipeIntentDisp = -1
+    this._swipeCancelled = false
+    this._applyDragOffset(dialog, 0)
+    dialog.classList.add('is-full')
+  }
+
+  /*
+   * 从 full 回 base（同一手势内拉回越限；方案 §3.4b）。
+   *
+   * 位移不 rebase：drawer 停在当前跟手位置，宽度回 base 后「已恢复尺寸、
+   * 被内拉 raw」的几何自洽，close 阈值（baseSize/2）与退出阈值（FULL_EXIT_TRAVEL）
+   * 作用在同一条连续位移上。判定守卫换段重置，随后的内拉从新折返点起算。
+   */
+  private _exitFull(dialog: HTMLDialogElement, axisPos: number) {
+    this._stage = 'base'
+    dialog.classList.remove('is-full')
+    this._cancelBaseline = axisPos
+    this._swipeIntentDisp = -1
+    this._swipeCancelled = false
+  }
+
+  /*
+   * 嵌套下层强制收起（方案 §7）：本层 depth 0→>0（上层新开）且处于 full 态时，
+   * 必须在 applyLayers 的 size 收集之前同步瞬时归位——不能走 260ms 过渡，
+   * 同一轮读取 offsetWidth/Height 时过渡起始值仍是 full 宽度，露边数学
+   * （shrink = size·(1−scale)/2 等）被污染且 depth 不再变化、没有重算机制。
+   * `is-size-instant` 抑制宽度过渡 → 摘 is-full → 强制 reflow 就位 → 摘抑制。
+   *
+   * depth 回 0（上层关闭）不恢复 full：上层关闭后保持 base。
+   * 拖拽进行中跳过（第二指针开新层的退化场景）：保 full，容忍一次露边污染。
+   */
+  private _collapseFullForNested(depth: number) {
+    if (depth <= 0 || this._stage !== 'full' || this._isDragging()) return
+    const dialog = this.dialog
+    if (!dialog) return
+    dialog.classList.add('is-size-instant')
+    dialog.classList.remove('is-full')
+    void dialog.offsetWidth
+    dialog.classList.remove('is-size-instant')
+    this._resetStage()
   }
 
   // 内容层承接位移，dialog 保留 backdrop 透明度。
@@ -845,6 +1060,8 @@ export class WebUiDrawer extends LitElement {
     this._handle = null
     this._abortSettle()
     this._cancelDragAwait()
+    // shadow 跨断连保留：full 态的 is-full 类不摘，重挂载会把全屏几何带回来。
+    this._resetStage()
   }
 
   /** 「重挂载恢复」的调用方一半：模块刻意不观察 DOM 连接状态。 */
@@ -920,6 +1137,10 @@ export class WebUiDrawer extends LitElement {
       // Consumer 在拖拽进行中写入受控 open：受控状态优先，立即终结手势（等同
       // pointercancel 的清理但不弹回），交由下方 presence 走标准关闭/打开管线。
       if (this._isDragging() && !this.open) this._cancelActiveDrag()
+      // fullable stage 归位（方案 §3.7 #1/#2）：关闭时字段先清、is-full 保留穿越
+      // 退出动画（闭合基线百分比随自身宽度解析，退出全程 full 宽度终点自洽；
+      // 类由 close 完成钩子摘除）；重开时防御性全清。
+      this._resetStage({ keepFullClass: !this.open })
       if (this._userOpenChange.consume()) this.emitOpenChange()
       // controlled 拖拽关闭的回写结果：确认关闭则清除闭合位悬停状态走正常关闭；
       // 拒绝关闭（回写 open=true）则从闭合位（含留边）弹回。
@@ -979,6 +1200,14 @@ export class WebUiDrawer extends LitElement {
     // pageShift 与 open 同一条同步：打开期间关掉该属性要立刻把已经让开的页面收回来，
     // 只盯 open 会留下一层没人负责的位移。
     if (props.has('open') || props.has('pageShift')) this._syncPageShift()
+    // fullable 相关属性运行时翻转（方案 §3.7 #3）：立即全清。fullable/draggable
+    // 摘除时 CSS 过渡门同时失效，宽度瞬归位；placement 翻转改写整块定位几何，
+    // full 态一并放弃。真实触发源：消费方随断点计算的 placement（如 DetailDrawer）。
+    // 只在 open 时执行——关闭管线已由上面的 open 分支归位字段并保留 is-full
+    // 穿越退出，这里再清会提前摘类、宽度在退出中途回位。
+    if (this.open && (props.has('fullable') || props.has('draggable') || props.has('placement'))) {
+      this._resetStage()
+    }
   }
 
   private handleTransitionEnd(e: TransitionEvent) {
@@ -990,7 +1219,13 @@ export class WebUiDrawer extends LitElement {
 
     // 收尾过渡结束：::backdrop 的 opacity 过渡 target 也是 dialog（带 pseudoElement），
     // 因此再按 propertyName 只认 transform。
-    if (e.propertyName === 'transform') this._finishSettle()
+    if (e.propertyName === 'transform') {
+      this._finishSettle()
+      // close 穿越路径的摘类钩子之一（方案 §3.7 #7）：保留 is-full 的退出动画在此刻
+      // 播完，presence 已调用 dialog.close()（display:none）或 drawer 完全屏外，
+      // 摘类不可见。stage 字段已在 updated() 的 !open 分支归位，这里只管类。
+      if (!this.open) this.dialog?.classList.remove('is-full')
+    }
   }
 
   private _isNestedDialogEvent(e: KeyboardEvent): boolean {
@@ -1075,6 +1310,10 @@ export class WebUiDrawer extends LitElement {
     // 关闭态下的 close 事件只可能是我们自己 finishClosing 排队的异步事件（或冗余的
     // 外部关闭）：交给 presence 消费 self-close 标志，避免标志泄漏到下一次真实关闭。
     if (!this.open) {
+      // close 穿越路径的兜底摘类钩子（方案 §3.7 #7）：fallback-timer 与 reduce 路径
+      // 可能没有 transform transitionend，close 事件是它们的唯一收尾点。
+      // 此刻 dialog.close() 已调用（UA display:none），摘类不可见。
+      this.dialog?.classList.remove('is-full')
       this._presence.handleNativeClose()
       return
     }

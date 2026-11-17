@@ -636,6 +636,55 @@ dialog.is-dragging .wui-drawer-drag-zone {
   }
 }
 
+/* ===== 拖拽全屏（fullable）===== */
+
+/*
+ * fullable 的尺寸几何与过渡全部走类与属性门，JS 不写任何内联宽高（方案 §8）：
+ * 视口变化、token 变化由 CSS 自动重算，退出路径也不需要清理内联尺寸。
+ *
+ * 门收口到 [fullable][draggable]：fullable 默认 false 且只在 draggable 时生效，
+ * 未 opt-in 的抽屉不获得任何尺寸过渡——否则窗口 resize / --wui-drawer-width
+ * token 变化会把所有抽屉的尺寸变化变成 260ms 动画。已知取舍（写进文档）：
+ * opt-in 的抽屉上这两类尺寸变化也走过渡，接受。
+ *
+ * is-full 只由组件状态机管理（_enterFull / _exitFull / _resetStage），永不手写；
+ * 宽度算式 = 视口 − 2×留边，与下层堆叠的同一套留边对齐——full 直接完整盖住下层
+ * （headless 的 inset 归零 → 精确 100vw/100dvh）。左右只改宽度（高度已被
+ * top/bottom 拉伸），上下只改高度（宽度确已满）。
+ *
+ * is-size-instant 专供嵌套强制收起（_collapseFullForNested）：摘 is-full 必须
+ * 当帧就位——applyLayers 同一轮读 offsetWidth，260ms 过渡的起始值仍是 full 宽度，
+ * 露边数学会被污染且无重算机制。特异性 (0,4,1) 必须压过过渡门 (0,3,1)。
+ */
+:host([fullable][draggable]) dialog {
+  transition:
+    width 260ms var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    height 260ms var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+}
+
+:host([fullable][draggable]) dialog.is-size-instant {
+  transition: none;
+}
+
+:host([fullable][draggable][placement='right']) dialog.is-full,
+:host([fullable][draggable][placement='left']) dialog.is-full {
+  width: calc(100vw - 2 * var(--wui-internal-drawer-inset, 0px));
+  max-width: none;
+}
+
+:host([fullable][draggable][placement='top']) dialog.is-full,
+:host([fullable][draggable][placement='bottom']) dialog.is-full {
+  height: calc(100dvh - 2 * var(--wui-internal-drawer-inset, 0px));
+  max-height: none;
+}
+
+@media (prefers-reduced-motion: reduce) {
+  /* full 吸附/恢复无尺寸动画（拖拽跟手是内联 transform，本就不受影响）。 */
+  :host([fullable][draggable]) dialog {
+    transition: none;
+  }
+}
+
 @media (prefers-reduced-motion: reduce) {
   /*
    * reduce 下：位移一律归零、transform 不参与过渡（仅 opacity 反馈）。

@@ -929,6 +929,8 @@ const open = ref(false)
 
 With `draggable` enabled, a gray pill-shaped drag bar appears on the inner edge of the drawer. Drag past half of its own size toward the closing direction, or drag quickly and release, to close; below the threshold the drawer returns to its open position. The direction follows `placement`.
 
+With `fullable` also enabled, dragging outward (away from the closing direction) past a travel threshold snaps the drawer to a viewport-filling form (non-headless keeps the surrounding insets) without requiring a release; a quick outward flick on release triggers the same. On the same held gesture, dragging back restores the original size first, and only after pulling past half of its size toward the closing direction does it close. In the full form the close button, Escape, and backdrop click all close directly; opening a nested drawer on top immediately restores the full drawer to its original size.
+
 ```tsx
 import { useState } from 'react'
 
@@ -1352,6 +1354,7 @@ const open = ref(false)
 | `aria-dialog-label` | Accessible name of the native dialog; required under `headless`. `dialog-label` also works.                                                                                                                                                         | `string`          | `''`      |
 | `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`).                                                                                                                                                    | `string`          | `''`      |
 | `draggable`         | Shows a drag bar on the inner edge of the drawer and enables the drag-to-close gesture.                                                                                                                                                             | `boolean`         | `false`   |
+| `fullable`          | Drag-to-full (requires `draggable`): dragging outward past the travel threshold or a quick outward flick snaps the drawer to a viewport-filling form; dragging back restores the original size first, and only further pulling closes.              | `boolean`         | `false`   |
 | `page-shift`        | While open, the background page moves toward the drawer's entering direction. The opening order sets layer order and offset, with the same rule for nested and sibling layers; closing any layer recalculates the rest. Inert under reduced motion. | `boolean`         | `false`   |
 
 ### Events
@@ -1408,6 +1411,8 @@ With `draggable` enabled, an open drawer shows a gray pill-shaped drag bar on it
 Left and right placements have only the drag zone; top and bottom placements can also start from an end drag edge or the whole header / footer. If a press lands on an interactive control, that control receives the press and no drag starts; custom controls need `role` or `tabindex` to be recognized. The upper part of a control that overlaps the drag bar area is covered by the drag area; adjust `--wui-drawer-drag-bar-length` and `--wui-drawer-drag-edge-size` to change it.
 
 A backdrop click closes only on a tap: a gesture that starts on the panel or the backdrop and releases elsewhere does not close.
+
+With `fullable` enabled there is a second gesture in the outward direction: dragging outward past the travel threshold snaps the drawer to full viewport size without requiring a release, and a quick outward flick on release triggers the same. Dragging back restores the original size first, and only past half of its size does the drawer close; a fast outward sweep after an inward pull that reversed direction is treated as a change of mind and does not snap. At the snap moment the drag bar moves with the drawer edge and leaves the finger.
 
 With `controlled` enabled, releasing past the threshold only dispatches `open-change(false)`; the drawer waits 120ms at the closed position and returns to the open position if your app rejects it or does not write back in time.
 
