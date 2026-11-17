@@ -131,5 +131,3 @@ export function runExampleDocsContractTests(options: ExampleDocsContractOptions)
     }
   })
 }
-
-export { runGeneratedParityContractTests, type GeneratedParityOptions } from './generated-parity'
