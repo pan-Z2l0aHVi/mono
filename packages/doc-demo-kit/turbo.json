@@ -1,9 +1,0 @@
-{
-  "$schema": "https://turbo.build/schema.json",
-  "extends": ["//"],
-  "tasks": {
-    "test": {
-      "inputs": ["$TURBO_DEFAULT$", "!AGENTS.md", "!CHANGELOG.md", "$TURBO_ROOT$/packages/web-ui/docs/**"]
-    }
-  }
-}
