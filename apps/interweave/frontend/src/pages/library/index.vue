@@ -32,6 +32,7 @@ import {
   MENU_TOGGLE_FILTER_BAR_EVENT,
   onMenuAction
 } from '@/composables/menuActions'
+import { selectLitEditor } from '@/composables/useEditorFocusRestore'
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
 import { useLayoutMobile } from '@/composables/useLayoutMobile'
 import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
@@ -225,12 +226,10 @@ function setNameEditorRef(id: string): NameEditorRef {
 function startResourceRename(resource: ResourceView, surface: 'list' | 'drawer' = 'list') {
   const key = surface === 'drawer' ? DRAWER_TITLE_EDITOR_KEY : resource.id
   editingNameKey.value = key
-  void nextTick(async () => {
+  // 编辑器实例要等本轮渲染挂上；selectLitEditor 负责 updateComplete + WebKit 单帧等待。
+  void nextTick(() => {
     const editor = resourceNameEditors.value[key]
-    await editor?.updateComplete
-    // 等隐藏的触发按钮完成布局，避免 WebKit 把刚交给编辑器的焦点移回 drawer。
-    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
-    if (editingNameKey.value === key && resourceNameEditors.value[key] === editor) editor?.select()
+    void selectLitEditor(editor, () => editingNameKey.value === key && resourceNameEditors.value[key] === editor)
   })
 }
 

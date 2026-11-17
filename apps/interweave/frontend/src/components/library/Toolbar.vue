@@ -19,6 +19,7 @@ import {
 } from '@greypan/web-ui/icons'
 import { computed, nextTick, ref } from 'vue'
 
+import { focusLitControl } from '@/composables/useEditorFocusRestore'
 import { useExpandingField } from '@/composables/useExpandingField'
 import type { AvailabilityFilter, ResourceKind, SortDirection, SortOption, SourceType } from '@/stores/library'
 
@@ -109,11 +110,7 @@ useExpandingField({
   },
   onEscapeClose: () => {
     if (props.searchQuery) return
-    void nextTick(async () => {
-      const btn = searchButtonRef.value as (HTMLElement & { updateComplete?: Promise<unknown> }) | undefined
-      await btn?.updateComplete
-      focusButton(btn)
-    })
+    void nextTick(() => focusLitControl(searchButtonRef.value))
   }
 })
 

@@ -11,6 +11,7 @@ import {
 import { WindowVirtualizer } from 'virtua/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
+import { useEditorFocusRestore } from '@/composables/useEditorFocusRestore'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { FocusNavigator, rowFocusTarget } from './focusNavigator'
@@ -497,20 +498,16 @@ function clampEditingRowIntoView() {
  *     而卸载（草稿由 commit-on-unmount 兜底提交，但用户仍会对着一个看不见的编辑器继续打字）。
  *     两者都靠这一手夹回来。window 模式下滚动事件在 window 上，不在列表容器上。
  */
-watch(
-  () => props.editingNameKey,
-  (next, prev) => {
-    if (!prev || next !== null) return
+useEditorFocusRestore(() => props.editingNameKey, {
+  // 焦点仍在该行的名字编辑器里才归还给行宿主；target 只在 rowsRef 内部查找，天然要求行还在渲染窗内。
+  heldFocus: key => {
     const active = document.activeElement
-    if (!(active instanceof Element) || active.tagName !== 'WEB-UI-EDITABLE-TEXT') return
-    const row = active.closest<HTMLElement>('[data-resource-row]')
-    if (!row || row.dataset.resourceId !== prev || !rowsRef.value?.contains(row)) return
-    void nextTick(() => {
-      rowsRef.value?.querySelector<HTMLElement>(`[data-resource-id="${prev}"]`)?.focus()
-    })
+    if (!(active instanceof Element) || active.tagName !== 'WEB-UI-EDITABLE-TEXT') return false
+    return active.closest<HTMLElement>('[data-resource-row]')?.dataset.resourceId === key
   },
-  { flush: 'pre' }
-)
+  target: key => rowsRef.value?.querySelector<HTMLElement>(`[data-resource-id="${key}"]`),
+  selector: ''
+})
 
 watch(editingIndex, clampEditingRowIntoView, { immediate: true })
 watch(rowsRef, () => clampEditingRowIntoView(), { immediate: true })

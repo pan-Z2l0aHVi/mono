@@ -18,6 +18,7 @@ import {
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
 import { nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 
+import { selectLitEditor, useEditorFocusRestore } from '@/composables/useEditorFocusRestore'
 import type { LibraryQueueItem } from '@/services/library'
 import type { ResourceSourceView, TagColor } from '@/stores/library'
 
@@ -205,20 +206,14 @@ function setRenameButtonRef(itemId: string) {
   }
 }
 
-watch(
-  editingItemId,
-  (next, prev) => {
-    if (!prev || next !== null) return
-    const editor = nameEditors.get(prev)
-    if (!editor || document.activeElement !== editor) return
-    void nextTick(async () => {
-      const btn = renameButtons.get(prev) as (HTMLElement & { updateComplete?: Promise<unknown> }) | undefined
-      await btn?.updateComplete
-      btn?.shadowRoot?.querySelector<HTMLButtonElement>('button')?.focus()
-    })
+useEditorFocusRestore(editingItemId, {
+  // 编辑器仍持有焦点才归还；用户已经点到别处时不再抢回来。
+  heldFocus: key => {
+    const editor = nameEditors.get(key)
+    return Boolean(editor) && document.activeElement === editor
   },
-  { flush: 'pre' }
-)
+  target: key => renameButtons.get(key)
+})
 
 function queueSource(item: LibraryQueueItem): ResourceSourceView {
   return {
@@ -236,7 +231,8 @@ function queueSource(item: LibraryQueueItem): ResourceSourceView {
 
 function startRename(item: LibraryQueueItem) {
   editingItemId.value = item.id
-  void nextTick(() => nameEditors.get(item.id)?.select())
+  // WebKit 下要等控件自身布局完成再 select，否则焦点会被弹窗收回去。
+  void nextTick(() => selectLitEditor(nameEditors.get(item.id), () => editingItemId.value === item.id))
 }
 
 function stopRename() {

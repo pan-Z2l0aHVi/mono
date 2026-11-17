@@ -10,8 +10,9 @@ import {
   lucidePenLine,
   lucideRefreshCw
 } from '@greypan/web-ui/icons'
-import { computed, nextTick, onScopeDispose, ref, watch } from 'vue'
+import { computed, onScopeDispose, ref, watch } from 'vue'
 
+import { useEditorFocusRestore } from '@/composables/useEditorFocusRestore'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import PressDrawIcon from '../PressDrawIcon.vue'
@@ -65,20 +66,14 @@ const unavailableSource = computed(() => renderedResource.value?.sources.find(so
 const editingTitle = computed(() => props.editingNameKey === DRAWER_TITLE_EDITOR_KEY)
 const renameButtonRef = ref<HTMLElement>()
 
-watch(
-  editingTitle,
-  (next, prev) => {
-    if (!prev || next) return
+useEditorFocusRestore(() => (editingTitle.value ? DRAWER_TITLE_EDITOR_KEY : null), {
+  // 焦点仍停在标题编辑器里才归还给改名按钮。
+  heldFocus: () => {
     const active = document.activeElement
-    if (!(active instanceof Element) || !active.classList.contains('detail-title')) return
-    void nextTick(async () => {
-      const btn = renameButtonRef.value as (HTMLElement & { updateComplete?: Promise<unknown> }) | undefined
-      await btn?.updateComplete
-      btn?.shadowRoot?.querySelector<HTMLButtonElement>('button')?.focus()
-    })
+    return active instanceof Element && active.classList.contains('detail-title')
   },
-  { flush: 'pre' }
-)
+  target: () => renameButtonRef.value
+})
 
 /*
  * 「打开方式」显示系统默认应用的真实名字。drawer 会切资源，异步查询用请求序号作废旧结果；
