@@ -262,15 +262,23 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     expect(el.open).toBe(true)
   })
 
-  it('reduced motion：吸附与恢复无 width/height 动画（跟手不受影响）', async () => {
-    const el = mountDrawer('reduce')
+  it('theme motion=reduced：吸附与恢复无尺寸动画（token 归零的公开契约）', async () => {
+    const el = mountDrawer('reduced')
     el.draggable = true
     el.fullable = true
     el.open = true
     await el.updateComplete
     await waitForOpenTransition(el)
 
-    // 按住状态吸附：宽度直接就位，dialog 上不存在 width/height 过渡。
+    const sizeTransitions: string[] = []
+    getDialog(el).addEventListener('transitionstart', event => {
+      const property = (event as TransitionEvent).propertyName
+      if (property === 'width' || property === 'height') sizeTransitions.push(property)
+    })
+
+    // 按住状态吸附：token 归零 → 宽度当帧就位。断言读 computed transition-duration
+    // 与 transitionstart 事件，两个都是无时序竞态的确定性观察面——先等宽度到位再
+    // 查动画会撞上「过渡已结束」的假绿，不这么断。
     const points = [
       { x: 500, y: 300, at: 0 },
       { x: 470, y: 300, at: STEP_MS },
@@ -281,14 +289,12 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await holdAndMove(el, points)
     await waitFor(() => currentAxisSize(el, 'right') >= fullAxisSize('right') - 1)
 
-    const sizeAnimations = getDialog(el)
-      .getAnimations()
-      .filter(animation => {
-        // 本仓 TS lib 未声明 CSSTransition.propertyName，按结构读。
-        const property = (animation as Animation & { propertyName?: string }).propertyName
-        return property === 'width' || property === 'height'
-      })
-    expect(sizeAnimations).toHaveLength(0)
+    const durations = getComputedStyle(getDialog(el))
+      .transitionDuration.split(',')
+      .map(value => Number.parseFloat(value))
+    expect(durations.length).toBeGreaterThan(0)
+    expect(durations.every(value => value === 0)).toBe(true)
+    expect(sizeTransitions).toHaveLength(0)
     expect(el.open).toBe(true)
   })
 
@@ -477,6 +483,44 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
 
     expect(events.map(event => event.detail.open)).toEqual([false])
     expect(getDialog(el).open).toBe(false)
+  })
+
+  it('拖拽进行中上层新开：守卫跳过收起，松手兜底恢复原尺寸并重算层叠', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    document.body.append(theme)
+
+    const parent = createDrawer()
+    theme.append(parent)
+    parent.draggable = true
+    parent.fullable = true
+    parent.open = true
+    await parent.updateComplete
+    await waitForOpenTransition(parent)
+
+    // 按住外拉吸附（手势进行中），此时上层新开一层：depth 回调被拖拽守卫跳过，
+    // parent 保持 full——这条缺口由松手兜底（评审 Should-fix）收敛。
+    await holdAndMove(parent, [
+      { x: 500, y: 300, at: 0 },
+      { x: 470, y: 300, at: STEP_MS },
+      { x: 440, y: 300, at: 2 * STEP_MS },
+      { x: 410, y: 300, at: 3 * STEP_MS },
+      { x: 350, y: 300, at: 4 * STEP_MS }
+    ])
+    await waitFor(() => currentAxisSize(parent, 'right') >= fullAxisSize('right') - 1)
+
+    const child = createDrawer()
+    theme.append(child)
+    child.open = true
+    await child.updateComplete
+    await waitForOpenTransition(child)
+    expect(currentAxisSize(parent, 'right')).toBeGreaterThanOrEqual(fullAxisSize('right') - 1)
+
+    // 松手：拖拽终结 → 同步收起 + 层叠重算 → 恢复原尺寸、保持 open。
+    await releaseAt(parent, 350, 300, 5 * STEP_MS)
+    await waitFor(() => getDialog(parent).offsetWidth < 340)
+    expect(parent.open).toBe(true)
+    expect(child.open).toBe(true)
   })
 
   it('嵌套：full 态的 drawer 上层新开一层 → 同步瞬时恢复原尺寸', async () => {

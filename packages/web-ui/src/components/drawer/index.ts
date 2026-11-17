@@ -664,6 +664,7 @@ export class WebUiDrawer extends LitElement {
         this._dragGesture = null
         this._syncDragInert()
         dialog.classList.remove('is-dragging', 'is-drag-close')
+        this._settleNestedFullAfterDrag(dialog)
         const size = this._judgeSize()
         const velocity = (this._dragAxis === 'x' ? info.velocityX : info.velocityY) * this._dragCloseSign
         // 净位移从抓取瞬间的位移起算（弹回/收尾过渡中被重新抓取时起点非 0）。
@@ -720,6 +721,7 @@ export class WebUiDrawer extends LitElement {
         this._dragGesture = null
         this._syncDragInert()
         dialog.classList.remove('is-dragging', 'is-drag-close')
+        this._settleNestedFullAfterDrag(dialog)
         this._settleRebound(dialog, 0, this._dragOffset)
       }
     })
@@ -761,7 +763,7 @@ export class WebUiDrawer extends LitElement {
     }
 
     const cancelDisplacement = (axisPos - this._cancelBaseline) * this._dragCloseSign
-    if (cancelDisplacement > this._dragCloseThreshold(this._measureDragSize())) {
+    if (cancelDisplacement > this._dragCloseThreshold(this._judgeSize())) {
       this._swipeCancelled = false
     } else if (this._swipeIntentDisp - cancelDisplacement >= DRAG_REVERSE_CANCEL_THRESHOLD) {
       this._swipeCancelled = true
@@ -860,6 +862,24 @@ export class WebUiDrawer extends LitElement {
     void dialog.offsetWidth
     dialog.classList.remove('is-size-instant')
     this._resetStage()
+  }
+
+  /*
+   * 手势终结点的嵌套兜底（评审 Should-fix）：本层拖拽进行中上层新开时，
+   * `_collapseFullForNested` 的拖拽守卫会跳过收起，而 applyLayers 已消费那次
+   * depth 变化并按当时的 full 宽度收走了露边数学——没有这次兜底，本层会永久
+   * 停在 full 被当作嵌套下层缩放，违反「上层新开即恢复原尺寸」的契约。
+   *
+   * 拖拽此刻已终结，收起守卫不再拦；随后 `recalculate()` 以归位后的几何幂等
+   * 重算全部层的 shift/scale（不能用 `register()`——它会把 entry 挪到 Set 尾部
+   * 颠倒层序）。若本层在手势中已经 exit-full，宽度过渡可能仍在途，重算读到的
+   * 是过渡中途值：露边偏差有界、藏在上层背后，且下一次层叠重算（上层关闭）
+   * 自然愈合，不为它引入额外的时序机制。
+   */
+  private _settleNestedFullAfterDrag(dialog: HTMLDialogElement) {
+    if (!dialog.classList.contains('is-nested-lower')) return
+    if (this._stage === 'full') this._collapseFullForNested(1)
+    this._nestedLayers.recalculate()
   }
 
   // 内容层承接位移，dialog 保留 backdrop 透明度。

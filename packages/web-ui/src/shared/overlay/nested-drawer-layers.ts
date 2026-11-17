@@ -174,6 +174,13 @@ export interface NestedDrawerLayerApi {
   register(): void
   /** 关闭流程开始时调用：移出层序并触发底层回弹。 */
   unregister(): void
+  /**
+   * 按当前 entry 集合幂等重算 depth 与几何。给消费方的显式重算入口：entry 的
+   * 几何曾按过渡中途/已过期尺寸被收走（如拖拽中上层新开、full 态被守卫跳过）
+   * 且不会马上有自然的重算机会时调用。不能用 `register()` 顶替——它会把本
+   * entry 挪到 Set 尾部、颠倒「先开在下」的层序语义。
+   */
+  recalculate(): void
   dispose(): void
 }
 
@@ -206,6 +213,10 @@ export const defineNestedDrawerLayers = () =>
         if (entry.dialog === dialog) entries.delete(entry)
       }
       // 移除后重算剩余层（顶层关闭 → 次层回到 depth 0）。
+      if (entries.size > 0) applyLayers()
+    },
+
+    recalculate() {
       if (entries.size > 0) applyLayers()
     },
 

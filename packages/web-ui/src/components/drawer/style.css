@@ -644,8 +644,11 @@ dialog.is-dragging .wui-drawer-drag-zone {
  *
  * 门收口到 [fullable][draggable]：fullable 默认 false 且只在 draggable 时生效，
  * 未 opt-in 的抽屉不获得任何尺寸过渡——否则窗口 resize / --wui-drawer-width
- * token 变化会把所有抽屉的尺寸变化变成 260ms 动画。已知取舍（写进文档）：
+ * token 变化会把所有抽屉的尺寸变化变成动画。已知取舍（写进文档）：
  * opt-in 的抽屉上这两类尺寸变化也走过渡，接受。
+ *
+ * 时长挂 --wui-duration-drawer-enter：`<web-ui-theme motion="reduced">` 把它归零
+ * 是公开契约，硬编码时长会让显式 reduce 的吸附/恢复继续播放尺寸动画。
  *
  * is-full 只由组件状态机管理（_enterFull / _exitFull / _resetStage），永不手写；
  * 宽度算式 = 视口 − 2×留边，与下层堆叠的同一套留边对齐——full 直接完整盖住下层
@@ -653,13 +656,13 @@ dialog.is-dragging .wui-drawer-drag-zone {
  * top/bottom 拉伸），上下只改高度（宽度确已满）。
  *
  * is-size-instant 专供嵌套强制收起（_collapseFullForNested）：摘 is-full 必须
- * 当帧就位——applyLayers 同一轮读 offsetWidth，260ms 过渡的起始值仍是 full 宽度，
+ * 当帧就位——applyLayers 同一轮读 offsetWidth，尺寸过渡的起始值仍是 full 宽度，
  * 露边数学会被污染且无重算机制。特异性 (0,4,1) 必须压过过渡门 (0,3,1)。
  */
 :host([fullable][draggable]) dialog {
   transition:
-    width 260ms var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
-    height 260ms var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+    width var(--wui-duration-drawer-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
+    height var(--wui-duration-drawer-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 :host([fullable][draggable]) dialog.is-size-instant {
