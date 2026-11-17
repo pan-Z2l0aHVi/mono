@@ -20,16 +20,25 @@ type SourceService struct {
 	sources   storage.SourceStore
 	// indexSync 只在装配期注入一次（main.go），运行期只读，无需加锁。
 	indexSync SourceIndexSync
+	// recovery 拥有找回扫描的会话状态机；扫描算法是本服务的 ScanRecovery。
+	recovery *RecoveryScanRunner
 }
 
 // 保持 Source 规则与持久化实现解耦。
 func NewSourceService(db *storage.DB, fetcher *remote.Fetcher) *SourceService {
-	return &SourceService{
+	svc := &SourceService{
 		db:        db,
 		ingest:    newIngestion(db, fetcher),
 		resources: storage.ResourceStore{},
 		sources:   storage.SourceStore{},
 	}
+	svc.recovery = NewRecoveryScanRunner(svc.ScanRecovery)
+	return svc
+}
+
+// RecoveryScans 返回找回扫描的会话 runner，外观层只做传递与 DTO 映射。
+func (s *SourceService) RecoveryScans() *RecoveryScanRunner {
+	return s.recovery
 }
 
 // BackfillFingerprints 为库内已可用的文件 Source 补齐指纹。构造函数不再隐藏调度：
