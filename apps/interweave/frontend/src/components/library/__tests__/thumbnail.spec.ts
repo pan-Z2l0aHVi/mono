@@ -1,18 +1,13 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { isBlackFrame, videoFrameCandidates, videoFrameRatio } from '../thumbnail'
+import { isBlackFrame, videoFrameCandidates } from '../thumbnail'
 
 describe('resource thumbnail', () => {
-  it('视频优先使用固定 25% 帧，并为黑帧提供确定性回退', () => {
-    const candidates = videoFrameCandidates(8)
-
-    expect(videoFrameRatio).toBe(0.25)
-    expect(candidates[0]).toBe(2)
-    expect(candidates).toContain(0)
-    expect(candidates).toContain(4)
-    expect(candidates).toContain(6)
-  })
-
+  /*
+   * 「ratio = 0.25、首选 25% 帧、候选表含 0/4/6」的接线级断言已删：videoFrameRatio 与候选表
+   * 怎么被消费，由 thumbnail-frame-walk.browser.spec.ts 在消费方上按行为承接（首 seek =
+   * duration × ratio、黑帧回退到后续候选）；本文件只保留候选表函数自身的纯函数契约。
+   */
   it('不可用或非有限时长从最早帧开始继续寻找非黑帧', () => {
     expect(videoFrameCandidates(Number.NaN)).toEqual([0, 0.25, 0.5, 1, 2, 4, 8])
     expect(videoFrameCandidates(0)).toEqual([0, 0.25, 0.5, 1, 2, 4, 8])

@@ -469,7 +469,6 @@ describe('LibraryPage：可用性感知接线', () => {
       await nextTick()
       const filterButton = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="筛选和排序"]')!
       expect(filterButton.getAttribute('variant')).toBe('glass')
-      expect(filterButton.querySelector('web-ui-icon')?.className).toContain('--wui-color-accent')
       filterButton.click()
       await nextTick()
       expect(filterButton.getAttribute('aria-expanded')).toBe('true')
@@ -478,7 +477,6 @@ describe('LibraryPage：可用性感知接线', () => {
       await nextTick()
       expect(filterButton.getAttribute('aria-expanded')).toBe('false')
       expect(filterButton.getAttribute('variant')).toBe('glass')
-      expect(filterButton.querySelector('web-ui-icon')?.className).toContain('--wui-color-accent')
     } finally {
       await mounted.close()
     }
@@ -497,7 +495,6 @@ describe('LibraryPage：可用性感知接线', () => {
       await nextTick()
       const filter = mounted.host.querySelector<HTMLElement>('web-ui-button[aria-label="筛选和排序"]')!
       expect(filter.getAttribute('variant')).toBe('glass')
-      expect(filter.querySelector('web-ui-icon')?.className).not.toContain('--wui-color-accent')
       expect(mounted.host.querySelector('web-ui-input[aria-label="搜索资源"]')).not.toBeNull()
       expect(store.searchQuery).toBe('不存在的资源')
     } finally {

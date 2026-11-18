@@ -30,14 +30,14 @@ function update(overrides: Partial<RecoveryScanUpdate> = {}): RecoveryScanUpdate
   }
 }
 
-/** 手动推进的计时器：断言 250ms 轮询已挂起，再按需触发一次。 */
+/** 手动推进的计时器：记录挂起时的 delay（供轮询间隔断言用），再按需触发一次。 */
 function createTimers() {
   let nextId = 0
-  const pending = new Map<number, () => void>()
+  const pending = new Map<number, { callback: () => void; delay: number }>()
   const timers: RecoveryScanTimers = {
-    setTimeout(callback) {
+    setTimeout(callback, delayMs) {
       const id = ++nextId
-      pending.set(id, callback)
+      pending.set(id, { callback, delay: delayMs })
       return id as unknown as ReturnType<typeof setTimeout>
     },
     clearTimeout(handle) {
@@ -47,10 +47,12 @@ function createTimers() {
   return {
     timers,
     pending: () => pending.size,
+    /** 仍在挂起的计时器 delay 序列（sweepScroll.spec.ts 的 timer.delay 模式）。 */
+    pendingDelays: () => [...pending.values()].map(entry => entry.delay),
     tick() {
       const callbacks = [...pending.values()]
       pending.clear()
-      for (const callback of callbacks) callback()
+      for (const entry of callbacks) entry.callback()
     }
   }
 }
@@ -79,6 +81,9 @@ describe('recovery scan controller', () => {
     expect(onProgress).toHaveBeenCalledTimes(1)
     expect(scan.scanning.value).toBe(true)
     expect(timers.pending()).toBe(1)
+    // 轮询间隔不再钉「常量等于 250」的字面值（接线级自指），改为断言行
+    // 为真的用了这枚常量：挂起的轮询计时器 delay 就是它。
+    expect(timers.pendingDelays()).toEqual([RECOVERY_SCAN_POLL_INTERVAL_MS])
 
     timers.tick()
     await vi.waitFor(() => expect(onDone).toHaveBeenCalledWith(expect.objectContaining({ done: true })))
@@ -86,7 +91,6 @@ describe('recovery scan controller', () => {
     expect(scan.scanning.value).toBe(false)
     expect(scan.stopping.value).toBe(false)
     expect(scan.incomplete.value).toBe(false)
-    expect(RECOVERY_SCAN_POLL_INTERVAL_MS).toBe(250)
   })
 
   it('stop 作废在途启动，晚到的 scan id 被清扫', async () => {

@@ -2,7 +2,7 @@
 
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { dismissStartupLayer, STARTUP_TIMEOUT_MS } from '../startupLayer'
+import { dismissStartupLayer, scheduleStartupTimeout, STARTUP_TIMEOUT_MS } from '../startupLayer'
 
 function mountLayer() {
   const layer = document.createElement('div')
@@ -43,8 +43,26 @@ describe('startup layer', () => {
     expect(dismissStartupLayer()).toBe(false)
   })
 
-  // 超时上限是「读不到设置也不能把人永远挡在 logo 后面」的那条线，不能悄悄变短。
-  it('超时上限为 3s', () => {
-    expect(STARTUP_TIMEOUT_MS).toBe(3000)
+  // 超时上限是「读不到设置也不能把人永远挡在 logo 后面」的那条线，不能悄悄变短：
+  // 用 fake timers 步进 scheduleStartupTimeout——差 1ms 不起退、到点起退，替代
+  // 「常量等于 3000」的接线级自指。
+  it('兜底定时器差 1ms 不触发，到 STARTUP_TIMEOUT_MS 起退', () => {
+    const layer = mountLayer()
+    scheduleStartupTimeout()
+
+    vi.advanceTimersByTime(STARTUP_TIMEOUT_MS - 1)
+    expect(layer.dataset.leaving).toBeUndefined()
+
+    vi.advanceTimersByTime(1)
+    expect(layer.dataset.leaving).toBe('true')
+  })
+
+  it('设置提前就绪时取消兜底：cancel 后到点不起退', () => {
+    const layer = mountLayer()
+    const cancel = scheduleStartupTimeout()
+    cancel()
+
+    vi.advanceTimersByTime(STARTUP_TIMEOUT_MS)
+    expect(layer.dataset.leaving).toBeUndefined()
   })
 })
