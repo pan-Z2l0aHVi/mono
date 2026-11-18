@@ -15,7 +15,13 @@ import { join } from 'node:path'
 
 import type { BoardSummary } from '../contracts'
 
-/** 与 pi-task-board v2 对齐的本地形状；任何字段对不上就整份丢弃。 */
+/**
+ * 与 pi-task-board v2 对齐的本地形状；任何字段对不上就整份丢弃。
+ *
+ * **验证状态（打标 2026-11-18，方案 v5 决策项 3）**：v2 是对 pi-task-board 输出的**自述**，
+ * 未经真实宿主交叉验证；读侧（parsePanelTasks / normalize）对任何字段对不上显式降级，
+ * 形状漂移不会炸，只会退化成「没有任务」。
+ */
 const SUPPORTED_VERSION = 2
 const MAX_ITEMS = 12
 
