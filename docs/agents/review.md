@@ -72,7 +72,7 @@ GitHub `pull_request` 的 CI 默认 checkout 是 base/head 的临时合并对象
 
 ## 合并前与恢复
 
-合并前重新读取当前 PR 状态、draft、base/head、冲突/mergeability、required checks、CI snapshot 记录的实际 checkout SHA、review 结论覆盖的 SHA（自动审查即那条持久评论头部的 `sha`；有人工报告时是报告覆盖的 SHA）、未决发现及 changeset 结果。strict 只要求 PR 跟上 base；squash 会产生新 commit，不能推断最终 main commit 与已测试 SHA 或树恒等。只有全部证据对应当前 base/head、没有未处置 Block、required CI 与硬约束成功、PR 非 draft 且可合并后，才向用户报告具体待合并 PR 和 SHA。每次 merge 需用户明确授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。
+合并前重新读取当前 PR 状态、draft、base/head、冲突/mergeability、required checks、CI snapshot 记录的实际 checkout SHA、review 结论覆盖的 SHA（自动审查即那条持久评论头部的 `sha`；有人工报告时是报告覆盖的 SHA）、未决发现及 changeset 结果；前端改动还要有 [`runtime-verification.md`](./runtime-verification.md#前端冒烟门) 的冒烟通过结论。strict 只要求 PR 跟上 base；squash 会产生新 commit，不能推断最终 main commit 与已测试 SHA 或树恒等。只有全部证据对应当前 base/head、没有未处置 Block、required CI 与硬约束成功、PR 非 draft 且可合并后，才向用户报告具体待合并 PR 和 SHA。每次 merge 需用户明确授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。
 
 获授权后以 squash 锁定已审查的 head；它不锁定 base，base 变化或 GitHub 拒绝时停止并重新核对。合并后核实 `state`、`mergedAt` 与 `mergeCommit`。不要用 `--admin` 绕过保护，也不要用无条件 `--auto` 代替当前证据。task 台账（见 `task-ledger` skill）的 `closed` 不代表 review、CI、merge 或发布成功。
 

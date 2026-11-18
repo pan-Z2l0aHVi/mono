@@ -753,8 +753,8 @@ if (hasBrowserRuntimeChange) {
   addVerification('required', 'pnpm run test', 'browser-mode 测试与相关 package 测试由根 Turbo test 编排。')
   addVerification(
     'required',
-    'chrome-devtools MCP 真实浏览器验证',
-    'UI、UX 或跨框架集成表面必须在 MCP 浏览器中验证交互、console、network 与视口。'
+    'agent-browser 真实浏览器验证',
+    'UI、UX 或跨框架集成表面必须在真实浏览器中验证交互、console、network 与视口。'
   )
 }
 if (verification.length === 0 && normalizedPaths.length > 0)
