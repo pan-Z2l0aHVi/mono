@@ -263,6 +263,9 @@ function describeSharedBoard(outcome: SharedBoardResult): string | undefined {
  * `role: "system"` 的条目，按分支顺序应用 `toolsRemoved` / `toolsAdded`（同一条消息内先移除
  * 后添加，与 pi-ai 的 `getCurrentTools` 相同），最后一次声明决定工具是否激活。条目形状不
  * 认识就当作没有声明——那是 Pi 的内部格式，不能让异常进 `session_start`。
+ *
+ * **验证状态（打标 2026-11-18，方案 v5 决策项 3 / D4）**：读法按 Pi 1.4.0 的 dist 源码对齐
+ * （行号即出处），Pi 升级不保证兼容；fail-safe（形状不认识当没有声明）有负向专测兜底。
  */
 export function blockedToolsRemovedByTranscript(transcript: unknown): string[] {
   const state = new Map<string, boolean>()

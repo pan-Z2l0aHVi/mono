@@ -1,3 +1,4 @@
+import path from 'node:path'
 import { resolve } from 'node:path'
 
 import type { UnpluginContextMeta, UnpluginOptions } from 'unplugin'
@@ -60,6 +61,24 @@ afterEach(() => {
 })
 
 describe('依赖产物变更触发整页 reload', () => {
+  it('插件自身产物走自排除分支：不失效模块图、不触发 reload（G5 负向用例）', async () => {
+    vi.useFakeTimers()
+    const plugin = createVitePlugin([WEB_UI])
+    const { server, send, info, onFileChange } = createServer()
+    // factory 的自排除以插件自身的输出目录（factory.ts 所在目录的构建产物）为界；
+    // 用当前源码目录下的文件路径模拟「插件自己 dist 里的文件」。
+    const ownOutputFile = resolve(import.meta.dirname, '..')
+      .split(path.sep)
+      .join('/')
+
+    expect(plugin.hotUpdate!(createHotUpdateContext(ownOutputFile, server))).toEqual([])
+    await settleDebounce()
+
+    expect(onFileChange).not.toHaveBeenCalled()
+    expect(send).not.toHaveBeenCalled()
+    expect(info).not.toHaveBeenCalled()
+  })
+
   it.each([
     { name: 'JS 产物', file: '/repo/packages/web-ui/dist/button/index.js' },
     { name: 'CSS 产物', file: '/repo/packages/web-ui/dist/button/style.css' },

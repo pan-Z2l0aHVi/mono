@@ -507,6 +507,9 @@ describe('WebUiContextMenu 组件', () => {
       await waitForMenuOpen(el)
 
       const nested = parentItem.querySelector('web-ui-dropdown-item')!
+      // `slot="context-menu-hidden"` 不是内部实现细节：这是有真实消费方的跨包协议——
+      // interweave 的 ResourceList.vue 模板手写 `slot="context-menu-hidden"`（:731，旁注
+      // 明确「不能省」），靠它让组件关闭时隐藏包裹项。断言保留（协议面），改名即真红。
       expect(nested.getAttribute('slot')).toBe('context-menu-hidden')
 
       parentItem.click()

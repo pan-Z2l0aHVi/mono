@@ -61,7 +61,11 @@ describe('WebUiSwitch 组件特有契约', () => {
     el.loading = true
     await waitForUpdate(el)
 
-    expect(el.shadowRoot?.querySelector('web-ui-icon')?.getAttribute('color')).toContain('var(--wui-color-accent')
+    // jsdom 不解析 var()，computed-color 对表由 switch-loading.browser.spec.ts 承担；
+    // 这里钉「接线仍在」：颜色最终落到 icon 内 svg 的行内 style（消费点），而
+    // 不只是查透传的 color attribute。
+    const svg = el.shadowRoot?.querySelector('web-ui-icon')?.shadowRoot?.querySelector('svg')
+    expect((svg as HTMLElement | null)?.style.color ?? '').toContain('--wui-color-accent')
     cleanupElement(el)
   })
 

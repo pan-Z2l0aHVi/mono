@@ -61,13 +61,17 @@ describe('WebUiButtonGroup 控件尺寸（浏览器）', () => {
     vertical.direction = 'vertical'
     vertical.innerHTML =
       '<web-ui-button icon aria-label="A">A</web-ui-button><web-ui-button icon aria-label="B">B</web-ui-button>'
-    parent.append(vertical)
-    await waitForUpdate(vertical)
+    // 控件尺寸参照：独立按钮高度与轨道 min-width 读同一枚 `--wui-control-size`（含 36px
+    // fallback，且 token 只在主题作用域声明、这里走 fallback），互相对表就不写死 36px。
+    const controlRef = document.createElement('web-ui-button')
+    parent.append(vertical, controlRef)
+    await Promise.all([vertical, controlRef].map(waitForUpdate))
 
-    expect(vertical.getBoundingClientRect().width).toBeCloseTo(36, 0)
+    expect(vertical.getBoundingClientRect().width).toBeCloseTo(controlRef.getBoundingClientRect().height, 0)
 
     parent.style.setProperty('--wui-control-size', '48px')
     await waitForFrame()
     expect(vertical.getBoundingClientRect().width).toBeCloseTo(48, 0)
+    expect(controlRef.getBoundingClientRect().height).toBeCloseTo(48, 0)
   })
 })

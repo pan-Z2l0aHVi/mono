@@ -6,6 +6,7 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
+import scrollbarCss from '@/assets/scrollbar.css?raw'
 import type { WebUiAutocomplete } from '@/components/autocomplete'
 import type { WebUiDialog } from '@/components/dialog'
 import type { WebUiSelect } from '@/components/select'
@@ -28,6 +29,39 @@ import { pollUntil } from '@/shared/test-utils'
 function thumbColor(el: Element): string {
   const value = getComputedStyle(el).scrollbarColor
   return /rgba?\([^)]*\)|#[0-9a-f]+/i.exec(value)?.[0] ?? value
+}
+
+/**
+ * 在元素自己的主题作用域里解析 `--wui-scrollbar-handle`，作为 thumb 色的期望值。
+ * 写死 rgba 字面量会随 token 调整而腐化，也把「读到了主题 token」退化成「读到了该字面量」
+ * （示范：context-menu scrim-theme 的 resolveToken）。
+ */
+function expectedHandle(el: Element): string {
+  const probe = document.createElement('span')
+  probe.style.color = 'var(--wui-scrollbar-handle)'
+  el.append(probe)
+  const color = getComputedStyle(probe).color
+  probe.remove()
+  if (!color) throw new Error('无法解析 --wui-scrollbar-handle')
+  return color
+}
+
+/** scrollbar.css 里 `.wui-scroll` 的 var() 兜底值（没有主题时的期望值源），不在测试里再抄一份。 */
+function scrollbarFallback(): string {
+  const match = /--wui-scrollbar-handle,\s*([^)]+\))\)\s*transparent/.exec(scrollbarCss)
+  if (!match) throw new Error('scrollbar.css 里找不到 --wui-scrollbar-handle 的兜底值')
+  return match[1]!
+}
+
+/** 把颜色值归一成浏览器计算形态（示范：theme reduced-motion 的 resolvedColor）。 */
+function resolvedColor(scope: Element, value: string): string {
+  const probe = document.createElement('span')
+  probe.style.color = value
+  scope.append(probe)
+  const color = getComputedStyle(probe).color
+  probe.remove()
+  if (!color) throw new Error(`无法解析颜色 ${value}`)
+  return color
 }
 
 function desc(component: WebUiDialog): HTMLElement {
@@ -123,9 +157,11 @@ describe('组件内部 scrollbar（浏览器）', () => {
 
     // 先确认它确实是滚动容器：没有溢出就量不到 scrollbar 槽，后面的宽度断言会空转。
     expect(el.scrollHeight).toBeGreaterThan(el.clientHeight)
-    expect(thumbColor(el)).toBe('rgba(0, 0, 0, 0.39)')
+    expect(thumbColor(el)).toBe(expectedHandle(el))
     // 覆盖式 scrollbar 不占宽度。`::-webkit-scrollbar` 的经典 scrollbar 会把这里顶成 > 0。
     expect(el.offsetWidth - el.clientWidth).toBe(0)
+    // 主场景（dialog .desc）同样收窄为 thin：portal 面板的那两条（见下）不覆盖这条路径。
+    expect(getComputedStyle(el).scrollbarWidth).toBe('thin')
   })
 
   it('深色主题下换成白色 thumb', async () => {
@@ -133,7 +169,7 @@ describe('组件内部 scrollbar（浏览器）', () => {
     const el = desc(dialog)
 
     expect(el.scrollHeight).toBeGreaterThan(el.clientHeight)
-    expect(thumbColor(el)).toBe('rgba(255, 255, 255, 0.5)')
+    expect(thumbColor(el)).toBe(expectedHandle(el))
     expect(el.offsetWidth - el.clientWidth).toBe(0)
   })
 
@@ -142,7 +178,7 @@ describe('组件内部 scrollbar（浏览器）', () => {
     const el = desc(dialog)
 
     expect(el.scrollHeight).toBeGreaterThan(el.clientHeight)
-    expect(thumbColor(el)).toBe('rgba(0, 0, 0, 0.39)')
+    expect(thumbColor(el)).toBe(resolvedColor(el, scrollbarFallback()))
     expect(el.offsetWidth - el.clientWidth).toBe(0)
   })
 
@@ -159,7 +195,7 @@ describe('组件内部 scrollbar（浏览器）', () => {
     const scroll = await waitForPortalScroll(theme, '[role="listbox"]', '.select-scroll')
 
     expect(scroll.scrollHeight).toBeGreaterThan(scroll.clientHeight)
-    expect(thumbColor(scroll)).toBe('rgba(0, 0, 0, 0.39)')
+    expect(thumbColor(scroll)).toBe(expectedHandle(scroll))
     expect(getComputedStyle(scroll).scrollbarWidth).toBe('thin')
   })
 
@@ -178,7 +214,7 @@ describe('组件内部 scrollbar（浏览器）', () => {
     const scroll = await waitForPortalScroll(theme, '.autocomplete-overlay', '.autocomplete-scroll')
 
     expect(scroll.scrollHeight).toBeGreaterThan(scroll.clientHeight)
-    expect(thumbColor(scroll)).toBe('rgba(0, 0, 0, 0.39)')
+    expect(thumbColor(scroll)).toBe(expectedHandle(scroll))
     expect(getComputedStyle(scroll).scrollbarWidth).toBe('thin')
   })
 })

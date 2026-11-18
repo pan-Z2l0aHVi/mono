@@ -50,7 +50,22 @@ describe('env 测试', () => {
   })
 
   it('isPWA 按当前 display-mode 实时求值', () => {
-    // 与 UA 快照不同，display-mode 用 matchMedia 实时查询，返回值本来就该跟着媒体查询走
-    expect(typeof env.isPWA).toBe('boolean')
+    // 与 UA 快照不同，display-mode 用 matchMedia 实时查询，返回值本来就该跟着媒体查询走。
+    // 注入 matches 可翻转的 matchMedia stub，两次读取断言翻转生效：实现若像 ua 那样在
+    // 模块加载时快照 matches，stub 翻转后第二次读取仍是旧值，这里就会红。
+    const original = window.matchMedia
+    let standalone = false
+    window.matchMedia = ((query: string) => ({
+      matches: standalone && /display-mode:\s*standalone/.test(query),
+      media: query
+    })) as typeof window.matchMedia
+
+    try {
+      expect(env.isPWA).toBe(false)
+      standalone = true
+      expect(env.isPWA).toBe(true)
+    } finally {
+      window.matchMedia = original
+    }
   })
 })

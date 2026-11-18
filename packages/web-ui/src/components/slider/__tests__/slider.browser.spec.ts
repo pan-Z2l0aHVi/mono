@@ -5,13 +5,19 @@ import { page, userEvent } from 'vite-plus/test/browser'
 
 import { cleanupElement, pollUntil, queryA11y } from '@/shared/test-utils'
 
+import sliderStyleCss from '../style.css?raw'
+
 afterEach(() => document.body.replaceChildren())
 
 /**
  * 指针拖拽契约：以公开 `value` 与 `input` / `change` 派发观察手势结果。
  * 内部态 class（is-pressed / is-dragging / is-open）、`cursor`、`touch-action` 与
- * thumb 的玻璃质感（backdrop-filter / 背景色 / box-shadow）属实现与视觉细节，
- * 按 ADR-0005 §5 不在契约 spec 断言，归真机验收。
+ * thumb 的玻璃质感（backdrop-filter / 背景色 / box-shadow / `::before` 光环）属实现与
+ * 视觉细节，按 ADR-0005 §5 不在契约 spec 断言，归真机验收。
+ *
+ * **契约级例外**：`.wui-glass` 是导出工具类（`classes/glass.css`，package.json 导出），
+ * 它在组件上的**挂与不挂**是导出契约的应用面，可以断言 class 翻转本身；挂上之后
+ * `::before` 光环怎么画仍属内部细节，不进断言。
  *
  * `touch-action: none` 的**行为后果**（拖拽期间阻止页面滚动）仍在此断言——
  * 它是可观察的交互契约，而非样式值。
@@ -471,8 +477,15 @@ describe('WebUiSlider 刻度点按（浏览器）', () => {
 })
 
 describe('WebUiSlider 纵向 thumb（浏览器）', () => {
+  /** thumb 厚度兜底（slider/style.css；`--wui-slider-thumb-thickness` 未在别处声明，走 fallback）。 */
+  function thumbThicknessFallback(): number {
+    const match = /--wui-slider-thumb-thickness,\s*(\d+)px/.exec(sliderStyleCss)
+    if (!match) throw new Error('slider/style.css 里找不到 thumb 厚度兜底')
+    return Number(match[1])
+  }
+
   // 明色下 thumb 与页面同色、纵向轨道只有几像素宽：几何一旦被拉成椭圆就会被看成竖条。
-  // 这条钉住静止态 thumb 是 20×20 的正圆，宽高相等。
+  // 这条钉住静止态 thumb 是「厚度兜底 × 厚度兜底」的正圆，宽高相等。
   it('静止态 thumb 是正圆，宽高相等', async () => {
     const el = createSlider() as Updatable & { vertical: boolean }
     el.vertical = true
@@ -482,12 +495,12 @@ describe('WebUiSlider 纵向 thumb（浏览器）', () => {
     if (!thumb) throw new Error('未渲染 thumb')
     const rect = thumb.getBoundingClientRect()
 
-    expect(Math.round(rect.width)).toBe(20)
+    expect(Math.round(rect.width)).toBe(thumbThicknessFallback())
     expect(rect.height).toBeCloseTo(rect.width, 2)
     cleanupElement(el)
   })
 
-  it('静止态不挂 wui-glass（无 ::before 光环），按压 thumb 时才挂上 wui-glass', async () => {
+  it('静止态不挂 wui-glass，按压 thumb 时才挂上 wui-glass', async () => {
     const el = createSlider() as Updatable & { vertical: boolean }
     el.vertical = true
     await el.updateComplete
@@ -495,8 +508,9 @@ describe('WebUiSlider 纵向 thumb（浏览器）', () => {
     const thumb = el.shadowRoot!.querySelector<HTMLElement>('.wui-slider-thumb')
     if (!thumb) throw new Error('未渲染 thumb')
 
+    // `.wui-glass` 是导出工具类：挂与不挂是导出契约的应用面；`::before` 光环等渲染细节
+    // 属实现视觉（见文件头注），不在断言范围。
     expect(thumb.classList.contains('wui-glass')).toBe(false)
-    expect(getComputedStyle(thumb, '::before').content).toBe('none')
 
     const rect = thumb.getBoundingClientRect()
     const cx = rect.left + rect.width / 2
@@ -505,7 +519,6 @@ describe('WebUiSlider 纵向 thumb（浏览器）', () => {
     await el.updateComplete
 
     expect(thumb.classList.contains('wui-glass')).toBe(true)
-    expect(getComputedStyle(thumb, '::before').content).not.toBe('none')
 
     window.dispatchEvent(pointer('pointerup', cx, cy))
     await el.updateComplete

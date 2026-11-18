@@ -278,7 +278,15 @@ describe('applyBoardAction', () => {
     args: Record<string, unknown>
   }
 
-  /** 造一个内存态 task_board：支持 list_panels / add_panel / get_panel / add_task / move_task / update_task。 */
+  /**
+   * 造一个内存态 task_board：支持 list_panels / add_panel / get_panel / add_task / move_task / update_task。
+   *
+   * **fake 假设（打标 2026-11-18，方案 v5 决策项 3）**：这里的文案（`'No panels yet'` /
+   * `'Created panel P-1'`）与 JSON 形状（`[{ id, name, tasks }]`）是对真实 pi-task-board
+   * 输出的假设，未经真实宿主交叉验证；桥接侧的对应假设是「list_panels 的 JSON 解析失败即
+   * 当作无面板」（读侧显式降级，见 apply.ts 的 parsePanelTasks）。文案/形状漂移不会让本
+   * spec 假红——它只验桥接逻辑，不验 pi-task-board 本身。
+   */
   const fakeBoard = (initial?: {
     panel?: boolean
     tasks?: Array<{ id: string; title: string; status: string; description?: string }>
