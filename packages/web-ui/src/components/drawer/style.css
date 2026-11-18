@@ -654,19 +654,11 @@ dialog.is-dragging .wui-drawer-drag-zone {
  * 宽度算式 = 视口 − 2×留边，与下层堆叠的同一套留边对齐——full 直接完整盖住下层
  * （headless 的 inset 归零 → 精确 100vw/100dvh）。左右只改宽度（高度已被
  * top/bottom 拉伸），上下只改高度（宽度确已满）。
- *
- * is-size-instant 专供嵌套强制收起（_collapseFullForNested）：摘 is-full 必须
- * 当帧就位——applyLayers 同一轮读 offsetWidth，尺寸过渡的起始值仍是 full 宽度，
- * 露边数学会被污染且无重算机制。特异性 (0,4,1) 必须压过过渡门 (0,3,1)。
  */
 :host([fullable][draggable]) dialog {
   transition:
     width var(--wui-duration-drawer-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1)),
     height var(--wui-duration-drawer-enter, 280ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
-}
-
-:host([fullable][draggable]) dialog.is-size-instant {
-  transition: none;
 }
 
 :host([fullable][draggable][placement='right']) dialog.is-full,

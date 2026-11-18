@@ -67,13 +67,9 @@ function handlePeekBaseChange() {
 }
 
 /*
- * 四步执行，1→2→3→4 的顺序是硬约束（方案 §7）：
- * depth 回调（第 3 步）必须先于 size 收集（第 4 步）——消费方在回调里同步瞬时
- * 收起 full 态（is-size-instant + 摘 is-full + 强制 reflow），size 才能读到归位后的
- * 几何；若先收 size 再回调，露边数学按 full 宽度污染（shrink = size·(1−scale)/2、
- * 上层 aboveMaxSize/sizeDiff 全错），且 depth 不再变化、没有任何重算机制，
- * 错误值会持续存在。同一任务内摘 is-full 后同步读 offsetWidth 读到的仍是过渡
- * 起始值，所以消费方必须用瞬时归位，这里用执行顺序保证它不被绕过。
+ * 四步执行，1→2→3→4 的顺序是不变量：
+ * depth 回调（第 3 步）先于 size 收集（第 4 步），消费方若需在读取几何前同步调整
+ * 自身状态，可在回调中完成，使本轮读取拿到更新后的布局。
  */
 function applyLayers() {
   // 1. 清理失连 / 已关闭的 entry。

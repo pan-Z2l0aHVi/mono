@@ -673,6 +673,47 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     expect(currentAxisSize(parent, 'right')).toBeGreaterThanOrEqual(fullAxisSize('right') - 1)
   })
 
+  it('嵌套：吸附 full 后 280ms 过渡未完即打开子层 → 过渡结束后自动重算露边偏移', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    document.body.append(theme)
+
+    const parent = createDrawer()
+    theme.append(parent)
+    parent.draggable = true
+    parent.fullable = true
+    parent.open = true
+    await parent.updateComplete
+    await waitForOpenTransition(parent)
+
+    // 触发 full 吸附（is-full 刚加上，280ms 宽度过渡还在进行中）立刻松手并打开子层。
+    await holdAndMove(parent, [
+      { x: 500, y: 300, at: 0 },
+      { x: 470, y: 300, at: STEP_MS },
+      { x: 440, y: 300, at: 2 * STEP_MS },
+      { x: 410, y: 300, at: 3 * STEP_MS },
+      { x: 350, y: 300, at: 4 * STEP_MS }
+    ])
+    const parentDialog = getDialog(parent)
+    expect(parentDialog.classList.contains('is-full')).toBe(true)
+    await releaseAt(parent, 350, 300, 5 * STEP_MS)
+
+    const child = createDrawer()
+    theme.append(child)
+    child.open = true
+    await child.updateComplete
+
+    await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
+    await waitFor(() => getDialog(child).getAnimations({ subtree: true }).length === 0)
+
+    const finalWidth = parentDialog.offsetWidth
+    expect(finalWidth).toBeGreaterThanOrEqual(fullAxisSize('right') - 1)
+    const peekBase = Number.parseFloat(getComputedStyle(parentDialog).getPropertyValue('--wui-drawer-nested-peek-base'))
+    const expectedShift = (finalWidth * 0.05) / 2 + peekBase * Math.log(2)
+    const actualShift = Number.parseFloat(parentDialog.style.getPropertyValue('--wui-internal-drawer-nested-shift'))
+    expect(actualShift).toBeCloseTo(expectedShift, 1)
+  })
+
   it('快甩外拉松手：短行程也吸附 full（armed 正例）', async () => {
     const el = createDrawer()
     el.draggable = true

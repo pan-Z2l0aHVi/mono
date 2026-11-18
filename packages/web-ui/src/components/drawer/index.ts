@@ -472,6 +472,15 @@ export class WebUiDrawer extends LitElement {
   }
 
   private handleTransitionEnd(e: TransitionEvent) {
+    // full 吸附/恢复的 width/height 过渡发生在 <dialog> 自身：若过渡未完前已有上层
+    // 嵌套抽屉打开，applyLayers 读到的是瞬态宽度，过渡结束需重算一次以修正露边偏移。
+    const dialog = this.dialog
+    if (dialog && e.target === dialog && (e.propertyName === 'width' || e.propertyName === 'height')) {
+      if (this.open && dialog.classList.contains('is-nested-lower')) {
+        this._nestedLayers.recalculate()
+      }
+      return
+    }
     // transitionend 会从后代元素冒泡上来（slotted 消费者内容、嵌套子 drawer）。
     // 只处理本层内容的事件：presence 与收尾都只认动画层的过渡，
     // 后代一条 transform 过渡结束不能提前终结本层收尾（与 presence 内部守卫同规则）。
