@@ -825,7 +825,7 @@ function close() {
 
 ### 无界面模式
 
-`headless` 只保留原生 dialog、遮罩、动画、滚动锁定与 Escape / 遮罩关闭，不渲染内置头部、关闭按钮或页脚。调用方负责默认插槽内容的完整样式，并必须提供 `aria-dialog-label`；`headless` 同样支持 `draggable` 拖拽关闭。
+`headless` 只保留原生 dialog、遮罩、动画、滚动锁定与 Escape / 遮罩关闭，不渲染内置头部、关闭按钮或页脚。调用方负责默认插槽内容的完整样式，并必须提供 `aria-dialog-label`。
 
 React 示例通过 ref 设置 `ariaDialogLabel` property，避免 React 把组件专用名称当作标准 ARIA 属性校验。
 
@@ -843,7 +843,6 @@ export default function Demo() {
         open={open}
         placement="left"
         headless
-        draggable
         ref={element => {
           if (element) element.ariaDialogLabel = '自定义面板'
         }}
@@ -869,7 +868,6 @@ export default function Demo() {
     :open="open"
     placement="left"
     headless
-    draggable
     aria-dialog-label="自定义面板"
     @open-change="open = $event.detail.open"
   >
@@ -893,7 +891,7 @@ const open = ref(false)
 
 开启 `draggable` 后，抽屉内缘显示灰色胶囊拖拽条。朝关闭方向拖动超过自身尺寸的一半，或快速拖动后松开，抽屉就会关闭；没到阈值则回到打开位置。拖动方向随 `placement` 改变。
 
-再开启 `fullable` 后，向外（背离关闭方向）拖拽越过行程阈值，抽屉就地吸附为占满视口的形态（非 headless 时减去四周留边），不要求松手；快速向外甩动后松手同样触发。吸附后同一按住的手势往回拉，先恢复原尺寸，继续朝关闭方向拉过自身尺寸的一半才关闭。full 形态下关闭按钮、Escape、点遮罩都照常直接关闭；上层新开一层嵌套抽屉时，full 形态立即恢复原尺寸。
+再开启 `fullable` 后，向外（背离关闭方向）拖拽越过行程阈值，抽屉就地吸附为占满视口的形态（减去四周留边，默认 8px；把 `--wui-drawer-inset` 设为 0 即铺满视口），不要求松手；快速向外甩动后松手同样触发。吸附后同一按住的手势往回拉，先恢复原尺寸，继续朝关闭方向拉过自身尺寸的一半才关闭。full 形态下关闭按钮、Escape、点遮罩都照常直接关闭；上层新开一层嵌套抽屉时，full 形态立即恢复原尺寸。示例中的第三个抽屉开启了 `fullable`。
 
 ```tsx
 import { useState } from 'react'
@@ -901,12 +899,14 @@ import { useState } from 'react'
 export default function Demo() {
   const [rightOpen, setRightOpen] = useState(false)
   const [bottomOpen, setBottomOpen] = useState(false)
+  const [fullOpen, setFullOpen] = useState(false)
 
   return (
     <>
       <div className="flex flex-wrap gap-3">
         <web-ui-button onClick={() => setRightOpen(true)}>右侧拖拽关闭</web-ui-button>
         <web-ui-button onClick={() => setBottomOpen(true)}>底部拖拽关闭</web-ui-button>
+        <web-ui-button onClick={() => setFullOpen(true)}>右侧拖拽全屏</web-ui-button>
       </div>
 
       <web-ui-drawer
@@ -927,6 +927,18 @@ export default function Demo() {
       >
         <p>按住上缘的灰色胶囊，向下拖过半或快速甩动即可关闭。</p>
       </web-ui-drawer>
+
+      <web-ui-drawer
+        open={fullOpen}
+        draggable
+        fullable
+        heading="向右拖拽全屏"
+        onopen-change={event => setFullOpen(event.detail.open)}
+      >
+        <p>
+          按住左缘的灰色胶囊向外（向左）拖过一段行程即吸附全屏；往回拉先恢复原尺寸，继续向右拖过半或快速内甩才关闭。
+        </p>
+      </web-ui-drawer>
     </>
   )
 }
@@ -937,6 +949,7 @@ export default function Demo() {
   <div class="flex flex-wrap gap-3">
     <web-ui-button @click="rightOpen = true">右侧拖拽关闭</web-ui-button>
     <web-ui-button @click="bottomOpen = true">底部拖拽关闭</web-ui-button>
+    <web-ui-button @click="fullOpen = true">右侧拖拽全屏</web-ui-button>
   </div>
 
   <web-ui-drawer :open="rightOpen" draggable heading="向右拖拽关闭" @open-change="rightOpen = $event.detail.open">
@@ -952,6 +965,16 @@ export default function Demo() {
   >
     <p>按住上缘的灰色胶囊，向下拖过半或快速甩动即可关闭。</p>
   </web-ui-drawer>
+
+  <web-ui-drawer
+    :open="fullOpen"
+    draggable
+    fullable
+    heading="向右拖拽全屏"
+    @open-change="fullOpen = $event.detail.open"
+  >
+    <p>按住左缘的灰色胶囊向外（向左）拖过一段行程即吸附全屏；往回拉先恢复原尺寸，继续向右拖过半或快速内甩才关闭。</p>
+  </web-ui-drawer>
 </template>
 
 <script setup lang="ts">
@@ -959,6 +982,7 @@ import { ref } from 'vue'
 
 const rightOpen = ref(false)
 const bottomOpen = ref(false)
+const fullOpen = ref(false)
 </script>
 ```
 

@@ -2,6 +2,7 @@
   <div class="flex flex-wrap gap-3">
     <web-ui-button @click="rightOpen = true">右侧拖拽关闭</web-ui-button>
     <web-ui-button @click="bottomOpen = true">底部拖拽关闭</web-ui-button>
+    <web-ui-button @click="fullOpen = true">右侧拖拽全屏</web-ui-button>
   </div>
 
   <web-ui-drawer :open="rightOpen" draggable heading="向右拖拽关闭" @open-change="rightOpen = $event.detail.open">
@@ -17,6 +18,16 @@
   >
     <p>按住上缘的灰色胶囊，向下拖过半或快速甩动即可关闭。</p>
   </web-ui-drawer>
+
+  <web-ui-drawer
+    :open="fullOpen"
+    draggable
+    fullable
+    heading="向右拖拽全屏"
+    @open-change="fullOpen = $event.detail.open"
+  >
+    <p>按住左缘的灰色胶囊向外（向左）拖过一段行程即吸附全屏；往回拉先恢复原尺寸，继续向右拖过半或快速内甩才关闭。</p>
+  </web-ui-drawer>
 </template>
 
 <script setup lang="ts">
@@ -24,4 +35,5 @@ import { ref } from 'vue'
 
 const rightOpen = ref(false)
 const bottomOpen = ref(false)
+const fullOpen = ref(false)
 </script>

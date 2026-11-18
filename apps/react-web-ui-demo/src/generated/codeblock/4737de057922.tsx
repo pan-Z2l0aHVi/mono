@@ -3,12 +3,14 @@ import { useState } from 'react'
 export default function Demo() {
   const [rightOpen, setRightOpen] = useState(false)
   const [bottomOpen, setBottomOpen] = useState(false)
+  const [fullOpen, setFullOpen] = useState(false)
 
   return (
     <>
       <div className="flex flex-wrap gap-3">
         <web-ui-button onClick={() => setRightOpen(true)}>Drag-close on the right</web-ui-button>
         <web-ui-button onClick={() => setBottomOpen(true)}>Drag-close at the bottom</web-ui-button>
+        <web-ui-button onClick={() => setFullOpen(true)}>Drag-to-full on the right</web-ui-button>
       </div>
 
       <web-ui-drawer
@@ -28,6 +30,19 @@ export default function Demo() {
         onopen-change={event => setBottomOpen(event.detail.open)}
       >
         <p>Hold the gray pill on the top edge and drag it more than half way down, or fling it, to close.</p>
+      </web-ui-drawer>
+
+      <web-ui-drawer
+        open={fullOpen}
+        draggable
+        fullable
+        heading="Drag right to go full"
+        onopen-change={event => setFullOpen(event.detail.open)}
+      >
+        <p>
+          Hold the gray pill on the left edge and drag it outward (to the left) past the travel threshold to snap full;
+          dragging back restores the original size first, and only past half its size, or a quick inward fling, closes.
+        </p>
       </web-ui-drawer>
     </>
   )

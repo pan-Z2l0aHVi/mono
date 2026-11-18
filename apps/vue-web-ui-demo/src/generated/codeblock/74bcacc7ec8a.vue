@@ -2,6 +2,7 @@
   <div class="flex flex-wrap gap-3">
     <web-ui-button @click="rightOpen = true">Drag-close on the right</web-ui-button>
     <web-ui-button @click="bottomOpen = true">Drag-close at the bottom</web-ui-button>
+    <web-ui-button @click="fullOpen = true">Drag-to-full on the right</web-ui-button>
   </div>
 
   <web-ui-drawer
@@ -22,6 +23,19 @@
   >
     <p>Hold the gray pill on the top edge and drag it more than half way down, or fling it, to close.</p>
   </web-ui-drawer>
+
+  <web-ui-drawer
+    :open="fullOpen"
+    draggable
+    fullable
+    heading="Drag right to go full"
+    @open-change="fullOpen = $event.detail.open"
+  >
+    <p>
+      Hold the gray pill on the left edge and drag it outward (to the left) past the travel threshold to snap full;
+      dragging back restores the original size first, and only past half its size, or a quick inward fling, closes.
+    </p>
+  </web-ui-drawer>
 </template>
 
 <script setup lang="ts">
@@ -29,4 +43,5 @@ import { ref } from 'vue'
 
 const rightOpen = ref(false)
 const bottomOpen = ref(false)
+const fullOpen = ref(false)
 </script>

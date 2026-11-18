@@ -859,7 +859,7 @@ function close() {
 
 ### Headless
 
-`headless` keeps only the native dialog, backdrop, animations, scroll lock, and Escape / backdrop closing, rendering no built-in header, close button, or footer. Your app is responsible for the full styling of the default slot content and must provide `aria-dialog-label`. `headless` supports `draggable` drag-to-close as well.
+`headless` keeps only the native dialog, backdrop, animations, scroll lock, and Escape / backdrop closing, rendering no built-in header, close button, or footer. Your app is responsible for the full styling of the default slot content and must provide `aria-dialog-label`.
 
 The React example sets the `ariaDialogLabel` property through a ref so React does not validate the component-specific name as a standard ARIA attribute.
 
@@ -877,7 +877,6 @@ export default function Demo() {
         open={open}
         placement="left"
         headless
-        draggable
         ref={element => {
           if (element) element.ariaDialogLabel = 'Custom panel'
         }}
@@ -903,7 +902,6 @@ export default function Demo() {
     :open="open"
     placement="left"
     headless
-    draggable
     aria-dialog-label="Custom panel"
     @open-change="open = $event.detail.open"
   >
@@ -929,7 +927,7 @@ const open = ref(false)
 
 With `draggable` enabled, a gray pill-shaped drag bar appears on the inner edge of the drawer. Drag past half of its own size toward the closing direction, or drag quickly and release, to close; below the threshold the drawer returns to its open position. The direction follows `placement`.
 
-With `fullable` also enabled, dragging outward (away from the closing direction) past a travel threshold snaps the drawer to a viewport-filling form (non-headless keeps the surrounding insets) without requiring a release; a quick outward flick on release triggers the same. On the same held gesture, dragging back restores the original size first, and only after pulling past half of its size toward the closing direction does it close. In the full form the close button, Escape, and backdrop click all close directly; opening a nested drawer on top immediately restores the full drawer to its original size.
+With `fullable` also enabled, dragging outward (away from the closing direction) past a travel threshold snaps the drawer to a viewport-filling form (minus the surrounding insets, 8px by default; set `--wui-drawer-inset` to 0 for edge-to-edge) without requiring a release; a quick outward flick on release triggers the same. On the same held gesture, dragging back restores the original size first, and only after pulling past half of its size toward the closing direction does it close. In the full form the close button, Escape, and backdrop click all close directly; opening a nested drawer on top immediately restores the full drawer to its original size. The third drawer in the example below enables `fullable`.
 
 ```tsx
 import { useState } from 'react'
@@ -937,12 +935,14 @@ import { useState } from 'react'
 export default function Demo() {
   const [rightOpen, setRightOpen] = useState(false)
   const [bottomOpen, setBottomOpen] = useState(false)
+  const [fullOpen, setFullOpen] = useState(false)
 
   return (
     <>
       <div className="flex flex-wrap gap-3">
         <web-ui-button onClick={() => setRightOpen(true)}>Drag-close on the right</web-ui-button>
         <web-ui-button onClick={() => setBottomOpen(true)}>Drag-close at the bottom</web-ui-button>
+        <web-ui-button onClick={() => setFullOpen(true)}>Drag-to-full on the right</web-ui-button>
       </div>
 
       <web-ui-drawer
@@ -963,6 +963,19 @@ export default function Demo() {
       >
         <p>Hold the gray pill on the top edge and drag it more than half way down, or fling it, to close.</p>
       </web-ui-drawer>
+
+      <web-ui-drawer
+        open={fullOpen}
+        draggable
+        fullable
+        heading="Drag right to go full"
+        onopen-change={event => setFullOpen(event.detail.open)}
+      >
+        <p>
+          Hold the gray pill on the left edge and drag it outward (to the left) past the travel threshold to snap full;
+          dragging back restores the original size first, and only past half its size, or a quick inward fling, closes.
+        </p>
+      </web-ui-drawer>
     </>
   )
 }
@@ -973,6 +986,7 @@ export default function Demo() {
   <div class="flex flex-wrap gap-3">
     <web-ui-button @click="rightOpen = true">Drag-close on the right</web-ui-button>
     <web-ui-button @click="bottomOpen = true">Drag-close at the bottom</web-ui-button>
+    <web-ui-button @click="fullOpen = true">Drag-to-full on the right</web-ui-button>
   </div>
 
   <web-ui-drawer
@@ -993,6 +1007,19 @@ export default function Demo() {
   >
     <p>Hold the gray pill on the top edge and drag it more than half way down, or fling it, to close.</p>
   </web-ui-drawer>
+
+  <web-ui-drawer
+    :open="fullOpen"
+    draggable
+    fullable
+    heading="Drag right to go full"
+    @open-change="fullOpen = $event.detail.open"
+  >
+    <p>
+      Hold the gray pill on the left edge and drag it outward (to the left) past the travel threshold to snap full;
+      dragging back restores the original size first, and only past half its size, or a quick inward fling, closes.
+    </p>
+  </web-ui-drawer>
 </template>
 
 <script setup lang="ts">
@@ -1000,6 +1027,7 @@ import { ref } from 'vue'
 
 const rightOpen = ref(false)
 const bottomOpen = ref(false)
+const fullOpen = ref(false)
 </script>
 ```
 
