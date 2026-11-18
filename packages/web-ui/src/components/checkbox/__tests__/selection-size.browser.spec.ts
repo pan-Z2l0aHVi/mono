@@ -21,7 +21,9 @@ it('外框尺寸改变时对勾和圆点按比例变化，内部图形可以独�
   const svg = icon.shadowRoot!.querySelector('svg')!
   const dot = radio.shadowRoot!.querySelector<HTMLElement>('.wui-radio-dot')!
   expect(svg.getBoundingClientRect().width).toBe(30)
-  expect(dot.offsetWidth).toBe(10)
+  // 圆点默认走 radio/style.css 的 control/3 公式：按关系断言，不钉 10px（token 覆盖半边在下面）。
+  const circleSize = radio.shadowRoot!.querySelector('.wui-radio-circle')!.getBoundingClientRect().width
+  expect(dot.offsetWidth).toBeCloseTo(circleSize / 3, 5)
   checkbox.style.setProperty('--wui-checkbox-icon-size', '20px')
   radio.style.setProperty('--wui-radio-dot-size', '8px')
   expect(svg.getBoundingClientRect().width).toBe(20)

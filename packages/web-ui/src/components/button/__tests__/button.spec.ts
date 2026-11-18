@@ -325,6 +325,10 @@ describe('WebUiButton 组件', () => {
      * 分割线是 aria-hidden 的装饰，但它多渲染一条就是视觉缺陷。宿主 button 自身没有
      * 公开属性表达「我在组里且是不是末位」，只能通过真实 button-group 上下文驱动。
      * 渲染规则见 `button/index.ts` 的 `groupContext && !groupContext.isLast`。
+     *
+     * `.group-divider` 是内部 class（aria-hidden 装饰没有角色可寻，无可替换锚）：
+     * 视觉规则（1px 竖线、颜色取 border token）由 button.browser.spec.ts 的行为用例
+     * 承担；本组只在 jsdom 钉渲染/不渲染的结构事实，与 browser 侧互为补充。
      */
     const dividerOf = (button: WebUiButton): Element | null =>
       button.shadowRoot?.querySelector('[aria-hidden="true"].group-divider') ?? null

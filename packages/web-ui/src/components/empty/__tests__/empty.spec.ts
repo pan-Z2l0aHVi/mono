@@ -30,13 +30,14 @@ describe('WebUiEmpty 组件', () => {
   ])
 
   describe('默认图形', () => {
-    it('渲染一个 aria-hidden 的 svg，画布 24×24', async () => {
+    it('渲染一个 aria-hidden 的 svg', async () => {
       const el = createEmpty()
       await waitForUpdate(el)
 
       const glyph = defaultGlyph(el)
       expect(glyph).not.toBeNull()
-      expect(glyph?.getAttribute('viewBox')).toBe('0 0 24 24')
+      // 不钉 viewBox：那是兜底资产的绘制细节，资产调整不该误伤这里（真契约是下面的
+      // currentColor 与 aria-hidden）。
       expect(glyph?.getAttribute('aria-hidden')).toBe('true')
       cleanupElement(el)
     })

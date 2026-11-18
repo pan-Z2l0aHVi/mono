@@ -89,7 +89,7 @@ const REMOVED_TOKENS = [
 ]
 
 describe('WebUiTheme token contract', () => {
-  it('light 与 dark 的默认 accent action 都使用白色前景并达到 3:1 对比度', () => {
+  it('light 与 dark 的默认 accent action 都定义 on-accent 前景并达到 3:1 对比度', () => {
     for (const [appearance, value] of [
       ['light', lightValue],
       ['dark', darkValue]
@@ -98,7 +98,9 @@ describe('WebUiTheme token contract', () => {
       const onAccent = value('--wui-color-on-accent')
       expect(accent, `${appearance} theme 应定义 accent`).not.toBe('')
       expect(onAccent, `${appearance} theme 应定义 on-accent`).not.toBe('')
-      expect(onAccent).toBe('#fff')
+      // 不钉 '#fff' 字面量（A3 决策，2026-11-18）：ADR/设计稿查无「on-accent 必须是白」
+      // 的承诺（对照 on-danger 在 dark 档是 #000，不存在一刀切的白色前景规则），contrast
+      // ≥ 3 才是被测契约；白是当前取值的巧合，改 #f0f0f0 也照样过。
       expect(contrastRatio(onAccent, accent), `${appearance} accent 与 on-accent 应达到 3:1`).toBeGreaterThanOrEqual(3)
     }
   })

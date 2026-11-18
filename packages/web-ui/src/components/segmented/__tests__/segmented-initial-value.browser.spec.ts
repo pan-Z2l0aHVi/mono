@@ -82,17 +82,14 @@ describe('WebUiSegmented 初始 value 与子 trigger 升级时序（浏览器）
       'trigger 定义后 indicator 仍未定位到 host value 指向的项'
     )
 
-    const groupRect = group.getBoundingClientRect()
+    // 换渲染 rect 锚（同文件 :25-26 的现成写法）：--indicator-* 是内部测量变量，
+    // indicator 的渲染几何才是用户看见的后果。
+    const indicator = group.shadowRoot!.querySelector<HTMLElement>('.wui-segmented-indicator')!
     const selectedRect = triggers[1]?.getBoundingClientRect()
     expect(selectedRect).toBeDefined()
-    expect(Number.parseFloat(group.style.getPropertyValue('--indicator-left'))).toBeCloseTo(
-      (selectedRect?.left ?? 0) - groupRect.left,
-      0
-    )
-    expect(Number.parseFloat(group.style.getPropertyValue('--indicator-width'))).toBeCloseTo(
-      selectedRect?.width ?? 0,
-      0
-    )
+    const indicatorRect = indicator.getBoundingClientRect()
+    expect(indicatorRect.left).toBeCloseTo(selectedRect?.left ?? 0, 0)
+    expect(indicatorRect.width).toBeCloseTo(selectedRect?.width ?? 0, 0)
 
     before.focus()
     await userEvent.keyboard('{Tab}')

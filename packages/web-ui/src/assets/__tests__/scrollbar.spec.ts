@@ -2,6 +2,18 @@ import { readFileSync } from 'node:fs'
 
 import { describe, expect, it } from 'vite-plus/test'
 
+/*
+ * 章程：本文件按 test-authoring 的「章程」例外成文，守 scrollbar.css 的**源码级约定**——
+ * 组件内部 scrollbar 走覆盖式方案：`scrollbar-color` 经 var() 读主题 token、不声明
+ * `::-webkit-scrollbar`、`scrollbar-width: thin` 收窄经典平台。每条判据都有实测变异证据：
+ * - 给容器加一条 `::-webkit-scrollbar { width: 7px }` 后，同尺寸容器的
+ *   `offsetWidth - clientWidth` 从 0 变 7（引擎切回经典 scrollbar 并占宽度，见 :24-28）；
+ * - 漏写 `scrollbar-width: thin` 时，经典平台（Windows/Linux）的 scrollbar 恢复默认粗细
+ *   （见 :31-33）。
+ * 运行期几何与 token 接线的行为面在 scrollbar.browser.spec.ts；jsdom 量不到 scrollbar
+ * 几何，这里只钉源码形状。改这些约定属于设计决策，请同步更新本章程与 browser 侧行为面。
+ */
+
 // 从磁盘读源码：vitest 默认把 CSS 模块处理成空模块，`?inline` / `?raw` 都返回空串，
 // 组件用 `?inline` 拿到空样式也照常通过，所以只能读原文断言形状。路径以包根为基准，
 // 与 vitest 的 root 一致。
