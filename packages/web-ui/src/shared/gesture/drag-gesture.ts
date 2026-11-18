@@ -68,6 +68,12 @@ export interface DragGestureOptions {
    * 有意图死区时校准落在**越过死区的那次 move**（此时 `startTimeStamp` 的既有重置与之同值）。
    */
   calibrateOnFirstMove?: boolean
+  /**
+   * 手势元素自身收到 `lostpointercapture` 时是否立即取消，默认 `true`。
+   * 设为 `false` 时，只要手势元素仍在文档中，丢失捕获后仍交由 `window` 捕获层继续接管
+   * 后续 `pointermove`/`pointerup`（防止快速拖拽提前丢捕获时中断关闭）。
+   */
+  cancelOnLostCapture?: boolean
   /** 手势启动回调。返回 false 可取消本次拖拽 */
   onStart?: (info: DragStartInfo, event: PointerEvent) => boolean | void
   /** 拖拽移动回调 */
@@ -105,6 +111,7 @@ export function attachDragGesture(
     axis = 'both',
     threshold = 0,
     calibrateOnFirstMove = false,
+    cancelOnLostCapture = true,
     onStart,
     onMove,
     onEnd,
@@ -398,6 +405,7 @@ export function attachDragGesture(
   function handleLostPointerCapture(e: PointerEvent) {
     if (activePointerId !== e.pointerId) return
     if (e.target !== target) return
+    if (!cancelOnLostCapture && target?.isConnected) return
     resetState()
     onCancel?.(e)
   }

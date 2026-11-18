@@ -31,30 +31,28 @@ export type DrawerPlacement = (typeof ALLOWED_PLACEMENTS)[number]
 /*
  * 释放后的拖拽关闭判定：
  *
- * - 基准校准：位移零点与判定时钟都在**首个 pointermove** 处重置（手势层
- *   `calibrateOnFirstMove`，drawer 显式开启），吸收「按下 → 首个 move」之间的空隙——
- *   触摸输入的首个 move 常已相对按下点偏移，不重置会让元素在首个 move 一次性兑现
- *   而跳动。代价是这段位移被丢弃，一次手势至少要累积两个 move 才可能产生位移；
- *   `DragMoveInfo/DragEndInfo` 的 `delta*` 与 `duration` 均以该点为零点与起点。
- * - 距离：**自抓取瞬间起的净位移**超过 drawer 尺寸的一半（下限 10px）。用净位移而不是
- *   绝对位置：从弹回/收尾途中重新抓取时，抓取瞬间停在哪里都不算「已经拖过一半」。
+ * - 基准校准：drawer 关闭手势层的 `calibrateOnFirstMove`，以 `pointerdown` 作为位移零点与
+ *   判定起点，保留按下到首个 move 之间的初始位移，避免极短快速轻扫被吞掉第一帧而无法触发。
+ *   （`_stageOrigin` 在 `pointerdown` 初始化，enter-full 吸附时重设。）
+ * - 距离：**自抓取瞬间起的净位移**超过 drawer 尺寸的 35%（`DRAG_CLOSE_RATIO`，下限 10px）。
+ *   用净位移而不是绝对位置：从弹回/收尾途中重新抓取时，抓取瞬间停在哪里都不算「已经拖过阈值」。
  *   尺寸量不到时（0）由下限兜底，保证退化场景不会因为阈值 0 而「动一下就关」。
- * - 甩动：整段手势的平均速度**达到** 500px/s（含等号）。用「整段手势」而不是释放
- *   瞬间的滑窗速度：滑窗只描述最后一小段轨迹，反向回扫（先往打开方向拖进量程，
- *   再快速扫回）在释放瞬间同样能凑出很高的滑窗速度，但它不是朝关闭方向的甩动。
- *   净速度 = 净位移 / 整段时长（自校准点起算），分母钳到 50ms；时长为 0 时速度取 0，
- *   而不是按 50ms 兜底放大——直接放大会把「测不到时长」变成一次甩动。
+ * - 甩动：闭合方向速度**达到** 350px/s（`DRAG_FLICK_VELOCITY`，含等号），取整段净速度、
+ *   手势层滑窗速度与 120ms 内末次正向 move 速度（`DRAG_REQUEST_WINDOW_MS`）中的最大值，
+ *   避免快速轻扫或松手瞬间短暂停顿把速度压低。净速度分母钳到 50ms；时长为 0 且无移动速度时取 0，
+ *   防止把「测不到时长」误判为一次甩动。
  * - 方向：净位移未朝闭合方向（`<= 0`）时一律弹回。
- * - 改主意：拖拽期内追踪「自折返点起」的位移，一旦自方向确认点回撤满 10px 即标记
- *   取消，甩动分支此后拒绝关闭；位移重新越过关闭距离阈值时清除标记，即
- *   「已经拖过一半」不受回撤影响。见 `_trackSwipeCancel`。
+ * - 改主意：拖拽期内基于闭合方向峰值位移（`_swipePeakCloseDisp`）与曾否明显反向拉出
+ *   （`_swipeSawOutward`）判定回撤——从峰值回撤满 10px 或先反向拉出 10px 再回扫时标记取消，
+ *   甩动分支据此拒绝关闭，同时忽略 1-2px 释放微抖；位移重新越过关闭距离阈值时清除标记，
+ *   即「已经拖过距离阈值」不受回撤影响。见 `_trackSwipeCancel`。
  * - 过冲阻尼：闭合方向全额 1:1 跟手，反向按 `dampOverscroll` 平方根压缩。阻尼作用于
  *   **本次手势的增量**，再叠加抓取瞬间的基准位移；对总位移做阻尼会连基准一起压缩，
  *   元素不再接着视觉位置走。
  */
-const DRAG_CLOSE_RATIO = 0.5
+const DRAG_CLOSE_RATIO = 0.35
 const DRAG_MIN_CLOSE_DISTANCE = 10
-const DRAG_FLICK_VELOCITY = 500
+const DRAG_FLICK_VELOCITY = 350
 const DRAG_MIN_VELOCITY_SPAN_MS = 50
 const DRAG_REVERSE_CANCEL_THRESHOLD = 10
 const DRAG_REQUEST_WINDOW_MS = 120
@@ -405,23 +403,27 @@ export class WebUiDrawer extends LitElement {
   // pointerdown 时刻已存在的闭合方向位移（从弹回动画中抓取时非 0）。
   private _dragInitialOffset = 0
   private _dragOffset = 0
-  // 位移零点与判定时钟由手势层的 `calibrateOnFirstMove` 校准到首个 pointermove，
-  // 这里只保留「改主意」相关的追踪状态。
+  // 位移零点与判定时钟在 `pointerdown` 时初始化（drawer 关闭 `calibrateOnFirstMove`），
+  // 这里保留「改主意」与速度兜底相关的追踪状态。
   // 折返点（轴坐标）：随反向移动拉到当前坐标。
   private _cancelBaseline = 0
   // 上一次 move 的轴坐标，用于求移动量。
   private _lastAxisPos = 0
-  // 方向确认时的位移；负值表示方向尚未确认。
-  private _swipeIntentDisp = -1
+  // 关闭方向达到过的峰值未阻尼位移，用于判定真实回撤（避免 1px 微抖误判）。
+  private _swipePeakCloseDisp = 0
+  // 本段手势是否曾明显朝打开方向拉出（防先拉出再反向回扫误关）。
+  private _swipeSawOutward = false
   // 已判定为「改主意」，甩动分支据此拒绝关闭。
   private _swipeCancelled = false
+  // 末次正向移动的闭合方向速度与时间戳：避免松开按键前短暂停顿把瞬时速度归零。
+  private _lastMoveVelocity = 0
+  private _lastMoveTime = 0
   /*
    * fullable 两段手势的状态（方案 §3）：
    *
    * - `_stage` 决定 onMove 走哪个分支；'full' 跨手势持久（full 态松手弹回后仍 full），
    *   复位只经 `_resetStage()`（调用点全集见它的注释）。
-   * - `_stageOrigin` 是本段手势的指针轴零点：首个 pointermove 校准时设置（与手势层
-   *   `calibrateOnFirstMove` 同拍，吸收按下到首个 move 的空隙），enter-full 时重设——
+   * - `_stageOrigin` 是本段手势的指针轴零点：在 `pointerdown` 初始化，enter-full 时重设——
    *   两次拉动（base→full→exit）的判定零点因此随吸附点换段。
    * - `_baseDragSize` 是 base 阶段的判定尺寸：exit-full 后 280ms 宽度回位窗口内，
    *   阈值不读过渡中的中途值。判定一律走 `_judgeSize()`，禁止裸读本字段。
@@ -623,8 +625,11 @@ export class WebUiDrawer extends LitElement {
     const axisPos = this._dragAxis === 'x' ? e.clientX : e.clientY
     this._cancelBaseline = axisPos
     this._lastAxisPos = axisPos
-    this._swipeIntentDisp = -1
+    this._swipePeakCloseDisp = 0
+    this._swipeSawOutward = false
     this._swipeCancelled = false
+    this._lastMoveVelocity = 0
+    this._lastMoveTime = e.timeStamp
     this._exitedFull = false
     /*
      * fullable 会话捕获（方案 §2.3 / §4）：
@@ -643,7 +648,7 @@ export class WebUiDrawer extends LitElement {
         return property === 'width' || property === 'height'
       })
     this._fullArmed = this.fullable && this.draggable && Math.abs(this._dragInitialOffset) < 1
-    this._stageOrigin = null
+    this._stageOrigin = axisPos
     this._baseDragSize =
       this._stage === 'full' || hasSizeTransition
         ? this._baseDragSize || this._measureDragSize()
@@ -655,8 +660,10 @@ export class WebUiDrawer extends LitElement {
 
     this._dragGesture = attachDragGesture(e, {
       axis: this._dragAxis,
-      // 拖拽零点与判定时钟一起重置到首个 move。
-      calibrateOnFirstMove: true,
+      // 保留从按下点起算的首帧短距位移，避免 1~2 帧快划被校准吞掉。
+      calibrateOnFirstMove: false,
+      // 快速拖拽若在 pointerup 前先触发 lostpointercapture，继续由 window 捕获层接管至松手。
+      cancelOnLostCapture: false,
       onMove: info => {
         const axisPos = this._dragAxis === 'x' ? info.clientX : info.clientY
         // 本段零点与手势层校准同拍：首个 move 即原点（吸收按下到首个 move 的空隙）。
@@ -690,6 +697,11 @@ export class WebUiDrawer extends LitElement {
         }
 
         this._trackSwipeCancel(axisPos, raw)
+        const moveVelocity = (this._dragAxis === 'x' ? info.velocityX : info.velocityY) * this._dragCloseSign
+        if (moveVelocity !== 0) {
+          this._lastMoveVelocity = moveVelocity
+          this._lastMoveTime = info.timeStamp
+        }
 
         // 达到关闭阈值时胶囊换成更实的中性灰作视觉确认。与距离分支共用同一量
         //（自抓取瞬间起的净位移）与同一阈值，视觉确认与实际判定不会漂移。
@@ -710,14 +722,14 @@ export class WebUiDrawer extends LitElement {
         const velocity = (this._dragAxis === 'x' ? info.velocityX : info.velocityY) * this._dragCloseSign
         // 净位移从抓取瞬间的位移起算（弹回/收尾过渡中被重新抓取时起点非 0）。
         const displacement = this._dragOffset - this._dragInitialOffset
-        // 时长同样自校准点（首个 move）起算，与位移零点同源：按下后的停顿不参与分母。
-        // 分母下限 50ms；时长量为 0（首尾时间戳相同，或事件时间戳不可用/倒退）时速度取
-        // 0——直接按 50ms 兜底会把「测不到时长」放大成一次甩动。
+        // 整段均速，以及释放前 120ms 内最后一次有效移动速度，避免松键瞬间停顿稀释速度。
         const netVelocity =
           info.duration > 0 ? (displacement / Math.max(info.duration, DRAG_MIN_VELOCITY_SPAN_MS)) * 1000 : 0
-        // 甩动判据：净位移朝闭合方向、平均速度达到阈值、本段手势未改主意。
+        const recentMoveVelocity = info.timeStamp - this._lastMoveTime <= 120 ? this._lastMoveVelocity : 0
+        const flickVelocity = Math.max(netVelocity, velocity, recentMoveVelocity)
+        // 甩动判据：净位移朝闭合方向、速度达到阈值、本段手势未改主意。
         // 一旦 exit-full，下方 shouldClose 的 outer gate 会同时否决距离与甩动关闭。
-        const flicked = displacement > 0 && netVelocity >= DRAG_FLICK_VELOCITY && !this._swipeCancelled
+        const flicked = displacement > 0 && flickVelocity >= DRAG_FLICK_VELOCITY && !this._swipeCancelled
         // 距离分支同样用净位移，不是绝对位置：抓取瞬间停在哪里都不算「已经拖过一半」。
         // `_dragOffset` 只留给收尾的起点使用。
         const shouldClose = !this._exitedFull && (displacement > this._dragCloseThreshold(size) || flicked)
@@ -740,7 +752,7 @@ export class WebUiDrawer extends LitElement {
           !shouldClose &&
           !this._swipeCancelled &&
           !this._nestedLower &&
-          velocity <= -DRAG_FLICK_VELOCITY &&
+          Math.min(velocity, recentMoveVelocity) <= -DRAG_FLICK_VELOCITY &&
           this._dragOffset <= 0
         ) {
           const from = this._dragOffset
@@ -748,7 +760,8 @@ export class WebUiDrawer extends LitElement {
           this._stageOrigin = null
           this._dragInitialOffset = 0
           this._cancelBaseline = 0
-          this._swipeIntentDisp = -1
+          this._swipePeakCloseDisp = 0
+          this._swipeSawOutward = false
           this._swipeCancelled = false
           dialog.classList.add('is-full')
           this._settleRebound(dialog, velocity, from)
@@ -797,22 +810,24 @@ export class WebUiDrawer extends LitElement {
    *   继续同向移动会被误判成回撤。
    */
   private _trackSwipeCancel(axisPos: number, displacement: number) {
-    const movement = axisPos - this._lastAxisPos
     this._lastAxisPos = axisPos
-    if ((movement < 0 && axisPos > this._cancelBaseline) || (movement > 0 && axisPos < this._cancelBaseline)) {
+    if (displacement <= -DRAG_REVERSE_CANCEL_THRESHOLD) {
+      this._swipeSawOutward = true
+    }
+    if (displacement > this._swipePeakCloseDisp) {
+      this._swipePeakCloseDisp = displacement
       this._cancelBaseline = axisPos
     }
 
-    if (this._swipeIntentDisp < 0) {
-      // 方向确认：首次朝闭合方向累积出位移。
-      if (displacement > 0) this._swipeIntentDisp = displacement
+    if (displacement > this._dragCloseThreshold(this._judgeSize())) {
+      this._swipeCancelled = false
       return
     }
 
-    const cancelDisplacement = (axisPos - this._cancelBaseline) * this._dragCloseSign
-    if (cancelDisplacement > this._dragCloseThreshold(this._judgeSize())) {
-      this._swipeCancelled = false
-    } else if (this._swipeIntentDisp - cancelDisplacement >= DRAG_REVERSE_CANCEL_THRESHOLD) {
+    if (
+      (this._swipeSawOutward && displacement > 0) ||
+      (this._swipePeakCloseDisp > 0 && this._swipePeakCloseDisp - displacement >= DRAG_REVERSE_CANCEL_THRESHOLD)
+    ) {
       this._swipeCancelled = true
     }
   }
@@ -874,8 +889,11 @@ export class WebUiDrawer extends LitElement {
     this._dragInitialOffset = 0
     this._dragOffset = 0
     this._cancelBaseline = axisPos
-    this._swipeIntentDisp = -1
+    this._swipePeakCloseDisp = 0
+    this._swipeSawOutward = false
     this._swipeCancelled = false
+    this._lastMoveVelocity = 0
+    this._lastMoveTime = 0
     this._applyDragOffset(dialog, 0)
     dialog.classList.add('is-full')
   }

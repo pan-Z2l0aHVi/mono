@@ -423,7 +423,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     expect(events).toHaveLength(0)
   })
 
-  it('回撤把折返点一并带走：折返点跟随是「改主意」判定的前提', async () => {
+  it('回撤触发改主意：从关闭峰值回撤满 10px 后仍未过距离阈值，弹回打开位', async () => {
     const el = createDrawer()
     el.draggable = true
     el.open = true
@@ -432,28 +432,39 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
 
     const events = openChangeEvents(el)
     /*
-     * 折返点的跟随行为只由这条钉住。
-     * 净位移 150px < 距离阈值（尺寸的一半 = 160px），整段 15ms（按下限 50ms 计）⇒ 3000px/s
-     * ≥ 500px/s，甩动判据本身成立，结局完全由「自折返点起的位移」决定：
-     *   跟随（现状）：回撤到 560 时折返点一起过去，此刻自折返点起的位移为 0，比方向确认
-     *     时的 60px 少 60px ≥ 10px ⇒ 标记「改主意」；松手时自折返点起 110px 仍未过 160px，
-     *     清理条件不触发 ⇒ 弹回。
-     *   不跟随：折返点恒为按下的 500，回撤时自折返点起 60px（差 0，不置位），松手时 170px
-     *     > 160px ⇒ 清除标记 ⇒ 甩动关闭。
-     * 所以折返点一旦停止跟随回撤，这条轨迹会从「弹回」翻成「关闭」。
+     * 净位移 90px < 距离阈值（320 * 0.35 = 112px），整段速度 >= 350px/s；
+     * 中途从 +80px 峰值回撤 20px（>= 10px）触发「改主意」守卫，松手不得按甩动关闭。
      */
     await dragPath(el, [
       { x: 500, at: 1000 },
-      { x: 520, at: 1005 },
-      { x: 580, at: 1010 },
-      { x: 560, at: 1015 },
-      { x: 670, at: 1020 }
+      { x: 580, at: 1005 },
+      { x: 560, at: 1010 },
+      { x: 590, at: 1015 }
     ])
     await settled(el)
 
     expect(el.open).toBe(true)
     expect(getDialog(el).open).toBe(true)
     expect(events).toHaveLength(0)
+  })
+
+  it('末段微抖 2px 不误判改主意：短距快甩正常关闭', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const events = openChangeEvents(el)
+    await dragPath(el, [
+      { x: 500, at: 1000 },
+      { x: 560, at: 1020 },
+      { x: 558, at: 1030 }
+    ])
+    await waitFor(() => !el.open)
+
+    expect(events.map(event => event.detail.open)).toEqual([false])
+    expect(getDialog(el).open).toBe(false)
   })
 
   it('朝闭合方向的快速甩动：位移不足距离阈值也仍按甩动关闭', async () => {
@@ -483,14 +494,10 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
   })
 
   /*
-   * slow-drag-then-flick（issue #140 路径①）：整段手势净位移很慢，但最后 100ms 滑窗内是一次
-   * 快 flick。甩动判定用「整段手势的平均速度」
-   * （drag-gesture.ts:13 的 VELOCITY_WINDOW_MS 只用于 info.velocity 的滑窗估算），这一路正是
-   * 两种口径分歧之处：滑窗只看见末尾快扫，平均速度却被前面的慢拖稀释。现有 dragAndRelease
-   * 用例刻意分多段慢走来**回避**被判为 flick（:76/:183 注释），本条真正构造「慢拖 + 快 flick」
-   * 并命中该判定分支——末段滑窗速度远超阈值，但整段平均速度不足，必须弹回而非关闭。
+   * 按住后停顿/慢拖再快速甩出：末段 100ms 滑窗速度或释放前 120ms 移动速度达到阈值
+   * 即可按甩动关闭（同时受「改主意」守卫约束，防止先往打开方向拉出再回扫误关）。
    */
-  it('慢拖后快 flick：末段 100ms 滑窗速度超阈值，但整段平均速度不足，弹回不关闭', async () => {
+  it('慢拖后末段快 flick：滑窗瞬时速度达到阈值，触发关闭', async () => {
     const el = createDrawer()
     el.draggable = true
     el.open = true
@@ -498,20 +505,33 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await waitForOpenTransition(el)
 
     const events = openChangeEvents(el)
-    /*
-     * 首个 move（500@1400）只建立校准零点与判定时钟；随后两段慢拖（各 500ms）把整段 duration
-     * 拉到 1060ms，末两段在 50ms 内快扫 80px 形成 flick。净位移 120px < 距离阈值（尺寸/2 ≈160px）；
-     * 整段平均速度 120px/1060ms ≈113px/s < 500px/s（甩动阈值）⇒ 不得关闭。而释放时 100ms 滑窗
-     * 只保留末尾采样（580@2400、620@2450、620@2460）⇒ ≈1333px/s，旧滑窗口径会据此误判为甩动而关闭
-     * —— 本条即锁住「平均速度口径压过滑窗口径」这一 PR137 行为。单向无回撤，不触发「改主意」守卫。
-     */
     await dragPath(el, [
       { x: 500, at: 1000 },
       { x: 500, at: 1400 },
-      { x: 520, at: 1900 },
-      { x: 540, at: 2400 },
-      { x: 620, at: 2450 },
-      { x: 620, at: 2460 }
+      { x: 515, at: 1900 },
+      { x: 530, at: 2400 },
+      { x: 590, at: 2450 },
+      { x: 590, at: 2460 }
+    ])
+    await waitFor(() => !el.open)
+
+    expect(events.map(event => event.detail.open)).toEqual([false])
+    expect(getDialog(el).open).toBe(false)
+  })
+
+  it('位移从 pointerdown 起算：按下到首个 move 的短距位移计入判据，未达阈值仍弹回', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const events = openChangeEvents(el)
+    // 总位移 90px < 112px（320 * 0.35），总时长 500ms ⇒ 速度 180px/s < 350px/s，弹回。
+    await dragPath(el, [
+      { x: 500, at: 1000 },
+      { x: 540, at: 1200 },
+      { x: 590, at: 1500 }
     ])
     await settled(el)
 
@@ -520,7 +540,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     expect(events).toHaveLength(0)
   })
 
-  it('位移零点在首个 move：按下到首个 move 的位移不计入距离判据', async () => {
+  it('时长不可测（首尾时间戳相同）：速度取 0，未达距离阈值不得被读成甩动', async () => {
     const el = createDrawer()
     el.draggable = true
     el.open = true
@@ -528,44 +548,11 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await waitForOpenTransition(el)
 
     const events = openChangeEvents(el)
-    /*
-     * 按下点在 500、首个 move 已到 560：这 60px 被基准校准吸收，判定只认
-     * 560 → 700 的 140px < 160px。
-     * 若从按下点起算，位移 200px 会越过阈值而关闭。
-     * 整段耗时 400ms ⇒ 平均速度 350px/s < 500px/s，排除甩动分支的干扰。
-     */
+    // 总位移 90px < 112px，首尾同时间戳 → duration = 0 → 速度取 0，弹回不关闭。
     await dragPath(el, [
       { x: 500, at: 1000 },
-      { x: 560, at: 1100 },
-      { x: 700, at: 1500 }
-    ])
-    await settled(el)
-
-    expect(el.open).toBe(true)
-    expect(getDialog(el).open).toBe(true)
-    expect(events).toHaveLength(0)
-  })
-
-  it('时长不可测（首尾时间戳相同）：速度取 0，不得被读成甩动', async () => {
-    const el = createDrawer()
-    el.draggable = true
-    el.open = true
-    await el.updateComplete
-    await waitForOpenTransition(el)
-
-    const events = openChangeEvents(el)
-    /*
-     * 判定时长为 0：首个 move（校准点）与松手取同一个 timeStamp。位移 100px 落在
-     * 「能以甩动关闭、但不足以过距离阈值」的区间（尺寸的一半 = 160px）。
-     * durationMs === 0 时速度算作 0；用
-     * 50ms 兜底做分母，会把 100px 放大成 2000px/s 而误关。本用例只构造了「首尾 timeStamp
-     * 相同」这一种不可测来源；倒退会先在共享层被钳到 0（`Math.max(0, …)`）再走同一条
-     * 守卫，属同一分支，故不再另立用例。
-     */
-    await dragPath(el, [
-      { x: 500, at: 1000 },
-      { x: 560, at: 1010 },
-      { x: 660, at: 1010 }
+      { x: 540, at: 1000 },
+      { x: 590, at: 1000 }
     ])
     await settled(el)
 
@@ -626,8 +613,8 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     await el.updateComplete
 
     // 复现 Chromium 快速拖拽下 lostpointercapture 早于 up 的场景：
-    // 事件按普通 hit-test 派发，不再经过 zone —— 直接派发到 body。
-    // 先向打开方向甩（橡皮筋钳制），再向关闭方向甩过阈值。
+    // 先真正向 dragZone 派发 lostpointercapture，再把后续 move/up 派发到 body。
+    getDragZone(el).dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, pointerId: 1 }))
     document.body.dispatchEvent(
       new PointerEvent('pointermove', {
         bubbles: true,

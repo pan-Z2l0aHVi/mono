@@ -889,7 +889,7 @@ const open = ref(false)
 
 ### 拖拽关闭
 
-开启 `draggable` 后，抽屉内缘显示灰色胶囊拖拽条。朝关闭方向拖动超过自身尺寸的一半，或快速拖动后松开，抽屉就会关闭；没到阈值则回到打开位置。拖动方向随 `placement` 改变。
+开启 `draggable` 后，抽屉内缘显示灰色胶囊拖拽条。朝关闭方向拖动超过自身尺寸的 35%，或快速拖动后松开，抽屉就会关闭；没到阈值则回到打开位置。拖动方向随 `placement` 改变。
 
 再开启 `fullable` 后，向外（背离关闭方向）拖拽越过行程阈值，抽屉就地吸附为占满视口的形态（减去四周留边，默认 8px；把 `--wui-drawer-inset` 设为 0 即铺满视口），不要求松手；快速向外甩动后松手同样触发。从 full 形态朝关闭方向回拉越过恢复阈值后，本次手势锁定为“取消全屏”：抽屉恢复原尺寸，继续内拉只按阻尼跟手，不会关闭，也不会在同一段手势里重新吸附全屏；松手停在原尺寸。要关闭或再次全屏，请松开后重新起手。full 形态下关闭按钮、Escape、点遮罩仍直接关闭；上层新开一层嵌套抽屉时，full 形态立即恢复原尺寸（若本层正在拖拽，则在松手结束当前手势后恢复）。示例中的第三个抽屉开启了 `fullable`。
 
@@ -915,7 +915,7 @@ export default function Demo() {
         heading="向右拖拽关闭"
         onopen-change={event => setRightOpen(event.detail.open)}
       >
-        <p>按住左缘的灰色胶囊，向右拖过半或快速甩动即可关闭。</p>
+        <p>按住左缘的灰色胶囊，向右拖过阈值或快速甩动即可关闭。</p>
       </web-ui-drawer>
 
       <web-ui-drawer
@@ -925,7 +925,7 @@ export default function Demo() {
         heading="向下拖拽关闭"
         onopen-change={event => setBottomOpen(event.detail.open)}
       >
-        <p>按住上缘的灰色胶囊，向下拖过半或快速甩动即可关闭。</p>
+        <p>按住上缘的灰色胶囊，向下拖过阈值或快速甩动即可关闭。</p>
       </web-ui-drawer>
 
       <web-ui-drawer
@@ -936,7 +936,7 @@ export default function Demo() {
         onopen-change={event => setFullOpen(event.detail.open)}
       >
         <p>
-          按住左缘的灰色胶囊向外（向左）拖过一段行程即吸附全屏；往回拉过恢复阈值会先恢复原尺寸，并让本次手势停在原尺寸。松手后重新拖过半或快速内甩才会关闭。
+          按住左缘的灰色胶囊向外（向左）拖过一段行程即吸附全屏；往回拉过恢复阈值会先恢复原尺寸，并让本次手势停在原尺寸。松手后重新拖过阈值或快速内甩才会关闭。
         </p>
       </web-ui-drawer>
     </>
@@ -953,7 +953,7 @@ export default function Demo() {
   </div>
 
   <web-ui-drawer :open="rightOpen" draggable heading="向右拖拽关闭" @open-change="rightOpen = $event.detail.open">
-    <p>按住左缘的灰色胶囊，向右拖过半或快速甩动即可关闭。</p>
+    <p>按住左缘的灰色胶囊，向右拖过阈值或快速甩动即可关闭。</p>
   </web-ui-drawer>
 
   <web-ui-drawer
@@ -963,7 +963,7 @@ export default function Demo() {
     heading="向下拖拽关闭"
     @open-change="bottomOpen = $event.detail.open"
   >
-    <p>按住上缘的灰色胶囊，向下拖过半或快速甩动即可关闭。</p>
+    <p>按住上缘的灰色胶囊，向下拖过阈值或快速甩动即可关闭。</p>
   </web-ui-drawer>
 
   <web-ui-drawer
@@ -974,7 +974,7 @@ export default function Demo() {
     @open-change="fullOpen = $event.detail.open"
   >
     <p>
-      按住左缘的灰色胶囊向外（向左）拖过一段行程即吸附全屏；往回拉过恢复阈值会先恢复原尺寸，并让本次手势停在原尺寸。松手后重新拖过半或快速内甩才会关闭。
+      按住左缘的灰色胶囊向外（向左）拖过一段行程即吸附全屏；往回拉过恢复阈值会先恢复原尺寸，并让本次手势停在原尺寸。松手后重新拖过阈值或快速内甩才会关闭。
     </p>
   </web-ui-drawer>
 </template>
@@ -1319,21 +1319,21 @@ const open = ref(false)
 
 ### 属性
 
-| 名称                | 说明                                                                                                                                                     | 类型              | 默认值    |
-| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
-| `open`              | 抽屉可见性。                                                                                                                                             | `boolean`         | `false`   |
-| `no-scroll-lock`    | 打开时不锁定页面滚动。                                                                                                                                   | `boolean`         | `false`   |
-| `no-backdrop-close` | 禁止点击遮罩关闭。                                                                                                                                       | `boolean`         | `false`   |
-| `controlled`        | 用户关闭仅请求 `open=false`，由调用方回写。                                                                                                              | `boolean`         | `false`   |
-| `placement`         | 滑入方向：`right`（默认）、`left`、`top`、`bottom`。                                                                                                     | `DrawerPlacement` | `'right'` |
-| `heading`           | 标题文字，`header` 插槽为空时作为标题显示。                                                                                                              | `string`          | `''`      |
-| `closable`          | 显示内置关闭按钮。                                                                                                                                       | `boolean`         | `false`   |
-| `headless`          | 仅保留 overlay 行为，默认插槽不渲染内置抽屉界面。                                                                                                        | `boolean`         | `false`   |
-| `aria-dialog-label` | 原生 dialog 的可访问名称；`headless` 下必须提供。`dialog-label` 也可用。                                                                                 | `string`          | `''`      |
-| `aria-close-label`  | 内置关闭按钮的无障碍名称；未设置时回退内置英文文案（`Close`）。                                                                                          | `string`          | `''`      |
-| `draggable`         | 在抽屉内缘显示拖拽条，支持拖拽关闭手势。                                                                                                                 | `boolean`         | `false`   |
-| `fullable`          | 拖拽全屏（需 `draggable`）：向外拖过行程阈值或快甩外拉松手，抽屉吸附为占满视口的形态；回拉越过恢复阈值后本次手势停在原尺寸，新起手势拖过半或快甩才关闭。 | `boolean`         | `false`   |
-| `page-shift`        | 打开时背景页面朝抽屉的进场方向移动。按打开顺序决定层级和偏移，嵌套层与同级层规则相同；关闭任意层后其余层重新计算。减少动效模式下不生效。                 | `boolean`         | `false`   |
+| 名称                | 说明                                                                                                                                                           | 类型              | 默认值    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
+| `open`              | 抽屉可见性。                                                                                                                                                   | `boolean`         | `false`   |
+| `no-scroll-lock`    | 打开时不锁定页面滚动。                                                                                                                                         | `boolean`         | `false`   |
+| `no-backdrop-close` | 禁止点击遮罩关闭。                                                                                                                                             | `boolean`         | `false`   |
+| `controlled`        | 用户关闭仅请求 `open=false`，由调用方回写。                                                                                                                    | `boolean`         | `false`   |
+| `placement`         | 滑入方向：`right`（默认）、`left`、`top`、`bottom`。                                                                                                           | `DrawerPlacement` | `'right'` |
+| `heading`           | 标题文字，`header` 插槽为空时作为标题显示。                                                                                                                    | `string`          | `''`      |
+| `closable`          | 显示内置关闭按钮。                                                                                                                                             | `boolean`         | `false`   |
+| `headless`          | 仅保留 overlay 行为，默认插槽不渲染内置抽屉界面。                                                                                                              | `boolean`         | `false`   |
+| `aria-dialog-label` | 原生 dialog 的可访问名称；`headless` 下必须提供。`dialog-label` 也可用。                                                                                       | `string`          | `''`      |
+| `aria-close-label`  | 内置关闭按钮的无障碍名称；未设置时回退内置英文文案（`Close`）。                                                                                                | `string`          | `''`      |
+| `draggable`         | 在抽屉内缘显示拖拽条，支持拖拽关闭手势。                                                                                                                       | `boolean`         | `false`   |
+| `fullable`          | 拖拽全屏（需 `draggable`）：向外拖过行程阈值或快甩外拉松手，抽屉吸附为占满视口的形态；回拉越过恢复阈值后本次手势停在原尺寸，新起手势拖过关闭阈值或快甩才关闭。 | `boolean`         | `false`   |
+| `page-shift`        | 打开时背景页面朝抽屉的进场方向移动。按打开顺序决定层级和偏移，嵌套层与同级层规则相同；关闭任意层后其余层重新计算。减少动效模式下不生效。                       | `boolean`         | `false`   |
 
 ### 事件
 

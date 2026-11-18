@@ -925,7 +925,7 @@ const open = ref(false)
 
 ### Drag to close
 
-With `draggable` enabled, a gray pill-shaped drag bar appears on the inner edge of the drawer. Drag past half of its own size toward the closing direction, or drag quickly and release, to close; below the threshold the drawer returns to its open position. The direction follows `placement`.
+With `draggable` enabled, a gray pill-shaped drag bar appears on the inner edge of the drawer. Drag past 35% of its own size toward the closing direction, or drag quickly and release, to close; below the threshold the drawer returns to its open position. The direction follows `placement`.
 
 With `fullable` also enabled, dragging outward (away from the closing direction) past a travel threshold snaps the drawer to a viewport-filling form (minus the surrounding insets, 8px by default; set `--wui-drawer-inset` to 0 for edge-to-edge) without requiring a release; a quick outward flick on release triggers the same. Once a return drag crosses the restore threshold from the full form, that gesture is committed to cancelling full: the drawer returns to its original size, further dragging only follows with damping, and it cannot close or snap full again during the same gesture; releasing leaves it at the original size. To close or go full again, start a new gesture. In the full form the close button, Escape, and backdrop click all close directly; opening a nested drawer on top immediately restores the full drawer to its original size (or on release if the drawer is currently being dragged). The third drawer in the example below enables `fullable`.
 
@@ -951,7 +951,7 @@ export default function Demo() {
         heading="Drag right to close"
         onopen-change={event => setRightOpen(event.detail.open)}
       >
-        <p>Hold the gray pill on the left edge and drag it more than half way to the right, or fling it, to close.</p>
+        <p>Hold the gray pill on the left edge and drag it past the threshold to the right, or fling it, to close.</p>
       </web-ui-drawer>
 
       <web-ui-drawer
@@ -961,7 +961,7 @@ export default function Demo() {
         heading="Drag down to close"
         onopen-change={event => setBottomOpen(event.detail.open)}
       >
-        <p>Hold the gray pill on the top edge and drag it more than half way down, or fling it, to close.</p>
+        <p>Hold the gray pill on the top edge and drag it past the threshold downward, or fling it, to close.</p>
       </web-ui-drawer>
 
       <web-ui-drawer
@@ -974,7 +974,7 @@ export default function Demo() {
         <p>
           Hold the gray pill on the left edge and drag it outward (to the left) past the travel threshold to snap full;
           pulling back past the restore threshold restores the original size and commits that gesture to leaving full.
-          Release leaves it there; start another drag past half its size, or flick inward, to close.
+          Release leaves it there; start another drag past the close threshold, or flick inward, to close.
         </p>
       </web-ui-drawer>
     </>
@@ -996,7 +996,7 @@ export default function Demo() {
     heading="Drag right to close"
     @open-change="rightOpen = $event.detail.open"
   >
-    <p>Hold the gray pill on the left edge and drag it more than half way to the right, or fling it, to close.</p>
+    <p>Hold the gray pill on the left edge and drag it past the threshold to the right, or fling it, to close.</p>
   </web-ui-drawer>
 
   <web-ui-drawer
@@ -1006,7 +1006,7 @@ export default function Demo() {
     heading="Drag down to close"
     @open-change="bottomOpen = $event.detail.open"
   >
-    <p>Hold the gray pill on the top edge and drag it more than half way down, or fling it, to close.</p>
+    <p>Hold the gray pill on the top edge and drag it past the threshold downward, or fling it, to close.</p>
   </web-ui-drawer>
 
   <web-ui-drawer
@@ -1019,7 +1019,7 @@ export default function Demo() {
     <p>
       Hold the gray pill on the left edge and drag it outward (to the left) past the travel threshold to snap full;
       pulling back past the restore threshold restores the original size and commits that gesture to leaving full.
-      Release leaves it there; start another drag past half its size, or flick inward, to close.
+      Release leaves it there; start another drag past the close threshold, or flick inward, to close.
     </p>
   </web-ui-drawer>
 </template>

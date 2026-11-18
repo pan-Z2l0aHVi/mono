@@ -19,7 +19,7 @@ export default function Demo() {
         heading="Drag right to close"
         onopen-change={event => setRightOpen(event.detail.open)}
       >
-        <p>Hold the gray pill on the left edge and drag it more than half way to the right, or fling it, to close.</p>
+        <p>Hold the gray pill on the left edge and drag it past the threshold to the right, or fling it, to close.</p>
       </web-ui-drawer>
 
       <web-ui-drawer
@@ -29,7 +29,7 @@ export default function Demo() {
         heading="Drag down to close"
         onopen-change={event => setBottomOpen(event.detail.open)}
       >
-        <p>Hold the gray pill on the top edge and drag it more than half way down, or fling it, to close.</p>
+        <p>Hold the gray pill on the top edge and drag it past the threshold downward, or fling it, to close.</p>
       </web-ui-drawer>
 
       <web-ui-drawer
@@ -42,7 +42,7 @@ export default function Demo() {
         <p>
           Hold the gray pill on the left edge and drag it outward (to the left) past the travel threshold to snap full;
           pulling back past the restore threshold restores the original size and commits that gesture to leaving full.
-          Release leaves it there; start another drag past half its size, or flick inward, to close.
+          Release leaves it there; start another drag past the close threshold, or flick inward, to close.
         </p>
       </web-ui-drawer>
     </>
