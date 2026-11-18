@@ -72,10 +72,42 @@ const scriptPath = path.join(import.meta.dirname, 'codex-review.mjs')
 const configFingerprint = '0123456789abcdef'
 const configuredEnv = Object.fromEntries(CONFIG_ENV.map(name => [name, `value-for-${name}`]))
 
+const TEST_ENV_ALLOWLIST = [
+  'PATH',
+  'HOME',
+  'TMPDIR',
+  'TMP',
+  'TEMP',
+  'LANG',
+  'LC_ALL',
+  'LC_CTYPE',
+  'SystemRoot',
+  'ComSpec',
+  'PATHEXT',
+  'USERPROFILE'
+]
+
+function testEnv(overrides = {}) {
+  const env = {}
+  for (const key of TEST_ENV_ALLOWLIST) {
+    if (process.env[key] !== undefined) env[key] = process.env[key]
+  }
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value === undefined) delete env[key]
+    else env[key] = String(value)
+  }
+  return env
+}
+
+function prependPath(bin) {
+  const basePath = process.env.PATH || ['/usr/bin', '/bin'].join(path.delimiter)
+  return [bin, basePath].filter(Boolean).join(path.delimiter)
+}
+
 {
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'review-incremental-git-'))
   const git = (...args) => {
-    const result = spawnSync('git', args, { cwd: directory, encoding: 'utf8' })
+    const result = spawnSync('git', args, { cwd: directory, encoding: 'utf8', env: testEnv() })
     if (result.status !== 0) throw new Error(result.stderr)
     return result.stdout
   }
@@ -131,15 +163,14 @@ const configuredEnv = Object.fromEntries(CONFIG_ENV.map(name => [name, `value-fo
           changed_paths: ['src/a.ts']
         })
       )
-      const env = {
-        ...process.env,
+      const env = testEnv({
         RUNNER_TEMP: temp,
         CODEX_REVIEW_PRIOR_DIR: priorDir,
         CODEX_REVIEW_BASE_SHA: base,
         CODEX_REVIEW_HEAD_SHA: third,
         CODEX_REVIEW_PRIOR_HEAD_SHA: second,
         GITHUB_OUTPUT: path.join(temp, 'output')
-      }
+      })
       const prepare = () =>
         spawnSync(process.execPath, [scriptPath, 'prepare-incremental'], { cwd: directory, env, encoding: 'utf8' })
       let result = prepare()
@@ -1464,8 +1495,7 @@ function runCli(command, { env = {}, conclusionDir }) {
   fs.writeFileSync(summaryPath, '')
   const result = spawnSync(process.execPath, [scriptPath, command], {
     encoding: 'utf8',
-    env: {
-      PATH: process.env.PATH,
+    env: testEnv({
       GITHUB_OUTPUT: outputPath,
       GITHUB_STEP_SUMMARY: summaryPath,
       GITHUB_REPOSITORY: 'owner/repo',
@@ -1473,7 +1503,7 @@ function runCli(command, { env = {}, conclusionDir }) {
       RUNNER_TEMP: conclusionDir,
       CODEX_REVIEW_CONCLUSION_DIR: conclusionDir,
       ...env
-    }
+    })
   })
   const outputs = Object.fromEntries(
     fs
@@ -1830,7 +1860,8 @@ esac
   )
   writeFixtures(directory, conclusionOf('Nit'), metaOf())
   const reportEnv = failAt => ({
-    PATH: `${bin}:${process.env.PATH}`,
+    PATH: prependPath(bin),
+    CODEX_REVIEW_PULL_NUMBER: '54',
     CODEX_REVIEW_LIVE_HEAD_SHA: headSha,
     FAKE_GH_FAIL_AT: failAt,
     FAKE_GH_ERROR: 'Resource not accessible by integration (HTTP 403)'
@@ -1863,9 +1894,136 @@ esac
 }
 
 {
+  // §9.3 #5 & #6: gate 允许 GITHUB_REF fallback，report 禁止 fallback 且显式 PR 覆盖 ambient ref。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-pull-precedence-'))
+  const bin = path.join(directory, 'bin')
+  const callsPath = path.join(directory, 'gh-calls')
+  fs.mkdirSync(bin)
+  fs.writeFileSync(
+    path.join(bin, 'gh'),
+    `#!/bin/sh
+printf '%s\\n' "$(printf '%s' "$*" | tr '\\n' ' ')" >> "$FAKE_GH_CALLS"
+if [ "$#" -eq 2 ] && [ "$1" = "api" ] && [ "$2" = "repos/owner/repo/pulls/$FAKE_EXPECTED_PR" ]; then
+  printf '%s\\n' '{"number":'"$FAKE_EXPECTED_PR"',"state":"open","base":{"ref":"main"},"head":{"ref":"feature","sha":"${headSha}","repo":{"full_name":"owner/repo"}}}'
+  exit 0
+fi
+if [ "$#" -eq 2 ] && [ "$1" = "api" ] && [ "$2" = "repos/owner/repo/issues/$FAKE_EXPECTED_PR/comments?per_page=100" ]; then
+  printf '%s\\n' '[]'
+  exit 0
+fi
+if [ "$#" -eq 6 ] && [ "$1" = "api" ] && [ "$2" = "-X" ] && [ "$3" = "POST" ] && [ "$4" = "-f" ] && [ "$6" = "repos/owner/repo/issues/$FAKE_EXPECTED_PR/comments" ]; then
+  case "$5" in
+    body=*)
+      printf '%s\\n' '{"id":9002}'
+      exit 0
+      ;;
+  esac
+fi
+echo "unexpected gh call: $*" >&2
+exit 2
+`,
+    { mode: 0o755 }
+  )
+  writeFixtures(directory, conclusionOf('Nit'), metaOf())
+
+  // gate 只有 GITHUB_REF=refs/pull/54/merge 时，通过 ref 解析 PR 54 并读取 live head。
+  fs.writeFileSync(callsPath, '')
+  const gateRefOnly = runCli('gate', {
+    env: {
+      PATH: prependPath(bin),
+      FAKE_GH_CALLS: callsPath,
+      FAKE_EXPECTED_PR: '54',
+      GITHUB_REF: 'refs/pull/54/merge'
+    },
+    conclusionDir: directory
+  })
+  assert.equal(gateRefOnly.result.status, 0, gateRefOnly.result.stderr)
+  assert.deepEqual(fs.readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean), [
+    'api repos/owner/repo/pulls/54'
+  ])
+
+  // gate 同时收到显式 CODEX_REVIEW_PULL_NUMBER=77 与 GITHUB_REF=refs/pull/54/merge 时，显式优先。
+  fs.writeFileSync(callsPath, '')
+  const gateConflict = runCli('gate', {
+    env: {
+      PATH: prependPath(bin),
+      FAKE_GH_CALLS: callsPath,
+      FAKE_EXPECTED_PR: '77',
+      CODEX_REVIEW_PULL_NUMBER: '77',
+      GITHUB_REF: 'refs/pull/54/merge'
+    },
+    conclusionDir: directory
+  })
+  assert.equal(gateConflict.result.status, 0, gateConflict.result.stderr)
+  assert.deepEqual(fs.readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean), [
+    'api repos/owner/repo/pulls/77'
+  ])
+
+  // report 只有 GITHUB_REF、缺少 CODEX_REVIEW_PULL_NUMBER 时必须失败，且零 gh 调用。
+  fs.writeFileSync(callsPath, '')
+  const reportMissingExplicit = runCli('report', {
+    env: {
+      PATH: prependPath(bin),
+      FAKE_GH_CALLS: callsPath,
+      FAKE_EXPECTED_PR: '54',
+      GITHUB_REF: 'refs/pull/54/merge',
+      CODEX_REVIEW_LIVE_HEAD_SHA: headSha
+    },
+    conclusionDir: directory
+  })
+  assert.equal(reportMissingExplicit.result.status, 1)
+  assert.match(reportMissingExplicit.result.stderr, /CODEX_REVIEW_PULL_NUMBER is missing/)
+  assert.deepEqual(fs.readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean), [])
+
+  // report 收到非法 CODEX_REVIEW_PULL_NUMBER（0 / bad）即使 ref 合法也直接失败，且零 gh 调用。
+  for (const invalidPull of ['0', 'bad']) {
+    fs.writeFileSync(callsPath, '')
+    const reportInvalid = runCli('report', {
+      env: {
+        PATH: prependPath(bin),
+        FAKE_GH_CALLS: callsPath,
+        FAKE_EXPECTED_PR: '54',
+        CODEX_REVIEW_PULL_NUMBER: invalidPull,
+        GITHUB_REF: 'refs/pull/54/merge'
+      },
+      conclusionDir: directory
+    })
+    assert.equal(reportInvalid.result.status, 1)
+    assert.match(reportInvalid.result.stderr, new RegExp(`pull number must be a positive integer: ${invalidPull}`))
+    assert.deepEqual(fs.readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean), [])
+  }
+
+  // report 同时收到 CODEX_REVIEW_PULL_NUMBER=77 与 GITHUB_REF=refs/pull/54/merge：严格 fake gh 验证全部请求落在 PR 77。
+  fs.writeFileSync(callsPath, '')
+  const reportConflict = runCli('report', {
+    env: {
+      PATH: prependPath(bin),
+      FAKE_GH_CALLS: callsPath,
+      FAKE_EXPECTED_PR: '77',
+      CODEX_REVIEW_PULL_NUMBER: '77',
+      GITHUB_REF: 'refs/pull/54/merge'
+    },
+    conclusionDir: directory
+  })
+  assert.equal(reportConflict.result.status, 0, reportConflict.result.stderr)
+  assert.match(reportConflict.result.stdout, /created conclusion comment 9002/)
+  const reportCalls = fs.readFileSync(callsPath, 'utf8').trim().split('\n').filter(Boolean)
+  assert.equal(reportCalls.length, 3)
+  assert.equal(reportCalls[0], 'api repos/owner/repo/pulls/77')
+  assert.equal(reportCalls[1], 'api repos/owner/repo/issues/77/comments?per_page=100')
+  assert.match(reportCalls[2], /^api -X POST -f body=.*repos\/owner\/repo\/issues\/77\/comments$/s)
+  assert.equal(
+    reportCalls.some(call => call.includes('/54')),
+    false
+  )
+
+  fs.rmSync(directory, { recursive: true, force: true })
+}
+
+{
   // 生成产物必须在 diff 入口就剔掉，而不是指望模型自己忽略；嵌套与根级 generated/ 都要覆盖。
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-scope-'))
-  const git = args => run('git', ['-C', directory, ...args])
+  const git = args => run('git', ['-C', directory, ...args], { env: testEnv() })
   const commit = message =>
     git(['-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', message])
   git(['-c', 'init.defaultBranch=main', 'init', '-q'])
@@ -2189,7 +2347,7 @@ esac
   const repository = path.join(import.meta.dirname, '../..')
   const trackedBy = glob =>
     new Set(
-      run('git', ['-C', repository, 'ls-files', '-z', '--', `:(glob)${glob}`])
+      run('git', ['-C', repository, 'ls-files', '-z', '--', `:(glob)${glob}`], { env: testEnv() })
         .split('\0')
         .filter(Boolean)
     )
@@ -2207,7 +2365,7 @@ esac
   // 确认只有源码留在 changed_paths 里。
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-deny-'))
   try {
-    const git = args => run('git', ['-C', directory, ...args])
+    const git = args => run('git', ['-C', directory, ...args], { env: testEnv() })
     const commit = message =>
       git(['-c', 'commit.gpgsign=false', '-c', 'core.hooksPath=/dev/null', 'commit', '-q', '-m', message])
     git(['-c', 'init.defaultBranch=main', 'init', '-q'])
@@ -3323,7 +3481,7 @@ esac
     const outputFile = path.join(tempRoot, 'github-output.txt')
     fs.writeFileSync(outputFile, '')
 
-    const headCommit = run('git', ['-C', repoRoot, 'rev-parse', 'HEAD']).trim()
+    const headCommit = run('git', ['-C', repoRoot, 'rev-parse', 'HEAD'], { env: testEnv() }).trim()
     const boundaryDiff = [
       'diff --git a/packages/web-ui/src/index.ts b/packages/web-ui/src/index.ts',
       '--- a/packages/web-ui/src/index.ts',
