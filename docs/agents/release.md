@@ -31,10 +31,10 @@ PR CI 的机械性修复由对应 task owner 处理；逻辑、测试和契约�
 
 ## npm 发布重跑与 release notes
 
-`prepare` 从 merge commit 检测本次版本化的公共包，把包名、版本与目录作为 job 输出传给后续 job；不产生 receipt 或可复用的中间产物。`publish` 成功即视为版本已发布，`release-notes` 不查询 npm registry、不等待其可见性——npm publish 受理与 registry 落库是异步的，传播延迟不阻塞发布链；npm 侧未实际落库时，Release 正文中的 npm 链接可能指向未收录的版本，这是对齐 changesets/action、release-please 等主流信任式发布而接受的取舍。release-notes 直接为候选包创建 GitHub Release：已存在且指向当前 merge SHA 的 published release 直接跳过并记录；指向其它 SHA 或仍为 draft 时失败。新建 release 后重新读取并核对 draft 状态与 tag 指向。重跑按当前 merge commit 重新检测候选包，因此重复执行是幂等的，但不能据此推算历史上是否发布过。workflow 按仓库串行，后一次运行排队而非取消前一次。
+`prepare` 从 merge commit 检测本次版本化的公共包，把包名、版本与目录作为 job 输出传给后续 job，后续 job 只依赖这些输出。`publish` 成功即视为版本已发布，`release-notes` 不查询 npm registry、不等待其可见性——npm publish 受理与 registry 落库是异步的，传播延迟不阻塞发布链；npm 侧未实际落库时，Release 正文中的 npm 链接可能指向未收录的版本，这是对齐 changesets/action、release-please 等主流信任式发布而接受的取舍。release-notes 直接为候选包创建 GitHub Release：已存在且指向当前 merge SHA 的 published release 直接跳过并记录；指向其它 SHA 或仍为 draft 时失败。新建 release 后重新读取并核对 draft 状态与 tag 指向。重跑按当前 merge commit 重新检测候选包，因此重复执行是幂等的，但不能据此推算历史上是否发布过。workflow 按仓库串行，后一次运行排队而非取消前一次。
 
 ## Wails desktop release 恢复
 
 native build 前 `prepare` 只读检查 release 与 tag：release 已存在时直接失败并拒绝修改；release 不存在时，tag 不存在，或 tag 为 annotated 且指向当前 merge SHA，才继续构建。`publish` 组装两平台产物与 checksums，缺 tag 时创建 annotated tag，再以 `--verify-tag` 创建 release，随后核对 draft 状态、tag 类型与 SHA、资产集合、大小，以及 GitHub 提供的 digest 与本次构建产物一致。
 
-流程不创建 draft，也没有 marker 或自动删除/恢复路径。build job 重跑会以 `overwrite` 覆盖同名 artifact；publish 若在 release 已创建后失败，重跑会因「已存在 release」被拒绝，需要人工核对 tag、release 与资产状态后决定处置，不能自动清理后重建。
+桌面端发布只创建正式 release：`build` 重跑会覆盖同名 artifact；`publish` 在 release 已创建后失败时，重跑会因「已存在 release」被拒绝，需人工核对 tag、release 与资产状态后决定处置，不做自动清理重建。

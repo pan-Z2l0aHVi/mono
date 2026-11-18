@@ -89,7 +89,7 @@ ADR 记录技术选型、架构设计与工程化决策及其取舍；具体实�
 ## 客户端适配
 
 - 客户端差异不改变 task 台账、授权边界与 checks，只体现在适配层。共享规范不设客户端专属副本；换客户端时按同样形状加一层。
-- 为兼容 Claude Code：`.claude/rules` 与 `.claude/skills` 以 symlink 指向 `.agents/`；根目录不设 `CLAUDE.md`，否则包级 `AGENTS.md` 的注入会失效。该结论只在实测过的客户端版本上成立，先核对版本。
+- 为兼容 Claude Code：`.claude/rules` 与 `.claude/skills` 以 symlink 指向 `.agents/`；根目录不设 `CLAUDE.md`，否则包级 `AGENTS.md` 的注入会失效。该结论只在实测过的客户端版本上成立，先核对版本；具体映射以仓库当前的 symlink 为准。
 - `.claude/settings.local.json` 不得显式放行根 [`AGENTS.md`](../../AGENTS.md) 禁止的共享 worktree Git 改写操作。
 
 ## 工具接口
@@ -108,20 +108,20 @@ ADR 记录技术选型、架构设计与工程化决策及其取舍；具体实�
 
 普通源码任务不需要阅读本表。修改以下工程资产时，在同一变更中同步对应权威文档；范围不明确时先查本表和相邻包 `AGENTS.md`。
 
-| 变更类别                                                        | 必须同步的文档                                                                                                                                                                                |
-| --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- |
-| 构建脚本、Vite/Turbo、CI/CD                                     | [`build.md`](./build.md)；根命令还更新 [`AGENTS.md`](../../AGENTS.md)                                                                                                                         |
-| 包新增、移除或重命名                                            | [`ARCHITECTURE.md`](../../ARCHITECTURE.md)                                                                                                                                                    |
-| lint、formatter、stylelint、cspell                              | [`lint-format.md`](./lint-format.md)                                                                                                                                                          |
-| workspace catalog 与依赖放置策略                                | [`dependencies.md`](./dependencies.md)                                                                                                                                                        |
-| Changesets 版本与发布策略                                       | [`release.md`](./release.md)                                                                                                                                                                  |
-| task 登记、政策检查入口与命令面                                 | task-ledger skill 的 SKILL.md、[`commit.md`](./commit.md)、[`commands.md`](./commands.md)                                                                                                     |
-| 测试框架或 Vite 测试配置                                        | [`verification.md`](./verification.md)                                                                                                                                                        |
-| `packages/web-ui` 组件、icon 或公共契约                         | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md)、[`web-ui.md`](./web-ui.md) 与受影响 ADR                                                                                       |
-| commitlint 或提交流程                                           | [`commit.md`](./commit.md)                                                                                                                                                                    |
-| 影响未来工程取舍的架构决定                                      | 对应 ADR，并更新 [`CONTEXT.md`](../../CONTEXT.md) ADR 索引                                                                                                                                    |
-| CI 审查 job 的审查范围、生成物排除清单或两份 diff 的分工        | [`review.md`](./review.md) 与 [`generated-artifacts.md`](./generated-artifacts.md)；后者「新增生成物时」清单里的 ADR-0021、审查 prompt、`.claude/settings.json` deny 与脚本单测同步项一并适用 |
-| client adapter、共享 rules/skills 或 instruction 体系布局与锚点 | 本文件、[`CONTEXT.md`](../../CONTEXT.md)、[ADR-0004](../adr/0004-progressive-agent-context-architecture.md) 与仓库校验                                                                        |
+| 变更类别                                                        | 必须同步的文档                                                                                                               |
+| --------------------------------------------------------------- | ---------------------------------------------------------------------------------------------------------------------------- |
+| 构建脚本、Vite/Turbo、CI/CD                                     | [`build.md`](./build.md)；根命令还更新 [`AGENTS.md`](../../AGENTS.md)                                                        |
+| 包新增、移除或重命名                                            | [`ARCHITECTURE.md`](../../ARCHITECTURE.md)                                                                                   |
+| lint、formatter、stylelint、cspell                              | [`lint-format.md`](./lint-format.md)                                                                                         |
+| workspace catalog 与依赖放置策略                                | [`dependencies.md`](./dependencies.md)                                                                                       |
+| Changesets 版本与发布策略                                       | [`release.md`](./release.md)                                                                                                 |
+| task 登记、政策检查入口与命令面                                 | task-ledger skill 的 SKILL.md、[`commit.md`](./commit.md)、[`commands.md`](./commands.md)                                    |
+| 测试框架或 Vite 测试配置                                        | [`verification.md`](./verification.md)                                                                                       |
+| `packages/web-ui` 组件、icon 或公共契约                         | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md)、[`web-ui.md`](./web-ui.md) 与受影响 ADR                      |
+| commitlint 或提交流程                                           | [`commit.md`](./commit.md)                                                                                                   |
+| 影响未来工程取舍的架构决定                                      | 对应 ADR，并更新 [`CONTEXT.md`](../../CONTEXT.md) ADR 索引                                                                   |
+| CI 审查 job 的审查范围、生成物排除清单或两份 diff 的分工        | [`review.md`](./review.md) 与 [`generated-artifacts.md`](./generated-artifacts.md)；后者「新增生成物时」列出的同步项一并适用 |
+| client adapter、共享 rules/skills 或 instruction 体系布局与锚点 | 本文件、[`CONTEXT.md`](../../CONTEXT.md)、[ADR-0004](../adr/0004-progressive-agent-context-architecture.md) 与仓库校验       |
 
 ## 维护 instruction system
 

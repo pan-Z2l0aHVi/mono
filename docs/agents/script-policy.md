@@ -11,7 +11,7 @@
 
 `scripts/lib/**` 只放 **Node 启动之前** 要跑的东西及其测试：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值，`turbo-cache-dir.sh` 与 `go-cache-dir.sh` 是这条链路的唯一实现，同名测试跟着留在原处。它不是入口，也不再是通用的共享实现目录。
 
-门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：源码是 TypeScript，`build` 跑 `vp pack` 产出 `dist/`，门禁、CI 与 workspace 配置经包名读产物，新鲜度由根 `check-pre-commit` 的前置 build 与 CI 保证。包按 [ADR-0018](../adr/0018-monorepo-kit-generic-plugins.md) 分为能力（`src/<能力>/`，能力插件与它承载的参数化判定同目录）、链协议（`src/runner/`，只有 `defineRunner()` 与 `defineCatch()`）与纯工具（`src/shared/`）三类，Vite 求值期的适配在 `src/vite/`；判定如何组成一条链见 [ADR-0022](../adr/0022-monorepo-kit-plugin-chain.md)。**本仓库的门禁事实住在根 `scripts/policies/`**：一个判定一个文件，导出配好参数的判定插件——区间这类每次调用才知道的事实由工厂接参，实例在入口组装时现造，例如 `changeset-required.mjs` 收 `base` 与 `head`；例如 `staged-clean.mjs` 里就是这个仓库提交边界要跑的工具链。判据是这段代码是否知道本仓库的名字、路径或数据：知道的是策略，放 `scripts/policies/`；不知道的才是包里的能力。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。包边界与迁移理由见 [ADR-0017](../adr/0017-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。往包里加模块要改模块本身与它所在能力目录的 `index.ts`；新增目录还要在根 `src/index.ts` 并进来，`shared/` 不成体系、没有入口，由根入口逐个指向具体模块。Vite 配置要用的符号不进主入口，落 `src/vite/` 并从它的 `index.ts` 导出，消费方经 `@greypan/monorepo-kit/vite` 读。改完重新 build；包内测试放 `src/**/__tests__/`。
+门禁实现与仓库编排在 workspace 包 [`packages/monorepo-kit`](../../packages/monorepo-kit) 里：源码是 TypeScript，`build` 跑 `vp pack` 产出 `dist/`，门禁、CI 与 workspace 配置经包名读产物，新鲜度由根 `check-pre-commit` 的前置 build 与 CI 保证。包内如何分区、能力插件放在哪、判定如何组成一条链，见该包 [`AGENTS.md`](../../packages/monorepo-kit/AGENTS.md) 与 [ADR-0018](../adr/0018-monorepo-kit-generic-plugins.md)、[ADR-0022](../adr/0022-monorepo-kit-plugin-chain.md)。**本仓库的门禁事实住在根 `scripts/policies/`**：一个判定一个文件，导出配好参数的判定插件——区间这类每次调用才知道的事实由工厂接参，实例在入口组装时现造。判据是这段代码是否知道本仓库的名字、路径或数据：知道的是策略，放 `scripts/policies/`；不知道的才是包里的能力。跨 workspace 复用但不是编排事实的测试基建仍单独成包（对比 `@greypan/test-kit` 的 MSW 基建，它对消费方一无所知）。包边界与迁移理由见 [ADR-0017](../adr/0017-monorepo-tooling-package.md)，端口分配与多 worktree 偏移的具体约定见 [`build.md`](./build.md#测试端口分配)。往包里加模块要改模块本身与它所在能力目录的 `index.ts`；新增目录还要在根 `src/index.ts` 并进来，`shared/` 不成体系、没有入口，由根入口逐个指向具体模块。Vite 配置要用的符号不进主入口，落 `src/vite/` 并从它的 `index.ts` 导出，消费方经 `@greypan/monorepo-kit/vite` 读。改完重新 build；包内测试放 `src/**/__tests__/`。
 
 ## 准入
 
@@ -36,7 +36,7 @@
 
 ### 执行面
 
-根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`policies/`（本仓的门禁事实与配好参数的判定插件）、`workflow/`（提交与发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（Node 启动前求值的 bootstrap helper）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口：用 `.use()` 把判定按想要的顺序接成一条链，`.use()` 的先后就是执行的先后，同一端点的判定由一个入口聚合，判定逻辑与能力在 `@greypan/monorepo-kit`，本仓的包名、路径与语料数据只在 `policies/` 里出现。app 级的 turbo 门禁入口（`check-generated`）同样放 `checks/`，判据由所属包提供。全仓门禁入口（`check-policy`、`check-context`、`test-scripts`）把 `full-checkout` 排在其余全仓扫描之前：工作区处于稀疏检出时非零退出，因为按 tracked 清单或目录遍历扫描的检查在 cone 上只覆盖子集，而「只扫到子集」会被报成全仓通过；`check-pre-commit` 不带这道准入，稀疏树上的提交照常进行。收缩、恢复与 cone 判定见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。包有两个入口，按消费者分：`exports["."]` 给 Node 脚本，`exports["./vite"]` 给 `vite.config.ts` 求值期的适配；引用一律写包名，不写相对路径。分类与入口契约见 ADR-0014，分区判据见 ADR-0018，链协议见 ADR-0022。
+根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`policies/`（本仓的门禁事实与配好参数的判定插件）、`workflow/`（提交与发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（Node 启动前求值的 bootstrap helper）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口：用 `.use()` 把判定按想要的顺序接成一条链，`.use()` 的先后就是执行的先后，同一端点的判定由一个入口聚合，判定逻辑与能力在 `@greypan/monorepo-kit`，本仓的包名、路径与语料数据只在 `policies/` 里出现。app 级的 turbo 门禁入口（`check-generated`）同样放 `checks/`，判据由所属包提供。全仓门禁入口（`check-policy`、`check-context`、`test-scripts`）把 `full-checkout` 排在其余全仓扫描之前：工作区处于稀疏检出时非零退出，因为按 tracked 清单或目录遍历扫描的检查在 cone 上只覆盖子集，而「只扫到子集」会被报成全仓通过；`check-pre-commit` 不带这道准入，稀疏树上的提交照常进行。收缩、恢复与 cone 判定见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。包按消费者分出公共入口：`exports["."]` 给 Node 脚本，`exports["./vite"]` 给 `vite.config.ts` 求值期的适配；跨包引用一律写包名，不写相对路径，包内引用的约定见该包 [`AGENTS.md`](../../packages/monorepo-kit/AGENTS.md)。分类与入口契约见 ADR-0014，分区判据见 ADR-0018，链协议见 ADR-0022。
 
 ### 授权
 
@@ -46,11 +46,11 @@
 
 测试可选：没有测试文件合法。一旦存在测试文件，必须与被测文件同目录同名（`foo.mjs` / `foo.ts` / `foo.sh` → `foo.test.mjs`）；新增或重命名测试文件时，同名关系在同一变更里成立。
 
-测试针对原子函数或共享实现，不针对只做聚合的入口。覆盖按风险选择，至少包括参数解析、成功输出与退出码、失败路径，以及脚本声称的副作用。`scripts/checks/` 只放薄入口：它 import `scripts/policies/` 的判定插件、排 `.use()` 顺序、把 `Err` 换成非零退出，判定实现与测试在 `packages/monorepo-kit`（测试放在模块旁的 `__tests__/`）；入口本身不要求专属测试。
+测试针对原子函数或共享实现，不针对只做聚合的入口。覆盖按风险选择，至少包括参数解析、成功输出与退出码、失败路径，以及脚本声称的副作用。`scripts/checks/` 只放薄入口，构成见上文「执行面」；判定实现与测试在 `packages/monorepo-kit`（测试放在模块旁的 `__tests__/`），入口本身不要求专属测试。
 
 测试有两个发现面，各自覆盖一半，不要在两处都登记同一个文件：
 
-- `test-scripts` 运行全仓 tracked 的 `*.test.mjs`——那份清单覆盖 `.github/scripts`、workspace 脚本、skills 与包内脚本（如 `packages/web-ui/scripts/generate-icons.test.mjs`）的测试，不能收窄。这类脚本的失败只由抛错表达，退出码不证明断言跑过，所以每个脚本成功时必须往 stdout 打一行 `<仓库相对路径>: all assertions passed`，`test-scripts` 逐文件校验这一行：没有它，或它写的是别的文件名，都算失败。
+- `test-scripts` 扫描全仓 tracked 的 `*.test.mjs`，新增脚本目录自动纳入，不需要登记，也不能收窄到子集。这类脚本的失败只由抛错表达，退出码不证明断言跑过，所以每个脚本成功时必须往 stdout 打一行 `<仓库相对路径>: all assertions passed`，`test-scripts` 逐文件校验这一行：没有它，或它写的是别的文件名，都算失败。
 - `@greypan/monorepo-kit` 的测试由它自己的 `test` 脚本跑（`vp test run`），文件是 `src/**/__tests__/*.spec.ts`，随包的类型检查；走 turbo 图，有依赖排序与缓存。
 
 两边都不证明每个入口都有测试；覆盖完整性由 review 检查。共享实现的测试同样可选，存在时必须同名。

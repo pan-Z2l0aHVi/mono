@@ -7,9 +7,9 @@
 - 共享状态和行为使用 `defineXxx(...).make(...)` 的 `definePlugin` factory。Lit、Shadow DOM、属性绑定和框架事件类型沿用既有模式。
 - browser-mode 测试覆盖无法由 jsdom 证明的原生行为。UI、UX 和交互改动还必须在真实浏览器验证。
 - 受管组合的成员追踪、下行广播与上行写回统一走 `GroupController`。`select` 与 `autocomplete` 的 option 成员走 [`src/shared/option-portal`](./src/shared/option-portal/)。
-- combobox 的键盘交互按三轴分工：`combobox-shell` 拥有开合骨架（guard / 派发顺序 / scroll-lock 配对 / portal rAF dance），`combobox-navigation` 拥有游标语义（activeIndex、环绕导航、Home/End、初始锚点、指针接管、typeahead），组件保留键位映射（keydown switch）、ARIA 输出与成员管理；两组件的语义差异经 navigation 的 hooks 注入，不要把游标状态机抄回组件。
+- combobox 的键盘交互按轴分工：开合骨架（guard、派发顺序、scroll-lock 配对、portal 按帧编排的挂载与卸载——先等一帧再挂上、过渡结束前不摘）由一个内部层拥有，游标语义（activeIndex、环绕导航、Home/End、初始锚点、指针接管、typeahead）由另一个内部层拥有，组件只保留键位映射（keydown switch）、ARIA 输出与成员管理；两组件的语义差异经 hooks 注入，不要把游标状态机抄回组件。
 - 触屏长按开出 menu 后，宿主一侧补发的 click 由 `context-menu` 自己在宿主子树 capture 阶段吸收；宿主不做（也不该做）行激活抑制——「这一手开出了 menu」「手势何时结束」的事实只有组件知道。
-- theme 的 View Transition 引擎（origin 追踪、flight token、输入压制状态机、盒钉扎与清理时序）由 [`src/shared/theme/transition`](./src/shared/theme/transition.ts) 拥有；组件只保留 `_shouldAnimate` 判定、reduced-motion 检查与 appearance property 管线。
+- theme 的 View Transition 引擎（origin 追踪、flight token、输入压制状态机、盒钉扎与清理时序）由 [`src/shared/theme/transition`](./src/shared/theme/transition.ts) 拥有；组件只保留是否动画的判定、reduced-motion 检查与 appearance property 管线。
 - slot-trigger 组件（popover/dropdown/collapse）的 ARIA 状态（如 `aria-expanded`）不挂在 trigger 包装结构上，按 [ADR-0005](../../docs/adr/0005-web-ui-components.md) 回写。
 - 框架动态绑定布尔属性必须用 camelCase Property；组件内不加 attribute 字符串解析兜底，保持原生 HTML 布尔存在语义。
 
@@ -40,8 +40,8 @@ _Avoid_: 用 context 承载成员追踪或上行写回、在子项上用公开�
 示例文档（[`docs/*.md`](./docs/)）的 source of truth 只有那一份 markdown：有哪些示例、每个示例的代码、`## API` 下的每张表（字段的名称 / 类型 / 默认值 / 说明）与每段散文（行为说明这类）都手写在里面，组件源码不参与生成。中文是源语种，文件名是 `<name>.CN.md`；英文译文是默认后缀的 `<name>.md`，与 README 的命名方向一致。文件名就是文档身份，不再有 frontmatter。换来的是组件内部怎么重构都不会让文档隐形变更；代价是组件改了 API 时那张表要人手动跟着改，机器不提醒——表里的属性名与源码声明的一致性没有机器核对，只剩人工 review。
 
 - 生成与判据由 [`@greypan/md-to-meta`](../md-to-meta/AGENTS.md) 提供：引擎只把 markdown 解析成 meta 节点数组与逐围栏代码文件，产物落在消费它们的 demo 应用 `src/generated/`，受版本控制、进 git。demo 的 Vite 配置里挂着 `mdToMeta`，dev 与 build 都会按 markdown 重新生成，改完 markdown 不用手跑生成器；测试期插件只判不改。示例小节、API 表、语种这些业务契约在 demo 应用侧实现，不在引擎里。
-- 语料住在被发布的包里，而 `web-ui` 读语料的任务只有 `test`：build 不读 docs（`files` 只有 `dist`），demo 的 build/test 才是另一头的消费者。所以需要覆写的只有 `test` 的 `inputs`：根 `turbo.json` 的 `!**/*.md` 把它们排除在哈希外，而排除项是绝对的，只能在包级反过来「语料进、散文 md 按名字排」。动 `docs/` 的布局或往包根加 md 要同步那份名单——新放的 md 会默认变成 test 输入，名单由仓库守卫 `@greypan/monorepo-kit` 导出的 `webUiDocsInputs`（[源码](../monorepo-kit/src/turbo/docs-inputs.ts)，本仓配置在 [scripts/policies/web-ui-docs-inputs.mjs](../../scripts/policies/web-ui-docs-inputs.mjs)）守，它只校验 `test`。
-- 同一份源码在三处必须一致：markdown 围栏、消费方 demo 的 `src/generated/**/codeblock/` 落盘文件、页面 `<pre>` 的可见文本。落盘文件比围栏多一个行尾换行（落盘前 `trimEnd()` 再补一个，见 `codeFileOf`），除此之外三处逐字相同。改任何一段转义、高亮或落盘路径，都要让这三处一起继续成立。
+- 语料住在被发布的包里，而 `web-ui` 读语料的任务只有 `test`：build 不读 docs（`files` 只有 `dist`），demo 的 build/test 才是另一头的消费者。所以需要覆写的只有 `test` 的 `inputs`：根 `turbo.json` 的 `!**/*.md` 把它们排除在哈希外，而排除项是绝对的，只能在包级反过来「语料进、散文 md 按名字排」。动 `docs/` 的布局或往包根加 md 要同步那份名单——新放的 md 会默认变成 test 输入，名单由 `@greypan/monorepo-kit` 的 docs-inputs 策略统一计算（本仓的接线在根 [`scripts/policies/web-ui-docs-inputs.mjs`](../../scripts/policies/web-ui-docs-inputs.mjs)），它只校验 `test`。
+- 同一份源码在三处必须一致：markdown 围栏、消费方 demo 的 `src/generated/**/codeblock/` 落盘文件、页面 `<pre>` 的可见文本。落盘文件比围栏多一个行尾换行（落盘前 `trimEnd()` 再补一个），除此之外三处逐字相同。改任何一段转义、高亮或落盘路径，都要让这三处一起继续成立。
 - 围栏语言就是落盘扩展名：React 写 `tsx`、Vue 写 `vue`。引擎不维护语言白名单，所有围栏都落盘，只有命中宿主 `exec` 的语言才在 meta 里带 `load`。
 - 示例标题按文档语种编写：中文文档使用中文，英文文档使用英文，组件名与专业术语保留原文。标题是普通节点，锚点按文档顺序生成为 `section-<n>`，不派生产物文件名。
 - 消费方 demo 的 `src/generated/**` 不手改：那几份产物是生成函数的输出，要改就改 `docs/*.md`。
@@ -55,8 +55,8 @@ _Avoid_: 用 context 承载成员追踪或上行写回、在子项上用公开�
 - 包 README（[`README.md`](./README.md) 与 [`README.CN.md`](./README.CN.md)）：组件章节已搬进 `docs/*.md`，README 只留一张指向它们的索引表
 - 受影响的 ADR
 - 聚焦测试和 browser-mode 测试
-- React/Vue demo 的 type fixtures 与集成表面
-- [`apps/interweave/frontend`](../../apps/interweave/frontend)（若被公共组件消费）
+- 框架 demo 的 type fixtures 与集成表面
+- 所有消费这些契约的应用（以 manifest 与源码引用为准）
 - package `exports`、Changeset 和 monorepo-change-impact skill 的契约报告
 
 不要机械同步全部项目，以 monorepo-change-impact skill 的 `verify` 输出、manifest、源码引用和测试确定实际影响。

@@ -29,7 +29,7 @@
 
 **装配期与运行期分开兜。** js-kit 的 `.make()` 是 eager 的：插件工厂在装配期同步执行，`getWorkspaceRoot()` 也在这一步求值；`defineCatch()` 只包 `run()`，管不到这一段。触发层的 `scripts/checks/run-check.mjs` 把「装配 + 运行」包进回调：装配期抛错由它收敛成 `throw: ` 一行 stderr 加 exit 1，这是它的契约责任；`run()` 期的异常仍以链尾 `defineCatch()` 为主，只有它决定链内短路与归因，`runCheck` 的 catch 只是漏挂 `defineCatch` 时的最后一道格式兜底，不替代它。`chain.spec.ts` 钉住「工厂抛错会冒泡」，`run-check.test.mjs` 钉住「冒泡后在触发层被收住」与「漏挂兜底」，7 个真实入口的 `.use()` 清单仍由 review 逐条比对，没有端到端用例；`catch.ts` 的注释只声明 `run()` 期，不把它写成全链护罩。
 
-**root/env 由触发层注入。** `.make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })`；插件与 `src/` 下的能力目录一律不产出 root。`shared/workspace-root.ts` 的 `getWorkspaceRoot` 是仓库根定位的唯一实现，取代原 `plugin/workspace` 的 `findRepoRoot`。
+**root/env 由触发层注入。** `.make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })`；插件与 `src/` 下的能力目录一律不产出 root。workspace root 的解析在 `shared/` 里有唯一实现，取代原 `plugin/workspace` 的 `findRepoRoot`。
 
 **对外形状收在 `Chain`。** js-kit 的 `use` 会把被用插件的入参需求并进结果类型，链内接线用的 `run` 与能力键于是会一路漏到 `.make()` 的调用处，要求触发层供给本该由链自己提供的东西。每个判定插件把返回值标注成 `Chain = Plugin<{ run: Run }, KitCtx>` 收窄对外面，不用类型断言：断言会把这层泄漏留成每个装配点各自要防的事。
 

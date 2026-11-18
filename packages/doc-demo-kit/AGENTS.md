@@ -1,6 +1,6 @@
 # doc-demo-kit
 
-`@greypan/doc-demo-kit` 是 react/vue 两个 web-ui 文档 demo 的共享文档示例层：跨端逐字孪生的状态机、语料契约与纯逻辑住在这里，宿主只保留框架绑定（React hook / Vue composable）、视图组件与中文文案。
+`@greypan/doc-demo-kit` 是 web-ui 文档 demo 的共享文档示例层：跨端逐字孪生的状态机、语料契约与纯逻辑住在这里，宿主只保留框架绑定（React hook / Vue composable）、视图组件与中文文案。
 
 - 所有权边界：导航结构与顺序、主题/动效/侧栏宽度的存储键与校验、quick-link 倾斜数学、locale 状态机、meta 渲染判据与语料契约都由本包给出一份实现。宿主各自维护框架适配与界面，不得复制这些实现做「本地特例」。
 - 文案留在宿主：wuchale 只扫宿主 `src`，中文进了共享包既提取不到也翻译不了。本包只给结构、键名、类名与几何值。
@@ -8,5 +8,5 @@
 - 纯逻辑优先、依赖注入：locale、语料、校验与几何函数接收依赖或数据，不自己读全局；`quick-link` 需要 DOM/window 时也只通过显式参数或可替身的窄接口访问，保证 Node 环境可单测。
 - 语料契约在 `testing` 子入口（`src/testing.ts`）：`runExampleDocsContractTests` 由宿主注入 meta loader、语料目录、生成物目录与执行语言，只检查「页面显示代码 == markdown 围栏」和「围栏落成可编译文件且 exec 语言带 load」；`runNavCorpusContractTests({ docsDir })` 检查每个 nav 条目在同英文名 `.md`/`.CN.md` 存在。两处语料目录都由宿主注入，kit 不硬编码仓库路径；中英文结构/标题一致性与页面接线不由它强约束，双语对齐允许少量差异。
 - Tailwind 的自动源检测止步于 workspace 边界。本包的类串要在 demo 构建里生效，宿主必须在自己的 `global.css` 用 `@source` 显式登记本包 `src`。
-- 测试放 `src/__tests__/*.spec.ts`，由包自己的 `vp test run` 运行；默认只测纯逻辑与几何，不锁像素、类名拼写或展示计数。跨两个 demo 的生成物与页面结构对齐判据由根级 turbo 任务 `//#check-generated-parity` 持有（本地入口 `pnpm run check-generated-parity`）；`nav.spec.ts` 只测 nav 结构与 `isNavActive`。nav 条目 ↔ 语料的单向存在性由 `testing` 的 `runNavCorpusContractTests({ docsDir })` 提供，两个 demo 在各自 test 里注入 `web-ui/docs`；本包自己的测试不读仓库文件。
+- 测试放 `src/__tests__/*.spec.ts`，由包自己的 `vp test run` 运行；默认只测纯逻辑与几何，不锁像素、类名拼写或展示计数。跨 demo 的生成物与页面结构对齐判据由根级 turbo 任务 `//#check-generated-parity` 持有（本地入口 `pnpm run check-generated-parity`）；nav 结构测试只覆盖导航模型。nav 条目 ↔ 语料的单向存在性由 `testing` 的 `runNavCorpusContractTests({ docsDir })` 提供，各 demo 在各自 test 里注入 `web-ui/docs`；本包自己的测试不读仓库文件。
 - 私有包，不出 npm；仍参与 Changesets 版本计算。导出面以 `src/index.ts` 与 `./testing` 为准，新增模块同步入口。

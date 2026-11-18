@@ -137,7 +137,7 @@ macOS 侧已做真机验收（interweave.dev.app，2026-11-14），结论如下�
 - 删除 `InvisibleTitleBarHeight`，窗口不再有按坐标的拖动带。
 - 拖动改为按元素声明：`data-window-drag` 标记可拖窗口的元素，它必须是**与控件同级**的一层透明底（`absolute inset-0 -z-10`），只铺容器里没人占的空白，而不是给容器加标记再让控件逐个退出——`--wails-draggable` 会被继承，而 Wails 只读事件目标自己的计算值，控件压在拖动底上，按下就落不到它。规则在 `frontend/src/assets/global.css`，光标固定 `default`，免得空白处出现 I 形光标。
 
-现有两处拖动区：资源库工具条行内的一层透明底（`absolute inset-0 -z-10`，控件压在它上面，空白与内边距能拖、按钮与输入框不能），以及 macOS 侧栏顶部给红绿灯留的 48px padding 区——那是 layout shadow 里的空白，用一个透明覆盖层声明。两处都是独立元素，所以控件不需要任何退出标记。
+当时的拖动区是资源库工具条行内的一层透明底（`absolute inset-0 -z-10`，控件压在它上面，空白与内边距能拖、按钮与输入框不能），以及 macOS 侧栏顶部给红绿灯留出的 padding 区——那是 layout shadow 里的空白，用一个透明覆盖层声明。它们都是独立元素，所以控件不需要任何退出标记。
 
 「帮助」菜单顶部的搜索框是 AppKit 按标题认领帮助菜单后注入的：试着按 `NSApp.helpMenu` 清掉无效，仅当顶层菜单标题不等于本地化「Help」时它才不出现；而菜单栏显示的正是那个标题，所以没有既保留「帮助」又去掉搜索框的公开做法。结论是接受系统行为（用户裁决），把理由记在 `backend/native/menu/menu.go` 的 `helpMenu` 上，避免后来者再试一遍。
 
@@ -155,7 +155,7 @@ macOS 侧已做真机验收（interweave.dev.app，2026-11-14），结论如下�
 
 ### 8. 界面缩放成为 Go 拥有的设置（2026-11-15）
 
-界面缩放从「菜单直接调 `window.ZoomIn/Out/Reset` 的窗口操作」改为第五项 Go 拥有的设置，固定四档：全面 90%、标准 100%、舒适 110%、关怀 120%。
+界面缩放从「菜单直接调 `window.ZoomIn/Out/Reset` 的窗口操作」改为 Go 拥有的设置，档位是一组固定预设（取值与文案以设置契约与 [`apps/interweave/AGENTS.md`](../../apps/interweave/AGENTS.md) 为准）。
 
 - 档位白名单（值 + 刻度文案）在 `backend/settings`，与强调色色板同一模式：快照里下发 `zoom` 与 `zoomPresets`，前端只渲染不校验。`zoom` 落盘；非法值回落 100，缺字段的零值静默补齐，不打扰老设置文件。
 - 顶部菜单「放大 / 缩小 / 默认缩放」不再直接操作窗口，而是经 service 改档位（`ZoomIn` / `ZoomOut` / `ZoomReset`，均 `//wails:ignore`）；到端点停住，默认缩放回到 100%。相对步进的「读当前值 + 提交」落在同一把锁内，连按快捷键不会丢档。

@@ -35,7 +35,7 @@ mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs <scope-path
 
 ## 本地 HTTPS 证书
 
-两个 demo 的 dev/preview 通过本机 mkcert 证书提供 HTTPS。证书放在用户目录 `~/.config/greypan/dev-certs/`，同一台机器的所有 worktree 共用一份；它不随 checkout 复制，也不入库。上面的三步准备不包含这一步，因为它是每台机器一次的本地信任配置。
+文档 demo 的 dev/preview 通过本机 mkcert 证书提供 HTTPS。证书放在用户目录 `~/.config/greypan/dev-certs/`，同一台机器的所有 worktree 共用一份；它不随 checkout 复制，也不入库。上面的三步准备不包含这一步，因为它是每台机器一次的本地信任配置。
 
 首次使用或换机器时运行：
 
@@ -48,17 +48,17 @@ mkcert \
   localhost 127.0.0.1 ::1
 ```
 
-`mkcert -install` 会把 mkcert 的本地 CA 加入系统信任库，内嵌浏览器与自定义客户端因此能通过 TLS 校验。证书缺失时 dev/preview 直接失败并打印上述命令；测试档在 CI 没有证书时保持 HTTP，Playwright 自身忽略证书错误。需要换目录时设置 `GREYPAN_DEV_CERT_DIR`；两个 demo 的 `vite.config.ts` 读同一个变量。
+`mkcert -install` 会把 mkcert 的本地 CA 加入系统信任库，内嵌浏览器与自定义客户端因此能通过 TLS 校验。证书缺失时 dev/preview 直接失败并打印上述命令；测试档在 CI 没有证书时保持 HTTP，Playwright 自身忽略证书错误。需要换目录时设置 `GREYPAN_DEV_CERT_DIR`；文档 demo 的 `vite.config.ts` 读同一个变量。
 
 ## Turbo artifact cache
 
-`TURBO_CACHE_DIR` 指向系统临时目录下的 `<temp>/greypan/turbo-cache/<repo-id>`。[`scripts/lib/turbo-cache-dir.sh`](../../scripts/lib/turbo-cache-dir.sh) 是唯一的路径解析器，`.mise.toml`、`clean.sh` 与 `env-doctor` 都调用它：它把 Git common directory 解析为物理路径，再用 `git hash-object --stdin` 计算稳定 ID。主仓及其 linked worktree 因共用 Git common directory 而复用同一缓存；独立 clone 有不同的 common directory 和缓存 ID。helper 不创建目录、不写 Git 对象，也不读取继承的 `TURBO_CACHE_DIR`。
+`TURBO_CACHE_DIR` 指向系统临时目录下的 `<temp>/greypan/turbo-cache/<repo-id>`。[`scripts/lib/turbo-cache-dir.sh`](../../scripts/lib/turbo-cache-dir.sh) 是唯一的路径解析器；所有消费方都必须调用它，不得自行拼路径。它把 Git common directory 解析为物理路径，再用 `git hash-object --stdin` 计算稳定 ID。主仓及其 linked worktree 因共用 Git common directory 而复用同一缓存；独立 clone 有不同的 common directory 和缓存 ID。helper 不创建目录、不写 Git 对象，也不读取继承的 `TURBO_CACHE_DIR`。
 
 Turbo artifact cache 保存可恢复的构建产物，包括 `dist` 与声明文件。新路径首次构建时是冷缓存，系统回收临时目录后 Turbo 会重新构建产物。
 
 `pnpm run clean` 默认清理当前仓库工作区里的构建产物、`node_modules`、`.turbo/`，以及当前 repo-id 的临时 artifact cache；它忽略外部注入的 `TURBO_CACHE_DIR`，不触及其他仓库的缓存。`--dry-run` 只列出当前目标，不删除文件；[`pnpm-lock.yaml`](../../pnpm-lock.yaml) 仍须显式传 `--locks`。`<workspace>/.turbo/` 是工作区内的本地目录，不是共享 artifact cache；删它不会回收外部缓存，也不等同于清理 `dist/`。
 
-CI 在 [`ci.yml`](../../.github/workflows/ci.yml) 显式把 artifact cache 放到 `${{ github.workspace }}/.turbo`，并由 `actions/cache` 保存和恢复；mise 优先保留该 override。其他 GitHub Actions runner 在没有显式值时用 `GITHUB_WORKSPACE/.turbo`，因此 Windows runner 不会调用 POSIX helper。本地与不完整的 CI 环境由 helper 计算 canonical 临时路径。
+CI 在 [`ci.yml`](../../.github/workflows/ci.yml) 显式把 artifact cache 放进工作区目录，并由 `actions/cache` 保存和恢复；mise 优先保留该 override。其他 GitHub Actions runner 在没有显式值时用工作区下的 `.turbo`，因此 Windows runner 不会调用 POSIX helper。本地与不完整的 CI 环境由 helper 计算 canonical 临时路径。
 
 构建或验证前怀疑 `dist` 产物异常（例如被 watch 进程清空 d.ts）时，先裸跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force`）或手动 `turbo build --force` 重建。doctor 按同一公式得到的本地 canonical 路径判断注入；CI workspace override 不会作为它自己的预期值。
 

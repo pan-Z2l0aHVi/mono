@@ -6,7 +6,7 @@
 
 先查实际 diff、公共契约和消费者，再选择验证方式。适用的自动化回归与构建应在实施阶段完成。每次推送前，以及创建 PR 前，都在本地对拟推送或拟提交 PR 的当前代码运行根 `pnpm run test` 全量测试并确认通过；两项操作之间代码未变且结果仍对应当前代码时可复用同一次结果。代码变化后须重跑；失败时修复并重跑，不以 PR CI 代替。小步提交可按影响选择额外验证。
 
-除上述全量测试外，按变更影响选择受影响的包测试、仓库脚本测试、构建，以及该变更要求的真实 E2E、探索式或真机验收。根 `pnpm run test` 包含已配置的 Vitest Browser Mode / Chromium 自动回归，这些 spec 不等于真实 E2E、探索式或真机验收。
+除上述全量测试外，按变更影响选择受影响的包测试、仓库脚本测试、构建，以及该变更要求的真实 E2E、探索式或真机验收。根 `pnpm run test` 覆盖仓库已配置的全部自动化测试层（含浏览器模式回归），这些 spec 不等于真实 E2E、探索式或真机验收。
 
 PR CI 对当前 base/head 复检 required checks，不替代实施阶段已要求的单元、全量 workspace 或脚本测试。记录准确命令、结果、浏览器 URL / 操作和未验证缺口；失败时保留输出，区分环境问题、现有失败和本次回归，不要用删除测试或跳过检查代替修复。
 
@@ -33,15 +33,15 @@ PR CI 对当前 base/head 复检 required checks，不替代实施阶段已要�
 
 ## 测试环境与命令
 
-测试框架是 Vitest（通过 `vite-plus`）。根 `pnpm run test` 由 Turbo 编排各 workspace 的 `test` 任务；受影响的包用 `pnpm exec turbo test --filter=@greypan/<name>`。仓库脚本测试是 tracked-only 的 `*.test.mjs`，由 `pnpm test-scripts` 执行，不属于 `pnpm run test`；新增而未跟踪的脚本测试要在实施中显式运行。两个 demo 的生成物与页面对齐（parity）也不在 `pnpm run test` 里：涉及 `apps/{react,vue}-web-ui-demo` 的 `src/generated/**` 或页面目录的改动，全 checkout 验证必须显式运行 `pnpm run check-generated-parity`（CI 在 Build 之前跑同一任务）。
+测试框架是 Vitest（通过 `vite-plus`）。根 `pnpm run test` 由 Turbo 编排各 workspace 的 `test` 任务；受影响的包用 `pnpm exec turbo test --filter=@greypan/<name>`。仓库脚本测试是 tracked-only 的 `*.test.mjs`，由 `pnpm test-scripts` 执行，不属于 `pnpm run test`；新增而未跟踪的脚本测试要在实施中显式运行。文档 demo 的生成物与页面对齐（parity）也不在 `pnpm run test` 里：涉及 `apps/{react,vue}-web-ui-demo` 的 `src/generated/**` 或页面目录的改动，全 checkout 验证必须显式运行 `pnpm run check-generated-parity`（CI 在 Build 之前跑同一任务）。
 
 要收窄到个别 spec 时，直接跑 `pnpm exec vp test run <路径>`（相对与绝对路径都按路径过滤，以输出 `Test Files 1 passed (1)` 为准）。不要写成 `pnpm run test -- <路径>`：根 `test` 是 `turbo test`，pnpm 保留 `--` 后 turbo 会把参数透传给每个包的 `vp test run`，没匹配到测试文件的包直接失败——行为既不是收窄也不可靠，别走这条路径。判断收窄有没有发生，以输出里的 `Test Files` 计数为准，不以传了什么参数为准。
 
-各包的具体测试环境以包配置和测试文件为准：`web-ui` 用 jsdom 覆盖宿主 API、属性/事件、渲染与非浏览器 DOM 语义，用 browser mode 覆盖 jsdom 无法忠实实现的浏览器原生行为；两个 demo 各有 jsdom 接线层与浏览器层，后者用真实视口验证对齐与几何。`browser-kit` 通过 `@greypan/test-kit` 使用 MSW；共享浏览器状态要求相关 spec 保持独立，除非移除了共享状态，否则不要重新启用文件并行。
+各包的具体测试环境以包配置和测试文件为准：`web-ui` 用 jsdom 覆盖宿主 API、属性/事件、渲染与非浏览器 DOM 语义，用 browser mode 覆盖 jsdom 无法忠实实现的浏览器原生行为；文档 demo 各自维护 jsdom 接线层与浏览器层，后者用真实视口验证对齐与几何。`browser-kit` 通过 `@greypan/test-kit` 使用 MSW；共享浏览器状态要求相关 spec 保持独立，除非移除了共享状态，否则不要重新启用文件并行。
 
 全局 setup 只承担各 spec 共同需要的环境准备。真实 catalog、生成文档和应用启动等业务初始化，由依赖它的集成 spec 在自己的 hook 内显式等待；使用 factory 或注入依赖的单元测试不应因此加载真实应用状态。收窄 setup 时逐文件核对初始状态和清理责任，保留集成测试所需的真实初始化，不把它移出 hook 预算来规避超时。
 
-Demo 的网格列数基线由各自的 `grid-columns.browser.spec.*` 钉住，守的是 Tailwind v4 自定义变体的排序陷阱；具体视口与列数见 spec。生成物清单见 [`generated-artifacts.md`](./generated-artifacts.md)。
+文档 demo 的网格列数基线由各自的浏览器测试钉住，守的是 Tailwind v4 自定义变体的排序陷阱；具体视口与列数见 spec。生成物清单见 [`generated-artifacts.md`](./generated-artifacts.md)。
 
 ## 本地复现与浏览器 spec 隔离
 

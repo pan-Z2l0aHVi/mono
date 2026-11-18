@@ -24,11 +24,13 @@ description: 按任务 scope 的仓库相对路径把当前 worktree 的 git spa
 在 worktree 根目录运行（脚本只依赖 Node 内置模块）。同步依赖需要 `pnpm` 在 PATH 上，未激活 mise 的 shell 用 `mise exec -- node ...` 调用：
 
 ```sh
-mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs <path|package>... [--dry-run] [--add|--reset] [--json]
-mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --check <path|package>... [--json]
-mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --status [--json]
-mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [--json]
+mise exec -- node <skill-dir>/sparse-scope.mjs <path|package>... [--dry-run] [--add|--reset] [--json]
+mise exec -- node <skill-dir>/sparse-scope.mjs --check <path|package>... [--json]
+mise exec -- node <skill-dir>/sparse-scope.mjs --status [--json]
+mise exec -- node <skill-dir>/sparse-scope.mjs --restore [--json]
 ```
+
+`<skill-dir>` 是加载本 skill 时得到的目录；本仓通过 `.agents/skills/turbo-sparse-scope/` 访问。
 
 | 参数          | 作用                                                                                                                                                                                                         |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -77,6 +79,6 @@ mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [
 - 根 `pnpm-workspace.yaml` 缺失时无法识别容器，退化为保留全部根目录并给 warning，不会隐藏任何包。
 - scope 路径必须落在被保留的根条目或已知 workspace 包内；容器内非包路径、容器祖先目录与未知顶层路径都报错。
 - 依赖 turbo 的 `ls` 输出：优先 `--output=json`，失败降级解析文本，两者都失败就报错并附原始输出，不猜。
-- 包列表来自 `turbo ls`，闭包按目标与根依赖分别用 `turbo ls --filter` 查询；闭包解析不随包数平方增长，但百级包仍需评估耗时。
+- 包列表来自 `turbo ls`，闭包按目标与根依赖分别用 `turbo ls --filter` 查询；闭包解析的耗时随包数变化，规模变化时用耗时测据判断。
 - 平台自带的静态 sparse 配置（如 Claude Code 的 `worktree.sparsePaths`）能覆盖固定范围时，本 skill 的价值是「按依赖图动态计算」。
 - 它减少的是上下文占用，不是权限边界：被隐藏的文件仍可用 `git show HEAD:<path>` 读取。

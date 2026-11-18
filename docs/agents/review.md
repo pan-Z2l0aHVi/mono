@@ -11,24 +11,24 @@ PR review 默认由 CI 之后那道自动审查承担：它只看 diff、仓库�
 CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发现，把结论写进 PR 上同一条持久评论。这道结论就是本仓默认的 PR review。审查范围见下文「审查范围与生成物」；决策与代价见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 
 - 结论绑定被审查的 head。`reviewed` 只覆盖那一份代码；head 变了结论就过期，`stale`、`unreviewed` 与 `not_applicable` 都不代表已审。
-- `reviewed` 且 `Block > 0`、`error` 与 `unreviewed` 让这道门变红。`error` 表示配置或调用故障，不是审查意见，按故障码处置：`config_missing` 按 PR 评论列出的变量名补齐 GitHub 后台的 secrets/variables；`model_failed` 先看 `Run codex exec` 日志，网关 5xx 或瞬时错误重跑整条 run，只有配置或模型侧拒绝才改后台；`artifact_missing` 查审查 job 的上传与写回 job 的下载。模型 job 跑完却没产出可用结论是 `unreviewed`（结构或解析非法记 `unusable_output`，没交覆盖证据记 `missing_coverage`），同样变红，且 `check-review-output.mjs` 会让审查 job 一并判红：答复外层只有前导完整推理标签块或 markdown 围栏这类包装时，`validate` 会先剥掉再校验，剥完通过即照常 `reviewed`，并在结论评论里留一行「输出清洗」，这类包装不再算不可用；剥完仍不可解析或 `missing_coverage` 时，`Codex Review Report` 在该 CI run 的第一次 attempt、且写回 workflow run 自身也是第一次 attempt 时自动用 `gh run rerun --failed` 重跑审查 job 与门禁 job 一次，重跑后的新结论更新同一条持久评论。任一 attempt 已重跑过（`run_attempt>1`，或人工 re-run 了写回 run 导致 `github.run_attempt>1`），就不再重试、评论标 `exhausted`，按本文做完整独立审查或修输出契约；任一 attempt 字段不可读、或 CI 未判 `failure`，评论标 `none`，按提示先看写回 run 运行页 Summary 的原因再决定是否重跑一次，不要连续重跑；自动重跑自身失败时评论标 `failed`，按提示核对写回 job 的 `actions: write` 与运行页错误，再手动重跑一次：`coverage` 是 schema 的必填项，有 findings 也不能省，否则交一条 Nit 就绕开整条规则；空 findings 时清单至少要有一条等于本次 diff 改过的文件（写到目录不算命中；只读了判据文档、而本次 diff 没改它，同样归这一档）。没有覆盖证据的结论与「没查就收尾」在产物上分不开，不能当作已审查。绿色只留给有结论可读的 run。门是约定式的：不改动 GitHub 的分支规则，红叉由人处置，绿色也不替人签字。
+- `reviewed` 且 `Block > 0`、`error` 与 `unreviewed` 让这道门变红。`error` 表示配置或调用故障，不是审查意见，按故障码处置：`config_missing` 按 PR 评论列出的变量名补齐 GitHub 后台的 secrets/variables；`model_failed` 先看模型 job 日志，网关或瞬时错误重跑整条 run，只有配置或模型侧拒绝才改后台；`artifact_missing` 查审查 job 的上传与写回 job 的下载。模型 job 跑完却没产出可用结论是 `unreviewed`（结构或解析非法记 `unusable_output`，没交覆盖证据记 `missing_coverage`），同样变红，审查 job 也会被一并判红。答复外层只有前导完整推理标签块或 markdown 围栏这类包装时，校验会先剥掉再判，剥完通过即照常 `reviewed`，并在结论评论里留一行「输出清洗」，这类包装不再算不可用。剥完仍不可解析或 `missing_coverage` 时，写回 workflow 在该 CI run 的第一次 attempt、且写回 workflow run 自身也是第一次 attempt 时自动重跑审查 job 与门禁 job 一次，重跑后的新结论更新同一条持久评论。任一 attempt 已重跑过，就不再重试、评论标 `exhausted`，按本文做完整独立审查或修输出契约；任一 attempt 字段不可读、或 CI 未判 `failure`，评论标 `none`，按提示先看写回 run 运行页 Summary 的原因再决定是否重跑一次，不要连续重跑；自动重跑自身失败时评论标 `failed`，按提示核对写回 job 的 `actions: write` 与运行页错误，再手动重跑一次。`coverage` 是 schema 的必填项，有 findings 也不能省，否则交一条 Nit 就绕开整条规则；空 findings 时清单至少要有一条等于本次 diff 改过的文件（写到目录不算命中；只读了判据文档、而本次 diff 没改它，同样归这一档）。没有覆盖证据的结论与「没查就收尾」在产物上分不开，不能当作已审查。绿色只留给有结论可读的 run。门是约定式的：不改动 GitHub 的分支规则，红叉由人处置，绿色也不替人签字。故障码、状态标记与重跑判据以审查脚本与 workflow 为准。
 - 端点、模型名、思考强度、密钥与 codex 版本由 GitHub 后台提供，仓库不写默认值；配置未填齐时门是红的，这是设计意图。完整契约见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 - **结论即 review**：本次有可审的源码改动、生成物已按下文核对、自动结论的 `coverage.uncovered` 为空，且结论的 reviewed SHA 等于当前 head、`Block` 为 0、required context `check` 在当前 head 上成功时，这份 PR 的 review 已经完成，人工不必逐行重看。要重看的是发现修掉后的新 head，不是同一份结论。自动审查没看过被滤除的生成物，也没能判断 `uncovered` 里列出的改动处；有未覆盖项时这些位置必须逐项人工复核，绿门替代不了它们。
 - `coverage` 说清这份结论的射程：`coverage.inspected` 是模型实际读过的路径，`coverage.uncovered` 是它声明无法判断的改动处。`uncovered` 非空是合法的收口出口：结论仍是 `reviewed`、门也不因此变红，但上一条「结论即 review」的完成条件不成立 —— 这些位置不在结论的覆盖范围内，必须逐项人工复核再收口，绿门替代不了它们。人工补的是结论列出的空白，不是把已覆盖的 diff 重看一遍；两处口径不互斥，区别在「结论有没有效」与「review 算不算完成」。
 - 生成物不需要 diff，也不需要 review：按 [`generated-artifacts.md`](./generated-artifacts.md) 的清单滤除后，自动审查不读也不评注；它们的正确性由 `check-generated` 与消费者类型检查证明。没有 generator 可重建、只能靠人判断的入库产物落在这两份证据之外。
 - 门给不出覆盖当前 head 的结论时，PR 上没有可用的 review，仍要人按本文流程做完整独立审查：`error`、`unreviewed`、`stale`、`not_applicable`；来自 fork 的 PR（那条 job 默认不跑）；未配置 `CODEX_AUTOFIX_PUSH_TOKEN` 而由默认 `GITHUB_TOKEN` 推送出的自动修新 head（未触发新 CI 前）；只改生成物、`empty_diff: true` 的 PR（空 diff 不构成可合并结论，也不算「结论即 review」）。`Block > 0` 不属于这一类：它有结论，处置是按三档修掉发现后在新 head 上重取结论。
 - 自动修在 `check` 失败且后台开关开启时产出一份候选 patch，校验通过才提交并推回 PR 分支。patch 只改已入库文件，唯一新增例外是 `Check changesets` 失败时的顶层 `.changeset/*.md`，因为 changeset 门要求本 PR 自己的新文件；新增 changeset 仍由随后的 `Check changesets` 与版本 PR 复核。配置了 `CODEX_AUTOFIX_PUSH_TOKEN` 时，自动修推送的新提交会触发新一轮 CI 与审查门；未配置而回落默认 `GITHUB_TOKEN` 时不会触发 checks，新 head 上仍要等一次人重跑的 CI 才有 CI 证据。同一 PR 的当前历史中最多 3 个 autofix 提交（按提交消息末尾段的 `Autofix-by` trailer 计数）；人工 push 不重置，force-push 可使计数回退，被拒绝或无 patch 的尝试不计数；读取条数少于 PR 报告的提交总数、或总数不可读时按「无法验证」处理，不自动修。达到上限后不再规划或推送，转人工处理。
-- `Codex Review Report` 是写回 workflow，不改判结论，只把 CI 已产出的结论搬到 PR 上；`missing_coverage` 与 `unusable_output` 时另按上文触发一次自动重跑，不跑模型。它的绿色只说明这次写回 run 跑过，不代表发了评论：发评论的是其中的 `report-conclusion` job，没有 `codex-review-findings` 产物、或 head 已不属于任何打开的 PR 时它按设计跳过，并在运行页 Summary 与 notice 里写明是哪一种跳过。要判断「这条评论是不是当前 head 的」，仍按第一条核对评论头部的 `sha` 与 `status`；`reviewed` 且带阻断发现时头部写 `status=blocked`，语义与「reviewed 且 `Block > 0`」一致。正文另有「结论生成于」，因为这条评论是就地更新的，GitHub 上显示的创建时间永远是第一次写回那一刻。写回 workflow 由 CI run 完成后另起一次 run，评论必然晚于 CI 的审查 job 变绿：查不到评论时先读这次写回 run 的 conclusion，再区分「还没落地」与「按设计跳过」；只有后者才说明 PR 上不会有这条镜像，此时结论以审查 job 日志与 `codex-review-findings` 产物为准，产物也缺失就是上文的 `artifact_missing`。
+- 写回 workflow 不改判结论，只把 CI 已产出的结论搬到 PR 上；`missing_coverage` 与 `unusable_output` 时另按上文触发一次自动重跑，不跑模型。它的绿色只说明这次写回 run 跑过，不代表发了评论：发评论的是其中那条写回 job，没有结论产物、或 head 已不属于任何打开的 PR 时它按设计跳过，并在运行页 Summary 与 notice 里写明是哪一种跳过。要判断「这条评论是不是当前 head 的」，仍按第一条核对评论头部的 `sha` 与 `status`；`reviewed` 且带阻断发现时头部写 `status=blocked`，语义与「reviewed 且 `Block > 0`」一致。正文另有「结论生成于」，因为这条评论是就地更新的，GitHub 上显示的创建时间永远是第一次写回那一刻。写回 workflow 由 CI run 完成后另起一次 run，评论必然晚于 CI 的审查 job 变绿：查不到评论时先读这次写回 run 的 conclusion，再区分「还没落地」与「按设计跳过」；只有后者才说明 PR 上不会有这条镜像，此时结论以审查 job 日志与结论产物为准，产物也缺失就是上文的 `artifact_missing`。
 
 ## 审查范围与生成物
 
 同一个 PR 有两份 diff，读哪一份由执行体决定，结论只覆盖自己读过的那一份：
 
-| 执行体       | diff 面                                                                                                                                         | 生成物                                     |
-| ------------ | ----------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------ |
-| Codex 审查门 | 按生成物清单滤除后的源码 diff；`review-scope.json` 记 `excluded_pathspecs`、`changed_paths`、`preloaded_paths`、`preload_bytes` 与 `empty_diff` | 不在 diff 里，不需要 diff，也不需要 review |
-| 人工独立审查 | merge-base..head 的源码 diff，按清单滤除生成物                                                                                                  | 不在 diff 里，按清单另行核对               |
-| 复审         | 前次已审 head..当前 head 的源码增量，按清单滤除生成物                                                                                           | 不在 diff 里，按清单另行核对               |
+| 执行体       | diff 面                                                         | 生成物                                     |
+| ------------ | --------------------------------------------------------------- | ------------------------------------------ |
+| Codex 审查门 | 按生成物清单滤除后的源码 diff；范围细节记在 `review-scope.json` | 不在 diff 里，不需要 diff，也不需要 review |
+| 人工独立审查 | merge-base..head 的源码 diff，按清单滤除生成物                  | 不在 diff 里，按清单另行核对               |
+| 复审         | 前次已审 head..当前 head 的源码增量，按清单滤除生成物           | 不在 diff 里，按清单另行核对               |
 
 首次审查覆盖完整源码 diff。复审以可信的前次已审 head 为基线，检查该 head 到当前 head 的全部源码增量、前次发现的处置及其受影响行为，并继承仍有效的已审范围和未覆盖项；新结论须标明基线和当前 head。基线不可用、审查范围或 base 变化使先前证据失效，或增量范围无法确定时，重新完整审查源码。
 
@@ -62,7 +62,7 @@ GitHub `pull_request` 的 CI 默认 checkout 是 base/head 的临时合并对象
 
 ## 报告、回写与复审
 
-默认路径没有要回写的报告：CI 已经把结论写进 PR 上那条持久评论，绑定 reviewed head，档位统计与发现都在里面。全 0 的档位统计只跟「已审查」「已过时」或本身带非零档位的结论一起出现，故障与空壳结论里的全 0 会读成「审过了、没问题」；这类结论改由故障码、`模型 job 错误`（从那条 CI run 的审查 job 日志抄来的第一条结构化错误，读不到就省略）与 `状态轨迹` 说明为什么没有结论。`状态轨迹` 保留最近 8 次就地更新的档位变化，用来回答「这是第几次空壳」——评论只有一条，上一版会被刷掉，历史存在评论头部的 marker 字段里而不是可见正文，正文里的同前缀文本不会被当成历史读回。读这条结论不需要授权，它是 CI 的产出；向 GitHub 追加评论、review 或元数据才按下一段逐次取得授权。
+默认路径没有要回写的报告：CI 已经把结论写进 PR 上那条持久评论，绑定 reviewed head，档位统计与发现都在里面。全 0 的档位统计只跟「已审查」「已过时」或本身带非零档位的结论一起出现，故障与空壳结论里的全 0 会读成「审过了、没问题」；这类结论改由故障码、`模型 job 错误`（从那条 CI run 的审查 job 日志抄来的第一条结构化错误，读不到就省略）与 `状态轨迹` 说明为什么没有结论。`状态轨迹` 保留最近若干次就地更新的档位变化（条数上限以审查脚本为准），用来回答「这是第几次空壳」——评论只有一条，上一版会被刷掉，历史存在评论头部的 marker 字段里而不是可见正文，正文里的同前缀文本不会被当成历史读回。读这条结论不需要授权，它是 CI 的产出；向 GitHub 追加评论、review 或元数据才按下一段逐次取得授权。
 
 人工审查的持久报告至少记录 PR URL、base/head SHA、reviewer 执行体、审查范围、发现及处置、验证命令与实际结果、未覆盖风险、结论，以及上一轮报告和本轮修复的对应关系。报告写入 PR review/comment 或编排器明确提供的持久交付记录；不得只留在临时目录，也不要提交到被审分支。
 

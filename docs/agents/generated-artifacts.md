@@ -14,13 +14,13 @@
 | Wails Go bindings      | `apps/interweave/frontend/bindings/**`                                                                                                                                                     | Wails bindings generator（单一入口）                                                           | `pnpm exec turbo build --filter=@greypan/interweave-frontend`                                                                                                                                                                                                                                                                                   |
 | 壳文案 catalog         | `apps/{react,vue}-web-ui-demo/src/locales/.wuchale/**`、`src/locales/*.loader.js`、`src/locales/{data,plural}.js`                                                                          | `wuchale` 的 Vite 插件与 CLI                                                                   | 宿主 dev 与 build 按 PO 重编译；增删壳文案后在应用目录跑 `pnpm exec wuchale --clean` 把 msgid 写进 PO；产物全部 gitignore                                                                                                                                                                                                                       |
 
-`apps/*/src/generated/**` 里是 `theme.css`、逐文档的 `<basename>.meta.js` / `<basename>.meta.d.ts` 与 `codeblock/**`，同一次生成一起写盘，不要挑其中某一类单独改。文件名即文档身份（`button.CN`、`button`、`CHANGELOG`），不做 locale 解释；语种由宿主按 `.CN` 后缀判定，两个 demo 都平铺在各自的 `src/generated/`。`codeblock/**` 的每个文件都是某条围栏原文的落点，按内容 hash 寻址、跨文档去重；它们是会被真正编译执行的源码（命中 `exec` 的语言带 `load`），但落盘字节是围栏原文的逐字节副本，因此不参与 lint 与 format——任何自动改写都会破坏「围栏字节 = 落盘文件 = 页面文本」的一致性。
+`apps/*/src/generated/**` 里是 `theme.css`、逐文档的 `<basename>.meta.js` / `<basename>.meta.d.ts` 与 `codeblock/**`，同一次生成一起写盘，不要挑其中某一类单独改。文件名即文档身份（`button.CN`、`button`、`CHANGELOG`），不做 locale 解释；语种由宿主按 `.CN` 后缀判定，各文档 demo 都平铺在各自的 `src/generated/`。`codeblock/**` 的每个文件都是某条围栏原文的落点，按内容 hash 寻址、跨文档去重；它们是会被真正编译执行的源码（命中 `exec` 的语言带 `load`），但落盘字节是围栏原文的逐字节副本，因此不参与 lint 与 format——任何自动改写都会破坏「围栏字节 = 落盘文件 = 页面文本」的一致性。
 
-`apps/{react,vue}-web-ui-demo/src/locales/*.po` 反过来：它是**入库的译文源**，手写（英文由 agent 翻译后写回同一份 PO），不是生成物，也不由 generator 覆盖。PO 与代码抽取的一致性由两端应用的 `catalog.spec.ts` 随 `pnpm run test` 验证。
+`apps/{react,vue}-web-ui-demo/src/locales/*.po` 反过来：它是**入库的译文源**，手写（英文由 agent 翻译后写回同一份 PO），不是生成物，也不由 generator 覆盖。PO 与代码抽取的一致性由各文档应用的 `catalog.spec.ts` 随 `pnpm run test` 验证。
 
 ## 怎么判断一个文件是不是生成的
 
-判据只有一条：**能不能由 generator 完整重建**。文件头标记是线索，不是定义——本仓库既有生成物不带任何标记（`packages/web-ui/src/icons/generated/**`、`apps/*/src/generated/**/codeblock/**`），也有带 `DO NOT EDIT` 却与本仓 generator 无关的文件（`.agents/skills-vendored/**`、`apps/interweave/build/windows/nsis/**` 是上游产物）。拿不准时按生成物处理：跑一次 generator 的代价远小于手改一次产物。
+判据只有一条：**能不能由 generator 完整重建**。文件头标记是线索，不是定义——两者都不能单方面定性：仓里既有不带任何标记的生成物（目录型产物），也有带 `DO NOT EDIT` 却与本仓 generator 无关的上游文件。拿不准时按生成物处理：跑一次 generator 的代价远小于手改一次产物。
 
 按成本从低到高，能定性就停：
 
@@ -52,17 +52,17 @@
 
    重建出来且 `git status` 干净 = 生成物且 generator 幂等。icon 脚本实测如此：移走一个 `icons/generated/*.ts`，`pnpm --filter @greypan/web-ui generate-icons` 原样补回，无 diff。没重建只有两种解释：不是生成物，或 generator 不负责它——回第 2 层确认，不要因为没重建就手写补回。
 
-**看起来像但不是**：`apps/*/env.d.ts`（手写，只有 reference types）、`dist/**`（构建产物，已 gitignore）、`**/__screenshots__/` 与 `**/.vitest-attachments/`（测试证据，二进制）、[`pnpm-lock.yaml`](../../pnpm-lock.yaml)（工具写盘但属 source of truth，只能由 pnpm 改）。
+**看起来像但不是**（示例，非穷举）：`apps/*/env.d.ts`（手写，只有 reference types）、`dist/**`（构建产物，已 gitignore）、`**/__screenshots__/` 与 `**/.vitest-attachments/`（测试证据，二进制）、[`pnpm-lock.yaml`](../../pnpm-lock.yaml)（工具写盘但属 source of truth，只能由 pnpm 改）。判据仍是「能不能由 generator 完整重建」，不是目录名。
 
 ## 要更新就跑 generator
 
-生成文件不是 source of truth。跑对应 generator 让工具产生 diff，再核对生成结果与消费者；禁止手写新建或手工编辑生成文件，也不要用复制、补丁或格式化工具直接改写输出。`packages/web-ui/docs/*.md` 是 demo 组件文档的输入（中文源 `.CN.md`、英文译文 `.md`），`packages/web-ui/CHANGELOG.md` 是 changelog 页的输入，`packages/web-ui/README*.md` 是快速开始页的输入。改组件 API 必须同时改对应 markdown，generator 只负责把 markdown 落到两端产物。
+生成文件不是 source of truth。跑对应 generator 让工具产生 diff，再核对生成结果与消费者；禁止手写新建或手工编辑生成文件，也不要用复制、补丁或格式化工具直接改写输出。`packages/web-ui/docs/*.md` 是 demo 组件文档的输入（中文源 `.CN.md`、英文译文 `.md`），`packages/web-ui/CHANGELOG.md` 是 changelog 页的输入，`packages/web-ui/README*.md` 是快速开始页的输入。改组件 API 必须同时改对应 markdown，generator 只负责把 markdown 落到各文档 demo 的产物。
 
 `apps/interweave/frontend/bindings/**` 只经单一 generator 入口生成：生成过程不得删除已有文件，并用产出集合守卫防止静默少产出，陈旧文件由人工清理。
 
 ## 机器拦截的覆盖面
 
-[`.claude/settings.json`](../../.claude/settings.json) 的 `permissions.deny` 是这些路径的权威名单：上表每一类**入库**生成物都有对应条目，另外拦截 `.env` 读取。它只挡工具调用，不挡 generator，所以「跑 generator 产生 diff」的正常路径不受影响。审查侧的 `REVIEW_EXCLUDE_PATHSPECS` 不是这份名单的复制（见下文「审查范围与编辑拦截的分工」），但两者覆盖的入库生成物必须一致：脚本单测用 git 的 glob 引擎比对两份名单命中的真实入库文件集合，再用一张显式覆盖表挡单侧增删；覆盖表与样例是人工维护的，新增生成物时仍须按判据逐条核对（尚无文件入库的新路径不在集合断言射程内）。
+[`.claude/settings.json`](../../.claude/settings.json) 的 `permissions.deny` 是这些路径的权威名单：每一类入库生成物都必须在其中登记，另外拦截 `.env` 读取。它只挡工具调用，不挡 generator，所以「跑 generator 产生 diff」的正常路径不受影响。审查侧的 `REVIEW_EXCLUDE_PATHSPECS` 不是这份名单的复制（见下文「审查范围与编辑拦截的分工」），但两者覆盖的入库生成物必须一致：脚本单测用 git 的 glob 引擎比对两份名单命中的真实入库文件集合，再用一张显式覆盖表挡单侧增删；覆盖表与样例是人工维护的，新增生成物时仍须按判据逐条核对（尚无文件入库的新路径不在集合断言射程内）。
 
 已 gitignore 的编译目录不在名单里（wuchale 的 `src/locales/.wuchale/**`、各包 `dist/**`）：它们永远不进 diff，手改的后果由下一次重编译原样收走，拦不住也不必拦。
 
@@ -79,7 +79,7 @@
 | `**/routeTree.gen.ts`、`**/typed-router.d.ts`、`**/auto-imports.d.ts` | 各宿主的单文件生成声明                                                       |
 | `packages/web-ui/src/icons/index.ts`                                  | icon barrel                                                                  |
 
-路径参考 [`.claude/settings.json`](../../.claude/settings.json) 的 `permissions.deny`，但按本文清单取可表达的最小 glob：单文件生成物收到具体文件（`icons/index.ts` 而不是整个 `icons/**`），目录型产物仍按目录通配。过滤是**按本文判据取路径**，不是按目录名猜——新文件该不该进名单，仍用「能不能由 generator 完整重建」判定。名单必须留在取自 PR base 的可信脚本里：从 PR head 的工作树读它，等于让作者自己定义审查范围。`review-scope.json` 记 `excluded_pathspecs`、`changed_paths` 与 `empty_diff` 供审计，覆盖边界见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围」。
+路径参考 [`.claude/settings.json`](../../.claude/settings.json) 的 `permissions.deny`，但按本文清单取可表达的最小 glob：单文件生成物收到具体文件（`icons/index.ts` 而不是整个 `icons/**`），目录型产物仍按目录通配。过滤是**按本文判据取路径**，不是按目录名猜——新文件该不该进名单，仍用「能不能由 generator 完整重建」判定。名单必须留在取自 PR base 的可信脚本里：从 PR head 的工作树读它，等于让作者自己定义审查范围。`review-scope.json` 记录排除清单与审查范围供审计，覆盖边界见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围」。
 
 滤除不等于免于核对，两者是不同职责：
 
