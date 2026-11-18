@@ -266,6 +266,31 @@ describe('imagePreview 命令式 API', () => {
       expect(isMounted()).toBe(false)
     })
 
+    // 原生 close 事件只做退场结算；宿主仍处于 open 会话时不把它误判成用户 dismiss。
+    it('open 态下外部 dialog.close() 不触发 dismiss', async () => {
+      const handle = await openPreview()
+      let dismissed = false
+      void handle.closed.then(() => {
+        dismissed = true
+      })
+
+      const dialog = dialogElement()
+      // jsdom 未实现 dialog.close()；这里只在该用例内补齐原生语义，避免污染其它 spec。
+      dialog.close = () => {
+        dialog.open = false
+        dialog.dispatchEvent(new Event('close'))
+      }
+      dialog.close()
+      await hostElement().updateComplete
+
+      expect(isMounted()).toBe(true)
+      expect(dismissed).toBe(false)
+
+      handle.close()
+      await handle.closed
+      expect(dismissed).toBe(true)
+    })
+
     it('点击空白区域关闭，点击图片不关闭', async () => {
       const handle = await openPreview()
       const image = queryA11y(hostElement(), 'img') as HTMLImageElement
