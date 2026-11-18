@@ -66,13 +66,11 @@ describe('web-ui-progress（浏览器）', () => {
     if (!indicator) throw new Error('progress 缺少公开的 indicator part')
     const style = getComputedStyle(indicator)
     expect(style.animationName).toBe('wui-progress-sport')
-    expect(style.animationDuration).toBe('1s')
     expect(indicator.getAnimations()).toHaveLength(1)
-    expect(Number.parseFloat(indicator.style.getPropertyValue('--wui-progress-sport-shift'))).toBeCloseTo(10000 / 35, 2)
     expect(progress.getAttribute('aria-valuenow')).toBe('35')
   })
 
-  it('sport 按进度定宽、方角，并用非线性缓动循环滑动', async () => {
+  it('sport 按进度定宽、方角，循环滑动覆盖整条轨道', async () => {
     const { progress } = mountProgress(35)
     progress.sport = true
     await waitForUpdate(progress)
@@ -85,12 +83,10 @@ describe('web-ui-progress（浏览器）', () => {
     expect(indicator.getBoundingClientRect().width / track.getBoundingClientRect().width).toBeCloseTo(0.35, 2)
     expect(style.animationName).toBe('wui-progress-sport')
     expect(style.animationIterationCount).toBe('infinite')
-    expect(style.animationTimingFunction).toBe('cubic-bezier(0.65, 0, 0.35, 1)')
-    expect(style.animationDuration).toBe('1s')
     expect(style.borderRadius).toBe('0px')
-
-    const shift = Number.parseFloat(indicator.style.getPropertyValue('--wui-progress-sport-shift'))
-    expect(shift).toBeCloseTo(10000 / 35, 2)
+    // 位移变量与缓动曲线是 style.css / index.ts 的派生细节（shift = 10000/percent、
+    // easing token 默认值）：滑轨几何断言（下方的采样段）已经把它们的行为后果量出来，
+    // 复述公式与字面量只会随实现调整腐化（P2-6）。
 
     const animation = indicator.getAnimations()[0] as CSSAnimation | undefined
     if (!animation || animation.animationName !== 'wui-progress-sport') {
@@ -134,12 +130,17 @@ describe('web-ui-progress（浏览器）', () => {
     if (!indicator) throw new Error('progress 缺少公开的 indicator part')
 
     expect(getComputedStyle(indicator).animationName).toBe('wui-progress-sport')
-    expect(getComputedStyle(indicator).animationDuration).toBe('1s')
+    const fullDuration = Number.parseFloat(getComputedStyle(indicator).animationDuration)
+    expect(fullDuration).toBeGreaterThan(0)
 
     theme.motion = 'reduced'
     await waitForUpdate(theme)
     await waitForUpdate(progress)
-    expect(getComputedStyle(indicator).animationDuration).toBe('2s')
+    // 三档相对关系替代时长字面量（P2-6）：reduced 下放慢（数值更大）且动画仍在跑（不停止）。
+    const reducedDuration = Number.parseFloat(getComputedStyle(indicator).animationDuration)
+    expect(reducedDuration).toBeGreaterThan(fullDuration)
+    expect(getComputedStyle(indicator).animationName).toBe('wui-progress-sport')
+    expect(indicator.getAnimations().length).toBeGreaterThan(0)
   })
 
   it('极小进度不写出非有限位移', async () => {

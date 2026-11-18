@@ -6,6 +6,7 @@ import { createApp, h, nextTick, ref } from 'vue'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import { FOCUS_POLL_INTERVAL_MS } from '../focusNavigator'
 import ResourceList from '../ResourceList.vue'
 import ResourceThumbnail from '../ResourceThumbnail.vue'
 
@@ -2091,7 +2092,8 @@ describe('ResourceList：连按方向键与卸载后的落焦', () => {
     const scheduled: (() => void)[] = []
     const originalSetTimeout = globalThis.setTimeout
     const timer = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: () => void, delay: number) => {
-      if (delay === 16) {
+      // 落焦轮询计时器经 focusNavigator 的导出常量识别，不再用裸 16 当识别键。
+      if (delay === FOCUS_POLL_INTERVAL_MS) {
         scheduled.push(fn)
         return 0
       }
@@ -2139,7 +2141,8 @@ describe('ResourceList：连按方向键与卸载后的落焦', () => {
     const scheduled: (() => void)[] = []
     const originalSetTimeout = globalThis.setTimeout
     const timer = vi.spyOn(globalThis, 'setTimeout').mockImplementation(((fn: () => void, delay: number) => {
-      if (delay === 16) {
+      // 落焦轮询计时器经 focusNavigator 的导出常量识别，不再用裸 16 当识别键。
+      if (delay === FOCUS_POLL_INTERVAL_MS) {
         scheduled.push(fn)
         return 0
       }

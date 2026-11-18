@@ -53,7 +53,13 @@ export interface ToolCallPayload {
  * 形状是 `{ toolCall, result: { content, details, structuredContent? }, isError, durationMs }`
  * ——内容在 `result` 之下，**不是**顶层的 `{ content, isError }`。读错层级的表现是「写入成功
  * 但读取恒空」，非常隐蔽。顶层的 `content` / `details` / `structuredContent` 只是兼容少数
- * 直接回扁平结果的宿主或版本，读取时必须优先取 `result`。
+ * 直接回扁平结果的宿主或版本，读取时必须优先取 `result`。测试 mock（`__tests__/pi-mock.ts`
+ * 的 `createExecuteTool`）按嵌套形状回放，扁平形状只出现在 `callToolVia` 兼容分支的专项
+ * 测试里。
+ *
+ * **验证状态（打标 2026-11-18，方案 v5 决策项 3）**：嵌套形状（内容在 `result` 之下）已对照
+ * 真实宿主验证——实测缺陷记录见 `bridge.spec.ts` 的「callToolVia 产出提取」describe；顶层
+ * 兼容字段与 `toolCall` / `durationMs` 的存在性未逐一核对，属宽松声明。
  */
 export interface AgentToolCallOutcome extends ToolCallPayload {
   readonly toolCall?: unknown

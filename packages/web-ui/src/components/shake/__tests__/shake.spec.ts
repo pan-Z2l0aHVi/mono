@@ -1,6 +1,6 @@
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { SHAKE_X_DISTANCE_FALLBACK, SHAKE_Y_DISTANCE_FALLBACK, shake } from '@/components/shake'
+import { shake } from '@/components/shake'
 
 /*
  * jsdom 侧只测「选谁当目标、参数怎么解析」这一层——WAAPI 在 jsdom 里不存在，
@@ -110,18 +110,12 @@ describe('shake（jsdom 目标与参数解析）', () => {
   })
 
   /*
-   * 没注册 CSS.registerProperty 的环境（jsdom）读回空串，走模块兜底。
-   * 兜底值与注册项 initialValue 的一致性由 browser spec 钉住：漂移会让这里的
-   * 结论与真浏览器相反。
+   * 已接受缺口（原「未显式传幅度时读模块兜底值」用例已删）：那条断言拿 keyframe 峰值对比
+   * 模块自身的 SHAKE_*_DISTANCE_FALLBACK，属接线级自指——源码改常量、断言跟着变，永远绿。
+   * 删除后失守的路径：无参调用时 fallback 经 keyframes 内联 `var()` fallback 生效的降级档
+   * （@property 注册失败/不支持的环境）。browser 侧 rendered-peak 断言全部显式传参，
+   * parity 只覆盖 initialValue 路径，降级档无人看守；该路径价值低，接受失守。
    */
-  it('未显式传幅度时读模块兜底值', () => {
-    const calls = stubAnimate(document.documentElement)
-
-    shake()
-
-    expect(peakOf(calls[0], 'x')).toBeCloseTo(SHAKE_X_DISTANCE_FALLBACK, 3)
-    expect(peakOf(calls[0], 'y')).toBeCloseTo(SHAKE_Y_DISTANCE_FALLBACK, 3)
-  })
 
   it('两轴幅度全为 0、或时长为 0 时不创建动画', () => {
     const calls = stubAnimate(document.documentElement)

@@ -1,4 +1,5 @@
 import '..'
+import '@/components/button-group'
 import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
@@ -8,6 +9,7 @@ import { resetPointerFocusState } from '@/shared/focus/pointer-focus'
 import { flush, mountElement, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiButton } from '..'
+import buttonStyleCss from '../style.css?raw'
 
 function luminance(color: string): number {
   const channels = color
@@ -25,6 +27,24 @@ function luminance(color: string): number {
 function contrastRatio(first: string, second: string): number {
   const [lighter, darker] = [luminance(first), luminance(second)].sort((a, b) => b - a)
   return (lighter + 0.05) / (darker + 0.05)
+}
+
+/** group-divider 的 border 色兜底（button/style.css；`--wui-color-border` 只在主题作用域声明）。 */
+function dividerFallbackColor(): string {
+  const match = /--wui-color-border,\s*([^)]+\))\s*\)/.exec(buttonStyleCss)
+  if (!match) throw new Error('button/style.css 里找不到 group-divider 的颜色兜底')
+  return match[1]!
+}
+
+/** 把颜色声明文本归一成计算色（示范：theme reduced-motion 的 resolvedColor）。 */
+function resolvedColor(scope: Element, value: string): string {
+  const probe = document.createElement('span')
+  probe.style.color = value
+  scope.append(probe)
+  const color = getComputedStyle(probe).color
+  probe.remove()
+  if (!color) throw new Error(`无法解析颜色 ${value}`)
+  return color
 }
 
 afterEach(() => {
@@ -160,8 +180,46 @@ describe('WebUiButton 组件（浏览器）', () => {
     const inner = button.shadowRoot?.querySelector('button')
     expect(inner).toBeTruthy()
     const styles = getComputedStyle(inner!)
-    expect(styles.color).toBe('rgb(255, 255, 255)')
+    // 文字色断言读 on-accent token（primary 的 `--wui-button-color` 就是它，见 button/style.css），
+    // 不写死 rgb 字面量：把「取到该 token」钉成「与主题同一份值」，token 调整不会腐化断言。
+    const probe = document.createElement('div')
+    probe.style.color = 'var(--wui-color-on-accent)'
+    theme.append(probe)
+    const onAccentColor = getComputedStyle(probe).color
+    probe.remove()
+    expect(styles.color).toBe(onAccentColor)
     expect(contrastRatio(styles.color, styles.backgroundColor)).toBeGreaterThanOrEqual(3)
+  })
+
+  it('组内分割线是取 border token 的 1px 视觉线；末位与离组后不渲染', async () => {
+    const group = document.createElement('web-ui-button-group')
+    group.innerHTML = '<web-ui-button>A</web-ui-button><web-ui-button>B</web-ui-button>'
+    document.body.append(group)
+    await waitForUpdate(group)
+
+    const [first, second] = [...group.querySelectorAll<WebUiButton>('web-ui-button')]
+    await Promise.all([first.updateComplete, second.updateComplete])
+
+    const divider = first.shadowRoot?.querySelector<HTMLElement>('.group-divider')
+    expect(divider, '非末位应渲染分割线').not.toBeNull()
+    expect(divider!.getAttribute('aria-hidden')).toBe('true')
+    // 视觉规则：横向组里是竖线、1px 宽、有长度。
+    const rect = divider!.getBoundingClientRect()
+    expect(rect.width).toBe(1)
+    expect(rect.height).toBeGreaterThan(0)
+    // 颜色断言与 style.css 声明的 var() 兜底对表：`--wui-color-border` 只在主题作用域
+    // 声明，这里走兜底；兜底值从源码解析，不在测试里抄一份。
+    const expected = dividerFallbackColor()
+    expect(getComputedStyle(divider!).backgroundColor).toBe(resolvedColor(divider!, expected))
+
+    expect(second.shadowRoot?.querySelector('.group-divider'), '末位不应渲染分割线').toBeNull()
+
+    // 离组后不再渲染：渲染规则是 groupContext && !isLast（见 jsdom 侧结构守卫）。
+    const container = document.createElement('div')
+    document.body.append(container)
+    container.append(first)
+    await Promise.all([first.updateComplete, waitForUpdate(group)])
+    expect(first.shadowRoot?.querySelector('.group-divider'), '离组后不应再渲染分割线').toBeNull()
   })
 
   it('将规范化后的 type 传给真实原生 button', async () => {

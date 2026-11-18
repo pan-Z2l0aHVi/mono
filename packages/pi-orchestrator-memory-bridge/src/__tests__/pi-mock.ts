@@ -8,7 +8,13 @@
  * 装配无关，复用只会把浏览器依赖拖进本包。
  */
 
-import type { PiCommandDefinition, PiEventHandler, PiToolDefinition, PiToolResult } from '../pi-types'
+import type {
+  AgentToolCallOutcome,
+  PiCommandDefinition,
+  PiEventHandler,
+  PiToolDefinition,
+  PiToolResult
+} from '../pi-types'
 
 /** 钩子处理器收到的 ctx；测试按需构造。 */
 export interface MockContext {
@@ -18,10 +24,8 @@ export interface MockContext {
     notify(message: string, type?: 'info' | 'warning' | 'error'): void
     setStatus?(key: string, text: string | undefined): void
   }
-  executeTool?: (
-    name: string,
-    args: Record<string, unknown>
-  ) => Promise<{ isError?: boolean; content?: ReadonlyArray<{ type: string; text?: string }> }>
+  /** 真实契约是嵌套形状（内容在 `result` 之下），见 `pi-types.ts` 的 `AgentToolCallOutcome`。 */
+  executeTool?: (name: string, args: Record<string, unknown>) => Promise<AgentToolCallOutcome>
   /** Pi 的只读会话视图；`session_start` 用它重放 transcript 里的工具声明。 */
   sessionManager?: {
     getBranch(): unknown
@@ -43,7 +47,15 @@ export interface MockPi {
   readonly notifications: string[]
   /** 收到的 setStatus 调用序列（key → text）；用于验证状态栏。 */
   readonly statuses: Array<{ key: string; text: string | undefined }>
-  /** 触发一个事件，返回所有处理器结果里第一个非 undefined 的。 */
+  /**
+   * 触发一个事件，返回所有处理器结果里第一个非 undefined 的。
+   *
+   * **mock 假设（打标 2026-11-18，方案 v5 决策项 3）**：聚合语义（首个非 undefined 胜出）
+   * 是本 mock 的假设，未经真实宿主交叉验证——`bridge.ts` 在同一 `tool_result` 上挂 3 个
+   * handler，真实 Pi 的多 handler 聚合规则未必如此。手造事件载荷（`tool_result` /
+   * `agent_before_settle` 的 details 形状，分布 bridge.spec.ts / inflight.spec.ts /
+   * dispatch-control.spec.ts）也是方言，不是真实宿主的形状证明。
+   */
   emit(event: string, payload: unknown, ctx: MockContext): Promise<unknown>
 }
 
@@ -121,6 +133,12 @@ export function createMockPi(initialActiveTools: string[] = []): MockPi & {
  * 构造一个只支持指定工具的 `executeTool`。
  *
  * `calls` 记录每次调用的名字与参数，用于断言「桥接真的只通过 pi-memory 的工具读写字存」。
+ *
+ * `results` 里的值是工具自己的 `PiToolResult`（`execute()` 的返回）；本函数把它包进
+ * Pi 真实的嵌套返回 `{ toolCall, result: { content, details }, isError, durationMs }`——
+ * 内容在 `result` 之下，不是顶层 `{ content, isError }`，见 `pi-types.ts` 的
+ * `AgentToolCallOutcome`。扁平形状只有 `callToolVia` 兼容分支的专项测试会用（它们各自
+ * 手写 executeTool stub，不经这里）。
  */
 export function createExecuteTool(options: {
   readonly results: Record<string, PiToolResult | ((args: Record<string, unknown>) => PiToolResult)>
@@ -129,10 +147,20 @@ export function createExecuteTool(options: {
   return async (name, args) => {
     options.calls?.push({ name, args })
     const entry = options.results[name]
-    if (!entry) {
-      return { isError: true, content: [{ type: 'text', text: `unknown tool: ${name}` }] }
-    }
     const result = typeof entry === 'function' ? entry(args) : entry
-    return { isError: result.isError === true, content: result.content }
+    if (!result) {
+      return {
+        toolCall: { name },
+        result: { content: [{ type: 'text', text: `unknown tool: ${name}` }] },
+        isError: true,
+        durationMs: 0
+      }
+    }
+    return {
+      toolCall: { name },
+      result: { content: result.content, ...(result.details !== undefined ? { details: result.details } : {}) },
+      isError: result.isError === true,
+      durationMs: 0
+    }
   }
 }

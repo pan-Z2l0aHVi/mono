@@ -39,6 +39,19 @@ function createDrawer(): WebUiDrawer {
   return el
 }
 
+/**
+ * 关闭 button 按「有可访问名」定位，不按名字字面量（对齐 dialog 套件政策与
+ * drawer.spec.ts 的同名 helper）：具体文案走内置英文回退（ADR-0016）、可用
+ * `aria-close-label` 覆盖，钉住 "Close" 字面量是假红类。
+ */
+function closeButton(el: WebUiDrawer): HTMLElement | null {
+  return (
+    [...(el.shadowRoot?.querySelectorAll<HTMLElement>('[aria-label]') ?? [])].find(
+      node => node.getAttribute('aria-label')?.trim() !== ''
+    ) ?? null
+  )
+}
+
 function getDialog(el: WebUiDrawer): HTMLDialogElement {
   return el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
 }
@@ -136,7 +149,7 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     // 焦点归宿是公开契约（§3 白名单）：panel 自身不抢焦点。
     expect(document.activeElement).not.toBe(getDialog(el))
 
-    const close = queryA11y(el, '[aria-label="Close"]') as HTMLElement | null
+    const close = closeButton(el)
     const nativeButton = close?.shadowRoot?.querySelector('button') as HTMLButtonElement | null
     nativeButton?.focus()
     expect(close?.shadowRoot?.activeElement).toBe(nativeButton)

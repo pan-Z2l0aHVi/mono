@@ -235,11 +235,14 @@ describe('WebUiCheckbox 勾画线（浏览器）', () => {
    * 默认档具体是哪支白不由这里钉（那是设计决策，钉住它只会随调色板腐化）：这里钉的是
    * 「描边跟着这枚 token 换」，用一个显式覆盖值来证明依赖关系。
    */
-  it('勾的默认画布为 18px', async () => {
+  it('勾的默认画布与外框同尺寸', async () => {
     const el = mountElement<WebUiCheckbox>('web-ui-checkbox', { attrs: { checked: '' } })
     await waitForUpdate(el)
-    await expect.poll(() => checkPath(el)?.ownerSVGElement?.getBoundingClientRect().width).toBe(18)
-    expect(checkPath(el)?.ownerSVGElement?.getBoundingClientRect().height).toBe(18)
+    // 默认画布 = selection control 尺寸（checkbox/style.css 的 icon-size fallback 链）：
+    // 按关系断言不钉 18px；icon-size 独立覆盖半边由 selection-size.browser.spec.ts 承担。
+    const boxSize = el.shadowRoot!.querySelector('.wui-checkbox-box')!.getBoundingClientRect().width
+    await expect.poll(() => checkPath(el)?.ownerSVGElement?.getBoundingClientRect().width).toBe(boxSize)
+    expect(checkPath(el)?.ownerSVGElement?.getBoundingClientRect().height).toBe(boxSize)
     cleanupElement(el)
   })
 

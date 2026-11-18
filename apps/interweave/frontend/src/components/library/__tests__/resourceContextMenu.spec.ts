@@ -62,15 +62,15 @@ function createRow(resourceId: string) {
   return { row, child }
 }
 
-/** 手动推进的超时与帧：断言计时器挂起、再按需触发。 */
+/** 手动推进的超时与帧：记录挂起时的 delay（供阈值断言用），再按需触发。 */
 function createTimers() {
   let nextId = 0
-  const timeouts = new Map<number, () => void>()
+  const timeouts = new Map<number, { callback: () => void; delay: number }>()
   const frames: (() => void)[] = []
   const timers: ResourceContextMenuTimers = {
-    setTimeout(callback) {
+    setTimeout(callback, delayMs) {
       const id = ++nextId
-      timeouts.set(id, callback)
+      timeouts.set(id, { callback, delay: delayMs })
       return id as unknown as ReturnType<typeof setTimeout>
     },
     clearTimeout(handle) {
@@ -83,11 +83,13 @@ function createTimers() {
   return {
     timers,
     pendingTimeouts: () => timeouts.size,
+    /** 仍在挂起的计时器 delay 序列（sweepScroll.spec.ts 的 timer.delay 模式）。 */
+    pendingTimeoutDelays: () => [...timeouts.values()].map(entry => entry.delay),
     pendingFrames: () => frames.length,
     tickTimeouts() {
       const callbacks = [...timeouts.values()]
       timeouts.clear()
-      for (const callback of callbacks) callback()
+      for (const entry of callbacks) entry.callback()
     },
     flushFrames() {
       const callbacks = frames.splice(0)
@@ -260,8 +262,14 @@ describe('resource context menu controller', () => {
     expect(host.navigateToIndex).not.toHaveBeenCalled()
   })
 
-  it('长按阈值是 500ms', () => {
-    expect(CONTEXT_MENU_LONG_PRESS_MS).toBe(500)
+  it('长按计时器按 CONTEXT_MENU_LONG_PRESS_MS 起跳', () => {
+    const { rows, runtime } = createController()
+    rows.focus()
+
+    // 阈值不再钉「常量等于 500」的字面值（那是接线级自指），改为断言行为真的用了这枚
+    // 常量：Space 起跳的长按计时器，挂起 delay 就是它。
+    rows.dispatchEvent(new KeyboardEvent('keydown', { key: ' ', bubbles: true, cancelable: true }))
+    expect(runtime.pendingTimeoutDelays()).toEqual([CONTEXT_MENU_LONG_PRESS_MS])
   })
 
   it('「打开方式」名字按请求序号作废旧结果', async () => {

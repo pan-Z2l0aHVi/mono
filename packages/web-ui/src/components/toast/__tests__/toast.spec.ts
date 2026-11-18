@@ -53,6 +53,15 @@ function namedControl(el: WebUiToast): Element | null {
   )
 }
 
+/**
+ * jsdom 下的退场兜底窗口：toast 的 fallback 计时器是
+ * `getTransitionDuration(panel) + 80`（shared/overlay/presence.ts 的 `EXIT_FALLBACK_BUFFER`），
+ * panel 过渡时长在 jsdom 读不到样式表，落到 `DEFAULT_EXIT_DURATION = 160`，合计 240ms。
+ * 真浏览器里 `transitionend` 先到、兜底只是保险；本常量只服务 jsdom 口径，命名以替代
+ * 散落的裸 240。
+ */
+const EXIT_FALLBACK_WINDOW_MS = 240
+
 // 等待 toast 完成挂载和动画（批量挂载微任务 + el.show() 的 rAF）
 async function waitForToastMounted(): Promise<void> {
   // flushBatch 是 Promise.resolve().then 排的微任务；show() 在 mountToast 的 rAF 里
@@ -199,7 +208,7 @@ describe('WebUiToast 组件', () => {
       }
       expect(handler).toHaveBeenCalledTimes(signal === 'transition-first' ? 1 : 0)
       if (signal === 'transition-first') panel.dispatchEvent(new Event('transitionend', { bubbles: true }))
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
 
       expect(handler).toHaveBeenCalledTimes(1)
       const detail = (handler.mock.calls[0][0] as CustomEvent).detail
@@ -222,7 +231,7 @@ describe('WebUiToast 组件', () => {
       el.remove()
       await el.updateComplete
       expect(vi.getTimerCount()).toBe(0)
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
       expect(handler).not.toHaveBeenCalled()
     })
 
@@ -238,12 +247,12 @@ describe('WebUiToast 组件', () => {
       el.show()
       await el.updateComplete
       queryA11y(el, '[aria-live]')!.dispatchEvent(new Event('transitionend', { bubbles: true }))
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
       expect(handler).not.toHaveBeenCalled()
       expect(el.visible).toBe(true)
       el.dismiss('manual')
       await el.updateComplete
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
       expect(handler).toHaveBeenCalledOnce()
       expect((handler.mock.calls[0][0] as CustomEvent).detail.reason).toBe('manual')
       el.remove()
@@ -264,7 +273,7 @@ describe('WebUiToast 组件', () => {
 
       expect(el.visible).toBe(true)
       el.dismiss()
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
       el.remove()
     })
 
@@ -391,7 +400,7 @@ describe('WebUiToast 组件', () => {
       expect(el.visible).toBe(true)
       expect(el.dismissing).toBe(false)
       el.dismiss()
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
       el.remove()
     })
 
@@ -456,7 +465,7 @@ describe('WebUiToast 组件', () => {
 
       expect(el.visible).toBe(true)
       el.dismiss()
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
       el.remove()
     })
   })
@@ -482,7 +491,7 @@ describe('WebUiToast 组件', () => {
       el.resumeAutoClose()
 
       expect(el.dismissing).toBe(true)
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
       expect(el.visible).toBe(false)
       el.remove()
     })
@@ -530,7 +539,7 @@ describe('toast 命令式 API', () => {
         expect(mounted.map(el => el.toastId)).toContain(id)
 
         toast.clear()
-        await vi.advanceTimersByTimeAsync(240)
+        await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
       }
 
       // 两次调用不撞 id：撞了会让两条 toast 互相覆盖。
@@ -666,7 +675,7 @@ describe('toast 命令式 API', () => {
       expect(mountedToasts()).toHaveLength(1)
       expect(mountedToasts()[0].dismissing).toBe(true)
 
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
       expect(mountedToasts()).toHaveLength(0)
     })
 
@@ -675,7 +684,7 @@ describe('toast 命令式 API', () => {
       await waitForToastMounted()
 
       toast.close(id)
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
       expect(mountedToasts()).toHaveLength(0)
 
       const again = toast.info('第二轮', { id: 'cycle', duration: 0 })
@@ -731,7 +740,7 @@ describe('toast 命令式 API', () => {
       await waitForToastMounted()
 
       // 推进到旧元素的退场兜底定时器之后：它的 toast-close 按元素身份解绑，不应波及新元素
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
 
       expect(mountedToasts()).toHaveLength(1)
       expect(mountedToasts()[0].message).toBe('第二轮')
@@ -760,7 +769,7 @@ describe('toast 命令式 API', () => {
       expect(mountedToasts()).toHaveLength(1)
 
       toast.close(id)
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
 
       expect(mountedToasts()).toHaveLength(0)
     })
@@ -812,7 +821,7 @@ describe('toast 命令式 API', () => {
       expect(mountedToasts()).toHaveLength(3)
 
       toast.clear()
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
 
       expect(mountedToasts()).toHaveLength(0)
     })
@@ -840,7 +849,7 @@ describe('toast 命令式 API', () => {
       document.addEventListener('toast-close', handler)
 
       el.dismiss('manual')
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
 
       const closeEvent = handler.mock.calls.find(c => (c[0] as CustomEvent).detail.id === id)
       expect(closeEvent).toBeTruthy()
@@ -857,7 +866,7 @@ describe('toast 命令式 API', () => {
       document.addEventListener('toast-close', handler)
 
       toast.close(id)
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
 
       const closeEvent = handler.mock.calls.find(c => (c[0] as CustomEvent).detail.id === id)
       expect(closeEvent).toBeTruthy()
@@ -874,7 +883,7 @@ describe('toast 命令式 API', () => {
       document.addEventListener('toast-close', handler)
 
       toast.clear()
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
 
       expect(handler.mock.calls.length).toBeGreaterThan(0)
       const closeEvent = handler.mock.calls[0][0] as CustomEvent<{ id: string; reason: string }>
@@ -923,7 +932,7 @@ describe('toast 命令式 API', () => {
       expect(mountedToasts()).toHaveLength(10)
 
       toast.clear()
-      await vi.advanceTimersByTimeAsync(240)
+      await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
       expect(mountedToasts()).toHaveLength(0)
     })
   })
