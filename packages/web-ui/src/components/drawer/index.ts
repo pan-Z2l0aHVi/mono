@@ -651,7 +651,7 @@ export class WebUiDrawer extends LitElement {
             // 0 ≤ raw < 阈值即 1:1 跟手段：松手弹回 full，无死区、无 rebase。
             this._dragOffset = raw
             if (raw >= FULL_EXIT_TRAVEL) {
-              this._exitFull(dialog, axisPos)
+              this._exitFull(dialog)
               // 不 rebase：offset 与判定连续，「已恢复尺寸、被内拉 raw」自洽。
             }
           }
@@ -759,7 +759,10 @@ export class WebUiDrawer extends LitElement {
    * 即「已经拖过一半」不受回撤影响。
    *
    * @param axisPos 本次 move 在主轴上（`_dragAxis`）的指针坐标
-   * @param displacement 自校准点起、朝闭合方向的**未阻尼**位移
+   * @param displacement 自**本段手势零点**（`_stageOrigin`）起、朝闭合方向的未阻尼行程。
+   *   不能传 `(axisPos - _stageOrigin) * sign` 之外的自定义量：折返基线与位移必须同源，
+   *   否则 exit-full 换段时基线被重置到当前点、位移却仍带整段行程，两者相差整段距离，
+   *   继续同向移动会被误判成回撤。
    */
   private _trackSwipeCancel(axisPos: number, displacement: number) {
     const movement = axisPos - this._lastAxisPos
@@ -845,14 +848,18 @@ export class WebUiDrawer extends LitElement {
    *
    * 位移不 rebase：drawer 停在当前跟手位置，宽度回 base 后「已恢复尺寸、
    * 被内拉 raw」的几何自洽，close 阈值（baseSize/2）与退出阈值（FULL_EXIT_TRAVEL）
-   * 作用在同一条连续位移上。判定守卫换段重置，随后的内拉从新折返点起算。
+   * 作用在同一条连续位移上。
+   *
+   * 「改主意」守卫也**不**换段重置（评审 Should-fix）：本段手势的零点没变
+   * （`_stageOrigin` 未动），意图位移（自零点起的行程）与折返基线必须继续同源。
+   * 这里若把基线拉到当前点而意图保留整段行程，继续同向内拉就会被读成
+   *「从意图处回撤」——越过 96px 后约再走 86px 即误置 `_swipeCancelled`，
+   * 于是 full 恢复后紧接着的快速内甩会被吞，且结果依赖 move 切分粒度。
+   * 守卫原样穿越换段即可：清标记仍以关闭阈值（自零点起的行程）为准。
    */
-  private _exitFull(dialog: HTMLDialogElement, axisPos: number) {
+  private _exitFull(dialog: HTMLDialogElement) {
     this._stage = 'base'
     dialog.classList.remove('is-full')
-    this._cancelBaseline = axisPos
-    this._swipeIntentDisp = -1
-    this._swipeCancelled = false
   }
 
   /*

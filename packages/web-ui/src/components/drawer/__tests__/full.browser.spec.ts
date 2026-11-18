@@ -675,4 +675,44 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     expect(el.open).toBe(true)
     expect(getDialog(el).offsetWidth).toBe(320)
   })
+  it('同一按住：full 恢复原尺寸后快速内甩关闭（折返基线与意图位移同源）', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.fullable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+
+    const events = openChangeEvents(el)
+    // 首个 move（470）建立零点；外拉至 350 越 96px 行程阈值 → 吸附。
+    await holdAndMove(el, [
+      { x: 500, y: 300, at: 0 },
+      { x: 470, y: 300, at: STEP_MS },
+      { x: 440, y: 300, at: 2 * STEP_MS },
+      { x: 410, y: 300, at: 3 * STEP_MS },
+      { x: 350, y: 300, at: 4 * STEP_MS }
+    ])
+    await waitFor(() => currentAxisSize(el, 'right') >= fullAxisSize('right') - 1)
+
+    // 同一按住内拉：自吸附点（350）起 50/100，100 越恢复阈值 → 恢复原尺寸。
+    await continueMove(el, [
+      { x: 400, y: 300, at: 5 * STEP_MS },
+      { x: 450, y: 300, at: 6 * STEP_MS }
+    ])
+    await waitForBaseSize(el, 'right')
+    expect(el.open).toBe(true)
+
+    // 继续同向内拉（净行程 130/150，未过 160 的距离阈值），松手时整段平均速度
+    // ≈586px/s 越过甩动阈值 → 关闭。恢复原尺寸后的继续内拉不是「改主意」：
+    // 折返基线与意图位移同源，甩动分支不得被误拦。
+    await continueMove(el, [
+      { x: 480, y: 300, at: 7 * STEP_MS },
+      { x: 500, y: 300, at: 8 * STEP_MS }
+    ])
+    await releaseAt(el, 500, 300, 9 * STEP_MS)
+    await waitFor(() => !el.open)
+
+    expect(events.map(event => event.detail.open)).toEqual([false])
+    expect(getDialog(el).open).toBe(false)
+  })
 })
