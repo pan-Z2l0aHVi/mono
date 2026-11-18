@@ -369,4 +369,150 @@ describe('useLibraryRuntime', () => {
     await expect(controller.defaultOpenWith('/tmp/report.pdf')).resolves.toBe('')
     expect(controller.error.value).toBe('')
   })
+
+  /*
+   * G2 补测（v5 第五批）：rename / updateNote 快乐路径、addResource 失败路径、loadResources
+   * 拒绝、openExternal 失败、refresh/replace 的在途簿记、deleteResources 的部分失败回滚。
+   */
+  it('renameResource 快乐路径：store 用返回的最新 DTO 回流，在途簿记闭合', async () => {
+    const renamed = createResource({ id: 'resource-inline', title: 'Renamed' })
+    const updateTitle = vi.fn<LibraryRuntime['resources']['updateTitle']>(async () => renamed)
+    const controller = useLibraryRuntime(createRuntime({ resources: { updateTitle } }))
+    useLibraryStore().setResources([createResource()])
+
+    let pendingDuringCall: readonly string[] = []
+    const gate = new Promise<void>(resolve => {
+      updateTitle.mockImplementationOnce(async () => {
+        pendingDuringCall = [...controller.pendingResourceIds.value]
+        resolve()
+        return renamed
+      })
+    })
+
+    const saved = await controller.renameResource('resource-inline', 'Renamed')
+
+    await gate
+    expect(saved.title).toBe('Renamed')
+    expect(pendingDuringCall).toEqual(['resource-inline'])
+    expect(useLibraryStore().resources[0]?.title).toBe('Renamed')
+    expect(controller.pendingResourceIds.value, '完成后簿记清空').toEqual([])
+    expect(controller.error.value).toBe('')
+  })
+
+  it('updateResourceNote 快乐路径：备注回流 store', async () => {
+    const noted = createResource({ id: 'resource-inline', note: '新的备注' })
+    const updateNote = vi.fn<LibraryRuntime['resources']['updateNote']>(async () => noted)
+    const controller = useLibraryRuntime(createRuntime({ resources: { updateNote } }))
+    useLibraryStore().setResources([createResource()])
+
+    await controller.updateResourceNote('resource-inline', '新的备注')
+
+    expect(updateNote).toHaveBeenCalledExactlyOnceWith('resource-inline', '新的备注')
+    expect(useLibraryStore().resources[0]?.note).toBe('新的备注')
+    expect(controller.pendingResourceIds.value).toEqual([])
+  })
+
+  it('addResource 失败：error 呈上、拒绝继续抛、簿记清空且 store 不变', async () => {
+    const create = vi.fn<LibraryRuntime['resources']['create']>(async () => {
+      throw new Error('后端已存在同名资源')
+    })
+    const controller = useLibraryRuntime(createRuntime({ resources: { create } }))
+
+    await expect(
+      controller.addResource({
+        id: 'queue-fail',
+        kind: 'file',
+        resourceKind: ResourceKind.ResourceKindDocument,
+        title: 'X',
+        location: '/tmp/x.md',
+        tags: [],
+        previewToken: null,
+        mediaUrl: null
+      })
+    ).rejects.toThrow('后端已存在同名资源')
+
+    expect(controller.error.value).toBe('后端已存在同名资源')
+    expect(controller.pendingResourceIds.value, '失败后簿记清空').toEqual([])
+    expect(useLibraryStore().resources).toEqual([])
+  })
+
+  it('loadResources 拒绝：error 呈上、isLoading 收敛、拒绝继续抛', async () => {
+    const list = vi.fn<LibraryRuntime['resources']['list']>(async () => {
+      throw new Error('列表读取失败')
+    })
+    const controller = useLibraryRuntime(createRuntime({ resources: { list } }))
+
+    await expect(controller.loadResources()).rejects.toThrow('列表读取失败')
+    expect(controller.error.value).toBe('列表读取失败')
+    expect(controller.isLoading.value).toBe(false)
+  })
+
+  it('openExternal 失败：error 呈上且拒绝继续抛', async () => {
+    const controller = useLibraryRuntime(
+      createRuntime({
+        system: {
+          openExternal: async () => {
+            throw new Error('无法打开外部链接')
+          }
+        }
+      })
+    )
+
+    await expect(controller.openExternal('https://example.com')).rejects.toThrow('无法打开外部链接')
+    expect(controller.error.value).toBe('无法打开外部链接')
+  })
+
+  it('refreshSource / replaceSource 的在途簿记：进行中带 id，结束（含失败）后清空', async () => {
+    let releaseRefresh!: () => void
+    const refreshGate = new Promise<void>(resolve => {
+      releaseRefresh = resolve
+    })
+    let markStarted!: () => void
+    // mock 在调用期阻塞：用例等它进场后再读 controller 的在途簿记，不需要前向引用 controller。
+    const refreshStarted = new Promise<void>(resolve => {
+      markStarted = resolve
+    })
+    const refreshSource = vi.fn<LibraryRuntime['sources']['refreshSource']>(async () => {
+      markStarted()
+      await refreshGate
+      return createResource()
+    })
+    const replaceSource = vi.fn<LibraryRuntime['sources']['replaceSource']>(async () => {
+      throw new Error('替换入口失败')
+    })
+    const controller = useLibraryRuntime(createRuntime({ sources: { refreshSource, replaceSource } }))
+
+    const refreshing = controller.refreshSource({ id: 'source-1' })
+    await refreshStarted
+    expect(controller.refreshingSourceIds.value, '刷新在途时带 id').toEqual(['source-1'])
+    releaseRefresh()
+    await refreshing
+    expect(controller.refreshingSourceIds.value, '刷新完成后簿记清空').toEqual([])
+    expect(controller.error.value).toBe('')
+
+    await expect(controller.replaceSource('source-2', 'https://new.example.com')).rejects.toThrow('替换入口失败')
+    expect(controller.error.value).toBe('替换入口失败')
+    expect(controller.replacingSourceIds.value, '替换失败后簿记同样清空').toEqual([])
+  })
+
+  it('deleteResources 部分失败回滚：已删除的成员落库，失败者保留并呈 error', async () => {
+    const remove = vi.fn<LibraryRuntime['resources']['remove']>()
+    remove.mockImplementationOnce(async () => {})
+    remove.mockImplementationOnce(async () => {
+      throw new Error('第二条删除失败')
+    })
+    const controller = useLibraryRuntime(createRuntime({ resources: { remove } }))
+    useLibraryStore().setResources([
+      createResource({ id: 'r-1' }),
+      createResource({ id: 'r-2' }),
+      createResource({ id: 'r-3' })
+    ])
+
+    await expect(controller.deleteResources(['r-1', 'r-2', 'r-3'])).rejects.toThrow('第二条删除失败')
+
+    // 已成功删除的 r-1 从 store 摘掉（部分落库），未删除的 r-2 / r-3 保留。
+    expect(useLibraryStore().resources.map(resource => resource.id)).toEqual(['r-2', 'r-3'])
+    expect(controller.error.value).toBe('第二条删除失败')
+    expect(controller.pendingResourceIds.value, '簿记清空').toEqual([])
+  })
 })

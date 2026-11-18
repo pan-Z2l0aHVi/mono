@@ -6,6 +6,7 @@ import { pollUntil, waitForAnimationsToFinish, waitForFrame } from '@/shared/tes
 import { setViewport } from '@/shared/test-utils/viewport'
 
 import type { WebUiDrawer } from '..'
+import pageShiftSource from '../page-shift.ts?raw'
 
 /*
  * 整页让开（page-shift，浏览器）。
@@ -65,9 +66,17 @@ function axisUnit(axis: 'x' | 'y'): number {
   return (axis === 'x' ? window.innerWidth : window.innerHeight) / 100
 }
 
-/** 第 `depth` 层（0 起）的让开量：16a、8a、4a…… */
+/*
+ * 层常量从 page-shift.ts 源码解析（`PAGE_SHIFT_BASE` / `PAGE_SHIFT_DECAY` 是模块私有的），
+ * 不在测试里复述 16 与 0.5 的字面量；衰减的「叠乘」形状仍在这里表达，让「每层减半」的
+ * 关系判据保持具体期望值（16a/8a/4a 的区分力依赖它）。
+ */
+const PAGE_SHIFT_BASE = Number(/PAGE_SHIFT_BASE = (\d+)/.exec(pageShiftSource)![1])
+const PAGE_SHIFT_DECAY = Number(/PAGE_SHIFT_DECAY = (0\.\d+)/.exec(pageShiftSource)![1])
+
+/** 第 `depth` 层（0 起）的让开量：base·a、base/2·a…… */
 function layerShift(axis: 'x' | 'y', depth: number): number {
-  return 16 * axisUnit(axis) * 0.5 ** depth
+  return PAGE_SHIFT_BASE * axisUnit(axis) * PAGE_SHIFT_DECAY ** depth
 }
 
 /** 前 `count` 层按打开顺序叠加的让开量。 */

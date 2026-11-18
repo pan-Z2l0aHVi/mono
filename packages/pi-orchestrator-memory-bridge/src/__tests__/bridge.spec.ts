@@ -102,6 +102,8 @@ const runTool = async (
 ) => {
   const tool = pi.tools.get(name)
   if (!tool) throw new Error(`tool not registered: ${name}`)
+  // ctx cast 无法删除：`PiToolDefinition.execute` 把 ctx 声明为 `never`（pi-types.ts），
+  // MockContext 与 Pi 的完整 ctx 接口并不相等，删 cast 编译不过（TS2345，已实测）。
   return tool.execute('call-1', params as never, undefined, undefined, ctx as never)
 }
 
@@ -361,10 +363,15 @@ describe('tool_result 只入队', () => {
   it('锚点入队后未调用保存工具时，pi-memory 一次都没被调用', async () => {
     const { repo, pi } = await withStart()
     const calls: Array<{ name: string; args: Record<string, unknown> }> = []
-    void createExecuteTool({ results: {}, calls })
 
     await pi.emit('tool_result', { toolName: 'herdr_plan', details: planDetails() }, baseCtx(repo))
-    await pi.emit('agent_before_settle', { type: 'agent_before_settle' }, baseCtx(repo))
+    // 探针必须挂在 agent_before_settle 那次 emit 所用的 ctx 上：桥接侧对缺失的
+    // executeTool 是静默跳过，不接上探针的话本用例对 settle 路径的变异不可见。
+    const settleCtx: MockContext = {
+      ...baseCtx(repo),
+      executeTool: createExecuteTool({ results: {}, calls })
+    }
+    await pi.emit('agent_before_settle', { type: 'agent_before_settle' }, settleCtx)
 
     expect(calls).toEqual([])
   })
@@ -625,6 +632,7 @@ describe('召回工具', () => {
   ) => {
     const tool = pi.tools.get(RECALL_TOOL_NAME)
     if (!tool) throw new Error('recall tool not registered')
+    // ctx cast 同 runTool：`execute` 的 ctx 参数是 `never`，删不掉（见 runTool 注释）。
     return tool.execute('call-1', params as never, undefined, undefined, ctx as never)
   }
 

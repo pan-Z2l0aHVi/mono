@@ -55,6 +55,22 @@ function readRootScrollbarHandle(): string {
   return document.documentElement.style.getPropertyValue('--wui-scrollbar-handle')
 }
 
+/** 把作用域里的颜色声明文本归一成计算色（与 rgb 形态的 scrollbar-color 同一种表示）。 */
+function resolvedColor(scope: Element, raw: string): string {
+  const probe = document.createElement('span')
+  probe.style.color = raw
+  scope.append(probe)
+  const value = getComputedStyle(probe).color
+  probe.remove()
+  return value
+}
+
+/** html 的 `scrollbar-color` 解析出的 thumb 色（第一个颜色）。 */
+function rootThumbColor(): string {
+  const value = getComputedStyle(document.documentElement).scrollbarColor
+  return /rgba?\([^)]*\)|#[0-9a-f]+/i.exec(value)?.[0] ?? value
+}
+
 /** 消费方契约：文档级 scrollbar 读镜像到 `html` 的 thumb token。 */
 function applyHtmlScrollbarRule(): HTMLStyleElement {
   const style = document.createElement('style')
@@ -131,14 +147,17 @@ describe('theme 根节点 page 色同步（浏览器）', () => {
     const theme = await mountTheme('light')
 
     // 镜像值必须等于主题自己的计算值；自定义属性的序列化形态（Chromium 落成短 hex）不属于契约。
-    // 消费方看到的是 `scrollbar-color` 解析后的颜色，那一层单独断言。
-    expect(readRootScrollbarHandle()).toBe(getComputedStyle(theme).getPropertyValue('--wui-scrollbar-handle').trim())
-    expect(getComputedStyle(document.documentElement).scrollbarColor).toContain('rgba(0, 0, 0, 0.39)')
+    // 消费方看到的是 `scrollbar-color` 解析后的颜色，那一层与主题 token 归一后的计算色对照，
+    // 不写死 rgba 字面量（示范：reduced-motion 的 resolvedColor）。
+    const handleRaw = getComputedStyle(theme).getPropertyValue('--wui-scrollbar-handle').trim()
+    expect(readRootScrollbarHandle()).toBe(handleRaw)
+    expect(rootThumbColor()).toBe(resolvedColor(theme, handleRaw))
 
     theme.setAttribute('appearance', 'dark')
     await theme.updateComplete
-    expect(readRootScrollbarHandle()).toBe(getComputedStyle(theme).getPropertyValue('--wui-scrollbar-handle').trim())
-    expect(getComputedStyle(document.documentElement).scrollbarColor).toContain('rgba(255, 255, 255, 0.5)')
+    const darkHandleRaw = getComputedStyle(theme).getPropertyValue('--wui-scrollbar-handle').trim()
+    expect(readRootScrollbarHandle()).toBe(darkHandleRaw)
+    expect(rootThumbColor()).toBe(resolvedColor(theme, darkHandleRaw))
   })
 
   it('appearance 切换后 root 值与 body 背景同步更新', async () => {

@@ -324,7 +324,9 @@ describe('WebUiCollapse 组件', () => {
       await waitForUpdate(el)
       // 展开动画的起点提交与落稳态都排在 rAF 里（与 peek 动画同一套时序）。
       await waitForFrame()
-      expect(track.getAttribute('data-wui-settled')).toBe('open')
+      // 只断 presence：唯一消费点是 style.css 的 [data-wui-settled] 属性选择器，
+      // 标记值本身没有任何读方，钉 'open' 字面量是 mutation-invisible 的值相等断言。
+      expect(track.hasAttribute('data-wui-settled')).toBe(true)
 
       el.open = false
       await waitForUpdate(el)

@@ -22,28 +22,39 @@ function createDialog(initialHTML = ''): WebUiDialog {
  * - 显式 aria-dialog-label 优先，直接写原生 dialog 的 aria-label；
  * - 否则非 headless 且带可见时，aria-labelledby 指向带（id="wui-dialog-heading"）；
  * - headless 没有可自动关联的内置标题，两个属性都不写——名字由 Consumer 负责。
- * 判据读的是原生 <dialog> 上的 attribute，不是内部 id，后者是接线细节。
+ * 判据读的是原生 <dialog> 上的 attribute 并**解引用**到真实节点：钉 id 字面量只会假红
+ * （接线两端同字面量互证），指向不存在的节点反而测不出来。
  */
 describe('WebUiDialog accessible name', () => {
   function nativeDialog(el: WebUiDialog): HTMLDialogElement {
     return el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
   }
 
+  /** aria-labelledby 解引用到的标题带节点；接线指向不存在的 id 时返回 null。 */
+  function labelledTarget(el: WebUiDialog): Element | null {
+    const id = nativeDialog(el).getAttribute('aria-labelledby')
+    if (!id) return null
+    return el.shadowRoot?.getElementById(id) ?? null
+  }
+
   it('非 headless 且有可命名的带时，aria-labelledby 指向带', async () => {
     const el = createDialog('<span slot="header">设置</span>')
     await flushSlotChange(el)
 
-    expect(nativeDialog(el).getAttribute('aria-labelledby')).toBe('wui-dialog-heading')
+    expect(labelledTarget(el), 'aria-labelledby 应指向真实存在的标题带').not.toBeNull()
     expect(nativeDialog(el).hasAttribute('aria-label')).toBe(false)
     cleanupElement(el)
   })
 
-  it('heading 属性 fallback 时同样接线', async () => {
+  it('heading 属性 fallback 时同样接线，且带里是 heading 文本', async () => {
     const el = createDialog('<p>正文</p>')
     el.heading = '设置'
     await waitForUpdate(el)
 
-    expect(nativeDialog(el).getAttribute('aria-labelledby')).toBe('wui-dialog-heading')
+    const target = labelledTarget(el)
+    expect(target, 'aria-labelledby 应指向真实存在的标题带').not.toBeNull()
+    // heading 渲染在 shadow 内部的带里（不经槽分发），textContent 可直接读。
+    expect(target?.textContent).toContain('设置')
     cleanupElement(el)
   })
 
@@ -60,7 +71,7 @@ describe('WebUiDialog accessible name', () => {
     const el = createDialog('<p>正文</p>')
     el.heading = '设置'
     await waitForUpdate(el)
-    expect(nativeDialog(el).getAttribute('aria-labelledby')).toBe('wui-dialog-heading')
+    expect(labelledTarget(el), 'aria-labelledby 应指向真实存在的标题带').not.toBeNull()
 
     // 带随 heading 一起退场，名字不能还挂在一个已经不存在的带。
     el.heading = ''
@@ -124,7 +135,9 @@ describe('WebUiDialog accessible name', () => {
 
     // 槽空后带由 heading 填充：带重新成为可命名的对象。带里读到的是哪段文字由浏览器
     // 的槽分发决定（jsdom 不排版），渲染面在同目录的 header.browser.spec.ts 取证。
-    expect(nativeDialog(el).getAttribute('aria-labelledby')).toBe('wui-dialog-heading')
+    const target = labelledTarget(el)
+    expect(target, '槽空后 aria-labelledby 仍指向真实存在的标题带').not.toBeNull()
+    expect(target?.hasAttribute('hidden')).toBe(false)
     cleanupElement(el)
   })
 })

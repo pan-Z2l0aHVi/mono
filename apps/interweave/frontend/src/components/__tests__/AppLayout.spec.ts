@@ -208,6 +208,10 @@ describe('AppLayout：应用外壳', () => {
   ])('仅 macOS 为系统窗口按钮留出顶部空间（%s）', async (os, expected) => {
     vi.stubGlobal('_wails', { environment: { OS: os } })
     await mountLayout()
+    // class 文本锚是 jsdom 被迫：AppLayout 没有 browser spec，Tailwind arbitrary
+    // property 类也不经 shadow 样式表、jsdom 不加载应用层样式表，computed 值读不到。
+    // 锚有判别力（OS 翻转即红）；有 browser spec 后应换成 computed padding-top 的
+    // 行为对比再弃用这条锚。
     expect([...layoutRoot().classList].some(name => name.startsWith('[--wui-layout-sidebar-padding-top:'))).toBe(
       expected
     )

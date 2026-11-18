@@ -6,6 +6,14 @@ import { cleanupElement, contractReflection, queryA11y, waitForFrame, waitForUpd
 
 import type { WebUiPopover } from '..'
 
+/**
+ * `defineOverlayDelayProps` 的私有默认（shared/overlay/trigger-delay-props.ts：show 200 /
+ * hide 100），同时经组件属性面公开为 `el.showDelay` / `el.hideDelay`。这里命名镜像替代散落的
+ * 裸 200/100；「窗口中段」的推进取默认的一半，默认值变化时语义不漂移。
+ */
+const DEFAULT_SHOW_DELAY_MS = 200
+const DEFAULT_HIDE_DELAY_MS = 100
+
 function touchPointerEvent(type: string): PointerEvent {
   const event = new PointerEvent(type)
   Object.defineProperty(event, 'pointerType', { value: 'touch' })
@@ -401,7 +409,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
@@ -413,12 +421,12 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       el.dispatchEvent(new PointerEvent('pointerleave'))
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersByTime(DEFAULT_HIDE_DELAY_MS)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
 
@@ -439,13 +447,14 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
       el.dispatchEvent(new PointerEvent('pointerleave'))
       queryA11y(el, '[role="dialog"]')?.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(1000)
+      // 远超隐藏延迟的推进，证明重入真的取消了关闭计时。
+      vi.advanceTimersByTime(DEFAULT_HIDE_DELAY_MS * 10)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
@@ -457,7 +466,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(touchPointerEvent('pointerenter'))
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS / 2)
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(false)
@@ -470,7 +479,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
@@ -487,7 +496,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await el.updateComplete
       vi.advanceTimersToNextFrame()
       await waitForUpdate(el)
@@ -516,7 +525,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
 
@@ -530,7 +539,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
@@ -552,7 +561,7 @@ describe('WebUiPopover 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(true)
 
@@ -713,7 +722,8 @@ describe('WebUiPopover 组件', () => {
       const handler = vi.fn<(event: Event) => void>()
       el.addEventListener('open-change', handler)
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      await vi.advanceTimersByTimeAsync(100)
+      // 显示窗口中段推进：面板尚未打开就 hide()，命令式关闭只派发关闭事件。
+      await vi.advanceTimersByTimeAsync(DEFAULT_SHOW_DELAY_MS / 2)
       el.hide()
       await waitForUpdate(el)
 

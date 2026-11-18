@@ -13,12 +13,18 @@ const createNumber = (attrs?: Record<string, string>): WebUiInputNumber =>
   mountElement<WebUiInputNumber>('web-ui-input-number', { attrs })
 
 describe('WebUiInputNumber 尺寸（浏览器）', () => {
-  it('默认步进图标保持原有尺寸', async () => {
+  it('默认步进图标按按钮尺寸派生（8/15）', async () => {
     const el = createNumber()
     await waitForUpdate(el)
     const icon = el.shadowRoot!.querySelector('web-ui-icon')!
     await icon.updateComplete
-    expect(icon.shadowRoot!.querySelector('svg')!.getBoundingClientRect().width).toBeCloseTo(16, 1)
+    const btn = el.shadowRoot!.querySelector<HTMLButtonElement>('.num-btn')!
+    // 图标渲染尺寸 = 按钮尺寸 × 8/15（input-number/style.css 的派生链）：两个实测元素互相对表，
+    // 不钉 16px——那条链在默认 control-size 下恰好是 16，钉死只会随派生系数调整而腐化。
+    expect(icon.shadowRoot!.querySelector('svg')!.getBoundingClientRect().width).toBeCloseTo(
+      btn.getBoundingClientRect().height * (8 / 15),
+      1
+    )
     cleanupElement(el)
   })
 
@@ -27,7 +33,9 @@ describe('WebUiInputNumber 尺寸（浏览器）', () => {
     el.style.setProperty('--wui-control-size', '24px')
     await waitForUpdate(el)
     const buttons = el.shadowRoot!.querySelectorAll<HTMLButtonElement>('.num-btn')
-    expect(buttons[1]!.offsetHeight).toBe(20)
+    // 按钮尺寸 = 控件尺寸 × 5/6（input-number/style.css）：控件尺寸这里显式设过，可以解析出期望值。
+    const controlSize = Number.parseFloat(getComputedStyle(el).getPropertyValue('--wui-control-size'))
+    expect(buttons[1]!.offsetHeight).toBeCloseTo(controlSize * (5 / 6), 5)
     buttons[1]!.click()
     await waitForUpdate(el)
     expect(el.value).toBe(1)

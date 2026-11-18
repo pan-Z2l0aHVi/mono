@@ -21,10 +21,43 @@ if (!HTMLDialogElement.prototype.close) {
   }
 }
 
+/*
+ * drawer 关闭兜底窗口（shared/overlay/native-dialog-presence.ts 的
+ * `getTransitionDuration(dialog) + 80`），环境口径不同：
+ * - 真浏览器：退出过渡 --wui-duration-drawer-exit 默认 240ms → 窗口 320ms；
+ * - jsdom：读不到阴影样式表，getTransitionDuration 落到 presence.ts 的
+ *   DEFAULT_EXIT_DURATION（160ms）→ 窗口 240ms。
+ * 推进常量取越过**较大口径**（320ms）的余量，两种环境下兜底都已收敛；它不是精确镜像，
+ * 只是「越过整窗」的观察预算。16ms 的帧步进与此无关，保持字面。
+ */
+const CLOSE_FALLBACK_ADVANCE_MS = 400
+
+/*
+ * 拖拽释放收尾的兜底窗口（drawer/index.ts 的 `setTimeout(..., duration + SETTLE_GRACE_MS)`）：
+ * `duration` 是 `_settleDuration` 的返回值，钳在 [SETTLE_MIN_MS=180, SETTLE_MAX_MS=420]ms，
+ * 加宽限 SETTLE_GRACE_MS=80ms 后窗口上界 500ms。推进取越过上界的余量——它与上面的
+ * 关闭兜底是**两个不同的定时器**，窗口口径互不通用。
+ */
+const DRAG_SETTLE_ADVANCE_MS = 600
+
 function createDrawer(): WebUiDrawer {
   const el = document.createElement('web-ui-drawer')
   document.body.appendChild(el)
   return el
+}
+
+/**
+ * 关闭 button 按「有可访问名」定位，不按名字字面量（对齐 dialog 套件政策，
+ * `closable.spec.ts` 的同名 helper）：可访问名必须存在是 AT 契约，具体文案走内置英文
+ * 回退（ADR-0016）、可用 `aria-close-label` 覆盖——钉住 "Close" 字面量会让回退文案的
+ * 调整误伤测试（假红类）。
+ */
+function closeButton(el: WebUiDrawer): HTMLElement | null {
+  return (
+    [...(el.shadowRoot?.querySelectorAll<HTMLElement>('[aria-label]') ?? [])].find(
+      node => node.getAttribute('aria-label')?.trim() !== ''
+    ) ?? null
+  )
 }
 
 function dispatchTransformTransitionEnd(dialog: HTMLDialogElement) {
@@ -127,12 +160,13 @@ describe('WebUiDrawer 属性', () => {
     const el = createDrawer()
     await waitForUpdate(el)
     expect(el.closable).toBe(false)
-    expect(queryA11y(el, '[aria-label="Close"]')).toBeNull()
+    // 负向形式是「不存在可访问名为关闭的按钮」（见 closeButton 注释），不钉 "Close" 字面量。
+    expect(closeButton(el)).toBeNull()
 
     el.closable = true
     await waitForUpdate(el)
     expect(el.hasAttribute('closable')).toBe(true)
-    expect(queryA11y(el, '[aria-label="Close"]')).toBeTruthy()
+    expect(closeButton(el)).toBeTruthy()
 
     cleanupElement(el)
   })
@@ -272,7 +306,7 @@ describe('WebUiDrawer 事件：open-change', () => {
     await waitForUpdate(el)
 
     const events = openChangeEvents(el)
-    ;(queryA11y(el, '[aria-label="Close"]') as HTMLElement).click()
+    closeButton(el)!.click()
     await waitForUpdate(el)
 
     expect(el.open).toBe(false)
@@ -318,7 +352,7 @@ describe('WebUiDrawer controlled', () => {
     await waitForUpdate(el)
 
     const events = openChangeEvents(el)
-    ;(queryA11y(el, '[aria-label="Close"]') as HTMLElement).click()
+    closeButton(el)!.click()
     await waitForUpdate(el)
 
     expect(el.open).toBe(true)
@@ -393,7 +427,7 @@ describe('WebUiDrawer 关闭生命周期', () => {
     // 否则它永远停在「open=false 但 dialog 仍开着」的卡死态。
     el.close()
     await waitForUpdate(el)
-    await vi.advanceTimersByTimeAsync(400)
+    await vi.advanceTimersByTimeAsync(CLOSE_FALLBACK_ADVANCE_MS)
 
     expect(dialog?.open).toBe(false)
 
@@ -422,7 +456,7 @@ describe('WebUiDrawer 关闭生命周期', () => {
     expect(dialog?.open).toBe(true)
 
     if (dialog) dispatchTransformTransitionEnd(dialog)
-    await vi.advanceTimersByTimeAsync(400)
+    await vi.advanceTimersByTimeAsync(CLOSE_FALLBACK_ADVANCE_MS)
     expect(dialog?.open).toBe(true)
 
     vi.useRealTimers()
@@ -443,7 +477,7 @@ describe('WebUiDrawer 关闭生命周期', () => {
     // 尚未送达的状态。等待 fallback 计时器触发 finishClosing → dialog.close()。
     el.open = false
     await waitForUpdate(el)
-    await vi.advanceTimersByTimeAsync(500)
+    await vi.advanceTimersByTimeAsync(CLOSE_FALLBACK_ADVANCE_MS)
     expect(dialog.open).toBe(false)
 
     // 快速重开：真实浏览器中上一会话排队的 close 事件可能在此之后才到达。
@@ -604,8 +638,9 @@ describe('WebUiDrawer 拖拽关闭', () => {
     zone.dispatchEvent(new PointerEvent('pointerup', { bubbles: true, pointerId: 1, isPrimary: true, clientX: to }))
     await waitForUpdate(el)
     // 释放后的收尾已交还 CSS transition（issue #123）：jsdom 不运行过渡、也不派发
-    // transitionend，收尾由兜底定时器完成，这里把时间推过它。
-    await vi.advanceTimersByTimeAsync(600)
+    // transitionend，收尾由拖拽收尾的兜底定时器完成，这里把时间推过它（窗口见
+    // DRAG_SETTLE_ADVANCE_MS 注释）。
+    await vi.advanceTimersByTimeAsync(DRAG_SETTLE_ADVANCE_MS)
     await waitForUpdate(el)
   }
 

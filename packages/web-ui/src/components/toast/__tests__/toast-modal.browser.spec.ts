@@ -16,6 +16,18 @@ function noticeIn(dialog: HTMLDialogElement) {
   return dialog.querySelector<HTMLElement>('[data-wui-toast-overlay]')?.shadowRoot?.querySelector('web-ui-toast')
 }
 
+/**
+ * 解析生效的视口留白 token（`assets/toast-containers.css` 的默认值）。
+ * 留白断言与 token 对表而不是写死 16px：这是跨源 parity——token 调整不会腐化断言，
+ * 而定位代码漏读 token 时这里会红。
+ */
+function viewportGap(notice: HTMLElement): number {
+  const raw = getComputedStyle(notice).getPropertyValue('--wui-toast-viewport-gap').trim()
+  const value = Number.parseFloat(raw)
+  if (!Number.isFinite(value)) throw new Error(`--wui-toast-viewport-gap 解析失败: ${raw || '(空)'}`)
+  return value
+}
+
 afterEach(() => {
   toast._reset()
   document.body.replaceChildren()
@@ -45,7 +57,7 @@ it('keeps the same toast at the viewport edge as managed modal layers open and c
   await pollUntil(() => noticeIn(drawerDialog) === original, 'toast did not enter drawer')
   await waitForFrame()
   await pollUntil(
-    () => Math.abs(original.getBoundingClientRect().right - (innerWidth - 16)) < 2,
+    () => Math.abs(original.getBoundingClientRect().right - (innerWidth - viewportGap(original))) < 2,
     () =>
       `toast right=${original.getBoundingClientRect().right}, viewport=${innerWidth}, dialog=${JSON.stringify(drawerDialog.getBoundingClientRect())}, style=${['transform', 'translate', 'scale', 'filter', 'contain', 'willChange'].map(p => `${p}:${getComputedStyle(drawerDialog)[p as 'transform']}`).join(',')}`
   )
@@ -91,7 +103,7 @@ it.each(['right', 'left', 'top', 'bottom'] as const)(
     const notice = noticeIn(dialog)!
     await notice.updateComplete
     await pollUntil(
-      () => Math.abs(notice.getBoundingClientRect().right - (innerWidth - 16)) < 2,
+      () => Math.abs(notice.getBoundingClientRect().right - (innerWidth - viewportGap(notice))) < 2,
       'toast is not at viewport edge'
     )
     await page.elementLocator(notice).hover()
@@ -196,5 +208,6 @@ it('keeps headless drawer content clickable alongside the viewport toast', async
   await page.elementLocator(button).click()
   expect(clicks).toBe(1)
   expect(button.getBoundingClientRect().width).toBe(200)
-  expect(noticeIn(dialog)!.getBoundingClientRect().right).toBeCloseTo(innerWidth - 16, 0)
+  const headlessNotice = noticeIn(dialog)!
+  expect(headlessNotice.getBoundingClientRect().right).toBeCloseTo(innerWidth - viewportGap(headlessNotice), 0)
 })

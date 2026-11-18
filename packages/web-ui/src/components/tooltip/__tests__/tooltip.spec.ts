@@ -7,6 +7,14 @@ import { cleanupElement, contractReflection, getPortalPanel, queryA11y, waitForU
 
 import type { WebUiTooltip } from '..'
 
+/**
+ * `defineOverlayDelayProps` 的私有默认（shared/overlay/trigger-delay-props.ts：show 200 /
+ * hide 100），同时经组件属性面公开为 `el.showDelay` / `el.hideDelay`。这里命名镜像替代散落的
+ * 裸 200/100；能直接读属性的地方优先读属性（见「指针进入/离开」的步进用例）。
+ */
+const DEFAULT_SHOW_DELAY_MS = 200
+const DEFAULT_HIDE_DELAY_MS = 100
+
 function touchPointerEvent(type: string): PointerEvent {
   const event = new PointerEvent(type)
   Object.defineProperty(event, 'pointerType', { value: 'touch' })
@@ -101,7 +109,7 @@ describe('WebUiTooltip 组件', () => {
 
       // 先打开 tooltip 以显示 panel（保留当前行为：由 pointerenter 触发）
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
 
       const panel = queryA11y(el, '[role="tooltip"]')
@@ -144,7 +152,7 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
 
@@ -171,11 +179,11 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS / 2)
       el.disabled = true
       await waitForUpdate(el)
 
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
 
@@ -401,13 +409,13 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(true)
 
       el.dispatchEvent(new PointerEvent('pointerleave'))
-      vi.advanceTimersByTime(100)
+      vi.advanceTimersByTime(DEFAULT_HIDE_DELAY_MS)
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(false)
@@ -420,7 +428,7 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(touchPointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
 
       expect(el.isOpen).toBe(false)
@@ -482,7 +490,7 @@ describe('WebUiTooltip 组件', () => {
       await waitForUpdate(el)
 
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
 
@@ -514,7 +522,7 @@ describe('WebUiTooltip 组件', () => {
 
       el.querySelector<HTMLElement>('button')?.click()
       el.dispatchEvent(new PointerEvent('pointerenter'))
-      vi.advanceTimersByTime(200)
+      vi.advanceTimersByTime(DEFAULT_SHOW_DELAY_MS)
       await waitForUpdate(el)
       expect(el.isOpen).toBe(false)
 

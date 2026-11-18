@@ -147,13 +147,15 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     await pollUntil(() => prefix.assignedElements({ flatten: true }).length === 1, 'Expected prefix to be slotted')
     expect(prefix.assignedElements({ flatten: true })[0]?.textContent).toBe('前缀')
     expect(suffix.assignedElements({ flatten: true })[0]?.textContent).toBe('后缀')
-    expect(prefix.classList.contains('empty')).toBe(false)
+    // 空态的用户可见后果是「槽被隐藏」（input/style.css 的 `slot.empty { display: none }`）：
+    // 断言 computed display；内部 class 只作定位器（上面按 slot name 定位），不进断言。
+    expect(getComputedStyle(prefix).display).not.toBe('none')
     clickTrigger(el)
     await pollUntil(() => el.open, 'Expected autocomplete to open')
     expect(el.querySelector('[slot="prefix"]')?.textContent).toBe('前缀')
     expect(el.querySelector('[slot="suffix"]')?.textContent).toBe('后缀')
     el.querySelector('[slot="prefix"]')!.remove()
-    await pollUntil(() => prefix.classList.contains('empty'), 'Expected removed prefix to leave the input empty')
+    await pollUntil(() => getComputedStyle(prefix).display === 'none', 'Expected removed prefix slot to be hidden')
   })
 
   it('Portal 打开后 option 移入 theme-owned overlay root 并可点击选择', async () => {

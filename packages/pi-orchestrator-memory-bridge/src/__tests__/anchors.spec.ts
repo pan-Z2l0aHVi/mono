@@ -87,7 +87,7 @@ describe('审查拒绝锚点', () => {
     const anchor = anchorFromReview(reviewDetails({ verdict }))
 
     expect(anchor?.kind).toBe('rejection')
-    expect(anchor?.value).toContain(verdict === 'REJECT' ? 'REJECT' : verdict)
+    expect(anchor?.value).toContain(verdict)
   })
 
   it('APPROVE 不产出拒绝锚点', () => {
