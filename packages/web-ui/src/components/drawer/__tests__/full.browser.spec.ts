@@ -714,6 +714,42 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     expect(actualShift).toBeCloseTo(expectedShift, 1)
   })
 
+  it('嵌套：full 态下层运行时关闭 fullable（无尺寸过渡）→ 立即按 base 宽度重算露边偏移', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    document.body.append(theme)
+
+    const parent = createDrawer()
+    theme.append(parent)
+    parent.draggable = true
+    parent.fullable = true
+    parent.open = true
+    await parent.updateComplete
+    await waitForOpenTransition(parent)
+    await pullToFullAndRelease(parent, 'right')
+
+    const child = createDrawer()
+    theme.append(child)
+    child.open = true
+    await child.updateComplete
+    await waitForOpenTransition(child)
+
+    const parentDialog = getDialog(parent)
+    const fullShift = Number.parseFloat(parentDialog.style.getPropertyValue('--wui-internal-drawer-nested-shift'))
+
+    // 运行时摘除 fullable：_drag.reset() 摘除 is-full 且过渡门失效（无 transitionend）。
+    parent.fullable = false
+    await parent.updateComplete
+
+    expect(parentDialog.classList.contains('is-full')).toBe(false)
+    expect(parentDialog.offsetWidth).toBe(320)
+    const peekBase = Number.parseFloat(getComputedStyle(parentDialog).getPropertyValue('--wui-drawer-nested-peek-base'))
+    const expectedBaseShift = (320 * 0.05) / 2 + peekBase * Math.log(2)
+    const actualShift = Number.parseFloat(parentDialog.style.getPropertyValue('--wui-internal-drawer-nested-shift'))
+    expect(actualShift).toBeCloseTo(expectedBaseShift, 1)
+    expect(actualShift).toBeLessThan(fullShift)
+  })
+
   it('快甩外拉松手：短行程也吸附 full（armed 正例）', async () => {
     const el = createDrawer()
     el.draggable = true

@@ -468,6 +468,9 @@ export class WebUiDrawer extends LitElement {
     // 穿越退出，这里再清会提前摘类、宽度在退出中途回位。
     if (this.open && (props.has('fullable') || props.has('draggable') || props.has('placement'))) {
       this._drag.reset()
+      if (this.dialog?.classList.contains('is-nested-lower')) {
+        this._nestedLayers.recalculate()
+      }
     }
   }
 

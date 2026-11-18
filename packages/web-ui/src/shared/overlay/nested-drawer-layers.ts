@@ -142,9 +142,15 @@ function handleAnyDialogClose(event: Event) {
   if (entries.size > 0) applyLayers()
 }
 
+function handleViewportResize() {
+  // 存在堆叠层时，视口尺寸变化会改变 full 态或百分比宽度抽屉的尺寸（reduced-motion 下无 transitionend）。
+  if (entries.size > 1) applyLayers()
+}
+
 function ensureDocumentListener() {
   if (documentListenerAttached) return
   document.addEventListener('close', handleAnyDialogClose, true)
+  window.addEventListener('resize', handleViewportResize)
   // jsdom 等无 matchMedia 的环境：媒体查询换不掉基准，但打开/关闭路径仍会重算。
   if (typeof window.matchMedia === 'function') {
     peekBaseQuery = window.matchMedia(NESTED_PEEK_BASE_QUERY)
@@ -220,6 +226,7 @@ export const defineNestedDrawerLayers = () =>
       }
       if (entries.size === 0 && documentListenerAttached) {
         document.removeEventListener('close', handleAnyDialogClose, true)
+        window.removeEventListener('resize', handleViewportResize)
         peekBaseQuery?.removeEventListener('change', handlePeekBaseChange)
         peekBaseQuery = null
         documentListenerAttached = false
