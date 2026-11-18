@@ -6,10 +6,15 @@ import { readConfig, reviewTarget } from './codex-review.mjs'
 import { SPAWN_MAX_BUFFER, commandError, run } from './lib/github.mjs'
 import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
-export const AUTOFIX_TRAILER = 'Autofix-by: codex-autofix'
+export const MAX_AUTOFIX_COMMITS = 3
+export const PULL_COMMITS_API_CAP = 250
+export const AUTOFIX_TRAILER_KEY = 'Autofix-by'
+export const AUTOFIX_TRAILER_VALUE = 'codex-autofix'
+export const AUTOFIX_TRAILER = `${AUTOFIX_TRAILER_KEY}: ${AUTOFIX_TRAILER_VALUE}`
 export const PATCH_ARTIFACT = 'codex-autofix-patch'
 export const REQUIRED_JOB = 'check'
 
+const PULL_COMMITS_PER_PAGE = 100
 const SHA_PATTERN = /^[0-9a-f]{40,64}$/iu
 const LOG_LIMIT_BYTES = 200_000
 const ANY = '\u0000'
@@ -161,7 +166,19 @@ export function createGhAutofixAdapter({ repository, spawn = spawnSync, cwd = pr
 
   return {
     pull: number => JSON.parse(gh(['api', `repos/${repository}/pulls/${number}`])),
-    pullCommits: number => JSON.parse(gh(['api', `repos/${repository}/pulls/${number}/commits?per_page=100`])),
+    pullCommits: number => {
+      const commits = []
+      const maxPages = Math.ceil(PULL_COMMITS_API_CAP / PULL_COMMITS_PER_PAGE)
+      for (let page = 1; page <= maxPages; page += 1) {
+        const chunk = JSON.parse(
+          gh(['api', `repos/${repository}/pulls/${number}/commits?per_page=${PULL_COMMITS_PER_PAGE}&page=${page}`])
+        )
+        if (!Array.isArray(chunk)) throw new Error(`gh api returned a non-array commit page for PR #${number}`)
+        commits.push(...chunk)
+        if (chunk.length < PULL_COMMITS_PER_PAGE) break
+      }
+      return { commits }
+    },
     jobs: runId => JSON.parse(gh(['api', `repos/${repository}/actions/runs/${runId}/jobs?per_page=100`])).jobs ?? [],
     jobLog: jobId => gh(['api', '--allow-escape-sequences', `repos/${repository}/actions/jobs/${jobId}/logs`])
   }
@@ -182,21 +199,73 @@ export function tailLog(log, limit = LOG_LIMIT_BYTES) {
   return `… truncated: showing the last ${limit} of ${buffer.length} bytes …\n${buffer.subarray(buffer.length - limit).toString()}`
 }
 
-export function hasAutofixCommit(commits) {
-  return commits.some(entry => String(entry?.commit?.message ?? '').includes(AUTOFIX_TRAILER))
+function isAutofixTrailerLine(line) {
+  if (/^[ \t]/u.test(line)) return false
+  const [key, ...rest] = line.split(':')
+  return key === AUTOFIX_TRAILER_KEY && rest.join(':').replace(/^[ \t]+|[ \t]+$/gu, '') === AUTOFIX_TRAILER_VALUE
+}
+
+export function hasAutofixTrailer(message) {
+  if (typeof message !== 'string') return false
+  const lines = message.split('\n').map(line => line.replace(/\r$/u, ''))
+  while (lines.length > 0 && lines.at(-1).trim() === '') lines.pop()
+  let start = lines.length
+  while (start > 0 && lines[start - 1].trim() !== '') start -= 1
+  return lines.slice(start).some(isAutofixTrailerLine)
+}
+
+export function countAutofixCommits(commits) {
+  if (!Array.isArray(commits)) return 0
+  return commits.filter(entry => hasAutofixTrailer(String(entry?.commit?.message ?? ''))).length
+}
+
+export function autofixCommitMessage(files) {
+  return [
+    'fix(root): apply Codex autofix for the failing CI checks',
+    '',
+    `Files: ${files.join(', ')}`,
+    '',
+    AUTOFIX_TRAILER
+  ].join('\n')
+}
+
+function autofixCommitState(commits, pull) {
+  const count = countAutofixCommits(commits)
+  const total = pull?.commits
+  const totalIsValid = Number.isInteger(total) && total >= 0
+  return {
+    count,
+    limitReached: count >= MAX_AUTOFIX_COMMITS,
+    unverified: !totalIsValid || commits.length < total,
+    unverifiedDetail: totalIsValid
+      ? `read ${commits.length} of ${total} commits`
+      : `read ${commits.length} commits; PR total is missing or invalid`
+  }
 }
 
 /**
  * 直推前的三道判定，顺序不能换：head 移动说明 patch 是对着旧代码生成的；
- * 已含 autofix 提交说明这条 PR 已经吃过一次自动修，不再叠加；
+ * autofix 计数无法验证或达到上限时停止自动修，避免在不可信历史上继续叠加；
  * 检出 SHA 与 live head 不一致说明 push 会覆盖别人的提交。
  */
-export function assertPushAllowed({ liveHeadSha, expectedHeadSha, commits, checkoutSha }) {
+export function assertPushAllowed({
+  liveHeadSha,
+  expectedHeadSha,
+  commits,
+  autofixUnverified,
+  autofixCountDetail,
+  checkoutSha
+}) {
   const live = requireSha(liveHeadSha, 'live PR head SHA')
   const expected = requireSha(expectedHeadSha, 'planned head SHA')
   if (live !== expected) throw new Error(`refusing to push: the head moved from ${expected} to ${live}`)
-  if (hasAutofixCommit(commits))
-    throw new Error(`refusing to push: this PR already contains a ${AUTOFIX_TRAILER} commit`)
+  if (autofixUnverified) {
+    const detail = autofixCountDetail ? ` (${autofixCountDetail})` : ''
+    throw new Error(`refusing to push: cannot verify the autofix count${detail}`)
+  }
+  if (countAutofixCommits(commits) >= MAX_AUTOFIX_COMMITS) {
+    throw new Error(`refusing to push: this PR already has ${MAX_AUTOFIX_COMMITS} ${AUTOFIX_TRAILER} commits`)
+  }
   const checkout = requireSha(checkoutSha, 'checked out SHA')
   if (checkout !== live) throw new Error(`refusing to push: checked out ${checkout} instead of ${live}`)
   return live
@@ -237,15 +306,26 @@ function pullNumber() {
 }
 
 function commandPrepare() {
+  console.log(
+    `codex-autofix: prepare (limit=${MAX_AUTOFIX_COMMITS}, cap=${PULL_COMMITS_API_CAP}, trailer=${AUTOFIX_TRAILER})`
+  )
   const env = requireEnv(['GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'RUNNER_TEMP'])
   const adapter = createGhAutofixAdapter({ repository: env.GITHUB_REPOSITORY })
   const number = pullNumber()
-  // 已经带过一次 autofix 提交的 head 不再规划第二次：apply 会推新 head，
-  // 若不拦住，失败的修复会一路自我重试下去。
-  if (number && hasAutofixCommit(adapter.pullCommits(number))) {
-    writeOutputs({ has_log: 'false', failed_steps: '', log_path: '' })
-    console.log(`pull request #${number} already contains an autofix commit; no second autofix`)
-    return
+  if (number) {
+    // 先读 commits，再取新的 PR 对象。total 与 live head 来自同一个分页之后时点，
+    // 分页期间漏读的新提交会表现为 commits.length < total，按无法验证处理。
+    const { commits } = adapter.pullCommits(number)
+    const pull = adapter.pull(number)
+    const { limitReached, unverified, unverifiedDetail } = autofixCommitState(commits, pull)
+    if (limitReached)
+      console.log(`pull request #${number} already has ${MAX_AUTOFIX_COMMITS} autofix commits; limit reached`)
+    if (unverified)
+      console.log(`pull request #${number} cannot verify autofix count (${unverifiedDetail}); skipping autofix`)
+    if (limitReached || unverified) {
+      writeOutputs({ has_log: 'false', failed_steps: '', log_path: '' })
+      return
+    }
   }
   const failure = failedJobSteps(adapter.jobs(env.GITHUB_RUN_ID), REQUIRED_JOB)
   if (!failure || failure.steps.length === 0) {
@@ -304,13 +384,17 @@ function commandApply() {
   const number = pullNumber()
   if (!number) throw new Error('CODEX_AUTOFIX_PULL_NUMBER is missing')
   const adapter = createGhAutofixAdapter({ repository: env.GITHUB_REPOSITORY })
+  const { commits } = adapter.pullCommits(number)
   const pull = adapter.pull(number)
   const target = reviewTarget({ pull, repository: env.GITHUB_REPOSITORY, releaseBranch: RELEASE_BRANCH })
   if (!target.ok) throw new Error(`refusing to push: ${target.reason}`)
+  const { unverified, unverifiedDetail } = autofixCommitState(commits, pull)
   assertPushAllowed({
     liveHeadSha: pull.head.sha,
     expectedHeadSha: env.CODEX_AUTOFIX_HEAD_SHA,
-    commits: adapter.pullCommits(number),
+    commits,
+    autofixUnverified: unverified,
+    autofixCountDetail: unverifiedDetail,
     checkoutSha: run('git', ['rev-parse', 'HEAD']).trim()
   })
 
@@ -320,13 +404,7 @@ function commandApply() {
   if (reject) throw new Error(`patch rejected: ${reject}`)
   run('git', ['apply', '--whitespace=nowarn', patchPath])
   run('git', ['add', '--', ...files])
-  const message = [
-    'fix(root): apply Codex autofix for the failing CI checks',
-    '',
-    `Files: ${files.join(', ')}`,
-    '',
-    AUTOFIX_TRAILER
-  ].join('\n')
+  const message = autofixCommitMessage(files)
   run('git', ['-c', 'user.name=codex', '-c', 'user.email=codex@openai.com', 'commit', '-m', message])
   run('git', ['push', 'origin', `HEAD:refs/heads/${env.CODEX_AUTOFIX_HEAD_REF}`])
   console.log(`pushed autofix for ${files.length} files to ${env.CODEX_AUTOFIX_HEAD_REF}`)
