@@ -216,7 +216,7 @@ export const defineNestedDrawerLayers = () =>
     },
 
     recalculate() {
-      if (entries.size > 0) applyLayers()
+      if (entries.size > 1) applyLayers()
     },
 
     dispose() {

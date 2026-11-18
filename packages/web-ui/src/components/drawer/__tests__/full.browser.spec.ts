@@ -709,9 +709,9 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     const finalWidth = parentDialog.offsetWidth
     expect(finalWidth).toBeGreaterThanOrEqual(fullAxisSize('right') - 1)
     const peekBase = Number.parseFloat(getComputedStyle(parentDialog).getPropertyValue('--wui-drawer-nested-peek-base'))
-    const expectedShift = (finalWidth * 0.05) / 2 + peekBase * Math.log(2)
-    const actualShift = Number.parseFloat(parentDialog.style.getPropertyValue('--wui-internal-drawer-nested-shift'))
-    expect(actualShift).toBeCloseTo(expectedShift, 1)
+    const motionRect = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect()
+    const expectedLeft = parentDialog.getBoundingClientRect().left - peekBase * Math.log(2)
+    expect(motionRect.left).toBeCloseTo(expectedLeft, 0)
   })
 
   it('嵌套：full 态下层运行时关闭 fullable（无尺寸过渡）→ 立即按 base 宽度重算露边偏移', async () => {
@@ -735,19 +735,59 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await waitForOpenTransition(child)
 
     const parentDialog = getDialog(parent)
-    const fullShift = Number.parseFloat(parentDialog.style.getPropertyValue('--wui-internal-drawer-nested-shift'))
+    const beforeMotionLeft = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect().left
 
-    // 运行时摘除 fullable：_drag.reset() 摘除 is-full 且过渡门失效（无 transitionend）。
+    // 运行时摘除 fullable：_drag.reset() 摘除 full 且过渡门失效（无 transitionend）。
     parent.fullable = false
     await parent.updateComplete
+    await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
 
-    expect(parentDialog.classList.contains('is-full')).toBe(false)
     expect(parentDialog.offsetWidth).toBe(320)
     const peekBase = Number.parseFloat(getComputedStyle(parentDialog).getPropertyValue('--wui-drawer-nested-peek-base'))
-    const expectedBaseShift = (320 * 0.05) / 2 + peekBase * Math.log(2)
-    const actualShift = Number.parseFloat(parentDialog.style.getPropertyValue('--wui-internal-drawer-nested-shift'))
-    expect(actualShift).toBeCloseTo(expectedBaseShift, 1)
-    expect(actualShift).toBeLessThan(fullShift)
+    const afterMotionLeft = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect().left
+    const expectedLeft = parentDialog.getBoundingClientRect().left - peekBase * Math.log(2)
+    expect(afterMotionLeft).toBeCloseTo(expectedLeft, 0)
+    expect(afterMotionLeft).not.toBeCloseTo(beforeMotionLeft, 0)
+  })
+
+  it('嵌套：父层 base、子层 full 后触发 resize、子层退出 full → 父层自动重算并恢复 base 露边', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    document.body.append(theme)
+
+    const parent = createDrawer()
+    theme.append(parent)
+    parent.open = true
+    await parent.updateComplete
+    await waitForOpenTransition(parent)
+
+    const child = createDrawer()
+    theme.append(child)
+    child.draggable = true
+    child.fullable = true
+    child.open = true
+    await child.updateComplete
+    await waitForOpenTransition(child)
+
+    // 子层进入 full 后触发一次视口 resize，父层按子层 full 宽度算得大偏移。
+    await pullToFullAndRelease(child, 'right')
+    window.dispatchEvent(new Event('resize'))
+    await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
+
+    const parentDialog = getDialog(parent)
+    const childFullMotionLeft = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect().left
+
+    // 子层通过手势或属性退出 full 后，整个栈应自动重算，父层恢复为按 base 宽度算的可见露边。
+    child.fullable = false
+    await child.updateComplete
+    await waitFor(() => getDialog(child).getAnimations({ subtree: true }).length === 0)
+    await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
+
+    const peekBase = Number.parseFloat(getComputedStyle(parentDialog).getPropertyValue('--wui-drawer-nested-peek-base'))
+    const restoredLeft = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect().left
+    const expectedBaseLeft = parentDialog.getBoundingClientRect().left - peekBase * Math.log(2)
+    expect(restoredLeft).toBeCloseTo(expectedBaseLeft, 0)
+    expect(restoredLeft).toBeGreaterThan(childFullMotionLeft + 10)
   })
 
   it('快甩外拉松手：短行程也吸附 full（armed 正例）', async () => {

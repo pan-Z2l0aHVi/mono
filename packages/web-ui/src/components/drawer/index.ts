@@ -468,18 +468,15 @@ export class WebUiDrawer extends LitElement {
     // 穿越退出，这里再清会提前摘类、宽度在退出中途回位。
     if (this.open && (props.has('fullable') || props.has('draggable') || props.has('placement'))) {
       this._drag.reset()
-      if (this.dialog?.classList.contains('is-nested-lower')) {
-        this._nestedLayers.recalculate()
-      }
+      this._nestedLayers.recalculate()
     }
   }
 
   private handleTransitionEnd(e: TransitionEvent) {
-    // full 吸附/恢复的 width/height 过渡发生在 <dialog> 自身：若过渡未完前已有上层
-    // 嵌套抽屉打开，applyLayers 读到的是瞬态宽度，过渡结束需重算一次以修正露边偏移。
+    // 任意堆叠层（含顶层 full 展开/退出）的 width/height 过渡结束时，重算整个栈的露边偏移。
     const dialog = this.dialog
     if (dialog && e.target === dialog && (e.propertyName === 'width' || e.propertyName === 'height')) {
-      if (this.open && dialog.classList.contains('is-nested-lower')) {
+      if (this.open) {
         this._nestedLayers.recalculate()
       }
       return
