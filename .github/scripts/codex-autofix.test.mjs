@@ -27,11 +27,97 @@ import {
   tailLog,
   validatePatchFile
 } from './codex-autofix.mjs'
+import { resolvePullNumber } from './lib/github.mjs'
 
 const headSha = 'a'.repeat(40)
 const otherSha = 'b'.repeat(40)
 const scriptPath = path.join(import.meta.dirname, 'codex-autofix.mjs')
 const settingsFile = fs.readFileSync(path.join(import.meta.dirname, '../../.claude/settings.json'), 'utf8')
+
+const TEST_ENV_ALLOWLIST = [
+  'PATH',
+  'HOME',
+  'TMPDIR',
+  'TMP',
+  'TEMP',
+  'LANG',
+  'LC_ALL',
+  'LC_CTYPE',
+  'SystemRoot',
+  'ComSpec',
+  'PATHEXT',
+  'USERPROFILE'
+]
+
+function testEnv(overrides = {}) {
+  const env = {}
+  for (const key of TEST_ENV_ALLOWLIST) {
+    if (process.env[key] !== undefined) env[key] = process.env[key]
+  }
+  for (const [key, value] of Object.entries(overrides)) {
+    if (value === undefined) delete env[key]
+    else env[key] = String(value)
+  }
+  return env
+}
+
+function prependPath(bin) {
+  const basePath = process.env.PATH || ['/usr/bin', '/bin'].join(path.delimiter)
+  return [bin, basePath].filter(Boolean).join(path.delimiter)
+}
+
+function shQuote(value) {
+  return `'${String(value).replace(/'/gu, `'\\''`)}'`
+}
+
+function writeFakeGh({
+  bin,
+  callsPath,
+  repository = 'owner/repo',
+  pullNumber = 54,
+  runId,
+  jobId,
+  commitPages = {},
+  pullFile,
+  jobsFile,
+  logFile
+}) {
+  const cases = []
+  for (const [page, file] of Object.entries(commitPages)) {
+    cases.push(
+      `  "api repos/${repository}/pulls/${pullNumber}/commits?per_page=100&page=${page}")\n    cat ${shQuote(file)}\n    ;;`
+    )
+  }
+  if (pullFile !== undefined) {
+    cases.push(`  "api repos/${repository}/pulls/${pullNumber}")\n    cat ${shQuote(pullFile)}\n    ;;`)
+  }
+  if (runId !== undefined && jobsFile !== undefined) {
+    cases.push(
+      `  "api repos/${repository}/actions/runs/${runId}/jobs?per_page=100")\n    cat ${shQuote(jobsFile)}\n    ;;`
+    )
+  }
+  if (jobId !== undefined && logFile !== undefined) {
+    cases.push(
+      `  "api --allow-escape-sequences repos/${repository}/actions/jobs/${jobId}/logs")\n    cat ${shQuote(logFile)}\n    ;;`,
+      `  "api repos/${repository}/actions/jobs/${jobId}/logs")\n    echo "gh: non-JSON response contains control characters; pass --allow-escape-sequences to output it" >&2\n    exit 1\n    ;;`
+    )
+  }
+  const script = [
+    '#!/bin/sh',
+    `printf '%s\\n' "$*" >> ${shQuote(callsPath)}`,
+    'case "$*" in',
+    ...cases,
+    '  *)',
+    '    echo "unexpected gh call: $*" >&2',
+    '    exit 1',
+    '    ;;',
+    'esac',
+    ''
+  ].join('\n')
+  const ghPath = path.join(bin, 'gh')
+  fs.writeFileSync(ghPath, script, { mode: 0o755 })
+  return ghPath
+}
 
 function guarded() {
   return createGuardedMatcher({ repositoryFile: settingsFile })
@@ -70,21 +156,128 @@ function plainCommits(count) {
   return Array.from({ length: count }, (_, index) => commit(`feat: change ${index}`))
 }
 
-function fakeGhSession({ pages = {}, pull, jobs = [], log = '' }) {
+function fakeGhSession({
+  repository = 'owner/repo',
+  pullNumber = 54,
+  runId = 99,
+  jobId = 2,
+  pages = {},
+  pull,
+  jobs,
+  log
+}) {
   const calls = []
   const spawn = (command, args) => {
     calls.push([command, ...args])
-    const endpoint = String(args.at(-1))
-    const page = endpoint.match(/[?&]page=(\d+)/u)?.[1]
-    if (/\/pulls\/\d+\/commits\?/u.test(endpoint)) {
-      return { status: 0, stdout: JSON.stringify(pages[Number(page)] ?? []) }
+    const call = args.join(' ')
+    if (command !== 'gh') {
+      return { status: 1, stdout: '', stderr: `unexpected gh call: ${[command, ...args].join(' ')}` }
     }
-    if (/\/pulls\/\d+$/u.test(endpoint)) return { status: 0, stdout: JSON.stringify(pull) }
-    if (/\/actions\/runs\/\d+\/jobs/u.test(endpoint)) return { status: 0, stdout: JSON.stringify({ jobs }) }
-    if (/\/actions\/jobs\/2\/logs/u.test(endpoint)) return { status: 0, stdout: log }
-    return { status: 1, stdout: '', stderr: 'HTTP 404: Not Found' }
+    if (
+      args.length === 2 &&
+      args[0] === 'api' &&
+      pull !== undefined &&
+      args[1] === `repos/${repository}/pulls/${pullNumber}`
+    ) {
+      return { status: 0, stdout: JSON.stringify(pull) }
+    }
+    const commitsPrefix = `repos/${repository}/pulls/${pullNumber}/commits?per_page=100&page=`
+    if (args.length === 2 && args[0] === 'api' && String(args[1]).startsWith(commitsPrefix)) {
+      const page = String(args[1]).slice(commitsPrefix.length)
+      if (Object.hasOwn(pages, page)) {
+        return { status: 0, stdout: JSON.stringify(pages[page]) }
+      }
+    }
+    if (
+      args.length === 2 &&
+      args[0] === 'api' &&
+      jobs !== undefined &&
+      args[1] === `repos/${repository}/actions/runs/${runId}/jobs?per_page=100`
+    ) {
+      return { status: 0, stdout: JSON.stringify({ jobs }) }
+    }
+    if (
+      args.length === 3 &&
+      args[0] === 'api' &&
+      args[1] === '--allow-escape-sequences' &&
+      log !== undefined &&
+      args[2] === `repos/${repository}/actions/jobs/${jobId}/logs`
+    ) {
+      return { status: 0, stdout: log }
+    }
+    return { status: 1, stdout: '', stderr: `unexpected gh call: ${call}` }
   }
   return { calls, spawn }
+}
+
+{
+  // §9.1: 共享 PR number 解析器单测
+  assert.equal(resolvePullNumber({ explicit: '54', ref: 'refs/pull/999/merge' }), '54')
+  assert.equal(resolvePullNumber({ ref: 'refs/pull/54/merge' }), '54')
+  assert.equal(resolvePullNumber(), '')
+  assert.equal(resolvePullNumber({ explicit: '', ref: '' }), '')
+  assert.equal(resolvePullNumber({ ref: 'refs/heads/main' }), '')
+  assert.equal(resolvePullNumber({ ref: 'refs/pull/0/merge' }), '')
+  assert.equal(resolvePullNumber({ ref: 'refs/pull/54/head' }), '')
+  for (const invalid of ['0', 0, '-1', ' ', 'abc', '54/commits', null]) {
+    assert.throws(
+      () => resolvePullNumber({ explicit: invalid }),
+      /pull number must be a positive integer/,
+      `invalid explicit ${String(invalid)} must throw`
+    )
+    assert.throws(
+      () => resolvePullNumber({ explicit: invalid, ref: 'refs/pull/54/merge' }),
+      /pull number must be a positive integer/,
+      `invalid explicit ${String(invalid)} must not fall back to GITHUB_REF`
+    )
+  }
+  assert.equal(resolvePullNumber({ ref: 'refs/pull/54/merge', allowRefFallback: false }), '')
+  assert.equal(resolvePullNumber({ explicit: '', ref: 'refs/pull/54/merge', allowRefFallback: false }), '')
+  assert.equal(resolvePullNumber({ explicit: '54', ref: 'refs/pull/999/merge', allowRefFallback: false }), '54')
+}
+
+{
+  // §7.2 & §9.2: testEnv 剥离宿主污染，且保留正常 allowlist 键值与空 PATH 兜底
+  const pollutedKeys = [
+    'GITHUB_REF',
+    'GITHUB_HEAD_REF',
+    'GITHUB_BASE_REF',
+    'GITHUB_WORKSPACE',
+    'GITHUB_OUTPUT',
+    'GITHUB_TOKEN',
+    'GH_TOKEN',
+    'CODEX_AUTOFIX_PULL_NUMBER',
+    'CODEX_TRUSTED_SETTINGS',
+    'RUNNER_TEMP',
+    'GIT_DIR',
+    'GIT_WORK_TREE',
+    'GIT_INDEX_FILE',
+    'GIT_CONFIG_GLOBAL'
+  ]
+  const saved = new Map(
+    [...pollutedKeys, 'PATH', 'HOME'].map(key => [key, Object.hasOwn(process.env, key) ? process.env[key] : undefined])
+  )
+  try {
+    for (const key of pollutedKeys) process.env[key] = `polluted-${key}`
+    process.env.PATH = '/custom/bin'
+    const clean = testEnv()
+    for (const key of pollutedKeys) {
+      assert.equal(key in clean, false, `testEnv must strip ${key}`)
+    }
+    assert.equal(clean.PATH, '/custom/bin')
+    if (saved.get('HOME') !== undefined) assert.equal(clean.HOME, saved.get('HOME'))
+    assert.equal(prependPath('/fake/bin'), ['/fake/bin', '/custom/bin'].join(path.delimiter))
+
+    process.env.PATH = ''
+    assert.equal(prependPath('/fake/bin'), ['/fake/bin', '/usr/bin', '/bin'].join(path.delimiter))
+    delete process.env.PATH
+    assert.equal(prependPath('/fake/bin'), ['/fake/bin', '/usr/bin', '/bin'].join(path.delimiter))
+  } finally {
+    for (const [key, value] of saved.entries()) {
+      if (value === undefined) delete process.env[key]
+      else process.env[key] = value
+    }
+  }
 }
 
 {
@@ -385,7 +578,17 @@ for (const file of [
   assert.deepEqual(adapter.pullCommits(54), { commits: [...pages[1], ...pages[2], ...pages[3]] })
   assert.deepEqual(adapter.jobs(99), [{ id: 2, name: 'check', steps: [] }])
   assert.equal(adapter.jobLog(2), 'log body\n')
-  assert.throws(() => adapter.jobLog(7), /HTTP 404/)
+  assert.throws(() => adapter.jobLog(7), /unexpected gh call/)
+  assert.throws(() => adapter.pull(55), /unexpected gh call/)
+  assert.throws(() => adapter.pullCommits(55), /unexpected gh call/)
+  assert.throws(() => adapter.jobs(100), /unexpected gh call/)
+  const wrongRepoAdapter = createGhAutofixAdapter({
+    repository: 'other/repo',
+    spawn: session.spawn,
+    cwd: '/tmp',
+    env: {}
+  })
+  assert.throws(() => wrongRepoAdapter.pull(54), /unexpected gh call/)
   assert.ok(session.calls.every(args => args[0] === 'gh' && args[1] === 'api'))
   assert.deepEqual(
     session.calls.slice(1, 4).map(([, , endpoint]) => endpoint),
@@ -417,6 +620,15 @@ for (const file of [
   const cappedAdapter = createGhAutofixAdapter({ repository: 'owner/repo', spawn: capped.spawn, cwd: '/tmp', env: {} })
   assert.equal(cappedAdapter.pullCommits(54).commits.length, 250)
   assert.equal(capped.calls.length, 3, 'the real 100 + 100 + 50 API shape stops after the configured cap')
+
+  const missingPageSession = fakeGhSession({ pages: { 1: pageOne }, pull: { commits: 101 } })
+  const missingPageAdapter = createGhAutofixAdapter({
+    repository: 'owner/repo',
+    spawn: missingPageSession.spawn,
+    cwd: '/tmp',
+    env: {}
+  })
+  assert.throws(() => missingPageAdapter.pullCommits(54), /unexpected gh call/)
 }
 
 {
@@ -428,37 +640,44 @@ for (const file of [
   fs.writeFileSync(logFixture, '\u001B[31mError: expected 1 to be 2\u001B[0m\n')
   const versionLine = `codex-autofix: prepare (limit=${MAX_AUTOFIX_COMMITS}, cap=${PULL_COMMITS_API_CAP}, trailer=${AUTOFIX_TRAILER})`
 
-  function prepare({ pages, pull, jobs }) {
-    const pagePaths = [1, 2, 3].map(page => path.join(directory, `commits-${page}.json`))
-    pagePaths.forEach((pagePath, index) => fs.writeFileSync(pagePath, JSON.stringify(pages[index + 1] ?? [])))
+  function prepare({ pages, pull, jobs, env: extraEnv = {} }) {
+    const commitPages = {}
+    for (const [page, entries] of Object.entries(pages)) {
+      const pagePath = path.join(directory, `commits-${page}.json`)
+      fs.writeFileSync(pagePath, JSON.stringify(entries))
+      commitPages[page] = pagePath
+    }
     const pullPath = path.join(directory, 'pull.json')
     const jobsPath = path.join(directory, 'jobs.json')
+    const ghCallsPath = path.join(directory, 'gh-calls')
     fs.writeFileSync(pullPath, JSON.stringify(pull))
     fs.writeFileSync(jobsPath, jobs)
+    fs.writeFileSync(ghCallsPath, '')
     const outputPath = path.join(directory, 'output')
     fs.writeFileSync(outputPath, '')
-    fs.writeFileSync(
-      path.join(bin, 'gh'),
-      `#!/bin/sh\ncase "$*" in\n  */pulls/*/commits*\\&page=1*) cat "$FAKE_COMMITS_1" ;;\n  */pulls/*/commits*\\&page=2*) cat "$FAKE_COMMITS_2" ;;\n  */pulls/*/commits*\\&page=3*) cat "$FAKE_COMMITS_3" ;;\n  */pulls/*) cat "$FAKE_PULL" ;;\n  */actions/runs/*/jobs*) cat "$FAKE_JOBS" ;;\n  *--allow-escape-sequences*/actions/jobs/*/logs*) cat "$FAKE_LOG" ;;\n  */actions/jobs/*/logs*) echo "gh: non-JSON response contains control characters; pass --allow-escape-sequences to output it" >&2; exit 1 ;;\nesac\n`,
-      { mode: 0o755 }
-    )
+    writeFakeGh({
+      bin,
+      callsPath: ghCallsPath,
+      repository: 'owner/repo',
+      pullNumber: 54,
+      runId: 99,
+      jobId: 2,
+      commitPages,
+      pullFile: pullPath,
+      jobsFile: jobsPath,
+      logFile: logFixture
+    })
     const result = spawnSync(process.execPath, [scriptPath, 'prepare'], {
       encoding: 'utf8',
-      env: {
-        ...process.env,
-        PATH: `${bin}:${process.env.PATH}`,
+      env: testEnv({
+        PATH: prependPath(bin),
         GITHUB_REPOSITORY: 'owner/repo',
         GITHUB_RUN_ID: '99',
         GITHUB_REF: 'refs/pull/54/merge',
         RUNNER_TEMP: directory,
         GITHUB_OUTPUT: outputPath,
-        FAKE_COMMITS_1: pagePaths[0],
-        FAKE_COMMITS_2: pagePaths[1],
-        FAKE_COMMITS_3: pagePaths[2],
-        FAKE_PULL: pullPath,
-        FAKE_JOBS: jobsPath,
-        FAKE_LOG: logFixture
-      }
+        ...extraEnv
+      })
     })
     assert.ok(result.stdout.includes(versionLine), 'every prepare run identifies the active limit contract')
     const outputs = Object.fromEntries(
@@ -468,7 +687,11 @@ for (const file of [
         .filter(Boolean)
         .map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)])
     )
-    return { result, outputs }
+    return {
+      result,
+      outputs,
+      ghCalls: fs.readFileSync(ghCallsPath, 'utf8').trim().split('\n').filter(Boolean)
+    }
   }
 
   const failingJobs = '{"jobs":[{"id":2,"name":"check","steps":[{"name":"Test","conclusion":"failure"}]}]}'
@@ -564,6 +787,48 @@ for (const file of [
   assert.equal(addedAndRead.outputs.has_log, 'true')
   assert.doesNotMatch(addedAndRead.result.stdout, /cannot verify autofix count/)
 
+  // §9.3 #4: 宿主存在 CODEX_AUTOFIX_PULL_NUMBER=999 污染时，prepare 仍只请求 fixture 的 PR 54。
+  const savedPreparePull = process.env.CODEX_AUTOFIX_PULL_NUMBER
+  process.env.CODEX_AUTOFIX_PULL_NUMBER = '999'
+  try {
+    fs.rmSync(path.join(directory, 'ci-failure.log'), { force: true })
+    const isolatedPrepare = prepare({ pages: { 1: plain }, pull: { commits: 1 }, jobs: failingJobs })
+    assert.equal(isolatedPrepare.result.status, 0, isolatedPrepare.result.stderr)
+    assert.equal(isolatedPrepare.outputs.has_log, 'true')
+    assert.ok(isolatedPrepare.ghCalls.some(call => call === 'api repos/owner/repo/pulls/54'))
+    assert.equal(
+      isolatedPrepare.ghCalls.some(call => call.includes('/pulls/999')),
+      false,
+      'host CODEX_AUTOFIX_PULL_NUMBER must not leak into prepare subprocess'
+    )
+  } finally {
+    if (savedPreparePull === undefined) delete process.env.CODEX_AUTOFIX_PULL_NUMBER
+    else process.env.CODEX_AUTOFIX_PULL_NUMBER = savedPreparePull
+  }
+
+  // §9.3 #7: 严格 fake gh 收到错误 PR / repo / run / job / 页号时立即失败，并保持 log 控制字符错误契约。
+  const ghPath = path.join(bin, 'gh')
+  for (const args of [
+    ['api', 'repos/owner/repo/pulls/99'],
+    ['api', 'repos/other/repo/pulls/54'],
+    ['api', 'repos/owner/repo/actions/runs/100/jobs?per_page=100'],
+    ['api', '--allow-escape-sequences', 'repos/owner/repo/actions/jobs/3/logs'],
+    ['api', 'repos/owner/repo/pulls/54/commits?per_page=100&page=4']
+  ]) {
+    const unexpected = spawnSync(ghPath, args, { encoding: 'utf8', env: testEnv() })
+    assert.equal(unexpected.status, 1)
+    assert.ok(
+      unexpected.stderr.includes(`unexpected gh call: ${args.join(' ')}`),
+      `expected diagnostic stderr for ${args.join(' ')}, got: ${unexpected.stderr}`
+    )
+  }
+  const controlChars = spawnSync(ghPath, ['api', 'repos/owner/repo/actions/jobs/2/logs'], {
+    encoding: 'utf8',
+    env: testEnv()
+  })
+  assert.equal(controlChars.status, 1)
+  assert.match(controlChars.stderr, /--allow-escape-sequences/)
+
   fs.rmSync(directory, { recursive: true, force: true })
 }
 
@@ -578,17 +843,20 @@ for (const file of [
   const gitCallsPath = path.join(directory, 'git-calls')
   const patchPath = path.join(directory, 'autofix.patch')
   fs.writeFileSync(patchPath, modification('packages/web-ui/src/button.ts'))
-  fs.writeFileSync(
-    path.join(bin, 'gh'),
-    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$FAKE_GH_CALLS"\ncase "$*" in\n  */pulls/*/commits*\\&page=1*) cat "$FAKE_COMMITS" ;;\n  */pulls/*/commits*) echo '[]' ;;\n  */pulls/*) cat "$FAKE_PULL" ;;\n  *) exit 1 ;;\nesac\n`,
-    { mode: 0o755 }
-  )
+  writeFakeGh({
+    bin,
+    callsPath: ghCallsPath,
+    repository: 'owner/repo',
+    pullNumber: 54,
+    commitPages: { 1: pagePath },
+    pullFile: pullPath
+  })
   fs.writeFileSync(
     path.join(bin, 'git'),
     `#!/bin/sh\nprintf '%s\\n' "$*" >> "$FAKE_GIT_CALLS"\ncase "$1" in\n  rev-parse) printf '%s\\n' "$FAKE_HEAD" ;;\nesac\nexit 0\n`,
     { mode: 0o755 }
   )
-  function runApply({ commits, total }) {
+  function runApply({ commits, total, env: extraEnv = {} }) {
     fs.writeFileSync(pagePath, JSON.stringify(commits))
     fs.writeFileSync(
       pullPath,
@@ -604,26 +872,23 @@ for (const file of [
     fs.writeFileSync(gitCallsPath, '')
     const result = spawnSync(process.execPath, [scriptPath, 'apply'], {
       encoding: 'utf8',
-      env: {
-        ...process.env,
-        PATH: `${bin}:${process.env.PATH}`,
+      env: testEnv({
+        PATH: prependPath(bin),
         GITHUB_REPOSITORY: 'owner/repo',
         RUNNER_TEMP: directory,
         CODEX_AUTOFIX_HEAD_SHA: headSha,
         CODEX_AUTOFIX_HEAD_REF: 'feature/x',
         CODEX_AUTOFIX_PULL_NUMBER: '54',
         CODEX_TRUSTED_SETTINGS: path.join(import.meta.dirname, '../../.claude/settings.json'),
-        FAKE_COMMITS: pagePath,
-        FAKE_PULL: pullPath,
-        FAKE_GH_CALLS: ghCallsPath,
         FAKE_GIT_CALLS: gitCallsPath,
-        FAKE_HEAD: headSha
-      },
+        FAKE_HEAD: headSha,
+        ...extraEnv
+      }),
       cwd: directory
     })
     return {
       result,
-      ghCalls: fs.readFileSync(ghCallsPath, 'utf8').trim().split('\n'),
+      ghCalls: fs.readFileSync(ghCallsPath, 'utf8').trim().split('\n').filter(Boolean),
       gitCalls: fs.readFileSync(gitCallsPath, 'utf8')
     }
   }
@@ -658,6 +923,55 @@ for (const file of [
   assert.match(limited.result.stderr, /already has 3 Autofix-by: codex-autofix commits/)
   assert.doesNotMatch(limited.gitCalls, /^apply | commit| push origin/m)
 
+  // §9.3 #1: 子进程同时收到 CODEX_AUTOFIX_PULL_NUMBER=54 与 GITHUB_REF=refs/pull/999/merge，只请求 PR 54。
+  const conflict = runApply({
+    commits: plainCommits(2),
+    total: 2,
+    env: {
+      CODEX_AUTOFIX_PULL_NUMBER: '54',
+      GITHUB_REF: 'refs/pull/999/merge'
+    }
+  })
+  assert.equal(conflict.result.status, 0, conflict.result.stderr)
+  assert.deepEqual(conflict.ghCalls, [
+    'api repos/owner/repo/pulls/54/commits?per_page=100&page=1',
+    'api repos/owner/repo/pulls/54'
+  ])
+
+  // §9.3 #2: apply 缺失 CODEX_AUTOFIX_PULL_NUMBER 时禁止回退 GITHUB_REF，且 gh 零调用。
+  const missingPull = runApply({
+    commits: plainCommits(2),
+    total: 2,
+    env: {
+      CODEX_AUTOFIX_PULL_NUMBER: undefined,
+      GITHUB_REF: 'refs/pull/999/merge'
+    }
+  })
+  assert.equal(missingPull.result.status, 1)
+  assert.match(missingPull.result.stderr, /CODEX_AUTOFIX_PULL_NUMBER is missing/)
+  assert.deepEqual(missingPull.ghCalls, [])
+  assert.doesNotMatch(missingPull.gitCalls, /^apply | commit| push origin/m)
+
+  // §9.3 #3: apply 收到非法 CODEX_AUTOFIX_PULL_NUMBER（0 / bad）即使 ref 合法也直接失败，gh 零调用，无 commit/push。
+  for (const invalidPull of ['0', 'bad']) {
+    const rejectedPull = runApply({
+      commits: plainCommits(2),
+      total: 2,
+      env: {
+        CODEX_AUTOFIX_PULL_NUMBER: invalidPull,
+        GITHUB_REF: 'refs/pull/999/merge'
+      }
+    })
+    assert.equal(rejectedPull.result.status, 1)
+    assert.match(
+      rejectedPull.result.stderr,
+      new RegExp(`pull number must be a positive integer: ${invalidPull}`),
+      invalidPull
+    )
+    assert.deepEqual(rejectedPull.ghCalls, [])
+    assert.doesNotMatch(rejectedPull.gitCalls, /^apply | commit| push origin/m)
+  }
+
   fs.rmSync(directory, { recursive: true, force: true })
 }
 
@@ -666,15 +980,14 @@ for (const file of [
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-autofix-apply-'))
   const result = spawnSync(process.execPath, [scriptPath, 'apply'], {
     encoding: 'utf8',
-    env: {
-      ...process.env,
-      PATH: '/usr/bin:/bin',
+    env: testEnv({
+      PATH: ['/usr/bin', '/bin'].join(path.delimiter),
       GITHUB_REPOSITORY: 'owner/repo',
       RUNNER_TEMP: directory,
       CODEX_AUTOFIX_HEAD_SHA: headSha,
       CODEX_AUTOFIX_HEAD_REF: 'feature/x',
       CODEX_AUTOFIX_PULL_NUMBER: '54'
-    }
+    })
   })
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stdout, /nothing to apply/)
@@ -688,13 +1001,12 @@ for (const file of [
   fs.writeFileSync(outputPath, '')
   const result = spawnSync(process.execPath, [scriptPath, 'capture'], {
     encoding: 'utf8',
-    env: {
-      PATH: process.env.PATH,
+    env: testEnv({
       GITHUB_OUTPUT: outputPath,
       GITHUB_REPOSITORY: 'owner/repo',
       RUNNER_TEMP: directory,
       CODEX_AUTOFIX_HEAD_SHA: headSha
-    },
+    }),
     cwd: directory
   })
   assert.equal(result.status, 0, result.stderr)

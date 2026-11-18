@@ -3,7 +3,7 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { SPAWN_MAX_BUFFER, commandError, run } from './lib/github.mjs'
+import { SPAWN_MAX_BUFFER, commandError, resolvePullNumber, run } from './lib/github.mjs'
 import { CODEX_CONFIG_ENV, RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
 const BASE_BRANCH = 'main'
@@ -1764,10 +1764,6 @@ export function reviewTarget({ pull, repository, releaseBranch }) {
   return { ok: true, number: pull.number, headRef: pull.head.ref, headSha: pull.head.sha }
 }
 
-export function pullNumberFromRef(ref) {
-  return ref.match(/^refs\/pull\/(\d+)\/merge$/u)?.[1] ?? null
-}
-
 function writeOutputs(values, env = process.env) {
   const target = env.GITHUB_OUTPUT
   if (!target) return
@@ -2268,11 +2264,15 @@ function commandValidate() {
   )
 }
 
-function pullNumber() {
-  return pullNumberFromRef(process.env.GITHUB_REF ?? '') ?? process.env.CODEX_REVIEW_PULL_NUMBER ?? ''
+function pullNumber({ allowRefFallback = true } = {}) {
+  return resolvePullNumber({
+    explicit: process.env.CODEX_REVIEW_PULL_NUMBER,
+    ref: process.env.GITHUB_REF,
+    allowRefFallback
+  })
 }
 
-function evaluateGate(adapter, pull = null) {
+function evaluateGate(adapter, pull = null, { pullNumber: resolvedNumber } = {}) {
   const directory = conclusionDirectory()
   let conclusion = null
   let readError = ''
@@ -2281,7 +2281,7 @@ function evaluateGate(adapter, pull = null) {
   } catch (error) {
     readError = error.message
   }
-  const number = pullNumber()
+  const number = resolvedNumber ?? pullNumber()
   if (readError === '') {
     if (!conclusion) {
       if (!number) readError = 'CI did not run for a pull request'
@@ -2470,9 +2470,9 @@ export function conclusionRenderExtras({ adapter, status, meta, existing, autoRe
 
 function commandReport() {
   const env = requireEnv(['GITHUB_REPOSITORY'])
-  const adapter = createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY })
-  const number = pullNumber()
+  const number = pullNumber({ allowRefFallback: false })
   if (!number) throw new Error('CODEX_REVIEW_PULL_NUMBER is missing')
+  const adapter = createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY })
   const call = withPermissionDiagnosis(number)
   const pull = call(() => adapter.pull(number))
   const target = reviewTarget({ pull, repository: env.GITHUB_REPOSITORY, releaseBranch: RELEASE_BRANCH })
@@ -2481,7 +2481,7 @@ function commandReport() {
     appendReportSummary({ number, outcome: `未写回：${target.reason}` })
     return
   }
-  const { conclusion, status } = call(() => evaluateGate(adapter, pull))
+  const { conclusion, status } = call(() => evaluateGate(adapter, pull, { pullNumber: number }))
   const meta = conclusion?.meta ?? null
   const autoRetry = resolveAutoRetryState()
   const existing = call(() => adapter.listComments(number)).find(comment =>

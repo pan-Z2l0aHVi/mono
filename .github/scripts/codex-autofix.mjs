@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { readConfig, reviewTarget } from './codex-review.mjs'
-import { SPAWN_MAX_BUFFER, commandError, run } from './lib/github.mjs'
+import { SPAWN_MAX_BUFFER, commandError, resolvePullNumber, run } from './lib/github.mjs'
 import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
 export const MAX_AUTOFIX_COMMITS = 3
@@ -300,9 +300,12 @@ function guardedMatcher() {
   })
 }
 
-function pullNumber() {
-  const fromRef = (process.env.GITHUB_REF ?? '').match(/^refs\/pull\/(\d+)\/merge$/u)?.[1]
-  return fromRef ?? process.env.CODEX_AUTOFIX_PULL_NUMBER ?? ''
+function pullNumber({ allowRefFallback = true } = {}) {
+  return resolvePullNumber({
+    explicit: process.env.CODEX_AUTOFIX_PULL_NUMBER,
+    ref: process.env.GITHUB_REF,
+    allowRefFallback
+  })
 }
 
 function commandPrepare() {
@@ -311,7 +314,7 @@ function commandPrepare() {
   )
   const env = requireEnv(['GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'RUNNER_TEMP'])
   const adapter = createGhAutofixAdapter({ repository: env.GITHUB_REPOSITORY })
-  const number = pullNumber()
+  const number = pullNumber({ allowRefFallback: true })
   if (number) {
     // 先读 commits，再取新的 PR 对象。total 与 live head 来自同一个分页之后时点，
     // 分页期间漏读的新提交会表现为 commits.length < total，按无法验证处理。
@@ -381,7 +384,7 @@ function commandApply() {
     console.log('no autofix patch artifact; nothing to apply')
     return
   }
-  const number = pullNumber()
+  const number = pullNumber({ allowRefFallback: false })
   if (!number) throw new Error('CODEX_AUTOFIX_PULL_NUMBER is missing')
   const adapter = createGhAutofixAdapter({ repository: env.GITHUB_REPOSITORY })
   const { commits } = adapter.pullCommits(number)

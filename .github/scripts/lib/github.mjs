@@ -28,6 +28,28 @@ export function run(
   return result.stdout ?? ''
 }
 
+/**
+ * 解析 PR 编号：显式正整数始终优先，非法非空值直接抛错不回退；仅在缺失且允许回退时读取 PR ref。
+ *
+ * @param {object} [input]
+ * @param {unknown} [input.explicit] 显式传入的 PR 编号
+ * @param {unknown} [input.ref] GitHub ref（如 `refs/pull/54/merge`）
+ * @param {boolean} [input.allowRefFallback=true] 显式值缺失时是否允许回退到 `ref`
+ * @returns {string} 解析得到的正整数 PR 编号，或空字符串
+ */
+export function resolvePullNumber({ explicit, ref, allowRefFallback = true } = {}) {
+  if (explicit !== undefined && explicit !== '') {
+    if (typeof explicit !== 'string' || !/^[1-9]\d*$/u.test(explicit)) {
+      throw new Error(`pull number must be a positive integer: ${String(explicit)}`)
+    }
+    return explicit
+  }
+
+  if (!allowRefFallback) return ''
+  if (typeof ref !== 'string') return ''
+  return ref.match(/^refs\/pull\/([1-9]\d*)\/merge$/u)?.[1] ?? ''
+}
+
 export function isHttp404(error) {
   return /\bHTTP\s+404\b|\b404\s+Not Found\b/i.test(error.message)
 }
