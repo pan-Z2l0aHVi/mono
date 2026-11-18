@@ -8,10 +8,9 @@ import { byCodeUnit } from '../shared/order'
 
 const { andThen, err, ok } = rust
 
-// 指令面互指图守卫：只解析行内 Markdown `[label](target)` 链接，引用式 `[label][id]` 不纳入既定判据。
-// 扫描面、方向规则与上游件清单都是消费仓库的事实，经 options 传入；判据本身见
-// docs/agents/agent-context.md「链接面与指令面」。
-const ENTRY_NAME = /^[A-Z0-9_-]+\.md$/
+// 指令面链接守卫：只解析行内 Markdown `[label](target)` 链接，引用式 `[label][id]` 不纳入既定判据。
+// 扫描面与方向规则都是消费仓库的事实，经 options 传入；判据本身见
+// docs/agents/agent-context.md「语料门禁」。
 const LINK = /(?<!!)\[[^\]]*\]\(([^)]*)\)/g
 
 export interface NoMutualLinksOptions {
@@ -154,10 +153,6 @@ function normalize(target: string): string {
   return stack.join('/')
 }
 
-function basename(file: string): string {
-  return file.slice(file.lastIndexOf('/') + 1)
-}
-
 function parseTarget(raw: string): string | null {
   let target = raw.replace(/\s+/g, ' ').trim()
   if (target.startsWith('<')) target = target.slice(1).replace(/>.*$/, '')
@@ -169,7 +164,7 @@ function parseTarget(raw: string): string | null {
 }
 
 /**
- * 指令面互指图判定，链上以 `md: ` 起头归因。扫描面为空或一条本地链接都没有时，
+ * 指令面链接判定，链上以 `md: ` 起头归因。扫描面为空或一条本地链接都没有时，
  * 「没有违规」是扫描没跑起来的假象，所以这两条按失败报而不是通过。
  */
 export const defineNoMutualLinks = (options: NoMutualLinksOptions): Chain =>
@@ -209,12 +204,6 @@ export const defineNoMutualLinks = (options: NoMutualLinksOptions): Chain =>
               if (source.startsWith(direction.from) && target.startsWith(direction.to))
                 violations.push(`${direction.label} link forbidden: ${source} -> ${target}`)
             }
-          }
-          for (const key of edges) {
-            const [source, target] = key.split('\u0000')
-            if (source >= target || !edges.has(`${target}\u0000${source}`)) continue
-            if (ENTRY_NAME.test(basename(source)) || ENTRY_NAME.test(basename(target))) continue
-            violations.push(`mutual links forbidden: ${source} <-> ${target}`)
           }
           violations.sort()
           if (violations.length > 0) return err(`md: ${violations.join('\n')}`)

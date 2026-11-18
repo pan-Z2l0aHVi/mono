@@ -82,7 +82,7 @@ dev server 不读这份分配：文档 demo 不写端口，Vite 从默认端口�
 
 ## CI 门控与 workflow 拓扑
 
-Codex 审查门与自动修的边界（含 autofix 轮次上限与计数口径）由 [`review.md`](./review.md) 与 [ADR-0021](../adr/0021-codex-review-gate.md) 承载，本文不复述。
+Codex 审查门与自动修的边界由 [`review.md`](./review.md) 与 [ADR-0021](../adr/0021-codex-review-gate.md) 承载；autofix 上限与计数口径见 [`.github/codex/README.md`](../../.github/codex/README.md) 的指针，本文不复述。
 
 workflow 的真实触发面、`permissions`、job `needs` / `if`、step `id`、构建矩阵与安装面以 YAML 本身为权威。[`.github/scripts/lib/workflow-topology.mjs`](../../.github/scripts/lib/workflow-topology.mjs) 只声明跨 workflow 的少量不变量（发布分支、required context 与 policy step），同目录的 [`workflow-topology.test.mjs`](../../.github/scripts/lib/workflow-topology.test.mjs) 读取真实 YAML 逐项比对，包括各 Wails workflow 的原生构建矩阵必须一致，并通过 `test-scripts` 与 CI 的 `check` 强制执行。改 workflow 或该声明而不同步，`check` 会失败；不要在本文件复制这些细节。
 
