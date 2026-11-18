@@ -5,10 +5,11 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import { pollUntil, waitForFrame } from '@/shared/test-utils'
 import { waitForOpenTransition } from '@/shared/test-utils/real-gesture'
+import { setViewport } from '@/shared/test-utils/viewport'
 
 import type { WebUiDrawer } from '..'
 
-// 轮询条件直至满足：宽度过渡 260ms 在并行负载下完成时间不可预测，
+// 轮询条件直至满足：尺寸过渡 280ms 在并行负载下完成时间不可预测，
 // 以条件收敛代替固定等待。
 async function waitFor(condition: () => boolean, timeoutMs = 5000): Promise<void> {
   await pollUntil(condition, `Expected the drawer state to settle (budget ${timeoutMs}ms)`, timeoutMs)
@@ -20,6 +21,29 @@ function getDialog(el: WebUiDrawer): HTMLDialogElement {
 
 function getDragZone(el: WebUiDrawer): HTMLElement {
   return el.shadowRoot?.querySelector('.wui-drawer-drag-zone') as HTMLElement
+}
+
+function getMotionLayer(el: WebUiDrawer): HTMLElement {
+  return el.shadowRoot?.querySelector('.wui-drawer-motion') as HTMLElement
+}
+
+function visibleCloseAxisSize(el: WebUiDrawer, placement: Placement): number {
+  const rect = getMotionLayer(el).getBoundingClientRect()
+  if (placement === 'left' || placement === 'right') {
+    return Math.max(0, Math.min(rect.right, window.innerWidth) - Math.max(rect.left, 0))
+  }
+  return Math.max(0, Math.min(rect.bottom, window.innerHeight) - Math.max(rect.top, 0))
+}
+
+function dragAxisTranslate(el: WebUiDrawer, placement: Placement): number {
+  const transform = getComputedStyle(getMotionLayer(el)).transform
+  if (!transform || transform === 'none') return 0
+  const matrix = new DOMMatrixReadOnly(transform)
+  return placement === 'left' || placement === 'right' ? matrix.m41 : matrix.m42
+}
+
+function backdropOpacity(el: WebUiDrawer): number {
+  return Number.parseFloat(getComputedStyle(getDialog(el), '::backdrop').opacity)
 }
 
 function pressEscape(dialog: HTMLDialogElement) {
@@ -54,6 +78,41 @@ function mountDrawer(motion: string | null): WebUiDrawer {
 }
 
 type Placement = 'right' | 'left' | 'top' | 'bottom'
+
+async function withViewport(width: number, height: number, run: () => Promise<void>) {
+  const before = { width: window.innerWidth, height: window.innerHeight }
+  try {
+    await setViewport(width, height)
+    await run()
+  } finally {
+    await setViewport(before.width, before.height)
+  }
+}
+
+/** 释放后立即暂停 rebound 的 transform 过渡，并将其推进到指定区间。 */
+async function pauseReboundAfterRelease(
+  el: WebUiDrawer,
+  x: number,
+  y: number,
+  at: number,
+  accepts: (translate: number) => boolean
+) {
+  // 先强制读取当前 transform，让 CSS transition 以拖拽帧为 before-change style。
+  void getComputedStyle(getMotionLayer(el)).transform
+  firePointer(el, 'pointerup', x, y, at)
+  const transition = getMotionLayer(el)
+    .getAnimations()
+    .find(animation => (animation as Animation & { transitionProperty?: string }).transitionProperty === 'transform')
+  if (!transition) throw new Error('Expected an active rebound transform transition')
+  transition.pause()
+  const duration = Number(transition.effect?.getComputedTiming().duration)
+  for (let step = 1; step <= 20; step++) {
+    transition.currentTime = (duration * step) / 20
+    await waitForFrame()
+    if (accepts(dragAxisTranslate(el, 'right'))) return
+  }
+  throw new Error(`Rebound transform ${dragAxisTranslate(el, 'right')}px did not enter the expected range`)
+}
 
 // 外拉方向系数：外拉 = 背离闭合方向。正量 = 向外。
 const OUTWARD_SIGN: Record<Placement, number> = { right: -1, left: 1, top: 1, bottom: -1 }
@@ -145,8 +204,8 @@ afterEach(() => document.body.replaceChildren())
  *
  * 判据沿用 drag-close 的裁剪纪律：断言公开几何（dialog 的 offsetWidth/Height 贴满
  * 视口减留边、回到 base 尺寸）与归宿（open、原生 dialog、open-change 次数），
- * 不锁 is-full 状态类、阻尼残值与过渡中途的 transform 采样。吸附是否发生、
- * 是否恢复原尺寸、是否误关，全部由尺寸与 open 承载。
+ * 不锁 is-full 状态类。吸附是否发生、是否恢复原尺寸、是否误关，主要由尺寸与
+ * open 承载；非零 initial 的连续性只在受控 raw 点采样 computed transform。
  */
 describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
   it.each([{ placement: 'right' }, { placement: 'left' }, { placement: 'top' }, { placement: 'bottom' }] as const)(
@@ -182,7 +241,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     }
   )
 
-  it('同一按住的两段式：full → 内拉恢复原尺寸 → 继续拉过半尺寸关闭', async () => {
+  it('同一按住的两段式：base → full → 回拉 220px 后松手停在 base', async () => {
     const el = createDrawer()
     el.draggable = true
     el.fullable = true
@@ -204,8 +263,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     // 中途吸附确已发生（此时仍按住）。
     await waitFor(() => currentAxisSize(el, 'right') >= fullAxisSize('right') - 1)
 
-    // 同一按住内拉：+120 越恢复阈值（宽度回 base），+220 越过 320/2 = 160 的
-    // 关闭阈值；随后放慢步距，让释放判定落在距离分支而不是甩动分支。
+    // 同一按住内拉 120px 越恢复阈值，继续到 220px 也只按阻尼跟手，不关闭。
     await continueMove(el, [
       { x: 470, y: 300, at: 5 * STEP_MS },
       { x: 530, y: 300, at: 6 * STEP_MS },
@@ -213,14 +271,13 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     ])
     await waitForBaseSize(el, 'right')
     expect(el.open).toBe(true)
-    await continueMove(el, [
-      { x: 572, y: 300, at: 400 },
-      { x: 574, y: 300, at: 480 }
-    ])
-    await releaseAt(el, 574, 300, 600)
-    await waitFor(() => !el.open)
-    expect(events.map(event => event.detail.open)).toEqual([false])
-    expect(getDialog(el).open).toBe(false)
+    await releaseAt(el, 570, 300, 600)
+    await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
+
+    expect(el.open).toBe(true)
+    expect(getDialog(el).open).toBe(true)
+    expect(events).toHaveLength(0)
+    await waitForBaseSize(el, 'right')
   })
 
   it('full 态松手：保持 open 与 full，无收尾残留', async () => {
@@ -427,7 +484,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     expect(currentAxisSize(el, 'right')).toBeGreaterThanOrEqual(fullAxisSize('right') - 1)
   })
 
-  it('full 态内拉的阈值连续：过恢复阈值但未过半尺寸松手 → 弹回 full，不关闭', async () => {
+  it('静止 full 回拉 120px 松手：恢复 base 并停住', async () => {
     const el = createDrawer()
     el.draggable = true
     el.fullable = true
@@ -438,9 +495,8 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await pullToFullAndRelease(el, 'right')
     const events = openChangeEvents(el)
 
-    // 静止 full 上重新抓取：首个 move（560）为零点，内拉 120px 越过 96px 恢复阈值
-    //（尺寸回 base），但未过 160px 关闭阈值 → 松手弹回（不是关闭）。收尾放慢，
-    // 整段平均速度低于甩动阈值，判定落在距离分支。
+    // 静止 full 上重新抓取：首个 move（560）为零点，内拉 120px 越过 96px 恢复阈值。
+    // 收尾放慢，整段平均速度低于甩动阈值；本段手势已在 exit-full 后锁定为不关闭。
     const points = [
       { x: 500, y: 300, at: 0 },
       { x: 560, y: 300, at: STEP_MS },
@@ -458,7 +514,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await waitForBaseSize(el, 'right')
   })
 
-  it('full 态内拉过半尺寸松手：关闭', async () => {
+  it('静止 full 回拉 200px 松手：仍停 base，不关闭', async () => {
     const el = createDrawer()
     el.draggable = true
     el.fullable = true
@@ -469,7 +525,8 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await pullToFullAndRelease(el, 'right')
     const events = openChangeEvents(el)
 
-    // 首个 move（600）为零点：内拉 120px 越恢复阈值、200px 越关闭阈值 → 松手关闭。
+    // 首个 move（600）为零点：内拉 200px 已超过旧距离阈值 160px；
+    // 本段手势在 raw=96 时 exit-full，之后只能恢复 base，不能在原手势内关闭。
     const points = [
       { x: 500, y: 300, at: 0 },
       { x: 600, y: 300, at: STEP_MS },
@@ -478,11 +535,13 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     ]
     await holdAndMove(el, points)
     await waitForBaseSize(el, 'right')
-    await releaseAt(el, 800, 300, 4 * STEP_MS)
-    await waitFor(() => !el.open)
+    await releaseAt(el, 800, 300, 1000)
+    await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
 
-    expect(events.map(event => event.detail.open)).toEqual([false])
-    expect(getDialog(el).open).toBe(false)
+    expect(el.open).toBe(true)
+    expect(getDialog(el).open).toBe(true)
+    expect(events).toHaveLength(0)
+    await waitForBaseSize(el, 'right')
   })
 
   it('拖拽进行中上层新开：守卫跳过收起，松手兜底恢复原尺寸并重算层叠', async () => {
@@ -594,7 +653,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await child.updateComplete
     await waitForOpenTransition(child)
 
-    // 上层注册触发 depth 0→1 回调：父层同步收起（无 260ms 过渡），保持 open。
+    // 上层注册触发 depth 0→1 回调：父层同步收起（无 280ms 过渡），保持 open。
     await waitFor(() => getDialog(parent).offsetWidth < 340)
     expect(parent.open).toBe(true)
     expect(child.open).toBe(true)
@@ -675,7 +734,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     expect(el.open).toBe(true)
     expect(getDialog(el).offsetWidth).toBe(320)
   })
-  it('同一按住：full 恢复原尺寸后快速内甩不关闭（关 full 需继续过半）', async () => {
+  it('同一按住 exit-full 后快速内甩 220px：不关闭', async () => {
     const el = createDrawer()
     el.draggable = true
     el.fullable = true
@@ -702,9 +761,8 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await waitForBaseSize(el, 'right')
     expect(el.open).toBe(true)
 
-    // 继续同向内拉（净行程 130/150，未过 160 的距离阈值），松手时整段平均速度
-    // ≈586px/s 已越过甩动阈值。本段手势已经 exit-full，回拉是「取消全屏」而不是
-    // 关闭：甩动分支不参与，抽屉停在恢复后的 base；继续过半尺寸才关闭。
+    // 继续同向内拉至净行程 220px，松手时整段平均速度 ≈558px/s 已越过甩动阈值。
+    // 本段手势已经 exit-full，距离与甩动关闭都由 outer gate 否决。
     await continueMove(el, [
       { x: 480, y: 300, at: 7 * STEP_MS },
       { x: 500, y: 300, at: 8 * STEP_MS }
@@ -716,5 +774,342 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     expect(getDialog(el).open).toBe(true)
     expect(events).toHaveLength(0)
     await waitForBaseSize(el, 'right')
+  })
+  it('大屏 right：full 回拉 400px 仍保留可用面板，松手停 base', async () => {
+    await withViewport(1280, 720, async () => {
+      const el = createDrawer()
+      el.draggable = true
+      el.fullable = true
+      el.open = true
+      await el.updateComplete
+      await waitForOpenTransition(el)
+      await pullToFullAndRelease(el, 'right')
+
+      const events = openChangeEvents(el)
+      await holdAndMove(el, [
+        { x: 500, y: 300, at: 0 },
+        { x: 500, y: 300, at: STEP_MS }
+      ])
+
+      firePointer(el, 'pointermove', 595, 300, 2 * STEP_MS)
+      await el.updateComplete
+      const opacity95 = backdropOpacity(el)
+
+      firePointer(el, 'pointermove', 596, 300, 3 * STEP_MS)
+      const opacity96 = backdropOpacity(el)
+      firePointer(el, 'pointermove', 900, 300, 4 * STEP_MS)
+      const opacity400 = backdropOpacity(el)
+      const earlySize = currentAxisSize(el, 'right')
+      const initialExitCap = Math.min(fullAxisSize('right'), Math.round(window.innerWidth * 0.9))
+
+      expect(Math.abs(opacity95 - opacity96)).toBeLessThan(0.02)
+      expect(earlySize).toBeGreaterThan(initialExitCap - 64)
+      expect(opacity400).toBeGreaterThan(0.5)
+      expect(opacity400).toBeLessThan(0.75)
+
+      await waitForBaseSize(el, 'right')
+      expect(visibleCloseAxisSize(el, 'right')).toBeGreaterThan(64)
+      await releaseAt(el, 900, 300, 1000)
+      await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
+
+      expect(el.open).toBe(true)
+      expect(getDialog(el).open).toBe(true)
+      expect(events).toHaveLength(0)
+      await waitForBaseSize(el, 'right')
+    })
+  })
+
+  it('停 base 后新起手势拖过半：关闭并派发一次 open-change', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.fullable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+    await pullToFullAndRelease(el, 'right')
+
+    const events = openChangeEvents(el)
+    await holdAndMove(el, [
+      { x: 500, y: 300, at: 0 },
+      { x: 500, y: 300, at: STEP_MS },
+      { x: 700, y: 300, at: 3 * STEP_MS }
+    ])
+    await waitForBaseSize(el, 'right')
+    await releaseAt(el, 700, 300, 1000)
+    await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
+    expect(el.open).toBe(true)
+    expect(events).toHaveLength(0)
+
+    await holdAndMove(el, [
+      { x: 500, y: 300, at: 2000 },
+      { x: 500, y: 300, at: 2032 },
+      { x: 700, y: 300, at: 2400 }
+    ])
+    await releaseAt(el, 700, 300, 2600)
+    await waitFor(() => !el.open)
+
+    expect(events.map(event => event.detail.open)).toEqual([false])
+    expect(getDialog(el).open).toBe(false)
+  })
+
+  it('停 base 后新起手势快甩 100px：关闭', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.fullable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+    await pullToFullAndRelease(el, 'right')
+
+    const events = openChangeEvents(el)
+    await holdAndMove(el, [
+      { x: 500, y: 300, at: 0 },
+      { x: 500, y: 300, at: STEP_MS },
+      { x: 700, y: 300, at: 3 * STEP_MS }
+    ])
+    await releaseAt(el, 700, 300, 1000)
+    await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
+    await waitForBaseSize(el, 'right')
+
+    await holdAndMove(el, [
+      { x: 500, y: 300, at: 2000 },
+      { x: 500, y: 300, at: 2032 },
+      { x: 600, y: 300, at: 2048 }
+    ])
+    await releaseAt(el, 600, 300, 2064)
+    await waitFor(() => !el.open)
+
+    expect(events.map(event => event.detail.open)).toEqual([false])
+    expect(getDialog(el).open).toBe(false)
+  })
+
+  it('超窄 base（120px）：exit-full 后继续拉仍不关闭（不承诺可用可见面积）', async () => {
+    const el = createDrawer()
+    el.style.setProperty('--wui-drawer-width', '120px')
+    el.draggable = true
+    el.fullable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+    await pullToFullAndRelease(el, 'right')
+
+    const events = openChangeEvents(el)
+    await holdAndMove(el, [
+      { x: 500, y: 300, at: 0 },
+      { x: 500, y: 300, at: STEP_MS },
+      { x: 700, y: 300, at: 3 * STEP_MS }
+    ])
+    await waitFor(() => Math.abs(currentAxisSize(el, 'right') - 120) < 2)
+    await releaseAt(el, 700, 300, 1000)
+    await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
+
+    expect(el.open).toBe(true)
+    expect(getDialog(el).open).toBe(true)
+    expect(currentAxisSize(el, 'right')).toBe(120)
+    expect(events).toHaveLength(0)
+  })
+
+  it('exit-full 后同手势反向外拉过 96px：onMove 不重新吸附', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.fullable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+    await pullToFullAndRelease(el, 'right')
+
+    const events = openChangeEvents(el)
+    await holdAndMove(el, [
+      { x: 500, y: 300, at: 0 },
+      { x: 500, y: 300, at: STEP_MS },
+      { x: 600, y: 300, at: 2 * STEP_MS },
+      { x: 340, y: 300, at: 3 * STEP_MS }
+    ])
+    await waitForBaseSize(el, 'right')
+    await releaseAt(el, 340, 300, 1000)
+    await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
+
+    expect(el.open).toBe(true)
+    expect(getDialog(el).open).toBe(true)
+    expect(currentAxisSize(el, 'right')).toBe(320)
+    expect(events).toHaveLength(0)
+  })
+
+  it('exit-full 后 pointercancel：保持 open 与 base，无关闭事件', async () => {
+    const el = createDrawer()
+    el.draggable = true
+    el.fullable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+    await pullToFullAndRelease(el, 'right')
+
+    const events = openChangeEvents(el)
+    await holdAndMove(el, [
+      { x: 500, y: 300, at: 0 },
+      { x: 500, y: 300, at: STEP_MS },
+      { x: 700, y: 300, at: 3 * STEP_MS }
+    ])
+    await waitForBaseSize(el, 'right')
+    firePointer(el, 'pointercancel', 700, 300, 1000)
+    await el.updateComplete
+    await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
+
+    expect(el.open).toBe(true)
+    expect(getDialog(el).open).toBe(true)
+    expect(currentAxisSize(el, 'right')).toBe(320)
+    expect(events).toHaveLength(0)
+  })
+
+  it('超窄 base（120px）exit-full 后移除 fullable：本段手势仍不关闭', async () => {
+    const el = createDrawer()
+    el.style.setProperty('--wui-drawer-width', '120px')
+    el.draggable = true
+    el.fullable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenTransition(el)
+    await pullToFullAndRelease(el, 'right')
+
+    const events = openChangeEvents(el)
+    await holdAndMove(el, [
+      { x: 500, y: 300, at: 0 },
+      { x: 500, y: 300, at: STEP_MS },
+      { x: 700, y: 300, at: 3 * STEP_MS }
+    ])
+    await waitFor(() => Math.abs(currentAxisSize(el, 'right') - 120) < 2)
+    el.fullable = false
+    await el.updateComplete
+    await releaseAt(el, 700, 300, 1000)
+    await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
+
+    expect(el.open).toBe(true)
+    expect(getDialog(el).open).toBe(true)
+    expect(currentAxisSize(el, 'right')).toBe(120)
+    expect(events).toHaveLength(0)
+  })
+
+  it('exit-full 后拖拽中上层新开：保持 base，并通过露边几何证明 nested recalculate', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    document.body.append(theme)
+
+    const parent = createDrawer()
+    theme.append(parent)
+    parent.draggable = true
+    parent.fullable = true
+    parent.open = true
+    await parent.updateComplete
+    await waitForOpenTransition(parent)
+    await pullToFullAndRelease(parent, 'right')
+
+    await holdAndMove(parent, [
+      { x: 500, y: 300, at: 0 },
+      { x: 500, y: 300, at: STEP_MS },
+      { x: 700, y: 300, at: 3 * STEP_MS }
+    ])
+    await waitForBaseSize(parent, 'right')
+
+    const child = createDrawer()
+    theme.append(child)
+    child.open = true
+    await child.updateComplete
+    await waitForOpenTransition(child)
+    await releaseAt(parent, 700, 300, 1000)
+    await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
+    await waitFor(() => getDialog(child).getAnimations({ subtree: true }).length === 0)
+
+    expect(parent.open).toBe(true)
+    expect(getDialog(parent).open).toBe(true)
+    expect(child.open).toBe(true)
+    await waitForBaseSize(parent, 'right')
+
+    const parentDialog = getDialog(parent)
+    const peekBase = Number.parseFloat(getComputedStyle(parentDialog).getPropertyValue('--wui-drawer-nested-peek-base'))
+    const motionRect = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect()
+    const expectedLeft = parentDialog.getBoundingClientRect().left - peekBase * Math.log(2)
+    expect(motionRect.left).toBeCloseTo(expectedLeft, 0)
+  })
+
+  it.each(['positive', 'negative'] as const)(
+    'full 弹回中途重抓（%s）：首个 move、跨 raw=0、exit-full 均连续',
+    async direction => {
+      const el = createDrawer()
+      el.draggable = true
+      el.fullable = true
+      el.open = true
+      await el.updateComplete
+      await waitForOpenTransition(el)
+      await pullToFullAndRelease(el, 'right')
+      await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
+
+      const events = openChangeEvents(el)
+      if (direction === 'positive') {
+        await holdAndMove(el, [
+          { x: 500, y: 300, at: 0 },
+          { x: 500, y: 300, at: STEP_MS },
+          { x: 560, y: 300, at: 2 * STEP_MS }
+        ])
+        await pauseReboundAfterRelease(el, 560, 300, 400, translate => translate > 20 && translate < 55)
+      } else {
+        await holdAndMove(el, [
+          { x: 500, y: 300, at: 0 },
+          { x: 500, y: 300, at: STEP_MS },
+          { x: 250, y: 300, at: 2 * STEP_MS }
+        ])
+        await pauseReboundAfterRelease(el, 250, 300, 400, translate => translate > -16 && translate < -5)
+      }
+
+      firePointer(el, 'pointerdown', 600, 300, 1000)
+      const initial = dragAxisTranslate(el, 'right')
+      firePointer(el, 'pointermove', 600, 300, 1032)
+      expect(dragAxisTranslate(el, 'right')).toBeCloseTo(initial, 0)
+
+      firePointer(el, 'pointermove', 590, 300, 1064)
+      expect(dragAxisTranslate(el, 'right')).toBeCloseTo(initial - Math.sqrt(10), 0)
+
+      firePointer(el, 'pointermove', 610, 300, 1096)
+      expect(dragAxisTranslate(el, 'right')).toBeCloseTo(initial + 10, 0)
+
+      firePointer(el, 'pointermove', 696, 300, 1128)
+      expect(dragAxisTranslate(el, 'right')).toBeCloseTo(initial + 96, 0)
+
+      await releaseAt(el, 696, 300, 2000)
+      await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
+      expect(el.open).toBe(true)
+      expect(getDialog(el).open).toBe(true)
+      expect(events).toHaveLength(0)
+      await waitForBaseSize(el, 'right')
+    }
+  )
+
+  it('bottom 300px：full 回拉 400px 仍保留可用高度，松手停 base', async () => {
+    await withViewport(1280, 720, async () => {
+      const el = createDrawer()
+      el.placement = 'bottom'
+      el.draggable = true
+      el.fullable = true
+      el.open = true
+      await el.updateComplete
+      await waitForOpenTransition(el)
+      await pullToFullAndRelease(el, 'bottom')
+
+      const events = openChangeEvents(el)
+      await holdAndMove(el, [
+        { x: 500, y: 300, at: 0 },
+        { x: 500, y: 300, at: STEP_MS },
+        { x: 500, y: 396, at: 2 * STEP_MS },
+        { x: 500, y: 700, at: 3 * STEP_MS }
+      ])
+      await waitFor(() => Math.abs(currentAxisSize(el, 'bottom') - 300) < 2)
+      expect(visibleCloseAxisSize(el, 'bottom')).toBeGreaterThan(64)
+      await releaseAt(el, 500, 700, 1000)
+      await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
+
+      expect(el.open).toBe(true)
+      expect(getDialog(el).open).toBe(true)
+      expect(currentAxisSize(el, 'bottom')).toBe(300)
+      expect(events).toHaveLength(0)
+    })
   })
 })

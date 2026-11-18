@@ -2,6 +2,6 @@
 '@greypan/web-ui': minor
 ---
 
-`web-ui-drawer` 新增 `fullable` 属性（默认 `false`，需同时开启 `draggable`）：向外拖拽越过行程阈值或快速向外甩动松手时，抽屉吸附为占满视口的形态（非 headless 减去四周留边），不要求松手；同一按住的手势往回拉先恢复原尺寸，继续朝关闭方向拉过自身尺寸的一半才关闭。full 形态下按钮 / Escape / 遮罩照常直接关闭，上层新开嵌套抽屉时立即恢复原尺寸。默认关闭，现有 `draggable` 消费方行为不变。
+`web-ui-drawer` adds a `fullable` property (default `false`; requires `draggable`). Dragging outward past the travel threshold, or releasing after a quick outward flick, snaps the drawer to a viewport-filling form (inset-aware for non-headless drawers) without requiring a release. Once a return drag crosses the restore threshold from the full form, that gesture is committed to leaving full: the drawer returns to its original size, further dragging follows with damping, and the same gesture cannot close or snap full again; release leaves it at the original size. Start a new gesture to close the drawer or enter full again. In the full form, the close button, Escape, and backdrop click still close directly; opening a nested drawer on top immediately restores the full drawer's original size (or upon release if the drawer is actively being dragged). The property defaults off, preserving existing `draggable` behavior.
 
-嵌套层叠的 `applyLayers` 重构为「算 depth → 回调 → 读尺寸」的固定顺序，并新增 `onDepthChange` 选项：drawer 借此在读取几何之前同步收起 full 态，露边数学不再可能被过渡中的尺寸污染。
+The nested-layer `applyLayers` flow is now ordered as "compute depth -> callbacks -> measure sizes", with a new `onDepthChange` option. Drawer uses it to collapse the full state before geometry is read, so exposed-edge calculations cannot consume an in-transition size.

@@ -40,7 +40,7 @@ export default function Demo() {
         onopen-change={event => setFullOpen(event.detail.open)}
       >
         <p>
-          按住左缘的灰色胶囊向外（向左）拖过一段行程即吸附全屏；往回拉先恢复原尺寸，继续向右拖过半或快速内甩才关闭。
+          按住左缘的灰色胶囊向外（向左）拖过一段行程即吸附全屏；往回拉过恢复阈值会先恢复原尺寸，并让本次手势停在原尺寸。松手后重新拖过半或快速内甩才会关闭。
         </p>
       </web-ui-drawer>
     </>

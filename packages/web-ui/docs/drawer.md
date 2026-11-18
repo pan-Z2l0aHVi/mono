@@ -927,7 +927,7 @@ const open = ref(false)
 
 With `draggable` enabled, a gray pill-shaped drag bar appears on the inner edge of the drawer. Drag past half of its own size toward the closing direction, or drag quickly and release, to close; below the threshold the drawer returns to its open position. The direction follows `placement`.
 
-With `fullable` also enabled, dragging outward (away from the closing direction) past a travel threshold snaps the drawer to a viewport-filling form (minus the surrounding insets, 8px by default; set `--wui-drawer-inset` to 0 for edge-to-edge) without requiring a release; a quick outward flick on release triggers the same. On the same held gesture, dragging back restores the original size first, and only after pulling past half of its size toward the closing direction does it close. In the full form the close button, Escape, and backdrop click all close directly; opening a nested drawer on top immediately restores the full drawer to its original size. The third drawer in the example below enables `fullable`.
+With `fullable` also enabled, dragging outward (away from the closing direction) past a travel threshold snaps the drawer to a viewport-filling form (minus the surrounding insets, 8px by default; set `--wui-drawer-inset` to 0 for edge-to-edge) without requiring a release; a quick outward flick on release triggers the same. Once a return drag crosses the restore threshold from the full form, that gesture is committed to cancelling full: the drawer returns to its original size, further dragging only follows with damping, and it cannot close or snap full again during the same gesture; releasing leaves it at the original size. To close or go full again, start a new gesture. In the full form the close button, Escape, and backdrop click all close directly; opening a nested drawer on top immediately restores the full drawer to its original size (or on release if the drawer is currently being dragged). The third drawer in the example below enables `fullable`.
 
 ```tsx
 import { useState } from 'react'
@@ -973,7 +973,8 @@ export default function Demo() {
       >
         <p>
           Hold the gray pill on the left edge and drag it outward (to the left) past the travel threshold to snap full;
-          dragging back restores the original size first, and only past half its size, or a quick inward fling, closes.
+          pulling back past the restore threshold restores the original size and commits that gesture to leaving full.
+          Release leaves it there; start another drag past half its size, or flick inward, to close.
         </p>
       </web-ui-drawer>
     </>
@@ -1017,7 +1018,8 @@ export default function Demo() {
   >
     <p>
       Hold the gray pill on the left edge and drag it outward (to the left) past the travel threshold to snap full;
-      dragging back restores the original size first, and only past half its size, or a quick inward fling, closes.
+      pulling back past the restore threshold restores the original size and commits that gesture to leaving full.
+      Release leaves it there; start another drag past half its size, or flick inward, to close.
     </p>
   </web-ui-drawer>
 </template>
@@ -1369,21 +1371,21 @@ const open = ref(false)
 
 ### Props
 
-| Name                | Description                                                                                                                                                                                                                                         | Type              | Default   |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
-| `open`              | Drawer visibility.                                                                                                                                                                                                                                  | `boolean`         | `false`   |
-| `no-scroll-lock`    | Does not lock page scrolling while open.                                                                                                                                                                                                            | `boolean`         | `false`   |
-| `no-backdrop-close` | Prevents closing on a backdrop click.                                                                                                                                                                                                               | `boolean`         | `false`   |
-| `controlled`        | User-initiated closing only requests `open=false`, written back by your app.                                                                                                                                                                        | `boolean`         | `false`   |
-| `placement`         | Slide-in direction: `right` (default), `left`, `top`, `bottom`.                                                                                                                                                                                     | `DrawerPlacement` | `'right'` |
-| `heading`           | Heading text, the fallback when the `header` slot is empty.                                                                                                                                                                                         | `string`          | `''`      |
-| `closable`          | Shows the built-in close button.                                                                                                                                                                                                                    | `boolean`         | `false`   |
-| `headless`          | Keeps only overlay behavior; the default slot renders no built-in drawer UI.                                                                                                                                                                        | `boolean`         | `false`   |
-| `aria-dialog-label` | Accessible name of the native dialog; required under `headless`. `dialog-label` also works.                                                                                                                                                         | `string`          | `''`      |
-| `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`).                                                                                                                                                    | `string`          | `''`      |
-| `draggable`         | Shows a drag bar on the inner edge of the drawer and enables the drag-to-close gesture.                                                                                                                                                             | `boolean`         | `false`   |
-| `fullable`          | Drag-to-full (requires `draggable`): dragging outward past the travel threshold or a quick outward flick snaps the drawer to a viewport-filling form; dragging back restores the original size first, and only further pulling closes.              | `boolean`         | `false`   |
-| `page-shift`        | While open, the background page moves toward the drawer's entering direction. The opening order sets layer order and offset, with the same rule for nested and sibling layers; closing any layer recalculates the rest. Inert under reduced motion. | `boolean`         | `false`   |
+| Name                | Description                                                                                                                                                                                                                                                                                    | Type              | Default   |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
+| `open`              | Drawer visibility.                                                                                                                                                                                                                                                                             | `boolean`         | `false`   |
+| `no-scroll-lock`    | Does not lock page scrolling while open.                                                                                                                                                                                                                                                       | `boolean`         | `false`   |
+| `no-backdrop-close` | Prevents closing on a backdrop click.                                                                                                                                                                                                                                                          | `boolean`         | `false`   |
+| `controlled`        | User-initiated closing only requests `open=false`, written back by your app.                                                                                                                                                                                                                   | `boolean`         | `false`   |
+| `placement`         | Slide-in direction: `right` (default), `left`, `top`, `bottom`.                                                                                                                                                                                                                                | `DrawerPlacement` | `'right'` |
+| `heading`           | Heading text, the fallback when the `header` slot is empty.                                                                                                                                                                                                                                    | `string`          | `''`      |
+| `closable`          | Shows the built-in close button.                                                                                                                                                                                                                                                               | `boolean`         | `false`   |
+| `headless`          | Keeps only overlay behavior; the default slot renders no built-in drawer UI.                                                                                                                                                                                                                   | `boolean`         | `false`   |
+| `aria-dialog-label` | Accessible name of the native dialog; required under `headless`. `dialog-label` also works.                                                                                                                                                                                                    | `string`          | `''`      |
+| `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`).                                                                                                                                                                                               | `string`          | `''`      |
+| `draggable`         | Shows a drag bar on the inner edge of the drawer and enables the drag-to-close gesture.                                                                                                                                                                                                        | `boolean`         | `false`   |
+| `fullable`          | Drag-to-full (requires `draggable`): dragging outward past the travel threshold or a quick outward flick snaps the drawer to a viewport-filling form; a return drag past the restore threshold stops at the original size for that gesture, and only a new gesture can close or go full again. | `boolean`         | `false`   |
+| `page-shift`        | While open, the background page moves toward the drawer's entering direction. The opening order sets layer order and offset, with the same rule for nested and sibling layers; closing any layer recalculates the rest. Inert under reduced motion.                                            | `boolean`         | `false`   |
 
 ### Events
 
@@ -1440,7 +1442,7 @@ Left and right placements have only the drag zone; top and bottom placements can
 
 A backdrop click closes only on a tap: a gesture that starts on the panel or the backdrop and releases elsewhere does not close.
 
-With `fullable` enabled there is a second gesture in the outward direction: dragging outward past the travel threshold snaps the drawer to full viewport size without requiring a release, and a quick outward flick on release triggers the same. Dragging back restores the original size first, and only past half of its size does the drawer close; a fast outward sweep after an inward pull that reversed direction is treated as a change of mind and does not snap. At the snap moment the drag bar moves with the drawer edge and leaves the finger.
+With `fullable` enabled there is a second gesture in the outward direction: dragging outward past the travel threshold snaps the drawer to full viewport size without requiring a release, and a quick outward flick on release triggers the same. Once a return drag crosses the restore threshold, that gesture enters the cancel-full phase: the drawer size returns to the original size, further dragging toward the closing direction follows with damping only, and the same gesture cannot close or snap full again; releasing leaves it at the original size. To close or go full again, start a new gesture. A fast outward sweep after an inward pull that reversed direction is treated as a change of mind and does not snap. At the snap moment the drag bar moves with the drawer edge and leaves the finger.
 
 With `controlled` enabled, releasing past the threshold only dispatches `open-change(false)`; the drawer waits 120ms at the closed position and returns to the open position if your app rejects it or does not write back in time.
 

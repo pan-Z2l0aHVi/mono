@@ -33,7 +33,8 @@
   >
     <p>
       Hold the gray pill on the left edge and drag it outward (to the left) past the travel threshold to snap full;
-      dragging back restores the original size first, and only past half its size, or a quick inward fling, closes.
+      pulling back past the restore threshold restores the original size and commits that gesture to leaving full.
+      Release leaves it there; start another drag past half its size, or flick inward, to close.
     </p>
   </web-ui-drawer>
 </template>
