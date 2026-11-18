@@ -430,6 +430,12 @@ export class WebUiDrawer extends LitElement {
   private _stageOrigin: number | null = null
   private _baseDragSize = 0
   private _fullArmed = false
+  /*
+   * 本段手势已经越过恢复阈值离开 full。离开后的回拉是「取消全屏」，不是关闭：
+   * 关闭只认距离阈值（继续过半尺寸），释放速度再快也先停在恢复后的尺寸。
+   * pointerdown 每段手势复位。
+   */
+  private _exitedFull = false
   // 释放后的 CSS transition 收尾：完成回调，以及终值与当前值相同时
   // 不会派发 transitionend 的兜底定时器。
   private _settleFinish: (() => void) | null = null
@@ -604,6 +610,7 @@ export class WebUiDrawer extends LitElement {
     this._lastAxisPos = axisPos
     this._swipeIntentDisp = -1
     this._swipeCancelled = false
+    this._exitedFull = false
     /*
      * fullable 会话捕获（方案 §2.3 / §4）：
      * - armed 收口 opt-in（fullable && draggable）与抓取瞬间静位：弹回/收尾中途
@@ -686,8 +693,10 @@ export class WebUiDrawer extends LitElement {
         const netVelocity =
           info.duration > 0 ? (displacement / Math.max(info.duration, DRAG_MIN_VELOCITY_SPAN_MS)) * 1000 : 0
         // 甩动判据：净位移朝闭合方向（`> 0`）、平均速度达到阈值（`>=`）、
-        // 且本次手势未被判定为「改主意」。
-        const flicked = displacement > 0 && netVelocity >= DRAG_FLICK_VELOCITY && !this._swipeCancelled
+        // 本次手势未被判定为「改主意」，且没有从 full 恢复过——离开 full 后
+        // 关 full 必须靠继续过半尺寸，回拉动作本身不能以甩动收尾成关闭。
+        const flicked =
+          displacement > 0 && netVelocity >= DRAG_FLICK_VELOCITY && !this._swipeCancelled && !this._exitedFull
         // 距离分支同样用净位移，不是绝对位置：抓取瞬间停在哪里都不算「已经拖过一半」。
         // `_dragOffset` 只留给收尾的起点使用。
         const shouldClose = displacement > this._dragCloseThreshold(size) || flicked
@@ -820,6 +829,7 @@ export class WebUiDrawer extends LitElement {
     this._stageOrigin = null
     this._baseDragSize = 0
     this._fullArmed = false
+    this._exitedFull = false
     if (!options.keepFullClass) this.dialog?.classList.remove('is-full')
   }
 
@@ -859,6 +869,7 @@ export class WebUiDrawer extends LitElement {
    */
   private _exitFull(dialog: HTMLDialogElement) {
     this._stage = 'base'
+    this._exitedFull = true
     dialog.classList.remove('is-full')
   }
 

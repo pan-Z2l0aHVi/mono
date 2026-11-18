@@ -675,7 +675,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     expect(el.open).toBe(true)
     expect(getDialog(el).offsetWidth).toBe(320)
   })
-  it('同一按住：full 恢复原尺寸后快速内甩关闭（折返基线与意图位移同源）', async () => {
+  it('同一按住：full 恢复原尺寸后快速内甩不关闭（关 full 需继续过半）', async () => {
     const el = createDrawer()
     el.draggable = true
     el.fullable = true
@@ -703,16 +703,18 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     expect(el.open).toBe(true)
 
     // 继续同向内拉（净行程 130/150，未过 160 的距离阈值），松手时整段平均速度
-    // ≈586px/s 越过甩动阈值 → 关闭。恢复原尺寸后的继续内拉不是「改主意」：
-    // 折返基线与意图位移同源，甩动分支不得被误拦。
+    // ≈586px/s 已越过甩动阈值。本段手势已经 exit-full，回拉是「取消全屏」而不是
+    // 关闭：甩动分支不参与，抽屉停在恢复后的 base；继续过半尺寸才关闭。
     await continueMove(el, [
       { x: 480, y: 300, at: 7 * STEP_MS },
       { x: 500, y: 300, at: 8 * STEP_MS }
     ])
     await releaseAt(el, 500, 300, 9 * STEP_MS)
-    await waitFor(() => !el.open)
+    await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
 
-    expect(events.map(event => event.detail.open)).toEqual([false])
-    expect(getDialog(el).open).toBe(false)
+    expect(el.open).toBe(true)
+    expect(getDialog(el).open).toBe(true)
+    expect(events).toHaveLength(0)
+    await waitForBaseSize(el, 'right')
   })
 })
