@@ -927,7 +927,7 @@ const open = ref(false)
 
 With `draggable` enabled, a gray pill-shaped drag bar appears on the inner edge of the drawer. Drag past 35% of its own size toward the closing direction, or drag quickly and release, to close; below the threshold the drawer returns to its open position. The direction follows `placement`.
 
-With `fullable` also enabled, dragging outward (away from the closing direction) past a travel threshold snaps the drawer to a viewport-filling form (minus the surrounding insets, 8px by default; set `--wui-drawer-inset` to 0 for edge-to-edge) without requiring a release; a quick outward flick on release triggers the same. Once a return drag crosses the restore threshold from the full form, that gesture is committed to cancelling full: the drawer returns to its original size, further dragging only follows with damping, and it cannot close or snap full again during the same gesture; releasing leaves it at the original size. To close or go full again, start a new gesture. In the full form the close button, Escape, and backdrop click all close directly; opening a nested drawer on top immediately restores the full drawer to its original size (or on release if the drawer is currently being dragged). The third drawer in the example below enables `fullable`.
+With `fullable` also enabled, dragging outward (away from the closing direction) past a travel threshold snaps the drawer to a viewport-filling form (minus the surrounding insets, 8px by default; set `--wui-drawer-inset` to 0 for edge-to-edge) without requiring a release; a quick outward flick on release triggers the same. Once a return drag crosses the restore threshold from the full form, that gesture is committed to cancelling full: the drawer returns to its original size, further dragging only follows with damping, and it cannot close or snap full again during the same gesture; releasing leaves it at the original size. To close or go full again, start a new gesture. In the full form the close button, Escape, and backdrop click all close directly; opening a nested drawer on top keeps the lower drawer in its full form while scaling and shifting it back by depth, and restores the full form when the upper drawer closes. The third drawer in the example below enables `fullable`.
 
 ```tsx
 import { useState } from 'react'
@@ -1035,7 +1035,7 @@ const fullOpen = ref(false)
 
 ### Nested stacking
 
-Declaratively nesting the same component stacks it automatically: the later-opened drawer sits on top at full size, lower layers shrink and shift inward, and every layer shows a visible left edge. When layer widths differ or the opening order changes, the component adjusts automatically. Escape and backdrop clicks act only on the topmost layer.
+Declaratively nesting the same component stacks it automatically: the later-opened drawer sits on top at full size, lower layers shrink and shift inward, and every layer shows a visible left edge. When layer widths differ or the opening order changes, the component adjusts automatically. Escape and backdrop clicks act only on the topmost layer. All four layers below enable `draggable` and `fullable` so you can test stacking together with drag-to-close and full-screen snapping.
 
 ```tsx
 import type { CSSProperties } from 'react'
@@ -1063,12 +1063,16 @@ export default function Demo() {
         open={levels[0]}
         heading={`${titles[0]} (300px)`}
         closable
+        draggable
+        fullable
         style={{ '--wui-drawer-width': widths[0] } as CSSProperties}
         onopen-change={event => {
           if (event.target === event.currentTarget && !event.detail.open) closeLevel(0)
         }}
       >
-        <p>Layer 1. After the next layer opens, this layer scales down and exposes its left edge.</p>
+        <p>
+          Layer 1 (draggable & fullable). After the next layer opens, this layer scales down and exposes its left edge.
+        </p>
         <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(1)}>
           Open layer 2
         </web-ui-button>
@@ -1077,12 +1081,17 @@ export default function Demo() {
           open={levels[1]}
           heading={`${titles[1]} (280px)`}
           closable
+          draggable
+          fullable
           style={{ '--wui-drawer-width': widths[1] } as CSSProperties}
           onopen-change={event => {
             if (event.target === event.currentTarget && !event.detail.open) closeLevel(1)
           }}
         >
-          <p>Layer 2. This layer is wider than the one above, so the stacking position compensates automatically.</p>
+          <p>
+            Layer 2 (draggable & fullable). This layer is wider than the one above, so the stacking position compensates
+            automatically.
+          </p>
           <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(2)}>
             Open layer 3
           </web-ui-button>
@@ -1091,12 +1100,16 @@ export default function Demo() {
             open={levels[2]}
             heading={`${titles[2]} (240px)`}
             closable
+            draggable
+            fullable
             style={{ '--wui-drawer-width': widths[2] } as CSSProperties}
             onopen-change={event => {
               if (event.target === event.currentTarget && !event.detail.open) closeLevel(2)
             }}
           >
-            <p>Layer 3. When a wider layer stacks on a narrower one, the left edge stays visible.</p>
+            <p>
+              Layer 3 (draggable & fullable). When a wider layer stacks on a narrower one, the left edge stays visible.
+            </p>
             <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(3)}>
               Open layer 4
             </web-ui-button>
@@ -1105,12 +1118,14 @@ export default function Demo() {
               open={levels[3]}
               heading={`${titles[3]} (320px, top layer)`}
               closable
+              draggable
+              fullable
               style={{ '--wui-drawer-width': widths[3] } as CSSProperties}
               onopen-change={event => {
                 if (event.target === event.currentTarget && !event.detail.open) closeLevel(3)
               }}
             >
-              <p>Layer 4, the topmost. Closing it restores each layer to its original size.</p>
+              <p>Layer 4, the topmost (draggable & fullable). Closing it restores each layer to its original size.</p>
             </web-ui-drawer>
           </web-ui-drawer>
         </web-ui-drawer>
@@ -1128,40 +1143,51 @@ export default function Demo() {
     :open="levels[0]"
     :heading="`${titles[0]} (300px)`"
     closable
+    draggable
+    fullable
     :style="{ '--wui-drawer-width': widths[0] }"
     @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(0)"
   >
-    <p>Layer 1. After the next layer opens, this layer scales down and exposes its left edge.</p>
+    <p>Layer 1 (draggable & fullable). After the next layer opens, this layer scales down and exposes its left edge.</p>
     <web-ui-button slot="footer" variant="secondary" full @click="openLevel(1)">Open layer 2</web-ui-button>
 
     <web-ui-drawer
       :open="levels[1]"
       :heading="`${titles[1]} (280px)`"
       closable
+      draggable
+      fullable
       :style="{ '--wui-drawer-width': widths[1] }"
       @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(1)"
     >
-      <p>Layer 2. This layer is wider than the one above, so the stacking position compensates automatically.</p>
+      <p>
+        Layer 2 (draggable & fullable). This layer is wider than the one above, so the stacking position compensates
+        automatically.
+      </p>
       <web-ui-button slot="footer" variant="secondary" full @click="openLevel(2)">Open layer 3</web-ui-button>
 
       <web-ui-drawer
         :open="levels[2]"
         :heading="`${titles[2]} (240px)`"
         closable
+        draggable
+        fullable
         :style="{ '--wui-drawer-width': widths[2] }"
         @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(2)"
       >
-        <p>Layer 3. When a wider layer stacks on a narrower one, the left edge stays visible.</p>
+        <p>Layer 3 (draggable & fullable). When a wider layer stacks on a narrower one, the left edge stays visible.</p>
         <web-ui-button slot="footer" variant="secondary" full @click="openLevel(3)">Open layer 4</web-ui-button>
 
         <web-ui-drawer
           :open="levels[3]"
           :heading="`${titles[3]} (320px, top layer)`"
           closable
+          draggable
+          fullable
           :style="{ '--wui-drawer-width': widths[3] }"
           @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(3)"
         >
-          <p>Layer 4, the topmost. Closing it restores each layer to its original size.</p>
+          <p>Layer 4, the topmost (draggable & fullable). Closing it restores each layer to its original size.</p>
         </web-ui-drawer>
       </web-ui-drawer>
     </web-ui-drawer>

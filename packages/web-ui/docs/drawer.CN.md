@@ -891,7 +891,7 @@ const open = ref(false)
 
 开启 `draggable` 后，抽屉内缘显示灰色胶囊拖拽条。朝关闭方向拖动超过自身尺寸的 35%，或快速拖动后松开，抽屉就会关闭；没到阈值则回到打开位置。拖动方向随 `placement` 改变。
 
-再开启 `fullable` 后，向外（背离关闭方向）拖拽越过行程阈值，抽屉就地吸附为占满视口的形态（减去四周留边，默认 8px；把 `--wui-drawer-inset` 设为 0 即铺满视口），不要求松手；快速向外甩动后松手同样触发。从 full 形态朝关闭方向回拉越过恢复阈值后，本次手势锁定为“取消全屏”：抽屉恢复原尺寸，继续内拉只按阻尼跟手，不会关闭，也不会在同一段手势里重新吸附全屏；松手停在原尺寸。要关闭或再次全屏，请松开后重新起手。full 形态下关闭按钮、Escape、点遮罩仍直接关闭；上层新开一层嵌套抽屉时，full 形态立即恢复原尺寸（若本层正在拖拽，则在松手结束当前手势后恢复）。示例中的第三个抽屉开启了 `fullable`。
+再开启 `fullable` 后，向外（背离关闭方向）拖拽越过行程阈值，抽屉就地吸附为占满视口的形态（减去四周留边，默认 8px；把 `--wui-drawer-inset` 设为 0 即铺满视口），不要求松手；快速向外甩动后松手同样触发。从 full 形态朝关闭方向回拉越过恢复阈值后，本次手势锁定为“取消全屏”：抽屉恢复原尺寸，继续内拉只按阻尼跟手，不会关闭，也不会在同一段手势里重新吸附全屏；松手停在原尺寸。要关闭或再次全屏，请松开后重新起手。full 形态下关闭按钮、Escape、点遮罩仍直接关闭；上层新开一层嵌套抽屉时，下层保持 full 形态并随层级深度向后退缩缩放，关闭上层后恢复完整 full 形态。示例中的第三个抽屉开启了 `fullable`。
 
 ```tsx
 import { useState } from 'react'
@@ -990,7 +990,7 @@ const fullOpen = ref(false)
 
 ### 嵌套叠放
 
-声明式嵌套的抽屉会自动堆叠：后打开的位于顶层并保持全尺寸，下层缩小并向内偏移，每层左侧露出可见的边缘。层宽不同或打开顺序变化时也会自动调整。Escape 和遮罩点击只作用于最顶层。
+声明式嵌套的抽屉会自动堆叠：后打开的位于顶层并保持全尺寸，下层缩小并向内偏移，每层左侧露出可见的边缘。层宽不同或打开顺序变化时也会自动调整。Escape 和遮罩点击只作用于最顶层。本例四层同时开启 `draggable` 与 `fullable`，可测试全屏态下打开下一层时的退缩层叠，以及关闭上层后恢复完整全屏。
 
 ```tsx
 import type { CSSProperties } from 'react'
@@ -1018,12 +1018,14 @@ export default function Demo() {
         open={levels[0]}
         heading={`${titles[0]} (300px)`}
         closable
+        draggable
+        fullable
         style={{ '--wui-drawer-width': widths[0] } as CSSProperties}
         onopen-change={event => {
           if (event.target === event.currentTarget && !event.detail.open) closeLevel(0)
         }}
       >
-        <p>第 1 层。打开下一层后，这一层会缩放并向左让出边缘。</p>
+        <p>第 1 层（可拖拽 / 可全屏）。打开下一层后，这一层会缩放并向左让出边缘。</p>
         <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(1)}>
           打开第 2 层
         </web-ui-button>
@@ -1032,12 +1034,14 @@ export default function Demo() {
           open={levels[1]}
           heading={`${titles[1]} (280px)`}
           closable
+          draggable
+          fullable
           style={{ '--wui-drawer-width': widths[1] } as CSSProperties}
           onopen-change={event => {
             if (event.target === event.currentTarget && !event.detail.open) closeLevel(1)
           }}
         >
-          <p>第 2 层。层宽与上层不同，堆叠位置会自动补偿。</p>
+          <p>第 2 层（可拖拽 / 可全屏）。层宽与上层不同，堆叠位置会自动补偿。</p>
           <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(2)}>
             打开第 3 层
           </web-ui-button>
@@ -1046,12 +1050,14 @@ export default function Demo() {
             open={levels[2]}
             heading={`${titles[2]} (240px)`}
             closable
+            draggable
+            fullable
             style={{ '--wui-drawer-width': widths[2] } as CSSProperties}
             onopen-change={event => {
               if (event.target === event.currentTarget && !event.detail.open) closeLevel(2)
             }}
           >
-            <p>第 3 层。窄层上面再叠宽层时，左缘仍保持可见。</p>
+            <p>第 3 层（可拖拽 / 可全屏）。窄层上面再叠宽层时，左缘仍保持可见。</p>
             <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(3)}>
               打开第 4 层
             </web-ui-button>
@@ -1060,12 +1066,14 @@ export default function Demo() {
               open={levels[3]}
               heading={`${titles[3]} (320px, 顶层)`}
               closable
+              draggable
+              fullable
               style={{ '--wui-drawer-width': widths[3] } as CSSProperties}
               onopen-change={event => {
                 if (event.target === event.currentTarget && !event.detail.open) closeLevel(3)
               }}
             >
-              <p>第 4 层，顶层。关闭后逐层恢复原尺寸。</p>
+              <p>第 4 层，顶层（可拖拽 / 可全屏）。关闭后逐层恢复原尺寸。</p>
             </web-ui-drawer>
           </web-ui-drawer>
         </web-ui-drawer>
@@ -1083,40 +1091,48 @@ export default function Demo() {
     :open="levels[0]"
     :heading="`${titles[0]} (300px)`"
     closable
+    draggable
+    fullable
     :style="{ '--wui-drawer-width': widths[0] }"
     @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(0)"
   >
-    <p>第 1 层。打开下一层后，这一层会缩放并向左让出边缘。</p>
+    <p>第 1 层（可拖拽 / 可全屏）。打开下一层后，这一层会缩放并向左让出边缘。</p>
     <web-ui-button slot="footer" variant="secondary" full @click="openLevel(1)">打开第 2 层</web-ui-button>
 
     <web-ui-drawer
       :open="levels[1]"
       :heading="`${titles[1]} (280px)`"
       closable
+      draggable
+      fullable
       :style="{ '--wui-drawer-width': widths[1] }"
       @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(1)"
     >
-      <p>第 2 层。层宽与上层不同，堆叠位置会自动补偿。</p>
+      <p>第 2 层（可拖拽 / 可全屏）。层宽与上层不同，堆叠位置会自动补偿。</p>
       <web-ui-button slot="footer" variant="secondary" full @click="openLevel(2)">打开第 3 层</web-ui-button>
 
       <web-ui-drawer
         :open="levels[2]"
         :heading="`${titles[2]} (240px)`"
         closable
+        draggable
+        fullable
         :style="{ '--wui-drawer-width': widths[2] }"
         @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(2)"
       >
-        <p>第 3 层。窄层上面再叠宽层时，左缘仍保持可见。</p>
+        <p>第 3 层（可拖拽 / 可全屏）。窄层上面再叠宽层时，左缘仍保持可见。</p>
         <web-ui-button slot="footer" variant="secondary" full @click="openLevel(3)">打开第 4 层</web-ui-button>
 
         <web-ui-drawer
           :open="levels[3]"
           :heading="`${titles[3]} (320px, 顶层)`"
           closable
+          draggable
+          fullable
           :style="{ '--wui-drawer-width': widths[3] }"
           @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(3)"
         >
-          <p>第 4 层，顶层。关闭后逐层恢复原尺寸。</p>
+          <p>第 4 层，顶层（可拖拽 / 可全屏）。关闭后逐层恢复原尺寸。</p>
         </web-ui-drawer>
       </web-ui-drawer>
     </web-ui-drawer>

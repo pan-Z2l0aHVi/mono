@@ -256,13 +256,10 @@ export class WebUiDrawer extends LitElement {
     isConnected: () => this.isConnected,
     isOpen: () => this.open
   })
-  // nested 层序：打开后纳入全局栈，上层打开/关闭时本层缩放平移。
-  // depth 变化回调先于 applyLayers 的 size 收集执行（见 nested-drawer-layers.ts），
-  // full 态在此同步瞬时收起，露边数学不被 full 宽度污染。
+  // nested 层序：打开后纳入全局栈，上层打开/关闭时本层缩放平移（full 态保持 full 并随深度退缩）。
   private readonly _nestedLayers = defineNestedDrawerLayers().make({
     getDialog: () => this.dialog,
-    getPlacement: () => this._placement,
-    onDepthChange: depth => this._drag.collapseForNested(depth)
+    getPlacement: () => this._placement
   })
   /*
    * 整页让开（page-shift）。轴向与符号都取自拖拽那套：页面朝 drawer 的**进场方向**移动，

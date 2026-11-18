@@ -117,7 +117,6 @@ export interface DrawerDragController {
   handleTransitionEnd: (e: TransitionEvent) => void
   syncControlledOpen: (open: boolean) => void
   handleNativeCloseWhileOpen: () => boolean
-  collapseForNested: (depth: number) => void
   reset: (options?: { keepFullClass?: boolean }) => void
   destroy: () => void
 }
@@ -361,20 +360,8 @@ export const defineDrawerDragController = () =>
       dialog.classList.remove('is-full', 'is-drag-close')
     }
 
-    const collapseForNested = (depth: number) => {
-      if (depth <= 0 || stage !== 'full' || isDragging()) return
-      const dialog = adapter.getDialog()
-      if (!dialog) return
-      dialog.classList.add('is-size-instant')
-      dialog.classList.remove('is-full')
-      void dialog.offsetWidth
-      dialog.classList.remove('is-size-instant')
-      reset()
-    }
-
     const settleNestedFullAfterDrag = (dialog: HTMLDialogElement) => {
       if (!dialog.classList.contains('is-nested-lower')) return
-      if (stage === 'full') collapseForNested(1)
       adapter.onNestedRecalculate()
     }
 
@@ -624,7 +611,6 @@ export const defineDrawerDragController = () =>
       handleTransitionEnd,
       syncControlledOpen,
       handleNativeCloseWhileOpen,
-      collapseForNested,
       reset,
       destroy
     }

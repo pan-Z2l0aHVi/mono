@@ -544,7 +544,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await waitForBaseSize(el, 'right')
   })
 
-  it('拖拽进行中上层新开：守卫跳过收起，松手兜底恢复原尺寸并重算层叠', async () => {
+  it('拖拽进行中上层新开：松手保持 full 态并按 full 尺寸重算层叠，关闭上层后恢复完整 full', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     document.body.append(theme)
@@ -557,8 +557,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await parent.updateComplete
     await waitForOpenTransition(parent)
 
-    // 按住外拉吸附（手势进行中），此时上层新开一层：depth 回调被拖拽守卫跳过，
-    // parent 保持 full——这条缺口由松手兜底（评审 Should-fix）收敛。
+    // 按住外拉吸附 full（手势进行中），此时上层新开一层。
     await holdAndMove(parent, [
       { x: 500, y: 300, at: 0 },
       { x: 470, y: 300, at: STEP_MS },
@@ -575,24 +574,28 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await waitForOpenTransition(child)
     expect(currentAxisSize(parent, 'right')).toBeGreaterThanOrEqual(fullAxisSize('right') - 1)
 
-    // 松手：拖拽终结 → 同步收起 + 层叠重算 → 恢复原尺寸、保持 open。
+    // 松手：拖拽终结 → 保持 full 态与 is-nested-lower，并按 full 尺寸重算层叠退缩。
     await releaseAt(parent, 350, 300, 5 * STEP_MS)
-    await waitFor(() => getDialog(parent).offsetWidth < 340)
+    await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
     expect(parent.open).toBe(true)
     expect(child.open).toBe(true)
+    expect(currentAxisSize(parent, 'right')).toBeGreaterThanOrEqual(fullAxisSize('right') - 1)
 
-    // 重算必须真的发生：露边数学按 base 宽度重写。期望的嵌套偏移 =
-    // shrink(320×0.025 = 8) + sizeDiff(子层同宽，0) + peek(公开 token × ln2)，
-    // scale 0.95 居中收缩的 (320×0.05)/2 = 8 与 shrink 恰好抵消，motion 层
-    // left = dialogLeft − peek·ln2。若仍是被 full 宽度污染的旧值，shrink 按
-    // 1264 算会大 23.6px，这条 toBeCloseTo(±0.5) 断言会红——删掉 recalculate()
-    // 即可验证它承重。
-    await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
     const parentDialog = getDialog(parent)
+    expect(parentDialog.classList.contains('is-full')).toBe(true)
+    expect(parentDialog.classList.contains('is-nested-lower')).toBe(true)
     const peekBase = Number.parseFloat(getComputedStyle(parentDialog).getPropertyValue('--wui-drawer-nested-peek-base'))
     const motionRect = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect()
     const expectedLeft = parentDialog.getBoundingClientRect().left - peekBase * Math.log(2)
     expect(motionRect.left).toBeCloseTo(expectedLeft, 0)
+
+    // 关闭上层后，下层撤掉 nested-lower 退缩并恢复完整 full。
+    child.open = false
+    await child.updateComplete
+    await waitFor(() => !getDialog(parent).classList.contains('is-nested-lower'))
+    await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
+    expect(parentDialog.classList.contains('is-full')).toBe(true)
+    expect(currentAxisSize(parent, 'right')).toBeGreaterThanOrEqual(fullAxisSize('right') - 1)
   })
 
   it('拖拽中上层新开（尚未吸附）：行程触发与外甩展开都被嵌套排除拦下', async () => {
@@ -633,7 +636,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     expect(child.open).toBe(true)
   })
 
-  it('嵌套：full 态的 drawer 上层新开一层 → 同步瞬时恢复原尺寸', async () => {
+  it('嵌套：full 态的 drawer 上层新开一层 → 保持 full 态并按深度退缩，关闭上层后恢复完整 full', async () => {
     const theme = document.createElement('web-ui-theme')
     theme.setAttribute('appearance', 'light')
     document.body.append(theme)
@@ -653,11 +656,21 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await child.updateComplete
     await waitForOpenTransition(child)
 
-    // 上层注册触发 depth 0→1 回调：父层同步收起（无 280ms 过渡），保持 open。
-    await waitFor(() => getDialog(parent).offsetWidth < 340)
+    // 上层注册后父层保持 full 态并作为下层退缩。
+    const parentDialog = getDialog(parent)
     expect(parent.open).toBe(true)
     expect(child.open).toBe(true)
-    expect(getDialog(parent).open).toBe(true)
+    expect(parentDialog.open).toBe(true)
+    expect(parentDialog.classList.contains('is-full')).toBe(true)
+    expect(parentDialog.classList.contains('is-nested-lower')).toBe(true)
+    expect(currentAxisSize(parent, 'right')).toBeGreaterThanOrEqual(fullAxisSize('right') - 1)
+
+    // 关闭上层后，父层平滑恢复完整 full。
+    child.open = false
+    await child.updateComplete
+    await waitFor(() => !parentDialog.classList.contains('is-nested-lower'))
+    expect(parentDialog.classList.contains('is-full')).toBe(true)
+    expect(currentAxisSize(parent, 'right')).toBeGreaterThanOrEqual(fullAxisSize('right') - 1)
   })
 
   it('快甩外拉松手：短行程也吸附 full（armed 正例）', async () => {

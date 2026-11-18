@@ -21,7 +21,7 @@
  * CSS 变量组合），顶层才有拖拽，故无冲突。
  *
  * depth 变化经 `options.onDepthChange` 先于 size 收集回调（applyLayers 四步的
- * 硬约束，见函数内注释）：消费方借此在读取几何之前同步收起 full 态。
+ * 顺序保证消费方若需在读取几何前同步调整自身状态，可以在该回调中完成）。
  */
 
 import { definePlugin } from '@greypan/js-kit'
@@ -161,10 +161,7 @@ export interface NestedDrawerLayerOptions {
   getDialog(): HTMLDialogElement | null
   getPlacement(): 'right' | 'left' | 'top' | 'bottom'
   /**
-   * 本层 depth 变化回调。applyLayers 的执行顺序保证它在 size 收集**之前**触发：
-   * depth 0→>0（上层新开）时消费方应同步瞬时收起 full 态（不能走过渡——
-   * 同一轮的 offsetWidth/Height 读取要拿到归位后的几何）；depth 回 0 时
-   * 消费方自行决定是否动作（drawer 收起不恢复）。
+   * 本层 depth 变化回调。applyLayers 的执行顺序保证它在 size 收集**之前**触发。
    */
   onDepthChange?(depth: number): void
 }
