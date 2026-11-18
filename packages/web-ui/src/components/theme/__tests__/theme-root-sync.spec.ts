@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, describe, expect, it } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import type { ThemeAppearance } from '..'
 import { WebUiTheme } from '..'
@@ -278,8 +278,14 @@ describe('WebUiTheme 根节点 page 色同步', () => {
     const before = readRootPage()
     expect(before).toBe(LIGHT_PAGE)
 
-    theme.motion = 'reduced'
-    await theme.updateComplete
-    expect(readRootPage()).toBe(before)
+    const setter = vi.spyOn(document.documentElement.style, 'setProperty')
+    try {
+      theme.motion = 'reduced'
+      await theme.updateComplete
+      expect(readRootPage()).toBe(before)
+      expect(setter).not.toHaveBeenCalledWith('--wui-color-page', expect.anything())
+    } finally {
+      setter.mockRestore()
+    }
   })
 })

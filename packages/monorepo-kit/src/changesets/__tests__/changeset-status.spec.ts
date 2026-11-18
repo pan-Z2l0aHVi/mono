@@ -41,7 +41,8 @@ const gitEnv = {
   GIT_AUTHOR_NAME: 'Codex',
   GIT_AUTHOR_EMAIL: 'noreply@openai.com',
   GIT_COMMITTER_NAME: 'Codex',
-  GIT_COMMITTER_EMAIL: 'noreply@openai.com'
+  GIT_COMMITTER_EMAIL: 'noreply@openai.com',
+  PNPM_CONFIG_VERIFY_DEPS_BEFORE_RUN: 'false'
 }
 
 const fixtureRoots: string[] = []
@@ -61,6 +62,10 @@ function makeRepo(withChangeset: boolean): { root: string; base: string; argsFil
   fs.mkdirSync(path.join(root, '.changeset'), { recursive: true })
   fs.writeFileSync(path.join(root, '.changeset', 'config.json'), JSON.stringify({ ignore: [] }, null, 2) + '\n')
   fs.writeFileSync(path.join(root, 'README.md'), '# fixture\n')
+  fs.writeFileSync(
+    path.join(root, 'package.json'),
+    JSON.stringify({ name: 'changeset-status-fixture', private: true }, null, 2) + '\n'
+  )
   git(root, 'add', '-A')
   git(root, 'commit', '-m', 'base')
   const base = git(root, 'rev-parse', 'HEAD')
@@ -83,12 +88,18 @@ function run(root: string, base: string) {
   return defineChangesetStatus({ base }).make({ root, env: gitEnv }).run()
 }
 
+function expectNoInstallArtifacts(root: string): void {
+  expect(fs.existsSync(path.join(root, 'pnpm-lock.yaml'))).toBe(false)
+  expect(fs.existsSync(path.join(root, 'node_modules/.modules.yaml'))).toBe(false)
+}
+
 describe('defineChangesetStatus（真实子进程）', () => {
   it('区间内有 changeset：status 退出 0，链返回 ok', async () => {
     const { root, base, argsFile } = makeRepo(true)
 
     const result = await run(root, base)
 
+    expectNoInstallArtifacts(root)
     expect(result).toEqual({ ok: true, value: undefined })
     const stubArgs = JSON.parse(fs.readFileSync(argsFile, 'utf8')) as string[]
     // pnpm exec 以 changeset 二进制身份调起 stub：argv 里只剩 status 与 --since。
@@ -100,6 +111,7 @@ describe('defineChangesetStatus（真实子进程）', () => {
 
     const result = await run(root, base)
 
+    expectNoInstallArtifacts(root)
     expect(result.ok).toBe(false)
     assert.match(!result.ok ? result.error : '', /^changeset: status --since=/)
     assert.match(!result.ok ? result.error : '', /No changesets found/)
