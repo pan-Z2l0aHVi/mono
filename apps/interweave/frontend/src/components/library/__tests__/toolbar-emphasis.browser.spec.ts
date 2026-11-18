@@ -8,7 +8,7 @@ import '@greypan/web-ui'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { createApp, h, nextTick } from 'vue'
 
-import type { AvailabilityFilter, ResourceKind, SortOption } from '../../../stores/library'
+import type { AvailabilityFilter, ResourceKind, SortOption, SourceType } from '../../../stores/library'
 import Toolbar from '../Toolbar.vue'
 
 const hosts: HTMLElement[] = []
@@ -20,7 +20,7 @@ afterEach(() => {
 })
 
 interface ToolbarProps {
-  filterSource: string
+  filterSource: SourceType | 'all'
   filterKind: ResourceKind | 'all'
   filterAvailability: AvailabilityFilter
   filterTag: string
