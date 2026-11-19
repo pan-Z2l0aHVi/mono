@@ -10,7 +10,7 @@
 
 review 结论以 PR 上 CI 产出的自动审查为准，它绑定 head；发现按三档处置，修完后在新 head 上重取结论。要不要另起一次本地 agent 或人工审查由 agent 自己判断，仓库流程不规定。
 
-合并前的 review、测试与 CI 证据必须对应当前 PR base/head；PR CI 复检不替代实施阶段的验证证据。这里的顺序不对应 task CLI 相位，也不把结论写回本地台账。
+合并前的 review、测试与 CI 证据必须对应当前 PR base/head；PR CI 与本地证据的关系见 [`verification.md`](./verification.md#从变更路径到验证计划)。这里的顺序不对应 task CLI 相位，也不把结论写回本地台账。
 
 ## 预授权操作
 

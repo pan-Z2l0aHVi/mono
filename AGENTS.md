@@ -6,7 +6,7 @@
 
 修改仓库前，按 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md) 定级并建账，分级、准入与恢复见该 skill；只读调查不建账。PR review 纪律见 [`docs/agents/review.md`](docs/agents/review.md)，方案到合并的总流程与授权见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
 
-可变任务建账并按 [worktree](docs/agents/worktree.md#新-worktree-的准备) 完成准备后，按台账 `scope` 与实现/验证必需的包外读取路径，用 [turbo-sparse-scope](.agents/skills/turbo-sparse-scope/SKILL.md) 判断并处理稀疏范围；`scope` 为空且没有包外读取时跳过。稀疏树上的读取、降级与「不得把缺失当不存在」判据见 [按任务收缩视野](docs/agents/worktree.md#按任务收缩视野)。
+可变任务建账并按 [worktree](docs/agents/worktree.md#新-worktree-的准备) 完成准备后，按台账 `scope` 与实现/验证必需的包外读取路径，用 [turbo-sparse-scope](.agents/skills/turbo-sparse-scope/SKILL.md) 判断并处理稀疏范围；触发、跳过与稀疏树读取规则见该 skill。
 
 ## 项目身份
 

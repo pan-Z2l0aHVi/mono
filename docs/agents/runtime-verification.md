@@ -40,8 +40,8 @@ Web 表面的真实浏览器交互默认使用 `agent-browser`：导航、快照
 
 - 优先复用目标端口上合适的现有 dev server；只有无可用实例、现有实例无法提供所需状态或需要隔离时才新建，使用未占用端口并记录 PID。
 - 只停止当前任务启动的服务器。不得终止用户或其他任务的服务器；目标端口上的服务器无响应时先取得用户授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。
-- 不得附加或控制用户的日常浏览器会话。隔离的判据是本任务独占的专用 profile，不是用了哪个工具；接管既有会话的方式一律不满足要求。需要登录态时在专用 profile 内自行登录。
-- 同一任务内的多次真实运行时验证应尽可能复用同一个浏览器实例和同一个专用 profile。通常同一时刻只保留 1 个本任务启动且仍在运行的浏览器实例。复用已有 page 或在同一实例内新开 tab 不会增加实例数；`agent-browser` 的 `tab new` 就在同一 session 内新开 tab。以 Chromium 系工具直接指定 profile 时用本任务专用目录（`--user-data-dir`，或 `agent-browser --profile <path>`）；`agent-browser` 的每个 session 是独立浏览器实例，另起 session 按额外实例计数。
+- 浏览器归属、单实例与复用判据见 [`browser-resources.md`](./browser-resources.md#默认与例外)；需要登录态时在专用 profile 内自行登录。
+- 复用已有 page 或在同一实例内新开 tab 不会增加实例数；`agent-browser` 的 `tab new` 就在同一 session 内新开 tab。以 Chromium 系工具直接指定 profile 时用本任务专用目录（`--user-data-dir`，或 `agent-browser --profile <path>`）；`agent-browser` 的每个 session 是独立浏览器实例，另起 session 按额外实例计数。
 - 只有验证需要独立的浏览器进程或 profile，或工具无法在同一实例中提供所需状态时，才另启浏览器实例。启动额外实例时记录它与验证步骤的对应关系；该步骤完成、后续验证不再依赖它时立即回收，不要等到任务收尾。若因独立会话需要让多个实例同时运行，记录原因和峰值并发数。工具若不能跨多次调用复用同一实例或 profile，按实际启动的实例逐个记录并在该次验证结束后回收；不要只凭 session 名称或工具自报的隔离标记推断 profile 相同或实例可复用。
 - 启动、关闭与归属记录按 [`browser-resources.md`](./browser-resources.md) 执行：记录本任务专用 profile、启动器 PID / CWD、浏览器 PID / PPID，并按该文档的关闭顺序回收。关闭页面不等于关闭浏览器；启动器可能先于或晚于浏览器退出，必须在启动时记下完整链条。每个并行任务使用不同的 profile。
 - 回收属于预授权操作的条件见 [`workflow.md`](./workflow.md#预授权操作)。链条未记录、候选不唯一或任一环节无法确认时，不要猜测回收：按 [`workflow.md`](./workflow.md#怎么取得这个授权) 取得授权并确认目标，或把清理列为未完成。仓库测试运行器管理的浏览器由测试命令管理，不按本条单独查杀。

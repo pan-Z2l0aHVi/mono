@@ -14,11 +14,11 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 编排层交付一个新 worktree 后，执行者在实施前按任务需要准备：首次或工具链变化时跑 `mise install`，因为版本由 [`.mise.toml`](../../.mise.toml) 钉住、不同分支可能不同，它幂等；要跑 pnpm、turbo、类型检查、构建或仓库检查时跑 `mise exec -- pnpm install --frozen-lockfile`，显式运行根 `fix-code` / `check-code` 需要 `node_modules`，稀疏收缩前也必须执行；需要跨包类型检查或消费 `dist` 时跑 `mise exec -- pnpm run build`，缺产物时 `vp check` 会把跨包 import 报成假 `TS2307`。只改文档且不跑这些检查时后两步可省，跳过什么、为什么写进交付说明。
 
-`fix-code` 会修改工作树内容，但不会自动暂存；整理后先检查 diff，再选择要暂存的文件。
+`fix-code` 的改写与暂存边界见 [`commit.md`](./commit.md#pre-commit-与本地-checks)。
 
 ## 按任务收缩视野
 
-实施 owner 在任务建账与 worktree 准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`）完成后、读取实施范围的代码、派发实施子任务或修改文件前，按台账 `scope` 与实现/验证必需的包外读取路径调用 sparse skill。`scope` 为空且没有包外读取时跳过；否则必须判断并处理范围，不能把「加载无关包」留到实施过程中再说。同一 worktree 的后续任务沿用已覆盖的 cone，只有读取面扩展出 cone 时才 `--add`。权限或仓库规则禁止更改 Git 配置或 worktree 时，按 skill 的只读降级记录原因，不执行会改动 checkout 的命令。被隐藏的文件不是不存在：读取用 `git show HEAD:<path>`，要执行先 `--add` 或 `--restore`。顺序不能颠倒：闭包来自 turbo 图，`turbo ls` 在未安装依赖的 worktree 里跑不起来。
+实施 owner 在任务建账与 worktree 准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`）完成后、读取实施范围的代码、派发实施子任务或修改文件前，按台账 `scope` 与实现/验证必需的包外读取路径调用 sparse skill。触发、跳过、降级与稀疏树读取规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。
 
 `scope` 是仓库相对路径数组。两个 skill 不互相调用，组合方式只有一种：从台账读出路径，再作为 turbo-sparse-scope 的目标参数。从全树开始时先加 `--dry-run` 看会隐藏哪些包，再实际收缩：
 
