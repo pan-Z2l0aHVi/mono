@@ -1,5 +1,11 @@
 # @greypan/monorepo-kit
 
+## 0.1.1
+
+### Patch Changes
+
+- ffe3e49: Remove the blanket mutual-link prohibition from `defineNoMutualLinks`. Reciprocal links are now allowed; the check reports only links that cross a configured forbidden direction.
+
 ## 0.1.0
 
 ### Minor Changes
