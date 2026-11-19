@@ -24,3 +24,17 @@ func TestWebviewUserDataDirUsesDataSubdirectory(t *testing.T) {
 		t.Fatalf("expected WebView2 data path %q, got %q", want, got)
 	}
 }
+
+func TestWindowsOptionsAnchorWebView2ToTaggedDataDir(t *testing.T) {
+	dir, err := dataDirAt(t.TempDir())
+	if err != nil {
+		t.Fatalf("dataDirAt: %v", err)
+	}
+	if filepath.Base(dir) != appDataDirName {
+		t.Fatalf("expected data dir to carry the build-tag name %q, got %q", appDataDirName, dir)
+	}
+	opts := windowsOptions(dir)
+	if got, want := opts.WebviewUserDataPath, filepath.Join(dir, "webview"); got != want {
+		t.Fatalf("expected WebView2 user data at %q, got %q", want, got)
+	}
+}
