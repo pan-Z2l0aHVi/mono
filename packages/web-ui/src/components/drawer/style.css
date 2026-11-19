@@ -657,8 +657,9 @@ dialog.is-dragging .wui-drawer-drag-zone {
  *
  * 刻意直接过渡 width/height 而非 transform: scale() 或外层 clip-path：
  * full 态需要抽屉内部正文、表单与滚动区按新尺寸真实重排，用 scale 会导致内容与圆角变形，
- * 而即时设宽 + clip-path 会在第 0 帧瞬间跳排并硬切毛玻璃圆角与活动边缘。该过渡仅在低频
- * 全屏切换时触发，且已挂 --wui-duration-drawer-enter 支持 reduced-motion 归零。
+ * 而即时设宽 + clip-path 会在第 0 帧瞬间跳排并硬切毛玻璃圆角与活动边缘。该过渡主要在低频
+ * 全屏切换时触发（opt-in 抽屉上的 resize / token 尺寸变化取舍同上），且已挂
+ * --wui-duration-drawer-enter 支持 reduced-motion 归零。
  */
 :host([fullable][draggable]) dialog {
   transition:
