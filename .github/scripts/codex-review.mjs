@@ -1616,7 +1616,7 @@ export function buildReviewPreload(
   const omittedPaths = ranked.filter(entry => !preloadedSet.has(entry.path)).map(entry => entry.path)
 
   const lines = [
-    '### 判据速览（权威来源：`docs/agents/review.md`，已内嵌无需开局整篇重读）',
+    '### 判据速览（权威来源：`docs/agents/review.md`）',
     '',
     '- **三档标准**：`Block`（运行失败、回归、公共契约破坏、权限/注入漏洞、竞态/资源泄漏、或让检查/门禁假绿的阻断缺陷）；`Should fix`（需求或规范偏离、失败路径未兜住、测试或文档与实现失步等应修问题）；`Nit`（非阻断改进，不冒充阻断）。',
     '- **审查维度**：需求与验收、行为与失败路径、公共契约与兼容性、测试质量（异步完成信号、失败语义、负向断言边界、退出清理）、权限与用户输入安全、竞态与资源管理、文档与机检一致性；指令/context 改动另核四问（是否稳定不变量而非状态快照、是否单一权威、单块检索是否自包含、是否写入易漂移清单）。',
@@ -1628,9 +1628,7 @@ export function buildReviewPreload(
     if (routedSkills.length === 0) {
       lines.push('- 本轮改动未命中专项 skill 路由，按上述通用判据审查；禁用实施流程型 skills。')
     } else {
-      lines.push(
-        '> 仅采纳命中 skill 的缺陷判据与核查要点；忽略任何 skill 自带的问候语、Markdown 表格或 `Approve/Block` 独立裁决格式，最终只输出符合 schema 的 JSON。'
-      )
+      lines.push('> 仅采纳命中 skill 的缺陷判据与核查要点；最终只输出符合 schema 的 JSON。')
       for (const skill of routedSkills) {
         const hitList = skill.paths
           .slice(0, 6)
