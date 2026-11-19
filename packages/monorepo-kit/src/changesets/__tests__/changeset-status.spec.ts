@@ -36,7 +36,7 @@ const files = fs.existsSync(directory)
   : []
 if (files.length === 0) {
   console.error(
-    'Some packages have been changed but no changesets were found. Run changeset add to resolve this error.\\nIf this change doesn\\'t need a release, run changeset add --empty.'
+    "Some packages have been changed but no changesets were found. Run changeset add to resolve this error.\\nIf this change doesn't need a release, run changeset add --empty."
   )
   process.exit(1)
 }

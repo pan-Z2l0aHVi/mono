@@ -9,8 +9,7 @@ vi.mock('../../services/library', () => ({
 
 import type {
   ResourceDTO,
-  SourceDTO,
-  TagDTO
+  SourceDTO
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import { SourceProbeOutcome } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import {
@@ -18,7 +17,7 @@ import {
   SourceType,
   TagColor
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
-import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../../services/library'
+import type { LibraryRuntime } from '../../services/library'
 import { useLibraryStore, type ResourceSourceView } from '../../stores/library'
 import { useLibraryRuntime } from '../useLibraryRuntime'
 

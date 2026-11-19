@@ -12,8 +12,7 @@ import type {
 import { SourceProbeOutcome } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import {
   ResourceKind,
-  SourceType,
-  TagColor
+  SourceType
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import { stubLayout } from '../../components/library/__tests__/virtualLayout'
 import {

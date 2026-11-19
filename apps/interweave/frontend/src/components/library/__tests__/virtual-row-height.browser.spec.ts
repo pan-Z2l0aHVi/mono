@@ -68,15 +68,6 @@ const WRAPPED_TAGS = Array.from({ length: 8 }, (_, index) => ({
   color: TagColor.TagColorBlue
 }))
 
-/** 有界轮询：条件成立即刻通过，帧预算耗尽才失败（对齐 rename-focus.browser.spec.ts）。 */
-async function waitFor(condition: () => boolean, label: string, maxFrames = 180): Promise<void> {
-  for (let i = 0; i < maxFrames; i++) {
-    if (condition()) return
-    await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
-  }
-  throw new Error(`条件在 ${maxFrames} 帧内未成立：${label}`)
-}
-
 const hosts: HTMLElement[] = []
 const apps: { unmount: () => void }[] = []
 

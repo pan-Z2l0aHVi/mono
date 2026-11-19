@@ -1,18 +1,3 @@
-const FOCUSABLE_SELECTOR = [
-  'a[href]',
-  'area[href]',
-  'button',
-  'input:not([type="hidden"])',
-  'select',
-  'textarea',
-  'iframe',
-  'summary',
-  'audio[controls]',
-  'video[controls]',
-  '[contenteditable]:not([contenteditable="false"])',
-  '[tabindex]'
-].join(',')
-
 function isInert(element: Element): boolean {
   let current: Element | null = element
   while (current) {

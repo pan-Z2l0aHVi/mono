@@ -1,3 +1,5 @@
+// 副作用导入完成 <web-ui-theme> 注册，createTheme 的 createElement 依赖它。
+import '..'
 import '@/components/context-menu'
 import '@/components/dropdown-item'
 
@@ -6,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/components/toast'
 import { flush } from '@/shared/test-utils'
 
-import { WebUiTheme } from '..'
+import type { WebUiTheme } from '..'
 
 function createTheme(appearance?: 'light' | 'dark' | 'system'): WebUiTheme {
   const theme = document.createElement('web-ui-theme')

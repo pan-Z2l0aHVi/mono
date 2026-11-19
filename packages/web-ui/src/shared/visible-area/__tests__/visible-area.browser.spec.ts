@@ -32,12 +32,6 @@ function createFixedTarget(style: string): HTMLElement {
   return target
 }
 
-async function nextFrame(count = 1) {
-  for (let index = 0; index < count; index++) {
-    await new Promise(resolve => requestAnimationFrame(resolve))
-  }
-}
-
 function lastArea(areas: readonly VisibleArea[]): VisibleArea {
   const area = areas[areas.length - 1]
   if (!area) throw new Error('Expected visible-area tracker to report an area.')

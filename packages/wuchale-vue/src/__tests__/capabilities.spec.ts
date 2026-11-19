@@ -1,6 +1,6 @@
 // cspell:words puis
 import { describe, expect, it, vi } from 'vite-plus/test'
-import * as Vue from 'vue'
+import type * as Vue from 'vue'
 
 import { component, transform } from './helpers'
 

@@ -65,6 +65,9 @@ import {
 import { SPAWN_MAX_BUFFER, run } from './lib/github.mjs'
 import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
+// 显式码元比较，既满足 require-array-sort-compare，也保持 `.sort()` 默认的排序结果。
+const compareStrings = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
+
 const headSha = 'a'.repeat(40)
 const otherSha = 'b'.repeat(40)
 const scriptPath = path.join(import.meta.dirname, 'codex-review.mjs')
@@ -424,13 +427,11 @@ function prependPath(bin) {
   )
   assert.equal(
     findPriorReviewRun({
-      ...{
-        adapter: {
-          ...adapter,
-          listComments: () => [
-            { user: { login: 'someone' }, body: `<!-- codex-review-conclusion sha=${otherSha} status=reviewed -->` }
-          ]
-        }
+      adapter: {
+        ...adapter,
+        listComments: () => [
+          { user: { login: 'someone' }, body: `<!-- codex-review-conclusion sha=${otherSha} status=reviewed -->` }
+        ]
       },
       pullNumber: 42,
       headSha,
@@ -2325,7 +2326,7 @@ exit 2
     }
   }
   assert.deepEqual(
-    [...deniedPaths].sort(),
+    [...deniedPaths].sort(compareStrings),
     Object.keys(coverage).sort(),
     'a new or renamed Edit(...) deny entry must be matched with review pathspecs in this table'
   )
@@ -2350,7 +2351,7 @@ exit 2
         .split('\0')
         .filter(Boolean)
     )
-  const matchedBy = globs => [...new Set(globs.flatMap(glob => [...trackedBy(glob)]))].sort()
+  const matchedBy = globs => [...new Set(globs.flatMap(glob => [...trackedBy(glob)]))].sort(compareStrings)
   const deniedFiles = matchedBy(deniedPaths)
   const excludedFiles = matchedBy(pathspecs)
   assert.ok(deniedFiles.length > 0, 'the deny list must match tracked generated files')
@@ -2612,7 +2613,8 @@ exit 2
   assert.equal(PRELOAD_PER_FILE_BYTES, 4096)
   assert.equal(PRELOAD_TOTAL_DIFF_BYTES, 24576)
 
-  for (const [filePath, expected] of [
+  /** @type {Array<[string, { rank: number, tier: string, category: string }]>} */
+  const riskCases = [
     ['.github/workflows/ci.yml', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
     ['.github/scripts/codex-review.mjs', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
     ['.agents/skills/task-ledger/ledger.mjs', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
@@ -2632,7 +2634,8 @@ exit 2
     ['.changeset/codex-review-preload-b1.md', { rank: 3, tier: 'low', category: 'other' }],
     ['packages/web-ui/src/button.css', { rank: 3, tier: 'low', category: 'other' }],
     ['README.md', { rank: 3, tier: 'low', category: 'other' }]
-  ]) {
+  ]
+  for (const [filePath, expected] of riskCases) {
     assert.deepEqual(classifyPathRisk(filePath), expected, `risk classification for ${filePath}`)
   }
 

@@ -1,3 +1,6 @@
+// 副作用导入完成 <web-ui-empty> 注册，mountElement 依赖它升级成自定义元素。
+import '..'
+
 import { describe, expect, it } from 'vite-plus/test'
 
 import {
@@ -9,7 +12,7 @@ import {
   waitForUpdate
 } from '@/shared/test-utils'
 
-import { WebUiEmpty } from '..'
+import type { WebUiEmpty } from '..'
 
 const createEmpty = (attrs?: Record<string, string>, content?: string): WebUiEmpty =>
   mountElement<WebUiEmpty>('web-ui-empty', { attrs, html: content })

@@ -764,7 +764,7 @@ describe('imagePreview 命令式 API（浏览器）', () => {
   })
 
   it('goTo(current) 取消带 pending commit 的收尾', async () => {
-    const { handle, host, track } = await startPendingSwipeSettle()
+    const { handle, host } = await startPendingSwipeSettle()
 
     handle.goTo(0)
     await host.updateComplete

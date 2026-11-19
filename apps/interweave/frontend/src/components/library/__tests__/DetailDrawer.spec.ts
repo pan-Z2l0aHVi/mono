@@ -1,7 +1,6 @@
 // @vitest-environment jsdom
 
-import type { WebUiButton } from '@greypan/web-ui'
-import type { WebUiTextarea } from '@greypan/web-ui'
+import type { WebUiButton, WebUiTextarea } from '@greypan/web-ui'
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, shallowRef } from 'vue'
 

@@ -118,7 +118,7 @@ async function mountDrawer(options: {
   })
   el.querySelector('#fAct')?.addEventListener('click', () => (log.act += 1))
   el.addEventListener('open-change', e => {
-    if ((e as CustomEvent<{ open: boolean }>).detail.open === false) log.closed += 1
+    if (!(e as CustomEvent<{ open: boolean }>).detail.open) log.closed += 1
   })
   return { el, log }
 }

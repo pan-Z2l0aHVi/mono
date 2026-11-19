@@ -3,7 +3,7 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { pollUntil, queryA11y, waitForFrame } from '@/shared/test-utils'
+import { pollUntil, waitForFrame } from '@/shared/test-utils'
 import { waitForOpenTransition } from '@/shared/test-utils/real-gesture'
 
 import type { WebUiDrawer } from '..'

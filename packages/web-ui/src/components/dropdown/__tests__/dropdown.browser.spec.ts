@@ -892,7 +892,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     dynamicItem.textContent = 'Dynamic'
     menu.append(dynamicItem)
     const dynamicControl = () => dynamicItem.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
-    await waitFor(() => panel!.textContent?.includes('Dynamic') === true, '动态 menu item 应迁入已打开的 panel')
+    await waitFor(() => panel!.textContent?.includes('Dynamic'), '动态 menu item 应迁入已打开的 panel')
 
     let dynamicTabIndexDuringTab: number | undefined
     const recordDynamicTabIndex = (event: KeyboardEvent) => {
@@ -1323,7 +1323,7 @@ describe('WebUiDropdown 组件（浏览器）', () => {
     // 退场中的 submenu panel 在整个退出过渡里**都在 DOM 上**，所以「数量变成 2」在 t0 就成立，
     // 等它是空转。真正要等的是下面那条断言的主角：panel 不再被 `hidden`。
     await waitFor(
-      () => getMenuPanels()[1]?.hasAttribute('hidden') === false,
+      () => !getMenuPanels()[1]?.hasAttribute('hidden'),
       () => `submenu panel 未就位（当前读到 ${getMenuPanels().length} 个 panel，仍 hidden 或已被移除）`
     )
     await waitForFrame()

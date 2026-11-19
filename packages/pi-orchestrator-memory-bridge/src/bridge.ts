@@ -27,7 +27,7 @@ import {
   type BoardAction
 } from './board/sync'
 import { readBoardSummary } from './board/task-board'
-import type { Activation, HerdrAgentEntry, MemoryBackend, OrchestrationFact, PendingAnchor } from './contracts'
+import type { Activation, HerdrAgentEntry, MemoryBackend, PendingAnchor } from './contracts'
 import { evaluateDispatchLimit } from './dispatch/concurrency'
 import { readControlConfig, type ControlConfig } from './dispatch/config'
 import { createInFlightRegistry, inFlightBoardAction, matchInFlight, type InFlightRegistry } from './dispatch/inflight'

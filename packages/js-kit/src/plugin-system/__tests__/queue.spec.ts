@@ -124,7 +124,7 @@ describe('defineQueue', () => {
   it('同步异常与异步 rejection 只通知错误观察器，不阻塞后续条目', async () => {
     const errors: Array<{ error: unknown; item: number }> = []
     const consumed: number[] = []
-    const queue = defineQueue({
+    defineQueue({
       initialItems: [1, 2, 3],
       onConsume: item => {
         if (item === 1) throw new Error('sync failure')
@@ -208,6 +208,8 @@ describe('defineQueue', () => {
 
   it('拒绝异步 onPersist，避免破坏 persist-before-commit', async () => {
     const queue = defineQueue({
+      // 故意传 async：这里验证的是运行时拒绝，类型层已由 defineQueue 的签名挡住。
+      // eslint-disable-next-line @typescript-eslint/no-misused-promises
       onPersist: async () => {},
       onConsume: vi.fn<() => void>()
     }).make()

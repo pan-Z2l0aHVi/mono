@@ -195,7 +195,6 @@ let sequence = 0
  * 是一个可直接断言的数字。`import.meta.env.DEV` 是编译期常量，生产构建里整段消失。
  */
 declare global {
-  // eslint-disable-next-line no-var
   var __openOverlayLayerCount: () => number
 }
 

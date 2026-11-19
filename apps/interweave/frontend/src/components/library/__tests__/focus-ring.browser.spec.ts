@@ -1,17 +1,16 @@
 import '@/assets/global.css'
 import '@greypan/web-ui'
 
-import type { WebUiContextMenu } from '@greypan/web-ui'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 import { createApp, h, nextTick, ref } from 'vue'
 
-import type { ResourceSourceView, ResourceView } from '@/stores/library'
+import type { ResourceView } from '@/stores/library'
 
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import ResourceList from '../ResourceList.vue'
 
-import { currentScrollY, stubLayout, ROW_ESTIMATE, ROW_HEIGHT, VIEWPORT_HEIGHT } from './virtualLayout'
+import { stubLayout } from './virtualLayout'
 
 if (!customElements.get('web-ui-context-menu')) {
   customElements.define(

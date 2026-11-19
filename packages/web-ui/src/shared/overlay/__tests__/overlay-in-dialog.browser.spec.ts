@@ -8,6 +8,7 @@ import '@/components/popover'
 import '@/components/select'
 import '@/components/tooltip'
 
+import type * as floatingUi from '@floating-ui/dom'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import type { WebUiAutocomplete } from '@/components/autocomplete'
@@ -30,7 +31,7 @@ const positioningStaleGate = vi.hoisted(() => ({
 }))
 
 vi.mock('@floating-ui/dom', async importOriginal => {
-  const actual = await importOriginal<typeof import('@floating-ui/dom')>()
+  const actual = await importOriginal<typeof floatingUi>()
   const callCounts = new WeakMap<HTMLElement, number>()
   const computePosition: typeof actual.computePosition = (reference, floating, config) => {
     const promise = actual.computePosition(reference, floating, config)

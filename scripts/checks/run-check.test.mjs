@@ -6,7 +6,7 @@ import { runCheck } from './run-check.mjs'
 
 /** @param {() => { run: () => Promise<{ ok: boolean, error?: string }> }} makeKit */
 async function capture(makeKit) {
-  const originalWrite = process.stderr.write
+  const originalWrite = process.stderr.write.bind(process.stderr)
   const originalExitCode = process.exitCode
   const lines = []
   process.stderr.write = chunk => {

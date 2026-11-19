@@ -5,7 +5,7 @@
 import '@greypan/web-ui'
 
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
-import { createApp, h, nextTick, ref } from 'vue'
+import { createApp, h, nextTick } from 'vue'
 
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { ResourceSourceView } from '../../../stores/library'

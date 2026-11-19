@@ -7,8 +7,6 @@ import { page, userEvent } from 'vite-plus/test/browser'
 
 import { getPortalPanel, pollUntil, waitForFrame } from '@/shared/test-utils'
 
-import type { WebUiSelect } from '..'
-
 afterEach(() => document.body.replaceChildren())
 
 // 无头浏览器的静止光标位于视口左上角；关闭或展开 overlay 时，Chrome 可能在光标下

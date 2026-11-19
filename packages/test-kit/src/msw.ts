@@ -5,7 +5,7 @@ import { setupWorker } from 'msw/browser'
 export interface MswContext {
   worker: ReturnType<typeof setupWorker>
   startMsw: () => Promise<unknown>
-  stopMsw: () => void
+  stopMsw: () => Promise<void>
   resetMsw: () => void
 }
 
@@ -20,7 +20,7 @@ export function defineMsw(handlers: RequestHandler[]) {
     return {
       worker,
       startMsw: () => worker.start({ quiet: true }),
-      stopMsw: () => worker.stop(),
+      stopMsw: () => Promise.resolve(worker.stop()),
       resetMsw: () => worker.resetHandlers()
     }
   })

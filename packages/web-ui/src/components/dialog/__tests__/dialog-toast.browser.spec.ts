@@ -1,5 +1,4 @@
 import '..'
-import '@/components/toast'
 
 import { afterEach, expect, it } from 'vite-plus/test'
 

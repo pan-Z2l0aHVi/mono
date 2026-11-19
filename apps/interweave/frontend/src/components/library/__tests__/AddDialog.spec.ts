@@ -1,6 +1,7 @@
 // @vitest-environment jsdom
 
 import type { ImagePreviewHandle, ImagePreviewOptions, WebUiButton, WebUiEditableText } from '@greypan/web-ui'
+import type * as WebUiModule from '@greypan/web-ui'
 import { imagePreview } from '@greypan/web-ui'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, ref } from 'vue'
@@ -14,7 +15,7 @@ import AddDialog from '../AddDialog.vue'
 import type { PreviewLeaseEntry } from '../previewLease'
 
 vi.mock('@greypan/web-ui', async importOriginal => {
-  const actual = await importOriginal<typeof import('@greypan/web-ui')>()
+  const actual = await importOriginal<typeof WebUiModule>()
   return { ...actual, imagePreview: vi.fn<(options: ImagePreviewOptions) => ImagePreviewHandle>() }
 })
 

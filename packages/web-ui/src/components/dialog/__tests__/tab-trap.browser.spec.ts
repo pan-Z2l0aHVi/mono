@@ -40,7 +40,7 @@ function lastTabbable(dialog: WebUiDialog): { host: HTMLElement; inner: HTMLElem
 
 describe('WebUiDialog 焦点陷阱回卷（浏览器）', () => {
   it('Tab 和 Shift+Tab 可依次进入原生按钮及 shadow 内按钮', async () => {
-    const { dialog, first, last } = await mountOpenDialog()
+    const { first, last } = await mountOpenDialog()
     const middle = document.createElement('web-ui-button')
     middle.textContent = 'Middle'
     first.after(middle)

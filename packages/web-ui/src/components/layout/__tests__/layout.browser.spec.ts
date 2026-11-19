@@ -1,7 +1,7 @@
 import '..'
 import '../../theme'
 
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import { pollUntil, queryA11y, waitForAnimationsToFinish, waitForFrame } from '@/shared/test-utils'

@@ -2,7 +2,7 @@ import '..'
 
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { cleanupElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiDrawer } from '..'
 

@@ -1983,7 +1983,6 @@ describe('ResourceList：编辑态与虚拟窗口的关系', () => {
     app.mount(host)
     await flushRenders()
     try {
-      const container = host.querySelector<HTMLElement>('[role="list"]')!
       expect(currentScrollY()).toBe(0)
 
       // 滚到 20000，把第 2 行彻底甩出视口。window 模式下滚动的是页面，位置读 scrollY。

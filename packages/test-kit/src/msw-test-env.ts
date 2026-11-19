@@ -1,5 +1,5 @@
 import { http, HttpResponse, type RequestHandler } from 'msw'
-import { setupWorker, type SetupWorker } from 'msw/browser'
+import { type SetupWorker } from 'msw/browser'
 
 import { defineCapturedRequests, type CapturedRequest } from './captured-requests'
 import { defineMsw } from './msw'
@@ -12,7 +12,7 @@ export interface MswTestEnvOptions {
 export interface MswTestEnv {
   worker: SetupWorker
   start: () => Promise<unknown>
-  stop: () => void
+  stop: () => Promise<void>
   reset: () => void
   capturedRequests: CapturedRequest[]
   clearCapturedRequests: () => void
@@ -44,7 +44,7 @@ function createRecordingHandler(capturedRequests: CapturedRequest[]): RequestHan
 
 /** 等待调用方提供的完成信号；超时不会伪装成请求已结束。 */
 function settleCompletion(completion: PromiseLike<unknown>, timeout = 300): Promise<void> {
-  if (!completion || typeof completion.then !== 'function') {
+  if (typeof completion?.then !== 'function') {
     return Promise.reject(new TypeError('MSW operation requires a completion promise'))
   }
   return new Promise((resolve, reject) => {
