@@ -50,7 +50,7 @@ export interface ComboboxOpenController {
 
 export function createComboboxOpenController(hooks: ComboboxOpenHooks): ComboboxOpenController {
   function open({ isKeyboardNavigation = false, notify = true }: ComboboxOpenOptions = {}) {
-    if (hooks.canOpen() === false || hooks.getIsOpen()) return
+    if (!hooks.canOpen() || hooks.getIsOpen()) return
     hooks.setIsOpen(true)
     if (notify) hooks.dispatchOpenChange()
     hooks.onOpen?.(isKeyboardNavigation)

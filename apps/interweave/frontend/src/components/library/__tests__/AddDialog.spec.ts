@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 
-import type { ImagePreviewHandle, ImagePreviewOptions, WebUiButton, WebUiEditableText } from '@greypan/web-ui'
+import type * as WebUiModule from '@greypan/web-ui'
 import { imagePreview } from '@greypan/web-ui'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, ref } from 'vue'
@@ -14,8 +14,11 @@ import AddDialog from '../AddDialog.vue'
 import type { PreviewLeaseEntry } from '../previewLease'
 
 vi.mock('@greypan/web-ui', async importOriginal => {
-  const actual = await importOriginal<typeof import('@greypan/web-ui')>()
-  return { ...actual, imagePreview: vi.fn<(options: ImagePreviewOptions) => ImagePreviewHandle>() }
+  const actual = await importOriginal<typeof WebUiModule>()
+  return {
+    ...actual,
+    imagePreview: vi.fn<(options: WebUiModule.ImagePreviewOptions) => WebUiModule.ImagePreviewHandle>()
+  }
 })
 
 const openPreview = vi.mocked(imagePreview)
@@ -92,14 +95,14 @@ function mountDialog(
 }
 
 function button(host: HTMLElement, label: string) {
-  const element = [...host.querySelectorAll<WebUiButton>('web-ui-button')].find(
+  const element = [...host.querySelectorAll<WebUiModule.WebUiButton>('web-ui-button')].find(
     candidate => candidate.getAttribute('aria-label') === label
   )
   if (!element) throw new Error(`button ${label} not found`)
   return element
 }
 
-function previewHandle(): ImagePreviewHandle {
+function previewHandle(): WebUiModule.ImagePreviewHandle {
   let settle: () => void = () => undefined
   const closed = new Promise<void>(resolve => {
     settle = resolve
@@ -244,7 +247,7 @@ describe('AddDialog', () => {
       button(mounted.host, '重命名').click()
       await nextTick()
       await nextTick()
-      const editors = mounted.host.querySelectorAll<WebUiEditableText>('web-ui-editable-text')
+      const editors = mounted.host.querySelectorAll<WebUiModule.WebUiEditableText>('web-ui-editable-text')
       expect(editors).toHaveLength(1)
       expect(editors[0]?.value).toBe('第二项')
 
@@ -260,7 +263,7 @@ describe('AddDialog', () => {
       button(mounted.host, '重命名').click()
       await nextTick()
       await nextTick()
-      const cancelled = mounted.host.querySelector<WebUiEditableText>('web-ui-editable-text')
+      const cancelled = mounted.host.querySelector<WebUiModule.WebUiEditableText>('web-ui-editable-text')
       if (!cancelled) throw new Error('editable text was not rendered')
       cancelled.value = '不会提交'
       cancelled.dispatchEvent(new Event('cancel'))
@@ -292,7 +295,7 @@ describe('AddDialog', () => {
       button(mounted.host, '重命名').click()
       await nextTick()
       await nextTick()
-      const editor = mounted.host.querySelector<WebUiEditableText>('web-ui-editable-text')
+      const editor = mounted.host.querySelector<WebUiModule.WebUiEditableText>('web-ui-editable-text')
       if (!editor) throw new Error('编辑态未渲染')
       expect(editor.value).toBe('example.com')
 
@@ -303,7 +306,7 @@ describe('AddDialog', () => {
       button(mounted.host, '重命名').click()
       await nextTick()
       await nextTick()
-      const renamed = mounted.host.querySelector<WebUiEditableText>('web-ui-editable-text')
+      const renamed = mounted.host.querySelector<WebUiModule.WebUiEditableText>('web-ui-editable-text')
       if (!renamed) throw new Error('编辑态未渲染')
       renamed.value = '我起的名字'
       renamed.dispatchEvent(new Event('change', { bubbles: true, composed: true }))

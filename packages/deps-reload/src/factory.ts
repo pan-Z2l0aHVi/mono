@@ -3,6 +3,7 @@ import { resolve, sep } from 'node:path'
 import { debounce } from '@greypan/js-kit'
 import type { UnpluginFactory } from 'unplugin'
 import type { ViteDevServer } from 'vite-plus'
+import type { Compiler } from 'webpack'
 
 const DEFAULT_OUTPUT_DIR = 'dist'
 const DEFAULT_EXTENSIONS = ['.js', '.css']
@@ -63,7 +64,7 @@ export const depsReloadFactory: UnpluginFactory<Dep[]> = deps => {
         }
       }
     },
-    webpack(compiler: import('webpack').Compiler) {
+    webpack(compiler: Compiler) {
       compiler.hooks.thisCompilation.tap('deps-reload', compilation => {
         for (const config of configs) {
           compilation.contextDependencies.add(config.outputPath)

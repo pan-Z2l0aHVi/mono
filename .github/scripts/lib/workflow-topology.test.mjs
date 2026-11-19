@@ -32,6 +32,9 @@ import {
   requiredPolicyStep
 } from './workflow-topology.mjs'
 
+// 显式码元比较，既满足 require-array-sort-compare，也保持 `.sort()` 默认的排序结果。
+const compareStrings = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
+
 const repoRoot = path.resolve(import.meta.dirname, '../../..')
 const workflowDir = path.join(repoRoot, '.github/workflows')
 const workflowFiles = fs
@@ -47,7 +50,7 @@ function workflowJob(text, id) {
   const start = text.indexOf(`\n  ${id}:\n`)
   assert.notEqual(start, -1, `job ${id} must exist`)
   const rest = text.slice(start + 1)
-  const next = /^  [a-z0-9-]+:\s*$/gm
+  const next = /^ {2}[a-z0-9-]+:\s*$/gm
   next.lastIndex = rest.indexOf('\n') + 1
   const match = next.exec(rest)
   return match ? rest.slice(0, match.index) : rest
@@ -57,7 +60,7 @@ function namedStep(text, name) {
   const start = text.indexOf(`      - name: ${name}\n`)
   assert.notEqual(start, -1, `step ${name} must exist`)
   const rest = text.slice(start)
-  const next = /\n      - /.exec(rest.slice(1))
+  const next = /\n {6}- /.exec(rest.slice(1))
   return next ? rest.slice(0, next.index + 1) : rest
 }
 
@@ -332,7 +335,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     .filter(([, workflow]) => workflow.triggers.some(trigger => trigger.on === 'push'))
     .map(([file]) => file)
   assert.deepEqual(pushWorkflows, ['changeset-version.yml', 'ci.yml'])
-  assert.deepEqual(parsed['ci.yml'].triggers.map(trigger => trigger.on).sort(), [
+  assert.deepEqual(parsed['ci.yml'].triggers.map(trigger => trigger.on).sort(compareStrings), [
     'pull_request',
     'push',
     'workflow_dispatch'
@@ -1287,7 +1290,7 @@ function matrixEntries(text) {
   const goCacheStart = setup.indexOf('    - name: Cache Go modules and build artifacts\n')
   const miseActionStart = setup.indexOf('    - uses: jdx/mise-action@v4\n')
   assert.ok(goCacheStart > miseActionStart, 'Go cache setup must run after mise installs Go')
-  assert.match(setup, /  go-cache:\n[\s\S]*?default: 'false'/)
+  assert.match(setup, / {2}go-cache:\n[\s\S]*?default: 'false'/)
   assert.match(setup, /go env GOMODCACHE/)
   assert.match(setup, /go env GOCACHE/)
   assert.match(setup, /go env GOVERSION/)
@@ -1319,7 +1322,7 @@ function matrixEntries(text) {
   assert.match(setup, /key: wails-apt-\$\{\{ steps\.wails-apt-cache\.outputs\.key \}\}/)
   assert.match(setup, /restore-keys: \|\n\s+wails-apt-\$\{\{ steps\.wails-apt-cache\.outputs\.scope \}\}-/)
   assert.match(setup, /APT::Keep-Downloaded-Packages=true/)
-  assert.match(setup, /  skip-mise:\n[\s\S]*?default: 'false'/)
+  assert.match(setup, / {2}skip-mise:\n[\s\S]*?default: 'false'/)
   assert.match(setup, /uses: jdx\/mise-action@v4\n\s+if: inputs\.skip-mise != 'true'/)
   assert.match(
     setup,

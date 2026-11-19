@@ -212,9 +212,9 @@ describe('Interweave 纯键盘全路径交互（真实浏览器）', () => {
 
     // 5. 在行上短按 Space 触发预览，Escape 关闭预览后焦点保留在当前行
     await holdSpace(80)
-    await waitFor(() => previewOpen.value === true, '短按 Space 打开预览 drawer')
+    await waitFor(() => previewOpen.value, '短按 Space 打开预览 drawer')
     await userEvent.keyboard('{Escape}')
-    await waitFor(() => previewOpen.value === false, 'Escape 关闭预览 drawer')
+    await waitFor(() => !previewOpen.value, 'Escape 关闭预览 drawer')
   })
 
   it('Toolbar 搜索框按 Enter 展开聚焦，按 Escape 收起后焦点归还搜索按钮', async () => {
@@ -263,14 +263,14 @@ describe('Interweave 纯键盘全路径交互（真实浏览器）', () => {
     }
     expect(document.activeElement).toBe(searchBtn)
     await userEvent.keyboard('{Enter}')
-    await waitFor(() => searchOpen.value === true, 'Enter 展开搜索框')
+    await waitFor(() => searchOpen.value, 'Enter 展开搜索框')
     await waitFor(
       () => document.activeElement === host.querySelector('web-ui-input[aria-label="搜索资源"]'),
       '焦点自动进入搜索框'
     )
 
     await userEvent.keyboard('{Escape}')
-    await waitFor(() => searchOpen.value === false, 'Escape 收起空搜索框')
+    await waitFor(() => !searchOpen.value, 'Escape 收起空搜索框')
     await waitFor(
       () => document.activeElement === host.querySelector('web-ui-button[aria-label="搜索"]'),
       'Escape 收起搜索框后焦点归还「搜索」按钮'

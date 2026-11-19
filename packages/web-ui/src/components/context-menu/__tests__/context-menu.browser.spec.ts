@@ -523,7 +523,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     let recordedState: { modal: boolean; isConnected: boolean } | undefined
     const scrim = document.querySelector<HTMLDialogElement>('dialog[data-wui-menu-scrim]')
     if (scrim) {
-      const observer = new MutationObserver(mutations => {
+      const observer = new MutationObserver(_mutations => {
         // 属性变化触发时，无条件记录当前状态，不判断谓词
         recordedState = {
           modal: scrim.matches(':modal'),

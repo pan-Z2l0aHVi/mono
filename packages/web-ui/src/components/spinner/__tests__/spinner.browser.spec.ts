@@ -1,5 +1,3 @@
-import '..'
-
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { page, userEvent } from 'vite-plus/test/browser'
 

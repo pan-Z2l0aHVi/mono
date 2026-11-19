@@ -15,7 +15,6 @@ export default {
       'shadcn/require-static-classes': 'error'
     },
     ignorePatterns: [
-      '**/scripts/**',
       '**/routeTree.gen.ts',
       '**/auto-imports.d.ts',
       '**/typed-router.d.ts',
@@ -23,7 +22,14 @@ export default {
       // demo 生成物：meta 是给 Rollup 的静态投影，code 文件是 markdown 围栏的逐字节副本。
       // 两者都不能被 lint / format 改写——改写就破坏「围栏字节 = 落盘文件 = 页面文本」的一致；
       // 只收窄到这两个 demo 的 output，不顺手豁免其它包里的生成物（如 web-ui 的 icons/generated）。
-      'apps/*/src/generated/**'
+      'apps/*/src/generated/**',
+      // skill 实体目录及其 `agents` / `claude` 软链面与 `fmt.ignorePatterns` 保持一致：
+      // 内容是同步进来的第三方与自撰 skill（含 `skills-lock.json` 登记项），不由本仓改写。
+      'skills/**',
+      '.agents/skills/**',
+      '.agents/skills-vendored/**',
+      // `.claude` 下的 skills / rules 都是指向 `.agents` 的软链面，忽略路径字符串避免重复遍历。
+      '.claude/**'
     ],
     overrides: [
       {
@@ -68,12 +74,15 @@ export default {
           'no-prototype-builtins': 'error',
           'no-redeclare': 'off',
           'no-regex-spaces': 'error',
+          // `== null` 是同时匹配 null 与 undefined 的惯用写法，交给 `smart` 放行；
+          // 其余比较一律要求严格相等。
+          eqeqeq: ['error', 'smart'],
           'no-self-assign': 'error',
           'no-setter-return': 'error',
           'no-shadow-restricted-names': 'error',
           'no-sparse-arrays': 'error',
           'no-this-before-super': 'error',
-          'no-undef': 'off',
+          'no-undef': 'error',
           'no-unexpected-multiline': 'error',
           'no-unreachable': 'error',
           'no-unsafe-finally': 'error',
@@ -81,7 +90,7 @@ export default {
           'no-unsafe-optional-chaining': 'error',
           'no-unused-labels': 'error',
           'no-unused-private-class-members': 'error',
-          'no-unused-vars': 'off',
+          'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
           'no-useless-backreference': 'error',
           'no-useless-catch': 'error',
           'no-useless-escape': 'error',
@@ -98,11 +107,12 @@ export default {
       },
       {
         files: ['**/*.{ts,tsx,vue}'],
+        plugins: ['import'],
         rules: {
           '@typescript-eslint/no-explicit-any': 'warn',
           '@typescript-eslint/no-unsafe-declaration-merging': 'warn',
 
-          'no-unused-vars': 'off',
+          'no-unused-vars': ['error', { argsIgnorePattern: '^_', varsIgnorePattern: '^_', caughtErrors: 'none' }],
           'no-redeclare': 'error',
           'constructor-super': 'off',
           'getter-return': 'off',
@@ -139,7 +149,17 @@ export default {
           'no-unused-expressions': 'error',
           '@typescript-eslint/no-wrapper-object-types': 'error',
           '@typescript-eslint/prefer-as-const': 'error',
-          '@typescript-eslint/prefer-namespace-keyword': 'error'
+          '@typescript-eslint/prefer-namespace-keyword': 'error',
+          // 以下为类型感知的异步 / 收窄规则：当前代码零残留或只需少量改动，
+          // 用来防止 `async` 结果被丢弃、在布尔位置塞 Promise，以及联合类型 switch 漏分支。
+          '@typescript-eslint/no-floating-promises': 'error',
+          '@typescript-eslint/await-thenable': 'error',
+          '@typescript-eslint/no-misused-promises': 'error',
+          '@typescript-eslint/switch-exhaustiveness-check': ['error', { considerDefaultExhaustiveForUnions: true }],
+          // 与 `verbatimModuleSyntax` 配套：只作类型的导入必须显式 `import type`。
+          '@typescript-eslint/consistent-type-imports': 'error',
+          '@typescript-eslint/no-unnecessary-boolean-literal-compare': 'error',
+          'import/no-duplicates': 'error'
         }
       },
       {
@@ -298,7 +318,11 @@ export default {
     ],
     options: {
       typeAware: true,
-      typeCheck: true
+      typeCheck: true,
+      // warning 也进非零退出：否则 `warn` 级规则（如 no-explicit-any）在 CI 里永远只是提示。
+      denyWarnings: true,
+      // 规则被移除或代码改掉后，残留的 `oxlint-disable` 注释会静默失去意义。
+      reportUnusedDisableDirectives: 'error'
     }
   },
   fmt: {

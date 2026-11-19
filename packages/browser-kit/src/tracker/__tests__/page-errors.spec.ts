@@ -100,7 +100,10 @@ describe('definePageErrors 测试', () => {
   })
 
   it('相同签名在窗口内去重，窗口过期后重新上报', async () => {
-    makeTracker(defineTracker({ url: 'https://example.com', transport }).use(definePageErrors()))
+    // 窗口显式给定：本用例判的是「窗口前/窗口边沿」的去重语义，不是默认值本身。
+    // 不钉 5000——私有默认被重调时这里不该假红。
+    const dedupeWindowMs = 800
+    makeTracker(defineTracker({ url: 'https://example.com', transport }).use(definePageErrors({ dedupeWindowMs })))
 
     const dispatchSame = () =>
       dispatchUncaught({ message: 'same', filename: '/assets/app.js', lineno: 1, colno: 2, error: new Error('same') })
@@ -112,7 +115,14 @@ describe('definePageErrors 测试', () => {
     // 循环里抛同一个错会淹没上报配额：去重按「同类错误只报一次」
     expect(transport.mock.calls.length).toBe(1)
 
-    vi.advanceTimersByTime(5000)
+    // 边界两侧：差 1ms 仍在窗口内（源码用 >= 判过期，故窗口内应静默）；
+    // 再走 1ms 到达边界即过期，重新上报。
+    vi.advanceTimersByTime(dedupeWindowMs - 1)
+    dispatchSame()
+    await afterDispatchTurn()
+    expect(transport.mock.calls.length, '窗口内不应重新上报').toBe(1)
+
+    vi.advanceTimersByTime(1)
     dispatchSame()
     await expectAfterDispatch(() => transport.mock.calls.length === 2)
   })
@@ -272,12 +282,16 @@ describe('definePageErrors 测试', () => {
   })
 
   it('page error 进入 batch-track 的批量通道', async () => {
+    // 批延迟显式给定：本用例判「page error 走批量通道」的形状，不判默认延迟值。
+    const batchDelay = 200
     makeTracker(
-      defineTracker({ url: 'https://example.com', transport }).use(defineBatchTrack()).use(definePageErrors())
+      defineTracker({ url: 'https://example.com', transport })
+        .use(defineBatchTrack({ defaultBatchDelay: batchDelay }))
+        .use(definePageErrors())
     )
 
     dispatchUncaught({ message: 'batched', error: new Error('batched') })
-    vi.advanceTimersByTime(500)
+    vi.advanceTimersByTime(batchDelay)
 
     await expectAfterDispatch(() => transport.mock.calls.length === 1)
 

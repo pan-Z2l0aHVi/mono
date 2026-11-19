@@ -315,6 +315,60 @@ describe('theme transition（浏览器）', () => {
     expect(inner.style.getPropertyValue('display')).toBe('')
   })
 
+  /*
+   * 圆心来源监听的登记 / 清理是引用计数实现细节，行为后果是「揭示圆心取最近一次
+   * pointerdown 落点；主题断开后新的落点不再更新圆心」。这里用真实落点坐标做正负两半：
+   * 上半证明连接期登记生效（圆心 = 按下点）；下半断开后在**另一个**落点按下——
+   * 监听若泄漏，该落点会成为新过渡的圆心（红）；清理正确时圆心保持断开前的旧值。
+   */
+  it('揭示圆心取最近一次 pointerdown 落点，主题断开后新的按下不再更新圆心', async () => {
+    const wrapper = wrapStartViewTransition()
+    const theme = createRootTheme()
+    await theme.updateComplete
+
+    const pressAt = { x: 500, y: 260 }
+    dispatchPointer(document.documentElement, 'pointerdown', pressAt, 11)
+    theme.appearance = 'dark'
+    const transition = wrapper.current
+    expect(transition).toBeDefined()
+    await transition!.ready
+    await Promise.resolve()
+    const reveal = document
+      .getAnimations()
+      .find(
+        animation =>
+          ((animation.effect as KeyframeEffect | null)?.pseudoElement ?? '') === '::view-transition-new(root)'
+      )
+    expect(reveal).toBeDefined()
+    const frames = (reveal!.effect as KeyframeEffect).getKeyframes()
+    expect(frames[1].clipPath as string, '连接期：揭示圆心 = 最近一次按下点').toContain('at 500px 260px')
+    await transition!.finished
+
+    // 断开后在另一个落点按下：清理正确时该落点不进圆心（保持旧值）；泄漏则必红。
+    theme.remove()
+    const latePress = { x: 300, y: 150 }
+    dispatchPointer(document.documentElement, 'pointerdown', latePress, 12)
+
+    const after = createRootTheme()
+    await after.updateComplete
+    after.appearance = 'dark'
+    const next = wrapper.current
+    expect(next).toBeDefined()
+    expect(next).not.toBe(transition)
+    await next!.ready
+    await Promise.resolve()
+    const nextReveal = document
+      .getAnimations()
+      .find(
+        animation =>
+          ((animation.effect as KeyframeEffect | null)?.pseudoElement ?? '') === '::view-transition-new(root)'
+      )
+    expect(nextReveal).toBeDefined()
+    const nextFrames = (nextReveal!.effect as KeyframeEffect).getKeyframes()
+    expect(nextFrames[1].clipPath as string, '断开后：新的落点不得再更新揭示圆心').not.toContain('at 300px 150px')
+    await next!.finished
+  })
+
   it('揭示期间阻止新的按下且保持动画，结束后恢复 hit-test', async () => {
     const wrapper = wrapStartViewTransition()
     const source = createHitTarget()

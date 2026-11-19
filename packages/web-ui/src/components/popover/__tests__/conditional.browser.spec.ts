@@ -34,7 +34,7 @@ function mountPopover(initialShow = true): {
 
 describe('WebUiPopover portal 条件渲染边界（浏览器）', () => {
   it('打开期 v-if 删除的内容关闭后不复活', async () => {
-    const { mountPoint, popover, show, app } = mountPopover()
+    const { popover, show, app } = mountPopover()
     await popover.updateComplete
 
     popover.open = true

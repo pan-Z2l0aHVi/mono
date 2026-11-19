@@ -4,7 +4,7 @@
       <web-ui-textarea
         slot="trigger"
         :rows="3"
-        class="[--wui-textarea-width:20rem]"
+        class="[--wui-textarea-width:320px]"
         placeholder="Multiline trigger: Enter inserts a newline, Escape or blur (with `focus` enabled) closes the panel"
       ></web-ui-textarea>
       <web-ui-option value="bug" label="Bug"></web-ui-option>

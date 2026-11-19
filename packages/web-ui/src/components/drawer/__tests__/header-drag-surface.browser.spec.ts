@@ -118,7 +118,7 @@ async function mountDrawer(options: {
   })
   el.querySelector('#fAct')?.addEventListener('click', () => (log.act += 1))
   el.addEventListener('open-change', e => {
-    if ((e as CustomEvent<{ open: boolean }>).detail.open === false) log.closed += 1
+    if (!(e as CustomEvent<{ open: boolean }>).detail.open) log.closed += 1
   })
   return { el, log }
 }
@@ -196,12 +196,11 @@ async function realClickAt(x: number, y: number): Promise<void> {
  * 从某点起手做一次**真实拖拽**，拖一小段再原路返回后松手，返回拖拽期间的 panel 位移。
  *
  * 原路返回是必要的：CDP 派发的相邻 move 之间几乎无耗时，松手瞬间的净速度会远超
- * `DRAG_FLICK_VELOCITY`（500px/s），几 px 位移就够判成甩动而把 drawer 关掉。回到起点让
+ * `DRAG_FLICK_VELOCITY`（350px/s），几 px 位移就够判成甩动而把 drawer 关掉。回到起点让
  * 净位移归零，既能观测到「手势真的活着」，又不会把 drawer 误关。
  *
- * 位移读**按压后第 steps 步**而不是松手时：手势层在首个 pointermove 把零点重置
- * （`calibrateOnFirstMove`），只发一步 move 时净位移恒为 0——那种写法在拖拽确实挂上了
- * 的情况下也读出「没动」，判据会静默失效。故至少发 2 步再读。
+ * 位移读**按压后第 steps 步**（≥2）而不是松手时：松手前先读，避免收尾过渡把位移清零
+ * 造成「拖拽确实挂上了却读出没动」的静默失效。
  */
 async function probeDrag(
   el: WebUiDrawer,

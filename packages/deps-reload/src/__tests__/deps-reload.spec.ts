@@ -1,5 +1,4 @@
-import path from 'node:path'
-import { resolve } from 'node:path'
+import path, { resolve } from 'node:path'
 
 import type { UnpluginContextMeta, UnpluginOptions } from 'unplugin'
 import type { HmrContext, ViteDevServer } from 'vite-plus'

@@ -188,7 +188,7 @@ function applyPatch(el: WebUiToast, options: ToastInstanceOptions) {
   if (options.message !== undefined) el.message = options.message
   if (options.heading !== undefined) el.heading = options.heading
   if (options.type !== undefined) el.type = options.type
-  if (options.closable !== undefined) el.noCloseButton = options.closable === false
+  if (options.closable !== undefined) el.noCloseButton = !options.closable
   // duration 只有显式传入才重启计时；message/heading/type 都是 Lit 属性，赋值不碰 _closeTimer。
   // 悬停暂停期间交给元素自己裁决：setDuration() 只记新值不点火，否则鼠标还压在 toast 上
   // 时倒计时就被重启，「悬停暂停」在这条路径上会静默失效。

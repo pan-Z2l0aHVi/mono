@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -65,6 +64,9 @@ import {
 } from './codex-review.mjs'
 import { SPAWN_MAX_BUFFER, run } from './lib/github.mjs'
 import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
+
+// 显式码元比较，既满足 require-array-sort-compare，也保持 `.sort()` 默认的排序结果。
+const compareStrings = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
 
 const headSha = 'a'.repeat(40)
 const otherSha = 'b'.repeat(40)
@@ -425,13 +427,11 @@ function prependPath(bin) {
   )
   assert.equal(
     findPriorReviewRun({
-      ...{
-        adapter: {
-          ...adapter,
-          listComments: () => [
-            { user: { login: 'someone' }, body: `<!-- codex-review-conclusion sha=${otherSha} status=reviewed -->` }
-          ]
-        }
+      adapter: {
+        ...adapter,
+        listComments: () => [
+          { user: { login: 'someone' }, body: `<!-- codex-review-conclusion sha=${otherSha} status=reviewed -->` }
+        ]
       },
       pullNumber: 42,
       headSha,
@@ -2326,7 +2326,7 @@ exit 2
     }
   }
   assert.deepEqual(
-    [...deniedPaths].sort(),
+    [...deniedPaths].sort(compareStrings),
     Object.keys(coverage).sort(),
     'a new or renamed Edit(...) deny entry must be matched with review pathspecs in this table'
   )
@@ -2351,7 +2351,7 @@ exit 2
         .split('\0')
         .filter(Boolean)
     )
-  const matchedBy = globs => [...new Set(globs.flatMap(glob => [...trackedBy(glob)]))].sort()
+  const matchedBy = globs => [...new Set(globs.flatMap(glob => [...trackedBy(glob)]))].sort(compareStrings)
   const deniedFiles = matchedBy(deniedPaths)
   const excludedFiles = matchedBy(pathspecs)
   assert.ok(deniedFiles.length > 0, 'the deny list must match tracked generated files')
@@ -2398,7 +2398,10 @@ exit 2
 }
 
 {
-  // 排除清单属于审查输入：它进了复用指纹，清单变更后同 head 的旧结论才不会借复用回到绿色。
+  // 指纹只锁「同一环境输入 → 稳定 id」契约本身：同环境两次派生结果一致，任一输入变化换指纹。
+  // 不逐字复刻 sha256 配方——那是实现细节，镜像配方会让配方重构假红。排除清单属于审查输入
+  // 的归属由 validateIncrementalBaseline 的 scope 交叉核对行为化承担（excluded_pathspecs
+  // 不匹配即拒绝复用，见上方 /scope/ 用例），不经配方镜像证明。
   const env = {
     CODEX_RESPONSES_ENDPOINT: 'e',
     CODEX_REVIEW_MODEL: 'm',
@@ -2407,18 +2410,15 @@ exit 2
     CODEX_REVIEW_API_KEY: 'k'
   }
   const { config } = inspectConfig(env)
-  const values = { endpoint: 'e', model: 'm', effort: 'high', version: 'v', key_present: true }
   assert.equal(
+    inspectConfig(env).config.fingerprint,
     config.fingerprint,
-    createHash('sha256')
-      .update(JSON.stringify({ ...values, excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS }))
-      .digest('hex')
-      .slice(0, 16)
+    'the same environment must derive the same fingerprint'
   )
   assert.notEqual(
+    inspectConfig({ ...env, CODEX_REVIEW_EFFORT: 'low' }).config.fingerprint,
     config.fingerprint,
-    createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16),
-    'the fingerprint must include the review exclusion scope'
+    'changing a review input must change the fingerprint'
   )
 }
 
@@ -2613,7 +2613,8 @@ exit 2
   assert.equal(PRELOAD_PER_FILE_BYTES, 4096)
   assert.equal(PRELOAD_TOTAL_DIFF_BYTES, 24576)
 
-  for (const [filePath, expected] of [
+  /** @type {Array<[string, { rank: number, tier: string, category: string }]>} */
+  const riskCases = [
     ['.github/workflows/ci.yml', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
     ['.github/scripts/codex-review.mjs', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
     ['.agents/skills/task-ledger/ledger.mjs', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
@@ -2633,7 +2634,8 @@ exit 2
     ['.changeset/codex-review-preload-b1.md', { rank: 3, tier: 'low', category: 'other' }],
     ['packages/web-ui/src/button.css', { rank: 3, tier: 'low', category: 'other' }],
     ['README.md', { rank: 3, tier: 'low', category: 'other' }]
-  ]) {
+  ]
+  for (const [filePath, expected] of riskCases) {
     assert.deepEqual(classifyPathRisk(filePath), expected, `risk classification for ${filePath}`)
   }
 

@@ -1,3 +1,5 @@
+import type { execFile as execFileType } from 'node:child_process'
+
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 /*
@@ -14,7 +16,7 @@ const { execFileCallable, execFileRun, queue } = vi.hoisted(() => {
   const queue: HerdrOutcome[] = []
   const execFileRun = vi.fn<
     (bin: string, args: string[], options?: { timeout?: number }) => Promise<{ stdout: string; stderr: string }>
-  >(async (bin, args, options) => {
+  >(async (_bin, _args, _options) => {
     const outcome = queue.shift()
     if (!outcome) throw new Error('herdr-cli.spec: 未排入的 herdr 调用')
     if (outcome.ok) return { stdout: outcome.stdout, stderr: '' }
@@ -32,7 +34,7 @@ const { execFileCallable, execFileRun, queue } = vi.hoisted(() => {
       result => callback(null, result.stdout),
       error => callback(error)
     )
-  }) as unknown as typeof import('node:child_process').execFile
+  }) as unknown as typeof execFileType
   Object.defineProperty(execFileCallable, Symbol.for('nodejs.util.promisify.custom'), { value: execFileRun })
   return { execFileCallable, execFileRun, queue }
 })
@@ -42,8 +44,6 @@ vi.mock('node:child_process', () => ({
 }))
 
 import { clearPaneZoomViaHerdr, listAgentsViaHerdr, movePaneViaHerdr } from '../dispatch/herdr-cli'
-
-type HerdrOutcome = { ok: true; stdout: string } | { ok: false; message: string; stdout: string }
 
 function respond(stdout: string) {
   queue.push({ ok: true, stdout })

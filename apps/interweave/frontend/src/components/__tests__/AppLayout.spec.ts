@@ -1,7 +1,5 @@
 // @vitest-environment jsdom
 
-import '@greypan/web-ui'
-
 import { toast, type WebUiDialog } from '@greypan/web-ui'
 import { createPinia, setActivePinia } from 'pinia'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -14,6 +12,7 @@ import {
   MENU_TOGGLE_FILTER_BAR_EVENT
 } from '@/composables/menuActions'
 import { pendingWindowFileDrops } from '@/composables/windowFileDrop'
+import type * as menuStateModule from '@/services/menu/state'
 import { useSettingsStore } from '@/stores/settings'
 
 const fileDrop = vi.hoisted(() => ({ listener: null as ((paths: string[]) => void) | null }))
@@ -88,7 +87,7 @@ vi.mock('@/composables/useHistoryNav', async () => {
  */
 const reportDisabled = vi.hoisted(() => vi.fn<(commands: string[]) => Promise<void>>(async () => {}))
 vi.mock('@/services/menu/state', async () => {
-  const actual = await vi.importActual<typeof import('@/services/menu/state')>('@/services/menu/state')
+  const actual = await vi.importActual<typeof menuStateModule>('@/services/menu/state')
   return {
     ...actual,
     createMenuStateRuntime: () => ({ isAvailable: true, reportDisabled })

@@ -10,7 +10,7 @@ import { createMswTestEnv, defineCapturedRequests, defineMsw, type MswContext } 
 vi.mock('msw/browser', () => ({
   setupWorker: vi.fn<(...handlers: unknown[]) => object>(() => ({
     start: vi.fn<(options?: { quiet: boolean }) => Promise<void>>().mockResolvedValue(undefined),
-    stop: vi.fn<() => void>(),
+    stop: vi.fn<() => Promise<void>>().mockResolvedValue(undefined),
     resetHandlers: vi.fn<() => void>()
   }))
 }))
@@ -149,7 +149,7 @@ describe('createMswTestEnv worker 生命周期', () => {
     await env.start()
     expect(env.worker.start).toHaveBeenCalledWith({ quiet: true })
 
-    env.stop()
+    await env.stop()
     expect(env.worker.stop).toHaveBeenCalled()
 
     env.reset()

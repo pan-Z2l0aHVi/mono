@@ -102,16 +102,15 @@ export function inspectPatch(patch, { allowNewChangeset = false } = {}) {
       files.push(from)
       continue
     }
-    if (/^Binary files /u.test(line)) return { reject: `patch contains a binary change: ${line}`, files, added }
-    if (/^new file mode /u.test(line)) {
+    if (line.startsWith('Binary files ')) return { reject: `patch contains a binary change: ${line}`, files, added }
+    if (line.startsWith('new file mode ')) {
       if (!allowNewChangeset || !isChangesetAddition(current))
         return { reject: `patch adds a new file: ${current}`, files, added }
-      if (!/^new file mode 100644$/u.test(line))
-        return { reject: `patch adds a non-regular file: ${current}`, files, added }
+      if (line !== 'new file mode 100644') return { reject: `patch adds a non-regular file: ${current}`, files, added }
       added.push(current)
       continue
     }
-    if (/^deleted file mode /u.test(line)) return { reject: 'patch deletes a file', files, added }
+    if (line.startsWith('deleted file mode ')) return { reject: 'patch deletes a file', files, added }
   }
   if (/\nGIT binary patch\n/u.test(`\n${patch}`)) return { reject: 'patch contains a binary payload', files, added }
   if (files.length === 0) return { reject: 'patch changes no tracked file', files, added }

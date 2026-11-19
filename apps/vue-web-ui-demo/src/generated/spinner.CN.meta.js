@@ -61,7 +61,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>color</code>" },
-      { label: 'td', content: "指示器颜色，CSS 颜色值；为空时跟随主题的次要文本色。" },
+      { label: 'td', content: "indicator 颜色，CSS 颜色值；为空时跟随主题的次要文本色。" },
       { label: 'td', content: "<code>string</code>" },
       { label: 'td', content: "<code>''</code>" }
       ]
@@ -123,7 +123,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>color</code>" },
-      { label: 'td', content: "实例指示器颜色，CSS 颜色值；空串等于不设置。" },
+      { label: 'td', content: "实例 indicator 颜色，CSS 颜色值；空串等于不设置。" },
       { label: 'td', content: "<code>string</code>" },
       { label: 'td', content: "<code>''</code>" }
       ]
@@ -172,7 +172,7 @@ const meta = [
   { label: 'p', content: "命令式实例挂载在主题的 overlay 容器里（没有主题作用域时挂主体的默认 overlay 容器），说明文字、速度（<code>--wui-duration-spinner</code>）和层级（<code>--wui-layer-loading</code>）因此都跟随主题。" },
   { label: 'p', content: "组件不会替你收尾。<code>duration</code> 不传或为 <code>0</code> 时实例会一直存在，只有 <code>hide()</code> 或新实例顶替才会移除它。命令式实例不锁页面滚动。" },
   { label: 'h3', id: 'section-13', content: "颜色" },
-  { label: 'p', content: "指示器颜色默认取宿主的 <code>--wui-color-text-secondary</code>，<code>color</code> 属性给任意 CSS 颜色值即可覆盖（声明式的属性和 <code>show()</code> 的 <code>color</code> 选项都使用它）。" },
+  { label: 'p', content: "indicator 颜色默认取宿主的 <code>--wui-color-text-secondary</code>，<code>color</code> 属性给任意 CSS 颜色值即可覆盖（声明式的属性和 <code>show()</code> 的 <code>color</code> 选项都使用它）。" },
   { label: 'p', content: "说明文字使用 <code>--wui-color-text-secondary</code>。" },
   { label: 'h3', id: 'section-14', content: "CSS 自定义属性" },
   {

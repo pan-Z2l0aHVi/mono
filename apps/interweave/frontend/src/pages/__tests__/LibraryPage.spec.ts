@@ -12,8 +12,7 @@ import type {
 import { SourceProbeOutcome } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import {
   ResourceKind,
-  SourceType,
-  TagColor
+  SourceType
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import { stubLayout } from '../../components/library/__tests__/virtualLayout'
 import {
@@ -568,7 +567,8 @@ describe('LibraryPage：可用性感知接线', () => {
 
     await mounted.close()
 
-    expect(runtimeStub.availabilityDisposer).toBeTypeOf('function')
+    // 退订的可观察后果是监听被清空（stub 的 disposer 做的事）；disposer 的存在性由
+    // 注册半边（上一行）证明，单独断言它只是复述 fixture 自己的赋值。
     expect(runtimeStub.availabilityListener).toBeNull()
   })
 

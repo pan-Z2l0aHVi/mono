@@ -6,6 +6,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiDrawer } from '..'
+import pageShiftSource from '../page-shift.ts?raw'
 
 function getDialog(el: WebUiDrawer): HTMLDialogElement {
   return el.shadowRoot?.querySelector('dialog') as HTMLDialogElement
@@ -55,19 +56,18 @@ async function openDrawer(el: WebUiDrawer) {
 
 /**
  * 沿闭合方向（默认 right → 向右）拖到指定 clientX 后松手。
- * 分两段：判定零点在首个 pointermove（基准校准），位移自它起算，
- * 单次 move 的整程位移会被整体吸收。
+ * 分两段：判定零点在 pointerdown（drag-controller.ts 的 `stageOrigin`），
+ * 净位移 = toX − 100；中段的 110px 停顿只是把轨迹拆成两段（分母/滑窗不过度集中），
+ * 不参与判定模型。
  */
 async function dragToClose(el: WebUiDrawer, toX: number) {
   const dragZone = getDragZone(el)
-  // 首个 move 停在 100 → 110，只用于建立判定零点，不产生位移。
-  const pivotX = 110
   dragZone.dispatchEvent(
     new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 100, clientY: 300 })
   )
   await el.updateComplete
   dragZone.dispatchEvent(
-    new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: pivotX, clientY: 300 })
+    new PointerEvent('pointermove', { bubbles: true, pointerId: 1, isPrimary: true, clientX: 110, clientY: 300 })
   )
   await el.updateComplete
   dragZone.dispatchEvent(
@@ -102,9 +102,16 @@ function pageMarker(): HTMLElement {
   return el
 }
 
-/** 默认 placement（right）第 1 层的让开量：16 个轴单位，横向 1 个单位是 1vw。 */
+/*
+ * 让开量常量从 page-shift.ts 源码解析（`PAGE_SHIFT_BASE` 是模块私有的），与
+ * page-shift.browser.spec.ts 同一模式：不在测试里复述 16 的字面量。本文件只需要
+ * 第 1 层（depth 0 → base·a，无衰减）的让开量。
+ */
+const PAGE_SHIFT_BASE = Number(/PAGE_SHIFT_BASE = (\d+)/.exec(pageShiftSource)![1])
+
+/** 默认 placement（right）第 1 层的让开量：base 个轴单位，横向 1 个单位是 1vw。 */
 function firstLayerShift(): number {
-  return 16 * (window.innerWidth / 100)
+  return PAGE_SHIFT_BASE * (window.innerWidth / 100)
 }
 
 /**
@@ -273,7 +280,7 @@ describe('减少动效下的 fullable 吸附（浏览器）', () => {
       if (property === 'width' || property === 'height') sizeTransitions.push(property)
     })
 
-    // 首个 move（470）为零点，第二段外拉 120px 越过 96px 行程阈值 → 吸附。
+    // 零点 = 按下点（500）：第二段外拉至 350（−150px）越过 96px 行程阈值 → 吸附。
     const dragZone = getDragZone(el)
     const fire = (type: string, x: number, at: number) => {
       const event = new PointerEvent(type, { bubbles: true, pointerId: 1, isPrimary: true, clientX: x, clientY: 300 })

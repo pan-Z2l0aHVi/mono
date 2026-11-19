@@ -166,7 +166,7 @@ export class WebUiSwitch extends FormAssociated(LitElement) {
 
     const track = this.renderRoot.querySelector<HTMLElement>('.wui-switch-track')
     if (track) {
-      // 使用布局尺寸而非缩放后的视觉盒，与 CSS 的按压态滑块和内边距保持一致。
+      // 使用布局尺寸而非缩放后的视觉盒，与 CSS 的按压态 thumb 和内边距保持一致。
       const computed = getComputedStyle(track)
       const width = Number.parseFloat(computed.width)
       const height = Number.parseFloat(computed.height)

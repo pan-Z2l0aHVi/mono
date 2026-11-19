@@ -38,7 +38,7 @@ describe('CheckboxGroup 跨组移动成员（浏览器）', () => {
     const wrapper = groupA.querySelector('div')!
     wrapper.appendChild(checkboxB)
     // 新组的接管是异步的：接管后它会按自己的值清掉移入成员的旧选中态。
-    await pollUntil(() => checkboxB.checked === false, '新组没有接管移入的成员（旧选中态未被清掉）')
+    await pollUntil(() => !checkboxB.checked, '新组没有接管移入的成员（旧选中态未被清掉）')
     await Promise.all([checkboxB.updateComplete, groupA.updateComplete, groupB.updateComplete])
 
     // 先验证事件收敛（不给后续渲染自愈的机会）：managed 子项的 change
@@ -95,7 +95,7 @@ describe('CheckboxGroup 跨组移动成员（浏览器）', () => {
 
     const wrapper = groupB.querySelector('div')!
     wrapper.appendChild(checkboxA)
-    await pollUntil(() => checkboxA.checked === false, '新组没有接管移入的成员（旧选中态未被清掉）')
+    await pollUntil(() => !checkboxA.checked, '新组没有接管移入的成员（旧选中态未被清掉）')
     await Promise.all([checkboxA.updateComplete, groupA.updateComplete, groupB.updateComplete])
 
     groupB.value = ['a']

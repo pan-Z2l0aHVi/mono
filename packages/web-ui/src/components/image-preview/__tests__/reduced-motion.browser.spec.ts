@@ -62,7 +62,8 @@ describe('image-preview reduced motion（浏览器）', () => {
     await waitForFrame()
 
     const track = trackOf(host)
-    expect(stage.classList.contains('is-settling')).toBe(true)
+    // reduced 下收尾无 transform 过渡、由 timer 兜底提交切图——判据取过渡属性、
+    // 动画集合与最终提交；stage 的 is-settling 是内部状态类，不作断言。
     expect(getComputedStyle(track).transitionProperty).toBe('opacity')
     expect(track.getAnimations()).toHaveLength(0)
     expect(handle.index).toBe(0)

@@ -40,7 +40,8 @@ export function run(
 export function resolvePullNumber({ explicit, ref, allowRefFallback = true } = {}) {
   if (explicit !== undefined && explicit !== '') {
     if (typeof explicit !== 'string' || !/^[1-9]\d*$/u.test(explicit)) {
-      throw new Error(`pull number must be a positive integer: ${String(explicit)}`)
+      const shown = typeof explicit === 'string' ? explicit : JSON.stringify(explicit)
+      throw new Error(`pull number must be a positive integer: ${shown}`)
     }
     return explicit
   }

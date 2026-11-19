@@ -388,7 +388,7 @@ describe('WebUiCheckboxGroup 组件', () => {
       newCheckbox.textContent = 'C'
       el.appendChild(newCheckbox)
       // 继承发生在 MutationObserver 投递之后，等期待值而不是等一个空 tick。
-      await pollUntil(() => newCheckbox.checked === true, '新插入的子项没有继承当前 value 的选中态')
+      await pollUntil(() => newCheckbox.checked, '新插入的子项没有继承当前 value 的选中态')
       await newCheckbox.updateComplete
 
       expect(newCheckbox.checked).toBe(true)
@@ -495,7 +495,7 @@ describe('WebUiCheckboxGroup 组件', () => {
       el.appendChild(newCheckbox)
       await waitForUpdate(newCheckbox)
       await waitForUpdate(el)
-      await pollUntil(() => newCheckbox.checked === true, '动态添加的子项没有同步到 group value')
+      await pollUntil(() => newCheckbox.checked, '动态添加的子项没有同步到 group value')
 
       expect(newCheckbox.checked).toBe(true)
 

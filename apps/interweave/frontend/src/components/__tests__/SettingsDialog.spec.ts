@@ -2,14 +2,7 @@
 
 import '@greypan/web-ui'
 
-import type {
-  WebUiDialog,
-  WebUiRadio,
-  WebUiRadioGroup,
-  WebUiSegmented,
-  WebUiSlider,
-  WebUiSwitch
-} from '@greypan/web-ui'
+import type { WebUiDialog, WebUiRadio, WebUiSegmented, WebUiSlider, WebUiSwitch } from '@greypan/web-ui'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, ref } from 'vue'

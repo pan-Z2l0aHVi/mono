@@ -426,7 +426,8 @@ describe('web-ui-middle-ellipsis 的字体度量变化（浏览器）', () => {
     root.style.fontSize = '16px'
 
     try {
-      const el = mount({ text: LONG }, 'width: 148px; font: 1rem/1.5 monospace;')
+      // 不写死字号：本用例靠根字号变化改变元素度量，font-size 必须继承根。
+      const el = mount({ text: LONG }, 'width: 148px; font-family: monospace;')
       await settle(el)
       const width = availableWidth(el)
 

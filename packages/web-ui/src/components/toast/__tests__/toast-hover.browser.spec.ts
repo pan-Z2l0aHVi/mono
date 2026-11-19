@@ -78,7 +78,7 @@ function disableMoveBefore(): () => void {
 // 真实指针的命中测试可能晚于 hover() 调用若干帧（并行文件共用同一个游标时更明显），
 // 因此「已进入暂停」用轮询等，而不是 hover() 之后当场读一次。
 async function waitHoverPaused(el: NonNullable<ReturnType<typeof findToast>>, label: string): Promise<void> {
-  await pollUntil(() => el.hoverPaused === true, label, 1500)
+  await pollUntil(() => el.hoverPaused, label, 1500)
 }
 
 describe('toast 悬停暂停（浏览器）', () => {
@@ -152,7 +152,7 @@ describe('toast 悬停暂停（浏览器）', () => {
     await el.updateComplete
 
     await page.elementLocator(el).hover()
-    await pollUntil(() => el.hoverPaused === true, '真实指针悬停后未进入暂停态', 1500)
+    await pollUntil(() => el.hoverPaused, '真实指针悬停后未进入暂停态', 1500)
 
     el.show()
     await el.updateComplete

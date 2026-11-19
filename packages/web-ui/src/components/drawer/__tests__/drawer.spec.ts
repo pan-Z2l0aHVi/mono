@@ -2,7 +2,7 @@ import '..'
 
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { cleanupElement, queryA11y, spyEvents, waitForUpdate } from '@/shared/test-utils'
+import { cleanupElement, spyEvents, waitForUpdate } from '@/shared/test-utils'
 
 import type { WebUiDrawer } from '..'
 
@@ -33,7 +33,8 @@ if (!HTMLDialogElement.prototype.close) {
 const CLOSE_FALLBACK_ADVANCE_MS = 400
 
 /*
- * 拖拽释放收尾的兜底窗口（drawer/index.ts 的 `setTimeout(..., duration + SETTLE_GRACE_MS)`）：
+ * 拖拽释放收尾的兜底窗口（drawer/drag-controller.ts 的
+ * `setTimeout(() => finishSettle(), duration + SETTLE_GRACE_MS)`）：
  * `duration` 是 `_settleDuration` 的返回值，钳在 [SETTLE_MIN_MS=180, SETTLE_MAX_MS=420]ms，
  * 加宽限 SETTLE_GRACE_MS=80ms 后窗口上界 500ms。推进取越过上界的余量——它与上面的
  * 关闭兜底是**两个不同的定时器**，窗口口径互不通用。

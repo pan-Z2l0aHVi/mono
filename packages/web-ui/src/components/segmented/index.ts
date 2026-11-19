@@ -197,7 +197,7 @@ export class WebUiSegmented extends FormAssociated(LitElement) {
     if (selectedTrigger) {
       const triggerRect = selectedTrigger.getBoundingClientRect()
       const groupRect = this.getBoundingClientRect()
-      // dialog 的进场缩放会改变屏幕坐标；指示器使用布局坐标，需还原祖先的缩放比例。
+      // dialog 的进场缩放会改变屏幕坐标；indicator 使用布局坐标，需还原祖先的缩放比例。
       const layoutWidth = Number.parseFloat(getComputedStyle(this).width)
       const scale = layoutWidth > 0 ? groupRect.width / layoutWidth : 1
       left = scale > 0 ? (triggerRect.left - groupRect.left) / scale : 0

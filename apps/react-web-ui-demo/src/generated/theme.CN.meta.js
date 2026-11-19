@@ -198,7 +198,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-focus-ring-width</code>" },
-      { label: 'td', content: "焦点指示器宽度" },
+      { label: 'td', content: "focus indicator 宽度" },
       { label: 'td', content: "<code>3px</code>" }
       ]
     }
@@ -399,7 +399,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-selection-control-size</code>" },
-      { label: 'td', content: "指示器（圆点 / 方框）宽高" },
+      { label: 'td', content: "indicator（圆点 / 方框）宽高" },
       { label: 'td', content: "<code>18px</code>" }
       ]
     },
@@ -720,7 +720,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-color-surface-segmented</code>" },
-      { label: 'td', content: "Segmented 凹变种指示器表面（与控件同级）" },
+      { label: 'td', content: "Segmented 凹变种 indicator 表面（与控件同级）" },
       { label: 'td', content: "<code>#e5e5eb</code>" },
       { label: 'td', content: "<code>#3a3a3c</code>" }
       ]
@@ -738,7 +738,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-color-surface-selected</code>" },
-      { label: 'td', content: "选中面（凸变种指示器，与页面同色）" },
+      { label: 'td', content: "选中面（凸变种 indicator，与页面同色）" },
       { label: 'td', content: "<code>#fff</code>" },
       { label: 'td', content: "<code>#242428</code>" }
       ]
@@ -927,7 +927,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-color-focus-ring</code>" },
-      { label: 'td', content: "焦点指示器颜色，由 accent 派生" },
+      { label: 'td', content: "focus indicator 颜色，由 accent 派生" },
       { label: 'td', content: "<code>color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)</code>" },
       { label: 'td', content: "<code>color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)</code>" }
       ]
@@ -936,7 +936,7 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-scrollbar-handle</code>" },
-      { label: 'td', content: "原生滚动条的滑块颜色" },
+      { label: 'td', content: "原生 scrollbar handle 颜色" },
       { label: 'td', content: "<code>rgb(0 0 0 / 0.39)</code>" },
       { label: 'td', content: "<code>rgb(255 255 255 / 0.5)</code>" }
       ]

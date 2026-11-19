@@ -5,6 +5,7 @@ import { act } from 'react'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { loadShellLocale } from '@/i18n/locale'
+import type * as localeModule from '@/i18n/locale'
 
 import { Root } from '..'
 
@@ -13,7 +14,7 @@ import { Root } from '..'
 // collapsed 接线与文档初始化无关。真实 Provider 留在 browser 集成；本 fixture 固定 locale，
 // 避免每次挂载额外启动 catalog/docs 请求，并在测试结束后继续更新 React。
 vi.mock('@/i18n/locale', async importOriginal => {
-  const actual = await importOriginal<typeof import('@/i18n/locale')>()
+  const actual = await importOriginal<typeof localeModule>()
   return {
     ...actual,
     useLocale: () => ({ locale: 'zh-CN', pending: false, setLocale: async () => {} })

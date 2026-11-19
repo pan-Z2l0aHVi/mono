@@ -10,13 +10,13 @@ export default function Demo() {
         <web-ui-textarea
           slot="trigger"
           rows={3}
-          className="[--wui-textarea-width:20rem]"
-          placeholder="多行触发器：Enter 换行，Escape 或失焦关闭面板"
+          className="[--wui-textarea-width:320px]"
+          placeholder="Multiline trigger: Enter inserts a newline, Escape or blur (with `focus` enabled) closes the panel"
         ></web-ui-textarea>
-        <web-ui-option value="bug" label="缺陷"></web-ui-option>
-        <web-ui-option value="feature" label="需求"></web-ui-option>
+        <web-ui-option value="bug" label="Bug"></web-ui-option>
+        <web-ui-option value="feature" label="Feature"></web-ui-option>
       </web-ui-autocomplete>
-      <web-ui-button onClick={() => fieldRef.current?.focus()}>聚焦 trigger</web-ui-button>
+      <web-ui-button onClick={() => fieldRef.current?.focus()}>Focus the trigger</web-ui-button>
     </div>
   )
 }

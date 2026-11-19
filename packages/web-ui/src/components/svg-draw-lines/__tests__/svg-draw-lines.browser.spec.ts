@@ -235,8 +235,7 @@ describe('WebUiSvgDrawLines 组件（浏览器）', () => {
   })
 
   /*
-   * 元素被摘走再挂回（列表 key 重排、teleport）不能改变已收尾的末态。旧实现把空白钉在一条
-   * 还活着的动画上，disconnect 收尾时还原成完整描边，于是未勾选的控件重新接回 DOM 时勾复现。
+   * 元素被摘走再挂回（列表 key 重排、teleport）不能改变已收尾的末态。
    */
   it('收回收尾后的元素摘走再挂回仍是空白', async () => {
     const el = createEl()

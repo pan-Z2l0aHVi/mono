@@ -62,7 +62,7 @@ export default function Demo() {
 
 `sport` 的进度是已知的，宿主保留 `aria-valuenow`，`show-value` 仍显示百分比。进度在动画运行中变化会同步更新条宽与位移终点。
 
-`progressbar` 只表达已知进度。操作已开始、但还无法计算百分比时，应改用 `web-ui-spinner` 这类 loading 指示器，而不是进度条。组件不再提供 `indeterminate` 属性、`--wui-progress-indeterminate-duration` 变量与 `wui-progress-indeterminate` 动画；模板里遗留的 `indeterminate` 会被忽略，**未给 `value` 时会静默显示为 0%**，请一并移除并改用 `web-ui-spinner`。
+`progressbar` 只表达已知进度。操作已开始、但还无法计算百分比时，应改用 `web-ui-spinner` 这类 loading indicator，而不是进度条。`indeterminate` 不在契约里：写上它会被忽略，**未给 `value` 时为 0%**；需要不确定进度时用 `web-ui-spinner`。
 
 ```tsx
 export default function Demo() {

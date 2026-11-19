@@ -193,7 +193,7 @@ export class WebUiLayout extends LitElement {
   private _handleResizePointerDown(e: PointerEvent) {
     if (!this.sidebarResizable || this.sidebarCollapsed || this.mobile || this._isResizing()) return
     // jsdom 等环境的 PointerEvent 可能缺失 isPrimary，仅在明确为 false（多点触控副指针）时拒绝。
-    if (e.isPrimary === false) return
+    if (Object.is(e.isPrimary, false)) return
 
     const aside = this.renderRoot.querySelector('aside')
     if (!aside) return

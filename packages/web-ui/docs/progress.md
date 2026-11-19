@@ -62,7 +62,7 @@ export default function Demo() {
 
 Progress stays knowable in `sport` mode: the host keeps `aria-valuenow`, and `show-value` still shows the percentage. Changing the value mid-animation updates the bar width and the travel endpoint together.
 
-A `progressbar` only expresses known progress. When work has started but its percentage cannot be calculated yet, use a loading indicator such as `web-ui-spinner` instead. The `indeterminate` prop, the `--wui-progress-indeterminate-duration` custom property and the `wui-progress-indeterminate` animation are no longer available. A leftover `indeterminate` attribute in a template is ignored and **silently degrades to 0% when no `value` is given**; remove it and switch to `web-ui-spinner`.
+A `progressbar` only expresses known progress. When work has started but its percentage cannot be calculated yet, use a loading indicator such as `web-ui-spinner` instead. `indeterminate` is not part of the contract: writing it is ignored, and **0% is shown when no `value` is given**; use `web-ui-spinner` when progress is indeterminate.
 
 ```tsx
 export default function Demo() {

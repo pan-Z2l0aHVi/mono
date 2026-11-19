@@ -3,8 +3,6 @@ import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
-import { waitForUpdate } from '@/shared/test-utils'
-
 import type { WebUiSwitch } from '..'
 import switchSource from '../index.ts?raw'
 

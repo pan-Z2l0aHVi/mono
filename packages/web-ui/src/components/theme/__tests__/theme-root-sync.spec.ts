@@ -1,7 +1,10 @@
+// 副作用导入：`..` 的入口会注册 `<web-ui-theme>` 自定义元素，下面的 createElement 依赖它，
+// 不能只留 `import type`。
+import '..'
+
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import type { ThemeAppearance } from '..'
-import { WebUiTheme } from '..'
+import type { ThemeAppearance, WebUiTheme } from '..'
 
 /*
  * jsdom 不解析 shadow 树里的 `:host` 规则，所以用一份文档级夹具样式顶替组件内部 CSS 的
@@ -199,7 +202,7 @@ describe('WebUiTheme 根节点 page 色同步', () => {
     first.remove()
     expect(readRootPage()).toBe(DARK_PAGE)
 
-    const second = await mountTheme('light')
+    await mountTheme('light')
     expect(readRootPage()).toBe(LIGHT_PAGE)
   })
 

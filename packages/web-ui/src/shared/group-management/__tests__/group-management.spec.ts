@@ -49,7 +49,7 @@ describe('shared/group-management', () => {
     el.appendChild(added)
     // 继承发生在 MutationObserver 投递之后，等期待值而不是等一个空 tick。
     await pollUntil(
-      () => added.checked === true && queryA11y(added, '[role="checkbox"]')?.getAttribute('aria-disabled') === 'true',
+      () => added.checked && queryA11y(added, '[role="checkbox"]')?.getAttribute('aria-disabled') === 'true',
       '新插入成员没有继承当前值与禁用态'
     )
     await added.updateComplete

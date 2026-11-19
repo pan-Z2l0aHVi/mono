@@ -1,3 +1,5 @@
+// 副作用导入完成 <web-ui-theme> 注册，createTheme 的 createElement 依赖它。
+import '..'
 import '@/components/context-menu'
 import '@/components/dropdown-item'
 
@@ -6,7 +8,7 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { toast } from '@/components/toast'
 import { flush } from '@/shared/test-utils'
 
-import { WebUiTheme } from '..'
+import type { WebUiTheme } from '..'
 
 function createTheme(appearance?: 'light' | 'dark' | 'system'): WebUiTheme {
   const theme = document.createElement('web-ui-theme')
@@ -28,8 +30,8 @@ afterEach(() => {
 describe('WebUiTheme 组件', () => {
   describe('主题过渡 toggle：motion', () => {
     /*
-     * `transition` 布尔 prop 已移除（breaking）：主题切换是否播放 View Transition 揭示
-     * 改由 motion 三档统一控制 —— full 播放、reduced 直接落地、system 跟随
+     * `transition` 不在公开契约里：主题切换是否播放 View Transition 揭示由 motion
+     * 三档统一控制 —— full 播放、reduced 直接落地、system 跟随
      * prefers-reduced-motion。jsdom 不解析主题内部 CSS，duration 回退 500ms，
      * 因此这里的判定面是 isReducedMotion() 与 startViewTransition 接线本身。
      *
@@ -134,7 +136,7 @@ describe('WebUiTheme 组件', () => {
      *   _shouldAnimateAppearance，单独看这一条即使 prop 仍在被读取也会绿，
      *   只有和上半配对才能证明「写了也开不了」。
      */
-    it('已移除的 transition prop 是惰性 no-op：motion=full 不写也启动，motion=reduced 写了也不启动', async () => {
+    it('未知的 transition prop 是惰性 no-op：motion=full 不写也启动，motion=reduced 写了也不启动', async () => {
       const stub = stubStartViewTransition()
       const enabled = createTheme('light')
       enabled.motion = 'full'
@@ -165,30 +167,13 @@ describe('WebUiTheme 组件', () => {
       stub.restore()
     })
 
-    it('连接期间只登记一次圆心来源监听，断开时完整清理', async () => {
-      const addSpy = vi.spyOn(window, 'addEventListener')
-      const removeSpy = vi.spyOn(window, 'removeEventListener')
-      const theme = createTheme('light')
-
-      try {
-        // Upgrade 顺序可能是 attributeChangedCallback 先于 connectedCallback；手动再同步一次连接回调。
-        theme.connectedCallback()
-        await theme.updateComplete
-
-        const countEvents = (spy: typeof addSpy, event: string) =>
-          spy.mock.calls.filter(([eventName]) => eventName === event).length
-        expect(countEvents(addSpy, 'pointerdown')).toBe(1)
-        expect(countEvents(addSpy, 'keydown')).toBe(1)
-
-        theme.remove()
-        expect(countEvents(removeSpy, 'pointerdown')).toBe(1)
-        expect(countEvents(removeSpy, 'keydown')).toBe(1)
-      } finally {
-        addSpy.mockRestore()
-        removeSpy.mockRestore()
-        theme.remove()
-      }
-    })
+    /*
+     * 「连接期间登记圆心来源监听、断开时清理」不再用 spy 数 add/removeEventListener——
+     * 那是把内部记账当断言（引用计数守卫下重复注册本就无害），断连泄漏的可观察后果
+     * （断开后 pointerdown 不再更新揭示圆心）已由 theme-transition.browser.spec.ts 的
+     * 「揭示圆心取最近一次 pointerdown 落点 / 断开后不再更新」一对行为用例承接。
+     * jsdom 没有 WAAPI，圆心行为在这里复述不了；此处不保留副本。
+     */
 
     it('浏览器不支持 View Transitions 时立即提交 appearance', async () => {
       const startDescriptor = Object.getOwnPropertyDescriptor(document, 'startViewTransition')

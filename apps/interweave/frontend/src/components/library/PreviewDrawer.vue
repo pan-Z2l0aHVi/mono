@@ -146,7 +146,7 @@ function handleMediaError(kind: 'image' | 'video' | 'audio') {
     @open-change="handleOpenChange"
   >
     <!--
-      抽屉的 padding 同时用于定位拖拽手柄，内容向外延伸覆盖该空间，再按抽屉圆角裁切。
+      抽屉的 padding 同时用于定位 drag handle，内容向外延伸覆盖该空间，再按抽屉圆角裁切。
 
       open && resource 双重守卫：selectedResource 由行点击即赋值，而 previewOpen 仍是 false，
       此时 dialog 是 display:none。只按 resource 守卫会让 img/video/iframe 挂在隐藏 dialog 里

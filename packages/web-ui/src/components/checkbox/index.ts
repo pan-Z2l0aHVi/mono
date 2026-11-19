@@ -1,11 +1,13 @@
 import '@/components/icon'
+// 渲染的是 <web-ui-svg-draw-lines>，updated() 直接调它的 replay()：必须导入模块完成注册。
+import '@/components/svg-draw-lines'
 
 import { html, LitElement, type PropertyValues, unsafeCSS } from 'lit'
 import { customElement, property, query, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 
 import selectionControl from '@/assets/selection-control.css?inline'
-import { WebUiSvgDrawLines } from '@/components/svg-draw-lines'
+import type { WebUiSvgDrawLines } from '@/components/svg-draw-lines'
 import { codexCheck } from '@/icons'
 import { installPointerFocusSuppression } from '@/shared/focus/pointer-focus'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'

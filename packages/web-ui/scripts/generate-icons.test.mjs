@@ -83,7 +83,7 @@ try {
   assert.deepEqual(importLines, [...importLines].sort())
   assert.match(
     gallery,
-    /export const iconGallery: Record<string, IconifyIcon> = \{\n  testHouse,\n  testPlain,\n  bareDot\n\}/
+    /export const iconGallery: Record<string, IconifyIcon> = \{\n {2}testHouse,\n {2}testPlain,\n {2}bareDot\n\}/
   )
 
   // 输入里移除的 icon 必须从生成目录消失；gallery.ts 同属生成产物，必须保留；

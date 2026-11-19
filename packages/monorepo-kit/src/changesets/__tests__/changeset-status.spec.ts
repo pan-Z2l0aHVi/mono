@@ -11,8 +11,13 @@ import { defineChangesetStatus } from '../changeset-status'
 /*
  * G7 包级测试：changeset-status 的整条链在真实子进程上走通（chain → `pnpm exec changeset
  * status --since=<base>` → 退出码转 ok/Err）。`changeset` CLI 用一份 stub 顶上：真实的
- * changesets 归匹配置不归本链管（本判定只转写退出码），stub 按「区间内有没有 changeset 文件」
- * 给出与真实 CLI 同向的退出码，并把收到的 argv 落盘供 --since 透传断言。
+ * changesets 归匹配置不归本链管（本判定只转写退出码），stub 按「.changeset/ 里有没有
+ * changeset 文件」给极性，并把收到的 argv 落盘供 --since 透传断言。
+ *
+ * 极性同向性：真实 CLI（@changesets/cli 的 status）只在「区间内有可发版变更包 且 区间内
+ * 无新增 changeset」时退出 1。stub 的文件有无规则只在 fixture 落在这个触发态上才与真实
+ * 规则同向——因此负例 fixture 在 base 之后提交一次源码变更（与 changeset-required.spec
+ * 同一手法），让「无 .md」恰好对应真实 CLI 的触发条件；消息文本镜像真实 CLI 的输出。
  */
 
 const CHANGESET_STUB = `#!/usr/bin/env node
@@ -30,7 +35,9 @@ const files = fs.existsSync(directory)
   ? fs.readdirSync(directory).filter(name => name.endsWith('.md'))
   : []
 if (files.length === 0) {
-  console.error('No changesets found. If this is unexpected...\\n\\n  (stub mirror of the real CLI message)')
+  console.error(
+    "Some packages have been changed but no changesets were found. Run changeset add to resolve this error.\\nIf this change doesn't need a release, run changeset add --empty."
+  )
   process.exit(1)
 }
 console.log('All changesets are merged.')
@@ -76,6 +83,12 @@ function makeRepo(withChangeset: boolean): { root: string; base: string; argsFil
     )
     git(root, 'add', '-A')
     git(root, 'commit', '-m', 'feature')
+  } else {
+    // 负例态对齐真实 CLI 的触发条件：区间内有可发版变更（源码变更）但没有新增 changeset。
+    // 不提交变更的话，真实 CLI 在该状态会退出 0（「无可发版变更」），stub 的极性就反了。
+    fs.writeFileSync(path.join(root, 'README.md'), '# fixture\nchanged after base\n')
+    git(root, 'add', '-A')
+    git(root, 'commit', '-m', 'source change without changeset')
   }
   fs.mkdirSync(path.join(root, 'node_modules/.bin'), { recursive: true })
   const argsFile = path.join(root, 'changeset-stub-args.json')
@@ -114,6 +127,7 @@ describe('defineChangesetStatus（真实子进程）', () => {
     expectNoInstallArtifacts(root)
     expect(result.ok).toBe(false)
     assert.match(!result.ok ? result.error : '', /^changeset: status --since=/)
-    assert.match(!result.ok ? result.error : '', /No changesets found/)
+    // 消息文本镜像真实 CLI 的输出（见文件头极性同向性说明）。
+    assert.match(!result.ok ? result.error : '', /no changesets were found/i)
   })
 })

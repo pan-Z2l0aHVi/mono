@@ -60,6 +60,8 @@ const TRAJECTORY_CODE_PATTERN = /^[A-Za-z0-9_-]{1,40}$/u
 // 模型 job 的原始错误只在 CI run 的 job 日志里；写回 job 读它来做分流指引，job 名与 ci.yml 的 `name:` 一致。
 const REVIEW_JOB_NAME = 'Codex review'
 // 日志里的 `ERROR:` 被颜色码包住（`ESC[1mESC[31mERROR:`），不先剥掉就找不到 JSON 载荷。
+// 匹配对象就是 ESC 控制字符本身，这里的 no-control-regex 告警是误报。
+// eslint-disable-next-line no-control-regex
 const ANSI_PATTERN = /\u001b\[[0-9;]*m/gu
 // 轨迹历史只从 marker 行的这个字段读回；可见行仅做展示，不参与续写。
 const MARKER_TRAJECTORY_FIELD = / traj=(.+) -->$/u

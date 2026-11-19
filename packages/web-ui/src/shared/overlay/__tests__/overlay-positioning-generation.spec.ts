@@ -1,3 +1,4 @@
+import type * as floatingUi from '@floating-ui/dom'
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { defineOverlay } from '../overlay'
@@ -15,7 +16,7 @@ const positioningRequests = vi.hoisted(() => ({
 }))
 
 vi.mock('@floating-ui/dom', async importOriginal => {
-  const actual = await importOriginal<typeof import('@floating-ui/dom')>()
+  const actual = await importOriginal<typeof floatingUi>()
   return {
     ...actual,
     autoUpdate: () => () => {},

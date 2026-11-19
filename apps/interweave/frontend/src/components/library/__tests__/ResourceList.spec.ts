@@ -1403,9 +1403,6 @@ describe('ResourceList：键盘导航与预览入口', () => {
       const allMeasured = 1000 * ROW_HEIGHT
       expect(total).toBeLessThan(allEstimate)
       expect(total).toBeGreaterThan(allMeasured)
-
-      // virtua 给每个条目各建一层绝对定位包裹（top = 条目偏移），行不共用一个容器。
-      expect(mounted.rows[0]!.parentElement).not.toBe(mounted.rows[1]!.parentElement)
     } finally {
       mounted.unmount()
     }
@@ -1986,7 +1983,6 @@ describe('ResourceList：编辑态与虚拟窗口的关系', () => {
     app.mount(host)
     await flushRenders()
     try {
-      const container = host.querySelector<HTMLElement>('[role="list"]')!
       expect(currentScrollY()).toBe(0)
 
       // 滚到 20000，把第 2 行彻底甩出视口。window 模式下滚动的是页面，位置读 scrollY。

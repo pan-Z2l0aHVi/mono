@@ -75,8 +75,8 @@ assert.doesNotMatch(frontendTask, /pnpm run \{\{if eq \.DEV "true"\}\}build:dev\
 const bindingTaskStart = taskfile.indexOf('  generate:bindings:\n')
 const bindingTaskEnd = taskfile.indexOf('\n  generate:icons:', bindingTaskStart)
 const bindingTask = bindingTaskStart < 0 || bindingTaskEnd < 0 ? '' : taskfile.slice(bindingTaskStart, bindingTaskEnd)
-assert.match(bindingTask, /\n    run: once\n/)
-assert.doesNotMatch(bindingTask, /\n    (?:sources|generates):/)
+assert.match(bindingTask, /\n {4}run: once\n/)
+assert.doesNotMatch(bindingTask, /\n {4}(?:sources|generates):/)
 
 const realBefore = hashTree(realBindings)
 

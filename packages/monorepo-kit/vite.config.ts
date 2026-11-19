@@ -23,5 +23,11 @@ export default {
       sourcemap: true
     },
     tsconfig: './tsconfig.app.json'
+  },
+  test: {
+    // git 夹具（staged-clean / git-hooks-status / changeset-required）每个用例都要 spawn
+    // 几十次 git 子进程，默认逐用例 5s 超时；与同包其它文件并行时会因 CPU 抢占超时，
+    // 串行执行换取稳定。
+    fileParallelism: false
   }
 } satisfies UserConfig

@@ -27,11 +27,11 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react' // 或 over
 
 ## Token
 
-| Token                           | 归属              | 含义                                                       |
-| ------------------------------- | ----------------- | ---------------------------------------------------------- |
-| `--wui-scrollbar-handle`        | `@greypan/web-ui` | 静止状态的滑块颜色，由最外层主题镜像到 `documentElement`。 |
-| `--app-scrollbar-handle-hover`  | 本包              | 悬停时的滑块颜色。                                         |
-| `--app-scrollbar-handle-active` | 本包              | 按下时的滑块颜色。                                         |
+| Token                           | 归属              | 含义                                                           |
+| ------------------------------- | ----------------- | -------------------------------------------------------------- |
+| `--wui-scrollbar-handle`        | `@greypan/web-ui` | 静止状态的 handle 颜色，由最外层主题镜像到 `documentElement`。 |
+| `--app-scrollbar-handle-hover`  | 本包              | 悬停时的 handle 颜色。                                         |
+| `--app-scrollbar-handle-active` | 本包              | 按下时的 handle 颜色。                                         |
 
 原生滚动条没有悬停和按下状态，因此 `web-ui` 只定义静止 token。主题通过 `web-ui-theme[resolved-appearance]` 切换三档颜色。`<body>` 下的文档滚动条通过 `html:has()` 跟随。
 

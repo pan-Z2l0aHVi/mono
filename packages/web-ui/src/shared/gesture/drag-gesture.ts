@@ -226,7 +226,7 @@ export function attachDragGesture(
           target.releasePointerCapture(activePointerId)
         }
       } catch {
-        // ignore
+        // 指针已释放或已失去捕获时重复释放无副作用，忽略。
       }
     }
     activePointerId = null
@@ -242,7 +242,7 @@ export function attachDragGesture(
   function handlePointerDown(e: PointerEvent) {
     if (activePointerId !== null) return
     // 真实触控环境下的多点触控副指针不启动手势（合成事件或鼠标环境缺省时不拦截）
-    if (e.pointerType === 'touch' && e.isPrimary === false) return
+    if (e.pointerType === 'touch' && Object.is(e.isPrimary, false)) return
 
     const startInfo: DragStartInfo = {
       pointerId: e.pointerId,
