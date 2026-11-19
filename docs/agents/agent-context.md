@@ -47,7 +47,9 @@ ADR 与指向它的 `docs/agents/` 文档只保留单向链接：ADR 侧用行�
 
 ## 语料门禁
 
-`check-context` 判定路由完整性、断链与锚点、外部状态快照短语、远端写授权指针与非权威标记；ADR 与 `.agents/rules/**` 的入站断言仍会判红。判据与取舍见 [ADR-0013](../adr/0013-context-authority.md)，语料指纹边界见 [ADR-0022](../adr/0022-monorepo-kit-plugin-chain.md)。allowlist 变更必须在 diff 中显式发生，不能为让检查变绿而放宽模式。
+`check-context` 判定路由完整性、断链与锚点、外部状态快照短语、远端写授权指针与非权威标记；ADR 与 `.agents/rules/**` 的入站断言仍会判红。判据与取舍见 [ADR-0013](../adr/0013-context-authority.md)，语料指纹已随 [ADR-0022](../adr/0022-monorepo-kit-plugin-chain.md) 删除，不构成判据。allowlist 变更必须在 diff 中显式发生，不能为让检查变绿而放宽模式。
+
+扫描面分两层：链接面 = 指令面 ∪ 已跟踪 Markdown（`git ls-files '*.md'`），第三方上游件按锁定清单与 vendored 目录排除；指令面是路由、授权指针与根命令检查的范围。链接只解析行内 `[label](target)`，引用式 `[label]: target` 与 HTML `href` 不在射程内；围栏与行内 code 先剥掉。软链文档按 realpath 归一、只扫实体路径；仓库根以下的文档必须用 `./` 或 `../` 起头，断链与节锚点都判红。
 
 ## 客户端适配
 

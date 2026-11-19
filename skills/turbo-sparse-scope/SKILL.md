@@ -7,7 +7,7 @@ description: 按任务 scope 的仓库相对路径把当前 worktree 的 git spa
 
 ## 何时使用
 
-实施 owner 在任务建账、`mise install` 与 `pnpm install --frozen-lockfile` 完成后（需要类型检查、消费 `dist` 或跑仓库检查时再 `pnpm run build`）、读取实施范围的代码、派发实施子任务或修改文件之前执行。准备与分工由编排层承接；同一个 task 的子任务共用 owner 确定的 worktree 和范围。
+实施 owner 在任务建账与 worktree 准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`，需要类型检查、消费 `dist` 或跑仓库检查时再 `mise exec -- pnpm run build`）完成后、读取实施范围的代码、派发实施子任务或修改文件之前执行。准备与分工由编排层承接；同一个 task 的子任务共用 owner 确定的 worktree 和范围。
 
 - 台账 `scope` 为空且没有实现/验证必需的包外读取时跳过；否则必须调用本 skill 判断并处理范围。不要把「加载无关包」留到实现过程中再说。
 - 收缩是否到位用 `--check <目标>` 判定，不靠自述：目标是本 worktree 未结任务 `scope` 的并集，加上实现与验证必需的包外读取路径；非零退出意味着「目标非空但工作区从没收缩」或「cone 与目标要求的闭包不一致」。
@@ -45,7 +45,7 @@ mise exec -- node <skill-dir>/sparse-scope.mjs --restore [--json]
 
 退出码：`0` 成功，`1` 环境或运行失败（turbo 失败、git 失败、依赖同步失败）或 `--check` 判定不匹配，`2` 用法或目标错误（未知参数、未知路径、稀疏树上做了不允许的动作）。`--status` 对布局问题只诊断：缺 `pnpm-workspace.yaml` 等写进 `warnings`，仍 exit 0；git 命令失败仍是 exit 1。
 
-成功收缩后，只要根目录有 `pnpm-workspace.yaml` 且 `pnpm` 在 PATH 上，脚本会接着跑一次 `pnpm install --frozen-lockfile`，结果写在报告的 `dependencies`（`synced`；`--dry-run` 为 `would-sync`）。跳过时（没有 workspace 文件或找不到 pnpm）报告 `skipped` 并给出原因，此时必须在跑任何 pnpm 脚本前手动同步。原因见下面规则 7。
+成功收缩后，只要根目录有 `pnpm-workspace.yaml` 且 `pnpm` 在 PATH 上，脚本会接着跑一次 `pnpm install --frozen-lockfile`（脚本直接调用 PATH 上的 pnpm），结果写在报告的 `dependencies`（`synced`；`--dry-run` 为 `would-sync`）。跳过时（没有 workspace 文件或找不到 pnpm）报告 `skipped` 并给出原因，此时必须在跑任何 pnpm 脚本前手动同步。原因见下面规则 7。
 
 ## 范围怎么算
 
@@ -67,8 +67,8 @@ mise exec -- node <skill-dir>/sparse-scope.mjs --restore [--json]
 4. **任务扩展时用 `--add`。** 不扩大范围就用 `--reset` 或默认动作重建，不要手写路径。
 5. **不要在稀疏树里用 `turbo run` 期待全仓结果。** 需要全仓图时先 `--restore`。
 6. **提交照常进行。** cone 外的已跟踪文件只是没检出，不影响 commit；合并、rebase、切换分支前先 `--restore`，避免 cone 外路径的冲突要手工处理。
-7. **收缩后不要再跑不带 `--frozen-lockfile` 的 `pnpm install`。** 它只看到 cone 内的 workspace，会把 `pnpm-lock.yaml` 重写成缩小的图（隐藏 workspace 与只被它们使用的 catalog 条目会被删掉）。更隐蔽的是 pnpm 在 `pnpm run` 前的隐式安装（`verifyDepsBeforeRun`）：收缩删掉了隐藏包的目录和 `node_modules` 后，它发现 install 状态与当前 workspace 集不一致，会在跑命令前自动做一次**非 frozen** 安装，hook 仍然 exit 0，锁文件却已被改写。脚本在收缩后自动做的 frozen 安装就是为了消除这个不一致，让后续脚本不再触发隐式安装；报告里 `dependencies: skipped` 时先手动跑 `pnpm install --frozen-lockfile` 再执行任何 pnpm 脚本。要真正重装依赖就先 `--restore`。
-8. **`--restore` 之后补装依赖并重建。** 被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 一起删除；有未跟踪文件时只删已跟踪文件，目录与其中的忽略内容保留（git 打 warning）。`--restore` 只带回已跟踪文件，恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm build`，缓存命中时都很快。
+7. **收缩后不要再跑不带 `--frozen-lockfile` 的 `mise exec -- pnpm install`。** 它只看到 cone 内的 workspace，会把 `pnpm-lock.yaml` 重写成缩小的图（隐藏 workspace 与只被它们使用的 catalog 条目会被删掉）。更隐蔽的是 pnpm 在 `pnpm run` 前的隐式安装（`verifyDepsBeforeRun`）：收缩删掉了隐藏包的目录和 `node_modules` 后，它发现 install 状态与当前 workspace 集不一致，会在跑命令前自动做一次**非 frozen** 安装，hook 仍然 exit 0，锁文件却已被改写。脚本在收缩后自动做的 frozen 安装就是为了消除这个不一致，让后续脚本不再触发隐式安装；报告里 `dependencies: skipped` 时先手动跑 `mise exec -- pnpm install --frozen-lockfile` 再执行任何 pnpm 脚本。要真正重装依赖就先 `--restore`。
+8. **`--restore` 之后补装依赖并重建。** 被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 一起删除；有未跟踪文件时只删已跟踪文件，目录与其中的忽略内容保留（git 打 warning）。`--restore` 只带回已跟踪文件，恢复后要重跑 `mise exec -- pnpm install --frozen-lockfile` 与 `mise exec -- pnpm run build`，缓存命中时都很快。
 9. **changeset 仍要新建。** 根目录默认保留，`.changeset/` 会检出；即使目录被删除也重新创建（新建的是未跟踪文件，不会被后续收缩删除）。changeset gate 只在 CI 跑，本地门禁不会提醒。
 10. **workspace 容器里未被选中的包整包隐藏。** 只含根路径的 scope 会隐藏全部未选中子包；读取或执行前先 `--add <package>`。
 

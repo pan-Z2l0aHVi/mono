@@ -18,7 +18,7 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 ## 按任务收缩视野
 
-实施 owner 在任务建账、`mise install` 与 `pnpm install --frozen-lockfile` 完成后、读取实施范围的代码、派发实施子任务或修改文件前，按台账 `scope` 与实现/验证必需的包外读取路径调用 sparse skill。`scope` 为空且没有包外读取时跳过；否则必须判断并处理范围，不能把「加载无关包」留到实施过程中再说。同一 worktree 的后续任务沿用已覆盖的 cone，只有读取面扩展出 cone 时才 `--add`。权限或仓库规则禁止更改 Git 配置或 worktree 时，按 skill 的只读降级记录原因，不执行会改动 checkout 的命令。顺序不能颠倒：闭包来自 turbo 图，`turbo ls` 在未安装依赖的 worktree 里跑不起来。
+实施 owner 在任务建账与 worktree 准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`）完成后、读取实施范围的代码、派发实施子任务或修改文件前，按台账 `scope` 与实现/验证必需的包外读取路径调用 sparse skill。`scope` 为空且没有包外读取时跳过；否则必须判断并处理范围，不能把「加载无关包」留到实施过程中再说。同一 worktree 的后续任务沿用已覆盖的 cone，只有读取面扩展出 cone 时才 `--add`。权限或仓库规则禁止更改 Git 配置或 worktree 时，按 skill 的只读降级记录原因，不执行会改动 checkout 的命令。被隐藏的文件不是不存在：读取用 `git show HEAD:<path>`，要执行先 `--add` 或 `--restore`。顺序不能颠倒：闭包来自 turbo 图，`turbo ls` 在未安装依赖的 worktree 里跑不起来。
 
 `scope` 是仓库相对路径数组。两个 skill 不互相调用，组合方式只有一种：从台账读出路径，再作为 turbo-sparse-scope 的目标参数。从全树开始时先加 `--dry-run` 看会隐藏哪些包，再实际收缩：
 
@@ -29,7 +29,7 @@ mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs <scope-path
 
 范围变化时先更新台账 scope 再继续：放宽用 `scope <id> --add`，重算或收窄用 `scope <id> --set`，清空用 `--clear`。台账 scope 收窄不强制重算 sparse cone；读取面扩展出 cone 时用 `--add` 落盘，要按新闭包重算才用 `--reset`，清空后用 `--restore` 恢复全树，`close` 不恢复。
 
-调用方式、范围算法与稀疏树里的搜索、gate、install 规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。对这里的环境准备有两条后果。第一，收缩成功后脚本会立即跑一次 `pnpm install --frozen-lockfile`，把 `node_modules` 对齐到缩小后的 workspace 集，否则后续 `pnpm run` / `pnpm exec` 会自行做非 frozen 安装并重写 `pnpm-lock.yaml`；根目录没有 `pnpm-workspace.yaml` 或 `pnpm` 不在 PATH 时这一步跳过并告警，需要在跑 pnpm 脚本前手动补上。第二，被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 删除，`--restore` 只带回已跟踪文件，恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm run build`。
+调用方式、范围算法与稀疏树里的搜索、gate、install 规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。对这里的环境准备有两条后果。第一，收缩成功后脚本会立即跑一次 `pnpm install --frozen-lockfile`，把 `node_modules` 对齐到缩小后的 workspace 集，否则后续 `pnpm run` / `pnpm exec` 会自行做非 frozen 安装并重写 `pnpm-lock.yaml`；根目录没有 `pnpm-workspace.yaml` 或 `pnpm` 不在 PATH 时这一步跳过并告警，需要在跑 pnpm 脚本前手动补上。第二，被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 删除，`--restore` 只带回已跟踪文件，恢复后要重跑 `mise exec -- pnpm install --frozen-lockfile` 与 `mise exec -- pnpm run build`。
 
 ## 本地 HTTPS 证书
 

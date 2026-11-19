@@ -16,25 +16,22 @@
 ### 门禁形态
 
 Codex 审查承担本仓默认的 PR review 结论（2026-11-06 起）。它是约定式门禁，不改 GitHub 分支保护：
-`reviewed` 且 `Block > 0`、`error` 与 `unreviewed` 变红；`stale`、`not_applicable` 保持绿色。绿色只表示
-「这次运行有结论可读」，不表示「没问题」；`Block` 数量、状态、故障码与缺失配置名写进 PR 上同一条持久评论，
+绿色只表示「这次运行有结论可读」，不表示「没问题」；结论、状态与故障信息写进 PR 上同一条持久评论，
 合并准入仍由人决定。绿色 CI 不证明 review 完成，结论也不证明 `check` 通过，两条同时成立才算审过。
+现行红绿映射、状态语义与三档处置只在 `review.md` 定义，本 ADR 只记录取舍。
 
 `error` 只表示配置或调用故障（`config_missing`、`model_failed`、`artifact_missing`）；模型跑完没产出可用结论是
 `unreviewed`（`unusable_output`），空 findings 却没交覆盖清单是 `missing_coverage`，同记 `unreviewed`。
-两档都变红：曾有一次空 `summary` 把整份 findings 丢掉而 PR 只留绿勾，因此「没给出可用结论」与「结论是 Block 0」
-必须用颜色分开；处置是重跑一次，重复出现说明输出契约坏了。`continue-on-error` 只让判定脚本有机会落结论，
+两类「没给出可用结论」必须与「结论是 Block 0」在颜色上分开：曾有一次空 `summary` 把整份 findings 丢掉而 PR
+只留绿勾；处置是重跑一次，重复出现说明输出契约坏了。`continue-on-error` 只让判定脚本有机会落结论，
 模型 job 的 `outcome` 仍传给判定脚本。
 
 ### 覆盖度与结论即 review
 
-`coverage` 是 schema 必填：`coverage.inspected` 是模型实际读过的路径，`coverage.uncovered` 是它声明无法判断的
-改动处。`validate` 在「无 findings、diff 非空、`inspected` 为空」时判 `missing_coverage`；空 findings 时
-`inspected` 至少要有一条等于 `changed_paths` 中的改动文件，写父目录不算。`uncovered` 非空不让结论作废、不变红，
-但必须人工逐项复核，也不满足「结论即 review」。旧产物没有 `coverage` 时一律不复用，宁可重跑一遍。
+`coverage` 契约、完成条件与状态后果只在 `review.md` 定义，本 ADR 只记取舍。保留覆盖清单，
+是因为「没读过的没审」与「读了并判断为无问题」必须可区分；`uncovered` 非空时那部分不在结论射程内，必须逐项
+人工复核，也不满足「结论即 review」。旧产物没有 `coverage` 时一律不复用，宁可重跑一遍。
 
-门给的结论就是这份 PR 的 review：reviewed SHA 等于当前 head、`Block` 为 0、required `check` 在当前 head 上成功，
-且没有其他 readiness 缺口时，review 即完成。`coverage.uncovered` 非空时那部分不在结论射程内，必须逐项人工复核。
 独立性要的是「执行体与实施者叙述隔离」，不是执行体数量；门在另一个 runner、另一个模型、只读 PR diff 上跑，
 结论绑定 head，第二个人工执行体读同一批字节的边际收益是重复劳动。
 
@@ -149,9 +146,9 @@ CI 全绿。根因不是模型质量，而是「配置缺失 → 调用崩溃 �
 ## 2026-11-06 修订：这道结论就是本仓默认的 review
 
 引入时定位是「补强，不是替代」，落地后按旧口径还要再派一次独立审查，把增量切成多条 lane 回收报告。裁决改为：
-门给的结论就是该 PR 的 review，三条同时成立即完成（reviewed SHA 等于当前 head、`Block` 为 0、`check` 在当前 head
-上成功）；要不要另起本地 agent 或人工审查由 agent 自己判断，仓库不规定触发条件。覆盖度契约落地后射程进一步收窄：
-`coverage.uncovered` 非空的位置必须逐项人工复核，那不算「规定触发条件」，只补结论列出的空白。
+门给的结论就是该 PR 的 review，完成条件以 `review.md` 的现行判据为准；要不要另起本地
+agent 或人工审查由 agent 自己判断，仓库不规定触发条件。覆盖度契约落地后射程进一步收窄：`coverage.uncovered`
+非空的位置必须逐项人工复核，那不算「规定触发条件」，只补结论列出的空白。
 
 ## 2026-11-12 修订：增量复审
 

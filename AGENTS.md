@@ -6,7 +6,7 @@
 
 修改仓库前，按 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md) 定级并建账，分级、准入与恢复见该 skill；只读调查不建账。PR review 纪律见 [`docs/agents/review.md`](docs/agents/review.md)，方案到合并的总流程与授权见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
 
-可变任务建账并完成 worktree 准备（`mise install`、`pnpm install --frozen-lockfile`，需要类型检查或消费 `dist` 时再 `pnpm run build`）后，按台账 `scope` 与实现/验证必需的包外读取路径，用 [turbo-sparse-scope](.agents/skills/turbo-sparse-scope/SKILL.md) 判断并处理稀疏范围。`scope` 为空且没有包外读取时跳过。当前树已稀疏时：`--status` 看当前 cone；读取 cone 外文件用 `git show HEAD:<path>`；要执行先 `--add` 或 `--restore`；不得把缺失当不存在。无法改 Git 配置时按 skill 只读降级并记录原因。
+可变任务建账并按 [worktree](docs/agents/worktree.md#新-worktree-的准备) 完成准备后，按台账 `scope` 与实现/验证必需的包外读取路径，用 [turbo-sparse-scope](.agents/skills/turbo-sparse-scope/SKILL.md) 判断并处理稀疏范围；`scope` 为空且没有包外读取时跳过。稀疏树上的读取、降级与「不得把缺失当不存在」判据见 [按任务收缩视野](docs/agents/worktree.md#按任务收缩视野)。
 
 ## 项目身份
 
@@ -29,6 +29,7 @@
 | --- | --- |
 | 生成物：清单、重新生成 | [generated-artifacts](docs/agents/generated-artifacts.md) |
 | 构建、根命令 | [build](docs/agents/build.md)、[commands](docs/agents/commands.md) |
+| 跨包、公共契约、影响面 | [monorepo-change-impact](.agents/skills/monorepo-change-impact/SKILL.md)、[build](docs/agents/build.md) |
 | 脚本准入、根配置、依赖 | [script-policy](docs/agents/script-policy.md)、[dependencies](docs/agents/dependencies.md) |
 | 发布、环境 | [release](docs/agents/release.md)、[environments](docs/agents/environments.md) |
 | 验证、运行时冒烟 | [verification](docs/agents/verification.md)、[runtime-verification](docs/agents/runtime-verification.md) |
@@ -40,6 +41,6 @@
 
 短约束：[code-style](.agents/rules/code-style.md)、[terminology](.agents/rules/terminology.md)、[commands](.agents/rules/commands.md)、[commit](.agents/rules/commit.md)、[testing](.agents/rules/testing.md)、[agent-context](.agents/rules/agent-context.md)。
 
-变更影响面查询：[monorepo-change-impact](.agents/skills/monorepo-change-impact/SKILL.md)；测试用例：[test-authoring](.agents/skills/test-authoring/SKILL.md)。
+测试用例：[test-authoring](.agents/skills/test-authoring/SKILL.md)。
 
 架构与术语：[CONTEXT.md](CONTEXT.md)、[ARCHITECTURE.md](ARCHITECTURE.md)；应用/包领域词汇看对应 `AGENTS.md`，ADR 索引在 `CONTEXT.md`。

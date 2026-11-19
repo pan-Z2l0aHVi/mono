@@ -42,7 +42,7 @@ Vue demo 通过私有 `@greypan/wuchale-vue` 在 Vue 编译前转换 SFC。`wuch
 
 读取生成物的测试与会改写同一路径的生成任务必须有明确的执行依赖，不能并行读写。生成器由本 workspace `build` 承担时，`test` 须依赖该 `build`，同时保留适用的上游依赖。`inputs` 只影响缓存哈希，不建立执行先后，不能替代 `dependsOn`。
 
-`**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是应用代码生成物。除非任务明确要求并已完成对应的视觉或浏览器验证，不要创建、手改或提交。根 [`AGENTS.md`](../../AGENTS.md#不可绕过的仓库边界)在入口层声明同一约束，本节承载处方。
+`**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是应用代码生成物。只有任务明确要求更新已验证的视觉基线时，才在完成对应的视觉或浏览器验证后写入。创建、编辑与提交的边界见根 [`AGENTS.md`](../../AGENTS.md#不可绕过的仓库边界)。
 
 ## TypeScript 配置
 
