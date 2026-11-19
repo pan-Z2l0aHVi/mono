@@ -73,14 +73,72 @@ describe('终态与熔断', () => {
     expect(registry.applyChildExited('block:ZZ', 0)).toBe('unknown')
   })
 
-  it('连续 2 次 error 熔断', () => {
+  it('连续 2 轮 error 熔断', () => {
     const { registry } = makeRegistry()
     const worker = registerWorker(registry)
     registry.applyChildExited('block:A', 1)
     expect(worker.fused).toBe(false)
+    // 真实续跑流程先推进轮次再替换 Block。
+    registry.markTurnDispatched('claude-1', 2)
     registry.replaceBlock('claude-1', 'block:B')
     registry.applyChildExited('block:B', 1)
     expect(worker.fused).toBe(true)
+  })
+
+  it('OSC error 也计入熔断，且与同轮 child_exited 不双计', () => {
+    const { registry } = makeRegistry()
+    const worker = registerWorker(registry)
+    registry.applyProgramStatus('block:A', { state: 'error' })
+    expect(worker.errorStreak).toBe(1)
+    // 同一错误的重复上报（重连对账会重放）只计一次。
+    registry.applyProgramStatus('block:A', { state: 'error' })
+    expect(worker.errorStreak).toBe(1)
+    // 同一轮的退出码 error 不会把同一失败算两次。
+    registry.applyChildExited('block:A', 1)
+    expect(worker.errorStreak).toBe(1)
+    registry.markTurnDispatched('claude-1', 2)
+    registry.replaceBlock('claude-1', 'block:B')
+    registry.applyProgramStatus('block:B', { state: 'error' })
+    expect(worker.fused).toBe(true)
+  })
+
+  it('中间隔了成功回合（idle）不算连续 error（re-review #3）', () => {
+    const { registry } = makeRegistry()
+    const worker = registerWorker(registry)
+    registry.applyProgramStatus('block:A', { state: 'error' })
+    registry.applyProgramStatus('block:A', { state: 'idle' })
+    registry.markTurnDispatched('claude-1', 2)
+    registry.applyProgramStatus('block:A', { state: 'error' })
+    expect(worker.errorStreak).toBe(1)
+    expect(worker.fused).toBe(false)
+  })
+
+  it('已接受时间戳及更早的重放记录一律丢弃（re-review #3 二次）', () => {
+    const { registry } = makeRegistry()
+    const worker = registerWorker(registry)
+    registry.applyProgramStatus('block:A', { state: 'error', updatedAt: 'T2' })
+    registry.applyProgramStatus('block:A', { state: 'working', updatedAt: 'T3' })
+    // turn 1 的 error 在新一轮 working 之后重放：旧时间戳不得把状态拉回、也不得重复计数。
+    registry.applyProgramStatus('block:A', { state: 'error', updatedAt: 'T1' })
+    expect(worker.status).toBe('working')
+    expect(worker.errorStreak).toBe(1)
+    // 同一时间戳的再报也按重放拒绝：真实 updated_at 是微秒精度，同 ts 必是重放。
+    registry.applyProgramStatus('block:A', { state: 'error', updatedAt: 'T3' })
+    expect(worker.status).toBe('working')
+    expect(worker.errorStreak).toBe(1)
+  })
+
+  it('retired Block 的延迟事件不再改写 worker（review #1）', () => {
+    const { registry } = makeRegistry()
+    const worker = registerWorker(registry)
+    registry.applyChildExited('block:A', 0)
+    registry.replaceBlock('claude-1', 'block:B')
+    registry.applyProgramStatus('block:A', { state: 'working' })
+    expect(registry.applyChildExited('block:A', 1)).toBe('unknown')
+    // 新一轮已在 B 上 running；A 的迟到事件不得把状态打回 done/error。
+    expect(worker.status).toBe('starting')
+    expect(worker.exitCode).toBe(0)
+    expect(worker.errorStreak).toBe(0)
   })
 
   it('3 分钟窗口内自动唤醒超过 5 次熔断', () => {
@@ -139,6 +197,18 @@ describe('投递门禁（设计 3.2 第 3 条）', () => {
     registry.applyProgramStatus('block:A', { state: 'idle' })
     expect(registry.canAutoDeliver('claude-1').allowed).toBe(false)
     expect(registry.canAutoDeliver('claude-1', 2600).allowed).toBe(true)
+  })
+
+  it('稳定窗口按进入该状态重算：blocked → idle 后不沿用 blocked 的时间戳（review #2）', () => {
+    const { registry, tick } = makeRegistry([0, 12000])
+    registerWorker(registry)
+    registry.applyProgramStatus('block:A', { state: 'blocked' })
+    tick()
+    registry.applyProgramStatus('block:A', { state: 'idle' })
+    // idle 只持续 0.7 秒仍拒绝；沿用 blocked 时期的时间戳会在这里就放行。
+    expect(registry.canAutoDeliver('claude-1', 12700).allowed).toBe(false)
+    // idle 满 1.5 秒后放行。
+    expect(registry.canAutoDeliver('claude-1', 13500).allowed).toBe(true)
   })
 
   it('未知 worker 拒绝', () => {

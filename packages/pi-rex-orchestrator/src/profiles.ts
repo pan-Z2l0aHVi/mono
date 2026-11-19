@@ -98,30 +98,62 @@ export function builtInProfileNames(): string[] {
 
 /**
  * 解析 profile 白名单。内置名走内置模板；config 里的同名条目只允许覆写
- * `binary` / `interactiveShell` / `extraArgs`（追加在模板之后），不允许覆写模板本身。
- * config 新增的自定义 profile 必须显式给出 `binary`，按通用位置参数模板派生。
+ * `binary` / `interactiveShell` / `extraArgs`（追加在全部模板之后，含 resume），不允许
+ * 覆写模板本身。config 新增的自定义 profile 必须显式给出 `binary`，按通用位置参数模板
+ * 派生。字段级结构校验：类型不符的条目按缺省处理——配置损坏要在激活阶段降级，不能
+ * 等派生阶段才抛 TypeError。
  */
 export function resolveProfiles(config: RexOrchestratorConfig | undefined): Map<string, AgentProfile> {
   const resolved = new Map(BUILT_IN)
   for (const [name, override] of Object.entries(config?.profiles ?? {})) {
+    if (!isStructurallyValidOverride(override)) continue
     const base = resolved.get(name)
     if (base) {
       const extra = override.extraArgs ?? []
-      const withExtra = (render: (ctx: LaunchCtx) => string[]) => (ctx: LaunchCtx) => [...render(ctx), ...extra]
+      // 泛型透传模板实参：resume 模板带第二个 sessionId 参数，不能在包装时丢掉。
+      const withExtra =
+        <Args extends unknown[]>(render: (...args: Args) => string[]) =>
+        (...args: Args) => [...render(...args), ...extra]
       resolved.set(name, {
         ...base,
         binary: override.binary ?? base.binary,
         interactiveShell: override.interactiveShell ?? base.interactiveShell,
         extraArgs: extra,
         interactiveArgs: withExtra(base.interactiveArgs),
-        headlessArgs: withExtra(base.headlessArgs)
+        headlessArgs: withExtra(base.headlessArgs),
+        headlessResumeArgs: withExtra(base.headlessResumeArgs),
+        interactiveResumeArgs: withExtra(base.interactiveResumeArgs)
       })
       continue
     }
+    // 自定义 profile 必须显式给出 binary；模板函数会把它当字符串用。
     if (!override.binary) continue
     resolved.set(name, customProfile(name, override))
   }
   return resolved
+}
+
+/** 逐字段校验 override 形状；不认识或类型不符的整条按缺省处理。 */
+function isStructurallyValidOverride(override: unknown): override is ProfileOverride {
+  if (typeof override !== 'object' || override === null) return false
+  const entry = override as Record<string, unknown>
+  if (entry.binary !== undefined && typeof entry.binary !== 'string') return false
+  if (entry.interactiveShell !== undefined && typeof entry.interactiveShell !== 'boolean') return false
+  if (entry.addDirFlag !== undefined && typeof entry.addDirFlag !== 'string') return false
+  if (entry.supportsOsc7501 !== undefined && typeof entry.supportsOsc7501 !== 'boolean') return false
+  if (
+    entry.extraArgs !== undefined &&
+    (!Array.isArray(entry.extraArgs) || entry.extraArgs.some(arg => typeof arg !== 'string'))
+  ) {
+    return false
+  }
+  if (
+    entry.dangerFlags !== undefined &&
+    (!Array.isArray(entry.dangerFlags) || entry.dangerFlags.some(flag => typeof flag !== 'string'))
+  ) {
+    return false
+  }
+  return true
 }
 
 /** 自定义 profile 的通用模板：prompt 永远在 `extraArgs` 之前。 */

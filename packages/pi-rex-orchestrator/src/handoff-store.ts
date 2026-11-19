@@ -100,11 +100,17 @@ export class HandoffStore {
   }
 
   async readEventsTail(workerId: string, turn: number, maxLines: number): Promise<string | undefined> {
+    const content = await this.readEvents(workerId, turn)
+    if (content === undefined) return undefined
+    const lines = content.split('\n')
+    if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
+    return lines.slice(-maxLines).join('\n')
+  }
+
+  /** 读整份事件落盘；续跑的 session id 提取用（codex 的 thread 记录在首行）。 */
+  async readEvents(workerId: string, turn: number): Promise<string | undefined> {
     try {
-      const content = await readFile(this.eventsPath(workerId, turn), 'utf8')
-      const lines = content.split('\n')
-      if (lines.length > 0 && lines[lines.length - 1] === '') lines.pop()
-      return lines.slice(-maxLines).join('\n')
+      return await readFile(this.eventsPath(workerId, turn), 'utf8')
     } catch {
       return undefined
     }

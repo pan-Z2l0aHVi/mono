@@ -127,6 +127,28 @@ export class RexAdapter {
     return parseProgramStatus(result.stdout)
   }
 
+  /**
+   * `rex block call process` 的 `last_exit`（实测为 `{last_exit:{exit_code,error}|null}`）。
+   * `--keep-open` 的 headless Block 在子进程退出后仍存活，靠它在对账时补 `child_exited`。
+   */
+  async blockCallLastExit(blockId: string): Promise<number | undefined> {
+    const result = await this.exec(this.bin, ['block', 'call', '-s', this.session, '-b', blockId, 'process'], {
+      timeout: 15000
+    })
+    if (result.code !== 0) throw fail('block call process', result)
+    let parsed: unknown
+    try {
+      parsed = JSON.parse(result.stdout)
+    } catch {
+      throw new Error(`process 输出不是合法 JSON: ${result.stdout.slice(0, 200)}`)
+    }
+    const lastExit =
+      typeof parsed === 'object' && parsed !== null ? (parsed as { last_exit?: unknown }).last_exit : undefined
+    if (typeof lastExit !== 'object' || lastExit === null) return undefined
+    const exitCode = (lastExit as { exit_code?: unknown }).exit_code
+    return typeof exitCode === 'number' ? exitCode : undefined
+  }
+
   async blockClose(blockId: string): Promise<void> {
     const result = await this.exec(this.bin, ['block', 'close', '-s', this.session, blockId], { timeout: 10000 })
     if (result.code !== 0) throw fail('block close', result)
@@ -155,9 +177,16 @@ export class RexAdapter {
         newline = buffer.indexOf('\n')
       }
     })
-    child.on('error', error => handlers.onExit(error))
+    // spawn 失败会先发 `error` 再发 `close`：不做一次性保护会安排两个重连定时器。
+    let exited = false
+    const exitOnce = (error: Error | undefined): void => {
+      if (exited) return
+      exited = true
+      handlers.onExit(error)
+    }
+    child.on('error', error => exitOnce(error))
     child.on('close', (code, signal) => {
-      handlers.onExit(
+      exitOnce(
         code === 0 || signal === 'SIGTERM'
           ? undefined
           : new Error(`rex events 退出（code=${code ?? 'null'} signal=${signal ?? 'null'}）`)

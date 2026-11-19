@@ -44,12 +44,10 @@ const child = spawn(command, commandArgs, {
 })
 
 let childExitCode = null
-let forwarding = false
 
 // 转发终端信号给子进程；flush 完成前不退出进程。
 for (const signal of ['SIGINT', 'SIGTERM']) {
   process.on(signal, () => {
-    forwarding = true
     if (child.pid !== undefined) {
       try {
         child.kill(signal)
@@ -73,14 +71,38 @@ child.stdout.on('data', chunk => {
   }
 })
 
+// 子进程 spawn 失败（ENOENT / EACCES）只发 `error` 不发 `close`：不接住的话包装进程
+// 以未捕获异常崩溃，events 文件也不走正常收尾。127 是「命令不存在」的惯用码。
+child.on('error', error => {
+  process.stderr.write(`run-headless: 无法启动子进程: ${error.message}\n`)
+  eventsStream.end(() => {
+    process.exit(127)
+  })
+})
+
 child.on('close', (code, signal) => {
-  // 子进程的真实退出码优先；只有被信号杀死（code 为 null）才按信号合成退出码。
-  childExitCode = code !== null ? code : forwarding ? 128 + (signal === 'SIGINT' ? 2 : 15) : code
+  // 子进程的真实退出码优先；没有真实码时按信号合成（128+signum），保证异常终止
+  // 不会被 Rex 与协调者误读成 `done`（exit 0）。
+  if (code !== null) {
+    childExitCode = code
+  } else if (signal !== null) {
+    childExitCode = 128 + (SIGNAL_NUMBERS[signal] ?? 255)
+  }
   if (buffer.trim() !== '') handleLine(buffer)
   eventsStream.end(() => {
     process.exit(childExitCode ?? 0)
   })
 })
+
+/** 常见信号的编号；识别不了的信号按 255 兜底，仍非 0。 */
+const SIGNAL_NUMBERS = {
+  SIGHUP: 1,
+  SIGINT: 2,
+  SIGQUIT: 3,
+  SIGABRT: 6,
+  SIGKILL: 9,
+  SIGTERM: 15
+}
 
 /** 原始行无损落盘，同时渲染一段人类可读摘要。 */
 function handleLine(line) {

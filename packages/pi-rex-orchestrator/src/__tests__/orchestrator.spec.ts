@@ -27,6 +27,10 @@ afterEach(async () => {
 
 interface AdapterStub {
   runBlocks: Array<{ cwd: string; label: string; keepOpen: boolean; focus: boolean; commandSegments: string[] }>
+  /** 下一次 runBlock 抛出的错误；回滚用例设置一次。 */
+  runBlockError?: Error
+  /** 非空时 blockList 抛错；状态不明用例设置。 */
+  blockListError?: Error
   sends: Array<{ blockId: string; text: string }>
   keys: Array<{ blockId: string; key: string }>
   captures: string[]
@@ -56,6 +60,11 @@ function makeAdapterStub(): { adapter: RexAdapter; stub: AdapterStub } {
       commandSegments: string[]
     }) => {
       stub.runBlocks.push(options)
+      if (stub.runBlockError !== undefined) {
+        const error = stub.runBlockError
+        stub.runBlockError = undefined
+        throw error
+      }
       return { windowId: 'window:w1', blockIds: [`block:${stub.runBlocks.length}`] }
     },
     send: async (blockId: string, text: string) => {
@@ -69,15 +78,21 @@ function makeAdapterStub(): { adapter: RexAdapter; stub: AdapterStub } {
       const text = stub.captures.join('\n') || 'empty screen'
       return tailLines === undefined ? text : text.split('\n').slice(-tailLines).join('\n')
     },
-    blockList: async () =>
-      stub.listBlocks.map(blockId => ({
+    blockList: async () => {
+      if (stub.blockListError !== undefined) throw stub.blockListError
+      return stub.listBlocks.map(blockId => ({
         blockId,
         label: blockId,
         flavor: 'com.superlogical.terminal.shell',
         windowId: 'window:w1',
         placement: 'placed'
-      })),
+      }))
+    },
     blockCallProgramStatus: async (blockId: string) => stub.blockStatuses.get(blockId) ?? [],
+    blockCallLastExit: async (blockId: string) => {
+      void blockId
+      return undefined
+    },
     blockClose: async (blockId: string) => {
       stub.closedBlocks.push(blockId)
     },
@@ -105,8 +120,13 @@ function fakeGit(): (
   }
 }
 
-function makeOrchestrator(): { mock: MockPi; stub: AdapterStub; registry: WorkerRegistry; dispose(): void } {
-  const mock = createMockPi(fakeGit())
+function makeOrchestrator(hasUI = true): {
+  mock: MockPi
+  stub: AdapterStub
+  registry: WorkerRegistry
+  dispose(): void
+} {
+  const mock = createMockPi(fakeGit(), { hasUI })
   const { adapter, stub } = makeAdapterStub()
   const registry = new WorkerRegistry(() => 0)
   const orchestrator = createOrchestrator(mock.pi, {
@@ -234,9 +254,95 @@ describe('spawn 与投递', () => {
       expect(run.commandSegments[1]).toBe('PI_REX_ORCH=0')
       expect(run.commandSegments.slice(2)).toContain('stream-json')
       expect(registry.list()).toHaveLength(1)
-      expect(registry.list()[0]?.mode).toBe('headless')
-      expect(registry.list()[0]?.baseCommit).toMatch(/^b{40}$/)
+      const registered = registry.list()[0]
+      expect(registered?.mode).toBe('headless')
+      expect(registered?.baseCommit).toMatch(/^b{40}$/)
+      // 省略 label 时用 workerId 兜底，而不是把 undefined 传给 rex run（review #9）。
+      expect(run.label).toBe(registered?.workerId)
       dispose()
+    })
+  )
+
+  it(
+    'rex run 失败且带 worktree 时一律保守：登记 closed placeholder 供追踪，不接管不回滚（re-review #17 终版）',
+    withTempRoot(async () => {
+      const { mock, stub, registry, dispose } = makeOrchestrator()
+      mock.emit('session_start', { reason: 'startup' })
+      stub.runBlockError = new Error('rex down')
+
+      const result = (await mock.tools
+        .get('rex_spawn_agent')
+        ?.execute('t0', { agent: 'claude', task: '做 A', use_worktree: true }, undefined, undefined, mock.ctx)) as {
+        content: Array<{ text: string }>
+        isError?: boolean
+      }
+
+      expect(result.isError).toBe(true)
+      expect(result.content[0]?.text).toContain('派生结果不明')
+      // placeholder 登记：rex_list_workers 与 /rex-cleanup 都能看到这份残留。
+      expect(registry.list()).toHaveLength(1)
+      const placeholder = registry.list()[0]
+      expect(placeholder?.blockId).toMatch(/^unconfirmed:/)
+      expect(placeholder?.status).toBe('closed')
+      expect(placeholder?.worktree?.branch).toMatch(/^pi-orch\//)
+      // 登记为 closed 不产生「Block 已被关闭」的合成事件通知。
+      expect(mock.messages).toEqual([])
+      // 绝不删除可能正被使用的 worktree（Block 是否已建出不可证明）。
+      const argJoins = mock.execCalls.map(call => call.args.join(' '))
+      expect(argJoins.some(args => args.startsWith('worktree add -b pi-orch/'))).toBe(true)
+      expect(argJoins.some(args => args.startsWith('worktree remove'))).toBe(false)
+      expect(argJoins.some(args => args.startsWith('branch -D pi-orch/'))).toBe(false)
+      dispose()
+    })
+  )
+
+  it(
+    'placeholder 的 worktree 清理必须过显式确认（re-review #17 四次）',
+    withTempRoot(async () => {
+      // 有 UI：confirm 后 force 清理。
+      const ui = makeOrchestrator()
+      ui.mock.emit('session_start', { reason: 'startup' })
+      ui.stub.runBlockError = new Error('rex down')
+      await ui.mock.tools
+        .get('rex_spawn_agent')
+        ?.execute('t0', { agent: 'claude', task: '做 A', use_worktree: true }, undefined, undefined, ui.mock.ctx)
+      const placeholder = ui.registry.list()[0]
+
+      const closed = (await ui.mock.tools
+        .get('rex_close_worker')
+        ?.execute('t1', { worker_id: placeholder?.workerId }, undefined, undefined, ui.mock.ctx)) as {
+        content: Array<{ text: string }>
+        isError?: boolean
+      }
+      expect(ui.mock.ctx.confirmations[0]?.title).toContain('清理未确认 worker')
+      expect(closed.isError).toBeFalsy()
+      expect(closed.content[0]?.text).toContain('已清理')
+      const argJoins = ui.mock.execCalls.map(call => call.args.join(' '))
+      expect(argJoins.some(args => args.startsWith('branch -D pi-orch/'))).toBe(true)
+      // 合成 blockId 不送 rex：关闭调用列表里不该出现 unconfirmed: 前缀。
+      expect(ui.stub.closedBlocks.some(blockId => blockId.startsWith('unconfirmed:'))).toBe(false)
+      ui.dispose()
+
+      // 无 UI：不能安全清理，一律保留。
+      const headless = makeOrchestrator(false)
+      headless.mock.emit('session_start', { reason: 'startup' })
+      headless.stub.runBlockError = new Error('rex down')
+      await headless.mock.tools
+        .get('rex_spawn_agent')
+        ?.execute('t0', { agent: 'claude', task: '做 A', use_worktree: true }, undefined, undefined, headless.mock.ctx)
+      const headlessPlaceholder = headless.registry.list()[0]
+
+      const refused = (await headless.mock.tools
+        .get('rex_close_worker')
+        ?.execute('t1', { worker_id: headlessPlaceholder?.workerId }, undefined, undefined, headless.mock.ctx)) as {
+        content: Array<{ text: string }>
+        isError?: boolean
+      }
+      expect(refused.isError).toBe(true)
+      expect(refused.content[0]?.text).toContain('worktree 保留')
+      const headlessJoins = headless.mock.execCalls.map(call => call.args.join(' '))
+      expect(headlessJoins.some(args => args.startsWith('worktree remove'))).toBe(false)
+      headless.dispose()
     })
   )
 
@@ -332,6 +438,63 @@ describe('事件环与验收折叠', () => {
       const wake = mock.messages.find(message => message.options?.triggerTurn === true)
       expect(wake?.content).toContain('本轮完成')
       expect(wake?.options?.deliverAs).toBe('followUp')
+      vi.useRealTimers()
+      dispose()
+    })
+  )
+
+  it(
+    'session_shutdown 停摆聚合计时器，会话结束后不再触碰 runtime',
+    withTempRoot(async () => {
+      vi.useFakeTimers()
+      const { mock, registry, dispose } = makeOrchestrator()
+      mock.emit('session_start', { reason: 'startup' })
+      registry.register({
+        workerId: 'claude-1',
+        agent: 'claude',
+        mode: 'headless',
+        label: 'claude-1',
+        blockId: 'block:A',
+        turn: 1,
+        cwd: '/repo',
+        baseCommit: null,
+        baseDirty: [],
+        paused: false
+      })
+      registry.applyProgramStatus('block:A', { state: 'done' })
+      mock.emit('session_shutdown', { reason: 'quit' })
+
+      await vi.advanceTimersByTimeAsync(2000)
+      expect(mock.messages).toEqual([])
+      vi.useRealTimers()
+      dispose()
+    })
+  )
+
+  it(
+    'stale runtime 上的 sendMessage 抛错不会带崩宿主，通知循环静默停摆',
+    withTempRoot(async () => {
+      vi.useFakeTimers()
+      const { mock, registry, dispose } = makeOrchestrator()
+      // 模拟会话结束后 runtime 失效：宿主在 sendMessage 上直接抛异常。
+      ;(mock.pi as unknown as { sendMessage: () => void }).sendMessage = () => {
+        throw new Error('This extension ctx is stale after session replacement or reload.')
+      }
+      registry.register({
+        workerId: 'claude-1',
+        agent: 'claude',
+        mode: 'headless',
+        label: 'claude-1',
+        blockId: 'block:A',
+        turn: 1,
+        cwd: '/repo',
+        baseCommit: null,
+        baseDirty: [],
+        paused: false
+      })
+      registry.applyProgramStatus('block:A', { state: 'done' })
+      await vi.advanceTimersByTimeAsync(1200)
+      expect(mock.messages).toEqual([])
       vi.useRealTimers()
       dispose()
     })

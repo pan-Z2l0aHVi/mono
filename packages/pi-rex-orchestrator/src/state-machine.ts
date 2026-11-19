@@ -46,6 +46,10 @@ export interface WorkerEntry {
   /** 最近一次进入稳定状态（idle/done/error/blocked）的时刻。 */
   stableSince?: number
   errorStreak: number
+  /** 最近一次计过数的 error 轮次；同一轮的重放/交叉来源不重复计数。 */
+  errorTurn?: number
+  /** 最近一次接受的 OSC 记录 updated_at；更旧的重放直接丢弃。 */
+  lastStatusAt?: string
   /** 自动唤醒时间戳（熔断窗口用）。 */
   wakeups: number[]
   fused: boolean
@@ -91,11 +95,16 @@ export class WorkerRegistry {
     }
   }
 
-  register(entry: Omit<WorkerEntry, 'retiredBlockIds' | 'status' | 'errorStreak' | 'wakeups' | 'fused'>): WorkerEntry {
+  register(
+    entry: Omit<WorkerEntry, 'retiredBlockIds' | 'status' | 'errorStreak' | 'wakeups' | 'fused'>,
+    options: { initialStatus?: WorkerStatus } = {}
+  ): WorkerEntry {
     const worker: WorkerEntry = {
       ...entry,
       retiredBlockIds: [],
-      status: 'starting',
+      // 直接赋值不触发转移通知：派生结果不明时登记的 closed placeholder 不该
+      // 产生「Block 已被关闭」事件。
+      status: options.initialStatus ?? 'starting',
       errorStreak: 0,
       wakeups: [],
       fused: false
@@ -119,7 +128,9 @@ export class WorkerRegistry {
     worker.status = to
     if (to === 'working' || to === 'starting') {
       worker.stableSince = undefined
-    } else if (worker.stableSince === undefined) {
+    } else if (to !== from || worker.stableSince === undefined) {
+      // 稳定窗口按「进入该状态」重新起算：blocked → idle 后沿用 blocked 时期的时间戳
+      // 会让门禁放行一个刚恢复 0.7 秒的 TUI。同状态重复上报不重置。
       worker.stableSince = now
     }
     if (to !== from) {
@@ -129,27 +140,63 @@ export class WorkerRegistry {
     }
   }
 
+  /** 只匹配活跃 Block：retired Block 的延迟事件不允许再改写 worker 状态。 */
+  findActiveByBlockId(blockId: string): WorkerEntry | undefined {
+    return this.list().find(worker => worker.blockId === blockId)
+  }
+
   findByBlockId(blockId: string): WorkerEntry | undefined {
     return this.list().find(worker => worker.blockId === blockId || worker.retiredBlockIds.includes(blockId))
   }
 
   /** OSC 状态更新；按 `record.state` 直接读明文，不做解码。转移经 `subscribe` 通知。 */
   applyProgramStatus(blockId: string, record: ProgramStatusRecord, options: { now?: number } = {}): void {
-    const worker = this.findByBlockId(blockId)
+    const worker = this.findActiveByBlockId(blockId)
     if (!worker || worker.status === 'closed') return
+    // 单调时间戳护栏：断连重连对账与事件流都会重放历史记录。真实 `updated_at` 是
+    // 微秒精度，同一时间戳的再报必是重放——`<=` 一并拒绝，旧记录不得把已推进的
+    // 状态拉回去，也不能借重放重复计数。
+    if (
+      record.updatedAt !== undefined &&
+      worker.lastStatusAt !== undefined &&
+      record.updatedAt <= worker.lastStatusAt
+    ) {
+      return
+    }
+    if (record.updatedAt !== undefined) worker.lastStatusAt = record.updatedAt
     const now = options.now ?? this.now()
     const state = record.state
     worker.msg = record.msg
     if (state === 'working') this.transition(worker, 'working', now)
     else if (state === 'blocked') this.transition(worker, 'blocked', now, { blockedKind: record.kind })
-    else if (state === 'idle') this.transition(worker, 'idle', now)
-    else if (state === 'done') this.transition(worker, 'done', now)
-    else if (state === 'error') this.transition(worker, 'error', now)
+    else if (state === 'idle') {
+      // interactive 的成功回合以 `idle` 收尾：中间隔了成功回合就不算「连续 error」。
+      this.resetErrorStreakOnSuccess(worker)
+      this.transition(worker, 'idle', now)
+    } else if (state === 'done') {
+      this.resetErrorStreakOnSuccess(worker)
+      this.transition(worker, 'done', now)
+    } else if (state === 'error') {
+      this.noteError(worker)
+      this.transition(worker, 'error', now)
+    }
+  }
+
+  /** error 只按轮次计一次：OSC error、退出码 error 与二者的重放同属一轮失败。 */
+  private noteError(worker: WorkerEntry): void {
+    if (worker.errorTurn === worker.turn) return
+    worker.errorTurn = worker.turn
+    worker.errorStreak += 1
+    if (worker.errorStreak >= POLICY.maxErrorStreak) worker.fused = true
+  }
+
+  private resetErrorStreakOnSuccess(worker: WorkerEntry): void {
+    worker.errorStreak = 0
   }
 
   /** 终态幂等合并：同一 Block 的 child_exited 只结算一次。 */
   applyChildExited(blockId: string, exitCode: number | undefined): 'settled' | 'duplicate' | 'unknown' {
-    const worker = this.findByBlockId(blockId)
+    const worker = this.findActiveByBlockId(blockId)
     if (!worker) return 'unknown'
     const key = `${blockId}:${worker.turn}`
     if (this.settledTurns.has(key)) return 'duplicate'
@@ -158,9 +205,12 @@ export class WorkerRegistry {
     worker.exitCode = exitCode
     if (worker.status === 'closed') return 'settled'
     const isError = exitCode !== undefined && exitCode !== 0
-    worker.errorStreak = isError ? worker.errorStreak + 1 : 0
+    if (isError) {
+      this.noteError(worker)
+    } else {
+      this.resetErrorStreakOnSuccess(worker)
+    }
     this.transition(worker, isError ? 'error' : 'done', now)
-    if (isError && worker.errorStreak >= POLICY.maxErrorStreak) worker.fused = true
     return 'settled'
   }
 

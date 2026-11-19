@@ -156,6 +156,46 @@ describe('blockCallProgramStatus', () => {
   })
 })
 
+describe('blockCallLastExit（对账补 child_exited 用）', () => {
+  it('读实测 last_exit 形状；无记录返回 undefined', async () => {
+    const withExit = makeAdapter(() => ({
+      stdout: '{"last_exit":{"exit_code":0},"home":"/Users/u"}',
+      stderr: '',
+      code: 0,
+      killed: false,
+      truncated: false
+    }))
+    expect(await withExit.adapter.blockCallLastExit('block:1')).toBe(0)
+
+    const errored = makeAdapter(() => ({
+      stdout: '{"last_exit":{"exit_code":1,"error":"exit status 1"}}',
+      stderr: '',
+      code: 0,
+      killed: false,
+      truncated: false
+    }))
+    expect(await errored.adapter.blockCallLastExit('block:1')).toBe(1)
+
+    const idle = makeAdapter(() => ({
+      stdout: '{"last_exit":null,"home":"/Users/u"}',
+      stderr: '',
+      code: 0,
+      killed: false,
+      truncated: false
+    }))
+    expect(await idle.adapter.blockCallLastExit('block:1')).toBeUndefined()
+
+    const gone = makeAdapter(() => ({
+      stdout: '',
+      stderr: 'block gone',
+      code: 1,
+      killed: false,
+      truncated: false
+    }))
+    await expect(gone.adapter.blockCallLastExit('block:1')).rejects.toThrow('block gone')
+  })
+})
+
 describe('事件流分帧', () => {
   interface FakeChild {
     emit(name: string, ...data: unknown[]): void
@@ -219,5 +259,17 @@ describe('事件流分帧', () => {
     child.emit('close', 1, 'SIGKILL')
     expect(exits[0]).toBeInstanceOf(Error)
     expect(exits[0]?.message).toContain('code=1')
+  })
+
+  it('spawn 失败的 error 与 close 只结算一次 onExit（review #11）', async () => {
+    const spawnFn = fakeSpawn()
+    const { adapter } = makeAdapterWithSpawn(spawnFn)
+    const exits: Array<Error | undefined> = []
+    adapter.startEventsStream({ onLine: () => undefined, onExit: error => exits.push(error) })
+    const child = spawnFn.mock.results[0]?.value as FakeChild
+    child.emit('error', new Error('ENOENT'))
+    child.emit('close', 1, 'SIGKILL')
+    expect(exits).toHaveLength(1)
+    expect(exits[0]?.message).toBe('ENOENT')
   })
 })

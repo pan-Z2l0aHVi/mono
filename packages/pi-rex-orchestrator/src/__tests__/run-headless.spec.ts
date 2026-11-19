@@ -114,4 +114,26 @@ setInterval(() => {}, 1000)
     expect(await exit).toBe(64)
     expect(stderr).toContain('usage')
   })
+
+  it('子进程 spawn 失败按 127 收尾，不崩（review #12）', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'run-headless-spec-'))
+    dirs.push(dir)
+    const eventsOut = path.join(dir, 'spawn-fail.jsonl')
+    const wrapper = runWrapper(eventsOut, '/nonexistent/cli-binary', [])
+    expect(await wrapper.exit).toBe(127)
+    expect(wrapper.stderr()).toContain('无法启动子进程')
+  })
+
+  it('子进程被信号杀死按 128+signum 收尾，不误报成功（review #13）', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'run-headless-spec-'))
+    dirs.push(dir)
+    const fakeCli = await makeFixture(`
+process.stdout.write('{"partial":true}\\n')
+setTimeout(() => process.kill(process.pid, 'SIGKILL'), 100)
+`)
+    const eventsOut = path.join(dir, 'killed.jsonl')
+    const wrapper = runWrapper(eventsOut, process.execPath, [fakeCli])
+    expect(await wrapper.exit).toBe(137)
+    expect(await readFile(eventsOut, 'utf8')).toContain('"partial":true')
+  })
 })

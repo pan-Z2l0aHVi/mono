@@ -74,9 +74,44 @@ describe('白名单解析', () => {
     expect(claude?.headlessArgs(ctx)).toContain('stream-json')
   })
 
+  it('追加参数覆盖全部模板，含 headless resume（re-review #8）', () => {
+    const config: RexOrchestratorConfig = { profiles: { claude: { extraArgs: ['--model', 'opus'] } } }
+    const claude = resolveProfiles(config).get('claude')
+    expect(claude?.headlessResumeArgs(resumeCtx, 'sid-1')).toEqual([
+      '-p',
+      ctx.prompt,
+      '--resume',
+      'sid-1',
+      '--add-dir',
+      ctx.handoffDir,
+      '--output-format',
+      'stream-json',
+      '--verbose',
+      '--model',
+      'opus'
+    ])
+  })
+
+  it('字段级类型不符的条目按缺省处理（re-review #16）', () => {
+    const profiles = resolveProfiles({
+      profiles: { claude: { binary: 123 }, codex: { extraArgs: 1 }, ghost: { extraArgs: ['ok'] } }
+    } as unknown as Parameters<typeof resolveProfiles>[0])
+    expect(profiles.get('claude')).toBe(CLAUDE_PROFILE)
+    expect(profiles.get('codex')).toBe(CODEX_PROFILE)
+    expect(profiles.has('ghost')).toBe(false)
+  })
+
   it('自定义 profile 必须显式给 binary，否则被忽略', () => {
     const profiles = resolveProfiles({ profiles: { ghost: { extraArgs: ['--x'] } } })
     expect(profiles.has('ghost')).toBe(false)
+  })
+
+  it('结构不合法的条目（null / 非 object）按缺省处理，不抛异常（review #16）', () => {
+    const profiles = resolveProfiles({
+      profiles: { claude: null, codex: 'oops', ghost: null }
+    } as unknown as Parameters<typeof resolveProfiles>[0])
+    expect([...profiles.keys()].sort()).toEqual(['claude', 'codex'])
+    expect(profiles.get('claude')).toBe(CLAUDE_PROFILE)
   })
 
   it('自定义 profile 的 prompt 在 extraArgs 之前', () => {

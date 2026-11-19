@@ -130,7 +130,35 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
 
   function notify(message: string): void {
     // 工厂作用域拿不到 ctx.ui；一次性通知走 sendMessage 的非唤醒展示面。
-    pi.sendMessage({ customType: 'rex-orch-notify', content: message, display: true }, { triggerTurn: false })
+    safeSendMessage({ customType: 'rex-orch-notify', content: message, display: true }, { triggerTurn: false })
+  }
+
+  /** 事件环整体停摆：杀长驻子进程、清重连与聚合计时器。工具集还原由调用方决定。 */
+  function stopEventLoop(): void {
+    active = false
+    if (noticeTimer !== undefined) clearTimeout(noticeTimer)
+    noticeTimer = undefined
+    if (reconnectTimer !== undefined) clearTimeout(reconnectTimer)
+    reconnectTimer = undefined
+    eventsHandle?.kill()
+    eventsHandle = undefined
+    pendingNotices.clear()
+  }
+
+  /**
+   * 会话结束（quit / reload / print 模式跑完）后扩展 runtime 会整体失效，`pi.sendMessage`
+   * 在 stale runtime 上直接抛异常；聚合计时器可能晚于会话结束触发，不防护会把宿主进程
+   * 带崩。失效即停：这是「会话没了」而不是可重试的失败，静默停止并停摆整个事件环。
+   */
+  function safeSendMessage(
+    message: { customType: string; content: string; display: boolean },
+    options?: { triggerTurn?: boolean; deliverAs?: 'steer' | 'followUp' | 'nextTurn' }
+  ): void {
+    try {
+      pi.sendMessage(message, options)
+    } catch {
+      stopEventLoop()
+    }
   }
 
   /** 工具执行前必须已过 `session_start`；未初始化属装配错误，如实抛出。 */
@@ -141,26 +169,43 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
 
   function queueNotice(workerId: string, line: string): void {
     pendingNotices.set(workerId, [pendingNotices.get(workerId) ?? '', line].filter(Boolean).join('\n'))
-    if (noticeTimer !== undefined) return
+    if (noticeTimer !== undefined || !active) return
     noticeTimer = setTimeout(() => {
       noticeTimer = undefined
       flushNotices()
     }, NOTICE_WINDOW_MS)
   }
 
+  /**
+   * 1 秒窗口聚合后唤醒模型。逐 worker 过熔断器：fused 的只发一次性通知不 `triggerTurn`
+   *（设计 3.4），窗口内唤醒过频同样熔断；熔断判定先于唤醒消息，不会既唤醒又只告警。
+   */
   function flushNotices(): void {
-    if (pendingNotices.size === 0) return
-    const lines = [...pendingNotices.entries()].map(([workerId, note]) => `### ${workerId}\n${note}`)
+    if (!active || pendingNotices.size === 0) return
+    const wakeLines: string[] = []
+    const fuseNotifications: string[] = []
+    for (const [workerId, note] of pendingNotices) {
+      const worker = registry.get(workerId)
+      if (worker === undefined) continue
+      if (worker.fused || registry.noteAutoWakeup(workerId)) {
+        worker.fused = true
+        fuseNotifications.push(
+          `worker ${workerId} 已熔断（连续 error 或唤醒过频），自动跟进暂停，请人工检查。\n### ${workerId}\n${note}`
+        )
+      } else {
+        wakeLines.push(`### ${workerId}\n${note}`)
+      }
+    }
     pendingNotices.clear()
-    const content = ['<rex-orchestrator-events>', ...lines, '</rex-orchestrator-events>'].join('\n')
-    // 熔断的 worker 不再自动唤醒模型；改为通知后等用户介入。
-    const fusedWorkers = registry.list().filter(worker => worker.fused)
-    pi.sendMessage(
-      { customType: 'rex-orch-event', content, display: true },
-      { triggerTurn: true, deliverAs: 'followUp' }
-    )
-    for (const worker of fusedWorkers) {
-      notify(`worker ${worker.workerId} 已熔断（连续 error 或唤醒过频），自动跟进暂停，请人工检查。`)
+    if (wakeLines.length > 0) {
+      const content = ['<rex-orchestrator-events>', ...wakeLines, '</rex-orchestrator-events>'].join('\n')
+      safeSendMessage(
+        { customType: 'rex-orch-event', content, display: true },
+        { triggerTurn: true, deliverAs: 'followUp' }
+      )
+    }
+    for (const fuseNotification of fuseNotifications) {
+      notify(fuseNotification)
     }
   }
 
@@ -218,6 +263,13 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         for (const change of await adapter.blockCallProgramStatus(worker.blockId)) {
           registry.applyProgramStatus(worker.blockId, change.record)
         }
+        // `--keep-open` 的 headless Block 在子进程退出后仍存活，状态记录可能停在
+        // `idle` 或残留旧值：不查 `process` 会漏掉断连期间的非零 child_exited。
+        // 终态结算按 (block, turn) 幂等，多调一次不会重复计数。
+        const exitCode = await adapter.blockCallLastExit(worker.blockId)
+        if (exitCode !== undefined) {
+          registry.applyChildExited(worker.blockId, exitCode)
+        }
       } catch (error) {
         // 对账拉不到状态不是终态：保留现有状态，等事件流自己补。
         notify(`对账 ${worker.workerId} 状态失败：${error instanceof Error ? error.message : String(error)}`)
@@ -257,7 +309,8 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
       'rex_inspect_changes',
       'rex_close_worker'
     ]
-    previousTools = pi.getActiveTools()
+    // 原工具集只在第一次挂护栏时保存；`before_agent_start` 的重复挂靠不得覆盖它。
+    if (previousTools === undefined) previousTools = pi.getActiveTools()
     pi.setActiveTools(guardToolList(own))
   }
 
@@ -276,6 +329,9 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
   pi.on(
     'before_agent_start',
     (event: { systemPromptOptions?: { sections: Record<string, string>; promptGuidelines: string[] } }) => {
+      // 设计 3.2：护栏在 session_start **和** before_agent_start 都挂——项目级
+      // `.pi/settings.json` 可能在会话中途重新启用写工具，声明滞后一轮就靠这里补挂。
+      applyGuard()
       const options = event.systemPromptOptions
       if (!options) return
       options.sections['rex-orchestrator'] = renderCoordinatorSection({
@@ -315,6 +371,8 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
   })
 
   pi.on('session_shutdown', () => {
+    // 会话结束即整体停摆：聚合计时器与事件环在 stale runtime 上继续跑会抛异常带崩宿主。
+    stopEventLoop()
     if (previousTools !== undefined) {
       pi.setActiveTools(previousTools)
       previousTools = undefined
@@ -411,7 +469,14 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
       })
 
       const workerId = `${profile.name}-${shortId()}`
-      const label = params.label?.trim() !== '' ? (params.label as string) : workerId
+      const label = params.label !== undefined && params.label.trim() !== '' ? params.label : workerId
+
+      // 可执行先解析再建 worktree：binary 拼错时不能留下无 registry 记录、
+      // 也没有人负责清理的孤儿 worktree 和 pi-orch/* 分支。
+      const binary = await resolveExecutable(profile.binary, resolveDeps())
+      if (!binary) {
+        return text(`找不到 profile "${profile.name}" 的可执行文件 ${profile.binary}，worker 未派生。`, true)
+      }
 
       let worktree: { path: string; branch: string } | undefined
       let workerCwd = targetCwd
@@ -445,11 +510,6 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         }
       }
 
-      const binary = await resolveExecutable(profile.binary, resolveDeps())
-      if (!binary) {
-        return text(`找不到 profile "${profile.name}" 的可执行文件 ${profile.binary}，worker 未派生。`, true)
-      }
-
       const { dir: handoffDir, warnings } = await store.ensureWorkerDir(workerId)
       const ignoredDeps = worktree ? await scanIgnoredDeps({ exists: path => existsPath(pi, path) }, worktree.path) : []
 
@@ -471,7 +531,8 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
 
       let commandSegments: string[]
       if (mode === 'headless') {
-        const args = [...profile.headlessArgs(launchCtx), ...(profile.extraArgs ?? [])]
+        // extraArgs 已由 resolveProfiles 包进模板，这里再追加就是重复传参。
+        const args = profile.headlessArgs(launchCtx)
         const eventsOut = store.eventsPath(workerId, 1)
         commandSegments = [
           '/usr/bin/env',
@@ -485,20 +546,58 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
           ...args
         ]
       } else {
-        const args = [...profile.interactiveArgs(launchCtx), ...(profile.extraArgs ?? [])]
+        const args = profile.interactiveArgs(launchCtx)
         commandSegments = ['/usr/bin/env', 'PI_REX_ORCH=0', binary, ...args]
       }
 
       const dangerWarnings = auditProfileArgs(profile, commandSegments)
       for (const warning of [...dangerWarnings, ...warnings]) notify(warning)
 
-      const created = await adapter.runBlock({
-        cwd: workerCwd,
-        label,
-        keepOpen: mode === 'headless',
-        focus: mode === 'interactive',
-        commandSegments
-      })
+      let created: Awaited<ReturnType<RexAdapter['runBlock']>>
+      try {
+        created = await adapter.runBlock({
+          cwd: workerCwd,
+          label,
+          keepOpen: mode === 'headless',
+          focus: mode === 'interactive',
+          commandSegments
+        })
+      } catch (error) {
+        const failure = error instanceof Error ? error.message : String(error)
+        // 无 worktree：没有残留资源，直接把失败如实交给宿主。
+        if (worktree === undefined) throw error
+        // runBlock 失败时 Rex 可能已创建 Block（超时 / JSON 截断），而 Block 与失败
+        // 请求之间没有任何可证明的关联——按 label 接管可能认领别人的 Block，按列表
+        // 判定「未创建」也可能与创建竞态。一律保守：不接管、不回滚，登记一个
+        // blockId 为 `unconfirmed:` 前缀的 placeholder（永远不匹配真实事件），让
+        // rex_list_workers 与 /rex-cleanup 都看得见这份残留，由用户在 Rex Tab 确认。
+        registry.register(
+          {
+            workerId,
+            agent: profile.name,
+            mode,
+            label,
+            blockId: `unconfirmed:${workerId}`,
+            turn: 1,
+            cwd: workerCwd,
+            baseCommit: snapshot.baseCommit,
+            baseDirty: snapshot.dirty,
+            worktree,
+            mainCwd: targetCwd,
+            paused: false
+          },
+          { initialStatus: 'closed' }
+        )
+        return text(
+          [
+            `rex run 返回异常（${failure}），派生结果不明：请在 Rex Tab 检查 label=${label}。`,
+            `worker ${workerId} 已按「未确认」登记，worktree 保留：${worktree.path}（branch ${worktree.branch}）。`,
+            `brief：${store.briefPath(workerId, 1)}`,
+            '若 Block 在跑就让它完成并人工验收；若确认未派生，用 /rex-cleanup 清理该 worktree。'
+          ].join('\n'),
+          true
+        )
+      }
       const blockId = created.blockIds[0] as string
       registry.register({
         workerId,
@@ -591,7 +690,9 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         task: params.instruction,
         workerId: worker.workerId,
         worktree: worker.worktree,
-        mainCwd: worker.cwd,
+        // worktree worker 的主仓是 mainCwd；cwd 是 worktree 自身，写反会把续跑指令
+        // 的「主仓库」指到 worktree 路径上。
+        mainCwd: worker.mainCwd ?? worker.cwd,
         ignoredDeps: [],
         handoffPath: store.handoffPath(worker.workerId, turn)
       })
@@ -601,12 +702,13 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         `When done, write a structured conclusion to ${store.handoffPath(worker.workerId, turn)}.`
 
       if (worker.mode === 'headless') {
+        // 全文扫描而不是只看尾部：codex 的 thread 记录在首行，长任务的尾部没有它。
         const agentSessionId =
-          worker.agentSessionId ?? extractSessionId(await store.readEventsTail(worker.workerId, worker.turn, 200))
+          worker.agentSessionId ?? extractSessionId(await store.readEvents(worker.workerId, worker.turn))
         if (agentSessionId === undefined) {
           return text(
-            `找不到 worker ${worker.workerId} 的 agent session id（events.jsonl 缺尾或无 session 记录），无法 headless 续跑。` +
-              '先 rex_inspect_output 查看末尾输出。',
+            `找不到 worker ${worker.workerId} 的 agent session id（events.jsonl 无 session/thread 记录），无法 headless 续跑。` +
+              '先 rex_inspect_output 查看输出。',
             true
           )
         }
@@ -617,7 +719,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
           prompt: shortPrompt,
           sessionId: agentSessionId
         }
-        const args = [...profile.headlessResumeArgs(launchCtx, agentSessionId), ...(profile.extraArgs ?? [])]
+        const args = profile.headlessResumeArgs(launchCtx, agentSessionId)
         const created = await adapter.runBlock({
           cwd: worker.cwd,
           label: worker.label,
@@ -782,6 +884,39 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
       const worker = registry.get(params.worker_id)
       if (!worker) return text(`未知 worker "${params.worker_id}"。`, true)
 
+      // 派生结果不明的 placeholder：真实 Block 可能在 Rex 里运行，而它的全新
+      // worktree「干净且无独立提交」——非 force 清理会命中 clean+merged 判定，把
+      // 可能正被使用的 worktree 删掉。必须过用户显式确认，无 UI 就保留。
+      const unconfirmed = worker.blockId.startsWith('unconfirmed:')
+      if (unconfirmed && worker.worktree) {
+        if (!ctx.hasUI) {
+          return text(
+            [
+              `worker ${worker.workerId} 的派生结果不明（blockId=${worker.blockId}）。`,
+              '当前会话没有弹窗 UI，不能安全清理；worktree 保留：',
+              `${worker.worktree.path}（branch ${worker.worktree.branch}）。`,
+              '请先在 Rex Tab 确认没有该 label 的 Block 在跑，再在有 UI 的会话里清理。'
+            ].join('\n'),
+            true
+          )
+        }
+        const confirmed = await ctx.ui.confirm(
+          `清理未确认 worker ${worker.workerId} 的 worktree？`,
+          '该 worker 的 rex run 曾返回异常：请先确认 Rex Tab 里没有对应 label 的 Block 在运行。' +
+            '确认后执行 git worktree remove + git branch -D，未提交工作不可找回。'
+        )
+        if (!confirmed) {
+          return text(
+            [
+              `用户拒绝清理，worker ${worker.workerId} 保持原状。`,
+              `worktree：${worker.worktree.path}（branch ${worker.worktree.branch}）` +
+                '——确认 Rex Tab 后重试 rex_close_worker。'
+            ].join('\n'),
+            true
+          )
+        }
+      }
+
       if (params.force === true && !ctx.hasUI) {
         return text('force 关闭需要弹窗确认，当前会话没有 UI。请先征得用户同意。', true)
       }
@@ -795,6 +930,8 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
 
       const closeErrors: string[] = []
       for (const blockId of [worker.blockId, ...worker.retiredBlockIds]) {
+        // 合成 blockId（unconfirmed: 前缀）不指向真实 Block，关它只会得到必然失败的调用。
+        if (blockId.startsWith('unconfirmed:')) continue
         await adapter.blockClose(blockId).catch(error => {
           closeErrors.push(`block ${blockId}: ${error instanceof Error ? error.message : String(error)}`)
         })
@@ -806,7 +943,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         const outcome = await cleanupWorktree(
           gitExec,
           { mainCwd, path: worker.worktree.path, branch: worker.worktree.branch },
-          { force: params.force === true }
+          { force: unconfirmed || params.force === true }
         )
         cleanupNote =
           outcome.kind === 'removed'
@@ -883,9 +1020,12 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         return
       }
       for (const worker of candidates) {
+        const unconfirmed = worker.blockId.startsWith('unconfirmed:')
         const ok = await ctx.ui.confirm(
           `回收 ${worker.workerId} 的残留资源？`,
-          '将关闭其 retired Block；worktree 按已合并/干净与否自动处理或保留。'
+          unconfirmed
+            ? '该 worker 派生结果不明：请先确认 Rex Tab 里没有对应 label 的 Block 在运行。确认后强制清理其 worktree 与分支。'
+            : '将关闭其 retired Block；worktree 按已合并/干净与否自动处理或保留。'
         )
         if (!ok) continue
         for (const blockId of worker.retiredBlockIds) {
@@ -893,11 +1033,19 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         }
         worker.retiredBlockIds.length = 0
         if (worker.worktree && worker.status === 'closed') {
-          const outcome = await cleanupWorktree(gitExec, {
-            mainCwd: worker.cwd,
-            path: worker.worktree.path,
-            branch: worker.worktree.branch
-          }).catch(error => ({
+          // 清理命令要在主仓执行：worker.cwd 是即将被删除的 worktree 本身。
+          const mainCwd = worker.mainCwd ?? (await findMainRepo(gitExec, worker.cwd).catch(() => worker.cwd))
+          const outcome = await cleanupWorktree(
+            gitExec,
+            {
+              mainCwd,
+              path: worker.worktree.path,
+              branch: worker.worktree.branch
+            },
+            // placeholder 的全新 worktree「干净且无独立提交」，非 force 会命中
+            // clean+merged 判定误删可能正被使用的 worktree；用户已确认才 force。
+            { force: unconfirmed }
+          ).catch(error => ({
             kind: 'kept' as const,
             reason: String(error),
             path: worker.worktree?.path ?? '',
@@ -919,10 +1067,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
 
   return {
     dispose() {
-      active = false
-      if (noticeTimer !== undefined) clearTimeout(noticeTimer)
-      if (reconnectTimer !== undefined) clearTimeout(reconnectTimer)
-      eventsHandle?.kill()
+      stopEventLoop()
       if (previousTools !== undefined) pi.setActiveTools(previousTools)
     }
   }
@@ -996,7 +1141,8 @@ function renderBrief(input: {
 }
 
 function existsPath(pi: BridgePi, filePath: string): Promise<boolean> {
-  return pi.exec('/usr/bin/test', ['-f', filePath]).then(result => result.code === 0)
+  // `-e` 而非 `-f`：node_modules / .venv 是目录，`-f` 会漏报。
+  return pi.exec('/usr/bin/test', ['-e', filePath]).then(result => result.code === 0)
 }
 
 /** worktree 的主仓 cwd：从 worktree 里问 git 一次。 */
