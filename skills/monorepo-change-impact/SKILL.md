@@ -1,6 +1,6 @@
 ---
 name: monorepo-change-impact
-description: 计算 monorepo 变更的影响面、消费者与所需验证，审查公共 API、exports、事件、类型适配和跨包运行时契约。用于已发布 package 的公共行为、跨 workspace 变更或验证范围选择；不用于单包内部实现。
+description: diff 涉及公开导出、组件属性/事件、框架类型适配、peer dependency 或跨 workspace 运行时行为时调用：计算 monorepo 变更的影响面、消费者与所需验证，审查公共 API、exports、事件、类型适配和跨包运行时契约；不用于单包内部实现。
 ---
 
 # Monorepo Change Impact

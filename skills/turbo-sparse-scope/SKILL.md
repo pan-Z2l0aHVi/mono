@@ -1,6 +1,6 @@
 ---
 name: turbo-sparse-scope
-description: 按任务 scope 的仓库相对路径把当前 worktree 的 git sparse checkout 收缩到目标包及其 turbo 依赖闭包，并约束稀疏树里的全局搜索与验证口径。
+description: 可变任务建账与 worktree 准备完成、读取实施范围代码或修改文件前调用：按台账 scope 的仓库相对路径把当前 worktree 的 git sparse checkout 收缩到目标包及其 turbo 依赖闭包；scope 为空且无包外读取时跳过，并约束稀疏树里的全局搜索与验证口径。
 ---
 
 # Turbo Sparse Scope
