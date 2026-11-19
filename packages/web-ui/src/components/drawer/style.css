@@ -654,6 +654,11 @@ dialog.is-dragging .wui-drawer-drag-zone {
  * 宽度算式 = 视口 − 2×留边，与下层堆叠的同一套留边对齐——full 直接完整盖住下层
  * （headless 的 inset 归零 → 精确 100vw/100dvh）。左右只改宽度（高度已被
  * top/bottom 拉伸），上下只改高度（宽度确已满）。
+ *
+ * 刻意直接过渡 width/height 而非 transform: scale() 或外层 clip-path：
+ * full 态需要抽屉内部正文、表单与滚动区按新尺寸真实重排，用 scale 会导致内容与圆角变形，
+ * 而即时设宽 + clip-path 会在第 0 帧瞬间跳排并硬切毛玻璃圆角与活动边缘。该过渡仅在低频
+ * 全屏切换时触发，且已挂 --wui-duration-drawer-enter 支持 reduced-motion 归零。
  */
 :host([fullable][draggable]) dialog {
   transition:
