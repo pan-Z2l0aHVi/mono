@@ -796,6 +796,91 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     expect(restoredLeft).toBeGreaterThan(childFullMotionLeft + 10)
   })
 
+  it('嵌套：父层 base、子层 full 后触发 resize、子层手势回拉退出 full → 父层恢复 base 露边', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    document.body.append(theme)
+
+    const parent = createDrawer()
+    theme.append(parent)
+    parent.open = true
+    await parent.updateComplete
+    await waitForOpenTransition(parent)
+
+    const child = createDrawer()
+    theme.append(child)
+    child.draggable = true
+    child.fullable = true
+    child.open = true
+    await child.updateComplete
+    await waitForOpenTransition(child)
+
+    await pullToFullAndRelease(child, 'right')
+    window.dispatchEvent(new Event('resize'))
+    await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
+
+    const parentDialog = getDialog(parent)
+    const childFullMotionLeft = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect().left
+
+    // 真实手势回拉超过 96px 退出 full 并松手。
+    await holdAndMove(child, [
+      { x: 100, y: 300, at: 0 },
+      { x: 140, y: 300, at: STEP_MS },
+      { x: 180, y: 300, at: 2 * STEP_MS },
+      { x: 240, y: 300, at: 3 * STEP_MS }
+    ])
+    await releaseAt(child, 240, 300, 4 * STEP_MS)
+    await waitFor(() => getDialog(child).getAnimations({ subtree: true }).length === 0)
+    await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
+
+    const restoredLeft = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect().left
+    expect(restoredLeft).toBeCloseTo(expectedNestedMotionLeft(parent), 0)
+    expect(restoredLeft).toBeGreaterThan(childFullMotionLeft + 10)
+  })
+
+  it('嵌套：theme motion="reduced" 下子层手势退出 full（无 width/height 过渡）→ 父层立即恢复 base 露边', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    theme.setAttribute('motion', 'reduced')
+    document.body.append(theme)
+
+    const parent = createDrawer()
+    theme.append(parent)
+    parent.open = true
+    await parent.updateComplete
+    await waitForOpenTransition(parent)
+
+    const child = createDrawer()
+    theme.append(child)
+    child.draggable = true
+    child.fullable = true
+    child.open = true
+    await child.updateComplete
+    await waitForOpenTransition(child)
+
+    await pullToFullAndRelease(child, 'right')
+    window.dispatchEvent(new Event('resize'))
+    await child.updateComplete
+
+    const parentDialog = getDialog(parent)
+    const childFullMotionLeft = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect().left
+
+    // 0ms 动效下没有 width/height transitionend，手势退出 full 时应同步触发全栈重算。
+    await holdAndMove(child, [
+      { x: 100, y: 300, at: 0 },
+      { x: 140, y: 300, at: STEP_MS },
+      { x: 180, y: 300, at: 2 * STEP_MS },
+      { x: 240, y: 300, at: 3 * STEP_MS }
+    ])
+    await releaseAt(child, 240, 300, 4 * STEP_MS)
+    await child.updateComplete
+    await parent.updateComplete
+
+    const restoredLeft = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect().left
+    expect(restoredLeft).toBeCloseTo(expectedNestedMotionLeft(parent), 0)
+    expect(restoredLeft).toBeGreaterThan(childFullMotionLeft + 10)
+  })
+
   it('快甩外拉松手：短行程也吸附 full（armed 正例）', async () => {
     const el = createDrawer()
     el.draggable = true

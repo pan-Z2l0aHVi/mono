@@ -352,12 +352,14 @@ export const defineDrawerDragController = () =>
         applyDragOffset(dialog, 0)
       }
       dialog.classList.add('is-full')
+      adapter.onNestedRecalculate()
     }
 
     const exitFull = (dialog: HTMLDialogElement) => {
       stage = 'base'
       exitedFull = true
       dialog.classList.remove('is-full', 'is-drag-close')
+      adapter.onNestedRecalculate()
     }
 
     const settleNestedFullAfterDrag = (dialog: HTMLDialogElement) => {
