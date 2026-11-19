@@ -1,0 +1,28 @@
+{
+  "name": "@greypan/pi-rex-orchestrator",
+  "version": "0.0.1",
+  "description": "Read-only Pi coordinator extension that dispatches and supervises worker agents in Rex terminals",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
+  },
+  "private": true,
+  "type": "module",
+  "pi": {
+    "extensions": [
+      "./src/index.ts"
+    ]
+  },
+  "scripts": {
+    "test": "vp test run",
+    "link:pi": "node ./scripts/link-pi.mjs"
+  },
+  "devDependencies": {
+    "@greypan/tsconfig": "workspace:*",
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=22.19.0"
+  }
+}

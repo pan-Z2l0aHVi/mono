@@ -1,0 +1,14 @@
+# pi-rex-orchestrator
+
+- 私有 Pi 扩展，由 Pi 的 jiti 直接加载 [`src/index.ts`](./src/index.ts)，不经 Vite 打包；`src/` 里不能出现只有构建期才注入的东西（`import.meta.env` 等）。零运行时外部依赖：只用 Node 内置模块与 Pi 扩展 API，**不要**引入 `workspace:*` 运行时依赖或第三方运行时包。
+- Pi 宿主 API 的类型声明在本包的 [`src/pi-types.ts`](./src/pi-types.ts)，不装 `@earendil-works/pi-coding-agent`（进 devDependencies 会拖入整个 provider 闭包并需要改根 `pnpm-workspace.yaml` 的 `allowBuilds`）。声明对照过 `1.5.2` 真实宿主；升级 Pi 后先对照 `dist/core/extensions/types.d.ts` 再改。
+- 激活只看环境变量（`REX_SESSION` 且 `PI_REX_ORCH !== "0"`）。派生命令的 `/usr/bin/env PI_REX_ORCH=0` 前缀是防递归硬约束：`rex run` 不支持 `--env`，在 `pi.exec` 里传 env 到不了子 PTY，绕过前缀会让「把 pi 配成 worker」递归变只读协调者。
+- 护栏两层缺一不可：`session_start` 挂 `setActiveTools` 白名单（声明可能滞后一轮），`tool_call` 钩子硬拦 `bash`/`write`/`edit`/`powershell` 与 `destructiveHint` MCP 工具兜底。本协调者**有意**比 memory-bridge 更严地摘掉 `bash`：git 与探查全部走专用工具（内部经 `pi.exec`），模型层面保留 shell 是多余攻击面。退出与 `session_shutdown` 都要还原工具集，否则 `/reload` 后工具永久消失。
+- 阶段 1 实测锁定的 CLI 事实（改模板前先重测，不要凭记忆）：claude 的位置参数 prompt 必须放在值型 flag（`--add-dir`）之前，否则被吞成 flag 值；`codex exec resume` 没有 `--add-dir` 且 `--json` 跟在 resume 之后；claude 的 OSC 7501 上报已实测，codex 未验证按 `supportsOsc7501: false` 处理（Send-ACK 强校验自动跳过）。
+- `rex events` 的双层 JSON Schema 与 `rex block ls`/`rex run --json` 形状来自 2026-11-19 真机抓包（rex 0.1.0-preview.21），期望值钉在 [`src/__tests__/rex-events.spec.ts`](./src/__tests__/rex-events.spec.ts)；没实测到的 `program_status_changed` 按设计文档形态解析并保持「不认识就当作没有」。
+- Pi session id 在工厂期拿不到：交接区（`HandoffStore`）延迟到 `session_start` 用 `ctx.sessionManager.getSessionId()` 创建，工具执行前 `requireStore()` 兜底。改这个时序前先读 [`src/orchestrator.ts`](./src/orchestrator.ts) 的 `session_start` 处理。
+- interactive 投递的 Send-ACK 监听必须在 `rex send` **之前**订阅，且投递只记 turn 不做合成状态转移（`markTurnDispatched(..., { notifyTransition: false })`）：自家转移会抢先触发 ACK，把「未送达」永远误判成「已确认」。
+- headless 续跑走 `replaceBlock` 原子替换：旧 Block 移入 `retiredBlockIds`，其 `block_closed` 事件不算异常；一个逻辑 worker 至多一个活跃 Tab。续跑需要的 agent session id 从该轮 `events.jsonl` 尾部提取，提取不到就报错让人工 inspect，不要静默起新会话。
+- `scripts/run-headless.mjs` 是纯 JS（不经 jiti/TS），改它时保持只用 Node 内置模块；放在 `scripts/` 而非 `bin/` 是因为根 `.gitignore` 把 `bin/` 当构建产物目录排除。子进程 `close` 里真实退出码优先于信号合成码；`eventsStream.end()` 的 flush 回调之前不得 `process.exit`，否则截断末尾 JSONL 丢 `session_id`。契约由 [`src/__tests__/run-headless.spec.ts`](./src/__tests__/run-headless.spec.ts) 的假 CLI 钉住。
+- worktree 清理是保守契约：`git status --porcelain` 为空 **且** 分支已合进主仓 `HEAD` 才自动 `git worktree remove` + `git branch -d`；未合并废弃分支的 `git branch -D` 必须显式 `force` 且经用户确认。零提交仓库（无 HEAD）屏蔽 worktree 选项。Pi 绝不自动 merge，只在汇报里给合回命令。测试用真实 `git init` / `git worktree add` 建仓（[`git-inspector.spec.ts`](./src/__tests__/git-inspector.spec.ts)），手写 fixture 会掩盖 linked worktree 的 `gitdir:` 布局差异。
+- 联调软链用包脚本 `pnpm --filter @greypan/pi-rex-orchestrator run link:pi`；删开发 worktree 前必须 `link:pi -- --main` 切回主仓库 main 常驻路径，防止软链悬空。真实 worker 派生的端到端联调在临时沙箱仓库做，不要拿主力 monorepo 做破坏性联调。
