@@ -409,7 +409,7 @@ export const defineDrawerDragController = () =>
 
     const handlePointerDown = (e: PointerEvent) => {
       if (!adapter.isOpen() || !adapter.isDraggable() || isDragging()) return
-      if (!e.isPrimary) return
+      if (Object.is(e.isPrimary, false)) return
 
       const dialog = adapter.getDialog()
       if (!dialog || !dialog.classList.contains('is-visible')) return

@@ -60,7 +60,7 @@ async function openPreview(options: Partial<Parameters<typeof imagePreview>[0]> 
  */
 function labeledButtons(host: HTMLElement): HTMLElement[] {
   return [...(host.shadowRoot?.querySelectorAll<HTMLElement>('web-ui-button, button, [role="button"]') ?? [])].filter(
-    node => node.getAttribute('aria-label')?.trim() !== ''
+    node => Boolean(node.getAttribute('aria-label')?.trim())
   )
 }
 

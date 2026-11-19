@@ -531,7 +531,7 @@ export const defineImagePreviewInteraction = () =>
       setSwipeOffset(0)
 
       // 只有主指针左键才可能生成 click；其它指针不得覆盖空白判定。
-      const primary = event.button === 0 && event.isPrimary
+      const primary = event.button === 0 && !Object.is(event.isPrimary, false)
       if (!primary) return
 
       // 指针捕获会把后续 click 的 target 重定向到捕获元素，因此在按下时记录真实命中元素。
