@@ -117,6 +117,28 @@ describe('image-preview 重挂载对账（浏览器）', () => {
     expect(document.documentElement.style.overflow).toBe('')
   })
 
+  it('先开预览再开 popover：一次 Escape 只关 popover', async () => {
+    const { handle } = await openPreview()
+    await pollUntil(() => dialogElement().matches(':modal'), 'preview should enter top layer')
+
+    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    popover.textContent = 'above'
+    document.body.append(popover)
+    await popover.updateComplete
+    popover.open = true
+    await popover.updateComplete
+    await waitForFrame()
+
+    await userEvent.keyboard('{Escape}')
+    await pollUntil(() => !popover.open, 'Expected Escape to close the top-layer popover')
+    expect(popover.open).toBe(false)
+    expect(dialogElement().open).toBe(true)
+    expect(isMounted()).toBe(true)
+
+    handle.close()
+    await handle.closed
+  })
+
   it('重挂载后双指缩放手势恢复（firstUpdated 只跑一次，断连销毁的手势必须补挂）', async () => {
     const { handle, host } = await openPreview()
     await pollUntil(() => dialogElement().matches(':modal'), 'dialog should enter top layer')

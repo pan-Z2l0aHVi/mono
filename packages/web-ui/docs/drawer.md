@@ -859,7 +859,7 @@ function close() {
 
 ### Headless
 
-`headless` keeps only the native dialog, backdrop, animations, scroll lock, and Escape / backdrop closing, rendering no built-in header, close button, or footer. Your app is responsible for the full styling of the default slot content and must provide `aria-dialog-label`. `headless` supports `draggable` drag-to-close as well.
+`headless` keeps only the native dialog, backdrop, animations, scroll lock, and Escape / backdrop closing, rendering no built-in header, close button, or footer. Your app is responsible for the full styling of the default slot content and must provide `aria-dialog-label`.
 
 The React example sets the `ariaDialogLabel` property through a ref so React does not validate the component-specific name as a standard ARIA attribute.
 
@@ -877,7 +877,6 @@ export default function Demo() {
         open={open}
         placement="left"
         headless
-        draggable
         ref={element => {
           if (element) element.ariaDialogLabel = 'Custom panel'
         }}
@@ -903,7 +902,6 @@ export default function Demo() {
     :open="open"
     placement="left"
     headless
-    draggable
     aria-dialog-label="Custom panel"
     @open-change="open = $event.detail.open"
   >
@@ -927,7 +925,9 @@ const open = ref(false)
 
 ### Drag to close
 
-With `draggable` enabled, a gray pill-shaped drag bar appears on the inner edge of the drawer. Drag past half of its own size toward the closing direction, or drag quickly and release, to close; below the threshold the drawer returns to its open position. The direction follows `placement`.
+With `draggable` enabled, a gray pill-shaped drag bar appears on the inner edge of the drawer. Drag past 35% of its own size toward the closing direction, or drag quickly and release, to close; below the threshold the drawer returns to its open position. The direction follows `placement`.
+
+With `fullable` also enabled, dragging outward (away from the closing direction) past a travel threshold snaps the drawer to a viewport-filling form (minus the surrounding insets, 8px by default; set `--wui-drawer-inset` to 0 for edge-to-edge) without requiring a release; a quick outward flick on release triggers the same. Once a return drag crosses the restore threshold from the full form, that gesture is committed to cancelling full: the drawer returns to its original size, further dragging only follows with damping, and it cannot close or snap full again during the same gesture; releasing leaves it at the original size. To close or go full again, start a new gesture. In the full form the close button, Escape, and backdrop click all close directly; opening a nested drawer on top keeps the lower drawer in its full form while scaling and shifting it back by depth, and restores the full form when the upper drawer closes. The third drawer in the example below enables `fullable`.
 
 ```tsx
 import { useState } from 'react'
@@ -935,12 +935,14 @@ import { useState } from 'react'
 export default function Demo() {
   const [rightOpen, setRightOpen] = useState(false)
   const [bottomOpen, setBottomOpen] = useState(false)
+  const [fullOpen, setFullOpen] = useState(false)
 
   return (
     <>
       <div className="flex flex-wrap gap-3">
         <web-ui-button onClick={() => setRightOpen(true)}>Drag-close on the right</web-ui-button>
         <web-ui-button onClick={() => setBottomOpen(true)}>Drag-close at the bottom</web-ui-button>
+        <web-ui-button onClick={() => setFullOpen(true)}>Drag-to-full on the right</web-ui-button>
       </div>
 
       <web-ui-drawer
@@ -949,7 +951,7 @@ export default function Demo() {
         heading="Drag right to close"
         onopen-change={event => setRightOpen(event.detail.open)}
       >
-        <p>Hold the gray pill on the left edge and drag it more than half way to the right, or fling it, to close.</p>
+        <p>Hold the gray pill on the left edge and drag it past the threshold to the right, or fling it, to close.</p>
       </web-ui-drawer>
 
       <web-ui-drawer
@@ -959,7 +961,21 @@ export default function Demo() {
         heading="Drag down to close"
         onopen-change={event => setBottomOpen(event.detail.open)}
       >
-        <p>Hold the gray pill on the top edge and drag it more than half way down, or fling it, to close.</p>
+        <p>Hold the gray pill on the top edge and drag it past the threshold downward, or fling it, to close.</p>
+      </web-ui-drawer>
+
+      <web-ui-drawer
+        open={fullOpen}
+        draggable
+        fullable
+        heading="Drag right to go full"
+        onopen-change={event => setFullOpen(event.detail.open)}
+      >
+        <p>
+          Hold the gray pill on the left edge and drag it outward (to the left) past the travel threshold to snap full;
+          pulling back past the restore threshold restores the original size and commits that gesture to leaving full.
+          Release leaves it there; start another drag past the close threshold, or flick inward, to close.
+        </p>
       </web-ui-drawer>
     </>
   )
@@ -971,6 +987,7 @@ export default function Demo() {
   <div class="flex flex-wrap gap-3">
     <web-ui-button @click="rightOpen = true">Drag-close on the right</web-ui-button>
     <web-ui-button @click="bottomOpen = true">Drag-close at the bottom</web-ui-button>
+    <web-ui-button @click="fullOpen = true">Drag-to-full on the right</web-ui-button>
   </div>
 
   <web-ui-drawer
@@ -979,7 +996,7 @@ export default function Demo() {
     heading="Drag right to close"
     @open-change="rightOpen = $event.detail.open"
   >
-    <p>Hold the gray pill on the left edge and drag it more than half way to the right, or fling it, to close.</p>
+    <p>Hold the gray pill on the left edge and drag it past the threshold to the right, or fling it, to close.</p>
   </web-ui-drawer>
 
   <web-ui-drawer
@@ -989,7 +1006,21 @@ export default function Demo() {
     heading="Drag down to close"
     @open-change="bottomOpen = $event.detail.open"
   >
-    <p>Hold the gray pill on the top edge and drag it more than half way down, or fling it, to close.</p>
+    <p>Hold the gray pill on the top edge and drag it past the threshold downward, or fling it, to close.</p>
+  </web-ui-drawer>
+
+  <web-ui-drawer
+    :open="fullOpen"
+    draggable
+    fullable
+    heading="Drag right to go full"
+    @open-change="fullOpen = $event.detail.open"
+  >
+    <p>
+      Hold the gray pill on the left edge and drag it outward (to the left) past the travel threshold to snap full;
+      pulling back past the restore threshold restores the original size and commits that gesture to leaving full.
+      Release leaves it there; start another drag past the close threshold, or flick inward, to close.
+    </p>
   </web-ui-drawer>
 </template>
 
@@ -998,12 +1029,13 @@ import { ref } from 'vue'
 
 const rightOpen = ref(false)
 const bottomOpen = ref(false)
+const fullOpen = ref(false)
 </script>
 ```
 
 ### Nested stacking
 
-Declaratively nesting the same component stacks it automatically: the later-opened drawer sits on top at full size, lower layers shrink and shift inward, and every layer shows a visible left edge. When layer widths differ or the opening order changes, the component adjusts automatically. Escape and backdrop clicks act only on the topmost layer.
+Declaratively nesting the same component stacks it automatically: the later-opened drawer sits on top at full size, lower layers shrink and shift inward, and every layer shows a visible left edge. When layer widths differ or the opening order changes, the component adjusts automatically. Escape and backdrop clicks act only on the topmost layer. All four layers below enable `draggable` and `fullable` so you can test stacking together with drag-to-close and full-screen snapping.
 
 ```tsx
 import type { CSSProperties } from 'react'
@@ -1031,12 +1063,16 @@ export default function Demo() {
         open={levels[0]}
         heading={`${titles[0]} (300px)`}
         closable
+        draggable
+        fullable
         style={{ '--wui-drawer-width': widths[0] } as CSSProperties}
         onopen-change={event => {
           if (event.target === event.currentTarget && !event.detail.open) closeLevel(0)
         }}
       >
-        <p>Layer 1. After the next layer opens, this layer scales down and exposes its left edge.</p>
+        <p>
+          Layer 1 (draggable & fullable). After the next layer opens, this layer scales down and exposes its left edge.
+        </p>
         <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(1)}>
           Open layer 2
         </web-ui-button>
@@ -1045,12 +1081,17 @@ export default function Demo() {
           open={levels[1]}
           heading={`${titles[1]} (280px)`}
           closable
+          draggable
+          fullable
           style={{ '--wui-drawer-width': widths[1] } as CSSProperties}
           onopen-change={event => {
             if (event.target === event.currentTarget && !event.detail.open) closeLevel(1)
           }}
         >
-          <p>Layer 2. This layer is wider than the one above, so the stacking position compensates automatically.</p>
+          <p>
+            Layer 2 (draggable & fullable). This layer is wider than the one above, so the stacking position compensates
+            automatically.
+          </p>
           <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(2)}>
             Open layer 3
           </web-ui-button>
@@ -1059,12 +1100,16 @@ export default function Demo() {
             open={levels[2]}
             heading={`${titles[2]} (240px)`}
             closable
+            draggable
+            fullable
             style={{ '--wui-drawer-width': widths[2] } as CSSProperties}
             onopen-change={event => {
               if (event.target === event.currentTarget && !event.detail.open) closeLevel(2)
             }}
           >
-            <p>Layer 3. When a wider layer stacks on a narrower one, the left edge stays visible.</p>
+            <p>
+              Layer 3 (draggable & fullable). When a wider layer stacks on a narrower one, the left edge stays visible.
+            </p>
             <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(3)}>
               Open layer 4
             </web-ui-button>
@@ -1073,12 +1118,14 @@ export default function Demo() {
               open={levels[3]}
               heading={`${titles[3]} (320px, top layer)`}
               closable
+              draggable
+              fullable
               style={{ '--wui-drawer-width': widths[3] } as CSSProperties}
               onopen-change={event => {
                 if (event.target === event.currentTarget && !event.detail.open) closeLevel(3)
               }}
             >
-              <p>Layer 4, the topmost. Closing it restores each layer to its original size.</p>
+              <p>Layer 4, the topmost (draggable & fullable). Closing it restores each layer to its original size.</p>
             </web-ui-drawer>
           </web-ui-drawer>
         </web-ui-drawer>
@@ -1096,40 +1143,51 @@ export default function Demo() {
     :open="levels[0]"
     :heading="`${titles[0]} (300px)`"
     closable
+    draggable
+    fullable
     :style="{ '--wui-drawer-width': widths[0] }"
     @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(0)"
   >
-    <p>Layer 1. After the next layer opens, this layer scales down and exposes its left edge.</p>
+    <p>Layer 1 (draggable & fullable). After the next layer opens, this layer scales down and exposes its left edge.</p>
     <web-ui-button slot="footer" variant="secondary" full @click="openLevel(1)">Open layer 2</web-ui-button>
 
     <web-ui-drawer
       :open="levels[1]"
       :heading="`${titles[1]} (280px)`"
       closable
+      draggable
+      fullable
       :style="{ '--wui-drawer-width': widths[1] }"
       @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(1)"
     >
-      <p>Layer 2. This layer is wider than the one above, so the stacking position compensates automatically.</p>
+      <p>
+        Layer 2 (draggable & fullable). This layer is wider than the one above, so the stacking position compensates
+        automatically.
+      </p>
       <web-ui-button slot="footer" variant="secondary" full @click="openLevel(2)">Open layer 3</web-ui-button>
 
       <web-ui-drawer
         :open="levels[2]"
         :heading="`${titles[2]} (240px)`"
         closable
+        draggable
+        fullable
         :style="{ '--wui-drawer-width': widths[2] }"
         @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(2)"
       >
-        <p>Layer 3. When a wider layer stacks on a narrower one, the left edge stays visible.</p>
+        <p>Layer 3 (draggable & fullable). When a wider layer stacks on a narrower one, the left edge stays visible.</p>
         <web-ui-button slot="footer" variant="secondary" full @click="openLevel(3)">Open layer 4</web-ui-button>
 
         <web-ui-drawer
           :open="levels[3]"
           :heading="`${titles[3]} (320px, top layer)`"
           closable
+          draggable
+          fullable
           :style="{ '--wui-drawer-width': widths[3] }"
           @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(3)"
         >
-          <p>Layer 4, the topmost. Closing it restores each layer to its original size.</p>
+          <p>Layer 4, the topmost (draggable & fullable). Closing it restores each layer to its original size.</p>
         </web-ui-drawer>
       </web-ui-drawer>
     </web-ui-drawer>
@@ -1339,20 +1397,21 @@ const open = ref(false)
 
 ### Props
 
-| Name                | Description                                                                                                                                                                                                                                         | Type              | Default   |
-| ------------------- | --------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
-| `open`              | Drawer visibility.                                                                                                                                                                                                                                  | `boolean`         | `false`   |
-| `no-scroll-lock`    | Does not lock page scrolling while open.                                                                                                                                                                                                            | `boolean`         | `false`   |
-| `no-backdrop-close` | Prevents closing on a backdrop click.                                                                                                                                                                                                               | `boolean`         | `false`   |
-| `controlled`        | User-initiated closing only requests `open=false`, written back by your app.                                                                                                                                                                        | `boolean`         | `false`   |
-| `placement`         | Slide-in direction: `right` (default), `left`, `top`, `bottom`.                                                                                                                                                                                     | `DrawerPlacement` | `'right'` |
-| `heading`           | Heading text, the fallback when the `header` slot is empty.                                                                                                                                                                                         | `string`          | `''`      |
-| `closable`          | Shows the built-in close button.                                                                                                                                                                                                                    | `boolean`         | `false`   |
-| `headless`          | Keeps only overlay behavior; the default slot renders no built-in drawer UI.                                                                                                                                                                        | `boolean`         | `false`   |
-| `aria-dialog-label` | Accessible name of the native dialog; required under `headless`. `dialog-label` also works.                                                                                                                                                         | `string`          | `''`      |
-| `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`).                                                                                                                                                    | `string`          | `''`      |
-| `draggable`         | Shows a drag bar on the inner edge of the drawer and enables the drag-to-close gesture.                                                                                                                                                             | `boolean`         | `false`   |
-| `page-shift`        | While open, the background page moves toward the drawer's entering direction. The opening order sets layer order and offset, with the same rule for nested and sibling layers; closing any layer recalculates the rest. Inert under reduced motion. | `boolean`         | `false`   |
+| Name                | Description                                                                                                                                                                                                                                                                                    | Type              | Default   |
+| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
+| `open`              | Drawer visibility.                                                                                                                                                                                                                                                                             | `boolean`         | `false`   |
+| `no-scroll-lock`    | Does not lock page scrolling while open.                                                                                                                                                                                                                                                       | `boolean`         | `false`   |
+| `no-backdrop-close` | Prevents closing on a backdrop click.                                                                                                                                                                                                                                                          | `boolean`         | `false`   |
+| `controlled`        | User-initiated closing only requests `open=false`, written back by your app.                                                                                                                                                                                                                   | `boolean`         | `false`   |
+| `placement`         | Slide-in direction: `right` (default), `left`, `top`, `bottom`.                                                                                                                                                                                                                                | `DrawerPlacement` | `'right'` |
+| `heading`           | Heading text, the fallback when the `header` slot is empty.                                                                                                                                                                                                                                    | `string`          | `''`      |
+| `closable`          | Shows the built-in close button.                                                                                                                                                                                                                                                               | `boolean`         | `false`   |
+| `headless`          | Keeps only overlay behavior; the default slot renders no built-in drawer UI.                                                                                                                                                                                                                   | `boolean`         | `false`   |
+| `aria-dialog-label` | Accessible name of the native dialog; required under `headless`. `dialog-label` also works.                                                                                                                                                                                                    | `string`          | `''`      |
+| `aria-close-label`  | Accessible name of the built-in close button; falls back to the built-in English copy (`Close`).                                                                                                                                                                                               | `string`          | `''`      |
+| `draggable`         | Shows a drag bar on the inner edge of the drawer and enables the drag-to-close gesture.                                                                                                                                                                                                        | `boolean`         | `false`   |
+| `fullable`          | Drag-to-full (requires `draggable`): dragging outward past the travel threshold or a quick outward flick snaps the drawer to a viewport-filling form; a return drag past the restore threshold stops at the original size for that gesture, and only a new gesture can close or go full again. | `boolean`         | `false`   |
+| `page-shift`        | While open, the background page moves toward the drawer's entering direction. The opening order sets layer order and offset, with the same rule for nested and sibling layers; closing any layer recalculates the rest. Inert under reduced motion.                                            | `boolean`         | `false`   |
 
 ### Events
 
@@ -1408,6 +1467,8 @@ With `draggable` enabled, an open drawer shows a gray pill-shaped drag bar on it
 Left and right placements have only the drag zone; top and bottom placements can also start from an end drag edge or the whole header / footer. If a press lands on an interactive control, that control receives the press and no drag starts; custom controls need `role` or `tabindex` to be recognized. The upper part of a control that overlaps the drag bar area is covered by the drag area; adjust `--wui-drawer-drag-bar-length` and `--wui-drawer-drag-edge-size` to change it.
 
 A backdrop click closes only on a tap: a gesture that starts on the panel or the backdrop and releases elsewhere does not close.
+
+With `fullable` enabled there is a second gesture in the outward direction: dragging outward past the travel threshold snaps the drawer to full viewport size without requiring a release, and a quick outward flick on release triggers the same. Once a return drag crosses the restore threshold, that gesture enters the cancel-full phase: the drawer size returns to the original size, further dragging toward the closing direction follows with damping only, and the same gesture cannot close or snap full again; releasing leaves it at the original size. To close or go full again, start a new gesture. A fast outward sweep after an inward pull that reversed direction is treated as a change of mind and does not snap. At the snap moment the drag bar moves with the drawer edge and leaves the finger.
 
 With `controlled` enabled, releasing past the threshold only dispatches `open-change(false)`; the drawer waits 120ms at the closed position and returns to the open position if your app rejects it or does not write back in time.
 

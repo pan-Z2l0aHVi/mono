@@ -166,6 +166,29 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await handle.closed
   })
 
+  it('手工 property 配置的相邻图随 images 与 loop 现算', async () => {
+    const host = document.createElement('web-ui-image-preview') as LitElement & {
+      images: ImagePreviewOptions['images']
+      loop: boolean
+    }
+    host.images = IMAGES
+    host.loop = true
+    document.body.append(host)
+    await host.updateComplete
+
+    const slideImage = (selector: string) =>
+      host.shadowRoot?.querySelector(`${selector} img`)?.getAttribute('data-index')
+    expect(slideImage('.wui-image-preview-slide.is-prev')).toBe(`${IMAGES.length - 1}`)
+    expect(slideImage('.wui-image-preview-slide.is-next')).toBe('1')
+
+    host.loop = false
+    await host.updateComplete
+    expect(host.shadowRoot?.querySelector('.wui-image-preview-slide.is-prev')).toBeNull()
+    expect(slideImage('.wui-image-preview-slide.is-next')).toBe('1')
+
+    host.remove()
+  })
+
   it('打开后焦点进入预览，关闭后回到打开前的元素', async () => {
     const trigger = document.createElement('button')
     trigger.textContent = '打开'
@@ -669,6 +692,96 @@ describe('imagePreview 命令式 API（浏览器）', () => {
       // 循环中任一断言抛错时也要把视口还回去，否则后续用例带着 320/800px 跑。
       await setViewport(1280, 720)
     }
+  })
+
+  /*
+   * 进入 pending settle 的驱动路径。先证明 track 已启动过渡，避免下面取消用例
+   * 只测到「settle 从未开始」的空集。
+   */
+  async function startPendingSwipeSettle() {
+    const { handle, host } = await openPreview({ swipe: true })
+    const image = currentImage(host)
+    await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
+    const stage = stageOf(image)
+    await waitForStageSettled(stage)
+
+    stage.dispatchEvent(timedPointer('pointerdown', { clientX: 400, clientY: 300, timeStamp: 0 }))
+    stage.dispatchEvent(timedPointer('pointermove', { clientX: 100, clientY: 300, timeStamp: 300 }))
+    stage.dispatchEvent(timedPointer('pointerup', { clientX: 100, clientY: 300, timeStamp: 600 }))
+    await host.updateComplete
+    await waitForFrame()
+
+    const track = trackOf(host)
+    expect(stage.classList.contains('is-settling')).toBe(true)
+    expect(track.getAnimations().length).toBeGreaterThan(0)
+    expect(handle.index).toBe(0)
+    return { handle, host, image, stage, track }
+  }
+
+  // 观察窗口覆盖 320ms 兜底 timer；等待的目的是给「未取消的旧收尾」留出可失败边界。
+  async function waitPastSettleFallback() {
+    await new Promise(resolve => setTimeout(resolve, 400))
+  }
+
+  it('settle 途中 next() 只前进一张并取消旧收尾', async () => {
+    const { handle, host, stage } = await startPendingSwipeSettle()
+
+    handle.next()
+    await host.updateComplete
+    expect(handle.index).toBe(1)
+    expect(stage.classList.contains('is-settling')).toBe(false)
+
+    await waitPastSettleFallback()
+    expect(handle.index).toBe(1)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('settle 途中 ArrowRight 只前进一张并取消旧收尾', async () => {
+    const { handle, host, stage } = await startPendingSwipeSettle()
+
+    dialogElement().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
+    await host.updateComplete
+    expect(handle.index).toBe(1)
+    expect(stage.classList.contains('is-settling')).toBe(false)
+
+    await waitPastSettleFallback()
+    expect(handle.index).toBe(1)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('goTo(current) 取消带 pending commit 的收尾', async () => {
+    const { handle, host, stage, track } = await startPendingSwipeSettle()
+
+    handle.goTo(0)
+    await host.updateComplete
+    expect(handle.index).toBe(0)
+    expect(stage.classList.contains('is-settling')).toBe(false)
+
+    await waitPastSettleFallback()
+    expect(handle.index).toBe(0)
+
+    handle.close()
+    await handle.closed
+  })
+
+  it('settle 中当前图冒泡的 transform transitionend 不提前提交', async () => {
+    const { handle, host, image, stage, track } = await startPendingSwipeSettle()
+
+    image.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'transform', bubbles: true }))
+    await host.updateComplete
+    expect(handle.index).toBe(0)
+    expect(stage.classList.contains('is-settling')).toBe(true)
+    expect(track.getAnimations().length).toBeGreaterThan(0)
+
+    await pollUntil(() => track.getAnimations().length === 0, 'track settle did not finish naturally')
+    expect(handle.index).toBe(1)
+
+    handle.close()
+    await handle.closed
   })
 })
 

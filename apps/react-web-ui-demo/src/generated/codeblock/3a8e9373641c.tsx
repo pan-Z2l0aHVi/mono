@@ -5,22 +5,21 @@ export default function Demo() {
 
   return (
     <>
-      <web-ui-button onClick={() => setOpen(true)}>打开 headless drawer</web-ui-button>
+      <web-ui-button onClick={() => setOpen(true)}>Open headless drawer</web-ui-button>
 
       <web-ui-drawer
         open={open}
         placement="left"
         headless
-        draggable
         ref={element => {
-          if (element) element.ariaDialogLabel = '自定义面板'
+          if (element) element.ariaDialogLabel = 'Custom panel'
         }}
         onopen-change={event => setOpen(event.detail.open)}
       >
         <div className="box-border h-full w-[min(320px,100vw)] rounded-r-2xl bg-(--wui-color-surface-overlay) p-6 text-(--wui-color-text)">
-          <h2 className="m-0 mb-2 text-xl">自定义面板</h2>
+          <h2 className="m-0 mb-2 text-xl">Custom panel</h2>
           <p className="m-0 text-(--wui-color-text-secondary)">
-            headless 只提供 overlay 行为；内容、背景与圆角都由这里决定。
+            headless provides only overlay behavior; the content, background, and radius are all decided here.
           </p>
         </div>
       </web-ui-drawer>

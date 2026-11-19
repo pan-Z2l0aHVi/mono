@@ -402,6 +402,41 @@ describe('shared/gesture attachDragGesture', () => {
     handle.destroy()
     el.remove()
   })
+
+  it('cancelOnLostCapture 为 false 且元素仍在文档中时，lostpointercapture 后继续由 window 接管直到 pointerup', () => {
+    const el = document.createElement('div')
+    document.body.append(el)
+
+    const onMove = vi.fn<(info: { deltaX: number }) => void>()
+    const onEnd = vi.fn<() => void>()
+    const onCancel = vi.fn<() => void>()
+    const handle = attachDragGesture(el, {
+      axis: 'x',
+      threshold: 0,
+      cancelOnLostCapture: false,
+      onMove,
+      onEnd,
+      onCancel
+    })
+
+    el.dispatchEvent(
+      new PointerEvent('pointerdown', { bubbles: true, pointerId: 1, clientX: 100, clientY: 100, isPrimary: true })
+    )
+    el.dispatchEvent(new PointerEvent('lostpointercapture', { bubbles: true, pointerId: 1 }))
+
+    expect(handle.isDragging()).toBe(true)
+    expect(onCancel).not.toHaveBeenCalled()
+
+    window.dispatchEvent(new PointerEvent('pointermove', { pointerId: 1, clientX: 180, clientY: 100 }))
+    window.dispatchEvent(new PointerEvent('pointerup', { pointerId: 1, clientX: 180, clientY: 100 }))
+
+    expect(onMove).toHaveBeenCalledTimes(1)
+    expect(onEnd).toHaveBeenCalledTimes(1)
+    expect(onCancel).not.toHaveBeenCalled()
+
+    handle.destroy()
+    el.remove()
+  })
 })
 
 describe('shared/gesture attachPinchGesture', () => {

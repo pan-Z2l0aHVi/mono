@@ -250,3 +250,49 @@ describe('减少动效下的整页让开（浏览器）', () => {
     expect(fullMarker.getBoundingClientRect().left).toBeCloseTo(fullRest - firstLayerShift(), 1)
   })
 })
+
+/*
+ * fullable 的系统 reduce 兜底：`@media (prefers-reduced-motion: reduce)` 下尺寸
+ * 过渡必须整条禁用（`transition: none`），吸附与恢复当帧就位。显式
+ * `<web-ui-theme motion="reduced">` 的 token 归零路径由 full.browser.spec 覆盖，
+ * 这里只证明系统偏好这条兜底分支——文件本身跑在系统 reduce 工程，无需注入。
+ */
+describe('减少动效下的 fullable 吸附（浏览器）', () => {
+  it('系统 reduce：外拉吸附当帧到位，无 width/height 过渡', async () => {
+    const el = mountDrawer(null)
+    el.draggable = true
+    el.fullable = true
+    el.open = true
+    await el.updateComplete
+    await waitForOpenSettled(el)
+
+    const dialog = getDialog(el)
+    const sizeTransitions: string[] = []
+    dialog.addEventListener('transitionstart', event => {
+      const property = (event as TransitionEvent).propertyName
+      if (property === 'width' || property === 'height') sizeTransitions.push(property)
+    })
+
+    // 首个 move（470）为零点，第二段外拉 120px 越过 96px 行程阈值 → 吸附。
+    const dragZone = getDragZone(el)
+    const fire = (type: string, x: number, at: number) => {
+      const event = new PointerEvent(type, { bubbles: true, pointerId: 1, isPrimary: true, clientX: x, clientY: 300 })
+      Object.defineProperty(event, 'timeStamp', { value: at, configurable: true })
+      dragZone.dispatchEvent(event)
+    }
+    fire('pointerdown', 500, 0)
+    await el.updateComplete
+    fire('pointermove', 470, 32)
+    fire('pointermove', 350, 128)
+    await el.updateComplete
+
+    expect(dialog.offsetWidth).toBe(window.innerWidth - 16)
+    const durations = getComputedStyle(dialog)
+      .transitionDuration.split(',')
+      .map(value => Number.parseFloat(value))
+    expect(durations.length).toBeGreaterThan(0)
+    expect(durations.every(value => value === 0)).toBe(true)
+    expect(sizeTransitions).toHaveLength(0)
+    expect(el.open).toBe(true)
+  })
+})

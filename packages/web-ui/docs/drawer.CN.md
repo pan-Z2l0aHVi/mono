@@ -825,7 +825,7 @@ function close() {
 
 ### 无界面模式
 
-`headless` 只保留原生 dialog、遮罩、动画、滚动锁定与 Escape / 遮罩关闭，不渲染内置头部、关闭按钮或页脚。调用方负责默认插槽内容的完整样式，并必须提供 `aria-dialog-label`；`headless` 同样支持 `draggable` 拖拽关闭。
+`headless` 只保留原生 dialog、遮罩、动画、滚动锁定与 Escape / 遮罩关闭，不渲染内置头部、关闭按钮或页脚。调用方负责默认插槽内容的完整样式，并必须提供 `aria-dialog-label`。
 
 React 示例通过 ref 设置 `ariaDialogLabel` property，避免 React 把组件专用名称当作标准 ARIA 属性校验。
 
@@ -843,7 +843,6 @@ export default function Demo() {
         open={open}
         placement="left"
         headless
-        draggable
         ref={element => {
           if (element) element.ariaDialogLabel = '自定义面板'
         }}
@@ -869,7 +868,6 @@ export default function Demo() {
     :open="open"
     placement="left"
     headless
-    draggable
     aria-dialog-label="自定义面板"
     @open-change="open = $event.detail.open"
   >
@@ -891,7 +889,9 @@ const open = ref(false)
 
 ### 拖拽关闭
 
-开启 `draggable` 后，抽屉内缘显示灰色胶囊拖拽条。朝关闭方向拖动超过自身尺寸的一半，或快速拖动后松开，抽屉就会关闭；没到阈值则回到打开位置。拖动方向随 `placement` 改变。
+开启 `draggable` 后，抽屉内缘显示灰色胶囊拖拽条。朝关闭方向拖动超过自身尺寸的 35%，或快速拖动后松开，抽屉就会关闭；没到阈值则回到打开位置。拖动方向随 `placement` 改变。
+
+再开启 `fullable` 后，向外（背离关闭方向）拖拽越过行程阈值，抽屉就地吸附为占满视口的形态（减去四周留边，默认 8px；把 `--wui-drawer-inset` 设为 0 即铺满视口），不要求松手；快速向外甩动后松手同样触发。从 full 形态朝关闭方向回拉越过恢复阈值后，本次手势锁定为“取消全屏”：抽屉恢复原尺寸，继续内拉只按阻尼跟手，不会关闭，也不会在同一段手势里重新吸附全屏；松手停在原尺寸。要关闭或再次全屏，请松开后重新起手。full 形态下关闭按钮、Escape、点遮罩仍直接关闭；上层新开一层嵌套抽屉时，下层保持 full 形态并随层级深度向后退缩缩放，关闭上层后恢复完整 full 形态。示例中的第三个抽屉开启了 `fullable`。
 
 ```tsx
 import { useState } from 'react'
@@ -899,12 +899,14 @@ import { useState } from 'react'
 export default function Demo() {
   const [rightOpen, setRightOpen] = useState(false)
   const [bottomOpen, setBottomOpen] = useState(false)
+  const [fullOpen, setFullOpen] = useState(false)
 
   return (
     <>
       <div className="flex flex-wrap gap-3">
         <web-ui-button onClick={() => setRightOpen(true)}>右侧拖拽关闭</web-ui-button>
         <web-ui-button onClick={() => setBottomOpen(true)}>底部拖拽关闭</web-ui-button>
+        <web-ui-button onClick={() => setFullOpen(true)}>右侧拖拽全屏</web-ui-button>
       </div>
 
       <web-ui-drawer
@@ -913,7 +915,7 @@ export default function Demo() {
         heading="向右拖拽关闭"
         onopen-change={event => setRightOpen(event.detail.open)}
       >
-        <p>按住左缘的灰色胶囊，向右拖过半或快速甩动即可关闭。</p>
+        <p>按住左缘的灰色胶囊，向右拖过阈值或快速甩动即可关闭。</p>
       </web-ui-drawer>
 
       <web-ui-drawer
@@ -923,7 +925,19 @@ export default function Demo() {
         heading="向下拖拽关闭"
         onopen-change={event => setBottomOpen(event.detail.open)}
       >
-        <p>按住上缘的灰色胶囊，向下拖过半或快速甩动即可关闭。</p>
+        <p>按住上缘的灰色胶囊，向下拖过阈值或快速甩动即可关闭。</p>
+      </web-ui-drawer>
+
+      <web-ui-drawer
+        open={fullOpen}
+        draggable
+        fullable
+        heading="向右拖拽全屏"
+        onopen-change={event => setFullOpen(event.detail.open)}
+      >
+        <p>
+          按住左缘的灰色胶囊向外（向左）拖过一段行程即吸附全屏；往回拉过恢复阈值会先恢复原尺寸，并让本次手势停在原尺寸。松手后重新拖过阈值或快速内甩才会关闭。
+        </p>
       </web-ui-drawer>
     </>
   )
@@ -935,10 +949,11 @@ export default function Demo() {
   <div class="flex flex-wrap gap-3">
     <web-ui-button @click="rightOpen = true">右侧拖拽关闭</web-ui-button>
     <web-ui-button @click="bottomOpen = true">底部拖拽关闭</web-ui-button>
+    <web-ui-button @click="fullOpen = true">右侧拖拽全屏</web-ui-button>
   </div>
 
   <web-ui-drawer :open="rightOpen" draggable heading="向右拖拽关闭" @open-change="rightOpen = $event.detail.open">
-    <p>按住左缘的灰色胶囊，向右拖过半或快速甩动即可关闭。</p>
+    <p>按住左缘的灰色胶囊，向右拖过阈值或快速甩动即可关闭。</p>
   </web-ui-drawer>
 
   <web-ui-drawer
@@ -948,7 +963,19 @@ export default function Demo() {
     heading="向下拖拽关闭"
     @open-change="bottomOpen = $event.detail.open"
   >
-    <p>按住上缘的灰色胶囊，向下拖过半或快速甩动即可关闭。</p>
+    <p>按住上缘的灰色胶囊，向下拖过阈值或快速甩动即可关闭。</p>
+  </web-ui-drawer>
+
+  <web-ui-drawer
+    :open="fullOpen"
+    draggable
+    fullable
+    heading="向右拖拽全屏"
+    @open-change="fullOpen = $event.detail.open"
+  >
+    <p>
+      按住左缘的灰色胶囊向外（向左）拖过一段行程即吸附全屏；往回拉过恢复阈值会先恢复原尺寸，并让本次手势停在原尺寸。松手后重新拖过阈值或快速内甩才会关闭。
+    </p>
   </web-ui-drawer>
 </template>
 
@@ -957,12 +984,13 @@ import { ref } from 'vue'
 
 const rightOpen = ref(false)
 const bottomOpen = ref(false)
+const fullOpen = ref(false)
 </script>
 ```
 
 ### 嵌套叠放
 
-声明式嵌套的抽屉会自动堆叠：后打开的位于顶层并保持全尺寸，下层缩小并向内偏移，每层左侧露出可见的边缘。层宽不同或打开顺序变化时也会自动调整。Escape 和遮罩点击只作用于最顶层。
+声明式嵌套的抽屉会自动堆叠：后打开的位于顶层并保持全尺寸，下层缩小并向内偏移，每层左侧露出可见的边缘。层宽不同或打开顺序变化时也会自动调整。Escape 和遮罩点击只作用于最顶层。本例四层同时开启 `draggable` 与 `fullable`，可测试全屏态下打开下一层时的退缩层叠，以及关闭上层后恢复完整全屏。
 
 ```tsx
 import type { CSSProperties } from 'react'
@@ -990,12 +1018,14 @@ export default function Demo() {
         open={levels[0]}
         heading={`${titles[0]} (300px)`}
         closable
+        draggable
+        fullable
         style={{ '--wui-drawer-width': widths[0] } as CSSProperties}
         onopen-change={event => {
           if (event.target === event.currentTarget && !event.detail.open) closeLevel(0)
         }}
       >
-        <p>第 1 层。打开下一层后，这一层会缩放并向左让出边缘。</p>
+        <p>第 1 层（可拖拽 / 可全屏）。打开下一层后，这一层会缩放并向左让出边缘。</p>
         <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(1)}>
           打开第 2 层
         </web-ui-button>
@@ -1004,12 +1034,14 @@ export default function Demo() {
           open={levels[1]}
           heading={`${titles[1]} (280px)`}
           closable
+          draggable
+          fullable
           style={{ '--wui-drawer-width': widths[1] } as CSSProperties}
           onopen-change={event => {
             if (event.target === event.currentTarget && !event.detail.open) closeLevel(1)
           }}
         >
-          <p>第 2 层。层宽与上层不同，堆叠位置会自动补偿。</p>
+          <p>第 2 层（可拖拽 / 可全屏）。层宽与上层不同，堆叠位置会自动补偿。</p>
           <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(2)}>
             打开第 3 层
           </web-ui-button>
@@ -1018,12 +1050,14 @@ export default function Demo() {
             open={levels[2]}
             heading={`${titles[2]} (240px)`}
             closable
+            draggable
+            fullable
             style={{ '--wui-drawer-width': widths[2] } as CSSProperties}
             onopen-change={event => {
               if (event.target === event.currentTarget && !event.detail.open) closeLevel(2)
             }}
           >
-            <p>第 3 层。窄层上面再叠宽层时，左缘仍保持可见。</p>
+            <p>第 3 层（可拖拽 / 可全屏）。窄层上面再叠宽层时，左缘仍保持可见。</p>
             <web-ui-button slot="footer" variant="secondary" full onClick={() => openLevel(3)}>
               打开第 4 层
             </web-ui-button>
@@ -1032,12 +1066,14 @@ export default function Demo() {
               open={levels[3]}
               heading={`${titles[3]} (320px, 顶层)`}
               closable
+              draggable
+              fullable
               style={{ '--wui-drawer-width': widths[3] } as CSSProperties}
               onopen-change={event => {
                 if (event.target === event.currentTarget && !event.detail.open) closeLevel(3)
               }}
             >
-              <p>第 4 层，顶层。关闭后逐层恢复原尺寸。</p>
+              <p>第 4 层，顶层（可拖拽 / 可全屏）。关闭后逐层恢复原尺寸。</p>
             </web-ui-drawer>
           </web-ui-drawer>
         </web-ui-drawer>
@@ -1055,40 +1091,48 @@ export default function Demo() {
     :open="levels[0]"
     :heading="`${titles[0]} (300px)`"
     closable
+    draggable
+    fullable
     :style="{ '--wui-drawer-width': widths[0] }"
     @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(0)"
   >
-    <p>第 1 层。打开下一层后，这一层会缩放并向左让出边缘。</p>
+    <p>第 1 层（可拖拽 / 可全屏）。打开下一层后，这一层会缩放并向左让出边缘。</p>
     <web-ui-button slot="footer" variant="secondary" full @click="openLevel(1)">打开第 2 层</web-ui-button>
 
     <web-ui-drawer
       :open="levels[1]"
       :heading="`${titles[1]} (280px)`"
       closable
+      draggable
+      fullable
       :style="{ '--wui-drawer-width': widths[1] }"
       @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(1)"
     >
-      <p>第 2 层。层宽与上层不同，堆叠位置会自动补偿。</p>
+      <p>第 2 层（可拖拽 / 可全屏）。层宽与上层不同，堆叠位置会自动补偿。</p>
       <web-ui-button slot="footer" variant="secondary" full @click="openLevel(2)">打开第 3 层</web-ui-button>
 
       <web-ui-drawer
         :open="levels[2]"
         :heading="`${titles[2]} (240px)`"
         closable
+        draggable
+        fullable
         :style="{ '--wui-drawer-width': widths[2] }"
         @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(2)"
       >
-        <p>第 3 层。窄层上面再叠宽层时，左缘仍保持可见。</p>
+        <p>第 3 层（可拖拽 / 可全屏）。窄层上面再叠宽层时，左缘仍保持可见。</p>
         <web-ui-button slot="footer" variant="secondary" full @click="openLevel(3)">打开第 4 层</web-ui-button>
 
         <web-ui-drawer
           :open="levels[3]"
           :heading="`${titles[3]} (320px, 顶层)`"
           closable
+          draggable
+          fullable
           :style="{ '--wui-drawer-width': widths[3] }"
           @open-change="event => event.target === event.currentTarget && !event.detail.open && closeLevel(3)"
         >
-          <p>第 4 层，顶层。关闭后逐层恢复原尺寸。</p>
+          <p>第 4 层，顶层（可拖拽 / 可全屏）。关闭后逐层恢复原尺寸。</p>
         </web-ui-drawer>
       </web-ui-drawer>
     </web-ui-drawer>
@@ -1291,20 +1335,21 @@ const open = ref(false)
 
 ### 属性
 
-| 名称                | 说明                                                                                                                                     | 类型              | 默认值    |
-| ------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
-| `open`              | 抽屉可见性。                                                                                                                             | `boolean`         | `false`   |
-| `no-scroll-lock`    | 打开时不锁定页面滚动。                                                                                                                   | `boolean`         | `false`   |
-| `no-backdrop-close` | 禁止点击遮罩关闭。                                                                                                                       | `boolean`         | `false`   |
-| `controlled`        | 用户关闭仅请求 `open=false`，由调用方回写。                                                                                              | `boolean`         | `false`   |
-| `placement`         | 滑入方向：`right`（默认）、`left`、`top`、`bottom`。                                                                                     | `DrawerPlacement` | `'right'` |
-| `heading`           | 标题文字，`header` 插槽为空时作为标题显示。                                                                                              | `string`          | `''`      |
-| `closable`          | 显示内置关闭按钮。                                                                                                                       | `boolean`         | `false`   |
-| `headless`          | 仅保留 overlay 行为，默认插槽不渲染内置抽屉界面。                                                                                        | `boolean`         | `false`   |
-| `aria-dialog-label` | 原生 dialog 的可访问名称；`headless` 下必须提供。`dialog-label` 也可用。                                                                 | `string`          | `''`      |
-| `aria-close-label`  | 内置关闭按钮的无障碍名称；未设置时回退内置英文文案（`Close`）。                                                                          | `string`          | `''`      |
-| `draggable`         | 在抽屉内缘显示拖拽条，支持拖拽关闭手势。                                                                                                 | `boolean`         | `false`   |
-| `page-shift`        | 打开时背景页面朝抽屉的进场方向移动。按打开顺序决定层级和偏移，嵌套层与同级层规则相同；关闭任意层后其余层重新计算。减少动效模式下不生效。 | `boolean`         | `false`   |
+| 名称                | 说明                                                                                                                                                           | 类型              | 默认值    |
+| ------------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------- | ----------------- | --------- |
+| `open`              | 抽屉可见性。                                                                                                                                                   | `boolean`         | `false`   |
+| `no-scroll-lock`    | 打开时不锁定页面滚动。                                                                                                                                         | `boolean`         | `false`   |
+| `no-backdrop-close` | 禁止点击遮罩关闭。                                                                                                                                             | `boolean`         | `false`   |
+| `controlled`        | 用户关闭仅请求 `open=false`，由调用方回写。                                                                                                                    | `boolean`         | `false`   |
+| `placement`         | 滑入方向：`right`（默认）、`left`、`top`、`bottom`。                                                                                                           | `DrawerPlacement` | `'right'` |
+| `heading`           | 标题文字，`header` 插槽为空时作为标题显示。                                                                                                                    | `string`          | `''`      |
+| `closable`          | 显示内置关闭按钮。                                                                                                                                             | `boolean`         | `false`   |
+| `headless`          | 仅保留 overlay 行为，默认插槽不渲染内置抽屉界面。                                                                                                              | `boolean`         | `false`   |
+| `aria-dialog-label` | 原生 dialog 的可访问名称；`headless` 下必须提供。`dialog-label` 也可用。                                                                                       | `string`          | `''`      |
+| `aria-close-label`  | 内置关闭按钮的无障碍名称；未设置时回退内置英文文案（`Close`）。                                                                                                | `string`          | `''`      |
+| `draggable`         | 在抽屉内缘显示拖拽条，支持拖拽关闭手势。                                                                                                                       | `boolean`         | `false`   |
+| `fullable`          | 拖拽全屏（需 `draggable`）：向外拖过行程阈值或快甩外拉松手，抽屉吸附为占满视口的形态；回拉越过恢复阈值后本次手势停在原尺寸，新起手势拖过关闭阈值或快甩才关闭。 | `boolean`         | `false`   |
+| `page-shift`        | 打开时背景页面朝抽屉的进场方向移动。按打开顺序决定层级和偏移，嵌套层与同级层规则相同；关闭任意层后其余层重新计算。减少动效模式下不生效。                       | `boolean`         | `false`   |
 
 ### 事件
 
@@ -1360,6 +1405,8 @@ html {
 左右 placement 只有拖拽区；上下 placement 还可以从端头拖拽边缘或整个头部 / 页脚开始拖动。按下位置只要遇到可交互控件，这次按下就交给控件，不启动拖拽；自绘控件需要带 `role` 或 `tabindex` 才会被识别。与拖拽条区域重叠的控件，上半部分会被拖拽区域覆盖，可以调整 `--wui-drawer-drag-bar-length` 和 `--wui-drawer-drag-edge-size`。
 
 点击遮罩关闭只响应轻点：从面板或遮罩按下、在别处松开的手势不会关闭。
+
+`fullable` 开启时还有向外方向的第二段手势：向外拖过行程阈值就地吸附全屏，不要求松手；快速向外甩动松手同样触发。吸附后往回拉越过恢复阈值，本次手势进入“取消全屏”阶段：抽屉尺寸回到原尺寸，继续朝关闭方向拉只按阻尼跟手，不再累计关闭距离，也不会重新吸附；松手停在原尺寸。要关闭或再次全屏，请松开后重新起手。先朝关闭方向拖动又反悔的快速回扫，甩动分支同样不吸附。吸附瞬间拖拽条随抽屉边缘一起移动，会离开手指。
 
 `controlled` 模式下，超过阈值后松开只派发 `open-change(false)`；抽屉会在闭合位置等待 120ms，调用方拒绝回写或超时后回到打开位置。
 

@@ -19,6 +19,9 @@
  *
  * 拖拽与释放后的收尾期间 JS 直接写内容层的 transform（优先级高于本机制的
  * CSS 变量组合），顶层才有拖拽，故无冲突。
+ *
+ * depth 变化经 `options.onDepthChange` 先于 size 收集回调（applyLayers 四步的
+ * 顺序保证消费方若需在读取几何前同步调整自身状态，可以在该回调中完成）。
  */
 
 import { definePlugin } from '@greypan/js-kit'
@@ -42,6 +45,10 @@ const NESTED_PEEK_BASE_QUERY = '(width <= 640px)'
 interface NestedDrawerEntry {
   dialog: HTMLDialogElement
   placement: () => 'right' | 'left' | 'top' | 'bottom'
+  /** 本 entry 的 depth 变化回调（透传消费方 options.onDepthChange）。 */
+  onDepthChange?: (depth: number) => void
+  /** 上一次 applyLayers 算得的 depth；用于检测变化并先于 size 收集回调。 */
+  depth: number
 }
 
 const entries = new Set<NestedDrawerEntry>()
@@ -59,38 +66,57 @@ function handlePeekBaseChange() {
   if (entries.size > 0) applyLayers()
 }
 
+/*
+ * 四步执行，1→2→3→4 的顺序是不变量：
+ * depth 回调（第 3 步）先于 size 收集（第 4 步），消费方若需在读取几何前同步调整
+ * 自身状态，可在回调中完成，使本轮读取拿到更新后的布局。
+ */
 function applyLayers() {
-  const openEntries: Array<{
-    entry: NestedDrawerEntry
-    dialog: HTMLDialogElement
-    size: number
-  }> = []
-
+  // 1. 清理失连 / 已关闭的 entry。
   for (const entry of entries) {
-    const dialog = entry.dialog
-    if (!dialog.isConnected || !dialog.open) {
+    if (!entry.dialog.isConnected || !entry.dialog.open) {
       entries.delete(entry)
-      continue
     }
-    const size =
-      entry.placement() === 'left' || entry.placement() === 'right' ? dialog.offsetWidth : dialog.offsetHeight
-    openEntries.push({ entry, dialog, size })
   }
 
-  const total = openEntries.length
+  const ordered = Array.from(entries)
+  const total = ordered.length
+  if (total === 0) return
+
+  // 2. 纯序数计算 depth：注册顺序先打开的在前 (index 小)，后打开的在后 (index 大)；
+  //    depth = 在我之后打开的 drawer 数量。不读任何布局。
+  // 3. depth 变化先回调（含回 0：消费方以 depth > 0 自行决定是否动作，
+  //    收起不恢复）。回调不重入本函数——消费方只改类与内联样式，不动 entries。
   for (let i = 0; i < total; i++) {
-    const { dialog, size } = openEntries[i]
-    // 注册顺序：先打开的在前 (index 小)，后打开的在后 (index 大)。
-    // depth = 在我之后打开的 drawer 数量 = (total - 1) - i
+    const entry = ordered[i]
     const depth = total - 1 - i
+    if (entry.depth !== depth) {
+      entry.depth = depth
+      entry.onDepthChange?.(depth)
+    }
+  }
+
+  // 4. 收集 size → 计算 shift/scale → 写变量与类。
+  const sized = ordered.map(entry => ({
+    entry,
+    dialog: entry.dialog,
+    size:
+      entry.placement() === 'left' || entry.placement() === 'right'
+        ? entry.dialog.offsetWidth
+        : entry.dialog.offsetHeight
+  }))
+
+  for (let i = 0; i < total; i++) {
+    const { entry, dialog, size } = sized[i]
+    const depth = entry.depth
     const scale = Math.pow(NESTED_SCALE, depth)
     const shrink = (size * (1 - scale)) / 2
 
     // 检查所有排在我之后的上层 drawer 的最大尺寸（若上层更宽，补偿宽度差确保露边）
     let aboveMaxSize = 0
     for (let j = i + 1; j < total; j++) {
-      if (openEntries[j].size > aboveMaxSize) {
-        aboveMaxSize = openEntries[j].size
+      if (sized[j].size > aboveMaxSize) {
+        aboveMaxSize = sized[j].size
       }
     }
     const sizeDiff = Math.max(0, aboveMaxSize - size)
@@ -116,9 +142,15 @@ function handleAnyDialogClose(event: Event) {
   if (entries.size > 0) applyLayers()
 }
 
+function handleViewportResize() {
+  // 存在堆叠层时，视口尺寸变化会改变 full 态或百分比宽度抽屉的尺寸（reduced-motion 下无 transitionend）。
+  if (entries.size > 1) applyLayers()
+}
+
 function ensureDocumentListener() {
   if (documentListenerAttached) return
   document.addEventListener('close', handleAnyDialogClose, true)
+  window.addEventListener('resize', handleViewportResize)
   // jsdom 等无 matchMedia 的环境：媒体查询换不掉基准，但打开/关闭路径仍会重算。
   if (typeof window.matchMedia === 'function') {
     peekBaseQuery = window.matchMedia(NESTED_PEEK_BASE_QUERY)
@@ -130,6 +162,10 @@ function ensureDocumentListener() {
 export interface NestedDrawerLayerOptions {
   getDialog(): HTMLDialogElement | null
   getPlacement(): 'right' | 'left' | 'top' | 'bottom'
+  /**
+   * 本层 depth 变化回调。applyLayers 的执行顺序保证它在 size 收集**之前**触发。
+   */
+  onDepthChange?(depth: number): void
 }
 
 export interface NestedDrawerLayerApi {
@@ -137,6 +173,13 @@ export interface NestedDrawerLayerApi {
   register(): void
   /** 关闭流程开始时调用：移出层序并触发底层回弹。 */
   unregister(): void
+  /**
+   * 按当前 entry 集合幂等重算 depth 与几何。给消费方的显式重算入口：entry 的
+   * 几何曾按过渡中途/已过期尺寸被收走（如拖拽中上层新开、full 态被守卫跳过）
+   * 且不会马上有自然的重算机会时调用。不能用 `register()` 顶替——它会把本
+   * entry 挪到 Set 尾部、颠倒「先开在下」的层序语义。
+   */
+  recalculate(): void
   dispose(): void
 }
 
@@ -151,7 +194,15 @@ export const defineNestedDrawerLayers = () =>
         if (entry.dialog === dialog) entries.delete(entry)
       }
       ensureDocumentListener()
-      entries.add({ dialog, placement: () => ctx.getPlacement() })
+      entries.add({
+        dialog,
+        placement: () => ctx.getPlacement(),
+        onDepthChange: depth => ctx.onDepthChange?.(depth),
+        // 新 entry 的 depth 起点 0：新开的 modal 恒在栈顶（最后注册 → depth 0），
+        // 与真实值一致，register 后的 applyLayers 不会误触发回调；重挂载对账的
+        // re-register 同理（断连时本 entry 已摘除、其余层已重算归 0）。
+        depth: 0
+      })
       applyLayers()
     },
 
@@ -164,6 +215,10 @@ export const defineNestedDrawerLayers = () =>
       if (entries.size > 0) applyLayers()
     },
 
+    recalculate() {
+      if (entries.size > 1) applyLayers()
+    },
+
     dispose() {
       const dialog = ctx.getDialog()
       for (const entry of entries) {
@@ -171,6 +226,7 @@ export const defineNestedDrawerLayers = () =>
       }
       if (entries.size === 0 && documentListenerAttached) {
         document.removeEventListener('close', handleAnyDialogClose, true)
+        window.removeEventListener('resize', handleViewportResize)
         peekBaseQuery?.removeEventListener('change', handlePeekBaseChange)
         peekBaseQuery = null
         documentListenerAttached = false
