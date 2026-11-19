@@ -74,15 +74,26 @@ func appDescription(version string) string {
 
 // dataDir 返回应用数据目录，并在需要时创建。
 //
-// 路径统一走 Wails 的 PathDataHome：它和 library.db、缩略图同处一个目录，
+// 路径统一走 Wails 的 PathDataHome，并由 production tag 决定 interweave 子目录：
+// 它和 library.db、缩略图同处一个目录，
 // 不再是 os.UserConfigDir 的旧位置。Windows 上两者不同（PathDataHome 落
 // %LOCALAPPDATA%，UserConfigDir 落 %APPDATA%），因此旧库不会被读到——这被视为新库。
 func dataDir() (string, error) {
-	dir := filepath.Join(application.Path(application.PathDataHome), "interweave")
+	dir := dataDirPath()
 	if err := os.MkdirAll(dir, 0o755); err != nil {
 		return "", fmt.Errorf("create data directory %s: %w", dir, err)
 	}
 	return dir, nil
+}
+
+func dataDirPath() string {
+	return filepath.Join(application.Path(application.PathDataHome), appDataDirName)
+}
+
+// webviewUserDataDir 让 WebView2 存储与应用数据同居。Windows 默认按可执行文件名
+// 选择目录，而 production 与 development 的产物同名，因此必须显式按 build tag 分开。
+func webviewUserDataDir(dir string) string {
+	return filepath.Join(dir, "webview")
 }
 
 type windowDockDropSink struct {
@@ -194,6 +205,9 @@ func main() {
 		},
 		Mac: application.MacOptions{
 			ApplicationShouldTerminateAfterLastWindowClosed: true,
+		},
+		Windows: application.WindowsOptions{
+			WebviewUserDataPath: webviewUserDataDir(dir),
 		},
 	})
 
