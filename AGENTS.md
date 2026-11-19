@@ -37,7 +37,7 @@
 | 浏览器资源与格式 | [browser-resources](docs/agents/browser-resources.md)、[lint-format](docs/agents/lint-format.md) |
 | PR review、工作流 | [review](docs/agents/review.md)、[workflow](docs/agents/workflow.md) |
 | worktree、提交 | [worktree](docs/agents/worktree.md)、[commit](docs/agents/commit.md) |
-| 指令体系维护 | [agent-context](docs/agents/agent-context.md) |
+| 新增或修改 agent 文档/指令 | [writing-agent-docs](docs/agents/writing-agent-docs.md)、[agent-context](docs/agents/agent-context.md) |
 
 短约束：[code-style](.agents/rules/code-style.md)、[terminology](.agents/rules/terminology.md)、[commands](.agents/rules/commands.md)、[commit](.agents/rules/commit.md)、[testing](.agents/rules/testing.md)、[agent-context](.agents/rules/agent-context.md)。
 

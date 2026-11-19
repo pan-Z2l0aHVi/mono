@@ -46,6 +46,7 @@
 | 客户端权限                   | [`environments.md`](./environments.md)                                                           | 客户端配置与线程实际行为                       |
 | 公共 `web-ui` 契约           | [`web-ui.md`](./web-ui.md)                                                                       | fixtures、contracts、browser/integration tests |
 | 跨应用 UI 视觉与颜色原则     | [`ui-design.md`](./ui-design.md)                                                                 | token 配对、浅/深色模式对比度验证              |
+| 文档与指令的写作判据         | [`writing-agent-docs.md`](./writing-agent-docs.md)                                               | review 判据与 check-context 路由断言           |
 
 ## 链接方向
 
@@ -99,8 +100,6 @@ ADR 与指向它的 `docs/agents/` 文档只保留单向链接：ADR 侧用行�
 
 ## 维护 instruction system
 
-新增 instruction、rule、skill 或 profile 前，先证明现有源码设计、类型、测试、lint 或脚本无法表达该约束。新增内容必须说明：何时加载、哪个事实是权威、违反后有什么工程风险。不能回答时，不新增文档或规则。落笔只写特殊设定、复杂机制和多处关联的事实，能从工具链、配置或行业惯例一眼看出的内容不写。
+新增 instruction、rule、skill 或 profile 前，先证明现有源码设计、类型、测试、lint 或脚本无法表达该约束，并说明何时加载、哪个事实是权威、违反后有什么工程风险；不能回答时不新增。写什么、写成什么形状、删除落点与准入判据见 [`writing-agent-docs.md`](./writing-agent-docs.md)。实现层变化不要求同步指令文档，除非它改变了边界本身。
 
-落笔按架构层处理：写范围、权威、不变量与取舍；具体命令、文件路径、CI 步骤、版本号和工具子命令属于实现层，交给代码、测试或专门文档。实现层变化不应要求同步指令文档，除非它改变了边界本身。需要举例时用类别，不要复制当前清单。
-
-约束密度不设体量门禁，由权威优先、退役清理与 review 承接；门禁只判定已观测漂移与可客观判定的属性，不做文风或语义质量 linter。治理准则：仓库校验通过时默认精简输出，只在失败时给完整定位；自建 skill 的 frontmatter `description` 精炼为高意图密度触发词，正文承载详细流程，第三方 skill 保持上游原文；根 [`AGENTS.md`](../../AGENTS.md) 与 `.agents/rules/` 保持静态与格式稳定，不混入时间戳或易变状态，以最大化 prefix cache 命中。
+约束密度不设体量门禁，由权威优先、退役清理与 review 承接；门禁只判定已观测漂移与可客观判定的属性，不做文风或语义质量 linter。治理准则：仓库校验通过时默认精简输出，只在失败时给完整定位；根 [`AGENTS.md`](../../AGENTS.md) 与 `.agents/rules/` 保持静态与格式稳定，不混入时间戳或易变状态，以最大化 prefix cache 命中。
