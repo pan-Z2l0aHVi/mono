@@ -27,11 +27,11 @@
 <!-- prettier-ignore -->
 | 任务或变更 | 先读 |
 | --- | --- |
-| 生成物：清单、重新生成 | [generated-artifacts](docs/agents/generated-artifacts.md) |
-| 构建、根命令 | [build](docs/agents/build.md)、[commands](docs/agents/commands.md) |
+| 生成物：清单、重新生成、Build 前校验 | [generated-artifacts](docs/agents/generated-artifacts.md)、[build-generated](docs/agents/build-generated.md) |
+| 构建、根命令、打包与浏览器目标 | [build](docs/agents/build.md)、[build-packaging](docs/agents/build-packaging.md)、[build-browser](docs/agents/build-browser.md)、[commands](docs/agents/commands.md) |
 | 跨包、公共契约、影响面 | [monorepo-change-impact](.agents/skills/monorepo-change-impact/SKILL.md)、[build](docs/agents/build.md) |
 | 脚本准入、根配置、依赖 | [script-policy](docs/agents/script-policy.md)、[dependencies](docs/agents/dependencies.md) |
-| 发布、环境 | [release](docs/agents/release.md)、[environments](docs/agents/environments.md) |
+| 发布、环境、CI 门控 | [release](docs/agents/release.md)、[environments](docs/agents/environments.md)、[build-ci](docs/agents/build-ci.md) |
 | 验证、运行时冒烟 | [verification](docs/agents/verification.md)、[runtime-verification](docs/agents/runtime-verification.md) |
 | UI 视觉与组件 | [ui-design](docs/agents/ui-design.md)、[web-ui](docs/agents/web-ui.md) |
 | 浏览器资源与格式 | [browser-resources](docs/agents/browser-resources.md)、[lint-format](docs/agents/lint-format.md) |

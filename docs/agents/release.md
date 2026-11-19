@@ -29,6 +29,8 @@ PR CI 对 PR base/head 执行 changeset gate；main 已有的 changeset、删除
 
 PR CI 的机械性修复由对应 task owner 处理；逻辑、测试和契约问题由原 owner 修复。每次新提交都在新 head 上重新取一次 review 结论。
 
+未经用户授权不执行发布，取得授权的机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。不得直接运行 `npm publish`；首次发布用 `pnpm publish-new-pack <package-name>`（传 `packages/` 下的目录名）。Git 检查的绕过禁令见 [`commit.md`](./commit.md)。CI 侧的门控接线见 [`build-ci.md`](./build-ci.md)。
+
 ## npm 发布重跑与 release notes
 
 `prepare` 从 merge commit 检测本次版本化的公共包，把包名、版本与目录作为 job 输出传给后续 job，后续 job 只依赖这些输出。`publish` 成功即视为版本已发布，`release-notes` 不查询 npm registry、不等待其可见性——npm publish 受理与 registry 落库是异步的，传播延迟不阻塞发布链；npm 侧未实际落库时，Release 正文中的 npm 链接可能指向未收录的版本，这是对齐 changesets/action、release-please 等主流信任式发布而接受的取舍。release-notes 直接为候选包创建 GitHub Release：已存在且指向当前 merge SHA 的 published release 直接跳过并记录；指向其它 SHA 或仍为 draft 时失败。新建 release 后重新读取并核对 draft 状态与 tag 指向。重跑按当前 merge commit 重新检测候选包，因此重复执行是幂等的，但不能据此推算历史上是否发布过。workflow 按仓库串行，后一次运行排队而非取消前一次。
