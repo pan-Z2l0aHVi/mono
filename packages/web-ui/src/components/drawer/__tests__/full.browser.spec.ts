@@ -140,8 +140,9 @@ const STEP_MS = 32
  * 用例与真实墙钟无关。`holdAndMove` 不派发 pointerup——「不松手即吸附」与
  * 「同一按住的两段式」需要保持按住状态。
  *
- * 判定零点在**首个 pointermove**（手势层 calibrateOnFirstMove 同拍）：所有行程
- * 坐标按「首个 move 处 raw = 0」推算，pointerdown 到首个 move 的间隔被吸收。
+ * 判定零点在 **pointerdown**（drag-controller.ts 的 `stageOrigin`，`calibrateOnFirstMove`
+ * 为 false）：所有行程坐标按「自按下点的相对位移」推算；enter-full 吸附时零点重定到
+ * 吸附那一段的 move 位置。
  */
 function firePointer(el: WebUiDrawer, type: string, x: number, y: number, at: number) {
   const event = new PointerEvent(type, { bubbles: true, pointerId: 1, isPrimary: true, clientX: x, clientY: y })
@@ -173,7 +174,7 @@ async function releaseAt(el: WebUiDrawer, x: number, y: number, at: number) {
 }
 
 /**
- * 拉到 full 并松手（各测试的公共前置）：按下后首个 move 建立零点，随后外拉
+ * 拉到 full 并松手（各测试的公共前置）：零点在按下点，随后外拉
  * 30/60/90/150px（32ms 步距），最后一段越过 96px 行程阈值触发吸附；松手后
  * full 态弹回即保持。
  */
@@ -195,6 +196,18 @@ async function pullToFullAndRelease(el: WebUiDrawer, placement: Placement): Prom
 async function waitForBaseSize(el: WebUiDrawer, placement: Placement): Promise<void> {
   const base = placement === 'left' || placement === 'right' ? 320 : 300
   await waitFor(() => Math.abs(currentAxisSize(el, placement) - base) < 2)
+}
+
+/*
+ * 下层 motion 层的露边偏移期望值：`peekBase`（CSS 注册的 `--wui-drawer-nested-peek-base`，
+ * JS 常量钉进 initialValue）× `Math.log(depth + 1)`——公式镜像
+ * shared/overlay/nested-drawer-layers.ts 的 `readPeekBase(dialog) * Math.log(depth + 1)`；
+ * 本文件的下层恒为第 1 层，故 ln(2)。改公式/换 retreat 曲线时这里同步。
+ */
+function expectedNestedMotionLeft(el: WebUiDrawer): number {
+  const dialog = getDialog(el)
+  const peekBase = Number.parseFloat(getComputedStyle(dialog).getPropertyValue('--wui-drawer-nested-peek-base'))
+  return dialog.getBoundingClientRect().left - peekBase * Math.log(2)
 }
 
 afterEach(() => document.body.replaceChildren())
@@ -219,7 +232,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
       await el.updateComplete
       await waitForOpenTransition(el)
 
-      // 首个 move 建立零点，随后外拉 30/60/90/150px：第 4 段越过 96px 阈值，此时仍按住。
+      // 零点在按下点，随后外拉 30/60/90/150px：第 4 段越过 96px 阈值，此时仍按住。
       const origin = { x: 500, y: 300 }
       const points: { x: number; y: number; at: number }[] = [{ ...origin, at: 0 }]
       for (const amount of [30, 60, 90, 150]) {
@@ -376,7 +389,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     expect(getDialog(el).offsetWidth).toBe(320)
     expect(events).toHaveLength(0)
 
-    // 快甩外拉（16ms 步距，释放速度远超 500px/s）：未 armed → 普通弹回。
+    // 快甩外拉（16ms 步距，释放速度远超 350px/s 甩动阈值）：未 armed → 普通弹回。
     const flick = [
       { x: 500, y: 300, at: 1000 },
       { x: 470, y: 300, at: 1016 },
@@ -495,8 +508,9 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await pullToFullAndRelease(el, 'right')
     const events = openChangeEvents(el)
 
-    // 静止 full 上重新抓取：首个 move（560）为零点，内拉 120px 越过 96px 恢复阈值。
-    // 收尾放慢，整段平均速度低于甩动阈值；本段手势已在 exit-full 后锁定为不关闭。
+    // 静止 full 上重新抓取：零点 = 按下点（500）。内拉至 684（自按下点 +184px）
+    // 越过 96px 恢复阈值 → 本段手势已 exit-full，松手只能恢复 base、不得关闭。
+    // 收尾放慢，整段平均速度低于甩动阈值。
     const points = [
       { x: 500, y: 300, at: 0 },
       { x: 560, y: 300, at: STEP_MS },
@@ -525,7 +539,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await pullToFullAndRelease(el, 'right')
     const events = openChangeEvents(el)
 
-    // 首个 move（600）为零点：内拉 200px 已超过旧距离阈值 160px；
+    // 零点 = 按下点（500）：内拉至 800（+300px，远超 96px 恢复阈值）；
     // 本段手势在 raw=96 时 exit-full，之后只能恢复 base，不能在原手势内关闭。
     const points = [
       { x: 500, y: 300, at: 0 },
@@ -584,10 +598,8 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     const parentDialog = getDialog(parent)
     expect(parentDialog.classList.contains('is-full')).toBe(true)
     expect(parentDialog.classList.contains('is-nested-lower')).toBe(true)
-    const peekBase = Number.parseFloat(getComputedStyle(parentDialog).getPropertyValue('--wui-drawer-nested-peek-base'))
     const motionRect = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect()
-    const expectedLeft = parentDialog.getBoundingClientRect().left - peekBase * Math.log(2)
-    expect(motionRect.left).toBeCloseTo(expectedLeft, 0)
+    expect(motionRect.left).toBeCloseTo(expectedNestedMotionLeft(parent), 0)
 
     // 关闭上层后，下层撤掉 nested-lower 退缩并恢复完整 full。
     child.open = false
@@ -622,7 +634,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await child.updateComplete
     await waitForOpenTransition(child)
 
-    // 继续快甩外拉（净行程 140px 越过 96px 行程阈值、释放速度远超甩动阈值）：
+    // 继续快甩外拉（自按下点净行程 170px 越过 96px 行程阈值、释放速度远超甩动阈值）：
     // 行程触发与甩动展开都被嵌套排除拦下 → 普通弹回，不得切入 full。
     await continueMove(parent, [
       { x: 350, y: 300, at: 2 * STEP_MS },
@@ -708,10 +720,8 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
 
     const finalWidth = parentDialog.offsetWidth
     expect(finalWidth).toBeGreaterThanOrEqual(fullAxisSize('right') - 1)
-    const peekBase = Number.parseFloat(getComputedStyle(parentDialog).getPropertyValue('--wui-drawer-nested-peek-base'))
     const motionRect = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect()
-    const expectedLeft = parentDialog.getBoundingClientRect().left - peekBase * Math.log(2)
-    expect(motionRect.left).toBeCloseTo(expectedLeft, 0)
+    expect(motionRect.left).toBeCloseTo(expectedNestedMotionLeft(parent), 0)
   })
 
   it('嵌套：full 态下层运行时关闭 fullable（无尺寸过渡）→ 立即按 base 宽度重算露边偏移', async () => {
@@ -743,10 +753,8 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
 
     expect(parentDialog.offsetWidth).toBe(320)
-    const peekBase = Number.parseFloat(getComputedStyle(parentDialog).getPropertyValue('--wui-drawer-nested-peek-base'))
     const afterMotionLeft = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect().left
-    const expectedLeft = parentDialog.getBoundingClientRect().left - peekBase * Math.log(2)
-    expect(afterMotionLeft).toBeCloseTo(expectedLeft, 0)
+    expect(afterMotionLeft).toBeCloseTo(expectedNestedMotionLeft(parent), 0)
     expect(afterMotionLeft).not.toBeCloseTo(beforeMotionLeft, 0)
   })
 
@@ -783,10 +791,8 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await waitFor(() => getDialog(child).getAnimations({ subtree: true }).length === 0)
     await waitFor(() => getDialog(parent).getAnimations({ subtree: true }).length === 0)
 
-    const peekBase = Number.parseFloat(getComputedStyle(parentDialog).getPropertyValue('--wui-drawer-nested-peek-base'))
     const restoredLeft = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect().left
-    const expectedBaseLeft = parentDialog.getBoundingClientRect().left - peekBase * Math.log(2)
-    expect(restoredLeft).toBeCloseTo(expectedBaseLeft, 0)
+    expect(restoredLeft).toBeCloseTo(expectedNestedMotionLeft(parent), 0)
     expect(restoredLeft).toBeGreaterThan(childFullMotionLeft + 10)
   })
 
@@ -798,8 +804,8 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await el.updateComplete
     await waitForOpenTransition(el)
 
-    // 首个 move（470）为零点：净行程 30px（低于 96px 行程阈值，拖拽中不触发吸附），
-    // 16ms 步距 → 释放速度远超 500px/s → 松手展开。
+    // 零点 = 按下点（500）：净行程 60px（低于 96px 行程阈值，拖拽中不触发吸附），
+    // 16ms 步距 → 释放速度远超 350px/s 甩动阈值 → 松手展开。
     const flick = [
       { x: 500, y: 300, at: 0 },
       { x: 470, y: 300, at: 16 },
@@ -847,9 +853,9 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await el.updateComplete
     await waitForOpenTransition(el)
 
-    // 首个 move（550）为零点：内拉至 570（raw +20，方向确认）→ 反向外甩至 520/500
-    //（净行程 −70，低于吸附阈值；折返基线拉到 520，意图位移 − 折回位移 ≥ 10px
-    // 置位改主意）→ 快甩松手：展开被拦，照常弹回。
+    // 零点 = 按下点（500）：内拉至 570（+70px，峰值位移）→ 反向外甩至 520/500
+    //（自峰值回撤 50px ≥ 10px 置位改主意；净位移 0，低于吸附阈值）
+    // → 快甩松手：展开被拦，照常弹回。
     const points = [
       { x: 500, y: 300, at: 1000 },
       { x: 550, y: 300, at: 1016 },
@@ -873,7 +879,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await waitForOpenTransition(el)
 
     const events = openChangeEvents(el)
-    // 首个 move（470）建立零点；外拉至 350 越 96px 行程阈值 → 吸附。
+    // 零点 = 按下点（500）；外拉至 350（−150px）越 96px 行程阈值 → 吸附。
     await holdAndMove(el, [
       { x: 500, y: 300, at: 0 },
       { x: 470, y: 300, at: STEP_MS },
@@ -891,7 +897,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await waitForBaseSize(el, 'right')
     expect(el.open).toBe(true)
 
-    // 继续同向内拉至净行程 220px，松手时整段平均速度 ≈558px/s 已越过甩动阈值。
+    // 继续同向内拉至自吸附点净行程 150px，松手时整段平均速度 ≈520px/s 已越过甩动阈值。
     // 本段手势已经 exit-full，距离与甩动关闭都由 outer gate 否决。
     await continueMove(el, [
       { x: 480, y: 300, at: 7 * STEP_MS },
@@ -1155,10 +1161,8 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     await waitForBaseSize(parent, 'right')
 
     const parentDialog = getDialog(parent)
-    const peekBase = Number.parseFloat(getComputedStyle(parentDialog).getPropertyValue('--wui-drawer-nested-peek-base'))
     const motionRect = parentDialog.querySelector('.wui-drawer-motion')!.getBoundingClientRect()
-    const expectedLeft = parentDialog.getBoundingClientRect().left - peekBase * Math.log(2)
-    expect(motionRect.left).toBeCloseTo(expectedLeft, 0)
+    expect(motionRect.left).toBeCloseTo(expectedNestedMotionLeft(parent), 0)
   })
 
   it.each(['positive', 'negative'] as const)(
@@ -1192,6 +1196,13 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
 
       firePointer(el, 'pointerdown', 600, 300, 1000)
       const initial = dragAxisTranslate(el, 'right')
+      /*
+       * 采样点按 drag-controller.ts 的判定模型推算：零点 = 按下点（600），
+       * `dragOffset = dragInitialOffset + dampOverscroll(raw)`——闭合方向 1:1 跟手、
+       * 打开方向按平方根压缩（raw −10 → −√10）；raw 96 = FULL_EXIT_TRAVEL 边界，
+       * 越过即 exit-full 并走 postExitFullDelta。连续性（重抓瞬间不跳）是本测的主判据，
+       * 采样值顺带把阻尼定律钉在受控点上。
+       */
       firePointer(el, 'pointermove', 600, 300, 1032)
       expect(dragAxisTranslate(el, 'right')).toBeCloseTo(initial, 0)
 

@@ -2,7 +2,7 @@
 import type { MetaNode } from '@greypan/md-to-meta'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
-import { createCodeblockController, createCopyFeedback } from '../codeblock'
+import { COPY_IDLE_DELAY, createCodeblockController, createCopyFeedback } from '../codeblock'
 import type { Flavor } from '../flavor'
 import type { CodeblockVariant } from '../install'
 
@@ -24,12 +24,16 @@ describe('复制反馈', () => {
     try {
       await feedback.copy()
       expect(feedback.getSnapshot()).toMatchObject({ status: 'copied', run: 1 })
-      vi.advanceTimersByTime(299)
+      // 首次复制后走过半个窗口：仍在 copied 态，但不足以让第一次的定时器到点。
+      vi.advanceTimersByTime(COPY_IDLE_DELAY / 2)
       await feedback.copy()
       expect(feedback.getSnapshot()).toMatchObject({ status: 'copied', run: 2 })
-      vi.advanceTimersByTime(1301)
-      expect(feedback.getSnapshot().status).toBe('copied')
-      vi.advanceTimersByTime(299)
+      // 第二次复制发生在半个窗口处（t=800），它自己的定时器到 t=2400 才到点。
+      // 从此刻推进「一个完整窗口 - 1」（1599 → t=2399）仍应是 copied：若第二次没重设
+      // 定时器、沿用了第一次（t=1600）的那枚，这段时间里早就落回 idle 了。
+      vi.advanceTimersByTime(COPY_IDLE_DELAY - 1)
+      expect(feedback.getSnapshot().status, '第二次复制重新计时，不应沿用第一次的定时器').toBe('copied')
+      vi.advanceTimersByTime(1)
       expect(feedback.getSnapshot().status).toBe('idle')
     } finally {
       feedback.dispose()
@@ -43,7 +47,7 @@ describe('复制反馈', () => {
     await feedback.copy()
     expect(listener).toHaveBeenCalledTimes(1)
     feedback.dispose()
-    vi.advanceTimersByTime(1600)
+    vi.advanceTimersByTime(COPY_IDLE_DELAY)
     expect(listener).toHaveBeenCalledTimes(1)
   })
 

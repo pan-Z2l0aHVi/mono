@@ -266,14 +266,19 @@ describe('imagePreview 命令式 API（浏览器）', () => {
   })
 
   it('1x 平移后「重置缩放」可用，点击后回到 1x 并重新禁用', async () => {
-    const { handle, host } = await openPreview({ images: SMALL_IMAGES, toolbar: true })
+    // label 走显式覆盖并按设置值定位：内置英文回退可本地化，按字面量定位是假红类。
+    const { handle, host } = await openPreview({
+      images: SMALL_IMAGES,
+      toolbar: true,
+      ariaLabels: { resetZoom: '重置缩放' }
+    })
     const image = currentImage(host)
 
     await pollUntil(() => image.complete && image.offsetWidth > 0, 'image did not load')
     const stage = stageOf(image)
     await waitForStageSettled(stage)
 
-    const reset = () => queryA11y(host, '[aria-label="Reset zoom"]') as HTMLElement
+    const reset = () => queryA11y(host, '[aria-label="重置缩放"]') as HTMLElement
     expect(reset().hasAttribute('disabled')).toBe(true)
 
     stage.dispatchEvent(pointer('pointerdown', { pointerType: 'mouse', clientX: 100, clientY: 100 }))
@@ -333,13 +338,13 @@ describe('imagePreview 命令式 API（浏览器）', () => {
   })
 
   it('toolbar 重置 button 真实点击后回到 1x', async () => {
-    const { handle, host } = await openPreview({ toolbar: true })
+    const { handle, host } = await openPreview({ toolbar: true, ariaLabels: { resetZoom: '重置缩放' } })
 
     handle.zoomIn()
     await host.updateComplete
     expect(handle.scale).toBeGreaterThan(1)
 
-    await userEvent.click(queryA11y(host, '[aria-label="Reset zoom"]') as HTMLElement)
+    await userEvent.click(queryA11y(host, '[aria-label="重置缩放"]') as HTMLElement)
     await host.updateComplete
     expect(handle.scale).toBe(1)
 
@@ -444,8 +449,13 @@ describe('imagePreview 命令式 API（浏览器）', () => {
   })
 
   it('noBackdropClose 时关闭 button 仍可关闭', async () => {
-    const { handle, host } = await openPreview({ noBackdropClose: true, closable: true })
-    const closeButton = queryA11y(host, '[aria-label="Close"]') as HTMLElement
+    // label 走显式覆盖并按设置值定位（与 jsdom 套件的 ariaLabels 用例同一政策）。
+    const { handle, host } = await openPreview({
+      noBackdropClose: true,
+      closable: true,
+      ariaLabels: { close: '关闭预览' }
+    })
+    const closeButton = queryA11y(host, '[aria-label="关闭预览"]') as HTMLElement
     expect(closeButton).not.toBeNull()
 
     await userEvent.click(closeButton)
@@ -712,7 +722,9 @@ describe('imagePreview 命令式 API（浏览器）', () => {
     await waitForFrame()
 
     const track = trackOf(host)
-    expect(stage.classList.contains('is-settling')).toBe(true)
+    // 「收尾已启动」由 track 上真实存在的过渡动画承担；stage 的 is-settling 是内部
+    // 状态类，不作断言。下面取消用例里「旧收尾已取消」的可观察后果由 goTo 变体的
+    // index 稳定性承担（同目标导航的取消本身没有额外的用户可见面）。
     expect(track.getAnimations().length).toBeGreaterThan(0)
     expect(handle.index).toBe(0)
     return { handle, host, image, stage, track }
@@ -724,12 +736,11 @@ describe('imagePreview 命令式 API（浏览器）', () => {
   }
 
   it('settle 途中 next() 只前进一张并取消旧收尾', async () => {
-    const { handle, host, stage } = await startPendingSwipeSettle()
+    const { handle, host } = await startPendingSwipeSettle()
 
     handle.next()
     await host.updateComplete
     expect(handle.index).toBe(1)
-    expect(stage.classList.contains('is-settling')).toBe(false)
 
     await waitPastSettleFallback()
     expect(handle.index).toBe(1)
@@ -739,12 +750,11 @@ describe('imagePreview 命令式 API（浏览器）', () => {
   })
 
   it('settle 途中 ArrowRight 只前进一张并取消旧收尾', async () => {
-    const { handle, host, stage } = await startPendingSwipeSettle()
+    const { handle, host } = await startPendingSwipeSettle()
 
     dialogElement().dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true }))
     await host.updateComplete
     expect(handle.index).toBe(1)
-    expect(stage.classList.contains('is-settling')).toBe(false)
 
     await waitPastSettleFallback()
     expect(handle.index).toBe(1)
@@ -754,12 +764,11 @@ describe('imagePreview 命令式 API（浏览器）', () => {
   })
 
   it('goTo(current) 取消带 pending commit 的收尾', async () => {
-    const { handle, host, stage, track } = await startPendingSwipeSettle()
+    const { handle, host, track } = await startPendingSwipeSettle()
 
     handle.goTo(0)
     await host.updateComplete
     expect(handle.index).toBe(0)
-    expect(stage.classList.contains('is-settling')).toBe(false)
 
     await waitPastSettleFallback()
     expect(handle.index).toBe(0)
@@ -769,12 +778,11 @@ describe('imagePreview 命令式 API（浏览器）', () => {
   })
 
   it('settle 中当前图冒泡的 transform transitionend 不提前提交', async () => {
-    const { handle, host, image, stage, track } = await startPendingSwipeSettle()
+    const { handle, host, image, track } = await startPendingSwipeSettle()
 
     image.dispatchEvent(new TransitionEvent('transitionend', { propertyName: 'transform', bubbles: true }))
     await host.updateComplete
     expect(handle.index).toBe(0)
-    expect(stage.classList.contains('is-settling')).toBe(true)
     expect(track.getAnimations().length).toBeGreaterThan(0)
 
     await pollUntil(() => track.getAnimations().length === 0, 'track settle did not finish naturally')

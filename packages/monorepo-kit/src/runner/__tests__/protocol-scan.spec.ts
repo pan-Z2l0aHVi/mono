@@ -129,9 +129,13 @@ function balancedBodyEnd(code: string, open: number): number {
   return -1
 }
 
-/** 声明体里的 `readonly` 成员名。 */
+/**
+ * 声明体里的成员名（含不带 `readonly` 的可变属性）。撞名是「键占用了 base 的键」这一
+ * 结构事实，与成员可变性无关：只数 `readonly` 会让将来出现的可变成员静默漏出互斥守卫。
+ * 嵌套类型字面量里的成员也会被计入——那是响亮的误报方向，好过静默漏检。
+ */
 function readonlyMembers(body: string): string[] {
-  return [...body.matchAll(/^[ \t]*readonly (\w+)\s*:/gm)].map(hit => hit[1]!)
+  return [...body.matchAll(/^[ \t]*(?:readonly )?(\w+)\s*:/gm)].map(hit => hit[1]!)
 }
 
 /**

@@ -1,6 +1,5 @@
 import assert from 'node:assert/strict'
 import { spawnSync } from 'node:child_process'
-import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
@@ -2398,7 +2397,10 @@ exit 2
 }
 
 {
-  // 排除清单属于审查输入：它进了复用指纹，清单变更后同 head 的旧结论才不会借复用回到绿色。
+  // 指纹只锁「同一环境输入 → 稳定 id」契约本身：同环境两次派生结果一致，任一输入变化换指纹。
+  // 不逐字复刻 sha256 配方——那是实现细节，镜像配方会让配方重构假红。排除清单属于审查输入
+  // 的归属由 validateIncrementalBaseline 的 scope 交叉核对行为化承担（excluded_pathspecs
+  // 不匹配即拒绝复用，见上方 /scope/ 用例），不经配方镜像证明。
   const env = {
     CODEX_RESPONSES_ENDPOINT: 'e',
     CODEX_REVIEW_MODEL: 'm',
@@ -2407,18 +2409,15 @@ exit 2
     CODEX_REVIEW_API_KEY: 'k'
   }
   const { config } = inspectConfig(env)
-  const values = { endpoint: 'e', model: 'm', effort: 'high', version: 'v', key_present: true }
   assert.equal(
+    inspectConfig(env).config.fingerprint,
     config.fingerprint,
-    createHash('sha256')
-      .update(JSON.stringify({ ...values, excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS }))
-      .digest('hex')
-      .slice(0, 16)
+    'the same environment must derive the same fingerprint'
   )
   assert.notEqual(
+    inspectConfig({ ...env, CODEX_REVIEW_EFFORT: 'low' }).config.fingerprint,
     config.fingerprint,
-    createHash('sha256').update(JSON.stringify(values)).digest('hex').slice(0, 16),
-    'the fingerprint must include the review exclusion scope'
+    'changing a review input must change the fingerprint'
   )
 }
 

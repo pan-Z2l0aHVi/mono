@@ -158,7 +158,10 @@ describe('defineBatchTrack 测试', () => {
     const tracker = defineTracker({
       url: 'https://example.com',
       transport,
-      transform: (data: object) => ({ ...data, extra: true })
+      // 显式把输入收进 `batch` 字段：transform 若被逐条调用，batch 就是对象而不是数组，
+      // 下面的断言立刻红。不写 `{ ...data }`——那会把数组展开成数字键对象，
+      // 期望值需要读者自己模拟展开语义才能看懂，等于把偶然编码钉成契约。
+      transform: (data: object) => ({ batch: data, extra: true })
     })
       .use(defineBatchTrack({ defaultBatchDelay: 200 }))
       .make()
@@ -168,8 +171,7 @@ describe('defineBatchTrack 测试', () => {
     await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     // transform 拿到的输入是 batch-track 合并后的数组（不是逐条）：core 的
-    // onConsume 只在最终载荷上跑一次 transform。写死成逐条会静默产出
-    // 形状不同的载荷，后端解析随之失配。
-    expect(transport.mock.calls[0][0]).toEqual({ 0: { event: 'click' }, extra: true })
+    // onConsume 只在最终载荷上跑一次 transform。
+    expect(transport.mock.calls[0][0]).toEqual({ batch: [{ event: 'click' }], extra: true })
   })
 })

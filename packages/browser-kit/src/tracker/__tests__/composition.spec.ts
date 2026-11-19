@@ -50,16 +50,18 @@ describe('tracker 插件组合测试', () => {
   })
 
   it('推荐顺序 batch → offline → last-words：在线时按批上报', async () => {
+    // 批延迟显式给定：本用例判组合顺序，不判默认值（默认值被重调时这里不该假红）。
+    const batchDelay = 200
     const tracker = using(
       defineTracker({ url: 'https://example.com', transport })
-        .use(defineBatchTrack())
+        .use(defineBatchTrack({ defaultBatchDelay: batchDelay }))
         .use(defineOfflineRestore())
         .use(defineLastWords())
         .make()
     )
 
     tracker.track({ event: 'click' })
-    vi.advanceTimersByTime(500)
+    vi.advanceTimersByTime(batchDelay)
     await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     expect(transport.mock.calls[0][0]).toEqual([{ event: 'click' }])
@@ -67,32 +69,34 @@ describe('tracker 插件组合测试', () => {
 
   it('推荐顺序：离线时三条路径叠加也不误发', async () => {
     // batch 延迟、offline 暂停、last-words 监听三者共存时最容易出现「以为暂停了其实没暂停」
+    const batchDelay = 200
     vi.spyOn(navigator, 'onLine', 'get').mockReturnValue(false)
     const tracker = using(
       defineTracker({ url: 'https://example.com', transport })
-        .use(defineBatchTrack())
+        .use(defineBatchTrack({ defaultBatchDelay: batchDelay }))
         .use(defineOfflineRestore())
         .use(defineLastWords())
         .make()
     )
 
     tracker.track({ event: 'offline' })
-    vi.advanceTimersByTime(500)
+    vi.advanceTimersByTime(batchDelay)
     await afterDispatchTurn()
 
     expect(transport).not.toHaveBeenCalled()
   })
 
   it('换序 batch → offline 仍然成立：组合结果不依赖 use 顺序', async () => {
+    const batchDelay = 200
     const tracker = using(
       defineTracker({ url: 'https://example.com', transport })
-        .use(defineBatchTrack())
+        .use(defineBatchTrack({ defaultBatchDelay: batchDelay }))
         .use(defineOfflineRestore())
         .make()
     )
 
     tracker.track({ event: 'click' })
-    vi.advanceTimersByTime(500)
+    vi.advanceTimersByTime(batchDelay)
     await expectAfterDispatch(() => transport.mock.calls.length === 1)
 
     expect(transport.mock.calls[0][0]).toEqual([{ event: 'click' }])

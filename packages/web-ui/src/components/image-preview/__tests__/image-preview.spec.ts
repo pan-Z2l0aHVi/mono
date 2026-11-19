@@ -52,6 +52,18 @@ async function openPreview(options: Partial<Parameters<typeof imagePreview>[0]> 
   return handle
 }
 
+/**
+ * 有可访问名的 button 形元素（对齐 dialog/drawer 套件政策）：可访问名必须存在是 AT 契约，
+ * 具体文案走内置英文回退（ADR-0016）、可被 `ariaLabels` 覆盖——按名字字面量定位是假红类，
+ * 因此这里只按「button 且有名」收集（本组件的 button 都是 `web-ui-button`，宿主元素直接
+ * 挂 aria-label），逐个 button 的定位交给显式设置 `ariaLabels` 的用例按设置值断言。
+ */
+function labeledButtons(host: HTMLElement): HTMLElement[] {
+  return [...(host.shadowRoot?.querySelectorAll<HTMLElement>('web-ui-button, button, [role="button"]') ?? [])].filter(
+    node => node.getAttribute('aria-label')?.trim() !== ''
+  )
+}
+
 /** 合成触摸指针事件；捏合依赖 pointerId 区分两指。 */
 function touchPointer(type: string, init: PointerEventInit): PointerEvent {
   return new PointerEvent(type, { bubbles: true, cancelable: true, pointerType: 'touch', ...init })
@@ -446,29 +458,43 @@ describe('imagePreview 命令式 API', () => {
 
       expect(queryA11y(host, 'img')).not.toBeNull()
       expect(queryA11y(host, '[aria-live]')).toBeNull()
-      expect(queryA11y(host, '[aria-label="Close"]')).toBeNull()
-      expect(queryA11y(host, '[aria-label="Previous image"]')).toBeNull()
-      expect(queryA11y(host, '[aria-label="Next image"]')).toBeNull()
-      expect(queryA11y(host, '[aria-label="Zoom in"]')).toBeNull()
+      // 不钉内置文案字面量（helper 注释）：默认关掉的是「所有有名字的 button」。
+      expect(labeledButtons(host)).toEqual([])
 
       handle.close()
       await handle.closed
     })
 
+    // 每个 option 独立渲染自己的 button 组：nav 2 个（前后切换）、toolbar 3 个
+    // （缩小/放大/重置）、closable 1 个（关闭）、indicator 0 个（只上 aria-live）。
+    // 逐 option 单开计数，既不钉文案字面量，也压住「A 关掉时渲染了 B 的 button」类串线。
     it('nav / toolbar / closable / indicator 各自独立开启对应 UI', async () => {
-      const handle = await openPreview({ nav: true, toolbar: true, closable: true, indicator: true })
-      const host = hostElement()
+      const nav = await openPreview({ nav: true })
+      expect(labeledButtons(hostElement())).toHaveLength(2)
+      nav.close()
+      await nav.closed
 
-      expect(queryA11y(host, '[aria-live]')?.textContent?.trim()).toBe(`1 / ${IMAGES.length}`)
-      expect(queryA11y(host, '[aria-label="Close"]')).not.toBeNull()
-      expect(queryA11y(host, '[aria-label="Previous image"]')).not.toBeNull()
-      expect(queryA11y(host, '[aria-label="Next image"]')).not.toBeNull()
-      expect(queryA11y(host, '[aria-label="Zoom in"]')).not.toBeNull()
-      expect(queryA11y(host, '[aria-label="Zoom out"]')).not.toBeNull()
-      expect(queryA11y(host, '[aria-label="Reset zoom"]')).not.toBeNull()
+      const toolbar = await openPreview({ toolbar: true })
+      expect(labeledButtons(hostElement())).toHaveLength(3)
+      toolbar.close()
+      await toolbar.closed
 
-      handle.close()
-      await handle.closed
+      const closable = await openPreview({ closable: true })
+      expect(labeledButtons(hostElement())).toHaveLength(1)
+      closable.close()
+      await closable.closed
+
+      const indicator = await openPreview({ indicator: true })
+      expect(labeledButtons(hostElement())).toEqual([])
+      expect(queryA11y(hostElement(), '[aria-live]')?.textContent?.trim()).toBe(`1 / ${IMAGES.length}`)
+      indicator.close()
+      await indicator.closed
+
+      const all = await openPreview({ nav: true, toolbar: true, closable: true, indicator: true })
+      expect(queryA11y(hostElement(), '[aria-live]')?.textContent?.trim()).toBe(`1 / ${IMAGES.length}`)
+      expect(labeledButtons(hostElement())).toHaveLength(6)
+      all.close()
+      await all.closed
     })
 
     it('ariaLabels 覆盖内置英文文案', async () => {
@@ -479,10 +505,11 @@ describe('imagePreview 命令式 API', () => {
       })
       const host = hostElement()
 
+      // 覆盖的 key 按设置值断言；未覆盖的 key 不钉内置文案，只断言其余 button 仍带着
+      // 非空可访问名（回退文案可本地化，不回退到「无名 button」）。closable 1 + toolbar 3。
       expect(queryA11y(host, '[aria-label="关闭预览"]')).not.toBeNull()
       expect(queryA11y(host, '[aria-label="重置缩放"]')).not.toBeNull()
-      // 未覆盖的 key 仍走内置英文回退。
-      expect(queryA11y(host, '[aria-label="Zoom in"]')).not.toBeNull()
+      expect(labeledButtons(host)).toHaveLength(4)
 
       handle.close()
       await handle.closed
@@ -491,8 +518,9 @@ describe('imagePreview 命令式 API', () => {
     it('closable 时点击关闭 button 关闭 overlay', async () => {
       const handle = await openPreview({ closable: true })
 
-      const closeButton = queryA11y(hostElement(), '[aria-label="Close"]') as HTMLElement
-      closeButton.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
+      const buttons = labeledButtons(hostElement())
+      expect(buttons).toHaveLength(1)
+      buttons[0]!.dispatchEvent(new MouseEvent('click', { bubbles: true, detail: 1 }))
 
       await handle.closed
       expect(isMounted()).toBe(false)
@@ -501,10 +529,8 @@ describe('imagePreview 命令式 API', () => {
     // 只有一张图时前后切换是死路，nav 不渲染 button。
     it('nav 在只有一张图时不渲染切换 button', async () => {
       const handle = await openPreview({ nav: true, images: [IMAGES[0]] })
-      const host = hostElement()
 
-      expect(queryA11y(host, '[aria-label="Previous image"]')).toBeNull()
-      expect(queryA11y(host, '[aria-label="Next image"]')).toBeNull()
+      expect(labeledButtons(hostElement())).toEqual([])
 
       handle.close()
       await handle.closed

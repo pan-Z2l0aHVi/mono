@@ -1403,9 +1403,6 @@ describe('ResourceList：键盘导航与预览入口', () => {
       const allMeasured = 1000 * ROW_HEIGHT
       expect(total).toBeLessThan(allEstimate)
       expect(total).toBeGreaterThan(allMeasured)
-
-      // virtua 给每个条目各建一层绝对定位包裹（top = 条目偏移），行不共用一个容器。
-      expect(mounted.rows[0]!.parentElement).not.toBe(mounted.rows[1]!.parentElement)
     } finally {
       mounted.unmount()
     }

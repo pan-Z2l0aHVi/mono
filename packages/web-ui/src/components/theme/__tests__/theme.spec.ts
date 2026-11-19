@@ -165,30 +165,13 @@ describe('WebUiTheme 组件', () => {
       stub.restore()
     })
 
-    it('连接期间只登记一次圆心来源监听，断开时完整清理', async () => {
-      const addSpy = vi.spyOn(window, 'addEventListener')
-      const removeSpy = vi.spyOn(window, 'removeEventListener')
-      const theme = createTheme('light')
-
-      try {
-        // Upgrade 顺序可能是 attributeChangedCallback 先于 connectedCallback；手动再同步一次连接回调。
-        theme.connectedCallback()
-        await theme.updateComplete
-
-        const countEvents = (spy: typeof addSpy, event: string) =>
-          spy.mock.calls.filter(([eventName]) => eventName === event).length
-        expect(countEvents(addSpy, 'pointerdown')).toBe(1)
-        expect(countEvents(addSpy, 'keydown')).toBe(1)
-
-        theme.remove()
-        expect(countEvents(removeSpy, 'pointerdown')).toBe(1)
-        expect(countEvents(removeSpy, 'keydown')).toBe(1)
-      } finally {
-        addSpy.mockRestore()
-        removeSpy.mockRestore()
-        theme.remove()
-      }
-    })
+    /*
+     * 「连接期间登记圆心来源监听、断开时清理」不再用 spy 数 add/removeEventListener——
+     * 那是把内部记账当断言（引用计数守卫下重复注册本就无害），断连泄漏的可观察后果
+     * （断开后 pointerdown 不再更新揭示圆心）已由 theme-transition.browser.spec.ts 的
+     * 「揭示圆心取最近一次 pointerdown 落点 / 断开后不再更新」一对行为用例承接。
+     * jsdom 没有 WAAPI，圆心行为在这里复述不了；此处不保留副本。
+     */
 
     it('浏览器不支持 View Transitions 时立即提交 appearance', async () => {
       const startDescriptor = Object.getOwnPropertyDescriptor(document, 'startViewTransition')

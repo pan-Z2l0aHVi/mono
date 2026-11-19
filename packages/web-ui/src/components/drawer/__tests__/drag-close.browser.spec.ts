@@ -40,14 +40,19 @@ function createDrawer(): WebUiDrawer {
 }
 
 /**
- * 关闭 button 按「有可访问名」定位，不按名字字面量（对齐 dialog 套件政策与
+ * 关闭 button 按「有可访问名的 button」定位，不按名字字面量（对齐 dialog 套件政策与
  * drawer.spec.ts 的同名 helper）：具体文案走内置英文回退（ADR-0016）、可用
- * `aria-close-label` 覆盖，钉住 "Close" 字面量是假红类。
+ * `aria-close-label` 覆盖，钉住 "Close" 字面量是假红类。要求是 button 形元素：
+ * dialog 自身也可能带 `aria-label`（`aria-dialog-label`），只按「有可访问名」会拿错。
  */
 function closeButton(el: WebUiDrawer): HTMLElement | null {
   return (
     [...(el.shadowRoot?.querySelectorAll<HTMLElement>('[aria-label]') ?? [])].find(
-      node => node.getAttribute('aria-label')?.trim() !== ''
+      node =>
+        (node instanceof HTMLButtonElement ||
+          node.tagName === 'WEB-UI-BUTTON' ||
+          node.getAttribute('role') === 'button') &&
+        node.getAttribute('aria-label')?.trim() !== ''
     ) ?? null
   )
 }
@@ -67,8 +72,9 @@ type Delta = { x: number; y: number }
  * 在拖拽区按下 → 移动 → 松手。合成事件直接派发到 drag zone，命中与起点坐标无关，
  * 只有**相对位移**参与判定。
  *
- * `steps` 默认 10：判定零点在首个 pointermove（基准校准），单次 move 的
- * 整程位移会被它整体吸收，所以必须至少分两段才可能累积出位移。
+ * `steps` 默认 10：判定零点在 pointerdown（drag-controller.ts 的 `stageOrigin`），位移与
+ * 甩动都自它起算。分多段的真正作用是压低手势层 100ms 滑窗的瞬时速度——每段位移小，
+ * 「未达阈值须弹回」的用例才不会因段内速度被误判成 flick 而关闭。
  */
 async function dragAndRelease(el: WebUiDrawer, delta: Delta, steps = 10) {
   const zone = getDragZone(el)
@@ -370,11 +376,13 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
   })
 
   /*
-   * 拖拽关闭判定的行为锁：判定零点与时钟都在首个 pointermove（基准校准），
-   * 甩动看**整段手势**的平均速度（净位移 ÷ 时长、分母下限 50ms，时长为 0 则
-   * 速度取 0），并在发生反向回撤后按「改主意」守卫拒绝甩动关闭。
+   * 拖拽关闭判定的行为锁：判定零点与时钟都在 pointerdown（drag-controller.ts 的
+   * `stageOrigin` / `dragInitialOffset`，`calibrateOnFirstMove` 为 false），甩动看
+   * **整段手势**的平均速度（净位移 ÷ 时长、分母下限 50ms，时长为 0 则速度取 0），
+   * 并在发生反向回撤后按「改主意」守卫拒绝甩动关闭。
    * 下面六条是该模型的锁：反向回扫不得关闭（被守卫拦下、净位移反向、折返点跟随、
-   * 时长不可测四条路径），朝闭合方向的真甩动仍须关闭，且按下到首个 move 的位移不参与判定。
+   * 时长不可测四条路径），朝闭合方向的真甩动仍须关闭，且按下到首个 move 的位移计入判定。
+   * 距离阈值 = 尺寸 × 0.35（320px 默认宽 → 112px，下限 10px）；甩动速度阈值 350px/s。
    */
   it('拖出后反向回扫松手：净速度达到甩动阈值但被「改主意」守卫拒绝，弹回打开位', async () => {
     const el = createDrawer()
@@ -386,11 +394,11 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
     const events = openChangeEvents(el)
     /*
      * 复现「往边缘反向快速拖拽」（right drawer：向左拖出 = 打开方向，向右 = 闭合方向）。
-     * 第一个 move 先向左拖出 120px（同时建立校准点），随后向右回扫到 +132px 松手。
-     * 净位移 132px < 距离阈值（尺寸的一半 = 160px），整段平均速度 = 132px / 66ms =
-     * 2000px/s ≥ 500px/s，单看甩动判据会关闭；但回扫让「自折返点起的位移」（42px）比
-     * 方向确认时的位移（90px）少 48px ≥ 10px，本次手势被标记为「改主意」→ 弹回。
-     * 用释放瞬间的 100ms 滑窗速度（16ms 内回扫 42px ⇒ 2600px/s）同样会误关。
+     * 首段 move 向左拖出 120px（越过 10px 反向外拉阈值 → `swipeSawOutward` 置位），
+     * 随后向右回扫到 512px 松手（自按下点 500 起净位移 +12px）。
+     * 单看甩动判据会关闭：净速度 12px / 216ms ≈ 55px/s，但 100ms 滑窗与末次 move
+     * 速度（16ms 内回扫 42px ⇒ 2600px/s）都远超 350px/s；距离阈值 112px 未过。
+     * 净位移仍朝闭合方向（+12px > 0）+ `swipeSawOutward` → 「改主意」守卫置位 → 弹回。
      */
     await dragPath(el, [
       { x: 500, at: 1000 },
@@ -414,13 +422,13 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
 
     const events = openChangeEvents(el)
     /*
-     * 首个 move（520）只建立判定零点，随后向右拖到 700（净 +180px，方向就此确认），
-     * 再向左回扫到 600 松手（净 +80px）。
-     * 回撤使「自折返点起的位移」归零，比方向确认时的 180px 少 180px ≥ 10px → 标记
-     * 「改主意」；净位移 80px 远未过 160px 的距离阈值，清理条件不会把它清掉。
-     * 净位移 +80px 朝闭合方向、平均速度 80px / 20ms（分母下限 50ms）= 1600px/s，
-     * 若没有「改主意」守卫拦下这次甩动，这条轨迹会关闭。
-     * 本条不锁定折返点的跟随行为——禁用跟随后它仍为绿（结局由「自折返点起的位移」的取值
+     * 首个 move（520）朝闭合方向（净 +20px），随后拖到 700（净 +200px，峰值位移），
+     * 再向左回扫到 600 松手（净 +100px）。
+     * 自峰值回撤 100px ≥ 10px → 标记「改主意」；净位移 100px 未过 112px 的距离阈值，
+     * 清理条件不会把它清掉。
+     * 净位移 +100px 朝闭合方向、平均速度 100px / 30ms（分母下限 50ms）= 2000px/s ≥
+     * 350px/s——若没有「改主意」守卫拦下这次甩动，这条轨迹会关闭。
+     * 本条不锁定折返点的跟随行为——禁用跟随后它仍为绿（结局由「自峰值起的回撤」的取值
      * 决定），那条锁在下一用例。
      */
     await dragPath(el, [
@@ -489,16 +497,17 @@ describe('WebUiDrawer 拖拽关闭（浏览器）', () => {
 
     const events = openChangeEvents(el)
     /*
-     * 60px < 距离阈值（尺寸的一半 = 160px），唯一可能关闭的路径就是甩动：
-     * 第一个 move 建立校准点，第二个 move 在 5ms 内再走 60px，分母按下限 50ms 计
-     * 仍是 1200px/s ≥ 500px/s。单向无回撤，因此不触发「改主意」守卫。
-     * 注意首个 move 到按下点的位移整体不参与判定（基准校准），
-     * 所以一次手势至少要两个 move 才可能累积出位移。
+     * 净位移 100px < 距离阈值（320 × 0.35 = 112px），唯一可能关闭的路径就是甩动：
+     * 自按下点 500 起算，5ms 内两段共走 100px，整段平均速度按分母下限 50ms 计
+     * = 2000px/s ≥ 350px/s（滑窗瞬时速度更高）。单向无回撤（峰值 = 位移），
+     * 因此不触发「改主意」守卫。
+     * 位移必须留在阈值之下：一旦越过 112px，距离判据自己就能关闭，
+     * 这条就不再隔离甩动分支（删掉甩动判定它照样绿）。
      */
     await dragPath(el, [
       { x: 500, at: 1000 },
       { x: 560, at: 1005 },
-      { x: 620, at: 1010 }
+      { x: 600, at: 1010 }
     ])
     await waitFor(() => !el.open)
 

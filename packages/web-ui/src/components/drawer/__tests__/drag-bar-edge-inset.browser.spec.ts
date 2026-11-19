@@ -83,7 +83,7 @@ async function settleGeometry(el: WebUiDrawer) {
 }
 
 /**
- * drawer 刻意做小，把关闭阈值（尺寸的一半，下限 10px）压到能用手势稳定跨过的量级；
+ * drawer 刻意做小，把关闭阈值（尺寸 × 0.35，下限 10px）压到能用手势稳定跨过的量级；
  * 位移取 panel 在拖拽轴上的尺寸本身，因此对任意尺寸都稳压过阈值。
  */
 async function mountDrawer(options: {
