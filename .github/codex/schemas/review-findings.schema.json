@@ -12,7 +12,7 @@
       "properties": {
         "inspected": {
           "type": "array",
-          "description": "Repository-relative paths whose current content you read while reviewing. List every file you actually opened, not the files you intended to open; do not add unread paths just to satisfy the coverage check.",
+          "description": "Repository-relative paths whose current content you read while reviewing; do not add unread paths.",
           "items": {
             "type": "string"
           }
@@ -74,7 +74,7 @@
     },
     "summary": {
       "type": "string",
-      "description": "One or two sentences that state what the change does and the overall conclusion. Never describe what you are about to do or what you are reading, and never output placeholder strings like '...'."
+      "description": "One or two sentences that state what the change does and the overall conclusion."
     }
   }
 }

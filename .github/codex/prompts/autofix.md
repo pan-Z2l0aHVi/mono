@@ -27,7 +27,7 @@ patch 只能**修改已入库文件的内容**，唯一例外是失败步骤含 
 
 ## 怎么修
 
-1. 从失败步骤名定位是哪个检查（`Build`、`Check repository policies`、`Format + Lint + Type-check + Go vet`、`Test`、`Check changesets` 等），在日志里找到第一条真正的 error，判断它是不是本 PR 引入的。
+1. 日志开头列出失败步骤名，这是失败事实的唯一来源；先定位失败步骤与第一条 error，判断它是不是本 PR 引入的。
 2. 只改导致该失败的最小范围。修根因，不要靠跳过断言、放宽超时、`expect` 改判据或删用例让它变绿——那属于改变判据，必须人来决定。
 3. 类型错误、lint/format 报错、明显的空值与边界遗漏、本 PR 自己写错的断言，都在你的范围内。
 4. `Check changesets` 失败时，按 `docs/agents/release.md` 新建一个 `.changeset/<英文短横线名>.md`：只改 docs / test / chore 或根路径时写空壳（正文只有两行 `---`），影响公共包行为时声明包名与 `patch` / `minor` / `major`，描述用英文且与最终实现一致。不要复用或改写 main 上已有的 changeset。

@@ -10,17 +10,15 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 编排层交接 task 时会带上 worktree 路径、base SHA 和 owner 标识，执行者用 task-ledger skill 的 `new` 子命令的 `--owner` 与 `--base` 记录归属与起点，并把 worktree 路径填进 Task Packet 的 `Worktree`，不自行推导或改写。交接后归属变更属编排层的动作，仓库侧不提供重新归属命令。禁止靠 pane 名称或目录名推断归属。
 
-## 新 worktree 的三步准备
+## 新 worktree 的准备
 
-编排层交付一个新 worktree 后，收到它的执行者必须在实施前依次跑 `mise install`、`mise exec -- pnpm install --frozen-lockfile`、`mise exec -- pnpm run build`，三步都不能省。
+编排层交付一个新 worktree 后，执行者在实施前按任务需要准备：首次或工具链变化时跑 `mise install`，因为版本由 [`.mise.toml`](../../.mise.toml) 钉住、不同分支可能不同，它幂等；要跑 pnpm、turbo、类型检查、构建或仓库检查时跑 `mise exec -- pnpm install --frozen-lockfile`，显式运行根 `fix-code` / `check-code` 需要 `node_modules`，稀疏收缩前也必须执行；需要跨包类型检查或消费 `dist` 时跑 `mise exec -- pnpm run build`，缺产物时 `vp check` 会把跨包 import 报成假 `TS2307`。只改文档且不跑这些检查时后两步可省，跳过什么、为什么写进交付说明。
 
-`mise install` 排第一，因为工具链版本由 [`.mise.toml`](../../.mise.toml) 钉住，不同分支可能钉不同版本；它幂等，装过就是一次快速 no-op。
-
-显式运行根 `fix-code` 或 `check-code` 前需要 `node_modules`；完整环境还须构建 workspace 包的 `dist` 类型产物。缺少产物时，`vp check` 会把跨包 import 报成假 `TS2307`，类型感知验证随之不可用。`fix-code` 会修改工作树内容，但不会自动暂存；整理后先检查 diff，再选择要暂存的文件。
+`fix-code` 的改写与暂存边界见 [`commit.md`](./commit.md#pre-commit-与本地-checks)。
 
 ## 按任务收缩视野
 
-实施 owner 在任务建账、三步准备完成后、读取实施范围的代码、派发实施子任务或修改文件前，按台账 `scope` 与实现/验证必需的包外读取路径调用 sparse skill。`scope` 为空且没有包外读取时跳过；否则必须判断并处理范围，不能把「加载无关包」留到实施过程中再说。同一 worktree 的后续任务沿用已覆盖的 cone，只有读取面扩展出 cone 时才 `--add`。权限或仓库规则禁止更改 Git 配置或 worktree 时，按 skill 的只读降级记录原因，不执行会改动 checkout 的命令。顺序不能颠倒：闭包来自 turbo 图，`turbo ls` 在未安装依赖的 worktree 里跑不起来。
+实施 owner 在任务建账与 worktree 准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`）完成后、读取实施范围的代码、派发实施子任务或修改文件前，按台账 `scope` 与实现/验证必需的包外读取路径调用 sparse skill。触发、跳过、降级与稀疏树读取规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。
 
 `scope` 是仓库相对路径数组。两个 skill 不互相调用，组合方式只有一种：从台账读出路径，再作为 turbo-sparse-scope 的目标参数。从全树开始时先加 `--dry-run` 看会隐藏哪些包，再实际收缩：
 
@@ -31,11 +29,11 @@ mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs <scope-path
 
 范围变化时先更新台账 scope 再继续：放宽用 `scope <id> --add`，重算或收窄用 `scope <id> --set`，清空用 `--clear`。台账 scope 收窄不强制重算 sparse cone；读取面扩展出 cone 时用 `--add` 落盘，要按新闭包重算才用 `--reset`，清空后用 `--restore` 恢复全树，`close` 不恢复。
 
-调用方式、范围算法与稀疏树里的搜索、gate、install 规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。对这里的环境准备有两条后果。第一，收缩成功后脚本会立即跑一次 `pnpm install --frozen-lockfile`，把 `node_modules` 对齐到缩小后的 workspace 集，否则后续 `pnpm run` / `pnpm exec` 会自行做非 frozen 安装并重写 `pnpm-lock.yaml`；根目录没有 `pnpm-workspace.yaml` 或 `pnpm` 不在 PATH 时这一步跳过并告警，需要在跑 pnpm 脚本前手动补上。第二，被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 删除，`--restore` 只带回已跟踪文件，恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm run build`。
+调用方式、范围算法与稀疏树里的搜索、gate、install 规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。对这里的环境准备有两条后果。第一，收缩成功后脚本会立即跑一次 `pnpm install --frozen-lockfile`，把 `node_modules` 对齐到缩小后的 workspace 集，否则后续 `pnpm run` / `pnpm exec` 会自行做非 frozen 安装并重写 `pnpm-lock.yaml`；根目录没有 `pnpm-workspace.yaml` 或 `pnpm` 不在 PATH 时这一步跳过并告警，需要在跑 pnpm 脚本前手动补上。第二，被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 删除，`--restore` 只带回已跟踪文件，恢复后要重跑 `mise exec -- pnpm install --frozen-lockfile` 与 `mise exec -- pnpm run build`。
 
 ## 本地 HTTPS 证书
 
-两个 demo 的 dev/preview 通过本机 mkcert 证书提供 HTTPS。证书放在用户目录 `~/.config/greypan/dev-certs/`，同一台机器的所有 worktree 共用一份；它不随 checkout 复制，也不入库。上面的三步准备不包含这一步，因为它是每台机器一次的本地信任配置。
+文档 demo 的 dev/preview 通过本机 mkcert 证书提供 HTTPS。证书放在用户目录 `~/.config/greypan/dev-certs/`，同一台机器的所有 worktree 共用一份；它不随 checkout 复制，也不入库。上面的 worktree 准备不包含这一步，因为它是每台机器一次的本地信任配置。
 
 首次使用或换机器时运行：
 
@@ -48,17 +46,17 @@ mkcert \
   localhost 127.0.0.1 ::1
 ```
 
-`mkcert -install` 会把 mkcert 的本地 CA 加入系统信任库，内嵌浏览器与自定义客户端因此能通过 TLS 校验。证书缺失时 dev/preview 直接失败并打印上述命令；测试档在 CI 没有证书时保持 HTTP，Playwright 自身忽略证书错误。需要换目录时设置 `GREYPAN_DEV_CERT_DIR`；两个 demo 的 `vite.config.ts` 读同一个变量。
+`mkcert -install` 会把 mkcert 的本地 CA 加入系统信任库，内嵌浏览器与自定义客户端因此能通过 TLS 校验。证书缺失时 dev/preview 直接失败并打印上述命令；测试档在 CI 没有证书时保持 HTTP，Playwright 自身忽略证书错误。需要换目录时设置 `GREYPAN_DEV_CERT_DIR`；文档 demo 的 `vite.config.ts` 读同一个变量。
 
 ## Turbo artifact cache
 
-`TURBO_CACHE_DIR` 指向系统临时目录下的 `<temp>/greypan/turbo-cache/<repo-id>`。[`scripts/lib/turbo-cache-dir.sh`](../../scripts/lib/turbo-cache-dir.sh) 是唯一的路径解析器，`.mise.toml`、`clean.sh` 与 `env-doctor` 都调用它：它把 Git common directory 解析为物理路径，再用 `git hash-object --stdin` 计算稳定 ID。主仓及其 linked worktree 因共用 Git common directory 而复用同一缓存；独立 clone 有不同的 common directory 和缓存 ID。helper 不创建目录、不写 Git 对象，也不读取继承的 `TURBO_CACHE_DIR`。
+`TURBO_CACHE_DIR` 指向系统临时目录下的 `<temp>/greypan/turbo-cache/<repo-id>`。[`scripts/lib/turbo-cache-dir.sh`](../../scripts/lib/turbo-cache-dir.sh) 是唯一的路径解析器；所有消费方都必须调用它，不得自行拼路径。它把 Git common directory 解析为物理路径，再用 `git hash-object --stdin` 计算稳定 ID。主仓及其 linked worktree 因共用 Git common directory 而复用同一缓存；独立 clone 有不同的 common directory 和缓存 ID。helper 不创建目录、不写 Git 对象，也不读取继承的 `TURBO_CACHE_DIR`。
 
 Turbo artifact cache 保存可恢复的构建产物，包括 `dist` 与声明文件。新路径首次构建时是冷缓存，系统回收临时目录后 Turbo 会重新构建产物。
 
 `pnpm run clean` 默认清理当前仓库工作区里的构建产物、`node_modules`、`.turbo/`，以及当前 repo-id 的临时 artifact cache；它忽略外部注入的 `TURBO_CACHE_DIR`，不触及其他仓库的缓存。`--dry-run` 只列出当前目标，不删除文件；[`pnpm-lock.yaml`](../../pnpm-lock.yaml) 仍须显式传 `--locks`。`<workspace>/.turbo/` 是工作区内的本地目录，不是共享 artifact cache；删它不会回收外部缓存，也不等同于清理 `dist/`。
 
-CI 在 [`ci.yml`](../../.github/workflows/ci.yml) 显式把 artifact cache 放到 `${{ github.workspace }}/.turbo`，并由 `actions/cache` 保存和恢复；mise 优先保留该 override。其他 GitHub Actions runner 在没有显式值时用 `GITHUB_WORKSPACE/.turbo`，因此 Windows runner 不会调用 POSIX helper。本地与不完整的 CI 环境由 helper 计算 canonical 临时路径。
+CI 在 [`ci.yml`](../../.github/workflows/ci.yml) 显式把 artifact cache 放进工作区目录，并由 `actions/cache` 保存和恢复；mise 优先保留该 override。其他 GitHub Actions runner 在没有显式值时用工作区下的 `.turbo`，因此 Windows runner 不会调用 POSIX helper。本地与不完整的 CI 环境由 helper 计算 canonical 临时路径。
 
 构建或验证前怀疑 `dist` 产物异常（例如被 watch 进程清空 d.ts）时，先裸跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force`）或手动 `turbo build --force` 重建。doctor 按同一公式得到的本地 canonical 路径判断注入；CI workspace override 不会作为它自己的预期值。
 

@@ -6,11 +6,28 @@
 
 ## 表面与工具
 
-Web 表面由 chrome-devtools MCP 承担真实浏览器交互，覆盖导航、交互、console/network、截图与桌面/移动视口。
+Web 表面的真实浏览器交互默认使用 `agent-browser`：导航、快照与元素交互、表单、截图、console 与页面错误、视口与设备仿真、网络请求观察。常规调试、冒烟、走查与验收验证都走这条默认路径；具体命令与能力以本机安装版本的 `agent-browser --help` 为准。
 
-原生应用表面默认使用 Peekaboo；环境提供 `computer-use` 能力时也可用。Peekaboo 走 macOS 无障碍层，能驱动真实应用窗口，但进不了浏览器页面内部；chrome-devtools MCP 只驱动 Chrome，够不到桌面应用窗口。
+性能剖析、专项审计等能力不在默认流程内：需要时由用户指定工具、范围与目标，按用户指定的方式执行，并把结论并入验证记录。
 
-`agent-browser` 是第三方 skill，不属于自动 fallback。只有用户显式调用 `/agent-browser` 时才进入，且只用于 chrome-devtools MCP 不具备的能力（凭据库、专项审计与度量、录制与 baseline diff、请求拦截、云浏览器、Electron 等）。上游说明要求优先使用它；不要据此把常规浏览器任务路由过去，本仓库的分工以本文为准。登录态复用和无头都不是它独有的能力。
+原生应用表面默认使用 Peekaboo；环境提供 `computer-use` 能力时也可用。Peekaboo 走 macOS 无障碍层，能驱动真实应用窗口，但进不了浏览器页面内部；浏览器工具只驱动浏览器页面，够不到桌面应用窗口。
+
+## 前端冒烟门
+
+前端代码改动或功能迭代完成后，先在真实运行的前端上做一轮冒烟，工具按表面选；全部通过才进入后续测试、创建 PR 与合并流程。
+
+- Web 页面与文档 demo：用 `agent-browser` 做浏览器冒烟。
+- 原生宿主内嵌的前端（如 Interweave 这类 Wails 宿主）：在真实应用窗口里用 Peekaboo 验证，或在该前端可独立运行的浏览器预览里用 `agent-browser` 验证。
+
+报告写明本次用的是哪一种，两种表面的证据不互相替代。
+
+冒烟至少覆盖（原生宿主取不到的视口与 console 项，用应用窗口与运行日志替代并写明缺口）：
+
+- 本次改动影响的入口与主路径，以及失败、取消或空状态路径；
+- 受影响的桌面与移动视口，确认没有空白渲染、溢出、遮挡或错位；
+- console 与页面错误，确认没有本次改动新引入的报错。
+
+冒烟失败先修复并重跑，不用后续测试通过、CI 变绿或构建成功代替。冒烟只证明改动在所选表面里可用，不替代自动回归、E2E、探索式或真机验收，也不替代性能对比。不触及前端运行时的改动不触发本门。证据按本文「报告」记录验证 URL（原生应用为应用与窗口）、操作路径、结果与缺口；用 `agent-browser` 时，浏览器实例、profile 与回收按 [`browser-resources.md`](./browser-resources.md) 记录。
 
 ## 验证要点
 
@@ -23,9 +40,9 @@ Web 表面由 chrome-devtools MCP 承担真实浏览器交互，覆盖导航、�
 
 - 优先复用目标端口上合适的现有 dev server；只有无可用实例、现有实例无法提供所需状态或需要隔离时才新建，使用未占用端口并记录 PID。
 - 只停止当前任务启动的服务器。不得终止用户或其他任务的服务器；目标端口上的服务器无响应时先取得用户授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。
-- 不得附加或控制用户的 Chrome 会话。隔离的判据是本任务独占的专用 profile，不是用了哪个工具；接管既有会话的方式一律不满足要求。需要登录态时在专用 profile 内自行登录。
-- 同一任务内的多次真实运行时验证应尽可能复用同一个浏览器实例和同一个专用 `--user-data-dir` profile。通常同一时刻只保留 1 个本任务启动且仍在运行的浏览器实例。复用已有 page 或在同一实例内新开 tab 不会增加实例数。chrome-devtools MCP 的 `new_page` 会在同一浏览器内新开 tab；只需隔离 cookie 和 storage 时，用 `isolatedContext`，它会创建隔离的 browser context，不会另启 Chrome 或创建另一个 profile。
-- 只有验证需要独立的浏览器进程或 profile，或工具无法在同一实例中提供所需状态时，才另启浏览器实例。启动额外实例时记录它与验证步骤的对应关系；该步骤完成、后续验证不再依赖它时立即回收，不要等到任务收尾。若因独立会话需要让多个实例同时运行，记录原因和峰值并发数。工具若不能跨多次调用复用同一实例或 profile，按实际启动的实例逐个记录并在该次验证结束后回收；不要只凭 session 名称或 `--isolated` 推断 profile 相同或实例可复用。
+- 浏览器归属、单实例与复用判据见 [`browser-resources.md`](./browser-resources.md#默认与例外)；需要登录态时在专用 profile 内自行登录。
+- 复用已有 page 或在同一实例内新开 tab 不会增加实例数；`agent-browser` 的 `tab new` 就在同一 session 内新开 tab。以 Chromium 系工具直接指定 profile 时用本任务专用目录（`--user-data-dir`，或 `agent-browser --profile <path>`）；`agent-browser` 的每个 session 是独立浏览器实例，另起 session 按额外实例计数。
+- 只有验证需要独立的浏览器进程或 profile，或工具无法在同一实例中提供所需状态时，才另启浏览器实例。启动额外实例时记录它与验证步骤的对应关系；该步骤完成、后续验证不再依赖它时立即回收，不要等到任务收尾。若因独立会话需要让多个实例同时运行，记录原因和峰值并发数。工具若不能跨多次调用复用同一实例或 profile，按实际启动的实例逐个记录并在该次验证结束后回收；不要只凭 session 名称或工具自报的隔离标记推断 profile 相同或实例可复用。
 - 启动、关闭与归属记录按 [`browser-resources.md`](./browser-resources.md) 执行：记录本任务专用 profile、启动器 PID / CWD、浏览器 PID / PPID，并按该文档的关闭顺序回收。关闭页面不等于关闭浏览器；启动器可能先于或晚于浏览器退出，必须在启动时记下完整链条。每个并行任务使用不同的 profile。
 - 回收属于预授权操作的条件见 [`workflow.md`](./workflow.md#预授权操作)。链条未记录、候选不唯一或任一环节无法确认时，不要猜测回收：按 [`workflow.md`](./workflow.md#怎么取得这个授权) 取得授权并确认目标，或把清理列为未完成。仓库测试运行器管理的浏览器由测试命令管理，不按本条单独查杀。
 - 仅对本地自签名 HTTPS demo 忽略证书错误；不得为外部站点放松证书验证。
@@ -36,7 +53,7 @@ Web 表面由 chrome-devtools MCP 承担真实浏览器交互，覆盖导航、�
 同一表面内的层不能互相替代：
 
 - Web 回归：仓库测试中的 Vitest Browser Mode / Playwright Chromium 浏览器用例。
-- Web 真实交互：chrome-devtools MCP。
+- Web 真实交互：`agent-browser`。
 - 原生应用：Peekaboo，或环境提供时的 `computer-use`。
 
 某层在任务环境中不可用时必须报告环境阻塞。不得把构建成功、jsdom、自定义脚本或无障碍树快照表述为完成了真实交互验证。

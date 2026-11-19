@@ -3212,7 +3212,7 @@ exit 2
 
 {
   // Skills 分流契约：prompt 必须禁用实施流程型 skills、允许命中路由的审校类 skills，
-  // 并且明确覆写所有 skill 自带的问候语/表格/Approve-Block 输出格式；stage-codex-inputs 必须 stage repo-query 与自撰审校 SKILL.md。
+  // 并且明确覆写所有 skill 自带的输出格式；stage-codex-inputs 必须 stage repo-query 与自撰审校 SKILL.md。
   const prompt = fs.readFileSync(path.join(import.meta.dirname, '../codex/prompts/review.md'), 'utf8')
   for (const forbidden of ['task-ledger', 'request-authorization', 'turbo-sparse-scope', 'wizard']) {
     assert.ok(prompt.includes(forbidden), `review prompt must explicitly forbid workflow skill ${forbidden}`)
@@ -3231,9 +3231,7 @@ exit 2
     )
   }
   assert.match(prompt, /输出契约覆写/)
-  assert.match(prompt, /Initial Response/)
-  assert.match(prompt, /Markdown 表格/)
-  assert.match(prompt, /Approve\/Block/)
+  assert.match(prompt, /忽略其输出格式与问候要求/)
 
   const stageAction = fs.readFileSync(
     path.join(import.meta.dirname, '../actions/stage-codex-inputs/action.yml'),

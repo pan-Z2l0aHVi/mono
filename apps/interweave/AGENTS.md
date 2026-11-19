@@ -47,7 +47,7 @@ _Avoid_: 添加时自动去重、重复定位、隐式合并或转移 Source
 **Source 可用性**:
 以 `available: boolean` 持久化：`true` 为可用，`false` 为不可用。新建 URL 必须在 10 秒总时限内完成基础元数据抓取再写入；失败或超时仍写入为 `false`，非 HTML 或展示元数据缺失不影响 `true`，后续非元数据数据加载不阻塞写入。新建文件先做轻量 `stat`，成功或失败分别写入 `true` 或 `false`，但都纳入；可访问文件的身份与属性在纳入或替换后同步记录，内容 hash 在后台采集，不阻塞纳入。
 已登记的 file source 只监听其所在目录：`available` 随文件增删自动翻转并恢复，媒体读取确认不可达时立即改判为 `false`。URL 不做监听，只在用户打开详情时按需重新判定；该次判定无法得出结论时保留原值。
-可用性写入统一经 [`backend/library/watch/`](./backend/library/watch/) 的 AvailabilityGate：它是目录监听与媒体 404 兜底共用的唯一写入口，「先落库、后发事件、只在真翻转时发」由 gate 的 implementation 保证，调用方不得绕开它自行落库或发事件。
+可用性写入统一经 [`backend/library/watch/`](./backend/library/watch/) 的 AvailabilityGate——目录监听与媒体 404 兜底共用的唯一写入口；落库、事件时序与「只在真翻转时发」由 gate 拥有，调用方不得绕开它自行落库或发事件，改动前读该目录的测试。
 _Avoid_: `unknown`、独立状态枚举、以元数据完整性替代可用性、后台轮询探测、把无法判定写成不可用、绕开 gate 的可用性写入
 
 **语义标签（Semantic Tag）**:
@@ -71,13 +71,13 @@ _Avoid_: 文件树、画布编辑器、关系连线器、资源容器
 
 ## 修改指南
 
-- 添加资源的 preview token 结算时序（waitForPreview → create → releasePreview → close）由 `frontend/src/components/library/addQueue.ts` 的 controller 拥有，页面经 `submit` 提交整个队列，不得自组提交循环。token 的发放、驱逐对账与释放由页面持有的 `frontend/src/components/library/previewLease.ts` 统一记账，添加队列与找回弹窗共用同一本 lease。
+- 添加资源的 preview token 时序（先 `waitForPreview` 等预览就绪、再创建、再释放预览、最后关闭）由资源库添加队列的 controller 拥有，页面只经 `submit` 提交整个队列，不得自组提交循环。token 的发放、驱逐对账与释放由页面持有的 preview lease 统一记账，添加队列与找回弹窗共用同一本 lease。
 - 修改 Go/Wails API 时，先查 Wails 3 官方文档，再核对 Go 测试、frontend bindings 和消费端调用。公开 API 变更遵循上文 allowlist 与生成边界。
 - 文件选择等可取消操作应明确取消语义。class-mode bindings 已将顶层 Wails slice 返回值规范化为非 nullable 数组，前端应消费生成类型而不重复添加 `?? []`。仅 DTO 中仍为可选或 nullable 的字段按其生成类型处理，且不得手改生成 bindings。
-- 文本剪贴板读取走 `runtime.system.readClipboardText`；WebView 的 `navigator.clipboard` 只在浏览器预览适配器（`frontend/src/services/library/mock.ts`）里作为回退使用，leaf 组件不直接 import `@wailsio/runtime`。
+- 文本剪贴板读取走 `runtime.system.readClipboardText`；WebView 的 `navigator.clipboard` 只在浏览器预览适配器里作为回退使用，leaf 组件不直接 import `@wailsio/runtime`。
 - 修改前端页面、store、组件或交互时，按 [`docs/agents/runtime-verification.md`](../../docs/agents/runtime-verification.md) 在真实 Wails/浏览器集成表面验证。
-- 工具条里展开式字段（搜索框、筛选字段等）的开关策略（按在「字段上下文」容器里不收起、簇内点击后把焦点交还字段、被弹层接管焦点时让位）在 [`frontend/src/composables/useExpandingField.ts`](./frontend/src/composables/useExpandingField.ts)。页面的 header 需要同样行为时，把字段与容器 ref 交给它；判据只用 ref 与 `document.activeElement`，不要在组件里按 `closest('web-ui-…')` 枚举组件类型——header 里的控件会随页面变化。
+- 工具条里展开式字段（搜索框、筛选字段等）的开关策略（按在「字段上下文」容器里不收起、簇内点击后把焦点交还字段、被弹层接管焦点时让位）由 `frontend/src/composables/` 里专用的展开式字段 composable 拥有。页面的 header 需要同样行为时，把字段与容器 ref 交给它；判据只用 ref 与 `document.activeElement`，不要在组件里按 `closest('web-ui-…')` 枚举组件类型——header 里的控件会随页面变化。
 
-- 平台、flags 与 bindings 都要在 runtime core 注入之后才读：Go 侧在 `WebViewDidFinishNavigation` 之后才注入 `window._wails`，早于它的 setup 调用读到的是空值。启动序在挂载前等 `waitForRuntimeConfig()`（[`frontend/src/services/runtime.ts`](./frontend/src/services/runtime.ts)，判据与事件名都只有这一份），所以壳里可以一次性取平台；不要改成「先渲染再补」的响应式重读。
+- 平台、flags 与 bindings 都要在 runtime core 注入之后才读：Go 侧在 `WebViewDidFinishNavigation` 之后才注入 `window._wails`，早于它的 setup 调用读到的是空值。启动序在挂载前等待 runtime 就绪（判据与事件名都只有 runtime 服务一份），所以壳里可以一次性取平台；不要改成「先渲染再补」的响应式重读。
 - 界面缩放的档位（90/100/110/120）是 [`backend/settings/`](./backend/settings/) 拥有的一项设置，菜单与设置面板都只改档位：菜单走 service 的 `ZoomIn` / `ZoomOut` / `ZoomReset`，面板走 `UpdateSettings`。窗口缩放只由前端按快照调 `Window.SetZoom`（[`frontend/src/App.vue`](./frontend/src/App.vue)），不要在 Go 里直接调 `window.ZoomIn/Out/Reset`，也不要在前端另存一份档位。
-- 窗口拖动区按元素声明，不按坐标：`data-window-drag` 必须挂在**与控件同级**的一层透明底上（`absolute inset-0 -z-10`），只铺容器里没人占的空白；不要给容器挂标记再让控件退出——`--wails-draggable` 会被继承。规则在 [`frontend/src/assets/global.css`](./frontend/src/assets/global.css)。现有两处拖动区是资源库工具条行内的透明底与 macOS 侧栏顶部给红绿灯留的 48px 区；页面若要自己的 header 参与拖动，就在里面加一层同样的底，不要在窗口选项里用 `Mac.InvisibleTitleBarHeight`——它按 y 坐标命中整条带子，会把 header 上的按钮一并变成拖窗口。
+- 窗口拖动区按元素声明，不按坐标：`data-window-drag` 必须挂在**与控件同级**的一层透明底上（`absolute inset-0 -z-10`），只铺容器里没人占的空白；不要给容器挂标记再让控件退出——`--wails-draggable` 会被继承。规则在 [`frontend/src/assets/global.css`](./frontend/src/assets/global.css)。现有拖动面都按这条声明：资源库工具条行内的透明底，与 macOS 侧栏顶部给红绿灯让位的那条区域；页面若要自己的 header 参与拖动，就在里面加一层同样的底，不要在窗口选项里用 `Mac.InvisibleTitleBarHeight`——它按 y 坐标命中整条带子，会把 header 上的按钮一并变成拖窗口。

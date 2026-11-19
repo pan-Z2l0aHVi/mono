@@ -210,7 +210,7 @@ assert.ok(
   )
 )
 assert.ok(webUiPlan.verification.some(item => item.command === 'pnpm run check-pack'))
-assert.ok(webUiPlan.verification.some(item => item.command === 'chrome-devtools MCP 真实浏览器验证'))
+assert.ok(webUiPlan.verification.some(item => item.command === 'agent-browser 真实浏览器验证'))
 assert.match(run('verify', 'packages/web-ui/src/components/select/index.ts'), /evidence:/)
 
 const contextPlan = JSON.parse(run('verify', '--json', 'docs/agents/agent-context.md'))
@@ -269,7 +269,7 @@ const reactDemoPlan = JSON.parse(run('verify', '--json', 'apps/react-web-ui-demo
 assert.ok(reactDemoPlan.context.includes('apps/react-web-ui-demo/AGENTS.md'))
 assert.ok(reactDemoPlan.verification.some(item => item.command === 'pnpm --filter @greypan/react-web-ui-demo build'))
 assert.ok(reactDemoPlan.verification.some(item => item.command === 'pnpm run test'))
-assert.ok(reactDemoPlan.verification.some(item => item.command === 'chrome-devtools MCP 真实浏览器验证'))
+assert.ok(reactDemoPlan.verification.some(item => item.command === 'agent-browser 真实浏览器验证'))
 
 const reactRoutePlan = JSON.parse(run('verify', '--json', 'apps/react-web-ui-demo/src/routes/about.tsx'))
 assert.ok(reactRoutePlan.context.includes('docs/agents/build.md'))
