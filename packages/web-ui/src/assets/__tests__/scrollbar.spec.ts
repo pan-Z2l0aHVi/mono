@@ -4,8 +4,9 @@ import { describe, expect, it } from 'vite-plus/test'
 
 /*
  * 章程：本文件按 test-authoring 的「章程」例外成文，守 scrollbar.css 的**源码级约定**——
- * 组件内部 scrollbar 走覆盖式方案：`scrollbar-color` 经 var() 读主题 token、不声明
- * `::-webkit-scrollbar`、`scrollbar-width: thin` 收窄经典平台。每条判据都有实测变异证据：
+ * 组件内部 scrollbar 默认走覆盖式方案：`scrollbar-color` 经 var() 读主题 token、不声明
+ * `::-webkit-scrollbar`、`scrollbar-width: thin` 收窄经典平台；粗指针设备回退到系统原生
+ * scrollbar。每条判据都有实测变异证据：
  * - 给容器加一条 `::-webkit-scrollbar { width: 7px }` 后，同尺寸容器的
  *   `offsetWidth - clientWidth` 从 0 变 7（引擎切回经典 scrollbar 并占宽度，见 :24-28）；
  * - 漏写 `scrollbar-width: thin` 时，经典平台（Windows/Linux）的 scrollbar 恢复默认粗细
@@ -43,5 +44,15 @@ describe('组件内部 scrollbar 主题', () => {
   it('用 scrollbar-width: thin 收窄经典 scrollbar', () => {
     // 覆盖式平台不看它（仍零宽）；经典平台的 scrollbar 据此收窄，尽量靠近 macOS 的细 thumb。
     expect(varValue(scrollbarDeclarations, 'scrollbar-width')).toBe('thin')
+  })
+
+  it('粗指针设备恢复系统原生 scrollbar', () => {
+    const coarseRule = /@media\s*\(pointer:\s*coarse\)\s*\{\s*\.wui-scroll\s*\{([\s\S]*?)\}\s*\}/.exec(
+      scrollbarDeclarations
+    )?.[1]
+
+    expect(coarseRule).toBeDefined()
+    expect(varValue(coarseRule ?? '', 'scrollbar-color')).toBe('auto')
+    expect(varValue(coarseRule ?? '', 'scrollbar-width')).toBe('auto')
   })
 })

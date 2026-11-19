@@ -10,6 +10,8 @@
 
 `overlayscrollbars` 来自 workspace catalog，因此随包提供的 CSS 与各应用使用的运行时版本一致。
 
+主指针为 coarse 的手机和平板上，默认配置会启用 `showNativeOverlaidScrollbars`。此时 OverlayScrollbars 保留平台原生覆盖式滚动条，不再绘制自定义滚动条。该行为只会在两轴原生滚动条都是覆盖式时生效；主指针仍为 fine 的触屏笔记本继续使用自定义滚动条。
+
 ## 用法
 
 ```ts
@@ -39,8 +41,12 @@ import { OverlayScrollbarsComponent } from 'overlayscrollbars-react' // 或 over
 
 ### 默认导出
 
-OverlayScrollbars 的 `PartialOptions`。它应用随包的滚动条样式，滚动停止 2 秒后隐藏滚动条，并让点击轨道时直接落到点击位置，不播放动画。
+OverlayScrollbars 的 `PartialOptions`。它应用随包的滚动条样式，滚动停止 2 秒后隐藏滚动条，让点击轨道时直接落到点击位置，不播放动画，并在粗指针设备上显示原生覆盖式滚动条。
 
 ### `APP_SCROLLBARS_THEME`
 
 样式类名 `os-theme-macos`。它也是默认导出中的 `scrollbars.theme` 值，并定义在随包加载的样式表中。
+
+### `shouldUseNativeScrollbars`
+
+返回主指针是否匹配 `(pointer: coarse)`。没有 `matchMedia` 的环境返回 `false`。默认导出在模块求值时调用一次。

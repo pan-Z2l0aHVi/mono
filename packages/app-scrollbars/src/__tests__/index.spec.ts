@@ -1,13 +1,16 @@
 import { readFileSync } from 'node:fs'
 
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
-import appScrollbarsOptions, { APP_SCROLLBARS_THEME } from '..'
+import appScrollbarsOptions, { APP_SCROLLBARS_THEME, shouldUseNativeScrollbars } from '..'
 
 // 从磁盘读源码：vitest 默认把 CSS 模块处理成空模块，`?raw` 也拿不到原文。
 const style = readFileSync('src/style.css', 'utf8')
 // 断言只看声明：注释里为了讲清楚会提到这些属性名，不能被当成声明命中。
 const declarations = style.replace(/\/\*[\s\S]*?\*\//g, '')
+const source = readFileSync('src/index.ts', 'utf8')
+const readme = readFileSync('README.md', 'utf8')
+const readmeCn = readFileSync('README.CN.md', 'utf8')
 
 /** 取一条自定义属性的值。 */
 function varValue(source: string, name: string): string {
@@ -24,6 +27,25 @@ describe('应用级 scrollbar 配置', () => {
     expect(appScrollbarsOptions.scrollbars?.theme).toBe(APP_SCROLLBARS_THEME)
     expect(APP_SCROLLBARS_THEME).toBe('os-theme-macos')
     expect(declarations).toContain(`.${APP_SCROLLBARS_THEME} {`)
+  })
+
+  it('粗指针设备启用原生覆盖式 scrollbar', () => {
+    expect(typeof appScrollbarsOptions.showNativeOverlaidScrollbars).toBe('boolean')
+    expect(appScrollbarsOptions.showNativeOverlaidScrollbars).toBe(shouldUseNativeScrollbars())
+    expect(source).toContain('showNativeOverlaidScrollbars: shouldUseNativeScrollbars()')
+    expect(source).toContain("matchMedia('(pointer: coarse)')")
+    expect(shouldUseNativeScrollbars()).toBe(false)
+  })
+
+  it('shouldUseNativeScrollbars 只匹配 pointer: coarse', () => {
+    vi.stubGlobal('window', {
+      matchMedia: (query: string) => ({ matches: query === '(pointer: coarse)' })
+    })
+    try {
+      expect(shouldUseNativeScrollbars()).toBe(true)
+    } finally {
+      vi.unstubAllGlobals()
+    }
   })
 
   it('保持「滚动时出现、停下自动隐去」的隐藏策略', () => {
@@ -64,5 +86,15 @@ describe('应用级 scrollbar 配置', () => {
   it('深色档同时覆盖主题子树与文档级 scrollbar', () => {
     // 文档级 scrollbar 挂在 <body> 下，位于 theme 元素之外，只有 `html:has()` 够得到。
     expect(declarations).toMatch(/html:has\(web-ui-theme\[resolved-appearance='dark'\]:not\(web-ui-theme \*\)\)/)
+  })
+
+  it('README 同步公开导出与触屏边界', () => {
+    for (const content of [readme, readmeCn]) {
+      expect(content).toContain('shouldUseNativeScrollbars')
+      expect(content).toContain('pointer: coarse')
+      expect(content).toContain('showNativeOverlaidScrollbars')
+    }
+    expect(readme).toContain('touchscreen laptops')
+    expect(readmeCn).toContain('触屏笔记本')
   })
 })
