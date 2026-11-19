@@ -55,7 +55,7 @@ Go 侧在 `WebViewDidFinishNavigation` 之后才注入 `window._wails`，早于�
 
 ## 后果
 
-- `backend/` 出现 `settings/` 一级模块，ADR-0008 §2 的 allowlist 由「`library/` 与 `native/`」扩为「`library/`、`native/` 与 `settings/`」；`backend/menu/` 只放契约与可用性 Service，不在 allowlist 内。
+- `backend/` 出现 `settings/` 一级模块，ADR-0008 §2 的 allowlist 由「`library/` 与 `native/`」扩为「`library/`、`native/` 与 `settings/`」；`backend/menu/` 只放契约与可用性 Service，其 allowlist 见 ADR-0008 §2。
 - 路径按 `application.Path(application.PathDataHome)` 解析：macOS 位置不变，Windows 从 `%APPDATA%` 变为 `%LOCALAPPDATA%`；旧路径里的 `library.db` 不再被读取，视为新库。
 - 设置读取成为启动序的一段：外观在启动层之下生效，主界面不会先以错误主题渲染。
 - 菜单随设置的可见项变化需要整体重建（`app.Menu.Set` + `window.SetMenu`），不能只靠逐项 `Menu.Update()`：Windows 上后者不重绘已存在的菜单栏。

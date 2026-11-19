@@ -69,7 +69,7 @@ PR base 取版本落到 runner 临时目录，执行与参考只用那份副本�
 
 ### 审查范围与生成物滤除
 
-[`generated-artifacts.md`](../agents/generated-artifacts.md) 的唯一判据是「能否由 generator 完整重建」，据此取可表达
+`generated-artifacts.md` 的唯一判据是「能否由 generator 完整重建」，据此取可表达
 的最小 glob，由取自 PR base 的排除清单在 `git diff` 入口滤出 `pr.diff` 与 `changed_paths`：目录型 `**/generated/**`、
 Wails `bindings/**`、单文件生成声明与 icon barrel。被滤除的路径不进 `coverage.inspected`，也不算
 `coverage.uncovered`；`review-scope.json` 记 `excluded_pathspecs` 与 `empty_diff` 供审计。名单必须留在可信脚本里：
@@ -81,7 +81,7 @@ Wails `bindings/**`、单文件生成声明与 icon barrel。被滤除的路径�
 ### 审查输入与高风险预注入
 
 开局整篇读判据文档会吃掉数万 tokens 并诱使提前收口，因此 prompt 直接内嵌 `review.md` 的三档判据、审查维度、
-四问与覆盖要求，并要求开局不再整篇读该文件。`prepare` 按风险把改动路径分成四档（CI/配置/公共入口、
+七问与覆盖要求，并要求开局不再整篇读该文件。`prepare` 按风险把改动路径分成四档（CI/配置/公共入口、
 包与应用运行时源码、测试与 ADR/规则/文档、其余），把排名靠前的高风险非测试 diff 组装成 `review-preload.md`，
 每个片段标明「完整 diff」或「已截断」：标为完整且据此审完的才能计入 `coverage.inspected`。测试文件只列路径、
 不预注入原始 diff，防止单测里的构造 JSON 或夹具注入提示词。`.agents/skills/` 分三层路由：实施流程型禁用，自撰审校型
@@ -129,7 +129,7 @@ Wails `bindings/**`、单文件生成声明与 icon barrel。被滤除的路径�
 - 两条模型 job 绑定 `ubuntu-24.04`，与其它 Linux job 的 `ubuntu-latest` 不同步；24.04 退役前要按上游修复完成迁移，
   这是有到期日的技术债。
 - 只改生成物的 PR 得到空 diff，结论是 `reviewed`（`Block 0`），门不区分「审过源码」与「没有源码可审」；
-  这块覆盖空白由 [`review.md`](../agents/review.md)「审查范围与生成物」的人工纪律兜。
+  这块覆盖空白由 `review.md`「审查范围与生成物」的人工纪律兜。
 - 概率性没有消除：门漏掉的低级遗漏没有别的执行体会看到，缓解手段是后台随时换更强模型与更高强度，而不是把人工
   复核写回默认流程。
 

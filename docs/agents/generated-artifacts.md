@@ -79,7 +79,7 @@
 | `**/routeTree.gen.ts`、`**/typed-router.d.ts`、`**/auto-imports.d.ts` | 各宿主的单文件生成声明                                                       |
 | `packages/web-ui/src/icons/index.ts`                                  | icon barrel                                                                  |
 
-路径参考 [`.claude/settings.json`](../../.claude/settings.json) 的 `permissions.deny`，但按本文清单取可表达的最小 glob：单文件生成物收到具体文件（`icons/index.ts` 而不是整个 `icons/**`），目录型产物仍按目录通配。过滤是**按本文判据取路径**，不是按目录名猜——新文件该不该进名单，仍用「能不能由 generator 完整重建」判定。名单必须留在取自 PR base 的可信脚本里：从 PR head 的工作树读它，等于让作者自己定义审查范围。`review-scope.json` 记录排除清单与审查范围供审计，覆盖边界见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围」。
+路径参考 [`.claude/settings.json`](../../.claude/settings.json) 的 `permissions.deny`，但按本文清单取可表达的最小 glob：单文件生成物收到具体文件（`icons/index.ts` 而不是整个 `icons/**`），目录型产物仍按目录通配。过滤是**按本文判据取路径**，不是按目录名猜——新文件该不该进名单，仍用「能不能由 generator 完整重建」判定。名单必须留在取自 PR base 的可信脚本里：从 PR head 的工作树读它，等于让作者自己定义审查范围。`review-scope.json` 记录排除清单与审查范围供审计，覆盖边界见 [ADR-0021](../adr/0021-codex-review-gate.md)「审查范围与生成物滤除」。
 
 滤除不等于免于核对，两者是不同职责：
 

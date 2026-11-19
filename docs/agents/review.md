@@ -38,7 +38,7 @@ CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发�
 **生成物不需要 diff，也不需要 review**：它由 generator 完整重建，留在审查输入里只会淹没真实源码、吃掉大 PR
 的审查预算。自动审查按 [`generated-artifacts.md`](./generated-artifacts.md) 的唯一判据「能否由 generator 完整重建」
 取最小路径集，把清单里的入库生成物整批滤出 `pr.diff` 与 `changed_paths`；被滤除的路径不进 `coverage.inspected`，
-也不算 `coverage.uncovered`。清单、generator 入口与逐类核对办法都在该文档，排除理由与实测见 ADR-0021「审查范围」。
+也不算 `coverage.uncovered`。清单、generator 入口与逐类核对办法都在该文档，排除理由与实测见 ADR-0021「审查范围与生成物滤除」。
 
 人工审查核对生成输入是否与产物同批改动，以及 `check-generated` 与消费者类型检查是否通过；不一致按 `Should fix`
 以上报，不手改产物。Codex 结论不覆盖生成物：`reviewed` 且 `Block 0` 不代表生成物已核对，也不能据此判定它们缺失。
