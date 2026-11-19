@@ -326,7 +326,7 @@ export default function Demo() {
         <web-ui-textarea
           slot="trigger"
           rows={3}
-          className="[--wui-textarea-width:20rem]"
+          className="[--wui-textarea-width:320px]"
           placeholder="多行触发器：Enter 换行，Escape 或失焦关闭面板"
         ></web-ui-textarea>
         <web-ui-option value="bug" label="缺陷"></web-ui-option>
@@ -345,7 +345,7 @@ export default function Demo() {
       <web-ui-textarea
         slot="trigger"
         :rows="3"
-        class="[--wui-textarea-width:20rem]"
+        class="[--wui-textarea-width:320px]"
         placeholder="多行触发器：Enter 换行，Escape 或失焦关闭面板"
       ></web-ui-textarea>
       <web-ui-option value="bug" label="缺陷"></web-ui-option>

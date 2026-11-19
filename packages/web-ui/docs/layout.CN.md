@@ -258,9 +258,9 @@ const open = ref(false)
 
 ### 拖拽调整尺寸
 
-开启 `sidebar-resizable` 后，桌面端侧边栏右缘出现宽度调整手柄（收起状态下隐藏），拖拽实时改宽。键盘聚焦后可用 ←/→ 以 16px 步进（Shift 加速到 64px），Home/End 跳到上下限。
+开启 `sidebar-resizable` 后，桌面端侧边栏右缘出现宽度调整 handle（收起状态下隐藏），拖拽实时改宽。键盘聚焦后可用 ←/→ 以 16px 步进（Shift 加速到 64px），Home/End 跳到上下限。
 
-手柄支持鼠标、触摸和触控笔；移动端布局使用抽屉，不显示调宽手柄。
+handle 支持鼠标、触摸和触控笔；移动端布局使用抽屉，不显示调宽 handle。
 
 拖拽释放或键盘 Enter 提交时派发一次 `sidebar-width-change`，携带最终像素宽度；调用方回写后宽度重新由 `sidebar-width` 接管，Escape 撤回未提交的调整。
 
@@ -292,7 +292,7 @@ export default function Demo() {
           </nav>
           <div className="p-4">
             <p className="m-0 text-sm">
-              拖桌面端侧边栏右缘的手柄改宽；聚焦后用 ←/→ 步进、Enter 提交、Escape 撤回未提交的调整。
+              拖桌面端侧边栏右缘的 handle 改宽；聚焦后用 ←/→ 步进、Enter 提交、Escape 撤回未提交的调整。
             </p>
           </div>
         </web-ui-layout>
@@ -325,7 +325,7 @@ export default function Demo() {
         </nav>
         <div class="p-4">
           <p class="m-0 text-sm">
-            拖桌面端侧边栏右缘的手柄改宽；聚焦后用 ←/→ 步进、Enter 提交、Escape 撤回未提交的调整。
+            拖桌面端侧边栏右缘的 handle 改宽；聚焦后用 ←/→ 步进、Enter 提交、Escape 撤回未提交的调整。
           </p>
         </div>
       </web-ui-layout>
@@ -396,7 +396,7 @@ const open = ref(false)
 
 | 名称                       | 说明                                                                                                                                                               | 类型               | 默认值    |
 | -------------------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------ | ------------------ | --------- |
-| `no-sidebar`               | 不渲染任何侧边栏结构：桌面端 aside、收起按钮与宽度调整手柄，移动端头部开关与抽屉；`sidebar` 插槽内容随之不渲染。                                                   | `boolean`          | `false`   |
+| `no-sidebar`               | 不渲染任何侧边栏结构：桌面端 aside、收起按钮与宽度调整 handle，移动端头部开关与抽屉；`sidebar` 插槽内容随之不渲染。                                                | `boolean`          | `false`   |
 | `sidebar-collapsible`      | 渲染桌面端收起 / 展开按钮。未声明时不渲染按钮，也不会因点击产生 `sidebar-collapsed-change` 请求；桌面宽度仍由 `sidebar-collapsed` 控制，移动端抽屉的开关不受影响。 | `boolean`          | `false`   |
 | `sidebar-collapsed`        | 桌面端侧边栏的受控收起状态；只收窄桌面端，不影响移动端抽屉。                                                                                                       | `boolean`          | `false`   |
 | `sidebar-open`             | 移动端侧边栏抽屉受控打开状态。                                                                                                                                     | `boolean`          | `false`   |
@@ -440,7 +440,7 @@ const open = ref(false)
 
 ### 无侧边栏布局
 
-`no-sidebar` 置位后，桌面端不渲染 aside、收起按钮与宽度调整手柄，移动端不渲染头部开关与抽屉；`banner`、`header`、默认内容与 `tabbar` 的分区与滚动行为不变，内容列直接占满整行。
+`no-sidebar` 置位后，桌面端不渲染 aside、收起按钮与宽度调整 handle，移动端不渲染头部开关与抽屉；`banner`、`header`、默认内容与 `tabbar` 的分区与滚动行为不变，内容列直接占满整行。
 
 `sidebar` 插槽没有渲染出口，但调用方节点仍留在 light DOM。该模式下 `sidebar-collapsed`、`sidebar-open`、`sidebar-width` 等属性与 `sidebar-*` 事件都不产生可见效果。侧边栏相关的 `ariaLabels` key 与 CSS Custom Properties 也不产生可见效果。
 
@@ -448,7 +448,7 @@ const open = ref(false)
 
 ### 侧边栏调整宽度
 
-启用 `sidebar-resizable` 后，桌面端侧边栏右边缘会出现宽度调整手柄（收起状态下隐藏）；悬停、键盘聚焦或拖拽时显示 3px 宽的强调色垂直线和 `col-resize` 光标。
+启用 `sidebar-resizable` 后，桌面端侧边栏右边缘会出现宽度调整 handle（收起状态下隐藏）；悬停、键盘聚焦或拖拽时显示 3px 宽的强调色垂直线和 `col-resize` 光标。
 
 - 拖拽时实时更新宽度（禁止过渡动画，限制在 `[min, max]` 和视口范围内）。
 - 释放时触发 `sidebar-width-change` 事件并携带最终像素宽度，调用方回写后宽度重新由 `sidebar-width` 属性接管。`pointercancel` 会恢复属性控制的宽度，且不触发事件。

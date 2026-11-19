@@ -23,7 +23,7 @@ export default function Demo() {
           </nav>
           <div className="p-4">
             <p className="m-0 text-sm">
-              拖桌面端侧边栏右缘的手柄改宽；聚焦后用 ←/→ 步进、Enter 提交、Escape 撤回未提交的调整。
+              拖桌面端侧边栏右缘的 handle 改宽；聚焦后用 ←/→ 步进、Enter 提交、Escape 撤回未提交的调整。
             </p>
           </div>
         </web-ui-layout>

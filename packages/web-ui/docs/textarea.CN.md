@@ -34,7 +34,7 @@ export default function Demo() {
 
 ### 自动调整尺寸
 
-`autosize` 让高度随内容变化，同时关掉原生拖拽手柄。
+`autosize` 让高度随内容变化，同时关掉原生 resize handle。
 
 `max-height`（px，`0` 表示不限）与 `autosize` 无关：开着时是自动高度的上限，到顶后框内滚动；没开时钳住拖拽拉出来的高度。
 
@@ -515,7 +515,7 @@ export default function Demo() {
 
 清除按钮只派发 `input`，不派发 `change`。这一点与 `<web-ui-input>` 不同，只听 `change` 的调用方收不到这次清空。
 
-`autosize` 独占高度，同时关掉原生拖拽手柄。
+`autosize` 独占高度，同时关掉原生 resize handle。
 
 `max-height` 与 `autosize` 无关地钳制高度：开着时封顶自动高度，到顶框内滚动；没开时钳住拖拽出来的高度。`0` 表示不限。
 
@@ -535,7 +535,7 @@ export default function Demo() {
 
 宿主是块级盒，宽度取 `--wui-textarea-width`（`200px`），`full` 时铺满父容器；最小高度取 `--wui-control-size`（`36px`），圆角取 `--wui-radius-menu`（`18px`）；`borderless` 去掉边框、背景与描边环。
 
-未开 `autosize` 时原生拖拽手柄可用。
+未开 `autosize` 时原生 resize handle 可用。
 
 文字取 `--wui-font-size`，行高取 `--wui-line-height-normal`；粗指针设备上字号不小于 16px，避免 iOS Safari 聚焦时缩放。占位文本与插槽内容取二级文本色。
 

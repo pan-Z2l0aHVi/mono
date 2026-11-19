@@ -18,8 +18,7 @@ export interface PreviewLeaseEntry {
  * 待添加文件与找回资源的预览授权账本。
  *
  * 预览 token 是后端有界缓存里的短期资源：要么由持有方显式释放，要么被容量淘汰。
- * 两个入口原先各写一遍「prepare 返回后逐条重判是否仍然有效」的结算纪律，条件越加越多，
- * 晚到的授权还会泄漏。lease 把三者收敛到一处：
+ * 两个入口共用同一条结算纪律：prepare 返回后逐条重判是否仍然有效。lease 把三者收敛到一处：
  *
  * - 版本化 prepare：生效前重新校验 validity，过期结果立即释放，不落 entries。
  * - 驱逐对账：订阅后端 `library:previews-revoked`，被淘汰的 token 从 entries 移除，

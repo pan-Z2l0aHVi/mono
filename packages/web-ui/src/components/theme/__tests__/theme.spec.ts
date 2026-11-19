@@ -30,8 +30,8 @@ afterEach(() => {
 describe('WebUiTheme 组件', () => {
   describe('主题过渡 toggle：motion', () => {
     /*
-     * `transition` 布尔 prop 已移除（breaking）：主题切换是否播放 View Transition 揭示
-     * 改由 motion 三档统一控制 —— full 播放、reduced 直接落地、system 跟随
+     * `transition` 不在公开契约里：主题切换是否播放 View Transition 揭示由 motion
+     * 三档统一控制 —— full 播放、reduced 直接落地、system 跟随
      * prefers-reduced-motion。jsdom 不解析主题内部 CSS，duration 回退 500ms，
      * 因此这里的判定面是 isReducedMotion() 与 startViewTransition 接线本身。
      *
@@ -136,7 +136,7 @@ describe('WebUiTheme 组件', () => {
      *   _shouldAnimateAppearance，单独看这一条即使 prop 仍在被读取也会绿，
      *   只有和上半配对才能证明「写了也开不了」。
      */
-    it('已移除的 transition prop 是惰性 no-op：motion=full 不写也启动，motion=reduced 写了也不启动', async () => {
+    it('未知的 transition prop 是惰性 no-op：motion=full 不写也启动，motion=reduced 写了也不启动', async () => {
       const stub = stubStartViewTransition()
       const enabled = createTheme('light')
       enabled.motion = 'full'

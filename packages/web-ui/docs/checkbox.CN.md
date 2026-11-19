@@ -8,7 +8,7 @@
 
 ### 基础用法
 
-`checked` 是控件状态，默认插槽是标签文字；指示器、间距与右侧文案都是触发区，点哪儿都算一次切换。
+`checked` 是控件状态，默认插槽是标签文字；indicator、间距与右侧文案都是触发区，点哪儿都算一次切换。
 
 ```tsx
 import { useState } from 'react'
@@ -199,9 +199,9 @@ function reset() {
 
 ### Slot
 
-| 名称      | 说明                                         |
-| --------- | -------------------------------------------- |
-| `default` | 标签文本；为空时收掉指示器与标签之间的间距。 |
+| 名称      | 说明                                              |
+| --------- | ------------------------------------------------- |
+| `default` | 标签文本；为空时收掉 indicator 与标签之间的间距。 |
 
 ### 行为说明
 
@@ -213,11 +213,11 @@ function reset() {
 
 ### 布局
 
-宿主高度由内容撑开，不继承页面行高；`--wui-selection-control-size`（`18px`）决定指示器宽高，与相邻文字按 `vertical-align: middle` 对齐。
+宿主高度由内容撑开，不继承页面行高；`--wui-selection-control-size`（`18px`）决定 indicator 宽高，与相邻文字按 `vertical-align: middle` 对齐。
 
 `<web-ui-radio>` 共用同一套规则。
 
-默认插槽没画出东西时（空着，或只放了视觉隐藏的无障碍名，如 `.sr-only` 的 span），指示器与标签之间的间距收起，宿主宽度等于指示器。
+默认插槽没画出东西时（空着，或只放了视觉隐藏的无障碍名，如 `.sr-only` 的 span），indicator 与标签之间的间距收起，宿主宽度等于 indicator。
 
 空不空按渲染宽度判定，有指派但不画盒的无障碍名也算空；不要用 `display: none` 收掉标签，那会把它从无障碍树里拿掉。
 
@@ -229,9 +229,9 @@ function reset() {
 
 ### 未激活态
 
-未选中指示器的底色取 `--wui-color-surface-control`（与中性按钮使用同一种控件底色），深色模式下也能和 `--wui-color-page` 分辨开。
+未选中 indicator 的底色取 `--wui-color-surface-control`（与中性按钮使用同一种控件底色），深色模式下也能和 `--wui-color-page` 分辨开。
 
-触发区内任意位置（指示器、间距或右侧插槽中的标签）悬停时叠加状态层。
+触发区内任意位置（indicator、间距或右侧插槽中的标签）悬停时叠加状态层。
 
 悬停只在 `(hover: hover) and (pointer: fine)` 设备上生效；没有按下态，已选中和禁用态保持各自底色。
 

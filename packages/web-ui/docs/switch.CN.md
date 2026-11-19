@@ -51,7 +51,7 @@ function onChange(event: WebUiEvent<WebUiSwitch, 'change'>) {
 
 `disabled` 与 `loading` 都阻断交互，外观也相同。
 
-区别在语义与校验：`loading` 在滑块里画一个旋转图标，`checked` 保持不动；`required` 只认 `disabled`（含表单级禁用），`loading` 时未选中照旧上报 `valueMissing` 并拦下提交。
+区别在语义与校验：`loading` 在 thumb 里画一个旋转图标，`checked` 保持不动；`required` 只认 `disabled`（含表单级禁用），`loading` 时未选中照旧上报 `valueMissing` 并拦下提交。
 
 ```tsx
 export default function Demo() {
@@ -281,7 +281,7 @@ function reset() {
 
 ### 自定义尺寸
 
-通过 `--wui-switch-height` 设置轨道高度；宽度默认是高度的两倍，也可用 `--wui-switch-width` 单独设置。滑块与拖拽行程随轨道派生。
+通过 `--wui-switch-height` 设置轨道高度；宽度默认是高度的两倍，也可用 `--wui-switch-width` 单独设置。thumb 与拖拽行程随轨道派生。
 
 ```tsx
 export default function Demo() {
@@ -306,7 +306,7 @@ export default function Demo() {
 | `value`    | 表单提交值，留空时提交 `'on'`；未选中时字段不提交。                          | `string`  | `''`    |
 | `disabled` | 禁用状态，阻断交互并让校验失效。                                             | `boolean` | `false` |
 | `required` | 必填校验：未选中时拦下提交。                                                 | `boolean` | `false` |
-| `loading`  | 加载状态：阻断交互，滑块内显示旋转图标，当前值保持不动。                     | `boolean` | `false` |
+| `loading`  | 加载状态：阻断交互，thumb 内显示旋转图标，当前值保持不动。                   | `boolean` | `false` |
 
 ### Slot
 
@@ -333,7 +333,7 @@ export default function Demo() {
 
 宿主自己承接点击与 keydown，三条路径行为一致；程序写入 `checked` 不派发事件。
 
-`disabled`（含表单级禁用）与 `loading` 都阻断点击、键盘与拖拽，滑块停在当前值。
+`disabled`（含表单级禁用）与 `loading` 都阻断点击、键盘与拖拽，thumb 停在当前值。
 
 校验：`disabled`（含表单级禁用）上报干净状态；`loading` 不参与校验判定，未选中加 `required` 照常上报 `valueMissing`。
 
@@ -351,7 +351,7 @@ export default function Demo() {
 
 轨道默认是 40×20 的胶囊盒，圆角取 `--wui-radius-control`，底色取 `--wui-color-surface-track`，打开时换成 `--wui-color-accent`。
 
-滑块默认是 16×16 圆点，静止态用 `--wui-color-on-control` 实心加阴影，按压与拖拽时换成 glass 表面并略微放大。
+thumb 默认是 16×16 圆点，静止态用 `--wui-color-on-control` 实心加阴影，按压与拖拽时换成 glass 表面并略微放大。
 
 `--wui-switch-drag-offset` 由组件自己驱动，不要当样式钩子写。
 

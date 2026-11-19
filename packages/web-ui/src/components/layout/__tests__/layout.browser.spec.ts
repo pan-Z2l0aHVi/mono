@@ -464,7 +464,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(parseFloat(widthRequests[0])).toBeCloseTo(parseFloat(layout.sidebarWidth) + 60, 0)
     })
 
-    it('平板宽度下触摸拖拽侧栏手柄可请求调宽', async () => {
+    it('平板宽度下触摸拖拽侧栏 handle 可请求调宽', async () => {
       await setViewport(1024, 768)
       const layout = createLayout()
       layout.sidebarResizable = true
@@ -634,7 +634,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
         widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
       )
       const handle = handleOf(layout)
-      // 判据是「手势没把手柄的初始宽度带走」，所以参照取手势前的读数，而不是把默认档
+      // 判据是「手势没把 handle 的初始宽度带走」，所以参照取手势前的读数，而不是把默认档
       // 的像素值抄进用例——默认宽度属于设计值，改档时这条用例会跟着改参照一起绿。
       const widthBeforeGesture = layout.sidebarWidth
 

@@ -767,7 +767,7 @@ Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近�
 | `--wui-input-width`       | 紧凑表单控件默认宽度     | `200px` |
 | `--wui-control-size`      | 控件默认高度和方形最小宽 | `36px`  |
 | `--wui-overlay-min-width` | 锚定 overlay 最小宽度    | `200px` |
-| `--wui-focus-ring-width`  | 焦点指示器宽度           | `3px`   |
+| `--wui-focus-ring-width`  | focus indicator 宽度     | `3px`   |
 
 ### 排版 token
 
@@ -830,7 +830,7 @@ Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近�
 
 | 名称                           | 说明                                 | 默认值               |
 | ------------------------------ | ------------------------------------ | -------------------- |
-| `--wui-selection-control-size` | 指示器（圆点 / 方框）宽高            | `18px`               |
+| `--wui-selection-control-size` | indicator（圆点 / 方框）宽高         | `18px`               |
 | `--wui-radio-group-gap`        | `<web-ui-radio-group>` 的成员间距    | `var(--wui-space-2)` |
 | `--wui-checkbox-group-gap`     | `<web-ui-checkbox-group>` 的成员间距 | `var(--wui-space-2)` |
 
@@ -899,45 +899,45 @@ duration 默认值：
 
 ### 颜色 token
 
-| 名称                                  | 说明                                     | 浅色默认值                                                              | 深色默认值                                                                            |
-| ------------------------------------- | ---------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
-| `--wui-color-page`                    | 页面背景                                 | `#fff`                                                                  | `#242428`                                                                             |
-| `--wui-color-surface`                 | 普通表面                                 | `#fff`                                                                  | `#2c2c2e`                                                                             |
-| `--wui-color-surface-raised`          | 抬升表面                                 | `#f2f2f7`                                                               | `#2c2c2e`                                                                             |
-| `--wui-color-surface-control`         | 中性可交互控件表面                       | `#e5e5eb`                                                               | `#3a3a3c`                                                                             |
-| `--wui-color-surface-control-shade`   | 中性控件交互态混色基准                   | `#1b1b30`                                                               | `#000`                                                                                |
-| `--wui-color-surface-track`           | Slider/Switch 轨道表面                   | `#e5e5eb`                                                               | `#444446`                                                                             |
-| `--wui-color-surface-menu`            | 菜单和浮动面板表面                       | `rgb(250 250 253 / 0.76)`                                               | `rgb(49 49 53 / 0.74)`                                                                |
-| `--wui-color-surface-glass`           | 液态玻璃表面                             | `rgb(250 250 253 / 0.34)`                                               | `rgb(44 44 46 / 0.42)`                                                                |
-| `--wui-color-surface-glass-hover`     | 玻璃完整悬停背景                         | `color-mix(... text 6%, surface-glass)`                                 | `color-mix(... text 6%, surface-glass)`                                               |
-| `--wui-color-surface-glass-active`    | 玻璃完整按下背景                         | `color-mix(... text 15%, surface-glass)`                                | `color-mix(... text 15%, surface-glass)`                                              |
-| `--wui-color-surface-overlay`         | 半透明覆盖层表面                         | `rgb(248 248 252 / 0.92)`                                               | `rgb(32 32 36 / 0.92)`                                                                |
-| `--wui-color-surface-sidebar`         | 侧边栏面板表面                           | `rgb(233 233 239 / 0.82)`                                               | `rgb(44 44 46 / 0.8)`                                                                 |
-| `--wui-color-surface-segmented`       | Segmented 凹变种指示器表面（与控件同级） | `#e5e5eb`                                                               | `#3a3a3c`                                                                             |
-| `--wui-color-surface-segmented-track` | Segmented 凸变种轨道表面                 | `#e5e5eb`                                                               | `#17171b`                                                                             |
-| `--wui-color-surface-selected`        | 选中面（凸变种指示器，与页面同色）       | `#fff`                                                                  | `#242428`                                                                             |
-| `--wui-color-text`                    | 主要文本                                 | `#1b1b20`                                                               | `#e9e9ed`                                                                             |
-| `--wui-color-text-secondary`          | 次要文本                                 | `#6a6a70`                                                               | `#a1a1a6`                                                                             |
-| `--wui-color-text-tertiary`           | 三级文本和弱意图图标                     | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)`            | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)`                          |
-| `--wui-color-text-disabled`           | 禁用态前景文本                           | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)`            | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)`                          |
-| `--wui-color-state-layer-hover`       | 透明悬停层                               | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`             | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`                           |
-| `--wui-color-state-layer-active`      | 透明按下层                               | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`            | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`                          |
-| `--wui-color-border`                  | 常规边框和分隔线                         | `rgb(0 0 0 / 0.1)`                                                      | `rgb(255 255 255 / 0.14)`                                                             |
-| `--wui-color-glass-highlight`         | 表面 inset 高光                          | `rgb(255 255 255 / 0.9)`                                                | `rgb(255 255 255 / 0.1)`                                                              |
-| `--wui-color-glass-ring`              | 1px 描边环底色                           | `rgb(0 0 0 / 0.05)`                                                     | `rgb(255 255 255 / 0.05)`                                                             |
-| `--wui-color-glass-ring-sheen`        | 描边环角落受光光泽                       | `rgb(255 255 255 / 0.5)`                                                | `rgb(255 255 255 / 0.2)`                                                              |
-| `--wui-color-glass-ring-shade`        | 描边环角落背光压暗                       | `rgb(0 0 0 / 0.03)`                                                     | `rgb(0 0 0 / 0.5)`                                                                    |
-| `--wui-color-accent`                  | Accent 和输入焦点边框                    | `#0071e3`                                                               | `#0a84ff`                                                                             |
-| `--wui-color-on-accent`               | Accent 上的前景色                        | `#fff`                                                                  | `#fff`                                                                                |
-| `--wui-color-on-danger`               | `danger` 背景上的前景色                  | `#fff`                                                                  | `#000`                                                                                |
-| `--wui-color-on-control`              | 控件内芯前景色                           | `#fff`                                                                  | `#f2f2f7`                                                                             |
-| `--wui-color-success`                 | 成功                                     | `#16a34a`                                                               | `#30d158`                                                                             |
-| `--wui-color-warning`                 | 警告                                     | `#d97706`                                                               | `#ff9f0a`                                                                             |
-| `--wui-color-danger`                  | 危险                                     | `#dc2626`                                                               | `#ff453a`                                                                             |
-| `--wui-color-info`                    | 信息                                     | `#2563eb`                                                               | `#64d2ff`                                                                             |
-| `--wui-color-backdrop`                | 模态遮罩                                 | `rgb(0 0 0 / 0.12)`                                                     | `rgb(0 0 0 / 0.48)`                                                                   |
-| `--wui-color-focus-ring`              | 焦点指示器颜色，由 accent 派生           | `color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)` | `color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)` |
-| `--wui-scrollbar-handle`              | 原生滚动条的滑块颜色                     | `rgb(0 0 0 / 0.39)`                                                     | `rgb(255 255 255 / 0.5)`                                                              |
+| 名称                                  | 说明                                          | 浅色默认值                                                              | 深色默认值                                                                            |
+| ------------------------------------- | --------------------------------------------- | ----------------------------------------------------------------------- | ------------------------------------------------------------------------------------- |
+| `--wui-color-page`                    | 页面背景                                      | `#fff`                                                                  | `#242428`                                                                             |
+| `--wui-color-surface`                 | 普通表面                                      | `#fff`                                                                  | `#2c2c2e`                                                                             |
+| `--wui-color-surface-raised`          | 抬升表面                                      | `#f2f2f7`                                                               | `#2c2c2e`                                                                             |
+| `--wui-color-surface-control`         | 中性可交互控件表面                            | `#e5e5eb`                                                               | `#3a3a3c`                                                                             |
+| `--wui-color-surface-control-shade`   | 中性控件交互态混色基准                        | `#1b1b30`                                                               | `#000`                                                                                |
+| `--wui-color-surface-track`           | Slider/Switch 轨道表面                        | `#e5e5eb`                                                               | `#444446`                                                                             |
+| `--wui-color-surface-menu`            | 菜单和浮动面板表面                            | `rgb(250 250 253 / 0.76)`                                               | `rgb(49 49 53 / 0.74)`                                                                |
+| `--wui-color-surface-glass`           | 液态玻璃表面                                  | `rgb(250 250 253 / 0.34)`                                               | `rgb(44 44 46 / 0.42)`                                                                |
+| `--wui-color-surface-glass-hover`     | 玻璃完整悬停背景                              | `color-mix(... text 6%, surface-glass)`                                 | `color-mix(... text 6%, surface-glass)`                                               |
+| `--wui-color-surface-glass-active`    | 玻璃完整按下背景                              | `color-mix(... text 15%, surface-glass)`                                | `color-mix(... text 15%, surface-glass)`                                              |
+| `--wui-color-surface-overlay`         | 半透明覆盖层表面                              | `rgb(248 248 252 / 0.92)`                                               | `rgb(32 32 36 / 0.92)`                                                                |
+| `--wui-color-surface-sidebar`         | 侧边栏面板表面                                | `rgb(233 233 239 / 0.82)`                                               | `rgb(44 44 46 / 0.8)`                                                                 |
+| `--wui-color-surface-segmented`       | Segmented 凹变种 indicator 表面（与控件同级） | `#e5e5eb`                                                               | `#3a3a3c`                                                                             |
+| `--wui-color-surface-segmented-track` | Segmented 凸变种轨道表面                      | `#e5e5eb`                                                               | `#17171b`                                                                             |
+| `--wui-color-surface-selected`        | 选中面（凸变种 indicator，与页面同色）        | `#fff`                                                                  | `#242428`                                                                             |
+| `--wui-color-text`                    | 主要文本                                      | `#1b1b20`                                                               | `#e9e9ed`                                                                             |
+| `--wui-color-text-secondary`          | 次要文本                                      | `#6a6a70`                                                               | `#a1a1a6`                                                                             |
+| `--wui-color-text-tertiary`           | 三级文本和弱意图图标                          | `color-mix(in srgb, var(--wui-color-text) 35%, transparent)`            | `color-mix(in srgb, var(--wui-color-text) 42%, transparent)`                          |
+| `--wui-color-text-disabled`           | 禁用态前景文本                                | `color-mix(in srgb, var(--wui-color-text) 32%, transparent)`            | `color-mix(in srgb, var(--wui-color-text) 38%, transparent)`                          |
+| `--wui-color-state-layer-hover`       | 透明悬停层                                    | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`             | `color-mix(in srgb, var(--wui-color-text) 6%, transparent)`                           |
+| `--wui-color-state-layer-active`      | 透明按下层                                    | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`            | `color-mix(in srgb, var(--wui-color-text) 15%, transparent)`                          |
+| `--wui-color-border`                  | 常规边框和分隔线                              | `rgb(0 0 0 / 0.1)`                                                      | `rgb(255 255 255 / 0.14)`                                                             |
+| `--wui-color-glass-highlight`         | 表面 inset 高光                               | `rgb(255 255 255 / 0.9)`                                                | `rgb(255 255 255 / 0.1)`                                                              |
+| `--wui-color-glass-ring`              | 1px 描边环底色                                | `rgb(0 0 0 / 0.05)`                                                     | `rgb(255 255 255 / 0.05)`                                                             |
+| `--wui-color-glass-ring-sheen`        | 描边环角落受光光泽                            | `rgb(255 255 255 / 0.5)`                                                | `rgb(255 255 255 / 0.2)`                                                              |
+| `--wui-color-glass-ring-shade`        | 描边环角落背光压暗                            | `rgb(0 0 0 / 0.03)`                                                     | `rgb(0 0 0 / 0.5)`                                                                    |
+| `--wui-color-accent`                  | Accent 和输入焦点边框                         | `#0071e3`                                                               | `#0a84ff`                                                                             |
+| `--wui-color-on-accent`               | Accent 上的前景色                             | `#fff`                                                                  | `#fff`                                                                                |
+| `--wui-color-on-danger`               | `danger` 背景上的前景色                       | `#fff`                                                                  | `#000`                                                                                |
+| `--wui-color-on-control`              | 控件内芯前景色                                | `#fff`                                                                  | `#f2f2f7`                                                                             |
+| `--wui-color-success`                 | 成功                                          | `#16a34a`                                                               | `#30d158`                                                                             |
+| `--wui-color-warning`                 | 警告                                          | `#d97706`                                                               | `#ff9f0a`                                                                             |
+| `--wui-color-danger`                  | 危险                                          | `#dc2626`                                                               | `#ff453a`                                                                             |
+| `--wui-color-info`                    | 信息                                          | `#2563eb`                                                               | `#64d2ff`                                                                             |
+| `--wui-color-backdrop`                | 模态遮罩                                      | `rgb(0 0 0 / 0.12)`                                                     | `rgb(0 0 0 / 0.48)`                                                                   |
+| `--wui-color-focus-ring`              | focus indicator 颜色，由 accent 派生          | `color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)` | `color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)` |
+| `--wui-scrollbar-handle`              | 原生 scrollbar handle 颜色                    | `rgb(0 0 0 / 0.39)`                                                     | `rgb(255 255 255 / 0.5)`                                                              |
 
 ### 阴影 token
 

@@ -25,7 +25,7 @@ describe('WebUiSegmented 初始 value 与子 trigger 升级时序（浏览器）
     expect(indicator.left).toBeCloseTo(selected.left, 0)
     expect(indicator.right).toBeCloseTo(selected.right, 0)
   })
-  it('从隐藏状态显示时定位已选中的指示器', async () => {
+  it('从隐藏状态显示时定位已选中的 indicator', async () => {
     await import('../../segmented-trigger')
     const wrapper = document.createElement('div')
     wrapper.style.display = 'none'
@@ -39,7 +39,7 @@ describe('WebUiSegmented 初始 value 与子 trigger 升级时序（浏览器）
     wrapper.style.display = 'block'
     await pollUntil(
       () => Number.parseFloat(group.style.getPropertyValue('--indicator-width')) > 0,
-      '显示后选中指示器未定位'
+      '显示后选中 indicator 未定位'
     )
     const selected = group.querySelector('web-ui-segmented-trigger')!
     await waitForFrame()

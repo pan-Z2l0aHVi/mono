@@ -54,7 +54,7 @@ function open() {
 
 `images` 传入多张图时，方向键可以直接切换；`loop` 默认为 `true`，首尾环绕。
 
-只传 `images` 时，四个展示类选项保持默认关闭，画面上只有图片本身。上一张 / 下一张按钮、缩放工具条、关闭按钮与指示器都需要显式开启。
+只传 `images` 时，四个展示类选项保持默认关闭，画面上只有图片本身。上一张 / 下一张按钮、缩放工具条、关闭按钮与 indicator 都需要显式开启。
 
 ```tsx
 import { imagePreview } from '@greypan/web-ui'
@@ -104,7 +104,7 @@ function open() {
 
 ### 显示选项
 
-`nav`、`toolbar`、`closable`、`indicator` 彼此独立，默认全部关闭。四个都传 `true` 时，上一张 / 下一张按钮、缩放工具条、关闭按钮与「当前 / 总数」指示器才会一起出现。
+`nav`、`toolbar`、`closable`、`indicator` 彼此独立，默认全部关闭。四个都传 `true` 时，上一张 / 下一张按钮、缩放工具条、关闭按钮与「当前 / 总数」indicator 才会一起出现。
 
 `nav` 只在图片多于一张时渲染。`loop` 默认为 `true`，首尾环绕，所以这里可以一直朝同一个方向翻。
 
@@ -366,7 +366,7 @@ function open() {
 | `nav`             | 展示上一张 / 下一张按钮。                                                               | `boolean`                | `false` |
 | `toolbar`         | 展示缩放工具条。                                                                        | `boolean`                | `false` |
 | `closable`        | 展示关闭按钮。                                                                          | `boolean`                | `false` |
-| `indicator`       | 展示「当前 / 总数」指示器。                                                             | `boolean`                | `false` |
+| `indicator`       | 展示「当前 / 总数」indicator。                                                          | `boolean`                | `false` |
 | `swipe`           | 1x 下允许左右滑动切图。                                                                 | `boolean`                | `false` |
 | `noScrollLock`    | 打开期间不锁定页面滚动。                                                                | `boolean`                | `false` |
 | `noBackdropClose` | 点击图片以外的空白区域不关闭。                                                          | `boolean`                | `false` |
@@ -407,7 +407,7 @@ function openPreview() {
 
 `ImagePreviewItem` 为 `{ src: string; alt?: string }`；`alt` 缺省为空字符串。
 
-展示类选项默认全关：不传任何选项时只渲染图片本身。导航、工具条、关闭按钮与指示器都需要显式开启。
+展示类选项默认全关：不传任何选项时只渲染图片本身。导航、工具条、关闭按钮与 indicator 都需要显式开启。
 
 ### 返回句柄
 

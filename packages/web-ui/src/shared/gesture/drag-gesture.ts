@@ -226,7 +226,7 @@ export function attachDragGesture(
           target.releasePointerCapture(activePointerId)
         }
       } catch {
-        // ignore
+        // 指针已释放或已失去捕获时重复释放无副作用，忽略。
       }
     }
     activePointerId = null

@@ -8,7 +8,7 @@ import { findFocusRingTransition, fixtures, focusAndSettle, mountField } from '.
  * 本文件跑在 `browser-reduced-motion` project（Playwright `reducedMotion: 'reduce'`；
  * vite 按文件名路由，凡以 `reduced-motion.browser.spec.ts` 结尾的 spec 都进这个 project）。
  * 断言的对象是「过渡有没有启动」以及「时长取自哪枚 token」，不是时长本身的数值与
- * `box-shadow` 属性：钉死 200ms 那种用例已移除，那是动效设计值。本文件因此是
+ * `box-shadow` 属性：reduced 时结果为 0，200ms 属动效设计值，不在本文件锁定。本文件因此是
  * `focus-ring-fixtures` 的唯一使用者 —— 系统偏好换成 `prefers-reduced-motion`：theme
  * `motion=system` 应跟随它归零，`motion=full` 则应覆盖它。
  *
