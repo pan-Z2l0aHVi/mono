@@ -12,8 +12,10 @@ CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发�
 就是本仓默认的 PR review。审查范围见下文「审查范围与生成物」；设计决策与代价见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 
 - 结论绑定被审查的 head。`reviewed` 只覆盖那一份代码；head 变了结论就过期，`stale`、`unreviewed` 与 `not_applicable` 都不代表已审。
+  评论 marker 的 `status` 取 `reviewed` / `stale` / `blocked` / `error` / `not_applicable`；`blocked` 即 `reviewed` + `Block > 0`，
+  `error` 也不代表已审。
 - `reviewed` 且 `Block > 0` 变红；`error` 与 `unreviewed` 同样变红，都不代表已审。`error` 表示配置或调用故障，不是审查意见。
-  故障码释义、状态标记、重跑次数与排查顺序见 [`.github/codex/README.md`](../../.github/codex/README.md#故障码与状态标记)；判据与枚举以脚本为准。
+  故障码、重跑次数与排查顺序见 [`.github/codex/README.md`](../../.github/codex/README.md)；判据与重跑次数以脚本为准。
 - **结论即 review**：本次有可审的源码改动、生成物已按下文核对、`coverage.uncovered` 为空，且 reviewed SHA 等于当前
   head、`Block` 为 0、required context `check` 在当前 head 上成功时，这份 PR 的 review 已经完成，人工不必逐行重看；
   要重看的是发现修掉后的新 head。
@@ -61,8 +63,9 @@ CI 默认 checkout 是 base/head 的临时合并对象，代码 review 固定在
 核对关联的 head。required `check` 必须关联当前 PR head，并在实际执行快照与政策检查后成功；关联 SHA、base/head
 或 step 结果不符时，不能证明当前输入已通过 CI。
 
-改动 `.github/workflows/codex-review*.yml`、`.github/scripts/codex-review.mjs` 或 `.github/scripts/codex-autofix.mjs`
-时，人工 review 另读 [ADR-0021](../adr/0021-codex-review-gate.md)「权限拆分与安全不变量」。
+改动 `.github/workflows/ci.yml` 的 `codex-review` 与 `codex-autofix-plan` job、任一 `.github/workflows/codex-review*.yml`、
+`.github/scripts/` 下的 `codex-review.mjs`、`codex-autofix.mjs`、`check-review-output.mjs` 或 `lib/` 中可信脚本时，
+人工 review 另读 [ADR-0021](../adr/0021-codex-review-gate.md)「权限拆分与安全不变量」。
 
 ## 审查内容与发现
 
@@ -107,7 +110,7 @@ PR base/head，确认仍等于报告覆盖的 SHA；已漂移则先补审。写�
 
 合并前重新读取 PR 的 draft、base/head、mergeability、required checks、CI snapshot 的实际 checkout SHA、
 review 结论覆盖的 SHA（自动审查即评论头部的 `sha`）、未决发现与 changeset；前端改动还要有
-[`runtime-verification.md`](./runtime-verification.md#前端冒烟门) 的冒烟结论。strict 只要求 PR 跟上 base；
+[`runtime-verification.md`](./runtime-verification.md#前端冒烟门) 的前端冒烟结论。strict 只要求 PR 跟上 base；
 squash 会产生新 commit，不能推断最终 main commit 与已测试 SHA 或树恒等。只有全部证据对应当前 base/head、
 没有未处置 Block、required CI 与硬约束成功、PR 非 draft 且可合并后，才向用户报告待合并 PR 和 SHA。
 每次 merge 需用户明确授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。

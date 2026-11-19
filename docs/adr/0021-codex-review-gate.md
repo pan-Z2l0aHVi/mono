@@ -61,6 +61,11 @@ PR base 取版本落到 runner 临时目录，执行与参考只用那份副本�
 由工作区解析的复合 action，以及工作区里的 review 判据文档；这些都在 diff 里明写，与「按需 Skill 路由」一样归入
 由人工 review 兜住的已接受风险。
 
+模型 job 的 sandbox 档位固定：审查用 `read-only`，自动修规划用 `workspace-write`，由拓扑断言锁住，放宽要先改断言。
+两条模型 job 固定 `ubuntu-24.04`，其余 Linux job 用 `ubuntu-latest`。`ubuntu-26.04` 的 sudo-rs 与 uutils `test -w`
+会让 `drop-sudo` 的 socket ACL 校验误判（openai/codex-action#188），模型 job 在 exec 前退出；恢复条件是上游修复
+落地后统一迁移两条 job 与拓扑断言，不单边改一个 workflow。
+
 密钥只出现在预检步骤的 `env` 与模型 action 的 `openai-api-key` 输入，不下放 job 级；模型经 action 自带的本地代理
 调用，拿不到密钥本身。端点、模型名、思考强度、密钥与 codex 版本全部由 GitHub 后台提供，CI 只写引用、不写默认值
 与兜底；唯一例外是可选 secret `CODEX_AUTOFIX_PUSH_TOKEN`，未配置时 checkout 回落 `GITHUB_TOKEN`。

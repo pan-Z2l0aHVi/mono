@@ -13,9 +13,10 @@
 - **结论失效**：head 变了、没有可审结论、来自 fork 或 `empty_diff` 时，按 `review.md` 做完整独立审查。
 - **运行失败**（`error`）：按下面顺序找原因。
 
-## 故障码与状态标记
+## 故障码与重跑
 
-故障码与 `状态轨迹` 的当前枚举以脚本常量为准，用稳定 grep 查，不在本文抄表：
+故障码与 `状态轨迹` 的当前枚举以脚本常量为准，用稳定 grep 查，不在本文抄表；结论 marker 的 `status` 语义由
+[`review.md`](../../docs/agents/review.md#自动审查结论的效力) 定义，本文不重复。
 
 ```bash
 grep -n "AUTO_RETRY_ERROR_CODES\|coverage\|attempt" .github/scripts/codex-review.mjs
