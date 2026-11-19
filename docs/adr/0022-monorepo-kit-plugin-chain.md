@@ -29,7 +29,7 @@
 
 **分区与目录形状**：`src/` 下一个能力一个目录，`plugin/` 这一层删除；每个能力目录自带 `index.ts` 作为对外面，`src/index.ts` 只把各面并起来；`shared/` 不成体系，由根入口直接指向具体模块。包内跨目录引用一律指到具体文件（`../exec/exec`），不借目录入口——经入口互相 import 会让两个目录成环。`runner/` 只剩协议本身；Vite 求值期适配收在 `src/vite/`，走 `./vite` 子路径。[ADR-0017](./0017-monorepo-tooling-package.md) 的「包只有一个入口」据此收窄为「一个 Node 入口加一个 Vite 适配入口」。
 
-**端口分配是 Vite 插件，不是 js-kit 插件。** 端口号真正被消费的地方是 `vite.config.ts` 求值期，链上只有 `test-port-call-sites` 这条判定。`src/vite/ports.ts` 导出 `testPorts(...)` → 一个 Vite 插件，在 `config` 钩里把 `host` 与 `strictPort` 写进 `test.api`，这两个键从此只有一个出处；配置解析多遍时只在看得见 `test.projects` 的那一遍按 `testName` 写入。用法与偏移见 `build.md`「测试端口分配」。
+**端口分配是 Vite 插件，不是 js-kit 插件。** 端口号真正被消费的地方是 `vite.config.ts` 求值期，链上只有 `test-port-call-sites` 这条判定。`src/vite/ports.ts` 导出 `testPorts(...)` → 一个 Vite 插件，在 `config` 钩里把 `host` 与 `strictPort` 写进 `test.api`，这两个键从此只有一个出处；配置解析多遍时只在看得见 `test.projects` 的那一遍按 `testName` 写入。用法与偏移见 `build-browser.md`「测试端口分配」。
 
 **不做域聚合插件。** 曾考虑用 `defineMdCheck(o)` 把三个 md 判定收成一个，但它们在两条链里的组合各不相同，聚合只多一层参数化却没有消费者。
 

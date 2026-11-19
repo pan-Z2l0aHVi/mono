@@ -16,7 +16,7 @@ CI 的 Test 步用 `turbo test --concurrency=2` 限制任务并发：runner 核�
 
 CI 构建 workspace 包并跳过 Interweave app wrapper；Wails verify / release 在原生 runner 上构建 frontend 依赖闭包并打包应用。workflow 的 path filter 由 frontend package manifests 的传递依赖图校验。npm 发布通过 Trusted Publishing 绑定 workflow 文件路径，重命名 [`npm-publish.yml`](../../.github/workflows/npm-publish.yml) 需同步更新 npm 注册。
 
-CI 的 check 仍需在 mise 安装前准备 Wails Linux 开发包：mise 从 Go 源码编译 pinned wails3，CI 会核验 CLI，并在 interweave-frontend 构建时生成 bindings，因此这些系统依赖也服务于构建链。apt 归档缓存由 check 之前的独立 job 预热：它的超时高于 required check，required check 等待该 job 且自身超时更短，具体分钟数见 [`ci.yml`](../../.github/workflows/ci.yml)。main push 只运行预热 job，不运行完整 check；成功写入的默认分支 cache 可供后续 PR 读取，PR 写入的缓存只供该 PR 复用。只有完整下载或安装成功才写缓存；冷缓存 job 失败时 check 仍会继续并报告自身结果。
+CI 的 check 仍需在 mise 安装前准备 Wails Linux 开发包：mise 从 Go 源码编译 pinned wails3，CI 会核验 CLI，并在 interweave-frontend 构建时生成 bindings，因此这些系统依赖也服务于构建链。apt 归档缓存由 check 之前的独立 job 预热：它的超时高于 required check，required check 等待该 job 且自身超时更短，具体分钟数见 [`ci.yml`](../../.github/workflows/ci.yml)。main push 只运行预热 job，不运行完整 check；成功写入的默认分支 cache 可供后续 PR 读取，PR 写入的缓存只供该 PR 复用。只有完整下载或安装成功才写缓存；缓存未命中时仍从配置的软件源下载，缓存只是优化、不是构建前提；冷缓存 job 失败时 check 仍会继续并报告自身结果。
 
 [`deploy-pages.yml`](../../.github/workflows/deploy-pages.yml) 只发布 `DEMO_APPS` 列出的 demo 应用到 `/mono/<name>/`，不遍历全部 `apps/<name>`，也没有根落地页。History 路由的深层链接依赖 404 回退：应用必须在创建路由器之前恢复 `redirect`，未知路径保持 404。
 

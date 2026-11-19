@@ -27,5 +27,5 @@ Interweave 由 Wails 宿主管理嵌套前端，其 alias 只启动 Wails host�
 ## 跨篇共性约束
 
 - 生成文件不是 source of truth：不得手写或改写，只能跑对应 generator 产生 diff。清单与重新生成入口见 [`generated-artifacts.md`](./generated-artifacts.md)，构建期链路见 [`build-generated.md`](./build-generated.md)。
-- 读取生成物的测试与会改写同一路径的生成任务必须有明确的执行依赖，不能并行读写：生成器由本 workspace `build` 承担时，`test` 须依赖该 `build` 并保留适用的上游依赖。`inputs` 只影响缓存哈希，不建立执行先后。
+- 生成物链路的执行顺序约束（test 依赖 build、`inputs` 不建立先后、不能替代 `dependsOn`）只在该文定义，见 [`build-generated.md`](./build-generated.md#生成与测试的执行顺序)。
 - 审查判据只在 [`review.md`](./review.md) 定义；远端写、发布与合并的授权机制只在 [`workflow.md`](./workflow.md#怎么取得这个授权) 定义，本组文档只声明何时需要并指向它们。
