@@ -749,7 +749,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
 
     // openai/codex-action#188：ubuntu-26.04 的 sudo-rs 忽略 -E、uutils `test -w` 只看 mode bits，
     // drop-sudo 的 socket ACL 校验因此误判并在 Run codex exec 前退出。v1.13 及 main 上都没有修复，
-    // 两条模型 job 固定 24.04 并保留 drop-sudo；恢复条件见 ADR-0021「Runner 镜像」。
+    // 两条模型 job 固定 24.04 并保留 drop-sudo；恢复条件见 ADR-0021「权限拆分与安全不变量」。
     const CODEX_RUNNER = 'ubuntu-24.04'
     const modelLegs = ['codex-review', 'codex-autofix-plan']
     function assertCodexRunnerPin(text) {

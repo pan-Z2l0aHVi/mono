@@ -109,7 +109,7 @@ jobs:
             echo ''
             echo '- 常见原因：`check` 先失败，`Codex review` 没有运行；或审查 job 自己没跑成。'
             echo '- 结论是否拦合并由该 CI run 里的 `Codex review gate` 判定，与本运行的颜色无关。'
-            echo '- 排查顺序见 `docs/agents/review.md` 的 `error` 处置。'
+            echo '- 排查顺序见 `.github/codex/README.md` 的「排查顺序」。'
           } >> "$GITHUB_STEP_SUMMARY"
           echo "::notice title=Codex review report skipped::run $WORKFLOW_RUN_ID has no codex-review-findings artifact, so there is no conclusion to write back"
 

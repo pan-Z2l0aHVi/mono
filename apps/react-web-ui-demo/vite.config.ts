@@ -94,7 +94,7 @@ export default defineConfig({
     // browser project 的端口段由 testPorts() 写进上面那个 project 的 `test.api`，host 与
     // strictPort 一起给出：本应用顶层 `server.host` 是 `true`，不显式钉回 loopback 时测试服务器
     // 会跟着绑通配地址，别的进程占着 127.0.0.1 上的同号端口也不会失败，页面可能被导到对面那份
-    // 服务器上。分配表与偏移见 docs/agents/build.md「测试端口分配」。
+    // 服务器上。分配表与偏移见 docs/agents/build-browser.md「测试端口分配」。
     testPorts({ project: 'react-web-ui-demo', testName: 'browser' }),
     // 壳文案编译期抽取/替换。wuchale 的 transform 声明了 `order: 'pre'`，所以无论它在这个数组里
     // 注册在哪，transform 都排在 React 插件（`enforce: 'pre'`）之前；它按 AST 改写源码并把文案

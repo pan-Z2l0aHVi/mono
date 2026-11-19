@@ -37,7 +37,12 @@ const options: NoMutualLinksOptions = {
   roots: ['ROOT.md', 'docs/agents', 'docs/adr', '.agents'],
   workspaces: [{ directory: 'packages', deep: ['notes.md'], shallow: ['index.md'] }],
   mirror,
-  forbiddenDirections: [{ from: 'docs/agents/', to: '.agents/rules/', label: 'docs-to-rules' }]
+  forbiddenDirections: [
+    { from: 'docs/agents/', to: '.agents/rules/', label: 'docs-to-rules' },
+    { from: 'packages/', to: '.agents/rules/', label: 'workspace-to-rules' },
+    { from: '.agents/skills/', to: '.agents/rules/', label: 'mirror-to-rules' },
+    { from: '.agents/vendored/', to: '.agents/rules/', label: 'vendored-to-rules' }
+  ]
 }
 
 const noMutualLinks = defineNoMutualLinks(options)
@@ -67,12 +72,13 @@ it('no-mutual-links', async () => {
   write(docsToRules, '.agents/rules/x.md', '# rule\n')
   assert.match(await failure(noMutualLinks, docsToRules), /^md:[\s\S]*docs-to-rules link forbidden/)
 
+  // 回链不再禁止：a ↔ b 通过。
   const mutual = makeFixture()
   write(mutual, 'docs/agents/a.md', '[b](b.md)\n')
   write(mutual, 'docs/agents/b.md', '[a](a.md)\n')
-  assert.match(await failure(noMutualLinks, mutual), /^md:[\s\S]*mutual links forbidden/)
+  assert.ok((await kit(noMutualLinks, mutual)).ok)
 
-  // 文件名全大写的入口层豁免互链判定。
+  // 入口层文件与正文互链同样通过。
   const exempt = makeFixture()
   write(exempt, 'docs/agents/MAP.md', '[a](a.md)\n')
   write(exempt, 'docs/agents/a.md', '[map](MAP.md)\n')
@@ -84,20 +90,20 @@ it('no-mutual-links', async () => {
 
   // workspace 面：直接子目录的 `shallow` 文件与递归的 `deep` 文件都在语料内。
   const shallow = makeFixture()
-  write(shallow, 'packages/a/index.md', '[b](../b/index.md)\n')
-  write(shallow, 'packages/b/index.md', '[a](../a/index.md)\n')
-  assert.match(await failure(noMutualLinks, shallow), /^md:[\s\S]*mutual links forbidden/)
+  write(shallow, 'packages/a/index.md', '[rule](../../.agents/rules/x.md)\n')
+  write(shallow, '.agents/rules/x.md', '# rule\n')
+  assert.match(await failure(noMutualLinks, shallow), /^md:[\s\S]*workspace-to-rules link forbidden/)
 
   const deep = makeFixture()
-  write(deep, 'packages/a/deep/notes.md', '[b](../../b/deep/notes.md)\n')
-  write(deep, 'packages/b/deep/notes.md', '[a](../../a/deep/notes.md)\n')
-  assert.match(await failure(noMutualLinks, deep), /^md:[\s\S]*mutual links forbidden/)
+  write(deep, 'packages/a/deep/notes.md', '[rule](../../../.agents/rules/x.md)\n')
+  write(deep, '.agents/rules/x.md', '# rule\n')
+  assert.match(await failure(noMutualLinks, deep), /^md:[\s\S]*workspace-to-rules link forbidden/)
 
   // 镜像面：正文以 `surface` 路径入列、读 `entity` 实体，判定用的是消费面路径。
   const mirrored = makeFixture()
-  write(mirrored, 'docs/agents/a.md', '[x](../../.agents/skills/foo/notes.md)\n')
-  write(mirrored, 'skills/foo/notes.md', '[a](../../../docs/agents/a.md)\n')
-  assert.match(await failure(noMutualLinks, mirrored), /^md:[\s\S]*mutual links forbidden/)
+  write(mirrored, 'skills/foo/notes.md', '[rule](../../rules/x.md)\n')
+  write(mirrored, '.agents/rules/x.md', '# rule\n')
+  assert.match(await failure(noMutualLinks, mirrored), /^md:[\s\S]*mirror-to-rules link forbidden/)
 
   // 锁定清单里的上游件既不进镜像面，也不从 vendored 实体目录入列。
   const lockedMirror = makeFixture({ foo: {} })
@@ -106,13 +112,13 @@ it('no-mutual-links', async () => {
   assert.match(await failure(noMutualLinks, lockedMirror), /^md:[\s\S]*found 0 local Markdown links/)
 
   const vendored = makeFixture()
-  write(vendored, 'docs/agents/a.md', '[x](../../.agents/vendored/foo/x.md)\n')
-  write(vendored, '.agents/vendored/foo/x.md', '[a](../../../docs/agents/a.md)\n')
-  assert.match(await failure(noMutualLinks, vendored), /^md:[\s\S]*mutual links forbidden/)
+  write(vendored, '.agents/vendored/foo/x.md', '[rule](../../rules/x.md)\n')
+  write(vendored, '.agents/rules/x.md', '# rule\n')
+  assert.match(await failure(noMutualLinks, vendored), /^md:[\s\S]*vendored-to-rules link forbidden/)
 
   const vendoredLocked = makeFixture({ foo: {} })
-  write(vendoredLocked, 'docs/agents/a.md', '[x](../../.agents/vendored/foo/x.md)\n')
-  write(vendoredLocked, '.agents/vendored/foo/x.md', '[a](../../../docs/agents/a.md)\n')
+  write(vendoredLocked, '.agents/vendored/foo/x.md', '[rule](../../rules/x.md)\n')
+  write(vendoredLocked, '.agents/rules/x.md', '# rule\n')
   assert.match(await failure(noMutualLinks, vendoredLocked), /^md:[\s\S]*found 0 local Markdown links/)
 
   // 清单读不出来时 fail-closed，错误由组合点给出。

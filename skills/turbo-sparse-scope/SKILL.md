@@ -1,19 +1,19 @@
 ---
 name: turbo-sparse-scope
-description: 按任务 scope 的仓库相对路径把当前 worktree 的 git sparse checkout 收缩到目标包及其 turbo 依赖闭包，并约束稀疏树里的全局搜索与验证口径。
+description: 可变任务建账与 worktree 准备完成、读取实施范围代码或修改文件前调用：按台账 scope 的仓库相对路径把当前 worktree 的 git sparse checkout 收缩到目标包及其 turbo 依赖闭包；scope 为空且无包外读取时跳过，并约束稀疏树里的全局搜索与验证口径。
 ---
 
 # Turbo Sparse Scope
 
 ## 何时使用
 
-实施 owner 在任务建账、三步准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`、`mise exec -- pnpm run build`）完成后、读取实施范围的代码、派发实施子任务或修改文件之前执行。准备与分工由编排层承接；同一个 task 的子任务共用 owner 确定的 worktree 和范围。
+实施 owner 在任务建账与 worktree 准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`，需要类型检查、消费 `dist` 或跑仓库检查时再 `mise exec -- pnpm run build`）完成后、读取实施范围的代码、派发实施子任务或修改文件之前执行。准备与分工由编排层承接；同一个 task 的子任务共用 owner 确定的 worktree 和范围。
 
 - 台账 `scope` 为空且没有实现/验证必需的包外读取时跳过；否则必须调用本 skill 判断并处理范围。不要把「加载无关包」留到实现过程中再说。
 - 收缩是否到位用 `--check <目标>` 判定，不靠自述：目标是本 worktree 未结任务 `scope` 的并集，加上实现与验证必需的包外读取路径；非零退出意味着「目标非空但工作区从没收缩」或「cone 与目标要求的闭包不一致」。
 - 当前 cone 已覆盖时不必逐任务复查；新任务把读取面扩展到 cone 之外时，先 `--add` 对应包再继续。
 - `scope` 只含根路径时也合法：零个目标包，只保留根依赖闭包与根目录。
-- 不用于全仓影响面分析、全仓 gate，或尚未完成 install/build 的 worktree。
+- 不用于全仓影响面分析、全仓 gate，或尚未完成 install（或任务需要的 build）的 worktree。
 
 受权限或仓库规则限制而不能更改 Git 配置或 worktree 时，不执行会修改 checkout 的命令：全树使用 `--dry-run`，稀疏树使用 `--status`；在 Task Packet 与交付说明中记录限制和未完成的收缩，按实际检出范围执行后续搜索与验证。稀疏树上的 `--check` 会临时恢复并重装 cone，不属于只读命令。`sparse-checkout init` 会更改 Git 配置，必须服从宿主仓库的 Git 配置边界。
 
@@ -24,11 +24,13 @@ description: 按任务 scope 的仓库相对路径把当前 worktree 的 git spa
 在 worktree 根目录运行（脚本只依赖 Node 内置模块）。同步依赖需要 `pnpm` 在 PATH 上，未激活 mise 的 shell 用 `mise exec -- node ...` 调用：
 
 ```sh
-mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs <path|package>... [--dry-run] [--add|--reset] [--json]
-mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --check <path|package>... [--json]
-mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --status [--json]
-mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [--json]
+mise exec -- node <skill-dir>/sparse-scope.mjs <path|package>... [--dry-run] [--add|--reset] [--json]
+mise exec -- node <skill-dir>/sparse-scope.mjs --check <path|package>... [--json]
+mise exec -- node <skill-dir>/sparse-scope.mjs --status [--json]
+mise exec -- node <skill-dir>/sparse-scope.mjs --restore [--json]
 ```
+
+`<skill-dir>` 是加载本 skill 时得到的目录；本仓通过 `.agents/skills/turbo-sparse-scope/` 访问。
 
 | 参数          | 作用                                                                                                                                                                                                         |
 | ------------- | ------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------ |
@@ -43,7 +45,7 @@ mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [
 
 退出码：`0` 成功，`1` 环境或运行失败（turbo 失败、git 失败、依赖同步失败）或 `--check` 判定不匹配，`2` 用法或目标错误（未知参数、未知路径、稀疏树上做了不允许的动作）。`--status` 对布局问题只诊断：缺 `pnpm-workspace.yaml` 等写进 `warnings`，仍 exit 0；git 命令失败仍是 exit 1。
 
-成功收缩后，只要根目录有 `pnpm-workspace.yaml` 且 `pnpm` 在 PATH 上，脚本会接着跑一次 `pnpm install --frozen-lockfile`，结果写在报告的 `dependencies`（`synced`；`--dry-run` 为 `would-sync`）。跳过时（没有 workspace 文件或找不到 pnpm）报告 `skipped` 并给出原因，此时必须在跑任何 pnpm 脚本前手动同步。原因见下面规则 7。
+成功收缩后，只要根目录有 `pnpm-workspace.yaml` 且 `pnpm` 在 PATH 上，脚本会接着跑一次 `pnpm install --frozen-lockfile`（脚本直接调用 PATH 上的 pnpm），结果写在报告的 `dependencies`（`synced`；`--dry-run` 为 `would-sync`）。跳过时（没有 workspace 文件或找不到 pnpm）报告 `skipped` 并给出原因，此时必须在跑任何 pnpm 脚本前手动同步。原因见下面规则 7。
 
 ## 范围怎么算
 
@@ -65,8 +67,8 @@ mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [
 4. **任务扩展时用 `--add`。** 不扩大范围就用 `--reset` 或默认动作重建，不要手写路径。
 5. **不要在稀疏树里用 `turbo run` 期待全仓结果。** 需要全仓图时先 `--restore`。
 6. **提交照常进行。** cone 外的已跟踪文件只是没检出，不影响 commit；合并、rebase、切换分支前先 `--restore`，避免 cone 外路径的冲突要手工处理。
-7. **收缩后不要再跑不带 `--frozen-lockfile` 的 `pnpm install`。** 它只看到 cone 内的 workspace，会把 `pnpm-lock.yaml` 重写成缩小的图（隐藏 workspace 与只被它们使用的 catalog 条目会被删掉）。更隐蔽的是 pnpm 在 `pnpm run` 前的隐式安装（`verifyDepsBeforeRun`）：收缩删掉了隐藏包的目录和 `node_modules` 后，它发现 install 状态与当前 workspace 集不一致，会在跑命令前自动做一次**非 frozen** 安装，hook 仍然 exit 0，锁文件却已被改写。脚本在收缩后自动做的 frozen 安装就是为了消除这个不一致，让后续脚本不再触发隐式安装；报告里 `dependencies: skipped` 时先手动跑 `pnpm install --frozen-lockfile` 再执行任何 pnpm 脚本。要真正重装依赖就先 `--restore`。
-8. **`--restore` 之后补装依赖并重建。** 被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 一起删除；有未跟踪文件时只删已跟踪文件，目录与其中的忽略内容保留（git 打 warning）。`--restore` 只带回已跟踪文件，恢复后要重跑 `pnpm install --frozen-lockfile` 与 `pnpm build`，缓存命中时都很快。
+7. **收缩后不要再跑不带 `--frozen-lockfile` 的 `mise exec -- pnpm install`。** 它只看到 cone 内的 workspace，会把 `pnpm-lock.yaml` 重写成缩小的图（隐藏 workspace 与只被它们使用的 catalog 条目会被删掉）。更隐蔽的是 pnpm 在 `pnpm run` 前的隐式安装（`verifyDepsBeforeRun`）：收缩删掉了隐藏包的目录和 `node_modules` 后，它发现 install 状态与当前 workspace 集不一致，会在跑命令前自动做一次**非 frozen** 安装，hook 仍然 exit 0，锁文件却已被改写。脚本在收缩后自动做的 frozen 安装就是为了消除这个不一致，让后续脚本不再触发隐式安装；报告里 `dependencies: skipped` 时先手动跑 `mise exec -- pnpm install --frozen-lockfile` 再执行任何 pnpm 脚本。要真正重装依赖就先 `--restore`。
+8. **`--restore` 之后补装依赖并重建。** 被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 一起删除；有未跟踪文件时只删已跟踪文件，目录与其中的忽略内容保留（git 打 warning）。`--restore` 只带回已跟踪文件，恢复后要重跑 `mise exec -- pnpm install --frozen-lockfile` 与 `mise exec -- pnpm run build`，缓存命中时都很快。
 9. **changeset 仍要新建。** 根目录默认保留，`.changeset/` 会检出；即使目录被删除也重新创建（新建的是未跟踪文件，不会被后续收缩删除）。changeset gate 只在 CI 跑，本地门禁不会提醒。
 10. **workspace 容器里未被选中的包整包隐藏。** 只含根路径的 scope 会隐藏全部未选中子包；读取或执行前先 `--add <package>`。
 
@@ -77,6 +79,6 @@ mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs --restore [
 - 根 `pnpm-workspace.yaml` 缺失时无法识别容器，退化为保留全部根目录并给 warning，不会隐藏任何包。
 - scope 路径必须落在被保留的根条目或已知 workspace 包内；容器内非包路径、容器祖先目录与未知顶层路径都报错。
 - 依赖 turbo 的 `ls` 输出：优先 `--output=json`，失败降级解析文本，两者都失败就报错并附原始输出，不猜。
-- 包列表来自 `turbo ls`，闭包按目标与根依赖分别用 `turbo ls --filter` 查询；闭包解析不随包数平方增长，但百级包仍需评估耗时。
+- 包列表来自 `turbo ls`，闭包按目标与根依赖分别用 `turbo ls --filter` 查询；闭包解析的耗时随包数变化，规模变化时用耗时测据判断。
 - 平台自带的静态 sparse 配置（如 Claude Code 的 `worktree.sparsePaths`）能覆盖固定范围时，本 skill 的价值是「按依赖图动态计算」。
 - 它减少的是上下文占用，不是权限边界：被隐藏的文件仍可用 `git show HEAD:<path>` 读取。

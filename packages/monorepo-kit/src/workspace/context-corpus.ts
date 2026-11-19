@@ -25,7 +25,7 @@ const { andThen, err, ok } = rust
 
 // 指令文档语料的结构不变量。判据都在这里，语料根、workspace 目录、skill 出处、软链对应表与
 // commit scope 来源是消费仓库的事实，经 options 传入；组合点见 `docs/agents/agent-context.md`
-// 「语料门禁」「链接面与指令面」，取舍见 ADR-0013。
+// 「语料门禁」，取舍见 ADR-0013。
 export interface SkillsSurface {
   /** 上游件的锁定清单，JSON 里 `skills` 对象的键 */
   readonly lockFile: string

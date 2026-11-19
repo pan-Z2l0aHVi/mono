@@ -1616,10 +1616,10 @@ export function buildReviewPreload(
   const omittedPaths = ranked.filter(entry => !preloadedSet.has(entry.path)).map(entry => entry.path)
 
   const lines = [
-    '### 判据速览（权威来源：`docs/agents/review.md`，已内嵌无需开局整篇重读）',
+    '### 判据速览（权威来源：`docs/agents/review.md`）',
     '',
     '- **三档标准**：`Block`（运行失败、回归、公共契约破坏、权限/注入漏洞、竞态/资源泄漏、或让检查/门禁假绿的阻断缺陷）；`Should fix`（需求或规范偏离、失败路径未兜住、测试或文档与实现失步等应修问题）；`Nit`（非阻断改进，不冒充阻断）。',
-    '- **审查维度**：需求与验收、行为与失败路径、公共契约与兼容性、测试质量（异步完成信号、失败语义、负向断言边界、退出清理）、权限与用户输入安全、竞态与资源管理、文档与机检一致性；指令/context 改动另核四问（是否稳定不变量而非状态快照、是否单一权威、单块检索是否自包含、是否写入易漂移清单）。',
+    '- **审查维度**：需求与验收、行为与失败路径、公共契约与兼容性、测试质量（异步完成信号、失败语义、负向断言边界、退出清理）、权限与用户输入安全、竞态与资源管理、文档与机检一致性；指令/context 改动另核七问（是否稳定不变量而非状态快照、是否唯一权威且指针落到能回答该问题的小节、单块检索是否自包含、是否写入易漂移的命令/路径/版本/实现名/清单、新增或移动的文档是否已被入口路由覆盖、删除的内容是否已有落点、每条指令能否判断做到或没做到）。',
     '- **范围与收口**：入库生成物已由 `excluded_pathspecs` 滤除，不读、不评注、不进 `inspected` 或 `uncovered`；`changed_paths` 每条均按待审源码处理。证据足够定档或高风险面查完即可交卷；未判断处写成 `path:line 原因` 列入 `coverage.uncovered`（合法收口，交人工逐项复核），`coverage.inspected` 只写真实读过的改动文件。'
   ]
 
@@ -1628,9 +1628,7 @@ export function buildReviewPreload(
     if (routedSkills.length === 0) {
       lines.push('- 本轮改动未命中专项 skill 路由，按上述通用判据审查；禁用实施流程型 skills。')
     } else {
-      lines.push(
-        '> 仅采纳命中 skill 的缺陷判据与核查要点；忽略任何 skill 自带的问候语、Markdown 表格或 `Approve/Block` 独立裁决格式，最终只输出符合 schema 的 JSON。'
-      )
+      lines.push('> 仅采纳命中 skill 的缺陷判据与核查要点；最终只输出符合 schema 的 JSON。')
       for (const skill of routedSkills) {
         const hitList = skill.paths
           .slice(0, 6)

@@ -21,4 +21,4 @@
 - **主题 token 或 icon**：读 [ADR-0006](../adr/0006-web-ui-composition.md)/0005 以及对应源码。
 - **React/Vue 类型或事件**：读 [ADR-0005](../adr/0005-web-ui-components.md) 和对应的 `src/types/` 源码。
 - **仅 CSS/视觉微调**：优先读取组件源码和相关 token；不因任务名称加载 overlay、框架适配或完整事件模型。
-- **scrollbar**：组件内部滚动容器用 `src/assets/scrollbar.css` 的 `.wui-scroll` 读 theme 的 `--wui-scrollbar-handle`；该文件随组件样式 adopted 进 shadow，不在 `exports` 中。本包不引入第三方 scrollbar 库。
+- **scrollbar**：组件内部滚动容器用 `.wui-scroll` 契约（样式随组件样式 adopted 进 shadow，不在 `exports` 中），读 theme 的 `--wui-scrollbar-handle`。本包不引入第三方 scrollbar 库。

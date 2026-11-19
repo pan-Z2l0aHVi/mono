@@ -11,7 +11,7 @@ export default defineConfig({
     tsconfigPaths: true
   },
   // 三个 browser project 同时跑，各自占一段端口；host 与 strictPort 由 testPorts() 一起给出，
-  // 分配表与偏移的理由见 docs/agents/build.md 的「测试端口分配」。
+  // 分配表与偏移的理由见 docs/agents/build-browser.md 的「测试端口分配」。
   plugins: [
     testPorts({ project: 'web-ui', testName: 'browser' }),
     testPorts({ project: 'web-ui-reduced-motion', testName: 'browser-reduced-motion' }),
