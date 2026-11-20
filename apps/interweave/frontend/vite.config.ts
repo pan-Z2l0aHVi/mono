@@ -56,7 +56,10 @@ export default defineConfig({
           include: ['src/**/*.browser.spec.ts'],
           // 触屏仿真会翻转整个页面的 hover / pointer 媒体查询，单独成 project 拿自己的页面，
           // 不与其他文件的 CSS hover 断言抢同一页。
-          exclude: ['src/components/library/__tests__/resource-long-press.browser.spec.ts'],
+          exclude: [
+            'src/components/__tests__/native-scrollbars.browser.spec.ts',
+            'src/components/library/__tests__/resource-long-press.browser.spec.ts'
+          ],
           // test-helper 补的是 jsdom 特有的 localStorage 漏洞，浏览器里有真实实现，不加载。
           setupFiles: [],
           browser: {
@@ -72,7 +75,10 @@ export default defineConfig({
         test: {
           // 输入能力仿真用例独立成 project，见 browser project 的 exclude 说明。
           name: 'browser-touch',
-          include: ['src/components/library/__tests__/resource-long-press.browser.spec.ts'],
+          include: [
+            'src/components/__tests__/native-scrollbars.browser.spec.ts',
+            'src/components/library/__tests__/resource-long-press.browser.spec.ts'
+          ],
           setupFiles: [],
           browser: {
             enabled: true,

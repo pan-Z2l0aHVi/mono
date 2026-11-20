@@ -14,6 +14,9 @@
  * 覆盖式平台（macOS、无头 Chromium）上这条规则几乎不可见——原生的覆盖 scrollbar 由系统绘制，
  * 并不看这两个属性；它真正的用处在经典 scrollbar 的平台（Windows / Linux）。
  *
+ * 主指针为 coarse 的手机 / 平板回退到系统原生 scrollbar：覆盖值恢复 `auto`，让 Android
+ * 等平台使用系统宽度与配色。主指针仍为 fine 的触屏笔记本不命中这条查询。
+ *
  * `scrollbar-color` 与 `scrollbar-width` 都是**继承属性**，写一次即可作用于容器自身及其后代；
  * 调用方只在组件自己的 shadow 里 adopted 本文件（见各组件的 `static styles`），所以样式天然隔离，
  * 不会漏到文档层。
@@ -21,4 +24,11 @@
 .wui-scroll {
   scrollbar-color: var(--wui-scrollbar-handle, rgb(0 0 0 / 0.39)) transparent;
   scrollbar-width: thin;
+}
+
+@media (pointer: coarse) {
+  .wui-scroll {
+    scrollbar-color: auto;
+    scrollbar-width: auto;
+  }
 }

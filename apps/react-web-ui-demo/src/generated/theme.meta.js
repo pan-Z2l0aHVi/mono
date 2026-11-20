@@ -943,6 +943,7 @@ const meta = [
     }
     ]
   },
+  { label: 'p', content: "In <code>.wui-scroll</code> containers the token applies only on fine-pointer devices; coarse-pointer devices fall back to platform-native scrollbar styling. Document-level usage (for example <code>html { scrollbar-color: var(--wui-scrollbar-handle) transparent }</code>) is unaffected." },
   { label: 'h3', id: 'section-28', content: "Shadow tokens" },
   {
     label: 'table',

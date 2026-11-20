@@ -88,6 +88,12 @@ jobs:
       - name: Build native artifact
         run: pnpm --filter @greypan/interweave run ${{ matrix.command }}
 
+      - name: Test Go data directory variants
+        shell: bash
+        run: |
+          pnpm --filter @greypan/interweave exec go test -count=1 .
+          pnpm --filter @greypan/interweave exec go test -tags production -count=1 .
+
       - name: Upload verification artifact
         uses: actions/upload-artifact@v6
         with:

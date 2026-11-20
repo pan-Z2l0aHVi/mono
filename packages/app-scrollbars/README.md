@@ -10,6 +10,8 @@ English | [简体中文](./README.CN.md)
 
 `overlayscrollbars` comes from the workspace catalog, so the bundled CSS and the runtime used by each app stay on the same version.
 
+On phones and tablets, where the primary pointer is coarse, the default options enable `showNativeOverlaidScrollbars`. OverlayScrollbars then leaves the platform's native overlaid scrollbars visible instead of drawing its own. This only applies when both axes use overlaid native scrollbars; touchscreen laptops whose primary pointer is fine keep the custom scrollbars.
+
 ## Usage
 
 ```ts
@@ -39,8 +41,12 @@ Native scrollbars have no hover or active states, so `web-ui` defines only the r
 
 ### Default export
 
-`PartialOptions` for OverlayScrollbars. It applies the bundled scrollbar style, hides the scrollbar after 2 seconds without scrolling, and scrolls to the clicked position without animation.
+`PartialOptions` for OverlayScrollbars. It applies the bundled scrollbar style, hides the scrollbar after 2 seconds without scrolling, scrolls to the clicked position without animation, and shows native overlaid scrollbars on coarse-pointer devices.
 
 ### `APP_SCROLLBARS_THEME`
 
 The style class name, `os-theme-macos`. It is the `scrollbars.theme` value in the default export and is also defined in the bundled stylesheet.
+
+### `shouldUseNativeScrollbars`
+
+Returns whether the primary pointer matches `(pointer: coarse)`. Environments without `matchMedia` return `false`. The default export calls this once at module evaluation time.

@@ -11,20 +11,30 @@ func TestAppDescriptionCarriesVersion(t *testing.T) {
 	}
 }
 
-// 数据目录固定在 PathDataHome 下的 interweave 子目录：库文件、缩略图与设置同处一处。
-func TestDataDirUsesDataHome(t *testing.T) {
-	dir, err := dataDir()
-	if err != nil {
-		t.Fatalf("dataDir: %v", err)
-	}
-	if base := filepath.Base(dir); base != "interweave" {
-		t.Fatalf("expected the last path segment to be interweave, got %q from %q", base, dir)
-	}
-}
-
 func TestMainWindowEnablesMacTabFocus(t *testing.T) {
 	opts := mainWindowOptions()
 	if !opts.Mac.WebviewPreferences.TabFocusesLinks.IsSet() || !opts.Mac.WebviewPreferences.TabFocusesLinks.Get() {
 		t.Fatalf("expected Mac.WebviewPreferences.TabFocusesLinks to be enabled so Tab reaches buttons and links on macOS")
+	}
+}
+
+func TestWebviewUserDataDirUsesDataSubdirectory(t *testing.T) {
+	dir := filepath.Join("data", "interweave-dev")
+	if got, want := webviewUserDataDir(dir), filepath.Join(dir, "webview"); got != want {
+		t.Fatalf("expected WebView2 data path %q, got %q", want, got)
+	}
+}
+
+func TestWindowsOptionsAnchorWebView2ToTaggedDataDir(t *testing.T) {
+	dir, err := dataDirAt(t.TempDir())
+	if err != nil {
+		t.Fatalf("dataDirAt: %v", err)
+	}
+	if filepath.Base(dir) != appDataDirName {
+		t.Fatalf("expected data dir to carry the build-tag name %q, got %q", appDataDirName, dir)
+	}
+	opts := windowsOptions(dir)
+	if got, want := opts.WebviewUserDataPath, filepath.Join(dir, "webview"); got != want {
+		t.Fatalf("expected WebView2 user data at %q, got %q", want, got)
 	}
 }

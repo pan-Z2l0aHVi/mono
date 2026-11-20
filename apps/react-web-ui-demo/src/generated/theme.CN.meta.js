@@ -943,6 +943,7 @@ const meta = [
     }
     ]
   },
+  { label: 'p', content: "<code>--wui-scrollbar-handle</code> 在 <code>.wui-scroll</code> 容器内只作用于 fine pointer 环境；coarse pointer 设备上组件滚动容器回退平台原生 scrollbar 样式。文档级用法（如 <code>html { scrollbar-color: var(--wui-scrollbar-handle) transparent }</code>）不受影响。" },
   { label: 'h3', id: 'section-28', content: "阴影 token" },
   {
     label: 'table',
