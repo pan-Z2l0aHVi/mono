@@ -48,6 +48,7 @@ const child = spawn(command, commandArgs, {
 })
 
 let childExitCode = null
+let spawnFailed = false
 
 // 转发终端信号给子进程；flush 完成前不退出进程。
 for (const signal of ['SIGINT', 'SIGTERM']) {
@@ -75,14 +76,21 @@ child.stdout.on('data', chunk => {
   }
 })
 
-// 子进程 spawn 失败（ENOENT / EACCES）只发 `error` 不发 `close`：不接住的话包装进程
-// 以未捕获异常崩溃，events 文件也不走正常收尾。127 是「命令不存在」的惯用码。
+// 子进程 spawn 失败（ENOENT / EACCES）会先发 `error`，随后仍可能发一个合成码的
+// `close`：不接住的话包装进程以未捕获异常崩溃，events 文件也不走正常收尾。127 是
+// 「命令不存在」的惯用码，且不能被后续 close 覆盖。
 child.on('error', error => {
+  spawnFailed = true
+  childExitCode = 127
   process.stderr.write(`run-headless: 无法启动子进程: ${error.message}\n`)
   flushThenExit(127)
 })
 
 child.on('close', (code, signal) => {
+  if (spawnFailed) {
+    flushThenExit(127)
+    return
+  }
   // 子进程的真实退出码优先；没有真实码时按信号合成（128+signum），保证异常终止
   // 不会被 Rex 与协调者误读成 `done`（exit 0）。
   if (code !== null) {

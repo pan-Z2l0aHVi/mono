@@ -241,6 +241,68 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     )
   })
 
+  /*
+   * 搜索框展开时，header 里的主题/语言/动效选择器与它同属一个搜索上下文。
+   * 按在这些同级控件上不能让输入框先 blur → reflow → 吞掉这次 click；搜索框保持展开，
+   * 控件自身的点击也要照常生效。
+   */
+  it('搜索展开后点击 header 其他控件不收起且控件点击生效', async () => {
+    await mountAppShell()
+    await act(async () => {
+      await userEvent.click(document.querySelector<HTMLElement>('web-ui-button[aria-label="搜索"]')!)
+    })
+    const input = await waitFor(() => {
+      const element = document.querySelector<HTMLElement>('web-ui-input[aria-label="搜索页面和组件"]')
+      if (!element) throw new Error('搜索输入框尚未出现')
+      return element
+    })
+    await waitFor(() => expect(document.activeElement).toBe(input))
+
+    const select = document.querySelector<HTMLElement & { open: boolean }>('web-ui-select[aria-label="全局主题"]')!
+    const trigger = select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
+    if (!trigger) throw new Error('全局主题触发器未找到')
+
+    await act(async () => {
+      await userEvent.click(trigger)
+    })
+    // 点击生效：主题选择器真的打开了。
+    await waitFor(() => expect(select.open).toBe(true))
+    // 且搜索框没有被 focusout 提前收起。
+    expect(document.querySelector('web-ui-input[aria-label="搜索页面和组件"]')).toBe(input)
+  })
+
+  it('搜索展开时点击 header 外部会收起', async () => {
+    await mountAppShell()
+    await act(async () => {
+      await userEvent.click(document.querySelector<HTMLElement>('web-ui-button[aria-label="搜索"]')!)
+    })
+    await waitFor(() => {
+      if (!document.querySelector('web-ui-input[aria-label="搜索页面和组件"]')) throw new Error('搜索输入框尚未出现')
+    })
+
+    const outside = document.querySelector<HTMLElement>('[slot="banner"] span')
+    if (!outside) throw new Error('banner 文案未找到')
+    await act(async () => {
+      await userEvent.click(outside)
+    })
+    await waitFor(() => expect(document.querySelector('web-ui-input[aria-label="搜索页面和组件"]')).toBeNull())
+  })
+
+  it('搜索展开时 Escape 收起搜索框', async () => {
+    await mountAppShell()
+    await act(async () => {
+      await userEvent.click(document.querySelector<HTMLElement>('web-ui-button[aria-label="搜索"]')!)
+    })
+    await waitFor(() => {
+      if (!document.querySelector('web-ui-input[aria-label="搜索页面和组件"]')) throw new Error('搜索输入框尚未出现')
+    })
+
+    await act(async () => {
+      await userEvent.keyboard('{Escape}')
+    })
+    await waitFor(() => expect(document.querySelector('web-ui-input[aria-label="搜索页面和组件"]')).toBeNull())
+  })
+
   it('导航按类别分组并显示中文小标题', async () => {
     await mountAppShell()
     expect([...navRoot().querySelectorAll('h2')].map(heading => heading.textContent?.trim())).toEqual([
