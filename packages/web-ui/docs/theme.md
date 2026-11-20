@@ -969,7 +969,7 @@ Hover and active background feedback switches immediately with no transition ani
 | `--wui-color-focus-ring`              | Focus indicator color, derived from accent                         | `color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)` | `color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)` |
 | `--wui-scrollbar-handle`              | Native scrollbar thumb colour                                      | `rgb(0 0 0 / 0.39)`                                                     | `rgb(255 255 255 / 0.5)`                                                              |
 
-`--wui-scrollbar-handle` only styles fine-pointer environments; on coarse-pointer devices component scroll containers (`.wui-scroll`) fall back to platform-native scrollbar styling.
+In `.wui-scroll` containers the token applies only on fine-pointer devices; coarse-pointer devices fall back to platform-native scrollbar styling. Document-level usage (for example `html { scrollbar-color: var(--wui-scrollbar-handle) transparent }`) is unaffected.
 
 ### Shadow tokens
 
