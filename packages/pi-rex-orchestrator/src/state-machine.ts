@@ -115,6 +115,51 @@ export class WorkerRegistry {
     return worker
   }
 
+  /** 从持久化快照重建注册表（/reload 或会话恢复）；只接受形状完整的条目。 */
+  restore(entries: readonly unknown[]): number {
+    let restored = 0
+    for (const entry of entries) {
+      if (typeof entry !== 'object' || entry === null) continue
+      const candidate = entry as Partial<WorkerEntry>
+      if (typeof candidate.workerId !== 'string' || typeof candidate.blockId !== 'string') continue
+      if (typeof candidate.agent !== 'string' || typeof candidate.mode !== 'string') continue
+      const worker: WorkerEntry = {
+        workerId: candidate.workerId,
+        agent: candidate.agent,
+        mode: candidate.mode === 'headless' ? 'headless' : 'interactive',
+        label: typeof candidate.label === 'string' ? candidate.label : candidate.workerId,
+        blockId: candidate.blockId,
+        retiredBlockIds: Array.isArray(candidate.retiredBlockIds)
+          ? candidate.retiredBlockIds.filter((id): id is string => typeof id === 'string')
+          : [],
+        status: candidate.status ?? 'starting',
+        msg: candidate.msg,
+        turn: typeof candidate.turn === 'number' ? candidate.turn : 1,
+        cwd: typeof candidate.cwd === 'string' ? candidate.cwd : '.',
+        baseCommit: typeof candidate.baseCommit === 'string' ? candidate.baseCommit : null,
+        baseDirty: Array.isArray(candidate.baseDirty)
+          ? candidate.baseDirty.filter((line): line is string => typeof line === 'string')
+          : [],
+        worktree:
+          typeof candidate.worktree === 'object' && candidate.worktree !== null ? candidate.worktree : undefined,
+        mainCwd: candidate.mainCwd,
+        agentSessionId: candidate.agentSessionId,
+        exitCode: candidate.exitCode,
+        paused: candidate.paused === true,
+        errorStreak: typeof candidate.errorStreak === 'number' ? candidate.errorStreak : 0,
+        errorTurn: candidate.errorTurn,
+        wakeups: Array.isArray(candidate.wakeups)
+          ? candidate.wakeups.filter((at): at is number => typeof at === 'number')
+          : [],
+        fused: candidate.fused === true,
+        activeBlockClosed: candidate.activeBlockClosed === true
+      }
+      this.workers.set(worker.workerId, worker)
+      restored += 1
+    }
+    return restored
+  }
+
   get(workerId: string): WorkerEntry | undefined {
     return this.workers.get(workerId)
   }
@@ -206,7 +251,9 @@ export class WorkerRegistry {
     const now = this.now()
     worker.exitCode = exitCode
     if (worker.status === 'closed') return 'settled'
-    const isError = exitCode !== undefined && exitCode !== 0
+    // undefined = 事件缺 exit_code（信号终止或协议字段缺失）：按未知失败处理，
+    // 不能默认成功——否则被杀死的 worker 会被记成 done 并重置连续错误计数。
+    const isError = exitCode !== 0
     if (isError) {
       this.noteError(worker)
     } else {

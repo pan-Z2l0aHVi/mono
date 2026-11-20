@@ -128,6 +128,45 @@ describe('终态与熔断', () => {
     expect(worker.errorStreak).toBe(1)
   })
 
+  it('child_exited 缺 exit_code 时按未知失败处理，不记成 done（PR 审查 #2）', () => {
+    const { registry } = makeRegistry()
+    const worker = registerWorker(registry)
+    expect(registry.applyChildExited('block:A', undefined)).toBe('settled')
+    expect(worker.status).toBe('error')
+    expect(worker.fused).toBe(false)
+  })
+
+  it('restore 从持久化快照重建、丢弃形状不全的条目（PR 审查 Block 1）', () => {
+    const { registry } = makeRegistry()
+    const restored = registry.restore([
+      {
+        workerId: 'claude-9',
+        agent: 'claude',
+        mode: 'headless',
+        label: 'claude-9',
+        blockId: 'block:X',
+        retiredBlockIds: ['block:W'],
+        status: 'idle',
+        turn: 2,
+        cwd: '/repo',
+        baseCommit: 'abc',
+        baseDirty: ['?? a.txt'],
+        worktree: { path: '/wt', branch: 'pi-orch/s/w' },
+        mainCwd: '/repo',
+        paused: true,
+        activeBlockClosed: false
+      },
+      { workerId: 'broken' },
+      { notAWorker: true }
+    ])
+    expect(restored).toBe(1)
+    const worker = registry.get('claude-9')
+    expect(worker?.turn).toBe(2)
+    expect(worker?.retiredBlockIds).toEqual(['block:W'])
+    expect(worker?.worktree?.branch).toBe('pi-orch/s/w')
+    expect(worker?.paused).toBe(true)
+  })
+
   it('retired Block 的延迟事件不再改写 worker（review #1）', () => {
     const { registry } = makeRegistry()
     const worker = registerWorker(registry)

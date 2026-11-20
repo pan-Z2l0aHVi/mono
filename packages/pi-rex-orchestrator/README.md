@@ -41,7 +41,7 @@
     "claude": { "binary": "/opt/homebrew/bin/claude", "extraArgs": ["--model", "opus"] },
     "my-agent": { "binary": "/path/to/cli", "extraArgs": ["--fast"], "addDirFlag": "--add-dir" }
   },
-  "worktreeSetupHook": "ln -sfn \"$MAIN_CWD/.env\" .env"
+  "worktreeSetupHook": "ln -sfn \"$MAIN_CWD/.env\" .env" // hook 内可用 $MAIN_CWD 指向主仓库
 }
 ```
 

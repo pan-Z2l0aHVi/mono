@@ -112,6 +112,57 @@ describe('全覆盖验收视图', () => {
     expect(report).not.toContain('第二行')
   })
 
+  it('新目录内的文件逐文件出现在验收预览（PR 审查 Block 2）', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const base = await snapshotBase(gitExec, repo)
+    await mkdir(path.join(repo, 'newdir'), { recursive: true })
+    await writeFile(path.join(repo, 'newdir/inside.txt'), 'inner', 'utf8')
+
+    const report = await inspectChanges(
+      gitExec,
+      { readFile: async filePath => (await import('node:fs/promises')).readFile(filePath, 'utf8') },
+      repo,
+      base,
+      {}
+    )
+    expect(report).toContain('### newdir/inside.txt')
+    expect(report).toContain('inner')
+    expect(report).not.toContain('均为非文本或不可读')
+  })
+
+  it('派生前已有 untracked 目录：目录内新增文件仍算 fresh（PR 审查 Block 2）', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    await mkdir(path.join(repo, 'olddir'), { recursive: true })
+    await writeFile(path.join(repo, 'olddir/existing.txt'), 'old', 'utf8')
+    const base = await snapshotBase(gitExec, repo)
+    await writeFile(path.join(repo, 'olddir/added.txt'), 'new', 'utf8')
+
+    const report = await inspectChanges(
+      gitExec,
+      { readFile: async filePath => (await import('node:fs/promises')).readFile(filePath, 'utf8') },
+      repo,
+      base,
+      {}
+    )
+    expect(report).toContain('### olddir/added.txt')
+    expect(report).not.toContain('### olddir/existing.txt')
+  })
+
+  it('createWorktree 以显式 baseCommit 为检出起点（PR 审查 Should fix）', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const first = (await gitExec(['rev-parse', 'HEAD'], { cwd: repo })).stdout.trim()
+    await commitFile(repo, 'b.txt', 'v2')
+    const branch = worktreeBranch('review5', 'w-5')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-wt5`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch }, first)
+    const head = (await gitExec(['rev-parse', 'HEAD'], { cwd: wtPath })).stdout.trim()
+    expect(head).toBe(first)
+  })
+
   it('零提交仓库降级为 status 视图', async () => {
     const repo = await makeRepo()
     await writeFile(path.join(repo, 'x.txt'), 'x', 'utf8')

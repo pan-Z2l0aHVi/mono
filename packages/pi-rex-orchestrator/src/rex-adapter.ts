@@ -48,6 +48,8 @@ export interface RunBlockOptions {
   label: string
   keepOpen: boolean
   focus: boolean
+  /** 追加 `--interactive` 读取 shell 交互配置（PATH 依赖 `~/.zshrc` 的 CLI 需要）。 */
+  interactiveShell?: boolean
   /** 完整命令段（已含二进制与参数）。 */
   commandSegments: readonly string[]
 }
@@ -76,6 +78,7 @@ export class RexAdapter {
       '--label',
       options.label,
       ...(options.keepOpen ? ['--keep-open'] : []),
+      ...(options.interactiveShell === true ? ['--interactive'] : []),
       ...(options.focus ? [] : ['--focus=false']),
       '--json',
       '--',

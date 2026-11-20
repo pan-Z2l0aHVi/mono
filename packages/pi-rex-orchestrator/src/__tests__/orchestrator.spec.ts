@@ -22,11 +22,20 @@ import { createMockPi, type MockExecResult, type MockPi } from './pi-mock'
 const roots: string[] = []
 
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
+  await Promise.all(
+    roots.splice(0).map(root => rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }))
+  )
 })
 
 interface AdapterStub {
-  runBlocks: Array<{ cwd: string; label: string; keepOpen: boolean; focus: boolean; commandSegments: string[] }>
+  runBlocks: Array<{
+    cwd: string
+    label: string
+    keepOpen: boolean
+    focus: boolean
+    interactiveShell?: boolean
+    commandSegments: string[]
+  }>
   /** 非空时下一次 runBlock 抛错；状态不明用例设置。 */
   runBlockError?: Error
   /** 非空时下一次 blockClose 抛错；旧 Tab 关不掉的兜底用例设置。 */
@@ -62,6 +71,7 @@ function makeAdapterStub(): { adapter: RexAdapter; stub: AdapterStub } {
       label: string
       keepOpen: boolean
       focus: boolean
+      interactiveShell?: boolean
       commandSegments: string[]
     }) => {
       stub.runBlocks.push(options)
@@ -70,7 +80,10 @@ function makeAdapterStub(): { adapter: RexAdapter; stub: AdapterStub } {
         stub.runBlockError = undefined
         throw error
       }
-      return { windowId: 'window:w1', blockIds: [`block:${stub.runBlocks.length}`] }
+      const blockId = `block:${stub.runBlocks.length}`
+      // 新 Block 登记后对账会用到列表：默认让它视为存活，保持 starting 不被对账关闭。
+      stub.listBlocks.push(blockId)
+      return { windowId: 'window:w1', blockIds: [blockId] }
     },
     send: async (blockId: string, text: string) => {
       stub.sends.push({ blockId, text })
@@ -910,8 +923,22 @@ describe('事件环与验收折叠', () => {
           stub.onExit?.(new Error('rex events 退出（code=1）：Rex server unavailable'))
           await vi.advanceTimersByTimeAsync(2000)
         }
-        const alarm = mock.messages.find(message => message.content.includes('重连失败'))
-        expect(alarm?.content).toContain('Rex server unavailable')
+        const alarms = () => mock.messages.filter(message => message.content.includes('重连失败'))
+        expect(alarms()).toHaveLength(1)
+        expect(alarms()[0]?.content).toContain('Rex server unavailable')
+
+        // 跨过阈值后继续失败不再重复刷屏。
+        stub.onExit?.(new Error('rex events 退出（code=1）：Rex server unavailable'))
+        await vi.advanceTimersByTimeAsync(2000)
+        expect(alarms()).toHaveLength(1)
+
+        // 收到首行事件即复位：再连续失败三次重新告警。
+        stub.onLine?.('{}')
+        for (let i = 0; i < 3; i += 1) {
+          stub.onExit?.(new Error('rex events 退出（code=1）：Rex server unavailable'))
+          await vi.advanceTimersByTimeAsync(2000)
+        }
+        expect(alarms()).toHaveLength(2)
         dispose()
       } finally {
         vi.useRealTimers()
@@ -951,38 +978,41 @@ describe('事件环与验收折叠', () => {
     'child_exited 事件驱动终态，1 秒窗口聚合后 followUp 唤醒',
     withTempRoot(async () => {
       vi.useFakeTimers()
-      const { mock, stub, registry, dispose } = makeOrchestrator()
-      mock.emit('session_start', { reason: 'startup' })
-      await mock.tools
-        .get('rex_spawn_agent')
-        ?.execute('t0', { agent: 'claude', task: '做 A', mode: 'headless' }, undefined, undefined, mock.ctx)
-      const worker = registry.list()[0]
+      try {
+        const { mock, stub, registry, dispose } = makeOrchestrator()
+        mock.emit('session_start', { reason: 'startup' })
+        await mock.tools
+          .get('rex_spawn_agent')
+          ?.execute('t0', { agent: 'claude', task: '做 A', mode: 'headless' }, undefined, undefined, mock.ctx)
+        const worker = registry.list()[0]
 
-      stub.onLine?.(
-        JSON.stringify({
-          type: 'session_event',
-          payload: {
-            session_id: 's',
-            event: {
-              type: 'block_event',
-              payload: {
-                block_id: worker.blockId,
-                creator_name: 'com.superlogical.terminal',
-                name: 'child_exited',
-                payload: { exit_code: 0 }
+        stub.onLine?.(
+          JSON.stringify({
+            type: 'session_event',
+            payload: {
+              session_id: 's',
+              event: {
+                type: 'block_event',
+                payload: {
+                  block_id: worker.blockId,
+                  creator_name: 'com.superlogical.terminal',
+                  name: 'child_exited',
+                  payload: { exit_code: 0 }
+                }
               }
             }
-          }
-        })
-      )
-      expect(worker.status).toBe('done')
+          })
+        )
+        expect(worker.status).toBe('done')
 
-      await vi.advanceTimersByTimeAsync(1100)
-      const wake = mock.messages.find(message => message.options?.triggerTurn === true)
-      expect(wake?.content).toContain('本轮完成')
-      expect(wake?.options?.deliverAs).toBe('followUp')
-      vi.useRealTimers()
-      dispose()
+        await vi.advanceTimersByTimeAsync(1100)
+        const wake = mock.messages.find(message => message.options?.triggerTurn === true)
+        expect(wake?.content).toContain('本轮完成')
+        expect(wake?.options?.deliverAs).toBe('followUp')
+        dispose()
+      } finally {
+        vi.useRealTimers()
+      }
     })
   )
 
@@ -990,27 +1020,30 @@ describe('事件环与验收折叠', () => {
     'session_shutdown 停摆聚合计时器，会话结束后不再触碰 runtime',
     withTempRoot(async () => {
       vi.useFakeTimers()
-      const { mock, registry, dispose } = makeOrchestrator()
-      mock.emit('session_start', { reason: 'startup' })
-      registry.register({
-        workerId: 'claude-1',
-        agent: 'claude',
-        mode: 'headless',
-        label: 'claude-1',
-        blockId: 'block:A',
-        turn: 1,
-        cwd: '/repo',
-        baseCommit: null,
-        baseDirty: [],
-        paused: false
-      })
-      registry.applyProgramStatus('block:A', { state: 'done' })
-      mock.emit('session_shutdown', { reason: 'quit' })
+      try {
+        const { mock, registry, dispose } = makeOrchestrator()
+        mock.emit('session_start', { reason: 'startup' })
+        registry.register({
+          workerId: 'claude-1',
+          agent: 'claude',
+          mode: 'headless',
+          label: 'claude-1',
+          blockId: 'block:A',
+          turn: 1,
+          cwd: '/repo',
+          baseCommit: null,
+          baseDirty: [],
+          paused: false
+        })
+        registry.applyProgramStatus('block:A', { state: 'done' })
+        mock.emit('session_shutdown', { reason: 'quit' })
 
-      await vi.advanceTimersByTimeAsync(2000)
-      expect(mock.messages).toEqual([])
-      vi.useRealTimers()
-      dispose()
+        await vi.advanceTimersByTimeAsync(2000)
+        expect(mock.messages).toEqual([])
+        dispose()
+      } finally {
+        vi.useRealTimers()
+      }
     })
   )
 
@@ -1018,27 +1051,168 @@ describe('事件环与验收折叠', () => {
     'stale runtime 上的 sendMessage 抛错不会带崩宿主，通知循环静默停摆',
     withTempRoot(async () => {
       vi.useFakeTimers()
-      const { mock, registry, dispose } = makeOrchestrator()
-      // 模拟会话结束后 runtime 失效：宿主在 sendMessage 上直接抛异常。
-      ;(mock.pi as unknown as { sendMessage: () => void }).sendMessage = () => {
-        throw new Error('This extension ctx is stale after session replacement or reload.')
+      try {
+        const { mock, registry, dispose } = makeOrchestrator()
+        // 模拟会话结束后 runtime 失效：宿主在 sendMessage 上直接抛异常。
+        ;(mock.pi as unknown as { sendMessage: () => void }).sendMessage = () => {
+          throw new Error('This extension ctx is stale after session replacement or reload.')
+        }
+        registry.register({
+          workerId: 'claude-1',
+          agent: 'claude',
+          mode: 'headless',
+          label: 'claude-1',
+          blockId: 'block:A',
+          turn: 1,
+          cwd: '/repo',
+          baseCommit: null,
+          baseDirty: [],
+          paused: false
+        })
+        registry.applyProgramStatus('block:A', { state: 'done' })
+        await vi.advanceTimersByTimeAsync(1200)
+        expect(mock.messages).toEqual([])
+        dispose()
+      } finally {
+        vi.useRealTimers()
       }
-      registry.register({
-        workerId: 'claude-1',
-        agent: 'claude',
-        mode: 'headless',
-        label: 'claude-1',
-        blockId: 'block:A',
-        turn: 1,
-        cwd: '/repo',
-        baseCommit: null,
-        baseDirty: [],
-        paused: false
+    })
+  )
+
+  it(
+    '/reload 恢复：新实例从持久化注册表重建 worker 跟踪（PR 审查 Block 1）',
+    withTempRoot(async () => {
+      const first = makeOrchestrator()
+      first.mock.emit('session_start', { reason: 'startup' })
+      await first.mock.tools
+        .get('rex_spawn_agent')
+        ?.execute('t0', { agent: 'claude', task: '做 A', mode: 'headless' }, undefined, undefined, first.mock.ctx)
+      const workerId = first.registry.list()[0]?.workerId
+      // 等持久化落盘（fire-and-forget）。
+      const store = new HandoffStore({ root: roots[roots.length - 1] as string, sessionId: 'session-mock-0001' })
+      const deadline = Date.now() + 3000
+      for (;;) {
+        const saved = await store.loadRegistry()
+        if (Array.isArray(saved) && saved.length > 0) break
+        if (Date.now() > deadline) throw new Error('注册表未在 3s 内落盘')
+        await new Promise(resolve => setTimeout(resolve, 20))
+      }
+      first.dispose()
+
+      const second = makeOrchestrator()
+      second.mock.emit('session_start', { reason: 'reload' })
+      const restoredDeadline = Date.now() + 3000
+      for (;;) {
+        if (second.registry.get(workerId ?? '') !== undefined) break
+        if (Date.now() > restoredDeadline) throw new Error('reload 后未恢复注册表')
+        await new Promise(resolve => setTimeout(resolve, 20))
+      }
+      expect(second.registry.get(workerId ?? '')?.blockId).toBe('block:1')
+      second.dispose()
+    })
+  )
+
+  it(
+    '登记前到达的终态事件由登记后对账补齐（PR 审查 Block 3）',
+    withTempRoot(async () => {
+      const { mock, stub, registry, dispose } = makeOrchestrator()
+      mock.emit('session_start', { reason: 'startup' })
+      // Block 创建到 register 之间已到达的 done 状态：登记后立即对账应拉平。
+      stub.blockStatuses.set('block:1', [{ id: 'x', record: { state: 'done' } }])
+      await mock.tools
+        .get('rex_spawn_agent')
+        ?.execute('t0', { agent: 'claude', task: '做 A', mode: 'headless' }, undefined, undefined, mock.ctx)
+      const deadline = Date.now() + 3000
+      for (;;) {
+        if (registry.list()[0]?.status === 'done') break
+        if (Date.now() > deadline) break
+        await new Promise(resolve => setTimeout(resolve, 20))
+      }
+      expect(registry.list()[0]?.status).toBe('done')
+      dispose()
+    })
+  )
+
+  it(
+    'worktreeSetupHook 经 shell 前缀注入 $MAIN_CWD（PR 审查 Should fix）',
+    withTempRoot(async () => {
+      const mock = createMockPi(fakeGit())
+      const { adapter } = makeAdapterStub()
+      const registry = new WorkerRegistry(() => 0)
+      const root = roots[roots.length - 1] as string
+      const orchestrator = createOrchestrator(mock.pi, {
+        adapter,
+        registry,
+        profiles: resolveProfiles(undefined),
+        createStore: sessionId => new HandoffStore({ root, sessionId }),
+        config: { worktreeSetupHook: 'ln -sfn "$MAIN_CWD/.env" .env' },
+        runHeadlessPath: '/ext/scripts/run-headless.mjs',
+        nodePath: '/usr/local/bin/node',
+        showWelcome: false
       })
-      registry.applyProgramStatus('block:A', { state: 'done' })
-      await vi.advanceTimersByTimeAsync(1200)
-      expect(mock.messages).toEqual([])
-      vi.useRealTimers()
+      mock.emit('session_start', { reason: 'startup' })
+      await mock.tools
+        .get('rex_spawn_agent')
+        ?.execute('t0', { agent: 'claude', task: '做 A', use_worktree: true }, undefined, undefined, mock.ctx)
+
+      const hookCall = mock.execCalls.find(call => call.command === '/bin/sh')
+      expect(hookCall?.args[1]).toContain("export MAIN_CWD='/repo'")
+      expect(hookCall?.args[1]).toContain('ln -sfn "$MAIN_CWD/.env" .env')
+      orchestrator.dispose()
+    })
+  )
+
+  it(
+    '派发前步骤失败时回滚刚建的 worktree，不留无记录残留（PR 审查 Should fix）',
+    withTempRoot(async () => {
+      const mock = createMockPi(fakeGit())
+      const { adapter } = makeAdapterStub()
+      const registry = new WorkerRegistry(() => 0)
+      const root = roots[roots.length - 1] as string
+      const orchestrator = createOrchestrator(mock.pi, {
+        adapter,
+        registry,
+        profiles: resolveProfiles(undefined),
+        createStore: sessionId => {
+          const store = new HandoffStore({ root, sessionId })
+          store.writeBrief = async () => {
+            throw new Error('disk full')
+          }
+          return store
+        },
+        runHeadlessPath: '/ext/scripts/run-headless.mjs',
+        nodePath: '/usr/local/bin/node',
+        showWelcome: false
+      })
+      mock.emit('session_start', { reason: 'startup' })
+
+      await expect(
+        mock.tools
+          .get('rex_spawn_agent')
+          ?.execute('t0', { agent: 'claude', task: '做 A', use_worktree: true }, undefined, undefined, mock.ctx)
+      ).rejects.toThrow('disk full')
+      const argJoins = mock.execCalls.map(call => call.args.join(' '))
+      expect(argJoins.some(args => args.startsWith('worktree add -b pi-orch/'))).toBe(true)
+      expect(argJoins.some(args => args.startsWith('worktree remove'))).toBe(true)
+      expect(argJoins.some(args => args.startsWith('branch -D pi-orch/'))).toBe(true)
+      expect(registry.list()).toHaveLength(0)
+      orchestrator.dispose()
+    })
+  )
+
+  it(
+    'ask_user 在无 UI 会话直接降级，不触发弹窗（PR 审查 Should fix）',
+    withTempRoot(async () => {
+      const { mock, dispose } = makeOrchestrator(false)
+      const result = (await mock.tools
+        .get('ask_user')
+        ?.execute('t0', { question: '选哪个？' }, undefined, undefined, mock.ctx)) as {
+        content: Array<{ text: string }>
+        isError?: boolean
+      }
+      expect(result.isError).toBe(true)
+      expect(result.content[0]?.text).toContain('没有弹窗 UI')
+      expect(mock.ctx.confirmations).toHaveLength(0)
       dispose()
     })
   )

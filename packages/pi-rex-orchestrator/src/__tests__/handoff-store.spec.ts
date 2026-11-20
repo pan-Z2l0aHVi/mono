@@ -21,7 +21,9 @@ async function makeStore(): Promise<HandoffStore> {
 }
 
 afterEach(async () => {
-  await Promise.all(roots.splice(0).map(root => rm(root, { recursive: true, force: true })))
+  await Promise.all(
+    roots.splice(0).map(root => rm(root, { recursive: true, force: true, maxRetries: 5, retryDelay: 20 }))
+  )
 })
 
 describe('交接区', () => {

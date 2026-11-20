@@ -34,8 +34,12 @@ if (command === undefined) {
 }
 
 const eventsStream = createWriteStream(eventsOut, { flags: 'a' })
+let eventsWriteFailed = false
 eventsStream.on('error', error => {
-  process.stderr.write(`run-headless: events 文件写入失败: ${error.message}\n`)
+  // 磁盘满/权限/路径问题：子进程可能仍然成功退出，但本轮事件与 session_id 已丢失，
+  // 后续无法 headless 续跑。记下失败，收尾时以非零码退出，绝不当成功收场。
+  eventsWriteFailed = true
+  process.stderr.write(`run-headless: events 文件写入失败，事件未落盘: ${error.message}\n`)
 })
 
 const child = spawn(command, commandArgs, {
@@ -75,9 +79,7 @@ child.stdout.on('data', chunk => {
 // 以未捕获异常崩溃，events 文件也不走正常收尾。127 是「命令不存在」的惯用码。
 child.on('error', error => {
   process.stderr.write(`run-headless: 无法启动子进程: ${error.message}\n`)
-  eventsStream.end(() => {
-    process.exit(127)
-  })
+  flushThenExit(127)
 })
 
 child.on('close', (code, signal) => {
@@ -89,10 +91,21 @@ child.on('close', (code, signal) => {
     childExitCode = 128 + (SIGNAL_NUMBERS[signal] ?? 255)
   }
   if (buffer.trim() !== '') handleLine(buffer)
-  eventsStream.end(() => {
-    process.exit(childExitCode ?? 0)
-  })
+  const finalCode = eventsWriteFailed && (childExitCode === null || childExitCode === 0) ? 1 : (childExitCode ?? 0)
+  flushThenExit(finalCode)
 })
+
+/** 等写入流 end 后退出；流已出错时 end 回调可能不触发，限定等待后直接退出。 */
+function flushThenExit(code) {
+  let exited = false
+  const exit = () => {
+    if (exited) return
+    exited = true
+    process.exit(code)
+  }
+  eventsStream.end(exit)
+  setTimeout(exit, 1000).unref?.()
+}
 
 /** 常见信号的编号；识别不了的信号按 255 兜底，仍非 0。 */
 const SIGNAL_NUMBERS = {

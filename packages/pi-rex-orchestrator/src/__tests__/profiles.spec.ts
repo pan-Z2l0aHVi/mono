@@ -74,6 +74,14 @@ describe('白名单解析', () => {
     expect(claude?.headlessArgs(ctx)).toContain('stream-json')
   })
 
+  it('覆写的 supportsOsc7501 与 dangerFlags 真正生效，不被静默丢弃（PR 审查 Should fix）', () => {
+    const claude = resolveProfiles({
+      profiles: { claude: { supportsOsc7501: false, dangerFlags: ['--my-danger'] } }
+    }).get('claude')
+    expect(claude?.supportsOsc7501).toBe(false)
+    expect(auditProfileArgs(claude as NonNullable<typeof claude>, ['--my-danger'])).toHaveLength(1)
+  })
+
   it('追加参数覆盖全部模板，含 headless resume（re-review #8）', () => {
     const config: RexOrchestratorConfig = { profiles: { claude: { extraArgs: ['--model', 'opus'] } } }
     const claude = resolveProfiles(config).get('claude')

@@ -52,18 +52,42 @@ export async function runGit(exec: GitExec, cwd: string, args: string[]): Promis
 export async function snapshotBase(exec: GitExec, cwd: string): Promise<BaseSnapshot> {
   const rev = await exec(['rev-parse', '--verify', 'HEAD'], { cwd })
   const baseCommit = rev.code === 0 ? rev.stdout.trim() : null
-  const status = await runGit(exec, cwd, ['status', '--porcelain'])
-  return { baseCommit, dirty: status.split('\n').filter(line => line.trim() !== '') }
+  const status = await runGit(exec, cwd, ['status', '--porcelain', '-z', '--untracked-files=all'])
+  return { baseCommit, dirty: parseStatusZ(status).map(statusLine) }
 }
 
-function untrackedPaths(lines: readonly string[]): string[] {
-  return lines.filter(line => line.startsWith('?? ')).map(line => line.slice(3).trim())
+export interface StatusEntry {
+  /** 两位状态码，如 `??`、` M`、`R `。 */
+  code: string
+  path: string
 }
 
-function isUntrackedNew(line: string, initialDirty: readonly string[]): boolean {
-  if (!line.startsWith('?? ')) return false
-  const path = line.slice(3).trim()
-  return !initialDirty.some(dirty => dirty.startsWith('?? ') && dirty.slice(3).trim() === path)
+/** 条目转回 porcelain 显示行（基线与报告共用同一种记账形态）。 */
+export function statusLine(entry: StatusEntry): string {
+  return `${entry.code} ${entry.path}`
+}
+
+/**
+ * 解析 `git status --porcelain -z --untracked-files=all`：
+ * 逐文件列出 untracked（默认会把新目录折叠成 `?? dir/`，验收预览因此读不到
+ * 目录内的文件），`-z` 消除路径引号转义。renames/copies 的原始路径是紧随其后的
+ * 独立字段，需要一并跳过。
+ */
+export function parseStatusZ(stdout: string): StatusEntry[] {
+  const fields = stdout.split('\0')
+  const entries: StatusEntry[] = []
+  for (let index = 0; index < fields.length; index += 1) {
+    const field = fields[index]
+    if (field === undefined || field.length < 4) continue
+    const code = field.slice(0, 2)
+    entries.push({ code, path: field.slice(3) })
+    if (code[0] === 'R' || code[0] === 'C') index += 1
+  }
+  return entries
+}
+
+function isUntrackedNew(entry: StatusEntry, initialDirty: readonly string[]): boolean {
+  return entry.code === '??' && !initialDirty.includes(statusLine(entry))
 }
 
 /** 验收视图；零提交仓库降级为 status + 新文件预览。 */
@@ -76,11 +100,11 @@ export async function inspectChanges(
 ): Promise<string> {
   const maxChars = options.maxChars ?? 6000
   const sections: string[] = []
-  const statusNow = (await runGit(exec, cwd, ['status', '--porcelain'])).split('\n').filter(l => l.trim() !== '')
+  const statusEntries = parseStatusZ(await runGit(exec, cwd, ['status', '--porcelain', '-z', '--untracked-files=all']))
 
   if (base.baseCommit === null) {
     sections.push('## 零提交仓库：无 HEAD 基线，以下为当前 status')
-    sections.push(statusNow.length === 0 ? '(工作区干净)' : statusNow.join('\n'))
+    sections.push(statusEntries.length === 0 ? '(工作区干净)' : statusEntries.map(statusLine).join('\n'))
   } else {
     const log = await runGit(exec, cwd, ['log', `${base.baseCommit}..HEAD`, '--oneline'])
     sections.push('## 提交')
@@ -95,17 +119,17 @@ export async function inspectChanges(
     }
   }
 
-  const fresh = statusNow.filter(line => isUntrackedNew(line, base.dirty))
+  const fresh = statusEntries.filter(entry => isUntrackedNew(entry, base.dirty))
   if (fresh.length > 0) {
     const previewLines = options.previewLines ?? 20
     const previews: string[] = []
-    for (const line of fresh.slice(0, 20)) {
-      const filePath = untrackedPaths([line])[0]
-      if (filePath === undefined) continue
+    for (const entry of fresh.slice(0, 20)) {
+      const filePath = entry.path
       let content: string
       try {
         content = await deps.readFile(`${cwd}/${filePath}`)
       } catch {
+        previews.push(`### ${filePath}\n(读取失败，跳过预览)`)
         continue
       }
       if (content.includes('\0')) {
@@ -157,8 +181,9 @@ export async function scanIgnoredDeps(
   return found
 }
 
-export async function createWorktree(exec: GitExec, setup: WorktreeSetup): Promise<void> {
-  await runGit(exec, setup.mainCwd, ['worktree', 'add', '-b', setup.branch, setup.path, 'HEAD'])
+/** 从指定起点创建 worktree 分支；起点缺省 HEAD，传入 snapshotBase 的 baseCommit 可保证验收基线与检出起点一致。 */
+export async function createWorktree(exec: GitExec, setup: WorktreeSetup, baseCommit?: string): Promise<void> {
+  await runGit(exec, setup.mainCwd, ['worktree', 'add', '-b', setup.branch, setup.path, baseCommit ?? 'HEAD'])
 }
 
 /** worktree 工作区是否干净。 */

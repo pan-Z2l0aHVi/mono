@@ -78,7 +78,7 @@ process.exit(7)
     const dir = await mkdtemp(path.join(tmpdir(), 'run-headless-spec-'))
     dirs.push(dir)
     const fakeCli = await makeFixture(`
-process.stdout.write('{"partial":"before"}\\n')
+process.stdout.write('{"ready":true}\\n')
 process.on('SIGINT', () => {
   process.stdout.write('{"interrupted":true}\\n')
   setTimeout(() => process.exit(42), 50)
@@ -88,13 +88,32 @@ setInterval(() => {}, 1000)
     const eventsOut = path.join(dir, 'turn-002.events.jsonl')
 
     const wrapper = runWrapper(eventsOut, process.execPath, [fakeCli])
-    await new Promise(resolve => setTimeout(resolve, 400))
+    // 等 fixture 的 ready 行真正落盘再发信号：固定 sleep 在慢 CI 上会在 handler
+    // 安装前命中，默认退出 130 造成随机失败（PR 审查 Should fix）。
+    const readyDeadline = Date.now() + 5000
+    for (;;) {
+      const content = await readFile(eventsOut, 'utf8').catch(() => '')
+      if (content.includes('"ready":true')) break
+      if (Date.now() > readyDeadline) throw new Error('fixture 未在 5s 内输出 ready 行')
+      await new Promise(resolve => setTimeout(resolve, 25))
+    }
     wrapper.child.kill('SIGINT')
     expect(await wrapper.exit).toBe(42)
 
     const raw = await readFile(eventsOut, 'utf8')
     expect(raw).toContain('"interrupted":true')
     // wrapper 退出即子进程已 close（close handler 等子进程先退），42 是子进程自己的码。
+  })
+
+  it('events 文件写入失败时以非零码收尾，不把丢失的事件当成功（PR 审查 Should fix）', async () => {
+    const dir = await mkdtemp(path.join(tmpdir(), 'run-headless-spec-'))
+    dirs.push(dir)
+    const fakeCli = await makeFixture('process.stdout.write(\'{"a":1}\\n\'); process.exit(0)')
+    // 指向不存在的目录：createWriteStream 异步报错，wrapper 必须以此失败收尾。
+    const eventsOut = path.join(dir, 'missing-dir', 'events.jsonl')
+    const wrapper = runWrapper(eventsOut, process.execPath, [fakeCli])
+    expect(await wrapper.exit).toBe(1)
+    expect(wrapper.stderr()).toContain('事件未落盘')
   })
 
   it('参数缺失时拒绝启动（usage 64）', async () => {

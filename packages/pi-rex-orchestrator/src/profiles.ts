@@ -118,6 +118,9 @@ export function resolveProfiles(config: RexOrchestratorConfig | undefined): Map<
         ...base,
         binary: override.binary ?? base.binary,
         interactiveShell: override.interactiveShell ?? base.interactiveShell,
+        // 配置契约里暴露的开关必须真正生效：静默丢弃会让 ACK 与高危告警失真。
+        supportsOsc7501: override.supportsOsc7501 ?? base.supportsOsc7501,
+        dangerFlags: override.dangerFlags ?? base.dangerFlags,
         extraArgs: extra,
         interactiveArgs: withExtra(base.interactiveArgs),
         headlessArgs: withExtra(base.headlessArgs),

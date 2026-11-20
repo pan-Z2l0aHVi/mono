@@ -67,6 +67,25 @@ describe('runBlock 参数装配', () => {
     ])
   })
 
+  it('interactiveShell 为真时传 --interactive（PR 审查 Should fix）', async () => {
+    const { adapter, calls } = makeAdapter(() => ({
+      stdout: '{"window_id":"w","block_ids":["b1"]}',
+      stderr: '',
+      code: 0,
+      killed: false,
+      truncated: false
+    }))
+    await adapter.runBlock({
+      cwd: '/r',
+      label: 'l',
+      keepOpen: false,
+      focus: true,
+      interactiveShell: true,
+      commandSegments: []
+    })
+    expect(calls[0]?.args).toContain('--interactive')
+  })
+
   it('focus=true 时不传 --focus=false', async () => {
     const { adapter, calls } = makeAdapter(() => ({
       stdout: '{"window_id":"w","block_ids":["b1"]}',

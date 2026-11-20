@@ -120,12 +120,15 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
   const { adapter, registry, profiles } = deps
   let active = true
   let store: HandoffStore | undefined
+  let registryRestored = false
+  let persistWarned = false
   let configWarningsShown = false
   /** Pi session id 的短形式；worktree 分支名用它，session_start 时确定。 */
   let shortSession = 'session'
   let eventsHandle: { kill(): void } | undefined
   let previousTools: string[] | undefined
   let reconnectFails = 0
+  let alarmSent = false
   let reconnectTimer: ReturnType<typeof setTimeout> | undefined
   let noticeTimer: ReturnType<typeof setTimeout> | undefined
   const pendingNotices = new Map<string, string>()
@@ -166,6 +169,18 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
     } catch {
       stopEventLoop()
     }
+  }
+
+  /** 把 worker 注册表落盘：/reload 或会话恢复据此重建跟踪。失败只告警一次。 */
+  function persistRegistry(): void {
+    if (store === undefined) return
+    void store.saveRegistry(registry.list()).catch(error => {
+      if (persistWarned) return
+      persistWarned = true
+      notify(
+        `worker 注册表持久化失败：${error instanceof Error ? error.message : String(error)}（/reload 后将丢失 worker 跟踪）`
+      )
+    })
   }
 
   /** 工具执行前必须已过 `session_start`；未初始化属装配错误，如实抛出。 */
@@ -287,12 +302,20 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
   function startEvents(): void {
     if (!active) return
     eventsHandle = adapter.startEventsStream({
-      onLine: dispatchEvent,
+      onLine: line => {
+        // 收到任一事件即证明流已恢复：复位连续失败计数与告警去重位。
+        if (reconnectFails !== 0 || alarmSent) {
+          reconnectFails = 0
+          alarmSent = false
+        }
+        dispatchEvent(line)
+      },
       onExit: error => {
         eventsHandle = undefined
         if (!active) return
         if (error) reconnectFails += 1
-        if (reconnectFails >= 3) {
+        if (reconnectFails >= 3 && !alarmSent) {
+          alarmSent = true
           // adapter 已把 stderr 尾部拼进 error.message；告警带上它，否则
           // "Rex server unavailable" 这类真实原因到不了用户眼前。
           notify(
@@ -354,7 +377,16 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
       }
     }
     applyGuard()
-    void reconcile().catch(() => undefined)
+    // 先恢复持久化的 worker 跟踪，再对账：/reload 或会话恢复后
+    // rex_list_workers / /rex-status / /rex-cleanup 仍能看到既有 worker。
+    void (async () => {
+      if (!registryRestored && store !== undefined) {
+        registryRestored = true
+        const saved = await store.loadRegistry()
+        if (Array.isArray(saved)) registry.restore(saved)
+      }
+      await reconcile()
+    })().catch(() => undefined)
   })
 
   pi.on(
@@ -440,13 +472,14 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
       _onUpdate,
       ctx: ToolCtx
     ) {
+      // hasUI 前置：print/json/rpc 模式下没有弹窗能力，两条分支都要走同一个降级。
+      if (!ctx.hasUI) {
+        return text('当前会话没有弹窗 UI：请把问题直接写进对话向用户提问。', true)
+      }
       const options = params.options?.filter(option => option.trim() !== '') ?? []
       if (options.length === 0) {
         const ok = await ctx.ui.confirm(params.question, '确认该操作？')
         return text(ok ? '用户确认。' : '用户取消。', !ok)
-      }
-      if (!ctx.hasUI) {
-        return text('当前会话没有弹窗 UI：请把问题直接写进对话向用户提问。', true)
       }
       const ordered = params.recommended
         ? [params.recommended, ...options.filter(option => option !== params.recommended)]
@@ -530,31 +563,51 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         }
         const branch = worktreeBranch(shortSession, workerId)
         const path = store.worktreeDir(workerId)
-        await createWorktree(gitExec, { mainCwd: targetCwd, path, branch })
+        // 检出起点用验收基线：若 snapshot 与建 worktree 之间有别的提交，
+        // worktree 不能晚于 base_commit 起步，否则验收会把别人的提交算进来。
+        await createWorktree(gitExec, { mainCwd: targetCwd, path, branch }, snapshot.baseCommit)
         worktree = { path, branch }
         workerCwd = path
         if (deps.config?.worktreeSetupHook) {
-          const hook = await pi.exec('/bin/sh', ['-c', deps.config.worktreeSetupHook], { cwd: workerCwd })
+          // pi.exec 没有 env 选项；经 shell 前缀注入 $MAIN_CWD 供 hook 引用主仓。
+          const hookCommand = `export MAIN_CWD=${shellQuote(targetCwd)}; ${deps.config.worktreeSetupHook}`
+          const hook = await pi.exec('/bin/sh', ['-c', hookCommand], { cwd: workerCwd })
           if (hook.code !== 0) {
             notify(`worktreeSetupHook 失败（exit ${hook.code}）：${hook.stderr.slice(0, 200)}`)
           }
         }
       }
 
-      const { dir: handoffDir, warnings } = await store.ensureWorkerDir(workerId)
-      // 扫描的是主仓库：目的就是找出「主仓有、worktree 没有」的被 ignore 依赖与配置。
-      const ignoredDeps = worktree ? await scanIgnoredDeps({ exists: path => existsPath(pi, path) }, targetCwd) : []
-
-      const brief = renderBrief({
-        turn: 1,
-        task: params.task,
-        workerId,
-        worktree,
-        mainCwd: targetCwd,
-        ignoredDeps,
-        handoffPath: store.handoffPath(workerId, 1)
-      })
-      await store.writeBrief(workerId, 1, brief)
+      let handoffDir: string
+      let warnings: string[]
+      let ignoredDeps: string[] = []
+      try {
+        const ensured = await store.ensureWorkerDir(workerId)
+        handoffDir = ensured.dir
+        warnings = ensured.warnings
+        // 扫描的是主仓库：目的就是找出「主仓有、worktree 没有」的被 ignore 依赖与配置。
+        ignoredDeps = worktree ? await scanIgnoredDeps({ exists: path => existsPath(pi, path) }, targetCwd) : []
+        const brief = renderBrief({
+          turn: 1,
+          task: params.task,
+          workerId,
+          worktree,
+          mainCwd: targetCwd,
+          ignoredDeps,
+          handoffPath: store.handoffPath(workerId, 1)
+        })
+        await store.writeBrief(workerId, 1, brief)
+      } catch (error) {
+        // 派发前失败会留下没有 registry 记录的 worktree 与分支：回滚后如实抛出。
+        if (worktree !== undefined) {
+          await cleanupWorktree(
+            gitExec,
+            { mainCwd: targetCwd, path: worktree.path, branch: worktree.branch },
+            { force: true }
+          ).catch(() => undefined)
+        }
+        throw error
+      }
 
       const shortPrompt =
         `Read ${store.briefPath(workerId, 1)} and execute it now. ` +
@@ -592,6 +645,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
           label,
           keepOpen: mode === 'headless',
           focus: mode === 'interactive',
+          interactiveShell: profile.interactiveShell,
           commandSegments
         })
       } catch (error) {
@@ -620,6 +674,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
           },
           { initialStatus: 'closed' }
         )
+        persistRegistry()
         return text(
           [
             `rex run 返回异常（${failure}），派生结果不明：请在 Rex Tab 检查 label=${label}。`,
@@ -645,6 +700,10 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         mainCwd: worktree === undefined ? undefined : targetCwd,
         paused: false
       })
+      persistRegistry()
+      // 登记发生在 Block 创建之后：创建到登记之间到达的终态事件已被丢弃，
+      // 立即对账把 program_status / last_exit 拉平。
+      void reconcile().catch(() => undefined)
 
       return text(
         [
@@ -758,6 +817,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
           label: worker.label,
           keepOpen: true,
           focus: false,
+          interactiveShell: profile.interactiveShell,
           commandSegments: [
             '/usr/bin/env',
             'PI_REX_ORCH=0',
@@ -772,6 +832,9 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         })
         registry.replaceBlock(worker.workerId, created.blockIds[0] as string)
         registry.markTurnDispatched(worker.workerId, turn)
+        persistRegistry()
+        // 与 spawn 同理：新 Block 的早期终态事件可能早于 replaceBlock 到达。
+        void reconcile().catch(() => undefined)
         // 旧 Block 的结论已在 events.jsonl 里，续跑即回收（V3-02「单活跃 Tab」）：
         // 关不掉（如用户正盯着）就留在 retired 列表，由 /rex-cleanup 兜底重试。
         const oldBlockClosed = await adapter.blockClose(oldBlockId).then(
@@ -801,6 +864,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
       await adapter.send(worker.blockId, shortPrompt)
       await adapter.sendKey(worker.blockId, 'enter')
       registry.markTurnDispatched(worker.workerId, turn, { notifyTransition: false })
+      persistRegistry()
 
       let ackNote = '（profile 不支持 OSC 7501，跳过送达强校验）'
       if (profile.supportsOsc7501) {
@@ -1136,6 +1200,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
       }
 
       registry.markClosed(worker.workerId)
+      persistRegistry()
       return text([`worker ${worker.workerId} 已关闭。`, cleanupNote].join('\n'))
     }
   })
@@ -1168,6 +1233,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         ctx.ui.notify(`没有 worker "${workerId}"`, 'warning')
         return
       }
+      persistRegistry()
       ctx.ui.notify(`${workerId} 已进入人工接管保护，自动投递暂停`, 'info')
     }
   })
@@ -1180,6 +1246,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         ctx.ui.notify(`没有 worker "${workerId}"`, 'warning')
         return
       }
+      persistRegistry()
       ctx.ui.notify(`${workerId} 已解除接管保护`, 'info')
     }
   })
@@ -1269,7 +1336,10 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
             outcome.kind === 'removed' ? 'info' : 'warning'
           )
           // 清理完成解除跟踪：重复 /rex-cleanup 不再对已清理 worker 重复跑。
-          if (outcome.kind === 'removed') worker.worktree = undefined
+          if (outcome.kind === 'removed') {
+            worker.worktree = undefined
+            persistRegistry()
+          }
         }
       }
     }
@@ -1365,6 +1435,11 @@ function existsPath(pi: BridgePi, filePath: string): Promise<boolean> {
  * 单独成行；两条命令相互独立——cleanupWorktree 可能已经移除了 worktree、只是
  * 分支删除失败，`&&` 会让第一条必然失败的命令挡住真正需要执行的第二条。
  */
+/** 单引号 shell 转义：供 worktreeSetupHook 的 $MAIN_CWD 前缀注入使用。 */
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`
+}
+
 function manualCleanupHint(worktree: { path: string; branch: string }, branchDeleteCommand?: string): string {
   return [
     '请手动执行（已存在的步骤可跳过）：',

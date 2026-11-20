@@ -9,7 +9,7 @@
  * （worker 写的结构化交接结论）、`turn-NNN.events.jsonl`（headless 原始事件流落盘）。
  */
 
-import { mkdir, readFile, stat, writeFile } from 'node:fs/promises'
+import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 
@@ -111,6 +111,24 @@ export class HandoffStore {
   async readEvents(workerId: string, turn: number): Promise<string | undefined> {
     try {
       return await readFile(this.eventsPath(workerId, turn), 'utf8')
+    } catch {
+      return undefined
+    }
+  }
+
+  /** worker 注册表快照：/reload 或会话恢复后据此重建跟踪（内容按「不认识就当作没有」校验）。 */
+  async saveRegistry(entries: readonly unknown[]): Promise<void> {
+    const target = path.join(this.sessionDir, 'registry.json')
+    await mkdir(this.sessionDir, { recursive: true, mode: 0o700 })
+    const temp = `${target}.tmp`
+    await writeFile(temp, JSON.stringify(entries), 'utf8')
+    await rename(temp, target)
+  }
+
+  async loadRegistry(): Promise<unknown> {
+    try {
+      const raw = await readFile(path.join(this.sessionDir, 'registry.json'), 'utf8')
+      return JSON.parse(raw) as unknown
     } catch {
       return undefined
     }
