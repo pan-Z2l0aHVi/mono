@@ -47,6 +47,9 @@ describe('应用级 scrollbar 移动端回退（浏览器）', () => {
     // 默认配置在模块求值时读取媒体查询，因此必须在触屏仿真生效后再加载。
     const { default: appScrollbarsOptions } = await import('@greypan/app-scrollbars')
     const instance = OverlayScrollbars(document.body, appScrollbarsOptions)
+    if (!instance) {
+      throw new Error('OverlayScrollbars failed to initialize')
+    }
 
     try {
       await new Promise(resolve => requestAnimationFrame(resolve))

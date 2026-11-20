@@ -939,6 +939,8 @@ duration 默认值：
 | `--wui-color-focus-ring`              | focus indicator 颜色，由 accent 派生          | `color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent)` | `color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%)` |
 | `--wui-scrollbar-handle`              | 原生 scrollbar handle 颜色                    | `rgb(0 0 0 / 0.39)`                                                     | `rgb(255 255 255 / 0.5)`                                                              |
 
+`--wui-scrollbar-handle` 只作用于 fine pointer 环境；coarse pointer 设备上组件滚动容器（`.wui-scroll`）回退平台原生 scrollbar 样式。
+
 ### 阴影 token
 
 | 名称                   | 说明             | 浅色默认值                       | 深色默认值                      |
