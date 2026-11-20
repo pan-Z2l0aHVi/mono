@@ -10,7 +10,7 @@ process.on('exit', () => fs.rmSync(fixtureDir, { recursive: true, force: true })
 
 // 用一份假的 `vtool` 取代真实工具：门禁的判定面是「从 vtool 输出里读出 sdk major」，
 // 不需要真的 Mach-O。PATH 前面插一个只响应 -show-build 的 shim。
-function runGate(sdk, { toolExit = 0 } = {}) {
+function runGate(sdk, { toolExit = 0, noSdkLine = false } = {}) {
   const binDir = path.join(fixtureDir, `bin-${sdk.replace(/\W/g, '-')}-${toolExit}`)
   fs.mkdirSync(binDir, { recursive: true })
   const shim = path.join(binDir, 'vtool')
@@ -19,14 +19,18 @@ function runGate(sdk, { toolExit = 0 } = {}) {
     `#!/bin/sh
 cat <<'REPORT'
 Load command 11
-      cmd LC_BUILD_VERSION
+${
+  noSdkLine
+    ? '      cmd LC_VERSION_MIN_MACOSX\n  cmdsize 16\n  version 10.13'
+    : `      cmd LC_BUILD_VERSION
   cmdsize 32
  platform MACOS
     minos 12.0
       sdk ${sdk}
    ntools 1
      tool LD
-  version 27037.1
+  version 27037.1`
+}
 REPORT
 exit ${toolExit}
 `
@@ -65,10 +69,17 @@ function runGateMulti(sdks) {
 // 环境探测（sw_vers / xcode-select / xcrun）在 shim 只覆盖 vtool 的情况下仍可能失败；
 // 门禁不因探测失败改变判定，故只断言最终的 sdk 判据与退出码。
 
-for (const sdk of ['15.0', '15.2', '15.5', '15.9']) {
+for (const sdk of ['9.0', '10.13', '15.0', '15.2', '15.5', '15.9']) {
   const { status, output } = runGate(sdk)
   assert.equal(status, 1, `sdk ${sdk} must fail the gate`)
   assert.match(output, new RegExp(`LC_BUILD_VERSION.sdk=${sdk.replaceAll('.', '\\.')} < 16`))
+}
+
+for (const sdk of ['08.0', '09.0']) {
+  const { status, output } = runGate(sdk)
+  assert.equal(status, 1, `sdk ${sdk} must fail the gate`)
+  assert.match(output, new RegExp(`LC_BUILD_VERSION.sdk=${sdk.replaceAll('.', '\\.')} < 16`))
+  assert.doesNotMatch(output, /value too great for base/)
 }
 
 for (const sdk of ['16.0', '16.4', '17.0', '25.0', '26.0', '26.5', '27.0']) {
@@ -90,6 +101,12 @@ assert.equal(runGateMulti(['26.5', '26.5']).status, 0, 'all slices at or above 1
   const { status, output } = runGate('unknown')
   assert.equal(status, 1, 'an unparsable sdk must fail the gate')
   assert.match(output, /LC_BUILD_VERSION.sdk=unknown < 16/)
+}
+
+{
+  const { status, output } = runGate('none', { noSdkLine: true })
+  assert.equal(status, 1, 'a report without an sdk line must fail the gate')
+  assert.match(output, /no LC_BUILD_VERSION sdk found/)
 }
 
 // 二进制不存在时给可定位的错误，而不是让 awk 拿到空串后误判。

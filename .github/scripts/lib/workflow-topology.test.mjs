@@ -1354,6 +1354,9 @@ function matrixEntries(text) {
 // 正是 SDK 15.5，所以它和已退役的 macos-14 一样不能用于原生构建。
 // macOS 14 于 2026-11-02 退役（actions/runner-images#13518）：标签一旦回到工作流，
 // macOS job 会在 0 秒被取消，而同一 run 的 Linux job 照常绿，很容易被误判成偶发。
+const staleRunnerPattern = /^ {0,20}(?:runner|runs-on): macos-1[345]/mu
+assert.match('    runs-on: macos-15\n', staleRunnerPattern)
+assert.doesNotMatch('    # runner: macos-15\n', staleRunnerPattern)
 for (const file of ['wails-verify.yml', 'wails-release.yml']) {
   assert.match(
     workflowText[file],
@@ -1363,7 +1366,7 @@ for (const file of ['wails-verify.yml', 'wails-release.yml']) {
   // 行首锚定的负向断言：注释里提到旧标签不该误伤，但 `runner:` / `runs-on:` 引用的旧标签必须拦下。
   assert.doesNotMatch(
     workflowText[file],
-    /(?:runner|runs-on): macos-1[345]/u,
+    staleRunnerPattern,
     `${file} must not target a runner whose default SDK is < 16`
   )
   const gate = namedStep(workflowText[file], 'Check linked macOS SDK')
