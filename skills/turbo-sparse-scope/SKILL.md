@@ -59,6 +59,28 @@ mise exec -- node <skill-dir>/sparse-scope.mjs --restore [--json]
 - 未暂存的修改与未跟踪文件留在工作区，但不再属于 cone；已暂存且工作区与索引一致的改动（新增、修改、重命名）会随 cone 移出工作区，未暂存的删除在收缩后不再显示。收缩不改暂存内容，只在索引里写 skip-worktree 位：`--restore` 后暂存内容恢复为暂存版本，纯未暂存删除按 HEAD 重建，已暂存的删除文件不会回到工作区；工作区与索引不一致的路径不会被移出。脚本把它们列在 `dirtyOutsideCone` 里。`hiddenPackages` 按路径判断，因此 `--add` 保留的包不会误报为隐藏。
 - 每次先 `init --cone` 再 `set --cone`；`--reset` 重复应用同一闭包结果不变，默认动作在已稀疏时按上面的规则拒绝。不需要，也不要手改 `.git/info/sparse-checkout`。
 
+## 生命周期与本地验证
+
+适用范围：任务 scope 是 workspace 的子集——一个或多个包，连同它们的 turbo 传递依赖
+闭包——且不改 workspace 成员与根共享面（manifest、lockfile、根脚本、指令语料、CI 定义）。
+
+- **全程稀疏**：上述形态的任务从开工到提交留在稀疏树上。`--restore` 的触发器：需要
+  非 frozen 安装或改动 lockfile；需要运行拒绝稀疏的全仓门禁；merge / rebase / 切分支
+  之前；需要读取或验证 cone 外、且无法用 `--add <pkg>` 覆盖的内容（含反向消费者闭包
+  超出 cone、文件不在任何包或 turbo 图内等情形）。其余时候不为了「顺手跑一下全仓」
+  放开稀疏。
+- **侦察期稀疏**：新增包、改动 workspace 成员或根共享面的任务，稀疏只在侦察阶段有效；
+  第一次触发上述 restore 条件时恢复全树，之后按全树流程走。
+- **稀疏期间的本地验证**：按 [verification.md](../../docs/agents/verification.md) 选层，
+  并用 [monorepo-change-impact](../monorepo-change-impact/SKILL.md) 计算受影响闭包——
+  公共契约变更时的反向消费者同样在目标集合内。验证命令收窄到目标包集合：包测试、包级
+  类型检查与构建、turbo 过滤按目标包闭包展开，外加 check-pre-commit。
+  check-context / check-policy / test-scripts 不在稀疏树上运行：任务改动面触及它们的
+  扫描面时，收尾 restore 后跑一次；确实无法本地完成的，在交付记录中明记缺口，由 PR CI
+  的 required check 复检，不以 CI 结果替代本地应完成的证据。
+- **结论记账**：vp check / cspell 在稀疏树上只覆盖已检出范围，结论按「部分覆盖
+  （未检出的包 N 个）」记录，不得声明全仓通过；稀疏期未跑的全仓项在交付记录中明记缺口。
+
 ## 稀疏树里的安全规则
 
 1. **全局引用搜索只用 `git grep <pattern> HEAD`。** `rg`、`grep -r`、Glob 只看已检出的文件，闭包外的调用者会静默消失，影响面结论因此偏乐观。`git grep` 也接受 `HEAD -- <path>` 限定范围；未提交的暂存内容不在 HEAD 里，另用 `git grep --cached`。

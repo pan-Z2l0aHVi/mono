@@ -90,6 +90,7 @@ export default {
       'md-to-meta',
       'monorepo-kit',
       'pi-orchestrator-memory-bridge',
+      'pi-rex-orchestrator',
       'test-kit',
       'tsconfig',
       'unplugin-web-components',
