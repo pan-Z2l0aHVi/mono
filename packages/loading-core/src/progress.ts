@@ -69,8 +69,11 @@ export class GlobalProgressController {
    * active at once; the bar stays visible until all of them end.
    */
   begin(): ProgressToken {
+    const isFirstToken = this.activeTokens.size === 0
     const token = Symbol('progress-task')
     this.activeTokens.add(token)
+
+    if (isFirstToken) this.resetFailsafe()
 
     if (this.hideTimer !== null) {
       window.clearTimeout(this.hideTimer)
@@ -179,6 +182,10 @@ export class GlobalProgressController {
     if (this.delayTimer !== null) {
       window.clearTimeout(this.delayTimer)
       this.delayTimer = null
+      if (this.failsafeTimer !== null) {
+        window.clearTimeout(this.failsafeTimer)
+        this.failsafeTimer = null
+      }
       return
     }
     if (!this.isVisible || this.hideTimer !== null) return

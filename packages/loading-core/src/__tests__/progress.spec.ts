@@ -161,6 +161,16 @@ describe('GlobalProgressController', () => {
     expect(root().getAttribute('aria-valuenow')).toBe('0')
   })
 
+  it('arms the failsafe when navigation begins, not when the bar shows', () => {
+    controller.configure({ delayMs: 30_000, maxDurationMs: 1_000 })
+    controller.begin()
+    advance(1_000)
+
+    expect(metrics).toContainEqual({ type: 'progress_failsafe_triggered', activeCount: 1 })
+    expect(controller.isNavigating()).toBe(false)
+    expect(metrics.some(event => event.type === 'progress_shown')).toBe(false)
+  })
+
   it('makes end idempotent so only one hide is scheduled', () => {
     const token = controller.begin()
     advance(150)
