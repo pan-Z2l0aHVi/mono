@@ -5,6 +5,7 @@
 - **修订**: ADR-0008（Wails 暴露面 allowlist）
 - **修订（2026-11-14 第二轮）**: 七菜单结构；`backend/menu` 注册窄 Service `ReportDisabledCommands` 接收禁用命令集合；`backend/native/menu` 不注册 Service。
 - **修订（2026-11-15 第三轮）**: 缩放改为 Go 拥有的设置；窗口拖动区改为按元素声明；壳在 runtime 注入后渲染。可执行口径见 [apps/interweave/AGENTS.md](../../apps/interweave/AGENTS.md)。
+- **修订（2026-11-20 第四轮）**: 正文「`interweave/` 子目录」仅指 production 构建；development 构建的数据目录是 `interweave-dev/`（由 Go `production` build tag 决定，`library.db`、缩略图与 `settings.json` 同构）。配套：macOS `interweave.dev.app` 的构建产物 `CFBundleIdentifier` 改写为 `com.greypan.interweave.dev`，Windows `WebviewUserDataPath` 显式指向数据目录下的 `webview/`，使 dev 与正式版的本地持久化完全隔离。
 
 ## 背景
 

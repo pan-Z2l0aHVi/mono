@@ -93,7 +93,8 @@ export default defineConfig({
           exclude: [
             'src/**/reduced-motion.browser.spec.ts',
             'src/components/context-menu/__tests__/long-press.browser.spec.ts',
-            'src/components/toast/__tests__/toast-mobile.browser.spec.ts'
+            'src/components/toast/__tests__/toast-mobile.browser.spec.ts',
+            'src/assets/__tests__/scrollbar-mobile.browser.spec.ts'
           ],
           // browser runtime 没有 process.env；test.env 在这里映射到 import.meta.env，
           // 供需要在 CI 放宽等待预算的 spec 判断环境。
@@ -122,6 +123,7 @@ export default defineConfig({
           // 输入能力仿真（触屏 / hover: none）只在这里跑，见 browser project 的 exclude 说明。
           name: 'browser-touch',
           include: [
+            'src/assets/__tests__/scrollbar-mobile.browser.spec.ts',
             'src/components/context-menu/__tests__/long-press.browser.spec.ts',
             'src/components/toast/__tests__/toast-mobile.browser.spec.ts'
           ],

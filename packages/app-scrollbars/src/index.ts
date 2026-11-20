@@ -7,6 +7,24 @@ import { ClickScrollPlugin, OverlayScrollbars, type PartialOptions } from 'overl
  */
 export const APP_SCROLLBARS_THEME = 'os-theme-macos'
 
+/**
+ * 主指针是否为手机 / 平板这类 coarse pointer。无 `matchMedia` 的环境按桌面处理。
+ *
+ * OverlayScrollbars 只会在两轴原生 scrollbar 都是覆盖式时应用这个回退；主指针仍为 fine
+ * 的触屏笔记本继续使用自定义 scrollbar。
+ */
+export function shouldUseNativeScrollbars(): boolean {
+  try {
+    return (
+      typeof window !== 'undefined' &&
+      typeof window.matchMedia === 'function' &&
+      window.matchMedia('(pointer: coarse)').matches
+    )
+  } catch {
+    return false
+  }
+}
+
 /*
  * track 点击滚动由 ClickScrollPlugin 提供；插件未注册时 `clickScroll` 静默失效——
  * 不报错、不打日志，track 只是没有反应。注册写在模块作用域，导入本模块时插件就一定在位，
@@ -43,6 +61,7 @@ OverlayScrollbars.plugin(ClickScrollPlugin)
  *   得到时长 0，首帧（同步执行、不经 rAF）就判定已到期并落到终点。
  */
 export default {
+  showNativeOverlaidScrollbars: shouldUseNativeScrollbars(),
   scrollbars: {
     theme: APP_SCROLLBARS_THEME,
     autoHide: 'scroll',
