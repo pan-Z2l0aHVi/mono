@@ -146,6 +146,11 @@ export class WorkerRegistry {
         agentSessionId: candidate.agentSessionId,
         exitCode: candidate.exitCode,
         paused: candidate.paused === true,
+        blockedKind: candidate.blockedKind,
+        // OSC 重放的 updated_at 单调守卫与稳定窗口必须随快照恢复：丢失会允许旧
+        // 记录拉回状态，并让恢复出的 idle/done worker 永远过不了 1.5s 投递门禁。
+        lastStatusAt: typeof candidate.lastStatusAt === 'string' ? candidate.lastStatusAt : undefined,
+        stableSince: typeof candidate.stableSince === 'number' ? candidate.stableSince : undefined,
         errorStreak: typeof candidate.errorStreak === 'number' ? candidate.errorStreak : 0,
         errorTurn: candidate.errorTurn,
         wakeups: Array.isArray(candidate.wakeups)

@@ -1059,6 +1059,8 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         if (closed !== true) return closeFailure(blockId, closed)
         const index = worker.retiredBlockIds.indexOf(blockId)
         if (index !== -1) worker.retiredBlockIds.splice(index, 1)
+        // 关掉一个就落一次盘：后续 Block 失败早退时，已关闭的 retired 不能留在快照里。
+        persistRegistry()
       }
       if (!worker.activeBlockClosed && !worker.blockId.startsWith('unconfirmed:')) {
         const closed: string | true = await adapter.blockClose(worker.blockId).then(
@@ -1067,6 +1069,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         )
         if (closed !== true) return closeFailure(worker.blockId, closed)
         worker.activeBlockClosed = true
+        persistRegistry()
       }
 
       let cleanupNote = '（无 worktree）'
@@ -1289,6 +1292,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
           if (!closed) continue
           const index = worker.retiredBlockIds.indexOf(blockId)
           if (index !== -1) worker.retiredBlockIds.splice(index, 1)
+          persistRegistry()
         }
         if (closeFailures.length > 0) {
           ctx.ui.notify(
@@ -1435,17 +1439,17 @@ function existsPath(pi: BridgePi, filePath: string): Promise<boolean> {
  * 单独成行；两条命令相互独立——cleanupWorktree 可能已经移除了 worktree、只是
  * 分支删除失败，`&&` 会让第一条必然失败的命令挡住真正需要执行的第二条。
  */
-/** 单引号 shell 转义：供 worktreeSetupHook 的 $MAIN_CWD 前缀注入使用。 */
-function shellQuote(value: string): string {
-  return `'${value.replace(/'/g, `'\\''`)}'`
-}
-
 function manualCleanupHint(worktree: { path: string; branch: string }, branchDeleteCommand?: string): string {
   return [
     '请手动执行（已存在的步骤可跳过）：',
     `git worktree remove "${worktree.path}"`,
     branchDeleteCommand ?? `git branch -d "${worktree.branch}"`
   ].join('\n')
+}
+
+/** 单引号 shell 转义：供 worktreeSetupHook 的 $MAIN_CWD 前缀注入使用。 */
+function shellQuote(value: string): string {
+  return `'${value.replace(/'/g, `'\\''`)}'`
 }
 
 /** worktree 的主仓 cwd：从 worktree 里问 git 一次。 */

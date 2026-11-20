@@ -91,20 +91,26 @@ child.on('close', (code, signal) => {
     childExitCode = 128 + (SIGNAL_NUMBERS[signal] ?? 255)
   }
   if (buffer.trim() !== '') handleLine(buffer)
-  const finalCode = eventsWriteFailed && (childExitCode === null || childExitCode === 0) ? 1 : (childExitCode ?? 0)
-  flushThenExit(finalCode)
+  flushThenExit()
 })
 
-/** 等写入流 end 后退出；流已出错时 end 回调可能不触发，限定等待后直接退出。 */
-function flushThenExit(code) {
+/**
+ * 等写入流 end 后退出。退出码在 flush 完成的时刻按当时的 eventsWriteFailed 决定：
+ * 打开成功后发生的写错误（含 flush/end 期间才上报的）同样必须转为非零——事件与
+ * session_id 已丢失的回合不能按成功收场。看门狗计时器不 unref：流被销毁后 end
+ * 回调可能永不触发，必须由它保证进程仍有非零退出路径。
+ */
+function flushThenExit(fallbackCode = null) {
   let exited = false
+  const finalCode = () =>
+    eventsWriteFailed && (childExitCode === null || childExitCode === 0) ? 1 : (childExitCode ?? fallbackCode ?? 0)
   const exit = () => {
     if (exited) return
     exited = true
-    process.exit(code)
+    process.exit(finalCode())
   }
   eventsStream.end(exit)
-  setTimeout(exit, 1000).unref?.()
+  setTimeout(exit, 1000)
 }
 
 /** 常见信号的编号；识别不了的信号按 255 兜底，仍非 0。 */

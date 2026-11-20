@@ -154,7 +154,10 @@ describe('终态与熔断', () => {
         worktree: { path: '/wt', branch: 'pi-orch/s/w' },
         mainCwd: '/repo',
         paused: true,
-        activeBlockClosed: false
+        activeBlockClosed: false,
+        blockedKind: 'permission',
+        lastStatusAt: '2026-11-19T00:00:00Z',
+        stableSince: 1234
       },
       { workerId: 'broken' },
       { notAWorker: true }
@@ -165,6 +168,10 @@ describe('终态与熔断', () => {
     expect(worker?.retiredBlockIds).toEqual(['block:W'])
     expect(worker?.worktree?.branch).toBe('pi-orch/s/w')
     expect(worker?.paused).toBe(true)
+    // 状态机守卫必须随快照恢复（PR 审查 Should fix）。
+    expect(worker?.lastStatusAt).toBe('2026-11-19T00:00:00Z')
+    expect(worker?.stableSince).toBe(1234)
+    expect(worker?.blockedKind).toBe('permission')
   })
 
   it('retired Block 的延迟事件不再改写 worker（review #1）', () => {

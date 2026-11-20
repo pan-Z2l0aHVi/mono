@@ -41,9 +41,11 @@
     "claude": { "binary": "/opt/homebrew/bin/claude", "extraArgs": ["--model", "opus"] },
     "my-agent": { "binary": "/path/to/cli", "extraArgs": ["--fast"], "addDirFlag": "--add-dir" }
   },
-  "worktreeSetupHook": "ln -sfn \"$MAIN_CWD/.env\" .env" // hook 内可用 $MAIN_CWD 指向主仓库
+  "worktreeSetupHook": "ln -sfn \"$MAIN_CWD/.env\" .env"
 }
 ```
+
+`worktreeSetupHook` 在 worktree 目录内经 shell 执行，环境里提供 `$MAIN_CWD`（主仓库绝对路径）。
 
 ## 仓库级 agent 配置
 
