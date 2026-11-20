@@ -2,14 +2,24 @@ import { searchNavigation } from '@greypan/doc-demo-kit'
 import { navigatePopoverLinks, type WebUiInput, type WebUiPopover } from '@greypan/web-ui'
 import { lucideSearch } from '@greypan/web-ui/icons'
 import { Link } from '@tanstack/react-router'
-import { useEffect, useRef, useState } from 'react'
+import { useEffect, useRef, useState, type RefObject } from 'react'
 
+import { useExpandingField } from '@/hooks/useExpandingField'
 import { useLocale } from '@/i18n/locale'
 
 const ESCAPE_KEY = 'Escape'
 const ARROW_DOWN_KEY = 'ArrowDown'
 
-export function Search({ open, onOpenChange }: { open: boolean; onOpenChange: (open: boolean) => void }) {
+export function Search({
+  open,
+  onOpenChange,
+  controls
+}: {
+  open: boolean
+  onOpenChange: (open: boolean) => void
+  /** 头部里收纳搜索框与同级控件的容器；搜索上下文以它为准。 */
+  controls: RefObject<HTMLElement | null>
+}) {
   const { locale } = useLocale()
   const [query, setQuery] = useState('')
   const [displayQuery, setDisplayQuery] = useState('')
@@ -17,6 +27,11 @@ export function Search({ open, onOpenChange }: { open: boolean; onOpenChange: (o
   const results = useRef<HTMLDivElement>(null)
   const popover = useRef<WebUiPopover>(null)
   const input = useRef<WebUiInput>(null)
+  /*
+   * 展开/收起、焦点与 Escape 交给 useExpandingField：按在 controls 里（含主题/语言/动效
+   * 选择器等同级控件）时不收起，按在容器外才收；簇内点击结束后把焦点交还输入框。
+   */
+  useExpandingField({ field: input, controls, active: open, close: () => onOpenChange(false) })
   // 壳页与组件导航的搜索全集在 kit（SHELL_NAV_PAGES + NAV_SECTIONS 的 zhName）。
   const matches = searchNavigation(displayQuery)
   const hasQuery = query.trim().length > 0
@@ -36,21 +51,17 @@ export function Search({ open, onOpenChange }: { open: boolean; onOpenChange: (o
   return (
     <div
       className="relative min-w-0"
-      onBlur={event => {
-        if ((event.target as HTMLElement).closest('web-ui-button')) return
-        if (!event.currentTarget.contains(event.relatedTarget as Node | null)) onOpenChange(false)
-      }}
       onKeyDown={event => {
         const target = event.target as HTMLElement
         const links = [...(results.current?.querySelectorAll<HTMLAnchorElement>('a[href]') ?? [])]
         if (event.key === ESCAPE_KEY) {
-          event.preventDefault()
-          event.stopPropagation()
+          // 搜索结果链接上的 Escape 只收起结果面板；输入框本体的 Escape 由 useExpandingField
+          // 负责关闭整个搜索，这里不再重复处理。
           if (target.closest('a[href]')) {
+            event.preventDefault()
+            event.stopPropagation()
             setPanelOpen(false)
             input.current?.focus()
-          } else {
-            onOpenChange(false)
           }
         } else if (event.key === ARROW_DOWN_KEY && target === input.current && !panelOpen && hasQuery) {
           event.preventDefault()

@@ -98,6 +98,7 @@ function closeSidebar() {
 
 const bannerVisible = ref(true)
 const searchOpen = ref(false)
+const controlsRef = ref<HTMLElement | null>(null)
 const shellLayout = ref<WebUiLayout | null>(null)
 
 const route = useRoute()
@@ -175,57 +176,62 @@ onMounted(async () => {
           slot="header"
           class="flex h-full w-full items-center justify-end gap-2 px-4 py-2 mobile:w-[calc(100vw-60px)] mobile:gap-1.5 mobile:px-2 mobile:py-2"
         >
-          <div :class="searchOpen ? 'flex items-center gap-2 mobile:hidden' : 'flex items-center gap-2 mobile:gap-1.5'">
-            <web-ui-select variant="icon" :value="themeMotion" aria-label="全局动效" @change="updateThemeMotion">
-              <web-ui-icon
-                slot="trigger"
-                :icon="
-                  themeMotion === 'full'
-                    ? icOutlineMotionPhotosOn
-                    : themeMotion === 'reduced'
-                      ? icOutlineMotionPhotosOff
-                      : antDesignSyncOutlined
-                "
-                :size="18"
-              ></web-ui-icon>
-              <web-ui-option value="full" label="完整动效">完整动效</web-ui-option>
-              <web-ui-option value="reduced" label="减弱动效">减弱动效</web-ui-option>
-              <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
-            </web-ui-select>
-            <web-ui-select
-              variant="icon"
-              :value="themeAppearance"
-              placement="bottom"
-              aria-label="全局主题"
-              @change="updateThemeAppearance"
+          <!-- 搜索框与同级控件同属一个搜索上下文容器：按在簇里时不收起搜索框。 -->
+          <div ref="controlsRef" class="flex min-w-0 items-center gap-2 mobile:gap-1.5">
+            <div
+              :class="searchOpen ? 'flex items-center gap-2 mobile:hidden' : 'flex items-center gap-2 mobile:gap-1.5'"
             >
-              <web-ui-icon
-                slot="trigger"
-                :icon="
-                  themeAppearance === 'light' ? lucideSun : themeAppearance === 'dark' ? lucideMoon : lucideContrast
-                "
-                :size="18"
-              ></web-ui-icon>
-              <!-- 外观名称由 Wuchale 壳文案统一翻译成 Light / Dark。 -->
-              <web-ui-option value="light" label="浅色模式">浅色模式</web-ui-option>
-              <web-ui-option value="dark" label="深色模式">深色模式</web-ui-option>
-              <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
-            </web-ui-select>
-            <web-ui-select
-              variant="icon"
-              :value="currentLocale"
-              :disabled="localePending"
-              :aria-busy="localePending"
-              aria-label="全局语言"
-              @change="updateLocale"
-            >
-              <web-ui-icon slot="trigger" :icon="lucideLanguages" :size="18"></web-ui-icon>
-              <web-ui-option value="zh-CN" :label="ZH_LABEL">{{ ZH_LABEL }}</web-ui-option>
-              <web-ui-option value="en" :label="EN_LABEL">{{ EN_LABEL }}</web-ui-option>
-            </web-ui-select>
-            <span v-if="localePending" class="sr-only" role="status">正在加载语言</span>
+              <web-ui-select variant="icon" :value="themeMotion" aria-label="全局动效" @change="updateThemeMotion">
+                <web-ui-icon
+                  slot="trigger"
+                  :icon="
+                    themeMotion === 'full'
+                      ? icOutlineMotionPhotosOn
+                      : themeMotion === 'reduced'
+                        ? icOutlineMotionPhotosOff
+                        : antDesignSyncOutlined
+                  "
+                  :size="18"
+                ></web-ui-icon>
+                <web-ui-option value="full" label="完整动效">完整动效</web-ui-option>
+                <web-ui-option value="reduced" label="减弱动效">减弱动效</web-ui-option>
+                <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
+              </web-ui-select>
+              <web-ui-select
+                variant="icon"
+                :value="themeAppearance"
+                placement="bottom"
+                aria-label="全局主题"
+                @change="updateThemeAppearance"
+              >
+                <web-ui-icon
+                  slot="trigger"
+                  :icon="
+                    themeAppearance === 'light' ? lucideSun : themeAppearance === 'dark' ? lucideMoon : lucideContrast
+                  "
+                  :size="18"
+                ></web-ui-icon>
+                <!-- 外观名称由 Wuchale 壳文案统一翻译成 Light / Dark。 -->
+                <web-ui-option value="light" label="浅色模式">浅色模式</web-ui-option>
+                <web-ui-option value="dark" label="深色模式">深色模式</web-ui-option>
+                <web-ui-option value="system" label="跟随系统">跟随系统</web-ui-option>
+              </web-ui-select>
+              <web-ui-select
+                variant="icon"
+                :value="currentLocale"
+                :disabled="localePending"
+                :aria-busy="localePending"
+                aria-label="全局语言"
+                @change="updateLocale"
+              >
+                <web-ui-icon slot="trigger" :icon="lucideLanguages" :size="18"></web-ui-icon>
+                <web-ui-option value="zh-CN" :label="ZH_LABEL">{{ ZH_LABEL }}</web-ui-option>
+                <web-ui-option value="en" :label="EN_LABEL">{{ EN_LABEL }}</web-ui-option>
+              </web-ui-select>
+              <span v-if="localePending" class="sr-only" role="status">正在加载语言</span>
+            </div>
+            <Search v-model:open="searchOpen" :controls="controlsRef" />
           </div>
-          <Search v-model:open="searchOpen" />
         </div>
         <OverlayScrollbarsComponent
           slot="sidebar"

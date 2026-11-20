@@ -273,6 +273,55 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     )
   })
 
+  it('搜索展开后点击 header 其他控件不收起且控件点击生效', async () => {
+    await mountAppShell()
+    await userEvent.click(document.querySelector<HTMLElement>('web-ui-button[aria-label="Search"]')!)
+    const input = await vi.waitFor(() => {
+      const element = document.querySelector<HTMLElement>('web-ui-input[aria-label="Search pages and components"]')
+      if (!element) throw new Error('搜索输入框尚未出现')
+      return element
+    })
+    await vi.waitFor(() => expect(document.activeElement).toBe(input))
+
+    const select = document.querySelector<HTMLElement & { open: boolean }>('web-ui-select[aria-label="Global theme"]')!
+    const trigger = select.shadowRoot?.querySelector<HTMLElement>('[role="combobox"]')
+    if (!trigger) throw new Error('全局主题触发器未找到')
+
+    await userEvent.click(trigger)
+    await vi.waitFor(() => expect(select.open).toBe(true))
+    expect(document.querySelector('web-ui-input[aria-label="Search pages and components"]')).toBe(input)
+  })
+
+  it('搜索展开时点击 header 外部会收起', async () => {
+    await mountAppShell()
+    await userEvent.click(document.querySelector<HTMLElement>('web-ui-button[aria-label="Search"]')!)
+    await vi.waitFor(() => {
+      if (!document.querySelector('web-ui-input[aria-label="Search pages and components"]'))
+        throw new Error('搜索输入框尚未出现')
+    })
+
+    const outside = document.querySelector<HTMLElement>('[slot="banner"] span')
+    if (!outside) throw new Error('banner 文案未找到')
+    await userEvent.click(outside)
+    await vi.waitFor(() =>
+      expect(document.querySelector('web-ui-input[aria-label="Search pages and components"]')).toBeNull()
+    )
+  })
+
+  it('搜索展开时 Escape 收起搜索框', async () => {
+    await mountAppShell()
+    await userEvent.click(document.querySelector<HTMLElement>('web-ui-button[aria-label="Search"]')!)
+    await vi.waitFor(() => {
+      if (!document.querySelector('web-ui-input[aria-label="Search pages and components"]'))
+        throw new Error('搜索输入框尚未出现')
+    })
+
+    await userEvent.keyboard('{Escape}')
+    await vi.waitFor(() =>
+      expect(document.querySelector('web-ui-input[aria-label="Search pages and components"]')).toBeNull()
+    )
+  })
+
   it('top toast 文案和字号变化不改变 header 位置', async () => {
     await mountAppShell()
     const toastElement = await persistentTopToast(SHORT_TOAST_MESSAGE)
