@@ -10,7 +10,8 @@ export default {
       'vite-plus/prefer-vite-plus-imports': 'error',
       // `.mdm-*` 是 md-to-meta 生成进 theme.css 的正文版式类，不归 Tailwind 管；不登记的话
       // `no-unknown-classes` 会把宿主里挂的这些 class 判成拼写错误。
-      'shadcn/no-unknown-classes': ['error', { allow: ['mdm-*'] }],
+      // `loading-*` 是 @greypan/loading-core / loading-react 自带的 CSS 类，不归 Tailwind 管。
+      'shadcn/no-unknown-classes': ['error', { allow: ['mdm-*', 'loading-*'] }],
       'shadcn/no-inline-styles': 'error',
       'shadcn/require-static-classes': 'error'
     },

@@ -1,0 +1,65 @@
+{
+  "name": "@greypan/loading-react",
+  "version": "0.1.0",
+  "description": "React adapters for @greypan/loading-core: TanStack Router progress and content boundaries",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
+  },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "./dist/loading.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./loading.css": "./dist/loading.css"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "test": "vp test run",
+    "dev": "vp pack --watch --clean=false"
+  },
+  "dependencies": {
+    "@greypan/loading-core": "workspace:*"
+  },
+  "peerDependencies": {
+    "@tanstack/react-query": "^5.108.1",
+    "@tanstack/react-router": "^1.170.32",
+    "react": "^19.2.7",
+    "react-error-boundary": "^6.1.2"
+  },
+  "devDependencies": {
+    "@greypan/tsconfig": "workspace:*",
+    "@testing-library/react": "catalog:",
+    "@tanstack/react-query": "catalog:",
+    "@tanstack/react-router": "catalog:",
+    "@types/react": "catalog:",
+    "react": "catalog:",
+    "react-dom": "catalog:",
+    "react-error-boundary": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "browserslist": [
+    "Chrome >=111",
+    "Edge >=111",
+    "Safari >=16.4",
+    "iOS >=16.4",
+    "Firefox >=128",
+    "not dead"
+  ]
+}

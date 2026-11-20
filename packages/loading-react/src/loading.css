@@ -1,0 +1,4 @@
+.loading-delayed-fallback,
+.loading-content-error {
+  min-height: var(--loading-min-height, 160px);
+}
