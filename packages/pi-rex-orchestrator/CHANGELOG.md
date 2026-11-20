@@ -1,5 +1,11 @@
 # @greypan/pi-rex-orchestrator
 
+## 0.1.1
+
+### Patch Changes
+
+- 79da093: Fix `HandoffStore.saveRegistry` rejecting with `ENOENT` when concurrent writes raced over the shared fixed-name `.tmp` file: each write now uses a unique temporary name and cleans it up on failure. Concurrent snapshot writes are also serialized so the registry persists in call order and a later snapshot always wins.
+
 ## 0.1.0
 
 ### Minor Changes
