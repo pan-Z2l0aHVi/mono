@@ -82,7 +82,7 @@ jobs:
       matrix:
         include:
           - name: macOS ARM64 DMG
-            runner: macos-15
+            runner: macos-26
             command: build:macos
             artifact-name: interweave-macos-arm64
             artifact-path: apps/interweave/bin/interweave.dmg
@@ -106,6 +106,11 @@ jobs:
 
       - name: Build native artifact
         run: pnpm --filter @greypan/interweave run ${{ matrix.command }}
+
+      - name: Check linked macOS SDK
+        if: runner.os == 'macOS'
+        shell: bash
+        run: bash .github/scripts/check-macos-sdk.sh
 
       - name: Upload release artifact
         uses: actions/upload-artifact@v6

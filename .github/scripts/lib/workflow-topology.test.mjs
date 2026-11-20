@@ -1349,11 +1349,35 @@ function matrixEntries(text) {
   }
 }
 
+// macOS 原生构建的 runner 决定产物的 Mach-O LC_BUILD_VERSION.sdk：macOS 26+ 对 sdk major < 16 的
+// 二进制走旧兼容外观，标题栏红绿灯是 12pt 而非系统基线的 14pt。macos-15 的默认 CLT 16.4 给的
+// 正是 SDK 15.5，所以它和已退役的 macos-14 一样不能用于原生构建。
 // macOS 14 于 2026-11-02 退役（actions/runner-images#13518）：标签一旦回到工作流，
 // macOS job 会在 0 秒被取消，而同一 run 的 Linux job 照常绿，很容易被误判成偶发。
 for (const file of ['wails-verify.yml', 'wails-release.yml']) {
-  assert.match(workflowText[file], /runner: macos-15\b/u, `${file} must build on the supported arm64 macOS runner`)
-  assert.doesNotMatch(workflowText[file], /macos-1[34]/u, `${file} must not target a retired macOS runner`)
+  assert.match(
+    workflowText[file],
+    /^ {12}runner: macos-26$/mu,
+    `${file} must build on the arm64 macOS runner whose default SDK is >= 16`
+  )
+  // 行首锚定的负向断言：注释里提到旧标签不该误伤，但 `runner:` / `runs-on:` 引用的旧标签必须拦下。
+  assert.doesNotMatch(
+    workflowText[file],
+    /(?:runner|runs-on): macos-1[345]/u,
+    `${file} must not target a runner whose default SDK is < 16`
+  )
+  const gate = namedStep(workflowText[file], 'Check linked macOS SDK')
+  assert.match(gate, /if: runner\.os == 'macOS'/u, `${file} SDK gate must stay macOS-only`)
+  assert.match(gate, /shell: bash/u, `${file} SDK gate must run in bash, not the Windows default shell`)
+  assert.match(gate, /check-macos-sdk\.sh/u, `${file} SDK gate must call the shared check script`)
+  // 门禁读的是构建产物：放在 Build native artifact 之前会在二进制还不存在时失败。
+  const buildAt = workflowText[file].indexOf('      - name: Build native artifact\n')
+  const gateAt = workflowText[file].indexOf('      - name: Check linked macOS SDK\n')
+  const uploadAt = workflowText[file].indexOf('      - name: Upload ')
+  assert.ok(
+    buildAt >= 0 && uploadAt >= 0 && buildAt < gateAt && gateAt < uploadAt,
+    `${file} SDK gate must run between the native build and the artifact upload`
+  )
 }
 
 console.log('.github/scripts/lib/workflow-topology.test.mjs: all assertions passed')
