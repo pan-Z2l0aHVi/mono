@@ -1,5 +1,12 @@
 # @greypan/interweave
 
+## 0.2.1
+
+### Patch Changes
+
+- ce42869: Use native scrollbars on phones and tablets whose primary pointer is coarse. Component scroll containers restore the platform's default scrollbar width and colors, while application-level OverlayScrollbars keeps native overlaid scrollbars visible instead of rendering custom ones.
+- @greypan/interweave-frontend@0.0.0
+
 ## 0.2.0
 
 ### Minor Changes
