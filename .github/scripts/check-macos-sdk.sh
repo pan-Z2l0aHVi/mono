@@ -35,7 +35,7 @@ fi
 status=0
 for sdk in $sdks; do
   major="${sdk%%.*}"
-  if [[ ! "$major" =~ ^[0-9]+$ ]] || (( major < 16 )); then
+  if [[ ! "$major" =~ ^[0-9]+$ ]] || (( 10#$major < 16 )); then
     echo "::error::LC_BUILD_VERSION.sdk=$sdk < 16: macOS 26+ renders 12pt traffic lights for this binary (system baseline is 14pt)"
     status=1
   fi
