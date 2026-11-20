@@ -9,7 +9,8 @@
  * （worker 写的结构化交接结论）、`turn-NNN.events.jsonl`（headless 原始事件流落盘）。
  */
 
-import { mkdir, readFile, rename, stat, writeFile } from 'node:fs/promises'
+import { randomUUID } from 'node:crypto'
+import { mkdir, readFile, rename, rm, stat, writeFile } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import path from 'node:path'
 
@@ -33,6 +34,8 @@ function turnFile(turn: number, kind: 'brief' | 'handoff' | 'events'): string {
 export class HandoffStore {
   readonly root: string
   private readonly sessionDir: string
+  /** 注册表持久化的串行链：保证同一实例内写入按调用顺序落盘，避免共享临时文件互相踩踏。 */
+  private saveChain: Promise<void> = Promise.resolve()
 
   constructor(deps: HandoffStoreDeps) {
     this.root = deps.root ?? DEFAULT_ROOT
@@ -118,11 +121,25 @@ export class HandoffStore {
 
   /** worker 注册表快照：/reload 或会话恢复后据此重建跟踪（内容按「不认识就当作没有」校验）。 */
   async saveRegistry(entries: readonly unknown[]): Promise<void> {
+    // 入队：上一个快照写完再写下一个，保证「后发起的写入最后生效」，并发触发也不会互相覆盖。
+    const run = this.saveChain.then(() => this.writeRegistry(entries))
+    // 单个快照失败不应卡死后续持久化；调用方仍从 `run` 收到这次失败。
+    this.saveChain = run.catch(() => undefined)
+    return run
+  }
+
+  private async writeRegistry(entries: readonly unknown[]): Promise<void> {
     const target = path.join(this.sessionDir, 'registry.json')
     await mkdir(this.sessionDir, { recursive: true, mode: 0o700 })
-    const temp = `${target}.tmp`
-    await writeFile(temp, JSON.stringify(entries), 'utf8')
-    await rename(temp, target)
+    // 每次写入用唯一临时文件名，即使跨实例/进程并发也不会共用 `.tmp` 而触发 ENOENT。
+    const temp = `${target}.${process.pid}.${randomUUID()}.tmp`
+    try {
+      await writeFile(temp, JSON.stringify(entries), 'utf8')
+      await rename(temp, target)
+    } catch (error) {
+      await rm(temp, { force: true }).catch(() => undefined)
+      throw error
+    }
   }
 
   async loadRegistry(): Promise<unknown> {
