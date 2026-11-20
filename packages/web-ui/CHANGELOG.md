@@ -1,5 +1,11 @@
 # @greypan/web-ui
 
+## 14.1.1
+
+### Patch Changes
+
+- ce42869: Use native scrollbars on phones and tablets whose primary pointer is coarse. Component scroll containers restore the platform's default scrollbar width and colors, while application-level OverlayScrollbars keeps native overlaid scrollbars visible instead of rendering custom ones.
+
 ## 14.1.0
 
 ### Minor Changes
