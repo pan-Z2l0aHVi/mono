@@ -943,6 +943,7 @@ const meta = [
     }
     ]
   },
+  { label: 'p', content: "<code>--wui-scrollbar-handle</code> only styles fine-pointer environments; on coarse-pointer devices component scroll containers (<code>.wui-scroll</code>) fall back to platform-native scrollbar styling." },
   { label: 'h3', id: 'section-28', content: "Shadow tokens" },
   {
     label: 'table',

@@ -943,6 +943,7 @@ const meta = [
     }
     ]
   },
+  { label: 'p', content: "<code>--wui-scrollbar-handle</code> 只作用于 fine pointer 环境；coarse pointer 设备上组件滚动容器（<code>.wui-scroll</code>）回退平台原生 scrollbar 样式。" },
   { label: 'h3', id: 'section-28', content: "阴影 token" },
   {
     label: 'table',
