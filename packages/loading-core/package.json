@@ -1,0 +1,49 @@
+{
+  "name": "@greypan/loading-core",
+  "version": "0.1.0",
+  "description": "Framework-agnostic loading primitives: progress bar, splash dismissal, chunk recovery, and route announcements",
+  "license": "MIT",
+  "repository": {
+    "type": "git",
+    "url": "git+https://github.com/pan-Z2l0aHVi/mono.git"
+  },
+  "type": "module",
+  "files": [
+    "dist"
+  ],
+  "sideEffects": [
+    "./dist/styles/progress.css"
+  ],
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.ts",
+      "import": "./dist/index.js"
+    },
+    "./progress.css": "./dist/styles/progress.css"
+  },
+  "publishConfig": {
+    "access": "public",
+    "registry": "https://registry.npmjs.org/"
+  },
+  "scripts": {
+    "build": "vp pack",
+    "test": "vp test run",
+    "dev": "vp pack --watch --clean=false"
+  },
+  "devDependencies": {
+    "@greypan/tsconfig": "workspace:*",
+    "vite": "catalog:",
+    "vite-plus": "catalog:"
+  },
+  "engines": {
+    "node": ">=20.11.0"
+  },
+  "browserslist": [
+    "Chrome >=111",
+    "Edge >=111",
+    "Safari >=16.4",
+    "iOS >=16.4",
+    "Firefox >=128",
+    "not dead"
+  ]
+}
