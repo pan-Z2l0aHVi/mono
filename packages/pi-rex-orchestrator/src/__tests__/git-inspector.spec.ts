@@ -142,10 +142,12 @@ describe('worktree 生命周期（V3-04）', () => {
     expect(worktreeDirtyNote(['?? x'])).toContain('HEAD')
   })
 
-  it('scanIgnoredDeps 报出存在项', async () => {
+  it('scanIgnoredDeps 报出存在项（含被 ignore 的仓库级 agent 本地配置）', async () => {
     const repo = await makeRepo()
     await mkdir(path.join(repo, 'node_modules')).catch(() => undefined)
+    await mkdir(path.join(repo, '.claude'), { recursive: true }).catch(() => undefined)
     await writeFile(path.join(repo, '.env'), 'k=v', 'utf8')
+    await writeFile(path.join(repo, '.claude/settings.local.json'), '{}', 'utf8')
     const found = await scanIgnoredDeps(
       {
         exists: async filePath =>
@@ -158,6 +160,7 @@ describe('worktree 生命周期（V3-04）', () => {
     )
     expect(found).toContain('.env')
     expect(found).toContain('node_modules')
+    expect(found).toContain('.claude/settings.local.json')
   })
 
   it('干净且已合并才自动清理并删分支；未合并保留并给出合回命令', async () => {
@@ -165,7 +168,7 @@ describe('worktree 生命周期（V3-04）', () => {
     await commitFile(repo, 'a.txt', 'v1')
     const branch = worktreeBranch('session1', 'w-1')
     const wtPath = path.join(repo, '..', `${path.basename(repo)}-wt1`)
-    dirs.push(path.dirname(wtPath))
+    dirs.push(wtPath) // 只登记 worktree 目录本身；dirname 是 tmpdir()，递归删除会波及他人
     await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
     await commitFile(wtPath, 'w.txt', 'in worktree')
 
@@ -187,5 +190,74 @@ describe('worktree 生命周期（V3-04）', () => {
     expect(forced.kind).toBe('removed')
     const branches = await gitExec(['branch', '--list', branch], { cwd: repo })
     expect(branches.stdout.trim()).toBe('')
+  })
+
+  it('目录被 rm -rf 但注册还在（prunable）时 force 清理仍能收尾；重复清理幂等（codex exec 六轮 #2/#3）', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('session2', 'w-2')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-wt2`)
+    dirs.push(wtPath) // 只登记 worktree 目录本身；dirname 是 tmpdir()，递归删除会波及他人
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await commitFile(wtPath, 'w.txt', 'in worktree')
+    // 模拟用户 rm -rf 了 worktree 目录：git status 不可用，注册残留为 prunable。
+    await rm(wtPath, { recursive: true, force: true })
+
+    // 非 force：目录没了但分支未合并（还有没合回去的提交），保留。
+    const unmergedOutcome = await cleanupWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    expect(unmergedOutcome.kind).toBe('kept')
+    expect(unmergedOutcome.kind === 'kept' ? unmergedOutcome.worktreeRemoved : false).toBe(true)
+
+    // force：git worktree remove 自己裁决 prunable 注册，随后 branch -D 收尾。
+    const forced = await cleanupWorktree(gitExec, { mainCwd: repo, path: wtPath, branch }, { force: true })
+    expect(forced.kind).toBe('removed')
+    const branches = await gitExec(['branch', '--list', branch], { cwd: repo })
+    expect(branches.stdout.trim()).toBe('')
+
+    // 幂等：worktree 与分支都没了，再跑一次按已清理回报，不误报「分支未合并」。
+    const again = await cleanupWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    expect(again.kind).toBe('removed')
+  })
+
+  it('.git 丢失后 prune 移除注册但目录仍在时按残留保留，不误报 removed（codex exec 十一轮 #1）', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('review4', 'w-4')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-wt4`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await writeFile(path.join(wtPath, 'kept.txt'), 'residue', 'utf8')
+    // worktree 的 .git 是文件；删掉后注册失效，prune 会移除注册但目录与文件仍在。
+    await rm(path.join(wtPath, '.git'), { force: true })
+    await gitExec(['worktree', 'prune', '--expire', 'now'], { cwd: repo })
+
+    const outcome = await cleanupWorktree(gitExec, { mainCwd: repo, path: wtPath, branch }, { force: true })
+    expect(outcome.kind).toBe('kept')
+    expect(outcome.kind === 'kept' ? outcome.reason : '').toContain('目录仍在磁盘上')
+    // 目录仍在：不得声称已移除。
+    expect(outcome.kind === 'kept' ? outcome.worktreeRemoved : true).toBeFalsy()
+  })
+
+  it('分支被手工删（detached）而 worktree 仍在时不误报已清理；force 收尾（codex exec 七轮 #3）', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('review3', 'w-3')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-wt3`)
+    dirs.push(wtPath) // 只登记 worktree 目录本身；dirname 是 tmpdir()，递归删除会波及他人
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    // detached HEAD 后分支可从主仓删除；worktree 里留未提交内容。
+    await gitExec(['checkout', '--detach'], { cwd: wtPath })
+    await writeFile(path.join(wtPath, 'uncommitted.txt'), 'x', 'utf8')
+    await gitExec(['branch', '-D', branch], { cwd: repo })
+
+    // 非 force：分支没了但 worktree 还在，绝不能报 removed（否则上层解除跟踪、
+    // 留下不可见残留）。
+    const outcome = await cleanupWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    expect(outcome.kind).toBe('kept')
+    expect(outcome.kind === 'kept' ? outcome.reason : '').toContain('分支已被删除')
+
+    // force：只移除 worktree（--force 丢弃未提交内容），不再跑 branch -D。
+    const forced = await cleanupWorktree(gitExec, { mainCwd: repo, path: wtPath, branch }, { force: true })
+    expect(forced.kind).toBe('removed')
   })
 })

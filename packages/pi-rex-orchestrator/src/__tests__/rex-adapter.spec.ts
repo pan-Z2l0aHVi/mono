@@ -197,37 +197,57 @@ describe('blockCallLastExit（对账补 child_exited 用）', () => {
 })
 
 describe('事件流分帧', () => {
-  interface FakeChild {
+  interface FakeStream {
     emit(name: string, ...data: unknown[]): void
   }
 
-  function fakeSpawn() {
-    return vi.fn<(_bin: string, _args: string[], _options: unknown) => FakeChild>(
-      (_bin: string, _args: string[], _options: unknown) => {
-        const listeners: Record<string, Array<(data?: unknown) => void>> = {}
-        const child = {
-          stdout: {
-            setEncoding: () => undefined,
-            on: (name: string, fn: (data?: unknown) => void) => {
-              ;(listeners[name] ??= []).push(fn)
-            }
-          },
-          stdin: { end: () => undefined },
-          on: (name: string, fn: (data?: unknown) => void) => {
-            ;(listeners[name] ??= []).push(fn)
-          },
-          kill: () => undefined
-        }
-        return Object.assign(child, {
-          emit: (name: string, ...data: unknown[]) => {
-            for (const fn of listeners[name] ?? []) fn(...data)
-          }
-        })
-      }
-    )
+  interface FakeChild {
+    stdout: FakeStream
+    stderr: FakeStream
+    emit(name: string, ...data: unknown[]): void
   }
 
-  function makeAdapterWithSpawn(spawnFn: ReturnType<typeof fakeSpawn>) {
+  /**
+   * 逐流独立的 fake：stdout / stderr 各自拥有监听器容器，子进程级事件（error/close）
+   * 单独一路。共用容器的 fake 无法证明「stderr 不直通 stdout listener」之类的接线。
+   * `options` 被记录，供断言 spawn 的 stdio 配置。
+   */
+  function fakeSpawn() {
+    const captured: { options?: { stdio?: unknown } } = {}
+    const spawnFn = vi.fn<(_bin: string, _args: string[], _options: unknown) => FakeChild>(
+      (_bin: string, _args: string[], options: unknown) => {
+        captured.options = options as { stdio?: unknown }
+        const makeEmitter = () => {
+          const listeners: Record<string, Array<(data?: unknown) => void>> = {}
+          return {
+            on: (name: string, fn: (data?: unknown) => void) => {
+              ;(listeners[name] ??= []).push(fn)
+            },
+            emit: (name: string, ...data: unknown[]) => {
+              for (const fn of listeners[name] ?? []) fn(...data)
+            }
+          }
+        }
+        const childListeners: Record<string, Array<(data?: unknown) => void>> = {}
+        const child = {
+          stdout: { setEncoding: () => undefined, ...makeEmitter() },
+          stderr: { setEncoding: () => undefined, ...makeEmitter() },
+          stdin: { end: () => undefined },
+          on: (name: string, fn: (data?: unknown) => void) => {
+            ;(childListeners[name] ??= []).push(fn)
+          },
+          kill: () => undefined,
+          emit: (name: string, ...data: unknown[]) => {
+            for (const fn of childListeners[name] ?? []) fn(...data)
+          }
+        }
+        return child
+      }
+    )
+    return { spawnFn, captured }
+  }
+
+  function makeAdapterWithSpawn(spawnFn: ReturnType<typeof fakeSpawn>['spawnFn']) {
     const exec = vi.fn<() => Promise<ExecResult>>(async () => ({
       stdout: '',
       stderr: '',
@@ -240,18 +260,18 @@ describe('事件流分帧', () => {
   }
 
   it('跨 chunk 的行完整送达，残行不丢', async () => {
-    const spawnFn = fakeSpawn()
+    const { spawnFn } = fakeSpawn()
     const { adapter } = makeAdapterWithSpawn(spawnFn)
     const lines: string[] = []
     adapter.startEventsStream({ onLine: line => lines.push(line), onExit: () => undefined })
     const child = spawnFn.mock.results[0]?.value as FakeChild
-    child.emit('data', '{"a":1}\n{"b')
-    child.emit('data', '":2}\n')
+    child.stdout.emit('data', '{"a":1}\n{"b')
+    child.stdout.emit('data', '":2}\n')
     expect(lines).toEqual(['{"a":1}', '{"b":2}'])
   })
 
   it('close(code=0) 归为正常退出，非零归为错误', async () => {
-    const spawnFn = fakeSpawn()
+    const { spawnFn } = fakeSpawn()
     const { adapter } = makeAdapterWithSpawn(spawnFn)
     const exits: Array<Error | undefined> = []
     adapter.startEventsStream({ onLine: () => undefined, onExit: error => exits.push(error) })
@@ -262,7 +282,7 @@ describe('事件流分帧', () => {
   })
 
   it('spawn 失败的 error 与 close 只结算一次 onExit（review #11）', async () => {
-    const spawnFn = fakeSpawn()
+    const { spawnFn } = fakeSpawn()
     const { adapter } = makeAdapterWithSpawn(spawnFn)
     const exits: Array<Error | undefined> = []
     adapter.startEventsStream({ onLine: () => undefined, onExit: error => exits.push(error) })
@@ -271,5 +291,22 @@ describe('事件流分帧', () => {
     child.emit('close', 1, 'SIGKILL')
     expect(exits).toHaveLength(1)
     expect(exits[0]?.message).toBe('ENOENT')
+  })
+
+  it('stderr 尾部随断连错误上浮，不直通也不丢弃（codex exec #4 / 十轮 #3）', async () => {
+    const { spawnFn, captured } = fakeSpawn()
+    const { adapter } = makeAdapterWithSpawn(spawnFn)
+    const exits: Array<Error | undefined> = []
+    const lines: string[] = []
+    adapter.startEventsStream({ onLine: line => lines.push(line), onExit: error => exits.push(error) })
+    const child = spawnFn.mock.results[0]?.value as FakeChild
+    // 只向 stderr 注入：若实现误接到 stdout 或 stdio 仍为 inherit，此用例不再可能通过。
+    child.stderr.emit('data', 'Rex server unavailable\n')
+    child.emit('close', 1, 'SIGKILL')
+    expect(exits[0]?.message).toContain('code=1')
+    expect(exits[0]?.message).toContain('Rex server unavailable')
+    // 诊断不外泄为事件行，也证明 stdio 三路都是 pipe。
+    expect(lines).toEqual([])
+    expect(captured.options?.stdio).toEqual(['pipe', 'pipe', 'pipe'])
   })
 })

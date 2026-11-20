@@ -157,13 +157,15 @@ export class RexAdapter {
   /**
    * 启动长驻 `rex events --json` 流。返回控制句柄：`onLine` 逐行收到原始 JSON，
    * `onExit` 在流断开时收到原因。进程退出钩子由调用方（orchestrator）负责挂，
-   * 这里只保证 stdin 关闭时子进程随之退出。
+   * 这里只保证 stdin 关闭时子进程随之退出。stderr 不直通宿主终端（SIGTERM 收尾的
+   * "Error: interrupted" 是噪声），但也不丢弃：保留最后 2 KB，随 `onExit` 的错误
+   * 上浮，重连告警里能看到 Rex server 不可用之类的真实原因。
    */
   startEventsStream(handlers: { onLine(line: string): void; onExit(error: Error | undefined): void }): {
     kill(): void
   } {
     const child = this.spawnFn(this.bin, ['events', '-s', this.session, '--json'], {
-      stdio: ['pipe', 'pipe', 'inherit']
+      stdio: ['pipe', 'pipe', 'pipe']
     })
     let buffer = ''
     child.stdout?.setEncoding('utf8')
@@ -177,6 +179,11 @@ export class RexAdapter {
         newline = buffer.indexOf('\n')
       }
     })
+    let stderrTail = ''
+    child.stderr?.setEncoding('utf8')
+    child.stderr?.on('data', (chunk: string) => {
+      stderrTail = (stderrTail + chunk).slice(-2048)
+    })
     // spawn 失败会先发 `error` 再发 `close`：不做一次性保护会安排两个重连定时器。
     let exited = false
     const exitOnce = (error: Error | undefined): void => {
@@ -186,10 +193,15 @@ export class RexAdapter {
     }
     child.on('error', error => exitOnce(error))
     child.on('close', (code, signal) => {
+      if (code === 0 || signal === 'SIGTERM') {
+        exitOnce(undefined)
+        return
+      }
+      const detail = stderrTail.trim().slice(-400)
       exitOnce(
-        code === 0 || signal === 'SIGTERM'
-          ? undefined
-          : new Error(`rex events 退出（code=${code ?? 'null'} signal=${signal ?? 'null'}）`)
+        new Error(
+          `rex events 退出（code=${code ?? 'null'} signal=${signal ?? 'null'}${detail === '' ? '' : `：${detail}`}`
+        )
       )
     })
     // stdin EOF 即退出：服务端断开时子进程不会残留。

@@ -10,12 +10,12 @@
  * 这里只负责激活判定、配置加载与依赖注入。
  */
 
-import { readFile, stat } from 'node:fs/promises'
+import { readdir, readFile, stat } from 'node:fs/promises'
 import { homedir } from 'node:os'
 import { fileURLToPath } from 'node:url'
 
 import { detectActivation } from './activation'
-import { HandoffStore } from './handoff-store'
+import { HANDOFF_ROOT, HandoffStore } from './handoff-store'
 import { createOrchestrator, type BridgePi } from './orchestrator'
 import type { ExtensionAPI } from './pi-types'
 import { loadUserConfig, resolveProfiles } from './profiles'
@@ -60,6 +60,11 @@ export default async function rexOrchestrator(pi: ExtensionAPI): Promise<void> {
     configWarnings: loaded.warnings,
     // scripts/ 而非 bin/：根 .gitignore 把 bin/ 当构建产物目录排除。
     runHeadlessPath: fileURLToPath(new URL('../scripts/run-headless.mjs', import.meta.url)),
-    nodePath: process.execPath
+    nodePath: process.execPath,
+    // 激活时扫一次交接区根目录：崩溃/断网的旧会话残留提醒（不自动删）。
+    listHandoffSessions: async () =>
+      readdir(HANDOFF_ROOT, { withFileTypes: true })
+        .then(entries => entries.filter(entry => entry.isDirectory()).map(entry => entry.name))
+        .catch(() => [] as string[])
   })
 }

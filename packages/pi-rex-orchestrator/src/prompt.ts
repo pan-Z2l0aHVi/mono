@@ -5,6 +5,22 @@
  * `systemPrompt`：Pi 原生的工具声明、cwd 与上下文加载机制必须保留。
  */
 
+/** 激活时给用户的一条友好速查；每次激活发一次（`/reload` 重建实例后会再现）。 */
+export function renderWelcome(): string {
+  return [
+    '<rex-orchestrator-welcome>',
+    'Rex 协调者已就绪：本会话只读，改代码请直接吩咐我派 worker。',
+    '',
+    '· 派活：直接说「派一个 claude worker 做 X」；agent、headless、worktree 没指定我会弹窗问你',
+    '· 验收：worker 完成会自动汇报；说「验收」看全量 diff',
+    '· 人工接管：进 Tab 前先 /rex-pause <worker>，接完 /rex-resume',
+    '· 状态与清理：/rex-status 看全景，/rex-cleanup 回收残留',
+    '· 合并：worker 的分支经你确认后由我代为 git merge --no-ff',
+    '',
+    '</rex-orchestrator-welcome>'
+  ].join('\n')
+}
+
 export interface CoordinatorSectionContext {
   /** 可用的 Agent profile 名单。 */
   agents: readonly string[]
@@ -30,9 +46,20 @@ export function renderCoordinatorSection(ctx: CoordinatorSectionContext): string
     '- headless worker 退出后从 events.jsonl 读结论；handoff 缺失时降级用 rex_inspect_output / rex_inspect_changes 补齐事实，绝不读上一轮旧文件。',
     '- 多轮追问走新轮次；旧 Block 会自动回收，一个逻辑 worker 始终只有一个活跃 Tab。',
     '',
+    '## 用户说法 → 动作',
+    '用户惯用中文口语，不会总是说出工具名或英文术语。按意图对号，意思到位就代劳，不要反问术语：',
+    '- 「派 / 让 / 叫（claude、codex）干 X」「找个人做 X」→ rex_spawn_agent。',
+    '- 「继续 / 追问 / 再让它做 Y」「给那个 worker 补一句」→ rex_send_input。',
+    '- 「跑完了吗 / 看看输出 / 它说了啥」→ rex_inspect_output。',
+    '- 「验收 / 看看改了啥 / 改动对不对 / diff」→ rex_inspect_changes。',
+    '- 「关掉 / 收工 / 不要它了」「合并进主仓（经确认）」→ rex_close_worker。',
+    '- 「后台跑 / 别开窗口 / 无人值守」「带界面跑 / 我要盯着」→ headless / interactive。',
+    '- 「开个副本 / 隔离开 / 别动我的工作区」→ use_worktree: true。',
+    '- 只要知道指哪个 worker 就直接做；真拿不准（如多个 worker 同名任务）才 ask_user。',
+    '',
     '## 汇报',
-    '- 事件到达时通过对话流汇报关键状态，不做常驻监控面板；异常断连或高危配置才用一次性通知。',
-    '- worktree worker 完成后绝不自动 merge；在汇报里给出精确合回命令，由用户决定。',
+    '- worker 完成时通过对话流汇报关键状态，不做常驻监控面板；异常断连或高危配置才用一次性通知。',
+    '- worktree 分支的合并必须经用户确认：rex_close_worker 会在用户同意后代为执行 git merge --no-ff 并自动清理；未同意时只给命令，绝不擅自执行。',
     `- 交接区与 worker 调度状态用 ${ctx.commands.status} 查询；残留清理用 ${ctx.commands.cleanup}。`,
     `（交接区根目录：${ctx.handoffRoot}）`,
     '',

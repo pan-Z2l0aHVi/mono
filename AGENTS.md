@@ -35,6 +35,7 @@
 | 验证、运行时冒烟 | [verification](docs/agents/verification.md)、[runtime-verification](docs/agents/runtime-verification.md) |
 | UI 视觉与组件 | [ui-design](docs/agents/ui-design.md)、[web-ui](docs/agents/web-ui.md) |
 | 浏览器资源与格式 | [browser-resources](docs/agents/browser-resources.md)、[lint-format](docs/agents/lint-format.md) |
+| 方案定稿前的对抗性评审 | [design-review](docs/agents/design-review.md) |
 | PR review、工作流 | [review](docs/agents/review.md)、[workflow](docs/agents/workflow.md) |
 | worktree、提交 | [worktree](docs/agents/worktree.md)、[commit](docs/agents/commit.md) |
 | 新增或修改 agent 文档/指令 | [writing-agent-docs](docs/agents/writing-agent-docs.md)、[agent-context](docs/agents/agent-context.md) |

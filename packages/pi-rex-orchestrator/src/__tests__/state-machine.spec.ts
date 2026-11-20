@@ -171,6 +171,23 @@ describe('headless 续跑 Block 替换（V3-02）', () => {
   })
 })
 
+describe('activeBlockClosed 生命周期（codex exec 九轮 #1）', () => {
+  it('replaceBlock 清除标记；活跃 Block 实际关闭时置位', () => {
+    const { registry } = makeRegistry()
+    const worker = registerWorker(registry)
+    // 模拟关闭工具成功关闭活跃 Block。
+    worker.activeBlockClosed = true
+
+    // 续跑创建新 Block：标记必须清零，否则下次关闭会跳过仍在运行的新 Block。
+    registry.replaceBlock('claude-1', 'block:B')
+    expect(worker.activeBlockClosed).toBe(false)
+
+    // 活跃 Block 被事件/用户实际关闭：置位，关闭重试不再重复关闭。
+    registry.applyBlockClosed('block:B')
+    expect(worker.activeBlockClosed).toBe(true)
+  })
+})
+
 describe('投递门禁（设计 3.2 第 3 条）', () => {
   it('blocked / working / paused / error 都要求确认', () => {
     const { registry } = makeRegistry()

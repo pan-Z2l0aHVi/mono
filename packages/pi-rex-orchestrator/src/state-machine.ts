@@ -46,6 +46,8 @@ export interface WorkerEntry {
   /** 最近一次进入稳定状态（idle/done/error/blocked）的时刻。 */
   stableSince?: number
   errorStreak: number
+  /** 活跃 Block 已确认关闭（成功关过一次）；重试时跳过重复关闭。 */
+  activeBlockClosed?: boolean
   /** 最近一次计过数的 error 轮次；同一轮的重放/交叉来源不重复计数。 */
   errorTurn?: number
   /** 最近一次接受的 OSC 记录 updated_at；更旧的重放直接丢弃。 */
@@ -222,6 +224,8 @@ export class WorkerRegistry {
       worker.retiredBlockIds.push(worker.blockId)
     }
     worker.blockId = newBlockId
+    // 新活跃 Block 尚未关闭：清除上一轮的关闭标记，否则下次关闭会跳过它。
+    worker.activeBlockClosed = false
     this.transition(worker, 'starting', this.now())
   }
 
@@ -231,6 +235,8 @@ export class WorkerRegistry {
     if (!worker) return false
     if (worker.retiredBlockIds.includes(blockId)) return false
     if (blockId !== worker.blockId) return false
+    // 活跃 Block 已实际关闭：置标记，关闭工具的后续重试不再重复关闭它。
+    worker.activeBlockClosed = true
     this.transition(worker, 'closed', this.now())
     return true
   }

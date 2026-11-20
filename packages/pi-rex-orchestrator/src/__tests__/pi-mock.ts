@@ -11,6 +11,8 @@ import type { ExtensionContext, PiToolDefinition } from '../pi-types'
 export interface MockContext extends ExtensionContext {
   confirmations: Array<{ title: string; message: string }>
   selects: Array<{ title: string; options: string[] }>
+  /** ctx.ui.notify 的记录；/rex-cleanup 等命令路径的断言用。 */
+  notifies: Array<{ message: string; type?: string }>
 }
 
 export interface ToolRecord {
@@ -50,6 +52,7 @@ export function createMockPi(
   const execCalls: Array<{ command: string; args: string[]; options?: Record<string, unknown> }> = []
   const confirmations: Array<{ title: string; message: string }> = []
   const selects: Array<{ title: string; options: string[] }> = []
+  const notifies: Array<{ message: string; type?: string }> = []
   let activeTools: string[] = ['read', 'grep', 'find', 'ls', 'bash', 'edit', 'write']
 
   const ctx: MockContext = {
@@ -65,11 +68,14 @@ export function createMockPi(
         selects.push({ title, options })
         return options[0]
       },
-      notify: () => undefined
+      notify: (message: string, type?: 'info' | 'warning' | 'error') => {
+        notifies.push({ message, type })
+      }
     },
     sessionManager: { getSessionId: () => 'session-mock-0001' },
     confirmations,
-    selects
+    selects,
+    notifies
   }
 
   const pi: BridgePi = {

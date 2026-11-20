@@ -11,15 +11,15 @@
 
 ## 工具面（model-only）
 
-| 工具                  | 作用                                                                                           |
-| --------------------- | ---------------------------------------------------------------------------------------------- |
-| `ask_user`            | 弹窗向用户提问；Agent、运行模式或 Worktree 策略未指定时必须先问。                              |
-| `rex_spawn_agent`     | 从白名单 profile 派生 worker；长任务写入 `turn-001.brief.md`，只发短指针指令。                 |
-| `rex_send_input`      | 追加轮次；interactive 走 `rex send` + Send-ACK，headless 走 `resume` 续跑并原子替换旧 Block。  |
-| `rex_list_workers`    | 列出本会话全部 worker 与状态。                                                                 |
-| `rex_inspect_output`  | 读 worker 最新输出：handoff 优先，缺失降级 events.jsonl 尾部或屏幕 capture，绝不读旧轮次文件。 |
-| `rex_inspect_changes` | 以派生时 `base_commit` 为基线的全量验收（Committed + Staged + Unstaged + Untracked 预览）。    |
-| `rex_close_worker`    | 关闭 worker；worktree 只有干净且已合并才自动清理，否则保留并给出精确合回命令。                 |
+| 工具                  | 作用                                                                                                                          |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
+| `ask_user`            | 弹窗向用户提问；Agent、运行模式或 Worktree 策略未指定时必须先问。                                                             |
+| `rex_spawn_agent`     | 从白名单 profile 派生 worker；长任务写入 `turn-001.brief.md`，只发短指针指令。                                                |
+| `rex_send_input`      | 追加轮次；interactive 走 `rex send` + Send-ACK，headless 走 `resume` 续跑并原子替换旧 Block。                                 |
+| `rex_list_workers`    | 列出本会话全部 worker 与状态。                                                                                                |
+| `rex_inspect_output`  | 读 worker 最新输出：handoff 优先，缺失降级 events.jsonl 尾部或屏幕 capture，绝不读旧轮次文件。                                |
+| `rex_inspect_changes` | 以派生时 `base_commit` 为基线的全量验收（Committed + Staged + Unstaged + Untracked 预览）。                                   |
+| `rex_close_worker`    | 关闭 worker；干净且已合并才自动清理——干净但未合并时弹窗问是否代为 `git merge --no-ff`，同意则合并后收尾，拒绝则保留并给命令。 |
 
 ## 命令
 
@@ -44,6 +44,10 @@
   "worktreeSetupHook": "ln -sfn \"$MAIN_CWD/.env\" .env"
 }
 ```
+
+## 仓库级 agent 配置
+
+worker 按自己的 cwd 加载所在仓库的规范与配置（AGENTS.md、CLAUDE.md、`.claude/settings.json` 等，以各 CLI 的机制为准）：共享目录模式下天然生效；worktree 模式下**被跟踪的**配置随检出带过去，**被 ignore 的本地配置**（如 `.claude/settings.local.json`）不在 worktree 里——spawn 时会扫描这些常见项并在 brief 中告知，brief 也要求 worker 开工前先读仓库级规范。
 
 ## 交接区
 
