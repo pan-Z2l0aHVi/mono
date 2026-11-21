@@ -343,9 +343,9 @@ async function inspectContentLanding(
     }
     validatedPaths += 1
 
-    // 名称来自仓库内容，必须按 literal pathspec 解释，避免 `:(exclude)...` 之类的文件名
-    // 让 quiet diff 意外匹配空集合并返回 0。
-    const literalPathspec = `:(literal)${changedPath}`
+    // 名称来自仓库内容，必须按仓库根相对且 literal 的 pathspec 解释：前者避免子目录
+    // cwd 错配，后者避免 `:(exclude)...` 之类的文件名让 quiet diff 意外匹配空集合并返回 0。
+    const literalPathspec = `:(top,literal)${changedPath}`
     const quietArgs = ['diff', '--quiet', baseSha, landedTip, '--', literalPathspec]
     const quiet = await exec(quietArgs, { cwd: mainCwd })
     if (quiet.killed || quiet.truncated) {
@@ -653,6 +653,35 @@ export async function cleanupWorktree(
         branchDeleteCommand: `git ${existingArgs.join(' ')}`
       }
     }
+    const checkout = await worktreeCheckingOutBranch(exec, setup.mainCwd, setup.branch)
+    if (checkout.kind === 'failed') {
+      return {
+        kind: 'kept',
+        reason: `无法确认分支是否仍被其他 worktree 检出，拒绝删除：${checkout.detail}`,
+        path: setup.path,
+        branch: setup.branch,
+        mergeHint: mergeHint(setup.branch),
+        unmerged: false,
+        landedBy,
+        baseRef,
+        baseSha,
+        worktreeRemoved: true
+      }
+    }
+    if (checkout.kind === 'checked-out') {
+      return {
+        kind: 'kept',
+        reason: `分支 ${setup.branch} 仍被 ${checkout.path} 检出，先解除检出再关闭；未执行 update-ref -d`,
+        path: setup.path,
+        branch: setup.branch,
+        mergeHint: mergeHint(setup.branch),
+        unmerged: false,
+        landedBy,
+        baseRef,
+        baseSha,
+        worktreeRemoved: true
+      }
+    }
     branchArgs = ['update-ref', '-d', `refs/heads/${setup.branch}`, landedTip]
   } else {
     branchArgs = ['branch', options.force === true ? '-D' : '-d', setup.branch]
@@ -682,6 +711,44 @@ export async function cleanupWorktree(
     ...(landedBy === 'content' && baseRef !== undefined ? { baseRef } : {}),
     ...(landedBy === 'content' && baseSha !== undefined ? { baseSha } : {})
   }
+}
+
+type WorktreeBranchCheckout =
+  | { kind: 'clear' }
+  | { kind: 'checked-out'; path: string }
+  | { kind: 'failed'; detail: string }
+
+/**
+ * 内容落地分支随后用 `update-ref -d` 删除，绕过 `branch -d` 的检出保护。porcelain
+ * 输出按空行分块，块首是 worktree 路径，块内 branch 行才能安全归属到该路径。
+ */
+async function worktreeCheckingOutBranch(
+  exec: GitExec,
+  mainCwd: string,
+  branch: string
+): Promise<WorktreeBranchCheckout> {
+  const args = ['worktree', 'list', '--porcelain']
+  const listed = await exec(args, { cwd: mainCwd })
+  if (listed.code !== 0 || listed.killed || listed.truncated) {
+    return { kind: 'failed', detail: gitFailure(args, listed) }
+  }
+
+  const target = `refs/heads/${branch}`
+  let worktreePath: string | undefined
+  for (const line of listed.stdout.split('\n')) {
+    if (line.startsWith('worktree ')) {
+      worktreePath = line.slice('worktree '.length)
+      continue
+    }
+    if (line.trim() === '') {
+      worktreePath = undefined
+      continue
+    }
+    if (line === `branch ${target}` && worktreePath !== undefined) {
+      return { kind: 'checked-out', path: worktreePath }
+    }
+  }
+  return { kind: 'clear' }
 }
 
 /**

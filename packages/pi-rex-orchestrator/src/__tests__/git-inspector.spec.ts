@@ -6,7 +6,7 @@
  */
 
 import { execFile } from 'node:child_process'
-import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises'
+import { mkdtemp, mkdir, realpath, rm, writeFile } from 'node:fs/promises'
 import { tmpdir } from 'node:os'
 import path from 'node:path'
 
@@ -269,7 +269,7 @@ describe('worktree 生命周期（V3-04）', () => {
     }
     expect(commands.some(command => command === 'merge-base origin/main ' + tip)).toBe(false)
     expect(commands.some(command => command.startsWith('diff --quiet origin/main '))).toBe(false)
-    expect(commands[quiet]).toContain('-- :(literal)a.txt')
+    expect(commands[quiet]).toContain('-- :(top,literal)a.txt')
     expect(commands).toContain(`update-ref -d refs/heads/${branch} ${tip}`)
     expect(commands.some(command => command === 'read-tree origin/main')).toBe(false)
     expect(commands.some(command => command.startsWith('apply '))).toBe(false)
@@ -300,6 +300,54 @@ describe('worktree 生命周期（V3-04）', () => {
     expect(commands.some(command => command.startsWith('diff --quiet origin/main '))).toBe(false)
     expect(commands.some(command => command.startsWith('read-tree') || command.startsWith('apply '))).toBe(false)
     expect((await gitExec(['status', '--porcelain'], { cwd: repo })).stdout).toBe('')
+  })
+
+  it('会话从仓库子目录启动时仍按仓库根比较并识别 squash 落地', async () => {
+    const repo = await makeRepo()
+    await mkdir(path.join(repo, 'src'), { recursive: true })
+    await commitFile(repo, 'src/x.ts', 'v1')
+    const branch = worktreeBranch('session-subdir-landed', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-subdir-landed`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await commitFile(wtPath, 'src/x.ts', 'squashed')
+    await gitExec(['merge', '--squash', branch], { cwd: repo })
+    await gitExec(['commit', '-m', `squash ${branch}`], { cwd: repo })
+
+    const commands: string[] = []
+    const outcome = await cleanupWorktree(trackedGit(commands), {
+      mainCwd: path.join(repo, 'src'),
+      path: wtPath,
+      branch
+    })
+
+    expect(outcome).toMatchObject({ kind: 'removed', landedBy: 'content', baseRef: 'main' })
+    expect(commands.some(command => command.includes('-- :(top,literal)src/x.ts'))).toBe(true)
+    expect(commands.some(command => command.includes('-- :(literal)src/x.ts'))).toBe(false)
+  })
+
+  it('子目录内同名相对路径不能冒充仓库根路径并导致误删', async () => {
+    const repo = await makeRepo()
+    await mkdir(path.join(repo, 'src/src'), { recursive: true })
+    await commitFile(repo, 'src/src/x.ts', 'decoy unchanged')
+    const branch = worktreeBranch('session-subdir-decoy', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-subdir-decoy`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await commitFile(wtPath, 'src/x.ts', 'branch only')
+
+    const commands: string[] = []
+    const outcome = await cleanupWorktree(trackedGit(commands), {
+      mainCwd: path.join(repo, 'src'),
+      path: wtPath,
+      branch
+    })
+
+    expect(outcome).toMatchObject({ kind: 'kept', unmerged: true, landing: 'not-landed', baseRef: 'main' })
+    expect(commands.some(command => command.includes('-- :(top,literal)src/x.ts'))).toBe(true)
+    expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
+    expect(commands.some(command => command.startsWith('update-ref -d'))).toBe(false)
+    expect((await gitExec(['branch', '--list', branch], { cwd: repo })).stdout).toContain(branch)
   })
 
   it('任一路径内容不同：非祖先分支按 not-landed 保留', async () => {
@@ -338,7 +386,7 @@ describe('worktree 生命周期（V3-04）', () => {
     const outcome = await cleanupWorktree(trackedGit(commands), { mainCwd: repo, path: wtPath, branch })
 
     expect(outcome).toMatchObject({ kind: 'kept', unmerged: true, landing: 'not-landed', baseRef: 'main' })
-    expect(commands.some(command => command.includes('-- :(literal):(exclude)*.txt'))).toBe(true)
+    expect(commands.some(command => command.includes('-- :(top,literal):(exclude)*.txt'))).toBe(true)
     expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
   })
 
@@ -400,8 +448,8 @@ describe('worktree 生命周期（V3-04）', () => {
     expect(detail).toContain(`路径 ${JSON.stringify(missingPath)} 的 diff --quiet 返回 0`)
     expect(detail).toContain('literal pathspec 在 tip 与 merge-base 均未匹配任何对象')
     expect(commands.filter(command => command.startsWith('ls-tree -r -z '))).toEqual([
-      `ls-tree -r -z ${tip} -- :(literal)${missingPath}`,
-      `ls-tree -r -z ${baseSha} -- :(literal)${missingPath}`
+      `ls-tree -r -z ${tip} -- :(top,literal)${missingPath}`,
+      `ls-tree -r -z ${baseSha} -- :(top,literal)${missingPath}`
     ])
     expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
     expect(commands.some(command => command.startsWith('update-ref -d'))).toBe(false)
@@ -429,7 +477,7 @@ describe('worktree 生命周期（V3-04）', () => {
 
     expect(outcome).toMatchObject({ kind: 'kept', unmerged: true, landing: 'not-landed', baseRef: 'main' })
     expect(commands.some(command => command.includes('--no-renames'))).toBe(true)
-    expect(commands.some(command => command.includes('-- :(literal)a.txt'))).toBe(true)
+    expect(commands.some(command => command.includes('-- :(top,literal)a.txt'))).toBe(true)
     expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
   })
 
@@ -508,6 +556,64 @@ describe('worktree 生命周期（V3-04）', () => {
     expect(
       await gitExec(['rev-parse', '--verify', '-q', `refs/heads/${branch}`], { cwd: repo }).then(result => result.code)
     ).toBe(1)
+  })
+
+  it('内容落地分支仍被其他 linked worktree 检出时保留分支且不执行 update-ref', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('session-other-checkout', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-other-checkout-target`)
+    const otherPath = path.join(repo, '..', `${path.basename(repo)}-other-checkout-holder`)
+    dirs.push(wtPath, otherPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await commitFile(wtPath, 'a.txt', 'squashed')
+    await gitExec(['merge', '--squash', branch], { cwd: repo })
+    await gitExec(['commit', '-m', `squash ${branch}`], { cwd: repo })
+    await gitExec(['checkout', '--detach'], { cwd: wtPath })
+    await gitExec(['worktree', 'add', otherPath, branch], { cwd: repo })
+
+    const commands: string[] = []
+    const outcome = await cleanupWorktree(trackedGit(commands), { mainCwd: repo, path: wtPath, branch })
+
+    expect(outcome).toMatchObject({
+      kind: 'kept',
+      landedBy: 'content',
+      worktreeRemoved: true
+    })
+    const reason = outcome.kind === 'kept' ? outcome.reason : ''
+    expect(reason).toContain(`分支 ${branch} 仍被 ${await realpath(otherPath)} 检出，先解除检出再关闭`)
+    expect(commands).toContain('worktree list --porcelain')
+    expect(commands.some(command => command.startsWith('update-ref -d'))).toBe(false)
+    expect((await gitExec(['branch', '--list', branch], { cwd: repo })).stdout).toContain(branch)
+  })
+
+  it('worktree 检出查询失败时保留内容落地分支并给出诊断', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('session-list-failed', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-list-failed`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await commitFile(wtPath, 'a.txt', 'squashed')
+    await gitExec(['merge', '--squash', branch], { cwd: repo })
+    await gitExec(['commit', '-m', `squash ${branch}`], { cwd: repo })
+
+    const commands: string[] = []
+    const failingList: GitExec = async (args, options) => {
+      commands.push(args.join(' '))
+      if (args[0] === 'worktree' && args[1] === 'list') {
+        return { stdout: '', stderr: 'fatal: worktree list failed', code: 128, killed: false, truncated: false }
+      }
+      return gitExec(args, options)
+    }
+    const outcome = await cleanupWorktree(failingList, { mainCwd: repo, path: wtPath, branch })
+
+    expect(outcome).toMatchObject({ kind: 'kept', landedBy: 'content', worktreeRemoved: true })
+    const reason = outcome.kind === 'kept' ? outcome.reason : ''
+    expect(reason).toContain('无法确认分支是否仍被其他 worktree 检出，拒绝删除')
+    expect(reason).toContain('fatal: worktree list failed')
+    expect(commands.some(command => command.startsWith('update-ref -d'))).toBe(false)
+    expect((await gitExec(['branch', '--list', branch], { cwd: repo })).stdout).toContain(branch)
   })
 
   it('单条 diff --quiet 返回 128 时 inconclusive，保留分支并保留 stderr 摘要', async () => {

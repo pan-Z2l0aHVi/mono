@@ -989,6 +989,7 @@ describe('关闭、合并与内容落地', () => {
       expect(gitCommands.some(command => command.startsWith(`merge-base ${baseSha} `))).toBe(true)
       expect(gitCommands.some(command => command.startsWith('diff --name-only -z'))).toBe(true)
       expect(gitCommands.some(command => command.startsWith(`diff --quiet ${baseSha} `))).toBe(true)
+      expect(gitCommands.some(command => command.includes('-- :(top,literal)a.txt'))).toBe(true)
       expect(gitCommands.some(command => command.startsWith('diff --quiet origin/main '))).toBe(false)
       expect(gitCommands.some(command => command.startsWith('read-tree') || command.startsWith('apply '))).toBe(false)
       expect(gitCommands.some(command => command.startsWith('update-ref -d refs/heads/'))).toBe(true)
