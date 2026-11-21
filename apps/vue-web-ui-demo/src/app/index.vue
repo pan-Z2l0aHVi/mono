@@ -32,6 +32,7 @@ import Search from '@/components/search/index.vue'
 import { bootDegraded, currentLocale, loadDemoLocale, localePending } from '@/i18n/locale'
 import { useMobile } from '@/state/mobile'
 
+import RouteProgressBar from './route-progress-bar.vue'
 import SidebarNavLink from './sidebar-nav-link.vue'
 
 const ZH_LABEL = '简体中文'
@@ -131,6 +132,7 @@ onMounted(async () => {
 <template>
   <web-ui-theme :appearance="themeAppearance" :motion="themeMotion">
     <div class="min-h-screen bg-(--wui-color-page) text-(--wui-color-text)">
+      <RouteProgressBar />
       <!--
         Boolean 动态绑定走 camelCase Property（Vue 对已存在的属性名直接写 DOM property）。
         kebab-case（:sidebar-collapsed）会写字符串 attribute，布尔属性存在即 true，无法表达 false。

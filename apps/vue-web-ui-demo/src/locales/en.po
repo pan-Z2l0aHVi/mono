@@ -298,3 +298,20 @@ msgstr "Package manager"
 #: src/pages/home/index.vue
 msgid "支持触摸&手势"
 msgstr "Touch and gesture support"
+
+#: src/app/route-progress-bar.vue
+msgid "页面加载失败，请重试"
+msgstr "Failed to load the page. Please try again."
+
+#: src/app/route-progress-bar.vue
+msgid "页面加载进度"
+msgstr "Page loading progress"
+
+#: src/pages/changelog.vue
+msgid "正在同步更新状态…"
+msgstr "Syncing update status…"
+
+#. 0: syncedAt
+#: src/pages/changelog.vue
+msgid "已同步于 {0}"
+msgstr "Synced at {0}"

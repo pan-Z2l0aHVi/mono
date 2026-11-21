@@ -91,6 +91,7 @@ export default {
       'monorepo-kit',
       'pi-orchestrator-memory-bridge',
       'pi-rex-orchestrator',
+      'route-progress',
       'test-kit',
       'tsconfig',
       'unplugin-web-components',

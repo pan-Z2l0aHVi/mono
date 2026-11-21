@@ -1,3 +1,5 @@
+| [`packages/route-progress`](packages/route-progress)（`@greypan/route-progress`） | 私有的框架无关路由跳转进度状态机，基于 js-kit plugin system 组合，供 react/vue demo 适配 | [`src/index.ts`](packages/route-progress/src/index.ts)、[`AGENTS.md`](packages/route-progress/AGENTS.md) |
+
 # Mono 架构地图
 
 > 这份地图只描述稳定的仓库拓扑和定位入口；当前实现以源码、配置和测试为准。
@@ -44,7 +46,7 @@
 ## 2. 依赖、构建与发布边界
 
 - Workspace 只有 `apps/**` 和 `packages/**` 两类；依赖版本使用 workspace `catalog`，放置规则见 [`dependencies.md`](docs/agents/dependencies.md)。
-- `packages/browser-kit`、`deps-reload`、`js-kit`、`unplugin-web-components` 与 `web-ui` 是公开 npm 包；`test-kit`（测试基础设施）、`tsconfig`（配置 profiles）、`md-to-meta`（构建期 markdown 结构化 Vite 插件引擎）、`app-scrollbars`（app 级 OverlayScrollbars 配置）、`wuchale-vue`（Vue SFC adapter）、`doc-demo-kit`（web-ui 文档 demo 的共享文档示例层）、`monorepo-kit`（门禁与构建编排）、`pi-orchestrator-memory-bridge` 与 `pi-rex-orchestrator`（Pi 扩展，由 Pi 的 jiti 直接加载 `src/`）是 workspace 内部私有包。私有包仍参与 Changesets 版本计算，发布边界见 [`docs/agents/release.md`](docs/agents/release.md)。`monorepo-kit` 的源码是 TypeScript，`build` 跑 `vp pack` 产出 `dist/`，`exports.import` 指向产物。
+- `packages/browser-kit`、`deps-reload`、`js-kit`、`unplugin-web-components` 与 `web-ui` 是公开 npm 包；`test-kit`（测试基础设施）、`tsconfig`（配置 profiles）、`md-to-meta`（构建期 markdown 结构化 Vite 插件引擎）、`app-scrollbars`（app 级 OverlayScrollbars 配置）、`wuchale-vue`（Vue SFC adapter）、`doc-demo-kit`（web-ui 文档 demo 的共享文档示例层）、`route-progress`（框架无关的路由跳转进度状态机）、`monorepo-kit`（门禁与构建编排）、`pi-orchestrator-memory-bridge` 与 `pi-rex-orchestrator`（Pi 扩展，由 Pi 的 jiti 直接加载 `src/`）是 workspace 内部私有包。私有包仍参与 Changesets 版本计算，发布边界见 [`docs/agents/release.md`](docs/agents/release.md)。`monorepo-kit` 的源码是 TypeScript，`build` 跑 `vp pack` 产出 `dist/`，`exports.import` 指向产物。
 - 自撰 agent skills 不走 npm，只在 GitHub 分发；实体在 [`skills/`](./skills)，说明见 [`skills/README.md`](skills/README.md)。
 - `apps/*` 都是 `private` 的集成或交付应用，不是公共 API 的权威来源。
 - [`apps/interweave/frontend`](apps/interweave/frontend) 是独立 `private` workspace，属 Wails 前端集成面；Go host 在 [`apps/interweave`](apps/interweave)。

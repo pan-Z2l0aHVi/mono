@@ -33,6 +33,7 @@ catalog:
   '@tailwindcss/vite': ^4.3.5
   '@tanstack/react-router': ^1.170.32
   '@tanstack/router-plugin': ^1.168.35
+  '@tanstack/vue-query': ^5.104.5
   '@testing-library/react': ^16.3.2
   '@tsconfig/node24': ^24.0.4
   '@types/jsdom': ^30.0.0
@@ -142,6 +143,7 @@ peerDependencyRules:
 allowBuilds:
   core-js: false
   msw: false
+  vue-demi: false
 
 minimumReleaseAgeExclude:
   - parse5-parser-stream@8.1.1

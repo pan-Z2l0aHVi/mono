@@ -1,0 +1,30 @@
+{
+  "name": "@greypan/route-progress",
+  "version": "0.0.0",
+  "description": "框架无关的路由跳转进度状态机，供 react/vue web-ui demo 适配",
+  "license": "MIT",
+  "type": "module",
+  "exports": {
+    ".": {
+      "types": "./dist/index.d.mts",
+      "import": "./dist/index.mjs"
+    }
+  },
+  "sideEffects": false,
+  "scripts": {
+    "build": "vp pack",
+    "test": "vp test run",
+    "dev": "vp pack --watch --clean=false"
+  },
+  "dependencies": {
+    "@greypan/js-kit": "workspace:*"
+  },
+  "devDependencies": {
+    "@greypan/tsconfig": "workspace:*",
+    "vite-plus": "catalog:"
+  },
+  "private": true,
+  "engines": {
+    "node": ">=20.11.0"
+  }
+}

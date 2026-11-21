@@ -298,3 +298,20 @@ msgstr "包管理器"
 #: src/pages/home/index.vue
 msgid "支持触摸&手势"
 msgstr "支持触摸&手势"
+
+#: src/app/route-progress-bar.vue
+msgid "页面加载失败，请重试"
+msgstr "页面加载失败，请重试"
+
+#: src/app/route-progress-bar.vue
+msgid "页面加载进度"
+msgstr "页面加载进度"
+
+#: src/pages/changelog.vue
+msgid "正在同步更新状态…"
+msgstr "正在同步更新状态…"
+
+#. 0: syncedAt
+#: src/pages/changelog.vue
+msgid "已同步于 {0}"
+msgstr "已同步于 {0}"

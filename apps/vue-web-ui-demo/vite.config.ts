@@ -113,7 +113,11 @@ export default defineConfig({
     // 治愈，测试档的判据到那时永远空转）。
     mdToMeta(mdToMetaOptions),
     ...mdToMetaAdditionalOptions.map(mdToMeta),
-    vueRouter(),
+    vueRouter({
+      // 首屏是 /home（由 / 重定向而来，不是文件名 index），保持同步；其余页面各自拆 chunk，
+      // 由路由守卫在跳转前预加载。正则同时兼容正反斜杠路径。
+      importMode: filepath => (/[/\\]pages[/\\]home(?:[/\\]|$)/.test(filepath) ? 'sync' : 'async')
+    }),
     vue({
       template: {
         compilerOptions: {
@@ -142,6 +146,11 @@ export default defineConfig({
       {
         name: '@greypan/doc-demo-kit',
         path: '../../packages/doc-demo-kit',
+        extensions: ['.mjs']
+      },
+      {
+        name: '@greypan/route-progress',
+        path: '../../packages/route-progress',
         extensions: ['.mjs']
       },
       {
