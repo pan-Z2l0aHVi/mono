@@ -19,7 +19,7 @@ _Avoid_: 本地 review phase、CI 绿即 review 通过
 
 ADR 编号按下表与当前索引解释；更早的 research、CHANGELOG 和 Git 历史中的编号按当时的记录解释，不能直接套用当前索引。
 
-ADR 只记录技术选型、架构设计与工程化决策；具体实现细节放在源码、测试或对应文档。表内只列仍承载现行决策的 ADR；被取代的 ADR 在表内保留一行取代标注，退役或删除的记录只留在 git 里，旧 ADR 的修订注记不构成现行指引。需求拆分与 task 派发由外部编排层承担；仓库侧由本地 Task 台账记录归属与进度，由独立政策检查器运行只读检查。职责分别见 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)、[`docs/agents/commit.md`](docs/agents/commit.md)、[`docs/agents/worktree.md`](docs/agents/worktree.md) 与 [`docs/agents/release.md`](docs/agents/release.md)。
+ADR 只记录技术选型、架构设计与工程化决策；具体实现细节放在源码、测试或对应文档。表内只列仍承载现行决策的 ADR；被取代的 ADR 在表内保留一行取代标注，退役或删除的记录只留在 git 里，旧 ADR 的修订注记不构成现行指引。仓库指令保持编排无关（harness-agnostic）：本地 Task 台账记录归属与进度，独立政策检查器运行只读检查。职责分别见 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)、[`docs/agents/commit.md`](docs/agents/commit.md)、[`docs/agents/worktree.md`](docs/agents/worktree.md) 与 [`docs/agents/release.md`](docs/agents/release.md)。
 
 | ADR                                                                   | 决策                                                          | 何时读取                                                                |
 | --------------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------- |
@@ -32,7 +32,7 @@ ADR 只记录技术选型、架构设计与工程化决策；具体实现细节�
 | [0007](docs/adr/0007-plugin-system.md)                                | Plugin 系统                                                   | 设计可组合状态或行为模块                                                |
 | [0008](docs/adr/0008-interweave-backend.md)                           | Interweave 后端架构                                           | 修改 interweave Go 模块、Wails Service 或 frontend bindings             |
 | [0009](docs/adr/0009-interweave-sqlite.md)                            | SQLite 持久化与 WAL                                           | 修改 interweave 持久化层或 SQLite 并发模型                              |
-| [0010](docs/adr/0010-task-orchestration.md)                           | 编排层承接需求拆分与 task 派发                                | 修改 worktree 分工、T0 判据或编排层边界                                 |
+| [0010](docs/adr/0010-task-orchestration.md)                           | 仓库指令保持编排无关（harness-agnostic）                      | 修改 worktree 分工、T0 判据或会话协作边界                               |
 | [0012](docs/adr/0012-pr-review.md)                                    | PR review 结论与人工审查的增量复审                            | 修改 task 台账、政策检查集合、PR changeset gate 或 review/merge 前核验  |
 | [0013](docs/adr/0013-context-authority.md)                            | Context 语料权威与漂移门禁                                    | 修改指令文档的权威标记、漂移门禁或非权威语料标注                        |
 | [0014](docs/adr/0014-script-organization.md)                          | 脚本按执行面分类与统一入口                                    | 修改政策检查集合、pre-commit / CI policy 入口或脚本目录布局             |

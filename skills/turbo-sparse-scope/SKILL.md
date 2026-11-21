@@ -7,7 +7,7 @@ description: 可变任务建账与 worktree 准备完成、读取实施范围代
 
 ## 何时使用
 
-实施 owner 在任务建账与 worktree 准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`，需要类型检查、消费 `dist` 或跑仓库检查时再 `mise exec -- pnpm run build`）完成后、读取实施范围的代码、派发实施子任务或修改文件之前执行。准备与分工由编排层承接；同一个 task 的子任务共用 owner 确定的 worktree 和范围。
+实施 owner 在任务建账与 worktree 准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`，需要类型检查、消费 `dist` 或跑仓库检查时再 `mise exec -- pnpm run build`）完成后、读取实施范围的代码、派发实施子任务或修改文件之前执行。同一个 task 的子任务共用 owner 确定的 worktree 和范围。
 
 - 台账 `scope` 为空且没有实现/验证必需的包外读取时跳过；已明确会增删 workspace 包或修改 `pnpm-workspace.yaml` / `pnpm-lock.yaml`、且无需长周期只读侦察（直接全树作业成本更低）时，也可直接跳过稀疏并在交付记录中说明；否则必须调用本 skill 判断并处理范围。不要把「加载无关包」留到实现过程中再说。
 - 收缩是否到位用 `--check <目标>` 判定，不靠自述：目标是本 worktree 未结任务 `scope` 的并集，加上实现与验证必需的包外读取路径；非零退出意味着「目标非空但工作区从没收缩」或「cone 与目标要求的闭包不一致」。

@@ -62,4 +62,4 @@ node <skill-dir>/ledger.mjs help
 
 ## 恢复
 
-先读 Task Packet 与 `status`，再核对真实 Git 分支、HEAD 和工作区。记录丢失时保留现有工作树与 Packet，由宿主编排层决定恢复方式；重新 `new` 记录的是当前 HEAD，不能凭它重建原 base。不要伪造 review、测试或 CI 事件。
+先读 Task Packet 与 `status`，再核对真实 Git 分支、HEAD 和工作区。记录丢失时保留现有工作树与 Packet，按实际 Git 状态与当前会话方式恢复；重新 `new` 记录的是当前 HEAD，不能凭它重建原 base。不要伪造 review、测试或 CI 事件。

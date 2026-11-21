@@ -4,15 +4,15 @@
 
 worktree 本身是任务隔离边界，不是包名的别名。包清单、依赖边界与发布边界以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为权威；客户端权限边界见 [`environments.md`](./environments.md)；mise/turbo 的 env 注入由本文承担；提交边界的授权口径见 [`commit.md`](./commit.md)。
 
-## 编排层与归属
+## 任务隔离与归属
 
-一个可变 task 只能有一个 owner 和一个实施 worktree；怎么创建、放在哪、用什么命令建、由谁清理，都由编排层决定，仓库不规定。共享主工作区只用于只读调查与状态查询，合并通过远端 PR 完成，不在共享工作区里做。owner 与 worktree 的唯一性边界见根 [`AGENTS.md`](../../AGENTS.md)。
+一个可变 task 对应一个 owner 和一个实施 worktree；怎么创建、放在何处或如何回收，仓库不规定。共享主工作区只用于只读调查与状态查询，合并通过远端 PR 完成，不在共享工作区里做。owner 与 worktree 的唯一性边界见根 [`AGENTS.md`](../../AGENTS.md)。
 
-编排层交接 task 时会带上 worktree 路径、base SHA 和 owner 标识，执行者用 task-ledger skill 的 `new` 子命令的 `--owner` 与 `--base` 记录归属与起点，并把 worktree 路径填进 Task Packet 的 `Worktree`，不自行推导或改写。交接后归属变更属编排层的动作，仓库侧不提供重新归属命令。禁止靠 pane 名称或目录名推断归属。
+任务启动时用 task-ledger skill 的 `new` 子命令（`--owner` 与 `--base`）记录归属与起点，并按需在 Task Packet 的 `Worktree` 记录当前工作树路径。
 
 ## 新 worktree 的准备
 
-编排层交付一个新 worktree 后，执行者在实施前按任务需要准备：首次或工具链变化时跑 `mise install`，因为版本由 [`.mise.toml`](../../.mise.toml) 钉住、不同分支可能不同，它幂等；要跑 pnpm、turbo、类型检查、构建或仓库检查时跑 `mise exec -- pnpm install --frozen-lockfile`，显式运行根 `fix-code` / `check-code` 需要 `node_modules`，稀疏收缩前也必须执行；需要跨包类型检查或消费 `dist` 时跑 `mise exec -- pnpm run build`，缺产物时 `vp check` 会把跨包 import 报成假 `TS2307`。只改文档且不跑这些检查时后两步可省，跳过什么、为什么写进交付说明。
+进入新 worktree 后，在实施前按任务需要准备：首次或工具链变化时跑 `mise install`，因为版本由 [`.mise.toml`](../../.mise.toml) 钉住、不同分支可能不同，它幂等；要跑 pnpm、turbo、类型检查、构建或仓库检查时跑 `mise exec -- pnpm install --frozen-lockfile`，显式运行根 `fix-code` / `check-code` 需要 `node_modules`，稀疏收缩前也必须执行；需要跨包类型检查或消费 `dist` 时跑 `mise exec -- pnpm run build`，缺产物时 `vp check` 会把跨包 import 报成假 `TS2307`。只改文档且不跑这些检查时后两步可省，跳过什么、为什么写进交付说明。
 
 `fix-code` 的改写与暂存边界见 [`commit.md`](./commit.md#pre-commit-与本地-checks)。
 
@@ -60,7 +60,7 @@ CI 在 [`ci.yml`](../../.github/workflows/ci.yml) 显式把 artifact cache 放�
 
 构建或验证前怀疑 `dist` 产物异常（例如被 watch 进程清空 d.ts）时，先裸跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force`）或手动 `turbo build --force` 重建。doctor 按同一公式得到的本地 canonical 路径判断注入；CI workspace override 不会作为它自己的预期值。
 
-Codex 线程能不能写共享 Turbo cache，取决于客户端的权限配置，见 [`environments.md`](./environments.md)。
+Codex 等客户端会话能否写入共享 Turbo cache，取决于客户端的沙箱与权限配置，见 [`environments.md`](./environments.md)。
 
 ### 缓存可信链
 
