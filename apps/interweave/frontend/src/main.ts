@@ -1,11 +1,15 @@
 import '@/assets/global.css'
 
+import { VueQueryPlugin } from '@tanstack/vue-query'
 import { createApp } from 'vue'
 import { createRouter, createWebHashHistory } from 'vue-router'
 import { handleHotUpdate, routes } from 'vue-router/auto-routes'
 
 import App from '@/App.vue'
 import { installHistoryNav } from '@/composables/useHistoryNav'
+import { installRouteGuards } from '@/router/guards'
+import { routeProgress } from '@/router/progress'
+import { queryClient } from '@/router/query-client'
 import { waitForRuntimeConfig } from '@/services/runtime'
 import { pinia } from '@/stores'
 
@@ -21,10 +25,19 @@ const router = createRouter({
   ]
 })
 
+declare module 'vue-router' {
+  interface RouteMeta {
+    /** 为 true 时在 RouterView 的 KeepAlive 中缓存该路由视图实例。 */
+    keepAlive?: boolean
+  }
+}
+
 if (import.meta.hot) {
   handleHotUpdate(router)
 }
 
+// 守卫在 use(router) 之前注册：初始导航与后续切换统一走延迟跳转与进度收口。
+installRouteGuards(router, queryClient, routeProgress)
 installHistoryNav()
 
 /*
@@ -36,5 +49,5 @@ installHistoryNav()
  */
 void waitForRuntimeConfig().then(ready => {
   if (!ready) console.warn('interweave: Wails runtime 未注入，按浏览器预览启动')
-  createApp(App).use(pinia).use(router).mount('#app')
+  createApp(App).use(pinia).use(VueQueryPlugin, { queryClient }).use(router).mount('#app')
 })

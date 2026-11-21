@@ -104,7 +104,10 @@ export default defineConfig({
     // 回 loopback 时测试服务器会跟着绑通配地址。分配表与偏移见 docs/agents/build-browser.md「测试端口分配」。
     testPorts({ project: 'interweave-frontend', testName: 'browser' }),
     testPorts({ project: 'interweave-frontend-touch', testName: 'browser-touch' }),
-    vueRouter(),
+    vueRouter({
+      // 首屏实际路由为 /library（由 / 重定向而来）：保持同步不拆 chunk，其余路由按页懒加载。
+      importMode: filepath => (/[/\\]pages[/\\]library(?:[/\\]|$)/.test(filepath) ? 'sync' : 'async')
+    }),
     vue({
       template: {
         compilerOptions: {
@@ -126,6 +129,7 @@ export default defineConfig({
     depsReload([
       // 包入口是 .mjs，默认的 .js 过滤匹配不到它
       { name: '@greypan/app-scrollbars', path: '../../../packages/app-scrollbars', extensions: ['.mjs', '.css'] },
+      { name: '@greypan/route-progress', path: '../../../packages/route-progress', extensions: ['.mjs'] },
       { name: '@greypan/web-ui', path: '../../../packages/web-ui' },
       { name: '@greypan/js-kit', path: '../../../packages/js-kit' },
       { name: '@greypan/browser-kit', path: '../../../packages/browser-kit' }

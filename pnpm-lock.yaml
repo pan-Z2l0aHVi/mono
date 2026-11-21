@@ -579,9 +579,15 @@ importers:
       '@greypan/browser-kit':
         specifier: workspace:*
         version: link:../../../packages/browser-kit
+      '@greypan/route-progress':
+        specifier: workspace:*
+        version: link:../../../packages/route-progress
       '@greypan/web-ui':
         specifier: workspace:*
         version: link:../../../packages/web-ui
+      '@tanstack/vue-query':
+        specifier: 'catalog:'
+        version: 5.108.1(vue@3.5.45(typescript@6.0.3))
       '@vueuse/core':
         specifier: 'catalog:'
         version: 15.0.0(vue@3.5.45(typescript@6.0.3))
