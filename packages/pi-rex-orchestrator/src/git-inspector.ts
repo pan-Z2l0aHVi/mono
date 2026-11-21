@@ -213,6 +213,8 @@ type LandedBy = 'ancestor' | 'content'
 interface ContentLandingProbe {
   landing: ContentLanding
   baseRef?: string
+  /** baseRef 在探针开始时钉住的 commit；展示仍使用 baseRef。 */
+  baseSha?: string
   detail?: string
   /** 内容探针实际验证的分支 tip；仅在 landed 时存在。 */
   landedTip?: string
@@ -278,32 +280,40 @@ async function inspectContentLanding(
     return { landing: 'inconclusive', detail: `无法解析 baseRef；${baseFailures.join('；')}` }
   }
 
+  const baseShaArgs = ['rev-parse', resolvedBase]
+  const baseShaResult = await exec(baseShaArgs, { cwd: mainCwd })
+  const baseSha = baseShaResult.stdout.trim()
+  if (!complete(baseShaResult) || !/^[0-9a-f]{40}$/.test(baseSha)) {
+    return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(baseShaArgs, baseShaResult) }
+  }
+
   const tipArgs = ['rev-parse', `refs/heads/${branch}`]
   const tip = await exec(tipArgs, { cwd: mainCwd })
   const landedTip = tip.stdout.trim()
   if (!complete(tip) || landedTip === '') {
-    return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(tipArgs, tip) }
+    return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(tipArgs, tip) }
   }
 
-  const mergeBaseArgs = ['merge-base', resolvedBase, landedTip]
+  const mergeBaseArgs = ['merge-base', baseSha, landedTip]
   const mergeBase = await exec(mergeBaseArgs, { cwd: mainCwd })
   const mergeBaseSha = mergeBase.stdout.trim()
   if (!complete(mergeBase) || mergeBaseSha === '') {
-    return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(mergeBaseArgs, mergeBase) }
+    return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(mergeBaseArgs, mergeBase) }
   }
 
   // 关闭 rename 折叠：删除侧与新增侧必须各自比较，否则只落一半的重命名可能漏检。
   const pathArgs = ['diff', '--name-only', '-z', '--no-renames', mergeBaseSha, landedTip]
   const listed = await exec(pathArgs, { cwd: mainCwd })
   if (!complete(listed)) {
-    return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(pathArgs, listed) }
+    return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(pathArgs, listed) }
   }
   const changedPaths = listed.stdout.split('\0').filter(changedPath => changedPath !== '')
-  if (changedPaths.length === 0) return { landing: 'landed', baseRef: resolvedBase, landedTip }
+  if (changedPaths.length === 0) return { landing: 'landed', baseRef: resolvedBase, baseSha, landedTip }
   if (changedPaths.length > 200) {
     return {
       landing: 'inconclusive',
       baseRef: resolvedBase,
+      baseSha,
       detail: `分支涉及 ${changedPaths.length} 个变更路径，超过每路径确认上限 200；无法安全自动删除`
     }
   }
@@ -312,18 +322,18 @@ async function inspectContentLanding(
     // 名称来自仓库内容，必须按 literal pathspec 解释，避免 `:(exclude)...` 之类的文件名
     // 让 quiet diff 意外匹配空集合并返回 0。
     const literalPathspec = `:(literal)${changedPath}`
-    const quietArgs = ['diff', '--quiet', resolvedBase, landedTip, '--', literalPathspec]
+    const quietArgs = ['diff', '--quiet', baseSha, landedTip, '--', literalPathspec]
     const quiet = await exec(quietArgs, { cwd: mainCwd })
     if (quiet.killed || quiet.truncated) {
-      return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(quietArgs, quiet) }
+      return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(quietArgs, quiet) }
     }
     if (quiet.code === 0) continue
     if (quiet.code === 1) {
-      return { landing: 'not-landed', baseRef: resolvedBase, detail: gitFailure(quietArgs, quiet) }
+      return { landing: 'not-landed', baseRef: resolvedBase, baseSha, detail: gitFailure(quietArgs, quiet) }
     }
-    return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(quietArgs, quiet) }
+    return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(quietArgs, quiet) }
   }
-  return { landing: 'landed', baseRef: resolvedBase, landedTip }
+  return { landing: 'landed', baseRef: resolvedBase, baseSha, landedTip }
 }
 
 export async function contentLanding(
@@ -341,6 +351,7 @@ export type CleanupOutcome =
       branch: string
       landedBy?: LandedBy
       baseRef?: string
+      baseSha?: string
     }
   | {
       kind: 'kept'
@@ -354,6 +365,7 @@ export type CleanupOutcome =
       landedBy?: LandedBy
       landing?: Exclude<ContentLanding, 'landed'>
       baseRef?: string
+      baseSha?: string
       /** inconclusive 时给用户看的命令与 stderr 摘要。 */
       landingDetail?: string
       /**
@@ -433,6 +445,7 @@ export async function cleanupWorktree(
   let landedBy: LandedBy | undefined
   let landing: Exclude<ContentLanding, 'landed'> | undefined
   let baseRef: string | undefined
+  let baseSha: string | undefined
   let landingDetail: string | undefined
   let landedTip: string | undefined
 
@@ -443,6 +456,7 @@ export async function cleanupWorktree(
     }
     const probe = await inspectContentLanding(exec, setup.mainCwd, setup.branch)
     baseRef = probe.baseRef
+    baseSha = probe.baseSha
     landingDetail = probe.detail
     if (probe.landing === 'landed' && probe.landedTip !== undefined) {
       landedBy = 'content'
@@ -500,6 +514,7 @@ export async function cleanupWorktree(
         unmerged: true,
         landing,
         baseRef,
+        baseSha,
         landingDetail,
         worktreeRemoved: true
       }
@@ -525,6 +540,7 @@ export async function cleanupWorktree(
         unmerged: true,
         landing,
         baseRef,
+        baseSha,
         landingDetail
       }
     }
@@ -555,6 +571,7 @@ export async function cleanupWorktree(
         unmerged: false,
         landedBy,
         baseRef,
+        baseSha,
         worktreeRemoved: true
       }
     }
@@ -564,7 +581,7 @@ export async function cleanupWorktree(
     const existing = await exec(existingArgs, { cwd: setup.mainCwd })
     if (existing.code !== 0) {
       if (existing.code === 1 && !existing.killed && !existing.truncated) {
-        return { kind: 'removed', branch: setup.branch, landedBy, baseRef }
+        return { kind: 'removed', branch: setup.branch, landedBy, baseRef, baseSha }
       }
       return {
         kind: 'kept',
@@ -578,6 +595,7 @@ export async function cleanupWorktree(
         unmerged: false,
         landedBy,
         baseRef,
+        baseSha,
         worktreeRemoved: true,
         branchDeleteCommand: `git ${existingArgs.join(' ')}`
       }
@@ -599,6 +617,7 @@ export async function cleanupWorktree(
       unmerged: false,
       landedBy,
       baseRef,
+      baseSha,
       worktreeRemoved: true,
       branchDeleteCommand: `git ${branchArgs.join(' ')}`
     }
@@ -607,7 +626,8 @@ export async function cleanupWorktree(
     kind: 'removed',
     branch: setup.branch,
     ...(landedBy === undefined ? {} : { landedBy }),
-    ...(landedBy === 'content' && baseRef !== undefined ? { baseRef } : {})
+    ...(landedBy === 'content' && baseRef !== undefined ? { baseRef } : {}),
+    ...(landedBy === 'content' && baseSha !== undefined ? { baseSha } : {})
   }
 }
 

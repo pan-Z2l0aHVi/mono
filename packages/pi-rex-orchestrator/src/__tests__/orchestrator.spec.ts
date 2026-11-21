@@ -865,6 +865,7 @@ describe('关闭、合并与内容落地', () => {
     '内容未落地：close 输出仓库流程、可选本地 merge 与 force 废弃，拒绝本地 merge 后不删除',
     withTempRoot(async () => {
       const ok = { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
+      const baseSha = 'b'.repeat(40)
       const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
         if (command === 'git' && args[0] === 'rev-parse' && args[1]?.startsWith('refs/heads/')) {
           return { ...ok, stdout: `${'c'.repeat(40)}\n` }
@@ -897,7 +898,8 @@ describe('关闭、合并与内容落地', () => {
       expect(mock.ctx.confirmations[0]?.message).toContain('本仓应走 PR + squash')
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
       expect(argJoins.some(command => command.startsWith('diff --name-only -z'))).toBe(true)
-      expect(argJoins.some(command => command.startsWith('diff --quiet main'))).toBe(true)
+      expect(argJoins.some(command => command.startsWith(`diff --quiet ${baseSha} `))).toBe(true)
+      expect(argJoins.some(command => command.startsWith('diff --quiet main '))).toBe(false)
       expect(argJoins.some(args => args.startsWith('merge '))).toBe(false)
       expect(argJoins.some(args => args.startsWith('worktree remove'))).toBe(false)
       expect(argJoins.some(args => args.startsWith('update-ref -d') || args.startsWith('branch -D'))).toBe(false)
@@ -949,6 +951,7 @@ describe('关闭、合并与内容落地', () => {
     '逐路径内容比对识别 squash 落地后关闭 worker 并清除 registry worktree',
     withTempRoot(async () => {
       const ok = { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
+      const baseSha = 'b'.repeat(40)
       const { mock, registry, orchestrator } = makeCloseOrchestrator(async (command, args) => {
         if (command === 'git' && args[0] === 'rev-parse') {
           if (args.includes('MERGE_HEAD')) return { ...ok, code: 1 }
@@ -979,8 +982,11 @@ describe('关闭、合并与内容落地', () => {
       expect(mock.ctx.confirmations).toHaveLength(0)
       expect(mock.execCalls.some(call => call.command === 'env')).toBe(false)
       const gitCommands = mock.execCalls.filter(call => call.command === 'git').map(call => call.args.join(' '))
+      expect(gitCommands).toContain('rev-parse origin/main')
+      expect(gitCommands.some(command => command.startsWith(`merge-base ${baseSha} `))).toBe(true)
       expect(gitCommands.some(command => command.startsWith('diff --name-only -z'))).toBe(true)
-      expect(gitCommands.some(command => command.startsWith('diff --quiet origin/main'))).toBe(true)
+      expect(gitCommands.some(command => command.startsWith(`diff --quiet ${baseSha} `))).toBe(true)
+      expect(gitCommands.some(command => command.startsWith('diff --quiet origin/main '))).toBe(false)
       expect(gitCommands.some(command => command.startsWith('read-tree') || command.startsWith('apply '))).toBe(false)
       expect(gitCommands.some(command => command.startsWith('update-ref -d refs/heads/'))).toBe(true)
       expect(registry.get('claude-1')?.worktree).toBeUndefined()
