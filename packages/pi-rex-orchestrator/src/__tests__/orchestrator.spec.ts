@@ -738,10 +738,10 @@ describe('关闭、合并与内容落地', () => {
       const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
         if (command === 'git' && args[0] === 'rev-parse' && args[1] === 'HEAD') {
           headProbeCount += 1
-          // 第一次来自 contentLanding 的 fail-closed HEAD/baseRef 对照；后两次是
-          // merge 确认前后的目标捕获。只在最后两次之间制造变化。
+          // 前两次是 merge 确认前后的目标捕获。只在第二次读取时制造变化；
+          // 内容探针无 env 时已直接 inconclusive，不再额外读取 HEAD。
           return {
-            stdout: `${headProbeCount <= 2 ? 'b' : 'c'.repeat(40)}`.padEnd(40, 'b'),
+            stdout: `${headProbeCount <= 1 ? 'b' : 'c'.repeat(40)}`.padEnd(40, 'b'),
             stderr: '',
             code: 0,
             killed: false,
@@ -865,48 +865,23 @@ describe('关闭、合并与内容落地', () => {
   )
 
   it(
-    '内容已 squash 落地：自动清理并说明无需确认',
-    withTempRoot(async () => {
-      const { mock, registry, orchestrator } = makeCloseOrchestrator(async (command, args) => {
-        if (command === 'git' && args[0] === 'merge-base') {
-          return { stdout: `${'a'.repeat(40)}\n`, stderr: '', code: 0, killed: false, truncated: false }
-        }
-        if (command === 'git' && args[0] === 'diff') {
-          return { stdout: 'diff --git a/a.txt b/a.txt\n', stderr: '', code: 0, killed: false, truncated: false }
-        }
-        if (command === 'git' && args[0] === 'apply') {
-          return { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
-        }
-        if (command === 'git' && args[0] === 'branch' && args[1] === '-d') {
-          return { stdout: '', stderr: 'not fully merged', code: 1, killed: false, truncated: false }
-        }
-        return fakeGit()(command, args)
-      })
-
-      const result = await closeWorker(mock)
-
-      expect(mock.ctx.confirmations).toHaveLength(0)
-      const argJoins = mock.execCalls.map(call => call.args.join(' '))
-      expect(result.isError).toBeFalsy()
-      expect(result.content[0]?.text).toContain('内容已在 main 中（squash 合并），因此无需确认')
-      expect(argJoins.some(args => args === 'branch -D pi-orch/review1/w-1')).toBe(true)
-      expect(registry.get('claude-1')?.worktree).toBeUndefined()
-      orchestrator.dispose()
-    })
-  )
-
-  it(
     '内容未落地：close 输出仓库流程、可选本地 merge 与 force 废弃，拒绝本地 merge 后不删除',
     withTempRoot(async () => {
+      const ok = { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
       const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
+        if (command === 'env' && args.length === 1 && args[0] === 'true') return ok
+        if (command === 'env' && args[1] === 'git') {
+          if (args[2] === 'read-tree') return ok
+          if (args[2] === 'apply') return { ...ok, stderr: 'patch does not apply', code: 1 }
+        }
+        if (command === 'git' && args[0] === 'rev-parse' && args[1]?.startsWith('refs/heads/')) {
+          return { ...ok, stdout: `${'c'.repeat(40)}\n` }
+        }
         if (command === 'git' && args[0] === 'merge-base') {
-          return { stdout: `${'a'.repeat(40)}\n`, stderr: '', code: 0, killed: false, truncated: false }
+          return { ...ok, stdout: `${'a'.repeat(40)}\n` }
         }
         if (command === 'git' && args[0] === 'diff') {
-          return { stdout: 'diff --git a/a.txt b/a.txt\n', stderr: '', code: 0, killed: false, truncated: false }
-        }
-        if (command === 'git' && args[0] === 'apply') {
-          return { stdout: '', stderr: 'patch does not apply', code: 1, killed: false, truncated: false }
+          return { ...ok, stdout: 'diff --git a/a.txt b/a.txt\n' }
         }
         return fakeGit()(command, args)
       })
@@ -928,20 +903,28 @@ describe('关闭、合并与内容落地', () => {
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
       expect(argJoins.some(args => args.startsWith('merge '))).toBe(false)
       expect(argJoins.some(args => args.startsWith('worktree remove'))).toBe(false)
-      expect(argJoins.some(args => args.startsWith('branch -D'))).toBe(false)
+      expect(argJoins.some(args => args.startsWith('update-ref -d') || args.startsWith('branch -D'))).toBe(false)
       orchestrator.dispose()
     })
   )
 
   it(
-    '内容落地无法判定：给出命令与 stderr 摘要，并覆盖 PR、本地 merge 与 force 路径',
+    '内容落地无法判定：给出命令与 stderr 摘要，并只给 PR / force 二选一',
     withTempRoot(async () => {
+      const ok = { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
       const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
+        if (command === 'env' && args.length === 1 && args[0] === 'true') return ok
+        if (command === 'git' && args[0] === 'rev-parse' && args[1]?.startsWith('refs/heads/')) {
+          return { ...ok, stdout: `${'c'.repeat(40)}\n` }
+        }
         if (command === 'git' && args[0] === 'merge-base') {
-          return { stdout: `${'a'.repeat(40)}\n`, stderr: '', code: 0, killed: false, truncated: false }
+          return { ...ok, stdout: `${'a'.repeat(40)}\n` }
         }
         if (command === 'git' && args[0] === 'diff') {
-          return { stdout: '', stderr: 'fatal: unable to read tree', code: 128, killed: false, truncated: false }
+          return { ...ok, stderr: 'fatal: unable to read tree', code: 128 }
+        }
+        if (command === 'env' && args[1] === 'git' && args[2] === 'read-tree') {
+          return ok
         }
         return fakeGit()(command, args)
       })
@@ -958,9 +941,8 @@ describe('关闭、合并与内容落地', () => {
       expect(text).toContain('fatal: unable to read tree')
       expect(text).toContain('按该仓库自身流程合并')
       expect(text).toContain('无 PR 流程时可由我本地 merge')
-      expect(text).toContain('确认内容已在 main → force: true')
-      expect(text).toContain('确认废弃 → 用 force: true 清理')
-      expect(text).toContain('请现在选择（三选一）')
+      expect(text).toContain('确认内容已在 main，或确认废弃 → 用 force: true 清理')
+      expect(text).toContain('请现在二选一')
       expect(text).not.toContain('git merge --no-ff')
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
       expect(argJoins.some(args => args.startsWith('merge '))).toBe(false)
@@ -985,7 +967,7 @@ describe('关闭、合并与内容落地', () => {
         }
         if (command === 'git' && args[0] === 'rev-parse') {
           if (args.includes('MERGE_HEAD')) return { ...ok, code: 1 }
-          if (args.some(arg => arg.startsWith('refs/heads/'))) return ok
+          if (args.some(arg => arg.startsWith('refs/heads/'))) return { ...ok, stdout: `${'c'.repeat(40)}\n` }
           if (args[1] === 'HEAD') return { ...ok, stdout: `${'1'.repeat(40)}\n` }
           if (args[1] === 'origin/main') return { ...ok, stdout: `${'2'.repeat(40)}\n` }
           if (args.includes('refs/remotes/origin/HEAD')) return ok
@@ -1083,6 +1065,13 @@ describe('关闭、合并与内容落地', () => {
 
       expect(first.content[0]?.text).toContain('无法自动判定分支内容是否已在 origin/main 中')
       expect(second.content[0]?.text).toContain('无法自动判定分支内容是否已在 origin/main 中')
+      for (const result of [first, second]) {
+        expect(result.content[0]?.text).toContain(
+          '宿主无法提供临时 index（缺少 env(1) 能力），拒绝用主仓工作树冒充 base 树'
+        )
+        expect(result.content[0]?.text).toContain('请现在二选一')
+        expect(result.content[0]?.text).not.toContain('请现在选择（三选一）')
+      }
       expect(envProbeCalls).toBe(1)
       expect(mock.execCalls.filter(call => call.command === 'env' && call.args.length > 1)).toHaveLength(0)
       const argJoins = mock.execCalls.map(call => call.args.join(' '))

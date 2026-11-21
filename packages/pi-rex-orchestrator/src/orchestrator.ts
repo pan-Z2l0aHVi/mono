@@ -161,7 +161,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
   const inspectCallToWorker = new Map<string, string>()
 
   // Pi 的 exec 不接受 env，但 Unix 的 env(1) 可以作为 argv 前缀注入环境。能力探测
-  // 只做一次；失败时 supportsEnv 保持 false，git-inspector 继续走 HEAD/baseRef 守卫。
+  // 只做一次；失败时 supportsEnv 保持 false，git-inspector 直接 inconclusive 并询问。
   let envCommandAvailable: boolean | undefined
   let envCommandProbe: Promise<boolean> | undefined
   const ensureEnvCommand = (): Promise<boolean> => {
@@ -1560,13 +1560,16 @@ function formatCleanupOutcome(worktree: { path: string; branch: string }, outcom
       `${target}：无法自动判定分支内容是否已在 ${baseRef} 中。`,
       `判定原因：${outcome.landingDetail ?? outcome.reason}`,
       pathLine,
-      '请现在选择（三选一）：',
+      '请现在二选一：',
       `1. 按该仓库自身流程合并（本仓为 PR + squash；无 PR 流程时可由我本地 merge）；`,
-      `2. 确认内容已在 ${baseRef} → force: true；`,
-      '3. 确认废弃 → 用 force: true 清理。'
+      `2. 确认内容已在 ${baseRef}，或确认废弃 → 用 force: true 清理。`
     ]
       .filter((line): line is string => line !== undefined)
       .join('\n')
+  }
+
+  if (outcome.worktreeRemoved && outcome.landedBy === 'content') {
+    return `${target}：${outcome.reason}`
   }
 
   if (outcome.worktreeRemoved) {
