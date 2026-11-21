@@ -12,10 +12,15 @@ export interface RouteProgressSnapshot {
 }
 
 export interface RouteProgressOptions {
-  /** start 之后超过该时长仍未完成才显示。 */
+  /** start 之后超过该时长仍未完成才显示（默认 250ms，250ms 内无感完成永不展示）。 */
   showDelay?: number
-  /** 显示后至少停留的时长。 */
+  /** 一旦显示后至少停留的总时长（默认 300ms）。 */
   minVisible?: number
+  /**
+   * 平滑收尾：一旦进度条已显示，`done` 推到 100% 后至少停留的时长（默认 220ms，覆盖 200ms 的
+   * `transform` 冲刺过渡），确保哪怕刚显示就结束或长耗时结束，都顺滑走完 100% 动画再淡出。
+   */
+  completeHold?: number
 }
 
 export interface RouteProgressCore {
@@ -29,7 +34,7 @@ export interface RouteProgressCore {
 const IDLE: RouteProgressSnapshot = Object.freeze({ phase: 'idle', visible: false, value: 0 })
 
 export function defineRouteProgressCore(options: RouteProgressOptions = {}) {
-  const { showDelay = 120, minVisible = 300 } = options
+  const { showDelay = 250, minVisible = 300, completeHold = 220 } = options
 
   return definePlugin<{ progress: RouteProgressCore }, { clock: RouteClock; trickle: RouteTrickle }>(
     ({ clock, trickle }) => {
@@ -106,7 +111,9 @@ export function defineRouteProgressCore(options: RouteProgressOptions = {}) {
             }
             set({ phase: 'done', visible: true, value: 100 })
             clearHide()
-            const wait = Math.max(0, minVisible - (clock.now() - shownAt))
+            // 平滑收尾：同时满足「总可见时长 >= minVisible」与「100% 冲刺动画停留 >= completeHold」。
+            const remainingVisible = minVisible - (clock.now() - shownAt)
+            const wait = Math.max(0, remainingVisible, completeHold)
             hideTimer = clock.setTimeout(() => {
               hideTimer = undefined
               set(IDLE)

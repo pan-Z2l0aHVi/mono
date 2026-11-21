@@ -28,17 +28,20 @@
 }
 
 .wui-progress-indicator {
-  width: var(--wui-progress-percent, 0%);
+  transform: translate3d(calc(var(--wui-progress-percent, 0%) - 100%), 0, 0);
+
+  width: 100%;
   height: 100%;
   border-radius: inherit;
 
   background-color: var(--wui-progress-fill-color, var(--wui-color-accent, #0071e3));
 
-  transition: width var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
+  transition: transform var(--wui-duration-trigger, 160ms) var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
 }
 
 /* 方角短条；位移终点按条自身宽度换算，见 index.ts。周期略慢于 spinner，保留滑动的辨识度。 */
 :host([sport]) .wui-progress-indicator {
+  width: var(--wui-progress-percent, 0%);
   border-radius: 0;
   animation: wui-progress-sport var(--wui-progress-sport-duration, calc(var(--wui-duration-spinner, 800ms) * 1.25))
     var(--wui-progress-sport-easing, cubic-bezier(0.65, 0, 0.35, 1)) infinite;

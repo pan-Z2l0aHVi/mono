@@ -85,8 +85,11 @@ describe('react router progress & guards', () => {
     await vi.advanceTimersByTimeAsync(500)
 
     const pending = router.navigate({ to: '/changelog', search: { delay: '500' } })
-    await vi.advanceTimersByTimeAsync(200)
-    // 慢 loader 期间：已解析位置仍停在 /home，顶部条可见
+    await vi.advanceTimersByTimeAsync(240)
+    // 250ms 阈值前不显示
+    expect(progress.getSnapshot().visible).toBe(false)
+    await vi.advanceTimersByTimeAsync(20)
+    // 超过 250ms：已解析位置仍停在 /home，顶部条可见
     expect(router.state.resolvedLocation?.pathname).toBe('/home')
     expect(progress.getSnapshot().visible).toBe(true)
 

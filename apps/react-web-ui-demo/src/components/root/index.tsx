@@ -33,7 +33,6 @@ import { useMobile } from '@/state/mobile'
 import { Search } from '../search'
 
 import { RootErrorFallback } from './root-error-fallback'
-import { RouteProgressBar } from './route-progress-bar'
 
 // 语种名按该语言自己的写法给出，两版都不译：误切到读不懂的界面语言时，靠「简体中文」四个字
 // 就能找回母语，不必先读懂当前界面上的 "Simplified Chinese"。
@@ -177,7 +176,6 @@ export function Root() {
     <ErrorBoundary FallbackComponent={RootErrorFallback}>
       <web-ui-theme appearance={themeAppearance} motion={themeMotion}>
         <div className="min-h-screen bg-(--wui-color-page) text-(--wui-color-text)">
-          <RouteProgressBar />
           {routeTitle ? <title>{routeTitle}</title> : null}
           <web-ui-layout
             mobile={isMobileSidebar}

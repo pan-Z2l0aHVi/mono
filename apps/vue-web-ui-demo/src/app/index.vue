@@ -304,7 +304,12 @@ onMounted(async () => {
         </OverlayScrollbarsComponent>
         <div class="p-3 pb-12 sm:px-6 sm:pb-16 md:px-8 lg:px-10">
           <!-- 正文 gutter 归 shell 所有：web-ui-layout 的 main 不带 padding，逐页加会漏页。 -->
-          <RouterView />
+          <RouterView v-slot="{ Component, route: currentRoute }">
+            <KeepAlive>
+              <component :is="Component" v-if="currentRoute.meta.keepAlive" :key="currentRoute.path" />
+            </KeepAlive>
+            <component :is="Component" v-if="!currentRoute.meta.keepAlive" :key="currentRoute.path" />
+          </RouterView>
         </div>
       </web-ui-layout>
       <web-ui-back-top></web-ui-back-top>

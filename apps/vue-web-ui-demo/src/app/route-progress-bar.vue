@@ -25,12 +25,7 @@ onScopeDispose(() => {
     :class="snapshot.visible ? 'opacity-100' : 'opacity-0'"
     :data-visible="snapshot.visible"
     :data-phase="snapshot.phase"
-    style="
-      --wui-progress-height: 3px;
-      --wui-progress-radius: 0;
-      --wui-progress-track-color: transparent;
-      --wui-duration-trigger: 200ms;
-    "
+    style="--wui-progress-height: 3px; --wui-progress-radius: 0; --wui-duration-trigger: 200ms"
   >
     <web-ui-progress
       class="motion-reduce:[--wui-duration-trigger:0ms]"

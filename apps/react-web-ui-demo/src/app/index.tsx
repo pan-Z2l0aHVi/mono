@@ -2,6 +2,7 @@ import { QueryClientProvider } from '@tanstack/react-query'
 import { createRouter, RouterProvider } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 
+import { RouteProgressBar } from '@/components/root/route-progress-bar'
 import { LocaleProvider } from '@/i18n/locale'
 import { installRouterProgress } from '@/router/guards'
 import { routeProgress } from '@/router/progress'
@@ -46,6 +47,7 @@ export default function App() {
     <StrictMode>
       <QueryClientProvider client={queryClient}>
         <LocaleProvider>
+          <RouteProgressBar />
           <RouterProvider router={router} />
         </LocaleProvider>
       </QueryClientProvider>

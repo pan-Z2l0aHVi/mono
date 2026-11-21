@@ -27,7 +27,7 @@ afterEach(() => {
 })
 
 describe('web-ui-progress（浏览器）', () => {
-  it('铺满宿主，indicator 宽度按 value/max 计算', async () => {
+  it('铺满宿主，indicator 用 translate3d 位移按 value/max 呈现完成比例并保留胶囊圆角', async () => {
     const { host, progress } = mountProgress()
     await waitForUpdate(progress)
 
@@ -35,8 +35,17 @@ describe('web-ui-progress（浏览器）', () => {
     const indicator = part(progress, 'indicator')
     if (!track || !indicator) throw new Error('progress 缺少公开的 track / indicator part')
 
+    const trackRect = track.getBoundingClientRect()
+    const indicatorRect = indicator.getBoundingClientRect()
+    const visibleWidth = Math.max(
+      0,
+      Math.min(indicatorRect.right, trackRect.right) - Math.max(indicatorRect.left, trackRect.left)
+    )
+
     expect(progress.getBoundingClientRect().width).toBeCloseTo(host.getBoundingClientRect().width, 0)
-    expect(indicator.getBoundingClientRect().width / track.getBoundingClientRect().width).toBeCloseTo(0.25, 2)
+    expect(indicatorRect.width).toBeCloseTo(trackRect.width, 0)
+    expect(visibleWidth / trackRect.width).toBeCloseTo(0.25, 2)
+    expect(getComputedStyle(indicator).transitionProperty).toBe('transform')
   })
 
   it('旧 indeterminate attribute 不再启动动画，sport 仍生效', async () => {

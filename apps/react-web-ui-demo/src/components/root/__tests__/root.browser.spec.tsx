@@ -16,6 +16,7 @@ import { handleRouteLoadFailure, installRouterProgress } from '@/router/guards'
 import { routeProgress } from '@/router/progress'
 
 import { Root } from '..'
+import { RouteProgressBar } from '../route-progress-bar'
 
 /*
  * 应用自己的全局样式必须真的进页面：这一档量的是渲染后的结果，样式没到就只剩一串不生效的
@@ -741,6 +742,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       render(
         <QueryClientProvider client={queryClient}>
           <LocaleProvider>
+            <RouteProgressBar />
             <RouterProvider router={router} />
           </LocaleProvider>
         </QueryClientProvider>

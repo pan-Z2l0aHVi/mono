@@ -18,7 +18,8 @@ function normalize(path: string) {
 /** 路由跳转前必须就绪的数据；任一失败即整体拒绝。 */
 export function ensureRouteData(queryClient: QueryClient, path: string, query: LocationQuery) {
   const options = prefetchers[normalize(path)]?.(query) ?? []
-  return Promise.all(options.map(item => queryClient.ensureQueryData(item)))
+  // 真 SWR：首次无缓存时阻塞跳转；已有缓存（哪怕已过 staleTime）立即返回旧缓存切页，同时后台静默 revalidate
+  return Promise.all(options.map(item => queryClient.ensureQueryData({ ...item, revalidateIfStale: true })))
 }
 
 const intentSeen = new Set<string>()

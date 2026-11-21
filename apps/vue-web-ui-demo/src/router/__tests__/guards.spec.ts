@@ -38,8 +38,11 @@ describe('route guards', () => {
     const { router, progress, failures, off } = setup()
     await router.push('/home')
     const pending = router.push('/changelog?delay=500')
-    await vi.advanceTimersByTimeAsync(200)
-    // 慢 query 期间：仍停留旧页面，顶部条已显示。
+    await vi.advanceTimersByTimeAsync(240)
+    // 250ms 阈值前不显示
+    expect(progress.getSnapshot().visible).toBe(false)
+    await vi.advanceTimersByTimeAsync(20)
+    // 超过 250ms：仍停留旧页面，顶部条已显示。
     expect(router.currentRoute.value.path).toBe('/home')
     expect(progress.getSnapshot().visible).toBe(true)
     await vi.advanceTimersByTimeAsync(400)

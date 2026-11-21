@@ -46,6 +46,8 @@ const router = createRouter({
 declare module 'vue-router' {
   interface RouteMeta {
     title?: string
+    /** 为 true 时在 RouterView 的 KeepAlive 中缓存该路由视图实例。 */
+    keepAlive?: boolean
   }
 }
 if (import.meta.hot) {

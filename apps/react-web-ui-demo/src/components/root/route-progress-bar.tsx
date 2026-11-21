@@ -4,7 +4,7 @@ import { useEffect, useSyncExternalStore } from 'react'
 import { onRouteFailure, routeProgress } from '@/router/progress'
 
 export function RouteProgressBar() {
-  const snapshot = useSyncExternalStore(routeProgress.subscribe, routeProgress.getSnapshot)
+  const snapshot = useSyncExternalStore(routeProgress.subscribe, routeProgress.getSnapshot, routeProgress.getSnapshot)
 
   useEffect(() => {
     return onRouteFailure(() => {
@@ -24,7 +24,6 @@ export function RouteProgressBar() {
         {
           '--wui-progress-height': '3px',
           '--wui-progress-radius': '0',
-          '--wui-progress-track-color': 'transparent',
           '--wui-duration-trigger': '200ms'
         } as React.CSSProperties
       }
