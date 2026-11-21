@@ -1,8 +1,8 @@
 /**
  * Pi 宿主的最小类型声明。
  *
- * 与 `pi-orchestrator-memory-bridge` 同一策略：本包不把 `@earendil-works/pi-coding-agent`
- * 写进任何依赖段（进了 `devDependencies` 会拖入整个 provider 闭包并需要改根
+ * 本包不把 `@earendil-works/pi-coding-agent` 写进任何依赖段
+ * （进了 `devDependencies` 会拖入整个 provider 闭包并需要改根
  * `pnpm-workspace.yaml` 的 `allowBuilds`，那是仓库级共享配置变更）。运行时由 Pi 的 jiti
  * 直接加载 `src/index.ts`，宿主 API 经这里声明的形状消费。
  *
