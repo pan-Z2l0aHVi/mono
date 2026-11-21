@@ -7,18 +7,25 @@
  * 并禁用 Worktree 选项（V3-04）。
  *
  * 清理是保守契约：Worktree 只有在 `git status --porcelain` 为空 **且** 分支已合进主仓
- * `HEAD` 时才自动 `git worktree remove` + `git branch -d`；干净但未合并的分支由调用方
- * 经用户确认后代为 `git merge --no-ff` 再清理；废弃分支的 `git branch -D` 必须显式
- * `force`。清理幂等：worktree 与分支都已不存在时按已清理回报。
+ * `HEAD` 或分支内容已经落地到 base 时才自动清理。内容落地同时覆盖普通 merge 与
+ * squash merge；废弃分支的 `git branch -D` 必须显式 `force`。清理幂等：worktree
+ * 与分支都已不存在时按已清理回报。
  */
 
+import { Buffer } from 'node:buffer'
 import { realpath, stat } from 'node:fs/promises'
 import path from 'node:path'
 
-export type GitExec = (
-  args: string[],
-  options: { cwd: string }
-) => Promise<{ stdout: string; stderr: string; code: number }>
+export interface GitExecOptions {
+  cwd: string
+}
+
+export interface GitExec {
+  (
+    args: string[],
+    options: GitExecOptions
+  ): Promise<{ stdout: string; stderr: string; code: number; killed: boolean; truncated: boolean }>
+}
 
 /** lock 文件在验收视图里排除：全量 stat 会把依赖噪声顶满。 */
 const LOCK_EXCLUDES = [':!package-lock.json', ':!pnpm-lock.yaml', ':!yarn.lock']
@@ -201,22 +208,227 @@ export async function isBranchMerged(exec: GitExec, mainCwd: string, branch: str
     .includes(branch)
 }
 
+export type ContentLanding = 'landed' | 'not-landed' | 'inconclusive'
+type LandedBy = 'ancestor' | 'content'
+
+interface ContentLandingProbe {
+  landing: ContentLanding
+  baseRef?: string
+  /** baseRef 在探针开始时钉住的 commit；展示仍使用 baseRef。 */
+  baseSha?: string
+  detail?: string
+  /** 内容探针实际验证的分支 tip；仅在 landed 时存在。 */
+  landedTip?: string
+}
+
+function gitFailure(
+  args: string[],
+  result: { stdout: string; stderr: string; code: number; killed: boolean; truncated: boolean }
+): string {
+  const output = (result.stderr || result.stdout).trim().slice(0, 200) || '(无 stderr)'
+  return `git ${args.join(' ')}（exit ${result.code}, killed=${result.killed}, truncated=${result.truncated}）: ${output}`
+}
+
+function splitNullTerminatedPaths(output: string): string[] {
+  const paths = output.split('\0')
+  if (paths.at(-1) === '') paths.pop()
+  return paths
+}
+
+function invalidChangedPathDetail(changedPath: string, validatedPaths: number): string | undefined {
+  const invalid =
+    changedPath === '' ||
+    changedPath.includes('\0') ||
+    changedPath.includes('\uFFFD') ||
+    Buffer.from(changedPath, 'utf8').toString('utf8') !== changedPath
+  if (!invalid) return undefined
+  return `检测到无法无损往返的路径（可能含非 UTF-8 字节），拒绝自动判定：${JSON.stringify(changedPath)}；此前已通过无损校验的路径数量：${validatedPaths}`
+}
+
+/**
+ * 内容落地探针。它先钉住分支 tip 与 merge-base，再逐路径比较 baseRef 与 tip 的最终
+ * 内容；这是「base 中这些路径的最终内容与分支一致」的保守判定。squash merge 后仍可
+ * 识别，而 base 后续又改过同一路径时会返回 not-landed 并交还用户确认，绝不误删。
+ * 函数只读仓库引用，不读取工作树、不使用 ambient index，也不产生 patch 输出。
+ */
+async function inspectContentLanding(
+  exec: GitExec,
+  mainCwd: string,
+  branch: string,
+  baseRef?: string
+): Promise<ContentLandingProbe> {
+  const complete = (result: { code: number; killed: boolean; truncated: boolean }): boolean =>
+    result.code === 0 && !result.killed && !result.truncated
+  let resolvedBase = baseRef
+  const baseFailures: string[] = []
+  if (resolvedBase === undefined) {
+    const originHeadArgs = ['rev-parse', '--verify', '-q', 'refs/remotes/origin/HEAD']
+    const originHead = await exec(originHeadArgs, { cwd: mainCwd })
+    if (complete(originHead)) {
+      const originSymbolicArgs = ['symbolic-ref', '-q', 'refs/remotes/origin/HEAD']
+      const originSymbolic = await exec(originSymbolicArgs, { cwd: mainCwd })
+      const remoteRef = originSymbolic.stdout.trim()
+      if (complete(originSymbolic) && remoteRef.startsWith('refs/remotes/')) {
+        resolvedBase = remoteRef.slice('refs/remotes/'.length)
+      } else {
+        baseFailures.push(gitFailure(originSymbolicArgs, originSymbolic))
+      }
+    } else {
+      baseFailures.push(gitFailure(originHeadArgs, originHead))
+    }
+  }
+
+  if (resolvedBase === undefined) {
+    const mainArgs = ['rev-parse', '--verify', '-q', 'refs/heads/main']
+    const mainProbe = await exec(mainArgs, { cwd: mainCwd })
+    if (complete(mainProbe)) resolvedBase = 'main'
+    else baseFailures.push(gitFailure(mainArgs, mainProbe))
+  }
+
+  if (resolvedBase === undefined) {
+    const currentBranchArgs = ['symbolic-ref', '-q', '--short', 'HEAD']
+    const currentBranch = await exec(currentBranchArgs, { cwd: mainCwd })
+    const name = currentBranch.stdout.trim()
+    if (complete(currentBranch) && name !== '') resolvedBase = name
+    else baseFailures.push(gitFailure(currentBranchArgs, currentBranch))
+  }
+
+  if (resolvedBase === undefined) {
+    return { landing: 'inconclusive', detail: `无法解析 baseRef；${baseFailures.join('；')}` }
+  }
+
+  const baseShaArgs = ['rev-parse', resolvedBase]
+  const baseShaResult = await exec(baseShaArgs, { cwd: mainCwd })
+  const baseSha = baseShaResult.stdout.trim()
+  if (!complete(baseShaResult) || !/^[0-9a-f]{40}$/.test(baseSha)) {
+    return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(baseShaArgs, baseShaResult) }
+  }
+
+  const tipArgs = ['rev-parse', `refs/heads/${branch}`]
+  const tip = await exec(tipArgs, { cwd: mainCwd })
+  const landedTip = tip.stdout.trim()
+  if (!complete(tip) || landedTip === '') {
+    return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(tipArgs, tip) }
+  }
+
+  const mergeBaseArgs = ['merge-base', baseSha, landedTip]
+  const mergeBase = await exec(mergeBaseArgs, { cwd: mainCwd })
+  const mergeBaseSha = mergeBase.stdout.trim()
+  if (!complete(mergeBase) || mergeBaseSha === '') {
+    return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(mergeBaseArgs, mergeBase) }
+  }
+
+  // 关闭 rename 折叠：删除侧与新增侧必须各自比较，否则只落一半的重命名可能漏检。
+  // `diff.relative` 会让子目录 cwd 改写并丢弃范围外路径；显式关闭后，后续
+  // `:(top,literal)` pathspec 才能逐条解释完整的仓库根相对路径集合。
+  const pathArgs = ['diff', '--name-only', '-z', '--no-relative', '--no-renames', mergeBaseSha, landedTip]
+  const listed = await exec(pathArgs, { cwd: mainCwd })
+  if (!complete(listed)) {
+    return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(pathArgs, listed) }
+  }
+  const changedPaths = splitNullTerminatedPaths(listed.stdout)
+  if (changedPaths.length === 0) return { landing: 'landed', baseRef: resolvedBase, baseSha, landedTip }
+  if (changedPaths.length > 200) {
+    return {
+      landing: 'inconclusive',
+      baseRef: resolvedBase,
+      baseSha,
+      detail: `分支涉及 ${changedPaths.length} 个变更路径，超过每路径确认上限 200；无法安全自动删除`
+    }
+  }
+
+  let validatedPaths = 0
+  for (const changedPath of changedPaths) {
+    const invalidPathDetail = invalidChangedPathDetail(changedPath, validatedPaths)
+    if (invalidPathDetail !== undefined) {
+      return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: invalidPathDetail }
+    }
+    validatedPaths += 1
+
+    // 名称来自仓库内容，必须按仓库根相对且 literal 的 pathspec 解释：前者避免子目录
+    // cwd 错配，后者避免 `:(exclude)...` 之类的文件名让 quiet diff 意外匹配空集合并返回 0。
+    const literalPathspec = `:(top,literal)${changedPath}`
+    const quietArgs = ['diff', '--quiet', '--no-relative', baseSha, landedTip, '--', literalPathspec]
+    const quiet = await exec(quietArgs, { cwd: mainCwd })
+    if (quiet.killed || quiet.truncated) {
+      return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(quietArgs, quiet) }
+    }
+    if (quiet.code === 0) {
+      // `--quiet` 对空匹配也返回 0。用同一 literal pathspec 在 land tip 或删除侧
+      // merge-base 找到至少一个对象，区分真正的“内容一致”和路径被解码损坏后的空匹配。
+      const tipObjectArgs = ['ls-tree', '-r', '-z', landedTip, '--', literalPathspec]
+      const tipObject = await exec(tipObjectArgs, { cwd: mainCwd })
+      if (!complete(tipObject)) {
+        return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(tipObjectArgs, tipObject) }
+      }
+      if (tipObject.stdout !== '') continue
+
+      const baseObjectArgs = ['ls-tree', '-r', '-z', mergeBaseSha, '--', literalPathspec]
+      const baseObject = await exec(baseObjectArgs, { cwd: mainCwd })
+      if (!complete(baseObject)) {
+        return {
+          landing: 'inconclusive',
+          baseRef: resolvedBase,
+          baseSha,
+          detail: gitFailure(baseObjectArgs, baseObject)
+        }
+      }
+      if (baseObject.stdout === '') {
+        return {
+          landing: 'inconclusive',
+          baseRef: resolvedBase,
+          baseSha,
+          detail: `路径 ${JSON.stringify(changedPath)} 的 diff --quiet 返回 0，但 literal pathspec 在 tip 与 merge-base 均未匹配任何对象；拒绝自动判定`
+        }
+      }
+      continue
+    }
+    if (quiet.code === 1) {
+      return { landing: 'not-landed', baseRef: resolvedBase, baseSha, detail: gitFailure(quietArgs, quiet) }
+    }
+    return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(quietArgs, quiet) }
+  }
+  return { landing: 'landed', baseRef: resolvedBase, baseSha, landedTip }
+}
+
+export async function contentLanding(
+  exec: GitExec,
+  mainCwd: string,
+  branch: string,
+  baseRef?: string
+): Promise<ContentLanding> {
+  return (await inspectContentLanding(exec, mainCwd, branch, baseRef)).landing
+}
+
 export type CleanupOutcome =
-  | { kind: 'removed'; branch: string }
+  | {
+      kind: 'removed'
+      branch: string
+      landedBy?: LandedBy
+      baseRef?: string
+      baseSha?: string
+    }
   | {
       kind: 'kept'
       reason: string
       path: string
       branch: string
+      /** 合回命令；是否执行由调用方在用户明确同意后决定。 */
       mergeHint: string
-      /** 干净但未合并：调用方可据此向用户提出「确认后代为 merge」。 */
+      /** 干净但内容未确认落地：调用方据此给出 PR / force 二选一。 */
       unmerged: boolean
+      landedBy?: LandedBy
+      landing?: Exclude<ContentLanding, 'landed'>
+      baseRef?: string
+      baseSha?: string
+      /** inconclusive 时给用户看的命令与 stderr 摘要。 */
+      landingDetail?: string
       /**
        * worktree 目录已移除、只剩分支没删掉。调用方的提示必须按实际状态给：
        * 此时不能再声称「worktree 保留」，补救里 `git worktree remove` 必然失败。
        */
       worktreeRemoved?: boolean
-      /** 实际使用的分支删除命令（`git branch -d/-D <branch>`）：补救提示按它给。 */
+      /** 实际使用的分支删除命令（`branch -d/-D` 或带旧 tip 的 `update-ref -d`）：补救提示按它给。 */
       branchDeleteCommand?: string
     }
 
@@ -226,7 +438,7 @@ export function mergeHint(branch: string): string {
 }
 
 /**
- * 安全清理（V3-04）：干净且已合并才自动 `git worktree remove` + `git branch -d`；
+ * 安全清理（V3-04）：干净且已合并（祖先链或内容落地）才自动清理；
  * `force` 时对未合并分支走 `git branch -D`（仍要求 worktree 先移除或已不存在）。
  * 幂等：worktree 与分支都已清理时返回 removed，重复 `/rex-cleanup` 不会误报。
  * 目录不可用（被 rm -rf / 损坏）时把裁决交给 `git worktree remove`——它认得
@@ -285,6 +497,36 @@ export async function cleanupWorktree(
     return { kind: 'removed', branch: setup.branch }
   }
 
+  let landedBy: LandedBy | undefined
+  let landing: Exclude<ContentLanding, 'landed'> | undefined
+  let baseRef: string | undefined
+  let baseSha: string | undefined
+  let landingDetail: string | undefined
+  let landedTip: string | undefined
+
+  const canReuseBranch = async (): Promise<boolean> => {
+    if (await isBranchMerged(exec, setup.mainCwd, setup.branch).catch(() => false)) {
+      landedBy = 'ancestor'
+      return true
+    }
+    const probe = await inspectContentLanding(exec, setup.mainCwd, setup.branch)
+    baseRef = probe.baseRef
+    baseSha = probe.baseSha
+    landingDetail = probe.detail
+    if (probe.landing === 'landed' && probe.landedTip !== undefined) {
+      landedBy = 'content'
+      landedTip = probe.landedTip
+      return true
+    }
+    if (probe.landing === 'landed') {
+      landing = 'inconclusive'
+      landingDetail = '内容落地探针没有返回已验证的分支 tip，拒绝删除'
+    } else {
+      landing = probe.landing
+    }
+    return false
+  }
+
   const statusResult = await exec(['status', '--porcelain'], { cwd: setup.path })
   if (statusResult.code !== 0) {
     // 目录不存在或不可用：git worktree remove 自己会安全裁决（含 prunable 状态）。
@@ -317,40 +559,44 @@ export async function cleanupWorktree(
       }
     }
     // 目录已没了，但分支上可能还有没合回去的提交：不经 force 不得删。
-    if (options.force !== true) {
-      const mergedNow = await isBranchMerged(exec, setup.mainCwd, setup.branch).catch(() => false)
-      if (!mergedNow) {
-        return {
-          kind: 'kept',
-          reason: 'worktree 目录已不存在，但分支未合并；先合并分支（命令见下），或确认废弃后用 force 关闭',
-          path: setup.path,
-          branch: setup.branch,
-          mergeHint: mergeHint(setup.branch),
-          unmerged: true,
-          worktreeRemoved: true
-        }
+    if (options.force !== true && !(await canReuseBranch())) {
+      return {
+        kind: 'kept',
+        reason: 'worktree 目录已不存在，但分支内容尚未确认落地；先走 PR 合并，或确认废弃后用 force 关闭',
+        path: setup.path,
+        branch: setup.branch,
+        mergeHint: mergeHint(setup.branch),
+        unmerged: true,
+        landing,
+        baseRef,
+        baseSha,
+        landingDetail,
+        worktreeRemoved: true
       }
     }
   } else {
     if (statusResult.stdout.trim() !== '') {
       return {
         kind: 'kept',
-        reason: 'worktree 存在未提交改动，需用户合并或确认废弃后通过 /rex-cleanup 二次确认删除',
+        reason: 'worktree 存在未提交改动，需用户走 PR 合并或确认废弃后通过 /rex-cleanup 二次确认删除',
         path: setup.path,
         branch: setup.branch,
         mergeHint: mergeHint(setup.branch),
         unmerged: false
       }
     }
-    const merged = await isBranchMerged(exec, setup.mainCwd, setup.branch).catch(() => false)
-    if (!merged && options.force !== true) {
+    if (options.force !== true && !(await canReuseBranch())) {
       return {
         kind: 'kept',
-        reason: '分支未合并进主仓 HEAD；可确认后由协调者代为 merge，或确认放弃走 force（git branch -D）',
+        reason: '分支内容尚未确认落地；先走 PR 合并，或确认废弃后用 force 清理',
         path: setup.path,
         branch: setup.branch,
         mergeHint: mergeHint(setup.branch),
-        unmerged: true
+        unmerged: true,
+        landing,
+        baseRef,
+        baseSha,
+        landingDetail
       }
     }
     const removal = await exec(['worktree', 'remove', setup.path], { cwd: setup.mainCwd })
@@ -365,22 +611,146 @@ export async function cleanupWorktree(
       }
     }
   }
-  // 分支删除：force 走 -D，其余（已合并）走 -d；补救提示按实际命令给。
-  const branchArgs = ['branch', options.force === true ? '-D' : '-d', setup.branch]
+  // 内容落地分支必须用探针见过的旧 tip 原子删除；tip 变化时保留分支等待重判。
+  // 祖先链仍走 branch -d，显式 force 仍走 branch -D。
+  const contentDelete = landedBy === 'content' && options.force !== true
+  let branchArgs: string[]
+  if (contentDelete) {
+    if (landedTip === undefined) {
+      return {
+        kind: 'kept',
+        reason: '内容落地成功但没有记录已验证的分支 tip，拒绝删除',
+        path: setup.path,
+        branch: setup.branch,
+        mergeHint: mergeHint(setup.branch),
+        unmerged: false,
+        landedBy,
+        baseRef,
+        baseSha,
+        worktreeRemoved: true
+      }
+    }
+    // `update-ref -d <ref> <old>` 对已不存在的 ref 会成功 no-op；先确认分支仍存在，
+    // 再让 update-ref 原子校验 tip。探针后分支已消失说明外部已完成这部分清理。
+    const existingArgs = ['rev-parse', '--verify', '-q', `refs/heads/${setup.branch}`]
+    const existing = await exec(existingArgs, { cwd: setup.mainCwd })
+    if (existing.code !== 0) {
+      if (existing.code === 1 && !existing.killed && !existing.truncated) {
+        return { kind: 'removed', branch: setup.branch, landedBy, baseRef, baseSha }
+      }
+      return {
+        kind: 'kept',
+        reason:
+          existing.code === 1
+            ? '分支在探针之后被推进或删除，已重新判定前请再次关闭；删除前已找不到该分支，未改用 -D'
+            : `分支在探针之后被推进或删除，已重新判定前请再次关闭；${gitFailure(existingArgs, existing)}`,
+        path: setup.path,
+        branch: setup.branch,
+        mergeHint: mergeHint(setup.branch),
+        unmerged: false,
+        landedBy,
+        baseRef,
+        baseSha,
+        worktreeRemoved: true,
+        branchDeleteCommand: `git ${existingArgs.join(' ')}`
+      }
+    }
+    const checkout = await worktreeCheckingOutBranch(exec, setup.mainCwd, setup.branch)
+    if (checkout.kind === 'failed') {
+      return {
+        kind: 'kept',
+        reason: `无法确认分支是否仍被其他 worktree 检出，拒绝删除：${checkout.detail}`,
+        path: setup.path,
+        branch: setup.branch,
+        mergeHint: mergeHint(setup.branch),
+        unmerged: false,
+        landedBy,
+        baseRef,
+        baseSha,
+        worktreeRemoved: true
+      }
+    }
+    if (checkout.kind === 'checked-out') {
+      return {
+        kind: 'kept',
+        reason: `分支 ${setup.branch} 仍被 ${checkout.path} 检出，先解除检出再关闭；未执行 update-ref -d`,
+        path: setup.path,
+        branch: setup.branch,
+        mergeHint: mergeHint(setup.branch),
+        unmerged: false,
+        landedBy,
+        baseRef,
+        baseSha,
+        worktreeRemoved: true
+      }
+    }
+    branchArgs = ['update-ref', '-d', `refs/heads/${setup.branch}`, landedTip]
+  } else {
+    branchArgs = ['branch', options.force === true ? '-D' : '-d', setup.branch]
+  }
   const branchResult = await exec(branchArgs, { cwd: setup.mainCwd })
   if (branchResult.code !== 0) {
     return {
       kind: 'kept',
-      reason: `worktree 已移除，但分支清理失败: ${branchResult.stderr.trim().slice(0, 200)}（手动执行 git ${branchArgs.join(' ')}）`,
+      reason: contentDelete
+        ? `分支在探针之后被推进，已重新判定前请再次关闭；${gitFailure(branchArgs, branchResult)}`
+        : `worktree 已移除，但分支清理失败: ${branchResult.stderr.trim().slice(0, 200)}（手动执行 git ${branchArgs.join(' ')}）`,
       path: setup.path,
       branch: setup.branch,
       mergeHint: mergeHint(setup.branch),
       unmerged: false,
+      landedBy,
+      baseRef,
+      baseSha,
       worktreeRemoved: true,
       branchDeleteCommand: `git ${branchArgs.join(' ')}`
     }
   }
-  return { kind: 'removed', branch: setup.branch }
+  return {
+    kind: 'removed',
+    branch: setup.branch,
+    ...(landedBy === undefined ? {} : { landedBy }),
+    ...(landedBy === 'content' && baseRef !== undefined ? { baseRef } : {}),
+    ...(landedBy === 'content' && baseSha !== undefined ? { baseSha } : {})
+  }
+}
+
+type WorktreeBranchCheckout =
+  | { kind: 'clear' }
+  | { kind: 'checked-out'; path: string }
+  | { kind: 'failed'; detail: string }
+
+/**
+ * 内容落地分支随后用 `update-ref -d` 删除，绕过 `branch -d` 的检出保护。porcelain
+ * 输出按空行分块，块首是 worktree 路径，块内 branch 行才能安全归属到该路径。
+ */
+async function worktreeCheckingOutBranch(
+  exec: GitExec,
+  mainCwd: string,
+  branch: string
+): Promise<WorktreeBranchCheckout> {
+  const args = ['worktree', 'list', '--porcelain']
+  const listed = await exec(args, { cwd: mainCwd })
+  if (listed.code !== 0 || listed.killed || listed.truncated) {
+    return { kind: 'failed', detail: gitFailure(args, listed) }
+  }
+
+  const target = `refs/heads/${branch}`
+  let worktreePath: string | undefined
+  for (const line of listed.stdout.split('\n')) {
+    if (line.startsWith('worktree ')) {
+      worktreePath = line.slice('worktree '.length)
+      continue
+    }
+    if (line.trim() === '') {
+      worktreePath = undefined
+      continue
+    }
+    if (line === `branch ${target}` && worktreePath !== undefined) {
+      return { kind: 'checked-out', path: worktreePath }
+    }
+  }
+  return { kind: 'clear' }
 }
 
 /**
