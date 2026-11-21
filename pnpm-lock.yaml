@@ -263,6 +263,9 @@ catalogs:
     '@tailwindcss/vite':
       specifier: ^4.3.5
       version: 4.3.5
+    '@tanstack/react-query':
+      specifier: ^5.104.5
+      version: 5.108.1
     '@tanstack/react-router':
       specifier: ^1.170.32
       version: 1.170.46
@@ -655,9 +658,15 @@ importers:
       '@greypan/doc-demo-kit':
         specifier: workspace:*
         version: link:../../packages/doc-demo-kit
+      '@greypan/route-progress':
+        specifier: workspace:*
+        version: link:../../packages/route-progress
       '@greypan/web-ui':
         specifier: workspace:*
         version: link:../../packages/web-ui
+      '@tanstack/react-query':
+        specifier: 'catalog:'
+        version: 5.108.1(@types/react@19.3.0)(react@19.3.1)
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -3238,6 +3247,15 @@ packages:
 
   '@tanstack/query-core@5.108.1':
     resolution: {integrity: sha512-GBX6Xsc9E+9eVLLxuM7orQNbssQjpruOCbocBYwT78MjxOWT5I+CWdvEo0N+UM6+oCZEKxuSud1oFLvE3OEmIg==}
+
+  '@tanstack/react-query@5.108.1':
+    resolution: {integrity: sha512-8/p7fpIdmUiKIukQ5ddAMUUSKC7Z8CcgUOBR2r3WqRvMg9Lzc4CXeoFchjfATKvqi23SyYFvesDdOULrvyunNg==}
+    peerDependencies:
+      '@types/react': ^18 || ^19
+      react: ^18 || ^19
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
 
   '@tanstack/react-router@1.170.46':
     resolution: {integrity: sha512-ez1iNIhsPjGlaDHg3BXWs67EWVIYzB2tbopEHYDESdkO7owgkGb5de52+5Kv2v1fxdkggcNzo35bdk4arTVGQw==}
@@ -8248,6 +8266,13 @@ snapshots:
       remove-accents: 0.5.0
 
   '@tanstack/query-core@5.108.1': {}
+
+  '@tanstack/react-query@5.108.1(@types/react@19.3.0)(react@19.3.1)':
+    dependencies:
+      '@tanstack/query-core': 5.108.1
+      react: 19.3.1
+    optionalDependencies:
+      '@types/react': 19.3.0
 
   '@tanstack/react-router@1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:

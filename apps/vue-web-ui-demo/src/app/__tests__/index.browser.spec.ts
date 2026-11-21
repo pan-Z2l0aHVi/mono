@@ -9,6 +9,7 @@ import {
   lucideLanguages,
   lucideSun
 } from '@greypan/web-ui/icons'
+import { QueryClient, VueQueryPlugin } from '@tanstack/vue-query'
 import { createHead } from '@unhead/vue/client'
 import { mount, type VueWrapper } from '@vue/test-utils'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -17,6 +18,8 @@ import { defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
 import { loadDemoLocale } from '@/i18n/locale'
+import { installRouteGuards } from '@/router/guards'
+import { routeProgress } from '@/router/progress'
 
 import AppShell from '../index.vue'
 
@@ -741,5 +744,70 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     expect(collapsedStyle.outlineStyle).toBe('solid')
     expect(collapsedStyle.outlineWidth).toBe('3px')
     expect(collapsedStyle.outlineOffset).toBe('-3px')
+  })
+
+  it('路由慢预取显示顶部 progress 并保持旧页，失败时留在当前页并弹出错误 toast', async () => {
+    await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
+    localStorage.setItem('locale', 'zh-CN')
+    await loadDemoLocale('zh-CN')
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/', redirect: '/home' },
+        { path: '/home', component: PageStub },
+        { path: '/changelog', component: PageStub },
+        { path: '/:pathMatch(.*)*', component: PageStub }
+      ]
+    })
+    installRouteGuards(router, queryClient, routeProgress)
+    await router.push('/home')
+    await router.isReady()
+
+    const host = document.createElement('div')
+    document.body.append(host)
+    const mounted = mount(AppShell, {
+      attachTo: host,
+      global: { plugins: [router, createHead(), [VueQueryPlugin, { queryClient }]] }
+    })
+
+    try {
+      await nextTick()
+      await layoutRoot().updateComplete
+
+      // 1) 意图预取：hover 侧栏链接不触发顶部 progress
+      const changelogLink = document.querySelector<HTMLAnchorElement>('[slot="sidebar"] a[href="/changelog"]')!
+      await userEvent.hover(changelogLink)
+      expect(document.querySelector('[data-phase]')?.getAttribute('data-visible')).toBe('false')
+
+      // 2) 慢 query：保持旧路径 /home 并显示顶部 progress，完成后切换到 /changelog
+      const navPromise = router.push('/changelog?delay=350')
+      await vi.waitFor(() => {
+        expect(document.querySelector('[data-phase]')?.getAttribute('data-visible')).toBe('true')
+        expect(router.currentRoute.value.path).toBe('/home')
+      })
+      await navPromise
+      expect(router.currentRoute.value.path).toBe('/changelog')
+
+      // 3) 失败态：留在当前页 /changelog，顶部条收起，弹出错误 toast
+      await router.push('/home')
+      await router.push('/changelog?fail=1')
+      expect(router.currentRoute.value.path).toBe('/home')
+      await vi.waitFor(() => {
+        expect(document.querySelector('[data-phase]')?.getAttribute('data-visible')).toBe('false')
+        const roots = new Set<Document | ShadowRoot>([document])
+        for (const r of roots) {
+          for (const el of r.querySelectorAll<HTMLElement>('*')) {
+            if (el.shadowRoot) roots.add(el.shadowRoot)
+          }
+        }
+        const toasts = Array.from(roots).flatMap(r => Array.from(r.querySelectorAll<WebUiToast>('web-ui-toast')))
+        expect(toasts.some(t => t.visible && t.type === 'error')).toBe(true)
+      })
+    } finally {
+      toast.clear()
+      mounted.unmount()
+      host.remove()
+    }
   })
 })

@@ -302,3 +302,20 @@ msgstr "Install"
 #: src/routes/home/-component.tsx
 msgid "支持触摸&手势"
 msgstr "Touch and gesture support"
+
+#: src/components/changelog/index.tsx
+msgid "正在同步更新状态…"
+msgstr "Syncing update status…"
+
+#. 0: syncedAt
+#: src/components/changelog/index.tsx
+msgid "已同步于 {0}"
+msgstr "Synced at {0}"
+
+#: src/components/root/route-progress-bar.tsx
+msgid "页面加载失败，请重试"
+msgstr "Failed to load the page. Please try again."
+
+#: src/components/root/route-progress-bar.tsx
+msgid "页面加载进度"
+msgstr "Page loading progress"

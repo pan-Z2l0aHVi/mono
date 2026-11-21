@@ -3,6 +3,7 @@ import '@/assets/global.css'
 import { setViewport } from '@greypan/doc-demo-kit/testing.viewport'
 import { toast, type WebUiIcon, type WebUiLayout, type WebUiToast } from '@greypan/web-ui'
 import { antDesignSyncOutlined, icOutlineMotionPhotosOn, lucideContrast, lucideSun } from '@greypan/web-ui/icons'
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
 import { createMemoryHistory, createRootRoute, createRoute, createRouter, RouterProvider } from '@tanstack/react-router'
 import { cleanup, render, waitFor } from '@testing-library/react'
 import { act } from 'react'
@@ -10,6 +11,9 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import { loadShellLocale, LocaleProvider } from '@/i18n/locale'
+import { changelogSummaryQuery, parseFakeFetchOptions } from '@/queries/changelog'
+import { handleRouteLoadFailure, installRouterProgress } from '@/router/guards'
+import { routeProgress } from '@/router/progress'
 
 import { Root } from '..'
 
@@ -698,5 +702,97 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     ;(document.activeElement as HTMLElement | null)?.blur()
     await requestCollapse(true)
     await expectNavTabFocus()
+  })
+
+  it('路由慢 loader 显示顶部 progress 并保持旧页，失败时留在当前页并弹出错误 toast', async () => {
+    localStorage.setItem('locale', 'zh-CN')
+    await loadShellLocale('zh-CN')
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const rootRoute = createRootRoute({ component: Root })
+    const homeRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/home',
+      component: () => <div data-testid="page-home">HOME</div>
+    })
+    const changelogRoute = createRoute({
+      getParentRoute: () => rootRoute,
+      path: '/changelog',
+      loaderDeps: ({ search }) => parseFakeFetchOptions(search as Record<string, unknown>),
+      loader: async ({ deps, preload }) => {
+        try {
+          return await queryClient.ensureQueryData(changelogSummaryQuery(deps))
+        } catch (error) {
+          if (preload) throw error
+          handleRouteLoadFailure(error, router)
+        }
+      },
+      component: () => <div data-testid="page-changelog">CHANGELOG</div>
+    })
+    const router = createRouter({
+      routeTree: rootRoute.addChildren([homeRoute, changelogRoute]),
+      defaultPreload: 'intent',
+      defaultPreloadStaleTime: 0,
+      defaultPendingMs: Infinity,
+      history: createMemoryHistory({ initialEntries: ['/home'] })
+    })
+    const stopProgress = installRouterProgress(router, routeProgress)
+
+    try {
+      render(
+        <QueryClientProvider client={queryClient}>
+          <LocaleProvider>
+            <RouterProvider router={router} />
+          </LocaleProvider>
+        </QueryClientProvider>
+      )
+
+      await waitFor(() => {
+        if (!document.querySelector('[data-testid="page-home"]')) throw new Error('home not mounted')
+      })
+
+      // 1) 意图预取：hover 侧边栏链接不触发顶部 progress
+      const changelogLink = navRoot().querySelector<HTMLAnchorElement>('a[href="/changelog"]')!
+      await act(async () => {
+        await userEvent.hover(changelogLink)
+      })
+      expect(document.querySelector('[data-phase]')?.getAttribute('data-visible')).toBe('false')
+
+      // 2) 慢 loader：旧页面保持不动，顶部 progress 显示，完成后切换页面并收起
+      const navPromise = router.navigate({ to: '/changelog', search: { delay: '350' } })
+      await waitFor(() => {
+        expect(document.querySelector('[data-phase]')?.getAttribute('data-visible')).toBe('true')
+        expect(document.querySelector('[data-testid="page-home"]')).toBeTruthy()
+      })
+      await act(async () => {
+        await navPromise
+      })
+      await waitFor(() => {
+        expect(document.querySelector('[data-testid="page-changelog"]')).toBeTruthy()
+      })
+
+      // 3) 失败态：留在当前页，顶部条收起，弹出错误 toast
+      await act(async () => {
+        await router.navigate({ to: '/changelog', search: { fail: '1' } })
+      })
+      await waitFor(() => {
+        expect(document.querySelector('[data-testid="page-changelog"]')).toBeTruthy()
+        expect(document.querySelector('[data-phase]')?.getAttribute('data-visible')).toBe('false')
+        const roots = new Set<Document | ShadowRoot>([document])
+        for (const r of roots) {
+          for (const el of r.querySelectorAll<HTMLElement>('*')) {
+            if (el.shadowRoot) roots.add(el.shadowRoot)
+          }
+        }
+        const toasts = Array.from(roots).flatMap(r => Array.from(r.querySelectorAll<WebUiToast>('web-ui-toast')))
+        if (!toasts.some(t => t.visible && t.type === 'error')) throw new Error('error toast not visible')
+      })
+    } finally {
+      stopProgress()
+      await act(async () => {
+        toast.clear()
+        await Promise.resolve()
+        await nextFrame()
+      })
+    }
   })
 })

@@ -1,7 +1,17 @@
+import { QueryClient, QueryClientProvider } from '@tanstack/react-query'
+import type * as tanstackRouter from '@tanstack/react-router'
 import { renderToStaticMarkup } from 'react-dom/server'
-import { describe, expect, it } from 'vite-plus/test'
+import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { Changelog } from '../components/changelog'
+
+vi.mock('@tanstack/react-router', async importOriginal => {
+  const actual = await importOriginal<typeof tanstackRouter>()
+  return {
+    ...actual,
+    useSearch: () => ({})
+  }
+})
 
 /*
  * 整份 CHANGELOG.md 有 3k+ 节点，jsdom 挂载在 CI 的负载下会撞默认的 5s。这里只验产出内容，
@@ -9,7 +19,12 @@ import { Changelog } from '../components/changelog'
  */
 describe('更新日志页', () => {
   it('从 CHANGELOG.md 原样渲染整份文档', () => {
-    const markup = renderToStaticMarkup(<Changelog />)
+    const client = new QueryClient()
+    const markup = renderToStaticMarkup(
+      <QueryClientProvider client={client}>
+        <Changelog />
+      </QueryClientProvider>
+    )
 
     expect(markup).toMatch(/<h1[^>]*>@greypan\/web-ui<\/h1>/)
     // 版本号来自 CHANGELOG.md，会随发版变化：这里只校验形状，不写死具体版本。
