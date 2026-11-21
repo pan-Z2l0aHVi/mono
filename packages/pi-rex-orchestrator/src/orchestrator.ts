@@ -160,56 +160,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
   const latestInspectCall = new Map<string, string>()
   const inspectCallToWorker = new Map<string, string>()
 
-  // Pi 的 exec 不接受 env，但 Unix 的 env(1) 可以作为 argv 前缀注入环境。能力探测
-  // 只做一次；失败时 supportsEnv 保持 false，git-inspector 直接 inconclusive 并询问。
-  let envCommandAvailable: boolean | undefined
-  let envCommandProbe: Promise<boolean> | undefined
-  const ensureEnvCommand = (): Promise<boolean> => {
-    envCommandProbe ??= Promise.resolve()
-      .then(() => pi.exec('env', ['true'], {}))
-      .then(
-        result => {
-          envCommandAvailable = result.code === 0
-          return envCommandAvailable
-        },
-        () => {
-          envCommandAvailable = false
-          return false
-        }
-      )
-    return envCommandProbe
-  }
-
-  const gitExec: GitExec = async (args, { cwd, env }) => {
-    if (env === undefined) return pi.exec('git', args, { cwd })
-    if (envCommandAvailable !== true) {
-      return {
-        stdout: '',
-        stderr: 'env 命令能力尚未确认，拒绝用主仓 index 代替临时 index',
-        code: 127,
-        killed: false,
-        truncated: false
-      }
-    }
-    const assignments: string[] = []
-    for (const [key, value] of Object.entries(env)) {
-      if (key === '' || key.includes('=') || /[\0\r\n]/.test(key) || /[\0\r\n]/.test(value)) {
-        return {
-          stdout: '',
-          stderr: `无法通过 env 传递非法的环境变量 ${JSON.stringify(key)}`,
-          code: 125,
-          killed: false,
-          truncated: false
-        }
-      }
-      assignments.push(`${key}=${value}`)
-    }
-    return pi.exec('env', [...assignments, 'git', ...args], { cwd })
-  }
-  Object.defineProperty(gitExec, 'supportsEnv', {
-    enumerable: true,
-    get: () => envCommandAvailable === true
-  })
+  const gitExec: GitExec = (args, { cwd }) => pi.exec('git', args, { cwd })
 
   function notify(message: string): void {
     // 工厂作用域拿不到 ctx.ui；一次性通知走 sendMessage 的非唤醒展示面。
@@ -1179,7 +1130,6 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
       let cleanupNote: string | undefined
       if (worker.worktree) {
         const worktree = worker.worktree
-        await ensureEnvCommand()
         const mainCwd = worker.mainCwd ?? (await findMainRepo(gitExec, worker.cwd).catch(() => worker.cwd))
         let outcome = await cleanupWorktree(
           gitExec,
@@ -1396,7 +1346,6 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
           continue
         }
         if (worker.worktree && worker.status === 'closed') {
-          await ensureEnvCommand()
           // 清理命令要在主仓执行：worker.cwd 是即将被删除的 worktree 本身。
           const mainCwd = worker.mainCwd ?? (await findMainRepo(gitExec, worker.cwd).catch(() => worker.cwd))
           const outcome = await cleanupWorktree(

@@ -22,7 +22,7 @@
 | `rex_list_workers`    | 列出本会话全部 worker 与状态。                                                                                                                                                                                                                |
 | `rex_inspect_output`  | 读 worker 最新输出：handoff 优先，缺失降级 events.jsonl 尾部或屏幕 capture，绝不读旧轮次文件。                                                                                                                                                |
 | `rex_inspect_changes` | 以派生时 `base_commit` 为基线的全量验收（Committed + Staged + Unstaged + Untracked 预览）。                                                                                                                                                   |
-| `rex_close_worker`    | 关闭 worker；干净且分支已合入或内容已落地才自动清理。内容落地绑定探针时的分支 tip，并用 `update-ref -d` 校验后删除；缺少 `env(1)` 时一律无法判定并询问。其余情况给出仓库流程 / 可选本地 merge / `force` 路径，详见 [AGENTS.md](./AGENTS.md)。 |
+| `rex_close_worker`    | 关闭 worker；干净且分支已合入或内容已落地才自动清理。内容落地绑定探针时的分支 tip，逐路径确认 base 与分支最终内容一致，并用 `update-ref -d` 校验后删除。其余情况给出仓库流程 / 可选本地 merge / `force` 路径，详见 [AGENTS.md](./AGENTS.md)。 |
 
 `rex_cli` 的语法以安装的 Rex 为准：先调 `rex_cli(["__internal", "skill"])` 或 `rex_cli(["--help"])` 自查，命令失败时按回传的 stderr 修正 argv。完整的命令注入、拒绝点、超时与输出边界见 [AGENTS.md](./AGENTS.md)。
 
@@ -76,4 +76,4 @@ pnpm --filter @greypan/pi-rex-orchestrator run link:pi -- --main   # 删除开�
 
 开发与验收在临时沙箱仓库做（`git worktree` 创建/回收与 diff 验收不要拿主力 monorepo 联调）；端到端验收清单见方案阶段 4。
 
-清理内容落地分支时，探针先钉住 `refs/heads/<branch>` 的 tip；删除必须用 `git update-ref -d refs/heads/<branch> <tip>` 原子校验旧值。tip 在探针后变化时保留分支并重新询问，绝不升级为 `git branch -D`。宿主缺少 `env(1)`、无法提供临时 `GIT_INDEX_FILE` 时，不读取主仓工作树猜测 base 树，一律返回 `inconclusive` 并询问。
+清理内容落地分支时，探针先钉住 `refs/heads/<branch>` 的 tip，再对 merge-base 与 tip 之间的每条改动路径比较 base 的最终内容。路径列表与每条 quiet diff 都必须完整且未截断，超过 200 条路径按无法判定处理；探针只读 Git 引用，不需要临时 index，也不读取主仓工作树。删除必须用 `git update-ref -d refs/heads/<branch> <tip>` 原子校验旧值；探针后分支已消失按清理完成，tip 变化时保留分支并重新询问，绝不升级为 `git branch -D`。

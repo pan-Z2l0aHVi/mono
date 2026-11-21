@@ -12,21 +12,18 @@
  * 与分支都已不存在时按已清理回报。
  */
 
-import { randomUUID } from 'node:crypto'
-import { realpath, stat, unlink, writeFile } from 'node:fs/promises'
-import { tmpdir } from 'node:os'
+import { realpath, stat } from 'node:fs/promises'
 import path from 'node:path'
 
 export interface GitExecOptions {
   cwd: string
-  /** 追加到子进程环境中的变量；只有 `supportsEnv` 为 true 的实现必须兑现。 */
-  env?: Record<string, string>
 }
 
 export interface GitExec {
-  (args: string[], options: GitExecOptions): Promise<{ stdout: string; stderr: string; code: number; killed?: boolean }>
-  /** 实现是否真正把 options.env 传给 git；缺省按 false 处理，避免修改真实 index。 */
-  readonly supportsEnv?: boolean
+  (
+    args: string[],
+    options: GitExecOptions
+  ): Promise<{ stdout: string; stderr: string; code: number; killed: boolean; truncated: boolean }>
 }
 
 /** lock 文件在验收视图里排除：全量 stat 会把依赖噪声顶满。 */
@@ -223,16 +220,17 @@ interface ContentLandingProbe {
 
 function gitFailure(
   args: string[],
-  result: { stdout: string; stderr: string; code: number; killed?: boolean }
+  result: { stdout: string; stderr: string; code: number; killed: boolean; truncated: boolean }
 ): string {
   const output = (result.stderr || result.stdout).trim().slice(0, 200) || '(无 stderr)'
-  return `git ${args.join(' ')}（exit ${result.code}${result.killed === true ? ', killed' : ''}）: ${output}`
+  return `git ${args.join(' ')}（exit ${result.code}, killed=${result.killed}, truncated=${result.truncated}）: ${output}`
 }
 
 /**
- * 内容落地探针。先解析默认分支，再检查 `<merge-base>..<branch>` 能否反向应用到
- * 当前 base。反向 apply 成功说明分支改动的最终内容已在 base 中；这是 squash merge
- * 下仍可安全清理的关键证据。函数全程只读仓库，临时 patch 只写系统临时目录。
+ * 内容落地探针。它先钉住分支 tip 与 merge-base，再逐路径比较 baseRef 与 tip 的最终
+ * 内容；这是「base 中这些路径的最终内容与分支一致」的保守判定。squash merge 后仍可
+ * 识别，而 base 后续又改过同一路径时会返回 not-landed 并交还用户确认，绝不误删。
+ * 函数只读仓库引用，不读取工作树、不使用 ambient index，也不产生 patch 输出。
  */
 async function inspectContentLanding(
   exec: GitExec,
@@ -240,16 +238,18 @@ async function inspectContentLanding(
   branch: string,
   baseRef?: string
 ): Promise<ContentLandingProbe> {
+  const complete = (result: { code: number; killed: boolean; truncated: boolean }): boolean =>
+    result.code === 0 && !result.killed && !result.truncated
   let resolvedBase = baseRef
   const baseFailures: string[] = []
   if (resolvedBase === undefined) {
     const originHeadArgs = ['rev-parse', '--verify', '-q', 'refs/remotes/origin/HEAD']
     const originHead = await exec(originHeadArgs, { cwd: mainCwd })
-    if (originHead.code === 0) {
+    if (complete(originHead)) {
       const originSymbolicArgs = ['symbolic-ref', '-q', 'refs/remotes/origin/HEAD']
       const originSymbolic = await exec(originSymbolicArgs, { cwd: mainCwd })
       const remoteRef = originSymbolic.stdout.trim()
-      if (originSymbolic.code === 0 && remoteRef.startsWith('refs/remotes/')) {
+      if (complete(originSymbolic) && remoteRef.startsWith('refs/remotes/')) {
         resolvedBase = remoteRef.slice('refs/remotes/'.length)
       } else {
         baseFailures.push(gitFailure(originSymbolicArgs, originSymbolic))
@@ -262,7 +262,7 @@ async function inspectContentLanding(
   if (resolvedBase === undefined) {
     const mainArgs = ['rev-parse', '--verify', '-q', 'refs/heads/main']
     const mainProbe = await exec(mainArgs, { cwd: mainCwd })
-    if (mainProbe.code === 0) resolvedBase = 'main'
+    if (complete(mainProbe)) resolvedBase = 'main'
     else baseFailures.push(gitFailure(mainArgs, mainProbe))
   }
 
@@ -270,7 +270,7 @@ async function inspectContentLanding(
     const currentBranchArgs = ['symbolic-ref', '-q', '--short', 'HEAD']
     const currentBranch = await exec(currentBranchArgs, { cwd: mainCwd })
     const name = currentBranch.stdout.trim()
-    if (currentBranch.code === 0 && name !== '') resolvedBase = name
+    if (complete(currentBranch) && name !== '') resolvedBase = name
     else baseFailures.push(gitFailure(currentBranchArgs, currentBranch))
   }
 
@@ -278,68 +278,51 @@ async function inspectContentLanding(
     return { landing: 'inconclusive', detail: `无法解析 baseRef；${baseFailures.join('；')}` }
   }
 
-  if (exec.supportsEnv !== true) {
-    return {
-      landing: 'inconclusive',
-      baseRef: resolvedBase,
-      detail: '宿主无法提供临时 index（缺少 env(1) 能力），拒绝用主仓工作树冒充 base 树'
-    }
-  }
-
-  const mergeBaseArgs = ['merge-base', resolvedBase, branch]
-  const mergeBase = await exec(mergeBaseArgs, { cwd: mainCwd })
-  const mergeBaseSha = mergeBase.stdout.trim()
-  if (mergeBase.code !== 0 || mergeBaseSha === '') {
-    return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(mergeBaseArgs, mergeBase) }
-  }
-
   const tipArgs = ['rev-parse', `refs/heads/${branch}`]
   const tip = await exec(tipArgs, { cwd: mainCwd })
   const landedTip = tip.stdout.trim()
-  if (tip.code !== 0 || landedTip === '') {
+  if (!complete(tip) || landedTip === '') {
     return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(tipArgs, tip) }
   }
 
-  const diffArgs = ['diff', '--binary', `${mergeBaseSha}..${landedTip}`]
-  const diff = await exec(diffArgs, { cwd: mainCwd })
-  if (diff.code !== 0) {
-    return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(diffArgs, diff) }
+  const mergeBaseArgs = ['merge-base', resolvedBase, landedTip]
+  const mergeBase = await exec(mergeBaseArgs, { cwd: mainCwd })
+  const mergeBaseSha = mergeBase.stdout.trim()
+  if (!complete(mergeBase) || mergeBaseSha === '') {
+    return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(mergeBaseArgs, mergeBase) }
   }
-  if (diff.stdout.trim() === '') return { landing: 'landed', baseRef: resolvedBase, landedTip }
 
-  const unique = `${process.pid}-${randomUUID()}`
-  const patchPath = path.join(tmpdir(), `pi-rex-landing-${unique}.patch`)
-  const indexPath = path.join(tmpdir(), `pi-rex-landing-${unique}.index`)
-  try {
-    await writeFile(patchPath, diff.stdout, { encoding: 'utf8', mode: 0o600 })
-  } catch (error) {
-    await unlink(patchPath).catch(() => undefined)
+  const pathArgs = ['diff', '--name-only', '-z', mergeBaseSha, landedTip]
+  const listed = await exec(pathArgs, { cwd: mainCwd })
+  if (!complete(listed)) {
+    return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(pathArgs, listed) }
+  }
+  const changedPaths = listed.stdout.split('\0').filter(changedPath => changedPath !== '')
+  if (changedPaths.length === 0) return { landing: 'landed', baseRef: resolvedBase, landedTip }
+  if (changedPaths.length > 200) {
     return {
       landing: 'inconclusive',
       baseRef: resolvedBase,
-      detail: `写入临时 patch 失败: ${error instanceof Error ? error.message : String(error)}`
+      detail: `分支涉及 ${changedPaths.length} 个变更路径，超过每路径确认上限 200；无法安全自动删除`
     }
   }
 
-  try {
-    const env = { GIT_INDEX_FILE: indexPath }
-    const readTreeArgs = ['read-tree', resolvedBase]
-    const readTree = await exec(readTreeArgs, { cwd: mainCwd, env })
-    if (readTree.code !== 0) {
-      return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(readTreeArgs, readTree) }
+  for (const changedPath of changedPaths) {
+    // 名称来自仓库内容，必须按 literal pathspec 解释，避免 `:(exclude)...` 之类的文件名
+    // 让 quiet diff 意外匹配空集合并返回 0。
+    const literalPathspec = `:(literal)${changedPath}`
+    const quietArgs = ['diff', '--quiet', resolvedBase, landedTip, '--', literalPathspec]
+    const quiet = await exec(quietArgs, { cwd: mainCwd })
+    if (quiet.killed || quiet.truncated) {
+      return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(quietArgs, quiet) }
     }
-    const applyArgs = ['apply', '--reverse', '--check', '--cached', patchPath]
-    const applied = await exec(applyArgs, { cwd: mainCwd, env })
-    if (applied.code === 0 && applied.killed !== true) return { landing: 'landed', baseRef: resolvedBase, landedTip }
-    return {
-      landing: applied.code === 1 && applied.killed !== true ? 'not-landed' : 'inconclusive',
-      baseRef: resolvedBase,
-      detail: gitFailure(applyArgs, applied)
+    if (quiet.code === 0) continue
+    if (quiet.code === 1) {
+      return { landing: 'not-landed', baseRef: resolvedBase, detail: gitFailure(quietArgs, quiet) }
     }
-  } finally {
-    await unlink(patchPath).catch(() => undefined)
-    await unlink(indexPath).catch(() => undefined)
+    return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(quietArgs, quiet) }
   }
+  return { landing: 'landed', baseRef: resolvedBase, landedTip }
 }
 
 export async function contentLanding(
@@ -575,10 +558,13 @@ export async function cleanupWorktree(
       }
     }
     // `update-ref -d <ref> <old>` 对已不存在的 ref 会成功 no-op；先确认分支仍存在，
-    // 再让 update-ref 原子校验 tip。探针后直接消失也按本轮占用冲突保留并重判。
+    // 再让 update-ref 原子校验 tip。探针后分支已消失说明外部已完成这部分清理。
     const existingArgs = ['rev-parse', '--verify', '-q', `refs/heads/${setup.branch}`]
     const existing = await exec(existingArgs, { cwd: setup.mainCwd })
     if (existing.code !== 0) {
+      if (existing.code === 1 && !existing.killed && !existing.truncated) {
+        return { kind: 'removed', branch: setup.branch, landedBy, baseRef }
+      }
       return {
         kind: 'kept',
         reason:
