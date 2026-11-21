@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { HandoffStore } from '../handoff-store'
 import { createOrchestrator } from '../orchestrator'
 import { resolveProfiles } from '../profiles'
+import { CODE_CHANGE_ROUTE_RULE, DIRECT_SCOPE_RULE } from '../prompt'
 import type { RexAdapter } from '../rex-adapter'
 import { WorkerRegistry } from '../state-machine'
 
@@ -146,7 +147,10 @@ function fakeGit(): (
   }
 }
 
-function makeOrchestrator(hasUI = true): {
+function makeOrchestrator(
+  hasUI = true,
+  profiles = resolveProfiles(undefined)
+): {
   mock: MockPi
   stub: AdapterStub
   registry: WorkerRegistry
@@ -158,10 +162,12 @@ function makeOrchestrator(hasUI = true): {
   const orchestrator = createOrchestrator(mock.pi, {
     adapter,
     registry,
-    profiles: resolveProfiles(undefined),
+    profiles,
     createStore: sessionId => new HandoffStore({ root: roots[roots.length - 1] ?? '', sessionId }),
     runHeadlessPath: '/ext/scripts/run-headless.mjs',
     nodePath: '/usr/local/bin/node',
+    rexBin: '/opt/rex',
+    rexSession: 'session:env',
     // ACK 诊断路径用真实短窗口验证；产品语义里的 5 秒是 deps 缺省值。
     ackTimeoutMs: 100,
     // 欢迎语只在一个专项用例里开：其余用例断言 messages 为空。
@@ -181,11 +187,12 @@ function withTempRoot<T>(fn: () => Promise<T>): () => Promise<T> {
 
 describe('装配面', () => {
   it(
-    '激活后注册 7 个工具与 4 个命令',
+    '激活后注册 8 个工具与 4 个命令',
     withTempRoot(async () => {
       const { mock } = makeOrchestrator()
       expect([...mock.tools.keys()].sort()).toEqual([
         'ask_user',
+        'rex_cli',
         'rex_close_worker',
         'rex_inspect_changes',
         'rex_inspect_output',
@@ -194,6 +201,50 @@ describe('装配面', () => {
         'rex_spawn_agent'
       ])
       expect([...mock.commands.keys()].sort()).toEqual(['rex-cleanup', 'rex-pause', 'rex-resume', 'rex-status'])
+
+      const rexCli = mock.tools.get('rex_cli')
+      expect(rexCli?.definition.exposure).toBe('model-only')
+      expect(rexCli?.definition.executionMode).toBe('parallel')
+      expect(rexCli?.definition.parameters).toMatchObject({
+        type: 'object',
+        properties: { args: { type: 'array', items: { type: 'string' }, minItems: 1 } },
+        required: ['args'],
+        additionalProperties: false
+      })
+
+      await rexCli?.execute('t-rex', { args: ['window', 'ls'] }, undefined, undefined, mock.ctx)
+      expect(mock.execCalls.at(-1)).toEqual({
+        command: '/opt/rex',
+        args: ['window', 'ls', '-s', 'session:env'],
+        options: { timeout: 15000 }
+      })
+    })
+  )
+
+  it(
+    'rex_cli 将自定义 profile binary basename 注入 agent 路由护栏',
+    withTempRoot(async () => {
+      const profiles = resolveProfiles({
+        profiles: {
+          coder: { binary: '/opt/acme/coder' }
+        }
+      })
+      const { mock, dispose } = makeOrchestrator(true, profiles)
+      const rexCli = mock.tools.get('rex_cli')
+
+      const result = (await rexCli?.execute(
+        't-profile-agent',
+        { args: ['run', '--', '/opt/acme/coder', '-p', 'hi'] },
+        undefined,
+        undefined,
+        mock.ctx
+      )) as { content: Array<{ text: string }>; isError?: boolean }
+
+      expect(result.isError).toBe(true)
+      expect(result.content[0]?.text).toContain('自定义 profile')
+      expect(result.content[0]?.text).toContain('rex_spawn_agent')
+      expect(mock.execCalls).toEqual([])
+      dispose()
     })
   )
 
@@ -209,6 +260,8 @@ describe('装配面', () => {
         createStore: sessionId => new HandoffStore({ root: roots[roots.length - 1] ?? '', sessionId }),
         runHeadlessPath: '/ext/scripts/run-headless.mjs',
         nodePath: '/usr/local/bin/node',
+        rexBin: '/opt/rex',
+        rexSession: 'session:env',
         // 历史会话残留只在有存货时提醒。
         listHandoffSessions: async () => ['session-mock-0001', 'crashed-old-session']
       })
@@ -217,7 +270,11 @@ describe('装配面', () => {
       await new Promise(resolve => setTimeout(resolve, 0))
       const welcomes = mock.messages.filter(message => message.content.includes('rex-orchestrator-welcome'))
       expect(welcomes).toHaveLength(1)
+      expect(welcomes[0]?.content).toContain('直接做')
       expect(welcomes[0]?.content).toContain('派一个 claude worker')
+      expect(welcomes[0]?.content).toContain('代码改动派 worker')
+      expect(welcomes[0]?.content).not.toContain('git merge --no-ff')
+      expect(welcomes[0]?.content).not.toContain('让用户在对应工作区执行')
       expect(welcomes[0]?.options?.triggerTurn).toBeFalsy()
       // 其他会话的交接区不自动删；措辞必须提醒「可能在运行中」，不诱导删除。
       const residue = mock.messages.find(message => message.content.includes('其他会话的目录'))
@@ -232,7 +289,7 @@ describe('装配面', () => {
   )
 
   it(
-    'session_start 挂只读白名单，shutdown 还原',
+    'session_start 挂协调者工具白名单，shutdown 还原',
     withTempRoot(async () => {
       const { mock, dispose } = makeOrchestrator()
       const before = mock.activeTools
@@ -240,6 +297,7 @@ describe('装配面', () => {
       expect(mock.activeTools.sort()).toEqual(
         [
           'ask_user',
+          'rex_cli',
           'rex_spawn_agent',
           'rex_list_workers',
           'rex_send_input',
@@ -268,21 +326,43 @@ describe('装配面', () => {
         systemPrompt: 'original'
       }
       mock.emit('before_agent_start', { systemPromptOptions: options })
-      expect(options.sections['rex-orchestrator']).toContain('<rex-orchestrator>')
-      expect(options.sections['rex-orchestrator']).toContain('claude、codex')
-      expect(options.promptGuidelines.join('\n')).toContain('rex_spawn_agent')
+      const section = options.sections['rex-orchestrator']
+      const guidelines = options.promptGuidelines.join('\n')
+      expect(section).toContain('<rex-orchestrator>')
+      expect(section).toContain('直接（rex_cli）')
+      expect(section).toContain('派发（rex_spawn_agent）')
+      expect(section).toContain('拒绝点')
+      expect(section).toContain('claude、codex')
+      expect(section).toContain('仓库代码改动一律派 worker')
+      expect(section).toContain('合并与发布按该仓库自身流程')
+      expect(section.match(/^## 直接（rex_cli）$/gm)).toHaveLength(1)
+      expect(section.match(/^## 派发（rex_spawn_agent）$/gm)).toHaveLength(1)
+      expect(section).toContain(DIRECT_SCOPE_RULE)
+      expect(section).toContain(CODE_CHANGE_ROUTE_RULE)
+      expect(guidelines).toContain('Check every action against one binary first')
+      expect(guidelines).toContain('read-only or non-code-changing work')
+      expect(guidelines).toContain('Route agent launches through rex_spawn_agent')
       expect(options.systemPrompt).toBe('original')
     })
   )
 
-  it(
-    'tool_call 硬拦 bash / edit 与 destructiveHint MCP 工具，放行 read',
+  it.each(['write', 'edit', 'bash', 'powershell'])('tool_call 硬拦内置写工具 %s', toolName =>
     withTempRoot(async () => {
       const { mock } = makeOrchestrator()
-      const bash = mock.emit('tool_call', { toolName: 'bash', input: {} }) as { block: boolean; reason: string }
-      expect(bash.block).toBe(true)
-      expect(bash.reason).toContain('bash')
-      expect((mock.emit('tool_call', { toolName: 'edit', input: {} }) as { block: boolean }).block).toBe(true)
+      const decision = mock.emit('tool_call', { toolName, input: {} }) as { block: boolean; reason: string }
+      expect(decision.block).toBe(true)
+      expect(decision.reason).toContain(toolName)
+      expect(decision.reason).not.toContain('本会话只读')
+    })()
+  )
+
+  it(
+    'tool_call 放行只读工具与 rex_cli，硬拦 destructiveHint MCP 工具',
+    withTempRoot(async () => {
+      const { mock } = makeOrchestrator()
+      for (const toolName of ['rex_cli', 'read', 'grep', 'find', 'ls']) {
+        expect(mock.emit('tool_call', { toolName, input: {} })).toBeUndefined()
+      }
       expect(
         (
           mock.emit('tool_call', { toolName: 'mcp__x__y', annotations: { destructiveHint: true }, input: {} }) as {
@@ -290,7 +370,6 @@ describe('装配面', () => {
           }
         ).block
       ).toBe(true)
-      expect(mock.emit('tool_call', { toolName: 'read', input: {} })).toBeUndefined()
     })
   )
 })
@@ -513,6 +592,8 @@ describe('关闭与合并', () => {
       createStore: sessionId => new HandoffStore({ root: roots[roots.length - 1] ?? '', sessionId }),
       runHeadlessPath: '/ext/scripts/run-headless.mjs',
       nodePath: '/usr/local/bin/node',
+      rexBin: '/opt/rex',
+      rexSession: 'session:env',
       showWelcome: false
     })
     registry.register({
@@ -1148,6 +1229,8 @@ describe('事件环与验收折叠', () => {
         config: { worktreeSetupHook: 'ln -sfn "$MAIN_CWD/.env" .env' },
         runHeadlessPath: '/ext/scripts/run-headless.mjs',
         nodePath: '/usr/local/bin/node',
+        rexBin: '/opt/rex',
+        rexSession: 'session:env',
         showWelcome: false
       })
       mock.emit('session_start', { reason: 'startup' })
@@ -1182,6 +1265,8 @@ describe('事件环与验收折叠', () => {
         },
         runHeadlessPath: '/ext/scripts/run-headless.mjs',
         nodePath: '/usr/local/bin/node',
+        rexBin: '/opt/rex',
+        rexSession: 'session:env',
         showWelcome: false
       })
       mock.emit('session_start', { reason: 'startup' })

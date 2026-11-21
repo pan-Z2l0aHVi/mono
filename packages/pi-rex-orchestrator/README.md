@@ -1,6 +1,6 @@
 # pi-rex-orchestrator
 
-> Rex 会话内的 Pi 只读协调者：把代码改动派发给 worker agent，跟踪其状态，做全量验收。
+> Rex 会话内的 Pi 操作者 + agent 协调者：直接操作 Rex，把代码改动派发给 worker agent，跟踪状态并做全量验收。
 
 私有 Pi 扩展，零运行时外部依赖（只用 Node 内置模块与 Pi 扩展 API）。Rex 之外的终端里输入 `pi` 保持 100% 原生 Coding Agent，不产生任何副作用。
 
@@ -11,15 +11,20 @@
 
 ## 工具面（model-only）
 
-| 工具                  | 作用                                                                                                                          |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `ask_user`            | 弹窗向用户提问；Agent、运行模式或 Worktree 策略未指定时必须先问。                                                             |
-| `rex_spawn_agent`     | 从白名单 profile 派生 worker；长任务写入 `turn-001.brief.md`，只发短指针指令。                                                |
-| `rex_send_input`      | 追加轮次；interactive 走 `rex send` + Send-ACK，headless 走 `resume` 续跑并原子替换旧 Block。                                 |
-| `rex_list_workers`    | 列出本会话全部 worker 与状态。                                                                                                |
-| `rex_inspect_output`  | 读 worker 最新输出：handoff 优先，缺失降级 events.jsonl 尾部或屏幕 capture，绝不读旧轮次文件。                                |
-| `rex_inspect_changes` | 以派生时 `base_commit` 为基线的全量验收（Committed + Staged + Unstaged + Untracked 预览）。                                   |
-| `rex_close_worker`    | 关闭 worker；干净且已合并才自动清理——干净但未合并时弹窗问是否代为 `git merge --no-ff`，同意则合并后收尾，拒绝则保留并给命令。 |
+直接 `rex_cli` 只做只读或不动仓库代码的操作；`rex run` 不是改码通道，仓库代码改动统一派 worker。
+
+| 工具                  | 作用                                                                                                              |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `ask_user`            | 弹窗向用户提问；Agent、运行模式或 Worktree 策略未指定时必须先问。                                                 |
+| `rex_cli`             | 以 argv 数组执行 Rex 操作；session 按 `--help` 白名单注入，覆盖 tab / window、pane / block、app、读取与命令控制。 |
+| `rex_spawn_agent`     | 从白名单 profile 派生 worker；长任务写入 `turn-001.brief.md`，只发短指针指令。                                    |
+| `rex_send_input`      | 追加轮次；interactive 走 `rex send` + Send-ACK，headless 走 `resume` 续跑并原子替换旧 Block。                     |
+| `rex_list_workers`    | 列出本会话全部 worker 与状态。                                                                                    |
+| `rex_inspect_output`  | 读 worker 最新输出：handoff 优先，缺失降级 events.jsonl 尾部或屏幕 capture，绝不读旧轮次文件。                    |
+| `rex_inspect_changes` | 以派生时 `base_commit` 为基线的全量验收（Committed + Staged + Unstaged + Untracked 预览）。                       |
+| `rex_close_worker`    | 关闭 worker；干净且已合并才自动清理，否则按仓库自身流程收尾；本地 merge 仅在用户明确允许时执行。                  |
+
+`rex_cli` 的语法以安装的 Rex 为准：先调 `rex_cli(["__internal", "skill"])` 或 `rex_cli(["--help"])` 自查，命令失败时按回传的 stderr 修正 argv。完整的命令注入、拒绝点、超时与输出边界见 [AGENTS.md](./AGENTS.md)。
 
 ## 命令
 

@@ -1,7 +1,7 @@
 {
   "name": "@greypan/pi-rex-orchestrator",
   "version": "0.1.1",
-  "description": "Read-only Pi coordinator extension that dispatches and supervises worker agents in Rex terminals",
+  "description": "Pi Rex operator and agent coordinator that controls Rex and dispatches, supervises, and verifies worker agents",
   "license": "MIT",
   "repository": {
     "type": "git",
