@@ -15,7 +15,7 @@ export function RouteProgressBar() {
   return (
     <div
       className={
-        'pointer-events-none fixed inset-x-0 top-0 z-1000 transition-opacity duration-200 motion-reduce:transition-none ' +
+        'pointer-events-none fixed inset-x-0 top-0 z-(--wui-layer-loading,3000) transition-opacity duration-200 motion-reduce:transition-none ' +
         (snapshot.visible ? 'opacity-100' : 'opacity-0')
       }
       data-visible={snapshot.visible}
@@ -24,12 +24,12 @@ export function RouteProgressBar() {
         {
           '--wui-progress-height': '3px',
           '--wui-progress-radius': '0',
-          '--wui-duration-trigger': '200ms'
+          '--wui-duration-trigger': snapshot.value === 0 ? '0ms' : '200ms'
         } as React.CSSProperties
       }
     >
       <web-ui-progress
-        className="motion-reduce:[--wui-duration-trigger:0ms]"
+        className="pointer-events-none motion-reduce:[--wui-duration-trigger:0ms]"
         value={snapshot.value}
         max={100}
         aria-hidden={snapshot.visible ? undefined : 'true'}

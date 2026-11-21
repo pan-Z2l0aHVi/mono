@@ -28,13 +28,16 @@ export function installRouteGuards(router: Router, queryClient: QueryClient, pro
     run(id)
   }
 
-  router.beforeEach(to => {
+  router.beforeEach((to, from) => {
+    // 仅 hash 变化（如页内锚点跳转）不触发路由加载进度条，与 React 端保持一致。
+    if (to.path === from.path && to.fullPath.split('#')[0] === from.fullPath.split('#')[0]) return
     const id = ++latestId
     navIds.set(to, id)
     progress.start(id)
   })
 
-  router.beforeResolve(async to => {
+  router.beforeResolve(async (to, from) => {
+    if (to.path === from.path && to.fullPath.split('#')[0] === from.fullPath.split('#')[0]) return
     try {
       await ensureRouteData(queryClient, to.path, to.query)
     } catch (error) {

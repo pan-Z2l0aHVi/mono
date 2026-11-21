@@ -42,7 +42,7 @@ describe('route progress', () => {
     expect(p.getSnapshot()).toMatchObject({ phase: 'idle', visible: false })
   })
 
-  it('已显示超过 minVisible 后才完成：仍保留 completeHold(220ms) 让 100% 冲刺动画播完再消失', () => {
+  it('已显示超过 minVisible 后才完成：仍保留 completeHold(220ms) 让 100% 冲刺动画播完，淡出期间保持 value=100 并在淡出后静默归零', () => {
     const p = createRouteProgressStarter()
     p.start(1)
     vi.advanceTimersByTime(250 + 800)
@@ -52,7 +52,21 @@ describe('route progress', () => {
     vi.advanceTimersByTime(219)
     expect(p.getSnapshot().visible).toBe(true)
     vi.advanceTimersByTime(1)
-    expect(p.getSnapshot()).toMatchObject({ phase: 'idle', visible: false })
+    // 刚隐藏时保持 value: 100，防止淡出过渡期间进度条向左倒退回 0%
+    expect(p.getSnapshot()).toEqual({ phase: 'idle', visible: false, value: 100 })
+    vi.advanceTimersByTime(200)
+    expect(p.getSnapshot()).toEqual({ phase: 'idle', visible: false, value: 0 })
+  })
+
+  it('pending 可见期内快速连点新 start：保持单调不倒退（不往回跳回 12%）', () => {
+    const p = createRouteProgressStarter()
+    p.start(1)
+    vi.advanceTimersByTime(250 + 400)
+    const before = p.getSnapshot().value
+    expect(before).toBeGreaterThan(20)
+    p.start(2)
+    expect(p.getSnapshot().visible).toBe(true)
+    expect(p.getSnapshot().value).toBeGreaterThanOrEqual(before)
   })
 
   it('停留期内新 start 保持可见、重置进度并跳过 showDelay', () => {

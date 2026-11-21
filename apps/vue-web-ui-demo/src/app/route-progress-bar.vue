@@ -21,14 +21,18 @@ onScopeDispose(() => {
 
 <template>
   <div
-    class="pointer-events-none fixed inset-x-0 top-0 z-1000 transition-opacity duration-200 motion-reduce:transition-none"
+    class="pointer-events-none fixed inset-x-0 top-0 z-(--wui-layer-loading,3000) transition-opacity duration-200 motion-reduce:transition-none"
     :class="snapshot.visible ? 'opacity-100' : 'opacity-0'"
     :data-visible="snapshot.visible"
     :data-phase="snapshot.phase"
-    style="--wui-progress-height: 3px; --wui-progress-radius: 0; --wui-duration-trigger: 200ms"
+    :style="{
+      '--wui-progress-height': '3px',
+      '--wui-progress-radius': '0',
+      '--wui-duration-trigger': snapshot.value === 0 ? '0ms' : '200ms'
+    }"
   >
     <web-ui-progress
-      class="motion-reduce:[--wui-duration-trigger:0ms]"
+      class="pointer-events-none motion-reduce:[--wui-duration-trigger:0ms]"
       :value="snapshot.value"
       :max="100"
       :aria-hidden="snapshot.visible ? undefined : 'true'"

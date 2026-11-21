@@ -43,6 +43,7 @@ describe('web-ui-progress（浏览器）', () => {
     )
 
     expect(progress.getBoundingClientRect().width).toBeCloseTo(host.getBoundingClientRect().width, 0)
+    expect(trackRect.width).toBeCloseTo(host.getBoundingClientRect().width, 0)
     expect(indicatorRect.width).toBeCloseTo(trackRect.width, 0)
     expect(visibleWidth / trackRect.width).toBeCloseTo(0.25, 2)
     expect(getComputedStyle(indicator).transitionProperty).toBe('transform')

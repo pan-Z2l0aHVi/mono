@@ -91,4 +91,15 @@ describe('route guards', () => {
     expect(failures).toEqual([])
     off()
   })
+
+  it('仅 hash 变化（页内锚点）不触发进度条', async () => {
+    const { router, progress, off } = setup()
+    await router.push('/home')
+    await vi.advanceTimersByTimeAsync(500)
+    await router.push('/home#section-1')
+    await vi.advanceTimersByTimeAsync(500)
+    expect(progress.getSnapshot().visible).toBe(false)
+    expect(router.currentRoute.value.hash).toBe('#section-1')
+    off()
+  })
 })

@@ -18,7 +18,7 @@ import {
   lucideSun,
   lucideX
 } from '@greypan/web-ui/icons'
-import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
+import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import {
   OverlayScrollbarsComponent,
   useOverlayScrollbars,
@@ -120,7 +120,6 @@ export function Root() {
   const controlsRef = useRef<HTMLDivElement>(null)
   const navSidebarRef = useRef<OverlayScrollbarsComponentRef<'div'> | null>(null)
   const { sidebarWidth, navCollapsed } = snapshot
-  const router = useRouter()
   const pathname = useRouterState({
     select: s => (s.resolvedLocation ?? s.location).pathname
   })
@@ -133,13 +132,12 @@ export function Root() {
   }, [initPageScrollbars])
 
   useEffect(() => {
-    void router.load().then(() => {
-      requestAnimationFrame(() => {
-        const link = navSidebarRef.current?.getElement()?.querySelector('[data-active="true"]')
-        link?.scrollIntoView({ block: 'center' })
-      })
+    const id = requestAnimationFrame(() => {
+      const link = navSidebarRef.current?.getElement()?.querySelector('[data-active="true"]')
+      link?.scrollIntoView({ block: 'center' })
     })
-  }, [router])
+    return () => cancelAnimationFrame(id)
+  }, [])
 
   const routeTitle = useRouterState({
     select: s => s.matches.at(-1)?.staticData.title

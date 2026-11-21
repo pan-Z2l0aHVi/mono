@@ -35,6 +35,7 @@ const IDLE: RouteProgressSnapshot = Object.freeze({ phase: 'idle', visible: fals
 
 export function defineRouteProgressCore(options: RouteProgressOptions = {}) {
   const { showDelay = 250, minVisible = 300, completeHold = 220 } = options
+  const resetHold = 200
 
   return definePlugin<{ progress: RouteProgressCore }, { clock: RouteClock; trickle: RouteTrickle }>(
     ({ clock, trickle }) => {
@@ -43,6 +44,7 @@ export function defineRouteProgressCore(options: RouteProgressOptions = {}) {
       let shownAt = 0
       let showTimer: unknown
       let hideTimer: unknown
+      let resetTimer: unknown
       let trickleTimer: unknown
       const listeners = new Set<() => void>()
 
@@ -61,6 +63,10 @@ export function defineRouteProgressCore(options: RouteProgressOptions = {}) {
       const clearHide = () => {
         if (hideTimer !== undefined) clock.clearTimeout(hideTimer)
         hideTimer = undefined
+      }
+      const clearReset = () => {
+        if (resetTimer !== undefined) clock.clearTimeout(resetTimer)
+        resetTimer = undefined
       }
       const clearTrickle = () => {
         if (trickleTimer !== undefined) clock.clearTimeout(trickleTimer)
@@ -88,11 +94,19 @@ export function defineRouteProgressCore(options: RouteProgressOptions = {}) {
           start(navId) {
             currentId = navId
             clearShow()
+            clearReset()
             clearTrickle()
-            // 停留期内的重入：保持可见并跳过 showDelay，只重置进度。
+            // 停留期内的重入：保持可见并跳过 showDelay；不把 value 往回拉到 12%，仅保持单调向前推进
+            // （若之前已完成到 100%，才重开一轮）。
             if (snapshot.visible) {
               clearHide()
-              reveal()
+              if (snapshot.phase === 'done' || snapshot.value >= 100) {
+                reveal()
+              } else {
+                shownAt = clock.now()
+                set({ phase: 'pending', visible: true, value: Math.max(snapshot.value, trickle.initial) })
+                scheduleTrickle()
+              }
               return
             }
             set({ phase: 'pending', visible: false, value: 0 })
@@ -104,6 +118,7 @@ export function defineRouteProgressCore(options: RouteProgressOptions = {}) {
           done(navId) {
             if (navId !== currentId) return
             clearShow()
+            clearReset()
             clearTrickle()
             if (!snapshot.visible) {
               set(IDLE)
@@ -116,12 +131,19 @@ export function defineRouteProgressCore(options: RouteProgressOptions = {}) {
             const wait = Math.max(0, remainingVisible, completeHold)
             hideTimer = clock.setTimeout(() => {
               hideTimer = undefined
-              set(IDLE)
+              // 第一步：在 value: 100 满格状态下做 opacity 淡出（避免淡出过程中看到进度条往左退回 0%）
+              set({ phase: 'idle', visible: false, value: 100 })
+              // 第二步：等 opacity 淡出过渡（200ms）彻底不可见后，静默归零 value: 0
+              resetTimer = clock.setTimeout(() => {
+                resetTimer = undefined
+                set(IDLE)
+              }, resetHold)
             }, wait)
           },
           fail(navId) {
             if (navId !== currentId) return
             clearShow()
+            clearReset()
             clearTrickle()
             clearHide()
             // 错误反馈由 toast 承担，顶部条立即隐藏；error 相位保留到下一次 start。

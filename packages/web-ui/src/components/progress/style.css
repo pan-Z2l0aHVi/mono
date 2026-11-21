@@ -13,8 +13,12 @@
 .wui-progress {
   display: grid;
   grid-template-columns: minmax(0, 1fr) auto;
-  gap: var(--wui-space-2, 8px);
+  gap: var(--wui-progress-gap, var(--wui-space-2, 8px));
   align-items: center;
+}
+
+:host(:not([show-value])) .wui-progress {
+  gap: 0;
 }
 
 .wui-progress-track {
