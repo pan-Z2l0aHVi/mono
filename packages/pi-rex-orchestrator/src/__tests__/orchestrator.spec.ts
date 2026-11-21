@@ -645,7 +645,9 @@ describe('关闭、合并与内容落地', () => {
       const result = await closeWorker(mock)
 
       expect(mock.ctx.confirmations[0]?.title).toContain('本地合并 pi-orch/review1/w-1')
-      expect(mock.ctx.confirmations[0]?.message).toContain('本仓应走 PR + squash')
+      expect(mock.ctx.confirmations[0]?.message).toContain(
+        '按该仓库自身流程合并（有 PR 流程走 PR；无 PR 流程确认后可本地 merge）'
+      )
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
       expect(argJoins.some(args => args === 'merge --no-ff pi-orch/review1/w-1')).toBe(true)
       expect(result.isError).toBeFalsy()
@@ -732,13 +734,16 @@ describe('关闭、合并与内容落地', () => {
     '确认期间主仓 HEAD 变化时拒绝在非预期分支上代合并',
     withTempRoot(async () => {
       let headProbeCount = 0
+      const beforeSha = 'b'.repeat(40)
+      const afterSha = 'c'.repeat(40)
       const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
         if (command === 'git' && args[0] === 'rev-parse' && args[1] === 'HEAD') {
           headProbeCount += 1
-          // 前两次是 merge 确认前后的目标捕获。只在第二次读取时制造变化；
-          // 内容探针无 env 时已直接 inconclusive，不再额外读取 HEAD。
+          // fakeGit() 的 merge-base 输出为空，落地探针因此按 inconclusive 早退，
+          // 随后进入本地 merge 确认路径。前两次 HEAD 读取是确认前后目标捕获；
+          // 两次值不同用于证明确认期目标复检会拒绝 merge，而不是只看确认框结果。
           return {
-            stdout: `${headProbeCount <= 1 ? 'b' : 'c'.repeat(40)}`.padEnd(40, 'b'),
+            stdout: headProbeCount <= 1 ? beforeSha : afterSha,
             stderr: '',
             code: 0,
             killed: false,
@@ -891,15 +896,17 @@ describe('关闭、合并与内容落地', () => {
       const text = result.content[0]?.text ?? ''
       expect(text).toContain('分支内容不在 main 中')
       expect(text).toContain('按该仓库自身流程合并')
-      expect(text).toContain('无 PR 流程时可由我本地 merge')
+      expect(text).toContain('无 PR 流程确认后可本地 merge')
       expect(text).toContain('确认废弃 → 用 force: true 清理')
       expect(text).toContain('请现在二选一')
       expect(text).not.toContain('git merge --no-ff')
-      expect(mock.ctx.confirmations[0]?.message).toContain('本仓应走 PR + squash')
+      expect(mock.ctx.confirmations[0]?.message).toContain(
+        '按该仓库自身流程合并（有 PR 流程走 PR；无 PR 流程确认后可本地 merge）'
+      )
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
       expect(argJoins.some(command => command.startsWith('diff --name-only -z'))).toBe(true)
-      expect(argJoins.some(command => command.startsWith(`diff --quiet ${baseSha} `))).toBe(true)
-      expect(argJoins.some(command => command.startsWith('diff --quiet main '))).toBe(false)
+      expect(argJoins.some(command => command.startsWith(`diff --quiet --no-relative ${baseSha} `))).toBe(true)
+      expect(argJoins.some(command => command.startsWith('diff --quiet --no-relative main '))).toBe(false)
       expect(argJoins.some(args => args.startsWith('merge '))).toBe(false)
       expect(argJoins.some(args => args.startsWith('worktree remove'))).toBe(false)
       expect(argJoins.some(args => args.startsWith('update-ref -d') || args.startsWith('branch -D'))).toBe(false)
@@ -935,7 +942,7 @@ describe('关闭、合并与内容落地', () => {
       expect(text).toContain('git diff --name-only -z')
       expect(text).toContain('fatal: unable to read tree')
       expect(text).toContain('按该仓库自身流程合并')
-      expect(text).toContain('无 PR 流程时可由我本地 merge')
+      expect(text).toContain('无 PR 流程确认后可本地 merge')
       expect(text).toContain('确认内容已在 main，或确认废弃 → 用 force: true 清理')
       expect(text).toContain('请现在二选一')
       expect(text).not.toContain('git merge --no-ff')
@@ -988,9 +995,9 @@ describe('关闭、合并与内容落地', () => {
       expect(gitCommands).toContain('rev-parse origin/main')
       expect(gitCommands.some(command => command.startsWith(`merge-base ${baseSha} `))).toBe(true)
       expect(gitCommands.some(command => command.startsWith('diff --name-only -z'))).toBe(true)
-      expect(gitCommands.some(command => command.startsWith(`diff --quiet ${baseSha} `))).toBe(true)
+      expect(gitCommands.some(command => command.startsWith(`diff --quiet --no-relative ${baseSha} `))).toBe(true)
       expect(gitCommands.some(command => command.includes('-- :(top,literal)a.txt'))).toBe(true)
-      expect(gitCommands.some(command => command.startsWith('diff --quiet origin/main '))).toBe(false)
+      expect(gitCommands.some(command => command.startsWith('diff --quiet --no-relative origin/main '))).toBe(false)
       expect(gitCommands.some(command => command.startsWith('read-tree') || command.startsWith('apply '))).toBe(false)
       expect(gitCommands.some(command => command.startsWith('update-ref -d refs/heads/'))).toBe(true)
       expect(registry.get('claude-1')?.worktree).toBeUndefined()

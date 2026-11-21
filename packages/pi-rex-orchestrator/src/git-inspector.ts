@@ -319,7 +319,9 @@ async function inspectContentLanding(
   }
 
   // 关闭 rename 折叠：删除侧与新增侧必须各自比较，否则只落一半的重命名可能漏检。
-  const pathArgs = ['diff', '--name-only', '-z', '--no-renames', mergeBaseSha, landedTip]
+  // `diff.relative` 会让子目录 cwd 改写并丢弃范围外路径；显式关闭后，后续
+  // `:(top,literal)` pathspec 才能逐条解释完整的仓库根相对路径集合。
+  const pathArgs = ['diff', '--name-only', '-z', '--no-relative', '--no-renames', mergeBaseSha, landedTip]
   const listed = await exec(pathArgs, { cwd: mainCwd })
   if (!complete(listed)) {
     return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(pathArgs, listed) }
@@ -346,7 +348,7 @@ async function inspectContentLanding(
     // 名称来自仓库内容，必须按仓库根相对且 literal 的 pathspec 解释：前者避免子目录
     // cwd 错配，后者避免 `:(exclude)...` 之类的文件名让 quiet diff 意外匹配空集合并返回 0。
     const literalPathspec = `:(top,literal)${changedPath}`
-    const quietArgs = ['diff', '--quiet', baseSha, landedTip, '--', literalPathspec]
+    const quietArgs = ['diff', '--quiet', '--no-relative', baseSha, landedTip, '--', literalPathspec]
     const quiet = await exec(quietArgs, { cwd: mainCwd })
     if (quiet.killed || quiet.truncated) {
       return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(quietArgs, quiet) }

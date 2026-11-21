@@ -263,12 +263,12 @@ describe('worktree 生命周期（V3-04）', () => {
     expect(quietCommands.length).toBeGreaterThan(0)
     for (const command of quietCommands) {
       const args = command.split(' ')
-      expect(args[2]).toMatch(/^[0-9a-f]{40}$/)
-      expect(args[2]).toBe(baseSha)
-      expect(args[2]).not.toBe('origin/main')
+      expect(args[3]).toMatch(/^[0-9a-f]{40}$/)
+      expect(args[3]).toBe(baseSha)
+      expect(args[3]).not.toBe('origin/main')
     }
     expect(commands.some(command => command === 'merge-base origin/main ' + tip)).toBe(false)
-    expect(commands.some(command => command.startsWith('diff --quiet origin/main '))).toBe(false)
+    expect(commands.some(command => command.startsWith('diff --quiet --no-relative origin/main '))).toBe(false)
     expect(commands[quiet]).toContain('-- :(top,literal)a.txt')
     expect(commands).toContain(`update-ref -d refs/heads/${branch} ${tip}`)
     expect(commands.some(command => command === 'read-tree origin/main')).toBe(false)
@@ -296,8 +296,8 @@ describe('worktree 生命周期（V3-04）', () => {
     const commands: string[] = []
     expect(await contentLanding(trackedGit(commands), repo, branch)).toBe('landed')
     expect(commands.some(command => command.startsWith('diff --name-only -z'))).toBe(true)
-    expect(commands.some(command => command.startsWith(`diff --quiet ${baseSha} `))).toBe(true)
-    expect(commands.some(command => command.startsWith('diff --quiet origin/main '))).toBe(false)
+    expect(commands.some(command => command.startsWith(`diff --quiet --no-relative ${baseSha} `))).toBe(true)
+    expect(commands.some(command => command.startsWith('diff --quiet --no-relative origin/main '))).toBe(false)
     expect(commands.some(command => command.startsWith('read-tree') || command.startsWith('apply '))).toBe(false)
     expect((await gitExec(['status', '--porcelain'], { cwd: repo })).stdout).toBe('')
   })
@@ -350,6 +350,47 @@ describe('worktree 生命周期（V3-04）', () => {
     expect((await gitExec(['branch', '--list', branch], { cwd: repo })).stdout).toContain(branch)
   })
 
+  it('diff.relative=true 且从子目录启动时仍枚举子目录外改动，不误判 landed', async () => {
+    const repo = await makeRepo()
+    await mkdir(path.join(repo, 'src'), { recursive: true })
+    await writeFile(path.join(repo, 'inside.ts'), 'root decoy unchanged', 'utf8')
+    await writeFile(path.join(repo, 'src/inside.ts'), 'v1', 'utf8')
+    await writeFile(path.join(repo, 'outside.txt'), 'v1', 'utf8')
+    await gitExec(['add', '.'], { cwd: repo })
+    await gitExec(['commit', '-m', 'baseline paths'], { cwd: repo })
+
+    const branch = worktreeBranch('session-diff-relative', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-diff-relative`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await writeFile(path.join(wtPath, 'src/inside.ts'), 'branch inside', 'utf8')
+    await writeFile(path.join(wtPath, 'outside.txt'), 'branch outside', 'utf8')
+    await gitExec(['add', '.'], { cwd: wtPath })
+    await gitExec(['commit', '-m', 'branch paths'], { cwd: wtPath })
+
+    // 只落地子目录内文件；outside.txt 仍只存在于分支。
+    await gitExec(['restore', '--source', branch, '--staged', '--worktree', 'src/inside.ts'], { cwd: repo })
+    await gitExec(['commit', '-m', 'land only src/inside.ts'], { cwd: repo })
+
+    const commands: string[] = []
+    const relativeGit: GitExec = (args, options) => {
+      commands.push(args.join(' '))
+      return gitExec(['-c', 'diff.relative=true', ...args], options)
+    }
+    const outcome = await cleanupWorktree(relativeGit, {
+      mainCwd: path.join(repo, 'src'),
+      path: wtPath,
+      branch
+    })
+
+    expect(outcome).toMatchObject({ kind: 'kept', unmerged: true, landing: 'not-landed', baseRef: 'main' })
+    expect(commands.some(command => command.startsWith('diff --name-only -z --no-relative'))).toBe(true)
+    expect(commands.some(command => command.startsWith('diff --quiet --no-relative'))).toBe(true)
+    expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
+    expect(commands.some(command => command.startsWith('update-ref -d'))).toBe(false)
+    expect((await gitExec(['branch', '--list', branch], { cwd: repo })).stdout).toContain(branch)
+  })
+
   it('任一路径内容不同：非祖先分支按 not-landed 保留', async () => {
     const repo = await makeRepo()
     await commitFile(repo, 'a.txt', 'v1')
@@ -364,8 +405,8 @@ describe('worktree 生命周期（V3-04）', () => {
     const outcome = await cleanupWorktree(trackedGit(commands), { mainCwd: repo, path: wtPath, branch })
 
     expect(outcome).toMatchObject({ kind: 'kept', unmerged: true, landing: 'not-landed', baseRef: 'main', baseSha })
-    expect(commands.some(command => command.startsWith(`diff --quiet ${baseSha} `))).toBe(true)
-    expect(commands.some(command => command.startsWith('diff --quiet main '))).toBe(false)
+    expect(commands.some(command => command.startsWith(`diff --quiet --no-relative ${baseSha} `))).toBe(true)
+    expect(commands.some(command => command.startsWith('diff --quiet --no-relative main '))).toBe(false)
     expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
     expect(commands.some(command => command.startsWith('update-ref -d'))).toBe(false)
     expect(commands.some(command => command.startsWith('branch -D'))).toBe(false)
@@ -642,7 +683,7 @@ describe('worktree 生命周期（V3-04）', () => {
       landing: 'inconclusive',
       baseRef: 'main'
     })
-    expect(outcome.kind === 'kept' ? outcome.landingDetail : '').toContain(`git diff --quiet ${baseSha}`)
+    expect(outcome.kind === 'kept' ? outcome.landingDetail : '').toContain(`git diff --quiet --no-relative ${baseSha}`)
     expect(outcome.kind === 'kept' ? outcome.landingDetail : '').toContain('exit 128')
     expect(outcome.kind === 'kept' ? outcome.landingDetail : '').toContain('fatal: unable to read path')
     expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
@@ -722,9 +763,9 @@ describe('worktree 生命周期（V3-04）', () => {
       baseRef: 'main'
     })
     expect(commands.some(command => command.startsWith(`merge-base ${baseSha} `))).toBe(true)
-    expect(commands.some(command => command.startsWith(`diff --quiet ${baseSha} `))).toBe(true)
+    expect(commands.some(command => command.startsWith(`diff --quiet --no-relative ${baseSha} `))).toBe(true)
     expect(commands.some(command => command.startsWith('merge-base main '))).toBe(false)
-    expect(commands.some(command => command.startsWith('diff --quiet main '))).toBe(false)
+    expect(commands.some(command => command.startsWith('diff --quiet --no-relative main '))).toBe(false)
     expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
     expect(commands.some(command => command.startsWith('update-ref -d'))).toBe(false)
     expect(commands.some(command => command.startsWith('branch -D'))).toBe(false)

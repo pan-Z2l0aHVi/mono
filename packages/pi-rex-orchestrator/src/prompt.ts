@@ -63,7 +63,7 @@ export function renderCoordinatorSection(ctx: CoordinatorSectionContext): string
     '',
     '## 汇报',
     '- 只报关键状态，不做常驻监控面板。',
-    '- 合并与发布优先按该仓库自身流程（本仓为 PR + squash）；只有无 PR 流程的仓库，才在用户明确确认后由 rex_close_worker 本地 merge。',
+    '- 合并与发布优先按该仓库自身流程（有 PR 流程走 PR；无 PR 流程确认后可本地 merge）；只有用户确认后才能由 rex_close_worker 本地 merge。',
     `- 交接区与调度状态用 ${ctx.commands.status}；残留清理用 ${ctx.commands.cleanup}（交接区根目录：${ctx.handoffRoot}）。`,
     '',
     '</rex-orchestrator>'

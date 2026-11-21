@@ -1169,7 +1169,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
             const mergeOk = await ctx.ui.confirm(
               `本地合并 ${worktree.branch}？`,
               [
-                '本仓应走 PR + squash；只有没有 PR 流程的仓库才由我本地 merge。',
+                '按该仓库自身流程合并（有 PR 流程走 PR；无 PR 流程确认后可本地 merge）。',
                 `确认后将在主仓执行 ${mergeHint(worktree.branch)}，成功则清理 worktree 与分支。`,
                 '拒绝则保留现状，并继续给出仓库流程 / force 选择。'
               ].join('\n')
@@ -1496,7 +1496,7 @@ function formatCleanupOutcome(worktree: { path: string; branch: string }, outcom
       `${target}：分支内容不在 ${outcome.baseRef ?? 'base'} 中。`,
       pathLine,
       '请现在二选一：',
-      '1. 按该仓库自身流程合并（本仓为 PR + squash；无 PR 流程时可由我本地 merge）；',
+      '1. 按该仓库自身流程合并（有 PR 流程走 PR；无 PR 流程确认后可本地 merge）；',
       '2. 确认废弃 → 用 force: true 清理。'
     ]
       .filter((line): line is string => line !== undefined)
@@ -1510,7 +1510,7 @@ function formatCleanupOutcome(worktree: { path: string; branch: string }, outcom
       `判定原因：${outcome.landingDetail ?? outcome.reason}`,
       pathLine,
       '请现在二选一：',
-      `1. 按该仓库自身流程合并（本仓为 PR + squash；无 PR 流程时可由我本地 merge）；`,
+      `1. 按该仓库自身流程合并（有 PR 流程走 PR；无 PR 流程确认后可本地 merge）；`,
       `2. 确认内容已在 ${baseRef}，或确认废弃 → 用 force: true 清理。`
     ]
       .filter((line): line is string => line !== undefined)
