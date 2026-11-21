@@ -21,7 +21,10 @@ interface ExecCall {
   options?: PiExecOptions
 }
 
-function makeDeps(result?: Partial<PiExecResult>): {
+function makeDeps(
+  result?: Partial<PiExecResult>,
+  workerAgentBinaries: readonly string[] = ['claude', 'codex', 'pi']
+): {
   deps: RexCliDeps
   calls: ExecCall[]
 } {
@@ -37,7 +40,7 @@ function makeDeps(result?: Partial<PiExecResult>): {
       ...result
     }
   }
-  return { deps: { exec, bin: '/opt/rex', session: SESSION }, calls }
+  return { deps: { exec, bin: '/opt/rex', session: SESSION, workerAgentBinaries: new Set(workerAgentBinaries) }, calls }
 }
 
 describe('session 注入', () => {
@@ -194,6 +197,24 @@ describe('拒绝点', () => {
     expect(calls).toEqual([])
   })
 
+  it('rejects a configured profile binary by basename', async () => {
+    const { deps, calls } = makeDeps(undefined, ['claude', 'codex', 'pi', 'coder'])
+    const result = await executeRexCli(['run', '--', '/opt/acme/coder', '-p', 'hi'], deps)
+
+    expect(result.isError).toBe(true)
+    expect(result.content[0]?.text).toContain('自定义 profile')
+    expect(result.content[0]?.text).toContain('rex_spawn_agent')
+    expect(calls).toEqual([])
+  })
+
+  it('allows a custom binary outside the configured profile set', async () => {
+    const { deps, calls } = makeDeps(undefined, ['claude', 'codex', 'pi', 'coder'])
+    const result = await executeRexCli(['run', '--', '/opt/acme/other', '-p', 'hi'], deps)
+
+    expect(result.isError).toBeFalsy()
+    expect(calls[0]?.args).toEqual(['run', '-s', SESSION, '--', '/opt/acme/other', '-p', 'hi'])
+  })
+
   it.each([
     ['短 verbose 前置 events', ['-v', 'events']],
     ['等号 color 前置 events', ['--color=never', 'events']],
@@ -323,6 +344,16 @@ describe('超时', () => {
       { args: ['-v', 'capture', '-b', 'block:1'], options: { timeout: 15000, maxBuffer: 8 * 1024 * 1024 } },
       { args: ['send', '-b', 'block:1', 'hello'], options: { timeout: 10000 } },
       { args: ['send-key', '-b', 'block:1', 'enter'], options: { timeout: 10000 } },
+      { args: ['block', 'send', '-b', 'block:1', 'hello'], options: { timeout: 10000 } },
+      { args: ['block', 'send-key', '-b', 'block:1', 'enter'], options: { timeout: 10000 } },
+      {
+        args: ['block', 'capture', '-b', 'block:1'],
+        options: { timeout: 15000, maxBuffer: 8 * 1024 * 1024 }
+      },
+      {
+        args: ['-v', 'block', 'capture', '-b', 'block:1'],
+        options: { timeout: 15000, maxBuffer: 8 * 1024 * 1024 }
+      },
       {
         args: ['capture', '-b', 'block:1', '--trim'],
         options: { timeout: 15000, maxBuffer: 8 * 1024 * 1024 }
@@ -420,6 +451,7 @@ describe('结果回传', () => {
     const deps: RexCliDeps = {
       bin: 'rex',
       session: SESSION,
+      workerAgentBinaries: new Set(['claude', 'codex', 'pi']),
       exec: async () => {
         throw new Error('rex server unavailable')
       }

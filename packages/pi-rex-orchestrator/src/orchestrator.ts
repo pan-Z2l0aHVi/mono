@@ -15,6 +15,7 @@
  */
 
 import { randomUUID } from 'node:crypto'
+import { basename } from 'node:path'
 
 import {
   cleanupWorktree,
@@ -35,7 +36,7 @@ import type { ExtensionContext, PiExecOptions, PiToolDefinition, PiToolResult } 
 import { auditProfileArgs, resolveExecutable, type AgentProfile, type RexOrchestratorConfig } from './profiles'
 import { coordinatorGuidelines, renderCoordinatorSection, renderWelcome } from './prompt'
 import type { RexAdapter } from './rex-adapter'
-import { executeRexCli } from './rex-cli'
+import { DEFAULT_WORKER_AGENT_BINARIES, executeRexCli } from './rex-cli'
 import { parseRexEventLine } from './rex-events'
 import type { WorkerRegistry } from './state-machine'
 
@@ -103,6 +104,23 @@ function shortId(): string {
   return randomUUID().slice(0, 8)
 }
 
+/** profile binary 统一按 basename 纳入路由护栏；损坏或空值降级跳过，不能阻断激活。 */
+function workerAgentBinaries(profiles: ReadonlyMap<string, AgentProfile>): ReadonlySet<string> {
+  const binaries = new Set(DEFAULT_WORKER_AGENT_BINARIES)
+  for (const profile of profiles.values()) {
+    try {
+      if (typeof profile.binary !== 'string') continue
+      const binary = profile.binary.trim()
+      if (binary === '') continue
+      const name = basename(binary)
+      if (name !== '') binaries.add(name)
+    } catch {
+      continue
+    }
+  }
+  return binaries
+}
+
 /** 从 headless events.jsonl 尾部提取 agent session id（claude result / codex 线程 id）。 */
 export function extractSessionId(eventsTail: string | undefined): string | undefined {
   if (!eventsTail) return undefined
@@ -122,6 +140,7 @@ export function extractSessionId(eventsTail: string | undefined): string | undef
 
 export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dispose(): void } {
   const { adapter, registry, profiles } = deps
+  const rexCliWorkerAgentBinaries = workerAgentBinaries(profiles)
   let active = true
   let store: HandoffStore | undefined
   let registryRestored = false
@@ -473,7 +492,8 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
       return executeRexCli(params.args, {
         exec: (command, args, options) => pi.exec(command, args, options),
         bin: deps.rexBin,
-        session: deps.rexSession
+        session: deps.rexSession,
+        workerAgentBinaries: rexCliWorkerAgentBinaries
       })
     }
   })

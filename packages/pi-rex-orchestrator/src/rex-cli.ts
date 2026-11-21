@@ -15,7 +15,7 @@ const CAPTURE_MAX_BUFFER = 8 * 1024 * 1024
 const STDERR_TAIL_CHARS = 2000
 const STDOUT_MAX_LINES = 200
 const STDOUT_MAX_CHARS = 16000
-const WORKER_AGENT_BINARIES = new Set(['claude', 'codex', 'pi'])
+export const DEFAULT_WORKER_AGENT_BINARIES: readonly string[] = ['claude', 'codex', 'pi']
 const SEPARATED_COMMAND_SUBCOMMANDS = new Set(['new', 'run', 'split'])
 const GLOBAL_VALUE_FLAGS = new Set(['-S', '--server', '-C', '--client', '--color', '--timeout'])
 const GLOBAL_BOOLEAN_FLAGS = new Set(['-v', '--verbose', '--autostart'])
@@ -82,6 +82,8 @@ export interface RexCliDeps {
   exec: RexExec
   bin: string
   session: string
+  /** 内置 agent 与所有已解析 profile 的可执行 basename；命中后必须走 worker 生命周期。 */
+  workerAgentBinaries: ReadonlySet<string>
 }
 
 function text(text: string, isError = false): PiToolResult {
@@ -180,13 +182,21 @@ function commandSegment(args: readonly string[], subcommandIndex: number): reado
  * `send` / `send-key` / `block call ... write` 的文本和 `bash -lc '...'` 等
  * shell 包装不在静态检测范围，由 prompt 的硬性路由要求约束。
  */
-function rejectsWorkerAgent(args: readonly string[], subcommandIndex: number): boolean {
-  return commandSegment(args, subcommandIndex).some(token => WORKER_AGENT_BINARIES.has(basename(token)))
+function rejectsWorkerAgent(
+  args: readonly string[],
+  subcommandIndex: number,
+  workerAgentBinaries: ReadonlySet<string>
+): boolean {
+  return commandSegment(args, subcommandIndex).some(token => workerAgentBinaries.has(basename(token)))
 }
 
-function timeoutOptions(subcommand: string): PiExecOptions {
-  if (subcommand === 'send' || subcommand === 'send-key') return { timeout: 10000 }
-  if (subcommand === 'capture') return { timeout: DEFAULT_TIMEOUT_MS, maxBuffer: CAPTURE_MAX_BUFFER }
+function timeoutOptions(command: string): PiExecOptions {
+  if (command === 'send' || command === 'send-key' || command === 'block send' || command === 'block send-key') {
+    return { timeout: 10000 }
+  }
+  if (command === 'capture' || command === 'block capture') {
+    return { timeout: DEFAULT_TIMEOUT_MS, maxBuffer: CAPTURE_MAX_BUFFER }
+  }
   return { timeout: DEFAULT_TIMEOUT_MS }
 }
 
@@ -257,23 +267,23 @@ export async function executeRexCli(args: unknown, deps: RexCliDeps): Promise<Pi
 
   const discovery = singleRootDiscovery || (position !== undefined && 'discovery' in position)
   const subcommandIndex = position !== undefined && 'index' in position ? position.index : 0
-  const subcommand = args[subcommandIndex] ?? args[0]
-  if (subcommand === 'events') {
+  const effectiveCommand = sessionCommand(args, subcommandIndex)
+  if (effectiveCommand === 'events') {
     return text(
       'rex_cli 不能执行长驻的 rex events：事件流由扩展内部消费。请用 rex_inspect_output 读取 worker 输出，或依赖现有事件环。',
       true
     )
   }
-  if (!discovery && rejectsWorkerAgent(args, subcommandIndex)) {
+  if (!discovery && rejectsWorkerAgent(args, subcommandIndex, deps.workerAgentBinaries)) {
     return text(
-      'rex_cli 不能通过可启动命令的 Rex 子命令启动 claude、codex 或 pi；这个白名单只服务 worker 生命周期。请用 rex_spawn_agent 派生 worker。',
+      'rex_cli 不能通过可启动命令的 Rex 子命令启动内置 agent（claude、codex、pi）或自定义 profile 的 agent；这些 worker 必须走 rex_spawn_agent。这个白名单只服务 worker 生命周期，以保留 brief、worktree 与 registry。',
       true
     )
   }
 
   const finalArgs = discovery ? [...args] : sessionArgs(args, deps.session, subcommandIndex)
   try {
-    return renderResult(await deps.exec(deps.bin, finalArgs, timeoutOptions(subcommand)))
+    return renderResult(await deps.exec(deps.bin, finalArgs, timeoutOptions(effectiveCommand)))
   } catch (error) {
     return text(
       `rex_cli 执行失败：${error instanceof Error ? error.message : String(error)}。请根据错误修正 argv，可用 ["--help"] 自查。`,

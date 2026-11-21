@@ -146,7 +146,10 @@ function fakeGit(): (
   }
 }
 
-function makeOrchestrator(hasUI = true): {
+function makeOrchestrator(
+  hasUI = true,
+  profiles = resolveProfiles(undefined)
+): {
   mock: MockPi
   stub: AdapterStub
   registry: WorkerRegistry
@@ -158,7 +161,7 @@ function makeOrchestrator(hasUI = true): {
   const orchestrator = createOrchestrator(mock.pi, {
     adapter,
     registry,
-    profiles: resolveProfiles(undefined),
+    profiles,
     createStore: sessionId => new HandoffStore({ root: roots[roots.length - 1] ?? '', sessionId }),
     runHeadlessPath: '/ext/scripts/run-headless.mjs',
     nodePath: '/usr/local/bin/node',
@@ -214,6 +217,33 @@ describe('装配面', () => {
         args: ['window', 'ls', '-s', 'session:env'],
         options: { timeout: 15000 }
       })
+    })
+  )
+
+  it(
+    'rex_cli 将自定义 profile binary basename 注入 agent 路由护栏',
+    withTempRoot(async () => {
+      const profiles = resolveProfiles({
+        profiles: {
+          coder: { binary: '/opt/acme/coder' }
+        }
+      })
+      const { mock, dispose } = makeOrchestrator(true, profiles)
+      const rexCli = mock.tools.get('rex_cli')
+
+      const result = (await rexCli?.execute(
+        't-profile-agent',
+        { args: ['run', '--', '/opt/acme/coder', '-p', 'hi'] },
+        undefined,
+        undefined,
+        mock.ctx
+      )) as { content: Array<{ text: string }>; isError?: boolean }
+
+      expect(result.isError).toBe(true)
+      expect(result.content[0]?.text).toContain('自定义 profile')
+      expect(result.content[0]?.text).toContain('rex_spawn_agent')
+      expect(mock.execCalls).toEqual([])
+      dispose()
     })
   )
 

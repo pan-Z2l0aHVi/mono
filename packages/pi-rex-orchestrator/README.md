@@ -22,7 +22,7 @@
 | `rex_inspect_changes` | 以派生时 `base_commit` 为基线的全量验收（Committed + Staged + Unstaged + Untracked 预览）。                                   |
 | `rex_close_worker`    | 关闭 worker；干净且已合并才自动清理——干净但未合并时弹窗问是否代为 `git merge --no-ff`，同意则合并后收尾，拒绝则保留并给命令。 |
 
-`rex_cli` 的语法以安装的 Rex 为准：先调 `rex_cli(["__internal", "skill"])` 或 `rex_cli(["--help"])` 自查；命令失败时直接按回传的 stderr 修正 argv。它拒绝长驻 `events`（扩展内部已消费事件流），也拒绝经 `new` / `run` / `split` / `window new` 的命令段或 `do` 启动 `claude` / `codex` / `pi`（这类工作必须走 `rex_spawn_agent`）；不得改用 `send` / `send-key` / `block call ... write` 的文本或 shell 包装绕过。`wait` 与事件型 `do` 共用 15s 默认超时，超时会返回 `[killed]`；长等待请改用心跳式 `capture` 轮询。仓库代码改动派 worker；只读检查和一次性 Rex 操作直接走 `rex_cli`，不要把 `rex run` 当作改仓库代码的常规通道。`bash` / `write` / `edit` 等文件写工具仍被硬拦。
+`rex_cli` 的语法以安装的 Rex 为准：先调 `rex_cli(["__internal", "skill"])` 或 `rex_cli(["--help"])` 自查；命令失败时直接按回传的 stderr 修正 argv。它拒绝长驻 `events`（扩展内部已消费事件流），也拒绝经 `new` / `run` / `split` / `window new` 的命令段或 `do` 启动 `claude` / `codex` / `pi` 或用户配置 profile 的 binary（这类工作必须走 `rex_spawn_agent`）；不得改用 `send` / `send-key` / `block call ... write` 的文本或 shell 包装绕过。`wait` 与事件型 `do` 共用 15s 默认超时，超时会返回 `[killed]`；长等待请改用心跳式 `capture` 轮询。仓库代码改动派 worker；只读检查和一次性 Rex 操作直接走 `rex_cli`，不要把 `rex run` 当作改仓库代码的常规通道。`bash` / `write` / `edit` 等文件写工具仍被硬拦。
 
 ## 命令
 
