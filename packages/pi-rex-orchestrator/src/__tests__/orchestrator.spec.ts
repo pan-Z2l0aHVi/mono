@@ -14,6 +14,7 @@ import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { HandoffStore } from '../handoff-store'
 import { createOrchestrator } from '../orchestrator'
 import { resolveProfiles } from '../profiles'
+import { CODE_CHANGE_ROUTE_RULE, DIRECT_SCOPE_RULE } from '../prompt'
 import type { RexAdapter } from '../rex-adapter'
 import { WorkerRegistry } from '../state-machine'
 
@@ -269,7 +270,6 @@ describe('装配面', () => {
       await new Promise(resolve => setTimeout(resolve, 0))
       const welcomes = mock.messages.filter(message => message.content.includes('rex-orchestrator-welcome'))
       expect(welcomes).toHaveLength(1)
-      expect(welcomes[0]?.content).toContain('rex-orchestrator-welcome')
       expect(welcomes[0]?.content).toContain('直接做')
       expect(welcomes[0]?.content).toContain('派一个 claude worker')
       expect(welcomes[0]?.content).toContain('代码改动派 worker')
@@ -337,13 +337,11 @@ describe('装配面', () => {
       expect(section).toContain('合并与发布按该仓库自身流程')
       expect(section.match(/^## 直接（rex_cli）$/gm)).toHaveLength(1)
       expect(section.match(/^## 派发（rex_spawn_agent）$/gm)).toHaveLength(1)
-      expect(section).not.toContain('只读检查 / 一次性 Rex 操作直接走 rex_cli')
-      expect(section).not.toContain('需要人工修改时，用 rex_cli 操作 Rex tab')
-      expect(options.promptGuidelines).toHaveLength(2)
+      expect(section).toContain(DIRECT_SCOPE_RULE)
+      expect(section).toContain(CODE_CHANGE_ROUTE_RULE)
       expect(guidelines).toContain('Check every action against one binary first')
+      expect(guidelines).toContain('read-only or non-code-changing work')
       expect(guidelines).toContain('Route agent launches through rex_spawn_agent')
-      expect(guidelines).not.toContain('Never use rex run as a normal channel')
-      expect(guidelines).not.toContain('Never bypass agent routing')
       expect(options.systemPrompt).toBe('original')
     })
   )
