@@ -134,6 +134,9 @@ function fakeGit(): (
   options?: Record<string, unknown>
 ) => Promise<{ stdout: string; stderr: string; code: number; killed: boolean; truncated: boolean }> {
   return async (command, args) => {
+    // 默认宿主没有 env(1)：既有关闭用例继续走 HEAD/baseRef fail-closed 路径。
+    if (command === 'env')
+      return { stdout: '', stderr: 'env: command not found', code: 127, killed: false, truncated: false }
     // 常态：主仓没有进行中的合并；冲突场景由各用例显式覆盖为 code 0。
     if (command === 'git' && args[0] === 'rev-parse' && args.includes('MERGE_HEAD'))
       return { stdout: '', stderr: '', code: 1, killed: false, truncated: false }
@@ -334,7 +337,7 @@ describe('装配面', () => {
       expect(section).toContain('拒绝点')
       expect(section).toContain('claude、codex')
       expect(section).toContain('仓库代码改动一律派 worker')
-      expect(section).toContain('合并与发布按该仓库自身流程')
+      expect(section).toContain('合并与发布优先按该仓库自身流程')
       expect(section.match(/^## 直接（rex_cli）$/gm)).toHaveLength(1)
       expect(section.match(/^## 派发（rex_spawn_agent）$/gm)).toHaveLength(1)
       expect(section).toContain(DIRECT_SCOPE_RULE)
@@ -574,9 +577,9 @@ describe('spawn 与投递', () => {
   )
 })
 
-describe('关闭与合并', () => {
-  /** 构造带自定义 git fake 的关闭/合并用装配；worker 预置为未合并的 worktree 模式。 */
-  function makeMergeOrchestrator(exec: (command: string, args: string[]) => Promise<MockExecResult>): {
+describe('关闭、合并与内容落地', () => {
+  /** 构造带自定义 git fake 的关闭装配；worker 预置为未合并的 worktree 模式。 */
+  function makeCloseOrchestrator(exec: (command: string, args: string[]) => Promise<MockExecResult>): {
     mock: MockPi
     stub: AdapterStub
     registry: WorkerRegistry
@@ -613,20 +616,19 @@ describe('关闭与合并', () => {
     return { mock, stub, registry, orchestrator }
   }
 
-  const closeWorker = (mock: MockPi) =>
+  const closeWorker = (mock: MockPi, workerId = 'claude-1') =>
     mock.tools
       .get('rex_close_worker')
-      ?.execute('t0', { worker_id: 'claude-1' }, undefined, undefined, mock.ctx) as Promise<{
+      ?.execute('t0', { worker_id: workerId }, undefined, undefined, mock.ctx) as Promise<{
       content: Array<{ text: string }>
       isError?: boolean
     }>
 
   it(
-    '干净但未合并的 worktree：用户确认后代为 merge 并自动清理（用户决议：merge 需 ask user 同意）',
+    '干净但未确认落地：用户确认后按无 PR 流程本地 merge 并自动清理',
     withTempRoot(async () => {
-      // 状态化 git：merge 之前分支不在 --merged 列表，merge 之后在。
       let mergedIntoMain = false
-      const { mock, registry, orchestrator } = makeMergeOrchestrator(async (command, args) => {
+      const { mock, registry, orchestrator } = makeCloseOrchestrator(async (command, args) => {
         if (command === 'git' && args[0] === 'merge') {
           mergedIntoMain = true
           return { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
@@ -645,24 +647,23 @@ describe('关闭与合并', () => {
 
       const result = await closeWorker(mock)
 
-      expect(mock.ctx.confirmations[0]?.title).toContain('代为合并 pi-orch/review1/w-1')
+      expect(mock.ctx.confirmations[0]?.title).toContain('本地合并 pi-orch/review1/w-1')
+      expect(mock.ctx.confirmations[0]?.message).toContain('本仓应走 PR + squash')
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
       expect(argJoins.some(args => args === 'merge --no-ff pi-orch/review1/w-1')).toBe(true)
       expect(result.isError).toBeFalsy()
-      expect(result.content[0]?.text).toContain('已代为合并并清理')
+      expect(result.content[0]?.text).toContain('已按无 PR 流程本地合并并清理')
       expect(argJoins.some(args => args === 'branch -d pi-orch/review1/w-1')).toBe(true)
-      // 清理完成解除 registry 跟踪：重复 /rex-cleanup 不会再对它跑清理。
       expect(registry.get('claude-1')?.worktree).toBeUndefined()
       orchestrator.dispose()
     })
   )
 
   it(
-    'merge 失败但 MERGE_HEAD 指向别的分支（弹窗期间用户自己开的合并）时不 abort（codex exec 六轮 #1）',
+    'merge 失败但 MERGE_HEAD 指向别的分支时不 abort',
     withTempRoot(async () => {
       let mergeAttempted = false
-      const { mock, orchestrator } = makeMergeOrchestrator(async (command, args) => {
-        // 预检时无合并；merge 失败后主仓有合并，但 MERGE_HEAD 指向别人的分支。
+      const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
         if (command === 'git' && args[0] === 'rev-parse' && args.includes('MERGE_HEAD')) {
           return { stdout: 'a'.repeat(40), stderr: '', code: mergeAttempted ? 0 : 1, killed: false, truncated: false }
         }
@@ -675,7 +676,6 @@ describe('关闭与合并', () => {
 
       const result = await closeWorker(mock)
 
-      // 归属不明是常态而非例外：一律不自动 abort，处置命令交还用户。
       expect(result.content[0]?.text).toContain('主仓当前存在进行中的合并')
       expect(result.content[0]?.text).toContain('未执行 git merge --abort')
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
@@ -685,11 +685,10 @@ describe('关闭与合并', () => {
   )
 
   it(
-    'merge 失败且主仓有进行中的合并时绝不自动 abort（重设计：处置交还用户）（codex exec 七轮 #1）',
+    'merge 失败且主仓有进行中的合并时绝不自动 abort',
     withTempRoot(async () => {
       let failMergeOnce = true
-      const { mock, orchestrator } = makeMergeOrchestrator(async (command, args) => {
-        // 主仓本来没有合并（预检通过），merge 失败后 MERGE_HEAD 出现。
+      const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
         if (command === 'git' && args[0] === 'rev-parse' && args.includes('MERGE_HEAD')) {
           return { stdout: 'b'.repeat(40), stderr: '', code: failMergeOnce ? 1 : 0, killed: false, truncated: false }
         }
@@ -704,22 +703,18 @@ describe('关闭与合并', () => {
 
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
       expect(argJoins.some(args => args === 'merge --no-ff pi-orch/review1/w-1')).toBe(true)
-      // 归属无法证明（弹窗窗口内用户可发起同分支合并），自动 abort 有毁掉用户
-      // 合并的真实风险：只诊断，不处置。
       expect(argJoins.some(args => args === 'merge --abort')).toBe(false)
       expect(result.content[0]?.text).toContain('主仓当前存在进行中的合并')
       expect(result.content[0]?.text).toContain('未执行 git merge --abort')
-      expect(result.content[0]?.text).toContain('请人工确认主仓状态后自行执行 git merge --abort')
-      // worktree 不动，留给用户处理。
       expect(argJoins.some(args => args.startsWith('worktree remove'))).toBe(false)
       orchestrator.dispose()
     })
   )
 
   it(
-    '合并状态探针非 0 非 1（如仓库损坏）时 fail closed，不发起代合并（codex exec 七轮 #1）',
+    '合并状态探针非 0 非 1 时 fail closed，不发起代合并',
     withTempRoot(async () => {
-      const { mock, orchestrator } = makeMergeOrchestrator(async (command, args) => {
+      const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
         if (command === 'git' && args[0] === 'rev-parse' && args.includes('MERGE_HEAD')) {
           return { stdout: '', stderr: 'fatal: not a git repository', code: 128, killed: false, truncated: false }
         }
@@ -731,27 +726,22 @@ describe('关闭与合并', () => {
       expect(result.content[0]?.text).toContain('无法确认主仓合并状态（rev-parse exit 128）')
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
       expect(mock.ctx.confirmations).toHaveLength(0)
-      expect(argJoins.some(args => args.startsWith('merge'))).toBe(false)
+      expect(argJoins.some(args => args.startsWith('merge '))).toBe(false)
       orchestrator.dispose()
     })
   )
 
   it(
-    '确认期间主仓 HEAD 变化（用户切了分支）时拒绝在非预期分支上代合并（codex exec 七轮 #1）',
+    '确认期间主仓 HEAD 变化时拒绝在非预期分支上代合并',
     withTempRoot(async () => {
       let headProbeCount = 0
-      const { mock, orchestrator } = makeMergeOrchestrator(async (command, args) => {
-        // 只对 HEAD 探针计数：cleanupWorktree 的分支探针（refs/heads/...）交给 fakeGit。
-        if (
-          command === 'git' &&
-          args[0] === 'rev-parse' &&
-          !args.includes('MERGE_HEAD') &&
-          !args.some(arg => arg.startsWith('refs/heads/'))
-        ) {
+      const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
+        if (command === 'git' && args[0] === 'rev-parse' && args[1] === 'HEAD') {
           headProbeCount += 1
-          // 确认前 HEAD 与确认后 HEAD 不同：用户在弹窗期间切了分支。
+          // 第一次来自 contentLanding 的 fail-closed HEAD/baseRef 对照；后两次是
+          // merge 确认前后的目标捕获。只在最后两次之间制造变化。
           return {
-            stdout: headProbeCount <= 1 ? 'b'.repeat(40) : 'c'.repeat(40),
+            stdout: `${headProbeCount <= 2 ? 'b' : 'c'.repeat(40)}`.padEnd(40, 'b'),
             stderr: '',
             code: 0,
             killed: false,
@@ -765,16 +755,16 @@ describe('关闭与合并', () => {
 
       expect(result.content[0]?.text).toContain('确认期间主仓目标发生变化')
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
-      expect(argJoins.some(args => args.startsWith('merge'))).toBe(false)
+      expect(argJoins.some(args => args.startsWith('merge '))).toBe(false)
       orchestrator.dispose()
     })
   )
 
   it(
-    'merge 成功但 worktree remove 失败时按「清理未完」报告，不误报成合并失败（codex exec #6 二次）',
+    'merge 成功但 worktree remove 失败时如实报告清理未完',
     withTempRoot(async () => {
       let mergedIntoMain = false
-      const { mock, orchestrator } = makeMergeOrchestrator(async (command, args) => {
+      const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
         if (command === 'git' && args[0] === 'merge') {
           mergedIntoMain = true
           return { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
@@ -788,7 +778,6 @@ describe('关闭与合并', () => {
             truncated: false
           }
         }
-        // status 必须成功（干净）；worktree remove 失败 → cleanupWorktree 如实 kept。
         if (command === 'git' && args[0] === 'worktree') {
           return { stdout: '', stderr: 'git boom', code: 1, killed: false, truncated: false }
         }
@@ -797,7 +786,7 @@ describe('关闭与合并', () => {
 
       const result = await closeWorker(mock)
 
-      expect(result.content[0]?.text).toContain('合并已完成，但清理未完')
+      expect(result.content[0]?.text).toContain('本地合并已完成，但清理未完')
       expect(result.content[0]?.text).toContain('git worktree remove 失败: git boom')
       expect(result.content[0]?.text).toContain('请手动执行（已存在的步骤可跳过）')
       expect(result.content[0]?.text).not.toContain('合并失败')
@@ -806,48 +795,9 @@ describe('关闭与合并', () => {
   )
 
   it(
-    'worktree 已移除、仅分支删除失败时，补救命令可独立执行（codex exec #6 三次）',
+    '主仓本来就在合并中时不发起代合并、更不会 abort 用户的合并',
     withTempRoot(async () => {
-      let mergedIntoMain = false
-      const { mock, orchestrator } = makeMergeOrchestrator(async (command, args) => {
-        if (command === 'git' && args[0] === 'merge') {
-          mergedIntoMain = true
-          return { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
-        }
-        if (command === 'git' && args[0] === 'branch' && args[1] === '--merged') {
-          return {
-            stdout: mergedIntoMain ? `* main\n  pi-orch/review1/w-1\n` : '* main\n',
-            stderr: '',
-            code: 0,
-            killed: false,
-            truncated: false
-          }
-        }
-        // worktree remove 成功；branch -d 失败：目录已没了，只剩分支。
-        if (command === 'git' && args[0] === 'branch' && args[1] === '-d') {
-          return { stdout: '', stderr: 'branch used by worktree', code: 1, killed: false, truncated: false }
-        }
-        return fakeGit()(command, args)
-      })
-
-      const result = await closeWorker(mock)
-
-      // worktree 已删只剩分支：按实际状态报告，不给「worktree 保留」与合回命令。
-      expect(result.content[0]?.text).toContain('分支删除失败')
-      expect(result.content[0]?.text).toContain('worktree 已移除，但分支清理失败')
-      // 补救命令行保持可复制执行：跳过条件单独成行，不粘在命令参数里。
-      expect(result.content[0]?.text).toContain('请手动执行（已存在的步骤可跳过）')
-      expect(result.content[0]?.text).toContain('git worktree remove "/wt-path"')
-      expect(result.content[0]?.text).toContain('git branch -d pi-orch/review1/w-1')
-      expect(result.content[0]?.text).not.toContain('&&')
-      orchestrator.dispose()
-    })
-  )
-
-  it(
-    '主仓本来就在合并中（MERGE_HEAD 存在）时不发起代合并、更不会 abort 用户的合并（codex exec 五轮 #1）',
-    withTempRoot(async () => {
-      const { mock, orchestrator } = makeMergeOrchestrator(async (command, args) => {
+      const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
         if (command === 'git' && args[0] === 'rev-parse' && args.includes('MERGE_HEAD')) {
           return { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
         }
@@ -856,23 +806,21 @@ describe('关闭与合并', () => {
 
       const result = await closeWorker(mock)
 
-      // 预检不通过：不弹合并确认、不执行 merge、绝不触碰用户的合并状态。
       expect(mock.ctx.confirmations).toHaveLength(0)
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
-      expect(argJoins.some(args => args.startsWith('merge'))).toBe(false)
+      expect(argJoins.some(args => args.startsWith('merge '))).toBe(false)
       expect(result.content[0]?.text).toContain('主仓正处于合并中')
       orchestrator.dispose()
     })
   )
 
   it(
-    'merge 未开始即失败（脏主仓等）时不乱开 abort 药方，如实报告原因（codex exec 四轮 #2）',
+    'merge 未开始即失败时不乱开 abort 药方，如实报告原因',
     withTempRoot(async () => {
-      const { mock, orchestrator } = makeMergeOrchestrator(async (command, args) => {
+      const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
         if (command === 'git' && args[0] === 'merge' && args[1] === '--no-ff') {
           return { stdout: '', stderr: 'local changes would be overwritten', code: 1, killed: false, truncated: false }
         }
-        // 没有进入合并状态：MERGE_HEAD 不存在。
         if (command === 'git' && args[0] === 'rev-parse' && args.includes('MERGE_HEAD')) {
           return { stdout: '', stderr: '', code: 1, killed: false, truncated: false }
         }
@@ -881,47 +829,20 @@ describe('关闭与合并', () => {
 
       const result = await closeWorker(mock)
 
-      expect(result.content[0]?.text).toContain('合并未开始即失败')
+      expect(result.content[0]?.text).toContain('本地合并未开始即失败')
       expect(result.content[0]?.text).toContain('local changes would be overwritten')
-      // 合并根本没开始就不能执行也不该建议 merge --abort。
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
       expect(argJoins.some(args => args === 'merge --abort')).toBe(false)
-      expect(result.content[0]?.text).not.toContain('请立即人工执行 git merge --abort')
       orchestrator.dispose()
     })
   )
 
   it(
-    '无需代 merge（分支已合并）时 worktree 已删、branch -d 失败：提示按实际状态给（codex exec 四轮 #1）',
-    withTempRoot(async () => {
-      const { mock, orchestrator } = makeMergeOrchestrator(async (command, args) => {
-        // 分支本就已在 --merged 列表：不会走代合并确认。
-        if (command === 'git' && args[0] === 'branch' && args[1] === '--merged') {
-          return { stdout: `* main\n  pi-orch/review1/w-1\n`, stderr: '', code: 0, killed: false, truncated: false }
-        }
-        if (command === 'git' && args[0] === 'branch' && args[1] === '-d') {
-          return { stdout: '', stderr: 'branch used by worktree', code: 1, killed: false, truncated: false }
-        }
-        return fakeGit()(command, args)
-      })
-
-      const result = await closeWorker(mock)
-
-      // 不能声称「worktree 保留」，也不能给合回命令（分支已合并）。
-      expect(result.content[0]?.text).toContain('分支删除失败')
-      expect(result.content[0]?.text).not.toContain('worktree 保留')
-      expect(result.content[0]?.text).not.toContain('合回命令')
-      expect(result.content[0]?.text).toContain('git branch -d pi-orch/review1/w-1')
-      orchestrator.dispose()
-    })
-  )
-  it(
-    '确认期间切到指向同一 commit 的另一分支时同样拒绝（symbolic-ref 身份校验）（codex exec 八轮 #1）',
+    '确认期间切到指向同一 commit 的另一分支时同样拒绝',
     withTempRoot(async () => {
       let refProbeCount = 0
-      const { mock, orchestrator } = makeMergeOrchestrator(async (command, args) => {
-        // 两次 symbolic-ref 探针返回不同分支；rev-parse HEAD 走 fakeGit 保持同一 SHA。
-        if (command === 'git' && args[0] === 'symbolic-ref') {
+      const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
+        if (command === 'git' && args[0] === 'symbolic-ref' && args.at(-1) === 'HEAD') {
           refProbeCount += 1
           return {
             stdout: refProbeCount <= 1 ? 'refs/heads/main' : 'refs/heads/other',
@@ -938,7 +859,261 @@ describe('关闭与合并', () => {
 
       expect(result.content[0]?.text).toContain('确认期间主仓目标发生变化')
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
-      expect(argJoins.some(args => args.startsWith('merge'))).toBe(false)
+      expect(argJoins.some(args => args.startsWith('merge '))).toBe(false)
+      orchestrator.dispose()
+    })
+  )
+
+  it(
+    '内容已 squash 落地：自动清理并说明无需确认',
+    withTempRoot(async () => {
+      const { mock, registry, orchestrator } = makeCloseOrchestrator(async (command, args) => {
+        if (command === 'git' && args[0] === 'merge-base') {
+          return { stdout: `${'a'.repeat(40)}\n`, stderr: '', code: 0, killed: false, truncated: false }
+        }
+        if (command === 'git' && args[0] === 'diff') {
+          return { stdout: 'diff --git a/a.txt b/a.txt\n', stderr: '', code: 0, killed: false, truncated: false }
+        }
+        if (command === 'git' && args[0] === 'apply') {
+          return { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
+        }
+        if (command === 'git' && args[0] === 'branch' && args[1] === '-d') {
+          return { stdout: '', stderr: 'not fully merged', code: 1, killed: false, truncated: false }
+        }
+        return fakeGit()(command, args)
+      })
+
+      const result = await closeWorker(mock)
+
+      expect(mock.ctx.confirmations).toHaveLength(0)
+      const argJoins = mock.execCalls.map(call => call.args.join(' '))
+      expect(result.isError).toBeFalsy()
+      expect(result.content[0]?.text).toContain('内容已在 main 中（squash 合并），因此无需确认')
+      expect(argJoins.some(args => args === 'branch -D pi-orch/review1/w-1')).toBe(true)
+      expect(registry.get('claude-1')?.worktree).toBeUndefined()
+      orchestrator.dispose()
+    })
+  )
+
+  it(
+    '内容未落地：close 输出仓库流程、可选本地 merge 与 force 废弃，拒绝本地 merge 后不删除',
+    withTempRoot(async () => {
+      const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
+        if (command === 'git' && args[0] === 'merge-base') {
+          return { stdout: `${'a'.repeat(40)}\n`, stderr: '', code: 0, killed: false, truncated: false }
+        }
+        if (command === 'git' && args[0] === 'diff') {
+          return { stdout: 'diff --git a/a.txt b/a.txt\n', stderr: '', code: 0, killed: false, truncated: false }
+        }
+        if (command === 'git' && args[0] === 'apply') {
+          return { stdout: '', stderr: 'patch does not apply', code: 1, killed: false, truncated: false }
+        }
+        return fakeGit()(command, args)
+      })
+      mock.ctx.ui.confirm = async (title, message) => {
+        mock.ctx.confirmations.push({ title, message })
+        return false
+      }
+
+      const result = await closeWorker(mock)
+
+      const text = result.content[0]?.text ?? ''
+      expect(text).toContain('分支内容不在 main 中')
+      expect(text).toContain('按该仓库自身流程合并')
+      expect(text).toContain('无 PR 流程时可由我本地 merge')
+      expect(text).toContain('确认废弃 → 用 force: true 清理')
+      expect(text).toContain('请现在二选一')
+      expect(text).not.toContain('git merge --no-ff')
+      expect(mock.ctx.confirmations[0]?.message).toContain('本仓应走 PR + squash')
+      const argJoins = mock.execCalls.map(call => call.args.join(' '))
+      expect(argJoins.some(args => args.startsWith('merge '))).toBe(false)
+      expect(argJoins.some(args => args.startsWith('worktree remove'))).toBe(false)
+      expect(argJoins.some(args => args.startsWith('branch -D'))).toBe(false)
+      orchestrator.dispose()
+    })
+  )
+
+  it(
+    '内容落地无法判定：给出命令与 stderr 摘要，并覆盖 PR、本地 merge 与 force 路径',
+    withTempRoot(async () => {
+      const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
+        if (command === 'git' && args[0] === 'merge-base') {
+          return { stdout: `${'a'.repeat(40)}\n`, stderr: '', code: 0, killed: false, truncated: false }
+        }
+        if (command === 'git' && args[0] === 'diff') {
+          return { stdout: '', stderr: 'fatal: unable to read tree', code: 128, killed: false, truncated: false }
+        }
+        return fakeGit()(command, args)
+      })
+      mock.ctx.ui.confirm = async (title, message) => {
+        mock.ctx.confirmations.push({ title, message })
+        return false
+      }
+
+      const result = await closeWorker(mock)
+
+      const text = result.content[0]?.text ?? ''
+      expect(text).toContain('无法自动判定分支内容是否已在 main 中')
+      expect(text).toContain('git diff --binary')
+      expect(text).toContain('fatal: unable to read tree')
+      expect(text).toContain('按该仓库自身流程合并')
+      expect(text).toContain('无 PR 流程时可由我本地 merge')
+      expect(text).toContain('确认内容已在 main → force: true')
+      expect(text).toContain('确认废弃 → 用 force: true 清理')
+      expect(text).toContain('请现在选择（三选一）')
+      expect(text).not.toContain('git merge --no-ff')
+      const argJoins = mock.execCalls.map(call => call.args.join(' '))
+      expect(argJoins.some(args => args.startsWith('merge '))).toBe(false)
+      expect(argJoins.some(args => args.startsWith('worktree remove'))).toBe(false)
+      expect(argJoins.some(args => args.startsWith('branch -D'))).toBe(false)
+      orchestrator.dispose()
+    })
+  )
+
+  it(
+    'env-capable 包装在主仓 HEAD 落后于 baseRef 时仍能识别 squash 落地',
+    withTempRoot(async () => {
+      const ok = { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
+      const { mock, registry, orchestrator } = makeCloseOrchestrator(async (command, args) => {
+        if (command === 'env' && args.length === 1 && args[0] === 'true') return ok
+        if (command === 'env') {
+          if (args[1] !== 'git') return { ...ok, stderr: 'unexpected env arguments', code: 126 }
+          const gitArgs = args.slice(2)
+          if (gitArgs[0] === 'read-tree' && gitArgs[1] === 'origin/main') return ok
+          if (gitArgs[0] === 'apply' && gitArgs.includes('--cached')) return ok
+          return { ...ok, stderr: 'unexpected env git arguments', code: 1 }
+        }
+        if (command === 'git' && args[0] === 'rev-parse') {
+          if (args.includes('MERGE_HEAD')) return { ...ok, code: 1 }
+          if (args.some(arg => arg.startsWith('refs/heads/'))) return ok
+          if (args[1] === 'HEAD') return { ...ok, stdout: `${'1'.repeat(40)}\n` }
+          if (args[1] === 'origin/main') return { ...ok, stdout: `${'2'.repeat(40)}\n` }
+          if (args.includes('refs/remotes/origin/HEAD')) return ok
+        }
+        if (command === 'git' && args[0] === 'symbolic-ref') {
+          return { ...ok, stdout: 'refs/remotes/origin/main\n' }
+        }
+        if (command === 'git' && args[0] === 'status') return ok
+        if (command === 'git' && args[0] === 'branch' && args[1] === '--merged') {
+          return { ...ok, stdout: '* main\n' }
+        }
+        if (command === 'git' && args[0] === 'merge-base') return { ...ok, stdout: `${'a'.repeat(40)}\n` }
+        if (command === 'git' && args[0] === 'diff') {
+          return { ...ok, stdout: 'diff --git a/a.txt b/a.txt\n' }
+        }
+        if (command === 'git' && (args[0] === 'read-tree' || args[0] === 'apply')) {
+          return { ...ok, stderr: 'env prefix was lost', code: 1 }
+        }
+        if (command === 'git' && (args[0] === 'worktree' || args[0] === 'branch')) return ok
+        return fakeGit()(command, args)
+      })
+
+      const result = await closeWorker(mock)
+
+      expect(result.content[0]?.text).toContain('内容已在 origin/main 中（squash 合并），因此无需确认')
+      const envCalls = mock.execCalls.filter(call => call.command === 'env')
+      expect(envCalls.filter(call => call.args.join(' ') === 'true')).toHaveLength(1)
+      const readTree = envCalls.find(call => call.args[1] === 'git' && call.args[2] === 'read-tree')
+      expect(readTree?.args[0]).toMatch(/^GIT_INDEX_FILE=\/.*pi-rex-landing-/)
+      expect(readTree?.args.slice(2)).toEqual(['read-tree', 'origin/main'])
+      expect(readTree?.options).toEqual({ cwd: '/repo' })
+      const apply = envCalls.find(call => call.args[1] === 'git' && call.args[2] === 'apply')
+      expect(apply?.args.slice(3)).toContain('--cached')
+      expect(
+        mock.execCalls.some(
+          call =>
+            call.command === 'git' &&
+            (call.args[0] === 'read-tree' || call.args[0] === 'apply') &&
+            (call.args[1] === 'origin/main' || call.args.includes('--cached'))
+        )
+      ).toBe(false)
+      expect(registry.get('claude-1')?.worktree).toBeUndefined()
+      orchestrator.dispose()
+    })
+  )
+
+  it(
+    'env 命令不可用时自动 fail closed，且能力探测只执行一次',
+    withTempRoot(async () => {
+      const ok = { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
+      let envProbeCalls = 0
+      const { mock, registry, orchestrator } = makeCloseOrchestrator(async (command, args) => {
+        if (command === 'env' && args.length === 1 && args[0] === 'true') {
+          envProbeCalls += 1
+          return { ...ok, stderr: 'env: command not found', code: 127 }
+        }
+        if (command === 'env') return ok
+        if (command === 'git' && args[0] === 'rev-parse') {
+          if (args.includes('MERGE_HEAD')) return { ...ok, code: 1 }
+          if (args.some(arg => arg.startsWith('refs/heads/'))) return ok
+          if (args[1] === 'HEAD') return { ...ok, stdout: `${'1'.repeat(40)}\n` }
+          if (args[1] === 'origin/main') return { ...ok, stdout: `${'2'.repeat(40)}\n` }
+          if (args.includes('refs/remotes/origin/HEAD')) return ok
+        }
+        if (command === 'git' && args[0] === 'symbolic-ref') {
+          return { ...ok, stdout: 'refs/remotes/origin/main\n' }
+        }
+        if (command === 'git' && args[0] === 'status') return ok
+        if (command === 'git' && args[0] === 'branch' && args[1] === '--merged') {
+          return { ...ok, stdout: '* main\n' }
+        }
+        return fakeGit()(command, args)
+      })
+      mock.ctx.ui.confirm = async (title, message) => {
+        mock.ctx.confirmations.push({ title, message })
+        return false
+      }
+
+      const first = await closeWorker(mock)
+      registry.register({
+        workerId: 'claude-2',
+        agent: 'claude',
+        mode: 'interactive',
+        label: 'claude-2',
+        blockId: 'block:B',
+        turn: 1,
+        cwd: '/wt-path-2',
+        baseCommit: null,
+        baseDirty: [],
+        worktree: { path: '/wt-path-2', branch: 'pi-orch/review1/w-2' },
+        mainCwd: '/repo',
+        paused: false
+      })
+      const second = await closeWorker(mock, 'claude-2')
+
+      expect(first.content[0]?.text).toContain('无法自动判定分支内容是否已在 origin/main 中')
+      expect(second.content[0]?.text).toContain('无法自动判定分支内容是否已在 origin/main 中')
+      expect(envProbeCalls).toBe(1)
+      expect(mock.execCalls.filter(call => call.command === 'env' && call.args.length > 1)).toHaveLength(0)
+      const argJoins = mock.execCalls.map(call => call.args.join(' '))
+      expect(argJoins.some(args => args.startsWith('worktree remove'))).toBe(false)
+      expect(argJoins.some(args => args.startsWith('branch -d') || args.startsWith('branch -D'))).toBe(false)
+      expect(registry.get('claude-1')?.worktree).toBeDefined()
+      expect(registry.get('claude-2')?.worktree).toBeDefined()
+      orchestrator.dispose()
+    })
+  )
+
+  it(
+    '祖先链已合并但 branch -d 失败：如实报告分支清理失败与手动补救',
+    withTempRoot(async () => {
+      const { mock, orchestrator } = makeCloseOrchestrator(async (command, args) => {
+        if (command === 'git' && args[0] === 'branch' && args[1] === '--merged') {
+          return { stdout: `* main\n  pi-orch/review1/w-1\n`, stderr: '', code: 0, killed: false, truncated: false }
+        }
+        if (command === 'git' && args[0] === 'branch' && args[1] === '-d') {
+          return { stdout: '', stderr: 'branch used by worktree', code: 1, killed: false, truncated: false }
+        }
+        return fakeGit()(command, args)
+      })
+
+      const result = await closeWorker(mock)
+
+      const text = result.content[0]?.text ?? ''
+      expect(text).toContain('分支清理失败')
+      expect(text).toContain('worktree 目录已移除')
+      expect(text).toContain('请手动执行（已存在的步骤可跳过）')
+      expect(text).toContain('git branch -d pi-orch/review1/w-1')
       orchestrator.dispose()
     })
   )
@@ -946,7 +1121,7 @@ describe('关闭与合并', () => {
   it(
     '关闭顺序：retired 先关且成功即出列，失败整体中止；重试不重复关闭（codex exec 八轮 #2）',
     withTempRoot(async () => {
-      const { mock, stub, registry, orchestrator } = makeMergeOrchestrator(fakeGit())
+      const { mock, stub, registry, orchestrator } = makeCloseOrchestrator(fakeGit())
       const worker = registry.get('claude-1')
       worker?.retiredBlockIds.push('block:R')
       stub.failBlockClose = true
@@ -972,7 +1147,7 @@ describe('关闭与合并', () => {
   it(
     'Block 关不掉就整体中止：不 markClosed、不动 worktree（codex exec 七轮 #2）',
     withTempRoot(async () => {
-      const { mock, stub, registry, orchestrator } = makeMergeOrchestrator(fakeGit())
+      const { mock, stub, registry, orchestrator } = makeCloseOrchestrator(fakeGit())
       stub.failBlockClose = true
 
       const result = await closeWorker(mock)
@@ -980,7 +1155,7 @@ describe('关闭与合并', () => {
       expect(result.isError).toBe(true)
       expect(result.content[0]?.text).toContain('Block block:A 关闭失败')
       expect(result.content[0]?.text).toContain('保持原状')
-      // 关闭失败路径绝不触碰 worktree，也不会走到代 merge 确认。
+      // 关闭失败路径绝不触碰 worktree。
       const argJoins = mock.execCalls.map(call => call.args.join(' '))
       expect(argJoins.some(args => args.startsWith('worktree remove'))).toBe(false)
       expect(mock.ctx.confirmations).toHaveLength(0)
