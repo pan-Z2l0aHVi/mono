@@ -292,7 +292,8 @@ async function inspectContentLanding(
     return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(mergeBaseArgs, mergeBase) }
   }
 
-  const pathArgs = ['diff', '--name-only', '-z', mergeBaseSha, landedTip]
+  // 关闭 rename 折叠：删除侧与新增侧必须各自比较，否则只落一半的重命名可能漏检。
+  const pathArgs = ['diff', '--name-only', '-z', '--no-renames', mergeBaseSha, landedTip]
   const listed = await exec(pathArgs, { cwd: mainCwd })
   if (!complete(listed)) {
     return { landing: 'inconclusive', baseRef: resolvedBase, detail: gitFailure(pathArgs, listed) }

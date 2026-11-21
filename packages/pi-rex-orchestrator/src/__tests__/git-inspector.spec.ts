@@ -321,6 +321,30 @@ describe('worktree 生命周期（V3-04）', () => {
     expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
   })
 
+  it('重命名未完整落地时同时比较删除侧，不因新增侧同名同内容误判 landed', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('session-partial-rename', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-partial-rename`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await gitExec(['mv', 'a.txt', 'b.txt'], { cwd: wtPath })
+    await gitExec(['commit', '-m', 'rename a to b'], { cwd: wtPath })
+
+    // 主仓只新增了 b.txt，但旧路径 a.txt 仍存在；它不是这支重命名分支的完整落地。
+    await writeFile(path.join(repo, 'b.txt'), 'v1', 'utf8')
+    await gitExec(['add', 'b.txt'], { cwd: repo })
+    await gitExec(['commit', '-m', 'add b without deleting a'], { cwd: repo })
+
+    const commands: string[] = []
+    const outcome = await cleanupWorktree(trackedGit(commands), { mainCwd: repo, path: wtPath, branch })
+
+    expect(outcome).toMatchObject({ kind: 'kept', unmerged: true, landing: 'not-landed', baseRef: 'main' })
+    expect(commands.some(command => command.includes('--no-renames'))).toBe(true)
+    expect(commands.some(command => command.includes('-- :(literal)a.txt'))).toBe(true)
+    expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
+  })
+
   it('探针后分支 tip 前移时保留分支并重新判定，绝不以旧 tip 强删', async () => {
     const repo = await makeRepo()
     await commitFile(repo, 'a.txt', 'v1')
