@@ -11,18 +11,20 @@
 
 ## 工具面（model-only）
 
-| 工具                  | 作用                                                                                                                          |
-| --------------------- | ----------------------------------------------------------------------------------------------------------------------------- |
-| `ask_user`            | 弹窗向用户提问；Agent、运行模式或 Worktree 策略未指定时必须先问。                                                             |
-| `rex_cli`             | 以 argv 数组执行 Rex 操作；session 按 `--help` 白名单注入，覆盖 tab / window、pane / block、app、读取与命令控制。             |
-| `rex_spawn_agent`     | 从白名单 profile 派生 worker；长任务写入 `turn-001.brief.md`，只发短指针指令。                                                |
-| `rex_send_input`      | 追加轮次；interactive 走 `rex send` + Send-ACK，headless 走 `resume` 续跑并原子替换旧 Block。                                 |
-| `rex_list_workers`    | 列出本会话全部 worker 与状态。                                                                                                |
-| `rex_inspect_output`  | 读 worker 最新输出：handoff 优先，缺失降级 events.jsonl 尾部或屏幕 capture，绝不读旧轮次文件。                                |
-| `rex_inspect_changes` | 以派生时 `base_commit` 为基线的全量验收（Committed + Staged + Unstaged + Untracked 预览）。                                   |
-| `rex_close_worker`    | 关闭 worker；干净且已合并才自动清理——干净但未合并时弹窗问是否代为 `git merge --no-ff`，同意则合并后收尾，拒绝则保留并给命令。 |
+Rex 操作统一走 `rex_cli`；仓库代码改动统一派 worker。
 
-`rex_cli` 的语法以安装的 Rex 为准：先调 `rex_cli(["__internal", "skill"])` 或 `rex_cli(["--help"])` 自查；命令失败时直接按回传的 stderr 修正 argv。它拒绝长驻 `events`（扩展内部已消费事件流），也拒绝经 `new` / `run` / `split` / `window new` 的命令段或 `do` 启动 `claude` / `codex` / `pi` 或用户配置 profile 的 binary（这类工作必须走 `rex_spawn_agent`）；不得改用 `send` / `send-key` / `block call ... write` 的文本或 shell 包装绕过。`wait` 与事件型 `do` 共用 15s 默认超时，超时会返回 `[killed]`；长等待请改用心跳式 `capture` 轮询。仓库代码改动派 worker；只读检查和一次性 Rex 操作直接走 `rex_cli`，不要把 `rex run` 当作改仓库代码的常规通道。`bash` / `write` / `edit` 等文件写工具仍被硬拦。
+| 工具                  | 作用                                                                                                              |
+| --------------------- | ----------------------------------------------------------------------------------------------------------------- |
+| `ask_user`            | 弹窗向用户提问；Agent、运行模式或 Worktree 策略未指定时必须先问。                                                 |
+| `rex_cli`             | 以 argv 数组执行 Rex 操作；session 按 `--help` 白名单注入，覆盖 tab / window、pane / block、app、读取与命令控制。 |
+| `rex_spawn_agent`     | 从白名单 profile 派生 worker；长任务写入 `turn-001.brief.md`，只发短指针指令。                                    |
+| `rex_send_input`      | 追加轮次；interactive 走 `rex send` + Send-ACK，headless 走 `resume` 续跑并原子替换旧 Block。                     |
+| `rex_list_workers`    | 列出本会话全部 worker 与状态。                                                                                    |
+| `rex_inspect_output`  | 读 worker 最新输出：handoff 优先，缺失降级 events.jsonl 尾部或屏幕 capture，绝不读旧轮次文件。                    |
+| `rex_inspect_changes` | 以派生时 `base_commit` 为基线的全量验收（Committed + Staged + Unstaged + Untracked 预览）。                       |
+| `rex_close_worker`    | 关闭 worker；干净且已合并才自动清理，否则按仓库自身流程收尾；本地 merge 仅在用户明确允许时执行。                  |
+
+`rex_cli` 的语法以安装的 Rex 为准：先调 `rex_cli(["__internal", "skill"])` 或 `rex_cli(["--help"])` 自查，命令失败时按回传的 stderr 修正 argv。完整的命令注入、拒绝点、超时与输出边界见 [AGENTS.md](./AGENTS.md)。
 
 ## 命令
 
