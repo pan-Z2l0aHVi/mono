@@ -3,7 +3,7 @@
  *
  * 时序约定（与 Pi 宿主的真实契约对齐，见 `pi-types.ts`）：
  *
- * - `session_start`：挂只读工具白名单、启动事件环并做一次全量对账。
+ * - `session_start`：挂工具白名单、启动事件环并做一次全量对账。
  * - `before_agent_start`：写结构化 `systemPromptOptions.sections`，不覆盖整段 prompt。
  * - `tool_call`：硬拦写工具与 destructiveHint MCP 工具。
  * - `context`：折叠被更新验收取代的旧 `rex_inspect_output` 输出。
@@ -31,10 +31,11 @@ import {
 import { guardToolCall, guardToolList } from './guard'
 import type { HandoffStore } from './handoff-store'
 import { HANDOFF_ROOT } from './handoff-store'
-import type { ExtensionContext, PiToolDefinition, PiToolResult } from './pi-types'
+import type { ExtensionContext, PiExecOptions, PiToolDefinition, PiToolResult } from './pi-types'
 import { auditProfileArgs, resolveExecutable, type AgentProfile, type RexOrchestratorConfig } from './profiles'
 import { coordinatorGuidelines, renderCoordinatorSection, renderWelcome } from './prompt'
 import type { RexAdapter } from './rex-adapter'
+import { executeRexCli } from './rex-cli'
 import { parseRexEventLine } from './rex-events'
 import type { WorkerRegistry } from './state-machine'
 
@@ -49,7 +50,7 @@ export interface BridgePi {
   exec(
     command: string,
     args: string[],
-    options?: { cwd?: string; timeout?: number }
+    options?: PiExecOptions
   ): Promise<{ stdout: string; stderr: string; code: number; killed: boolean; truncated: boolean }>
   sendMessage(
     message: { customType: string; content: string; display: boolean; details?: unknown },
@@ -72,6 +73,9 @@ export interface OrchestrationDeps {
   runHeadlessPath: string
   /** node 可执行绝对路径；headless 包装用它规避非交互 shell 的 PATH 缺失。 */
   nodePath: string
+  /** rex_cli 使用的可执行与激活时目标 session。 */
+  rexBin: string
+  rexSession: string
   /** 事件环重连的基准延迟。 */
   reconnectDelayMs?: number
   /** interactive 投递的 Send-ACK 等待窗口；缺省 5 秒（设计 3.3）。测试可缩短。 */
@@ -337,6 +341,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
   function applyGuard(): void {
     const own = [
       'ask_user',
+      'rex_cli',
       'rex_spawn_agent',
       'rex_list_workers',
       'rex_send_input',
@@ -443,6 +448,35 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
   })
 
   // ---------------------------------------------------------------- tools
+
+  pi.registerTool({
+    name: 'rex_cli',
+    label: 'Rex CLI',
+    description:
+      'Operate Rex with an argv array, never a shell string. Discover the current syntax with rex_cli(["__internal","skill"]) or rex_cli(["--help"]); when a command fails, read the returned stderr and correct the argv.',
+    exposure: 'model-only',
+    executionMode: 'parallel',
+    parameters: {
+      type: 'object',
+      properties: {
+        args: {
+          type: 'array',
+          items: { type: 'string' },
+          minItems: 1,
+          description: 'Rex executable arguments; each command argument is a separate array item.'
+        }
+      },
+      required: ['args'],
+      additionalProperties: false
+    },
+    async execute(_id, params: { args: string[] }) {
+      return executeRexCli(params.args, {
+        exec: (command, args, options) => pi.exec(command, args, options),
+        bin: deps.rexBin,
+        session: deps.rexSession
+      })
+    }
+  })
 
   pi.registerTool({
     name: 'ask_user',

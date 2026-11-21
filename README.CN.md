@@ -24,15 +24,16 @@
 
 这些包只在仓库内部使用。在 workspace 应用中通过 `workspace:*` 协议添加依赖。
 
-| 包名                                                                | 提供什么                                                         |
-| ------------------------------------------------------------------- | ---------------------------------------------------------------- |
-| [`@greypan/test-kit`](./packages/test-kit/README.CN.md)             | Vitest 浏览器模式与 MSW 的测试辅助。                             |
-| [`@greypan/app-scrollbars`](./packages/app-scrollbars/README.CN.md) | workspace 应用共用的覆盖式滚动条配置。                           |
-| [`@greypan/md-to-meta`](./packages/md-to-meta/README.CN.md)         | 把 Markdown 转成结构化 meta 模块，并为每个代码围栏生成一个文件。 |
-| [`@greypan/tsconfig`](./packages/tsconfig/README.CN.md)             | 共享 TypeScript 配置。                                           |
-| [`@greypan/wuchale-vue`](./packages/wuchale-vue/README.md)          | wuchale 的 Vue 单文件组件适配器。                                |
-| [`@greypan/monorepo-kit`](./packages/monorepo-kit/README.md)        | 仓库检查、策略辅助与构建编排。                                   |
-| [`@greypan/doc-demo-kit`](./packages/doc-demo-kit)                  | React 与 Vue 文档 demo 共用的文档示例层。                        |
+| 包名                                                                       | 提供什么                                                                   |
+| -------------------------------------------------------------------------- | -------------------------------------------------------------------------- |
+| [`@greypan/test-kit`](./packages/test-kit/README.CN.md)                    | Vitest 浏览器模式与 MSW 的测试辅助。                                       |
+| [`@greypan/app-scrollbars`](./packages/app-scrollbars/README.CN.md)        | workspace 应用共用的覆盖式滚动条配置。                                     |
+| [`@greypan/md-to-meta`](./packages/md-to-meta/README.CN.md)                | 把 Markdown 转成结构化 meta 模块，并为每个代码围栏生成一个文件。           |
+| [`@greypan/tsconfig`](./packages/tsconfig/README.CN.md)                    | 共享 TypeScript 配置。                                                     |
+| [`@greypan/wuchale-vue`](./packages/wuchale-vue/README.md)                 | wuchale 的 Vue 单文件组件适配器。                                          |
+| [`@greypan/monorepo-kit`](./packages/monorepo-kit/README.md)               | 仓库检查、策略辅助与构建编排。                                             |
+| [`@greypan/pi-rex-orchestrator`](./packages/pi-rex-orchestrator/README.md) | Rex 操作者与 agent 协调者：直接控制 Rex，并派发、监督与验收 worker agent。 |
+| [`@greypan/doc-demo-kit`](./packages/doc-demo-kit)                         | React 与 Vue 文档 demo 共用的文档示例层。                                  |
 
 ## 应用
 

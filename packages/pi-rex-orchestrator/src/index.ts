@@ -43,10 +43,12 @@ export default async function rexOrchestrator(pi: ExtensionAPI): Promise<void> {
     }
   })
 
+  const rexBin = resolveRexBin(process.env)
+  const rexSession = process.env.REX_SESSION as string
   const adapter = new RexAdapter({
     exec: (command, args, options) => pi.exec(command, args, options),
-    bin: resolveRexBin(process.env),
-    session: process.env.REX_SESSION as string
+    bin: rexBin,
+    session: rexSession
   })
 
   // 返回值只服务于测试与直接装配方；清理走 `createOrchestrator` 内部的
@@ -61,6 +63,8 @@ export default async function rexOrchestrator(pi: ExtensionAPI): Promise<void> {
     // scripts/ 而非 bin/：根 .gitignore 把 bin/ 当构建产物目录排除。
     runHeadlessPath: fileURLToPath(new URL('../scripts/run-headless.mjs', import.meta.url)),
     nodePath: process.execPath,
+    rexBin,
+    rexSession,
     // 激活时扫一次交接区根目录：崩溃/断网的旧会话残留提醒（不自动删）。
     listHandoffSessions: async () =>
       readdir(HANDOFF_ROOT, { withFileTypes: true })

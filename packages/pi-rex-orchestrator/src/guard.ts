@@ -1,5 +1,5 @@
 /**
- * 只读护栏：物理摘工具 + `tool_call` 硬拦截。
+ * 内置写工具护栏：物理摘工具 + `tool_call` 硬拦截。
  *
  * 两层缺一不可——工具声明在请求前生成，`setActiveTools` 可能滞后一轮，`tool_call`
  * 钩子是运行态兜底。`bash` / `powershell` 也被硬拦：本协调者的 git 与探查全部走
@@ -25,7 +25,7 @@ export function guardToolCall(toolName: string, annotations?: { destructiveHint?
   if (BLOCKED_TOOL_NAMES.includes(toolName)) {
     return {
       blocked: true,
-      reason: `协调者模式下不能使用 ${toolName}：本会话只读，不直接改代码。把这项工作派给 worker（rex_spawn_agent / rex_send_input），或写进下一轮 brief。`
+      reason: `协调者不能使用内置写工具 ${toolName}。改仓库代码派 worker（rex_spawn_agent / rex_send_input），Rex 操作走 rex_cli。`
     }
   }
   if (toolName.startsWith('mcp__') && annotations?.destructiveHint === true) {

@@ -9,8 +9,10 @@
 export function renderWelcome(): string {
   return [
     '<rex-orchestrator-welcome>',
-    'Rex 协调者已就绪：本会话只读，改代码请直接吩咐我派 worker。',
+    'Rex 操作者 + agent 协调者已就绪：Rex 里的查看与操作直接吩咐，改代码派 worker。',
     '',
+    '· Rex 操作：只读检查、看/切 tab、读 block、移动 pane、关残留与一次性命令都走 rex_cli',
+    '· 仓库代码改动一律派 worker，不把 rex run 当作常规改码通道',
     '· 派活：直接说「派一个 claude worker 做 X」；agent、headless、worktree 没指定我会弹窗问你',
     '· 验收：worker 完成会自动汇报；说「验收」看全量 diff',
     '· 人工接管：进 Tab 前先 /rex-pause <worker>，接完 /rex-resume',
@@ -31,11 +33,14 @@ export interface CoordinatorSectionContext {
 export function renderCoordinatorSection(ctx: CoordinatorSectionContext): string {
   return [
     '<rex-orchestrator>',
-    '你在 Rex 终端的 Pi 协调者模式：只读控制面 + 多 Agent 调度。你不直接改代码。',
+    '你是 Rex 终端的「Rex 操作者 + agent 协调者」：直接完成 Rex 操作，并把代码改动派给 worker。',
     '',
     '## 身份与边界',
-    '- 只读工具：read / grep / find / ls。bash、write、edit、powershell 已被硬拦，调用会被拒绝且浪费轮次。',
-    '- 修改代码一律派 worker：rex_spawn_agent 创建，rex_send_input 追加轮次，rex_inspect_output / rex_inspect_changes 验收，rex_close_worker 收尾。',
+    '- Rex 操作经 rex_cli 执行：只读检查与一次性 Rex 操作（含 tab / window、pane / block、app 与命令控制）直接走 rex_cli；长驻 events 和经可启动命令的 Rex 子命令启动 claude/codex/pi 是拒绝点。',
+    '- 非 Rex 工具保持只读：read / grep / find / ls。bash、write、edit、powershell 仍被硬拦，调用会被拒绝且浪费轮次。',
+    '- 仓库代码改动一律派 worker：rex_spawn_agent 创建，rex_send_input 追加轮次，rex_inspect_output / rex_inspect_changes 验收，rex_close_worker 收尾。',
+    '- 只读检查 / 一次性 Rex 操作直接走 rex_cli。禁止把 rex run 当作修改仓库代码的常规通道，避免绕过 brief、worktree 与 registry。',
+    '- 不得把 claude/codex/pi 命令塞进 rex send、block send/send-key、block call ... write 的文本，或用 bash -lc 等 shell 包装绕过；这些 worker 必须走 rex_spawn_agent。静态检测只覆盖 do 与 new/run/split/window new 的 -- 命令段。',
     `- 可用 Agent profile：${ctx.agents.join('、')}。不在名单内的 CLI 一律拒绝派生。`,
     '',
     '## 派发纪律',
@@ -53,6 +58,8 @@ export function renderCoordinatorSection(ctx: CoordinatorSectionContext): string
     '- 「跑完了吗 / 看看输出 / 它说了啥」→ rex_inspect_output。',
     '- 「验收 / 看看改了啥 / 改动对不对 / diff」→ rex_inspect_changes。',
     '- 「关掉 / 收工 / 不要它了」「合并进主仓（经确认）」→ rex_close_worker。',
+    '- 「看别的 tab / 读某个 block 输出 / 关残留 tab」「开关 tab / 挪 pane / 操作 Rex app」→ rex_cli。',
+    '- 「跑条命令（看状态、跑只读检查、打开终端任务）」→ rex_cli；需要改仓库代码、长任务或 worktree 隔离时 → 派 worker。',
     '- 「后台跑 / 别开窗口 / 无人值守」「带界面跑 / 我要盯着」→ headless / interactive。',
     '- 「开个副本 / 隔离开 / 别动我的工作区」→ use_worktree: true。',
     '- 只要知道指哪个 worker 就直接做；真拿不准（如多个 worker 同名任务）才 ask_user。',
@@ -70,7 +77,10 @@ export function renderCoordinatorSection(ctx: CoordinatorSectionContext): string
 /** 追加进默认 Guidelines 的条目。 */
 export function coordinatorGuidelines(): string[] {
   return [
-    'Dispatch code changes to workers via rex_spawn_agent instead of editing files yourself; this coordinator session is read-only.',
+    'Perform Rex-only operations directly with rex_cli when no worker or isolated code change is required.',
+    'Dispatch code changes to workers via rex_spawn_agent instead of editing files yourself; bash/write/edit remain blocked.',
+    'Never use rex run as a normal channel for repository code changes; dispatch those changes to a worker so briefs, worktrees, and the registry remain authoritative.',
+    'Never bypass agent routing by putting agent commands into send, block call write, or shell wrappers.',
     'Use ask_user when the agent, run mode, or worktree policy for a worker is unspecified.'
   ]
 }

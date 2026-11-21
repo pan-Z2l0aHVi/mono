@@ -24,16 +24,16 @@ This repository contains npm packages, workspace tooling, and integration apps. 
 
 These packages stay inside the repository. Add them to a workspace app with the `workspace:*` protocol.
 
-| Package                                                                    | What it gives you                                                                                 |
-| -------------------------------------------------------------------------- | ------------------------------------------------------------------------------------------------- |
-| [`@greypan/test-kit`](./packages/test-kit/README.md)                       | Test helpers for Vitest browser mode with MSW.                                                    |
-| [`@greypan/app-scrollbars`](./packages/app-scrollbars/README.md)           | Shared overlay scrollbar options for the workspace apps.                                          |
-| [`@greypan/md-to-meta`](./packages/md-to-meta/README.md)                   | Markdown to structured meta module, plus one file per fenced code block.                          |
-| [`@greypan/tsconfig`](./packages/tsconfig/README.md)                       | Shared TypeScript configuration profiles.                                                         |
-| [`@greypan/wuchale-vue`](./packages/wuchale-vue/README.md)                 | Vue single-file component adapter for wuchale.                                                    |
-| [`@greypan/monorepo-kit`](./packages/monorepo-kit/README.md)               | Repository checks, policy helpers, and build coordination.                                        |
-| [`@greypan/pi-rex-orchestrator`](./packages/pi-rex-orchestrator/README.md) | Pi read-only coordinator extension that dispatches and supervises worker agents in Rex terminals. |
-| [`@greypan/doc-demo-kit`](./packages/doc-demo-kit)                         | Shared documentation demo layer for the React and Vue demos.                                      |
+| Package                                                                    | What it gives you                                                                                               |
+| -------------------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------- |
+| [`@greypan/test-kit`](./packages/test-kit/README.md)                       | Test helpers for Vitest browser mode with MSW.                                                                  |
+| [`@greypan/app-scrollbars`](./packages/app-scrollbars/README.md)           | Shared overlay scrollbar options for the workspace apps.                                                        |
+| [`@greypan/md-to-meta`](./packages/md-to-meta/README.md)                   | Markdown to structured meta module, plus one file per fenced code block.                                        |
+| [`@greypan/tsconfig`](./packages/tsconfig/README.md)                       | Shared TypeScript configuration profiles.                                                                       |
+| [`@greypan/wuchale-vue`](./packages/wuchale-vue/README.md)                 | Vue single-file component adapter for wuchale.                                                                  |
+| [`@greypan/monorepo-kit`](./packages/monorepo-kit/README.md)               | Repository checks, policy helpers, and build coordination.                                                      |
+| [`@greypan/pi-rex-orchestrator`](./packages/pi-rex-orchestrator/README.md) | Pi Rex operator and agent coordinator that controls Rex and dispatches, supervises, and verifies worker agents. |
+| [`@greypan/doc-demo-kit`](./packages/doc-demo-kit)                         | Shared documentation demo layer for the React and Vue demos.                                                    |
 
 ## Apps
 
