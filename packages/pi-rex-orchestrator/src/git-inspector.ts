@@ -12,6 +12,7 @@
  * 与分支都已不存在时按已清理回报。
  */
 
+import { Buffer } from 'node:buffer'
 import { realpath, stat } from 'node:fs/promises'
 import path from 'node:path'
 
@@ -228,6 +229,22 @@ function gitFailure(
   return `git ${args.join(' ')}（exit ${result.code}, killed=${result.killed}, truncated=${result.truncated}）: ${output}`
 }
 
+function splitNullTerminatedPaths(output: string): string[] {
+  const paths = output.split('\0')
+  if (paths.at(-1) === '') paths.pop()
+  return paths
+}
+
+function invalidChangedPathDetail(changedPath: string, validatedPaths: number): string | undefined {
+  const invalid =
+    changedPath === '' ||
+    changedPath.includes('\0') ||
+    changedPath.includes('\uFFFD') ||
+    Buffer.from(changedPath, 'utf8').toString('utf8') !== changedPath
+  if (!invalid) return undefined
+  return `检测到无法无损往返的路径（可能含非 UTF-8 字节），拒绝自动判定：${JSON.stringify(changedPath)}；此前已通过无损校验的路径数量：${validatedPaths}`
+}
+
 /**
  * 内容落地探针。它先钉住分支 tip 与 merge-base，再逐路径比较 baseRef 与 tip 的最终
  * 内容；这是「base 中这些路径的最终内容与分支一致」的保守判定。squash merge 后仍可
@@ -307,7 +324,7 @@ async function inspectContentLanding(
   if (!complete(listed)) {
     return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(pathArgs, listed) }
   }
-  const changedPaths = listed.stdout.split('\0').filter(changedPath => changedPath !== '')
+  const changedPaths = splitNullTerminatedPaths(listed.stdout)
   if (changedPaths.length === 0) return { landing: 'landed', baseRef: resolvedBase, baseSha, landedTip }
   if (changedPaths.length > 200) {
     return {
@@ -318,7 +335,14 @@ async function inspectContentLanding(
     }
   }
 
+  let validatedPaths = 0
   for (const changedPath of changedPaths) {
+    const invalidPathDetail = invalidChangedPathDetail(changedPath, validatedPaths)
+    if (invalidPathDetail !== undefined) {
+      return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: invalidPathDetail }
+    }
+    validatedPaths += 1
+
     // 名称来自仓库内容，必须按 literal pathspec 解释，避免 `:(exclude)...` 之类的文件名
     // 让 quiet diff 意外匹配空集合并返回 0。
     const literalPathspec = `:(literal)${changedPath}`
@@ -327,7 +351,36 @@ async function inspectContentLanding(
     if (quiet.killed || quiet.truncated) {
       return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(quietArgs, quiet) }
     }
-    if (quiet.code === 0) continue
+    if (quiet.code === 0) {
+      // `--quiet` 对空匹配也返回 0。用同一 literal pathspec 在 land tip 或删除侧
+      // merge-base 找到至少一个对象，区分真正的“内容一致”和路径被解码损坏后的空匹配。
+      const tipObjectArgs = ['ls-tree', '-r', '-z', landedTip, '--', literalPathspec]
+      const tipObject = await exec(tipObjectArgs, { cwd: mainCwd })
+      if (!complete(tipObject)) {
+        return { landing: 'inconclusive', baseRef: resolvedBase, baseSha, detail: gitFailure(tipObjectArgs, tipObject) }
+      }
+      if (tipObject.stdout !== '') continue
+
+      const baseObjectArgs = ['ls-tree', '-r', '-z', mergeBaseSha, '--', literalPathspec]
+      const baseObject = await exec(baseObjectArgs, { cwd: mainCwd })
+      if (!complete(baseObject)) {
+        return {
+          landing: 'inconclusive',
+          baseRef: resolvedBase,
+          baseSha,
+          detail: gitFailure(baseObjectArgs, baseObject)
+        }
+      }
+      if (baseObject.stdout === '') {
+        return {
+          landing: 'inconclusive',
+          baseRef: resolvedBase,
+          baseSha,
+          detail: `路径 ${JSON.stringify(changedPath)} 的 diff --quiet 返回 0，但 literal pathspec 在 tip 与 merge-base 均未匹配任何对象；拒绝自动判定`
+        }
+      }
+      continue
+    }
     if (quiet.code === 1) {
       return { landing: 'not-landed', baseRef: resolvedBase, baseSha, detail: gitFailure(quietArgs, quiet) }
     }

@@ -971,6 +971,9 @@ describe('关闭、合并与内容落地', () => {
           return { ...ok, stdout: 'a.txt\0' }
         }
         if (command === 'git' && args[0] === 'diff' && args.includes('--quiet')) return ok
+        if (command === 'git' && args[0] === 'ls-tree') {
+          return { ...ok, stdout: `100644 blob ${'d'.repeat(40)}\ta.txt\0` }
+        }
         if (command === 'git' && args[0] === 'worktree') return ok
         if (command === 'git' && args[0] === 'update-ref') return ok
         return fakeGit()(command, args)
@@ -1020,6 +1023,9 @@ describe('关闭、合并与内容落地', () => {
           return { ...ok, stdout: 'a.txt\0' }
         }
         if (command === 'git' && args[0] === 'diff' && args.includes('--quiet')) return ok
+        if (command === 'git' && args[0] === 'ls-tree') {
+          return { ...ok, stdout: `100644 blob ${'d'.repeat(40)}\ta.txt\0` }
+        }
         if (command === 'git' && args[0] === 'worktree' && args[1] === 'remove') {
           branchDeleted = true
           return ok

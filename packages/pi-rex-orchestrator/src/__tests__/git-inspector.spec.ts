@@ -342,6 +342,73 @@ describe('worktree 生命周期（V3-04）', () => {
     expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
   })
 
+  it('非 UTF-8 文件名无法无损往返时返回 inconclusive，不删除 worktree 或分支', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('session-non-utf8', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-non-utf8`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await commitFile(wtPath, 'a.txt', 'branch change')
+    const decodedInvalidName = Buffer.from([0x66, 0x6f, 0x80, 0x6f]).toString('utf8')
+    const ok = { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
+
+    const commands: string[] = []
+    const invalidNameGit: GitExec = async (args, options) => {
+      commands.push(args.join(' '))
+      if (args[0] === 'diff' && args.includes('--name-only')) return { ...ok, stdout: `${decodedInvalidName}\0` }
+      return gitExec(args, options)
+    }
+    const outcome = await cleanupWorktree(invalidNameGit, { mainCwd: repo, path: wtPath, branch })
+
+    expect(outcome).toMatchObject({ kind: 'kept', unmerged: true, landing: 'inconclusive', baseRef: 'main' })
+    const detail = outcome.kind === 'kept' ? outcome.landingDetail : ''
+    expect(detail).toContain('检测到无法无损往返的路径（可能含非 UTF-8 字节），拒绝自动判定')
+    expect(detail).toContain(JSON.stringify('fo\uFFFDo'))
+    expect(detail).toContain('此前已通过无损校验的路径数量：0')
+    expect(commands.some(command => command.startsWith('diff --quiet'))).toBe(false)
+    expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
+    expect(commands.some(command => command.startsWith('update-ref -d'))).toBe(false)
+    expect(commands.some(command => command.startsWith('branch -D'))).toBe(false)
+    expect((await gitExec(['branch', '--list', branch], { cwd: repo })).stdout).toContain(branch)
+  })
+
+  it('diff --quiet 零退出但 literal pathspec 无对象时返回 inconclusive，不删除', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('session-empty-pathspec', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-empty-pathspec`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await commitFile(wtPath, 'a.txt', 'branch change')
+    const baseSha = (await gitExec(['rev-parse', 'main'], { cwd: repo })).stdout.trim()
+    const tip = (await gitExec(['rev-parse', `refs/heads/${branch}`], { cwd: repo })).stdout.trim()
+    const missingPath = 'missing-from-both-sides.txt'
+    const ok = { stdout: '', stderr: '', code: 0, killed: false, truncated: false }
+
+    const commands: string[] = []
+    const emptyMatchGit: GitExec = async (args, options) => {
+      commands.push(args.join(' '))
+      if (args[0] === 'diff' && args.includes('--name-only')) return { ...ok, stdout: `${missingPath}\0` }
+      if (args[0] === 'diff' && args.includes('--quiet')) return ok
+      return gitExec(args, options)
+    }
+    const outcome = await cleanupWorktree(emptyMatchGit, { mainCwd: repo, path: wtPath, branch })
+
+    expect(outcome).toMatchObject({ kind: 'kept', unmerged: true, landing: 'inconclusive', baseRef: 'main' })
+    const detail = outcome.kind === 'kept' ? outcome.landingDetail : ''
+    expect(detail).toContain(`路径 ${JSON.stringify(missingPath)} 的 diff --quiet 返回 0`)
+    expect(detail).toContain('literal pathspec 在 tip 与 merge-base 均未匹配任何对象')
+    expect(commands.filter(command => command.startsWith('ls-tree -r -z '))).toEqual([
+      `ls-tree -r -z ${tip} -- :(literal)${missingPath}`,
+      `ls-tree -r -z ${baseSha} -- :(literal)${missingPath}`
+    ])
+    expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
+    expect(commands.some(command => command.startsWith('update-ref -d'))).toBe(false)
+    expect(commands.some(command => command.startsWith('branch -D'))).toBe(false)
+    expect((await gitExec(['branch', '--list', branch], { cwd: repo })).stdout).toContain(branch)
+  })
+
   it('重命名未完整落地时同时比较删除侧，不因新增侧同名同内容误判 landed', async () => {
     const repo = await makeRepo()
     await commitFile(repo, 'a.txt', 'v1')
