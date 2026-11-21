@@ -14,21 +14,23 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import {
   cleanupWorktree,
+  contentLanding,
   createWorktree,
   inspectChanges,
   isBranchMerged,
-  isWorktreeClean,
   scanIgnoredDeps,
   snapshotBase,
   worktreeBranch,
-  worktreeDirtyNote
+  worktreeDirtyNote,
+  type GitExec,
+  type GitExecOptions
 } from '../git-inspector'
 
 const dirs: string[] = []
 
-const gitExec = (args: string[], options: { cwd: string }) =>
+const runGitExec = (args: string[], options: GitExecOptions) =>
   new Promise<{ stdout: string; stderr: string; code: number }>(resolve => {
-    execFile('git', args, { cwd: options.cwd }, (error, stdout, stderr) => {
+    execFile('git', args, { cwd: options.cwd, env: { ...process.env, ...options.env } }, (error, stdout, stderr) => {
       resolve({
         stdout: String(stdout),
         stderr: String(stderr),
@@ -36,6 +38,9 @@ const gitExec = (args: string[], options: { cwd: string }) =>
       })
     })
   })
+
+const gitExec: GitExec = Object.assign(runGitExec, { supportsEnv: true as const })
+const gitExecWithoutEnv: GitExec = (args, options) => runGitExec(args, { cwd: options.cwd })
 
 async function makeRepo(): Promise<string> {
   const dir = await mkdtemp(path.join(tmpdir(), 'pi-rex-git-'))
@@ -214,33 +219,206 @@ describe('worktree 生命周期（V3-04）', () => {
     expect(found).toContain('.claude/settings.local.json')
   })
 
-  it('干净且已合并才自动清理并删分支；未合并保留并给出合回命令', async () => {
+  it('squash 落地：非祖先分支通过反向 apply 识别，branch -d 失败后改走 -D', async () => {
     const repo = await makeRepo()
     await commitFile(repo, 'a.txt', 'v1')
     const branch = worktreeBranch('session1', 'w-1')
     const wtPath = path.join(repo, '..', `${path.basename(repo)}-wt1`)
     dirs.push(wtPath) // 只登记 worktree 目录本身；dirname 是 tmpdir()，递归删除会波及他人
     await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
-    await commitFile(wtPath, 'w.txt', 'in worktree')
+    await commitFile(wtPath, 'a.txt', 'squashed')
+    await gitExec(['merge', '--squash', branch], { cwd: repo })
+    await gitExec(['commit', '-m', `squash ${branch}`], { cwd: repo })
+    await gitExec(['remote', 'add', 'origin', '.'], { cwd: repo })
+    await gitExec(['update-ref', 'refs/remotes/origin/main', 'HEAD'], { cwd: repo })
+    await gitExec(['symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main'], { cwd: repo })
 
-    const dirtyOutcome = await cleanupWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
-    expect(dirtyOutcome.kind).toBe('kept')
-    expect(dirtyOutcome.kind === 'kept' ? dirtyOutcome.mergeHint : '').toContain('git merge --no-ff')
+    expect(await isBranchMerged(gitExec, repo, branch)).toBe(false)
+    expect(await contentLanding(gitExec, repo, branch)).toBe('landed')
 
-    // 丢弃 worktree 里的提交（回到干净状态）但分支仍未合并：非 force 仍保留。
-    await gitExec(['checkout', '--', '.'], { cwd: wtPath }).catch(() => undefined)
-    await gitExec(['reset', '--hard', 'HEAD'], { cwd: wtPath })
-    expect(await isWorktreeClean(gitExec, wtPath)).toBe(true)
+    const commands: string[] = []
+    const trackedGit: GitExec = async (args, options) => {
+      commands.push(args.join(' '))
+      return gitExec(args, options)
+    }
+    const landed = await cleanupWorktree(trackedGit, { mainCwd: repo, path: wtPath, branch })
+    expect(landed).toMatchObject({ kind: 'removed', landedBy: 'content', baseRef: 'origin/main' })
+    expect(commands).toContain(`branch -D ${branch}`)
+  })
+
+  it('临时 GIT_INDEX_FILE 对照 baseRef 的树，主仓落后时仍可识别 squash 落地', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('session-temp-index', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-temp-index`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await commitFile(wtPath, 'a.txt', 'squashed')
+    await gitExec(['merge', '--squash', branch], { cwd: repo })
+    await gitExec(['commit', '-m', `squash ${branch}`], { cwd: repo })
+    await gitExec(['remote', 'add', 'origin', '.'], { cwd: repo })
+    await gitExec(['update-ref', 'refs/remotes/origin/main', 'HEAD'], { cwd: repo })
+    await gitExec(['symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main'], { cwd: repo })
+    await commitFile(repo, 'unrelated.txt', 'advance main')
+    expect((await gitExec(['status', '--porcelain'], { cwd: repo })).stdout).toBe('')
+
+    const calls: Array<{ args: string[]; env?: Record<string, string> }> = []
+    const trackedGit: GitExec = Object.assign(
+      async (args: string[], options: GitExecOptions) => {
+        calls.push({ args, env: options.env })
+        return gitExec(args, options)
+      },
+      { supportsEnv: true as const }
+    )
+    expect(await contentLanding(trackedGit, repo, branch)).toBe('landed')
+    expect(calls.some(call => call.args[0] === 'read-tree' && call.args[1] === 'origin/main')).toBe(true)
+    expect(
+      calls.some(
+        call =>
+          call.args[0] === 'apply' &&
+          call.args.includes('--cached') &&
+          call.env?.GIT_INDEX_FILE?.startsWith(path.join(tmpdir(), 'pi-rex-landing-'))
+      )
+    ).toBe(true)
+    expect((await gitExec(['status', '--porcelain'], { cwd: repo })).stdout).toBe('')
+  })
+
+  it('反向 apply 失败：非祖先分支按 not-landed 保留', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('session-not-landed', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-not-landed`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await commitFile(wtPath, 'a.txt', 'only in branch')
+
+    const commands: string[] = []
+    const trackedGit: GitExec = async (args, options) => {
+      commands.push(args.join(' '))
+      return gitExec(args, options)
+    }
+    const outcome = await cleanupWorktree(trackedGit, { mainCwd: repo, path: wtPath, branch })
+
+    expect(outcome).toMatchObject({ kind: 'kept', unmerged: true, landing: 'not-landed', baseRef: 'main' })
+    expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
+    expect(commands.some(command => command.startsWith('branch -D'))).toBe(false)
+  })
+
+  it('非祖先但 diff 为空的分支视为 landed，无需反向 apply patch', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('session-empty', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-empty-diff`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await gitExec(['commit', '--allow-empty', '-m', 'empty content'], { cwd: wtPath })
     expect(await isBranchMerged(gitExec, repo, branch)).toBe(false)
 
-    const unmerged = await cleanupWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
-    expect(unmerged.kind).toBe('kept')
+    const commands: string[] = []
+    const trackedGit: GitExec = async (args, options) => {
+      commands.push(args.join(' '))
+      return gitExec(args, options)
+    }
+    const outcome = await cleanupWorktree(trackedGit, { mainCwd: repo, path: wtPath, branch })
 
-    // force：未合并分支走 branch -D，worktree 移除，分支删除。
-    const forced = await cleanupWorktree(gitExec, { mainCwd: repo, path: wtPath, branch }, { force: true })
-    expect(forced.kind).toBe('removed')
-    const branches = await gitExec(['branch', '--list', branch], { cwd: repo })
-    expect(branches.stdout.trim()).toBe('')
+    expect(outcome).toMatchObject({ kind: 'removed', landedBy: 'content' })
+    expect(commands.some(command => command.startsWith('apply --reverse'))).toBe(false)
+  })
+
+  it('git diff 失败时 inconclusive，保留 worktree 且不尝试 branch -D', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('session-inconclusive', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-inconclusive`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await commitFile(wtPath, 'a.txt', 'branch change')
+
+    const commands: string[] = []
+    const failingDiff: GitExec = async (args, options) => {
+      commands.push(args.join(' '))
+      if (args[0] === 'diff') {
+        return { stdout: '', stderr: 'fatal: diff exploded', code: 128 }
+      }
+      return gitExec(args, options)
+    }
+    const outcome = await cleanupWorktree(failingDiff, { mainCwd: repo, path: wtPath, branch })
+
+    expect(outcome).toMatchObject({
+      kind: 'kept',
+      unmerged: true,
+      landing: 'inconclusive',
+      baseRef: 'main'
+    })
+    expect(outcome.kind === 'kept' ? outcome.landingDetail : '').toContain('git diff --binary')
+    expect(outcome.kind === 'kept' ? outcome.landingDetail : '').toContain('fatal: diff exploded')
+    expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
+    expect(commands.some(command => command.startsWith('branch -D'))).toBe(false)
+  })
+
+  it('无 env 支持且 HEAD 不等于 baseRef 时 fail closed，不拿工作树内容误判落地', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('session-stale-base', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-stale-base`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await commitFile(wtPath, 'a.txt', 'squashed')
+    await gitExec(['remote', 'add', 'origin', '.'], { cwd: repo })
+    await gitExec(['update-ref', 'refs/remotes/origin/main', 'HEAD'], { cwd: repo })
+    await gitExec(['symbolic-ref', 'refs/remotes/origin/HEAD', 'refs/remotes/origin/main'], { cwd: repo })
+    await gitExec(['merge', '--squash', branch], { cwd: repo })
+    await gitExec(['commit', '-m', `squash ${branch}`], { cwd: repo })
+    expect((await gitExec(['status', '--porcelain'], { cwd: repo })).stdout).toBe('')
+
+    const commands: string[] = []
+    const noEnvWithLog: GitExec = async (args, options) => {
+      commands.push(args.join(' '))
+      return gitExecWithoutEnv(args, options)
+    }
+    const outcome = await cleanupWorktree(noEnvWithLog, { mainCwd: repo, path: wtPath, branch })
+
+    expect(outcome).toMatchObject({
+      kind: 'kept',
+      unmerged: true,
+      landing: 'inconclusive',
+      baseRef: 'origin/main'
+    })
+    expect(outcome.kind === 'kept' ? outcome.landingDetail : '').toContain('主仓 HEAD 不是 origin/main')
+    expect(commands.some(command => command.startsWith('apply --reverse'))).toBe(false)
+    expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
+    expect(commands.some(command => command.startsWith('branch -D'))).toBe(false)
+    expect((await gitExec(['branch', '--list', branch], { cwd: repo })).stdout).toContain(branch)
+
+    // env 路径必须用 baseRef 的临时 index。若误去掉 --cached，会看到主仓工作树里的
+    // squash 内容并错判为 landed；正确实现应看到 origin/main 尚无该 patch。
+    expect(await contentLanding(gitExec, repo, branch)).toBe('not-landed')
+    expect((await gitExec(['status', '--porcelain'], { cwd: repo })).stdout).toBe('')
+  })
+
+  it('dirty worktree 即使内容已 squash 落地也保留，且不执行落地探针', async () => {
+    const repo = await makeRepo()
+    await commitFile(repo, 'a.txt', 'v1')
+    const branch = worktreeBranch('session-dirty', 'w-1')
+    const wtPath = path.join(repo, '..', `${path.basename(repo)}-dirty-landed`)
+    dirs.push(wtPath)
+    await createWorktree(gitExec, { mainCwd: repo, path: wtPath, branch })
+    await commitFile(wtPath, 'a.txt', 'squashed')
+    await gitExec(['merge', '--squash', branch], { cwd: repo })
+    await gitExec(['commit', '-m', `squash ${branch}`], { cwd: repo })
+    await writeFile(path.join(wtPath, 'dirty.txt'), 'keep me', 'utf8')
+
+    const commands: string[] = []
+    const trackedGit: GitExec = async (args, options) => {
+      commands.push(args.join(' '))
+      return gitExec(args, options)
+    }
+    const outcome = await cleanupWorktree(trackedGit, { mainCwd: repo, path: wtPath, branch })
+
+    expect(outcome).toMatchObject({ kind: 'kept', unmerged: false })
+    expect(commands.some(command => command.startsWith('diff --binary'))).toBe(false)
+    expect(commands.some(command => command.startsWith('apply --reverse'))).toBe(false)
+    expect(commands.some(command => command.startsWith('worktree remove'))).toBe(false)
   })
 
   it('目录被 rm -rf 但注册还在（prunable）时 force 清理仍能收尾；重复清理幂等（codex exec 六轮 #2/#3）', async () => {

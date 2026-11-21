@@ -27,6 +27,7 @@ import {
   snapshotBase,
   worktreeBranch,
   worktreeDirtyNote,
+  type CleanupOutcome,
   type GitExec
 } from './git-inspector'
 import { guardToolCall, guardToolList } from './guard'
@@ -159,7 +160,56 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
   const latestInspectCall = new Map<string, string>()
   const inspectCallToWorker = new Map<string, string>()
 
-  const gitExec: GitExec = (args, options) => pi.exec('git', args, options)
+  // Pi 的 exec 不接受 env，但 Unix 的 env(1) 可以作为 argv 前缀注入环境。能力探测
+  // 只做一次；失败时 supportsEnv 保持 false，git-inspector 继续走 HEAD/baseRef 守卫。
+  let envCommandAvailable: boolean | undefined
+  let envCommandProbe: Promise<boolean> | undefined
+  const ensureEnvCommand = (): Promise<boolean> => {
+    envCommandProbe ??= Promise.resolve()
+      .then(() => pi.exec('env', ['true'], {}))
+      .then(
+        result => {
+          envCommandAvailable = result.code === 0
+          return envCommandAvailable
+        },
+        () => {
+          envCommandAvailable = false
+          return false
+        }
+      )
+    return envCommandProbe
+  }
+
+  const gitExec: GitExec = async (args, { cwd, env }) => {
+    if (env === undefined) return pi.exec('git', args, { cwd })
+    if (envCommandAvailable !== true) {
+      return {
+        stdout: '',
+        stderr: 'env 命令能力尚未确认，拒绝用主仓 index 代替临时 index',
+        code: 127,
+        killed: false,
+        truncated: false
+      }
+    }
+    const assignments: string[] = []
+    for (const [key, value] of Object.entries(env)) {
+      if (key === '' || key.includes('=') || /[\0\r\n]/.test(key) || /[\0\r\n]/.test(value)) {
+        return {
+          stdout: '',
+          stderr: `无法通过 env 传递非法的环境变量 ${JSON.stringify(key)}`,
+          code: 125,
+          killed: false,
+          truncated: false
+        }
+      }
+      assignments.push(`${key}=${value}`)
+    }
+    return pi.exec('env', [...assignments, 'git', ...args], { cwd })
+  }
+  Object.defineProperty(gitExec, 'supportsEnv', {
+    enumerable: true,
+    get: () => envCommandAvailable === true
+  })
 
   function notify(message: string): void {
     // 工厂作用域拿不到 ctx.ui；一次性通知走 sendMessage 的非唤醒展示面。
@@ -1028,7 +1078,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
     name: 'rex_close_worker',
     label: 'Rex Close Worker',
     description:
-      'Close a worker: close its blocks, then clean its worktree only when it is clean AND merged. When the branch is clean but unmerged, ask the user to confirm and run git merge --no-ff on their behalf, then clean up automatically. A failed merge is only diagnosed and reported; an in-progress merge is never aborted on the user behalf. Pass force: true to drop an unmerged branch with git branch -D after user consent.',
+      'Close a worker: close its blocks, then clean its worktree only when it is clean AND its branch is merged by ancestry or its diff content is already present in the base (covering squash merges). If content is not confirmed, report the repository-flow, optional local merge, and force choices; perform git merge --no-ff only for a repository without a PR flow and only after explicit confirmation. A failed merge is diagnosed and reported without automatic git merge --abort. Pass force: true to drop a branch with git branch -D after user consent.',
     exposure: 'model-only',
     executionMode: 'sequential',
     parameters: {
@@ -1086,7 +1136,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
       if (params.force === true) {
         const ok = await ctx.ui.confirm(
           '放弃未合并分支？',
-          `${worker.worktree?.branch ?? worker.workerId} 尚未合并进主仓 HEAD；force 将执行 git branch -D，未提交工作不可找回。`
+          `${worker.worktree?.branch ?? worker.workerId} 将绕过祖先链与内容落地判定；force 会执行 git branch -D，尚未进入主分支的提交不可找回。`
         )
         if (!ok) return text('用户拒绝 force，worker 保持原状。', true)
       }
@@ -1126,19 +1176,20 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         persistRegistry()
       }
 
-      let cleanupNote = '（无 worktree）'
+      let cleanupNote: string | undefined
       if (worker.worktree) {
         const worktree = worker.worktree
+        await ensureEnvCommand()
         const mainCwd = worker.mainCwd ?? (await findMainRepo(gitExec, worker.cwd).catch(() => worker.cwd))
         let outcome = await cleanupWorktree(
           gitExec,
           { mainCwd, path: worktree.path, branch: worktree.branch },
           { force: unconfirmed || params.force === true }
         )
-        // 干净但未合并：用户同意后代为执行 merge，合并后自动清理 worktree 与分支；
-        // 无 UI 或被拒绝就保留现状，把命令原样给出去。
+        // 干净但未确认落地：保留本地 merge 作为无 PR 流程仓库的兜底。任何 merge
+        // 都必须再次显式确认；合并失败只诊断，不自动 abort，归属不明的处置交还用户。
         let mergedByUs = false
-        if (outcome.kind === 'kept' && outcome.unmerged && ctx.hasUI) {
+        if (outcome.kind === 'kept' && outcome.unmerged && ctx.hasUI && !unconfirmed && params.force !== true) {
           // 合并门（fail closed）：MERGE_HEAD 探针按退出码严格解释——0 合并中、
           // 1 无合并、其余（128 等）状态未知；只有 1 放行。目标钉住「分支身份 +
           // commit」：只比 SHA 挡不住「切到指向同一 commit 的另一分支」。
@@ -1157,37 +1208,41 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
           const mergeGateBefore = await gitExec(['rev-parse', '--verify', '-q', 'MERGE_HEAD'], { cwd: mainCwd })
           const targetBefore = await captureHeadTarget()
           if (mergeGateBefore.code !== 1) {
-            cleanupNote =
+            const gateFailure =
               mergeGateBefore.code === 0
-                ? `主仓正处于合并中：请先解决当前合并，再回来执行 ${mergeHint(worktree.branch)}；worktree 保留在原处。`
-                : `无法确认主仓合并状态（rev-parse exit ${mergeGateBefore.code}）：状态不明不发起代合并；worktree 保留在原处。`
+                ? `主仓正处于合并中：请先解决当前合并，再回来执行 ${mergeHint(worktree.branch)}`
+                : `无法确认主仓合并状态（rev-parse exit ${mergeGateBefore.code}）：状态不明不发起代合并`
+            cleanupNote = `${gateFailure}；worktree 保留在原处。\n${formatCleanupOutcome(worktree, outcome)}`
           } else if ('error' in targetBefore) {
-            cleanupNote = `${targetBefore.error}：状态不明不发起代合并；worktree 保留在原处。`
+            cleanupNote = `${targetBefore.error}：状态不明不发起代合并；worktree 保留在原处。\n${formatCleanupOutcome(worktree, outcome)}`
           } else {
             const mergeOk = await ctx.ui.confirm(
-              `代为合并 ${worktree.branch}？`,
-              `将在主仓执行 ${mergeHint(worktree.branch)}；合并成功后自动清理 worktree 与分支。拒绝则保留，命令照给。`
+              `本地合并 ${worktree.branch}？`,
+              [
+                '本仓应走 PR + squash；只有没有 PR 流程的仓库才由我本地 merge。',
+                `确认后将在主仓执行 ${mergeHint(worktree.branch)}，成功则清理 worktree 与分支。`,
+                '拒绝则保留现状，并继续给出仓库流程 / force 选择。'
+              ].join('\n')
             )
             const mergeGateAfter = mergeOk
               ? await gitExec(['rev-parse', '--verify', '-q', 'MERGE_HEAD'], { cwd: mainCwd })
               : undefined
             const targetAfter = mergeOk && mergeGateAfter?.code === 1 ? await captureHeadTarget() : undefined
-            if (mergeOk && mergeGateAfter?.code !== 1) {
+            if (!mergeOk) {
+              cleanupNote = formatCleanupOutcome(worktree, outcome)
+            } else if (mergeGateAfter?.code !== 1) {
               cleanupNote =
-                '确认期间主仓进入了合并状态（或状态不明）：为避免误伤你的合并，未执行代合并；worktree 保留在原处。'
-            } else if (mergeOk && (targetAfter === undefined || 'error' in targetAfter)) {
-              cleanupNote = '确认期间无法读取主仓 HEAD 状态：状态不明不发起代合并；worktree 保留在原处。'
-            } else if (
-              mergeOk &&
-              targetAfter !== undefined &&
-              'target' in targetAfter &&
-              targetAfter.target !== targetBefore.target
-            ) {
+                '确认期间主仓进入了合并状态（或状态不明）：为避免误伤你的合并，未执行代合并；worktree 保留在原处。\n' +
+                formatCleanupOutcome(worktree, outcome)
+            } else if (targetAfter === undefined || 'error' in targetAfter) {
+              cleanupNote =
+                '确认期间无法读取主仓 HEAD 状态：状态不明不发起代合并；worktree 保留在原处。\n' +
+                formatCleanupOutcome(worktree, outcome)
+            } else if (targetAfter.target !== targetBefore.target) {
               cleanupNote =
                 `确认期间主仓目标发生变化（${targetBefore.target.slice(0, 40)} → ${targetAfter.target.slice(0, 40)}）：` +
-                '拒绝在非预期分支上代合并；worktree 保留在原处。'
-            } else if (mergeOk) {
-              // merge 与 merge 后的清理分开兜底：清理失败不能被误报成合并失败。
+                `拒绝在非预期分支上代合并；worktree 保留在原处。\n${formatCleanupOutcome(worktree, outcome)}`
+            } else {
               try {
                 await runGit(gitExec, mainCwd, ['merge', '--no-ff', worktree.branch])
                 mergedByUs = true
@@ -1195,30 +1250,33 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
                 const failure = mergeError instanceof Error ? mergeError.message : String(mergeError)
                 // 失败后的主仓状态无法可靠归因给本次操作：用户可以在毫秒级窗口里
                 // 发起同分支合并、甚至分支 tip 恰好相同。自动 merge --abort 有
-                // 毁掉用户合并进度的真实风险——代跑的合并失败只诊断、不处置，
-                // 处置命令交还用户。
+                // 毁掉用户合并进度的真实风险——代跑的合并失败只诊断、不处置。
                 const headProbe = await gitExec(['rev-parse', '--verify', '-q', 'MERGE_HEAD'], { cwd: mainCwd })
-                if (headProbe.code === 1) {
-                  cleanupNote =
-                    `合并未开始即失败（${failure}）：主仓仍在合并前状态。` +
-                    `请先解决上述原因（常见：主仓未提交改动、hook 或配置问题），再重试或手动执行 ${mergeHint(worktree.branch)}；worktree 保留在原处。`
-                } else if (headProbe.code === 0) {
-                  cleanupNote =
-                    `合并失败（${failure}），主仓当前存在进行中的合并。无法证明它属于本次操作，` +
-                    `未执行 git merge --abort；请人工确认主仓状态后自行执行 git merge --abort 或继续解决冲突，` +
-                    `再处理 ${mergeHint(worktree.branch)}；worktree 保留在原处。`
-                } else {
-                  cleanupNote =
-                    `合并失败（${failure}），且无法读取主仓合并状态（rev-parse exit ${headProbe.code}）：` +
-                    '请人工检查主仓（git status / git merge --abort）后决定；worktree 保留在原处。'
-                }
+                const diagnosis =
+                  headProbe.code === 1
+                    ? `本地合并未开始即失败（${failure}）：主仓仍在合并前状态。请先解决原因，再走仓库流程或重试 ${mergeHint(worktree.branch)}。`
+                    : headProbe.code === 0
+                      ? `本地合并失败（${failure}），主仓当前存在进行中的合并。无法证明它属于本次操作，未执行 git merge --abort；请人工检查后决定继续解决或自行 abort。`
+                      : `本地合并失败（${failure}），且无法读取主仓合并状态（rev-parse exit ${headProbe.code}）：请人工检查主仓后决定。`
+                cleanupNote = `${diagnosis}\nworktree 保留在原处。\n${formatCleanupOutcome(worktree, outcome)}`
               }
               if (mergedByUs) {
                 try {
-                  outcome = await cleanupWorktree(gitExec, { mainCwd, path: worktree.path, branch: worktree.branch })
+                  outcome = await cleanupWorktree(
+                    gitExec,
+                    { mainCwd, path: worktree.path, branch: worktree.branch },
+                    {}
+                  )
+                  if (outcome.kind === 'removed') {
+                    cleanupNote = `已按无 PR 流程本地合并并清理：${mergeHint(worktree.branch)}，分支已删除。`
+                  } else if (outcome.worktreeRemoved) {
+                    cleanupNote = formatCleanupOutcome(worktree, outcome)
+                  } else {
+                    cleanupNote = `本地合并已完成，但清理未完：${outcome.reason}\n${manualCleanupHint(worktree, outcome.branchDeleteCommand)}`
+                  }
                 } catch (cleanupError) {
                   cleanupNote =
-                    `合并已完成，但清理失败（${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}）：` +
+                    `本地合并已完成，但清理失败（${cleanupError instanceof Error ? cleanupError.message : String(cleanupError)}）：` +
                     manualCleanupHint(worktree)
                 }
               }
@@ -1230,35 +1288,12 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
           // 对已清理的 worker 重复跑清理，幂等也由 cleanupWorktree 兜底。
           worker.worktree = undefined
         }
-        if (cleanupNote === '（无 worktree）') {
-          if (outcome.kind === 'removed') {
-            cleanupNote = mergedByUs
-              ? `已代为合并并清理：${mergeHint(worktree.branch)}，分支已删除。`
-              : `worktree 与分支 ${outcome.branch} 已清理。`
-          } else if (outcome.kind === 'kept' && outcome.worktreeRemoved === true) {
-            if (outcome.unmerged) {
-              // 目录已删、分支未合并：分支上的提交还没进主仓，先给合并路径。
-              cleanupNote =
-                `worktree 目录已移除，但分支未合并：先在主仓执行 ${mergeHint(worktree.branch)} 后用 ` +
-                `git branch -d "${worktree.branch}"，或确认废弃后用 force 重新关闭。`
-            } else {
-              cleanupNote = `分支删除失败：${outcome.reason}\n${manualCleanupHint(worktree, outcome.branchDeleteCommand)}`
-            }
-          } else {
-            cleanupNote = [
-              `${mergedByUs ? '合并已完成，但清理未完' : 'worktree 保留'}：${outcome.reason}`,
-              `路径：${worktree.path}`,
-              mergedByUs
-                ? manualCleanupHint(worktree)
-                : `合回命令（在主仓执行）：${mergeHint(worktree.branch)}，同意我代跑就说一声`
-            ].join('\n')
-          }
-        }
+        cleanupNote ??= formatCleanupOutcome(worktree, outcome)
       }
 
       registry.markClosed(worker.workerId)
       persistRegistry()
-      return text([`worker ${worker.workerId} 已关闭。`, cleanupNote].join('\n'))
+      return text([`worker ${worker.workerId} 已关闭。`, cleanupNote ?? '（无 worktree）'].join('\n'))
     }
   })
 
@@ -1309,7 +1344,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
   })
 
   pi.registerCommand('rex-cleanup', {
-    description: '回收已结束 worker 的残留 Block 与已合并 / 确认废弃的 worktree',
+    description: '回收已结束 worker 的残留 Block 与已落地 / 确认废弃的 worktree',
     async handler(_args, ctx) {
       if (!ctx.hasUI) {
         ctx.ui.notify('请在有弹窗 UI 的会话里执行 /rex-cleanup', 'warning')
@@ -1361,6 +1396,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
           continue
         }
         if (worker.worktree && worker.status === 'closed') {
+          await ensureEnvCommand()
           // 清理命令要在主仓执行：worker.cwd 是即将被删除的 worktree 本身。
           const mainCwd = worker.mainCwd ?? (await findMainRepo(gitExec, worker.cwd).catch(() => worker.cwd))
           const outcome = await cleanupWorktree(
@@ -1384,13 +1420,7 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
             branchDeleteCommand: undefined
           }))
           ctx.ui.notify(
-            outcome.kind === 'removed'
-              ? `${worker.workerId} worktree 已清理`
-              : outcome.worktreeRemoved === true
-                ? outcome.unmerged
-                  ? `${worker.workerId} worktree 目录已移除，但分支未合并：先合并分支或确认废弃后 force 重试`
-                  : `${worker.workerId} worktree 已移除，仅分支未清理：${outcome.reason}\n${manualCleanupHint(worker.worktree, outcome.branchDeleteCommand)}`
-                : `${worker.workerId} worktree 保留：${outcome.reason}`,
+            `${worker.workerId} ${formatCleanupOutcome(worker.worktree, outcome)}`,
             outcome.kind === 'removed' ? 'info' : 'warning'
           )
           // 清理完成解除跟踪：重复 /rex-cleanup 不再对已清理 worker 重复跑。
@@ -1499,6 +1529,50 @@ function manualCleanupHint(worktree: { path: string; branch: string }, branchDel
     `git worktree remove "${worktree.path}"`,
     branchDeleteCommand ?? `git branch -d "${worktree.branch}"`
   ].join('\n')
+}
+
+/** close / cleanup 共用的唯一措辞来源，保证落地判定与用户动作一致。 */
+function formatCleanupOutcome(worktree: { path: string; branch: string }, outcome: CleanupOutcome): string {
+  if (outcome.kind === 'removed') {
+    return outcome.landedBy === 'content'
+      ? `worktree 与分支 ${outcome.branch} 已清理：内容已在 ${outcome.baseRef ?? 'base'} 中（squash 合并），因此无需确认。`
+      : `worktree 与分支 ${outcome.branch} 已清理。`
+  }
+
+  const target = outcome.worktreeRemoved ? `worktree 目录已移除，但分支 ${worktree.branch} 保留` : 'worktree 保留'
+  const pathLine = outcome.worktreeRemoved ? undefined : `路径：${worktree.path}`
+
+  if (outcome.unmerged && outcome.landing === 'not-landed') {
+    return [
+      `${target}：分支内容不在 ${outcome.baseRef ?? 'base'} 中。`,
+      pathLine,
+      '请现在二选一：',
+      '1. 按该仓库自身流程合并（本仓为 PR + squash；无 PR 流程时可由我本地 merge）；',
+      '2. 确认废弃 → 用 force: true 清理。'
+    ]
+      .filter((line): line is string => line !== undefined)
+      .join('\n')
+  }
+
+  if (outcome.unmerged && outcome.landing === 'inconclusive') {
+    const baseRef = outcome.baseRef ?? 'base'
+    return [
+      `${target}：无法自动判定分支内容是否已在 ${baseRef} 中。`,
+      `判定原因：${outcome.landingDetail ?? outcome.reason}`,
+      pathLine,
+      '请现在选择（三选一）：',
+      `1. 按该仓库自身流程合并（本仓为 PR + squash；无 PR 流程时可由我本地 merge）；`,
+      `2. 确认内容已在 ${baseRef} → force: true；`,
+      '3. 确认废弃 → 用 force: true 清理。'
+    ]
+      .filter((line): line is string => line !== undefined)
+      .join('\n')
+  }
+
+  if (outcome.worktreeRemoved) {
+    return `worktree 目录已移除，但分支清理失败：${outcome.reason}\n${manualCleanupHint(worktree, outcome.branchDeleteCommand)}`
+  }
+  return [`${target}：${outcome.reason}`, pathLine].filter((line): line is string => line !== undefined).join('\n')
 }
 
 /** 单引号 shell 转义：供 worktreeSetupHook 的 $MAIN_CWD 前缀注入使用。 */
