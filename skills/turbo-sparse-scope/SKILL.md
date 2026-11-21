@@ -9,7 +9,7 @@ description: 可变任务建账与 worktree 准备完成、读取实施范围代
 
 实施 owner 在任务建账与 worktree 准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`，需要类型检查、消费 `dist` 或跑仓库检查时再 `mise exec -- pnpm run build`）完成后、读取实施范围的代码、派发实施子任务或修改文件之前执行。准备与分工由编排层承接；同一个 task 的子任务共用 owner 确定的 worktree 和范围。
 
-- 台账 `scope` 为空且没有实现/验证必需的包外读取时跳过；否则必须调用本 skill 判断并处理范围。不要把「加载无关包」留到实现过程中再说。
+- 台账 `scope` 为空且没有实现/验证必需的包外读取时跳过；已明确会增删 workspace 包或修改 `pnpm-workspace.yaml` / `pnpm-lock.yaml`、且无需长周期只读侦察（直接全树作业成本更低）时，也可直接跳过稀疏并在交付记录中说明；否则必须调用本 skill 判断并处理范围。不要把「加载无关包」留到实现过程中再说。
 - 收缩是否到位用 `--check <目标>` 判定，不靠自述：目标是本 worktree 未结任务 `scope` 的并集，加上实现与验证必需的包外读取路径；非零退出意味着「目标非空但工作区从没收缩」或「cone 与目标要求的闭包不一致」。
 - 当前 cone 已覆盖时不必逐任务复查；新任务把读取面扩展到 cone 之外时，先 `--add` 对应包再继续。
 - `scope` 只含根路径时也合法：零个目标包，只保留根依赖闭包与根目录。
@@ -69,8 +69,7 @@ mise exec -- node <skill-dir>/sparse-scope.mjs --restore [--json]
   之前；需要读取或验证 cone 外、且无法用 `--add <pkg>` 覆盖的内容（含反向消费者闭包
   超出 cone、文件不在任何包或 turbo 图内等情形）。其余时候不为了「顺手跑一下全仓」
   放开稀疏。
-- **侦察期稀疏**：新增包、改动 workspace 成员或根共享面的任务，稀疏只在侦察阶段有效；
-  第一次触发上述 restore 条件时恢复全树，之后按全树流程走。
+- **侦察期稀疏（可评估跳过）**：新增/删除 workspace 包、改动 workspace 成员或根共享面（`pnpm-workspace.yaml`、`pnpm-lock.yaml` 等）的任务，稀疏只在侦察阶段有效，第一次触发上述 restore 条件时必须恢复全树并按全树流程走；若建账时已明确该前提且无需长周期只读侦察（收缩后再 `--restore` 重装/重建净增开销），可直接跳过稀疏、全程全树作业。
 - **稀疏期间的本地验证**：按 [verification.md](../../docs/agents/verification.md) 选层，
   并用 [monorepo-change-impact](../monorepo-change-impact/SKILL.md) 计算受影响闭包——
   公共契约变更时的反向消费者同样在目标集合内。验证命令收窄到目标包集合：包测试、包级
