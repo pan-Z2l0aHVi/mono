@@ -62,7 +62,7 @@ import {
   withPermissionDiagnosis,
   wrapCodeFence
 } from './codex-review.mjs'
-import { SPAWN_MAX_BUFFER, run } from './lib/github.mjs'
+import { SPAWN_MAX_BUFFER, commandError, run } from './lib/github.mjs'
 import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
 // 显式码元比较，既满足 require-array-sort-compare，也保持 `.sort()` 默认的排序结果。
@@ -2359,6 +2359,64 @@ exit 2
     deniedFiles,
     excludedFiles,
     'every tracked file denied for edits must be excluded from the review diff, and vice versa'
+  )
+
+  // `.gitattributes` 的真实文件属性也要与 `REVIEW_EXCLUDE_PATHSPECS` 保持同一集合：直接对
+  // `git ls-files -z` 枚举的入库文件跑 `git check-attr -z --stdin`，避免 pattern 字面比对或
+  // 维护第二张映射表，同时验证 `-diff` 只静音巨量目录型生成物。
+  const trackedNullSeparated = run('git', ['-C', repository, 'ls-files', '-z'], { env: testEnv() })
+  const trackedFiles = trackedNullSeparated.split('\0').filter(Boolean)
+  assert.ok(trackedFiles.length > 0, 'git ls-files must enumerate tracked files')
+
+  const checkGitAttr = attribute => {
+    const args = ['-C', repository, 'check-attr', '-z', attribute, '--stdin']
+    const result = spawnSync('git', args, {
+      cwd: repository,
+      encoding: 'utf8',
+      env: testEnv(),
+      input: trackedNullSeparated,
+      maxBuffer: SPAWN_MAX_BUFFER
+    })
+    if (result.status !== 0) throw commandError('git', args, result, SPAWN_MAX_BUFFER)
+    const stdout = result.stdout ?? ''
+    assert.ok(stdout.endsWith('\0'), `git check-attr -z ${attribute} output must be NUL-terminated`)
+    const tokens = stdout.slice(0, -1).split('\0')
+    assert.equal(
+      tokens.length,
+      trackedFiles.length * 3,
+      `git check-attr -z ${attribute} must emit one triplet per tracked file`
+    )
+    const values = new Map()
+    for (let index = 0; index < tokens.length; index += 3) {
+      const [filePath, attrName, attrValue] = tokens.slice(index, index + 3)
+      assert.equal(attrName, attribute)
+      values.set(filePath, attrValue)
+    }
+    return values
+  }
+
+  const linguistAttrs = checkGitAttr('linguist-generated')
+  const linguistGeneratedFiles = [...linguistAttrs.entries()]
+    .filter(([, value]) => value === 'true' || value === 'set')
+    .map(([filePath]) => filePath)
+    .sort(compareStrings)
+  assert.deepEqual(
+    linguistGeneratedFiles,
+    excludedFiles,
+    '.gitattributes linguist-generated must match the exact tracked file set excluded by REVIEW_EXCLUDE_PATHSPECS'
+  )
+
+  const diffAttrs = checkGitAttr('diff')
+  const diffUnsetFiles = [...diffAttrs.entries()]
+    .filter(([, value]) => value === 'unset')
+    .map(([filePath]) => filePath)
+    .sort(compareStrings)
+  const expectedDiffUnsetFiles = matchedBy(['apps/*/src/generated/**', 'packages/web-ui/src/icons/generated/**'])
+  assert.ok(expectedDiffUnsetFiles.length > 0, 'expected diff-unset generated directories must match tracked files')
+  assert.deepEqual(
+    diffUnsetFiles,
+    expectedDiffUnsetFiles,
+    '.gitattributes -diff (diff: unset) must only apply to apps/*/src/generated/** and packages/web-ui/src/icons/generated/**'
   )
 
   // 集合断言挡不住 glob 写错：把每条 deny 的样例路径与一个手写源码文件做成真实 diff，

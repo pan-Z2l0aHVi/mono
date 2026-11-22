@@ -91,4 +91,4 @@
 
 ## 新增生成物时
 
-同时更新，缺一处就会漂：本文的清单表与过滤路径表、turbo inputs 与产出集合守卫、[`.claude/settings.json`](../../.claude/settings.json) 的 `deny`、受影响包的测试、审查侧的 `REVIEW_EXCLUDE_PATHSPECS` 与脚本单测里的 deny 覆盖表及样例、审查 prompt（只有措辞变化时才动），以及 ADR-0021「审查范围与生成物滤除」的口径正文。口径见上文「审查范围与编辑拦截的分工」。根 [`AGENTS.md`](../../AGENTS.md) 只指向本文，不复制清单。
+同时更新，缺一处就会漂：本文的清单表与过滤路径表、turbo inputs 与产出集合守卫、[`.claude/settings.json`](../../.claude/settings.json) 的 `deny`、[`.gitattributes`](../../.gitattributes)（若属巨量 demo 生成物目录则同步根 [`.ignore`](../../.ignore)）、受影响包的测试、审查侧的 `REVIEW_EXCLUDE_PATHSPECS` 与脚本单测里的 deny 覆盖表及样例、审查 prompt（只有措辞变化时才动），以及 ADR-0021「审查范围与生成物滤除」的口径正文。口径见上文「审查范围与编辑拦截的分工」。根 [`AGENTS.md`](../../AGENTS.md) 只指向本文，不复制清单。
