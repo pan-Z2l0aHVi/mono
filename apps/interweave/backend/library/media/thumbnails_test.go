@@ -4,6 +4,7 @@ import (
 	"bytes"
 	"context"
 	"errors"
+	"fmt"
 	"image"
 	"image/color"
 	"image/jpeg"
@@ -672,5 +673,92 @@ func TestCloseWaitsForRunningPrune(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(dir, "gone.old.jpg")); !os.IsNotExist(err) {
 		t.Fatalf("expected stale thumbnail to be pruned before Close returned, got %v", err)
+	}
+}
+
+// 占满 buildSem 后，一个仍在等令牌的构建被全部等待者放弃：它的提前返回绝不能
+// 触碰信号量。偷走一个令牌会让缺口永久存在——最后一个释放者卡死在空信号量上，
+// wg.Done 永远不执行，Close 的 wg.Wait 死锁。本用例钉住这个精确的死锁场景。
+func TestCancelledSlotStarvedBuildDoesNotDeadlockClose(t *testing.T) {
+	db := openTestDB(t)
+	handler := newThumbnailHandler(t, db)
+	handler.thumbs.ensureInit()
+	slots := cap(handler.thumbs.buildSem)
+
+	// slots 个 Source 占满构建槽，最后一个 Source 的构建在等令牌。
+	const waiterID = "source-waiter"
+	var waiterFile string
+	for i := 0; i < slots+1; i++ {
+		file := writeJPEGFixture(t, fmt.Sprintf("photo-%d.jpg", i))
+		if i == slots {
+			waiterFile = file
+		}
+		insertFileSource(t, db, fmt.Sprintf("source-slot-%d", i), file)
+	}
+	insertFileSource(t, db, waiterID, waiterFile)
+
+	// 失败路径的解锁垫片（LIFO 先于 gateBuilds 的放行、后于其执行）：若令牌被偷走，
+	// 某个构建的释放会卡在空信号量上；补足令牌让 cleanup 里的 Close 不把测试进程挂死。
+	t.Cleanup(func() {
+		for i := 0; i < slots; i++ {
+			select {
+			case handler.thumbs.buildSem <- struct{}{}:
+			default:
+			}
+		}
+	})
+
+	started := make(chan struct{}, 1)
+	buildCount, releaseBuilds := gateBuilds(t, started)
+
+	// 逐个点燃并等待启动信号：每个信号证明对应构建已持有一个令牌并阻塞在构建内。
+	for i := 0; i < slots; i++ {
+		done := requestThumbnailAsync(handler,
+			httptest.NewRequest(http.MethodGet, ThumbnailPathPrefix+fmt.Sprintf("source-slot-%d", i), nil))
+		waitForSignal(t, started, fmt.Sprintf("slot build %d start", i))
+		defer func(rec <-chan *httptest.ResponseRecorder) { <-rec }(done)
+	}
+
+	// 等令牌的构建：先确认它已注册（wg.Add 与构建协程都已发生），再让唯一等待者离开。
+	waiterInfo, err := os.Stat(waiterFile)
+	if err != nil {
+		t.Fatal(err)
+	}
+	waiterKey := waiterID + "." + thumbnailVersion(waiterInfo)
+	waiterCtx, cancelWaiter := context.WithCancel(context.Background())
+	defer cancelWaiter()
+	waiterRequest := httptest.NewRequest(http.MethodGet, ThumbnailPathPrefix+waiterID, nil).WithContext(waiterCtx)
+	waiterDone := requestThumbnailAsync(handler, waiterRequest)
+
+	registered := false
+	for deadline := time.Now().Add(2 * time.Second); !registered; {
+		handler.thumbs.mu.Lock()
+		registered = handler.thumbs.inflight[waiterKey] != nil
+		handler.thumbs.mu.Unlock()
+		if registered {
+			break
+		}
+		if time.Now().After(deadline) {
+			t.Fatal("slot-starved build never registered")
+		}
+		time.Sleep(5 * time.Millisecond)
+	}
+	cancelWaiter()
+	waiterRec := <-waiterDone
+	if waiterRec.Body.Len() != 0 {
+		t.Fatalf("cancelled waiter request must stay silent, got %q", waiterRec.Body.String())
+	}
+
+	// 放行阻塞的构建并关停：被放弃的等待构建若偷过令牌，这里必然死锁。
+	closed := make(chan struct{})
+	go func() {
+		handler.thumbs.Close()
+		close(closed)
+	}()
+	releaseBuilds()
+	waitForClose(t, closed, "drain after slot-starved build cancellation")
+
+	if got := buildCount(); got != slots {
+		t.Fatalf("expected exactly %d builds to enter the build path, got %d", slots, got)
 	}
 }

@@ -212,10 +212,13 @@ func (t *ThumbnailStore) abandonCall(key string, call *thumbCall) {
 // 取消检查点在拿令牌前后与落盘前，已无人等待的构建不会产生无谓的磁盘写入。
 func (t *ThumbnailStore) runBuild(buildCtx context.Context, call *thumbCall, key, originalPath, target string) {
 	defer t.wg.Done()
-	defer func() { <-t.buildSem }()
 
 	select {
 	case t.buildSem <- struct{}{}:
+		// 释放必须绑定在成功获取之后：未拿到令牌就提前返回的路径若执行无条件
+		// 释放，会在满槽信号量上偷走其他构建的令牌，缺口最终把某个释放者
+		// 永久卡死在空信号量上，Close 的 wg.Wait 随之死锁。
+		defer func() { <-t.buildSem }()
 	case <-buildCtx.Done():
 		t.finishCall(key, call, buildCtx.Err())
 		return
@@ -468,8 +471,10 @@ func fitThumbnail(src image.Image) *image.RGBA {
 	targetW := max(1, int(math.Round(float64(width)*scale)))
 	targetH := max(1, int(math.Round(float64(height)*scale)))
 	dst := image.NewRGBA(image.Rect(0, 0, targetW, targetH))
-	// BiLinear 相比 CatmullRom 大幅降低缩放分配与 CPU（320px 输出无可见差异），
-	// 是 12MP 图构建耗时里仅次于 JPEG 解码的第二大头寸。
+	// BiLinear 相比 CatmullRom 大幅降低缩放分配与 CPU，是 12MP 图构建耗时里仅次于
+	// JPEG 解码的第二大头寸。320px 输出经人工并排抽检确认无可见差异（10 类样本：
+	// 细线、文字截图、棋盘、圆环、条纹、渐变、风景、人像、噪点、UI 虚线，
+	// CatmullRom 与 BiLinear 各自渲染真实 320px 输出后对比）。
 	draw.BiLinear.Scale(dst, dst.Bounds(), src, bounds, draw.Over, nil)
 	return dst
 }
