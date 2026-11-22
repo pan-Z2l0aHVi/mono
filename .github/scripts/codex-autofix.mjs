@@ -279,6 +279,27 @@ function writeOutputs(values) {
   fs.appendFileSync(target, `${body}\n`)
 }
 
+function appendSummary(lines) {
+  const target = process.env.GITHUB_STEP_SUMMARY
+  if (target) fs.appendFileSync(target, `${lines.join('\n')}\n`)
+}
+
+/**
+ * reviewTarget 的拒绝是「无对象可修」的预期出口，不是 apply 自己的故障：
+ * 写回 run 由 CI completed 触发，可能晚于合并完成。绿色收尾并把原因写进 step summary，
+ * 与 report 路径的 commandReport（拒绝时绿色退出）保持同一语义。
+ */
+function skipApply(reason) {
+  appendSummary([
+    '## Codex autofix 未应用',
+    '',
+    `apply 不推送：${reason}。`,
+    '',
+    '- 写回 run 由「CI completed」触发，可能晚于合并完成；autofix 只服务仍 open 的 PR，本次无事可做。'
+  ])
+  console.log(`skipping autofix apply: ${reason}`)
+}
+
 function requireEnv(names) {
   return Object.fromEntries(
     names.map(name => {
@@ -389,7 +410,10 @@ function commandApply() {
   const { commits } = adapter.pullCommits(number)
   const pull = adapter.pull(number)
   const target = reviewTarget({ pull, repository: env.GITHUB_REPOSITORY, releaseBranch: RELEASE_BRANCH })
-  if (!target.ok) throw new Error(`refusing to push: ${target.reason}`)
+  if (!target.ok) {
+    skipApply(target.reason)
+    return
+  }
   const { unverified, unverifiedDetail } = autofixCommitState(commits, pull)
   assertPushAllowed({
     liveHeadSha: pull.head.sha,
@@ -408,7 +432,23 @@ function commandApply() {
   run('git', ['add', '--', ...files])
   const message = autofixCommitMessage(files)
   run('git', ['-c', 'user.name=codex', '-c', 'user.email=codex@openai.com', 'commit', '-m', message])
-  run('git', ['push', 'origin', `HEAD:refs/heads/${env.CODEX_AUTOFIX_HEAD_REF}`])
+  try {
+    run('git', ['push', 'origin', `HEAD:refs/heads/${env.CODEX_AUTOFIX_HEAD_REF}`])
+  } catch (error) {
+    // reviewTarget 通过后、push 落地前的秒级窗口里 PR 可能刚被合并删分支：复查一次状态再定颜色，
+    // PR 已拒绝即绿色收尾；仍 open 的 push 故障原样抛出，保持红色可见。
+    const latest = adapter.pull(number)
+    const latestTarget = reviewTarget({
+      pull: latest,
+      repository: env.GITHUB_REPOSITORY,
+      releaseBranch: RELEASE_BRANCH
+    })
+    if (!latestTarget.ok) {
+      skipApply(`the pull request closed before the push landed: ${latestTarget.reason}`)
+      return
+    }
+    throw error
+  }
   console.log(`pushed autofix for ${files.length} files to ${env.CODEX_AUTOFIX_HEAD_REF}`)
 }
 

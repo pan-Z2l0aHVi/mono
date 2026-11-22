@@ -1377,20 +1377,23 @@ for (const [label, value] of [
 }
 
 {
-  const pullOf = (number, sha, updated_at) => ({ number, head: { sha }, updated_at })
+  const pullOf = (number, sha, updated_at, state = 'open') => ({ number, state, head: { sha }, updated_at })
   const adapter = pulls => ({ pulls: () => pulls })
 
+  const winner = findPullForHead({
+    adapter: adapter([
+      pullOf(10, otherSha, '2026-01-01'),
+      pullOf(11, headSha, '2026-01-02'),
+      pullOf(12, headSha, '2026-03-04')
+    ]),
+    headSha
+  })
+  assert.equal(winner?.number, 12, 'the pull request most recently touching this head wins')
+  assert.equal(winner?.state, 'open')
+  // 合并后的写回 run 仍要 resolve 到 closed PR：state 不过滤，跳过与否由 workflow 层按 pull_state 判。
   assert.equal(
-    findPullForHead({
-      adapter: adapter([
-        pullOf(10, otherSha, '2026-01-01'),
-        pullOf(11, headSha, '2026-01-02'),
-        pullOf(12, headSha, '2026-03-04')
-      ]),
-      headSha
-    }),
-    12,
-    'the pull request most recently touching this head wins'
+    findPullForHead({ adapter: adapter([pullOf(10, headSha, '2026-01-01', 'closed')]), headSha })?.state,
+    'closed'
   )
   assert.equal(
     findPullForHead({ adapter: adapter([pullOf(10, otherSha, '2026-01-01')]), headSha }),
@@ -1399,6 +1402,61 @@ for (const [label, value] of [
   )
   assert.equal(findPullForHead({ adapter: adapter([]), headSha }), null)
   assert.equal(findPullForHead({ adapter: adapter(undefined), headSha }), null, 'a null payload is no pull request')
+}
+
+{
+  // resolve-pull 输出 pull_number + pull_state：写回 job 用 state 把 checkout/apply 限在 open PR 上。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-resolve-'))
+  const bin = path.join(directory, 'bin')
+  fs.mkdirSync(bin)
+  const pullsPath = path.join(directory, 'pulls.json')
+  fs.writeFileSync(
+    path.join(bin, 'gh'),
+    `#!/bin/sh
+case "$*" in
+  "api repos/owner/repo/commits/$FAKE_RESOLVE_SHA/pulls")
+    cat "$FAKE_RESOLVE_PULLS"
+    ;;
+  *)
+    echo "unexpected gh call: $*" >&2
+    exit 2
+    ;;
+esac
+`,
+    { mode: 0o755 }
+  )
+  const resolve = body => {
+    fs.writeFileSync(pullsPath, JSON.stringify(body))
+    return runCli('resolve-pull', {
+      env: {
+        PATH: prependPath(bin),
+        CODEX_REVIEW_HEAD_SHA: headSha,
+        FAKE_RESOLVE_SHA: headSha,
+        FAKE_RESOLVE_PULLS: pullsPath
+      },
+      conclusionDir: directory
+    })
+  }
+  const pullOf = state => ({
+    number: 54,
+    state,
+    head: { sha: headSha },
+    updated_at: '2026-01-01T00:00:00Z'
+  })
+
+  const open = resolve([pullOf('open')])
+  assert.equal(open.result.status, 0, open.result.stderr)
+  assert.deepEqual(open.outputs, { pull_number: '54', pull_state: 'open' })
+
+  // 已合并的 PR（state=closed）仍要能解析出来：写回 run 依赖这个输出做绿色 no-op。
+  const closed = resolve([pullOf('closed')])
+  assert.equal(closed.result.status, 0, closed.result.stderr)
+  assert.deepEqual(closed.outputs, { pull_number: '54', pull_state: 'closed' })
+
+  const unowned = resolve([])
+  assert.equal(unowned.result.status, 0, unowned.result.stderr)
+  assert.deepEqual(unowned.outputs, { pull_number: '', pull_state: '' })
+  fs.rmSync(directory, { recursive: true, force: true })
 }
 
 {
@@ -1422,7 +1480,7 @@ for (const [label, value] of [
   }
   const adapter = createGhReviewAdapter({ repository: 'owner/repo', spawn, cwd: '/tmp', env: {} })
   assert.equal(adapter.pull(54).head.sha, headSha)
-  assert.equal(findPullForHead({ adapter, headSha }), 54)
+  assert.equal(findPullForHead({ adapter, headSha })?.number, 54)
   assert.deepEqual(adapter.listComments(54), [{ id: 9, body: 'other' }])
   assert.equal(adapter.createComment(54, 'body').id, 9)
   assert.equal(adapter.updateComment(9, 'body').id, 9)

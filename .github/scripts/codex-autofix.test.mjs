@@ -79,6 +79,7 @@ function writeFakeGh({
   jobId,
   commitPages = {},
   pullFile,
+  pullFiles,
   jobsFile,
   logFile
 }) {
@@ -90,6 +91,16 @@ function writeFakeGh({
   }
   if (pullFile !== undefined) {
     cases.push(`  "api repos/${repository}/pulls/${pullNumber}")\n    cat ${shQuote(pullFile)}\n    ;;`)
+  }
+  if (Array.isArray(pullFiles)) {
+    // 按调用序返回不同的 PR 快照（push 失败复查这类同一 run 内的第二次读取）：
+    // calls 在 case 分派前已记账，exact-match 计数即本次是第几次 pull 读取。
+    const branches = pullFiles.map((file, index) => `      ${index + 1}) cat ${shQuote(file)} ;;`).join('\n')
+    cases.push(
+      `  "api repos/${repository}/pulls/${pullNumber}")\n` +
+        `    i=$(grep -cxF "api repos/${repository}/pulls/${pullNumber}" ${shQuote(callsPath)})\n` +
+        `    case "$i" in\n${branches}\n      *) cat ${shQuote(pullFiles.at(-1))} ;;\n    esac\n    ;;`
+    )
   }
   if (runId !== undefined && jobsFile !== undefined) {
     cases.push(
@@ -972,6 +983,159 @@ for (const file of [
     assert.doesNotMatch(rejectedPull.gitCalls, /^apply | commit| push origin/m)
   }
 
+  fs.rmSync(directory, { recursive: true, force: true })
+}
+
+{
+  // CI run 晚于合并完成：resolve 到的 PR 已 closed。apply 在 reviewTarget 处绿色收尾，
+  // 不触碰任何 git 调用，原因写进 step summary——与 report 路径「拒绝即绿」同一语义。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-autofix-apply-closed-'))
+  const bin = path.join(directory, 'bin')
+  fs.mkdirSync(bin)
+  const pagePath = path.join(directory, 'commits.json')
+  const pullPath = path.join(directory, 'pull.json')
+  const ghCallsPath = path.join(directory, 'gh-calls')
+  const gitCallsPath = path.join(directory, 'git-calls')
+  const summaryPath = path.join(directory, 'summary')
+  fs.writeFileSync(path.join(directory, 'autofix.patch'), modification('packages/web-ui/src/button.ts'))
+  writeFakeGh({
+    bin,
+    callsPath: ghCallsPath,
+    repository: 'owner/repo',
+    pullNumber: 54,
+    commitPages: { 1: pagePath },
+    pullFile: pullPath
+  })
+  fs.writeFileSync(pagePath, JSON.stringify(plainCommits(2)))
+  fs.writeFileSync(
+    pullPath,
+    JSON.stringify({
+      state: 'closed',
+      base: { ref: 'main' },
+      head: { repo: { full_name: 'owner/repo' }, ref: 'feature/x', sha: headSha },
+      commits: 2,
+      number: 54
+    })
+  )
+  fs.writeFileSync(
+    path.join(bin, 'git'),
+    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$FAKE_GIT_CALLS"\ncase "$1" in\n  rev-parse) printf '%s\\n' "$FAKE_HEAD" ;;\nesac\nexit 0\n`,
+    { mode: 0o755 }
+  )
+  // 守卫拒绝发生在任何 git 调用之前：预创建空文件，让「零 git 调用」可断言。
+  fs.writeFileSync(gitCallsPath, '')
+  const result = spawnSync(process.execPath, [scriptPath, 'apply'], {
+    encoding: 'utf8',
+    env: testEnv({
+      PATH: prependPath(bin),
+      GITHUB_REPOSITORY: 'owner/repo',
+      RUNNER_TEMP: directory,
+      GITHUB_STEP_SUMMARY: summaryPath,
+      CODEX_AUTOFIX_HEAD_SHA: headSha,
+      CODEX_AUTOFIX_HEAD_REF: 'feature/x',
+      CODEX_AUTOFIX_PULL_NUMBER: '54',
+      CODEX_TRUSTED_SETTINGS: path.join(import.meta.dirname, '../../.claude/settings.json'),
+      FAKE_GIT_CALLS: gitCallsPath,
+      FAKE_HEAD: headSha
+    }),
+    cwd: directory
+  })
+  assert.equal(result.status, 0, result.stderr)
+  assert.match(result.stdout, /skipping autofix apply: the pull request is closed/)
+  assert.match(fs.readFileSync(summaryPath, 'utf8'), /Codex autofix 未应用/)
+  assert.match(fs.readFileSync(summaryPath, 'utf8'), /the pull request is closed/)
+  assert.equal(fs.readFileSync(gitCallsPath, 'utf8'), '', 'a closed PR must be rejected before any git call runs')
+  assert.deepEqual(fs.readFileSync(ghCallsPath, 'utf8').trim().split('\n').filter(Boolean), [
+    'api repos/owner/repo/pulls/54/commits?per_page=100&page=1',
+    'api repos/owner/repo/pulls/54'
+  ])
+  fs.rmSync(directory, { recursive: true, force: true })
+}
+
+{
+  // push 落地前的秒级窗口里 PR 刚被合并删分支：push 失败后复查 PR 状态，
+  // 已关闭即绿色收尾；对照分支（PR 仍 open 的 push 故障）保持红色。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-autofix-apply-race-'))
+  const bin = path.join(directory, 'bin')
+  fs.mkdirSync(bin)
+  const pagePath = path.join(directory, 'commits.json')
+  const openPath = path.join(directory, 'pull-open.json')
+  const closedPath = path.join(directory, 'pull-closed.json')
+  const ghCallsPath = path.join(directory, 'gh-calls')
+  const gitCallsPath = path.join(directory, 'git-calls')
+  const summaryPath = path.join(directory, 'summary')
+  fs.writeFileSync(path.join(directory, 'autofix.patch'), modification('packages/web-ui/src/button.ts'))
+  writeFakeGh({
+    bin,
+    callsPath: ghCallsPath,
+    repository: 'owner/repo',
+    pullNumber: 54,
+    commitPages: { 1: pagePath },
+    pullFiles: [openPath, closedPath]
+  })
+  fs.writeFileSync(pagePath, JSON.stringify(plainCommits(2)))
+  const pullOf = state =>
+    JSON.stringify({
+      state,
+      base: { ref: 'main' },
+      head: { repo: { full_name: 'owner/repo' }, ref: 'feature/x', sha: headSha },
+      commits: 2,
+      number: 54
+    })
+  fs.writeFileSync(openPath, pullOf('open'))
+  fs.writeFileSync(closedPath, pullOf('closed'))
+  fs.writeFileSync(
+    path.join(bin, 'git'),
+    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$FAKE_GIT_CALLS"\ncase "$1" in\n  rev-parse) printf '%s\\n' "$FAKE_HEAD" ;;\n  push) echo "fatal: couldn't find remote ref refs/heads/feature/x" >&2\n    exit 128 ;;\nesac\nexit 0\n`,
+    { mode: 0o755 }
+  )
+  const runApply = () => {
+    fs.writeFileSync(ghCallsPath, '')
+    fs.writeFileSync(gitCallsPath, '')
+    fs.writeFileSync(summaryPath, '')
+    const result = spawnSync(process.execPath, [scriptPath, 'apply'], {
+      encoding: 'utf8',
+      env: testEnv({
+        PATH: prependPath(bin),
+        GITHUB_REPOSITORY: 'owner/repo',
+        RUNNER_TEMP: directory,
+        GITHUB_STEP_SUMMARY: summaryPath,
+        CODEX_AUTOFIX_HEAD_SHA: headSha,
+        CODEX_AUTOFIX_HEAD_REF: 'feature/x',
+        CODEX_AUTOFIX_PULL_NUMBER: '54',
+        CODEX_TRUSTED_SETTINGS: path.join(import.meta.dirname, '../../.claude/settings.json'),
+        FAKE_GIT_CALLS: gitCallsPath,
+        FAKE_HEAD: headSha
+      }),
+      cwd: directory
+    })
+    return {
+      result,
+      ghCalls: fs.readFileSync(ghCallsPath, 'utf8').trim().split('\n').filter(Boolean),
+      gitCalls: fs.readFileSync(gitCallsPath, 'utf8'),
+      summary: fs.readFileSync(summaryPath, 'utf8')
+    }
+  }
+
+  const raced = runApply()
+  assert.equal(raced.result.status, 0, raced.result.stderr)
+  assert.match(raced.result.stdout, /skipping autofix apply/)
+  assert.match(raced.summary, /closed before the push landed/)
+  assert.match(raced.gitCalls, /push origin HEAD:refs\/heads\/feature\/x/)
+  assert.equal(raced.gitCalls.match(/push origin/gu)?.length, 1, 'the green skip must not retry the push')
+  assert.deepEqual(raced.ghCalls, [
+    'api repos/owner/repo/pulls/54/commits?per_page=100&page=1',
+    'api repos/owner/repo/pulls/54',
+    'api repos/owner/repo/pulls/54'
+  ])
+
+  // 对照：push 失败但 PR 仍 open（网络 / 权限类故障）必须原样红，不能被复查吞掉。
+  fs.writeFileSync(openPath, pullOf('open'))
+  fs.writeFileSync(closedPath, pullOf('open'))
+  const failed = runApply()
+  assert.equal(failed.result.status, 1)
+  assert.match(failed.result.stderr, /couldn't find remote ref/)
+  assert.doesNotMatch(failed.summary, /closed before the push landed/)
   fs.rmSync(directory, { recursive: true, force: true })
 }
 

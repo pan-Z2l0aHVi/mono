@@ -197,14 +197,16 @@ jobs:
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" resolve-pull
 
       - name: Check out the pull request head
-        if: steps.pull.outputs.pull_number != ''
+        # PR 已关闭/合并（含合并后写回）时 resolve-pull 报 closed：没有可修的 head，这里整体 no-op。
+        if: steps.pull.outputs.pull_number != '' && steps.pull.outputs.pull_state == 'open'
         env:
-          HEAD_BRANCH: ${{ github.event.workflow_run.head_branch }}
+          PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
+        # fetch 走 refs/pull/<n>/head：合并删分支后该 ref 仍持久存在，比按分支名 fetch 少一类 404。
         # patch 是相对 run head 生成的，所以工作树必须停在同一份代码上；
         # assertPushAllowed 再把 checkout、live head 与 patch base 三个 SHA 对齐。
         run: |
           set -euo pipefail
-          git fetch --no-tags origin "$HEAD_BRANCH"
+          git fetch --no-tags origin "refs/pull/$PULL_NUMBER/head"
           git checkout --detach FETCH_HEAD
 
       - name: Download autofix patch
@@ -219,7 +221,8 @@ jobs:
           path: ${{ runner.temp }}
 
       - name: Apply and push autofix
-        if: steps.pull.outputs.pull_number != ''
+        # 与 checkout 同一判据：PR 关闭/合并后 apply 也不会有可推的对象（脚本侧 reviewTarget 再兜一层）。
+        if: steps.pull.outputs.pull_number != '' && steps.pull.outputs.pull_state == 'open'
         env:
           CODEX_AUTOFIX_PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
           CODEX_AUTOFIX_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
