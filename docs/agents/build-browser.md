@@ -12,11 +12,13 @@
 
 ## 测试端口分配
 
-浏览器测试的 API 端口由 `@greypan/monorepo-kit/vite` 的 `testPorts()` 零配置确定性分配，不要在 `vite.config.ts` 里写裸数字。实现见 [`ports.ts`](../../packages/monorepo-kit/src/vite/ports.ts)：通过 SHA-256 把输入映射到 `23410..49151` 区间内 2574 个 `10` 端口宽槽位之一（基址范围 `23410..49140`），严格避开 macOS 临时端口段 `49152..65535`，并为 Vite 在端口被占时 +1 重试留出段内空间。
+浏览器测试的 API 端口由 `@greypan/monorepo-kit/vite` 的 `testPorts()` 零配置确定性分配，不要在 `vite.config.ts` 里写裸数字。实现见 [`ports.ts`](../../packages/monorepo-kit/src/vite/ports.ts)：通过 SHA-256 把输入映射到 `23410..49151` 区间内 2,574 个 `10` 端口宽槽位之一（基址范围 `23410..49140`），严格避开 macOS 默认临时端口段 `49152..65535`（Linux 默认临时端口段 `32768..60999` 与自动区重叠的部分仍可能被出站连接短暂占用），并为 Vite 在端口被占时 +1 重试留出段内空间。
 
 新增 browser project 时，在它的 `vite.config.ts` 顶层 `plugins` 里挂上 `testPorts({ project: '<project>', testName: '<vitest project 名>' })`——端口、host 与 strictPort 由插件在配置求值时一并写进那个 project 的 `test.api`（不能与手写 `test.api` 共存）。配置里有多个 project 时必须给 `testName`：测试运行器会为根配置求值一遍、再为每个跑到的 project 各求值一遍，插件只在能看见全部 project 的那一遍按名字认领要写的块，所以同一份配置里的 jsdom project 不会被抢走端口；写错的名字在那里直接报错，而不是悄悄落回默认端口。没有 `projects` 数组的单包配置省略 `testName`，直接写根 `test` 块。
 
 同一台机器上并行多个 worktree 时自动隔离，无需配置端口表或导出环境变量：`testPorts()` 不起子进程，直接探测仓库根 `.git`（对 `statSync` 与 `realpathSync` 做 `ENOENT` 防护）——主仓（`.git` 为目录或不存在）哈希输入为 `${project}`；linked worktree（`.git` 为文件）哈希输入为 `${realpathSync(root)}\0${project}`，各 worktree 自动落入独立槽位，且经 symlink 访问同一 worktree 得出一致端口。需要手动整体平移时，可设置可选的 `GREYPAN_TEST_PORT_OFFSET`（未设或为空串时为 `0`），允许任意非负整数偏移，并严格校验整段不越界（`basePort + offset + BAND_WIDTH - 1 <= 65535`）。
+
+剩余风险与兜底边界：2,574 个槽位下，任意两个项目哈希落入同一槽位的概率约为 1/2,574；本方案不做跨包扫描 `vite.config.ts` 调用点的门禁。现有 8 个浏览器项目在 [`ports.spec.ts`](../../packages/monorepo-kit/src/vite/__tests__/ports.spec.ts) 中由唯一性回归测试覆盖；新增或改名项目若偶发同槽（或落入 Linux 临时端口段发生占用），由下方插件统一写入的 `strictPort: false` 触发自动 `+1` 退避到段内空闲端口兜底。
 
 `api.host` 由插件统一写成 `127.0.0.1`。测试运行器的端口可用性探测只绑通配地址，看不见只占 `127.0.0.1` 的进程——macOS 上通配绑定与具体地址上的监听可以共存；真正把关的是随后的那次绑定。文档 demo 与 Interweave 的顶层 `server.host` 是 `true`，不写 `api.host` 时测试服务器会继承成通配绑定：别的进程占着 `127.0.0.1` 上的同号端口不会让它失败，两个服务器同号并行，页面可能落到别人的服务器上，症状是 `ERR_SSL_PROTOCOL_ERROR` / `ERR_EMPTY_RESPONSE` / browser runtime 永不连回。钉成 `127.0.0.1` 后绑定目标与占用者同址，才出 EADDRINUSE，非 strict 分支才会 +1 前进，测试运行器再按实际监听地址把浏览器指过去。`web-ui` 与 `browser-kit` 没有顶层 `server`，默认本来就是 `localhost`；插件对所有 project 走同一条路径，行为不因顶层配置的增删而改变。
 
