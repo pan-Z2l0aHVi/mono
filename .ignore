@@ -1,0 +1,5 @@
+# 窄口径根 .ignore：仅排除巨量文档生成物目录与二进制测试证据目录；
+# icon、bindings、CHANGELOG、lockfile 与单文件声明不在此列，仍参与常规检查与检索。
+apps/*/src/generated/**
+**/__screenshots__/**
+**/.vitest-attachments/**

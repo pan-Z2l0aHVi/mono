@@ -1,13 +1,15 @@
 ---
 name: task-ledger
-description: 开始会修改仓库的可变任务时调用：先按风险定级（T0/T1/T2），再在系统临时目录记录任务归属、进度与引用，用于建账、状态推进、恢复和跨项目复用；不承载 review、测试或 CI 结论。
+description: 跨会话、跨 Harness 或多 worktree 接力的可变任务时按需调用：按风险定级（T0/T1/T2），在用户缓存目录（$XDG_CACHE_HOME 或 ~/.cache）记录任务归属、范围、进度与引用，用于建账、状态推进、清理和跨项目复用；只读调查与单会话局部改动免建账；不承载 review、测试或 CI 结论。
 ---
 
 # Task Ledger
 
 ## 何时加载
 
-在开始一个会修改仓库的任务前加载：先定级，再建账。只读调查不需要建账。宿主仓库另有 worktree、review、提交或授权规则时，按宿主规则执行；本 skill 只负责分级与记账，不替代它们。
+- **只读调查与单会话局部改动免建账**：无需调用 `ledger.mjs` 落盘，仅按下方「分级」判据确定验证深度即可。
+- **跨会话、跨 Harness 或多 worktree 接力**：在开始实施前按需加载本 skill 并建账，记录 task 归属、起点、范围与恢复上下文。
+- 宿主仓库另有 worktree、review、提交或授权规则时，按宿主规则执行；本 skill 只负责分级与记账，不替代它们。
 
 ## 分级
 
@@ -22,9 +24,9 @@ description: 开始会修改仓库的可变任务时调用：先按风险定级�
 ## 建账流程
 
 1. 确定唯一的 task id、级别、owner 和 base。`new` 记录当前 Git 上下文；不要求工作区干净，也不接管 worktree 分配。
-2. 在实施前运行 `new`，用 `--scope` 记录本任务的仓库相对改动范围，并把目标、非目标、验收条件、验证与恢复方式补进同目录的 Task Packet。实施中发现范围变化时，先更新 scope 再继续。
+2. 启用台账时，在实施前运行 `new`，按需用 `--scope` 记录本任务的仓库相对改动范围，并把目标、非目标、验收条件、验证与恢复方式补进同目录的 Task Packet。实施中发现范围变化时，先更新 scope 再继续。
 3. 开始实施时运行 `start`；发现 issue、PR 或其他外部引用时用 `ref` 记录。
-4. 完成或放弃时运行 `close` 或 `drop`。`closed` / `dropped` 只是本地记录终态，不代表 review、测试、CI、merge 或发布成功。
+4. 完成或放弃时运行 `close` 或 `drop`。`closed` / `dropped` 只是本地记录终态，不代表 review、测试、CI、merge 或发布成功。过期终态记录可用 `prune` 定期清理。
 
 ## 命令
 
@@ -39,10 +41,11 @@ node <skill-dir>/ledger.mjs ref <id> <kind> <value>
 node <skill-dir>/ledger.mjs ref <id> <kind> --remove
 node <skill-dir>/ledger.mjs close <id>
 node <skill-dir>/ledger.mjs drop <id> [--reason <text>]
+node <skill-dir>/ledger.mjs prune [--days <n>] [--dry-run] [--json]
 node <skill-dir>/ledger.mjs help
 ```
 
-`new` 在状态目录写 `<id>.json`，并在同名 `.md` 不存在时写一个 Task Packet 骨架。`ref` 不校验引用的语义类型或 URL——`issue`、`pr` 只是普通 kind，不是枚举；但 kind 与 value 有形状校验：kind 匹配小写短横线串（`/^[a-z][a-z0-9-]{0,31}$/`），value 非空、单行且不超过 2000 字符。`status` 不带 id 时列出当前仓库的记录。
+`new` 在状态目录写 `<id>.json`，并在同名 `.md` 不存在时写一个 Task Packet 骨架。`ref` 不校验引用的语义类型或 URL——`issue`、`pr` 只是普通 kind，不是枚举；但 kind 与 value 有形状校验：kind 匹配小写短横线串（`/^[a-z][a-z0-9-]{0,31}$/`），value 非空、单行且不超过 2000 字符。`status` 不带 id 时列出当前仓库的记录。`prune` 默认清理 30 天前的终态（`closed` / `dropped`）记录，按记录终态更新时间（缺失或无效时回退文件 `mtime`）判定，同步删除同名 `<id>.json` 与 `<id>.md`；`--days` 必须为正整数，`--dry-run` 仅预览不删除，活跃态记录、损坏 JSON 与未知 schema 文件均保留不删。
 
 ## 改动范围（scope）
 
@@ -54,11 +57,12 @@ node <skill-dir>/ledger.mjs help
 
 ## 存储与边界
 
-- 状态目录：`<系统临时目录>/agent-task-ledger/<repo-id>/`。`repo-id` 由 Git common directory 的物理路径派生，因此同一仓库的 worktree 共享记录，不同仓库互相隔离。
+- 状态目录优先级：`AGENT_TASK_STATE_DIR`（覆盖完整状态目录）> `$XDG_CACHE_HOME/agent-task-ledger/<repo-id>/`（仅 `XDG_CACHE_HOME` 非空且为绝对路径时生效）> `~/.cache/agent-task-ledger/<repo-id>/`。`repo-id` 由 Git common directory 的物理路径派生，因此同一仓库的 worktree 共享记录，不同仓库互相隔离。
+- 旧 `<tmpdir>/agent-task-ledger/` 目录自然失效，不做自动迁移；如需保留或清理历史文件，由使用者按真实 Git 状态核对处理。
 - `AGENT_TASK_ROOT` 覆盖仓库根，`AGENT_TASK_STATE_DIR` 覆盖完整状态目录，只用于隔离与 fixture。
-- 记录可以丢失，不进入版本控制，不承诺跨机器、换用户或系统重启后的恢复。它不是 review、测试或 CI 证据。
+- 记录存放于本机用户缓存目录，不进入版本控制，不承诺跨机器或换用户恢复；它不是 review、测试或 CI 证据。
 - CLI 只读写状态与 Packet；不运行检查、fixer、构建，不修改源码或 Git index。
-- 不要手工改写 JSON；遇到未知 schema 或损坏记录时保留原文件并调查，不要覆盖或删除。
+- 不要手工改写 JSON；遇到未知 schema 或损坏记录时保留原文件并调查，不要覆盖或删除（`prune` 同样保留这些文件）。
 
 ## 恢复
 

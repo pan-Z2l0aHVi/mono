@@ -7,3 +7,14 @@
 # Go sources and module files are consumed by the Go toolchain on every platform.
 *.go text eol=lf
 go.mod text eol=lf
+
+# Massive hashed or directory-scoped generated artifacts: collapse on GitHub and treat as binary in local `git diff` (use `--text` to inspect).
+apps/*/src/generated/** linguist-generated=true -diff
+packages/web-ui/src/icons/generated/** linguist-generated=true -diff
+
+# Single-file declarations and Go->TS bindings: collapse on GitHub while keeping local `git diff` readable for contract changes.
+packages/web-ui/src/icons/index.ts linguist-generated=true
+apps/*/frontend/bindings/** linguist-generated=true
+**/routeTree.gen.ts linguist-generated=true
+**/typed-router.d.ts linguist-generated=true
+**/auto-imports.d.ts linguist-generated=true

@@ -12,9 +12,14 @@ import { repoRoot } from './repo-root.mjs'
  * AGENTS.md，Claude Code 与 Codex 读同一份层级文件。这道断言拦住的是「放回一行 @AGENTS.md shim」——它看起来
  * 是零副作用的兼容保险，实际会让全部包级指令静默退回到靠模型自觉 Read。
  */
+export const contextSymlinks = [
+  { path: '.claude/rules', target: '../.agents/rules' },
+  { path: '.claude/skills', target: '../.agents/skills' }
+]
+
 export const contextCorpus = defineContextCorpus({
   entry: 'AGENTS.md',
-  entryMarkers: ['docs/agents/workflow.md', '.agents/skills/task-ledger/SKILL.md'],
+  entryMarkers: ['docs/agents/workflow.md'],
   rootDocuments: ['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'ARCHITECTURE.md', 'CONTRIBUTING.md'],
   forbiddenRootFiles: [
     {
@@ -47,9 +52,6 @@ export const contextCorpus = defineContextCorpus({
     rootScope: 'root',
     pick: config => config?.prompt?.scopes ?? []
   },
-  symlinks: [
-    { path: '.claude/rules', target: '../.agents/rules' },
-    { path: '.claude/skills', target: '../.agents/skills' }
-  ],
+  symlinks: contextSymlinks,
   authorization: { pointer: 'workflow.md#怎么取得这个授权', owner: 'docs/agents/workflow.md' }
 })

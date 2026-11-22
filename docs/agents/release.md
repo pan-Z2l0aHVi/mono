@@ -1,6 +1,6 @@
 # 发布流程
 
-本文件规定仓库侧的 changeset 与发布验证。PR review、required CI 和用户 merge 授权见 [`review.md`](./review.md) 与 [`workflow.md`](./workflow.md)。task 级别按实际改动影响判定，不因进入 release 流程而变化；分级与台账见 `task-ledger` skill。
+本文件规定仓库侧的 changeset 与发布验证。PR review、required CI 和用户 merge 授权见 [`review.md`](./review.md) 与 [`workflow.md`](./workflow.md)。task 级别按实际改动影响判定，不因进入 release 流程而变化；分级与按需台账见 `task-ledger` skill。
 
 ## Changesets
 
@@ -21,11 +21,11 @@ PR CI 对 PR base/head 执行 changeset gate，判据是 `pnpm run check-changes
 
 ## 步骤
 
-1. 确认 Task Packet（见 `task-ledger` skill）描述实际交付内容；需要本地仓库政策检查时按 [`commit.md`](./commit.md) 运行只读政策检查，pre-commit 会在提交时执行同一组。
+1. 若本次任务启用了 `task-ledger`，确认 Task Packet（见 `task-ledger` skill）描述实际交付内容；需要本地仓库政策检查时按 [`commit.md`](./commit.md) 运行只读政策检查，pre-commit 会在提交时执行同一组。
 2. 按 [`verification.md`](./verification.md) 选择并实际运行相关测试、构建、契约与必要的浏览器验证。
 3. 创建 PR 后确认 required `check` 覆盖当前 base/head 且 `changeset-required` 通过，再按 [`review.md`](./review.md) 核对 PR 上的 review 结论。默认就是 CI 自动审查那条绑定 head 的评论；`check` 绿不等于 review 完成，两者要各自覆盖当前 head。
 4. merge 需用户明确授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。合并后如需复检 main CI，手动触发；有版本变更时，再验证 changesets 版本 PR、合并与 npm / Wails 发布链。
-5. 按 `task-ledger` skill 更新本地台账；`close` 不代替 CI、review 或发布证据。
+5. 若本次任务启用了 `task-ledger`，按该 skill 更新本地台账；`close` 不代替 CI、review 或发布证据。
 
 PR CI 的机械性修复由对应 task owner 处理；逻辑、测试和契约问题由原 owner 修复。每次新提交都在新 head 上重新取一次 review 结论。
 

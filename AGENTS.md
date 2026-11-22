@@ -4,9 +4,9 @@
 
 ## 变更准入与登记
 
-修改仓库前，按 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md) 定级并建账，分级、准入与恢复见该 skill；只读调查不建账。PR review 纪律见 [`docs/agents/review.md`](docs/agents/review.md)，方案到合并的总流程与授权见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
+按改动影响自行分级（见 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)）；只读调查与单会话局部改动免建账，跨会话、跨 Harness 或多 worktree 接力时按需启用该 skill 记录本地台账与恢复起点。PR review 纪律见 [`docs/agents/review.md`](docs/agents/review.md)，方案到合并的总流程与授权见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
 
-可变任务建账并按 [worktree](docs/agents/worktree.md#新-worktree-的准备) 完成准备后，按台账 `scope` 与实现/验证必需的包外读取路径，用 [turbo-sparse-scope](.agents/skills/turbo-sparse-scope/SKILL.md) 判断并处理稀疏范围；触发、跳过与稀疏树读取规则见该 skill。
+可变任务按 [worktree](docs/agents/worktree.md#新-worktree-的准备) 完成准备后，按本次改动范围（若启用了 `task-ledger` 则取台账 `scope`）与实现/验证必需的包外读取路径，用 [turbo-sparse-scope](.agents/skills/turbo-sparse-scope/SKILL.md) 判断并处理稀疏范围；触发、跳过与稀疏树读取规则见该 skill。
 
 ## 项目身份
 

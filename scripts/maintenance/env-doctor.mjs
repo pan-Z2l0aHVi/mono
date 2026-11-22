@@ -4,7 +4,8 @@
 // 是显式 opt-in 的写操作。覆盖本会话实测踩过的环境坑：
 // dist 截断（vp build --watch 清空 d.ts）、watch 进程污染、turbo 缓存未生效、
 // mise env 未激活（TURBO_CACHE_DIR 未注入、node 版本不符）、
-// node_modules 链接失效、git worktree 残留、git hook 未安装（pre-commit 静默空转）。
+// node_modules 链接失效、git worktree 残留、git hook 未安装（pre-commit 静默空转）、
+// 跨客户端适配与 skill 软链失效。
 //
 // 用法：pnpm run agent:env-doctor [--json] [--fix] [--kill-watchers]
 //   --json           机器可读输出（人类可读走 stdout 文本）
@@ -19,6 +20,7 @@ import path from 'node:path'
 
 import { readPnpmWorkspaceDirectories } from '@greypan/monorepo-kit'
 
+import { contextSymlinks } from '../policies/context-corpus.mjs'
 import { gitHooksStatus } from '../policies/git-hooks-status.mjs'
 
 const scriptRoot = path.resolve(import.meta.dirname, '../..')
@@ -272,6 +274,95 @@ function gitHooksCheck() {
   record('git-hooks', level, detail)
 }
 
+// ===== agent symlinks 状态 =====
+// 校验跨客户端适配软链（contextSymlinks）与 .agents/skills/*：
+// 严格基于当前工作树 root，不读取脚本所在主仓。
+function agentSymlinksCheck() {
+  const broken = []
+  for (const { path: linkRelPath, target } of contextSymlinks) {
+    const absolute = path.join(root, linkRelPath)
+    let stat
+    try {
+      stat = fs.lstatSync(absolute)
+    } catch {
+      broken.push(`missing symlink ${linkRelPath} (expected -> ${target})`)
+      continue
+    }
+    if (!stat.isSymbolicLink()) {
+      broken.push(`${linkRelPath} must be a symlink to ${target}`)
+      continue
+    }
+    const actualTarget = fs.readlinkSync(absolute)
+    if (actualTarget !== target) {
+      broken.push(`${linkRelPath} targets ${actualTarget}, expected ${target}`)
+      continue
+    }
+    if (!fs.existsSync(absolute)) {
+      broken.push(`${linkRelPath} -> ${target} points to missing target`)
+    }
+  }
+
+  const skillsDir = path.join(root, '.agents', 'skills')
+  let skillEntries = []
+  try {
+    if (!fs.statSync(skillsDir).isDirectory()) {
+      broken.push('.agents/skills must be a directory')
+    } else {
+      skillEntries = fs.readdirSync(skillsDir).filter(name => !name.startsWith('.'))
+    }
+  } catch {
+    broken.push('missing directory .agents/skills')
+  }
+
+  let skillCount = 0
+  for (const name of skillEntries) {
+    const linkRelPath = `.agents/skills/${name}`
+    const entryPath = path.join(skillsDir, name)
+    let stat
+    try {
+      stat = fs.lstatSync(entryPath)
+    } catch {
+      broken.push(`cannot inspect ${linkRelPath}`)
+      continue
+    }
+    if (!stat.isSymbolicLink()) {
+      broken.push(`${linkRelPath} must be a symlink`)
+      continue
+    }
+    let targetStat
+    try {
+      targetStat = fs.statSync(entryPath)
+    } catch {
+      broken.push(`${linkRelPath} -> ${fs.readlinkSync(entryPath)} points to missing target`)
+      continue
+    }
+    if (!targetStat.isDirectory()) {
+      broken.push(`${linkRelPath} target is not a directory`)
+      continue
+    }
+    try {
+      if (!fs.statSync(path.join(entryPath, 'SKILL.md')).isFile()) {
+        broken.push(`${linkRelPath}/SKILL.md is not a file`)
+        continue
+      }
+    } catch {
+      broken.push(`${linkRelPath} is missing reachable SKILL.md`)
+      continue
+    }
+    skillCount += 1
+  }
+
+  if (broken.length === 0) {
+    record(
+      'agent-symlinks',
+      'ok',
+      `${contextSymlinks.length} context symlink(s) and ${skillCount} skill symlink(s) resolve`
+    )
+    return
+  }
+  record('agent-symlinks', 'fail', `broken agent symlinks:\n  ${broken.join('\n  ')}`)
+}
+
 distAudit()
 watcherDetection()
 turboCacheCheck()
@@ -279,6 +370,7 @@ nodeVersionCheck()
 nodeModulesCheck()
 worktreeResidueCheck()
 gitHooksCheck()
+agentSymlinksCheck()
 
 if (fix && results.some(result => result.id === 'dist-audit' && result.level === 'fail')) {
   const build = sh('pnpm', ['exec', 'turbo', 'run', 'build', '--force'])
