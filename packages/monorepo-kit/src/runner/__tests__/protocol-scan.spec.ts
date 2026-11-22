@@ -69,7 +69,7 @@ function lineOf(code: string, index: number): string {
 }
 
 /** 域名前缀表与 `defineCatch` 的 `throw: ` 一起构成链上全部的归因来源。 */
-const DOMAIN_PREFIX = /^(?:go|git|turbo|md|changeset|pack|script|i18n|port|theme): /
+const DOMAIN_PREFIX = /^(?:go|git|turbo|md|changeset|pack|script|i18n|theme): /
 
 /**
  * 扫描面里 `XApi` 形状的声明体。interface 与 type 别名两种形态都算（别名盲区已闭合）；

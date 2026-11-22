@@ -1,3 +1,4 @@
+import crypto from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
@@ -5,147 +6,90 @@ import type { Plugin } from 'vite'
 
 import { getWorkspaceRoot } from '../shared/workspace-root'
 
-// 浏览器测试的 API 端口分配。谁占哪个段是本仓库的编排事实，数据在根 `monorepo.json`；
-// 这里只做读取、校验与偏移，外加把它写进 Vite 配置的那只插件。
+// 浏览器测试的 API 端口分配：基于 project 与 worktree 根路径的零配置确定性哈希分槽。
+// 遵循 ADR-0018 零本仓数据边界，包内不维护或读取任何消费仓库的端口表与项目清单。
 //
-// 端口是「每台机器一套」的资源，而写进 vite.config 的数字是「每个 checkout 一份」的常量，
-// 所以固定端口只能保证同一轮 turbo test 内不冲突，挡不住同一台机器上并行的其他 worktree。
-// 每个项目占一个 bandWidth 宽的段：Vite 在端口被占且未设 strictPort 时会 +1 重试，段内留出的
-// 空间让这次重试落回自己的段。偏移是整表平移，表内相对间隔不受影响；真正的约束是不同
-// worktree 的两组端口不能重叠，也就是 offsetStride 不得小于全表跨度。
+// 自动分槽落在 23410..49151（2574 个 10 端口宽槽位，基址 23410..49140），严格避开
+// macOS 默认临时端口段 49152..65535（Linux 默认 32768..60999 与自动槽位区间重叠的部分
+// 仍可能被出站连接短暂占用，由下面的段内 +1 重试承接），防止本机并行构建或测试时随机抢占基端口。
+// 每个项目占一个 10 端口宽的段：Vite 在端口被占且设 strictPort: false 时会 +1 重试，
+// 段内留出的空间让重试落回自己的段。
+//
+// 多 worktree 并发零配置自动隔离：主仓（`.git` 为目录或不存在）哈希输入为 `${project}`；
+// linked worktree（`.git` 为文件）哈希输入为 `${realpathSync(root)}\0${project}`，确保并行
+// worktree 各自落到独立槽位，同时经 symlink 访问同一 worktree 仍得出一致端口。
 
-const MAX_PORT = 65535
+export const BASE_PORT = 23410
+export const AUTO_MAX_PORT = 49151
+export const MAX_PORT = 65535
+export const BAND_WIDTH = 10
+export const SLOT_COUNT = Math.floor((AUTO_MAX_PORT - BASE_PORT + 1) / BAND_WIDTH)
 
-export interface TestPorts {
-  /** 端口分配里登记的 project 名，顺序与端口表一致 */
-  readonly names: () => readonly string[]
-  /** 取某个项目的基端口；偏移只做整表平移，不改段内间隔，偏移量读 `env` */
-  readonly port: (name: string) => number
-}
-
-export interface ReadTestPortsOptions {
-  /** 仓库根：端口表按相对根的路径读取 */
+export interface ResolveTestPortOptions {
+  /** 项目名，参与确定性哈希分槽 */
+  readonly project: string
+  /** 仓库或 worktree 根路径，用于探测 `.git` 并按需隔离 linked worktree */
   readonly root: string
   /** 偏移量的来源，默认 `process.env` */
   readonly env?: NodeJS.ProcessEnv
-  /** 端口表文件名，相对仓库根 */
-  readonly configFile?: string
 }
 
-interface Allocation {
-  bandWidth: number
-  offsetStride: number
-  ports: Map<string, number>
-  names: readonly string[]
-}
-
-function isPlainObject(value: unknown): value is Record<string, unknown> {
-  return typeof value === 'object' && value !== null && !Array.isArray(value)
-}
-
-function positiveInteger(value: unknown, key: string, configFile: string): number {
-  if (typeof value !== 'number' || !Number.isInteger(value) || value <= 0)
-    throw new Error(`test-ports: ${configFile} 的 ${key} 必须是正整数，收到 ${JSON.stringify(value)}`)
-  return value
-}
-
-function parse(raw: unknown, configFile: string): Allocation {
-  if (!isPlainObject(raw) || !isPlainObject(raw.testPorts))
-    throw new Error(`test-ports: ${configFile} 缺少 testPorts 对象`)
-
-  const bandWidth = positiveInteger(raw.testPorts.bandWidth, 'testPorts.bandWidth', configFile)
-  const offsetStride = positiveInteger(raw.testPorts.offsetStride, 'testPorts.offsetStride', configFile)
-  const rawPorts = raw.testPorts.ports
-  if (!isPlainObject(rawPorts) || Object.keys(rawPorts).length === 0)
-    throw new Error(`test-ports: ${configFile} 的 testPorts.ports 必须是非空对象`)
-
-  const ports = new Map<string, number>()
-  for (const [name, base] of Object.entries(rawPorts)) {
-    if (typeof base !== 'number' || !Number.isInteger(base) || base < 1 || base > MAX_PORT)
-      throw new Error(
-        `test-ports: ${configFile} 的 testPorts.ports["${name}"] 必须是 1..${MAX_PORT} 的整数，收到 ${JSON.stringify(base)}`
-      )
-    ports.set(name, base)
+function isLinkedWorktree(root: string): boolean {
+  try {
+    return fs.statSync(path.join(root, '.git')).isFile()
+  } catch (error) {
+    // 只有路径不存在按非 linked worktree 处理；权限等其他文件系统错误保留原异常。
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return false
+    throw error
   }
-
-  const sorted = [...ports.values()].sort((left, right) => left - right)
-  for (const [index, base] of sorted.entries()) {
-    if (index > 0 && base - sorted[index - 1] < bandWidth) {
-      // 段没有真占住自己的宽度时，两个项目会在同一批端口上互相 +1 抢位，而调用点看不出来。
-      throw new Error(`test-ports: 段 ${sorted[index - 1]} 与 ${base} 相距不足 ${bandWidth}，两个项目会重叠`)
-    }
-  }
-
-  const span = Math.max(...sorted) + bandWidth - Math.min(...sorted)
-  if (span > offsetStride) {
-    // 跨度超过步长时，相邻两档偏移的 worktree 会抢同一批端口，而调用点看不出来。
-    throw new Error(`test-ports: 端口表跨度 ${span} 超过偏移步长 ${offsetStride}，不同偏移会重叠`)
-  }
-
-  return { bandWidth, offsetStride, ports, names: Object.freeze([...ports.keys()]) }
 }
 
-function offsetOf(env: NodeJS.ProcessEnv, offsetStride: number): number {
+function resolveRealRoot(root: string): string {
+  try {
+    return fs.realpathSync(root)
+  } catch (error) {
+    if ((error as NodeJS.ErrnoException).code === 'ENOENT') return path.resolve(root)
+    throw error
+  }
+}
+
+function offsetOf(env: NodeJS.ProcessEnv): number {
   const rawOffset = env.GREYPAN_TEST_PORT_OFFSET
-  const offset = rawOffset === undefined || rawOffset === '' ? 0 : Number(rawOffset)
-  if (!Number.isInteger(offset) || offset < 0)
+  if (rawOffset === undefined || rawOffset === '') return 0
+  const offset = /^\d+$/.test(rawOffset) ? Number(rawOffset) : Number.NaN
+  if (!Number.isSafeInteger(offset) || offset < 0)
     throw new Error(`test-ports: GREYPAN_TEST_PORT_OFFSET 必须是非负整数，收到 "${rawOffset}"`)
-  if (offset % offsetStride !== 0)
-    throw new Error(`test-ports: GREYPAN_TEST_PORT_OFFSET 必须是 ${offsetStride} 的倍数，收到 ${offset}`)
   return offset
 }
 
 /**
- * 读取并校验端口表，返回按名字取段的读数。
+ * 计算指定项目在当前工作区下的测试 API 基端口。
  *
- * 坏表与未知项目都抛错而不返回 `Result`：配置求值要的是能用的数字，判定层要的是「这一步没跑成」，
- * 两边各自决定怎么呈现失败，而表坏掉时没有任何可继续的形状。
+ * 主仓（`.git` 为目录或不存在）按 `${project}` 哈希分槽，linked worktree（`.git` 为文件）
+ * 按 `${realpathSync(root)}\0${project}` 哈希分槽；可选读取 `GREYPAN_TEST_PORT_OFFSET` 做非负整数偏移，
+ * 并校验整段不越过端口上限 `65535`。
  */
-export function readTestPorts({
-  root,
-  env = process.env,
-  configFile = 'monorepo.json'
-}: ReadTestPortsOptions): TestPorts {
-  const file = path.join(root, configFile)
-  let text: string
-  try {
-    text = fs.readFileSync(file, 'utf8')
-  } catch (cause) {
-    throw new Error(`test-ports: cannot read ${file}`, { cause })
-  }
+export function resolveTestPort({ project, root, env = process.env }: ResolveTestPortOptions): number {
+  if (project.trim().length === 0) throw new Error('test-ports: project 不能为空')
 
-  let raw: unknown
-  try {
-    raw = JSON.parse(text)
-  } catch (cause) {
-    throw new Error(`test-ports: ${file} is not valid JSON`, { cause })
-  }
+  const seed = isLinkedWorktree(root) ? `${resolveRealRoot(root)}\0${project}` : project
+  const slot = crypto.createHash('sha256').update(seed).digest().readUInt32BE(0) % SLOT_COUNT
+  const basePort = BASE_PORT + slot * BAND_WIDTH
+  const offset = offsetOf(env)
 
-  const allocation = parse(raw, configFile)
-  return {
-    names: () => allocation.names,
-    port: name => {
-      const base = allocation.ports.get(name)
-      if (base === undefined) throw new Error(`test-ports: 未知项目 "${name}"；可选：${allocation.names.join(', ')}`)
+  if (basePort + offset + BAND_WIDTH - 1 > MAX_PORT)
+    throw new Error(`test-ports: 偏移 ${offset} 让 "${project}" 超出端口上限 ${MAX_PORT}`)
 
-      const offset = offsetOf(env, allocation.offsetStride)
-      if (base + offset + allocation.bandWidth - 1 > MAX_PORT)
-        throw new Error(`test-ports: 偏移 ${offset} 让 "${name}" 超出端口上限 ${MAX_PORT}`)
-
-      return base + offset
-    }
-  }
+  return basePort + offset
 }
 
 export interface TestPortsPluginOptions {
-  /** 端口表里登记的项目名，也就是这次分配占的那一段 */
+  /** 项目名，用于确定性哈希分槽 */
   readonly project: string
   /** 要写入的 vitest project 的 `test.name`；不填时写根 `test` */
   readonly testName?: string
   /** API 绑定地址，默认 `127.0.0.1` */
   readonly host?: string
-  /** 端口表文件名，相对仓库根 */
-  readonly configFile?: string
 }
 
 interface TestApi {
@@ -174,39 +118,33 @@ export interface TestPortsTargetConfig {
  */
 export function applyTestPorts(
   config: TestPortsTargetConfig,
-  ports: TestPorts,
-  { project, testName, host = '127.0.0.1' }: Pick<TestPortsPluginOptions, 'project' | 'testName' | 'host'>
+  port: number,
+  { testName, host = '127.0.0.1' }: Pick<TestPortsPluginOptions, 'testName' | 'host'> = {}
 ): void {
   const test = config.test
   if (!test) throw new Error('test-ports: 这份 Vite 配置没有 test 块，testPorts() 无处可写')
 
-  if (testName === undefined) return writeApi(test, ports, project, host, testName)
+  if (testName === undefined) return writeApi(test, port, host, testName)
   if (!test.projects) return
 
   const entry = test.projects.find(item => item.test?.name === testName)?.test
   if (!entry) throw new Error(`test-ports: 配置里没有 test.name 为 "${testName}" 的 project`)
-  writeApi(entry, ports, project, host, testName)
+  writeApi(entry, port, host, testName)
 }
 
 interface ApiTarget {
   api?: TestApi
 }
 
-function writeApi(
-  target: ApiTarget,
-  ports: TestPorts,
-  project: string,
-  host: string,
-  testName: string | undefined
-): void {
+function writeApi(target: ApiTarget, port: number, host: string, testName: string | undefined): void {
   // 手写 api 与插件互斥：两处都能写时，生效的那一处取决于合并顺序，读配置的人看不出来。
   if (target.api) throw new Error(`test-ports: "${testName ?? 'root'}" 已经写了 test.api，端口由 testPorts() 设置`)
 
-  target.api = { host, port: ports.port(project), strictPort: false }
+  target.api = { host, port, strictPort: false }
 }
 
 /**
- * 把分配到的端口段写进 vitest 的 API server，用法与其他 Vite 插件一致：
+ * 把确定性分配的端口段写进 vitest 的 API server，用法与其他 Vite 插件一致：
  * `plugins: [testPorts({ project: 'web-ui', testName: 'browser' })]`。
  *
  * 三件事一起写，是因为它们都是这段分配的后果而不是调用点的偏好：`host` 钉 loopback，Vite 的
@@ -215,22 +153,18 @@ function writeApi(
  * `server.strictPort: true` 一并带进测试服务器，端口被占就整包判红，而测试服务器按实际监听地址
  * 指浏览器，漂移零代价。
  */
-export function testPorts({ project, testName, host = '127.0.0.1', configFile }: TestPortsPluginOptions): Plugin {
+export function testPorts({ project, testName, host = '127.0.0.1' }: TestPortsPluginOptions): Plugin {
   return {
     name: 'greypan:test-ports',
-    // Vite 在 build 也会求值 config hook。端口表是测试编排数据，不该变成构建的前置依赖：
-    // 根 monorepo.json 缺失或坏表、或 build 环境里带了非法端口偏移，都不该让不跑测试的构建失败。
+    // Vite 在 build 也会求值 config hook。测试端口不该变成构建的前置依赖：
+    // build 环境里带了非法端口偏移或配置里没有 test 块，都不该让不跑测试的构建失败。
     config: (config, env) => {
       if (env.command === 'build') return
-      applyTestPorts(
-        config as TestPortsTargetConfig,
-        readTestPorts({ root: getWorkspaceRoot(import.meta.dirname), configFile }),
-        {
-          project,
-          testName,
-          host
-        }
-      )
+      const port = resolveTestPort({
+        project,
+        root: getWorkspaceRoot(import.meta.dirname)
+      })
+      applyTestPorts(config as TestPortsTargetConfig, port, { testName, host })
     }
   }
 }
