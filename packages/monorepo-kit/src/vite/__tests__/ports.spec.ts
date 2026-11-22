@@ -82,6 +82,22 @@ it('resolveTestPort 按 project 确定性哈希分槽并避开 macOS 临时端�
   assert.throws(() => resolveTestPort({ project: '   ', root: mainRoot, env: {} }), /project 不能为空/)
 })
 
+it('resolveTestPort 对现有 8 个浏览器项目映射到互不碰撞的基端口', () => {
+  const mainRoot = makeRoot('dir')
+  const projects = [
+    'react-web-ui-demo',
+    'vue-web-ui-demo',
+    'interweave-frontend',
+    'interweave-frontend-touch',
+    'web-ui',
+    'web-ui-reduced-motion',
+    'web-ui-touch',
+    'browser-kit'
+  ]
+  const ports = projects.map(project => resolveTestPort({ project, root: mainRoot, env: {} }))
+  assert.equal(new Set(ports).size, projects.length)
+})
+
 it('resolveTestPort 自动隔离主仓与 linked worktree，且 symlink 指向同一 worktree 得相同端口', () => {
   const mainRoot = makeRoot('dir')
   const noGitRoot = makeRoot('none')
