@@ -996,6 +996,41 @@ describe('LibraryPage：统一导入入口', () => {
     }
   })
 
+  it('提交进行中上传区继续入队被挡下并提示，不再扩张队列', async () => {
+    const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => ['/tmp/late.png'])
+    const gate = deferred<void>()
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => ['/tmp/late'] },
+      resources: {
+        expandImportEntries,
+        create: async () => gate.promise.then(() => resource())
+      }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      queueWindowFileDrop(['/tmp/first.png'])
+      await flush()
+      expect(queueItems(mounted.host)).toHaveLength(1)
+
+      // 提交被 gate 挂起；此时再走上传区入队必须被挡下。
+      button(mounted.host, '确认导入').click()
+      await flush()
+      await pickFromDropZone(mounted.host)
+
+      expect(toastWarning).toHaveBeenCalledWith('正在导入当前批次，请等它完成再继续添加', { position: 'top-center' })
+      // 只有首次拖入那次合法展开；提交期间的尝试没有走到展开。
+      expect(expandImportEntries).toHaveBeenCalledTimes(1)
+      expect(queueItems(mounted.host)).toHaveLength(1)
+
+      gate.resolve()
+      await flush()
+    } finally {
+      await mounted.close()
+    }
+  })
+
   it('拖入文件夹走同一条展开链，目录被递归展开后入队', async () => {
     const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => [
       '/tmp/drop/a.png',

@@ -489,6 +489,12 @@ const IMPORT_CONFIRM_THRESHOLD = 20
  * 超过阈值先经页面确认弹窗显式放行，确认动作就是整条入队链，逐项重复提示结算完毕它才关闭。
  */
 async function enqueueImportEntries(entries: string[]) {
+  // 提交循环按快照结算、结束时整队清空：提交期间继续入队的项会被静默丢弃，
+  // 三个入口（面板/拖入/粘贴）统一在这里挡下并给出可读提示。
+  if (submitting.value) {
+    toast.warning('正在导入当前批次，请等它完成再继续添加', { position: 'top-center' })
+    return
+  }
   const paths = await runtime.resources.expandImportEntries(entries)
   if (!addOpen.value) return
   if (!paths.length) {
