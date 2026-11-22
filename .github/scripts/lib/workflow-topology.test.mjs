@@ -705,10 +705,10 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     const eligibilityGuard =
       "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository" +
       ` && github.head_ref != '${RELEASE_BRANCH}'`
-    // 2026-11-23 起判据分道：review 与 autofix-plan 保留版本分支排除；gate 升为 required check 后
-    // 覆盖版本分支（review skip → not_applicable 绿），fork 排除保留 fail-closed。
-    const gateEligibilityGuard =
-      "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository"
+    // 2026-11-23 起判据分道：review 与 autofix-plan 保留 fork 与版本分支排除；gate 升为 required
+    // check 后不再排除任何 PR——GitHub 会为被 if 跳过的 job 上报 skipped check run，而 required 把
+    // skipped 计为通过，gate 的任何排除都是 fail-open（fork 由收窄后的 not_applicable 出口判红）。
+    const gateEligibilityGuard = "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'"
     const eligibilityGuards = {
       'codex-review': eligibilityGuard,
       'codex-gate': gateEligibilityGuard,
@@ -721,13 +721,19 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       for (const jobId of eligibleJobs) {
         assert.ok(
           workflow.jobs[jobId]?.if?.includes(eligibilityGuards[jobId]),
-          `${jobId} must review only same-repo PRs into main`
+          `${jobId} must review only PRs into main`
         )
       }
-      // gate 不得重新引入版本分支排除：required check 缺席即不可合并，排除会让 version PR 重新停滞。
+      // gate 不得重新引入 fork 或版本分支排除：skipped 的 required check 计为通过，排除即放行。
       assert.ok(
         !workflow.jobs['codex-gate']?.if?.includes(`github.head_ref != '${RELEASE_BRANCH}'`),
         'codex-gate must not exclude the release branch once it is a required check'
+      )
+      assert.ok(
+        !workflow.jobs['codex-gate']?.if?.includes(
+          'github.event.pull_request.head.repo.full_name == github.repository'
+        ),
+        'codex-gate must not exclude fork PRs once it is a required check'
       )
     }
 
@@ -739,14 +745,14 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     }
 
     assertEligibilityGuards(ci)
-    // fork PR 拿不到仓库 secret，版本分支由发布流程自审：判据少一条就必须变红，而不是静默放宽。
-    // gate 的判据不含版本分支排除，版本分支片段的变异只对保留它的两个 job 断言。
+    // fork PR 拿不到仓库 secret，版本分支由发布流程自审：review 判据少一条就必须变红，而不是静默放宽。
+    // gate 的判据不含这两个排除，相应片段的变异只对保留它们的两个 job 断言。
     const sharedFragments = [
       "github.event_name == 'pull_request' && ",
-      "github.event.pull_request.base.ref == 'main' && ",
-      'github.event.pull_request.head.repo.full_name == github.repository && '
+      "github.event.pull_request.base.ref == 'main' && "
     ]
-    const releaseFragments = [
+    const reviewOnlyFragments = [
+      'github.event.pull_request.head.repo.full_name == github.repository && ',
       `github.head_ref != '${RELEASE_BRANCH}' && `,
       ` && github.head_ref != '${RELEASE_BRANCH}'`
     ]
@@ -758,7 +764,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
         )
       }
       if (jobId === 'codex-gate') continue
-      for (const fragment of releaseFragments) {
+      for (const fragment of reviewOnlyFragments) {
         assert.throws(
           () => assertEligibilityGuards(mutateJobIf(ci, jobId, fragment)),
           `dropping ${fragment.trim()} from ${jobId} must fail the eligibility check`
@@ -854,16 +860,30 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     const assertNotApplicableIsDerived = text =>
       assert.match(
         namedStep(text, 'Apply review gate'),
-        /CODEX_REVIEW_NOT_APPLICABLE: \$\{\{ needs\.codex-review\.result == 'skipped' \}\}/,
-        'not-applicable must be derived from the review job result, never hardcoded'
+        /CODEX_REVIEW_NOT_APPLICABLE: \$\{\{ needs\.codex-review\.result == 'skipped' && github\.head_ref == 'changeset-release\/main' && github\.event\.pull_request\.head\.repo\.full_name == github\.repository \}\}/,
+        'not-applicable must be derived from the review job result and narrowed to same-repo release branches, never hardcoded'
       )
     assertNotApplicableIsDerived(ci)
-    const derivedNotApplicable = "CODEX_REVIEW_NOT_APPLICABLE: ${{ needs.codex-review.result == 'skipped' }}"
+    const derivedNotApplicable =
+      "CODEX_REVIEW_NOT_APPLICABLE: ${{ needs.codex-review.result == 'skipped' && github.head_ref == 'changeset-release/main' && github.event.pull_request.head.repo.full_name == github.repository }}"
     assert.equal(
       ci.split(derivedNotApplicable).length - 1,
       1,
       'the derived not-applicable assignment must exist exactly once'
     )
+    // fork 的 review skip 不得落入 not_applicable：skipped 的 required check 会被 GitHub 计为通过，
+    // 不收窄就是 fail-open。逐片段变异保证两个收窄条件都不可删。
+    for (const fragment of [
+      " && github.head_ref == 'changeset-release/main'",
+      ' && github.event.pull_request.head.repo.full_name == github.repository'
+    ]) {
+      assert.throws(
+        () =>
+          assertNotApplicableIsDerived(ci.replace(derivedNotApplicable, derivedNotApplicable.replace(fragment, ''))),
+        /never hardcoded/,
+        `dropping ${fragment.trim()} from the not-applicable narrowing must fail the assertion`
+      )
+    }
     for (const pinned of ["CODEX_REVIEW_NOT_APPLICABLE: 'true'", "CODEX_REVIEW_NOT_APPLICABLE: 'false'"]) {
       assert.throws(
         () => assertNotApplicableIsDerived(ci.split(derivedNotApplicable).join(pinned)),

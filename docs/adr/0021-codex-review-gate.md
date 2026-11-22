@@ -189,9 +189,12 @@ total 缺失/非法时按「无法验证」禁用自动修，不把 250 条 API 
 - **动机**：auto-merge 只等 required `check` 变绿即触发，而 review 写回由 CI completed 触发、必然晚于
   `mergedAt`，实测 #581 在新 head 的 review 结论与 gate 变绿前 18–44 秒完成合并。人工纪律已在那个场景失效，
   结构性竞态只能用机器强制消除：合并（含 auto-merge 与手动）都必须等 gate 在当前 head 上变绿。
-- **判据分道**：review 与 autofix-plan job 的资格判据保留版本分支排除；gate 的 job `if` 放宽为覆盖
-  changeset-release head（review job 对其 skip，gate 经内建 `not_applicable` 出口绿色退出，version PR 合并不受阻）。
-  fork 排除保留 fail-closed：fork head 无 gate check 上报，required 缺席即不可合并。
+- **判据分道与 fork fail-closed**：review 与 autofix-plan job 的资格判据保留 fork 与版本分支排除；gate 的
+  job `if` 不再排除任何 PR。GitHub 会为被 `if` 跳过的 job 上报 conclusion 为 skipped 的 check run，而 required
+  检查把 skipped 计为通过——gate 的任何排除都是 fail-open（初版修订曾错误地认为「fork 排除保留 fail-closed」，
+  #588 审查纠正）。fork 的 review skip 因此不得落入 not_applicable：`CODEX_REVIEW_NOT_APPLICABLE` 收窄为
+  「review skipped 且同仓版本分支」，fork 缺产物判 `error` 红、不可合并；版本分支（同仓）走内建
+  `not_applicable` 出口绿色退出，version PR 合并不受阻。
 - **证据载体迁移**：绑 head SHA、不可变的 required gate check 成为 per-head 审查证据的权威载体；持久评论允许在
   auto-merge 路径上落后一个 head，定位改为「open 状态下的审查轨迹与发现明细」。合并前核对以 gate check 为准，
   评论 sha 仅作人工合并路径的辅助。
