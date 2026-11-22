@@ -339,7 +339,7 @@ func TestPruneStaleRemovesOutdatedVersions(t *testing.T) {
 			t.Fatalf("write fixture %s: %v", name, err)
 		}
 	}
-	store.pruneStale([]thumbnailPruneEntry{
+	store.pruneStale(context.Background(), []thumbnailPruneEntry{
 		{SourceID: "source-1", Version: current},
 		{SourceID: "source-3", Version: ""},
 	})
@@ -434,6 +434,284 @@ func TestPruneSkipsEverythingWhenListingFails(t *testing.T) {
 
 	if _, err := os.Stat(filepath.Join(dir, "x.v.jpg")); err != nil {
 		t.Fatalf("a failed listing must not prune anything: %v", err)
+	}
+}
+
+// ---- 离线索引：一次扫描、O(1) 命中、负查询不重扫、CAS 自愈 ----
+
+// serveCached 是包内直调 ServeCachedThumbnail 的便捷封装，返回响应与错误。
+func serveCached(t *testing.T, store *ThumbnailStore, sourceID string) (*httptest.ResponseRecorder, error) {
+	t.Helper()
+	rec := httptest.NewRecorder()
+	request := httptest.NewRequest(http.MethodGet, ThumbnailPathPrefix+sourceID, nil)
+	err := store.ServeCachedThumbnail(rec, request, sourceID)
+	return rec, err
+}
+
+// countDirScans 把 readDirFn 换成对 dir 计数的版本并在用例结束后还原，
+// 使「目录被扫描了几次」可以断言。
+func countDirScans(t *testing.T, dir string) func() int {
+	t.Helper()
+	original := readDirFn
+	var mu sync.Mutex
+	scans := 0
+	readDirFn = func(name string) ([]os.DirEntry, error) {
+		if name == dir {
+			mu.Lock()
+			scans++
+			mu.Unlock()
+		}
+		return original(name)
+	}
+	t.Cleanup(func() { readDirFn = original })
+	return func() int {
+		mu.Lock()
+		defer mu.Unlock()
+		return scans
+	}
+}
+
+// 离线查询必须只扫一次目录：首次调用建立全量索引，此后命中 O(1)、未命中直接
+// os.ErrNotExist（非图片源的负查询不再反复遍历）。选「最新」按真实 ModTime
+// 而不是文件名字典序。
+func TestServeCachedThumbnailBuildsOfflineIndexOnce(t *testing.T) {
+	dir := t.TempDir()
+	store := &ThumbnailStore{dir: dir}
+	touchThumbnail(t, dir, "src-a.1-1.jpg")
+	touchThumbnail(t, dir, "src-a.9-9.jpg")
+	touchThumbnail(t, dir, "src-b.2-2.jpg")
+	// 文件名字典序更大的 9-9 真实 ModTime 更旧：索引必须按时间选出 1-1。
+	newerTime := time.Now().Add(time.Hour)
+	if err := os.Chtimes(filepath.Join(dir, "src-a.1-1.jpg"), newerTime, newerTime); err != nil {
+		t.Fatal(err)
+	}
+	olderTime := time.Now().Add(-time.Hour)
+	if err := os.Chtimes(filepath.Join(dir, "src-a.9-9.jpg"), olderTime, olderTime); err != nil {
+		t.Fatal(err)
+	}
+
+	scans := countDirScans(t, dir)
+
+	rec, err := serveCached(t, store, "src-a")
+	if err != nil {
+		t.Fatalf("serve cached thumbnail: %v", err)
+	}
+	if etag := rec.Header().Get("ETag"); etag != `"src-a.1-1.jpg"` {
+		t.Fatalf("latest entry must be picked by real ModTime, got ETag %s", etag)
+	}
+	if got := scans(); got != 1 {
+		t.Fatalf("first offline lookup must scan the directory exactly once, got %d scans", got)
+	}
+
+	rec, err = serveCached(t, store, "src-a")
+	if err != nil {
+		t.Fatalf("serve cached thumbnail again: %v", err)
+	}
+	if etag := rec.Header().Get("ETag"); etag != `"src-a.1-1.jpg"` {
+		t.Fatalf("subsequent lookup must hit the same indexed entry, got ETag %s", etag)
+	}
+
+	rec, err = serveCached(t, store, "src-video")
+	if !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("post-index miss must fail with os.ErrNotExist, got %v", err)
+	}
+	if got := scans(); got != 1 {
+		t.Fatalf("hits and misses after indexing must not rescan the directory, got %d scans", got)
+	}
+}
+
+// 最常见的离线形态：在线时前端回填缩略图（索引尚未建立），之后原文件不可用。
+// 离线首查按目录全量建索引，必须能看到回填落盘的文件。
+func TestSaveBeforeIndexBuildServesOffline(t *testing.T) {
+	db := openTestDB(t)
+	location := filepath.Join(t.TempDir(), "photo.jpg")
+	if err := os.WriteFile(location, mustJPEG(t, gradientImage(80, 60)), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	now := int64(1_700_000_000_000)
+	insertSource(t, db, storage.SourceModel{
+		ID: "source-backfill", ResourceID: "resource-backfill", Type: storage.SourceTypeFile,
+		Location: location, Available: false, IsPreferred: true, CreatedAt: now, UpdatedAt: now,
+	})
+	handler := newThumbnailHandler(t, db)
+
+	info, err := os.Stat(location)
+	if err != nil {
+		t.Fatal(err)
+	}
+	payload := mustJPEG(t, gradientImage(80, 60))
+	if !handler.thumbs.Save("source-backfill", info, payload) {
+		t.Fatal("save thumbnail")
+	}
+	if err := os.Remove(location); err != nil {
+		t.Fatal(err)
+	}
+
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, ThumbnailPathPrefix+"source-backfill", nil))
+	if response.Code != http.StatusOK || !bytes.Equal(response.Body.Bytes(), payload) {
+		t.Fatalf("expected the saved thumbnail to be served offline, got status=%d len=%d", response.Code, response.Body.Len())
+	}
+}
+
+// 索引指向的缓存文件被外部清理时必须自愈：CAS 移除条目后按 os.ErrNotExist 收尾，
+// 不重扫目录；之后新落盘登记的文件仍可命中。
+func TestServeCachedThumbnailSelfHealsVanishedIndexedFile(t *testing.T) {
+	dir := t.TempDir()
+	store := &ThumbnailStore{dir: dir}
+	touchThumbnail(t, dir, "src-h.1-1.jpg")
+
+	scans := countDirScans(t, dir)
+	if _, err := serveCached(t, store, "src-h"); err != nil {
+		t.Fatalf("serve cached thumbnail: %v", err)
+	}
+	if got := scans(); got != 1 {
+		t.Fatalf("index build must scan exactly once, got %d scans", got)
+	}
+
+	// 外部手动清理缓存目录：索引指向的文件消失。
+	if err := os.Remove(filepath.Join(dir, "src-h.1-1.jpg")); err != nil {
+		t.Fatal(err)
+	}
+	if _, err := serveCached(t, store, "src-h"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("vanished indexed file must self-heal to os.ErrNotExist, got %v", err)
+	}
+	if _, err := serveCached(t, store, "src-h"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("after the heal the entry is gone, subsequent lookup must be os.ErrNotExist, got %v", err)
+	}
+	if got := scans(); got != 1 {
+		t.Fatalf("self-heal and post-heal misses must not rescan the directory, got %d scans", got)
+	}
+
+	// 新缓存落盘并登记后照常命中：自愈绝不影响后续登记。
+	fresh := filepath.Join(dir, "src-h.2-2.jpg")
+	touchThumbnail(t, dir, "src-h.2-2.jpg")
+	freshTime := time.Now().Add(time.Hour)
+	if err := os.Chtimes(fresh, freshTime, freshTime); err != nil {
+		t.Fatal(err)
+	}
+	store.recordThumbFile(fresh)
+	rec, err := serveCached(t, store, "src-h")
+	if err != nil {
+		t.Fatalf("serve re-recorded thumbnail: %v", err)
+	}
+	if etag := rec.Header().Get("ETag"); etag != `"src-h.2-2.jpg"` {
+		t.Fatalf("expected the newly recorded entry to be served, got ETag %s", etag)
+	}
+}
+
+// forgetCachedThumbCAS 只在条目仍指向目标文件名时删除：并发登记的更新文件
+// 不能被旧文件的清理误删。
+func TestForgetCachedThumbCASKeepsNewerEntry(t *testing.T) {
+	dir := t.TempDir()
+	store := &ThumbnailStore{dir: dir}
+	touchThumbnail(t, dir, "s.1.jpg")
+	if _, err := serveCached(t, store, "s"); err != nil {
+		t.Fatalf("serve cached thumbnail: %v", err)
+	}
+
+	newer := time.Now().Add(time.Hour)
+	store.recordCachedThumb("s", "s.2.jpg", newer)
+	if entry, ok := store.latestCached("s"); !ok || entry.filename != "s.2.jpg" {
+		t.Fatalf("expected the index to point at s.2.jpg, got %v (ok=%v)", entry, ok)
+	}
+
+	store.forgetCachedThumbCAS("s", "s.1.jpg")
+	if entry, ok := store.latestCached("s"); !ok || entry.filename != "s.2.jpg" {
+		t.Fatalf("CAS must keep the newer entry when the stale filename does not match, got %v (ok=%v)", entry, ok)
+	}
+	store.forgetCachedThumbCAS("s", "s.2.jpg")
+	if _, ok := store.latestCached("s"); ok {
+		t.Fatal("CAS must remove the entry when the filename matches")
+	}
+}
+
+// pruneStale 删除索引登记的当前文件时，必须按 CAS 恰好移除该条目；
+// 未受影响的 Source 的条目原样保留。
+func TestPruneStaleRemovesIndexedEntryForDeletedFile(t *testing.T) {
+	dir := t.TempDir()
+	store := &ThumbnailStore{dir: dir}
+	touchThumbnail(t, dir, "src-p.1-1.jpg")
+	touchThumbnail(t, dir, "src-q.1-1.jpg")
+	if _, err := serveCached(t, store, "src-p"); err != nil {
+		t.Fatalf("serve cached thumbnail: %v", err)
+	}
+	if _, err := serveCached(t, store, "src-q"); err != nil {
+		t.Fatalf("serve cached thumbnail: %v", err)
+	}
+
+	store.pruneStale(context.Background(), []thumbnailPruneEntry{
+		{SourceID: "src-p", Version: "9-9"}, // 版本失效：旧文件进入清理名单
+		{SourceID: "src-q", Version: "1-1"}, // 版本匹配：保留
+	})
+
+	if _, err := os.Stat(filepath.Join(dir, "src-p.1-1.jpg")); !os.IsNotExist(err) {
+		t.Fatalf("expected the stale file to be pruned, got %v", err)
+	}
+	if entry, ok := store.latestCached("src-p"); ok {
+		t.Fatalf("pruned file's index entry must be removed, got %v", entry)
+	}
+	if entry, ok := store.latestCached("src-q"); !ok || entry.filename != "src-q.1-1.jpg" {
+		t.Fatalf("untouched source's entry must survive, got %v (ok=%v)", entry, ok)
+	}
+	if _, err := serveCached(t, store, "src-p"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("post-prune lookup must be os.ErrNotExist without rescanning, got %v", err)
+	}
+}
+
+// Prune 的取消透传：名单读取后、清理轮开始前取消，每一轮都必须立即退出，
+// 一个文件也不删除。
+func TestPruneHonorsCancellationAfterListing(t *testing.T) {
+	store, dir := pruneFixture(t)
+	touchThumbnail(t, dir, "gone.old.jpg")
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+
+	store.Prune(ctx, func(context.Context) ([]storage.SourceModel, error) {
+		cancel() // 取消发生在 prune 内部：清理轮看到的一定是已取消的 ctx
+		return []storage.SourceModel{{ID: "known", Location: filepath.Join(t.TempDir(), "missing.png")}}, nil
+	})
+
+	if _, err := os.Stat(filepath.Join(dir, "gone.old.jpg")); err != nil {
+		t.Fatalf("a cancelled prune must not delete anything: %v", err)
+	}
+}
+
+// 启动期 Prune 由 StartPrune 纳入 wg 与关停上下文：Close 必须等它结束（不能提前
+// 返回），排空时 ctx 已被取消，清理轮不再删除任何文件。
+func TestCloseCancelsAndDrainsStartupPrune(t *testing.T) {
+	store, dir := pruneFixture(t)
+	touchThumbnail(t, dir, "gone.old.jpg")
+	entered := make(chan struct{})
+	release := make(chan struct{})
+	var releaseOnce sync.Once
+	t.Cleanup(func() { store.Close() })                             // 后注册，最后执行
+	t.Cleanup(func() { releaseOnce.Do(func() { close(release) }) }) // 先执行：失败路径也能放行
+
+	store.StartPrune(func(context.Context) ([]storage.SourceModel, error) {
+		close(entered)
+		<-release
+		return []storage.SourceModel{{ID: "known", Location: filepath.Join(t.TempDir(), "missing.png")}}, nil
+	})
+	<-entered // lister 已被调用：wg.Add 已在锁内完成，Close 必须等它
+
+	closed := make(chan struct{})
+	go func() {
+		store.Close()
+		close(closed)
+	}()
+	select {
+	case <-closed:
+		t.Fatal("Close returned while the startup prune was still listing")
+	default:
+	}
+
+	releaseOnce.Do(func() { close(release) })
+	waitForClose(t, closed, "startup prune drain")
+
+	// Close 已取消关停上下文：放行后的清理轮立即退出，陈旧文件保留。
+	if _, err := os.Stat(filepath.Join(dir, "gone.old.jpg")); err != nil {
+		t.Fatalf("the cancelled startup prune must not delete anything: %v", err)
 	}
 }
 

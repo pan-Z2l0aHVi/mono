@@ -100,6 +100,12 @@ type fakeSink struct {
 	// probes 按路径统计「进入过探测批次」的次数。批次数受 drainBatch 的合并时机影响，
 	// 不能当断言依据；每条路径被探测几次才是收敛的不变量。
 	probes map[string]int
+
+	// ListFileSourceLocations 的计数与可控阻塞：统计全量对账次数，并构造
+	// 「对账进行中」的确定性窗口。holdLocations 为 nil 时行为与原实现完全一致。
+	locationCalls   int
+	holdLocations   chan struct{}
+	locationEntered chan struct{}
 }
 
 func newFakeSink(locations []string) *fakeSink {
@@ -118,6 +124,21 @@ func newFakeSink(locations []string) *fakeSink {
 }
 
 func (s *fakeSink) ListFileSourceLocations(context.Context) ([]string, error) {
+	s.mu.Lock()
+	s.locationCalls++
+	hold := s.holdLocations
+	entered := s.locationEntered
+	s.mu.Unlock()
+	if entered != nil {
+		// 进入信号用非阻塞投递：后续对账在没有接收者时不得被卡住。
+		select {
+		case entered <- struct{}{}:
+		default:
+		}
+	}
+	if hold != nil {
+		<-hold
+	}
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	return append([]string(nil), s.locations...), nil
@@ -195,6 +216,21 @@ func (s *fakeSink) setLocations(locations []string) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.locations = locations
+}
+
+// holdLocationCalls 让此后的每次 ListFileSourceLocations 先发进入信号再阻塞在 hold 上
+// （close(hold) 放行），使测试能确定性地构造「对账进行中」的窗口并统计对账次数。
+func (s *fakeSink) holdLocationCalls(hold chan struct{}, entered chan struct{}) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.holdLocations = hold
+	s.locationEntered = entered
+}
+
+func (s *fakeSink) locationCallCount() int {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.locationCalls
 }
 
 func (s *fakeSink) setAvailability(sourceID string, available bool) {
@@ -297,6 +333,97 @@ func TestWatcherDedupsDirectoryRefs(t *testing.T) {
 	if got := fs.removals(); len(got) != 1 || got[0] != directory {
 		t.Fatalf("expected Remove for %s once refs drop to zero, got %v", directory, got)
 	}
+}
+
+// 未 Start 即 Stop 与重复 Stop 必须零 panic：runCancel 尚不存在时不得调用；
+// 停止后的 Start 返回错误而不是静默启动一套立即被关闭的协程。
+func TestWatcherStopWithoutStartIsIdempotent(t *testing.T) {
+	sink := newFakeSink([]string{"/library/idle/one.mp4"})
+	watcher, err := NewWatcher(NewAvailabilityGate(sink))
+	if err != nil {
+		t.Fatalf("NewWatcher error: %v", err)
+	}
+	t.Cleanup(watcher.Stop)
+
+	watcher.RequestSync() // 未启动的 Watcher 上请求：不 panic、不阻塞
+	watcher.Stop()
+	watcher.Stop() // 重复 Stop 幂等
+	if err := watcher.Start(context.Background()); err == nil {
+		t.Fatal("Start on a stopped watcher must report an error instead of silently doing nothing")
+	}
+}
+
+// RequestSync 的合并语义：对账进行中到达的请求不丢——本次结束后恰好补一次对账；
+// 进行中连发的多次请求合并为这一次补账，而不是逐请求放大。
+func TestWatcherRequestSyncCoalescesDuringRunningPass(t *testing.T) {
+	fs := newFakeFS()
+	useFakeFS(t, fs)
+	sink := newFakeSink([]string{"/library/requested/one.mp4"})
+	watcher, err := NewWatcher(NewAvailabilityGate(sink))
+	if err != nil {
+		t.Fatalf("NewWatcher error: %v", err)
+	}
+	t.Cleanup(watcher.Stop)
+	if err := watcher.Start(context.Background()); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+
+	hold := make(chan struct{})
+	entered := make(chan struct{}, 8)
+	// 放行清理先于 Stop 执行（LIFO）：用例中途失败也不会把对账协程永久留在
+	// 阻塞的名单读取上卡死 Stop 的 wg.Wait。
+	var releaseOnce sync.Once
+	t.Cleanup(func() { releaseOnce.Do(func() { close(hold) }) })
+	sink.holdLocationCalls(hold, entered)
+
+	// 第一次请求触发对账并阻塞在名单读取上：进入信号先于放行到达，
+	// 后续请求因此确定性地落在「对账进行中」窗口内。
+	watcher.RequestSync()
+	select {
+	case <-entered:
+	case <-time.After(5 * time.Second):
+		t.Fatal("reconcile pass never entered the location listing")
+	}
+	const burst = 5
+	for i := 0; i < burst; i++ {
+		watcher.RequestSync()
+	}
+	releaseOnce.Do(func() { close(hold) })
+
+	// Start 的初始对账 + 阻塞的这一次 + 合并后恰好一次补账 = 3。
+	// 少于 3 说明请求丢失，多于 3 说明请求被逐个放大。
+	waitForStableCount(t, sink.locationCallCount, 3, 300*time.Millisecond)
+}
+
+// AsyncIndexSync 是 main.go 注入 core 的适配器：SyncSources 只投递请求立即返回
+// （未启动的 watcher 上也不阻塞、不同步对账），对账在 watcher 启动后由
+// runReconcile 合并补上。
+func TestAsyncIndexSyncRequestsNonBlockingReconcile(t *testing.T) {
+	fs := newFakeFS()
+	useFakeFS(t, fs)
+	sink := newFakeSink([]string{"/library/bridged/one.mp4"})
+	watcher, err := NewWatcher(NewAvailabilityGate(sink))
+	if err != nil {
+		t.Fatalf("NewWatcher error: %v", err)
+	}
+	t.Cleanup(watcher.Stop)
+
+	var syncer core.SourceIndexSync = NewAsyncIndexSync(watcher)
+	if err := syncer.SyncSources(context.Background()); err != nil {
+		t.Fatalf("adapter SyncSources must always succeed: %v", err)
+	}
+	if err := syncer.SyncSources(context.Background()); err != nil {
+		t.Fatalf("adapter SyncSources must always succeed: %v", err)
+	}
+	if got := sink.locationCallCount(); got != 0 {
+		t.Fatalf("adapter must not reconcile synchronously, got %d listing calls", got)
+	}
+
+	if err := watcher.Start(context.Background()); err != nil {
+		t.Fatalf("Start error: %v", err)
+	}
+	// Start 自带一次全量对账；先前缓冲的请求合并为恰好一次额外对账。
+	waitForStableCount(t, sink.locationCallCount, 2, 300*time.Millisecond)
 }
 
 // fd 预算耗尽必须降级而不是报错：超出的目录跳过，已有监听继续工作。
