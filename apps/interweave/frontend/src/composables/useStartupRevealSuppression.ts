@@ -7,10 +7,12 @@
  * composable 拥有启动层的全部撤层编排（App.vue 原有的 loaded watch 与超时兜底接线
  * 迁入），并通过 `suppressed` 驱动宿主给 `<web-ui-theme>` 绑定 `no-reveal`：
  *
- *   :no-reveal="suppressed ? '' : null"
+ *   :no-reveal="suppressed || undefined"
  *
- * 绑定必须以「存在/移除」表达（Lit Boolean converter 是存在即真，绑定 false 会被
- * 序列化成字符串 "false" 而恒真）。结构不变式：**启动层不透明覆盖期 ⊆ 压制窗口**。
+ * 这是类型化模板的写法（true → setAttribute 写入存在、undefined → removeAttribute），
+ * 与 `cond ? '' : null` 运行时等价。绑定必须以「存在/移除」表达（Lit Boolean converter
+ * 是存在即真，绑定 false 会被序列化成字符串 "false" 而恒真）。结构不变式：
+ * **启动层不透明覆盖期 ⊆ 压制窗口**。
  * 措辞说明——摘除与撤层同 rAF，层节点之后还以 opacity 渐变存活 220ms，这段淡出窗
  * 内压制已解除；豁免依据是 appearance 写入均需 UI 交互，Go boot 期不推送快照。
  *
