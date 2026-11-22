@@ -18,7 +18,9 @@ import (
 	"net/http"
 	"os"
 	"path/filepath"
+	"runtime"
 	"strings"
+	"sync"
 	"time"
 
 	_ "golang.org/x/image/bmp" // 注册 bmp 解码器
@@ -47,14 +49,55 @@ const maxThumbnailUploadBytes = 512 << 10
 // 调用方据此对请求返回 404，前端回退到「加载原图 + 回填」的捕获路径。
 var ErrUnsupportedThumbnail = errors.New("thumbnail: unsupported image format")
 
+// errThumbnailClosed 表示存储已关闭，不能再发起新的缩略图构建。调用方按服务端内部
+// 错误处理（客户端仍活跃时回 5xx），不用 404 掩盖关停期的真实状态。
+var errThumbnailClosed = errors.New("thumbnail: store closed")
+
+// buildConcurrency 限制同时在途的缩略图构建数量：12MP 解码单张瞬时堆可达数十 MB，
+// 无界并发会把多图同屏放大成内存尖峰；下限 2 保证双核机器也有基本吞吐。
+func buildConcurrency() int {
+	return max(2, min(runtime.GOMAXPROCS(0), 4))
+}
+
 // ThumbnailStore 管理按 Source 派生的缩略图文件缓存。
 //
 // 文件名 = <sourceID>.<mtime 纳秒 hex>-<字节长 hex>.jpg：版本由原文件的 mtime+size 派生，
 // 用户在外部改写原文件后版本自动失效，不需要任何元数据登记。sourceID（UUID）与版本
 // （hex+连字符）都不含点，首个点即是二者分界，清理时可以无歧义地还原归属。
 // 缩略图是应用内部派生数据，存放在 library.db 同级目录，不触碰用户的原始文件。
+//
+// 并发模型：同版本（同 key）的构建按引用计数去重（singleflight），构建绑定独立上下文，
+// 只在最后一个等待者离开时才取消；全部后台构建与 Prune 都纳入 wg，由 Close 排空。
+// 字段允许零值可用（&ThumbnailStore{dir: dir}），并发状态经 ensureInit 惰性建立。
 type ThumbnailStore struct {
 	dir string
+
+	mu       sync.Mutex
+	inflight map[string]*thumbCall
+	buildSem chan struct{}
+	initOnce sync.Once
+	closed   bool
+	closeCh  chan struct{}
+	wg       sync.WaitGroup
+}
+
+// thumbCall 是同 key 构建的共享状态。done 关闭即构建终结（err 已定），等待者据此取结果；
+// waiters 由 mu 保护，减到零说明再无人需要结果，立即取消构建并从 inflight 摘除，
+// 使后续新请求不会挂载到已取消的调用上。
+type thumbCall struct {
+	done    chan struct{}
+	cancel  context.CancelFunc
+	waiters int
+	err     error
+}
+
+// ensureInit 惰性建立并发状态，使零值构造的字面量（含既有单测）保持可用。
+func (t *ThumbnailStore) ensureInit() {
+	t.initOnce.Do(func() {
+		t.inflight = make(map[string]*thumbCall)
+		t.buildSem = make(chan struct{}, buildConcurrency())
+		t.closeCh = make(chan struct{})
+	})
 }
 
 // NewThumbnailStore 建立缓存目录；目录创建失败只影响缩略图能力，由调用方决定降级方式。
@@ -63,6 +106,26 @@ func NewThumbnailStore(dir string) (*ThumbnailStore, error) {
 		return nil, fmt.Errorf("create thumbnail dir: %w", err)
 	}
 	return &ThumbnailStore{dir: dir}, nil
+}
+
+// Close 幂等关停：拒绝新构建，取消全部在途构建并等待其与在途 Prune 结束。
+// 不等待请求侧等待者——它们监听 closeCh 自行返回；也不会死锁，构建协程的
+// 阻塞点全部监听 closeCh 或 buildCtx 取消。
+func (t *ThumbnailStore) Close() {
+	t.ensureInit()
+	t.mu.Lock()
+	if t.closed {
+		t.mu.Unlock()
+		return
+	}
+	t.closed = true
+	close(t.closeCh)
+	for _, call := range t.inflight {
+		call.cancel()
+	}
+	t.inflight = make(map[string]*thumbCall)
+	t.mu.Unlock()
+	t.wg.Wait()
 }
 
 // thumbnailVersion 由原文件的修改时间与字节数派生缩略图版本。
@@ -74,8 +137,10 @@ func (t *ThumbnailStore) path(sourceID string, info os.FileInfo) string {
 	return filepath.Join(t.dir, sourceID+"."+thumbnailVersion(info)+".jpg")
 }
 
-// ServeThumbnail 处理一次缩略图读取：命中缓存直接回源；未命中且格式受支持时现场生成并
-// 落盘；Go 侧解不了的格式返回 ErrUnsupportedThumbnail，由 handler 决定 404。
+// ServeThumbnail 处理一次缩略图读取：命中缓存直接回源；未命中时按「sourceID.版本」
+// 去重并发构建，等待同一份结果落盘后回源。构建绑定独立上下文而非首个请求的
+// r.Context()，只在最后一个等待者离开时才取消；Go 侧解不了的格式返回
+// ErrUnsupportedThumbnail，由 handler 决定 404。
 // 响应带 ETag（= 版本），If-None-Match 协商由 http.ServeContent 承担。
 func (t *ThumbnailStore) ServeThumbnail(w http.ResponseWriter, r *http.Request, sourceID string, originalPath string, info os.FileInfo) error {
 	target := t.path(sourceID, info)
@@ -87,15 +152,110 @@ func (t *ThumbnailStore) ServeThumbnail(w http.ResponseWriter, r *http.Request, 
 	if !errors.Is(err, os.ErrNotExist) {
 		return err
 	}
-
-	thumb, err := buildThumbnail(originalPath)
-	if err != nil {
-		return err
-	}
-	if err := writeAtomically(target, thumb); err != nil {
+	if err := t.awaitBuild(r.Context(), sourceID+"."+thumbnailVersion(info), originalPath, target); err != nil {
 		return err
 	}
 	return t.serveFile(w, r, target, etag)
+}
+
+// awaitBuild 以引用计数 singleflight 等待（或发起）一次同版本构建。
+// key 与落盘文件名的去 .jpg 词干一致，保证去重键与缓存版本严格对应。
+func (t *ThumbnailStore) awaitBuild(ctx context.Context, key, originalPath, target string) error {
+	t.ensureInit()
+
+	t.mu.Lock()
+	if t.closed {
+		t.mu.Unlock()
+		return errThumbnailClosed
+	}
+	call, joined := t.inflight[key]
+	if joined {
+		call.waiters++
+	} else {
+		buildCtx, cancel := context.WithCancel(context.Background())
+		call = &thumbCall{done: make(chan struct{}), cancel: cancel, waiters: 1}
+		t.inflight[key] = call
+		// wg.Add 必须在锁内且确认未关闭后执行，杜绝与 Close 的 wg.Wait 并发 Add。
+		t.wg.Add(1)
+		go t.runBuild(buildCtx, call, key, originalPath, target)
+	}
+	t.mu.Unlock()
+
+	select {
+	case <-call.done:
+		return call.err
+	case <-ctx.Done():
+		t.abandonCall(key, call)
+		return ctx.Err()
+	case <-t.closeCh:
+		return errThumbnailClosed
+	}
+}
+
+// abandonCall 处理单个等待者中途离开：仅当它是最后一个等待者时取消构建，并在同一
+// 临界区内按指针身份从 inflight 摘除，防止后续活跃请求挂载到已取消的调用上。
+func (t *ThumbnailStore) abandonCall(key string, call *thumbCall) {
+	t.mu.Lock()
+	defer t.mu.Unlock()
+	call.waiters--
+	if call.waiters > 0 {
+		return
+	}
+	call.cancel()
+	if t.inflight[key] == call {
+		delete(t.inflight, key)
+	}
+}
+
+// runBuild 是去重后的唯一构建协程：先竞争并发令牌（构建数上限），拿到后二次检查
+// 目标文件（可能已被并行版本或早前构建写入），再解码缩放并原子落盘。
+// 取消检查点在拿令牌前后与落盘前，已无人等待的构建不会产生无谓的磁盘写入。
+func (t *ThumbnailStore) runBuild(buildCtx context.Context, call *thumbCall, key, originalPath, target string) {
+	defer t.wg.Done()
+	defer func() { <-t.buildSem }()
+
+	select {
+	case t.buildSem <- struct{}{}:
+	case <-buildCtx.Done():
+		t.finishCall(key, call, buildCtx.Err())
+		return
+	case <-t.closeCh:
+		t.finishCall(key, call, errThumbnailClosed)
+		return
+	}
+
+	_, err := os.Stat(target)
+	switch {
+	case err == nil:
+		t.finishCall(key, call, nil)
+		return
+	case !errors.Is(err, os.ErrNotExist):
+		t.finishCall(key, call, err)
+		return
+	}
+
+	thumb, err := buildThumbnailFn(originalPath)
+	if err == nil && buildCtx.Err() != nil {
+		// 构建期间所有等待者离开：结果再无人消费，不落盘。
+		t.finishCall(key, call, buildCtx.Err())
+		return
+	}
+	if err == nil {
+		err = writeAtomically(target, thumb)
+	}
+	t.finishCall(key, call, err)
+}
+
+// finishCall 终结一次构建：按指针身份摘除 inflight（可能已被摘除或被新调用替换），
+// 定格结果并关闭 done 唤醒全部等待者。
+func (t *ThumbnailStore) finishCall(key string, call *thumbCall, err error) {
+	t.mu.Lock()
+	if t.inflight[key] == call {
+		delete(t.inflight, key)
+	}
+	call.err = err
+	t.mu.Unlock()
+	close(call.done)
 }
 
 // ServeCachedThumbnail 在原文件不可用时读取该 Source 最近写入的缓存，不访问原文件。
@@ -157,7 +317,22 @@ type FileSourceLister func(ctx context.Context) ([]storage.SourceModel, error)
 // Prune 按库内现行文件 Source 名单清一次过期缩略图，启动时跑一次即可。
 // 原文件暂不可 stat 的 Source（离线归档盘）Version 为空，其缩略图全部保留，等可用后再清。
 // 名单读取失败时整次跳过，只留垃圾不留错误。
+// 纳入 wg 计量使 Close 等待在途 Prune 结束（取消透传属后续 PR）。
 func (t *ThumbnailStore) Prune(ctx context.Context, list FileSourceLister) {
+	t.ensureInit()
+	t.mu.Lock()
+	if t.closed {
+		t.mu.Unlock()
+		return
+	}
+	t.wg.Add(1)
+	t.mu.Unlock()
+	defer t.wg.Done()
+
+	t.prune(ctx, list)
+}
+
+func (t *ThumbnailStore) prune(ctx context.Context, list FileSourceLister) {
 	models, err := list(ctx)
 	if err != nil {
 		log.Printf("interweave: thumbnail prune skipped: %v", err)
@@ -226,6 +401,10 @@ func writeAtomically(target string, data []byte) error {
 	return atomicfile.WriteFile(target, data, 0o600)
 }
 
+// buildThumbnailFn 是 buildThumbnail 的注入点：单测用它构造慢速/失败的构建来验证
+// 去重、取消与关停排空。生产代码不得在运行期改写。
+var buildThumbnailFn = buildThumbnail
+
 // buildThumbnail 解码原文件并产出缩略图字节。格式不受支持时返回 ErrUnsupportedThumbnail。
 func buildThumbnail(originalPath string) ([]byte, error) {
 	file, err := os.Open(originalPath)
@@ -289,7 +468,9 @@ func fitThumbnail(src image.Image) *image.RGBA {
 	targetW := max(1, int(math.Round(float64(width)*scale)))
 	targetH := max(1, int(math.Round(float64(height)*scale)))
 	dst := image.NewRGBA(image.Rect(0, 0, targetW, targetH))
-	draw.CatmullRom.Scale(dst, dst.Bounds(), src, bounds, draw.Over, nil)
+	// BiLinear 相比 CatmullRom 大幅降低缩放分配与 CPU（320px 输出无可见差异），
+	// 是 12MP 图构建耗时里仅次于 JPEG 解码的第二大头寸。
+	draw.BiLinear.Scale(dst, dst.Bounds(), src, bounds, draw.Over, nil)
 	return dst
 }
 

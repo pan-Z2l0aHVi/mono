@@ -35,9 +35,12 @@ func (MapStore) TagNodes(ctx context.Context, q Queryer) ([]TagAggregate, error)
 }
 
 // 返回可追溯到共享资源的标签共现关系。
+// 计数用 COUNT(*) 而非 COUNT(DISTINCT resource_id)：taggings 主键是 (resource_id, tag_id)，
+// 对固定的标签对，每个 resource_id 在连接结果中至多出现一次，两种计数恒等，
+// COUNT(*) 免去一次临时 B-Tree 去重排序。
 func (MapStore) TagEdges(ctx context.Context, q Queryer) ([]TagEdgeAggregate, error) {
 	rows, err := q.QueryContext(ctx, `
-		SELECT tg1.tag_id, tg2.tag_id, COUNT(DISTINCT tg1.resource_id) as weight
+		SELECT tg1.tag_id, tg2.tag_id, COUNT(*) as weight
 		FROM taggings tg1
 		INNER JOIN taggings tg2 ON tg1.resource_id = tg2.resource_id AND tg1.tag_id < tg2.tag_id
 		GROUP BY tg1.tag_id, tg2.tag_id
@@ -67,9 +70,11 @@ func (MapStore) ResourceIDsByTag(ctx context.Context, q Queryer, tagID string) (
 }
 
 // 返回与当前主题共享 Resource 的相邻标签，排除主题自身。
+// COUNT(*) 与 COUNT(DISTINCT tg2.resource_id) 恒等的理由同 TagEdges：taggings 主键
+// 保证同一 (resource_id, tag_id) 只有一行。
 func (MapStore) CooccurringTags(ctx context.Context, q Queryer, tagID string) ([]TagAggregate, error) {
 	rows, err := q.QueryContext(ctx, `
-		SELECT t.id, t.name, COUNT(DISTINCT tg2.resource_id) as weight
+		SELECT t.id, t.name, COUNT(*) as weight
 		FROM taggings tg1
 		INNER JOIN taggings tg2 ON tg1.resource_id = tg2.resource_id
 		INNER JOIN tags t ON t.id = tg2.tag_id
