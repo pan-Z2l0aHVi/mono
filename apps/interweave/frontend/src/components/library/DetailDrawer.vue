@@ -163,6 +163,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
     :placement="placement"
     aria-dialog-label="资源详情"
     draggable
+    fullable
     controlled
     class="[--wui-drawer-width:360px] mobile:[--wui-drawer-height:85vh] mobile:[--wui-drawer-inset:0px]"
     @open-change="handleOpenChange"
@@ -171,7 +172,12 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
       v-if="renderedResource"
       class="detail-drawer text-left font-[system-ui,sans-serif] text-[length:var(--wui-font-size,14px)] leading-[1.4] text-(--wui-color-text,#1c1c1e) [--detail-accent:var(--wui-color-accent,#08f)]"
     >
-      <div class="detail-top text-lg font-semibold">资源详情</div>
+      <!-- 标题排版与 dialog header 带同源：18px/600/1.2，token 带兜底值（写法对齐下方 :172 先例）。 -->
+      <div
+        class="detail-top font-semibold text-[length:var(--wui-font-size-title,18px)] leading-[var(--wui-line-height-tight,1.2)]"
+      >
+        资源详情
+      </div>
       <div class="detail-scroll pb-4">
         <div class="detail-profile flex items-center gap-[15px] py-3">
           <ResourceThumbnail
