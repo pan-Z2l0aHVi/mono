@@ -917,7 +917,8 @@ for (const file of [
   assert.deepEqual(pullIndexes.length, 1, 'apply reads the PR object exactly once')
   assert.ok(pullIndexes[0] > commitsIndex, 'the PR object snapshot is read after commit pagination')
   assert.match(pushed.gitCalls, /-c user\.name=codex -c user\.email=codex@openai\.com commit/)
-  assert.match(pushed.gitCalls, /push origin HEAD:refs\/heads\/feature\/x/)
+  assert.match(pushed.gitCalls, /--force-with-lease=refs\/heads\/feature\/x:/)
+  assert.match(pushed.gitCalls, /origin HEAD:refs\/heads\/feature\/x/)
 
   const unverified = runApply({ commits: plainCommits(2), total: 3 })
   assert.equal(unverified.result.status, 1)
@@ -1086,7 +1087,7 @@ for (const file of [
   fs.writeFileSync(closedPath, pullOf('closed'))
   fs.writeFileSync(
     path.join(bin, 'git'),
-    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$FAKE_GIT_CALLS"\ncase "$1" in\n  rev-parse) printf '%s\\n' "$FAKE_HEAD" ;;\n  push) echo "fatal: couldn't find remote ref refs/heads/feature/x" >&2\n    exit 128 ;;\nesac\nexit 0\n`,
+    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$FAKE_GIT_CALLS"\ncase "$1" in\n  rev-parse) printf '%s\\n' "$FAKE_HEAD" ;;\n  push) echo "fatal: cannot lock ref 'refs/heads/feature/x': expected $FAKE_HEAD but got no such ref (stale info)" >&2\n    exit 128 ;;\nesac\nexit 0\n`,
     { mode: 0o755 }
   )
   const runApply = () => {
@@ -1121,8 +1122,11 @@ for (const file of [
   assert.equal(raced.result.status, 0, raced.result.stderr)
   assert.match(raced.result.stdout, /skipping autofix apply/)
   assert.match(raced.summary, /closed before the push landed/)
-  assert.match(raced.gitCalls, /push origin HEAD:refs\/heads\/feature\/x/)
-  assert.equal(raced.gitCalls.match(/push origin/gu)?.length, 1, 'the green skip must not retry the push')
+  // push 必须带 lease 锚定 run head：裸 refspec 会把已删分支当新建分支推成功，复查永远不会触发。
+  assert.match(raced.gitCalls, /--force-with-lease=refs\/heads\/feature\/x:/)
+  assert.match(raced.gitCalls, new RegExp(`--force-with-lease=refs/heads/feature/x:${headSha}`))
+  assert.match(raced.gitCalls, /origin HEAD:refs\/heads\/feature\/x/)
+  assert.equal(raced.gitCalls.match(/origin HEAD:refs/gu)?.length, 1, 'the green skip must not retry the push')
   assert.deepEqual(raced.ghCalls, [
     'api repos/owner/repo/pulls/54/commits?per_page=100&page=1',
     'api repos/owner/repo/pulls/54',
@@ -1134,8 +1138,78 @@ for (const file of [
   fs.writeFileSync(closedPath, pullOf('open'))
   const failed = runApply()
   assert.equal(failed.result.status, 1)
-  assert.match(failed.result.stderr, /couldn't find remote ref/)
+  assert.match(failed.result.stderr, /stale info/)
   assert.doesNotMatch(failed.summary, /closed before the push landed/)
+  fs.rmSync(directory, { recursive: true, force: true })
+}
+
+{
+  // 复查自身 API 故障不能盖掉原始 push 错误：原始原因保持可见，退出仍红。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-autofix-apply-recheck-fail-'))
+  const bin = path.join(directory, 'bin')
+  fs.mkdirSync(bin)
+  const pagePath = path.join(directory, 'commits.json')
+  const openPath = path.join(directory, 'pull-open.json')
+  const ghCallsPath = path.join(directory, 'gh-calls')
+  const gitCallsPath = path.join(directory, 'git-calls')
+  const summaryPath = path.join(directory, 'summary')
+  fs.writeFileSync(path.join(directory, 'autofix.patch'), modification('packages/web-ui/src/button.ts'))
+  writeFakeGh({
+    bin,
+    callsPath: ghCallsPath,
+    repository: 'owner/repo',
+    pullNumber: 54,
+    commitPages: { 1: pagePath },
+    pullFiles: [openPath]
+  })
+  fs.writeFileSync(pagePath, JSON.stringify(plainCommits(2)))
+  fs.writeFileSync(
+    openPath,
+    JSON.stringify({
+      state: 'open',
+      base: { ref: 'main' },
+      head: { repo: { full_name: 'owner/repo' }, ref: 'feature/x', sha: headSha },
+      commits: 2,
+      number: 54
+    })
+  )
+  fs.writeFileSync(
+    path.join(bin, 'gh'),
+    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$FAKE_GH_CALLS"\ncase "$*" in\n  "api repos/owner/repo/pulls/54/commits?per_page=100&page=1")\n    cat "$FAKE_COMMITS"\n    ;;\n  "api repos/owner/repo/pulls/54")\n    if [ -f "$FAKE_PULL_DONE" ]; then\n      echo "gh: HTTP 502: re-check unavailable" >&2\n      exit 1\n    fi\n    cat "$FAKE_PULL_OPEN"\n    touch "$FAKE_PULL_DONE"\n    ;;\n  *)\n    echo "unexpected gh call: $*" >&2\n    exit 2\n    ;;\nesac\n`,
+    { mode: 0o755 }
+  )
+  fs.writeFileSync(
+    path.join(bin, 'git'),
+    `#!/bin/sh\nprintf '%s\\n' "$*" >> "$FAKE_GIT_CALLS"\ncase "$1" in\n  rev-parse) printf '%s\\n' "$FAKE_HEAD" ;;\n  push) echo "fatal: cannot lock ref 'refs/heads/feature/x': expected $FAKE_HEAD but got no such ref (stale info)" >&2\n    exit 128 ;;\nesac\nexit 0\n`,
+    { mode: 0o755 }
+  )
+  const result = spawnSync(process.execPath, [scriptPath, 'apply'], {
+    encoding: 'utf8',
+    env: testEnv({
+      PATH: prependPath(bin),
+      GITHUB_REPOSITORY: 'owner/repo',
+      RUNNER_TEMP: directory,
+      GITHUB_STEP_SUMMARY: summaryPath,
+      CODEX_AUTOFIX_HEAD_SHA: headSha,
+      CODEX_AUTOFIX_HEAD_REF: 'feature/x',
+      CODEX_AUTOFIX_PULL_NUMBER: '54',
+      CODEX_TRUSTED_SETTINGS: path.join(import.meta.dirname, '../../.claude/settings.json'),
+      FAKE_GIT_CALLS: gitCallsPath,
+      FAKE_HEAD: headSha,
+      FAKE_GH_CALLS: ghCallsPath,
+      FAKE_COMMITS: pagePath,
+      FAKE_PULL_OPEN: openPath,
+      FAKE_PULL_DONE: path.join(directory, 'first-pull-done')
+    }),
+    cwd: directory
+  })
+  assert.equal(result.status, 1)
+  assert.match(result.stderr, /stale info/, 'the original push failure must stay visible')
+  assert.match(
+    result.stderr,
+    /re-check also failed.*502/s,
+    'the re-check API error must be labeled, not mistaken for the push failure'
+  )
   fs.rmSync(directory, { recursive: true, force: true })
 }
 

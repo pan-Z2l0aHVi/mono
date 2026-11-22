@@ -433,16 +433,30 @@ function commandApply() {
   const message = autofixCommitMessage(files)
   run('git', ['-c', 'user.name=codex', '-c', 'user.email=codex@openai.com', 'commit', '-m', message])
   try {
-    run('git', ['push', 'origin', `HEAD:refs/heads/${env.CODEX_AUTOFIX_HEAD_REF}`])
+    // --force-with-lease 锚定远端 ref 必须停在 run head：分支已被合并删除或被人前移时 git 直接拒绝
+    // （裸 refspec 会把已删分支当新建分支推成功，catch 里的复查永远不会触发）。
+    run('git', [
+      'push',
+      `--force-with-lease=refs/heads/${env.CODEX_AUTOFIX_HEAD_REF}:${env.CODEX_AUTOFIX_HEAD_SHA}`,
+      'origin',
+      `HEAD:refs/heads/${env.CODEX_AUTOFIX_HEAD_REF}`
+    ])
   } catch (error) {
     // reviewTarget 通过后、push 落地前的秒级窗口里 PR 可能刚被合并删分支：复查一次状态再定颜色，
     // PR 已拒绝即绿色收尾；仍 open 的 push 故障原样抛出，保持红色可见。
-    const latest = adapter.pull(number)
-    const latestTarget = reviewTarget({
-      pull: latest,
-      repository: env.GITHUB_REPOSITORY,
-      releaseBranch: RELEASE_BRANCH
-    })
+    let latestTarget
+    try {
+      const latest = adapter.pull(number)
+      latestTarget = reviewTarget({
+        pull: latest,
+        repository: env.GITHUB_REPOSITORY,
+        releaseBranch: RELEASE_BRANCH
+      })
+    } catch (recheckError) {
+      // 复查自身的 API 故障不能盖掉原始 push 错误：保留原因后按原样抛出。
+      console.error(`push failed and the PR re-check also failed: ${recheckError.message}`)
+      throw error
+    }
     if (!latestTarget.ok) {
       skipApply(`the pull request closed before the push landed: ${latestTarget.reason}`)
       return

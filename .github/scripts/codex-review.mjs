@@ -972,14 +972,17 @@ export function findPriorReviewRun({ adapter, pullNumber, headSha, currentRunId 
 
 /**
  * 同一个 head SHA 可能挂在多个 PR 上（关掉又重开）；取最近更新的那一个，返回完整 PR。
- * 不过滤 state：合并后的写回 run 仍会 resolve 到 closed PR，open 与否由 workflow 层按 pull_state 跳过。
+ * open 候选优先：更晚更新的 closed PR 不能遮住仍 open 的 PR，否则它的 autofix 会被静默跳过。
+ * 不过滤 state：合并后的写回 run 仍要解析到 closed PR（回退路径），open 与否由 workflow 层按 pull_state 跳过。
  */
 export function findPullForHead({ adapter, headSha }) {
   const candidates = (adapter.pulls(headSha) ?? []).filter(
     pull => pull?.head?.sha === headSha && Number.isFinite(pull?.number)
   )
-  candidates.sort((left, right) => String(right.updated_at ?? '').localeCompare(String(left.updated_at ?? '')))
-  return candidates[0] ?? null
+  const open = candidates.filter(pull => pull?.state === 'open')
+  const pool = open.length > 0 ? open : candidates
+  pool.sort((left, right) => String(right.updated_at ?? '').localeCompare(String(left.updated_at ?? '')))
+  return pool[0] ?? null
 }
 
 export function conclusionDirectory(env = process.env) {
