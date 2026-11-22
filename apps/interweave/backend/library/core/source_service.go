@@ -47,7 +47,8 @@ func (s *SourceService) BackfillFingerprints(ctx context.Context) {
 	s.ingest.fingerprints.Backfill(ctx)
 }
 
-// SetIndexSync 注入入口集合的对账回调，使增删改 Source 后监听集合能立即重建。
+// SetIndexSync 注入入口集合的对账接缝：增删改 Source 后仅投递对账请求，
+// 监听集合由 watcher 的对账协程异步重建。
 func (s *SourceService) SetIndexSync(h SourceIndexSync) {
 	s.indexSync = h
 }
