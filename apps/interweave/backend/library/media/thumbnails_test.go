@@ -688,9 +688,10 @@ func TestCloseCancelsAndDrainsStartupPrune(t *testing.T) {
 	t.Cleanup(func() { store.Close() })                             // 后注册，最后执行
 	t.Cleanup(func() { releaseOnce.Do(func() { close(release) }) }) // 先执行：失败路径也能放行
 
-	store.StartPrune(func(context.Context) ([]storage.SourceModel, error) {
+	store.StartPrune(func(ctx context.Context) ([]storage.SourceModel, error) {
 		close(entered)
 		<-release
+		<-ctx.Done()
 		return []storage.SourceModel{{ID: "known", Location: filepath.Join(t.TempDir(), "missing.png")}}, nil
 	})
 	<-entered // lister 已被调用：wg.Add 已在锁内完成，Close 必须等它
