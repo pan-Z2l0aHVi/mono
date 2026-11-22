@@ -1,0 +1,78 @@
+name: PR Auto-Update Queue
+
+# 单仓单头 PR 自动推进队列（Layer 2A）：
+# - 使用单仓 GitHub App 短效 token 调用 update-branch，避免默认 GITHUB_TOKEN 推送不触发后续 CI run。
+# - 只推进同仓、非 draft、base 为 main 且作者手动开启 auto-merge 的队列首个 behind PR；
+#   队列中已有在跑的 required `check` 时立即 noop，防止多 PR 同时触发造成雪崩。
+on:
+  push:
+    branches: [main]
+  pull_request_target:
+    branches: [main]
+    types: [auto_merge_enabled, auto_merge_disabled, ready_for_review, closed]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
+  workflow_dispatch:
+
+permissions:
+  contents: read
+
+concurrency:
+  group: pr-auto-update-queue
+  cancel-in-progress: false
+
+jobs:
+  advance-queue:
+    name: Advance PR auto-update queue
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository) }}
+    runs-on: ubuntu-latest
+    timeout-minutes: 10
+
+    steps:
+      - uses: actions/checkout@v7
+        with:
+          persist-credentials: false
+
+      - name: Check GitHub App credentials
+        id: app_config
+        shell: bash
+        env:
+          PR_QUEUE_APP_ID: ${{ secrets.PR_QUEUE_APP_ID }}
+          PR_QUEUE_APP_PRIVATE_KEY: ${{ secrets.PR_QUEUE_APP_PRIVATE_KEY }}
+        run: |
+          set -euo pipefail
+          if [[ -z "${PR_QUEUE_APP_ID:-}" || -z "${PR_QUEUE_APP_PRIVATE_KEY:-}" ]]; then
+            echo "configured=false" >> "$GITHUB_OUTPUT"
+            {
+              echo "## PR 自动推进队列（已跳过）"
+              echo ""
+              echo "- 未配置 \`PR_QUEUE_APP_ID\` 或 \`PR_QUEUE_APP_PRIVATE_KEY\`，已跳过自动更新队列。"
+              echo "- 配置说明见 \`.github/codex/README.md\`。"
+            } >> "$GITHUB_STEP_SUMMARY"
+            echo "PR queue GitHub App secrets are not configured; skipping"
+            exit 0
+          fi
+          echo "configured=true" >> "$GITHUB_OUTPUT"
+
+      - uses: ./.github/actions/setup-deps
+        if: steps.app_config.outputs.configured == 'true'
+        with:
+          mise-install: 'node'
+          skip-install: 'true'
+
+      - name: Create GitHub App token
+        id: app_token
+        if: steps.app_config.outputs.configured == 'true'
+        uses: actions/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc # v3.4.0
+        with:
+          client-id: ${{ secrets.PR_QUEUE_APP_ID }}
+          private-key: ${{ secrets.PR_QUEUE_APP_PRIVATE_KEY }}
+          permission-contents: write
+          permission-pull-requests: write
+
+      - name: Advance PR auto-update queue
+        if: steps.app_config.outputs.configured == 'true'
+        env:
+          GH_TOKEN: ${{ steps.app_token.outputs.token }}
+        run: node .github/scripts/pr-auto-update-queue.mjs

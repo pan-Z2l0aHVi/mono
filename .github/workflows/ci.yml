@@ -298,11 +298,12 @@ jobs:
         if: steps.config.outputs.configured == 'true' && steps.reuse.outputs.reused != 'true' && steps.prior.outputs.prior_head_sha != ''
         env:
           CODEX_REVIEW_PRIOR_HEAD_SHA: ${{ steps.prior.outputs.prior_head_sha }}
+          CODEX_REVIEW_PRIOR_RUN_ID: ${{ steps.prior.outputs.prior_run_id }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" prepare-incremental
 
       - name: Review pull request with Codex
         id: review
-        if: steps.config.outputs.configured == 'true' && steps.reuse.outputs.reused != 'true'
+        if: steps.config.outputs.configured == 'true' && steps.reuse.outputs.reused != 'true' && steps.incremental.outputs.reused != 'true'
         # continue-on-error 只让 validate 有机会落结论；outcome 仍是 failure，由 validate 判成 error 并让 gate 变红。
         continue-on-error: true
         uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13
@@ -330,6 +331,7 @@ jobs:
         if: always()
         env:
           CODEX_REVIEW_STEP_OUTCOME: ${{ steps.review.outcome }}
+          CODEX_REVIEW_PRIOR_RUN_ID: ${{ steps.prior.outputs.prior_run_id }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" validate
 
       - name: Upload review findings
@@ -350,7 +352,7 @@ jobs:
       # 尚未更新的 open PR 也会拿到这一步，但它们的 head 里没有该脚本：hashFiles 为空时跳过，
       # 不把「分支落后」误判成模型 job 故障；旧 head 本就处于新防线未生效的自举期。
       - name: Reject empty review output
-        if: ${{ always() && steps.config.outputs.configured == 'true' && steps.reuse.outputs.reused != 'true' && hashFiles('.github/scripts/check-review-output.mjs') != '' }}
+        if: ${{ always() && steps.config.outputs.configured == 'true' && steps.reuse.outputs.reused != 'true' && steps.incremental.outputs.reused != 'true' && hashFiles('.github/scripts/check-review-output.mjs') != '' }}
         env:
           CODEX_REVIEW_OUTPUT_PATH: ${{ runner.temp }}/codex-final-message.json
           CODEX_REVIEW_SCOPE_PATH: ${{ runner.temp }}/codex-review/review-scope.json

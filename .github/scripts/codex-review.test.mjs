@@ -27,6 +27,7 @@ import {
   classifyPathRisk,
   commandAutoRetry,
   commandPrepare,
+  commandPrepareIncremental,
   conclusionRenderExtras,
   conclusionVerdict,
   createGhReviewAdapter,
@@ -1692,6 +1693,34 @@ function runCli(command, { env = {}, conclusionDir }) {
   assert.equal(reused.result.status, 0, reused.result.stderr)
   assert.equal(reused.outputs.reused, 'true')
   assert.equal(readConclusion(directory).meta.reused_from, '4321')
+  assert.equal(readConclusion(directory).meta.reuse_reason, 'same_head')
+  const sameHeadValidated = runCli('validate', {
+    env: {
+      RUNNER_TEMP: directory,
+      CODEX_REVIEW_CONCLUSION_DIR: directory,
+      CODEX_REVIEW_HEAD_SHA: headSha,
+      CODEX_REVIEW_BASE_SHA: otherSha,
+      CODEX_REVIEW_STEP_OUTCOME: 'skipped'
+    },
+    conclusionDir: directory
+  })
+  assert.equal(sameHeadValidated.result.status, 0, sameHeadValidated.result.stderr)
+  const sameHeadConclusion = readConclusion(directory)
+  assert.equal(sameHeadConclusion.meta.reused_from, '4321')
+  assert.equal(sameHeadConclusion.meta.reuse_reason, 'same_head')
+  assert.match(
+    renderConclusion({
+      conclusion: deriveConclusion({
+        meta: sameHeadConclusion.meta,
+        findings: sameHeadConclusion.findings,
+        liveHeadSha: headSha,
+        error: ''
+      }),
+      meta: sameHeadConclusion.meta,
+      pullNumber: 54
+    }),
+    /- 复用：同一 head 已有结论，来自 run `4321`，未再调用模型/
+  )
 
   // 旧契约产物（没有 coverage）不能复用：否则一次没有证据的空结论会借复用这条路回到绿色。
   const legacy = conclusionOf('Nit')
@@ -3684,6 +3713,405 @@ exit 2
     const emptyScope = JSON.parse(fs.readFileSync(scopePath(env), 'utf8'))
     assert.deepEqual(emptyScope.routed_skills, [])
   } finally {
+    fs.rmSync(tempRoot, { recursive: true, force: true })
+  }
+}
+
+{
+  // Layer 1 加固：可信 prompt/schema 哈希纳入 config.fingerprint，缺失时 fail-closed 不参与复用；
+  // 零增量短路复用在 Block === 0 与 Block > 0 时均原样保留结论并区分文案，非零净增量与异常基线回退。
+  const trustedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-trusted-fingerprint-'))
+  try {
+    const promptFile = path.join(trustedRoot, 'codex/prompts/review.md')
+    const schemaFile = path.join(trustedRoot, 'codex/schemas/review-findings.schema.json')
+    fs.mkdirSync(path.dirname(promptFile), { recursive: true })
+    fs.mkdirSync(path.dirname(schemaFile), { recursive: true })
+    const makePrompt = (ruleText, preloadBody = '占位符') =>
+      `# Review\n${ruleText}\n${PRELOAD_START_MARKER}\n${preloadBody}\n${PRELOAD_END_MARKER}\n`
+    fs.writeFileSync(promptFile, makePrompt('rule-v1'))
+    fs.writeFileSync(schemaFile, '{"type":"object","v":1}\n')
+
+    const baseInspect = inspectConfig(configuredEnv, { trustedRoot })
+    assert.ok(baseInspect.config.fingerprint, 'complete trusted assets must produce a non-empty fingerprint')
+
+    // prepare 运行时注入的预注入块变化不能扰动模板指纹，否则每次 Update branch 都会假失配。
+    fs.writeFileSync(promptFile, makePrompt('rule-v1', 'PR-specific diff snippet changed'))
+    assert.equal(
+      inspectConfig(configuredEnv, { trustedRoot }).config.fingerprint,
+      baseInspect.config.fingerprint,
+      'preload block replacement must not alter template fingerprint'
+    )
+
+    // 模板正文或 schema 内容变化必须改变指纹并拒绝复用。
+    fs.writeFileSync(promptFile, makePrompt('rule-v2'))
+    const promptChanged = inspectConfig(configuredEnv, { trustedRoot })
+    assert.notEqual(
+      promptChanged.config.fingerprint,
+      baseInspect.config.fingerprint,
+      'changing review.md must change config.fingerprint'
+    )
+
+    fs.writeFileSync(promptFile, makePrompt('rule-v1'))
+    fs.writeFileSync(schemaFile, '{"type":"object","v":2}\n')
+    const schemaChanged = inspectConfig(configuredEnv, { trustedRoot })
+    assert.notEqual(
+      schemaChanged.config.fingerprint,
+      baseInspect.config.fingerprint,
+      'changing review-findings.schema.json must change config.fingerprint'
+    )
+
+    // 任一可信契约文件缺失时 fail-closed 返回空指纹，即使上一轮也是空指纹也拒绝增量基线复用。
+    fs.rmSync(schemaFile)
+    const missingSchema = inspectConfig(configuredEnv, { trustedRoot })
+    assert.equal(missingSchema.config.fingerprint, '')
+    assert.throws(
+      () =>
+        validateIncrementalBaseline({
+          prior: {
+            meta: { head_sha: headSha, base_sha: otherSha, status: 'reviewed', config_fingerprint: '' },
+            findings: { findings: [], coverage: { inspected: ['src/a.ts'], uncovered: [] } }
+          },
+          priorScope: {
+            head_sha: headSha,
+            base_sha: otherSha,
+            excluded_pathspecs: [...REVIEW_EXCLUDE_PATHSPECS],
+            empty_diff: false,
+            changed_paths: ['src/a.ts']
+          },
+          expectedHead: headSha,
+          expectedBase: otherSha,
+          config: missingSchema.config
+        }),
+      /compatible baseline/
+    )
+  } finally {
+    fs.rmSync(trustedRoot, { recursive: true, force: true })
+  }
+
+  // 真实 Git 仓库端到端验证零增量短路复用 5 个核心场景。
+  const repoDir = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-zero-diff-repo-'))
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-zero-diff-run-'))
+  const git = (...args) => {
+    const result = spawnSync('git', args, { cwd: repoDir, encoding: 'utf8', env: testEnv() })
+    if (result.status !== 0) throw new Error(result.stderr)
+    return result.stdout
+  }
+  const commit = message =>
+    git(
+      '-c',
+      'commit.gpgsign=false',
+      '-c',
+      'core.hooksPath=/dev/null',
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.test',
+      'commit',
+      '-q',
+      '-m',
+      message
+    )
+  try {
+    git('-c', 'init.defaultBranch=main', 'init', '-q')
+    fs.mkdirSync(path.join(repoDir, 'src/generated'), { recursive: true })
+    fs.writeFileSync(path.join(repoDir, 'src/a.ts'), 'export const a = 1\n')
+    fs.writeFileSync(path.join(repoDir, 'src/upstream.ts'), 'export const up = 1\n')
+    fs.writeFileSync(path.join(repoDir, 'src/generated/meta.js'), 'export const g = 1\n')
+    git('add', '.')
+    commit('base main')
+    const baseSha = git('rev-parse', 'HEAD').trim()
+
+    git('checkout', '-q', '-b', 'feat-pr', baseSha)
+    fs.writeFileSync(path.join(repoDir, 'src/a.ts'), 'export const a = 2\n')
+    git('add', '.')
+    commit('pr change')
+    const prHead1 = git('rev-parse', 'HEAD').trim()
+
+    git('checkout', '-q', '-b', 'main-advance', baseSha)
+    fs.writeFileSync(path.join(repoDir, 'src/upstream.ts'), 'export const up = 2\n')
+    git('add', '.')
+    commit('upstream main advance')
+    const advancedBase = git('rev-parse', 'HEAD').trim()
+
+    git('checkout', '-q', 'feat-pr')
+    git(
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.test',
+      'merge',
+      '--no-ff',
+      advancedBase,
+      '-m',
+      'Update branch from main'
+    )
+    const syncedPrHead = git('rev-parse', 'HEAD').trim()
+
+    const realFingerprint = inspectConfig(configuredEnv).config.fingerprint
+    const writeRealConfig = (fingerprint = realFingerprint) => {
+      fs.writeFileSync(
+        path.join(tempRoot, CONFIG_FILE),
+        JSON.stringify({
+          endpoint: 'https://responses.example.test/v1/responses',
+          model: 'configured-model',
+          effort: 'configured-effort',
+          version: 'configured-version',
+          key_present: true,
+          fingerprint
+        })
+      )
+    }
+
+    const priorDir = path.join(tempRoot, 'codex-review-prior')
+    const conclusionDir = path.join(tempRoot, 'codex-review')
+    const outputFile = path.join(tempRoot, 'output')
+    const runPrepInc = overrides => {
+      fs.rmSync(conclusionDir, { recursive: true, force: true })
+      fs.writeFileSync(outputFile, '')
+      const env = testEnv({
+        RUNNER_TEMP: tempRoot,
+        CODEX_REVIEW_PRIOR_DIR: priorDir,
+        CODEX_REVIEW_CONCLUSION_DIR: conclusionDir,
+        CODEX_REVIEW_BASE_SHA: advancedBase,
+        CODEX_REVIEW_HEAD_SHA: syncedPrHead,
+        CODEX_REVIEW_PRIOR_HEAD_SHA: prHead1,
+        CODEX_REVIEW_PRIOR_RUN_ID: '8801',
+        GITHUB_OUTPUT: outputFile,
+        ...overrides
+      })
+      const command = (_name, args) => git(...args)
+      return {
+        outcome: commandPrepareIncremental({ env, command, repoRoot: repoDir }),
+        outputs: fs.readFileSync(outputFile, 'utf8'),
+        env
+      }
+    }
+
+    const writePriorRun = ({ findingsPayload, metaOverrides = {}, scopeOverrides = {} }) => {
+      writeFixtures(
+        priorDir,
+        findingsPayload,
+        metaOf({
+          head_sha: prHead1,
+          base_sha: baseSha,
+          merge_base_sha: baseSha,
+          config_fingerprint: realFingerprint,
+          generated_at: '2026-11-20T08:00:00Z',
+          ...metaOverrides
+        })
+      )
+      fs.writeFileSync(
+        path.join(priorDir, 'review-scope.json'),
+        JSON.stringify({
+          head_sha: prHead1,
+          base_sha: baseSha,
+          excluded_pathspecs: [...REVIEW_EXCLUDE_PATHSPECS],
+          empty_diff: false,
+          changed_paths: ['src/a.ts'],
+          ...scopeOverrides
+        })
+      )
+    }
+
+    // 场景 ①：纯 Update branch 零净增量复用（Block === 0）
+    writeRealConfig()
+    writePriorRun({
+      findingsPayload: {
+        summary: '改动干净。',
+        coverage: { inspected: ['src/a.ts'], uncovered: [] },
+        findings: []
+      }
+    })
+    const cleanReuse = runPrepInc()
+    assert.equal(cleanReuse.outcome.incremental, true)
+    assert.equal(cleanReuse.outcome.reused, true)
+    assert.match(cleanReuse.outputs, /^incremental=true$/mu)
+    assert.match(cleanReuse.outputs, /^reused=true$/mu)
+    assert.match(cleanReuse.outputs, new RegExp(`^review_start_sha=${prHead1}$`, 'mu'))
+    const cleanScope = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-scope.json'), 'utf8'))
+    assert.equal(cleanScope.review_start_sha, prHead1)
+    assert.equal(readConclusion(conclusionDir).meta.review_start_sha, prHead1)
+    const cleanValidated = runCli('validate', {
+      env: {
+        RUNNER_TEMP: tempRoot,
+        CODEX_REVIEW_BASE_SHA: advancedBase,
+        CODEX_REVIEW_HEAD_SHA: syncedPrHead,
+        CODEX_REVIEW_STEP_OUTCOME: 'skipped'
+      },
+      conclusionDir
+    })
+    assert.equal(cleanValidated.result.status, 0, cleanValidated.result.stderr)
+    assert.equal(cleanValidated.outputs.blocks, '0')
+    const cleanPersisted = readConclusion(conclusionDir)
+    assert.equal(cleanPersisted.meta.head_sha, syncedPrHead)
+    assert.equal(cleanPersisted.meta.base_sha, advancedBase)
+    assert.equal(cleanPersisted.meta.review_start_sha, prHead1)
+    assert.equal(cleanPersisted.meta.reused_from, '8801')
+    assert.equal(cleanPersisted.meta.reuse_reason, 'zero_incremental_diff')
+    assert.equal(cleanPersisted.meta.generated_at, '2026-11-20T08:00:00Z')
+    assert.doesNotThrow(() =>
+      validateIncrementalBaseline({
+        prior: cleanPersisted,
+        priorScope: JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-scope.json'), 'utf8')),
+        expectedHead: syncedPrHead,
+        expectedBase: advancedBase,
+        config: { fingerprint: realFingerprint }
+      })
+    )
+    const cleanGate = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: syncedPrHead }, conclusionDir })
+    assert.equal(cleanGate.result.status, 0, 'zero-diff reuse with Block 0 passes the gate')
+    const cleanComment = renderConclusion({
+      conclusion: deriveConclusion({
+        meta: cleanPersisted.meta,
+        findings: cleanPersisted.findings,
+        liveHeadSha: syncedPrHead,
+        error: ''
+      }),
+      meta: cleanPersisted.meta,
+      pullNumber: 90
+    })
+    assert.match(
+      cleanComment,
+      /- 复用：主干同步后净增量为 0（三方合并无冲突），沿用 run `8801` 的审查结论（含原有 Block 判定），未再调用模型/
+    )
+
+    // 场景 ②：纯 Update branch 零净增量复用（Block > 0，含历史增量 lineage）→ 统一 review_start_sha=prior.meta.head_sha，原样保留 Block，codex-gate 仍判红
+    writePriorRun({
+      findingsPayload: {
+        summary: '存在阻断缺陷。',
+        coverage: { inspected: ['src/a.ts'], uncovered: [] },
+        findings: [finding('Block')]
+      },
+      metaOverrides: {
+        review_start_sha: baseSha,
+        review_lineage: [{ head_sha: baseSha, findings: [], resolutions: [] }]
+      }
+    })
+    const blockReuse = runPrepInc({ CODEX_REVIEW_PRIOR_RUN_ID: '8802' })
+    assert.equal(blockReuse.outcome.incremental, true)
+    assert.equal(blockReuse.outcome.reused, true)
+    assert.match(blockReuse.outputs, new RegExp(`^review_start_sha=${prHead1}$`, 'mu'))
+    const blockScope = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-scope.json'), 'utf8'))
+    assert.equal(blockScope.incremental, true)
+    assert.equal(blockScope.review_start_sha, prHead1)
+    assert.equal(readConclusion(conclusionDir).meta.review_start_sha, prHead1)
+    const blockValidated = runCli('validate', {
+      env: {
+        RUNNER_TEMP: tempRoot,
+        CODEX_REVIEW_BASE_SHA: advancedBase,
+        CODEX_REVIEW_HEAD_SHA: syncedPrHead,
+        CODEX_REVIEW_STEP_OUTCOME: 'skipped'
+      },
+      conclusionDir
+    })
+    assert.equal(blockValidated.result.status, 0, blockValidated.result.stderr)
+    assert.equal(blockValidated.outputs.blocks, '1')
+    const blockPersisted = readConclusion(conclusionDir)
+    assert.equal(blockPersisted.findings.counts.Block, 1)
+    assert.equal(blockPersisted.meta.review_start_sha, prHead1)
+    assert.equal(blockPersisted.meta.reuse_reason, 'zero_incremental_diff')
+    assert.doesNotThrow(() =>
+      validateIncrementalBaseline({
+        prior: blockPersisted,
+        priorScope: blockScope,
+        expectedHead: syncedPrHead,
+        expectedBase: advancedBase,
+        config: { fingerprint: realFingerprint }
+      })
+    )
+    const blockGate = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: syncedPrHead }, conclusionDir })
+    assert.equal(blockGate.result.status, 1, 'zero-diff reuse carrying prior Block must still block merge')
+    const blockComment = renderConclusion({
+      conclusion: deriveConclusion({
+        meta: blockPersisted.meta,
+        findings: blockPersisted.findings,
+        liveHeadSha: syncedPrHead,
+        error: ''
+      }),
+      meta: blockPersisted.meta,
+      pullNumber: 90
+    })
+    assert.match(blockComment, /status=blocked blocks=1/)
+    assert.match(blockComment, /沿用 run `8802` 的审查结论（含原有 Block 判定）/)
+
+    // 场景 ③：冲突解决后或合并后净增量非空 → 不短路复用、进入增量审查；真冲突回退全量
+    git('checkout', '-q', 'feat-pr')
+    fs.writeFileSync(path.join(repoDir, 'src/a.ts'), 'export const a = 3\n')
+    git('add', '.')
+    commit('post-sync edit')
+    const postSyncHead = git('rev-parse', 'HEAD').trim()
+    const nonZeroInc = runPrepInc({ CODEX_REVIEW_HEAD_SHA: postSyncHead })
+    assert.equal(nonZeroInc.outcome.incremental, true)
+    assert.equal(nonZeroInc.outcome.reused, false)
+    assert.match(nonZeroInc.outputs, /^reused=false$/mu)
+    assert.equal(
+      fs.existsSync(path.join(conclusionDir, 'review-findings.json')),
+      false,
+      'non-zero incremental diff must invoke the model instead of writing reused findings'
+    )
+    const nonZeroScope = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-scope.json'), 'utf8'))
+    assert.equal(nonZeroScope.incremental, true)
+    assert.deepEqual(nonZeroScope.changed_paths, ['src/a.ts'])
+
+    // 真实三方合并冲突（main 与 PR 同时改了 src/a.ts 同一行）→ merge-tree 非零退出 → fail-closed 回退全量
+    git('checkout', '-q', '-b', 'main-conflict', advancedBase)
+    fs.writeFileSync(path.join(repoDir, 'src/a.ts'), 'export const a = 999\n')
+    git('add', '.')
+    commit('conflicting main change')
+    const conflictBase = git('rev-parse', 'HEAD').trim()
+    git('checkout', '-q', 'feat-pr')
+    git(
+      '-c',
+      'user.name=Test',
+      '-c',
+      'user.email=test@example.test',
+      'merge',
+      '--no-ff',
+      '-X',
+      'ours',
+      conflictBase,
+      '-m',
+      'Resolve conflict with main'
+    )
+    const resolvedConflictHead = git('rev-parse', 'HEAD').trim()
+    const conflictFallback = runPrepInc({
+      CODEX_REVIEW_BASE_SHA: conflictBase,
+      CODEX_REVIEW_HEAD_SHA: resolvedConflictHead
+    })
+    assert.equal(conflictFallback.outcome.incremental, false)
+    assert.equal(conflictFallback.outcome.reused, false)
+    assert.match(conflictFallback.outputs, /^incremental=false$/mu)
+    assert.match(conflictFallback.outputs, /^reused=false$/mu)
+
+    // 场景 ④：prompt / schema 变更使 fingerprint 变化 → 拒绝复用并回退全量
+    writeRealConfig('changed-fp-0001')
+    const fpMismatch = runPrepInc()
+    assert.equal(fpMismatch.outcome.incremental, false)
+    assert.equal(fpMismatch.outcome.reused, false)
+    assert.equal(fs.existsSync(path.join(conclusionDir, 'review-findings.json')), false)
+
+    // 场景 ⑤：上一轮缺 coverage 或 status !== 'reviewed' → 拒绝复用并回退全量
+    writeRealConfig()
+    writePriorRun({
+      findingsPayload: { summary: '旧版无覆盖清单', findings: [] }
+    })
+    const noCoverage = runPrepInc()
+    assert.equal(noCoverage.outcome.incremental, false)
+    assert.equal(noCoverage.outcome.reused, false)
+
+    writePriorRun({
+      findingsPayload: {
+        summary: '上次未完成',
+        coverage: { inspected: ['src/a.ts'], uncovered: [] },
+        findings: []
+      },
+      metaOverrides: { status: 'unreviewed', error_code: 'missing_coverage' }
+    })
+    const notReviewed = runPrepInc()
+    assert.equal(notReviewed.outcome.incremental, false)
+    assert.equal(notReviewed.outcome.reused, false)
+  } finally {
+    fs.rmSync(repoDir, { recursive: true, force: true })
     fs.rmSync(tempRoot, { recursive: true, force: true })
   }
 }

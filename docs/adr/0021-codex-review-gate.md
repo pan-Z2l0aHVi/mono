@@ -1,7 +1,7 @@
 # ADR-0021: Codex 自动 PR 审查门
 
 - **Date**: 2026-11-04
-- **Revised**: 2026-11-18
+- **Revised**: 2026-11-22
 - **Status**: 已接受
 
 ## 背景
@@ -90,8 +90,7 @@ Wails `bindings/**`、单文件生成声明与 icon barrel。被滤除的路径�
 
 ### 幂等、触发与配置
 
-同一 head 且配置指纹（端点、模型、强度、版本、密钥有无）一致、旧结论为 `reviewed` 时复用前一次产物；`error` 与
-`unreviewed` 从不复用；并发组按 PR 分支取消更早的 run。写回 job 只处理同源仓库的 PR run，排除已取消 run 与版本
+同一 head 且配置指纹（端点、模型、强度、版本、密钥有无、生成物排除清单，以及同可信基目录下 `codex/prompts/review.md` 模板与 `codex/schemas/review-findings.schema.json` 的 SHA-256 哈希；任一契约文件缺失则 fail-closed 返回空指纹并拒绝复用）一致、旧结论为 `reviewed` 时走 `same_head` 复用前一次产物；当 head 经 `Update branch` 同步 `main` 前移时，若基线校验通过、`git merge-tree --write-tree` 无合并冲突且滤除生成物后的净增量为 0（`changedPaths` 与 `diff` 均为空），走 `zero_incremental_diff` 短路复用并原样继承前一次的 `findings`、`counts`（含已有 `Block`）、`summary` 与 `coverage`；`error` 与 `unreviewed` 从不复用；并发组按 PR 分支取消更早的 run。写回 job 只处理同源仓库的 PR run，排除已取消 run 与版本
 分支；没有审查产物时跳过发评论，但必须在 Summary 与 notice 里说明原因。只审同源仓库、base 为 `main`、未关闭且
 非版本分支的 PR；fork PR 默认不跑。审查 job 的时间上限高于自动修，具体分钟数见 [`ci.yml`](../../.github/workflows/ci.yml)，
 上限是天花板而不是预算目标。
@@ -163,3 +162,18 @@ agent 或人工审查由 agent 自己判断，仓库不规定触发条件。覆�
 覆盖一次 PR 内顺序出现的多个独立失败面。分页读取 PR commits 后必须再读一次 PR 对象：读数少于报告的 `commits`、或
 total 缺失/非法时按「无法验证」禁用自动修，不把 250 条 API 上限误写成提交数。合并后所有以新 main 为 base 的 CI run
 都使用新脚本；观察方式是 prepare 开头输出的固定版本行，这项观察只能在合并后完成。
+
+## 2026-11-22 修订：零增量短路复用与单头 PR 自动推进队列
+
+### 零增量短路复用与指纹锁定
+
+- **安全成立前提**：`git merge-tree --write-tree` 无冲突且滤除生成物后净增量为 0，只能证明三方合并无文本冲突，**不能排除**上游 `main` 的公共接口、类型签名或构建配置变化引发的语义回归。之所以安全跳过重复 LLM 审查，是因为 `ci.yml` 中 `codex-review` 依赖 `needs: check`，GitHub Merge 平面上的确定性 `check`（构建、类型检查、lint、测试与政策门禁）仍会在新合并树上全量重跑，由确定性门禁捕获语义回归。
+- **`Block` 原样继承**：无论上一轮 `counts.Block === 0` 还是 `Block > 0`，零增量短路复用都原样保留 `findings`、`counts`、`summary` 与 `coverage`（更新 `head_sha`、`base_sha`、`merge_base_sha`、`reused_from`、`reuse_reason: 'zero_incremental_diff'`，并将 `review_start_sha` 统一指向 `prior.meta.head_sha`）。带有未修复 `Block` 的 PR 即使纯同步了主干，经 `codex-gate` 仍判阻断，绝不借复用放绿。
+- **复用文案区分**：`renderConclusion` 依据 `meta.reuse_reason` 区分 `same_head`（同 head 复用）与 `zero_incremental_diff`（主干同步净增量为 0、沿用原结论含原有 Block 判定），持久化评论继续就地更新。
+- **可信契约入指纹**：`inspectConfig` 从同可信基目录（`$RUNNER_TEMP/trusted/` 或 `.github/`）读取 `codex/prompts/review.md`（剥除 `prepare` 运行时预注入区块后的模板正文）与 `codex/schemas/review-findings.schema.json` 的 SHA-256 哈希纳入 `config.fingerprint`；任一文件缺失时 fail-closed 返回空指纹并拒绝一切复用。
+
+### 单仓单头 PR 自动推进队列（Layer 2A）
+
+- **问题与 token 选择**：个人仓开启 `strict`（Require branches to be up to date before merging）后，多 PR 并行合并会产生连环 `behind`；而默认 `GITHUB_TOKEN` 调用 `update-branch` 推送的 merge commit 不会触发新的 `pull_request` CI run（GitHub 防递归限制）。因此新增 `pr-auto-update-queue.yml`，在配置了单仓 GitHub App Secrets（`PR_QUEUE_APP_ID`、`PR_QUEUE_APP_PRIVATE_KEY`）时通过固定 SHA 的 `actions/create-github-app-token` 申请最小权限（`Contents: Read and write`、`Pull requests: Read and write`）短效 token 调用 `update-branch`，以 App 身份唤醒后续 `check` 与原生 auto-merge；未配置密钥时优雅跳过，不阻断既有流程。
+- **触发唤醒与同仓围栏**：工作流同时监听 `push`（`main`）、`pull_request_target`（`main`，`types: [auto_merge_enabled, auto_merge_disabled, ready_for_review, closed]`）、`workflow_run`（`CI` `completed`）与 `workflow_dispatch`，确保队头 PR 失败、关闭或取消 `auto-merge` 时及时唤醒队列推进下一个 `behind` PR，防止队列饥饿。job 级 `if` 与队列脚本 `pr-auto-update-queue.mjs` 共同执行同仓围栏：只允许 `push`、`workflow_dispatch`、同仓且 base 为 `main` 的 `pull_request_target`，以及同仓 `pull_request` 触发的 `workflow_run`；脚本只纳入 `open`、base 为 `main`、非 `draft`、作者已手动开启 `Enable auto-merge` 且 `head.repo.full_name === base.repo.full_name` 的同仓 PR（绝不触碰 fork PR，也不检出 PR head）。
+- **防雪崩状态机与后果**：状态机按 PR 编号 FIFO 排序：只要队列中已有非 `behind`、非 `dirty` 的 PR 正在运行 required `check`（`queued` / `in_progress`），立即 `noop` 不抢跑；对 `dirty`、`check` 失败/取消/超时（`failure` / `cancelled` / `timed_out`）与 `mergeable_state === 'unknown'` 明确记录并跳过避免死循环；每次最多推进第 1 个可用的 `behind` PR 并附 `expected_head_sha`，遇到 422（head 已变或冲突）时优雅记录并退出 0。多 PR 并行开启 auto-merge 时可按 FIFO 单头串行追平主干并触发确定性 `check` + 零增量复用；若出现文本冲突或单测失败会停在该 PR 等待作者修复，在队头退出或重开检查后由 `pull_request_target` / `workflow_run` 自动接续推进下一位 PR。

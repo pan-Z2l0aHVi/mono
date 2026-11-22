@@ -33,7 +33,11 @@ CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发�
 
 首次审查覆盖完整源码 diff。复审以可信的前次已审 head 为基线，检查该 head 到当前 head 的全部源码增量、
 前次发现的处置及其受影响行为，并继承仍有效的已审范围和未覆盖项；新结论须标明基线和当前 head。
-基线不可用、审查范围或 base 变化使先前证据失效，或增量范围无法确定时，重新完整审查源码。
+若配置指纹（含后台参数、生成物排除清单以及可信 `review.md` 模板与 schema 哈希）一致且基线通过校验，
+在同步 `main` 后 `git merge-tree --write-tree` 无合并冲突且滤除生成物后的净增量为 0 时（`zero_incremental_diff`），
+系统会短路跳过模型调用并原样继承前次结论（含 `findings`、`coverage` 与原有 `Block` 判定，带有 `Block` 时仍判阻断），
+持久评论按 `same_head` 与 `zero_incremental_diff` 区分标注复用依据。该短路依赖 Merge 平面确定性 `check` 在新合并树上全量复检；
+基线不可用、契约文件缺失、审查范围或 base 变化使先前证据失效、三方合并冲突或增量范围无法确定时，重新完整审查源码。
 
 **生成物不需要 diff，也不需要 review**：它由 generator 完整重建，留在审查输入里只会淹没真实源码、吃掉大 PR
 的审查预算。自动审查按 [`generated-artifacts.md`](./generated-artifacts.md) 的唯一判据「能否由 generator 完整重建」
@@ -61,8 +65,9 @@ CI 默认 checkout 是 base/head 的临时合并对象，代码 review 固定在
 或 step 结果不符时，不能证明当前输入已通过 CI。
 
 改动 `.github/workflows/ci.yml` 的 `codex-review` 与 `codex-autofix-plan` job、任一 `.github/workflows/codex-review*.yml`、
-`.github/scripts/` 下的 `codex-review.mjs`、`codex-autofix.mjs`、`check-review-output.mjs` 或 `lib/` 中可信脚本时，
-人工 review 另读 [ADR-0021](../adr/0021-codex-review-gate.md)「权限拆分与安全不变量」。
+`.github/workflows/pr-auto-update-queue.yml`、`.github/scripts/` 下的 `codex-review.mjs`、`codex-autofix.mjs`、
+`check-review-output.mjs`、`pr-auto-update-queue.mjs` 或 `lib/` 中可信脚本时，
+人工 review 另读 [ADR-0021](../adr/0021-codex-review-gate.md)「权限拆分与安全不变量」（以及队列触发与同仓围栏约定，配置见 [`.github/codex/README.md`](../../.github/codex/README.md#单仓-pr-自动推进队列pr-auto-update-queue)）。
 
 ## 审查内容与发现
 
