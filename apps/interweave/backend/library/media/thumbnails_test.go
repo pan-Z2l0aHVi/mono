@@ -520,6 +520,47 @@ func TestServeCachedThumbnailBuildsOfflineIndexOnce(t *testing.T) {
 	}
 }
 
+func TestServeCachedThumbnailRetriesIndexAfterScanFailure(t *testing.T) {
+	dir := t.TempDir()
+	store := &ThumbnailStore{dir: dir}
+	touchThumbnail(t, dir, "src-a.1-1.jpg")
+
+	// 先装失败包装、再装计数包装：两次扫描（失败与重试）都经过计数器。
+	failScan := true
+	orig := readDirFn
+	t.Cleanup(func() { readDirFn = orig })
+	readDirFn = func(name string) ([]os.DirEntry, error) {
+		if failScan {
+			return nil, errors.New("injected scan failure")
+		}
+		return orig(name)
+	}
+	scans := countDirScans(t, dir)
+
+	// 首次扫描失败：不冻结成空索引，直接以 os.ErrNotExist 收尾。
+	if _, err := serveCached(t, store, "src-a"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("failed scan must surface os.ErrNotExist, got %v", err)
+	}
+
+	// 扫描恢复后，下一次离线查询重试并成功建立索引。
+	failScan = false
+	rec, err := serveCached(t, store, "src-a")
+	if err != nil {
+		t.Fatalf("retry after scan recovery must serve the cached thumbnail: %v", err)
+	}
+	if etag := rec.Header().Get("ETag"); etag != `"src-a.1-1.jpg"` {
+		t.Fatalf("retry must serve the indexed entry, got ETag %s", etag)
+	}
+
+	// 索引建立后不再重扫：命中与负查询都不付目录遍历。
+	if _, err := serveCached(t, store, "src-video"); !errors.Is(err, os.ErrNotExist) {
+		t.Fatalf("post-index miss must fail with os.ErrNotExist, got %v", err)
+	}
+	if got := scans(); got != 2 {
+		t.Fatalf("expected exactly the failed scan plus the retry scan, got %d scans", got)
+	}
+}
+
 // 最常见的离线形态：在线时前端回填缩略图（索引尚未建立），之后原文件不可用。
 // 离线首查按目录全量建索引，必须能看到回填落盘的文件。
 func TestSaveBeforeIndexBuildServesOffline(t *testing.T) {
