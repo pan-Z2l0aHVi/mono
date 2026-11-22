@@ -1,6 +1,6 @@
 # 开发与协作工作流
 
-本文件规定从方案到合并的工作顺序、用户授权边界与跨阶段恢复。任务分级与本地台账见 [`.agents/skills/task-ledger/SKILL.md`](../../.agents/skills/task-ledger/SKILL.md)。
+本文件规定从方案到合并的工作顺序、用户授权边界与跨阶段恢复。任务分级与按需本地台账见 [`.agents/skills/task-ledger/SKILL.md`](../../.agents/skills/task-ledger/SKILL.md)。
 
 ## 从方案到合并
 
@@ -43,7 +43,7 @@ review 结论以 PR 上 CI 产出的自动审查为准，它绑定 head；发现
 
 ## 跨阶段恢复
 
-- 范围变化时，先更新台账 scope 与 Task Packet（见 `task-ledger` skill）再继续实施。
+- 若本次任务启用了 `task-ledger`，范围变化时先更新台账 scope 与 Task Packet（见 `task-ledger` skill）再继续实施。
 - 验证失败时保留真实输出，修复原因并重跑受影响的检查；证据必须对应当前 base/head。
-- 中断恢复以 Task Packet 与真实 Git 状态为准，台账（见 `task-ledger` skill）只辅助归属和进度，不能补造已通过的验证、review 或 CI。
+- 中断恢复以真实 Git 状态与持久证据为准；若本次任务启用了 `task-ledger`，可配合 Task Packet 与台账记录（见 `task-ledger` skill）恢复归属和进度，不能补造已通过的验证、review 或 CI。
 - 合并前仍须取得明确授权；授权前保留可检查的 diff 与证据。

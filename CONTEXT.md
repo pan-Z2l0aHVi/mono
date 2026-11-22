@@ -9,7 +9,7 @@
 
 ## Task 与 PR 流程词汇
 
-**Task 台账**：在系统临时目录维护本地 task 归属与进度；它不承载 review、测试或 CI 结论。字段、状态与恢复边界见 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)。
+**Task 台账**：按需启用（跨会话、跨 Harness 或多 worktree 接力），在 `$XDG_CACHE_HOME/agent-task-ledger/`（默认回退 `~/.cache/agent-task-ledger/`）维护本地 task 归属、范围与进度；它不承载 review、测试或 CI 结论。字段、状态与恢复边界见 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)。
 _Avoid_: 证据链、冻结审批状态
 
 **PR review**：PR 阶段对实际 diff、验收条件和验证结果的独立检查。默认由 CI 自动审查门承担并绑定 head；由人审查时，reviewer 用独立上下文做同样的检查。required CI 通过不等于 review 结论，纪律见 [`docs/agents/review.md`](docs/agents/review.md)。
@@ -19,7 +19,7 @@ _Avoid_: 本地 review phase、CI 绿即 review 通过
 
 ADR 编号按下表与当前索引解释；更早的 research、CHANGELOG 和 Git 历史中的编号按当时的记录解释，不能直接套用当前索引。
 
-ADR 只记录技术选型、架构设计与工程化决策；具体实现细节放在源码、测试或对应文档。表内只列仍承载现行决策的 ADR；被取代的 ADR 在表内保留一行取代标注，退役或删除的记录只留在 git 里，旧 ADR 的修订注记不构成现行指引。仓库指令保持编排无关（harness-agnostic）：本地 Task 台账记录归属与进度，独立政策检查器运行只读检查。职责分别见 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)、[`docs/agents/commit.md`](docs/agents/commit.md)、[`docs/agents/worktree.md`](docs/agents/worktree.md) 与 [`docs/agents/release.md`](docs/agents/release.md)。
+ADR 只记录技术选型、架构设计与工程化决策；具体实现细节放在源码、测试或对应文档。表内只列仍承载现行决策的 ADR；被取代的 ADR 在表内保留一行取代标注，退役或删除的记录只留在 git 里，旧 ADR 的修订注记不构成现行指引。仓库指令保持编排无关（harness-agnostic）：本地 Task 台账按需记录归属与进度，独立政策检查器运行只读检查。职责分别见 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)、[`docs/agents/commit.md`](docs/agents/commit.md)、[`docs/agents/worktree.md`](docs/agents/worktree.md) 与 [`docs/agents/release.md`](docs/agents/release.md)。
 
 | ADR                                                                   | 决策                                                          | 何时读取                                                                |
 | --------------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------- |
