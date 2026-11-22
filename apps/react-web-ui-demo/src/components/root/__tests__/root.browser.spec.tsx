@@ -219,7 +219,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
       await userEvent.keyboard('{ArrowDown}')
     })
     const link = document.querySelector<HTMLAnchorElement>('[aria-label="搜索结果"] a[href="/components/input"]')!
-    expect(document.activeElement).toBe(link)
+    await waitFor(() => expect(document.activeElement).toBe(link))
     await act(async () => {
       await userEvent.keyboard('{Escape}')
     })
