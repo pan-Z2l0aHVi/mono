@@ -259,12 +259,14 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
                   return false
                 }
 
-                function findWorkspaceRoots(dir: string): void {
+                function findWorkspaceRoots(dir: string, depth = 0): void {
                   const entries = fs.readdirSync(dir, { withFileTypes: true })
                   for (const entry of entries) {
                     if (!entry.isDirectory()) continue
-                    // 跳过依赖/产物目录，避免误判 node_modules 里的 package.json 为成 workspace。
-                    if (['node_modules', 'dist', 'coverage', '.turbo'].includes(entry.name)) continue
+                    // 跳过依赖/产物目录，避免误判 node_modules 里的 package.json 为 workspace；
+                    // dist/coverage 仅在具体包目录之内（depth > 0）跳过，避免容器下的真实包名（如 apps/dist、packages/coverage）被静默忽略。
+                    if (entry.name === 'node_modules' || entry.name === '.turbo') continue
+                    if (depth > 0 && (entry.name === 'dist' || entry.name === 'coverage')) continue
                     const candidate = path.join(dir, entry.name)
                     if (fs.existsSync(path.join(candidate, 'package.json'))) {
                       const workspaceRoot = candidate
@@ -276,7 +278,7 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
                         )
                     }
                     // 无论自身是否有入口文档，都必须递归进入子目录，才能覆盖嵌套 workspace。
-                    findWorkspaceRoots(candidate)
+                    findWorkspaceRoots(candidate, depth + 1)
                   }
                 }
                 findWorkspaceRoots(absolute)

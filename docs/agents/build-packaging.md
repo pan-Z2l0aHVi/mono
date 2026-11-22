@@ -10,7 +10,7 @@
 
 ## TypeScript 配置
 
-共享配置在 `packages/tsconfig/`，通过 `"extends": "@greypan/tsconfig/<profile>.json"` 引用。面向 DOM 与 Node 的包把配置拆成 `tsconfig.node.json`、`tsconfig.app.json` 和 `tsconfig.vitest.json`，纯 Node 包只用单个 `tsconfig.json`。每个包声明自己的 `include` 与 `tsBuildInfoFile`；需要路径别名时再声明 `paths`，不要为形式统一添加空配置。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。
+共享配置在 `packages/tsconfig/`，通过 `"extends": "@greypan/tsconfig/<profile>.json"` 引用。面向 DOM 与 Node 的包把配置拆成 `tsconfig.node.json`、`tsconfig.app.json` 和 `tsconfig.vitest.json`，纯 Node 包只用单个 `tsconfig.json`。每个包声明自己的 `include` 与 `tsBuildInfoFile`；需要路径别名时再声明 `paths`，不要为形式统一添加空配置。`packages/tsconfig` 无构建步骤，只提供通过 TypeScript `extends` 消费的 JSON 文件。改动 `packages/tsconfig/` 中的共享 profile 会影响所有继承它的 workspace，改完后须在仓库根运行 `pnpm run check-code` 确认全部通过。
 
 ## 外部化规则
 

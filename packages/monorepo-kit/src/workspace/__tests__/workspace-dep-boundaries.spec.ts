@@ -248,7 +248,10 @@ describe('defineWorkspaceDepBoundaries', () => {
     })
     writeManifest(root, 'packages/build/dist', {
       name: '@acme/ignored-nested-dist',
-      private: true
+      private: true,
+      dependencies: {
+        '@acme/dist-app': 'workspace:*'
+      }
     })
 
     const error = await failure(boundaries, root)

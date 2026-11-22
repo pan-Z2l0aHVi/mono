@@ -187,6 +187,23 @@ it('allows workspaces without entry files when requireWorkspaceEntry is false wh
   )
 })
 
+it('checks direct container workspaces named dist while skipping nested dist artifacts when requireWorkspaceEntry is enabled', async () => {
+  const root = makeFixture()
+  write(root, 'apps/dist/package.json', `${JSON.stringify({ name: '@acme/dist-app', private: true })}\n`)
+  write(root, 'apps/app-a/package.json', `${JSON.stringify({ name: '@acme/app-a', private: true })}\n`)
+  write(root, 'apps/app-a/AGENTS.md', '# app-a\n')
+  write(root, 'apps/app-a/dist/package.json', `${JSON.stringify({ name: '@acme/nested-dist', private: true })}\n`)
+  write(
+    root,
+    'apps/app-a/coverage/package.json',
+    `${JSON.stringify({ name: '@acme/nested-coverage', private: true })}\n`
+  )
+
+  const withApps = defineContextCorpus({ ...options, workspaces: ['apps'] })
+  const error = await failure(withApps, root)
+  assert.match(error, /^md: failed with 1 error\(s\):\n- apps\/dist: workspace needs its own AGENTS\.md/)
+})
+
 afterAll(() => {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 })
