@@ -153,6 +153,40 @@ it('commit scopes collapse nested workspaces', async () => {
   )
 })
 
+it('allows workspaces without entry files when requireWorkspaceEntry is false while still checking existing ones', async () => {
+  const makeWorkspaceFixture = (withBrokenExistingEntry = false): string => {
+    const root = makeFixture()
+    write(root, 'packages/bare/package.json', `${JSON.stringify({ name: '@acme/bare', private: true })}\n`)
+    if (withBrokenExistingEntry) {
+      write(
+        root,
+        'packages/documented/package.json',
+        `${JSON.stringify({ name: '@acme/documented', private: true })}\n`
+      )
+      write(root, 'packages/documented/AGENTS.md', '# documented\n\n[broken](./missing.md)\n')
+    }
+    return root
+  }
+
+  const defaultRequired = defineContextCorpus({ ...options, workspaces: ['packages'] })
+  assert.match(
+    await failure(defaultRequired, makeWorkspaceFixture()),
+    /^md:[\s\S]*packages\/bare: workspace needs its own AGENTS\.md, or an ancestor directory that has one/
+  )
+
+  const optionalEntry = defineContextCorpus({
+    ...options,
+    workspaces: ['packages'],
+    requireWorkspaceEntry: false
+  })
+  assert.ok((await run(optionalEntry, makeWorkspaceFixture())).ok)
+
+  assert.match(
+    await failure(optionalEntry, makeWorkspaceFixture(true)),
+    /^md:[\s\S]*packages\/documented\/AGENTS\.md: broken local link \.\/missing\.md/
+  )
+})
+
 afterAll(() => {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 })

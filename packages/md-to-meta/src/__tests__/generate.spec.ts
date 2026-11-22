@@ -144,4 +144,37 @@ describe('generate', () => {
     const second = await generate(resolve(root))
     expect(second.files).toEqual(first.files)
   })
+
+  it('表格单元格里的 \\| 转义在生成的 meta 模块中还原成字面竖线', async () => {
+    const root = scratch()
+    const docs = path.join(root, 'docs')
+    mkdirSync(docs, { recursive: true })
+    writeFileSync(
+      path.join(docs, 'pipe.md'),
+      ['# Escaped Pipe', '', '| Prop | Values |', '| --- | --- |', "| `variant` | `'solid' \\| 'outline'` |", ''].join(
+        '\n'
+      )
+    )
+    const { files } = await generate(resolve(root, './docs/*.md', []))
+    const module = files.find(file => file.path.endsWith('pipe.meta.js'))?.content ?? ''
+    expect(module).toContain("content: \"<code>'solid' | 'outline'</code>\"")
+  })
+
+  it('表格在生成的 meta 模块中按 table > tr > th/td 结构序列化', async () => {
+    const root = scratch()
+    const docs = path.join(root, 'docs')
+    mkdirSync(docs, { recursive: true })
+    writeFileSync(
+      path.join(docs, 'table.md'),
+      ['# Table Layout', '', '| Name | Summary |', '| --- | --- |', '| `open` | Controls panel state |', ''].join('\n')
+    )
+    const { files } = await generate(resolve(root, './docs/*.md', []))
+    const module = files.find(file => file.path.endsWith('table.meta.js'))?.content ?? ''
+    expect(module).toContain("label: 'table',")
+    expect(module).toContain("label: 'tr',")
+    expect(module).toContain('{ label: \'th\', content: "Name" }')
+    expect(module).toContain('{ label: \'th\', content: "Summary" }')
+    expect(module).toContain('{ label: \'td\', content: "<code>open</code>" }')
+    expect(module).toContain('{ label: \'td\', content: "Controls panel state" }')
+  })
 })

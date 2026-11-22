@@ -5,7 +5,6 @@
 - [`src/components/theme/style.css`](./src/components/theme/style.css) 是 token 值的权威来源。复用共享 overlay 生命周期和 semantic token，不要把组件样式注入 `document.head`。
 - 不承担框架运行时 wrapper 与全局应用样式。
 - 共享状态和行为使用 `defineXxx(...).make(...)` 的 `definePlugin` factory。Lit、Shadow DOM、属性绑定和框架事件类型沿用既有模式。
-- browser-mode 测试覆盖无法由 jsdom 证明的原生行为。UI、UX 和交互改动还必须在真实浏览器验证。
 - 受管组合的成员追踪、下行广播与上行写回统一走 `GroupController`。`select` 与 `autocomplete` 的 option 成员走 [`src/shared/option-portal`](./src/shared/option-portal/)。
 - combobox 的键盘交互按轴分工：开合骨架（guard、派发顺序、scroll-lock 配对、portal 按帧编排的挂载与卸载——先等一帧再挂上、过渡结束前不摘）由一个内部层拥有，游标语义（activeIndex、环绕导航、Home/End、初始锚点、指针接管、typeahead）由另一个内部层拥有，组件只保留键位映射（keydown switch）、ARIA 输出与成员管理；两组件的语义差异经 hooks 注入，不要把游标状态机抄回组件。
 - 触屏长按开出 menu 后，宿主一侧补发的 click 由 `context-menu` 自己在宿主子树 capture 阶段吸收；宿主不做（也不该做）行激活抑制——「这一手开出了 menu」「手势何时结束」的事实只有组件知道。
@@ -44,19 +43,11 @@ _Avoid_: 用 context 承载成员追踪或上行写回、在子项上用公开�
 - 同一份源码在三处必须一致：markdown 围栏、消费方 demo 的 `src/generated/**/codeblock/` 落盘文件、页面 `<pre>` 的可见文本。落盘文件比围栏多一个行尾换行，除此之外三处逐字相同。改任何一段转义、高亮或落盘路径，都要让这三处一起继续成立。
 - 围栏语言就是落盘扩展名：React 写 `tsx`、Vue 写 `vue`。引擎不维护语言白名单，所有围栏都落盘，只有命中宿主 `exec` 的语言才在 meta 里带 `load`。
 - 示例标题按文档语种编写：中文文档使用中文，英文文档使用英文，组件名与专业术语保留原文。标题是普通节点，锚点按文档顺序生成为 `section-<n>`，不派生产物文件名。
-- 消费方 demo 的 `src/generated/**` 不手改：那几份产物是生成函数的输出，要改就改 `docs/*.md`。
 - `docs/*.md` 的散文只陈述当前行为、契约与设计意图，不写迁移说明或旧 API 对照：属性改名或移除时改写对应段落，不留「以前叫什么」的历史；兼容性承诺按当前契约写。
 
-## 公共契约变更清单
+## 公共契约变更入口
 
-涉及属性、slot、event、form、导出、框架类型、token 或组件可见行为时，按实际影响检查：
+涉及属性、slot、event、form、导出、框架类型、token 或组件可见行为时，按 [monorepo-change-impact](../../.agents/skills/monorepo-change-impact/SKILL.md) 与 [`docs/agents/web-ui.md`](../../docs/agents/web-ui.md) 确定实际影响面，除 [`src/components/`](./src/components/) 与 [`src/types/`](./src/types/) 外同步：
 
-- [`src/components/`](./src/components/) 或 [`src/types/`](./src/types/) 的实现与出口
-- 包 README（[`README.md`](./README.md) 与 [`README.CN.md`](./README.CN.md)）：组件章节已搬进 `docs/*.md`，README 只留一张指向它们的索引表
-- 受影响的 ADR
-- 聚焦测试和 browser-mode 测试
-- 框架 demo 的 type fixtures 与集成表面
-- 所有消费这些契约的应用（以 manifest 与源码引用为准）
-- package `exports`、Changeset 和 monorepo-change-impact skill 的契约报告
-
-不要机械同步全部项目，以 monorepo-change-impact skill 的 `verify` 输出、manifest、源码引用和测试确定实际影响。
+- 包 README（[`README.md`](./README.md) 与 [`README.CN.md`](./README.CN.md)）：组件章节维护在 `docs/*.md`，README 只留索引表
+- 示例与 API 文档（[`docs/*.md`](./docs/)）及受影响框架 demo 的 type fixtures

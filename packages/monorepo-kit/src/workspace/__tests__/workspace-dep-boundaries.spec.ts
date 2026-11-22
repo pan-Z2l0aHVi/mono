@@ -233,6 +233,50 @@ describe('defineWorkspaceDepBoundaries', () => {
     ])
   })
 
+  it('scans workspace containers whose direct directory is named build, coverage, or dist while still ignoring nested build artifacts', async () => {
+    const root = makeFixture()
+    writeManifest(root, 'apps/dist', {
+      name: '@acme/dist-app',
+      private: true
+    })
+    writeManifest(root, 'packages/build', {
+      name: '@acme/build-pkg',
+      private: true,
+      dependencies: {
+        '@acme/dist-app': 'workspace:*'
+      }
+    })
+    writeManifest(root, 'packages/build/dist', {
+      name: '@acme/ignored-nested-dist',
+      private: true
+    })
+
+    const error = await failure(boundaries, root)
+    assert.equal(
+      error,
+      'deps: non-application workspace @acme/build-pkg (packages/build) cannot depend on application workspace @acme/dist-app (apps/dist) in dependencies'
+    )
+  })
+
+  it('reports duplicate workspace package names instead of silently overwriting earlier nodes', async () => {
+    const root = makeFixture()
+    writeManifest(root, 'packages/first', {
+      name: '@acme/dup',
+      private: true
+    })
+    writeManifest(root, 'packages/second', {
+      name: '@acme/dup',
+      private: true
+    })
+    writeManifest(root, 'packages/third', {
+      name: '@acme/dup',
+      private: true
+    })
+
+    const error = await failure(boundaries, root)
+    assert.equal(error, 'deps: duplicate workspace package name "@acme/dup"')
+  })
+
   it('fails closed when no workspace manifests are found', async () => {
     const empty = makeFixture()
     const error = await failure(boundaries, empty)
