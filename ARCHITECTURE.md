@@ -53,4 +53,4 @@
 
 ## 3. Agent 工具与仓库政策
 
-根 `scripts/` 只是入口面与 bootstrap helper，实现住在 [`packages/monorepo-kit`](packages/monorepo-kit)。该包经 `vp pack` 产出 `dist/`，门禁与配置经包名读产物，依赖边出现在每个消费方的 `package.json` 里；仓库级命令面以根 `package.json` 为准。task 登记由 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md) 提供，只写系统临时目录；政策检查只读，两者都不改写源码或 Git index；职责与恢复边界分别见该 skill 和 [`docs/agents/commit.md`](docs/agents/commit.md)。workflow 的触发面与 job 拓扑以 YAML 为权威，`.github/scripts/lib/workflow-topology.mjs` 只保留跨 workflow 的不变量并由其测试读取 YAML 校验；本文不复制命令、检查集合或 workflow 细节。
+根 `scripts/` 只是入口面与 bootstrap helper，实现住在 [`packages/monorepo-kit`](packages/monorepo-kit)。该包经 `vp pack` 产出 `dist/`，门禁与配置经包名读产物，依赖边出现在每个消费方的 `package.json` 里；仓库级命令面以根 `package.json` 为准。task 登记按需由 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md) 提供，只写用户缓存目录（`$XDG_CACHE_HOME/agent-task-ledger/` 或 `~/.cache/agent-task-ledger/`）；政策检查只读，两者都不改写源码或 Git index；职责与恢复边界分别见该 skill 和 [`docs/agents/commit.md`](docs/agents/commit.md)。workflow 的触发面与 job 拓扑以 YAML 为权威，`.github/scripts/lib/workflow-topology.mjs` 只保留跨 workflow 的不变量并由其测试读取 YAML 校验；本文不复制命令、检查集合或 workflow 细节。

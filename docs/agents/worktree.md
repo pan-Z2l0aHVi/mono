@@ -8,7 +8,7 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 一个可变 task 对应一个 owner 和一个实施 worktree；怎么创建、放在何处或如何回收，仓库不规定。共享主工作区只用于只读调查与状态查询，合并通过远端 PR 完成，不在共享工作区里做。owner 与 worktree 的唯一性边界见根 [`AGENTS.md`](../../AGENTS.md)。
 
-任务启动时用 task-ledger skill 的 `new` 子命令（`--owner` 与 `--base`）记录归属与起点，并按需在 Task Packet 的 `Worktree` 记录当前工作树路径。
+若本次任务启用了 `task-ledger`，启动时用其 `new` 子命令（`--owner` 与 `--base`）记录归属与起点，并按需在 Task Packet 的 `Worktree` 记录当前工作树路径。
 
 ## 新 worktree 的准备
 
@@ -18,16 +18,16 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 ## 按任务收缩视野
 
-实施 owner 在任务建账与 worktree 准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`）完成后、读取实施范围的代码、派发实施子任务或修改文件前，按台账 `scope` 与实现/验证必需的包外读取路径调用 sparse skill。触发、跳过、降级与稀疏树读取规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。
+实施 owner 在 worktree 准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`）完成（若本次任务启用了 `task-ledger` 则同步完成建账）后、读取实施范围的代码、派发实施子任务或修改文件前，按本次改动范围（若启用了 `task-ledger` 则取台账 `scope`）与实现/验证必需的包外读取路径调用 sparse skill。触发、跳过、降级与稀疏树读取规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。
 
-`scope` 是仓库相对路径数组。两个 skill 不互相调用，组合方式只有一种：从台账读出路径，再作为 turbo-sparse-scope 的目标参数。从全树开始时先加 `--dry-run` 看会隐藏哪些包，再实际收缩：
+两个 skill 不互相调用；若本次任务启用了 `task-ledger`，可从台账读出 `scope`（仓库相对路径数组）作为 turbo-sparse-scope 的目标参数。从全树开始时先加 `--dry-run` 看会隐藏哪些包，再实际收缩：
 
 ```sh
 mise exec -- node .agents/skills/task-ledger/ledger.mjs status <task-id> --json
 mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs <scope-path>... [--dry-run]
 ```
 
-范围变化时先更新台账 scope 再继续：放宽用 `scope <id> --add`，重算或收窄用 `scope <id> --set`，清空用 `--clear`。台账 scope 收窄不强制重算 sparse cone；读取面扩展出 cone 时用 `--add` 落盘，要按新闭包重算才用 `--reset`，清空后用 `--restore` 恢复全树，`close` 不恢复。
+若本次任务启用了 `task-ledger`，范围变化时先更新台账 scope 再继续：放宽用 `scope <id> --add`，重算或收窄用 `scope <id> --set`，清空用 `--clear`。台账 scope 收窄不强制重算 sparse cone；读取面扩展出 cone 时用 `--add` 落盘，要按新闭包重算才用 `--reset`，清空后用 `--restore` 恢复全树，`close` 不恢复。
 
 调用方式、范围算法与稀疏树里的搜索、gate、install 规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。对这里的环境准备有两条后果。第一，收缩成功后脚本会立即跑一次 `pnpm install --frozen-lockfile`，把 `node_modules` 对齐到缩小后的 workspace 集，否则后续 `pnpm run` / `pnpm exec` 会自行做非 frozen 安装并重写 `pnpm-lock.yaml`；根目录没有 `pnpm-workspace.yaml` 或 `pnpm` 不在 PATH 时这一步跳过并告警，需要在跑 pnpm 脚本前手动补上。第二，被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 删除，`--restore` 只带回已跟踪文件，恢复后要重跑 `mise exec -- pnpm install --frozen-lockfile` 与 `mise exec -- pnpm run build`。
 

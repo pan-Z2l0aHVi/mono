@@ -128,9 +128,10 @@ squash 会产生新 commit，不能推断最终 main commit 与已测试 SHA 或
 
 获授权后以 squash 锁定已审查的 head；它不锁定 base，base 变化或 GitHub 拒绝时停止并重新核对。合并后核实
 `state`、`mergedAt` 与 `mergeCommit`。不要用 `--admin` 绕过保护，也不要用无条件 `--auto` 代替当前证据。
-task 台账（见 [`task-ledger`](../../.agents/skills/task-ledger/SKILL.md)）的 `closed` 不代表 review、CI、merge 或发布成功。
+若本次任务启用了 [`task-ledger`](../../.agents/skills/task-ledger/SKILL.md)，其台账的 `closed` 不代表 review、CI、merge 或发布成功。
 
 网络或权限不足、PR/diff 对象不全、required CI 未就绪、回写失败或 base/head 漂移、merge 中断时，对应步骤记为
-未完成并保留 PR URL、base/head SHA、reviewer worktree、已验证证据与未完成步骤；下次从这些实际状态继续。
+未完成并保留 PR URL、base/head SHA、reviewer worktree、已验证证据与未完成步骤（若本次任务启用了 `task-ledger`，
+同步记录到台账或 Task Packet）；下次从这些实际状态继续。
 PR 创建前的本地预审不构成 PR review，缺失证据也不构成通过。命令、字段与分页语义以 `gh` 手册和
 GitHub REST / Actions 文档为准。

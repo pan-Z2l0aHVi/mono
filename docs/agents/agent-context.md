@@ -30,23 +30,23 @@
 
 不同层级可以为路由短暂提及同一主题，但只能有一个流程权威来源；其他位置只说明何时加载或链接到它，不复制完整处方。`docs/agents/` 内部按 concern 切分，同一个 concern 只由一篇拥有；跨切面概念下沉为独立文档。下表按主题索引与根/包级边界交叉的流程权威与证据类别；根与包级 `AGENTS.md` 对这些主题只路由，声明何时加载并链接到流程权威，不复制范围、清单或处方。
 
-| 主题                         | 流程权威来源                                                                                     | 证据类别                                       |
-| ---------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
-| 生成物                       | [`generated-artifacts.md`](./generated-artifacts.md)                                             | generator diff、构建、消费者类型检查           |
-| 自动与人工审查的范围差       | [`review.md`](./review.md)                                                                       | `review-scope.json`、PR 结论评论               |
-| 真实浏览器取证               | [`runtime-verification.md`](./runtime-verification.md)                                           | 浏览器用例、冒烟与浏览器操作记录               |
-| 浏览器进程与 profile         | [`browser-resources.md`](./browser-resources.md)                                                 | 启动记录、profile 查询、回收结果               |
-| 该跑哪些验证                 | [`verification.md`](./verification.md)                                                           | 相关测试与聚焦构建                             |
-| 影响面与契约查询             | monorepo-change-impact skill 的 SKILL.md                                                         | 契约查询脚本与其测试                           |
-| 任务级别与准入               | task-ledger skill 的 SKILL.md                                                                    | 登记 CLI 的级别校验                            |
-| 本地 task 台账与 Task Packet | task-ledger skill 的 SKILL.md                                                                    | 记录 fixture 与 status 查询                    |
-| 预授权操作                   | [`workflow.md`](./workflow.md)（授权边界）与 request-authorization skill 的 SKILL.md（弹窗形状） | 四项说明与用户选择记录                         |
-| 提交边界与署名               | [`commit.md`](./commit.md)                                                                       | pre-commit 政策检查与 PR CI 的 changeset gate  |
-| worktree 与缓存              | [`worktree.md`](./worktree.md)                                                                   | 缓存不变量守卫                                 |
-| 客户端权限                   | [`environments.md`](./environments.md)                                                           | 客户端配置与线程实际行为                       |
-| 公共 `web-ui` 契约           | [`web-ui.md`](./web-ui.md)                                                                       | fixtures、contracts、browser/integration tests |
-| 跨应用 UI 视觉与颜色原则     | [`ui-design.md`](./ui-design.md)                                                                 | token 配对、浅/深色模式对比度验证              |
-| 文档与指令的写作判据         | [`writing-agent-docs.md`](./writing-agent-docs.md)                                               | review 判据与 check-context 路由断言           |
+| 主题                             | 流程权威来源                                                                                     | 证据类别                                       |
+| -------------------------------- | ------------------------------------------------------------------------------------------------ | ---------------------------------------------- |
+| 生成物                           | [`generated-artifacts.md`](./generated-artifacts.md)                                             | generator diff、构建、消费者类型检查           |
+| 自动与人工审查的范围差           | [`review.md`](./review.md)                                                                       | `review-scope.json`、PR 结论评论               |
+| 真实浏览器取证                   | [`runtime-verification.md`](./runtime-verification.md)                                           | 浏览器用例、冒烟与浏览器操作记录               |
+| 浏览器进程与 profile             | [`browser-resources.md`](./browser-resources.md)                                                 | 启动记录、profile 查询、回收结果               |
+| 该跑哪些验证                     | [`verification.md`](./verification.md)                                                           | 相关测试与聚焦构建                             |
+| 影响面与契约查询                 | monorepo-change-impact skill 的 SKILL.md                                                         | 契约查询脚本与其测试                           |
+| 任务级别与按需准入               | task-ledger skill 的 SKILL.md                                                                    | 登记 CLI 的级别校验                            |
+| 按需本地 task 台账与 Task Packet | task-ledger skill 的 SKILL.md                                                                    | 记录 fixture 与 status 查询                    |
+| 预授权操作                       | [`workflow.md`](./workflow.md)（授权边界）与 request-authorization skill 的 SKILL.md（弹窗形状） | 四项说明与用户选择记录                         |
+| 提交边界与署名                   | [`commit.md`](./commit.md)                                                                       | pre-commit 政策检查与 PR CI 的 changeset gate  |
+| worktree 与缓存                  | [`worktree.md`](./worktree.md)                                                                   | 缓存不变量守卫                                 |
+| 客户端权限                       | [`environments.md`](./environments.md)                                                           | 客户端配置与线程实际行为                       |
+| 公共 `web-ui` 契约               | [`web-ui.md`](./web-ui.md)                                                                       | fixtures、contracts、browser/integration tests |
+| 跨应用 UI 视觉与颜色原则         | [`ui-design.md`](./ui-design.md)                                                                 | token 配对、浅/深色模式对比度验证              |
+| 文档与指令的写作判据             | [`writing-agent-docs.md`](./writing-agent-docs.md)                                               | review 判据与 check-context 路由断言           |
 
 ## 链接方向
 
@@ -89,7 +89,7 @@ ADR 与指向它的 `docs/agents/` 文档只保留单向链接：ADR 侧用行�
 | lint、formatter、stylelint、cspell                              | [`lint-format.md`](./lint-format.md)                                                                                                                                                                                                                  |
 | workspace catalog 与依赖放置策略                                | [`dependencies.md`](./dependencies.md)                                                                                                                                                                                                                |
 | Changesets 版本与发布策略                                       | [`release.md`](./release.md)                                                                                                                                                                                                                          |
-| task 登记、政策检查入口与命令面                                 | task-ledger skill 的 SKILL.md、[`commit.md`](./commit.md)、[`commands.md`](./commands.md)                                                                                                                                                             |
+| 按需 task 登记、政策检查入口与命令面                            | task-ledger skill 的 SKILL.md、[`commit.md`](./commit.md)、[`commands.md`](./commands.md)                                                                                                                                                             |
 | 测试框架或 Vite 测试配置                                        | [`verification.md`](./verification.md)                                                                                                                                                                                                                |
 | `packages/web-ui` 组件、icon 或公共契约                         | [`packages/web-ui/AGENTS.md`](../../packages/web-ui/AGENTS.md)、[`web-ui.md`](./web-ui.md) 与受影响 ADR                                                                                                                                               |
 | commitlint 或提交流程                                           | [`commit.md`](./commit.md)                                                                                                                                                                                                                            |

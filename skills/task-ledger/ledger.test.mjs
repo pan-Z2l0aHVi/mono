@@ -8,16 +8,23 @@ import path from 'node:path'
 const script = path.join(import.meta.dirname, 'ledger.mjs')
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'task-ledger-test-'))
 const stateRoot = path.join(tempRoot, 'state')
-const tmpRoot = path.join(tempRoot, 'tmp')
+const fakeHome = path.join(tempRoot, 'home')
+const xdgCacheRoot = path.join(tempRoot, 'xdg-cache')
 const repoA = path.join(tempRoot, 'repo-a')
 const repoB = path.join(tempRoot, 'repo-b')
+const inheritedEnv = { ...process.env }
+delete inheritedEnv.AGENT_TASK_STATE_DIR
+delete inheritedEnv.AGENT_TASK_ROOT
+delete inheritedEnv.XDG_CACHE_HOME
 const baseEnv = {
-  ...process.env,
+  ...inheritedEnv,
+  HOME: fakeHome,
   GIT_AUTHOR_NAME: 'Task Ledger Test',
   GIT_AUTHOR_EMAIL: 'task-ledger@example.com',
   GIT_COMMITTER_NAME: 'Task Ledger Test',
   GIT_COMMITTER_EMAIL: 'task-ledger@example.com',
-  GIT_CONFIG_NOSYSTEM: '1'
+  GIT_CONFIG_NOSYSTEM: '1',
+  GIT_CONFIG_GLOBAL: '/dev/null'
 }
 
 function git(root, ...args) {
@@ -309,15 +316,209 @@ try {
     /not a Git repository/
   )
 
-  // 默认状态目录按 Git common directory 派生：不同仓库落到不同目录，同一仓库共享。
-  const isolationEnv = { ...baseEnv, TMPDIR: tmpRoot }
-  const isolatedA = JSON.parse(run(repoA, isolationEnv, 'new', 'isolated-a', '--level', 't2', '--owner', 'owner-a'))
-  const isolatedB = JSON.parse(run(repoB, isolationEnv, 'new', 'isolated-b', '--level', 't2', '--owner', 'owner-b'))
+  // 默认状态目录优先级：AGENT_TASK_STATE_DIR > 绝对 XDG_CACHE_HOME > HOME/.cache，按 Git common directory 隔离。
+  const xdgEnv = { ...baseEnv, XDG_CACHE_HOME: xdgCacheRoot }
+  const isolatedA = JSON.parse(run(repoA, xdgEnv, 'new', 'isolated-a', '--level', 't2', '--owner', 'owner-a'))
+  const isolatedB = JSON.parse(run(repoB, xdgEnv, 'new', 'isolated-b', '--level', 't2', '--owner', 'owner-b'))
   assert.equal(isolatedA.gitCommonDir, fs.realpathSync(path.join(repoA, '.git')))
   assert.equal(isolatedB.gitCommonDir, fs.realpathSync(path.join(repoB, '.git')))
   assert.notEqual(repoId(repoA), repoId(repoB))
-  assert.equal(fs.existsSync(path.join(tmpRoot, 'agent-task-ledger', repoId(repoA), 'isolated-a.json')), true)
-  assert.equal(fs.existsSync(path.join(tmpRoot, 'agent-task-ledger', repoId(repoB), 'isolated-b.json')), true)
+  assert.equal(fs.existsSync(path.join(xdgCacheRoot, 'agent-task-ledger', repoId(repoA), 'isolated-a.json')), true)
+  assert.equal(fs.existsSync(path.join(xdgCacheRoot, 'agent-task-ledger', repoId(repoB), 'isolated-b.json')), true)
+  assert.equal(fs.existsSync(path.join(fakeHome, '.cache')), false)
+
+  // linked worktree 与主仓共享同一个 repo-id 目录。
+  const wtA = path.join(tempRoot, 'repo-a-wt')
+  git(repoA, 'worktree', 'add', '-b', 'wt-branch', wtA)
+  const wtTask = JSON.parse(run(wtA, xdgEnv, 'status', 'isolated-a'))
+  assert.equal(wtTask.id, 'isolated-a')
+  git(repoA, 'worktree', 'remove', wtA)
+
+  // XDG_CACHE_HOME 为空或相对路径时回退到 HOME/.cache；严禁在 cwd 下创建相对路径目录。
+  const relXdgEnv = { ...baseEnv, XDG_CACHE_HOME: 'relative-cache-dir' }
+  run(repoA, relXdgEnv, 'new', 'fallback-rel', '--level', 't2', '--owner', 'owner-a')
+  assert.equal(fs.existsSync(path.join(repoA, 'relative-cache-dir')), false)
+  assert.equal(fs.existsSync(path.join(fakeHome, '.cache', 'agent-task-ledger', repoId(repoA), 'fallback-rel.json')), true)
+
+  const blankXdgEnv = { ...baseEnv, XDG_CACHE_HOME: '   ' }
+  run(repoA, blankXdgEnv, 'new', 'fallback-blank', '--level', 't2', '--owner', 'owner-a')
+  assert.equal(
+    fs.existsSync(path.join(fakeHome, '.cache', 'agent-task-ledger', repoId(repoA), 'fallback-blank.json')),
+    true
+  )
+
+  // AGENT_TASK_STATE_DIR 优先于 XDG_CACHE_HOME 与 HOME。
+  const overrideDir = path.join(tempRoot, 'override-state')
+  run(repoA, { ...xdgEnv, AGENT_TASK_STATE_DIR: overrideDir }, 'new', 'override-task', '--level', 't2', '--owner', 'o')
+  assert.equal(fs.existsSync(path.join(overrideDir, 'override-task.json')), true)
+  assert.equal(fs.existsSync(path.join(xdgCacheRoot, 'agent-task-ledger', repoId(repoA), 'override-task.json')), false)
+
+  // help 文案反映新命令与新存储路径。
+  const helpText = run(repoA, baseEnv, 'help')
+  assert.match(helpText, /prune \[--days <n>\] \[--dry-run\] \[--json\]/)
+  assert.match(helpText, /XDG_CACHE_HOME/)
+
+  // prune 参数校验：拒绝缺值（true）、0、负数、非整数与多余位置参数。
+  assert.match(failMessage(repoA, envA, 'prune', '--days'), /positive integer/)
+  assert.match(failMessage(repoA, envA, 'prune', '--days', '--dry-run'), /positive integer/)
+  assert.match(failMessage(repoA, envA, 'prune', '--days', '0'), /positive integer/)
+  assert.match(failMessage(repoA, envA, 'prune', '--days', '-5'), /positive integer/)
+  assert.match(failMessage(repoA, envA, 'prune', '--days', '1.5'), /positive integer/)
+  assert.match(failMessage(repoA, envA, 'prune', '--days', 'abc'), /positive integer/)
+  assert.match(failMessage(repoA, envA, 'prune', '--days=30d'), /positive integer/)
+  assert.match(failMessage(repoA, envA, 'prune', 'extra'), /unexpected argument/)
+
+  // prune 行为与保护边界：隔离在独立状态目录验证终态清理、mtime 回退、dry-run 及活跃态/损坏文件保护。
+  const pruneState = path.join(tempRoot, 'prune-state')
+  const envPruneA = { ...baseEnv, AGENT_TASK_ROOT: repoA, AGENT_TASK_STATE_DIR: pruneState }
+  const envPruneB = { ...baseEnv, AGENT_TASK_ROOT: repoB, AGENT_TASK_STATE_DIR: pruneState }
+  const nowMs = Date.now()
+  const dayMs = 24 * 60 * 60 * 1000
+  const daysAgoIso = days => new Date(nowMs - days * dayMs).toISOString()
+  const setAge = (file, days) => {
+    const t = new Date(nowMs - days * dayMs)
+    fs.utimesSync(file, t, t)
+  }
+
+  // 1) 过期终态 closed / dropped（按记录 updatedAt）
+  run(repoA, envPruneA, 'new', 'old-closed', '--level', 't2', '--owner', 'owner-a')
+  run(repoA, envPruneA, 'close', 'old-closed')
+  const oldClosedFile = path.join(pruneState, 'old-closed.json')
+  const oldClosedData = JSON.parse(fs.readFileSync(oldClosedFile, 'utf8'))
+  oldClosedData.updatedAt = daysAgoIso(35)
+  fs.writeFileSync(oldClosedFile, JSON.stringify(oldClosedData, null, 2) + '\n')
+
+  run(repoA, envPruneA, 'new', 'old-dropped', '--level', 't1', '--owner', 'owner-a')
+  run(repoA, envPruneA, 'drop', 'old-dropped', '--reason', 'obsolete')
+  const oldDroppedFile = path.join(pruneState, 'old-dropped.json')
+  const oldDroppedData = JSON.parse(fs.readFileSync(oldDroppedFile, 'utf8'))
+  oldDroppedData.updatedAt = daysAgoIso(45)
+  fs.writeFileSync(oldDroppedFile, JSON.stringify(oldDroppedData, null, 2) + '\n')
+
+  // 2) 未过期终态（5 天前），默认 30 天保留
+  run(repoA, envPruneA, 'new', 'recent-closed', '--level', 't2', '--owner', 'owner-a')
+  run(repoA, envPruneA, 'close', 'recent-closed')
+  const recentClosedFile = path.join(pruneState, 'recent-closed.json')
+  const recentClosedData = JSON.parse(fs.readFileSync(recentClosedFile, 'utf8'))
+  recentClosedData.updatedAt = daysAgoIso(5)
+  fs.writeFileSync(recentClosedFile, JSON.stringify(recentClosedData, null, 2) + '\n')
+
+  // 3) 缺失记录终态时间时回退文件 mtime
+  run(repoA, envPruneA, 'new', 'mtime-closed', '--level', 't2', '--owner', 'owner-a')
+  run(repoA, envPruneA, 'close', 'mtime-closed')
+  const mtimeClosedFile = path.join(pruneState, 'mtime-closed.json')
+  const mtimeClosedData = JSON.parse(fs.readFileSync(mtimeClosedFile, 'utf8'))
+  mtimeClosedData.updatedAt = ''
+  mtimeClosedData.events = [{ event: 'close' }]
+  fs.writeFileSync(mtimeClosedFile, JSON.stringify(mtimeClosedData, null, 2) + '\n')
+  setAge(mtimeClosedFile, 40)
+
+  // 4) 活跃态 open / active 即使超龄也绝不删除
+  run(repoA, envPruneA, 'new', 'ancient-open', '--level', 't0', '--owner', 'owner-a')
+  const ancientOpenFile = path.join(pruneState, 'ancient-open.json')
+  const ancientOpenData = JSON.parse(fs.readFileSync(ancientOpenFile, 'utf8'))
+  ancientOpenData.updatedAt = daysAgoIso(120)
+  fs.writeFileSync(ancientOpenFile, JSON.stringify(ancientOpenData, null, 2) + '\n')
+  setAge(ancientOpenFile, 120)
+
+  run(repoA, envPruneA, 'new', 'ancient-active', '--level', 't1', '--owner', 'owner-a')
+  run(repoA, envPruneA, 'start', 'ancient-active')
+  const ancientActiveFile = path.join(pruneState, 'ancient-active.json')
+  const ancientActiveData = JSON.parse(fs.readFileSync(ancientActiveFile, 'utf8'))
+  ancientActiveData.updatedAt = daysAgoIso(120)
+  fs.writeFileSync(ancientActiveFile, JSON.stringify(ancientActiveData, null, 2) + '\n')
+  setAge(ancientActiveFile, 120)
+
+  // 5) 损坏 JSON 与未知 schema 即使超龄也保留不删
+  const corruptFile = path.join(pruneState, 'corrupt-prune.json')
+  const corruptMd = path.join(pruneState, 'corrupt-prune.md')
+  fs.writeFileSync(corruptFile, '{not valid json')
+  fs.writeFileSync(corruptMd, '# corrupt packet\n')
+  setAge(corruptFile, 120)
+
+  const futureFile = path.join(pruneState, 'future-prune.json')
+  const futureMd = path.join(pruneState, 'future-prune.md')
+  fs.writeFileSync(
+    futureFile,
+    JSON.stringify({ schema: 2, id: 'future-prune', status: 'closed', updatedAt: daysAgoIso(120) }) + '\n'
+  )
+  fs.writeFileSync(futureMd, '# future packet\n')
+  setAge(futureFile, 120)
+
+  // 6) 其他仓库的过期终态不跨仓误删
+  run(repoB, envPruneB, 'new', 'other-repo-closed', '--level', 't2', '--owner', 'owner-b')
+  run(repoB, envPruneB, 'close', 'other-repo-closed')
+  const otherRepoFile = path.join(pruneState, 'other-repo-closed.json')
+  const otherRepoData = JSON.parse(fs.readFileSync(otherRepoFile, 'utf8'))
+  otherRepoData.updatedAt = daysAgoIso(90)
+  fs.writeFileSync(otherRepoFile, JSON.stringify(otherRepoData, null, 2) + '\n')
+
+  // --dry-run 只预览，不删任何文件
+  const dryRunResult = JSON.parse(run(repoA, envPruneA, 'prune', '--dry-run', '--json'))
+  assert.equal(dryRunResult.dryRun, true)
+  assert.equal(dryRunResult.days, 30)
+  assert.deepEqual(
+    dryRunResult.pruned.map(item => item.id).sort(),
+    ['mtime-closed', 'old-closed', 'old-dropped']
+  )
+  assert.equal(fs.existsSync(oldClosedFile), true)
+  assert.equal(fs.existsSync(path.join(pruneState, 'old-closed.md')), true)
+  assert.equal(fs.existsSync(oldDroppedFile), true)
+  assert.equal(fs.existsSync(mtimeClosedFile), true)
+
+  // 正式执行 prune（默认 30 天）：清理 3 条过期终态及其同名 .md，保护其余全部记录
+  const pruneRun = spawn(repoA, envPruneA, 'prune', '--json')
+  assert.equal(pruneRun.status, 0, pruneRun.stderr)
+  assert.match(pruneRun.stderr, /warning: skipping unreadable task state/)
+  const prunedResult = JSON.parse(pruneRun.stdout)
+  assert.equal(prunedResult.dryRun, false)
+  assert.deepEqual(
+    prunedResult.pruned.map(item => item.id).sort(),
+    ['mtime-closed', 'old-closed', 'old-dropped']
+  )
+  assert.equal(prunedResult.skippedCount, 2)
+
+  for (const id of ['old-closed', 'old-dropped', 'mtime-closed']) {
+    assert.equal(fs.existsSync(path.join(pruneState, `${id}.json`)), false)
+    assert.equal(fs.existsSync(path.join(pruneState, `${id}.md`)), false)
+  }
+  for (const file of [
+    recentClosedFile,
+    path.join(pruneState, 'recent-closed.md'),
+    ancientOpenFile,
+    path.join(pruneState, 'ancient-open.md'),
+    ancientActiveFile,
+    path.join(pruneState, 'ancient-active.md'),
+    corruptFile,
+    corruptMd,
+    futureFile,
+    futureMd,
+    otherRepoFile,
+    path.join(pruneState, 'other-repo-closed.md')
+  ]) {
+    assert.equal(fs.existsSync(file), true, `must preserve ${file}`)
+  }
+
+  // 自定义 --days 3 预览（纯文本）与正式清理 5 天前的 closed，仍保护 open/active
+  const customDryText = run(repoA, envPruneA, 'prune', '--days', '3', '--dry-run')
+  assert.match(customDryText, /^would prune\trecent-closed\tclosed\t/m)
+  assert.equal(fs.existsSync(recentClosedFile), true)
+
+  const customPrune = JSON.parse(run(repoA, envPruneA, 'prune', '--days', '3', '--json'))
+  assert.deepEqual(
+    customPrune.pruned.map(item => item.id),
+    ['recent-closed']
+  )
+  assert.equal(fs.existsSync(recentClosedFile), false)
+  assert.equal(fs.existsSync(path.join(pruneState, 'recent-closed.md')), false)
+  assert.equal(fs.existsSync(ancientOpenFile), true)
+  assert.equal(fs.existsSync(ancientActiveFile), true)
+
+  // 空目录 / 不存在的状态目录也不失败
+  const emptyPruneEnv = { ...envPruneA, AGENT_TASK_STATE_DIR: path.join(tempRoot, 'missing-dir') }
+  const emptyPrune = JSON.parse(run(repoA, emptyPruneEnv, 'prune', '--json'))
+  assert.deepEqual(emptyPrune.pruned, [])
+  assert.match(run(repoA, emptyPruneEnv, 'prune'), /no expired terminal tasks to prune/)
 
   process.stdout.write('skills/task-ledger/ledger.test.mjs: all assertions passed\n')
 } finally {
