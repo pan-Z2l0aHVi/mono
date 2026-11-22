@@ -188,3 +188,90 @@ func TestBackfillSkipsUnchangedFilesWithoutRehashing(t *testing.T) {
 		t.Fatalf("expected missing record to be created, got %+v", newGot)
 	}
 }
+
+// 哈希失败（chmod 000 让 os.Open 被拒）的文件仍必须落属性快照：
+// 无记录时插入 hash 为空的行，identity 匹配不因读失败而丢失。
+func TestBackfillRecordsAttributesWhenHashFails(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores file mode, hash failure cannot be simulated")
+	}
+	ctx := context.Background()
+	db, err := storage.Open(filepath.Join(t.TempDir(), "library.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	folder := t.TempDir()
+	path := filepath.Join(folder, "unreadable.txt")
+	if err := os.WriteFile(path, []byte("attributes still matter"), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0000); err != nil {
+		t.Fatal(err)
+	}
+	// chmod 会更新 ctime，属性期望值必须在 chmod 之后取，与回填的预过滤 stat 一致。
+	info, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	want := fingerprintInfo(path, info)
+	seedFileSource(t, db, "s_unreadable", path)
+
+	recorder := newFingerprintRecorder(db)
+	recorder.Backfill(ctx)
+
+	got, err := recorder.Get(ctx, "s_unreadable")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Hash != "" || got.Size != want.Size || got.Identity != want.Identity || got.Modified != want.Modified {
+		t.Fatalf("expected attribute-only row for hash-failed file, want %+v, got %+v", want, got)
+	}
+}
+
+// 已有记录但磁盘属性已变且哈希失败时，回填必须刷新属性快照并清空旧 hash，
+// 不能让旧内容的哈希挂在新属性上，也不能留下陈旧快照。
+func TestBackfillRefreshesStaleAttributesWhenHashFails(t *testing.T) {
+	if os.Geteuid() == 0 {
+		t.Skip("root ignores file mode, hash failure cannot be simulated")
+	}
+	ctx := context.Background()
+	db, err := storage.Open(filepath.Join(t.TempDir(), "library.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	t.Cleanup(func() { _ = db.Close() })
+	folder := t.TempDir()
+	path := filepath.Join(folder, "evolving.txt")
+	const oldContent, newContent = "old content v1", "new content that is much longer"
+	if err := os.WriteFile(path, []byte(oldContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	oldInfo, err := os.Stat(path)
+	if err != nil {
+		t.Fatal(err)
+	}
+	oldState := fingerprintInfo(path, oldInfo)
+	seedFileSource(t, db, "s_stale", path)
+	if _, err := db.SqlDB().Exec(`INSERT INTO source_fingerprints VALUES ('s_stale',?,?,?,?,?,'old-hash')`,
+		path, oldState.Size, oldState.Modified, oldState.Identity, oldState.Changed); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.WriteFile(path, []byte(newContent), 0o600); err != nil {
+		t.Fatal(err)
+	}
+	if err := os.Chmod(path, 0000); err != nil {
+		t.Fatal(err)
+	}
+
+	recorder := newFingerprintRecorder(db)
+	recorder.Backfill(ctx)
+
+	got, err := recorder.Get(ctx, "s_stale")
+	if err != nil {
+		t.Fatal(err)
+	}
+	if got.Hash != "" || got.Size != int64(len(newContent)) {
+		t.Fatalf("expected stale record refreshed with new attributes and cleared hash, got %+v", got)
+	}
+}

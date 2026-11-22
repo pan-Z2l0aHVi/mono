@@ -31,8 +31,8 @@ func withHash(state fileFingerprint, hash string) fileFingerprint {
 	return state
 }
 
-// 哈希读缓冲池：128KB 在 read() 系统调用次数与常驻内存之间取平衡，
-// 并发 worker ≤ 4 时全池峰值 ≤ 512KB。
+// 哈希读缓冲池：128KB 在 read() 系统调用次数与常驻内存之间取平衡。
+// 恢复扫描（≤ 4 worker）与回填（≤ 2 worker）可并发，全池峰值约 6 × 128KB ≈ 768KB。
 var hashBufs = sync.Pool{New: func() any { return make([]byte, 128*1024) }}
 
 func hashFile(ctx context.Context, path string) (string, error) {
@@ -124,11 +124,31 @@ func (r *FingerprintRecorder) hashIfStillCurrent(ctx context.Context, sourceID, 
 // 通过单次事务批量写回，替代逐条 WithTx。
 const backfillBatchSize = 32
 
+// backfillTask 是一条通过预过滤、需要回填的文件 Source。
+type backfillTask struct {
+	sourceID  string
+	location  string
+	state     fileFingerprint
+	hadRecord bool
+	old       storage.FingerprintRecord
+}
+
+// backfillResult 是 worker 的回填产出：哈希成功带 hash；哈希失败（读错误或
+// TOCTOU 失配）时 attrsOnly 为真，只回写预过滤 stat 的属性快照——与旧行为对齐，
+// Record 即使哈希不成也会落属性，identity 匹配不能因为读失败而丢失。
+type backfillResult struct {
+	task      backfillTask
+	hash      string
+	attrsOnly bool
+}
+
 // Backfill 为库内已可用的文件 Source 补齐指纹，由装配层在启动时调度。
 // 先用 7 列全量只读查询做预过滤：位置未变、属性一致且已有 hash 的文件直接跳过，
 // 冷启动未变更时只有一次只读查询、零写事务；需要哈希的文件以低并发计算
 // （不与首屏缩略图抢 I/O），主控协程攒满一批经单次事务条件 CAS 写回，
 // 滞留批次不会覆盖前台 RefreshSource / Watcher 并发写入的新指纹。
+// 哈希失败（读错误或 TOCTOU 失配）的文件仍回写属性快照（hash 留空），
+// 与旧行为一致：identity 匹配不依赖 hash 成功。
 // 返回前等待全部 worker 排空：Backfill 运行在 db.ScheduleBackground 的作业协程里，
 // DB.Close 会先取消作业再关库，这里必须保证没有哈希读到一半的 worker 跨过关闭点。
 func (r *FingerprintRecorder) Backfill(ctx context.Context) {
@@ -147,13 +167,6 @@ func (r *FingerprintRecorder) Backfill(ctx context.Context) {
 		byID[rec.SourceID] = rec
 	}
 
-	type backfillTask struct {
-		sourceID  string
-		location  string
-		state     fileFingerprint
-		hadRecord bool
-		old       storage.FingerprintRecord
-	}
 	var tasks []backfillTask
 	for _, src := range sources {
 		if ctx.Err() != nil {
@@ -181,10 +194,6 @@ func (r *FingerprintRecorder) Backfill(ctx context.Context) {
 		return
 	}
 
-	type backfillResult struct {
-		task backfillTask
-		hash string
-	}
 	hashWorkers := min(2, max(1, runtime.GOMAXPROCS(0)/2))
 	taskCh := make(chan backfillTask)
 	resultCh := make(chan backfillResult)
@@ -199,21 +208,21 @@ func (r *FingerprintRecorder) Backfill(ctx context.Context) {
 				}
 				hash, err := hashFile(ctx, task.location)
 				if err != nil {
-					if ctx.Err() == nil {
-						log.Printf("interweave: fingerprint hash %s: %v", task.location, err)
+					if ctx.Err() != nil {
+						continue // 取消中：整批写回都会被放弃，outcome 无所谓
 					}
+					log.Printf("interweave: fingerprint hash %s: %v", task.location, err)
+					sendBackfillResult(ctx, resultCh, backfillResult{task: task, attrsOnly: true})
 					continue
 				}
 				// 二次 stat 的 TOCTOU 校验与 hashIfStillCurrent 相同：
-				// 读完文件后属性变化则放弃，本次哈希不得落库。
+				// 读完文件后属性变化则放弃哈希，但属性快照仍然回写。
 				after, statErr := os.Stat(task.location)
 				if ClassifyFileStat(statErr, after) != FileServable || !sameFileState(task.state, fingerprintInfo(task.location, after)) {
+					sendBackfillResult(ctx, resultCh, backfillResult{task: task, attrsOnly: true})
 					continue
 				}
-				select {
-				case resultCh <- backfillResult{task: task, hash: hash}:
-				case <-ctx.Done():
-				}
+				sendBackfillResult(ctx, resultCh, backfillResult{task: task, hash: hash})
 			}
 		}()
 	}
@@ -234,10 +243,14 @@ func (r *FingerprintRecorder) Backfill(ctx context.Context) {
 
 	batch := make([]storage.FingerprintBackfill, 0, backfillBatchSize)
 	for res := range resultCh {
+		state := res.task.state
+		if !res.attrsOnly {
+			state = withHash(state, res.hash)
+		}
 		batch = append(batch, storage.FingerprintBackfill{
 			SourceID:  res.task.sourceID,
 			Location:  res.task.location,
-			State:     withHash(res.task.state, res.hash),
+			State:     state,
 			HadRecord: res.task.hadRecord,
 			Old:       res.task.old,
 		})
@@ -247,6 +260,14 @@ func (r *FingerprintRecorder) Backfill(ctx context.Context) {
 		}
 	}
 	r.flushBackfill(ctx, batch)
+}
+
+// sendBackfillResult 以 ctx 守卫发送单个回填结果；取消时静默丢弃。
+func sendBackfillResult(ctx context.Context, resultCh chan<- backfillResult, res backfillResult) {
+	select {
+	case resultCh <- res:
+	case <-ctx.Done():
+	}
 }
 
 // flushBackfill 把一批回填结果经单次事务写回；取消中静默放弃，与哈希失败的处理一致。

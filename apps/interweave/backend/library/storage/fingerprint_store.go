@@ -29,6 +29,9 @@ type FingerprintRecord struct {
 // FingerprintBackfill 是回填批次里的一条待写回记录：State 是本次哈希结果及其属性，
 // HadRecord 为 false 表示预过滤时无记录（走 INSERT 分支）；为 true 时 Old 是预过滤
 // 读到的旧快照，CAS 以它为基准判断这批结果是否已经滞留。
+// State.Hash 为空串表示属性快照写回（哈希读失败或 TOCTOU 失配的文件）：
+// 情况 A 插入 hash 为空的行，情况 B 在旧快照仍一致时刷新属性并清空旧 hash，
+// 让 identity 匹配不依赖哈希成功，同时旧内容的哈希不会挂在新属性上。
 type FingerprintBackfill struct {
 	SourceID  string
 	Location  string
