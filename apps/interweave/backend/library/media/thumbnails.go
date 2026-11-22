@@ -498,6 +498,11 @@ func (t *ThumbnailStore) prune(ctx context.Context, list FileSourceLister) {
 	}
 	entries := make([]thumbnailPruneEntry, 0, len(models))
 	for _, source := range models {
+		// 逐条检查取消：Source 可在外部/归档盘上，逐个 os.Stat 在慢盘上可能很慢；
+		// 取消后立即收尾，把 Close 对启动期清理的最坏等待从 O(N) 次 stat 压到 1 次。
+		if ctx.Err() != nil {
+			return
+		}
 		entry := thumbnailPruneEntry{SourceID: source.ID}
 		if info, err := os.Stat(source.Location); core.ClassifyFileStat(err, info) == core.FileServable {
 			entry.Version = thumbnailVersion(info)
