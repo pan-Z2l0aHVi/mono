@@ -46,6 +46,7 @@ ADR 只记录技术选型、架构设计与工程化决策；具体实现细节�
 | [0022](docs/adr/0022-monorepo-kit-plugin-chain.md)                    | monorepo-kit 判定改为嵌套 `run` 链                            | 修改检查协议、判定插件的组合方式、`runner/` 或门禁入口的组链            |
 | [0023](docs/adr/0023-layout-controlled-mobile.md)                     | Layout 移动端状态由应用受控驱动                               | 修改 layout `mobile` 契约、应用侧视口订阅或断点选择                     |
 | [0024](docs/adr/0024-interweave-native-menu-and-go-owned-settings.md) | Interweave 顶部菜单走原生，应用设置由 Go 拥有                 | 修改 Interweave 菜单形态、菜单命令契约或设置所有权                      |
+| [0025](docs/adr/0025-apps-sparse-checkout.md)                         | App-only 稀疏检出与默认全树双轨策略                           | 修改 `apps-sparse-checkout`、worktree 隔离策略或稀疏检出边界            |
 
 ## 已知边界
 
