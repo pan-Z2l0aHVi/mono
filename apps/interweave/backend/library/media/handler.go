@@ -66,10 +66,15 @@ func NewHandler(sources sourceStore, query storage.Queryer, previews *PendingPre
 	return h
 }
 
-// Close 关闭回写队列并等待在途回写结束，避免应用退出时丢结论。
+// Close 关闭回写队列并等待在途回写结束，避免应用退出时丢结论；同时关停缩略图存储，
+// 排空在途构建与启动期 Prune。main.go 的 defer 是 LIFO：本方法先于 db.Close() 执行，
+// 因此排空严格发生在数据库关闭之前。
 func (h *Handler) Close() {
 	h.closeOnce.Do(func() { close(h.unavailableCh) })
 	<-h.drainCompleted
+	if h.thumbs != nil {
+		h.thumbs.Close()
+	}
 }
 
 // 单 worker 串行回写：缩略图列表里一个坏文件会同时打出十几个 404，
@@ -186,11 +191,17 @@ func (h *Handler) serveThumbnailRoute(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if err := h.thumbs.ServeThumbnail(w, r, sourceID, source.Location, info); err != nil {
+		if r.Context().Err() != nil {
+			// 客户端已断连：响应体写不出去，任何状态码都会被丢弃。静默返回，
+			// 绝不往断连连接上伪造一个 0 字节的 200 OK 破图。
+			return
+		}
 		if errors.Is(err, ErrUnsupportedThumbnail) {
 			// Go 解不了的格式（HEIC 等）交给前端回填路径：前端按 404 回退到原图捕获。
 			http.NotFound(w, r)
 			return
 		}
+		// 服务端内部错误/取消而客户端仍活跃：明确回 500，不吞错误。
 		http.Error(w, http.StatusText(http.StatusInternalServerError), http.StatusInternalServerError)
 	}
 }
