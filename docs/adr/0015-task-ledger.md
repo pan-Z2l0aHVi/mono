@@ -14,7 +14,7 @@
 
 默认状态目录按 `AGENT_TASK_STATE_DIR` > `$XDG_CACHE_HOME`（仅非空且为绝对路径时生效）> `~/.cache` 解析，其下以 `agent-task-ledger/<repo-id>/` 按 Git common directory 派生的仓库标识隔离，避免系统临时目录回收导致跨会话或重启后丢失接力状态；它仍是本地工作记忆而非审计记录，PR、Git 历史和其他持久文档承载交付结论。CLI 提供 `prune [--days N] [--dry-run]` 子命令按保留天数清理终态（`closed` / `dropped`）记录及同名 Packet，同时保护活跃态、损坏 JSON 与未知 schema 文件。
 
-台账也可记录仓库相对的改动范围（`scope`），供实施方按需衔接检出视野；台账只存路径，不解释路径含义，不触发检查或工作区动作，并与 `turbo-sparse-scope` 的稀疏检出保持单向解耦（稀疏范围计算不强制依赖建账或读取台账）。
+台账也可记录仓库相对的改动范围（`scope`），供实施方记录或衔接变更范围；台账只存路径，不解释路径含义，不触发检查或工作区动作，并与 `apps-sparse-checkout` 的按需 App 隔离保持完全解耦（稀疏脚本不读取台账 `scope`）。
 
 ## 后果
 

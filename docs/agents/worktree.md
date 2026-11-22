@@ -1,6 +1,6 @@
 # Worktree 执行环境与共享缓存
 
-本文件拥有 worktree 准备与执行环境的几件互相关联的事：在一个新 worktree 里把工具链准备好、按任务收缩视野、让各 worktree 共用一份本机 HTTPS 证书、让各 worktree 共享同一份构建缓存，以及在未激活 mise 的 shell 里正确执行命令。它们的共同线索是「拿到一个 worktree 之后怎么正确执行命令」，所以放在一起。
+本文件拥有 worktree 准备与执行环境的几件互相关联的事：在一个新 worktree 里把工具链准备好、按需隔离兄弟应用、让各 worktree 共用一份本机 HTTPS 证书、让各 worktree 共享同一份构建缓存，以及在未激活 mise 的 shell 里正确执行命令。它们的共同线索是「拿到一个 worktree 之后怎么正确执行命令」，所以放在一起。
 
 worktree 本身是任务隔离边界，不是包名的别名。包清单、依赖边界与发布边界以 [`ARCHITECTURE.md`](../../ARCHITECTURE.md) 为权威；客户端权限边界见 [`environments.md`](./environments.md)；mise/turbo 的 env 注入由本文承担；提交边界的授权口径见 [`commit.md`](./commit.md)。
 
@@ -12,24 +12,22 @@ worktree 本身是任务隔离边界，不是包名的别名。包清单、依�
 
 ## 新 worktree 的准备
 
-进入新 worktree 后，在实施前按任务需要准备：首次或工具链变化时跑 `mise install`，因为版本由 [`.mise.toml`](../../.mise.toml) 钉住、不同分支可能不同，它幂等；要跑 pnpm、turbo、类型检查、构建或仓库检查时跑 `mise exec -- pnpm install --frozen-lockfile`，显式运行根 `fix-code` / `check-code` 需要 `node_modules`，稀疏收缩前也必须执行；需要跨包类型检查或消费 `dist` 时跑 `mise exec -- pnpm run build`，缺产物时 `vp check` 会把跨包 import 报成假 `TS2307`。只改文档且不跑这些检查时后两步可省，跳过什么、为什么写进交付说明。
+进入新 worktree 后，在实施前按任务需要准备：首次或工具链变化时跑 `mise install`，因为版本由 [`.mise.toml`](../../.mise.toml) 钉住、不同分支可能不同，它幂等；要跑 pnpm、turbo、类型检查、构建或仓库检查时跑 `mise exec -- pnpm install --frozen-lockfile`，显式运行根 `fix-code` / `check-code` 需要 `node_modules`；需要跨包类型检查或消费 `dist` 时跑 `mise exec -- pnpm run build`，缺产物时 `vp check` 会把跨包 import 报成假 `TS2307`。只改文档且不跑这些检查时后两步可省，跳过什么、为什么写进交付说明。
 
 `fix-code` 的改写与暂存边界见 [`commit.md`](./commit.md#pre-commit-与本地-checks)。
 
-## 按任务收缩视野
+## 按需隔离兄弟应用
 
-实施 owner 在 worktree 准备（`mise install`、`mise exec -- pnpm install --frozen-lockfile`）完成（若本次任务启用了 `task-ledger` 则同步完成建账）后、读取实施范围的代码、派发实施子任务或修改文件前，按本次改动范围（若启用了 `task-ledger` 则取台账 `scope`）与实现/验证必需的包外读取路径调用 sparse skill。触发、跳过、降级与稀疏树读取规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。
+默认保持**全树检出**：日常视野与任务收窄通过窄口径根 [`.ignore`](../../.ignore)（静音巨量 `apps/*/src/generated/**` 与测试二进制证据）、路径前缀检索（`rg` / `git grep`）以及 `pnpm exec turbo <task> --filter=...` 完成。`packages/` 与全部根级目录永远全量保留、永不稀疏，避免修改公共契约或基础设施时静默漏掉下游消费者。
 
-两个 skill 不互相调用；若本次任务启用了 `task-ledger`，可从台账读出 `scope`（仓库相对路径数组）作为 turbo-sparse-scope 的目标参数。从全树开始时先加 `--dry-run` 看会隐藏哪些包，再实际收缩：
+仅在确需把其他 `apps/*` 从当前工作树物理隔离时，按需调用 [`.agents/skills/apps-sparse-checkout/SKILL.md`](../../.agents/skills/apps-sparse-checkout/SKILL.md)（与 `task-ledger` 完全解耦，不读台账 `scope`；已稀疏态下直接再次调用 `--app` 即可幂等覆盖切换目标 App，从全树开始时可先加 `--dry-run` 预览）：
 
 ```sh
-mise exec -- node .agents/skills/task-ledger/ledger.mjs status <task-id> --json
-mise exec -- node .agents/skills/turbo-sparse-scope/sparse-scope.mjs <scope-path>... [--dry-run]
+mise exec -- node .agents/skills/apps-sparse-checkout/sparse-checkout.mjs --app <dir-name>... [--dry-run]
+mise exec -- node .agents/skills/apps-sparse-checkout/sparse-checkout.mjs --restore
 ```
 
-若本次任务启用了 `task-ledger`，范围变化时先更新台账 scope 再继续：放宽用 `scope <id> --add`，重算或收窄用 `scope <id> --set`，清空用 `--clear`。台账 scope 收窄不强制重算 sparse cone；读取面扩展出 cone 时用 `--add` 落盘，要按新闭包重算才用 `--reset`，清空后用 `--restore` 恢复全树，`close` 不恢复。
-
-调用方式、范围算法与稀疏树里的搜索、gate、install 规则见 [`.agents/skills/turbo-sparse-scope/SKILL.md`](../../.agents/skills/turbo-sparse-scope/SKILL.md)。对这里的环境准备有两条后果。第一，收缩成功后脚本会立即跑一次 `pnpm install --frozen-lockfile`，把 `node_modules` 对齐到缩小后的 workspace 集，否则后续 `pnpm run` / `pnpm exec` 会自行做非 frozen 安装并重写 `pnpm-lock.yaml`；根目录没有 `pnpm-workspace.yaml` 或 `pnpm` 不在 PATH 时这一步跳过并告警，需要在跑 pnpm 脚本前手动补上。第二，被隐藏包的目录里没有未跟踪文件时，整个目录（含被忽略的 `node_modules`、`dist`）随 cone 删除，`--restore` 只带回已跟踪文件，恢复后要重跑 `mise exec -- pnpm install --frozen-lockfile` 与 `mise exec -- pnpm run build`。
+调用方式、参数契约与稀疏树里的搜索、gate 规则见 [`.agents/skills/apps-sparse-checkout/SKILL.md`](../../.agents/skills/apps-sparse-checkout/SKILL.md)。对这里的环境准备有两条后果：第一，`--app` 收缩/切换与 `--restore` 恢复全树后，脚本都会自动执行一次 `pnpm install --frozen-lockfile` 对齐当前工作区依赖，防止后续 `pnpm run` / `pnpm exec` 触发隐式安装；根目录缺失 `pnpm-workspace.yaml` 或 `pnpm` 不在 PATH 时这一步跳过并告警，需在跑 pnpm 脚本前手动补上。第二，`packages/` 永不稀疏，`check-pre-commit` 在稀疏树上照常运行；被隐藏应用目录内无未跟踪文件时整个目录随 cone 移除，`--restore` 恢复已跟踪文件并同步依赖，若后续需要消费曾被隐藏应用的产物再补跑 `mise exec -- pnpm run build`。
 
 ## 本地 HTTPS 证书
 
