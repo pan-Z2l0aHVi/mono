@@ -408,11 +408,11 @@ func TestAsyncIndexSyncRequestsNonBlockingReconcile(t *testing.T) {
 	}
 	t.Cleanup(watcher.Stop)
 
-	var syncer core.SourceIndexSync = NewAsyncIndexSync(watcher)
-	if err := syncer.SyncSources(context.Background()); err != nil {
+	var indexSync core.SourceIndexSync = NewAsyncIndexSync(watcher)
+	if err := indexSync.SyncSources(context.Background()); err != nil {
 		t.Fatalf("adapter SyncSources must always succeed: %v", err)
 	}
-	if err := syncer.SyncSources(context.Background()); err != nil {
+	if err := indexSync.SyncSources(context.Background()); err != nil {
 		t.Fatalf("adapter SyncSources must always succeed: %v", err)
 	}
 	if got := sink.locationCallCount(); got != 0 {
