@@ -1,0 +1,44 @@
+import type { QueryClient } from '@tanstack/vue-query'
+import type { LocationQuery, Router, RouteLocationRaw } from 'vue-router'
+
+import { changelogSummaryQuery, parseFakeFetchOptions } from '@/queries/changelog'
+
+type RoutePrefetcher = (query: LocationQuery) => Array<ReturnType<typeof changelogSummaryQuery>>
+
+// meta 只放静态 key 的变体：`definePage` 宏不能稳定引用外部 queryOptions，因此用集中式注册表
+// 按路径映射到该路由需要的 query。没有注册的路由没有数据依赖。
+const prefetchers: Record<string, RoutePrefetcher> = {
+  '/changelog': query => [changelogSummaryQuery(parseFakeFetchOptions(query))]
+}
+
+function normalize(path: string) {
+  return path.length > 1 ? path.replace(/\/$/, '') : path
+}
+
+/** 路由跳转前必须就绪的数据；任一失败即整体拒绝。 */
+export function ensureRouteData(queryClient: QueryClient, path: string, query: LocationQuery) {
+  const options = prefetchers[normalize(path)]?.(query) ?? []
+  // 真 SWR：首次无缓存时阻塞跳转；已有缓存（哪怕已过 staleTime）立即返回旧缓存切页，同时后台静默 revalidate
+  return Promise.all(options.map(item => queryClient.ensureQueryData({ ...item, revalidateIfStale: true })))
+}
+
+const intentSeen = new Set<string>()
+
+/**
+ * 意图预取（hover / focus / touchstart）：解析 matched 组件触发 chunk 下载，同时预热数据。
+ * 同一个目标只做一次；任何失败静默，真正的失败由跳转时的守卫呈现。
+ */
+export function prefetchRouteIntent(router: Router, queryClient: QueryClient, to: RouteLocationRaw) {
+  const resolved = router.resolve(to)
+  if (intentSeen.has(resolved.fullPath)) return
+  intentSeen.add(resolved.fullPath)
+
+  for (const record of resolved.matched) {
+    const component = record.components?.default
+    if (typeof component === 'function' && !('displayName' in component) && !('__vccOpts' in component)) {
+      void (component as () => Promise<unknown>)().catch(() => intentSeen.delete(resolved.fullPath))
+    }
+  }
+  const options = prefetchers[normalize(resolved.path)]?.(resolved.query) ?? []
+  for (const item of options) void queryClient.prefetchQuery(item)
+}

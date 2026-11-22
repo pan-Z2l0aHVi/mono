@@ -13,7 +13,9 @@
   "dependencies": {
     "@greypan/app-scrollbars": "workspace:*",
     "@greypan/doc-demo-kit": "workspace:*",
+    "@greypan/route-progress": "workspace:*",
     "@greypan/web-ui": "workspace:*",
+    "@tanstack/react-query": "catalog:",
     "@tanstack/react-router": "catalog:",
     "lit": "catalog:",
     "overlayscrollbars": "catalog:",

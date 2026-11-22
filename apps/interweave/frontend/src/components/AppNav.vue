@@ -2,6 +2,9 @@
 import { ciSettingsFuture, lucideFolderOpen, lucideLayoutGrid } from '@greypan/web-ui/icons'
 import { useRoute, useRouter } from 'vue-router'
 
+import { prefetchRouteIntent } from '@/router/prefetch'
+import { queryClient } from '@/router/query-client'
+
 import PressDrawIcon from './PressDrawIcon.vue'
 
 type NavKey = 'library' | 'map'
@@ -33,6 +36,11 @@ function selectNav(item: (typeof navItems)[number]) {
   emit('navigate', item.key)
   if (route.path !== item.path) void router.push(item.path)
 }
+
+// 意图预取：hover / focus / touchstart 时提前下载目标页 chunk 并预热数据，不触发顶部进度。
+function prefetchNav(path: string) {
+  prefetchRouteIntent(router, queryClient, path)
+}
 </script>
 
 <template>
@@ -47,6 +55,9 @@ function selectNav(item: (typeof navItems)[number]) {
         :aria-current="route.path === item.path ? 'page' : undefined"
         :aria-label="item.label"
         @click="selectNav(item)"
+        @mouseenter="prefetchNav(item.path)"
+        @focus="prefetchNav(item.path)"
+        @touchstart.passive="prefetchNav(item.path)"
       >
         <web-ui-tooltip portal placement="right" :content="collapsed ? item.label : ''" :disabled="!collapsed">
           <PressDrawIcon>

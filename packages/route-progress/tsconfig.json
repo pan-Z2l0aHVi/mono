@@ -1,0 +1,7 @@
+{
+  "extends": "@greypan/tsconfig/dom.json",
+  "include": ["src/**/*", "vite.config.*"],
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.tsbuildinfo"
+  }
+}

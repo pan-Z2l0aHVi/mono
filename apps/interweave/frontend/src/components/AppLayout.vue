@@ -6,6 +6,7 @@ import { computed, onScopeDispose, ref, watch } from 'vue'
 import { RouterView, useRouter } from 'vue-router'
 
 import AppNav from '@/components/AppNav.vue'
+import RouteProgressBar from '@/components/RouteProgressBar.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
 import {
   MENU_ADD_RESOURCE_EVENT,
@@ -247,6 +248,7 @@ watch(
 </script>
 
 <template>
+  <RouteProgressBar />
   <!--
     shell 在这里，页面在 RouterView 里：web-ui-layout 与 AppNav 挂在 RouterView 之外，
     切路由只换默认 slot 的内容，不重建 sidebar。页面若要占 header slot，让自己的根节点带
@@ -285,7 +287,12 @@ watch(
       @open-settings="settingsOpen = true"
     />
 
-    <RouterView />
+    <RouterView v-slot="{ Component, route: currentRoute }">
+      <KeepAlive>
+        <component :is="Component" v-if="currentRoute.meta.keepAlive" :key="currentRoute.path" />
+      </KeepAlive>
+      <component :is="Component" v-if="!currentRoute.meta.keepAlive" :key="currentRoute.path" />
+    </RouterView>
   </web-ui-layout>
 
   <!--

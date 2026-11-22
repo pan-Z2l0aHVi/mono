@@ -1,7 +1,12 @@
+import { QueryClientProvider } from '@tanstack/react-query'
 import { createRouter, RouterProvider } from '@tanstack/react-router'
 import { StrictMode } from 'react'
 
+import { RouteProgressBar } from '@/components/root/route-progress-bar'
 import { LocaleProvider } from '@/i18n/locale'
+import { installRouterProgress } from '@/router/guards'
+import { routeProgress } from '@/router/progress'
+import { queryClient } from '@/router/query-client'
 import { routeTree } from '@/routeTree.gen.ts'
 
 // GitHub Pages 子路径 SPA
@@ -17,10 +22,16 @@ if (import.meta.env.PROD) {
 
 const router = createRouter({
   routeTree,
+  context: { queryClient },
   basepath: import.meta.env.BASE_URL,
   defaultPreload: 'intent',
+  defaultPreloadStaleTime: 0,
+  // 关闭默认 1000ms 的 pending 视图切换，慢 loader 期间保持旧页面不动，由全局顶部条呈现等待。
+  defaultPendingMs: Infinity,
   scrollRestoration: true
 })
+
+installRouterProgress(router, routeProgress)
 
 declare module '@tanstack/react-router' {
   interface Register {
@@ -34,9 +45,12 @@ declare module '@tanstack/react-router' {
 export default function App() {
   return (
     <StrictMode>
-      <LocaleProvider>
-        <RouterProvider router={router} />
-      </LocaleProvider>
+      <QueryClientProvider client={queryClient}>
+        <LocaleProvider>
+          <RouteProgressBar />
+          <RouterProvider router={router} />
+        </LocaleProvider>
+      </QueryClientProvider>
     </StrictMode>
   )
 }

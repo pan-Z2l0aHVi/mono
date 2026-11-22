@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { computed } from 'vue'
-import { RouterLink } from 'vue-router'
+
+import AppRouterLink from './app-router-link.vue'
 
 const props = defineProps<{
   to: string
@@ -26,7 +27,7 @@ const linkClass = computed(
 
 <template>
   <web-ui-tooltip v-if="collapsed" :content="label" placement="right" portal>
-    <RouterLink
+    <AppRouterLink
       :to="to"
       :class="linkClass + ' justify-center'"
       :data-active="active"
@@ -35,9 +36,9 @@ const linkClass = computed(
       @click="emit('navigate')"
     >
       <span class="w-full truncate text-center text-sm">{{ label }}</span>
-    </RouterLink>
+    </AppRouterLink>
   </web-ui-tooltip>
-  <RouterLink
+  <AppRouterLink
     v-else
     :to="to"
     :class="linkClass"
@@ -48,5 +49,5 @@ const linkClass = computed(
     @click="emit('navigate')"
   >
     <span class="min-w-0 flex-1 truncate text-sm">{{ label }}</span>
-  </RouterLink>
+  </AppRouterLink>
 </template>

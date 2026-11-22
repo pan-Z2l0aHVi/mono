@@ -108,7 +108,11 @@ export default defineConfig({
     ...mdToMetaAdditionalOptions.map(mdToMeta),
     tanstackRouter({
       target: 'react',
-      autoCodeSplitting: true
+      autoCodeSplitting: true,
+      codeSplittingOptions: {
+        // 首屏实际路由为 /home（由 / 重定向而来）：返回空分组保持同步不拆 chunk，其余路由自动拆分。
+        splitBehavior: ({ routeId }) => (routeId === '/home/' ? [] : undefined)
+      }
     }),
     // 顺序是硬的：这个插件按源码文本匹配 `<web-ui-*` 决定注入哪些自定义元素导入，而
     // React Compiler 的 transform 同样是 `enforce: 'pre'`，跑完就把 JSX 降成 `jsx(...)` /
@@ -137,6 +141,11 @@ export default defineConfig({
       {
         name: '@greypan/doc-demo-kit',
         path: '../../packages/doc-demo-kit',
+        extensions: ['.mjs']
+      },
+      {
+        name: '@greypan/route-progress',
+        path: '../../packages/route-progress',
         extensions: ['.mjs']
       },
       {

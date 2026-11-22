@@ -263,12 +263,18 @@ catalogs:
     '@tailwindcss/vite':
       specifier: ^4.3.5
       version: 4.3.5
+    '@tanstack/react-query':
+      specifier: ^5.104.5
+      version: 5.108.1
     '@tanstack/react-router':
       specifier: ^1.170.32
       version: 1.170.46
     '@tanstack/router-plugin':
       specifier: ^1.168.35
       version: 1.168.48
+    '@tanstack/vue-query':
+      specifier: ^5.104.5
+      version: 5.108.1
     '@testing-library/react':
       specifier: ^16.3.2
       version: 16.3.3
@@ -573,9 +579,15 @@ importers:
       '@greypan/browser-kit':
         specifier: workspace:*
         version: link:../../../packages/browser-kit
+      '@greypan/route-progress':
+        specifier: workspace:*
+        version: link:../../../packages/route-progress
       '@greypan/web-ui':
         specifier: workspace:*
         version: link:../../../packages/web-ui
+      '@tanstack/vue-query':
+        specifier: 'catalog:'
+        version: 5.108.1(vue@3.5.45(typescript@6.0.3))
       '@vueuse/core':
         specifier: 'catalog:'
         version: 15.0.0(vue@3.5.45(typescript@6.0.3))
@@ -652,9 +664,15 @@ importers:
       '@greypan/doc-demo-kit':
         specifier: workspace:*
         version: link:../../packages/doc-demo-kit
+      '@greypan/route-progress':
+        specifier: workspace:*
+        version: link:../../packages/route-progress
       '@greypan/web-ui':
         specifier: workspace:*
         version: link:../../packages/web-ui
+      '@tanstack/react-query':
+        specifier: 'catalog:'
+        version: 5.108.1(@types/react@19.3.0)(react@19.3.1)
       '@tanstack/react-router':
         specifier: 'catalog:'
         version: 1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)
@@ -743,9 +761,15 @@ importers:
       '@greypan/doc-demo-kit':
         specifier: workspace:*
         version: link:../../packages/doc-demo-kit
+      '@greypan/route-progress':
+        specifier: workspace:*
+        version: link:../../packages/route-progress
       '@greypan/web-ui':
         specifier: workspace:*
         version: link:../../packages/web-ui
+      '@tanstack/vue-query':
+        specifier: 'catalog:'
+        version: 5.108.1(vue@3.5.45(typescript@6.0.3))
       '@unhead/vue':
         specifier: 'catalog:'
         version: 3.4.3(@oxc-project/types@0.148.0)(@voidzero-dev/vite-plus-core@1.5.0(@types/node@26.6.6)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1))(lightningcss@1.33.0)(oxc-parser@0.148.0)(rollup@4.65.1)(vue@3.5.45(typescript@6.0.3))(webpack@5.112.2(lightningcss@1.33.0)(postcss@8.5.32))
@@ -981,6 +1005,19 @@ importers:
         version: 1.5.0(@types/node@26.6.6)(@vitest/browser-playwright@5.1.0)(@vitest/ui@5.1.0)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(jsdom@31.0.0)(msw@3.0.3(@types/node@26.6.6)(@voidzero-dev/vite-plus-core@1.5.0(@types/node@26.6.6)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1))(graphql@16.14.2)(supports-color@10.2.2)(typescript@6.0.3))(playwright@1.65.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1)
 
   packages/pi-rex-orchestrator:
+    devDependencies:
+      '@greypan/tsconfig':
+        specifier: workspace:*
+        version: link:../tsconfig
+      vite-plus:
+        specifier: 'catalog:'
+        version: 1.5.0(@types/node@26.6.6)(@vitest/browser-playwright@5.1.0)(@vitest/ui@5.1.0)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(jsdom@31.0.0)(msw@3.0.4(@types/node@26.6.6)(@voidzero-dev/vite-plus-core@1.5.0(@types/node@26.6.6)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1))(graphql@16.14.2)(supports-color@10.2.2)(typescript@6.0.3))(playwright@1.65.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1)
+
+  packages/route-progress:
+    dependencies:
+      '@greypan/js-kit':
+        specifier: workspace:*
+        version: link:../js-kit
     devDependencies:
       '@greypan/tsconfig':
         specifier: workspace:*
@@ -3201,6 +3238,22 @@ packages:
     resolution: {integrity: sha512-w1+YvwmTkwt5n8yUqEH3IWZ9DsmorCZW/EQ3KYHnqEgIkOZpH54NvW6/Epq3Dzb8H0ifIeYX8PExvrNLIH5FIA==}
     engines: {node: '>=20.19'}
 
+  '@tanstack/match-sorter-utils@9.2.6':
+    resolution: {integrity: sha512-DIpUSOhPfQ7u/qfUi/Wgm0wBO56MyBYXGvnlI0NcauDRPqdBUlAZZjW2Dxm92m+k1UWVhKw8YJ4f47+75Aujyw==}
+    engines: {node: '>=20'}
+
+  '@tanstack/query-core@5.108.1':
+    resolution: {integrity: sha512-GBX6Xsc9E+9eVLLxuM7orQNbssQjpruOCbocBYwT78MjxOWT5I+CWdvEo0N+UM6+oCZEKxuSud1oFLvE3OEmIg==}
+
+  '@tanstack/react-query@5.108.1':
+    resolution: {integrity: sha512-8/p7fpIdmUiKIukQ5ddAMUUSKC7Z8CcgUOBR2r3WqRvMg9Lzc4CXeoFchjfATKvqi23SyYFvesDdOULrvyunNg==}
+    peerDependencies:
+      '@types/react': ^18 || ^19
+      react: ^18 || ^19
+    peerDependenciesMeta:
+      '@types/react':
+        optional: true
+
   '@tanstack/react-router@1.170.46':
     resolution: {integrity: sha512-ez1iNIhsPjGlaDHg3BXWs67EWVIYzB2tbopEHYDESdkO7owgkGb5de52+5Kv2v1fxdkggcNzo35bdk4arTVGQw==}
     engines: {node: '>=20.19'}
@@ -3253,6 +3306,15 @@ packages:
   '@tanstack/virtual-file-routes@1.162.0':
     resolution: {integrity: sha512-uhOeFyxLcU41HzvrxsGpiWdcMbScY1EDgbZ5K7DVRMYInbLYWAC0EA/kx9wXAoSM8q82bUG2hRl8+EAjE6XAbA==}
     engines: {node: '>=20.19'}
+
+  '@tanstack/vue-query@5.108.1':
+    resolution: {integrity: sha512-dkBQ9rEPmQ353xLiWixKJh6FBf91CuoiE2XIad9iecCo7se5SN2CCr+sA0zU4SMlkzz1B9fiDchszNM2RAF4pg==}
+    peerDependencies:
+      '@vue/composition-api': ^1.1.2
+      vue: ^2.6.0 || ^3.3.0
+    peerDependenciesMeta:
+      '@vue/composition-api':
+        optional: true
 
   '@testing-library/dom@10.4.2':
     resolution: {integrity: sha512-yzr2S9HyAIdhz2/6qHgbs665Q7PKVcDF05vsOlHPxG1mo36gKVesdYVeDLnXgfjJ03CrKRk08knc6+E/9m8v2Q==}
@@ -3679,6 +3741,9 @@ packages:
 
   '@vue/compiler-ssr@3.5.45':
     resolution: {integrity: sha512-RF5sbZOfYz5AK00tOJUn2PwFXR2fS1u2HVzI8D9VF9rGAFxuGBqg2bB1kJ3ZHMprqSltXnT9MZE1IsqjSM8oew==}
+
+  '@vue/devtools-api@6.6.4':
+    resolution: {integrity: sha512-sGhTPMuXqZ1rVOk32RylztWkfXTRhuS7vgAKv0zjqk8gbsHkJ7xfFf+jbySxt7tWObEJwyKaHMikV/WGDiQm8g==}
 
   '@vue/devtools-api@8.2.1':
     resolution: {integrity: sha512-6u4vXBlIBAC1wMplIZgpyPn7uh/s4Bf6F5bMzvLv+EdJ0aHs/+4B7Ygv864EStQSjRbsRzTko/kUG1A1IejQ3A==}
@@ -5519,6 +5584,9 @@ packages:
     resolution: {integrity: sha512-uCy/WL+c+IF/oAb+sjgZ4Y7XPsW58wP8EWiYpIcqWQZBnNEcb8RnLh9PHsERA97ONpkebGw4S6qNcOtFQ+HG7A==}
     engines: {node: '>=18.0.0'}
 
+  remove-accents@0.5.0:
+    resolution: {integrity: sha512-8g3/Otx1eJaVD12e31UbJj1YzdtVvzH85HV7t+9MJYk/u3XmkOUJ5Ys9wQrf9PCPK8+xn4ymzqYCiZl6QWKn+A==}
+
   require-directory@2.1.1:
     resolution: {integrity: sha512-fGxEI7+wsG9xrvdjsrlmL22OMTTiHRwAMroiEeMgq8gzoLC/PQr7RsRDSTLUg/bZAZtF+TVIkHc6/4RIKrui+Q==}
     engines: {node: '>=0.10.0'}
@@ -6123,6 +6191,17 @@ packages:
 
   vue-component-type-helpers@3.3.13:
     resolution: {integrity: sha512-02KCxSmKDhIITjKyJ4QT5csP6L0WoRborLqY/34a40+S9uvMvdNgMV0yVjO3p2Gkz3ZoPmFz/0JsGHacwJYTxw==}
+
+  vue-demi@0.14.10:
+    resolution: {integrity: sha512-nMZBOwuzabUO0nLgIcc6rycZEebF6eeUfaiQx9+WSk8e29IbLvPU9feI6tqW4kTo3hvoYAJkMh8n8D0fuISphg==}
+    engines: {node: '>=12'}
+    hasBin: true
+    peerDependencies:
+      '@vue/composition-api': ^1.0.0-rc.1
+      vue: ^3.0.0-0 || ^2.6.0
+    peerDependenciesMeta:
+      '@vue/composition-api':
+        optional: true
 
   vue-router@5.4.0:
     resolution: {integrity: sha512-pFvcYcxinDHjZUlf7AzFBrT8r8Xqvv4uMHoJnjc+EqPawXQvHTkF8S4tfSmQLpriVHUGfkaKlI7Et0KRjTMTdw==}
@@ -8179,6 +8258,19 @@ snapshots:
 
   '@tanstack/history@1.162.5': {}
 
+  '@tanstack/match-sorter-utils@9.2.6':
+    dependencies:
+      remove-accents: 0.5.0
+
+  '@tanstack/query-core@5.108.1': {}
+
+  '@tanstack/react-query@5.108.1(@types/react@19.3.0)(react@19.3.1)':
+    dependencies:
+      '@tanstack/query-core': 5.108.1
+      react: 19.3.1
+    optionalDependencies:
+      '@types/react': 19.3.0
+
   '@tanstack/react-router@1.170.46(react-dom@19.3.1(react@19.3.1))(react@19.3.1)':
     dependencies:
       '@tanstack/history': 1.162.5
@@ -8256,6 +8348,14 @@ snapshots:
   '@tanstack/store@0.11.2': {}
 
   '@tanstack/virtual-file-routes@1.162.0': {}
+
+  '@tanstack/vue-query@5.108.1(vue@3.5.45(typescript@6.0.3))':
+    dependencies:
+      '@tanstack/match-sorter-utils': 9.2.6
+      '@tanstack/query-core': 5.108.1
+      '@vue/devtools-api': 6.6.4
+      vue: 3.5.45(typescript@6.0.3)
+      vue-demi: 0.14.10(vue@3.5.45(typescript@6.0.3))
 
   '@testing-library/dom@10.4.2':
     dependencies:
@@ -8797,6 +8897,8 @@ snapshots:
     dependencies:
       '@vue/compiler-dom': 3.5.45
       '@vue/shared': 3.5.45
+
+  '@vue/devtools-api@6.6.4': {}
 
   '@vue/devtools-api@8.2.1':
     dependencies:
@@ -10836,6 +10938,8 @@ snapshots:
 
   remeda@2.58.0: {}
 
+  remove-accents@0.5.0: {}
+
   require-directory@2.1.1:
     optional: true
 
@@ -11629,6 +11733,10 @@ snapshots:
   vscode-uri@3.2.0: {}
 
   vue-component-type-helpers@3.3.13: {}
+
+  vue-demi@0.14.10(vue@3.5.45(typescript@6.0.3)):
+    dependencies:
+      vue: 3.5.45(typescript@6.0.3)
 
   vue-router@5.4.0(@voidzero-dev/vite-plus-core@1.5.0(@types/node@26.6.6)(@volar/typescript@2.4.30(typescript@6.0.3))(@vue/language-core@3.3.13)(jiti@2.7.0)(terser@5.51.2)(typescript@6.0.3)(vue-tsc@3.3.13(typescript@6.0.3))(yaml@2.9.1))(@vue/compiler-sfc@3.5.44)(pinia@4.1.0(@vue/devtools-api@8.2.1)(typescript@6.0.3)(vue@3.5.45(typescript@6.0.3)))(rollup@4.65.1)(vue@3.5.45(typescript@6.0.3))(webpack@5.112.2(lightningcss@1.33.0)(postcss@8.5.32)):
     dependencies:

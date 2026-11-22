@@ -90,6 +90,7 @@ export default {
       'md-to-meta',
       'monorepo-kit',
       'pi-rex-orchestrator',
+      'route-progress',
       'test-kit',
       'tsconfig',
       'unplugin-web-components',

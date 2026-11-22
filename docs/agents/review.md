@@ -46,10 +46,7 @@ CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发�
 
 ## 固定输入与范围
 
-本节和后面两节只在真有人审查时生效。编排层提供 PR URL、仓库并分配 reviewer worktree；无法分配时只读复用
-已有 worktree。审查开始时记录 PR 当前 base/head 的完整 SHA、目标分支、作者、状态、draft、文件数及合并对象，
-并读取已有 inline review、review、评论与自动审查那条持久评论。文件、评论或提交对象无法完整读取时，
-报告覆盖不完整，不给出「无问题」或可合并结论。
+本节和后面两节只在执行独立审查（人工或独立 agent 会话）时生效。使用专属 reviewer worktree，或只读复用已有 worktree。审查开始时记录 PR 当前 base/head 的完整 SHA、目标分支、作者、状态、draft、文件数及合并对象，并读取已有 inline review、review、评论与自动审查那条持久评论。文件、评论或提交对象无法完整读取时，报告覆盖不完整，不给出「无问题」或可合并结论。
 
 reviewer 不得切换、覆盖或修改实施者 worktree；除专属 reviewer worktree 外不修改任何工作树的文件，也不改被审分支
 或 Git 索引。需要写盘的验证只用专属 worktree，或在系统临时目录中从 PR head 检出的一次性 worktree（用完即移除）。
@@ -96,7 +93,7 @@ CI 默认 checkout 是 base/head 的临时合并对象，代码 review 固定在
 [`.github/codex/README.md`](../../.github/codex/README.md)。
 
 人工审查的持久报告至少记录 PR URL、base/head SHA、reviewer 执行体、审查范围、发现及处置、验证命令与实际结果、
-未覆盖风险、结论，以及上一轮报告和本轮修复的对应关系。报告写入 PR review/comment 或编排器提供的持久交付记录；
+未覆盖风险、结论，以及上一轮报告和本轮修复的对应关系。报告写入 PR review/comment 或持久交付记录；
 不得只留在临时目录，也不要提交到被审分支。
 
 没有用户对 PR 外部写入的明确授权时，只交付本地报告，不调用写 API；授权机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。

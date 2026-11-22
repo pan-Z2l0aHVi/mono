@@ -1,3 +1,5 @@
+import { readFileSync } from 'node:fs'
+
 import depsReload from '@greypan/deps-reload/vite'
 import { testPorts } from '@greypan/monorepo-kit/vite'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
@@ -12,23 +14,27 @@ import { playwright } from 'vite-plus/test/browser-playwright'
 import { VueRouterAutoImports } from 'vue-router/unplugin'
 import vueRouter from 'vue-router/vite'
 
+// 从本包 manifest 派生所有外部运行时依赖：排除 workspace 内部包（由源码/dist 直接解析）与
+// Wails runtime（自带虚拟模块插件），避免每次新增第三方依赖都在 CI 冷缓存的 browser test
+// 中途触发 Vite re-optimize + iframe reload。
+const pkg = JSON.parse(readFileSync(new URL('./package.json', import.meta.url), 'utf8')) as {
+  dependencies?: Record<string, string>
+}
+const externalRuntimeDeps = Object.keys(pkg.dependencies ?? {}).filter(
+  name => !name.startsWith('@greypan/') && name !== '@wailsio/runtime'
+)
+
 export default defineConfig({
   resolve: {
     tsconfigPaths: true
   },
   optimizeDeps: {
-    // file-based 路由把 `src/pages/**` 折进 `vue-router/vite` 生成的虚拟模块，依赖扫描器跟不进去，
-    // 路由页经 `unplugin-web-components` 生成的组件导入就不可见。web-ui 的裸依赖由
-    // `@greypan/web-ui/vite` 提供，跟随组件库自己的运行时依赖，不要在这里抄一份。
+    // file-based 路由把 `src/pages/**` 折进 `vue-router/vite` 生成的虚拟模块，且 browser test
+    // project 的 spec 不经 `main.ts` 入口，冷缓存下容易在用例中途发现新依赖并触发 reload。
+    // 这里统一纳入 web-ui 裸依赖、本包所有外部运行时依赖，以及 browser spec 专用上下文模块。
     include: [
       ...webUiOptimizeDeps,
-      // browser test project 里 spec 的导入图会一路带到这三个（ResourceList → stores/library →
-      // pinia / overlayscrollbars）。不预先声明的话，依赖扫描器会在**用例跑到一半**时才发现它们
-      // 并触发一次 re-optimize，vite 直接 reload 整个页面：vitest 会警告「unexpectedly reloaded a
-      // test」，结果就是用例可能重复跑或假失败。预先声明把那次 reload 挡在测试开始之前。
-      'overlayscrollbars',
-      'overlayscrollbars-vue',
-      'pinia',
+      ...externalRuntimeDeps,
       // 资源长按的 browser spec 经它拿 CDP 会话派发真实触控（镜像 web-ui 的 realTouchPress）。
       // 冷缓存下同样会在用例中途触发 re-optimize + reload，把 spec 的收集直接打断。
       'vite-plus/test/browser-playwright/context'
@@ -104,7 +110,10 @@ export default defineConfig({
     // 回 loopback 时测试服务器会跟着绑通配地址。分配表与偏移见 docs/agents/build-browser.md「测试端口分配」。
     testPorts({ project: 'interweave-frontend', testName: 'browser' }),
     testPorts({ project: 'interweave-frontend-touch', testName: 'browser-touch' }),
-    vueRouter(),
+    vueRouter({
+      // 首屏实际路由为 /library（由 / 重定向而来）：保持同步不拆 chunk，其余路由按页懒加载。
+      importMode: filepath => (/[/\\]pages[/\\]library(?:[/\\]|$)/.test(filepath) ? 'sync' : 'async')
+    }),
     vue({
       template: {
         compilerOptions: {
@@ -126,6 +135,7 @@ export default defineConfig({
     depsReload([
       // 包入口是 .mjs，默认的 .js 过滤匹配不到它
       { name: '@greypan/app-scrollbars', path: '../../../packages/app-scrollbars', extensions: ['.mjs', '.css'] },
+      { name: '@greypan/route-progress', path: '../../../packages/route-progress', extensions: ['.mjs'] },
       { name: '@greypan/web-ui', path: '../../../packages/web-ui' },
       { name: '@greypan/js-kit', path: '../../../packages/js-kit' },
       { name: '@greypan/browser-kit', path: '../../../packages/browser-kit' }

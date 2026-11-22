@@ -18,7 +18,7 @@ import {
   lucideSun,
   lucideX
 } from '@greypan/web-ui/icons'
-import { Link, Outlet, useRouter, useRouterState } from '@tanstack/react-router'
+import { Link, Outlet, useRouterState } from '@tanstack/react-router'
 import {
   OverlayScrollbarsComponent,
   useOverlayScrollbars,
@@ -120,8 +120,9 @@ export function Root() {
   const controlsRef = useRef<HTMLDivElement>(null)
   const navSidebarRef = useRef<OverlayScrollbarsComponentRef<'div'> | null>(null)
   const { sidebarWidth, navCollapsed } = snapshot
-  const router = useRouter()
-  const pathname = useRouterState({ select: s => s.location.pathname })
+  const pathname = useRouterState({
+    select: s => (s.resolvedLocation ?? s.location).pathname
+  })
 
   // 整页 scrollbar 接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
   // 只能直接初始化 body。
@@ -131,13 +132,12 @@ export function Root() {
   }, [initPageScrollbars])
 
   useEffect(() => {
-    void router.load().then(() => {
-      requestAnimationFrame(() => {
-        const link = navSidebarRef.current?.getElement()?.querySelector('[data-active="true"]')
-        link?.scrollIntoView({ block: 'center' })
-      })
+    const id = requestAnimationFrame(() => {
+      const link = navSidebarRef.current?.getElement()?.querySelector('[data-active="true"]')
+      link?.scrollIntoView({ block: 'center' })
     })
-  }, [router])
+    return () => cancelAnimationFrame(id)
+  }, [])
 
   const routeTitle = useRouterState({
     select: s => s.matches.at(-1)?.staticData.title

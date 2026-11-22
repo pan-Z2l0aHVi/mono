@@ -19,6 +19,7 @@ vi.mock('@unhead/vue/client', () => ({ createHead: () => ({}) }))
 vi.mock('pinia', () => ({ createPinia: () => ({}) }))
 vi.mock('@/app/index.vue', () => ({ default: { name: 'AppShell' } }))
 vi.mock('@/app/boot-error.vue', () => ({ default: { name: 'BootError' } }))
+vi.mock('@/router/guards', () => ({ installRouteGuards: () => {} }))
 vi.mock('vue-router', () => ({ createRouter: () => ({}), createWebHistory: () => ({}) }))
 vi.mock('vue-router/auto-routes', () => ({ routes: [], handleHotUpdate: () => {} }))
 vi.mock('vue', () => ({

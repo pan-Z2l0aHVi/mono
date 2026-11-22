@@ -32,6 +32,7 @@ import Search from '@/components/search/index.vue'
 import { bootDegraded, currentLocale, loadDemoLocale, localePending } from '@/i18n/locale'
 import { useMobile } from '@/state/mobile'
 
+import RouteProgressBar from './route-progress-bar.vue'
 import SidebarNavLink from './sidebar-nav-link.vue'
 
 const ZH_LABEL = '简体中文'
@@ -131,6 +132,7 @@ onMounted(async () => {
 <template>
   <web-ui-theme :appearance="themeAppearance" :motion="themeMotion">
     <div class="min-h-screen bg-(--wui-color-page) text-(--wui-color-text)">
+      <RouteProgressBar />
       <!--
         Boolean 动态绑定走 camelCase Property（Vue 对已存在的属性名直接写 DOM property）。
         kebab-case（:sidebar-collapsed）会写字符串 attribute，布尔属性存在即 true，无法表达 false。
@@ -302,7 +304,12 @@ onMounted(async () => {
         </OverlayScrollbarsComponent>
         <div class="p-3 pb-12 sm:px-6 sm:pb-16 md:px-8 lg:px-10">
           <!-- 正文 gutter 归 shell 所有：web-ui-layout 的 main 不带 padding，逐页加会漏页。 -->
-          <RouterView />
+          <RouterView v-slot="{ Component, route: currentRoute }">
+            <KeepAlive>
+              <component :is="Component" v-if="currentRoute.meta.keepAlive" :key="currentRoute.path" />
+            </KeepAlive>
+            <component :is="Component" v-if="!currentRoute.meta.keepAlive" :key="currentRoute.path" />
+          </RouterView>
         </div>
       </web-ui-layout>
       <web-ui-back-top></web-ui-back-top>

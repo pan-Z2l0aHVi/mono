@@ -2,6 +2,7 @@ import '@/assets/global.css'
 import '@/generated/theme.css'
 import '@/locales/main.loader.js'
 
+import { VueQueryPlugin } from '@tanstack/vue-query'
 import { createHead } from '@unhead/vue/client'
 import { createPinia } from 'pinia'
 import { createApp } from 'vue'
@@ -11,6 +12,9 @@ import { handleHotUpdate, routes } from 'vue-router/auto-routes'
 import BootError from '@/app/boot-error.vue'
 import App from '@/app/index.vue'
 import { bootstrapLocale, bootDegraded, loadShellLocale } from '@/i18n/locale'
+import { installRouteGuards } from '@/router/guards'
+import { routeProgress } from '@/router/progress'
+import { queryClient } from '@/router/query-client'
 
 // GitHub Pages 子路径 SPA
 // 通过其根 404 页面在 `redirect` 中保留了未匹配的 history 路由。
@@ -42,11 +46,16 @@ const router = createRouter({
 declare module 'vue-router' {
   interface RouteMeta {
     title?: string
+    /** 为 true 时在 RouterView 的 KeepAlive 中缓存该路由视图实例。 */
+    keepAlive?: boolean
   }
 }
 if (import.meta.hot) {
   handleHotUpdate(router)
 }
+
+// 守卫在 use(router) 之前注册：初始导航也走同一套延迟跳转与进度收口。
+installRouteGuards(router, queryClient, routeProgress)
 
 // 首帧只等源语种 catalog：文档与目标语种在挂载后补载（见下方 bootstrapLocale），避免整页
 // 空白等英文包。只有源语种也加载失败、壳无法渲染时才落到启动错误页。
@@ -60,7 +69,7 @@ const shellReady = await loadShellLocale().then(
 )
 
 if (shellReady) {
-  createApp(App).use(createPinia()).use(router).use(createHead()).mount('#app')
+  createApp(App).use(createPinia()).use(VueQueryPlugin, { queryClient }).use(router).use(createHead()).mount('#app')
   void bootstrapLocale().then(
     initial => {
       bootDegraded.value = initial.degraded
