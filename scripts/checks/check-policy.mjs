@@ -5,7 +5,6 @@ import { fullCheckout } from '../policies/full-checkout.mjs'
 import { interweaveTurboInputs } from '../policies/interweave-turbo-inputs.mjs'
 import { noMutualLinks } from '../policies/no-mutual-links.mjs'
 import { readmeLocales } from '../policies/readme-locales.mjs'
-import { testPortCallSites } from '../policies/test-port-call-sites.mjs'
 import { themeTokenParity } from '../policies/theme-token-parity.mjs'
 import { turboCacheInvariant } from '../policies/turbo-cache-invariant.mjs'
 import { turboInputPaths } from '../policies/turbo-input-paths.mjs'
@@ -23,7 +22,6 @@ await runCheck(() =>
     .use(interweaveTurboInputs)
     .use(noMutualLinks)
     .use(readmeLocales)
-    .use(testPortCallSites)
     .use(turboCacheInvariant)
     .use(turboInputPaths)
     .use(webUiDocsInputs)

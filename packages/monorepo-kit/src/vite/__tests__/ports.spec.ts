@@ -5,146 +5,225 @@ import path from 'node:path'
 
 import { afterAll, it } from 'vite-plus/test'
 
-import { getWorkspaceRoot } from '../../shared/workspace-root'
 import {
+  AUTO_MAX_PORT,
+  BAND_WIDTH,
+  BASE_PORT,
+  MAX_PORT,
+  SLOT_COUNT,
   type TestPortsPluginOptions,
   type TestPortsTargetConfig,
   applyTestPorts,
-  readTestPorts,
+  resolveTestPort,
   testPorts
 } from '../ports'
 
 const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-test-ports-'))
 let fixture = 0
 
-// 端口表由消费仓库的根配置提供，测试自带一份夹具：这里钉的是读取、校验、偏移与写进 Vite 配置的
-// 判据，真实取值由 `monorepo.json` 与 `scripts/policies/test-port-call-sites.mjs` 决定。
-const allocation = {
-  testPorts: { bandWidth: 10, offsetStride: 100, ports: { alpha: 30000, beta: 30010, gamma: 30020 } }
-}
-
-function makeFixture(raw: unknown): string {
+function makeRoot(gitKind: 'dir' | 'file' | 'none'): string {
   const root = path.join(tempRoot, `fixture-${fixture++}`)
   fs.mkdirSync(root, { recursive: true })
-  fs.writeFileSync(path.join(root, 'monorepo.json'), typeof raw === 'string' ? raw : JSON.stringify(raw))
+  if (gitKind === 'dir') fs.mkdirSync(path.join(root, '.git'))
+  else if (gitKind === 'file') fs.writeFileSync(path.join(root, '.git'), 'gitdir: /repo/.git/worktrees/wt\n')
   return root
 }
 
-// 偏移量来自 env，所以每份读数显式给出 GREYPAN_TEST_PORT_OFFSET：undefined 就是未设置，
-// 开发者 shell 里残留的偏移不会影响结果。
-function ports(raw: unknown = allocation, offset?: string) {
-  return readTestPorts({ root: makeFixture(raw), env: { ...process.env, GREYPAN_TEST_PORT_OFFSET: offset } })
+function withTestPortOffset<T>(value: string | undefined, run: () => T): T {
+  const hadOwn = Object.prototype.hasOwnProperty.call(process.env, 'GREYPAN_TEST_PORT_OFFSET')
+  const previous = process.env.GREYPAN_TEST_PORT_OFFSET
+  if (value === undefined) delete process.env.GREYPAN_TEST_PORT_OFFSET
+  else process.env.GREYPAN_TEST_PORT_OFFSET = value
+  try {
+    return run()
+  } finally {
+    if (!hadOwn) delete process.env.GREYPAN_TEST_PORT_OFFSET
+    else process.env.GREYPAN_TEST_PORT_OFFSET = previous
+  }
 }
 
-it('test-ports', () => {
-  const api = ports()
-  assert.deepEqual(api.names(), ['alpha', 'beta', 'gamma'])
+it('resolveTestPort 按 project 确定性哈希分槽并避开 macOS 临时端口段', () => {
+  assert.equal(BASE_PORT, 23410)
+  assert.equal(AUTO_MAX_PORT, 49151)
+  assert.equal(MAX_PORT, 65535)
+  assert.equal(BAND_WIDTH, 10)
+  assert.equal(SLOT_COUNT, 2574)
 
-  // 空字符串按未设置处理：CI 里常见的 `VAR=` 不应让配置直接报错。
-  assert.equal(ports(allocation, '').port('alpha'), 30000)
-  assert.equal(api.port('alpha'), 30000)
+  const mainRoot = makeRoot('dir')
 
-  // 偏移整体平移，表内相对间隔不变。
-  const shifted = ports(allocation, '300')
-  assert.equal(shifted.port('alpha'), 30000 + 300)
-  assert.equal(shifted.port('beta'), 30010 + 300)
+  // 独立 SHA-256 + BE uint32 参考向量，防止字节序、槽位数或种子格式漂移时自洽假绿。
+  assert.equal(resolveTestPort({ project: 'alpha', root: mainRoot, env: {} }), 32540)
+  assert.equal(resolveTestPort({ project: 'alpha', root: mainRoot, env: {} }), 32540)
+  assert.equal(resolveTestPort({ project: 'beta', root: mainRoot, env: {} }), 48600)
 
-  // 跨 worktree：不同偏移的两组端口必须互不相交，而这正是这份分配存在的原因。
-  function portsFor(offset: number): Set<number> {
-    const scoped = ports(allocation, String(offset))
-    return new Set(scoped.names().map(project => scoped.port(project)))
+  const projects = [
+    'alpha',
+    'beta',
+    'gamma',
+    'web-ui',
+    'web-ui-touch',
+    'web-ui-reduced-motion',
+    'browser-kit',
+    'react-web-ui-demo',
+    'vue-web-ui-demo',
+    'interweave-frontend',
+    'interweave-frontend-touch'
+  ]
+  for (const project of projects) {
+    const port = resolveTestPort({ project, root: mainRoot, env: {} })
+    assert.equal(resolveTestPort({ project, root: mainRoot, env: {} }), port)
+    assert.ok(Number.isInteger(port))
+    assert.ok(port >= BASE_PORT && port <= 49140, `${project} port ${port} 超出自动槽位范围`)
+    assert.ok(port + BAND_WIDTH - 1 <= AUTO_MAX_PORT, `${project} 端口段落入 macOS 临时端口区`)
+    assert.equal((port - BASE_PORT) % BAND_WIDTH, 0, `${project} port ${port} 未按步长 ${BAND_WIDTH} 对齐`)
   }
 
-  for (const [left, right] of [
-    [0, 100],
-    [100, 200],
-    [0, 300]
-  ]) {
-    const overlap = [...portsFor(left)].filter(port => portsFor(right).has(port))
-    assert.deepEqual(overlap, [], `偏移 ${left} 与 ${right} 的端口集合重叠`)
-  }
-
-  // 非法输入要显式失败，不能静默退回默认端口。
-  // 锚定域名前缀用 { message } 形式：裸正则匹配的是错误的字符串表示，那里以 "Error: " 起头。
-  assert.throws(() => api.port('delta'), { message: /^test-ports: 未知项目 "delta"；可选：alpha, beta, gamma/ })
-  assert.throws(() => api.port('delta'), /可选：/)
-  assert.throws(() => ports(allocation, '-100').port('alpha'), {
-    message: /^test-ports: GREYPAN_TEST_PORT_OFFSET 必须是非负整数，收到 "-100"/
-  })
-  assert.throws(() => ports(allocation, 'abc').port('alpha'), /非负整数/)
-  assert.throws(() => ports(allocation, '1.5').port('alpha'), /非负整数/)
-  assert.throws(() => ports(allocation, '101').port('alpha'), /倍数/)
-  assert.throws(() => ports(allocation, '1000000').port('alpha'), /超出端口上限/)
-
-  // 段没有真占住自己的宽度时，两个 project 会在同一批端口上互相 +1 抢位。
-  assert.throws(
-    () => ports({ testPorts: { bandWidth: 10, offsetStride: 100, ports: { alpha: 30000, beta: 30005 } } }).names(),
-    /相距不足 10/
-  )
-
-  // 跨度超过步长时，相邻两档偏移的 worktree 会抢同一批端口。
-  assert.throws(
-    () => ports({ testPorts: { bandWidth: 10, offsetStride: 100, ports: { alpha: 30000, beta: 30095 } } }).names(),
-    /超过偏移步长 100/
-  )
-
-  // 配置本身写坏时第一次读数就抛，不把问题推迟到某个 project 的端口上。
-  assert.throws(() => ports({}).names(), { message: /^test-ports: monorepo\.json 缺少 testPorts 对象/ })
-  assert.throws(
-    () => ports({ testPorts: { bandWidth: 0, offsetStride: 100, ports: { alpha: 30000 } } }).names(),
-    /正整数/
-  )
-  assert.throws(() => ports({ testPorts: { bandWidth: 10, offsetStride: 100, ports: {} } }).names(), /必须是非空对象/)
-  assert.throws(
-    () => ports({ testPorts: { bandWidth: 10, offsetStride: 100, ports: { alpha: 0 } } }).names(),
-    /1\.\.65535/
-  )
-  assert.throws(() => ports('not json').names(), /is not valid JSON/)
+  assert.throws(() => resolveTestPort({ project: '', root: mainRoot, env: {} }), /project 不能为空/)
+  assert.throws(() => resolveTestPort({ project: '   ', root: mainRoot, env: {} }), /project 不能为空/)
 })
 
-it('applyTestPorts 只把端口段写进指定的那个 project', () => {
-  const api = ports()
+it('resolveTestPort 对现有 8 个浏览器项目映射到互不碰撞的基端口', () => {
+  const mainRoot = makeRoot('dir')
+  const projects = [
+    'react-web-ui-demo',
+    'vue-web-ui-demo',
+    'interweave-frontend',
+    'interweave-frontend-touch',
+    'web-ui',
+    'web-ui-reduced-motion',
+    'web-ui-touch',
+    'browser-kit'
+  ]
+  const ports = projects.map(project => resolveTestPort({ project, root: mainRoot, env: {} }))
+  assert.equal(new Set(ports).size, projects.length)
+})
 
+it('resolveTestPort 自动隔离主仓与 linked worktree，且 symlink 指向同一 worktree 得相同端口', () => {
+  const mainRoot = makeRoot('dir')
+  const noGitRoot = makeRoot('none')
+  const missingRoot = path.join(tempRoot, 'does-not-exist')
+  const wtOne = makeRoot('file')
+  const wtTwo = makeRoot('file')
+
+  const mainPort = resolveTestPort({ project: 'alpha', root: mainRoot, env: {} })
+  // 无 .git 与不存在目录按主仓处理，不因 ENOENT 抛错。
+  assert.equal(resolveTestPort({ project: 'alpha', root: noGitRoot, env: {} }), mainPort)
+  assert.equal(resolveTestPort({ project: 'alpha', root: missingRoot, env: {} }), mainPort)
+
+  const wtOnePort = resolveTestPort({ project: 'alpha', root: wtOne, env: {} })
+  const wtTwoPort = resolveTestPort({ project: 'alpha', root: wtTwo, env: {} })
+  assert.ok(wtOnePort >= BASE_PORT && wtOnePort <= 49140)
+  assert.ok(wtTwoPort >= BASE_PORT && wtTwoPort <= 49140)
+  assert.notEqual(wtOnePort, mainPort)
+  assert.notEqual(wtTwoPort, mainPort)
+  assert.notEqual(wtOnePort, wtTwoPort)
+
+  // 经 symlink 进入同一个 linked worktree（或主仓）时保持一致端口。
+  const wtLink = path.join(tempRoot, 'wt-one-symlink')
+  fs.symlinkSync(wtOne, wtLink, 'dir')
+  assert.equal(resolveTestPort({ project: 'alpha', root: wtLink, env: {} }), wtOnePort)
+
+  const mainLink = path.join(tempRoot, 'main-symlink')
+  fs.symlinkSync(mainRoot, mainLink, 'dir')
+  assert.equal(resolveTestPort({ project: 'alpha', root: mainLink, env: {} }), mainPort)
+})
+
+it('resolveTestPort 校验 GREYPAN_TEST_PORT_OFFSET 的归零、非负整数与整段上限', () => {
+  const mainRoot = makeRoot('dir')
+  const basePort = resolveTestPort({ project: 'alpha', root: mainRoot, env: {} })
+
+  // 未设、空串与 '0' 均视为 0 偏移。
+  assert.equal(resolveTestPort({ project: 'alpha', root: mainRoot, env: {} }), basePort)
+  assert.equal(resolveTestPort({ project: 'alpha', root: mainRoot, env: { GREYPAN_TEST_PORT_OFFSET: '' } }), basePort)
+  assert.equal(resolveTestPort({ project: 'alpha', root: mainRoot, env: { GREYPAN_TEST_PORT_OFFSET: '0' } }), basePort)
+
+  // 允许任意非负整数偏移（不再强制 stride 倍数）。
+  assert.equal(
+    resolveTestPort({ project: 'alpha', root: mainRoot, env: { GREYPAN_TEST_PORT_OFFSET: '1' } }),
+    basePort + 1
+  )
+  assert.equal(
+    resolveTestPort({ project: 'alpha', root: mainRoot, env: { GREYPAN_TEST_PORT_OFFSET: '37' } }),
+    basePort + 37
+  )
+  assert.equal(
+    resolveTestPort({ project: 'alpha', root: mainRoot, env: { GREYPAN_TEST_PORT_OFFSET: '100' } }),
+    basePort + 100
+  )
+
+  for (const invalid of ['-1', '-100', '1.5', 'abc', '   ', '1e2', '+10']) {
+    assert.throws(
+      () => resolveTestPort({ project: 'alpha', root: mainRoot, env: { GREYPAN_TEST_PORT_OFFSET: invalid } }),
+      { message: `test-ports: GREYPAN_TEST_PORT_OFFSET 必须是非负整数，收到 "${invalid}"` }
+    )
+  }
+
+  // 整段上界精确校验：basePort + offset + BAND_WIDTH - 1 <= 65535。
+  const maxOffset = MAX_PORT - basePort - BAND_WIDTH + 1
+  assert.equal(
+    resolveTestPort({ project: 'alpha', root: mainRoot, env: { GREYPAN_TEST_PORT_OFFSET: String(maxOffset) } }),
+    MAX_PORT - BAND_WIDTH + 1
+  )
+  assert.throws(
+    () =>
+      resolveTestPort({
+        project: 'alpha',
+        root: mainRoot,
+        env: { GREYPAN_TEST_PORT_OFFSET: String(maxOffset + 1) }
+      }),
+    { message: `test-ports: 偏移 ${maxOffset + 1} 让 "alpha" 超出端口上限 ${MAX_PORT}` }
+  )
+  assert.throws(
+    () => resolveTestPort({ project: 'alpha', root: mainRoot, env: { GREYPAN_TEST_PORT_OFFSET: '100000' } }),
+    /超出端口上限 65535/
+  )
+})
+
+it('applyTestPorts 只把端口段写进指定的 project 并拒绝与手写 test.api 共存', () => {
   function projectsConfig(): TestPortsTargetConfig {
     return { test: { projects: [{ test: { name: 'jsdom' } }, { test: { name: 'browser' } }] } }
   }
 
   // host 与 strictPort 跟着端口一起写：它们不是调用点的偏好，而是这次分配能落回自己段内的前提。
   const config = projectsConfig()
-  applyTestPorts(config, api, { project: 'alpha', testName: 'browser' })
-  assert.deepEqual(config.test?.projects?.[1]?.test?.api, { host: '127.0.0.1', port: 30000, strictPort: false })
+  applyTestPorts(config, 32540, { testName: 'browser' })
+  assert.deepEqual(config.test?.projects?.[1]?.test?.api, { host: '127.0.0.1', port: 32540, strictPort: false })
   assert.equal(config.test?.projects?.[0]?.test?.api, undefined, 'jsdom project 不该抢这个端口')
 
   // 没有 projects 的单包配置写根 test 块。
   const root: TestPortsTargetConfig = { test: {} }
-  applyTestPorts(root, api, { project: 'beta' })
-  assert.deepEqual(root.test?.api, { host: '127.0.0.1', port: 30010, strictPort: false })
+  applyTestPorts(root, 48600)
+  assert.deepEqual(root.test?.api, { host: '127.0.0.1', port: 48600, strictPort: false })
 
   // vitest 5 还会为每个跑到的 project 单独求值一遍，那一遍手里没有 projects 数组。插件只动根那一遍，
   // 于是根上写进去的值随合并原样带过来（左），没被点名的 project 也拿不到别人的端口（右）。
-  const inherited: TestPortsTargetConfig = { test: { name: 'browser', api: { host: '127.0.0.1', port: 30000 } } }
-  applyTestPorts(inherited, api, { project: 'alpha', testName: 'browser' })
-  assert.deepEqual(inherited.test?.api, { host: '127.0.0.1', port: 30000 })
+  const inherited: TestPortsTargetConfig = { test: { name: 'browser', api: { host: '127.0.0.1', port: 32540 } } }
+  applyTestPorts(inherited, 32540, { testName: 'browser' })
+  assert.deepEqual(inherited.test?.api, { host: '127.0.0.1', port: 32540 })
 
   const jsdomPass: TestPortsTargetConfig = { test: { name: 'jsdom' } }
-  applyTestPorts(jsdomPass, api, { project: 'alpha', testName: 'browser' })
+  applyTestPorts(jsdomPass, 32540, { testName: 'browser' })
   assert.equal(jsdomPass.test?.api, undefined, 'jsdom 那一遍不该拿到 browser 的端口')
 
-  // 指错 project 必须响亮失败：静默什么都不写时，这一路退回 vitest 的默认 63315，而那正是同机并行
-  // 的其他 worktree 与同一轮 turbo test 里其他包共同起点的端口。
-  assert.throws(() => applyTestPorts(projectsConfig(), api, { project: 'alpha', testName: 'worker' }), {
+  // 指错 project 必须响亮失败：静默什么都不写时，这一路退回 vitest 的默认端口，撞上同机并行风险。
+  assert.throws(() => applyTestPorts(projectsConfig(), 32540, { testName: 'worker' }), {
     message: /^test-ports: 配置里没有 test\.name 为 "worker" 的 project/
   })
-  assert.throws(() => applyTestPorts({}, api, { project: 'alpha' }), /没有 test 块/)
+  assert.throws(() => applyTestPorts({}, 32540), /没有 test 块/)
 
   // 两处都能写 api 时生效的那一处取决于合并顺序，所以直接判配置写坏了。
-  const both: TestPortsTargetConfig = { test: { projects: [{ test: { name: 'browser', api: { port: 1234 } } }] } }
-  assert.throws(() => applyTestPorts(both, api, { project: 'alpha', testName: 'browser' }), /已经写了 test\.api/)
+  const bothProject: TestPortsTargetConfig = {
+    test: { projects: [{ test: { name: 'browser', api: { port: 1234 } } }] }
+  }
+  assert.throws(() => applyTestPorts(bothProject, 32540, { testName: 'browser' }), /已经写了 test\.api/)
 
-  // host 是调用点唯一可以改写的默认值，偏移照样生效。
+  const bothRoot: TestPortsTargetConfig = { test: { api: { port: 1234 } } }
+  assert.throws(() => applyTestPorts(bothRoot, 32540), /已经写了 test\.api/)
+
+  // host 是调用点唯一可以改写的默认值。
   const custom: TestPortsTargetConfig = { test: {} }
-  applyTestPorts(custom, ports(allocation, '100'), { project: 'alpha', host: 'localhost' })
-  assert.deepEqual(custom.test?.api, { host: 'localhost', port: 30100, strictPort: false })
+  applyTestPorts(custom, 32640, { host: 'localhost' })
+  assert.deepEqual(custom.test?.api, { host: 'localhost', port: 32640, strictPort: false })
 })
 
 // Vite 的 config hook 带 `this: ConfigPluginContext`，直接当裸函数调用会被类型层拦下；
@@ -157,34 +236,41 @@ const configHookOf = (options: TestPortsPluginOptions): ConfigHook => {
   return hook as ConfigHook
 }
 
-it('testPorts 的 config hook 在 build 档跳过，只在 serve 档写端口', () => {
-  // build 档连表都不读：故意给一份根本不存在的端口表，只要读了就会抛。空配置也不该让
-  // 测试编排数据变成构建的前置依赖。
-  const buildHook = configHookOf({ project: 'alpha', configFile: 'no-such-port-table.json' })
-  const build: TestPortsTargetConfig = {}
-  assert.doesNotThrow(() => buildHook(build, { command: 'build', mode: 'test' }))
-  assert.deepEqual(build, {})
+it('testPorts 的 config hook 在 build 档跳过，只在 serve 档写入确定性端口', () => {
+  // build 档完全跳过：既不依赖 test 块，也不因环境里带了非法偏移而让构建失败。
+  withTestPortOffset('invalid', () => {
+    const buildHook = configHookOf({ project: 'alpha' })
+    const buildConfig: TestPortsTargetConfig = {}
+    assert.doesNotThrow(() => buildHook(buildConfig, { command: 'build', mode: 'test' }))
+    assert.deepEqual(buildConfig, {})
+  })
 
-  // serve 档用夹具端口表，不依赖真实仓库根的 monorepo.json：configFile 按仓库根相对给出，
-  // path.join 会把临时目录折算出来的 `..` 归掉。夹具里有 alpha，值固定为 30000（加本机偏移）。
-  const configFile = path.relative(
-    getWorkspaceRoot(import.meta.dirname),
-    path.join(makeFixture(allocation), 'monorepo.json')
-  )
-  const call = configHookOf({ project: 'alpha', configFile })
+  withTestPortOffset(undefined, () => {
+    const rootHook = configHookOf({ project: 'alpha' })
+    // serve 档确实往下走：空配置会撞上「没有 test 块」这条判据。
+    assert.throws(() => rootHook({}, { command: 'serve', mode: 'test' }), /没有 test 块/)
 
-  // serve 档确实往下走：同样的空配置会撞上「没有 test 块」这条判据。
-  assert.throws(() => call({}, { command: 'serve', mode: 'test' }), /没有 test 块/)
+    const served: TestPortsTargetConfig = { test: {} }
+    rootHook(served, { command: 'serve', mode: 'test' })
+    assert.equal(served.test?.api?.host, '127.0.0.1')
+    assert.equal(served.test?.api?.strictPort, false)
+    const assigned = served.test?.api?.port
+    assert.equal(typeof assigned, 'number')
+    assert.ok(assigned! >= BASE_PORT && assigned! <= 49140)
+    assert.equal((assigned! - BASE_PORT) % BAND_WIDTH, 0)
 
-  // 带 test 块时把 host、端口与 strictPort 一起写进去。这里只钉结构，免得测试跟着夹具表
-  // 或开发机上的端口偏移漂移。不传 testName 的插件写根 test 块。
-  const rootHook = configHookOf({ project: 'alpha', configFile })
-  const served: TestPortsTargetConfig = { test: {} }
-  rootHook(served, { command: 'serve', mode: 'test' })
-  assert.equal(served.test?.api?.host, '127.0.0.1')
-  assert.equal(served.test?.api?.strictPort, false)
-  assert.equal(typeof served.test?.api?.port, 'number')
-  assert.ok((served.test?.api?.port ?? 0) > 0)
+    const projectsHook = configHookOf({ project: 'alpha', testName: 'browser' })
+    const projectsConfig: TestPortsTargetConfig = {
+      test: { projects: [{ test: { name: 'jsdom' } }, { test: { name: 'browser' } }] }
+    }
+    projectsHook(projectsConfig, { command: 'serve', mode: 'test' })
+    assert.equal(projectsConfig.test?.projects?.[0]?.test?.api, undefined)
+    assert.deepEqual(projectsConfig.test?.projects?.[1]?.test?.api, {
+      host: '127.0.0.1',
+      port: assigned,
+      strictPort: false
+    })
+  })
 })
 
 afterAll(() => {
