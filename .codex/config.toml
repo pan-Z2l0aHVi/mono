@@ -1,3 +1,5 @@
+# 现状保持 sandbox_mode = "danger-full-access"（Codex Permission Profiles 方案 A）：linked worktree 的 admin dir（.git/worktrees/<slug>/index.lock）及本地共享缓存受沙箱按名拦截，降级会导致线程频繁阻塞。
+# 复测触发点：当 Codex 上游支持仓库级 Permission Profiles 并可精确放行 linked worktree admin dir 与共享缓存/FSEvents 时，按下方三块指引重测并评估切回 workspace-write。
 # Codex 仓级配置（2026-10-20 从 ~/.codex/config.toml 下放）。
 #
 # 作用域：本仓库所有目录。Codex 从项目根（含 .git 的目录）向下逐级加载
