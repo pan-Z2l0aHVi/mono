@@ -699,11 +699,12 @@ export default function Demo() {
 
 ### 属性
 
-| 名称                  | 说明                                                        | 类型                           | 默认值     |
-| --------------------- | ----------------------------------------------------------- | ------------------------------ | ---------- |
-| `appearance`          | 配色方案：`light`、`dark` 或 `system`。                     | `ThemeAppearance \| undefined` | -          |
-| `resolved-appearance` | 解析后的配色方案，只读反射输出。                            | `ResolvedThemeAppearance`      | `'light'`  |
-| `motion`              | 当前嵌套主题范围的动效偏好：`full`、`reduced` 或 `system`。 | `ThemeMotion`                  | `'system'` |
+| 名称                  | 说明                                                                                  | 类型                           | 默认值     |
+| --------------------- | ------------------------------------------------------------------------------------- | ------------------------------ | ---------- |
+| `appearance`          | 配色方案：`light`、`dark` 或 `system`。                                               | `ThemeAppearance \| undefined` | -          |
+| `resolved-appearance` | 解析后的配色方案，只读反射输出。                                                      | `ResolvedThemeAppearance`      | `'light'`  |
+| `motion`              | 当前嵌套主题范围的动效偏好：`full`、`reduced` 或 `system`。                           | `ThemeMotion`                  | `'system'` |
+| `no-reveal`           | 压制本层外观切换的揭示动画：存在即生效，appearance 照常提交但不启动 View Transition。 | `Boolean`                      | `false`    |
 
 ### Slot
 
@@ -743,6 +744,8 @@ Portal 类组件在未显式传入 `overlayContainer` 时，会解析到最近�
 根主题揭示整页。嵌套主题只揭示自己的区域。揭示方向跟随解析后的外观，深色与浅色两个方向反向播放。
 
 以下情况都会立即应用新的 appearance，不播放揭示：浏览器不支持、作用域为 reduced-motion、时长为 0、上一次揭示尚未结束。`appearance="system"` 下的系统深浅切换不播放动画。
+
+`no-reveal` attribute 存在时同样跳过揭示：appearance 照常提交、不启动 View Transition。它面向宿主的启动期首次外观应用这类「非用户发起」的变更，手动切换不应设置它。该 attribute 以「存在即生效」表达——动态绑定时必须以存在/移除切换（Vue 下 `:no-reveal="cond ? '' : null"`），绑定 `false` 会被序列化成 `no-reveal="false"` 而恒真，导致揭示动画静默永久失效。
 
 根主题揭示期间会暂时阻止当前文档的新指针、键盘激活和可取消的输入事件；嵌套主题优先限制自身范围，无法归属的文档级事件按整个文档处理。滚轮会结束揭示以恢复滚动。程序化赋值、浏览器快捷键和部分输入法操作不受此保护。
 

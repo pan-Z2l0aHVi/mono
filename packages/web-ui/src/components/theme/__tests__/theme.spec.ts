@@ -246,6 +246,55 @@ describe('WebUiTheme 组件', () => {
       document.startViewTransition = original
       document.adoptedStyleSheets = originalAdoptedStyleSheets
     })
+
+    /*
+     * no-reveal 是揭示动画的显式压制通道，判据是「存在即压制、移除即恢复」：与 motion
+     * 三档不同，它面向宿主的启动期首次外观应用这类「非用户发起」的变更（见组件 docblock）。
+     * jsdom 里对着桩函数复述这两个分支；揭示形态本身由 theme-transition.browser.spec.ts 承接。
+     */
+    describe('no-reveal 通道', () => {
+      it('no-reveal 存在时 appearance 变更直接落地，不启动 View Transition', async () => {
+        const stub = stubStartViewTransition()
+        const theme = createTheme('light')
+        theme.noReveal = true
+        await theme.updateComplete
+        expect(theme.hasAttribute('no-reveal')).toBe(true)
+
+        theme.appearance = 'dark'
+        await theme.updateComplete
+        expect(stub.startViewTransition).not.toHaveBeenCalled()
+        expect(theme.appearance).toBe('dark')
+        expect(theme.resolvedAppearance).toBe('dark')
+
+        theme.remove()
+        stub.restore()
+      })
+
+      it('no-reveal 移除后恢复揭示动画', async () => {
+        const stub = stubStartViewTransition()
+        const theme = createTheme('light')
+        theme.noReveal = true
+        await theme.updateComplete
+
+        theme.appearance = 'dark'
+        await theme.updateComplete
+        expect(stub.startViewTransition).not.toHaveBeenCalled()
+
+        theme.noReveal = false
+        await theme.updateComplete
+        expect(theme.hasAttribute('no-reveal')).toBe(false)
+
+        theme.appearance = 'light'
+        await theme.updateComplete
+        expect(stub.startViewTransition).toHaveBeenCalledTimes(1)
+        // 释放模块级 flight token：不 await 掉本次 flight，同文件后续用例的 appearance
+        // 赋值会走「飞行中直接落地」分支（见 stubStartViewTransition 的 docblock）。
+        await stub.lastTransition!.finished
+
+        theme.remove()
+        stub.restore()
+      })
+    })
   })
 
   describe('View Transition capture 清理', () => {
