@@ -9,7 +9,10 @@ on:
     branches: [main]
   pull_request_target:
     branches: [main]
-    types: [auto_merge_enabled, ready_for_review]
+    types: [auto_merge_enabled, auto_merge_disabled, ready_for_review, closed]
+  workflow_run:
+    workflows: [CI]
+    types: [completed]
   workflow_dispatch:
 
 permissions:
@@ -22,7 +25,7 @@ concurrency:
 jobs:
   advance-queue:
     name: Advance PR auto-update queue
-    if: ${{ github.event_name != 'pull_request_target' || (github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository) }}
+    if: ${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository) }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
 

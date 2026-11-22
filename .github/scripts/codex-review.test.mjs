@@ -3927,6 +3927,10 @@ exit 2
     assert.equal(cleanReuse.outcome.reused, true)
     assert.match(cleanReuse.outputs, /^incremental=true$/mu)
     assert.match(cleanReuse.outputs, /^reused=true$/mu)
+    assert.match(cleanReuse.outputs, new RegExp(`^review_start_sha=${prHead1}$`, 'mu'))
+    const cleanScope = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-scope.json'), 'utf8'))
+    assert.equal(cleanScope.review_start_sha, prHead1)
+    assert.equal(readConclusion(conclusionDir).meta.review_start_sha, prHead1)
     const cleanValidated = runCli('validate', {
       env: {
         RUNNER_TEMP: tempRoot,
@@ -3941,9 +3945,19 @@ exit 2
     const cleanPersisted = readConclusion(conclusionDir)
     assert.equal(cleanPersisted.meta.head_sha, syncedPrHead)
     assert.equal(cleanPersisted.meta.base_sha, advancedBase)
+    assert.equal(cleanPersisted.meta.review_start_sha, prHead1)
     assert.equal(cleanPersisted.meta.reused_from, '8801')
     assert.equal(cleanPersisted.meta.reuse_reason, 'zero_incremental_diff')
     assert.equal(cleanPersisted.meta.generated_at, '2026-11-20T08:00:00Z')
+    assert.doesNotThrow(() =>
+      validateIncrementalBaseline({
+        prior: cleanPersisted,
+        priorScope: JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-scope.json'), 'utf8')),
+        expectedHead: syncedPrHead,
+        expectedBase: advancedBase,
+        config: { fingerprint: realFingerprint }
+      })
+    )
     const cleanGate = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: syncedPrHead }, conclusionDir })
     assert.equal(cleanGate.result.status, 0, 'zero-diff reuse with Block 0 passes the gate')
     const cleanComment = renderConclusion({
@@ -3961,17 +3975,26 @@ exit 2
       /- 复用：主干同步后净增量为 0（三方合并无冲突），沿用 run `8801` 的审查结论（含原有 Block 判定），未再调用模型/
     )
 
-    // 场景 ②：纯 Update branch 零净增量复用（Block > 0）→ 原样保留 Block，codex-gate 仍判红
+    // 场景 ②：纯 Update branch 零净增量复用（Block > 0，含历史增量 lineage）→ 统一 review_start_sha=prior.meta.head_sha，原样保留 Block，codex-gate 仍判红
     writePriorRun({
       findingsPayload: {
         summary: '存在阻断缺陷。',
         coverage: { inspected: ['src/a.ts'], uncovered: [] },
         findings: [finding('Block')]
+      },
+      metaOverrides: {
+        review_start_sha: baseSha,
+        review_lineage: [{ head_sha: baseSha, findings: [], resolutions: [] }]
       }
     })
     const blockReuse = runPrepInc({ CODEX_REVIEW_PRIOR_RUN_ID: '8802' })
     assert.equal(blockReuse.outcome.incremental, true)
     assert.equal(blockReuse.outcome.reused, true)
+    assert.match(blockReuse.outputs, new RegExp(`^review_start_sha=${prHead1}$`, 'mu'))
+    const blockScope = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-scope.json'), 'utf8'))
+    assert.equal(blockScope.incremental, true)
+    assert.equal(blockScope.review_start_sha, prHead1)
+    assert.equal(readConclusion(conclusionDir).meta.review_start_sha, prHead1)
     const blockValidated = runCli('validate', {
       env: {
         RUNNER_TEMP: tempRoot,
@@ -3985,7 +4008,17 @@ exit 2
     assert.equal(blockValidated.outputs.blocks, '1')
     const blockPersisted = readConclusion(conclusionDir)
     assert.equal(blockPersisted.findings.counts.Block, 1)
+    assert.equal(blockPersisted.meta.review_start_sha, prHead1)
     assert.equal(blockPersisted.meta.reuse_reason, 'zero_incremental_diff')
+    assert.doesNotThrow(() =>
+      validateIncrementalBaseline({
+        prior: blockPersisted,
+        priorScope: blockScope,
+        expectedHead: syncedPrHead,
+        expectedBase: advancedBase,
+        config: { fingerprint: realFingerprint }
+      })
+    )
     const blockGate = runCli('gate', { env: { CODEX_REVIEW_LIVE_HEAD_SHA: syncedPrHead }, conclusionDir })
     assert.equal(blockGate.result.status, 1, 'zero-diff reuse carrying prior Block must still block merge')
     const blockComment = renderConclusion({

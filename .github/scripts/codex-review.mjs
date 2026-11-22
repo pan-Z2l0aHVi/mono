@@ -2063,9 +2063,8 @@ export function commandPrepareIncremental({
             head_sha: range.headSha,
             merge_base_sha: range.mergeBaseSha,
             ...(range.diffBaseSha ? { diff_base_sha: range.diffBaseSha } : {}),
-            ...(hasLineage && typeof prior.meta.review_start_sha === 'string'
-              ? { review_start_sha: prior.meta.review_start_sha, incremental: true }
-              : {}),
+            review_start_sha: prior.meta.head_sha,
+            ...(hasLineage ? { incremental: true } : {}),
             diff_bytes: 0,
             empty_diff: true,
             changed_paths: [],
@@ -2089,9 +2088,7 @@ export function commandPrepareIncremental({
         status: 'reviewed',
         reused_from: priorRunId,
         reuse_reason: 'zero_incremental_diff',
-        ...(hasLineage && typeof prior.meta.review_start_sha === 'string'
-          ? { review_start_sha: prior.meta.review_start_sha }
-          : {}),
+        review_start_sha: prior.meta.head_sha,
         ...(hasLineage ? { review_lineage: prior.meta.review_lineage } : {}),
         ...(Array.isArray(prior.meta.output_sanitized) && prior.meta.output_sanitized.length > 0
           ? { output_sanitized: prior.meta.output_sanitized }
@@ -2106,7 +2103,7 @@ export function commandPrepareIncremental({
           base_sha: range.baseSha,
           head_sha: range.headSha,
           merge_base_sha: range.mergeBaseSha,
-          review_start_sha: range.diffBaseSha ?? range.startSha ?? range.mergeBaseSha,
+          review_start_sha: prior.meta.head_sha,
           diff_path: path.join(required.RUNNER_TEMP, 'pr.diff'),
           diff_bytes: '0',
           incremental: 'true',

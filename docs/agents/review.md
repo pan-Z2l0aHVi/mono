@@ -65,8 +65,9 @@ CI 默认 checkout 是 base/head 的临时合并对象，代码 review 固定在
 或 step 结果不符时，不能证明当前输入已通过 CI。
 
 改动 `.github/workflows/ci.yml` 的 `codex-review` 与 `codex-autofix-plan` job、任一 `.github/workflows/codex-review*.yml`、
-`.github/scripts/` 下的 `codex-review.mjs`、`codex-autofix.mjs`、`check-review-output.mjs` 或 `lib/` 中可信脚本时，
-人工 review 另读 [ADR-0021](../adr/0021-codex-review-gate.md)「权限拆分与安全不变量」。
+`.github/workflows/pr-auto-update-queue.yml`、`.github/scripts/` 下的 `codex-review.mjs`、`codex-autofix.mjs`、
+`check-review-output.mjs`、`pr-auto-update-queue.mjs` 或 `lib/` 中可信脚本时，
+人工 review 另读 [ADR-0021](../adr/0021-codex-review-gate.md)「权限拆分与安全不变量」（以及队列触发与同仓围栏约定，配置见 [`.github/codex/README.md`](../../.github/codex/README.md#单仓-pr-自动推进队列pr-auto-update-queue)）。
 
 ## 审查内容与发现
 

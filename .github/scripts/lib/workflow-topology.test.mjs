@@ -1074,21 +1074,26 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.deepEqual(queue.triggers.map(item => item.on).sort(compareStrings), [
       'pull_request_target',
       'push',
-      'workflow_dispatch'
+      'workflow_dispatch',
+      'workflow_run'
     ])
     assert.deepEqual(queue.triggers.find(item => item.on === 'pull_request_target')?.branches, ['main'])
     assert.deepEqual(queue.triggers.find(item => item.on === 'pull_request_target')?.types, [
       'auto_merge_enabled',
-      'ready_for_review'
+      'auto_merge_disabled',
+      'ready_for_review',
+      'closed'
     ])
+    assert.deepEqual(queue.triggers.find(item => item.on === 'workflow_run')?.types, ['completed'])
+    assert.match(queueText, /workflow_run:\n {4}workflows: \[CI\]\n {4}types: \[completed\]/)
     assert.deepEqual(queue.permissions, { contents: 'read' })
     const queueJob = queue.jobs['advance-queue']
     assert.ok(queueJob, 'advance-queue job must exist')
     assert.deepEqual(queueJob.permissions, {}, 'advance-queue must not elevate workflow token permissions')
     assert.equal(
       queueJob.if,
-      "${{ github.event_name != 'pull_request_target' || (github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository) }}",
-      'pull_request_target runs must reject fork and non-main PRs at the job gate'
+      "${{ github.event_name == 'push' || github.event_name == 'workflow_dispatch' || (github.event_name == 'pull_request_target' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository) || (github.event_name == 'workflow_run' && github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository) }}",
+      'queue job must restrict pull_request_target and workflow_run triggers to same-repo PRs'
     )
     const queueJobText = workflowJob(queueText, 'advance-queue')
     assert.match(queueText, /group: pr-auto-update-queue\n {2}cancel-in-progress: false/)
