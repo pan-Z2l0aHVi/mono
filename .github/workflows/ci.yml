@@ -326,6 +326,11 @@ jobs:
           prompt-file: ${{ runner.temp }}/trusted/codex/prompts/review.md
           output-schema-file: ${{ runner.temp }}/trusted/codex/schemas/review-findings.schema.json
           output-file: ${{ runner.temp }}/codex-final-message.json
+          # pr-auto-update-queue 以 greypan-merge-bot[bot] 身份 push 分支，该 App 不是仓库
+          # 协作者，collaborators API 查得 'none'，action 的写权限校验会拒绝其触发的 run
+          # （review 报 model_failed：无输出文件）。allow-bot-users 为此类 bot 设计的显式
+          # 豁免入口：仅列受信 bot，不支持 *。
+          allow-bot-users: greypan-merge-bot
 
       - name: Record review conclusion
         if: always()
