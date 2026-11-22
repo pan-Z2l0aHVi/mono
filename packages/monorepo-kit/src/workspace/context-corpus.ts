@@ -256,6 +256,16 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
                 return false
               }
 
+              // 字面量 workspace（目录自身就是包，来自无 glob 段的 pattern）也要过入口检查：
+              // 下面的 findWorkspaceRoots 只从容器子项开始，会漏掉目录自身的路由缺口。
+              if (fs.existsSync(path.join(absolute, 'package.json'))) {
+                const tracked = fs.existsSync(path.join(absolute, options.entry)) || coveredByAncestorEntry(absolute)
+                if (!tracked)
+                  addError(
+                    `${relative(absolute)}: workspace needs its own ${options.entry}, or an ancestor directory that has one`
+                  )
+              }
+
               function findWorkspaceRoots(dir: string): void {
                 const entries = fs.readdirSync(dir, { withFileTypes: true })
                 for (const entry of entries) {
@@ -387,6 +397,10 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
                 walk(directory, file => path.basename(file) === options.entry)
               ),
               // workspace README 与包级入口文档同属指令面，但只能列一层：walk 会连 node_modules 与 dist 一起吞进来。
+              // 字面量 workspace（目录自身即包）的 README 在目录根部，容器型目录该文件通常不存在，存在即收。
+              ...options.workspaces.flatMap(directory =>
+                exists(`${directory}/README.md`) ? [path.join(root, directory, 'README.md')] : []
+              ),
               ...options.workspaces.flatMap(directory =>
                 exists(directory)
                   ? fs

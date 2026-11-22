@@ -131,6 +131,12 @@ function collect(root: string, options: NoMutualLinksOptions): CorpusEntry[] {
   for (const workspace of options.workspaces ?? []) {
     addNamed(root, workspace.directory, workspace.deep, true, entries)
     addNamed(root, workspace.directory, workspace.shallow, false, entries)
+    // 字面量 workspace（目录自身即包）的 shallow 文件在目录根部而非子目录里；容器型目录该文件
+    // 通常不存在，存在即收，不改变既有容器行为。
+    for (const name of workspace.shallow ?? []) {
+      const file = `${workspace.directory}/${name}`
+      if (fs.existsSync(path.join(root, file))) entries.set(file, { path: file, file })
+    }
   }
   if (options.mirror) {
     const locked = new Set(options.mirror.lockedNames(root))

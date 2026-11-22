@@ -57,7 +57,15 @@ export function readPnpmWorkspaceDirectories(root: string): string[] {
       const glob = segments.findIndex(segment => segment.includes('*'))
       // 字面量模式（无 glob 段）声明的就是 workspace 目录本身，必须保留：
       // 丢弃会让它逃过以容器目录为扫描面的边界与语料检查。
-      if (glob < 0) return [segments.join('/')]
+      // 字面量 `.` 会把扫描面抬到仓库根，而边界与语料的消费面都以 workspace 目录为单位——
+      // 根级 workspace 不被支持，显式报错而不是静默丢掉或整树扫描。
+      if (glob < 0) {
+        const directory = segments.join('/')
+        if (directory === '.' || directory === '') {
+          throw new Error(`${WORKSPACE_FILE} does not support a literal root workspace pattern ('.')`)
+        }
+        return [directory]
+      }
       return glob > 0 ? [segments.slice(0, glob).join('/')] : []
     })
   return [...new Set(directories)].sort(byCodeUnit)

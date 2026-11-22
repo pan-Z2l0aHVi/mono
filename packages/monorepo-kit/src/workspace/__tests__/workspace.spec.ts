@@ -26,6 +26,16 @@ it('workspace directories follow the package patterns', () => {
   }
 })
 
+it('rejects a literal root workspace pattern instead of silently widening the scan face', () => {
+  const root = workspaceFixture(['.'])
+  try {
+    // 字面量 `.` 会把扫描面抬到仓库根：边界与语料的消费面都以 workspace 目录为单位，根级不被支持。
+    assert.throws(() => readPnpmWorkspaceDirectories(root), /root workspace/)
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
 it('repo-root', () => {
   const root = getWorkspaceRoot(process.cwd())
   // 根不能在断言里写死成 `mono`：worktree 的目录名是分支派生的，同一个仓库会有多个根路径。

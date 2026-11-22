@@ -134,6 +134,22 @@ it('no-mutual-links', async () => {
   assert.match(await failure(unreadable, makeFixture()), /^throw:.*skills-lock\.json is missing/)
 })
 
+it('literal workspace directories contribute their own shallow files', async () => {
+  const literal = defineNoMutualLinks({
+    ...options,
+    workspaces: [{ directory: 'tools/cli', deep: [], shallow: ['README.md'] }],
+    forbiddenDirections: [
+      ...(options.forbiddenDirections ?? []),
+      { from: 'tools/', to: '.agents/rules/', label: 'workspace-to-rules' }
+    ]
+  })
+  const root = makeFixture()
+  write(root, 'tools/cli/README.md', '[rule](../../.agents/rules/x.md)\n')
+  write(root, '.agents/rules/x.md', '# rule\n')
+  // 目录自身的 README（而非子目录里的）必须进语料：shallow 只扫子目录会漏掉字面量包。
+  assert.match(await failure(literal, root), /^md:[\s\S]*workspace-to-rules link forbidden/)
+})
+
 afterAll(() => {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 })
