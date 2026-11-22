@@ -378,8 +378,34 @@ export function readConclusion(directory) {
   }
 }
 
-/** 配置快照只保留非密钥字段；指纹把后台配置与审查输入范围绑成复用键的一部分。 */
-export function inspectConfig(env = process.env) {
+function stripPreloadBlock(promptText) {
+  const start = promptText.indexOf(PRELOAD_START_MARKER)
+  const end = promptText.indexOf(PRELOAD_END_MARKER)
+  if (start !== -1 && end !== -1 && end > start) {
+    return `${promptText.slice(0, start)}${PRELOAD_START_MARKER}\n${PRELOAD_END_MARKER}${promptText.slice(end + PRELOAD_END_MARKER.length)}`
+  }
+  return promptText
+}
+
+function readTrustedAssetHashes(trustedRoot) {
+  const promptFile = path.join(trustedRoot, 'codex/prompts/review.md')
+  const schemaFile = path.join(trustedRoot, 'codex/schemas/review-findings.schema.json')
+  if (!fs.existsSync(promptFile) || !fs.existsSync(schemaFile)) return null
+  try {
+    // 剥掉 prepare 运行时注入的 PR 预注入区块，让同一模板在 prepare 前后算出同一指纹。
+    const promptText = stripPreloadBlock(fs.readFileSync(promptFile, 'utf8'))
+    const schemaText = fs.readFileSync(schemaFile, 'utf8')
+    return {
+      review_prompt_sha256: createHash('sha256').update(promptText).digest('hex'),
+      review_schema_sha256: createHash('sha256').update(schemaText).digest('hex')
+    }
+  } catch {
+    return null
+  }
+}
+
+/** 配置快照只保留非密钥字段；指纹把后台配置、排除清单与可信审查契约绑成复用键的一部分。 */
+export function inspectConfig(env = process.env, { trustedRoot = path.resolve(import.meta.dirname, '..') } = {}) {
   const text = name => (env[name] ?? '').trim()
   const missing = CONFIG_ENV.filter(name => text(name) === '')
   const values = {
@@ -389,12 +415,15 @@ export function inspectConfig(env = process.env) {
     version: text('CODEX_VERSION'),
     key_present: text('CODEX_REVIEW_API_KEY') !== ''
   }
-  // 排除清单也是审查输入：清单换了，同 head 上按旧范围产出的结论不能借复用回到绿色。
-  // 只进 fingerprint，不进 config 快照——快照描述的是后台配置，不是脚本常量。
-  const fingerprint = createHash('sha256')
-    .update(JSON.stringify({ ...values, excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS }))
-    .digest('hex')
-    .slice(0, 16)
+  // 排除清单与可信 prompt/schema 也是审查输入：任意项变更或文件缺失（fail-closed 返回空指纹）
+  // 都不能让旧结论借复用回到绿色。只进 fingerprint，不进 config 快照。
+  const assetHashes = readTrustedAssetHashes(trustedRoot)
+  const fingerprint = assetHashes
+    ? createHash('sha256')
+        .update(JSON.stringify({ ...values, excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS, ...assetHashes }))
+        .digest('hex')
+        .slice(0, 16)
+    : ''
   return { present: missing.length === 0, missing, config: { ...values, fingerprint } }
 }
 
@@ -789,7 +818,13 @@ export function renderConclusion({
     const steps = meta.output_sanitized.map(step => labels[step] ?? plainText(step))
     lines.push(`- 输出清洗：模型答复外层带 ${steps.join('、')}，已剥离后重新解析；JSON 本体未改动`)
   }
-  if (meta?.reused_from) lines.push(`- 复用：同一 head 已有结论，来自 run \`${meta.reused_from}\`，未再调用模型`)
+  if (meta?.reused_from) {
+    lines.push(
+      meta?.reuse_reason === 'zero_incremental_diff'
+        ? `- 复用：主干同步后净增量为 0（三方合并无冲突），沿用 run \`${meta.reused_from}\` 的审查结论（含原有 Block 判定），未再调用模型`
+        : `- 复用：同一 head 已有结论，来自 run \`${meta.reused_from}\`，未再调用模型`
+    )
+  }
   const generated = stamp(meta?.generated_at)
   if (generated) lines.push(`- 结论生成于：\`${generated}\`（评论就地更新，创建时间不会变）`)
   // 历史一律写进 marker，所以这条可见行没列出来时下一版仍读得回。可见行的门槛按读感定：
@@ -1809,17 +1844,17 @@ function writeConclusion(directory, { findings, meta }) {
   fs.writeFileSync(path.join(directory, META_FILE), `${JSON.stringify(meta, null, 2)}\n`)
 }
 
-function readScope() {
-  const file = scopePath()
+function readScope(env = process.env) {
+  const file = scopePath(env)
   return fs.existsSync(file) ? JSON.parse(fs.readFileSync(file, 'utf8')) : {}
 }
 
-function identityFromEnv() {
-  const scope = readScope()
-  const config = readConfig()
+function identityFromEnv(env = process.env) {
+  const scope = readScope(env)
+  const config = readConfig(env)
   return {
-    head_sha: process.env.CODEX_REVIEW_HEAD_SHA ?? '',
-    base_sha: process.env.CODEX_REVIEW_BASE_SHA ?? '',
+    head_sha: env.CODEX_REVIEW_HEAD_SHA ?? '',
+    base_sha: env.CODEX_REVIEW_BASE_SHA ?? '',
     // 评论是就地更新的，创建时间永远停在第一次写回那一刻；结论自己的生成时间只能记在这里。
     generated_at: new Date().toISOString(),
     merge_base_sha: scope.merge_base_sha ?? '',
@@ -1955,6 +1990,7 @@ export function validateIncrementalBaseline({ prior, priorScope, expectedHead, e
     prior.meta.head_sha !== expectedHead ||
     !baseMatches ||
     !config ||
+    !config.fingerprint ||
     prior.meta.config_fingerprint !== config.fingerprint
   )
     throw new Error('prior conclusion is not a compatible baseline')
@@ -1969,24 +2005,33 @@ export function validateIncrementalBaseline({ prior, priorScope, expectedHead, e
   if (reuseCoverageGap(prior.findings, priorScope)) throw new Error('prior conclusion lacks coverage evidence')
 }
 
-function commandPrepareIncremental() {
-  const env = requireEnv(['CODEX_REVIEW_HEAD_SHA', 'CODEX_REVIEW_BASE_SHA', 'RUNNER_TEMP'])
+export function commandPrepareIncremental({
+  env = process.env,
+  command = run,
+  repoRoot = process.cwd(),
+  repoQueryPath,
+  timeoutMs = REPO_QUERY_TIMEOUT_MS,
+  spawn = spawnSync
+} = {}) {
+  const required = requireEnv(['CODEX_REVIEW_HEAD_SHA', 'CODEX_REVIEW_BASE_SHA', 'RUNNER_TEMP'], env)
+  const directory = conclusionDirectory(env)
   try {
-    if (!process.env.CODEX_REVIEW_PRIOR_HEAD_SHA) throw new Error('no prior review head')
-    env.CODEX_REVIEW_PRIOR_HEAD_SHA = process.env.CODEX_REVIEW_PRIOR_HEAD_SHA
-    const prior = readConclusion(priorConclusionDirectory())
-    const config = readConfig()
-    const priorScope = JSON.parse(fs.readFileSync(path.join(priorConclusionDirectory(), SCOPE_FILE), 'utf8'))
+    const priorHeadSha = env.CODEX_REVIEW_PRIOR_HEAD_SHA
+    if (!priorHeadSha) throw new Error('no prior review head')
+    const priorDir = priorConclusionDirectory(env)
+    const prior = readConclusion(priorDir)
+    const config = readConfig(env)
+    const priorScope = JSON.parse(fs.readFileSync(path.join(priorDir, SCOPE_FILE), 'utf8'))
     const isBaseAncestor = (priorBase, currentBase) => {
       try {
         for (const sha of [priorBase, currentBase]) {
           try {
-            run('git', ['cat-file', '-e', `${sha}^{commit}`])
+            command('git', ['cat-file', '-e', `${sha}^{commit}`])
           } catch {
-            run('git', ['fetch', '--no-tags', 'origin', sha])
+            command('git', ['fetch', '--no-tags', 'origin', sha])
           }
         }
-        run('git', ['merge-base', '--is-ancestor', priorBase, currentBase])
+        command('git', ['merge-base', '--is-ancestor', priorBase, currentBase])
         return true
       } catch {
         return false
@@ -1995,19 +2040,97 @@ function commandPrepareIncremental() {
     validateIncrementalBaseline({
       prior,
       priorScope,
-      expectedHead: env.CODEX_REVIEW_PRIOR_HEAD_SHA,
-      expectedBase: env.CODEX_REVIEW_BASE_SHA,
+      expectedHead: priorHeadSha,
+      expectedBase: required.CODEX_REVIEW_BASE_SHA,
       config,
       isBaseAncestor
     })
-    commandPrepare({ priorHeadSha: env.CODEX_REVIEW_PRIOR_HEAD_SHA })
-    writeOutputs({ incremental: 'true' })
-    console.log(`incremental baseline ${env.CODEX_REVIEW_PRIOR_HEAD_SHA}`)
+    const range = resolveReviewRange({
+      baseSha: required.CODEX_REVIEW_BASE_SHA,
+      headSha: required.CODEX_REVIEW_HEAD_SHA,
+      priorHeadSha,
+      command
+    })
+    if (range.changedPaths.length === 0 && range.diff.trim() === '') {
+      fs.mkdirSync(directory, { recursive: true })
+      fs.writeFileSync(path.join(required.RUNNER_TEMP, 'pr.diff'), '')
+      const hasLineage = Array.isArray(prior.meta.review_lineage) && prior.meta.review_lineage.length > 0
+      fs.writeFileSync(
+        scopePath(env),
+        `${JSON.stringify(
+          {
+            base_sha: range.baseSha,
+            head_sha: range.headSha,
+            merge_base_sha: range.mergeBaseSha,
+            ...(range.diffBaseSha ? { diff_base_sha: range.diffBaseSha } : {}),
+            ...(hasLineage && typeof prior.meta.review_start_sha === 'string'
+              ? { review_start_sha: prior.meta.review_start_sha, incremental: true }
+              : {}),
+            diff_bytes: 0,
+            empty_diff: true,
+            changed_paths: [],
+            preloaded_paths: [],
+            preload_bytes: 0,
+            routed_skills: [],
+            excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS
+          },
+          null,
+          2
+        )}\n`
+      )
+      const priorRunId = env.CODEX_REVIEW_PRIOR_RUN_ID ?? ''
+      const reusedMeta = {
+        head_sha: range.headSha,
+        base_sha: range.baseSha,
+        merge_base_sha: range.mergeBaseSha,
+        model: config.model ?? prior.meta.model ?? '',
+        effort: config.effort ?? prior.meta.effort ?? '',
+        config_fingerprint: config.fingerprint,
+        status: 'reviewed',
+        reused_from: priorRunId,
+        reuse_reason: 'zero_incremental_diff',
+        ...(hasLineage && typeof prior.meta.review_start_sha === 'string'
+          ? { review_start_sha: prior.meta.review_start_sha }
+          : {}),
+        ...(hasLineage ? { review_lineage: prior.meta.review_lineage } : {}),
+        ...(Array.isArray(prior.meta.output_sanitized) && prior.meta.output_sanitized.length > 0
+          ? { output_sanitized: prior.meta.output_sanitized }
+          : {}),
+        ...(typeof prior.meta.generated_at === 'string' && prior.meta.generated_at !== ''
+          ? { generated_at: prior.meta.generated_at }
+          : {})
+      }
+      writeConclusion(directory, { findings: prior.findings, meta: reusedMeta })
+      writeOutputs(
+        {
+          base_sha: range.baseSha,
+          head_sha: range.headSha,
+          merge_base_sha: range.mergeBaseSha,
+          review_start_sha: range.diffBaseSha ?? range.startSha ?? range.mergeBaseSha,
+          diff_path: path.join(required.RUNNER_TEMP, 'pr.diff'),
+          diff_bytes: '0',
+          incremental: 'true',
+          reused: 'true'
+        },
+        env
+      )
+      console.log(
+        `reusing prior conclusion (zero incremental diff) from run ${priorRunId || 'unknown'} for ${priorHeadSha}..${range.headSha}`
+      )
+      return { incremental: true, reused: true, range }
+    }
+    for (const name of [FINDINGS_FILE, META_FILE]) fs.rmSync(path.join(directory, name), { force: true })
+    commandPrepare({ env, command, priorHeadSha, repoRoot, repoQueryPath, timeoutMs, spawn })
+    writeOutputs({ incremental: 'true', reused: 'false' }, env)
+    console.log(`incremental baseline ${priorHeadSha}`)
+    return { incremental: true, reused: false, range }
   } catch (error) {
     // prepare 原先生成的全量范围仍是安全的回退；重新生成也防止部分写入留下混合状态。
-    commandPrepare()
-    writeOutputs({ incremental: 'false' })
+    for (const name of [FINDINGS_FILE, META_FILE]) fs.rmSync(path.join(directory, name), { force: true })
+    commandPrepare({ env, command, repoRoot, repoQueryPath, timeoutMs, spawn })
+    writeOutputs({ incremental: 'false', reused: 'false' }, env)
     console.log(`using full review: ${error.message}`)
+    return { incremental: false, reused: false }
   }
 }
 
@@ -2062,6 +2185,7 @@ function commandReuse() {
     else if (process.env.CODEX_REVIEW_BASE_SHA && conclusion.meta.base_sha !== process.env.CODEX_REVIEW_BASE_SHA)
       failure = 'the PR base changed'
     else if (!config) failure = 'the configuration snapshot is missing'
+    else if (!config.fingerprint) failure = 'the review contract fingerprint is missing'
     else if (conclusion.meta.status === 'error' || conclusion.meta.status === 'unreviewed')
       failure = 'the prior run has no reviewable conclusion'
     else if (conclusion.meta.config_fingerprint !== config.fingerprint) failure = 'the repository configuration changed'
@@ -2079,7 +2203,11 @@ function commandReuse() {
   }
   writeConclusion(directory, {
     findings: reusable.findings,
-    meta: { ...reusable.meta, reused_from: process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '' }
+    meta: {
+      ...reusable.meta,
+      reused_from: process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '',
+      reuse_reason: 'same_head'
+    }
   })
   writeOutputs({ reused: 'true', reason: '' })
   console.log(`reusing conclusion for ${reusable.meta.head_sha}`)
@@ -2111,8 +2239,8 @@ function commandValidate() {
     const parsed = parseReviewFindings(fs.readFileSync(reusedPath, 'utf8'))
     const metaPath = path.join(directory, META_FILE)
     const prior = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : {}
-    // 兜底：正常路径上 `reuse` 已经挡掉了没有覆盖清单的旧产物，这里再判一次，
-    // 免得任何其它写入口把一次没有证据的空结论洗成绿色。
+    // 兜底：正常路径上 `reuse` 与 `prepare-incremental` 已经挡掉了没有覆盖清单的旧产物，
+    // 这里再判一次，免得任何其它写入口把一次没有证据的空结论洗成绿色。
     const gap = reuseCoverageGap(parsed, readScope())
     if (gap !== '') {
       // findings 留着：结论不可用由 status 表达，把已经看到的 Block 丢掉只会让作者少一条线索。
@@ -2124,9 +2252,16 @@ function commandValidate() {
       console.error(`review is unreviewed: ${gap}`)
       return
     }
-    const meta = { ...identity, status: 'reviewed', reused_from: process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '' }
-    if (typeof prior.review_start_sha === 'string') meta.review_start_sha = prior.review_start_sha
-    if (Array.isArray(prior.review_lineage)) meta.review_lineage = prior.review_lineage
+    const reusedFrom =
+      typeof prior.reused_from === 'string' && prior.reused_from !== ''
+        ? prior.reused_from
+        : (process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '')
+    const meta = { ...identity, status: 'reviewed', reused_from: reusedFrom }
+    if (typeof prior.reuse_reason === 'string' && prior.reuse_reason !== '') meta.reuse_reason = prior.reuse_reason
+    if (Array.isArray(prior.review_lineage) && prior.review_lineage.length > 0) {
+      meta.review_lineage = prior.review_lineage
+      if (typeof prior.review_start_sha === 'string') meta.review_start_sha = prior.review_start_sha
+    }
     if (Array.isArray(prior.output_sanitized) && prior.output_sanitized.length > 0) {
       meta.output_sanitized = prior.output_sanitized
     }

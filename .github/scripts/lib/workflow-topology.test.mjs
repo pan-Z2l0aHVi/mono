@@ -334,7 +334,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   const pushWorkflows = Object.entries(parsed)
     .filter(([, workflow]) => workflow.triggers.some(trigger => trigger.on === 'push'))
     .map(([file]) => file)
-  assert.deepEqual(pushWorkflows, ['changeset-version.yml', 'ci.yml'])
+  assert.deepEqual(pushWorkflows, ['changeset-version.yml', 'ci.yml', 'pr-auto-update-queue.yml'])
   assert.deepEqual(parsed['ci.yml'].triggers.map(trigger => trigger.on).sort(compareStrings), [
     'pull_request',
     'push',
@@ -1002,6 +1002,11 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     const emptyGuard = namedStep(ci, 'Reject empty review output')
     assert.match(emptyGuard, /if: \$\{\{ always\(\) &&/, 'the guard must run even when the model step fails')
     assert.match(emptyGuard, /steps\.reuse\.outputs\.reused != 'true'/, 'a reused conclusion is not re-judged here')
+    assert.match(
+      emptyGuard,
+      /steps\.incremental\.outputs\.reused != 'true'/,
+      'a zero-diff incremental reuse conclusion must skip the empty output check'
+    )
     assert.match(emptyGuard, /node \.github\/scripts\/check-review-output\.mjs/)
     assert.match(
       emptyGuard,
@@ -1013,6 +1018,28 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       namedStep(ci, 'Upload review findings'),
       /overwrite: true/,
       'a --failed rerun must be able to replace the same-named artifact'
+    )
+
+    // Layer 1 零增量短路复用：prepare-incremental 接收 prior_run_id，review 与 emptyGuard 同时尊重 incremental reuse。
+    const incrementalStep = namedStep(ci, 'Prepare incremental review')
+    assert.match(
+      incrementalStep,
+      /CODEX_REVIEW_PRIOR_RUN_ID: \$\{\{ steps\.prior\.outputs\.prior_run_id \}\}/,
+      'prepare-incremental needs prior_run_id so zero-diff reuse records reused_from'
+    )
+    assert.match(
+      reviewStep,
+      /steps\.reuse\.outputs\.reused != 'true'/,
+      'same-head reuse guard must stay on the model step'
+    )
+    assert.match(
+      reviewStep,
+      /steps\.incremental\.outputs\.reused != 'true'/,
+      'zero-diff incremental reuse must skip the model invocation'
+    )
+    assert.match(
+      namedStep(ci, 'Record review conclusion'),
+      /CODEX_REVIEW_PRIOR_RUN_ID: \$\{\{ steps\.prior\.outputs\.prior_run_id \}\}/
     )
 
     // B1 预注入：Prepare review range 必须在 stage-codex-inputs 之后、Review pull request with Codex 之前运行，
@@ -1040,6 +1067,48 @@ function assertPullRequestValidationIsReadOnly(workflow) {
         reviewPromptText.indexOf(PRELOAD_END_MARKER) > reviewPromptText.indexOf(PRELOAD_START_MARKER),
       'the review prompt template must carry the preload markers in order'
     )
+
+    // Layer 2A 单头自动推进队列：只读默认分支 checkout、job 级防 fork 围栏、SHA 钉死的 GitHub App 短效 token。
+    const queueText = workflowText['pr-auto-update-queue.yml']
+    const queue = parsed['pr-auto-update-queue.yml']
+    assert.deepEqual(queue.triggers.map(item => item.on).sort(compareStrings), [
+      'pull_request_target',
+      'push',
+      'workflow_dispatch'
+    ])
+    assert.deepEqual(queue.triggers.find(item => item.on === 'pull_request_target')?.branches, ['main'])
+    assert.deepEqual(queue.triggers.find(item => item.on === 'pull_request_target')?.types, [
+      'auto_merge_enabled',
+      'ready_for_review'
+    ])
+    assert.deepEqual(queue.permissions, { contents: 'read' })
+    const queueJob = queue.jobs['advance-queue']
+    assert.ok(queueJob, 'advance-queue job must exist')
+    assert.deepEqual(queueJob.permissions, {}, 'advance-queue must not elevate workflow token permissions')
+    assert.equal(
+      queueJob.if,
+      "${{ github.event_name != 'pull_request_target' || (github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository) }}",
+      'pull_request_target runs must reject fork and non-main PRs at the job gate'
+    )
+    const queueJobText = workflowJob(queueText, 'advance-queue')
+    assert.match(queueText, /group: pr-auto-update-queue\n {2}cancel-in-progress: false/)
+    const queueCheckoutMatch = queueJobText.match(/- uses: actions\/checkout@v7\n([\s\S]*?)(?=\n {6}- |\n*$)/)
+    assert.ok(queueCheckoutMatch, 'advance-queue must check out default branch via actions/checkout@v7')
+    assert.ok(!/^\s+ref:/mu.test(queueCheckoutMatch[0]), 'advance-queue checkout must not pin PR head ref')
+    assert.ok(
+      !/pull_request\.head|FETCH_HEAD/u.test(queueJobText.slice(queueJobText.indexOf('    steps:'))),
+      'queue job steps must never check out PR head'
+    )
+    assert.match(
+      queueJobText,
+      /actions\/create-github-app-token@f418cff399f7aef4c2f0ad47e25ca7a6abbdd6fc/,
+      'GitHub App token action must stay pinned to exact commit SHA'
+    )
+    assert.match(queueJobText, /permission-contents: write/)
+    assert.match(queueJobText, /permission-pull-requests: write/)
+    assert.match(queueJobText, /PR_QUEUE_APP_ID: \$\{\{ secrets\.PR_QUEUE_APP_ID \}\}/)
+    assert.match(queueJobText, /PR_QUEUE_APP_PRIVATE_KEY: \$\{\{ secrets\.PR_QUEUE_APP_PRIVATE_KEY \}\}/)
+    assert.match(queueJobText, /GH_TOKEN: \$\{\{ steps\.app_token\.outputs\.token \}\}/)
   }
 
   const version = workflowText['changeset-version.yml']

@@ -33,7 +33,11 @@ CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发�
 
 首次审查覆盖完整源码 diff。复审以可信的前次已审 head 为基线，检查该 head 到当前 head 的全部源码增量、
 前次发现的处置及其受影响行为，并继承仍有效的已审范围和未覆盖项；新结论须标明基线和当前 head。
-基线不可用、审查范围或 base 变化使先前证据失效，或增量范围无法确定时，重新完整审查源码。
+若配置指纹（含后台参数、生成物排除清单以及可信 `review.md` 模板与 schema 哈希）一致且基线通过校验，
+在同步 `main` 后 `git merge-tree --write-tree` 无合并冲突且滤除生成物后的净增量为 0 时（`zero_incremental_diff`），
+系统会短路跳过模型调用并原样继承前次结论（含 `findings`、`coverage` 与原有 `Block` 判定，带有 `Block` 时仍判阻断），
+持久评论按 `same_head` 与 `zero_incremental_diff` 区分标注复用依据。该短路依赖 Merge 平面确定性 `check` 在新合并树上全量复检；
+基线不可用、契约文件缺失、审查范围或 base 变化使先前证据失效、三方合并冲突或增量范围无法确定时，重新完整审查源码。
 
 **生成物不需要 diff，也不需要 review**：它由 generator 完整重建，留在审查输入里只会淹没真实源码、吃掉大 PR
 的审查预算。自动审查按 [`generated-artifacts.md`](./generated-artifacts.md) 的唯一判据「能否由 generator 完整重建」
