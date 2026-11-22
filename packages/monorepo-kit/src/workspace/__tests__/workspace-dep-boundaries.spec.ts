@@ -233,6 +233,48 @@ describe('defineWorkspaceDepBoundaries', () => {
     ])
   })
 
+  it('scans real packages whose directory names collide with artifact names, and still skips artifacts inside them', async () => {
+    const root = makeFixture()
+    writeManifest(root, 'packages/build', {
+      name: '@acme/build',
+      dependencies: { '@acme/build-kit': 'workspace:*' }
+    })
+    writeManifest(root, 'packages/build-kit', {
+      name: '@acme/build-kit',
+      private: true
+    })
+    // build 包自己的 dist 产物 manifest 与包同名：若被扫进来会以 duplicate 拒绝，这里必须保持跳过。
+    writeManifest(root, 'packages/build/dist', {
+      name: '@acme/build'
+    })
+
+    const error = await failure(boundaries, root)
+    // 名为 build 的真实包被完整扫描（它的违规被报出），而它内部的 dist 没有混进扫描面。
+    assert.equal(
+      error,
+      'deps: public package @acme/build cannot depend on private workspace package @acme/build-kit in dependencies'
+    )
+  })
+
+  it('fails on duplicate workspace package names instead of silently overwriting', async () => {
+    const root = makeFixture()
+    writeManifest(root, 'packages/a', {
+      name: '@acme/dup',
+      dependencies: { '@acme/other': 'workspace:*' }
+    })
+    writeManifest(root, 'packages/b', {
+      name: '@acme/dup',
+      devDependencies: { '@acme/secret': 'workspace:*' }
+    })
+    writeManifest(root, 'packages/other', {
+      name: '@acme/other',
+      private: true
+    })
+
+    const error = await failure(boundaries, root)
+    assert.equal(error, 'deps: duplicate workspace package name @acme/dup (packages/a and packages/b)')
+  })
+
   it('fails closed when no workspace manifests are found', async () => {
     const empty = makeFixture()
     const error = await failure(boundaries, empty)

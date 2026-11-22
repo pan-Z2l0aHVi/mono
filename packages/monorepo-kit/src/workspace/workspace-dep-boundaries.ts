@@ -55,16 +55,21 @@ function isUnderDirectory(candidate: string, prefix: string): boolean {
 function collectManifestFiles(root: string, workspaces: readonly string[]): string[] {
   const found = new Set<string>()
 
-  const visit = (relativeDir: string): void => {
+  // inPackage：当前目录已处于某个 workspace 包内部。IGNORED_DIRECTORIES 只在包内部生效——
+  // 容器一级（以及包之间）的名字就是包名本身，名为 build / coverage / dist 的真实包不能整包跳过。
+  // node_modules 无论在哪一层都不是 workspace，始终跳过。
+  const visit = (relativeDir: string, inPackage: boolean): void => {
     const absoluteDir = path.join(root, relativeDir)
     if (!fs.existsSync(absoluteDir)) return
+    const skipArtifacts = inPackage || fs.existsSync(path.join(absoluteDir, 'package.json'))
     for (const entry of fs.readdirSync(absoluteDir, { withFileTypes: true })) {
       if (entry.isFile() && entry.name === 'package.json') {
         found.add(relativeDir === '.' || relativeDir === '' ? 'package.json' : `${relativeDir}/package.json`)
       } else if (entry.isDirectory()) {
-        if (entry.name.startsWith('.') || IGNORED_DIRECTORIES.has(entry.name)) continue
+        if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
+        if (skipArtifacts && IGNORED_DIRECTORIES.has(entry.name)) continue
         const childDir = relativeDir === '.' || relativeDir === '' ? entry.name : `${relativeDir}/${entry.name}`
-        visit(childDir)
+        visit(childDir, skipArtifacts)
       }
     }
   }
@@ -72,7 +77,7 @@ function collectManifestFiles(root: string, workspaces: readonly string[]): stri
   for (const workspace of workspaces) {
     const normalized = normalizeDirectory(workspace)
     if (!normalized) continue
-    visit(normalized)
+    visit(normalized, false)
   }
 
   return [...found].sort(byCodeUnit)
@@ -150,6 +155,14 @@ export const defineWorkspaceDepBoundaries = (options: WorkspaceDepBoundariesOpti
             const manifest = readJsonFile<WorkspaceManifest>(path.join(ctx.root, manifestFile))
             if (typeof manifest.name !== 'string' || !manifest.name.trim()) continue
             const directory = path.posix.dirname(manifestFile)
+            // 同名 manifest 按包名覆盖会静默丢掉先出现那份的依赖边：重名直接报错，
+            // 让重复声明（或产物 manifest 混进扫描面）暴露出来，而不是走一半的图。
+            const previous = nodes.get(manifest.name)
+            if (previous) {
+              return err(
+                `deps: duplicate workspace package name ${manifest.name} (${previous.directory} and ${directory})`
+              )
+            }
             const isApplication = appDirs.some(appDir => isUnderDirectory(directory, appDir))
             nodes.set(manifest.name, {
               name: manifest.name,

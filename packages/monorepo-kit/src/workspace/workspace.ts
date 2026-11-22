@@ -46,8 +46,8 @@ export function readPnpmWorkspacePatterns(root: string): string[] {
 }
 
 /**
- * `pnpm-workspace.yaml` 里 `dir/**` 或 `dir/*` 形态的模式所指向的容器目录，按码位排序。
- * 只读配置、不扫盘：逐包列举的模式（如 `tools/cli`）不以某个目录为容器，不产生结果。
+ * `pnpm-workspace.yaml` 里 glob 模式指向的容器目录与字面量模式指向的 workspace 目录本身，按码位排序。
+ * 只读配置、不扫盘。glob 段落在模式开头的（如双星开头的 `pkgs` 匹配）没有可判定的容器前缀，不产生结果。
  */
 export function readPnpmWorkspaceDirectories(root: string): string[] {
   const directories = readPnpmWorkspacePatterns(root)
@@ -55,6 +55,9 @@ export function readPnpmWorkspaceDirectories(root: string): string[] {
     .flatMap(pattern => {
       const segments = pattern.replace(/\/+$/, '').split('/')
       const glob = segments.findIndex(segment => segment.includes('*'))
+      // 字面量模式（无 glob 段）声明的就是 workspace 目录本身，必须保留：
+      // 丢弃会让它逃过以容器目录为扫描面的边界与语料检查。
+      if (glob < 0) return [segments.join('/')]
       return glob > 0 ? [segments.slice(0, glob).join('/')] : []
     })
   return [...new Set(directories)].sort(byCodeUnit)
