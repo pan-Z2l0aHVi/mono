@@ -155,6 +155,8 @@
     "unfocusable",
     "unclickable",
     "grabbable",
-    "exif"
+    "exif",
+    "Bufs",
+    "TOCTOU"
   ]
 }
