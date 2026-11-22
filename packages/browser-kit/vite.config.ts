@@ -36,8 +36,8 @@ export default defineConfig({
     tsconfigPaths: true
   },
   // 浏览器 spec 与 dev server 都走这里的 Vite 插件；构建见 `pack`。
-  // testPorts() 把本包在根 `monorepo.json` 里登记的那一段端口写进下面的 `test.api`，
-  // host 与 strictPort 由它一起给出；分配表与偏移的理由见 docs/agents/build-browser.md 的「测试端口分配」。
+  // testPorts() 通过零配置确定性哈希把本包的测试端口段写进下面的 `test.api`，
+  // host 与 strictPort 由它一起给出；分槽与偏移的理由见 docs/agents/build-browser.md 的「测试端口分配」。
   plugins: [mswServiceWorker(), testPorts({ project: 'browser-kit' })],
   pack: {
     entry: {

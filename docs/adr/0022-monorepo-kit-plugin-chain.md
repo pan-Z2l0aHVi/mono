@@ -1,6 +1,7 @@
 # ADR-0022: monorepo-kit 判定改为嵌套 run 链
 
 - **Date**: 2026-11-06
+- **Revised**: 2026-11-22
 - **Status**: 已接受
 
 ## 背景
@@ -19,7 +20,7 @@
 
 **`run` 零参。** `Run` 是包内唯一签名 `() => Promise<Result<void, string>>`。判定要的一切都在装配期就位：仓库事实经 `.make({ root, env })`，判据参数（changeset 的 `base`/`head`、壳文案的 `app`）经 `defineXxx(options)`。入参归零同时收掉两件事：`run` 同签名不再需要维护；`andThen` 也失去长成「两步吃同一份 opts」这种非 Rust 形状的理由。漏传参数从「编译期不拦的可选键」变成装配点当场的缺失。
 
-**归因只有前缀。** 链上没有判定名字，`Err` 文案的域名前缀是唯一抓手（`go:`、`git:`、`turbo:`、`md:`、`changeset:`、`pack:`、`script:`、`i18n:`、`port:`）；异常由链尾 `defineCatch()` 收敛成 `throw: `。它包前面的 `run` 而不是 `andThen`，所以抛异常与 Promise 拒绝都收得到，也不让异常变成「跳过前面的判定」。能力层读不到权威输入时抛（如根 `turbo.json` 缺失），报成 `throw: …` 而不是域名前缀；判据是「空扫描会不会静默通过」：会静默通过的判定自己把空面报成该域的 `Err`，抛出必然失败的不在每份判定里重复存在性检查。
+**归因只有前缀。** 链上没有判定名字，`Err` 文案的域名前缀是唯一抓手（`go:`、`git:`、`turbo:`、`md:`、`changeset:`、`pack:`、`script:`、`i18n:`）；异常由链尾 `defineCatch()` 收敛成 `throw: `。它包前面的 `run` 而不是 `andThen`，所以抛异常与 Promise 拒绝都收得到，也不让异常变成「跳过前面的判定」。能力层读不到权威输入时抛（如根 `turbo.json` 缺失），报成 `throw: …` 而不是域名前缀；判据是「空扫描会不会静默通过」：会静默通过的判定自己把空面报成该域的 `Err`，抛出必然失败的不在每份判定里重复存在性检查。
 
 **装配期与运行期分开兜。** `.make()` 是 eager 的，装配期抛错不在 `defineCatch()` 射程内；触发层的 `scripts/checks/run-check.mjs` 把「装配 + 运行」包进回调，装配期错误收敛成 `throw: ` 一行 stderr 加 exit 1。`run()` 期的异常仍以链尾 `defineCatch()` 为主，`runCheck` 的 catch 只是漏挂时的格式兜底。
 
@@ -29,7 +30,7 @@
 
 **分区与目录形状**：`src/` 下一个能力一个目录，`plugin/` 这一层删除；每个能力目录自带 `index.ts` 作为对外面，`src/index.ts` 只把各面并起来；`shared/` 不成体系，由根入口直接指向具体模块。包内跨目录引用一律指到具体文件（`../exec/exec`），不借目录入口——经入口互相 import 会让两个目录成环。`runner/` 只剩协议本身；Vite 求值期适配收在 `src/vite/`，走 `./vite` 子路径。[ADR-0017](./0017-monorepo-tooling-package.md) 的「包只有一个入口」据此收窄为「一个 Node 入口加一个 Vite 适配入口」。
 
-**端口分配是 Vite 插件，不是 js-kit 插件。** 端口号真正被消费的地方是 `vite.config.ts` 求值期，链上只有 `test-port-call-sites` 这条判定。`src/vite/ports.ts` 导出 `testPorts(...)` → 一个 Vite 插件，在 `config` 钩里把 `host` 与 `strictPort` 写进 `test.api`，这两个键从此只有一个出处；配置解析多遍时只在看得见 `test.projects` 的那一遍按 `testName` 写入。用法与偏移见 `build-browser.md`「测试端口分配」。
+**端口分配是零配置 Vite 插件，不进 js-kit 判定链。** 端口号真正被消费的地方是 `vite.config.ts` 求值期；D12 修订退役根 `monorepo.json` 与 `test-port-call-sites` 门禁，链上删除 `port:` 域前缀。`src/vite/ports.ts` 导出 `testPorts(...)` → 一个零配置 Vite 插件：基于 `project`（linked worktree 下零子进程探测 `.git` 文件并合并 `realpathSync(root)`）的 SHA-256 确定性哈希分槽到 `23410..49140`（10 端口宽槽位，严格避开 macOS 临时端口段 `49152..65535`），并在 `config` 钩里保留写入 `host: '127.0.0.1'` 与 `strictPort: false`，这两个键从此只有一个出处；配置解析多遍时只在看得见 `test.projects` 的那一遍按 `testName` 写入。用法与偏移见 `build-browser.md`「测试端口分配」。
 
 **不做域聚合插件。** 曾考虑用 `defineMdCheck(o)` 把三个 md 判定收成一个，但它们在两条链里的组合各不相同，聚合只多一层参数化却没有消费者。
 
@@ -41,7 +42,7 @@
 - 形状由机器判据兜住：`run` 的零参签名由 tsc 判；链行为与协议扫描由两份 spec 覆盖（顺序与短路、前缀不被改写、链头恒等、抛出收敛、能力键不冲突、字面量 `Err` 带前缀、`Chain` 标注、不写进程输出）。扫描面按 `src/` 目录现取，新增能力目录自动进射程。四类文本写法在射程外（`export function defineXxx`、带前缀的转发文案、接口继承、无显式泛型），由 review 承担；失效形态是门禁静默空转，不是判错。
 - 判据参数进构造参数后，`changeset-*` 策略从导出实例改成导出工厂，`check-changeset` 解析完区间再组链；缺 `--base` 由入口用 exit 2 报出。`shell-i18n-catalog` 的 `app` 与语种、PO 目录回到同一份声明。
 - 不加 per-check 超时：整链时长由 CI 的 job 上限兜住。
-- 域名前缀比最初裁决多 `i18n:` 与 `port:`，因为这两域真实存在且并入其他前缀会让前缀不再指向判据权威。
+- 域名前缀比最初裁决多 `i18n:`，因为该域真实存在且并入其他前缀会让前缀不再指向判据权威；`port:` 前缀随 `test-port-call-sites` 门禁退役一并移除。
 - 公开面收窄：`./vite` 只导出 `testPorts`、`devHttpsPlugin` 及类型；`testApiPort`、`defineTestPorts` 等删除；`run` 没有入参类型，`mode`/`node` 两个从未有消费者的键一并消失。
 - `stagedClean` 排到 `check-pre-commit` 链尾：它按暂存文件起整条工具链，是这条链上最贵的一条，便宜的判定先拦住；它只判不改写，所以是成本排序而不是防自扰。
 
