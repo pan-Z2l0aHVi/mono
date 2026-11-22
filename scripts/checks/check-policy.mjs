@@ -9,6 +9,7 @@ import { themeTokenParity } from '../policies/theme-token-parity.mjs'
 import { turboCacheInvariant } from '../policies/turbo-cache-invariant.mjs'
 import { turboInputPaths } from '../policies/turbo-input-paths.mjs'
 import { webUiDocsInputs } from '../policies/web-ui-docs-inputs.mjs'
+import { workspaceDepBoundaries } from '../policies/workspace-dep-boundaries.mjs'
 
 import { runCheck } from './run-check.mjs'
 
@@ -19,6 +20,7 @@ await runCheck(() =>
   defineRunner()
     .use(commandConventions)
     .use(fullCheckout)
+    .use(workspaceDepBoundaries)
     .use(interweaveTurboInputs)
     .use(noMutualLinks)
     .use(readmeLocales)
