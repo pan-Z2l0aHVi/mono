@@ -50,6 +50,11 @@ interface ConfirmRequest {
   danger: boolean
   /** 紧凑变体走窄一档的弹窗宽度（320px）。由调用点声明，不从标题文案反推。 */
   compact?: boolean
+  /**
+   * 声明后，确认弹窗在 busy 期间把按钮文案换成「已处理 / 总数」的实时进度；
+   * 进度数值读 addQueue.progress，与本请求的 progressTotal 对应同一批长流程。
+   */
+  progressTotal?: number
   action: () => Promise<void> | void
 }
 
@@ -105,6 +110,7 @@ const addQueue = createLibraryAddQueue(runtime, previewLease)
 const queue = addQueue.queue
 const duplicatePrompt = addQueue.duplicatePrompt
 const submitting = addQueue.submitting
+const importProgress = addQueue.progress
 const confirmBusy = ref(false)
 const confirmOpen = ref(false)
 const confirmRequest = ref<ConfirmRequest | null>(null)
@@ -121,7 +127,12 @@ watch(
     pendingWindowFileDrops.value = []
     addError.value = ''
     addOpen.value = true
-    for (const paths of batches) void addQueue.enqueueFileLocations(paths)
+    for (const entries of batches) {
+      // 拖入与点选同口径：目录递归展开、超阈值先确认再入队。
+      enqueueImportEntries(entries).catch(cause => {
+        addError.value = takeOperationError(cause, '读取文件失败')
+      })
+    }
   },
   { immediate: true }
 )
@@ -390,6 +401,15 @@ function closeConfirmDialog() {
   confirmOpen.value = false
 }
 
+/** 确认按钮文案：声明了 progressTotal 的请求在 busy 期间展示实时进度比值。 */
+const confirmButtonLabel = computed(() => {
+  const request = confirmRequest.value
+  const label = request?.confirmLabel ?? '确认'
+  const total = request?.progressTotal ?? 0
+  if (confirmBusy.value && total > 0) return `${importProgress.value.done} / ${total}`
+  return label
+})
+
 function restoreDeletedFocus() {
   if (pendingDeleteFocus === null) return
   const index = pendingDeleteFocus
@@ -444,7 +464,7 @@ async function pasteFilePaths(clipboardText?: string) {
     const paths = await runtime.system.getClipboardFilePaths()
     if (!addOpen.value) return
     if (paths.length) {
-      await addQueue.enqueueFileLocations(paths)
+      await enqueueImportEntries(paths)
       return
     }
     const text = clipboardText ?? (await runtime.system.readClipboardText())
@@ -460,11 +480,41 @@ async function pasteFilePaths(clipboardText?: string) {
   }
 }
 
+/** 单批导入的确认阈值：超过该数量先弹确认——成批纳入是一笔大写，需要一次显式放行。 */
+const IMPORT_CONFIRM_THRESHOLD = 20
+
+/*
+ * 统一的导入入口展开：选择面板、拖入与剪贴板都走同一条链——
+ * 后端把目录递归展开成文件清单（文件原样保留，隐藏项与符号链接由后端过滤），
+ * 超过阈值先经页面确认弹窗显式放行，确认动作就是整条入队链，逐项重复提示结算完毕它才关闭。
+ */
+async function enqueueImportEntries(entries: string[]) {
+  const paths = await runtime.resources.expandImportEntries(entries)
+  if (!addOpen.value) return
+  if (!paths.length) {
+    toast.warning('所选内容里没有可导入的文件', { position: 'top-center' })
+    return
+  }
+  if (paths.length > IMPORT_CONFIRM_THRESHOLD) {
+    openConfirmDialog({
+      title: '确认批量导入',
+      message: `共 ${paths.length} 个文件将加入待导入列表（文件夹已递归展开）。`,
+      confirmLabel: `导入 ${paths.length} 个文件`,
+      danger: false,
+      progressTotal: paths.length,
+      action: () => addQueue.enqueueFileLocations(paths)
+    })
+    return
+  }
+  await addQueue.enqueueFileLocations(paths)
+}
+
 async function pickFiles() {
   try {
     addError.value = ''
-    const paths = await runtime.system.chooseFilePaths()
-    if (addOpen.value) await addQueue.enqueueFileLocations(paths)
+    const entries = await runtime.system.chooseFilePaths()
+    if (!entries.length || !addOpen.value) return
+    await enqueueImportEntries(entries)
   } catch (cause) {
     addError.value = takeOperationError(cause, '选择文件失败')
   }
@@ -746,6 +796,7 @@ onMounted(() => {
     :mobile="mobile"
     :tag-colors="store.tagColors"
     :previews="previewEntries"
+    :progress="importProgress"
     @pick-files="pickFiles"
     @add-url="addQueue.enqueueURL"
     @request-file-paths="pasteFilePaths"
@@ -809,7 +860,7 @@ onMounted(() => {
     :open="confirmOpen"
     :title="confirmRequest?.title ?? ''"
     :message="confirmRequest?.message ?? ''"
-    :confirm-label="confirmRequest?.confirmLabel ?? '确认'"
+    :confirm-label="confirmButtonLabel"
     :danger="confirmRequest?.danger ?? false"
     :busy="confirmBusy"
     :error="confirmError"

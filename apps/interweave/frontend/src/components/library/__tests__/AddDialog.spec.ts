@@ -60,9 +60,16 @@ function mountDialog(
     onEditTags?: (item: LibraryQueueItem) => void
     onRequestFilePaths?: (clipboardText?: string) => void
     onAddUrl?: (url: string) => void
+    onPickFiles?: () => void
     onClosed?: () => void
   } = {},
-  options: { mobile?: boolean; open?: boolean; tagColors?: Record<string, TagColor> } = {}
+  options: {
+    mobile?: boolean
+    open?: boolean
+    tagColors?: Record<string, TagColor>
+    busy?: boolean
+    progress?: { done: number; total: number }
+  } = {}
 ) {
   const host = document.createElement('div')
   document.body.append(host)
@@ -72,11 +79,12 @@ function mountDialog(
       h(AddDialog, {
         open: open.value,
         queue,
-        busy: false,
+        busy: options.busy ?? false,
         error: '',
         mobile: options.mobile ?? false,
         tagColors: options.tagColors ?? {},
         previews: previewsFor(queue),
+        progress: options.progress ?? { done: 0, total: 0 },
         ...listeners
       })
   })
@@ -136,6 +144,36 @@ describe('AddDialog', () => {
       expect(onClosed).toHaveBeenCalledOnce()
     } finally {
       mounted.close()
+    }
+  })
+
+  it('点按上传区把文件与文件夹的选择意图统一交给页面', async () => {
+    const onPickFiles = vi.fn<() => void>()
+    const mounted = mountDialog([], { onPickFiles })
+    try {
+      const dropZone = mounted.host.querySelector<HTMLButtonElement>('[data-file-drop-target="library-add-files"]')
+      expect(dropZone).toBeTruthy()
+      expect(dropZone?.textContent).toContain('拖入文件或文件夹')
+      dropZone?.click()
+      await nextTick()
+      expect(onPickFiles).toHaveBeenCalledOnce()
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('加载中的确认按钮展示已导入/总数进度比，空闲时保留原文案', async () => {
+    const busy = mountDialog([queueItem()], {}, { busy: true, progress: { done: 3, total: 8 } })
+    const idle = mountDialog([queueItem()], {}, { progress: { done: 8, total: 8 } })
+    try {
+      const findByText = (host: HTMLElement, text: string) =>
+        [...host.querySelectorAll<HTMLElement>('web-ui-button')].find(b => b.textContent?.trim() === text)
+      expect(findByText(busy.host, '3 / 8')).toBeTruthy()
+      expect(findByText(idle.host, '确认导入')).toBeTruthy()
+      expect(findByText(idle.host, '8 / 8')).toBeUndefined()
+    } finally {
+      busy.close()
+      idle.close()
     }
   })
 

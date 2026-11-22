@@ -156,6 +156,8 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       remove: async () => {},
       setTags: async () => resource(),
       findLocationMatches: async () => [],
+      // 默认按「文件原样通过」展开：既有的文件拖入/粘贴用例路径不经变换直接入队。
+      expandImportEntries: async paths => paths,
       prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
       releaseFilePreview: async () => {},
       ...overrides.resources
@@ -854,6 +856,160 @@ describe('LibraryPage：粘贴链接', () => {
       expect(dialogOpen(dialog)).toBe(true)
       // takeOperationError 优先透出 cause 的 message，fallback 文案只兜无消息错误。
       expect(mounted.host.textContent).toContain('磁盘已满')
+    } finally {
+      await mounted.close()
+    }
+  })
+})
+
+/*
+ * 统一导入入口：选择面板、拖入与剪贴板都走「后端展开目录 → 超阈值先确认 → 入队」同一条链。
+ * 页面层只验证确认与进度接线；逐项重复提示链由 addQueue 拥有，不再重复验证。
+ */
+describe('LibraryPage：统一导入入口', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    route.value = { path: '/library' }
+    runtimeStub.droppedFilesListener = null
+    runtimeStub.availabilityListener = null
+    runtimeStub.availabilityDisposer = null
+    runtimeStub.current = createRuntime()
+    toastWarning.mockClear()
+  })
+
+  afterEach(() => {
+    runtimeStub.current = null
+  })
+
+  /** 统一入口的页面驱动：点按上传区，等展开与入队链尘埃落定。 */
+  async function pickFromDropZone(host: HTMLElement) {
+    const dropZone = host.querySelector<HTMLElement>('[data-file-drop-target="library-add-files"]')
+    if (!dropZone) throw new Error('上传区未渲染')
+    dropZone.click()
+    await flush()
+  }
+
+  it('未超阈值时展开结果直接入队，不弹确认', async () => {
+    const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => [
+      '/tmp/imports/a.png',
+      '/tmp/imports/sub/b.md'
+    ])
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => ['/tmp/imports'] },
+      resources: { expandImportEntries }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      await pickFromDropZone(mounted.host)
+
+      expect(expandImportEntries).toHaveBeenCalledWith(['/tmp/imports'])
+      expect(queueItems(mounted.host)).toHaveLength(2)
+      expect(mounted.host.textContent).not.toContain('确认批量导入')
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('超过阈值先弹确认；确认按钮忙时展示进度比值，整批入队后关闭', async () => {
+    const files = Array.from({ length: 21 }, (_, index) => `/tmp/imports/file-${index}.png`)
+    // 用重复检查的 gate 控制入队链节奏：确认弹窗的忙按钮应显示实时比值。
+    const gates: Array<() => void> = []
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => ['/tmp/imports'] },
+      resources: {
+        expandImportEntries: async () => files,
+        findLocationMatches: async () => new Promise(resolve => gates.push(() => resolve([])))
+      }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      await pickFromDropZone(mounted.host)
+
+      expect(queueItems(mounted.host)).toHaveLength(0)
+      const dialog = confirmDialog(mounted.host, '导入 21 个文件')
+      expect(dialogOpen(dialog)).toBe(true)
+      expect(dialog.textContent).toContain('文件夹已递归展开')
+
+      button(dialog, '导入 21 个文件').click()
+      await flush()
+      // 链上第一项停在重复检查 gate：忙按钮显示 0 / 21。
+      expect(dialog.textContent).toContain('0 / 21')
+
+      gates.shift()!()
+      await flush()
+      expect(dialog.textContent).toContain('1 / 21')
+
+      // 逐个放行剩余项，链走完即弹窗关闭、整批入队。
+      while (gates.length) {
+        gates.shift()!()
+        await flush()
+      }
+      await flush()
+      expect(dialogOpen(dialog)).toBe(false)
+      expect(queueItems(mounted.host)).toHaveLength(21)
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('超过阈值时取消确认，一批都不入队', async () => {
+    const files = Array.from({ length: 21 }, (_, index) => `/tmp/imports/file-${index}.png`)
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => ['/tmp/imports'] },
+      resources: { expandImportEntries: async () => files }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      await pickFromDropZone(mounted.host)
+
+      const dialog = confirmDialog(mounted.host, '导入 21 个文件')
+      button(dialog, '取消').click()
+      await flush()
+
+      expect(queueItems(mounted.host)).toHaveLength(0)
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('展开结果为空时给一句可读提示，不弹确认也不入队', async () => {
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => ['/tmp/empty'] },
+      resources: { expandImportEntries: async () => [] }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      await pickFromDropZone(mounted.host)
+
+      expect(toastWarning).toHaveBeenCalledWith('所选内容里没有可导入的文件', { position: 'top-center' })
+      expect(queueItems(mounted.host)).toHaveLength(0)
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('拖入文件夹走同一条展开链，目录被递归展开后入队', async () => {
+    const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => [
+      '/tmp/drop/a.png',
+      '/tmp/drop/nested/b.md'
+    ])
+    runtimeStub.current = createRuntime({ resources: { expandImportEntries } })
+    const mounted = await mountPage()
+
+    try {
+      queueWindowFileDrop(['/tmp/drop'])
+      await flush()
+
+      expect(expandImportEntries).toHaveBeenCalledWith(['/tmp/drop'])
+      expect(queueItems(mounted.host)).toHaveLength(2)
     } finally {
       await mounted.close()
     }

@@ -34,6 +34,8 @@ export interface LibraryResourceCapabilities {
   /** 替换式集合语义：提交的名称集合成为该 Resource 的完整标签集合，规则在后端。 */
   setTags(resourceId: string, tagNames: string[]): Promise<ResourceDTO>
   findLocationMatches(input: string, sourceType: SourceType): Promise<ResourceLocationMatchDTO[]>
+  /** 把一批文件与文件夹展开为可纳入的文件位置清单；隐藏项、符号链接由后端过滤。 */
+  expandImportEntries(paths: string[]): Promise<string[]>
   /** 本地文件预览；DTO.media_url 是可直接渲染的临时地址。 */
   prepareFilePreview(inputPath: string): Promise<FilePreviewDTO>
   releaseFilePreview(token: string): Promise<void>

@@ -428,6 +428,10 @@ export function createMockLibraryRuntime(): LibraryRuntime {
 
       findLocationMatches: (): Promise<ResourceLocationMatchDTO[]> => Promise.resolve([]),
 
+      // 浏览器预览没有文件系统可展开；选择器本身也拿不到路径（chooseFilePaths 返回空），
+      // 这里保持空数组让调用方与桌面路径同形。
+      expandImportEntries: () => Promise.resolve([]),
+
       // 纳入用 fixture 伪造：入口永远可用、首选顺位从 0 开始，标题与初始标签按后端规则就地生成。
       create: input => {
         const id = `mock-created-${(createCounter += 1)}`

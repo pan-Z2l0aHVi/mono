@@ -35,6 +35,7 @@ function createRuntime(
         throw new Error('未使用')
       },
       findLocationMatches: async () => [],
+      expandImportEntries: async () => [],
       prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
       releaseFilePreview: async () => {},
       ...resourceOverrides
@@ -636,5 +637,49 @@ describe('library add queue submit', () => {
 
     expect(created).toEqual([LOCATIONS[0]!])
     expect(queue.submitting.value).toBe(false)
+  })
+})
+
+/*
+ * progress 供加载中的按钮直接展示「已处理 / 总数」。入队链与提交循环不重叠
+ * （提交前入队链必然已结束），因此共用一个 ref。
+ */
+describe('library add queue progress', () => {
+  it('入队链按已消费位置推进，空串与重复跳过也计入进度', async () => {
+    const queue = createQueue(createRuntime())
+
+    await queue.enqueueFileLocations(['/tmp/a.png', '', '/tmp/b.png', '/tmp/a.png'])
+
+    expect(queue.progress.value).toEqual({ done: 4, total: 4 })
+    expect(queue.queue.value).toHaveLength(2)
+  })
+
+  it('提交按已落库项推进进度', async () => {
+    const queue = createQueue(createRuntime())
+    await queue.enqueueFileLocations(['/tmp/a.png', '/tmp/b.png'])
+
+    const gates = [deferred<void>(), deferred<void>()]
+    let call = 0
+    const submitted = queue.submit(() => gates[call++]!.promise)
+    expect(queue.progress.value).toEqual({ done: 0, total: 2 })
+
+    gates[0]!.resolve()
+    await vi.waitFor(() => expect(queue.progress.value).toEqual({ done: 1, total: 2 }))
+    gates[1]!.resolve()
+    expect(await submitted).toBe(true)
+    expect(queue.progress.value).toEqual({ done: 2, total: 2 })
+  })
+
+  it('失败项不计入已导入进度，进度停在成功数', async () => {
+    const queue = createQueue(createRuntime())
+    await queue.enqueueFileLocations(['/tmp/first.png', '/tmp/second.png'])
+
+    await expect(
+      queue.submit(async item => {
+        if (item.location === '/tmp/first.png') throw new Error('创建失败')
+      })
+    ).rejects.toThrow('创建失败')
+
+    expect(queue.progress.value).toEqual({ done: 0, total: 2 })
   })
 })
