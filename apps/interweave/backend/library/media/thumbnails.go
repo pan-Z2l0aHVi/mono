@@ -68,17 +68,34 @@ func buildConcurrency() int {
 //
 // 并发模型：同版本（同 key）的构建按引用计数去重（singleflight），构建绑定独立上下文，
 // 只在最后一个等待者离开时才取消；全部后台构建与 Prune 都纳入 wg，由 Close 排空。
+// 离线读取按 sourceID 维护「最新缓存文件」索引：首次离线查询时按目录真实内容一次性
+// 建立（真实 ModTime 定序），此后命中 O(1)、未命中直接 os.ErrNotExist，不再重复扫描目录。
 // 字段允许零值可用（&ThumbnailStore{dir: dir}），并发状态经 ensureInit 惰性建立。
 type ThumbnailStore struct {
 	dir string
 
-	mu       sync.Mutex
-	inflight map[string]*thumbCall
-	buildSem chan struct{}
-	initOnce sync.Once
-	closed   bool
-	closeCh  chan struct{}
-	wg       sync.WaitGroup
+	mu          sync.Mutex
+	inflight    map[string]*thumbCall
+	buildSem    chan struct{}
+	initOnce    sync.Once
+	closed      bool
+	closeCh     chan struct{}
+	closeCtx    context.Context    // ensureInit 派生：启动期 Prune 随 Close 取消
+	closeCancel context.CancelFunc // 由 Close 调用，取消 closeCtx 派生的全部工作
+	wg          sync.WaitGroup
+
+	// 离线索引，由 indexMu 保护。indexed 为 false 时 latestBySource 只是零散登记，
+	// 不可作为查询依据；ensureOfflineIndex 建立后才是权威。
+	indexMu        sync.RWMutex
+	latestBySource map[string]cachedThumb
+	indexed        bool
+}
+
+// cachedThumb 是离线索引里一个 Source 当前最新的缓存条目：文件名与该缓存文件
+// 自己的真实 ModTime（不是变长 hex 版本串的字典序——那不等于写入先后）。
+type cachedThumb struct {
+	filename string
+	modTime  time.Time
 }
 
 // thumbCall 是同 key 构建的共享状态。done 关闭即构建终结（err 已定），等待者据此取结果；
@@ -97,6 +114,7 @@ func (t *ThumbnailStore) ensureInit() {
 		t.inflight = make(map[string]*thumbCall)
 		t.buildSem = make(chan struct{}, buildConcurrency())
 		t.closeCh = make(chan struct{})
+		t.closeCtx, t.closeCancel = context.WithCancel(context.Background())
 	})
 }
 
@@ -110,7 +128,7 @@ func NewThumbnailStore(dir string) (*ThumbnailStore, error) {
 
 // Close 幂等关停：拒绝新构建，取消全部在途构建并等待其与在途 Prune 结束。
 // 不等待请求侧等待者——它们监听 closeCh 自行返回；也不会死锁，构建协程的
-// 阻塞点全部监听 closeCh 或 buildCtx 取消。
+// 阻塞点全部监听 closeCh 或 buildCtx 取消，启动期 Prune 的每一轮检查 closeCtx。
 func (t *ThumbnailStore) Close() {
 	t.ensureInit()
 	t.mu.Lock()
@@ -125,6 +143,9 @@ func (t *ThumbnailStore) Close() {
 	}
 	t.inflight = make(map[string]*thumbCall)
 	t.mu.Unlock()
+	// 先取消关停上下文再排空：启动期 Prune 的当前轮立即收尾，与在途构建一起
+	// 被 wg.Wait 排空，mediaHandler.Close() 因此严格先于 db.Close() 完成。
+	t.closeCancel()
 	t.wg.Wait()
 }
 
@@ -147,6 +168,7 @@ func (t *ThumbnailStore) ServeThumbnail(w http.ResponseWriter, r *http.Request, 
 	etag := `"` + thumbnailVersion(info) + `"`
 	err := t.serveFile(w, r, target, etag)
 	if err == nil {
+		t.recordThumbFile(target)
 		return nil
 	}
 	if !errors.Is(err, os.ErrNotExist) {
@@ -155,7 +177,11 @@ func (t *ThumbnailStore) ServeThumbnail(w http.ResponseWriter, r *http.Request, 
 	if err := t.awaitBuild(r.Context(), sourceID+"."+thumbnailVersion(info), originalPath, target); err != nil {
 		return err
 	}
-	return t.serveFile(w, r, target, etag)
+	if err := t.serveFile(w, r, target, etag); err != nil {
+		return err
+	}
+	t.recordThumbFile(target)
+	return nil
 }
 
 // awaitBuild 以引用计数 singleflight 等待（或发起）一次同版本构建。
@@ -246,6 +272,10 @@ func (t *ThumbnailStore) runBuild(buildCtx context.Context, call *thumbCall, key
 	if err == nil {
 		err = writeAtomically(target, thumb)
 	}
+	if err == nil {
+		// 已落盘即是离线可服务的最新缓存，无论这次构建还有没有等待者。
+		t.recordThumbFile(target)
+	}
 	t.finishCall(key, call, err)
 }
 
@@ -262,34 +292,133 @@ func (t *ThumbnailStore) finishCall(key string, call *thumbCall, err error) {
 }
 
 // ServeCachedThumbnail 在原文件不可用时读取该 Source 最近写入的缓存，不访问原文件。
+// 查询走离线索引：首次调用按目录真实内容一次性建索引，此后命中 O(1)、未命中直接
+// os.ErrNotExist——非图片 Source 的负查询不再每次重扫目录。索引指向的文件被外部
+// 清理时按 CAS 自愈移除条目，不覆盖并发登记的更新文件。
 func (t *ThumbnailStore) ServeCachedThumbnail(w http.ResponseWriter, r *http.Request, sourceID string) error {
-	entries, err := os.ReadDir(t.dir)
-	if err != nil {
-		return err
-	}
-	var latest os.FileInfo
-	var name string
-	for _, entry := range entries {
-		if entry.IsDir() || !strings.HasPrefix(entry.Name(), sourceID+".") || !strings.HasSuffix(entry.Name(), ".jpg") {
-			continue
-		}
-		info, err := entry.Info()
-		if err != nil {
-			return err
-		}
-		if latest == nil || info.ModTime().After(latest.ModTime()) || (info.ModTime().Equal(latest.ModTime()) && entry.Name() > name) {
-			latest, name = info, entry.Name()
-		}
-	}
-	if latest == nil {
+	entry, ok := t.latestCached(sourceID)
+	if !ok {
 		return os.ErrNotExist
 	}
-	return t.serveFile(w, r, filepath.Join(t.dir, name), `"`+name+`"`)
+	err := t.serveFile(w, r, filepath.Join(t.dir, entry.filename), `"`+entry.filename+`"`)
+	if errors.Is(err, os.ErrNotExist) {
+		t.forgetCachedThumbCAS(sourceID, entry.filename)
+	}
+	return err
+}
+
+// ensureOfflineIndex 在首次离线查询时按目录真实内容一次性建立全量索引。
+// 建立后离线查询不再扫描目录：2000 文件目录下每次 0.70ms 的重复遍历与
+// 非图片源的负缓存风暴都由此消除。目录读不出来（被删/不可读）按空索引处理：
+// 媒体兜底链路本来就以 404 收尾，之后落盘成功的文件经 recordCachedThumb 仍会进索引。
+func (t *ThumbnailStore) ensureOfflineIndex() {
+	t.indexMu.RLock()
+	indexed := t.indexed
+	t.indexMu.RUnlock()
+	if indexed {
+		return
+	}
+	t.indexMu.Lock()
+	defer t.indexMu.Unlock()
+	if t.indexed {
+		return
+	}
+	latest := make(map[string]cachedThumb)
+	if entries, err := readDirFn(t.dir); err == nil {
+		for _, entry := range entries {
+			if entry.IsDir() || !strings.HasSuffix(entry.Name(), ".jpg") {
+				continue
+			}
+			stem := strings.TrimSuffix(entry.Name(), ".jpg")
+			dot := strings.IndexByte(stem, '.')
+			if dot <= 0 {
+				continue
+			}
+			info, err := entry.Info()
+			if err != nil {
+				// 条目刚被并发删除：跳过单个条目，不影响索引其余部分。
+				continue
+			}
+			sourceID := stem[:dot]
+			current, ok := latest[sourceID]
+			if !ok || info.ModTime().After(current.modTime) ||
+				(info.ModTime().Equal(current.modTime) && entry.Name() > current.filename) {
+				latest[sourceID] = cachedThumb{filename: entry.Name(), modTime: info.ModTime()}
+			}
+		}
+	}
+	t.latestBySource = latest
+	t.indexed = true
+}
+
+// latestCached 返回离线索引里该 Source 的最新缓存条目。索引已建立而未登记时
+// 返回 false（即 os.ErrNotExist 语义），绝不回退到目录重扫。
+func (t *ThumbnailStore) latestCached(sourceID string) (cachedThumb, bool) {
+	t.ensureOfflineIndex()
+	t.indexMu.RLock()
+	defer t.indexMu.RUnlock()
+	entry, ok := t.latestBySource[sourceID]
+	return entry, ok
+}
+
+// recordThumbFile 把一个成功落盘的缓存文件登记进离线索引：文件名按「sourceID.版本」
+// 解析归属（sourceID 不含点，首个点即分界），stat 取真实 ModTime 后经
+// recordCachedThumb 写入。ServeThumbnail 命中/落盘与 Save 回填都经它同步更新。
+func (t *ThumbnailStore) recordThumbFile(target string) {
+	name := filepath.Base(target)
+	dot := strings.IndexByte(name, '.')
+	if dot <= 0 {
+		return
+	}
+	info, err := os.Stat(target)
+	if err != nil {
+		return
+	}
+	t.recordCachedThumb(name[:dot], name, info.ModTime())
+}
+
+// recordCachedThumb 把 sourceID 当前最新的缓存文件登记进离线索引：
+// 先走 RLock 判等快路径（同文件零写入），仅在缺失或变化时升级写锁，且只接受
+// 比已登记条目更新的文件，避免并发的旧构建回写覆盖新版本。索引尚未建立时跳过：
+// 离线首查会按目录真实内容整体重建，此时登记的条目只会被覆盖（文件已在盘上，不会丢）。
+func (t *ThumbnailStore) recordCachedThumb(sourceID, filename string, modTime time.Time) {
+	t.indexMu.RLock()
+	indexed := t.indexed
+	current, ok := t.latestBySource[sourceID]
+	t.indexMu.RUnlock()
+	if !indexed {
+		return
+	}
+	if ok && current.filename == filename {
+		return
+	}
+	t.indexMu.Lock()
+	defer t.indexMu.Unlock()
+	// 双检：拿写锁期间条目可能已被并发更新。
+	current, ok = t.latestBySource[sourceID]
+	if ok && current.filename == filename {
+		return
+	}
+	if !ok || modTime.After(current.modTime) {
+		t.latestBySource[sourceID] = cachedThumb{filename: filename, modTime: modTime}
+	}
+}
+
+// forgetCachedThumbCAS 自愈移除索引条目：仅当条目仍指向 targetName 时才删除。
+// 外部手动清理缓存目录与 pruneStale 都经它收尾；并发登记的更新文件因文件名不同
+// 而不会被误删。
+func (t *ThumbnailStore) forgetCachedThumbCAS(sourceID, targetName string) {
+	t.indexMu.Lock()
+	defer t.indexMu.Unlock()
+	if entry, ok := t.latestBySource[sourceID]; ok && entry.filename == targetName {
+		delete(t.latestBySource, sourceID)
+	}
 }
 
 // Save 接收前端回填的缩略图（前端 WebKit 能解码 Go 解不了的格式，如 HEIC）：
 // 校验为尺寸合理的 JPEG 后按当前原文件版本落盘，后续读取即可命中。原文件信息或载荷
-// 不合法时返回 false，调用方给 4xx。
+// 不合法时返回 false，调用方给 4xx。落盘成功即同步登记进离线索引：之后原文件失效，
+// 离线查询也能直接命中这次回填。
 func (t *ThumbnailStore) Save(sourceID string, info os.FileInfo, data []byte) bool {
 	if len(data) == 0 || len(data) > maxThumbnailUploadBytes {
 		return false
@@ -303,7 +432,12 @@ func (t *ThumbnailStore) Save(sourceID string, info os.FileInfo, data []byte) bo
 		config.Width > 4*thumbnailMaxEdge || config.Height > 4*thumbnailMaxEdge {
 		return false
 	}
-	return writeAtomically(t.path(sourceID, info), data) == nil
+	target := t.path(sourceID, info)
+	if writeAtomically(target, data) != nil {
+		return false
+	}
+	t.recordThumbFile(target)
+	return true
 }
 
 // thumbnailPruneEntry 描述一个文件 Source 在清理时的身份与当前版本。
@@ -320,7 +454,7 @@ type FileSourceLister func(ctx context.Context) ([]storage.SourceModel, error)
 // Prune 按库内现行文件 Source 名单清一次过期缩略图，启动时跑一次即可。
 // 原文件暂不可 stat 的 Source（离线归档盘）Version 为空，其缩略图全部保留，等可用后再清。
 // 名单读取失败时整次跳过，只留垃圾不留错误。
-// 纳入 wg 计量使 Close 等待在途 Prune 结束（取消透传属后续 PR）。
+// 纳入 wg 计量使 Close 等待在途 Prune 结束；ctx 取消在每轮清理前检查，立即收尾。
 func (t *ThumbnailStore) Prune(ctx context.Context, list FileSourceLister) {
 	t.ensureInit()
 	t.mu.Lock()
@@ -335,7 +469,28 @@ func (t *ThumbnailStore) Prune(ctx context.Context, list FileSourceLister) {
 	t.prune(ctx, list)
 }
 
+// StartPrune 在后台跑一次启动期清理，调用方不再自带 goroutine：协程纳入 wg 计量
+// （锁内确认未关闭后才 Add），上下文用 closeCtx——Close 取消它并经 wg.Wait 排空，
+// 关停链路里 mediaHandler.Close() 因此一并等完启动期清理。
+func (t *ThumbnailStore) StartPrune(list FileSourceLister) {
+	t.ensureInit()
+	t.mu.Lock()
+	if t.closed {
+		t.mu.Unlock()
+		return
+	}
+	t.wg.Add(1)
+	t.mu.Unlock()
+	go func() {
+		defer t.wg.Done()
+		t.prune(t.closeCtx, list)
+	}()
+}
+
 func (t *ThumbnailStore) prune(ctx context.Context, list FileSourceLister) {
+	if ctx.Err() != nil {
+		return
+	}
 	models, err := list(ctx)
 	if err != nil {
 		log.Printf("interweave: thumbnail prune skipped: %v", err)
@@ -349,22 +504,27 @@ func (t *ThumbnailStore) prune(ctx context.Context, list FileSourceLister) {
 		}
 		entries = append(entries, entry)
 	}
-	t.pruneStale(entries)
+	t.pruneStale(ctx, entries)
 }
 
 // pruneStale 删除不再匹配当前版本的缩略图文件：运行期的版本失效
 // 靠文件名天然错开，不产生需要即时回收的垃圾。无点分隔、无法归属的文件不动，
 // 避免误删并行写入的临时产物；已删除 Source 的遗留文件归属明确，属于清理目标。
-func (t *ThumbnailStore) pruneStale(entries []thumbnailPruneEntry) {
+// ctx 在每一轮删除前检查，取消后立即收尾；被删除的文件若是离线索引登记的当前
+// 条目，按 CAS 同步移除，保证索引与磁盘一致。
+func (t *ThumbnailStore) pruneStale(ctx context.Context, entries []thumbnailPruneEntry) {
 	byID := make(map[string]thumbnailPruneEntry, len(entries))
 	for _, entry := range entries {
 		byID[entry.SourceID] = entry
 	}
-	files, err := os.ReadDir(t.dir)
+	files, err := readDirFn(t.dir)
 	if err != nil {
 		return
 	}
 	for _, file := range files {
+		if ctx.Err() != nil {
+			return
+		}
 		name := file.Name()
 		if file.IsDir() || !strings.HasSuffix(name, ".jpg") {
 			continue
@@ -378,6 +538,7 @@ func (t *ThumbnailStore) pruneStale(entries []thumbnailPruneEntry) {
 			continue
 		}
 		_ = os.Remove(filepath.Join(t.dir, name))
+		t.forgetCachedThumbCAS(stem[:dot], name)
 	}
 }
 
@@ -407,6 +568,10 @@ func writeAtomically(target string, data []byte) error {
 // buildThumbnailFn 是 buildThumbnail 的注入点：单测用它构造慢速/失败的构建来验证
 // 去重、取消与关停排空。生产代码不得在运行期改写。
 var buildThumbnailFn = buildThumbnail
+
+// readDirFn 是 os.ReadDir 的注入点：单测用它计数目录扫描次数，验证离线索引
+// 消除了重复遍历。生产代码不得在运行期改写。
+var readDirFn = os.ReadDir
 
 // buildThumbnail 解码原文件并产出缩略图字节。格式不受支持时返回 ErrUnsupportedThumbnail。
 func buildThumbnail(originalPath string) ([]byte, error) {
