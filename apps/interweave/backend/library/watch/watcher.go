@@ -88,10 +88,18 @@ type Watcher struct {
 	degraded bool
 	warnOnce sync.Once
 
+	// runCancel 与 stopped 由 mu 保护：Start 在锁内原子完成「未停止检查 + 上下文派生 +
+	// wg 计量」，Stop 在锁内置位后取走 cancel——未 Start 即 Stop 绝不调用 nil cancel。
+	runCancel context.CancelFunc
+	stopped   bool
+
 	pendMu   sync.Mutex
 	pending  map[string]*time.Timer // 路径 → trailing debounce 定时器；Stop 置 nil 表示已停
 	suspects map[string]bool        // 路径 → 已失败一次，等待第二个窗口确认
 	probeQ   chan string
+	// syncCh 是缓冲为 1 的对账请求通道：RequestSync 非阻塞投递，多次未消费的请求
+	// 合并为一次，由 runReconcile（绝不放 runEvents）在自己的协程上消费。
+	syncCh   chan struct{}
 	done     chan struct{}
 	stopOnce sync.Once
 	wg       sync.WaitGroup
@@ -110,19 +118,54 @@ func NewWatcher(gate *AvailabilityGate) (*Watcher, error) {
 		pending:  map[string]*time.Timer{},
 		suspects: map[string]bool{},
 		probeQ:   make(chan string, probeQueueCapacity),
+		syncCh:   make(chan struct{}, 1),
 		done:     make(chan struct{}),
 	}, nil
 }
 
+// errWatcherNotRunnable 表示 Start 在已停止（含从未启动就 Stop）或已在运行的
+// Watcher 上不可执行：与其静默启动一套立即被关闭的协程，不如把状态如实上报。
+var errWatcherNotRunnable = errors.New("watch: watcher is already started or stopped")
+
 // Start 先全量对账再启动事件循环、探测 worker 与定期对账。
+// 「未停止检查、runCtx 派生与 wg 计量」在 mu 锁内原子完成：初始对账失败时撤销
+// 计量并同步清理，Stop 与初始对账竞速时也不会漏掉或多算这 3 个协程。
 func (w *Watcher) Start(ctx context.Context) error {
-	if err := w.SyncSources(ctx); err != nil {
+	w.mu.Lock()
+	if w.stopped || w.runCancel != nil {
+		w.mu.Unlock()
+		return errWatcherNotRunnable
+	}
+	runCtx, cancel := context.WithCancel(ctx)
+	w.runCancel = cancel
+	w.wg.Add(3)
+	w.mu.Unlock()
+
+	if err := w.SyncSources(runCtx); err != nil {
+		w.mu.Lock()
+		w.runCancel = nil
+		w.mu.Unlock()
+		cancel()
+		w.wg.Add(-3)
 		return err
 	}
-	w.wg.Add(3)
-	go w.runEvents(ctx)
-	go w.runProbes(ctx)
-	go w.runReconcile(ctx)
+
+	w.mu.Lock()
+	stopped := w.stopped
+	if stopped {
+		w.runCancel = nil
+	}
+	w.mu.Unlock()
+	if stopped {
+		// 初始对账期间 Stop 已到达：协程尚未启动，撤销计量并同步清理。
+		cancel()
+		w.wg.Add(-3)
+		return errWatcherNotRunnable
+	}
+
+	go w.runEvents(runCtx)
+	go w.runProbes(runCtx)
+	go w.runReconcile(runCtx)
 	return nil
 }
 
@@ -184,9 +227,18 @@ func (w *Watcher) SyncSources(ctx context.Context) error {
 	return nil
 }
 
-// Stop 由 main.go 的 app.OnShutdown 与 defer 双保险调用，可重复调用。
+// Stop 由 main.go 的 app.OnShutdown 与 defer 双保险调用，可重复调用；
+// 从未 Start 的 Watcher 上调用同样安全：没有可取消的 runCancel 就只关闭完成信号。
 func (w *Watcher) Stop() {
 	w.stopOnce.Do(func() {
+		w.mu.Lock()
+		w.stopped = true
+		cancel := w.runCancel
+		w.runCancel = nil
+		w.mu.Unlock()
+		if cancel != nil {
+			cancel()
+		}
 		close(w.done)
 
 		w.pendMu.Lock()
@@ -203,6 +255,42 @@ func (w *Watcher) Stop() {
 			log.Printf("interweave: close file watch failed: %v", err)
 		}
 	})
+}
+
+// RequestSync 非阻塞地请求一次全量对账：缓冲未满时投递，已满（尚有未消费的请求）
+// 直接丢弃，多次请求因此合并为一次。供 core 写路径经 AsyncIndexSync 调用，入口
+// 增删改绝不等待目录扫描；对账由 runReconcile 在自己的协程上执行。未启动时请求
+// 留在缓冲里待 Start 后消费，已停止后是没有消费者的无害投递。
+func (w *Watcher) RequestSync() {
+	select {
+	case w.syncCh <- struct{}{}:
+	default:
+	}
+}
+
+// AsyncIndexSync 把 core 的 SourceIndexSync 接缝桥接成 watcher 的非阻塞对账请求：
+// 入口集合增删改（core 写路径）不再同步执行 dirWatchCost 的目录扫描，
+// 全量对账由 watcher 的定期对账协程合并执行。
+type AsyncIndexSync struct {
+	watcher *Watcher
+}
+
+// 编译期钉住 core 侧接缝的形状：main.go 经 SetIndexSync 注入它。
+var _ core.SourceIndexSync = (*AsyncIndexSync)(nil)
+
+// NewAsyncIndexSync 用给定的 Watcher 构造适配器；watcher 为 nil 时 SyncSources 是空操作。
+func NewAsyncIndexSync(watcher *Watcher) *AsyncIndexSync {
+	return &AsyncIndexSync{watcher: watcher}
+}
+
+// SyncSources 实现 core.SourceIndexSync：只投递请求立即返回，永不阻塞调用方，
+// 也不返回对账错误——对账失败由 watcher 记日志，定期巡检兜底。
+func (s *AsyncIndexSync) SyncSources(context.Context) error {
+	if s == nil || s.watcher == nil {
+		return nil
+	}
+	s.watcher.RequestSync()
+	return nil
 }
 
 // canAfford 按 fd 预算判断能否承担一个新目录的监听。
@@ -473,6 +561,9 @@ func (w *Watcher) ReportFileUnavailable(ctx context.Context, sourceID string) (b
 
 // runReconcile 定期全量对账，覆盖 fsnotify 静默丢失的 watch：
 // 目录被改名、移走或删除后重建会让监听永久消失，只能靠重新对账找回。
+// core 写路径的对账请求（RequestSync）也在这里消费：绝不放进 runEvents——
+// 事件消费必须保持非阻塞，对账的目录扫描只在这个专属协程上发生。
+// 对账进行中到达的新请求留在缓冲里，本次结束后恰好再补一次，请求不丢。
 func (w *Watcher) runReconcile(ctx context.Context) {
 	defer w.wg.Done()
 	ticker := time.NewTicker(reconcileInterval)
@@ -484,9 +575,19 @@ func (w *Watcher) runReconcile(ctx context.Context) {
 		case <-w.done:
 			return
 		case <-ticker.C:
-			if err := w.SyncSources(ctx); err != nil {
-				log.Printf("interweave: reconcile file watch failed: %v", err)
-			}
+		case <-w.syncCh:
+		}
+		// select 在多个就绪 case 间随机选择：关停竞速时可能先拿到 ticker/syncCh，
+		// 进入对账前再做一次非阻塞检查，绝不在关停后还打 DB。
+		select {
+		case <-ctx.Done():
+			return
+		case <-w.done:
+			return
+		default:
+		}
+		if err := w.SyncSources(ctx); err != nil {
+			log.Printf("interweave: reconcile file watch failed: %v", err)
 		}
 	}
 }

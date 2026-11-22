@@ -134,6 +134,9 @@ func (d *DB) initSchema() error {
 	CREATE INDEX IF NOT EXISTS idx_sources_resource_id ON sources(resource_id);
 	CREATE INDEX IF NOT EXISTS idx_taggings_resource_id ON taggings(resource_id);
 	CREATE INDEX IF NOT EXISTS idx_taggings_tag_id ON taggings(tag_id);
+	-- (type, location) 服务两类热路径：按位置反查 Source（watcher 事件解析、按路径去重
+	-- 添加）从全表扫描转为索引查找；文件 Source 位置全量列表转为覆盖索引扫描。
+	CREATE INDEX IF NOT EXISTS idx_sources_type_location ON sources(type, location);
 	`
 	_, err := d.db.Exec(schema)
 	if err != nil {

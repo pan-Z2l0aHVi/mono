@@ -4,6 +4,7 @@ import (
 	"context"
 	"os"
 	"path/filepath"
+	"strings"
 	"testing"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
@@ -74,5 +75,82 @@ func TestOpenConfiguresEveryPooledConnection(t *testing.T) {
 	}
 	if journalMode != "wal" {
 		t.Errorf("expected journal_mode=wal on pooled connection, got %q", journalMode)
+	}
+}
+
+// idx_sources_type_location 必须接住两类热路径：按 (type, location) 反查 Source 与
+// 文件位置全量列表。语句与 SourceStore.ListSourcesByLocations / ListFileSourceLocations
+// 逐字一致（source_store.go 不在本次改动范围，改写查询时需同步此处）。
+// 断言口径：凡触及 sources 表的计划都必须走该索引——既排除全表扫描，也排除
+// 退化回 idx_sources_resource_id 或主键扫描。
+func TestLocationQueriesPlanThroughSourcesTypeLocationIndex(t *testing.T) {
+	ctx := context.Background()
+	db := openTestDB(t)
+
+	seedSource := func(id, srcType, location string) {
+		t.Helper()
+		now := int64(1_700_000_000_000)
+		if err := (storage.ResourceStore{}).Insert(ctx, db.SqlDB(), storage.ResourceModel{
+			ID: "resource-" + id, Title: id, CreatedAt: now, UpdatedAt: now,
+		}); err != nil {
+			t.Fatalf("insert resource %s: %v", id, err)
+		}
+		if err := (storage.SourceStore{}).Insert(ctx, db.SqlDB(), storage.SourceModel{
+			ID: id, ResourceID: "resource-" + id, Type: storage.SourceType(srcType),
+			Location: location, Available: true, IsPreferred: true, CreatedAt: now, UpdatedAt: now,
+		}); err != nil {
+			t.Fatalf("insert source %s: %v", id, err)
+		}
+	}
+	seedSource("src-file-a", "file", "/library/a.png")
+	seedSource("src-file-b", "file", "/library/b.png")
+	seedSource("src-url-a", "url", "https://example.com/a.png")
+
+	cases := []struct {
+		name  string
+		query string
+		args  []any
+	}{
+		{
+			name: "ListSourcesByLocations",
+			query: `
+				SELECT id, resource_id, type, location, available, is_preferred, order_index, metadata_json, created_at, updated_at
+				FROM sources WHERE type = ? AND location IN (?, ?)
+			`,
+			args: []any{"file", "/library/a.png", "/library/b.png"},
+		},
+		{
+			name:  "ListFileSourceLocations",
+			query: `SELECT location FROM sources WHERE type = 'file'`,
+		},
+	}
+	for _, testCase := range cases {
+		t.Run(testCase.name, func(t *testing.T) {
+			rows, err := db.SqlDB().QueryContext(ctx, "EXPLAIN QUERY PLAN "+testCase.query, testCase.args...)
+			if err != nil {
+				t.Fatalf("explain query plan: %v", err)
+			}
+			defer rows.Close()
+			var details []string
+			for rows.Next() {
+				var id, parent, notUsed int
+				var detail string
+				if err := rows.Scan(&id, &parent, &notUsed, &detail); err != nil {
+					t.Fatalf("scan plan row: %v", err)
+				}
+				details = append(details, detail)
+			}
+			if err := rows.Err(); err != nil {
+				t.Fatalf("read plan rows: %v", err)
+			}
+			for _, detail := range details {
+				if strings.Contains(detail, "sources") && !strings.Contains(detail, "idx_sources_type_location") {
+					t.Fatalf("sources access bypassed idx_sources_type_location: %q (full plan: %q)", detail, details)
+				}
+			}
+			if !strings.Contains(strings.Join(details, " | "), "idx_sources_type_location") {
+				t.Fatalf("expected plan to use idx_sources_type_location, got %q", details)
+			}
+		})
 	}
 }

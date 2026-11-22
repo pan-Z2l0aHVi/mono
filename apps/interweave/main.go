@@ -188,9 +188,10 @@ func main() {
 	defer mediaHandler.Close()
 
 	// 启动清理一次过期版本：文件被外部改写或 Source 被删除后，旧文件名不会再生效。
-	// 失败只留垃圾不留错误，不阻塞启动。
+	// 失败只留垃圾不留错误，不阻塞启动；goroutine 由 StartPrune 纳入 ThumbnailStore
+	// 自身的 wg 与关停上下文，mediaHandler.Close() 统一取消并排空。
 	if thumbs != nil {
-		go thumbs.Prune(context.Background(), func(ctx context.Context) ([]storage.SourceModel, error) {
+		thumbs.StartPrune(func(ctx context.Context) ([]storage.SourceModel, error) {
 			return storage.SourceStore{}.ListFileSources(ctx, db.SqlDB())
 		})
 	}
@@ -324,8 +325,11 @@ func main() {
 	// 指纹回填是启动期后台补账，不在构造函数里隐藏调度。
 	db.ScheduleBackground("fingerprint:backfill", coreSourceService.BackfillFingerprints)
 	if watcher != nil {
-		coreSourceService.SetIndexSync(watcher)
-		coreResourceService.SetIndexSync(watcher)
+		// core 写路径的对账改走非阻塞请求：入口增删改不再同步执行 dirWatchCost 的
+		// 目录扫描（前台写路径不被 os.ReadDir 阻塞），对账由 watcher 的对账协程合并执行。
+		indexSync := libraryWatch.NewAsyncIndexSync(watcher)
+		coreSourceService.SetIndexSync(indexSync)
+		coreResourceService.SetIndexSync(indexSync)
 		if err := watcher.Start(context.Background()); err != nil {
 			log.Printf("interweave: failed to start file watch: %v", err)
 		}

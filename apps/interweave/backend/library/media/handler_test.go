@@ -307,6 +307,72 @@ func TestHandlerMiddlewareFallsBackToDefaultAssetHandler(t *testing.T) {
 	}
 }
 
+// 服务端构建失败而客户端仍活跃：必须给非空 500。吞掉错误或回空 200 都会让前端把
+// 失败当成成功加载出一俱破图。
+func TestThumbnailRouteReturns500WhenBuildFailsWithLiveClient(t *testing.T) {
+	db := openTestDB(t)
+	original := filepath.Join(t.TempDir(), "photo.jpg")
+	if err := os.WriteFile(original, mustJPEG(t, gradientImage(600, 400)), 0o600); err != nil {
+		t.Fatalf("write original: %v", err)
+	}
+	insertFileSource(t, db, "source-failed-build", original)
+	handler := newThumbnailHandler(t, db)
+
+	restore := buildThumbnailFn
+	buildThumbnailFn = func(string) ([]byte, error) { return nil, errors.New("decoder exploded") }
+	t.Cleanup(func() { buildThumbnailFn = restore })
+
+	response := httptest.NewRecorder()
+	handler.ServeHTTP(response, httptest.NewRequest(http.MethodGet, ThumbnailPathPrefix+"source-failed-build", nil))
+	if response.Code != http.StatusInternalServerError {
+		t.Fatalf("expected 500 on build failure with live client, got %d", response.Code)
+	}
+	if response.Body.Len() == 0 {
+		t.Fatal("expected non-empty error body for a live client")
+	}
+	// 排空构建协程再还原注入点，避免 cleanup 写回与在途读竞态。
+	handler.thumbs.Close()
+}
+
+// 客户端已断连：响应写不到对端，守卫必须静默返回。recorder 保持未写入状态
+// （无错误头、无 body）即「什么都没写」的观察面；一旦走了 http.Error 或 serveFile
+// 就会出现非空 body 或错误头。取消发生在构建在途时，DB 预查必须照常完成。
+func TestThumbnailRouteStaysSilentWhenClientDisconnected(t *testing.T) {
+	db := openTestDB(t)
+	original := filepath.Join(t.TempDir(), "photo.jpg")
+	if err := os.WriteFile(original, mustJPEG(t, gradientImage(600, 400)), 0o600); err != nil {
+		t.Fatalf("write original: %v", err)
+	}
+	insertFileSource(t, db, "source-disconnect", original)
+	handler := newThumbnailHandler(t, db)
+
+	restore := buildThumbnailFn
+	buildThumbnailFn = func(string) ([]byte, error) { return nil, errors.New("decoder exploded") }
+	t.Cleanup(func() { buildThumbnailFn = restore })
+
+	request := httptest.NewRequest(http.MethodGet, ThumbnailPathPrefix+"source-disconnect", nil)
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	request = request.WithContext(ctx)
+
+	started := make(chan struct{}, 1)
+	_, releaseBuilds := gateBuilds(t, started)
+	responseDone := requestThumbnailAsync(handler, request)
+	// 等构建真正进入在途再断连：提前取消只会让 sources.Get 的预查直接失败，测不到守卫。
+	waitForSignal(t, started, "build start")
+	cancel()
+
+	response := <-responseDone
+	if response.Body.Len() != 0 {
+		t.Fatalf("disconnected client must produce no body, got %q", response.Body.String())
+	}
+	if contentType := response.Header().Get("Content-Type"); contentType != "" {
+		t.Fatalf("disconnected client must not receive error headers, got %q", contentType)
+	}
+	releaseBuilds()
+	handler.thumbs.Close()
+}
+
 func TestHandlerServesPendingPreviewWithRangeAndRevokesReleasedToken(t *testing.T) {
 	mediaPath := filepath.Join(t.TempDir(), "pending.mp4")
 	if err := os.WriteFile(mediaPath, []byte("0123456789"), 0o600); err != nil {
@@ -366,4 +432,36 @@ func TestHandlerServesPendingPreviewWithRangeAndRevokesReleasedToken(t *testing.
 			}
 		})
 	}
+}
+
+// Handler.Close 必须顺带关停缩略图存储：退出序里它先于 db.Close() 执行，漏接线会让
+// 构建协程活在数据库已关闭之后。关停后的请求按服务端错误处理，不再发起构建。
+func TestHandlerCloseStopsThumbnailBuilds(t *testing.T) {
+	db := openTestDB(t)
+	original := filepath.Join(t.TempDir(), "photo.jpg")
+	if err := os.WriteFile(original, mustJPEG(t, gradientImage(600, 400)), 0o600); err != nil {
+		t.Fatalf("write original: %v", err)
+	}
+	insertFileSource(t, db, "source-closed-handler", original)
+	handler := newThumbnailHandler(t, db)
+
+	started := make(chan struct{}, 1)
+	_, releaseBuilds := gateBuilds(t, started)
+	handler.Close()
+
+	// 关停后的请求必须立即按服务端错误失败，且不能有任何构建启动：
+	// 若等到 started 信号，说明请求仍在发起构建（守卫失效）。
+	responseDone := requestThumbnailAsync(handler,
+		httptest.NewRequest(http.MethodGet, ThumbnailPathPrefix+"source-closed-handler", nil))
+	select {
+	case rec := <-responseDone:
+		if rec.Code != http.StatusInternalServerError || rec.Body.Len() == 0 {
+			t.Fatalf("expected non-empty 500 after handler close, got %d %q", rec.Code, rec.Body.String())
+		}
+	case <-started:
+		t.Fatal("a thumbnail build started after handler close")
+	case <-time.After(5 * time.Second):
+		t.Fatal("request neither served nor failed within 5s after handler close")
+	}
+	releaseBuilds()
 }
