@@ -6,10 +6,7 @@
 
 先查实际 diff、公共契约和消费者，再选验证层。单包内部改动跑该包测试、类型检查和构建；跨包、公共契约、根配置或 CI 变更跑受影响闭包，无法确定闭包边界时跑全量。适用的自动化回归与构建应在实施阶段完成。不跑全量时，记录选择依据与未覆盖层。代码变化后须重跑；失败时修复并重跑。
 
-稀疏检出任务的验证取舍——哪些检查在稀疏树上跑、受影响闭包如何纳入、结论如何记账、
-何时 restore——见 [turbo-sparse-scope](../../.agents/skills/turbo-sparse-scope/SKILL.md)
-的「生命周期与本地验证」；PR CI 复检 required checks，但不替代本地应完成的证据，稀疏期
-未跑的全仓项在交付记录中明记缺口。
+默认全树验证并按受影响闭包收窄 `turbo --filter`。若工作区按需启用了 [apps-sparse-checkout](../../.agents/skills/apps-sparse-checkout/SKILL.md) 隔离 `apps/*`（`packages/` 仍全量检出），包级/受影响包验证与 `check-pre-commit` 照常运行；全仓 gate（`test-scripts`、`check-context`、`check-policy`）须先 `--restore` 后复跑，否则在交付记录中明记缺口并交由 PR CI 复检。
 
 涉及前端运行时的改动，在进入创建 PR 与合并流程之前，先按 [`runtime-verification.md`](./runtime-verification.md#前端冒烟门) 完成前端冒烟并全部通过。冒烟不替代本节选择的测试层。
 

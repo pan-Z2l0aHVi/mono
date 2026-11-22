@@ -6,7 +6,7 @@
 
 按改动影响自行分级（见 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)）；只读调查与单会话局部改动免建账，跨会话、跨 Harness 或多 worktree 接力时按需启用该 skill 记录本地台账与恢复起点。PR review 纪律见 [`docs/agents/review.md`](docs/agents/review.md)，方案到合并的总流程与授权见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
 
-可变任务按 [worktree](docs/agents/worktree.md#新-worktree-的准备) 完成准备后，按本次改动范围（若启用了 `task-ledger` 则取台账 `scope`）与实现/验证必需的包外读取路径，用 [turbo-sparse-scope](.agents/skills/turbo-sparse-scope/SKILL.md) 判断并处理稀疏范围；触发、跳过与稀疏树读取规则见该 skill。
+可变任务按 [worktree](docs/agents/worktree.md#新-worktree-的准备) 完成准备后，默认保持全树检出（配合窄口径根 [`.ignore`](.ignore)、路径前缀检索与 `turbo --filter` 收窄视野与构建范围）；仅在确需物理隔离兄弟应用（`apps/*`）时，按 [worktree](docs/agents/worktree.md#按需隔离兄弟应用) 调用 [apps-sparse-checkout](.agents/skills/apps-sparse-checkout/SKILL.md) 按需隔离 `apps/*`（`packages/` 与根级目录始终全量保留）。
 
 ## 项目身份
 
@@ -14,7 +14,7 @@
 
 ## 不可绕过的仓库边界
 
-- 不得改写 `.npmrc` 或 `.mise.toml` 的 registry/mirror，或任何 Git 配置；唯一例外是由 `turbo-sparse-scope` 执行 sparse checkout 时管理所必需的 worktree 配置与 Git 的 worktree-config 开关，不得借此更改其他 Git 配置。
+- 不得改写 `.npmrc` 或 `.mise.toml` 的 registry/mirror，或任何 Git 配置；唯一例外是由 `apps-sparse-checkout` 执行 sparse checkout 时管理所必需的 worktree 配置与 Git 的 worktree-config 开关，不得借此更改其他 Git 配置。
 - **禁止手写或修改生成物**：不得手写新建、手工编辑生成文件，也不得用复制、补丁、格式化或 lint 自动改写绕过；唯一允许的写入是跑对应 generator 产生 diff。清单、路径与重新生成入口见 [`docs/agents/generated-artifacts.md`](docs/agents/generated-artifacts.md)，判定方法见该文「[怎么判断一个文件是不是生成的](docs/agents/generated-artifacts.md#怎么判断一个文件是不是生成的)」。正确性由 generator 重建证明，不由审查结论证明。
 - `**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是源码产物。除非任务明确要求更新已验证的视觉基线，否则不创建、不编辑、不提交。
 - `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/` 和仓库自撰 skill 的文档用中文。`skills-lock.json` 登记的第三方 skill 与 `.agents/skills-vendored/` 保持上游原文，和仓库规则冲突时以仓库规则为准。技术术语、命令、路径和包名保留英文。

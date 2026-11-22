@@ -12,11 +12,5 @@ const options = {
   proseNames: ['README.md', 'README.CN.md', 'AGENTS.md', 'CHANGELOG.md']
 }
 
-/** 全仓口径（check-policy，先过 fullCheckout）：包目录缺失就是失败。 */
+/** 完整校验口径（`check-policy` 与 `check-pre-commit` 共用，因 `packages/` 永不稀疏）：包目录缺失就是失败。 */
 export const webUiDocsInputs = defineDocsInputs(options)
-
-/**
- * 提交边界口径（check-pre-commit）：稀疏 cone 可以合法隐藏整个 `packages/web-ui`，此时跳过；
- * 全 checkout 的完整判定由 check-policy 承担。稀疏信号只认 manifest 的 skip-worktree 位。
- */
-export const webUiDocsInputsSparseTolerant = defineDocsInputs({ ...options, allowSparsePackages: true })
