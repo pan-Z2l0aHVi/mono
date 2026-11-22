@@ -1,6 +1,6 @@
 #!/usr/bin/env node
 // 通用 task 台账：只记录归属、进度与引用；分级与流程见同目录 SKILL.md。
-// 状态位于系统临时目录，可丢失；它不是 review、测试或 CI 证据。
+// 默认状态位于用户缓存目录（$XDG_CACHE_HOME 或 ~/.cache），可清理；它不是 review、测试或 CI 证据。
 import { execFileSync } from 'node:child_process'
 import crypto from 'node:crypto'
 import fs from 'node:fs'
@@ -14,7 +14,9 @@ const TASK_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,100}$/
 const OWNER_ID = /^[A-Za-z0-9][A-Za-z0-9._-]{0,63}$/
 const REF_KIND = /^[a-z][a-z0-9-]{0,31}$/
 const MAX_REF_VALUE = 2000
-const BOOLEAN_OPTIONS = new Set(['json', 'remove', 'set', 'add', 'clear'])
+const DEFAULT_PRUNE_DAYS = 30
+const MS_PER_DAY = 24 * 60 * 60 * 1000
+const BOOLEAN_OPTIONS = new Set(['json', 'remove', 'set', 'add', 'clear', 'dry-run'])
 const compareText = (a, b) => (a < b ? -1 : a > b ? 1 : 0)
 
 function fail(message) {
@@ -158,10 +160,16 @@ function resolveBase(root, ref) {
   return sha
 }
 
+function cacheHomeDir() {
+  const xdg = process.env.XDG_CACHE_HOME
+  if (typeof xdg === 'string' && xdg.trim().length > 0 && path.isAbsolute(xdg)) return xdg
+  return path.join(os.homedir(), '.cache')
+}
+
 function stateDir(repo) {
-  return process.env.AGENT_TASK_STATE_DIR
-    ? path.resolve(process.env.AGENT_TASK_STATE_DIR)
-    : path.join(os.tmpdir(), 'agent-task-ledger', repo.repoId)
+  const override = process.env.AGENT_TASK_STATE_DIR
+  if (typeof override === 'string' && override.trim().length > 0) return path.resolve(override)
+  return path.join(cacheHomeDir(), 'agent-task-ledger', repo.repoId)
 }
 
 function stateFile(repo, id) {
@@ -454,6 +462,134 @@ function status(options) {
     )
 }
 
+function parsePositiveIntOption(value, name) {
+  if (typeof value !== 'string' || !/^\d+$/.test(value)) fail('--' + name + ' must be a positive integer')
+  const parsed = Number(value)
+  if (!Number.isSafeInteger(parsed) || parsed <= 0) fail('--' + name + ' must be a positive integer')
+  return parsed
+}
+
+function parseIsoTimestampMs(value) {
+  if (typeof value !== 'string' || value.trim().length === 0) return null
+  const parsed = Date.parse(value)
+  return Number.isFinite(parsed) ? parsed : null
+}
+
+function resolveTerminalTimestampMs(state, fallbackMtimeMs) {
+  const updatedMs = parseIsoTimestampMs(state.updatedAt)
+  if (updatedMs !== null) return updatedMs
+  const expectedEvent = state.status === 'closed' ? 'close' : 'drop'
+  for (let index = state.events.length - 1; index >= 0; index -= 1) {
+    const entry = state.events[index]
+    if (entry.event === expectedEvent) {
+      const eventMs = parseIsoTimestampMs(entry.at)
+      if (eventMs !== null) return eventMs
+    }
+  }
+  return fallbackMtimeMs
+}
+
+function hasPathEntry(file) {
+  try {
+    fs.lstatSync(file)
+    return true
+  } catch {
+    return false
+  }
+}
+
+function prune(options) {
+  assertNoExtra(options, 0)
+  if (options.task !== undefined) fail('prune does not accept --task')
+  const days = options.days === undefined ? DEFAULT_PRUNE_DAYS : parsePositiveIntOption(options.days, 'days')
+  const dryRun = options['dry-run'] === true
+  const repo = resolveRepo(options)
+  const directory = stateDir(repo)
+  const cutoffMs = Date.now() - days * MS_PER_DAY
+  const pruned = []
+  let keptCount = 0
+  let skippedCount = 0
+
+  if (fs.existsSync(directory)) {
+    const entries = fs
+      .readdirSync(directory)
+      .filter(name => name.endsWith('.json'))
+      .sort(compareText)
+    for (const name of entries) {
+      const jsonFile = path.join(directory, name)
+      let stat
+      try {
+        stat = fs.statSync(jsonFile)
+      } catch {
+        continue
+      }
+      if (!stat.isFile()) continue
+      const state = readStateForListing(jsonFile)
+      if (!state) {
+        skippedCount += 1
+        continue
+      }
+      if (state.gitCommonDir !== repo.gitCommonDir) {
+        keptCount += 1
+        continue
+      }
+      if (name !== state.id + '.json') {
+        process.stderr.write(
+          'warning: skipping task state with mismatched filename; ' + name + ' (id ' + state.id + ')\n'
+        )
+        skippedCount += 1
+        continue
+      }
+      if (state.status !== 'closed' && state.status !== 'dropped') {
+        keptCount += 1
+        continue
+      }
+      const timestampMs = resolveTerminalTimestampMs(state, stat.mtimeMs)
+      if (timestampMs > cutoffMs) {
+        keptCount += 1
+        continue
+      }
+      const mdFile = packetFile(repo, state.id)
+      const hasMd = hasPathEntry(mdFile)
+      if (!dryRun) {
+        fs.unlinkSync(jsonFile)
+        if (hasMd) fs.unlinkSync(mdFile)
+      }
+      const files = hasMd ? [jsonFile, mdFile] : [jsonFile]
+      pruned.push({
+        id: state.id,
+        status: state.status,
+        updatedAt: new Date(timestampMs).toISOString(),
+        files
+      })
+    }
+  }
+
+  if (options.json === true) {
+    print({
+      dryRun,
+      days,
+      cutoff: new Date(cutoffMs).toISOString(),
+      stateDir: directory,
+      pruned,
+      keptCount,
+      skippedCount
+    })
+    return
+  }
+  if (pruned.length === 0) {
+    process.stdout.write(
+      (dryRun ? 'nothing to prune' : 'no expired terminal tasks to prune') + ' in ' + directory + '\n'
+    )
+    return
+  }
+  for (const entry of pruned) {
+    process.stdout.write(
+      [dryRun ? 'would prune' : 'pruned', entry.id, entry.status, entry.updatedAt].join('\t') + '\n'
+    )
+  }
+}
+
 function print(value) {
   process.stdout.write(JSON.stringify(value, null, 2) + '\n')
 }
@@ -472,15 +608,18 @@ function help() {
       '  ref <id> <kind> --remove',
       '  close <id>',
       '  drop <id> [--reason <text>]',
+      '  prune [--days <n>] [--dry-run] [--json]',
       '  help',
       '',
       'Options:',
       '  --root <path>  repository root (default: AGENT_TASK_ROOT or cwd)',
       '  --task <id>    alias for the positional task id',
       '  --scope <path> repo-relative change scope for new; repeatable',
-      '  --json         JSON output for status listings',
+      '  --days <n>     retention window in days for prune (default: 30)',
+      '  --dry-run      preview prune targets without deleting files',
+      '  --json         JSON output for status listings and prune',
       '',
-      'Storage: <tmp>/agent-task-ledger/<repo-id>/ (AGENT_TASK_STATE_DIR overrides it)',
+      'Storage: ${XDG_CACHE_HOME:-~/.cache}/agent-task-ledger/<repo-id>/ (AGENT_TASK_STATE_DIR overrides it)',
       'The ledger records local ownership, progress and refs; it is not review, test or CI evidence.'
     ].join('\n') + '\n'
   )
@@ -503,6 +642,8 @@ function main() {
       return close(options)
     case 'drop':
       return drop(options)
+    case 'prune':
+      return prune(options)
     case 'help':
     case '--help':
     case undefined:
