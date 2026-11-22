@@ -209,7 +209,7 @@ jobs:
   codex-review:
     name: Codex review
     needs: check
-    # 资格判据与 codex-gate 必须逐字一致；fork PR 拿不到仓库 secret，版本分支由发布流程自审。
+    # 审查 job 保留版本分支排除；codex-gate 的判据自 2026-11-23 起分道（见其 if 注释）。
     if: ${{ !cancelled() && needs.check.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' }}
     # 模型步骤自己带 continue-on-error；job 级不再吞掉预检、落结论与上传的失败。
     # 首次落地时 base 的可信脚本还没有 preflight 子命令，这一步的红叉是唯一能暴露 bootstrap 的信号。
@@ -367,7 +367,10 @@ jobs:
     name: Codex review gate
     needs: [check, codex-review]
     # 门禁只判已有结论，不跑模型；check 或 review 谁失败都不该让它缺席。
-    if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' }}
+    # gate 是 required check（ruleset main protection），自 2026-11-23 起覆盖版本分支：
+    # review job 对 changeset-release head 仍 skip，gate 经内建 not_applicable 出口绿色退出；
+    # fork 排除保留 fail-closed——fork head 无 gate check 上报，required 缺席即不可合并。
+    if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:

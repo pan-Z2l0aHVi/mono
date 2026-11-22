@@ -109,6 +109,44 @@ function makePr(number, overrides = {}) {
 }
 
 {
+  // gate 升 required 后，审查链的 Codex review / Codex review gate 在途同样不抢跑：
+  // check 已绿但 gate 还在跑时 update-branch 会取消在途审查并反复全量重跑。gate 缺席（旧 CI 定义）不视为忙碌。
+  for (const runningName of ['Codex review', 'Codex review gate']) {
+    const reviewingHead = makePr(11, { mergeable_state: 'blocked' })
+    const behindPr = makePr(10, { mergeable_state: 'behind' })
+    const decision = selectNextPrToUpdate([reviewingHead, behindPr], {
+      [reviewingHead.head.sha]: {
+        check_runs: [
+          { name: 'check', status: 'completed', conclusion: 'success' },
+          { name: runningName, status: 'in_progress', conclusion: null }
+        ]
+      }
+    })
+    assert.deepEqual(decision, {
+      action: 'noop',
+      reason: 'head_pr_running',
+      prNumber: 11,
+      eligibleCount: 2,
+      skipped: []
+    })
+  }
+
+  // 审查链全部完成（无 gate run 的旧定义形态）时照常推进队头 behind PR。
+  const behindPr = makePr(10, { mergeable_state: 'behind' })
+  const decision = selectNextPrToUpdate([behindPr], {
+    [behindPr.head.sha]: {
+      check_runs: [
+        { name: 'check', status: 'completed', conclusion: 'success' },
+        { name: 'Codex review', status: 'completed', conclusion: 'success' },
+        { name: 'Codex review gate', status: 'completed', conclusion: 'success' }
+      ]
+    }
+  })
+  assert.equal(decision.action, 'update')
+  assert.equal(decision.prNumber, 10)
+}
+
+{
   // 冲突与失败不死循环：跳过 dirty、check 失败/取消/超时、unknown 与非 behind 的 PR，选中后续第一个可用 behind PR。
   const dirtyPr = makePr(10, { mergeable_state: 'dirty' })
   const failedPrs = FAILED_CHECK_CONCLUSIONS.map((conclusion, index) =>

@@ -9,11 +9,13 @@
 ## 自动审查结论的效力
 
 CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发现，把结论写进 PR 上同一条持久评论。这道结论
-就是本仓默认的 PR review。审查范围见下文「审查范围与生成物」；设计决策与代价见 [ADR-0021](../adr/0021-codex-review-gate.md)。
+就是本仓默认的 PR review。`Codex review gate` check run 自 2026-11-23 起是 ruleset 的 required check：
+它是合并准入的机器判据（绑 head SHA、不可变）；持久评论是 open 状态下的审查轨迹与发现明细，
+auto-merge 路径上允许落后一个 head。审查范围见下文「审查范围与生成物」；设计决策与代价见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 
 - 结论绑定被审查的 head。`reviewed` 只覆盖那一份代码；head 变了结论就过期，`stale`、`unreviewed` 与 `not_applicable` 都不代表已审。
   评论 marker 的 `status` 取 `reviewed` / `stale` / `blocked` / `error` / `not_applicable`；`blocked` 即 `reviewed` + `Block > 0`，
-  `error` 也不代表已审。
+  `error` 也不代表已审。评论落后于 head 不代表证据缺失——以 gate check 为准核对覆盖（见「合并前与恢复」）。
 - `reviewed` 且 `Block > 0` 变红；`error` 与 `unreviewed` 同样变红，都不代表已审。`error` 表示配置或调用故障，不是审查意见。
   故障码、重跑次数与排查顺序见 [`.github/codex/README.md`](../../.github/codex/README.md)；判据与重跑次数以脚本为准。
 - **结论即 review**：本次有可审的源码改动、生成物已按下文核对、`coverage.uncovered` 为空，且 reviewed SHA 等于当前
@@ -125,8 +127,12 @@ PR base/head，确认仍等于报告覆盖的 SHA；已漂移则先补审。写�
 ## 合并前与恢复
 
 合并前重新读取 PR 的 draft、base/head、mergeability、required checks、CI snapshot 的实际 checkout SHA、
-review 结论覆盖的 SHA（自动审查即评论头部的 `sha`）、未决发现与 changeset；前端改动还要有
-[`runtime-verification.md`](./runtime-verification.md#前端冒烟门) 的前端冒烟结论。strict 只要求 PR 跟上 base；
+review 证据覆盖的 head、未决发现与 changeset；前端改动还要有
+[`runtime-verification.md`](./runtime-verification.md#前端冒烟门) 的前端冒烟结论。review 证据覆盖的单一判据是
+required `Codex review gate` check 在当前 head 上绿且完成时间早于合并时刻（口径：check-runs API 的
+`completed_at` 与 `mergedAt` 比对）；持久评论的头部 `sha` 仅作人工合并路径的辅助核对——auto-merge 路径上评论
+允许落后一个 head（写回由 CI completed 触发、必然晚于 mergedAt）。`not_applicable` 的绿 gate 只对 review job
+被跳过的 head 成立，不构成「已审」。strict 只要求 PR 跟上 base；
 squash 会产生新 commit，不能推断最终 main commit 与已测试 SHA 或树恒等。只有全部证据对应当前 base/head、
 没有未处置 Block、required CI 与硬约束成功、PR 非 draft 且可合并后，才向用户报告待合并 PR 和 SHA。
 每次 merge 需用户明确授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。

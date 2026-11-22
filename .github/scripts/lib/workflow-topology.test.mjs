@@ -705,16 +705,30 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     const eligibilityGuard =
       "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository" +
       ` && github.head_ref != '${RELEASE_BRANCH}'`
-    const eligibleJobs = ['codex-review', 'codex-gate', 'codex-autofix-plan']
+    // 2026-11-23 起判据分道：review 与 autofix-plan 保留版本分支排除；gate 升为 required check 后
+    // 覆盖版本分支（review skip → not_applicable 绿），fork 排除保留 fail-closed。
+    const gateEligibilityGuard =
+      "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository"
+    const eligibilityGuards = {
+      'codex-review': eligibilityGuard,
+      'codex-gate': gateEligibilityGuard,
+      'codex-autofix-plan': eligibilityGuard
+    }
+    const eligibleJobs = Object.keys(eligibilityGuards)
 
     function assertEligibilityGuards(text) {
       const workflow = parseWorkflow(text)
       for (const jobId of eligibleJobs) {
         assert.ok(
-          workflow.jobs[jobId]?.if?.includes(eligibilityGuard),
+          workflow.jobs[jobId]?.if?.includes(eligibilityGuards[jobId]),
           `${jobId} must review only same-repo PRs into main`
         )
       }
+      // gate 不得重新引入版本分支排除：required check 缺席即不可合并，排除会让 version PR 重新停滞。
+      assert.ok(
+        !workflow.jobs['codex-gate']?.if?.includes(`github.head_ref != '${RELEASE_BRANCH}'`),
+        'codex-gate must not exclude the release branch once it is a required check'
+      )
     }
 
     function mutateJobIf(text, jobId, fragment) {
@@ -726,14 +740,25 @@ function assertPullRequestValidationIsReadOnly(workflow) {
 
     assertEligibilityGuards(ci)
     // fork PR 拿不到仓库 secret，版本分支由发布流程自审：判据少一条就必须变红，而不是静默放宽。
-    for (const fragment of [
+    // gate 的判据不含版本分支排除，版本分支片段的变异只对保留它的两个 job 断言。
+    const sharedFragments = [
       "github.event_name == 'pull_request' && ",
       "github.event.pull_request.base.ref == 'main' && ",
-      'github.event.pull_request.head.repo.full_name == github.repository && ',
+      'github.event.pull_request.head.repo.full_name == github.repository && '
+    ]
+    const releaseFragments = [
       `github.head_ref != '${RELEASE_BRANCH}' && `,
       ` && github.head_ref != '${RELEASE_BRANCH}'`
-    ]) {
-      for (const jobId of eligibleJobs) {
+    ]
+    for (const jobId of eligibleJobs) {
+      for (const fragment of sharedFragments) {
+        assert.throws(
+          () => assertEligibilityGuards(mutateJobIf(ci, jobId, fragment)),
+          `dropping ${fragment.trim()} from ${jobId} must fail the eligibility check`
+        )
+      }
+      if (jobId === 'codex-gate') continue
+      for (const fragment of releaseFragments) {
         assert.throws(
           () => assertEligibilityGuards(mutateJobIf(ci, jobId, fragment)),
           `dropping ${fragment.trim()} from ${jobId} must fail the eligibility check`

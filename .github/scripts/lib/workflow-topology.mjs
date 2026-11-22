@@ -1,5 +1,9 @@
 export const RELEASE_BRANCH = 'changeset-release/main'
 export const REQUIRED_CONTEXT = 'check'
+// 防雪崩忙碌判定要看的审查链 check run 名；与 ci.yml 两条 job 的 name 一致，
+// gate 升 required 后 review/gate 在途同样代表审查证据未落定。
+export const CODEX_REVIEW_JOB_NAME = 'Codex review'
+export const CODEX_GATE_JOB_NAME = 'Codex review gate'
 
 // 模型参数只能来自 GitHub 后台。CI 定义里的字面量或 `||` 兜底会让后台配置永远不生效。
 export const CODEX_CONFIG_INPUTS = Object.freeze({
