@@ -15,12 +15,12 @@ import { testPorts } from '@greypan/monorepo-kit/vite'
 
 判定不自己跑，也不带名字：触发层用 `.use()` 把配好参数的判定按想要的顺序接成一条链，`.make({ root, env })` 得到实例，`await kit.run()` 返回 `Result<void, string>`。`run` 不吃入参——判据参数（如 changeset 的 `base`/`head`）在 `defineXxx(options)` 里就给全了。执行顺序 = `.use()` 顺序，首个 `Err` 短路，失败归因只看 `Err` 文案的域名前缀，输出格式与退出码归触发层。协议与取舍见 [ADR-0022](../../docs/adr/0022-monorepo-kit-plugin-chain.md)。
 
-| 分区          | 内容                                                                                                                                                                                                                   | 消费者                                                 |
-| ------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
-| `src/<能力>/` | 内聚竖切：一个能力一个目录，插件与它承载的参数化判定放在一起（`changesets`、`exec`、`git`、`test-ports`、`toolchain`、`turbo`、`workspace`）；判定是 `defineXxx(options)` → 一条 `Chain`，不含本仓库的名字、路径与数据 | 根 `scripts/policies/` 与外部脚本                      |
-| `src/runner/` | 链协议本身：`defineRunner()` 是唯一基座（链头给恒等 `ok`，链中原样转发上一层的 `Err`，不改写也不吞域名前缀），`defineCatch()` 把逃逸的异常收成 `throw: ` 前缀的 `Err`；`Run` 与 `Chain` 只在这里声明                   | [`scripts/checks/`](../../scripts/checks) 与各应用测试 |
-| `src/vite/`   | Vite 配置求值期的适配，不进 js-kit 的链：`testPorts`、`devHttpsPlugin` 两只 Vite 插件，以及端口表的读取与校验                                                                                                          | 各 workspace 的 `vite.config.ts`                       |
-| `src/shared/` | 与仓库无关的纯工具：`config`、`errors`、`order`、`workspace-root`                                                                                                                                                      | 包内其他分区                                           |
+| 分区          | 内容                                                                                                                                                                                                     | 消费者                                                 |
+| ------------- | -------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------------------------------ |
+| `src/<能力>/` | 内聚竖切：一个能力一个目录，插件与它承载的参数化判定放在一起（`changesets`、`exec`、`git`、`toolchain`、`turbo`、`workspace`）；判定是 `defineXxx(options)` → 一条 `Chain`，不含本仓库的名字、路径与数据 | 根 `scripts/policies/` 与外部脚本                      |
+| `src/runner/` | 链协议本身：`defineRunner()` 是唯一基座（链头给恒等 `ok`，链中原样转发上一层的 `Err`，不改写也不吞域名前缀），`defineCatch()` 把逃逸的异常收成 `throw: ` 前缀的 `Err`；`Run` 与 `Chain` 只在这里声明     | [`scripts/checks/`](../../scripts/checks) 与各应用测试 |
+| `src/vite/`   | Vite 配置求值期的适配，不进 js-kit 的链：`testPorts`、`devHttpsPlugin` 两只 Vite 插件（确定性测试端口分槽与 dev 证书挂载）                                                                               | 各 workspace 的 `vite.config.ts`                       |
+| `src/shared/` | 与仓库无关的纯工具：`config`、`errors`、`order`、`workspace-root`                                                                                                                                        | 包内其他分区                                           |
 
 分区判据与迁移理由见 [ADR-0018](../../docs/adr/0018-monorepo-kit-generic-plugins.md)，包内约束见 [AGENTS.md](./AGENTS.md)。
 
