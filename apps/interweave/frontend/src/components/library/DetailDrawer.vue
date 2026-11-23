@@ -321,19 +321,19 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
             class="detail-row relative box-border flex min-h-9 items-center gap-2.5 px-[15px] py-[7px] text-xs"
           >
             <span class="flex-1 text-sm">大小</span
-            ><small class="text-right text-[#8a8a94] [font-size:inherit]">{{
+            ><small class="text-right font-mono tabular-nums text-[#8a8a94] [font-size:inherit]">{{
               formatSize(renderedResource.sizeBytes)
             }}</small>
           </div>
           <div class="detail-row relative box-border flex min-h-9 items-center gap-2.5 px-[15px] py-[7px] text-xs">
             <span class="flex-1 text-sm">创建于</span
-            ><small class="text-right text-[#8a8a94] [font-size:inherit]">{{
+            ><small class="text-right font-mono tabular-nums text-[#8a8a94] [font-size:inherit]">{{
               formatDate(renderedResource.createdAt)
             }}</small>
           </div>
           <div class="detail-row relative box-border flex min-h-9 items-center gap-2.5 px-[15px] py-[7px] text-xs">
             <span class="flex-1 text-sm">最后修改于</span
-            ><small class="text-right text-[#8a8a94] [font-size:inherit]">{{
+            ><small class="text-right font-mono tabular-nums text-[#8a8a94] [font-size:inherit]">{{
               formatDate(renderedResource.updatedAt)
             }}</small>
           </div>

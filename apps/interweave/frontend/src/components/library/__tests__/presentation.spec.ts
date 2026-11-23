@@ -22,6 +22,7 @@ import {
   formatSize,
   resourceIcon,
   resourceKindLabel,
+  splitNumericSegments,
   unavailableResourceIcon,
   tagClass
 } from '../presentation'
@@ -133,5 +134,23 @@ describe('library presentation', () => {
     const real = Object.values(TagColor).filter(color => color !== TagColor.$zero)
     const classes = real.map(color => tagClass(color))
     expect(new Set(classes).size).toBe(real.length)
+  })
+
+  it('splitNumericSegments 拆分数字与进度比值片段，保留原始文本顺序', () => {
+    expect(splitNumericSegments('')).toEqual([])
+    expect(splitNumericSegments('确认导入')).toEqual([{ text: '确认导入', numeric: false }])
+    expect(splitNumericSegments('共 21 个文件将加入待导入列表（2 个文件夹已递归展开）。')).toEqual([
+      { text: '共 ', numeric: false },
+      { text: '21', numeric: true },
+      { text: ' 个文件将加入待导入列表（', numeric: false },
+      { text: '2', numeric: true },
+      { text: ' 个文件夹已递归展开）。', numeric: false }
+    ])
+    expect(splitNumericSegments('3 / 20')).toEqual([{ text: '3 / 20', numeric: true }])
+    expect(splitNumericSegments('已检查 1,234.5 项')).toEqual([
+      { text: '已检查 ', numeric: false },
+      { text: '1,234.5', numeric: true },
+      { text: ' 项', numeric: false }
+    ])
   })
 })
