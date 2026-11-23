@@ -36,7 +36,7 @@
 
 ### 执行面
 
-根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`policies/`（本仓的门禁事实与配好参数的判定插件）、`workflow/`（提交与发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（Node 启动前求值的 bootstrap helper）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放薄入口：用 `.use()` 把判定按想要的顺序接成一条链，`.use()` 的先后就是执行的先后，同一端点的判定由一个入口聚合，判定逻辑与能力在 `@greypan/monorepo-kit`，本仓的包名、路径与语料数据只在 `policies/` 里出现。app 级的 turbo 门禁入口（`check-generated`）同样放 `checks/`，判据由所属包提供。全仓门禁入口（`check-policy`、`check-context`、`test-scripts`）把 `full-checkout` 排在其余全仓扫描之前：工作区处于稀疏检出时非零退出，因为按 tracked 清单或目录遍历扫描的检查在 cone 上只覆盖子集，而「只扫到子集」会被报成全仓通过；`check-pre-commit` 不带这道准入，稀疏树上的提交照常进行。收缩、恢复与 cone 判定见 [`.agents/skills/apps-sparse-checkout/SKILL.md`](../../.agents/skills/apps-sparse-checkout/SKILL.md)。包按消费者分出公共入口：`exports["."]` 给 Node 脚本，`exports["./vite"]` 给 `vite.config.ts` 求值期的适配；跨包引用一律写包名，不写相对路径，包内引用的约定见该包 [`AGENTS.md`](../../packages/monorepo-kit/AGENTS.md)。分类与入口契约见 ADR-0014，分区判据见 ADR-0018，链协议见 ADR-0022。
+根 `scripts/` 按执行面分为 `checks/`（门禁与脚本测试入口）、`policies/`（本仓的门禁事实与配好参数的判定插件）、`workflow/`（提交与发布辅助）、`maintenance/`（清理、环境诊断与依赖维护）与 `lib/`（Node 启动前求值的 bootstrap helper）。门禁入口通过 `check-*` 根命令调用；`checks/` 只放组装与调度入口，判定逻辑与能力在 `@greypan/monorepo-kit`，本仓的包名、路径与语料数据只在 `policies/` 里出现。其中 `check-pre-commit` 等本地链保持单条 `.use()` 顺序短路执行（`.use()` 的先后就是执行的先后）；`check-policy` 在 `full-checkout` 通过后外层逐项独立组链默认收集全部失败（可传 `--fail-fast` 切回首错即停），单次运行暴露所有政策违规。app 级的 turbo 门禁入口（`check-generated`）同样放 `checks/`，判据由所属包提供。全仓门禁入口（`check-policy`、`check-context`、`test-scripts`）把 `full-checkout` 排在其余全仓扫描之前：工作区处于稀疏检出时非零退出，因为按 tracked 清单或目录遍历扫描的检查在 cone 上只覆盖子集，而「只扫到子集」会被报成全仓通过；`check-pre-commit` 不带这道准入，稀疏树上的提交照常进行。收缩、恢复与 cone 判定见 [`.agents/skills/apps-sparse-checkout/SKILL.md`](../../.agents/skills/apps-sparse-checkout/SKILL.md)。包按消费者分出公共入口：`exports["."]` 给 Node 脚本，`exports["./vite"]` 给 `vite.config.ts` 求值期的适配；跨包引用一律写包名，不写相对路径，包内引用的约定见该包 [`AGENTS.md`](../../packages/monorepo-kit/AGENTS.md)。分类与入口契约见 ADR-0014，分区判据见 ADR-0018，链协议与分层口径见 [ADR-0022](../adr/0022-monorepo-kit-plugin-chain.md)。
 
 ### 授权
 
@@ -46,7 +46,7 @@
 
 测试可选：没有测试文件合法。一旦存在测试文件，必须与被测文件同目录同名（`foo.mjs` / `foo.ts` / `foo.sh` → `foo.test.mjs`）；新增或重命名测试文件时，同名关系在同一变更里成立。
 
-测试针对原子函数或共享实现，不针对只做聚合的入口。覆盖按风险选择，至少包括参数解析、成功输出与退出码、失败路径，以及脚本声称的副作用。`scripts/checks/` 只放薄入口，构成见上文「执行面」；判定实现与测试在 `packages/monorepo-kit`（测试放在模块旁的 `__tests__/`），入口本身不要求专属测试。
+测试针对原子函数、共享实现，以及含独立参数解析或聚合调度逻辑的入口（如 `check-policy.mjs` 可配同目录测试 `check-policy.test.mjs`），不针对只做简单转发的纯聚合入口。覆盖按风险选择，至少包括参数解析、成功输出与退出码、失败路径，以及脚本声称的副作用。判定实现与测试在 `packages/monorepo-kit`（测试放在模块旁的 `__tests__/`），纯组装薄入口本身不要求专属测试。
 
 测试有两个发现面，各自覆盖一半，不要在两处都登记同一个文件：
 

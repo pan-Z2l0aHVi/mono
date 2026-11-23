@@ -68,15 +68,13 @@ _Avoid_: 文件树、画布编辑器、关系连线器、资源容器
 - 只有 `library`、`native` 与 `settings` 可注册 Wails Service 并生成、消费 Interweave Go Service bindings。`remote` 与 `internal` 禁止注册 Wails Service，也不得被前端直接调用或消费其 bindings。Wails runtime bindings 不属于此业务 allowlist。
 - `backend/menu/` 拥有事件名、命令契约与菜单可用性 Service（`ReportDisabledCommands`），`backend/native/menu/` 只被 `main.go` 装配、不注册 Service。菜单的形状与置灰由 Go 拥有，前端唯一能做的调用是上报当前不可用的命令集合。
 - 菜单命令的前端分发在 [`frontend/src/services/menu/index.ts`](./frontend/src/services/menu/index.ts)，可用性上报在 [`frontend/src/services/menu/state.ts`](./frontend/src/services/menu/state.ts)；纯文本剪贴板的前端动作在 [`frontend/src/composables/plainTextClipboard.ts`](./frontend/src/composables/plainTextClipboard.ts)。
-- [`frontend/bindings/`](./frontend/bindings/) 是生成目录，不手工编辑。公开 Go API 变更后运行 `pnpm exec turbo build --filter=@greypan/interweave-frontend` 生成 bindings，并核对生成 diff 与前端类型检查。
+- 公开 Go API 变更后运行 `pnpm exec turbo build --filter=@greypan/interweave-frontend` 生成 [`frontend/bindings/`](./frontend/bindings/) 并核对前端类型检查（生成边界见 [`docs/agents/generated-artifacts.md`](../../docs/agents/generated-artifacts.md)）。
 
 ## 修改指南
 
 - 添加资源的 preview token 时序（先 `waitForPreview` 等预览就绪、再创建、再释放预览、最后关闭）由资源库添加队列的 controller 拥有，页面只经 `submit` 提交整个队列，不得自组提交循环。token 的发放、驱逐对账与释放由页面持有的 preview lease 统一记账，添加队列与找回弹窗共用同一本 lease。
-- 修改 Go/Wails API 时，先查 Wails 3 官方文档，再核对 Go 测试、frontend bindings 和消费端调用。公开 API 变更遵循上文 allowlist 与生成边界。
 - 文件选择等可取消操作应明确取消语义。class-mode bindings 已将顶层 Wails slice 返回值规范化为非 nullable 数组，前端应消费生成类型而不重复添加 `?? []`。仅 DTO 中仍为可选或 nullable 的字段按其生成类型处理，且不得手改生成 bindings。
 - 文本剪贴板读取走 `runtime.system.readClipboardText`；WebView 的 `navigator.clipboard` 只在浏览器预览适配器里作为回退使用，leaf 组件不直接 import `@wailsio/runtime`。
-- 修改前端页面、store、组件或交互时，按 [`docs/agents/runtime-verification.md`](../../docs/agents/runtime-verification.md) 在真实 Wails/浏览器集成表面验证。
 - 工具条里展开式字段（搜索框、筛选字段等）的开关策略（按在「字段上下文」容器里不收起、簇内点击后把焦点交还字段、被弹层接管焦点时让位）由 `frontend/src/composables/` 里专用的展开式字段 composable 拥有。页面的 header 需要同样行为时，把字段与容器 ref 交给它；判据只用 ref 与 `document.activeElement`，不要在组件里按 `closest('web-ui-…')` 枚举组件类型——header 里的控件会随页面变化。
 
 - 平台、flags 与 bindings 都要在 runtime core 注入之后才读：Go 侧在 `WebViewDidFinishNavigation` 之后才注入 `window._wails`，早于它的 setup 调用读到的是空值。启动序在挂载前等待 runtime 就绪（判据与事件名都只有 runtime 服务一份），所以壳里可以一次性取平台；不要改成「先渲染再补」的响应式重读。
