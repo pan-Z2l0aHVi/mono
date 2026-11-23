@@ -59,11 +59,13 @@ const GLOB_SEGMENT = /[*?[\]{}]/u
  * 返回值不区分两类目录，消费方按「目录自身是否含 package.json」判定身份：有 package.json 即包，
  * 没有即容器。该判定只决定**各自扫描形状**，不改变遍历本身：
  *
- * - 边界检查把「包内」的产物名子目录（`dist` / `build` / `coverage` / `__tests__`）整棵跳过，其余照常递归。
- * - 语料与互指检查只收包根部的入口文档与 README，不再收它的子目录。
+ * - 边界检查（`defineWorkspaceDepBoundaries`）把「包内」的产物名子目录（`dist` / `build` / `coverage` /
+ *   `__tests__`）整棵跳过，其余照常递归。
+ * - 语料检查（`defineContextCorpus`）递归收集包内的入口文档（如 `AGENTS.md`），但工作区 README 只收包根部的那个。
+ * - 互指检查（`defineNoMutualLinks`）对包只收根部的 shallow 文件，容器才按直接子目录收。
  *
- * 因此「容器同时是包」的布局不受支持：给容器放 package.json 会让它的产物名子包与子目录 README 被静默忽略。
- * 要收子目录，就不要给容器放 package.json。
+ * 于是「容器同时是包」的布局会被按包处理：它的产物名子包不再进依赖图，子目录 README 与 shallow 文件
+ * 也不再入语料（入口文档仍递归）。要让这些子目录参与检查，就不要给容器本身放 package.json。
  */
 export function readPnpmWorkspaceDirectories(root: string): string[] {
   const directories = readPnpmWorkspacePatterns(root)
