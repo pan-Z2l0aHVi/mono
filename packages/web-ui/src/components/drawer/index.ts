@@ -191,6 +191,7 @@ export class WebUiDrawer extends LitElement {
    * 一旦同一手势回拉越过恢复阈值，本段手势锁定为取消全屏：抽屉恢复原尺寸，
    * 继续内拉只按阻尼跟手，不关闭，也不重新吸附 full；松手停在原尺寸。
    * 要关闭或再次进入 full，必须新起一段手势。
+   * 双击拖拽 handle（`dblclick`）可在全屏态与默认尺寸之间切换。
    * full 态下按钮 / Escape / backdrop 照常直接关闭。
    * 默认关闭：现有 `draggable` 消费方行为不变，显式开启才获得该手势。
    */
@@ -309,6 +310,10 @@ export class WebUiDrawer extends LitElement {
 
   private readonly _handleDragPointerDown = (e: PointerEvent) => {
     this._drag.handlePointerDown(e)
+  }
+
+  private readonly _handleDragDblClick = (e: MouseEvent) => {
+    this._drag.handleDblClick(e)
   }
 
   private readonly _handleSectionDragPointerDown = (e: PointerEvent) => {
@@ -687,10 +692,18 @@ export class WebUiDrawer extends LitElement {
       ? html`
           ${
             needsEdgeBand
-              ? html`<div class="wui-drawer-drag-edge" @pointerdown=${this._handleDragPointerDown}></div>`
+              ? html`<div
+                  class="wui-drawer-drag-edge"
+                  @pointerdown=${this._handleDragPointerDown}
+                  @dblclick=${this._handleDragDblClick}
+                ></div>`
               : nothing
           }
-          <div class="wui-drawer-drag-zone" @pointerdown=${this._handleDragPointerDown}></div>
+          <div
+            class="wui-drawer-drag-zone"
+            @pointerdown=${this._handleDragPointerDown}
+            @dblclick=${this._handleDragDblClick}
+          ></div>
           <div class="wui-drawer-drag-bar"></div>
         `
       : nothing
