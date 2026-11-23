@@ -11,6 +11,7 @@ function snapshot(overrides: Partial<Snapshot> = {}): Snapshot {
     accent: '#0071e3',
     reducedMotion: false,
     developerOptions: false,
+    minimizeToTrayOnClose: false,
     zoom: 100,
     warnings: [],
     presets: [
@@ -75,6 +76,7 @@ describe('settings store', () => {
     await store.setAccent('#ffbe00', runtime)
     await store.setReducedMotion(true, runtime)
     await store.setDeveloperOptions(true, runtime)
+    await store.setMinimizeToTrayOnClose(true, runtime)
     await store.setZoom(110, runtime)
 
     expect(updates).toEqual([
@@ -82,6 +84,7 @@ describe('settings store', () => {
       { accent: '#ffbe00' },
       { reducedMotion: true },
       { developerOptions: true },
+      { minimizeToTrayOnClose: true },
       { zoom: 110 }
     ])
   })
@@ -89,9 +92,10 @@ describe('settings store', () => {
   it('事件推送的快照整体覆盖本地缓存', () => {
     const store = useSettingsStore()
 
-    store.applySnapshot(snapshot({ developerOptions: true }))
+    store.applySnapshot(snapshot({ developerOptions: true, minimizeToTrayOnClose: true }))
 
     expect(store.developerOptions).toBe(true)
+    expect(store.minimizeToTrayOnClose).toBe(true)
     expect(store.loaded).toBe(true)
   })
 
@@ -179,6 +183,7 @@ describe('snapshot guard', () => {
     expect(isSnapshot([])).toBe(false)
     expect(isSnapshot({ appearance: 'dark' })).toBe(false)
     expect(isSnapshot({ ...snapshot(), presets: 'nope' })).toBe(false)
+    expect(isSnapshot({ ...snapshot(), minimizeToTrayOnClose: 'yes' })).toBe(false)
     expect(isSnapshot({ ...snapshot(), zoom: '110' })).toBe(false)
     expect(isSnapshot({ ...snapshot(), zoomPresets: 'nope' })).toBe(false)
   })

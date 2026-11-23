@@ -1,0 +1,69 @@
+package main
+
+import (
+	_ "embed"
+
+	"github.com/wailsapp/wails/v3/pkg/application"
+)
+
+//go:embed build/appicon.png
+var trayIcon []byte
+
+// presentMainWindow 将主窗口从最小化或隐藏状态恢复并置前聚焦。
+// macOS 的 Show 只做 makeKeyAndOrderFront，最小化的窗口要先显式恢复。
+func presentMainWindow(window *application.WebviewWindow) {
+	if window == nil {
+		return
+	}
+	window.UnMinimise()
+	window.Show()
+	window.Focus()
+}
+
+// handleWindowClose 决定窗口关闭请求是隐藏到系统托盘还是按默认路径退出。
+// 开启最小化到托盘时取消关闭事件并隐藏窗口，返回 true；否则放行关闭，返回 false。
+func handleWindowClose(minimizeToTray bool, cancel func(), hide func()) bool {
+	if !minimizeToTray {
+		return false
+	}
+	if cancel != nil {
+		cancel()
+	}
+	if hide != nil {
+		hide()
+	}
+	return true
+}
+
+// buildTrayMenu 构建系统托盘菜单，提供显示主窗口与退出应用入口。
+func buildTrayMenu(onShow func(), onQuit func()) *application.Menu {
+	trayMenu := application.NewMenu()
+	trayMenu.Add("显示 Interweave").OnClick(func(*application.Context) {
+		if onShow != nil {
+			onShow()
+		}
+	})
+	trayMenu.AddSeparator()
+	trayMenu.Add("退出 Interweave").OnClick(func(*application.Context) {
+		if onQuit != nil {
+			onQuit()
+		}
+	})
+	return trayMenu
+}
+
+// setupSystemTray 创建并配置系统托盘图标、菜单与点击交互。
+func setupSystemTray(app *application.App, window *application.WebviewWindow) *application.SystemTray {
+	tray := app.SystemTray.New()
+	tray.SetIcon(trayIcon)
+	tray.SetTooltip("Interweave")
+	tray.SetMenu(buildTrayMenu(
+		func() { presentMainWindow(window) },
+		func() { app.Quit() },
+	))
+	tray.OnClick(func() {
+		presentMainWindow(window)
+	})
+	tray.OnRightClick(tray.OpenMenu)
+	return tray
+}

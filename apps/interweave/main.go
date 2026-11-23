@@ -119,10 +119,7 @@ func (s windowDockDropSink) EmitURLs(urls []string) {
 }
 
 func (s windowDockDropSink) PresentWindow() {
-	// macOS 的 Show 只做 makeKeyAndOrderFront，最小化的窗口要先显式恢复。
-	s.window.UnMinimise()
-	s.window.Show()
-	s.window.Focus()
+	presentMainWindow(s.window)
 }
 
 func main() {
@@ -221,6 +218,15 @@ func main() {
 	})
 
 	window := app.Window.NewWithOptions(mainWindowOptions())
+	setupSystemTray(app, window)
+	window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
+		handleWindowClose(settingsService.MinimizeToTrayOnCloseEnabled(), event.Cancel, func() {
+			window.Hide()
+		})
+	})
+	app.Event.OnApplicationEvent(events.Mac.ApplicationShouldHandleReopen, func(_ *application.ApplicationEvent) {
+		presentMainWindow(window)
+	})
 	// pending 预览的 LRU 驱逐只发生在后端，前端无从感知；被淘汰的 token 必须显式推给
 	// 窗口，否则预览 404 与「文件消失」在前端不可区分。
 	pendingPreviews.SetEvictHandler(func(token string) {
