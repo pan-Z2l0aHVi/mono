@@ -9,9 +9,8 @@
  *
  *   :no-reveal="suppressed || undefined"
  *
- * 这是类型化模板的写法（true → setAttribute 写入存在、undefined → removeAttribute），
- * 与 `cond ? '' : null` 运行时语义相同。绑定必须以「存在/移除」表达：Lit Boolean
- * converter 是存在即真，绑定 false 会被序列化成字符串 "false" 而恒真。
+ * 这是类型化模板的写法，与 `cond ? '' : null` 运行时语义相同：绑定必须以「存在/移除」
+ * 表达，不能绑定 false。attribute 契约本身见 web-ui-theme 的 `noReveal` 注释。
  *
  * 不变式：**启动层的不透明覆盖期 ⊆ 压制窗口**。摘压制与撤层同 rAF，层节点此后还要
  * opacity 渐变淡出 220ms——淡出期不属于「不透明覆盖」：它只把旧内容从 1 降到 0 让下面

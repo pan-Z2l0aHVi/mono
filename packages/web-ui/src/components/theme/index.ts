@@ -150,9 +150,9 @@ export class WebUiTheme extends LitElement {
    * 但不启动 View Transition。面向宿主的启动期首次外观应用这类「非用户发起」的变更——
    * 手动切换不应设置它。
    *
-   * Lit Boolean converter 是「attribute 存在即真」：动态绑定必须以存在/移除表达
-   * （Vue 下 `:no-reveal="cond ? '' : null"`），绑定 `false` 会被序列化成
-   * `no-reveal="false"` 而恒真，导致揭示动画静默永久失效。
+   * 存在即生效。Lit Boolean converter 读的是 attribute 的存在，动态绑定必须以存在/移除
+   * 切换、不能绑定 `false`（会序列化成 `no-reveal="false"` 而恒真）；绑定写法见
+   * `docs/theme.md` 的 Behavior 一节。
    */
   @property({ type: Boolean, reflect: true, attribute: 'no-reveal' })
   noReveal = false
