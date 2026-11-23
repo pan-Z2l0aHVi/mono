@@ -57,7 +57,10 @@ const GLOB_SEGMENT = /[*?[\]{}]/u
  * 静默跳过等于让边界与语料检查漏掉一批 workspace。
  *
  * 返回值不区分两类目录，消费方按「目录自身是否含 package.json」判定身份：有 package.json 即包
- * （只收它根部的入口文档与 README），没有即容器（收直接子目录）。两类判据互斥，同一目录不会同时按两种用。
+ * （只收它根部的入口文档与 README，其子目录不算 workspace），没有即容器（收直接子目录）。
+ *
+ * 这是一条优先级规则而不是互斥判据：容器目录自身若带 package.json，会按包处理、其直接子目录不再扫描。
+ * 这种「容器同时是包」的布局不受支持（要收子目录就不要再给容器放 package.json）。
  */
 export function readPnpmWorkspaceDirectories(root: string): string[] {
   const directories = readPnpmWorkspacePatterns(root)

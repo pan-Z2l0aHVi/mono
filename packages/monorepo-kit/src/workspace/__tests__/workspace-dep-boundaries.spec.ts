@@ -261,33 +261,43 @@ describe('defineWorkspaceDepBoundaries', () => {
     )
   })
 
-  it('scans a literal workspace directory as the package itself', async () => {
-    // 字面量 pattern（无 glob 段）把目录本身交给扫描面：它的 manifest 必须进图，包内子目录的
-    // 构建产物仍按包内规则跳过，不能因为目录层级浅而被当成容器。
+  it('scans literal workspace directories as packages and skips their artifacts', async () => {
+    // 字面量 pattern（无 glob 段）把目录本身交给扫描面。断言写成精确错误串而不是 result.ok：
+    // 前者同时证明两个包都进了图（正向证据），以及包内 dist / node_modules 没有进图（负向证据）——
+    // 只写 result.ok 的话，扫描完全忽略字面量目录也照样通过。
     const root = makeFixture()
-    const literalOnly = defineWorkspaceDepBoundaries({ workspaces: ['tools/cli'], applicationDirs: ['apps'] })
-    writeManifest(root, 'tools/cli', {
-      name: '@acme/cli',
+    const literalOnly = defineWorkspaceDepBoundaries({
+      workspaces: ['tools/cli', 'tools/shared'],
+      applicationDirs: []
+    })
+    writeManifest(root, 'tools/shared', {
+      name: '@acme/shared',
       private: true
     })
-    // 子目录里的 manifest 违反「公开包不得依赖私有包」：若被扫进图，用例必红——
-    // 断言不能只写 result.ok，否则这个 manifest 无论扫不扫都通过。
+    writeManifest(root, 'tools/cli', {
+      name: '@acme/cli',
+      dependencies: {
+        '@acme/shared': 'workspace:*'
+      }
+    })
+    // 包内产物与依赖目录里的 manifest 都会违反「公开包不得依赖私有包」：被扫进图时错误串会多出条目。
     writeManifest(root, 'tools/cli/dist', {
       name: '@acme/cli-dist',
       dependencies: {
-        '@acme/cli': 'workspace:*'
+        '@acme/shared': 'workspace:*'
       }
     })
     writeManifest(root, 'tools/cli/node_modules/stray', {
       name: '@acme/stray',
       dependencies: {
-        '@acme/cli': 'workspace:*'
+        '@acme/shared': 'workspace:*'
       }
     })
 
-    const result = await run(literalOnly, root)
-    if (!result.ok) assert.fail(result.error)
-    assert.ok(result.ok)
+    const error = await failure(literalOnly, root)
+    assert.deepEqual(error.split('\n'), [
+      'deps: public package @acme/cli cannot depend on private workspace package @acme/shared in dependencies'
+    ])
   })
 
   it('still scans a container child whose name is in the artifact skip set', async () => {
