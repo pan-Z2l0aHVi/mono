@@ -58,8 +58,10 @@ export interface ContextCorpusOptions {
   readonly rules: string
   /** skill 的锁定清单、实体家、消费面与上游件目录 */
   readonly skills: SkillsSurface
-  /** workspace 根目录：递归要求入口文档，直接子目录收集入口文档与 README */
+  /** workspace 根目录：收集已存在入口文档与直接子目录 README，并在 `requireWorkspaceEntry` 不为 `false` 时要求入口文档 */
   readonly workspaces: readonly string[]
+  /** 是否要求每个 workspace（或其非根祖先目录）具备入口文档；默认 `true` */
+  readonly requireWorkspaceEntry?: boolean
   /** 必须有 README 的应用目录；写 workspace 相对路径前缀 */
   readonly applicationDirs: readonly string[]
   /** 研究/设计语料：必须有非权威标记 */
@@ -238,45 +240,49 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
               }
             }
 
-            for (const directory of options.workspaces) {
-              const absolute = path.join(root, directory)
-              if (!fs.existsSync(absolute)) continue
+            if (options.requireWorkspaceEntry !== false) {
+              for (const directory of options.workspaces) {
+                const absolute = path.join(root, directory)
+                if (!fs.existsSync(absolute)) continue
 
-              // workspace 的局部约束必须有家：它自己的入口文档，或最近一个含入口文档的祖先目录。
-              // 包级约束不收进架构索引的表，所以这里没有「表格豁免」退路——缺文件就是路由缺口。
-              // 用递归而非直接子目录：嵌套 workspace（包目录比顶层 workspace 再深一层）同样必须可定位。
-              // 嵌套 workspace 的约束可并回最近的有入口文档的祖先。根目录入口是全部 workspace 的公共入口，
-              // 不能算「最近祖先」，否则所有包都会走此豁免、这道校验被静默关闭。
-              function coveredByAncestorEntry(workspaceRoot: string): boolean {
-                let parent = path.dirname(workspaceRoot)
-                while (parent !== root && parent.startsWith(root)) {
-                  if (fs.existsSync(path.join(parent, options.entry))) return true
-                  parent = path.dirname(parent)
-                }
-                return false
-              }
-
-              function findWorkspaceRoots(dir: string): void {
-                const entries = fs.readdirSync(dir, { withFileTypes: true })
-                for (const entry of entries) {
-                  if (!entry.isDirectory()) continue
-                  // 跳过依赖/产物目录，避免误判 node_modules 里的 package.json 为成 workspace。
-                  if (['node_modules', 'dist', 'coverage', '.turbo'].includes(entry.name)) continue
-                  const candidate = path.join(dir, entry.name)
-                  if (fs.existsSync(path.join(candidate, 'package.json'))) {
-                    const workspaceRoot = candidate
-                    const tracked =
-                      fs.existsSync(path.join(workspaceRoot, options.entry)) || coveredByAncestorEntry(workspaceRoot)
-                    if (!tracked)
-                      addError(
-                        `${relative(workspaceRoot)}: workspace needs its own ${options.entry}, or an ancestor directory that has one`
-                      )
+                // workspace 的局部约束必须有家：它自己的入口文档，或最近一个含入口文档的祖先目录。
+                // 包级约束不收进架构索引的表，所以这里没有「表格豁免」退路——缺文件就是路由缺口。
+                // 用递归而非直接子目录：嵌套 workspace（包目录比顶层 workspace 再深一层）同样必须可定位。
+                // 嵌套 workspace 的约束可并回最近的有入口文档的祖先。根目录入口是全部 workspace 的公共入口，
+                // 不能算「最近祖先」，否则所有包都会走此豁免、这道校验被静默关闭。
+                function coveredByAncestorEntry(workspaceRoot: string): boolean {
+                  let parent = path.dirname(workspaceRoot)
+                  while (parent !== root && parent.startsWith(root)) {
+                    if (fs.existsSync(path.join(parent, options.entry))) return true
+                    parent = path.dirname(parent)
                   }
-                  // 无论自身是否有入口文档，都必须递归进入子目录，才能覆盖嵌套 workspace。
-                  findWorkspaceRoots(candidate)
+                  return false
                 }
+
+                function findWorkspaceRoots(dir: string, depth = 0): void {
+                  const entries = fs.readdirSync(dir, { withFileTypes: true })
+                  for (const entry of entries) {
+                    if (!entry.isDirectory()) continue
+                    // 跳过依赖/产物目录，避免误判 node_modules 里的 package.json 为 workspace；
+                    // dist/coverage 仅在具体包目录之内（depth > 0）跳过，避免容器下的真实包名（如 apps/dist、packages/coverage）被静默忽略。
+                    if (entry.name === 'node_modules' || entry.name === '.turbo') continue
+                    if (depth > 0 && (entry.name === 'dist' || entry.name === 'coverage')) continue
+                    const candidate = path.join(dir, entry.name)
+                    if (fs.existsSync(path.join(candidate, 'package.json'))) {
+                      const workspaceRoot = candidate
+                      const tracked =
+                        fs.existsSync(path.join(workspaceRoot, options.entry)) || coveredByAncestorEntry(workspaceRoot)
+                      if (!tracked)
+                        addError(
+                          `${relative(workspaceRoot)}: workspace needs its own ${options.entry}, or an ancestor directory that has one`
+                        )
+                    }
+                    // 无论自身是否有入口文档，都必须递归进入子目录，才能覆盖嵌套 workspace。
+                    findWorkspaceRoots(candidate, depth + 1)
+                  }
+                }
+                findWorkspaceRoots(absolute)
               }
-              findWorkspaceRoots(absolute)
             }
 
             for (const manifestFile of workspaceManifests) {

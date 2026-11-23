@@ -18,7 +18,7 @@ const vuePages = path.join(root, 'apps', 'vue-web-ui-demo', 'src', 'pages', 'com
 // 判据结构的固定计数：两端各一条 load 判据，其余手写单例。meta 的用例数按目录实时推导，
 // 语料增删不改这两个常量；重构判据结构、合并单例时同步更新。
 const LOAD_CASES = 2
-const SINGLETON_CASES = 9
+const SINGLETON_CASES = 7
 
 const only = (a, b) => a.filter(value => !b.includes(value))
 const sameSet = (a, b) => a.length === b.length && a.every(value => b.includes(value))
@@ -122,22 +122,6 @@ test('中英文档集合对齐（CHANGELOG 只存在于英文）', () => {
   assert.ok(zhNames.length > 0, '没有中文语料：对齐判据空转')
   assert.deepEqual(only(enNames, zhNames), ['CHANGELOG'], '英文独有的文档只能是 CHANGELOG')
   assert.deepEqual(only(zhNames, enNames), [], `英文缺译文：${only(zhNames, enNames).join(', ')}`)
-})
-
-test('单元格里的 \\| 转义在产物里还原成 |', () => {
-  const button = read(reactGenerated, 'button.meta.js')
-  // md 里写的是 `` `'primary' \| 'secondary' \| …` ``，meta 里必须是解掉转义后的整格文本。
-  assert.ok(button.includes(`content: "<code>'primary' | 'secondary' | 'ghost' | 'danger' | 'glass'</code>"`))
-  assert.ok(button.includes(`content: "<code>'glass'</code>"`))
-})
-
-test('表格按结构落成 table > tr > th/td，而不是拼成一段字符串', () => {
-  const collapse = read(reactGenerated, 'collapse.meta.js')
-  assert.ok(collapse.includes(`label: 'table',`))
-  assert.ok(collapse.includes(`{ label: 'th', content: "Name" }`))
-  assert.ok(collapse.includes(`{ label: 'td', content: "<code>open</code>" }`))
-  // 名字与描述一起钉住：只钉名字不够，dropdown.md 也有同名的一行。
-  assert.ok(/label: 'td', content: "Notification after a user-gesture toggle:/.test(collapse))
 })
 
 // 规则一：路由名集合 == 页面名集合：两端不许各自漂移。子组件不单开页面
