@@ -764,13 +764,16 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       )
     }
 
-    // 锚点必须先命中：变异片段写错（例如给 gate 用了带尾随 ` && ` 的片段）时这里会直接失败，
-    // 而不是让外层 assert.throws 把「锚点计数断言失败」误当成「变异被检出」。
+    // 锚点必须在 assert.throws **之外**单独断言：把校验写在 mutateJobIf 里抛错，那个 Error 会落进
+    // assert.throws 的回调被当成「变异已检出」，锚点失配的变异于是静默通过——这正是上一版的缺陷。
+    function assertMutationAnchor(text, jobId, fragment) {
+      const hits = workflowJob(text, jobId).split(fragment).length - 1
+      assert.equal(hits, 1, `${jobId} mutation anchor must occur exactly once, found ${hits}: ${fragment}`)
+    }
+
     function mutateJobIf(text, jobId, fragment) {
       const block = workflowJob(text, jobId)
       const start = text.indexOf(block)
-      const hits = block.split(fragment).length - 1
-      if (hits !== 1) throw new Error(`${jobId} mutation anchor must occur once, found ${hits}: ${fragment}`)
       return text.slice(0, start) + block.replace(fragment, '') + text.slice(start + block.length)
     }
 
@@ -778,25 +781,27 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     // fork PR 拿不到仓库 secret，版本分支由发布流程自审：review 判据少一条就必须变红，而不是静默放宽。
     // gate 的判据不含这两个排除（也不以 ` && ` 结尾），所以它的片段按自己的形状给：
     // 用带尾随 ` && ` 的片段去变异 gate 只会让锚点失配，测不到任何东西。
+    // 片段必须按每个 job 的实际形状给：review 的 head_ref 是末尾子句（无尾随 ` && `），
+    // autofix-plan 的 head_ref 后面还跟着 CODEX_AUTOFIX_ENABLED，gate 的 base.ref 是末尾子句。
+    // 逐字抄同一个形状会让锚点失配，变异空转。
     const fragmentsByJob = {
       'codex-review': [
         "github.event_name == 'pull_request' && ",
         "github.event.pull_request.base.ref == 'main' && ",
         'github.event.pull_request.head.repo.full_name == github.repository && ',
-        `github.head_ref != '${RELEASE_BRANCH}' && `,
-        ` && github.head_ref != '${RELEASE_BRANCH}'`
+        `github.head_ref != '${RELEASE_BRANCH}'`
       ],
       'codex-autofix-plan': [
         "github.event_name == 'pull_request' && ",
         "github.event.pull_request.base.ref == 'main' && ",
         'github.event.pull_request.head.repo.full_name == github.repository && ',
-        `github.head_ref != '${RELEASE_BRANCH}' && `,
-        ` && github.head_ref != '${RELEASE_BRANCH}'`
+        `github.head_ref != '${RELEASE_BRANCH}' && `
       ],
       'codex-gate': ["github.event_name == 'pull_request' && ", "github.event.pull_request.base.ref == 'main'"]
     }
     for (const jobId of eligibleJobs) {
       for (const fragment of fragmentsByJob[jobId]) {
+        assertMutationAnchor(ci, jobId, fragment)
         assert.throws(
           () => assertEligibilityGuards(mutateJobIf(ci, jobId, fragment)),
           `dropping ${fragment.trim()} from ${jobId} must fail the eligibility check`
