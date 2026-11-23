@@ -411,9 +411,10 @@ jobs:
           GH_TOKEN: ${{ github.token }}
           # not_applicable 只认两种合法 skip：同仓版本分支（review 按设计不跑），以及 check 未成功
           # （review 的 needs 不满足；合并已由红的 required check 拦住，这里再报一次审查故障是假警报）。
-          # fork 的 skip 不算——skipped 的 required check 会被 GitHub 计为通过，落进 not_applicable 就是
-          # fail-open；fork 与其余缺产物一律 error 变红。
-          CODEX_REVIEW_NOT_APPLICABLE: ${{ needs.codex-review.result == 'skipped' && (github.head_ref == 'changeset-release/main' || needs.check.result != 'success') }}
+          # 版本分支判据必须带同仓条件：head_ref 只是分支名，fork 完全可以把自己的分支也叫
+          # changeset-release/main——少了这一条，fork PR 就能拿到绿 gate 且从未被审查。
+          # fork 的 skip 一律不算：skipped 的 required check 会被 GitHub 计为通过，落进 not_applicable 就是 fail-open。
+          CODEX_REVIEW_NOT_APPLICABLE: ${{ needs.codex-review.result == 'skipped' && ((github.head_ref == 'changeset-release/main' && github.event.pull_request.head.repo.full_name == github.repository) || needs.check.result != 'success') }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" gate
 
   codex-autofix-plan:
