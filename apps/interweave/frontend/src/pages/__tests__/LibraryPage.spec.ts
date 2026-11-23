@@ -1001,6 +1001,54 @@ describe('LibraryPage：统一导入入口', () => {
     }
   })
 
+  it('排队批次确认后从 0 起算进度，不复用上一批的已处理数', async () => {
+    const first = Array.from({ length: 21 }, (_, index) => `/tmp/batch-a/file-${index}.png`)
+    const second = Array.from({ length: 25 }, (_, index) => `/tmp/batch-b/file-${index}.png`)
+    const gates: Array<() => void> = []
+    let gateLookups = false
+    runtimeStub.current = createRuntime({
+      resources: {
+        expandImportEntries: vi
+          .fn<LibraryRuntime['resources']['expandImportEntries']>()
+          .mockResolvedValueOnce({ files: first, folders: 0 })
+          .mockResolvedValueOnce({ files: second, folders: 0 }),
+        findLocationMatches: async () => {
+          if (!gateLookups) return []
+          return new Promise(resolve => gates.push(() => resolve([])))
+        }
+      }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      queueWindowFileDrop(['/tmp/batch-a'])
+      queueWindowFileDrop(['/tmp/batch-b'])
+      await flush()
+
+      // 第一批照常入队完成，进度停在 21 / 21；第二批弹窗随后接上。
+      button(confirmDialog(mounted.host, '导入 21 个文件'), '导入 21 个文件').click()
+      await flush()
+      const dialog = confirmDialog(mounted.host, '导入 25 个文件')
+
+      // 第二批确认后的第一帧就应是本批的 0 / 25：链的起点重置晚于这次渲染，
+      // 不先重置就会拿上一批的 21 配本批的 25。
+      gateLookups = true
+      button(dialog, '导入 25 个文件').click()
+      await nextTick()
+      expect(dialog.textContent).toContain('0 / 25')
+      expect(dialog.textContent).not.toContain('21 / 25')
+      await flush()
+
+      while (gates.length) {
+        gates.shift()!()
+        await flush()
+      }
+    } finally {
+      await mounted.close()
+    }
+  })
+
   it('超过阈值时取消确认，一批都不入队', async () => {
     const files = Array.from({ length: 21 }, (_, index) => `/tmp/imports/file-${index}.png`)
     runtimeStub.current = createRuntime({

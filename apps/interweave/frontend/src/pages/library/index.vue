@@ -423,8 +423,9 @@ function closeConfirmDialog() {
 
 /**
  * 确认弹窗的取消：导入进行中它显示为「停止」。
- * 停止 = 作废入队链上尚未处理的位置并清空队列；action 随后自行结算，
- * runConfirmedAction 走正常关闭，这里不提前翻 open，避免一次操作关两次。
+ * 停止只作用于当前批次与已入队项，排队等待确认的其它批次仍会依次弹出——
+ * 它们还没开始导入，各自仍需要一次显式放行，停止不该替用户把它们一并丢弃。
+ * action 随后自行结算，runConfirmedAction 走正常关闭，这里不提前翻 open。
  */
 function cancelConfirmDialog() {
   if (confirmBusy.value && confirmRequest.value?.busyCancelLabel) {
@@ -574,7 +575,12 @@ async function enqueueImportEntries(entries: string[]) {
       danger: false,
       progressTotal: paths.length,
       busyCancelLabel: '停止',
-      action: () => addQueue.enqueueFileLocations(paths)
+      action: () => {
+        // 入队链可能还在处理上一批：先把共享进度重置到本批规模，
+        // 忙按钮一出现就是「0 / N」，不会拿上一批的 done 配本批的 total。
+        importProgress.value = { done: 0, total: paths.length }
+        return addQueue.enqueueFileLocations(paths)
+      }
     })
     return
   }

@@ -53,6 +53,11 @@ func (s *ResourceService) ExpandImportPaths(ctx context.Context, paths []string)
 			continue
 		}
 		if info.IsDir() {
+			// 同一目录被重复选中（面板与拖入重叠、父子目录同时选中）只展开一次、只计一个。
+			if seen[resolved] {
+				continue
+			}
+			seen[resolved] = true
 			if err := collectImportFiles(ctx, resolved, seen, &files); err != nil {
 				return ImportExpansion{}, err
 			}
@@ -91,6 +96,10 @@ func collectImportFiles(ctx context.Context, root string, seen map[string]bool, 
 			return nil
 		}
 		if entry.IsDir() {
+			// 走过的目录记账：父目录已展开时，用户再单独选中其子目录不再重复展开、不再计数。
+			if path != root {
+				seen[filepath.Clean(path)] = true
+			}
 			return nil
 		}
 		// 符号链接不跟进也不纳入：目录链会成环，文件链的可用性归监听与探测口径。

@@ -1,8 +1,15 @@
 // @vitest-environment jsdom
-import { describe, expect, it } from 'vite-plus/test'
+import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { createApp, h, nextTick } from 'vue'
 
 import ConfirmDialog from '../ConfirmDialog.vue'
+
+// 断言失败时也要卸载：挂在 document.body 上的宿主节点不能残留到后续用例。
+const mountedApps: Array<() => void> = []
+
+afterEach(() => {
+  while (mountedApps.length) mountedApps.pop()!()
+})
 
 /** 最小装配：只关心 open-change 到 cancel 的接线，web-ui-* 标签按原生元素渲染。 */
 function mountDialog(overrides: Record<string, unknown> = {}) {
@@ -27,18 +34,16 @@ function mountDialog(overrides: Record<string, unknown> = {}) {
       })
   })
   app.mount(host)
+  mountedApps.push(() => {
+    app.unmount()
+    host.remove()
+  })
   return {
-    host,
-    app,
-    cancelCount: () => cancelled,
     async requestClose() {
       host.querySelector('web-ui-dialog')!.dispatchEvent(new CustomEvent('open-change', { detail: { open: false } }))
       await nextTick()
     },
-    close() {
-      app.unmount()
-      host.remove()
-    }
+    cancelCount: () => cancelled
   }
 }
 
@@ -47,20 +52,17 @@ describe('ConfirmDialog：busy 期间的关闭请求', () => {
     const dialog = mountDialog({ busy: true, busyCancelLabel: '停止' })
     await dialog.requestClose()
     expect(dialog.cancelCount()).toBe(0)
-    dialog.close()
   })
 
   it('空闲时关闭请求照常当取消', async () => {
     const dialog = mountDialog({ busyCancelLabel: '停止' })
     await dialog.requestClose()
     expect(dialog.cancelCount()).toBe(1)
-    dialog.close()
   })
 
   it('未声明停止文案的 busy 流程维持原语义（关闭请求照常当取消）', async () => {
     const dialog = mountDialog({ busy: true })
     await dialog.requestClose()
     expect(dialog.cancelCount()).toBe(1)
-    dialog.close()
   })
 })

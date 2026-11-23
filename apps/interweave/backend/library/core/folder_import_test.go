@@ -39,14 +39,19 @@ func TestExpandImportPathsWalksDirectoriesAndKeepsFiles(t *testing.T) {
 	}
 
 	service := NewResourceService(nil, nil)
-	expansion, err := service.ExpandImportPaths(context.Background(), []string{root, standalone, filepath.Join(root, "nested", "b.md")})
+	// 目录与文件混选，且重复选中同一目录、以及已随父目录展开的子目录：
+	// 目录只展开一次、只计一个，文件去重；最终清单全局按字典序产出，不依赖选中顺序。
+	expansion, err := service.ExpandImportPaths(context.Background(), []string{
+		root,
+		root,
+		filepath.Join(root, "nested"),
+		standalone,
+		filepath.Join(root, "nested", "b.md"),
+	})
 	if err != nil {
 		t.Fatal(err)
 	}
 	files := expansion.Files
-
-	// 目录与文件混选：目录递归展开，文件原样保留，重复（目录内文件被同时选中）去重；
-	// 最终清单全局按字典序产出，不依赖选中顺序。
 	want := []string{
 		filepath.Join(root, "a.png"),
 		filepath.Join(root, "nested", "b.md"),
