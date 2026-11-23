@@ -90,15 +90,15 @@ afterEach(() => {
 })
 
 describe('system 选择对话框', () => {
-  it('chooseFilePaths 请求多选文件，三种返回形态都归一成数组', async () => {
+  it('chooseFilePaths 同时允许文件与文件夹并多选，三种返回形态都归一成数组', async () => {
     const rt = runtime()
 
     dialogsOpenFile.mockResolvedValueOnce(['/a.txt', '/b.txt'])
     await expect(rt.system.chooseFilePaths()).resolves.toEqual(['/a.txt', '/b.txt'])
     expect(dialogsOpenFile).toHaveBeenCalledWith({
-      Title: '选择要导入的文件',
+      Title: '选择要导入的文件或文件夹',
       CanChooseFiles: true,
-      CanChooseDirectories: false,
+      CanChooseDirectories: true,
       AllowsMultipleSelection: true
     })
 

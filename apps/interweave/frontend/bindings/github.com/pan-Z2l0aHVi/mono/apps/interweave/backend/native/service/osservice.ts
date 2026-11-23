@@ -21,7 +21,8 @@ export function DefaultOpenWith(target: string): $CancellablePromise<string> {
 }
 
 /**
- * GetClipboardFilePaths 返回剪贴板中当前存在的普通文件绝对路径，不读取文件内容。
+ * GetClipboardFilePaths 返回剪贴板中当前存在的文件与文件夹绝对路径，不读取内容。
+ * 目录原样交给调用方的导入链递归展开（隐藏项与符号链接在那里统一过滤）。
  */
 export function GetClipboardFilePaths(): $CancellablePromise<string[]> {
     return $Call.ByID(3002030334).then(($result: any) => {

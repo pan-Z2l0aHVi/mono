@@ -80,7 +80,8 @@ function mountDialog(queue: LibraryQueueItem[]) {
         error: '',
         mobile: false,
         tagColors: {},
-        previews: previewsFor(queue)
+        previews: previewsFor(queue),
+        progress: { done: 0, total: 0 }
       })
   })
   apps.push(app)
