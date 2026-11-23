@@ -20,6 +20,8 @@ import (
 // 导入面向用户整理的资料，不收 .DS_Store、.git 内部或缓存；目录本身不是 Source。
 // 用户显式选中的隐藏目录不拦：它就是导入意图，只过滤其内部的隐藏项。
 // 重复路径（同时选中目录与其内部文件）只保留一份，最终按字典序产出确定顺序。
+// 展开先于确认完成：返回清单的长度就是阈值判据，因此这里不设遍历上限；超大目录的
+// 遍历与 IPC 清单一律由用户显式选中它的动作触发，页面在展开后展示批次大小再请求放行。
 func (s *ResourceService) ExpandImportPaths(ctx context.Context, paths []string) ([]string, error) {
 	files := make([]string, 0, 64)
 	seen := make(map[string]bool, len(paths))

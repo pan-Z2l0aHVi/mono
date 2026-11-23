@@ -157,7 +157,7 @@ func TestExpandImportPathsResolvesExplicitSymlinks(t *testing.T) {
 	}
 }
 
-func TestExpandImportPathsSkipsMissingAndSpecialEntries(t *testing.T) {
+func TestExpandImportPathsSkipsMissingEntries(t *testing.T) {
 	root := resolveFixtureRoot(t, t.TempDir())
 	file := filepath.Join(root, "a.png")
 	if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
