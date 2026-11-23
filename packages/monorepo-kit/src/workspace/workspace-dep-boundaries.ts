@@ -15,7 +15,7 @@ const PUBLIC_FORBIDDEN_PRIVATE_FIELDS = ['dependencies', 'optionalDependencies',
 
 type DependencyField = (typeof ALL_DEPENDENCY_FIELDS)[number]
 
-const IGNORED_DIRECTORIES = new Set(['node_modules', 'dist', 'build', 'coverage', '__tests__'])
+const NESTED_IGNORED_DIRECTORIES = new Set(['dist', 'build', 'coverage', '__tests__'])
 
 export interface WorkspaceDepBoundariesOptions {
   /** workspace 容器目录（仓库相对路径前缀，如 `['apps', 'packages']`） */
@@ -55,21 +55,18 @@ function isUnderDirectory(candidate: string, prefix: string): boolean {
 function collectManifestFiles(root: string, workspaces: readonly string[]): string[] {
   const found = new Set<string>()
 
-  // inPackage：当前目录已处于某个 workspace 包内部。IGNORED_DIRECTORIES 只在包内部生效——
-  // 容器一级（以及包之间）的名字就是包名本身，名为 build / coverage / dist 的真实包不能整包跳过。
-  // node_modules 无论在哪一层都不是 workspace，始终跳过。
-  const visit = (relativeDir: string, inPackage: boolean): void => {
+  const visit = (relativeDir: string, depth: number): void => {
     const absoluteDir = path.join(root, relativeDir)
     if (!fs.existsSync(absoluteDir)) return
-    const skipArtifacts = inPackage || fs.existsSync(path.join(absoluteDir, 'package.json'))
     for (const entry of fs.readdirSync(absoluteDir, { withFileTypes: true })) {
       if (entry.isFile() && entry.name === 'package.json') {
         found.add(relativeDir === '.' || relativeDir === '' ? 'package.json' : `${relativeDir}/package.json`)
       } else if (entry.isDirectory()) {
         if (entry.name.startsWith('.') || entry.name === 'node_modules') continue
-        if (skipArtifacts && IGNORED_DIRECTORIES.has(entry.name)) continue
+        // 仅跳过具体包目录内部的构建/测试目录，避免容器下的真实包名（如 packages/build、apps/dist）被静默漏扫。
+        if (depth > 0 && NESTED_IGNORED_DIRECTORIES.has(entry.name)) continue
         const childDir = relativeDir === '.' || relativeDir === '' ? entry.name : `${relativeDir}/${entry.name}`
-        visit(childDir, skipArtifacts)
+        visit(childDir, depth + 1)
       }
     }
   }
@@ -77,7 +74,7 @@ function collectManifestFiles(root: string, workspaces: readonly string[]): stri
   for (const workspace of workspaces) {
     const normalized = normalizeDirectory(workspace)
     if (!normalized) continue
-    visit(normalized, false)
+    visit(normalized, 0)
   }
 
   return [...found].sort(byCodeUnit)
@@ -150,19 +147,16 @@ export const defineWorkspaceDepBoundaries = (options: WorkspaceDepBoundariesOpti
         andThen(ctx.run(), async () => {
           const manifestFiles = collectManifestFiles(ctx.root, options.workspaces)
           const nodes = new Map<string, WorkspaceNode>()
+          const violations = new Set<string>()
 
           for (const manifestFile of manifestFiles) {
             const manifest = readJsonFile<WorkspaceManifest>(path.join(ctx.root, manifestFile))
             if (typeof manifest.name !== 'string' || !manifest.name.trim()) continue
-            const directory = path.posix.dirname(manifestFile)
-            // 同名 manifest 按包名覆盖会静默丢掉先出现那份的依赖边：重名直接报错，
-            // 让重复声明（或产物 manifest 混进扫描面）暴露出来，而不是走一半的图。
-            const previous = nodes.get(manifest.name)
-            if (previous) {
-              return err(
-                `deps: duplicate workspace package name ${manifest.name} (${previous.directory} and ${directory})`
-              )
+            if (nodes.has(manifest.name)) {
+              violations.add(`duplicate workspace package name "${manifest.name}"`)
+              continue
             }
+            const directory = path.posix.dirname(manifestFile)
             const isApplication = appDirs.some(appDir => isUnderDirectory(directory, appDir))
             nodes.set(manifest.name, {
               name: manifest.name,
@@ -194,10 +188,8 @@ export const defineWorkspaceDepBoundaries = (options: WorkspaceDepBoundariesOpti
             adjacency.set(name, [...targets].sort(byCodeUnit))
           }
 
-          const violations: string[] = []
-
           for (const cycle of findCycles(packageNames, adjacency)) {
-            violations.push(`circular workspace dependency: ${cycle}`)
+            violations.add(`circular workspace dependency: ${cycle}`)
           }
 
           for (const name of packageNames) {
@@ -208,7 +200,7 @@ export const defineWorkspaceDepBoundaries = (options: WorkspaceDepBoundariesOpti
                 for (const depName of node.dependenciesByField[field]) {
                   const target = nodes.get(depName)
                   if (!target || !target.isPrivate) continue
-                  violations.push(
+                  violations.add(
                     `public package ${node.name} cannot depend on private workspace package ${target.name} in ${field}`
                   )
                 }
@@ -220,7 +212,7 @@ export const defineWorkspaceDepBoundaries = (options: WorkspaceDepBoundariesOpti
                 for (const depName of node.dependenciesByField[field]) {
                   const target = nodes.get(depName)
                   if (!target || !target.isApplication) continue
-                  violations.push(
+                  violations.add(
                     `non-application workspace ${node.name} (${node.directory}) cannot depend on application workspace ${target.name} (${target.directory}) in ${field}`
                   )
                 }
@@ -228,8 +220,8 @@ export const defineWorkspaceDepBoundaries = (options: WorkspaceDepBoundariesOpti
             }
           }
 
-          violations.sort(byCodeUnit)
-          if (violations.length > 0) return err(`deps: ${violations.join('\ndeps: ')}`)
+          const sortedViolations = [...violations].sort(byCodeUnit)
+          if (sortedViolations.length > 0) return err(`deps: ${sortedViolations.join('\ndeps: ')}`)
           return ok(undefined)
         })
     }))

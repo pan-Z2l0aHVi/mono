@@ -233,46 +233,51 @@ describe('defineWorkspaceDepBoundaries', () => {
     ])
   })
 
-  it('scans real packages whose directory names collide with artifact names, and still skips artifacts inside them', async () => {
+  it('scans workspace containers whose direct directory is named build, coverage, or dist while still ignoring nested build artifacts', async () => {
     const root = makeFixture()
-    writeManifest(root, 'packages/build', {
-      name: '@acme/build',
-      dependencies: { '@acme/build-kit': 'workspace:*' }
-    })
-    writeManifest(root, 'packages/build-kit', {
-      name: '@acme/build-kit',
+    writeManifest(root, 'apps/dist', {
+      name: '@acme/dist-app',
       private: true
     })
-    // build 包自己的 dist 产物 manifest 与包同名：若被扫进来会以 duplicate 拒绝，这里必须保持跳过。
+    writeManifest(root, 'packages/build', {
+      name: '@acme/build-pkg',
+      private: true,
+      dependencies: {
+        '@acme/dist-app': 'workspace:*'
+      }
+    })
     writeManifest(root, 'packages/build/dist', {
-      name: '@acme/build'
+      name: '@acme/ignored-nested-dist',
+      private: true,
+      dependencies: {
+        '@acme/dist-app': 'workspace:*'
+      }
     })
 
     const error = await failure(boundaries, root)
-    // 名为 build 的真实包被完整扫描（它的违规被报出），而它内部的 dist 没有混进扫描面。
     assert.equal(
       error,
-      'deps: public package @acme/build cannot depend on private workspace package @acme/build-kit in dependencies'
+      'deps: non-application workspace @acme/build-pkg (packages/build) cannot depend on application workspace @acme/dist-app (apps/dist) in dependencies'
     )
   })
 
-  it('fails on duplicate workspace package names instead of silently overwriting', async () => {
+  it('reports duplicate workspace package names instead of silently overwriting earlier nodes', async () => {
     const root = makeFixture()
-    writeManifest(root, 'packages/a', {
+    writeManifest(root, 'packages/first', {
       name: '@acme/dup',
-      dependencies: { '@acme/other': 'workspace:*' }
+      private: true
     })
-    writeManifest(root, 'packages/b', {
+    writeManifest(root, 'packages/second', {
       name: '@acme/dup',
-      devDependencies: { '@acme/secret': 'workspace:*' }
+      private: true
     })
-    writeManifest(root, 'packages/other', {
-      name: '@acme/other',
+    writeManifest(root, 'packages/third', {
+      name: '@acme/dup',
       private: true
     })
 
     const error = await failure(boundaries, root)
-    assert.equal(error, 'deps: duplicate workspace package name @acme/dup (packages/a and packages/b)')
+    assert.equal(error, 'deps: duplicate workspace package name "@acme/dup"')
   })
 
   it('fails closed when no workspace manifests are found', async () => {
