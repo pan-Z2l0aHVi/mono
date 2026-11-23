@@ -290,11 +290,13 @@ describe('defineWorkspaceDepBoundaries', () => {
     assert.ok(result.ok)
   })
 
-  it('still reports a violating manifest one level under a container root', async () => {
-    // 反向保护：容器一级的目录是真实包，同样的违规必须被扫出来，否则上面那条用例的「跳过」
-    // 会被一个过宽的跳过条件误伤而不自知。
+  it('still scans a container child whose name is in the artifact skip set', async () => {
+    // 反向保护：容器一级名为 dist 的目录是真实包，不能被「包内产物目录」的跳过条件误伤。
+    // 夹具必须用真正的跳过名（dist / build / coverage / __tests__），否则一条过宽的跳过条件
+    // 同样会让用例通过，反向保护就是空的。
     const root = makeFixture()
-    writeManifest(root, 'packages/core', {
+    const containerOnly = defineWorkspaceDepBoundaries({ workspaces: ['packages'], applicationDirs: ['apps'] })
+    writeManifest(root, 'packages/dist', {
       name: '@acme/core',
       private: true
     })
@@ -305,10 +307,11 @@ describe('defineWorkspaceDepBoundaries', () => {
       }
     })
 
-    const error = await failure(boundaries, root)
-    assert.equal(
-      error,
-      'deps: public package @acme/consumer cannot depend on private workspace package @acme/core in dependencies'
+    const result = await run(containerOnly, root)
+    if (result.ok) assert.fail('expected the container-level dist package to be scanned')
+    assert.match(
+      result.error,
+      /public package @acme\/consumer cannot depend on private workspace package @acme\/core in dependencies/
     )
   })
 
