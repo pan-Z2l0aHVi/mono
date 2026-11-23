@@ -9,7 +9,7 @@ import (
 	"unicode/utf16"
 )
 
-func TestNormalizeClipboardFilePathsKeepsExistingRegularFilesOnce(t *testing.T) {
+func TestNormalizeClipboardFilePathsKeepsFilesAndDirectoriesOnce(t *testing.T) {
 	dir := t.TempDir()
 	first := filepath.Join(dir, "first.txt")
 	second := filepath.Join(dir, "second.txt")
@@ -19,12 +19,17 @@ func TestNormalizeClipboardFilePathsKeepsExistingRegularFilesOnce(t *testing.T) 
 	if err := os.WriteFile(second, []byte("second"), 0o600); err != nil {
 		t.Fatalf("write second fixture: %v", err)
 	}
-
-	paths := normalizeClipboardFilePaths([]string{first, first, second, dir, filepath.Join(dir, "missing.txt"), " "})
-	if len(paths) != 2 {
-		t.Fatalf("expected 2 normalized paths, got %v", paths)
+	folder := filepath.Join(dir, "folder")
+	if err := os.Mkdir(folder, 0o700); err != nil {
+		t.Fatalf("create folder fixture: %v", err)
 	}
-	if paths[0] != first || paths[1] != second {
+
+	// 目录保序去重后原样保留：递归展开与过滤是导入链的职责，这里只筛掉不存在与空串。
+	paths := normalizeClipboardFilePaths([]string{first, first, second, folder, filepath.Join(dir, "missing.txt"), " "})
+	if len(paths) != 3 {
+		t.Fatalf("expected 3 normalized paths, got %v", paths)
+	}
+	if paths[0] != first || paths[1] != second || paths[2] != folder {
 		t.Fatalf("unexpected normalized paths: %v", paths)
 	}
 }
