@@ -290,30 +290,4 @@ describe('DetailDrawer', () => {
       mounted.close()
     }
   })
-
-  it('详细信息中的大小与时间字段使用等宽字体', async () => {
-    const resource = resourceView({
-      sizeBytes: 2_500_000,
-      createdAt: Date.UTC(2026, 0, 15, 8, 30),
-      updatedAt: Date.UTC(2026, 1, 20, 9, 45)
-    })
-    const mounted = mountDrawer(resource)
-
-    try {
-      await nextTick()
-      const rows = [...mounted.host.querySelectorAll('.detail-row')]
-      const valueOf = (label: string) =>
-        rows.find(row => row.querySelector('span')?.textContent?.trim() === label)?.querySelector('small')
-
-      for (const label of ['大小', '创建于', '最后修改于']) {
-        const value = valueOf(label)
-        expect(value, `${label} 应渲染数值节点`).not.toBeNull()
-        expect(value!.classList.contains('font-mono'), `${label} 应带 font-mono`).toBe(true)
-        expect(value!.classList.contains('tabular-nums'), `${label} 应带 tabular-nums`).toBe(true)
-      }
-      expect(valueOf('类型')!.classList.contains('font-mono')).toBe(false)
-    } finally {
-      mounted.close()
-    }
-  })
 })

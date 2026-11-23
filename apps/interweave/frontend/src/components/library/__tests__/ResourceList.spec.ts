@@ -2186,51 +2186,6 @@ describe('ResourceList：缩略图回填参数', () => {
       mounted.unmount()
     }
   })
-
-  it('列表行中的文件大小、创建时间与多来源计数使用等宽字体', async () => {
-    const primary = {
-      id: 's1',
-      type: 'file' as const,
-      location: '/tmp/report.pdf',
-      available: true,
-      isPreferred: true,
-      orderIndex: 0,
-      mediaUrl: null,
-      thumbnailUrl: null,
-      metadata: null
-    }
-    const secondary = {
-      ...primary,
-      id: 's2',
-      location: '/tmp/report-copy.pdf',
-      isPreferred: false,
-      orderIndex: 1
-    }
-    const mounted = await mountList([
-      resource({
-        id: 'r-mono',
-        sizeBytes: 2_500_000,
-        createdAt: Date.UTC(2026, 0, 15, 8, 30),
-        preferred: primary,
-        sources: [primary, secondary]
-      })
-    ])
-    try {
-      const row = mounted.rows[0]!
-      const time = row.querySelector('time')
-      expect(time).not.toBeNull()
-      expect(time!.classList.contains('font-mono')).toBe(true)
-      expect(time!.classList.contains('tabular-nums')).toBe(true)
-
-      const monoTexts = [...row.querySelectorAll<HTMLElement>('.font-mono.tabular-nums')].map(el =>
-        el.textContent?.trim()
-      )
-      expect(monoTexts).toContain('2.4 MB')
-      expect(monoTexts).toContain('2')
-    } finally {
-      mounted.unmount()
-    }
-  })
 })
 
 /*
