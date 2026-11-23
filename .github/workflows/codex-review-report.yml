@@ -202,12 +202,29 @@ jobs:
         env:
           PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
         # fetch 走 refs/pull/<n>/head：合并删分支后该 ref 仍持久存在，比按分支名 fetch 少一类 404。
-        # patch 是相对 run head 生成的，所以工作树必须停在同一份代码上；
-        # assertPushAllowed 再把 checkout、live head 与 patch base 三个 SHA 对齐。
+        # 这条 ref 指向的是**当前 live PR head**，不是生成 patch 的那个 run head；两者是否一致由
+        # assertPushAllowed 判定——不一致（run head 已漂移）时它拒绝推送，工作树停在 live head 上并不构成错误。
         run: |
           set -euo pipefail
           git fetch --no-tags origin "refs/pull/$PULL_NUMBER/head"
           git checkout --detach FETCH_HEAD
+
+      - name: Explain the skipped autofix
+        # apply 与 checkout 在 PR 不再 open 时整体跳过（脚本侧的同一出口因此不会执行）：
+        # 绿色收尾可以，但运行页上必须能读到「为什么没推送」。
+        if: always() && steps.pull.outcome == 'success' && steps.pull.outputs.pull_number != '' && steps.pull.outputs.pull_state != 'open'
+        env:
+          PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
+          PULL_STATE: ${{ steps.pull.outputs.pull_state }}
+        run: |
+          set -euo pipefail
+          {
+            echo '## Codex autofix 未应用'
+            echo ''
+            echo "- PR #$PULL_NUMBER 当前状态为 \`${PULL_STATE:-unknown}\`，不再接受自动修推送，本次 checkout 与 apply 都已跳过。"
+            echo '- 写回 run 由「CI completed」触发，可能晚于合并完成；这不是故障。'
+          } >> "$GITHUB_STEP_SUMMARY"
+          echo "::notice title=Codex autofix skipped::pull request #$PULL_NUMBER is ${PULL_STATE:-unknown}, not open"
 
       - name: Download autofix patch
         # 大多数 run 没有 patch：下载失败就是「无事可做」，由 apply 自己按文件缺失跳过。

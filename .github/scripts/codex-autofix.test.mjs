@@ -887,7 +887,7 @@ for (const file of [
     `#!/bin/sh\nprintf '%s\\n' "$*" >> "$FAKE_GIT_CALLS"\ncase "$1" in\n  rev-parse) printf '%s\\n' "$FAKE_HEAD" ;;\nesac\nexit 0\n`,
     { mode: 0o755 }
   )
-  function runApply({ commits, total, env: extraEnv = {} }) {
+  function runApply({ commits, total, pull: pullOverrides = {}, env: extraEnv = {} }) {
     fs.writeFileSync(pagePath, JSON.stringify(commits))
     fs.writeFileSync(
       pullPath,
@@ -896,7 +896,8 @@ for (const file of [
         base: { ref: 'main' },
         head: { repo: { full_name: 'owner/repo' }, ref: 'feature/x', sha: headSha },
         commits: total,
-        number: 54
+        number: 54,
+        ...pullOverrides
       })
     )
     fs.writeFileSync(ghCallsPath, '')
@@ -941,6 +942,14 @@ for (const file of [
     .map((call, index) => (call.endsWith('/pulls/54') ? index : -1))
     .filter(index => index >= 0)
   assert.ok(commitsIndex >= 0)
+
+  // 只有「PR 不再 open」才是绿色出口：资格配置不匹配（base 不是 main、fork、版本分支）仍须红，
+  // 否则一次配置错误会被静默吞成绿灯。
+  const wrongBase = runApply({ commits: plainCommits(2), total: 2, pull: { base: { ref: 'release' } } })
+  assert.equal(wrongBase.result.status, 1, 'a base-branch mismatch must stay red')
+  assert.match(wrongBase.result.stderr, /refusing to push: the PR base is release, not main/)
+  assert.doesNotMatch(wrongBase.summary, /## Codex autofix 未应用/)
+  assert.doesNotMatch(wrongBase.gitCalls, /^apply | commit| push origin/m)
   assert.deepEqual(pullIndexes.length, 1, 'apply reads the PR object exactly once')
   assert.ok(pullIndexes[0] > commitsIndex, 'the PR object snapshot is read after commit pagination')
   assert.match(pushed.gitCalls, /-c user\.name=codex -c user\.email=codex@openai\.com commit/)

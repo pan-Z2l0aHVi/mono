@@ -535,8 +535,13 @@ function commandApply() {
   const pull = adapter.pull(number)
   const target = reviewTarget({ pull, repository: env.GITHUB_REPOSITORY, releaseBranch: RELEASE_BRANCH })
   if (!target.ok) {
-    skipApply(target.reason)
-    return
+    // 只有「PR 已经不再 open」是预期出口：写回 run 可能晚于合并完成。base 不是 main、fork、版本分支
+    // 属于资格配置不匹配，autofix 本不该为它们产出 patch——那是故障，保持红色可见。
+    if (pull?.state !== 'open') {
+      skipApply(target.reason)
+      return
+    }
+    throw new Error(`refusing to push: ${target.reason}`)
   }
   const { unverified, unverifiedDetail } = autofixCommitState(commits, pull)
   assertPushAllowed({
@@ -567,12 +572,13 @@ function commandApply() {
     ])
   } catch (error) {
     // reviewTarget 通过后、push 落地前的秒级窗口里 PR 可能刚被合并删分支：复查一次状态再定颜色，
-    // PR 已拒绝即绿色收尾；仍 open 的 push 故障原样抛出，保持红色可见。
+    // 确认已不再 open 才绿色收尾；仍 open 的 push 故障原样抛出，保持红色可见。
     let latestTarget
+    let latestPull
     try {
-      const latest = adapter.pull(number)
+      latestPull = adapter.pull(number)
       latestTarget = reviewTarget({
-        pull: latest,
+        pull: latestPull,
         repository: env.GITHUB_REPOSITORY,
         releaseBranch: RELEASE_BRANCH
       })
@@ -581,7 +587,7 @@ function commandApply() {
       console.error(`push failed and the PR re-check also failed: ${recheckError.message}`)
       throw error
     }
-    if (!latestTarget.ok) {
+    if (!latestTarget.ok && latestPull?.state !== 'open') {
       skipApply(`the pull request closed before the push landed: ${latestTarget.reason}`)
       return
     }
