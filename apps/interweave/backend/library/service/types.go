@@ -52,6 +52,13 @@ type ResourceLocationMatchDTO struct {
 	Location string `json:"location"`
 }
 
+// ImportExpansionDTO 是一次批量导入展开的结果：文件清单 + 实际递归展开的顶层文件夹数。
+// 前端用 Folders 区分「文件夹递归展开」与「纯文件多选」，只在确有展开时补那句说明。
+type ImportExpansionDTO struct {
+	Files   []string `json:"files"`
+	Folders int      `json:"folders"`
+}
+
 // 为前端呈现 Resource 的外部入口。
 type SourceDTO struct {
 	ID         string             `json:"id"`

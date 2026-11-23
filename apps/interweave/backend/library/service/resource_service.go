@@ -40,8 +40,13 @@ func (s *ResourceService) PrepareFilePreview(_ context.Context, inputPath string
 
 // ExpandImportPaths 把用户选中的一批文件与文件夹展开为可纳入的文件位置清单。
 // 隐藏项、符号链接与非普通文件由 core 过滤；空输入返回空列表。
-func (s *ResourceService) ExpandImportPaths(ctx context.Context, paths []string) ([]string, error) {
-	return s.core.ExpandImportPaths(ctx, paths)
+// Folders 是实际递归展开的顶层文件夹数，供前端决定是否在确认文案里补展开说明。
+func (s *ResourceService) ExpandImportPaths(ctx context.Context, paths []string) (ImportExpansionDTO, error) {
+	expansion, err := s.core.ExpandImportPaths(ctx, paths)
+	if err != nil {
+		return ImportExpansionDTO{}, err
+	}
+	return ImportExpansionDTO{Files: expansion.Files, Folders: expansion.Folders}, nil
 }
 
 // ReleaseFilePreview 撤销不再需要的 pending media 授权。

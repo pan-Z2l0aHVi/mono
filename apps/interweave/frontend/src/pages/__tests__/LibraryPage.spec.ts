@@ -157,7 +157,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       setTags: async () => resource(),
       findLocationMatches: async () => [],
       // 默认按「文件原样通过」展开：既有的文件拖入/粘贴用例路径不经变换直接入队。
-      expandImportEntries: async paths => paths,
+      expandImportEntries: async paths => ({ files: paths, folders: 0 }),
       prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
       releaseFilePreview: async () => {},
       ...overrides.resources
@@ -890,10 +890,10 @@ describe('LibraryPage：统一导入入口', () => {
   }
 
   it('未超阈值时展开结果直接入队，不弹确认', async () => {
-    const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => [
-      '/tmp/imports/a.png',
-      '/tmp/imports/sub/b.md'
-    ])
+    const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => ({
+      files: ['/tmp/imports/a.png', '/tmp/imports/sub/b.md'],
+      folders: 1
+    }))
     runtimeStub.current = createRuntime({
       system: { chooseFilePaths: async () => ['/tmp/imports'] },
       resources: { expandImportEntries }
@@ -919,7 +919,7 @@ describe('LibraryPage：统一导入入口', () => {
     runtimeStub.current = createRuntime({
       system: { chooseFilePaths: async () => ['/tmp/imports'] },
       resources: {
-        expandImportEntries: async () => files,
+        expandImportEntries: async () => ({ files, folders: 1 }),
         findLocationMatches: async () => new Promise(resolve => gates.push(() => resolve([])))
       }
     })
@@ -960,7 +960,7 @@ describe('LibraryPage：统一导入入口', () => {
     const files = Array.from({ length: 21 }, (_, index) => `/tmp/imports/file-${index}.png`)
     runtimeStub.current = createRuntime({
       system: { chooseFilePaths: async () => ['/tmp/imports'] },
-      resources: { expandImportEntries: async () => files }
+      resources: { expandImportEntries: async () => ({ files, folders: 0 }) }
     })
     const mounted = await mountPage()
 
@@ -978,10 +978,53 @@ describe('LibraryPage：统一导入入口', () => {
     }
   })
 
+  it('纯文件多选超过阈值：确认文案只讲批量导入，不提文件夹', async () => {
+    const files = Array.from({ length: 25 }, (_, index) => `/tmp/picked/file-${index}.png`)
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => files },
+      resources: { expandImportEntries: async paths => ({ files: paths, folders: 0 }) }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      await pickFromDropZone(mounted.host)
+
+      const dialog = confirmDialog(mounted.host, '导入 25 个文件')
+      expect(dialog.textContent).toContain('共 25 个文件将加入待导入列表。')
+      expect(dialog.textContent).not.toContain('文件夹')
+      button(dialog, '取消').click()
+      await flush()
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('文件夹递归展开超过阈值：文案补出实际展开的文件夹数', async () => {
+    const files = Array.from({ length: 30 }, (_, index) => `/tmp/dropped/file-${index}.png`)
+    runtimeStub.current = createRuntime({
+      resources: { expandImportEntries: async () => ({ files, folders: 2 }) }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      queueWindowFileDrop(['/tmp/dropped/a', '/tmp/dropped/b'])
+      await flush()
+
+      const dialog = confirmDialog(mounted.host, '导入 30 个文件')
+      expect(dialog.textContent).toContain('共 30 个文件将加入待导入列表（2 个文件夹已递归展开）。')
+      button(dialog, '取消').click()
+      await flush()
+    } finally {
+      await mounted.close()
+    }
+  })
+
   it('展开结果为空时给一句可读提示，不弹确认也不入队', async () => {
     runtimeStub.current = createRuntime({
       system: { chooseFilePaths: async () => ['/tmp/empty'] },
-      resources: { expandImportEntries: async () => [] }
+      resources: { expandImportEntries: async () => ({ files: [], folders: 0 }) }
     })
     const mounted = await mountPage()
 
@@ -997,7 +1040,10 @@ describe('LibraryPage：统一导入入口', () => {
   })
 
   it('提交进行中上传区继续入队被挡下并提示，不再扩张队列', async () => {
-    const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => ['/tmp/late.png'])
+    const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => ({
+      files: ['/tmp/late.png'],
+      folders: 0
+    }))
     const gate = deferred<void>()
     runtimeStub.current = createRuntime({
       system: { chooseFilePaths: async () => ['/tmp/late'] },
@@ -1070,7 +1116,7 @@ describe('LibraryPage：统一导入入口', () => {
     let gated = false
     runtimeStub.current = createRuntime({
       resources: {
-        expandImportEntries: async paths => (gated ? expandGate.promise : paths),
+        expandImportEntries: async paths => ({ files: gated ? await expandGate.promise : paths, folders: 0 }),
         create
       }
     })
@@ -1112,8 +1158,8 @@ describe('LibraryPage：统一导入入口', () => {
     const filesB = Array.from({ length: 25 }, (_, index) => `/tmp/drop-b/file-${index}.png`)
     const expandImportEntries = vi
       .fn<LibraryRuntime['resources']['expandImportEntries']>()
-      .mockResolvedValueOnce(filesA)
-      .mockResolvedValueOnce(filesB)
+      .mockResolvedValueOnce({ files: filesA, folders: 0 })
+      .mockResolvedValueOnce({ files: filesB, folders: 0 })
     runtimeStub.current = createRuntime({ resources: { expandImportEntries } })
     const mounted = await mountPage()
 
@@ -1148,10 +1194,10 @@ describe('LibraryPage：统一导入入口', () => {
   })
 
   it('拖入文件夹走同一条展开链，目录被递归展开后入队', async () => {
-    const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => [
-      '/tmp/drop/a.png',
-      '/tmp/drop/nested/b.md'
-    ])
+    const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => ({
+      files: ['/tmp/drop/a.png', '/tmp/drop/nested/b.md'],
+      folders: 1
+    }))
     runtimeStub.current = createRuntime({ resources: { expandImportEntries } })
     const mounted = await mountPage()
 

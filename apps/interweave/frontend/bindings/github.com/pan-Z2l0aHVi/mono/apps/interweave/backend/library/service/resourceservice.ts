@@ -38,8 +38,9 @@ export function DeleteResource(resourceID: string): $CancellablePromise<void> {
 /**
  * ExpandImportPaths 把用户选中的一批文件与文件夹展开为可纳入的文件位置清单。
  * 隐藏项、符号链接与非普通文件由 core 过滤；空输入返回空列表。
+ * Folders 是实际递归展开的顶层文件夹数，供前端决定是否在确认文案里补展开说明。
  */
-export function ExpandImportPaths(paths: string[]): $CancellablePromise<string[]> {
+export function ExpandImportPaths(paths: string[]): $CancellablePromise<$models.ImportExpansionDTO> {
     return $Call.ByID(2068604587, paths).then(($result: any) => {
         return $$createType2($result);
     });
@@ -109,7 +110,7 @@ export function UpdateResourceTitle(resourceID: string, newTitle: string): $Canc
 // Private type creation functions
 const $$createType0 = $models.ResourceDTO.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
-const $$createType2 = $Create.Array($Create.Any);
+const $$createType2 = $models.ImportExpansionDTO.createFrom;
 const $$createType3 = $models.ResourceLocationMatchDTO.createFrom;
 const $$createType4 = $Create.Array($$createType3);
 const $$createType5 = $Create.Array($$createType0);

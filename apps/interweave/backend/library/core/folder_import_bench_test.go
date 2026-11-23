@@ -110,12 +110,12 @@ func BenchmarkListFolderImportFiles(b *testing.B) {
 	ctx := context.Background()
 	b.ResetTimer()
 	for range b.N {
-		files, err := service.ExpandImportPaths(ctx, []string{dir})
+		expansion, err := service.ExpandImportPaths(ctx, []string{dir})
 		if err != nil {
 			b.Fatal(err)
 		}
-		if len(files) != benchFlatFiles+benchNestedFiles {
-			b.Fatalf("unexpected file count: %d", len(files))
+		if len(expansion.Files) != benchFlatFiles+benchNestedFiles {
+			b.Fatalf("unexpected file count: %d", len(expansion.Files))
 		}
 	}
 }

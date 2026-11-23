@@ -133,6 +133,39 @@ export class GlobalMapDTO {
 }
 
 /**
+ * ImportExpansionDTO 是一次批量导入展开的结果：文件清单 + 实际递归展开的顶层文件夹数。
+ * 前端用 Folders 区分「文件夹递归展开」与「纯文件多选」，只在确有展开时补那句说明。
+ */
+export class ImportExpansionDTO {
+    "files": string[];
+    "folders": number;
+
+    /** Creates a new ImportExpansionDTO instance. */
+    constructor($$source: Partial<ImportExpansionDTO> = {}) {
+        if (!("files" in $$source)) {
+            this["files"] = [];
+        }
+        if (!("folders" in $$source)) {
+            this["folders"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ImportExpansionDTO instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ImportExpansionDTO {
+        const $$createField0_0 = $$createType0;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("files" in $$parsedSource) {
+            $$parsedSource["files"] = $$createField0_0($$parsedSource["files"]);
+        }
+        return new ImportExpansionDTO($$parsedSource as Partial<ImportExpansionDTO>);
+    }
+}
+
+/**
  * 为围绕单个主题的探索提供局部上下文。
  */
 export class LocalMapDTO {

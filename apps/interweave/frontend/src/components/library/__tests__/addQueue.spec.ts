@@ -36,7 +36,7 @@ function createRuntime(
         throw new Error('未使用')
       },
       findLocationMatches: async () => [],
-      expandImportEntries: async () => [],
+      expandImportEntries: async () => ({ files: [], folders: 0 }),
       prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
       releaseFilePreview: async () => {},
       ...resourceOverrides

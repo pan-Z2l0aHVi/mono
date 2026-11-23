@@ -12,6 +12,13 @@ import (
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/internal/normalize"
 )
 
+// ImportExpansion 是一次展开的结果：可纳入的文件清单，以及实际递归展开的顶层文件夹数。
+// 前端用 Folders 决定确认文案是否补一句「N 个文件夹已递归展开」——纯文件多选不提示。
+type ImportExpansion struct {
+	Files   []string
+	Folders int
+}
+
 // ExpandImportPaths 把一批用户选中的入口（文件与文件夹混合，来自选择面板、拖入或剪贴板）
 // 展开为可纳入的文件位置清单：目录递归展开，普通文件原样保留。
 // 只列目录、不读取内容：展示分类与可用性探测仍走既有纳入路径（CreateResource / PrepareFilePreview）。
@@ -22,16 +29,18 @@ import (
 // 重复路径（同时选中目录与其内部文件）只保留一份，最终按字典序产出确定顺序。
 // 展开先于确认完成：返回清单的长度就是阈值判据，因此这里不设遍历上限；超大目录的
 // 遍历与 IPC 清单一律由用户显式选中它的动作触发，页面在展开后展示批次大小再请求放行。
-func (s *ResourceService) ExpandImportPaths(ctx context.Context, paths []string) ([]string, error) {
+func (s *ResourceService) ExpandImportPaths(ctx context.Context, paths []string) (ImportExpansion, error) {
 	files := make([]string, 0, 64)
 	seen := make(map[string]bool, len(paths))
+	// folders 只数顶层选中并成功展开的目录；目录内部的子目录不算，文案说的是「选了哪些文件夹」。
+	folders := 0
 	for _, raw := range paths {
 		if err := ctx.Err(); err != nil {
-			return nil, err
+			return ImportExpansion{}, err
 		}
 		root, err := normalize.FilePath(raw)
 		if err != nil {
-			return nil, fmt.Errorf("invalid import path: %w", err)
+			return ImportExpansion{}, fmt.Errorf("invalid import path: %w", err)
 		}
 		// 顶层跟随符号链接到真实目标：显式选中的链接文件纳入其目标文件，链接目录按目标递归；
 		// 链接成环或选择到确认之间被删除的条目只影响自身，不拖垮整批。
@@ -45,8 +54,9 @@ func (s *ResourceService) ExpandImportPaths(ctx context.Context, paths []string)
 		}
 		if info.IsDir() {
 			if err := collectImportFiles(ctx, resolved, seen, &files); err != nil {
-				return nil, err
+				return ImportExpansion{}, err
 			}
+			folders++
 			continue
 		}
 		if !info.Mode().IsRegular() {
@@ -58,7 +68,7 @@ func (s *ResourceService) ExpandImportPaths(ctx context.Context, paths []string)
 		}
 	}
 	sort.Strings(files)
-	return files, nil
+	return ImportExpansion{Files: files, Folders: folders}, nil
 }
 
 // collectImportFiles 递归收集目录下可纳入的文件，跳过规则见 ExpandImportPaths。

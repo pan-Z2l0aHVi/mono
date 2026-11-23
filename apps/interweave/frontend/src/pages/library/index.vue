@@ -495,19 +495,31 @@ async function pasteFilePaths(clipboardText?: string) {
   }
 }
 
+/** 提交期间所有入队入口共用的提示：文案只在这里维护。 */
+function warnImportInProgress() {
+  toast.warning('正在导入当前批次，请等它完成再继续添加', { position: 'top-center' })
+}
+
 /**
  * 统一挡下提交期间的链接入队：窗口拖入与粘贴文本都不经 enqueueImportEntries，
  * 提交按快照结算、成功时整队清空，期间入队的链接会被静默丢弃。
  */
 function requestAddURL(url: string) {
   if (submitting.value) {
-    toast.warning('正在导入当前批次，请等它完成再继续添加', { position: 'top-center' })
+    warnImportInProgress()
     return
   }
   void addQueue.enqueueURL(url)
 }
 
-/** 单批导入的确认阈值：超过该数量先弹确认——成批纳入是一笔大写，需要一次显式放行。 */
+/**
+ * 单批导入的确认阈值，按展开后的文件总数计（文件多选、文件夹递归、两者混选同一条链）。
+ *
+ * 数值依据：目标是「点导入 → 待导入列表就绪」不超过 1s，超过就该先拦下来征得同意。
+ * 实测（M2/16G，300 文件批）前 1.5s 只入队 32 项、末段降到约 3 项/秒；后端侧展开与重复
+ * 检查摊销仅约 15µs/文件，耗时几乎全在待导入列表逐项渲染，因此 1s 大约只对应 20 个文件。
+ * 列表渲染优化（虚拟化/延迟挂预览）后应按新曲线重估，而不是凭感觉调大。
+ */
 const IMPORT_CONFIRM_THRESHOLD = 20
 
 /*
@@ -519,24 +531,27 @@ async function enqueueImportEntries(entries: string[]) {
   // 提交循环按快照结算、结束时整队清空：提交期间继续入队的项会被静默丢弃，
   // 三个入口（面板/拖入/粘贴）统一在这里挡下并给出可读提示。
   if (submitting.value) {
-    toast.warning('正在导入当前批次，请等它完成再继续添加', { position: 'top-center' })
+    warnImportInProgress()
     return
   }
-  const paths = await runtime.resources.expandImportEntries(entries)
+  const expansion = await runtime.resources.expandImportEntries(entries)
   if (!addOpen.value) return
   // 大目录展开可能跨过用户点提交的时刻：返回后复查一次，别把这一批塞进正在结算的队列。
   if (submitting.value) {
-    toast.warning('正在导入当前批次，请等它完成再继续添加', { position: 'top-center' })
+    warnImportInProgress()
     return
   }
+  const paths = expansion.files
   if (!paths.length) {
     toast.warning('所选内容里没有可导入的文件', { position: 'top-center' })
     return
   }
   if (paths.length > IMPORT_CONFIRM_THRESHOLD) {
+    // 句子的前半句对所有批量选中成立；只有确实展开了文件夹才补一句展开说明。
+    const expanded = expansion.folders > 0 ? `（${expansion.folders} 个文件夹已递归展开）` : ''
     openConfirmDialog({
       title: '确认批量导入',
-      message: `共 ${paths.length} 个文件将加入待导入列表（文件夹已递归展开）。`,
+      message: `共 ${paths.length} 个文件将加入待导入列表${expanded}。`,
       confirmLabel: `导入 ${paths.length} 个文件`,
       danger: false,
       progressTotal: paths.length,

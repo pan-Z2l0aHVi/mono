@@ -39,10 +39,11 @@ func TestExpandImportPathsWalksDirectoriesAndKeepsFiles(t *testing.T) {
 	}
 
 	service := NewResourceService(nil, nil)
-	files, err := service.ExpandImportPaths(context.Background(), []string{root, standalone, filepath.Join(root, "nested", "b.md")})
+	expansion, err := service.ExpandImportPaths(context.Background(), []string{root, standalone, filepath.Join(root, "nested", "b.md")})
 	if err != nil {
 		t.Fatal(err)
 	}
+	files := expansion.Files
 
 	// 目录与文件混选：目录递归展开，文件原样保留，重复（目录内文件被同时选中）去重；
 	// 最终清单全局按字典序产出，不依赖选中顺序。
@@ -54,6 +55,9 @@ func TestExpandImportPathsWalksDirectoriesAndKeepsFiles(t *testing.T) {
 	}
 	if !slices.Equal(files, want) {
 		t.Fatalf("got %v, want %v", files, want)
+	}
+	if expansion.Folders != 1 {
+		t.Fatalf("folders = %d, want 1", expansion.Folders)
 	}
 }
 
@@ -79,7 +83,7 @@ func TestExpandImportPathsSkipsHiddenEntriesAndSymlinks(t *testing.T) {
 	}
 
 	service := NewResourceService(nil, nil)
-	files, err := service.ExpandImportPaths(context.Background(), []string{root})
+	expansion, err := service.ExpandImportPaths(context.Background(), []string{root})
 	if err != nil {
 		t.Fatal(err)
 	}
@@ -88,8 +92,11 @@ func TestExpandImportPathsSkipsHiddenEntriesAndSymlinks(t *testing.T) {
 		filepath.Join(root, "keep.png"),
 		filepath.Join(root, "project", "real.md"),
 	}
-	if !slices.Equal(files, want) {
-		t.Fatalf("got %v, want %v", files, want)
+	if !slices.Equal(expansion.Files, want) {
+		t.Fatalf("got %v, want %v", expansion.Files, want)
+	}
+	if expansion.Folders != 1 {
+		t.Fatalf("folders = %d, want 1", expansion.Folders)
 	}
 }
 
@@ -108,14 +115,17 @@ func TestExpandImportPathsKeepsChildrenOfExplicitHiddenRoot(t *testing.T) {
 	}
 
 	service := NewResourceService(nil, nil)
-	files, err := service.ExpandImportPaths(context.Background(), []string{root})
+	expansion, err := service.ExpandImportPaths(context.Background(), []string{root})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	want := filepath.Join(root, "doc.md")
-	if len(files) != 1 || files[0] != want {
-		t.Fatalf("got %v, want [%s]", files, want)
+	if len(expansion.Files) != 1 || expansion.Files[0] != want {
+		t.Fatalf("got %v, want [%s]", expansion.Files, want)
+	}
+	if expansion.Folders != 1 {
+		t.Fatalf("folders = %d, want 1", expansion.Folders)
 	}
 }
 
@@ -145,15 +155,18 @@ func TestExpandImportPathsResolvesExplicitSymlinks(t *testing.T) {
 	}
 
 	service := NewResourceService(nil, nil)
-	files, err := service.ExpandImportPaths(context.Background(), []string{dirLink, fileLink})
+	expansion, err := service.ExpandImportPaths(context.Background(), []string{dirLink, fileLink})
 	if err != nil {
 		t.Fatal(err)
 	}
 
 	// 产出的是解析后的真实目标路径；同一真实文件（file-link 与目标重复）只保留一份。
 	want := []string{inside, targetFile}
-	if !slices.Equal(files, want) {
-		t.Fatalf("got %v, want %v", files, want)
+	if !slices.Equal(expansion.Files, want) {
+		t.Fatalf("got %v, want %v", expansion.Files, want)
+	}
+	if expansion.Folders != 1 {
+		t.Fatalf("folders = %d, want 1", expansion.Folders)
 	}
 }
 
@@ -166,12 +179,15 @@ func TestExpandImportPathsSkipsMissingEntries(t *testing.T) {
 
 	service := NewResourceService(nil, nil)
 	// 选中到展开之间被删除的条目只影响自身；空串按无效输入整体报错（防御路径，面板不会给出）。
-	files, err := service.ExpandImportPaths(context.Background(), []string{file, filepath.Join(root, "missing")})
+	expansion, err := service.ExpandImportPaths(context.Background(), []string{file, filepath.Join(root, "missing")})
 	if err != nil {
 		t.Fatal(err)
 	}
-	if !slices.Equal(files, []string{file}) {
-		t.Fatalf("got %v, want [%s]", files, file)
+	if !slices.Equal(expansion.Files, []string{file}) {
+		t.Fatalf("got %v, want [%s]", expansion.Files, file)
+	}
+	if expansion.Folders != 0 {
+		t.Fatalf("folders = %d, want 0", expansion.Folders)
 	}
 	if _, err := service.ExpandImportPaths(context.Background(), []string{"   "}); err == nil {
 		t.Fatal("expected error for empty input")

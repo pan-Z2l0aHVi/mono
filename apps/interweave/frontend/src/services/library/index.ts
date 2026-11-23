@@ -17,6 +17,7 @@ export function createLibraryRuntime(): LibraryRuntime {
 export {
   isPreviewRevokedEvent,
   isSourceAvailabilityEvent,
+  type ImportExpansion,
   type LibraryQueueItem,
   type LibraryRuntime,
   type SourceAvailabilityEventDTO

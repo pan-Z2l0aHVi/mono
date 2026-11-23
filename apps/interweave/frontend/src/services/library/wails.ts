@@ -45,7 +45,11 @@ class WailsLibraryRuntime implements LibraryRuntime {
       requireResourceDTO(await TagService.SetResourceTags(resourceId, tagNames), '保存标签'),
     findLocationMatches: (input: string, sourceType: SourceType) =>
       ResourceService.FindResourceLocationMatches(input, sourceType),
-    expandImportEntries: (paths: string[]) => ResourceService.ExpandImportPaths(paths),
+    // 只取两个字段，页面拿到的是本地 ImportExpansion 而不是生成的模型实例。
+    expandImportEntries: async (paths: string[]) => {
+      const expansion = await ResourceService.ExpandImportPaths(paths)
+      return { files: expansion.files, folders: expansion.folders }
+    },
     prepareFilePreview: async (inputPath: string) =>
       requireFilePreviewDTO(await ResourceService.PrepareFilePreview(inputPath), '准备文件预览'),
     releaseFilePreview: async (token: string) => {
