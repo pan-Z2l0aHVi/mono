@@ -206,12 +206,14 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
         </template>
         <template v-if="size">
           <span aria-hidden="true" class="text-[#d8d8de] dark:text-(--wui-color-text-tertiary)">·</span>
-          <span>{{ size }}</span>
+          <span class="font-mono tabular-nums">{{ size }}</span>
         </template>
         <span aria-hidden="true" class="text-[#d8d8de] dark:text-(--wui-color-text-tertiary)">·</span>
-        <time :datetime="new Date(timestampMilliseconds(resource.createdAt)).toISOString()">{{
-          formatDate(resource.createdAt)
-        }}</time>
+        <time
+          class="font-mono tabular-nums"
+          :datetime="new Date(timestampMilliseconds(resource.createdAt)).toISOString()"
+          >{{ formatDate(resource.createdAt) }}</time
+        >
         <span
           v-if="resource.sources.length > 1"
           aria-hidden="true"
@@ -219,7 +221,9 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
         >
           ·
         </span>
-        <span v-if="resource.sources.length > 1">{{ resource.sources.length }} 个来源</span>
+        <span v-if="resource.sources.length > 1"
+          ><span class="font-mono tabular-nums">{{ resource.sources.length }}</span> 个来源</span
+        >
       </div>
     </div>
 

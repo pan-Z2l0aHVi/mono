@@ -39,6 +39,7 @@ function mountDialog(overrides: Record<string, unknown> = {}) {
     host.remove()
   })
   return {
+    host,
     async requestClose() {
       host.querySelector('web-ui-dialog')!.dispatchEvent(new CustomEvent('open-change', { detail: { open: false } }))
       await nextTick()
@@ -64,5 +65,19 @@ describe('ConfirmDialog：busy 期间的关闭请求', () => {
     const dialog = mountDialog({ busy: true })
     await dialog.requestClose()
     expect(dialog.cancelCount()).toBe(1)
+  })
+
+  it('确认文案、按钮进度与错误横幅中的数字使用等宽字体', async () => {
+    const dialog = mountDialog({
+      message: '共 21 个文件将加入待导入列表（2 个文件夹已递归展开）。',
+      confirmLabel: '3 / 21',
+      error: '有 4 项操作失败，请重试',
+      busy: true
+    })
+    await nextTick()
+    const monoTexts = [...dialog.host.querySelectorAll<HTMLElement>('.font-mono.tabular-nums')].map(el =>
+      el.textContent?.trim()
+    )
+    expect(monoTexts).toEqual(['4', '21', '2', '3 / 21'])
   })
 })

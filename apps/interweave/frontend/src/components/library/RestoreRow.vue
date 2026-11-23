@@ -51,7 +51,7 @@ const emit = defineEmits<{ prepare: []; cancelPrepare: []; chooseCandidates: [] 
         class="w-fit rounded-sm text-xs text-(--wui-color-accent) underline"
         @click="emit('chooseCandidates')"
       >
-        找到 {{ candidateCount }} 个候选，选择文件
+        找到 <span class="font-mono tabular-nums">{{ candidateCount }}</span> 个候选，选择文件
       </button>
       <span v-if="active" class="text-xs text-(--wui-color-text-secondary)">处理中</span>
     </div>

@@ -327,7 +327,10 @@ function submit() {
                 {{ column === 'pending' ? '待找回' : '已找到' }}
               </h3>
               <span class="text-xs text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
-                >{{ (column === 'pending' ? pendingItems : readyItems).length }} 项</span
+                ><span class="font-mono tabular-nums">{{
+                  (column === 'pending' ? pendingItems : readyItems).length
+                }}</span>
+                项</span
               >
             </div>
             <div
@@ -415,17 +418,21 @@ function submit() {
           :class="{ 'mt-2': mobile }"
         >
           <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
-            ><strong class="text-sm text-(--wui-color-text)">{{ (scanProgress?.checked ?? 0).toLocaleString() }}</strong
+            ><strong class="font-mono text-sm tabular-nums text-(--wui-color-text)">{{
+              (scanProgress?.checked ?? 0).toLocaleString()
+            }}</strong
             >已检查</span
           >
           <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
-            ><strong class="scan-shimmer text-sm text-(--wui-color-accent)">{{
+            ><strong class="scan-shimmer font-mono text-sm tabular-nums text-(--wui-color-accent)">{{
               Object.values(candidates).filter(items => items.length).length
             }}</strong
             >已找到</span
           >
           <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
-            ><strong class="text-sm text-(--wui-color-text)">{{ scanProgress?.skipped ?? 0 }}</strong
+            ><strong class="font-mono text-sm tabular-nums text-(--wui-color-text)">{{
+              scanProgress?.skipped ?? 0
+            }}</strong
             >已跳过</span
           >
         </div>
@@ -504,7 +511,8 @@ function submit() {
             <strong class="block truncate text-sm">{{ candidate.path.split('/').pop() || candidate.path }}</strong>
             <span class="block wrap-anywhere text-xs text-(--wui-color-text-secondary)">{{ candidate.path }}</span>
             <span class="block text-xs text-(--wui-color-text-secondary)"
-              >{{ formatSize(candidate.size) }} · {{ new Date(candidate.modifiedAt).toLocaleString() }} ·
+              ><span class="font-mono tabular-nums">{{ formatSize(candidate.size) }}</span> ·
+              <span class="font-mono tabular-nums">{{ new Date(candidate.modifiedAt).toLocaleString() }}</span> ·
               {{ candidate.matchReasons.map(matchReason).join('、') }}</span
             >
           </span>
