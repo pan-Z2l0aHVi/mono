@@ -52,7 +52,9 @@ const GLOB_SEGMENT = /[*?[\]{}]/u
 
 /**
  * `pnpm-workspace.yaml` 里 glob 模式指向的容器目录与字面量模式指向的 workspace 目录本身，按码位排序。
- * 只读配置、不扫盘。glob 段落在模式开头的（如双星开头的 `pkgs` 匹配）没有可判定的容器前缀，不产生结果。
+ * 只读配置、不扫盘。glob 段落在模式开头的（如 `{apps,packages}/*`、`** /pkgs`）无法命名一个容器目录，
+ * 一律显式报错而不是静默跳过：`listPnpmWorkspaceManifests` 的 globSync 仍会匹配到那些包，
+ * 静默跳过等于让边界与语料检查漏掉一批 workspace。
  */
 export function readPnpmWorkspaceDirectories(root: string): string[] {
   const directories = readPnpmWorkspacePatterns(root)
@@ -74,15 +76,15 @@ export function readPnpmWorkspaceDirectories(root: string): string[] {
         if (!directory) throw new Error(`${WORKSPACE_FILE} does not support a literal root workspace pattern ('.')`)
         return [directory]
       }
-      // 根级花括号（如 `{apps,packages}/*`）能确定地展开成多个容器目录，但本函数不做展开：
-      // 静默当成「无容器前缀」会让这些 workspace 逃过边界与语料检查，而 listPnpmWorkspaceManifests
-      // 的 globSync 照样匹配到它们。宁可显式失败，让维护者写成独立条目。
-      if (glob === 0 && segments[0].includes('{')) {
+      // 根级 glob 段（`{apps,packages}/*`、`[ap]ps/*`、`?pps/*`、`** /pkgs`）无法命名一个容器目录。
+      // 静默丢掉会让这些 workspace 逃过边界与语料检查，而 listPnpmWorkspaceManifests 的 globSync
+      // 照样匹配到它们。宁可显式失败，让维护者把容器目录写成独立条目。
+      if (glob === 0) {
         throw new Error(
-          `${WORKSPACE_FILE} does not support brace patterns at the pattern root (${pattern}); list each directory separately`
+          `${WORKSPACE_FILE} does not support a glob at the pattern root (${pattern}); list each directory separately`
         )
       }
-      return glob > 0 ? [segments.slice(0, glob).join('/')] : []
+      return [segments.slice(0, glob).join('/')]
     })
   return [...new Set(directories)].sort(byCodeUnit)
 }

@@ -23,8 +23,7 @@ it('workspace directories follow the package patterns', () => {
     '!apps/legacy',
     'tools/cli',
     './tools/gen',
-    'tools/{a,b}',
-    '**/pkgs'
+    'tools/{a,b}'
   ])
   try {
     // glob 模式取其容器目录前缀（嵌套容器保留整段）；字面量模式声明的就是 workspace 目录本身，
@@ -53,13 +52,16 @@ it('rejects a literal root workspace pattern instead of silently widening the sc
   }
 })
 
-it('rejects a root-level brace pattern instead of silently dropping it', () => {
-  const root = workspaceFixture(['{apps,packages}/*'])
-  try {
-    // 静默当成「无容器前缀」会让这些 workspace 逃过边界与语料检查，而 globSync 的 manifest 视图仍能匹配。
-    assert.throws(() => readPnpmWorkspaceDirectories(root), /brace patterns at the pattern root/)
-  } finally {
-    fs.rmSync(root, { recursive: true, force: true })
+it('rejects root-level glob patterns instead of silently dropping the workspaces', () => {
+  // 静默当成「无容器前缀」会让这些 workspace 逃过边界与语料检查，而 globSync 的 manifest 视图仍能匹配：
+  // 四类根级 glob 元字符都必须显式失败，而不是只挡其中一类。
+  for (const pattern of ['{apps,packages}/*', '[ap]ps/*', '?pps/*', '**/pkgs']) {
+    const root = workspaceFixture([pattern])
+    try {
+      assert.throws(() => readPnpmWorkspaceDirectories(root), /glob at the pattern root/, pattern)
+    } finally {
+      fs.rmSync(root, { recursive: true, force: true })
+    }
   }
 })
 

@@ -119,8 +119,10 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
               return files
             }
 
+            // 同一条诊断可能由两条扫描路径（容器的递归与字面量目录的自检）各产生一次：
+            // 去重后报告，避免同一个缺口在输出里重复出现。
             function addError(message: string): void {
-              errors.push(message)
+              if (!errors.includes(message)) errors.push(message)
             }
 
             // skill 出处以锁定清单为权威：登记在册的是第三方上游件，正文由上游维护（见 AGENTS.md 语言纪律），
