@@ -860,23 +860,20 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     const assertNotApplicableIsDerived = text =>
       assert.match(
         namedStep(text, 'Apply review gate'),
-        /CODEX_REVIEW_NOT_APPLICABLE: \$\{\{ needs\.codex-review\.result == 'skipped' && github\.head_ref == 'changeset-release\/main' && github\.event\.pull_request\.head\.repo\.full_name == github\.repository \}\}/,
-        'not-applicable must be derived from the review job result and narrowed to same-repo release branches, never hardcoded'
+        /CODEX_REVIEW_NOT_APPLICABLE: \$\{\{ needs\.codex-review\.result == 'skipped' && \(github\.head_ref == 'changeset-release\/main' \|\| needs\.check\.result != 'success'\) \}\}/,
+        'not-applicable must be derived from the review job result and narrowed to the two legitimate skips, never hardcoded'
       )
     assertNotApplicableIsDerived(ci)
     const derivedNotApplicable =
-      "CODEX_REVIEW_NOT_APPLICABLE: ${{ needs.codex-review.result == 'skipped' && github.head_ref == 'changeset-release/main' && github.event.pull_request.head.repo.full_name == github.repository }}"
+      "CODEX_REVIEW_NOT_APPLICABLE: ${{ needs.codex-review.result == 'skipped' && (github.head_ref == 'changeset-release/main' || needs.check.result != 'success') }}"
     assert.equal(
       ci.split(derivedNotApplicable).length - 1,
       1,
       'the derived not-applicable assignment must exist exactly once'
     )
     // fork 的 review skip 不得落入 not_applicable：skipped 的 required check 会被 GitHub 计为通过，
-    // 不收窄就是 fail-open。逐片段变异保证两个收窄条件都不可删。
-    for (const fragment of [
-      " && github.head_ref == 'changeset-release/main'",
-      ' && github.event.pull_request.head.repo.full_name == github.repository'
-    ]) {
+    // 放宽就是 fail-open。逐片段变异保证两个合法 skip 分支都不可删，也保证删掉它不会残留可通过的形态。
+    for (const fragment of ["github.head_ref == 'changeset-release/main' || ", " || needs.check.result != 'success'"]) {
       assert.throws(
         () =>
           assertNotApplicableIsDerived(ci.replace(derivedNotApplicable, derivedNotApplicable.replace(fragment, ''))),
