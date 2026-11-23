@@ -211,6 +211,31 @@ func TestDeveloperOptionsEnabledReflectsState(t *testing.T) {
 	}
 }
 
+func TestMinimizeToTrayOnCloseReflectsAndPersistsState(t *testing.T) {
+	service, store := newTestService(t)
+
+	if service.MinimizeToTrayOnCloseEnabled() {
+		t.Fatal("expected minimizeToTrayOnClose to start disabled")
+	}
+	snapshot, err := service.UpdateSettings(context.Background(), SettingsPatch{MinimizeToTrayOnClose: ptr(true)})
+	if err != nil {
+		t.Fatalf("update: %v", err)
+	}
+	if !snapshot.MinimizeToTrayOnClose || !service.MinimizeToTrayOnCloseEnabled() {
+		t.Fatalf("expected minimizeToTrayOnClose to be enabled, got snapshot=%#v", snapshot)
+	}
+	if loaded, _ := store.Load(); !loaded.MinimizeToTrayOnClose {
+		t.Fatalf("expected minimizeToTrayOnClose to be persisted, got %#v", loaded)
+	}
+	snapshot, err = service.UpdateSettings(context.Background(), SettingsPatch{MinimizeToTrayOnClose: ptr(false)})
+	if err != nil {
+		t.Fatalf("clear: %v", err)
+	}
+	if snapshot.MinimizeToTrayOnClose || service.MinimizeToTrayOnCloseEnabled() {
+		t.Fatalf("expected minimizeToTrayOnClose to be cleared, got snapshot=%#v", snapshot)
+	}
+}
+
 func TestOnChangeUnsubscribe(t *testing.T) {
 	service, _ := newTestService(t)
 	notified := 0

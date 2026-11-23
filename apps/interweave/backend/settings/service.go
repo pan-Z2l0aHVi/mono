@@ -16,20 +16,22 @@ const SettingsChangedEventName = "settings:changed"
 // 用指针而不是零值判据，是因为 setReducedMotion(false) 与「没提这个字段」必须区分开——
 // 布尔零值与不传值无法用值本身表达。
 type SettingsPatch struct {
-	Appearance       *Appearance `json:"appearance"`
-	Accent           *string     `json:"accent"`
-	ReducedMotion    *bool       `json:"reducedMotion"`
-	DeveloperOptions *bool       `json:"developerOptions"`
-	Zoom             *int        `json:"zoom"`
+	Appearance            *Appearance `json:"appearance"`
+	Accent                *string     `json:"accent"`
+	ReducedMotion         *bool       `json:"reducedMotion"`
+	DeveloperOptions      *bool       `json:"developerOptions"`
+	MinimizeToTrayOnClose *bool       `json:"minimizeToTrayOnClose"`
+	Zoom                  *int        `json:"zoom"`
 }
 
 // Snapshot 是发给前端的全量设置视图：用户选项加上渲染所需的派生事实。
 // AccentPresets 与 ZoomPresets 一并下发，前端只渲染不校验；新增色板或档位不必改前端。
 type Snapshot struct {
-	Appearance       Appearance `json:"appearance"`
-	Accent           string     `json:"accent"`
-	ReducedMotion    bool       `json:"reducedMotion"`
-	DeveloperOptions bool       `json:"developerOptions"`
+	Appearance            Appearance `json:"appearance"`
+	Accent                string     `json:"accent"`
+	ReducedMotion         bool       `json:"reducedMotion"`
+	DeveloperOptions      bool       `json:"developerOptions"`
+	MinimizeToTrayOnClose bool       `json:"minimizeToTrayOnClose"`
 	// Zoom 是界面缩放百分比，取值来自 ZoomPresets。
 	Zoom int `json:"zoom"`
 	// Warnings 是启动期累积、尚未送达界面的一次性提示（设置文件损坏、字段被修正等）。
@@ -118,6 +120,9 @@ func (s *Service) UpdateSettings(ctx context.Context, patch SettingsPatch) (Snap
 		if patch.DeveloperOptions != nil {
 			current.DeveloperOptions = *patch.DeveloperOptions
 		}
+		if patch.MinimizeToTrayOnClose != nil {
+			current.MinimizeToTrayOnClose = *patch.MinimizeToTrayOnClose
+		}
 		if patch.Zoom != nil {
 			current.Zoom = *patch.Zoom
 		}
@@ -178,6 +183,15 @@ func (s *Service) DeveloperOptionsEnabled() bool {
 	return s.settings.DeveloperOptions
 }
 
+// MinimizeToTrayOnCloseEnabled 供窗口关闭钩子读取，避免它拿到整份设置的写权限。
+//
+//wails:ignore
+func (s *Service) MinimizeToTrayOnCloseEnabled() bool {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	return s.settings.MinimizeToTrayOnClose
+}
+
 // ZoomIn 把界面缩放调大一档并落盘；已在最大档时不变。
 //
 //wails:ignore
@@ -216,14 +230,15 @@ func (s *Service) snapshotLocked(consumeWarnings bool) Snapshot {
 		warnings = []string{}
 	}
 	return Snapshot{
-		Appearance:       s.settings.Appearance,
-		Accent:           s.settings.Accent,
-		ReducedMotion:    s.settings.ReducedMotion,
-		DeveloperOptions: s.settings.DeveloperOptions,
-		Zoom:             s.settings.Zoom,
-		Warnings:         warnings,
-		Presets:          AccentPresets(),
-		Appearances:      []Appearance{AppearanceLight, AppearanceDark, AppearanceSystem},
-		ZoomPresets:      ZoomPresets(),
+		Appearance:            s.settings.Appearance,
+		Accent:                s.settings.Accent,
+		ReducedMotion:         s.settings.ReducedMotion,
+		DeveloperOptions:      s.settings.DeveloperOptions,
+		MinimizeToTrayOnClose: s.settings.MinimizeToTrayOnClose,
+		Zoom:                  s.settings.Zoom,
+		Warnings:              warnings,
+		Presets:               AccentPresets(),
+		Appearances:           []Appearance{AppearanceLight, AppearanceDark, AppearanceSystem},
+		ZoomPresets:           ZoomPresets(),
 	}
 }

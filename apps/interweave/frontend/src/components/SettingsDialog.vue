@@ -15,7 +15,8 @@ const emit = defineEmits<{
 }>()
 
 const settings = useSettingsStore()
-const { appearance, accent, reducedMotion, developerOptions, presets, zoom, zoomPresets } = storeToRefs(settings)
+const { appearance, accent, reducedMotion, developerOptions, minimizeToTrayOnClose, presets, zoom, zoomPresets } =
+  storeToRefs(settings)
 const settingsRowClass = 'flex min-w-0 items-center justify-between gap-4 py-2'
 
 type SettingsTab = 'general' | 'appearance' | 'library'
@@ -77,6 +78,10 @@ function handleReducedMotionChange(event: Event) {
 
 function handleDeveloperOptionsChange(event: Event) {
   void settings.setDeveloperOptions((event.currentTarget as WebUiSwitch).checked)
+}
+
+function handleMinimizeToTrayOnCloseChange(event: Event) {
+  void settings.setMinimizeToTrayOnClose((event.currentTarget as WebUiSwitch).checked)
 }
 
 function pickAccent(value: string) {
@@ -148,6 +153,14 @@ function handleZoomChange(event: WebUiEvent<WebUiSlider, 'change'>) {
             <span :class="metadataLabelClass">即将推出</span>
           </div>
           <web-ui-switch disabled aria-label="连接智能助手（即将推出）" />
+        </div>
+        <div :class="settingsRowClass">
+          <span class="text-sm text-(--wui-color-text)">关闭时最小化到托盘</span>
+          <web-ui-switch
+            :checked="minimizeToTrayOnClose"
+            aria-label="关闭时最小化到托盘"
+            @change="handleMinimizeToTrayOnCloseChange"
+          />
         </div>
         <div :class="settingsRowClass">
           <span class="text-sm text-(--wui-color-text)">开发者选项</span>

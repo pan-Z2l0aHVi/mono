@@ -233,6 +233,24 @@ describe('SettingsDialog', () => {
     }
   })
 
+  it('关闭时最小化到托盘开关经 change 回写到 store', async () => {
+    const mounted = mountDialog(() => {})
+    const settings = useSettingsStore()
+    const setMinimizeToTrayOnClose = vi.spyOn(settings, 'setMinimizeToTrayOnClose').mockResolvedValue()
+
+    try {
+      await nextTick()
+      const toggle = mounted.host.querySelector<WebUiSwitch>('web-ui-switch[aria-label="关闭时最小化到托盘"]')
+      if (!toggle) throw new Error('关闭时最小化到托盘开关未渲染')
+      expect(toggle.checked).toBe(false)
+      toggle.checked = true
+      toggle.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      expect(setMinimizeToTrayOnClose).toHaveBeenCalledWith(true)
+    } finally {
+      mounted.close()
+    }
+  })
+
   it('主题三态经 change 回写到 store 与组件 value', async () => {
     const mounted = mountDialog(() => {})
     const settings = useSettingsStore()
