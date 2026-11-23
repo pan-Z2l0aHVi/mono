@@ -729,11 +729,12 @@ export default function Demo() {
 
 ### Props
 
-| Name                  | Description                                                                          | Type                           | Default    |
-| --------------------- | ------------------------------------------------------------------------------------ | ------------------------------ | ---------- |
-| `appearance`          | Color scheme: `light`, `dark`, or `system`.                                          | `ThemeAppearance \| undefined` | -          |
-| `resolved-appearance` | Resolved color scheme, a read-only output written back to an attribute.              | `ResolvedThemeAppearance`      | `'light'`  |
-| `motion`              | Motion preference of the current nested theme scope: `full`, `reduced`, or `system`. | `ThemeMotion`                  | `'system'` |
+| Name                  | Description                                                                                                                             | Type                           | Default    |
+| --------------------- | --------------------------------------------------------------------------------------------------------------------------------------- | ------------------------------ | ---------- |
+| `appearance`          | Color scheme: `light`, `dark`, or `system`.                                                                                             | `ThemeAppearance \| undefined` | -          |
+| `resolved-appearance` | Resolved color scheme, a read-only output written back to an attribute.                                                                 | `ResolvedThemeAppearance`      | `'light'`  |
+| `motion`              | Motion preference of the current nested theme scope: `full`, `reduced`, or `system`.                                                    | `ThemeMotion`                  | `'system'` |
+| `no-reveal`           | Suppresses this scope's appearance-change reveal: presence takes effect, `appearance` still commits without starting a View Transition. | `Boolean`                      | `false`    |
 
 ### Slots
 
@@ -773,6 +774,8 @@ Whether a color scheme change plays a reveal is decided by the `motion` preset o
 The root theme reveals the whole page. A nested theme reveals only its own area. The reveal direction follows the resolved appearance, and the light and dark directions play in reverse.
 
 These cases apply the new appearance immediately, with no reveal: an unsupported browser, a reduced-motion scope, a zero duration, or a reveal that is already running. OS light/dark switches under `appearance="system"` do not animate.
+
+When the `no-reveal` attribute is present, the reveal is skipped as well: `appearance` still commits without starting a View Transition. It targets host-driven first-appearance applications at boot — changes not initiated by the user — and manual switches should not set it. Presence is the whole contract: toggle the attribute itself for dynamic binding (`:no-reveal="cond ? '' : null"` in Vue). Binding `false` serializes to `no-reveal="false"`, which reads as present and permanently kills the reveal.
 
 During a root reveal, new pointer and keyboard activation and cancelable input events in the document are temporarily blocked. A nested reveal limits protection to its scope when possible, falling back to the document for events that cannot be attributed. Wheel input ends the reveal to restore scrolling. Programmatic assignments, browser shortcuts, and some input method operations are not covered.
 

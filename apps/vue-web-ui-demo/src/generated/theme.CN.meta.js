@@ -87,6 +87,15 @@ const meta = [
       { label: 'td', content: "<code>ThemeMotion</code>" },
       { label: 'td', content: "<code>'system'</code>" }
       ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>no-reveal</code>" },
+      { label: 'td', content: "压制本层外观切换的揭示动画：存在即生效，appearance 照常提交但不启动 View Transition。" },
+      { label: 'td', content: "<code>Boolean</code>" },
+      { label: 'td', content: "<code>false</code>" }
+      ]
     }
     ]
   },
@@ -150,6 +159,7 @@ const meta = [
   { label: 'p', content: "配色变化是否播放揭示动画，由当前主题范围的 <code>motion</code> 模式决定：<code>full</code> 始终播放，<code>reduced</code> 直接切换，<code>system</code> 跟随 <code>prefers-reduced-motion</code>。" },
   { label: 'p', content: "根主题揭示整页。嵌套主题只揭示自己的区域。揭示方向跟随解析后的外观，深色与浅色两个方向反向播放。" },
   { label: 'p', content: "以下情况都会立即应用新的 appearance，不播放揭示：浏览器不支持、作用域为 reduced-motion、时长为 0、上一次揭示尚未结束。<code>appearance=\"system\"</code> 下的系统深浅切换不播放动画。" },
+  { label: 'p', content: "<code>no-reveal</code> attribute 存在时同样跳过揭示：appearance 照常提交、不启动 View Transition。它面向宿主的启动期首次外观应用这类「非用户发起」的变更，手动切换不应设置它。该 attribute 以「存在即生效」表达——动态绑定时必须以存在/移除切换（Vue 下 <code>:no-reveal=\"cond ? '' : null\"</code>），绑定 <code>false</code> 会被序列化成 <code>no-reveal=\"false\"</code> 而恒真，导致揭示动画静默永久失效。" },
   { label: 'p', content: "根主题揭示期间会暂时阻止当前文档的新指针、键盘激活和可取消的输入事件；嵌套主题优先限制自身范围，无法归属的文档级事件按整个文档处理。滚轮会结束揭示以恢复滚动。程序化赋值、浏览器快捷键和部分输入法操作不受此保护。" },
   { label: 'p', content: "主题宿主不绘制任何背景。组件库不在宿主页面上画背景，嵌入方对主题子树背后的表面保留完全控制权。" },
   { label: 'h3', id: 'section-16', content: "<code>motion</code> 属性" },

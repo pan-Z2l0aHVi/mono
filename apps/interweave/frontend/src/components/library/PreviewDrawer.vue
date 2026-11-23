@@ -141,6 +141,7 @@ function handleMediaError(kind: 'image' | 'video' | 'audio') {
     :placement="placement"
     aria-dialog-label="资源预览"
     draggable
+    fullable
     controlled
     class="mobile:[--wui-drawer-height:80vh] mobile:[--wui-drawer-inset:0px] mobile:[--wui-drawer-radius:28px_28px_0_0] [--wui-drawer-width:max(60vw,320px)] [--wui-drawer-content-padding:20px] [--wui-empty-padding:0px] [--wui-drawer-drag-zone-size:32px]"
     @open-change="handleOpenChange"

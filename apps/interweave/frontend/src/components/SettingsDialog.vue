@@ -125,7 +125,7 @@ function handleZoomChange(event: WebUiEvent<WebUiSlider, 'change'>) {
     @open-change="handleOpenChange"
   >
     <div slot="header" class="-mr-[38px] flex w-[calc(100%+38px)] flex-col gap-4 font-normal">
-      <h2 class="m-0 text-lg font-semibold text-(--wui-color-text)">设置</h2>
+      <h2 class="m-0 font-semibold text-(--wui-color-text)">设置</h2>
       <web-ui-segmented :value="activeTab" aria-label="设置分区" @change="handleTabChange">
         <web-ui-segmented-trigger v-for="tab in TABS" :key="tab.value" :value="tab.value">
           <span class="inline-block w-[calc((min(90vw,480px)_-_120px)/3)] text-center">{{ tab.label }}</span>
