@@ -45,17 +45,46 @@ export function readPnpmWorkspacePatterns(root: string): string[] {
   return patterns
 }
 
+// pnpm 的 workspace 模式是 glob：除 `*` 外 `?`、`[...]`、`{...}` 同样会展开。
+// 只认 `*` 会把 `packages/{a,b}` 当成不存在的字面量目录静默丢掉，而 listPnpmWorkspaceManifests 的
+// globSync 照样能匹配到那些包，两份视图就此分叉。
+const GLOB_SEGMENT = /[*?[\]{}]/u
+
 /**
- * `pnpm-workspace.yaml` 里 `dir/**` 或 `dir/*` 形态的模式所指向的容器目录，按码位排序。
- * 只读配置、不扫盘：逐包列举的模式（如 `tools/cli`）不以某个目录为容器，不产生结果。
+ * `pnpm-workspace.yaml` 里 glob 模式指向的容器目录与字面量模式指向的 workspace 目录本身，按码位排序。
+ * 只读配置、不扫盘。glob 段落在模式开头的（如 `{apps,packages}/*`、`** /pkgs`）无法命名一个容器目录，
+ * 一律显式报错而不是静默跳过：`listPnpmWorkspaceManifests` 的 globSync 仍会匹配到那些包，
+ * 静默跳过等于让边界与语料检查漏掉一批 workspace。
  */
 export function readPnpmWorkspaceDirectories(root: string): string[] {
   const directories = readPnpmWorkspacePatterns(root)
     .filter(pattern => !pattern.startsWith('!'))
     .flatMap(pattern => {
-      const segments = pattern.replace(/\/+$/, '').split('/')
-      const glob = segments.findIndex(segment => segment.includes('*'))
-      return glob > 0 ? [segments.slice(0, glob).join('/')] : []
+      // 去掉空段与 `.` 段：`./tools/cli` 与 `tools/cli` 是同一个目录，留下 `./` 前缀会让
+      // 以 `tools/` 为前缀的互指方向与链接判定匹配不到。
+      const segments = pattern
+        .replace(/\/+$/u, '')
+        .split('/')
+        .filter(segment => segment !== '' && segment !== '.')
+      const glob = segments.findIndex(segment => GLOB_SEGMENT.test(segment))
+      // 字面量模式（无 glob 段）声明的就是 workspace 目录本身，必须保留：
+      // 丢弃会让它逃过以容器目录为扫描面的边界与语料检查。
+      // 字面量 `.` 会把扫描面抬到仓库根，而边界与语料的消费面都以 workspace 目录为单位——
+      // 根级 workspace 不被支持，显式报错而不是静默丢掉或整树扫描。
+      if (glob < 0) {
+        const directory = segments.join('/')
+        if (!directory) throw new Error(`${WORKSPACE_FILE} does not support a literal root workspace pattern ('.')`)
+        return [directory]
+      }
+      // 根级 glob 段（`{apps,packages}/*`、`[ap]ps/*`、`?pps/*`、`** /pkgs`）无法命名一个容器目录。
+      // 静默丢掉会让这些 workspace 逃过边界与语料检查，而 listPnpmWorkspaceManifests 的 globSync
+      // 照样匹配到它们。宁可显式失败，让维护者把容器目录写成独立条目。
+      if (glob === 0) {
+        throw new Error(
+          `${WORKSPACE_FILE} does not support a glob at the pattern root (${pattern}); list each directory separately`
+        )
+      }
+      return [segments.slice(0, glob).join('/')]
     })
   return [...new Set(directories)].sort(byCodeUnit)
 }

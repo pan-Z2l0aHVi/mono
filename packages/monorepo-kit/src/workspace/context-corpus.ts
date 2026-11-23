@@ -119,8 +119,10 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
               return files
             }
 
+            // 同一条诊断可能由两条扫描路径（容器的递归与字面量目录的自检）各产生一次：
+            // 去重后报告，避免同一个缺口在输出里重复出现。
             function addError(message: string): void {
-              errors.push(message)
+              if (!errors.includes(message)) errors.push(message)
             }
 
             // skill 出处以锁定清单为权威：登记在册的是第三方上游件，正文由上游维护（见 AGENTS.md 语言纪律），
@@ -259,6 +261,16 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
                   return false
                 }
 
+                // 字面量 workspace（目录自身就是包，来自无 glob 段的 pattern）也要过入口检查：
+                // findWorkspaceRoots 只从容器子项开始，会漏掉目录自身的路由缺口。
+                if (fs.existsSync(path.join(absolute, 'package.json'))) {
+                  const tracked = fs.existsSync(path.join(absolute, options.entry)) || coveredByAncestorEntry(absolute)
+                  if (!tracked)
+                    addError(
+                      `${relative(absolute)}: workspace needs its own ${options.entry}, or an ancestor directory that has one`
+                    )
+                }
+
                 function findWorkspaceRoots(dir: string, depth = 0): void {
                   const entries = fs.readdirSync(dir, { withFileTypes: true })
                   for (const entry of entries) {
@@ -393,14 +405,18 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
                 walk(directory, file => path.basename(file) === options.entry)
               ),
               // workspace README 与包级入口文档同属指令面，但只能列一层：walk 会连 node_modules 与 dist 一起吞进来。
-              ...options.workspaces.flatMap(directory =>
-                exists(directory)
+              // 目录自身就是包（含 package.json，即字面量 workspace）时只收它根部的 README：包内子目录不是
+              // workspace，把它们也当指令面会静默扩大语料。容器目录反过来只收直接子目录的 README。
+              ...options.workspaces.flatMap(directory => {
+                if (exists(`${directory}/package.json`))
+                  return exists(`${directory}/README.md`) ? [path.join(root, directory, 'README.md')] : []
+                return exists(directory)
                   ? fs
                       .readdirSync(path.join(root, directory), { withFileTypes: true })
                       .filter(entry => entry.isDirectory() && exists(`${directory}/${entry.name}/README.md`))
                       .map(entry => path.join(root, directory, entry.name, 'README.md'))
                   : []
-              )
+              })
             ]
             // 语料门禁只检查可客观判定的漂移属性（ADR-0013）：路由完整性、外部状态快照、授权指针与非权威标记。
             // 文风与 concern 归属不在此列，交给 review。
