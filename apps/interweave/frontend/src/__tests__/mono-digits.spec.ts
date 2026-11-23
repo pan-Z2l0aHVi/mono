@@ -76,6 +76,7 @@ function makeResource(overrides: Partial<ResourceView> = {}): ResourceView {
 }
 
 afterEach(() => {
+  vi.useRealTimers()
   for (const { app, host } of mounted.splice(0)) {
     app.unmount()
     host.remove()
@@ -126,6 +127,8 @@ describe('全局等宽数字字体（mono-digits）', () => {
   })
 
   it('DetailDrawer：按行校验大小、创建于与最后修改于使用等宽数字，非数值字段不带等宽类', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 5, 1, 12, 0))
     const resource = makeResource()
     const host = mountComponent(() =>
       h(DetailDrawer, {
@@ -209,7 +212,7 @@ describe('全局等宽数字字体（mono-digits）', () => {
       location: '/old/a.png',
       replacementLocation: ''
     }
-    const candidateModifiedAt = new Date(2026, 0, 15, 12, 0).getTime()
+    const candidateModifiedAt = new Date(2026, 0, 15, 9, 30).getTime()
     const makeCandidate = (path: string) => ({
       sourceID: item.sourceId,
       path,
@@ -294,8 +297,8 @@ describe('全局等宽数字字体（mono-digits）', () => {
       expect(candidateMono.length).toBeGreaterThanOrEqual(2)
       expect(candidateMono[0]?.textContent?.trim()).toBe('1 MB')
       const modifiedText = candidateMono[1]?.textContent?.trim() ?? ''
-      expect(modifiedText).toMatch(/2026/)
-      expect(modifiedText).toMatch(/15/)
+      expect(modifiedText).toMatch(/2026[/.-]0?1[/.-]15|0?1[/.-]15[/.-]2026/)
+      expect(modifiedText).toMatch(/0?9:30/)
     } finally {
       notification.mockRestore()
     }
