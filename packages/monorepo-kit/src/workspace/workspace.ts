@@ -74,6 +74,14 @@ export function readPnpmWorkspaceDirectories(root: string): string[] {
         if (!directory) throw new Error(`${WORKSPACE_FILE} does not support a literal root workspace pattern ('.')`)
         return [directory]
       }
+      // 根级花括号（如 `{apps,packages}/*`）能确定地展开成多个容器目录，但本函数不做展开：
+      // 静默当成「无容器前缀」会让这些 workspace 逃过边界与语料检查，而 listPnpmWorkspaceManifests
+      // 的 globSync 照样匹配到它们。宁可显式失败，让维护者写成独立条目。
+      if (glob === 0 && segments[0].includes('{')) {
+        throw new Error(
+          `${WORKSPACE_FILE} does not support brace patterns at the pattern root (${pattern}); list each directory separately`
+        )
+      }
       return glob > 0 ? [segments.slice(0, glob).join('/')] : []
     })
   return [...new Set(directories)].sort(byCodeUnit)

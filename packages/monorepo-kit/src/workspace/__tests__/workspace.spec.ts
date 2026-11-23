@@ -53,6 +53,16 @@ it('rejects a literal root workspace pattern instead of silently widening the sc
   }
 })
 
+it('rejects a root-level brace pattern instead of silently dropping it', () => {
+  const root = workspaceFixture(['{apps,packages}/*'])
+  try {
+    // 静默当成「无容器前缀」会让这些 workspace 逃过边界与语料检查，而 globSync 的 manifest 视图仍能匹配。
+    assert.throws(() => readPnpmWorkspaceDirectories(root), /brace patterns at the pattern root/)
+  } finally {
+    fs.rmSync(root, { recursive: true, force: true })
+  }
+})
+
 it('repo-root', () => {
   const root = getWorkspaceRoot(process.cwd())
   // 根不能在断言里写死成 `mono`：worktree 的目录名是分支派生的，同一个仓库会有多个根路径。
