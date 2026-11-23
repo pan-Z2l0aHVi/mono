@@ -185,8 +185,9 @@ total 缺失/非法时按「无法验证」禁用自动修，不把 250 条 API 
 
 ### 门禁形态（推翻「不改分支保护」）
 
-门从约定式升级为 GitHub required check：ruleset `main protection`（id 20240791）的 required checks 在 `check`
-之外加入 `Codex review gate`，该配置于 2026-11-23 生效（核对以仓库 ruleset 为准，它不在 diff 里）。
+决策：门从约定式升级为 GitHub required check。落地方式是 ruleset `main protection`（id 20240791）的
+required checks 在 `check` 之外加入 `Codex review gate`，2026-11-23 起按此配置运行。required 状态属于
+仓库设置、不在 diff 里，任何时刻以仓库 ruleset 为准（本记录只说明决策与落地方式，不充当配置快照）。
 上文本节与「后果」中「它是约定式门禁，不改 GitHub 分支保护」「绕开它只需忽略一次红叉」两句自本修订起
 不再成立——绕开 required gate 需要改 ruleset 或 `--admin`，后者被 `review.md` 明令禁止。
 
