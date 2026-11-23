@@ -11,7 +11,8 @@ import (
 	"unicode/utf16"
 )
 
-// GetClipboardFilePaths 返回剪贴板中当前存在的普通文件绝对路径，不读取文件内容。
+// GetClipboardFilePaths 返回剪贴板中当前存在的文件与文件夹绝对路径，不读取内容。
+// 目录原样交给调用方的导入链递归展开（隐藏项与符号链接在那里统一过滤）。
 func (s *OSService) GetClipboardFilePaths(ctx context.Context) ([]string, error) {
 	if err := ctx.Err(); err != nil {
 		return nil, err
@@ -34,8 +35,9 @@ func normalizeClipboardFilePaths(paths []string) []string {
 		if cleanPath == "" {
 			continue
 		}
+		// 普通文件与目录都保留：Finder 里复制文件夹是常见入口，展开收敛在导入链。
 		info, err := os.Stat(cleanPath)
-		if err != nil || !info.Mode().IsRegular() {
+		if err != nil || !(info.Mode().IsRegular() || info.IsDir()) {
 			continue
 		}
 		absolutePath, err := filepath.Abs(cleanPath)

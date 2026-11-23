@@ -69,6 +69,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       remove: async () => {},
       setTags: async () => createResource(),
       findLocationMatches: async () => [],
+      expandImportEntries: async () => ({ files: [], folders: 0 }),
       prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
       releaseFilePreview: async () => {},
       ...overrides.resources

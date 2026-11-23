@@ -16,7 +16,7 @@ import {
   lucideTrash2
 } from '@greypan/web-ui/icons'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
-import { nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
+import { computed, nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 
 import { selectLitEditor, useEditorFocusRestore } from '@/composables/useEditorFocusRestore'
 import type { LibraryQueueItem } from '@/services/library'
@@ -52,6 +52,8 @@ const props = defineProps<{
   tagColors: Record<string, TagColor>
   /** lease 里的有效预览；渲染只看这里，驱逐后立即回落通用 fallback。 */
   previews: Readonly<Record<string, PreviewLeaseEntry | undefined>>
+  /** 最近一段长流程的 done/total；加载中的确认按钮用它展示「已导入数 / 总数」。 */
+  progress: { done: number; total: number }
 }>()
 
 const emit = defineEmits<{
@@ -84,6 +86,15 @@ let pendingImagePreview: ImagePreviewHandle | null = null
 /* 静态态与编辑态共用排版，长名称在两态下保持相同换行。 */
 const queueNameClass =
   'min-w-0 flex-1 wrap-anywhere text-[14px] font-medium leading-[1.35] text-[#22212a] dark:text-(--wui-color-text)'
+
+/**
+ * 加载中的确认按钮直接给「已导入数 / 总数」：长流程的反馈就落在按钮上，
+ * 不必另开进度条。空闲时保留原按钮文案。
+ */
+const submitLabel = computed(() => {
+  if (props.busy && props.progress.total > 0) return `${props.progress.done} / ${props.progress.total}`
+  return '确认导入'
+})
 
 watch(
   () => props.open,
@@ -339,7 +350,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             <span
               class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
             >
-              拖入文件，或点按选择
+              拖入文件或文件夹，或点按选择
             </span>
             <!--
             两行各自成行，不靠自动折行：类型枚举有 7 项，按容器宽度自然换行会把
@@ -351,7 +362,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
               class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a70] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
             >
               <span>支持图片、视频、音频、文档、网页、代码等文件</span>
-              <span>可批量导入</span>
+              <span>可批量导入，文件夹递归展开</span>
             </span>
           </web-ui-empty>
         </button>
@@ -525,7 +536,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       @click="emit('submit')"
     >
       <web-ui-icon slot="prefix" :icon="akarIconsCircleCheck" />
-      确认导入
+      {{ submitLabel }}
     </web-ui-button>
   </web-ui-dialog>
   <ResourceLinkDialog v-model:open="addUrlOpen" initial-value="" mode="add" @submit="emit('addUrl', $event)" />

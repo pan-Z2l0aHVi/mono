@@ -36,11 +36,22 @@ export function DeleteResource(resourceID: string): $CancellablePromise<void> {
 }
 
 /**
+ * ExpandImportPaths 把用户选中的一批文件与文件夹展开为可纳入的文件位置清单。
+ * 隐藏项、符号链接与非普通文件由 core 过滤；空输入返回空列表。
+ * Folders 是实际递归展开的顶层文件夹数，供前端决定是否在确认文案里补展开说明。
+ */
+export function ExpandImportPaths(paths: string[]): $CancellablePromise<$models.ImportExpansionDTO> {
+    return $Call.ByID(2068604587, paths).then(($result: any) => {
+        return $$createType2($result);
+    });
+}
+
+/**
  * FindResourceLocationMatches 提示库内已登记该入口的 Resource；只读，不改动任何内容。
  */
 export function FindResourceLocationMatches(input: string, srcType: storage$0.SourceType): $CancellablePromise<$models.ResourceLocationMatchDTO[]> {
     return $Call.ByID(3399008553, input, srcType).then(($result: any) => {
-        return $$createType3($result);
+        return $$createType4($result);
     });
 }
 
@@ -58,7 +69,7 @@ export function GetResource(resourceID: string): $CancellablePromise<$models.Res
  */
 export function ListResources(): $CancellablePromise<$models.ResourceDTO[]> {
     return $Call.ByID(196096737).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType5($result);
     });
 }
 
@@ -67,7 +78,7 @@ export function ListResources(): $CancellablePromise<$models.ResourceDTO[]> {
  */
 export function PrepareFilePreview(inputPath: string): $CancellablePromise<$models.FilePreviewDTO | null> {
     return $Call.ByID(965214835, inputPath).then(($result: any) => {
-        return $$createType6($result);
+        return $$createType7($result);
     });
 }
 
@@ -99,8 +110,9 @@ export function UpdateResourceTitle(resourceID: string, newTitle: string): $Canc
 // Private type creation functions
 const $$createType0 = $models.ResourceDTO.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
-const $$createType2 = $models.ResourceLocationMatchDTO.createFrom;
-const $$createType3 = $Create.Array($$createType2);
-const $$createType4 = $Create.Array($$createType0);
-const $$createType5 = $models.FilePreviewDTO.createFrom;
-const $$createType6 = $Create.Nullable($$createType5);
+const $$createType2 = $models.ImportExpansionDTO.createFrom;
+const $$createType3 = $models.ResourceLocationMatchDTO.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = $Create.Array($$createType0);
+const $$createType6 = $models.FilePreviewDTO.createFrom;
+const $$createType7 = $Create.Nullable($$createType6);
