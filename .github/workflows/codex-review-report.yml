@@ -197,7 +197,7 @@ jobs:
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" resolve-pull
 
       - name: Check out the pull request head
-        # PR 已关闭/合并（含合并后写回）时 resolve-pull 报 closed：没有可修的 head，这里整体 no-op。
+        # PR 已关闭/合并（含合并后写回）时 resolve-pull 输出 pull_state=closed：没有可修的 head，这里整体 no-op。
         if: steps.pull.outputs.pull_number != '' && steps.pull.outputs.pull_state == 'open'
         env:
           PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
