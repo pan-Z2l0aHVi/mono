@@ -268,24 +268,48 @@ describe('defineWorkspaceDepBoundaries', () => {
     const literalOnly = defineWorkspaceDepBoundaries({ workspaces: ['tools/cli'], applicationDirs: ['apps'] })
     writeManifest(root, 'tools/cli', {
       name: '@acme/cli',
-      private: true,
-      dependencies: {
-        '@acme/private-dep': 'workspace:*'
-      }
-    })
-    writeManifest(root, 'tools/cli/dist', {
-      name: '@acme/should-not-be-scanned',
       private: true
+    })
+    // 子目录里的 manifest 违反「公开包不得依赖私有包」：若被扫进图，用例必红——
+    // 断言不能只写 result.ok，否则这个 manifest 无论扫不扫都通过。
+    writeManifest(root, 'tools/cli/dist', {
+      name: '@acme/cli-dist',
+      dependencies: {
+        '@acme/cli': 'workspace:*'
+      }
     })
     writeManifest(root, 'tools/cli/node_modules/stray', {
       name: '@acme/stray',
-      private: true
+      dependencies: {
+        '@acme/cli': 'workspace:*'
+      }
     })
 
-    // 只有 tools/cli 一个 workspace：零循环、无应用依赖，扫描通过即证明子目录与 node_modules 都没进图。
     const result = await run(literalOnly, root)
     if (!result.ok) assert.fail(result.error)
     assert.ok(result.ok)
+  })
+
+  it('still reports a violating manifest one level under a container root', async () => {
+    // 反向保护：容器一级的目录是真实包，同样的违规必须被扫出来，否则上面那条用例的「跳过」
+    // 会被一个过宽的跳过条件误伤而不自知。
+    const root = makeFixture()
+    writeManifest(root, 'packages/core', {
+      name: '@acme/core',
+      private: true
+    })
+    writeManifest(root, 'packages/consumer', {
+      name: '@acme/consumer',
+      dependencies: {
+        '@acme/core': 'workspace:*'
+      }
+    })
+
+    const error = await failure(boundaries, root)
+    assert.equal(
+      error,
+      'deps: public package @acme/consumer cannot depend on private workspace package @acme/core in dependencies'
+    )
   })
 
   it('reports duplicate workspace package names instead of silently overwriting earlier nodes', async () => {

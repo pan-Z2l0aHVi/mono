@@ -74,7 +74,11 @@ function collectManifestFiles(root: string, workspaces: readonly string[]): stri
   for (const workspace of workspaces) {
     const normalized = normalizeDirectory(workspace)
     if (!normalized) continue
-    visit(normalized, 0)
+    // 层级判据的基准是「是否已在包内」，不是目录深度：字面量 workspace 的根目录本身就是包
+    // （含 package.json），它内部的 dist/build/coverage/__tests__ 是产物，必须按包内规则跳过。
+    // 容器目录从 0 开始，容器一级的同名目录是真实包，不能跳。
+    const startsInsidePackage = fs.existsSync(path.join(root, normalized, 'package.json'))
+    visit(normalized, startsInsidePackage ? 1 : 0)
   }
 
   return [...found].sort(byCodeUnit)
