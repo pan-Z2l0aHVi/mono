@@ -55,6 +55,11 @@ interface ConfirmRequest {
    * 进度数值读 addQueue.progress，与本请求的 progressTotal 对应同一批长流程。
    */
   progressTotal?: number
+  /**
+   * busy 期间取消按钮的文案；声明即表示该流程可中途停止（批量导入）。
+   * 未声明时取消按钮照旧禁用，删除等一次性操作不被半途取消。
+   */
+  busyCancelLabel?: string
   action: () => Promise<void> | void
 }
 
@@ -416,6 +421,19 @@ function closeConfirmDialog() {
   confirmOpen.value = true
 }
 
+/**
+ * 确认弹窗的取消：导入进行中它显示为「停止」。
+ * 停止 = 作废入队链上尚未处理的位置并清空队列；action 随后自行结算，
+ * runConfirmedAction 走正常关闭，这里不提前翻 open，避免一次操作关两次。
+ */
+function cancelConfirmDialog() {
+  if (confirmBusy.value && confirmRequest.value?.busyCancelLabel) {
+    void addQueue.close()
+    return
+  }
+  closeConfirmDialog()
+}
+
 /** 确认按钮文案：声明了 progressTotal 的请求在 busy 期间展示实时进度比值。 */
 const confirmButtonLabel = computed(() => {
   const request = confirmRequest.value
@@ -555,6 +573,7 @@ async function enqueueImportEntries(entries: string[]) {
       confirmLabel: `导入 ${paths.length} 个文件`,
       danger: false,
       progressTotal: paths.length,
+      busyCancelLabel: '停止',
       action: () => addQueue.enqueueFileLocations(paths)
     })
     return
@@ -916,10 +935,11 @@ onMounted(() => {
     :confirm-label="confirmButtonLabel"
     :danger="confirmRequest?.danger ?? false"
     :busy="confirmBusy"
+    :busy-cancel-label="confirmRequest?.busyCancelLabel"
     :error="confirmError"
     :compact="confirmRequest?.compact ?? false"
     @confirm="runConfirmedAction"
-    @cancel="closeConfirmDialog"
+    @cancel="cancelConfirmDialog"
     @closed="restoreDeletedFocus"
   />
 

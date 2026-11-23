@@ -956,6 +956,45 @@ describe('LibraryPage：统一导入入口', () => {
     }
   })
 
+  it('导入进行中取消按钮变成停止：点停止即作废剩余入队并清空队列', async () => {
+    const files = Array.from({ length: 21 }, (_, index) => `/tmp/imports/file-${index}.png`)
+    const gates: Array<() => void> = []
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => ['/tmp/imports'] },
+      resources: {
+        expandImportEntries: async () => ({ files, folders: 0 }),
+        findLocationMatches: async () => new Promise(resolve => gates.push(() => resolve([])))
+      }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      await pickFromDropZone(mounted.host)
+
+      const dialog = confirmDialog(mounted.host, '导入 21 个文件')
+      // 未开始时按钮仍是「取消」。
+      expect(dialog.textContent).toContain('取消')
+      button(dialog, '导入 21 个文件').click()
+      await flush()
+      expect(dialog.textContent).toContain('0 / 21')
+      expect(dialog.textContent).not.toContain('取消')
+
+      // 进行中取消按钮改为「停止」且可点：点下即作废链上剩余位置。
+      button(dialog, '停止').click()
+      // 放行在途查询，链看到代次已变立即收尾，不必等完剩余 20 项。
+      while (gates.length) {
+        gates.shift()!()
+        await flush()
+      }
+      await vi.waitFor(() => expect(dialogOpen(dialog)).toBe(false))
+      expect(queueItems(mounted.host)).toHaveLength(0)
+      expect(toastWarning).not.toHaveBeenCalled()
+    } finally {
+      await mounted.close()
+    }
+  })
+
   it('超过阈值时取消确认，一批都不入队', async () => {
     const files = Array.from({ length: 21 }, (_, index) => `/tmp/imports/file-${index}.png`)
     runtimeStub.current = createRuntime({

@@ -12,6 +12,11 @@ defineProps<{
   danger: boolean
   error: string
   compact: boolean
+  /**
+   * 声明后，busy 期间取消按钮不再禁用，而是换成这个文案（如「停止」）：
+   * 长流程（批量导入）进行中允许用户主动中止，短流程仍按禁用处理。
+   */
+  busyCancelLabel?: string
 }>()
 
 const emit = defineEmits<{
@@ -39,7 +44,9 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     <ErrorBanner :message="error" />
     <p class="m-0 text-[14px] leading-6 text-[#5b5b66] dark:text-(--wui-color-text-secondary)">{{ message }}</p>
     <div slot="footer" class="flex gap-3">
-      <web-ui-button full variant="secondary" :disabled="busy" @click="emit('cancel')">取消</web-ui-button>
+      <web-ui-button full variant="secondary" :disabled="busy && !busyCancelLabel" @click="emit('cancel')">
+        {{ busy && busyCancelLabel ? busyCancelLabel : '取消' }}
+      </web-ui-button>
       <web-ui-button full :variant="danger ? 'danger' : 'primary'" :loading="busy" @click="emit('confirm')">
         {{ confirmLabel }}
       </web-ui-button>
