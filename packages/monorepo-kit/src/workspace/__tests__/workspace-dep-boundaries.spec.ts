@@ -261,6 +261,33 @@ describe('defineWorkspaceDepBoundaries', () => {
     )
   })
 
+  it('scans a literal workspace directory as the package itself', async () => {
+    // 字面量 pattern（无 glob 段）把目录本身交给扫描面：它的 manifest 必须进图，包内子目录的
+    // 构建产物仍按包内规则跳过，不能因为目录层级浅而被当成容器。
+    const root = makeFixture()
+    const literalOnly = defineWorkspaceDepBoundaries({ workspaces: ['tools/cli'], applicationDirs: ['apps'] })
+    writeManifest(root, 'tools/cli', {
+      name: '@acme/cli',
+      private: true,
+      dependencies: {
+        '@acme/private-dep': 'workspace:*'
+      }
+    })
+    writeManifest(root, 'tools/cli/dist', {
+      name: '@acme/should-not-be-scanned',
+      private: true
+    })
+    writeManifest(root, 'tools/cli/node_modules/stray', {
+      name: '@acme/stray',
+      private: true
+    })
+
+    // 只有 tools/cli 一个 workspace：零循环、无应用依赖，扫描通过即证明子目录与 node_modules 都没进图。
+    const result = await run(literalOnly, root)
+    if (!result.ok) assert.fail(result.error)
+    assert.ok(result.ok)
+  })
+
   it('reports duplicate workspace package names instead of silently overwriting earlier nodes', async () => {
     const root = makeFixture()
     writeManifest(root, 'packages/first', {

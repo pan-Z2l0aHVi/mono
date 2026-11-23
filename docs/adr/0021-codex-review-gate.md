@@ -15,9 +15,11 @@
 
 ### 门禁形态
 
-Codex 审查承担本仓默认的 PR review 结论（2026-11-06 起）。它是约定式门禁，不改 GitHub 分支保护：
-绿色只表示「这次运行有结论可读」，不表示「没问题」；结论、状态与故障信息写进 PR 上同一条持久评论，
-合并准入仍由人决定。绿色 CI 不证明 review 完成，结论也不证明 `check` 通过，两条同时成立才算审过。
+Codex 审查承担本仓默认的 PR review 结论（2026-11-06 起）。门禁形态在 2026-11-23 变更：`Codex review gate`
+成为 ruleset `main protection`（id 20240791）的 required check，由 GitHub 在合并入口拦截（见下文
+「2026-11-23 修订：门升级为 required check」）；在此之前的形态是约定式门禁。绿色只表示「这次运行有结论可读」，
+不表示「没问题」；结论、状态与故障信息写进 PR 上同一条持久评论。绿色 CI 不证明 review 完成，
+结论也不证明 `check` 通过，两条同时成立才算审过。
 现行红绿映射、状态语义与三档处置只在 `review.md` 定义，本 ADR 只记录取舍。
 
 `error` 只表示配置或调用故障（`config_missing`、`model_failed`、`artifact_missing`）；模型跑完没产出可用结论是
@@ -121,7 +123,8 @@ Wails `bindings/**`、单文件生成声明与 icon barrel。被滤除的路径�
 
 - 配置了 `CODEX_AUTOFIX_PUSH_TOKEN` 时，自动修推送的新提交会触发后续 checks 与审查门；未配置时回落
   `GITHUB_TOKEN`，新提交不触发 checks，需要人重跑 CI，结论对新 head 也随之过期。
-- 门是约定式的：绕开它只需忽略一次红叉。2026-11-06 起它是默认 PR review，忽略即等于合并未经审查的 PR。
+- 2026-11-06 起门就是默认 PR review；2026-11-23 起它还是 required check，绕开要改 ruleset 或用 `--admin`
+  （后者被 `review.md` 明令禁止）。「绕开只需忽略一次红叉」是 2026-11-23 之前的形态，已不再是现行代价。
 - 后台配置未填齐时每个 PR 都会红：配置成为可观测的门禁输入，代价是配置变更与门的颜色直接绑定。
 - 引入新可信子命令的 PR 自身无法完成审查（base 还是旧脚本，模型 job 会红），首次落地要先合入脚本再在后续 PR 验证。
 - 读写分居两个 workflow，读代码时看到的 YAML 不能解释全部行为；判据在 ADR 与机器断言里，不只在 CI 定义里。
@@ -182,9 +185,10 @@ total 缺失/非法时按「无法验证」禁用自动修，不把 250 条 API 
 
 ### 门禁形态（推翻「不改分支保护」）
 
-门从约定式升级为 GitHub required check：ruleset `main protection` 的 required checks 在 `check` 之外加入
-`Codex review gate`。上文本节与「后果」中「它是约定式门禁，不改 GitHub 分支保护」「绕开它只需忽略一次红叉」
-两句自本修订起不再成立——绕开 required gate 需要改 ruleset 或 `--admin`，后者被 `review.md` 明令禁止。
+门从约定式升级为 GitHub required check：ruleset `main protection`（id 20240791）的 required checks 在 `check`
+之外加入 `Codex review gate`，该配置于 2026-11-23 生效（核对以仓库 ruleset 为准，它不在 diff 里）。
+上文本节与「后果」中「它是约定式门禁，不改 GitHub 分支保护」「绕开它只需忽略一次红叉」两句自本修订起
+不再成立——绕开 required gate 需要改 ruleset 或 `--admin`，后者被 `review.md` 明令禁止。
 
 - **动机**：auto-merge 只等 required `check` 变绿即触发，而 review 写回由 CI completed 触发、必然晚于
   `mergedAt`，实测 #581 在新 head 的 review 结论与 gate 变绿前 18–44 秒完成合并。人工纪律已在那个场景失效，

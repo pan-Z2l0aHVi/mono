@@ -52,9 +52,12 @@ const GLOB_SEGMENT = /[*?[\]{}]/u
 
 /**
  * `pnpm-workspace.yaml` 里 glob 模式指向的容器目录与字面量模式指向的 workspace 目录本身，按码位排序。
- * 只读配置、不扫盘。glob 段落在模式开头的（如 `{apps,packages}/*`、`** /pkgs`）无法命名一个容器目录，
- * 一律显式报错而不是静默跳过：`listPnpmWorkspaceManifests` 的 globSync 仍会匹配到那些包，
+ * 只读配置、不扫盘。glob 段落在模式开头的（如 `{apps,packages}/*`、双星开头的 `pkgs` 匹配）无法命名一个
+ * 容器目录，一律显式报错而不是静默跳过：`listPnpmWorkspaceManifests` 的 globSync 仍会匹配到那些包，
  * 静默跳过等于让边界与语料检查漏掉一批 workspace。
+ *
+ * 返回值不区分两类目录，消费方按「目录自身是否含 package.json」判定身份：有 package.json 即包
+ * （只收它根部的入口文档与 README），没有即容器（收直接子目录）。两类判据互斥，同一目录不会同时按两种用。
  */
 export function readPnpmWorkspaceDirectories(root: string): string[] {
   const directories = readPnpmWorkspacePatterns(root)
