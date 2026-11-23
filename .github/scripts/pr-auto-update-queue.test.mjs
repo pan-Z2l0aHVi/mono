@@ -84,7 +84,7 @@ function makePr(number, overrides = {}) {
 }
 
 {
-  // 在跑中不抢跑：只要队列中已有非 behind、非 dirty 的 PR 在跑 required `check`（queued 或 in_progress），
+  // 在跑中不抢跑：只要队列中已有非 dirty 的 PR 在跑 required `check`（queued 或 in_progress），
   // 即使前面或后面有 behind PR 也立即 noop，绝不更新第二个 PR。
   for (const status of RUNNING_CHECK_STATUSES) {
     const runningHead = makePr(11, { mergeable_state: 'blocked' })
@@ -106,6 +106,25 @@ function makePr(number, overrides = {}) {
       skipped: []
     })
   }
+
+  // behind 的 PR 自己正在跑审查时同样不推进：update-branch 会换掉 head，这一轮审查白跑。
+  const behindRunning = makePr(14, { mergeable_state: 'behind' })
+  const waiting = makePr(13, { mergeable_state: 'behind' })
+  const behindDecision = selectNextPrToUpdate([behindRunning, waiting], {
+    [behindRunning.head.sha]: {
+      check_runs: [
+        { name: 'check', status: 'completed', conclusion: 'success' },
+        { name: 'Codex review', status: 'in_progress', conclusion: null }
+      ]
+    }
+  })
+  assert.deepEqual(behindDecision, {
+    action: 'noop',
+    reason: 'head_pr_running',
+    prNumber: 14,
+    eligibleCount: 2,
+    skipped: []
+  })
 }
 
 {

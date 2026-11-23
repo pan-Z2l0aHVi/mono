@@ -261,6 +261,70 @@ describe('defineWorkspaceDepBoundaries', () => {
     )
   })
 
+  it('scans literal workspace directories as packages and skips their artifacts', async () => {
+    // 字面量 pattern（无 glob 段）把目录本身交给扫描面。断言写成精确错误串而不是 result.ok：
+    // 前者同时证明两个包都进了图（正向证据），以及包内 dist / node_modules 没有进图（负向证据）——
+    // 只写 result.ok 的话，扫描完全忽略字面量目录也照样通过。
+    const root = makeFixture()
+    const literalOnly = defineWorkspaceDepBoundaries({
+      workspaces: ['tools/cli', 'tools/shared'],
+      applicationDirs: []
+    })
+    writeManifest(root, 'tools/shared', {
+      name: '@acme/shared',
+      private: true
+    })
+    writeManifest(root, 'tools/cli', {
+      name: '@acme/cli',
+      dependencies: {
+        '@acme/shared': 'workspace:*'
+      }
+    })
+    // 包内产物与依赖目录里的 manifest 都会违反「公开包不得依赖私有包」：被扫进图时错误串会多出条目。
+    writeManifest(root, 'tools/cli/dist', {
+      name: '@acme/cli-dist',
+      dependencies: {
+        '@acme/shared': 'workspace:*'
+      }
+    })
+    writeManifest(root, 'tools/cli/node_modules/stray', {
+      name: '@acme/stray',
+      dependencies: {
+        '@acme/shared': 'workspace:*'
+      }
+    })
+
+    const error = await failure(literalOnly, root)
+    assert.deepEqual(error.split('\n'), [
+      'deps: public package @acme/cli cannot depend on private workspace package @acme/shared in dependencies'
+    ])
+  })
+
+  it('still scans a container child whose name is in the artifact skip set', async () => {
+    // 反向保护：容器一级名为 dist 的目录是真实包，不能被「包内产物目录」的跳过条件误伤。
+    // 夹具必须用真正的跳过名（dist / build / coverage / __tests__），否则一条过宽的跳过条件
+    // 同样会让用例通过，反向保护就是空的。
+    const root = makeFixture()
+    const containerOnly = defineWorkspaceDepBoundaries({ workspaces: ['packages'], applicationDirs: ['apps'] })
+    writeManifest(root, 'packages/dist', {
+      name: '@acme/core',
+      private: true
+    })
+    writeManifest(root, 'packages/consumer', {
+      name: '@acme/consumer',
+      dependencies: {
+        '@acme/core': 'workspace:*'
+      }
+    })
+
+    const result = await run(containerOnly, root)
+    if (result.ok) assert.fail('expected the container-level dist package to be scanned')
+    assert.match(
+      result.error,
+      /public package @acme\/consumer cannot depend on private workspace package @acme\/core in dependencies/
+    )
+  })
+
   it('reports duplicate workspace package names instead of silently overwriting earlier nodes', async () => {
     const root = makeFixture()
     writeManifest(root, 'packages/first', {
