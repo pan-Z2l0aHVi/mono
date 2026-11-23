@@ -8,8 +8,19 @@ import (
 	"testing"
 )
 
+// resolveFixtureRoot 把夹具根解析为真实路径：ExpandImportPaths 顶层会跟随符号链接，
+// macOS 的 /var/folders 实际位于 /private/var/folders，期望值必须与解析后的路径对齐。
+func resolveFixtureRoot(t *testing.T, root string) string {
+	t.Helper()
+	resolved, err := filepath.EvalSymlinks(root)
+	if err != nil {
+		t.Fatal(err)
+	}
+	return resolved
+}
+
 func TestExpandImportPathsWalksDirectoriesAndKeepsFiles(t *testing.T) {
-	root := t.TempDir()
+	root := resolveFixtureRoot(t, t.TempDir())
 	writeFile := func(rel string) {
 		path := filepath.Join(root, rel)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -28,7 +39,6 @@ func TestExpandImportPathsWalksDirectoriesAndKeepsFiles(t *testing.T) {
 	}
 
 	service := NewResourceService(nil, nil)
-	// 目录与文件混选：目录递归展开，文件原样保留，重复（目录内文件被同时选中）去重。
 	files, err := service.ExpandImportPaths(context.Background(), []string{root, standalone, filepath.Join(root, "nested", "b.md")})
 	if err != nil {
 		t.Fatal(err)
@@ -48,7 +58,7 @@ func TestExpandImportPathsWalksDirectoriesAndKeepsFiles(t *testing.T) {
 }
 
 func TestExpandImportPathsSkipsHiddenEntriesAndSymlinks(t *testing.T) {
-	root := t.TempDir()
+	root := resolveFixtureRoot(t, t.TempDir())
 	writeFile := func(rel string) {
 		path := filepath.Join(root, rel)
 		if err := os.MkdirAll(filepath.Dir(path), 0o755); err != nil {
@@ -89,6 +99,7 @@ func TestExpandImportPathsKeepsChildrenOfExplicitHiddenRoot(t *testing.T) {
 	if err := os.MkdirAll(root, 0o755); err != nil {
 		t.Fatal(err)
 	}
+	root = resolveFixtureRoot(t, root)
 	if err := os.WriteFile(filepath.Join(root, "doc.md"), []byte("x"), 0o644); err != nil {
 		t.Fatal(err)
 	}
@@ -108,8 +119,46 @@ func TestExpandImportPathsKeepsChildrenOfExplicitHiddenRoot(t *testing.T) {
 	}
 }
 
+func TestExpandImportPathsResolvesExplicitSymlinks(t *testing.T) {
+	// 顶层条目按显式意图跟随符号链接：链接文件纳入目标文件、链接目录按目标递归；
+	// 目录内部的符号链接仍被跳过（同 TestExpandImportPathsSkipsHiddenEntriesAndSymlinks）。
+	root := resolveFixtureRoot(t, t.TempDir())
+	targetDir := filepath.Join(root, "real-dir")
+	if err := os.MkdirAll(targetDir, 0o755); err != nil {
+		t.Fatal(err)
+	}
+	inside := filepath.Join(targetDir, "doc.md")
+	if err := os.WriteFile(inside, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	targetFile := filepath.Join(root, "real.png")
+	if err := os.WriteFile(targetFile, []byte("x"), 0o644); err != nil {
+		t.Fatal(err)
+	}
+	dirLink := filepath.Join(root, "dir-link")
+	if err := os.Symlink(targetDir, dirLink); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+	fileLink := filepath.Join(root, "file-link")
+	if err := os.Symlink(targetFile, fileLink); err != nil {
+		t.Skipf("symlink unavailable: %v", err)
+	}
+
+	service := NewResourceService(nil, nil)
+	files, err := service.ExpandImportPaths(context.Background(), []string{dirLink, fileLink})
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	// 产出的是解析后的真实目标路径；同一真实文件（file-link 与目标重复）只保留一份。
+	want := []string{inside, targetFile}
+	if !slices.Equal(files, want) {
+		t.Fatalf("got %v, want %v", files, want)
+	}
+}
+
 func TestExpandImportPathsSkipsMissingAndSpecialEntries(t *testing.T) {
-	root := t.TempDir()
+	root := resolveFixtureRoot(t, t.TempDir())
 	file := filepath.Join(root, "a.png")
 	if err := os.WriteFile(file, []byte("x"), 0o644); err != nil {
 		t.Fatal(err)

@@ -1031,6 +1031,46 @@ describe('LibraryPage：统一导入入口', () => {
     }
   })
 
+  it('并发两个超阈值批次排队依次确认，先到的先入队且互不覆盖', async () => {
+    const filesA = Array.from({ length: 21 }, (_, index) => `/tmp/drop-a/file-${index}.png`)
+    const filesB = Array.from({ length: 25 }, (_, index) => `/tmp/drop-b/file-${index}.png`)
+    const expandImportEntries = vi
+      .fn<LibraryRuntime['resources']['expandImportEntries']>()
+      .mockResolvedValueOnce(filesA)
+      .mockResolvedValueOnce(filesB)
+    runtimeStub.current = createRuntime({ resources: { expandImportEntries } })
+    const mounted = await mountPage()
+
+    try {
+      // 同一轮里先后拖入两个批次：两个确认请求都超阈值，第二个必须排队而不是覆盖第一个。
+      queueWindowFileDrop(['/tmp/drop-a'])
+      queueWindowFileDrop(['/tmp/drop-b'])
+      await flush()
+
+      const first = confirmDialog(mounted.host, '导入 21 个文件')
+      expect(dialogOpen(first)).toBe(true)
+      expect(queueItems(mounted.host)).toHaveLength(0)
+
+      button(first, '导入 21 个文件').click()
+      // 第一个弹窗退场收尾后，排队的批次 B 依次出现。
+      await vi.waitFor(() => {
+        const second = [...mounted.host.querySelectorAll<WebUiDialog>('web-ui-dialog')].find(candidate =>
+          [...candidate.querySelectorAll('web-ui-button')].some(item => item.textContent?.trim() === '导入 25 个文件')
+        )
+        expect(second).toBeTruthy()
+      })
+      const second = confirmDialog(mounted.host, '导入 25 个文件')
+      expect(dialogOpen(second)).toBe(true)
+      button(second, '导入 25 个文件').click()
+      await flush()
+
+      expect(queueItems(mounted.host)).toHaveLength(46)
+      expect(dialogOpen(second)).toBe(false)
+    } finally {
+      await mounted.close()
+    }
+  })
+
   it('拖入文件夹走同一条展开链，目录被递归展开后入队', async () => {
     const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => [
       '/tmp/drop/a.png',

@@ -15,8 +15,9 @@ import (
 // ExpandImportPaths 把一批用户选中的入口（文件与文件夹混合，来自选择面板、拖入或剪贴板）
 // 展开为可纳入的文件位置清单：目录递归展开，普通文件原样保留。
 // 只列目录、不读取内容：展示分类与可用性探测仍走既有纳入路径（CreateResource / PrepareFilePreview）。
-// 隐藏项（"." 前缀）连同其子树、符号链接与非普通文件一律跳过——导入面向用户整理的资料，
-// 不收 .DS_Store、.git 内部或缓存；目录本身不是 Source（目录 stat 成功也不可服务）。
+// 顶层条目按显式意图处理——跟随符号链接到目标（文件按目标纳入，目录按目标递归），
+// 目录内部的符号链接一律跳过（避免成环与别名），连同隐藏项（"." 前缀含子树）与非普通文件。
+// 导入面向用户整理的资料，不收 .DS_Store、.git 内部或缓存；目录本身不是 Source。
 // 用户显式选中的隐藏目录不拦：它就是导入意图，只过滤其内部的隐藏项。
 // 重复路径（同时选中目录与其内部文件）只保留一份，最终按字典序产出确定顺序。
 func (s *ResourceService) ExpandImportPaths(ctx context.Context, paths []string) ([]string, error) {
@@ -30,13 +31,18 @@ func (s *ResourceService) ExpandImportPaths(ctx context.Context, paths []string)
 		if err != nil {
 			return nil, fmt.Errorf("invalid import path: %w", err)
 		}
-		info, err := os.Stat(root)
+		// 顶层跟随符号链接到真实目标：显式选中的链接文件纳入其目标文件，链接目录按目标递归；
+		// 链接成环或选择到确认之间被删除的条目只影响自身，不拖垮整批。
+		resolved, err := filepath.EvalSymlinks(root)
 		if err != nil {
-			// 选择到确认之间被删除的条目只影响自身，不拖垮整批。
+			continue
+		}
+		info, err := os.Stat(resolved)
+		if err != nil {
 			continue
 		}
 		if info.IsDir() {
-			if err := collectImportFiles(ctx, root, seen, &files); err != nil {
+			if err := collectImportFiles(ctx, resolved, seen, &files); err != nil {
 				return nil, err
 			}
 			continue
@@ -44,9 +50,9 @@ func (s *ResourceService) ExpandImportPaths(ctx context.Context, paths []string)
 		if !info.Mode().IsRegular() {
 			continue
 		}
-		if !seen[root] {
-			seen[root] = true
-			files = append(files, root)
+		if !seen[resolved] {
+			seen[resolved] = true
+			files = append(files, resolved)
 		}
 	}
 	sort.Strings(files)

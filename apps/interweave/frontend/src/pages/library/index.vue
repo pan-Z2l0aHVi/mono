@@ -375,7 +375,14 @@ function finishDelete(deletedIds: string[]) {
   }
 }
 
+/** 批量确认串行排队：并发触发的多个超阈值批次依次展示，后到的等待当前弹窗结算，不互相覆盖。 */
+const pendingConfirmRequests: ConfirmRequest[] = []
+
 function openConfirmDialog(request: ConfirmRequest) {
+  if (confirmOpen.value) {
+    pendingConfirmRequests.push(request)
+    return
+  }
   confirmError.value = ''
   confirmRequest.value = request
   confirmOpen.value = true
@@ -398,7 +405,15 @@ async function runConfirmedAction() {
 
 function closeConfirmDialog() {
   // 只翻 open、不清内容：退场期间保留上次内容的合同见 useLingering。
+  // 关闭即原子串接排队的下一批：confirm-open-change 的 cancel 与显式取消都收敛到这里，
+  // open 已为 false 的重复调用直接返回，不会把同一份排队请求消费两次。
+  if (!confirmOpen.value) return
   confirmOpen.value = false
+  const next = pendingConfirmRequests.shift()
+  if (!next) return
+  confirmError.value = ''
+  confirmRequest.value = next
+  confirmOpen.value = true
 }
 
 /** 确认按钮文案：声明了 progressTotal 的请求在 busy 期间展示实时进度比值。 */

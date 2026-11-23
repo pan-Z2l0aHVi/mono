@@ -661,7 +661,8 @@ describe('library add queue progress', () => {
     const gates = [deferred<void>(), deferred<void>()]
     let call = 0
     const submitted = queue.submit(() => gates[call++]!.promise)
-    expect(queue.progress.value).toEqual({ done: 0, total: 2 })
+    // submit 先等入队链收尾，进度重置发生在链结算之后。
+    await vi.waitFor(() => expect(queue.progress.value).toEqual({ done: 0, total: 2 }))
 
     gates[0]!.resolve()
     await vi.waitFor(() => expect(queue.progress.value).toEqual({ done: 1, total: 2 }))
@@ -683,3 +684,55 @@ describe('library add queue progress', () => {
     expect(queue.progress.value).toEqual({ done: 0, total: 2 })
   })
 })
+
+describe('library add queue submit ordering', () => {
+  it('提交先等入队链收尾：链上剩余位置全部入队后才结算快照', async () => {
+    // 只拖住第一次重复检查：入队链未收尾时点提交，链放行后剩余项也应进入提交快照。
+    let release!: () => void
+    const firstLookup = new Promise<void>(resolve => {
+      release = resolve
+    })
+    let first = true
+    const queue = createQueue(
+      createRuntime({
+        findLocationMatches: async () => {
+          if (first) {
+            first = false
+            await firstLookup
+            return []
+          }
+          return []
+        }
+      })
+    )
+    void queue.enqueueFileLocations(['/tmp/a.png', '/tmp/b.png', '/tmp/c.png'])
+    await flushChain()
+    expect(queue.queue.value).toHaveLength(0) // 首项被 gate 拖住，队列还是空的
+
+    // 首项 create 拖住不结算：快照结算后的中间态才能被稳定观察到（否则一轮微任务就跑完整批）。
+    const held = deferred<void>()
+    const created: string[] = []
+    const submitted = queue.submit(async item => {
+      created.push(item.location)
+      await held.promise
+    })
+    await flushChain()
+    expect(created).toEqual([]) // 链未收尾，提交尚未开始
+
+    release() // 放行首项；剩余两项的重复检查立即返回
+    // 链放行后三项全部入队，提交按完整队列开始处理：快照包含点提交之后才入队的项。
+    await vi.waitFor(() => expect(created).toEqual(['/tmp/a.png']))
+    expect(queue.queue.value.map(item => item.location)).toEqual(['/tmp/a.png', '/tmp/b.png', '/tmp/c.png'])
+
+    held.resolve()
+    expect(await submitted).toBe(true)
+    expect(created).toEqual(['/tmp/a.png', '/tmp/b.png', '/tmp/c.png'])
+    expect(queue.progress.value).toEqual({ done: 3, total: 3 })
+    expect(queue.submitting.value).toBe(false)
+  })
+})
+
+/** 等入队链微任务尘埃落定：连续数轮 microtask 排空后链到达稳定状态。 */
+async function flushChain() {
+  for (let i = 0; i < 12; i++) await Promise.resolve()
+}
