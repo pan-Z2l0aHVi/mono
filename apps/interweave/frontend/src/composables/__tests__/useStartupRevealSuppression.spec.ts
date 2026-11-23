@@ -79,42 +79,26 @@ describe('useStartupRevealSuppression', () => {
     scope.stop()
   })
 
-  it('撤层后窗口内事件快照：压制保持并提前走撤层路径解除', async () => {
+  it('慢成功（快照晚于撤层、早于截止）：首次提交仍被压制，解除清掉截止定时器', async () => {
     const layer = mountLayer()
     const { flush } = stubRaf()
     const loaded = ref(false)
     const scope = effectScope()
     const { suppressed } = scope.run(() => useStartupRevealSuppression(() => loaded.value))!
 
-    vi.advanceTimersByTime(STARTUP_TIMEOUT_MS)
+    vi.advanceTimersByTime(STARTUP_TIMEOUT_MS + 100)
+    // 撤层超时已触发；此刻只剩淡出移除与 2s 截止两支定时器。
     expect(layer.dataset.leaving).toBe('true')
     expect(suppressed.value).toBe(true)
-
-    loaded.value = true
-    await nextTick()
-    flush()
-    expect(suppressed.value).toBe(false)
-    // 截止定时器已随解除一并清掉：继续推进不再有副作用。
-    vi.advanceTimersByTime(SUPPRESSION_DEADLINE_MS)
-    expect(suppressed.value).toBe(false)
-    scope.stop()
-  })
-
-  it('慢成功（快照晚于撤层、早于截止）：首次提交仍被压制', async () => {
-    mountLayer()
-    const { flush } = stubRaf()
-    const loaded = ref(false)
-    const scope = effectScope()
-    const { suppressed } = scope.run(() => useStartupRevealSuppression(() => loaded.value))!
-
-    vi.advanceTimersByTime(STARTUP_TIMEOUT_MS + 100)
-    expect(suppressed.value).toBe(true)
+    expect(vi.getTimerCount()).toBe(2)
 
     loaded.value = true
     await nextTick()
     expect(suppressed.value).toBe(true)
     flush()
     expect(suppressed.value).toBe(false)
+    // 截止定时器随解除一并清掉：若漏清，这里会多一支，后续再把它置回 true 也无人拦。
+    expect(vi.getTimerCount()).toBe(1)
     scope.stop()
   })
 

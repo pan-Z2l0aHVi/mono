@@ -20,11 +20,11 @@ const stopSettingsChanges = settingsRuntime.onChanged(snapshot => settings.apply
 onScopeDispose(stopSettingsChanges)
 
 /*
- * 启动层退场编排与启动期揭示压制都归 useStartupRevealSuppression（原有两条退场路径
- * 原样迁入）：boot 期首次外观应用（占位 'system' → Go 快照真实外观）会命中 web-ui-theme
- * 的揭示动画，把启动层当旧帧快照「收拢」进屏幕中心。suppressed 驱动 no-reveal 的
- * 存在/移除——绑定必须以存在/移除表达，不能绑定 false（会被序列化成字符串 "false"，
- * Lit Boolean converter 是存在即真），语义与摘除条件见 composable docblock。
+ * 启动层退场与启动期揭示压制统一由 useStartupRevealSuppression 编排：boot 期首次外观应用
+ * （占位 'system' → Go 快照真实外观）会命中 web-ui-theme 的揭示动画，把启动层当旧帧快照
+ * 「收拢」进屏幕中心。suppressed 驱动 no-reveal 的存在/移除——绑定必须表达存在与移除，不能
+ * 绑定 false（会被序列化成字符串 "false"，Lit Boolean converter 是存在即真），摘除条件见
+ * composable docblock。
  */
 const { suppressed } = useStartupRevealSuppression(() => settings.loaded)
 
@@ -74,7 +74,7 @@ watch(
     no-reveal 以「存在/移除」表达压制（Lit Boolean converter 是存在即真，绑定 false 会被
     序列化成字符串 "false" 而恒真，手动切换的揭示动画会静默永久失效）。`suppressed ||
     undefined` 是该契约的类型化模板写法：true → setAttribute('no-reveal','true') 仍为存在、
-    undefined → removeAttribute，与方案钉死的 `cond ? '' : null` 运行时语义相同。
+    undefined → removeAttribute，与 `cond ? '' : null` 运行时语义相同。
   -->
   <web-ui-theme
     :appearance="settings.appearance"
