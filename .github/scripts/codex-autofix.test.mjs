@@ -11,6 +11,7 @@ import {
   MAX_AUTOFIX_COMMITS,
   PULL_COMMITS_API_CAP,
   REQUIRED_JOB,
+  appendStepSummary,
   assertPushAllowed,
   autofixCommitMessage,
   capturePatch,
@@ -24,6 +25,7 @@ import {
   hasAutofixTrailer,
   inspectPatch,
   isChangesetAddition,
+  readAutofixMessage,
   tailLog,
   validatePatchFile
 } from './codex-autofix.mjs'
@@ -665,7 +667,9 @@ for (const file of [
     fs.writeFileSync(jobsPath, jobs)
     fs.writeFileSync(ghCallsPath, '')
     const outputPath = path.join(directory, 'output')
+    const summaryPath = path.join(directory, 'summary')
     fs.writeFileSync(outputPath, '')
+    fs.writeFileSync(summaryPath, '')
     writeFakeGh({
       bin,
       callsPath: ghCallsPath,
@@ -687,6 +691,7 @@ for (const file of [
         GITHUB_REF: 'refs/pull/54/merge',
         RUNNER_TEMP: directory,
         GITHUB_OUTPUT: outputPath,
+        GITHUB_STEP_SUMMARY: summaryPath,
         ...extraEnv
       })
     })
@@ -701,6 +706,7 @@ for (const file of [
     return {
       result,
       outputs,
+      summary: fs.readFileSync(summaryPath, 'utf8'),
       ghCalls: fs.readFileSync(ghCallsPath, 'utf8').trim().split('\n').filter(Boolean)
     }
   }
@@ -714,6 +720,8 @@ for (const file of [
   assert.equal(planned.result.status, 0, planned.result.stderr)
   assert.equal(planned.outputs.has_log, 'true')
   assert.equal(planned.outputs.failed_steps, 'Test')
+  assert.equal(planned.summary, '')
+  assert.doesNotMatch(planned.result.stdout, /^::notice /m)
   assert.match(fs.readFileSync(path.join(directory, 'ci-failure.log'), 'utf8'), /expected 1 to be 2/)
 
   fs.rmSync(path.join(directory, 'ci-failure.log'))
@@ -734,12 +742,18 @@ for (const file of [
   assert.equal(limited.result.status, 0, limited.result.stderr)
   assert.equal(limited.outputs.has_log, 'false')
   assert.match(limited.result.stdout, /pull request #54 already has 3 autofix commits; limit reached/)
+  assert.match(limited.summary, /## Codex Autofix 已跳过/)
+  assert.match(limited.summary, /提交上限/)
+  assert.match(limited.result.stdout, /^::notice title=Codex autofix skipped::.*already has 3 autofix commits$/m)
   assert.equal(fs.existsSync(path.join(directory, 'ci-failure.log')), false)
 
   const limitedAndUnverified = prepare({ pages: { 1: repaired(3) }, pull: { commits: 4 }, jobs: failingJobs })
   assert.equal(limitedAndUnverified.outputs.has_log, 'false')
   assert.match(limitedAndUnverified.result.stdout, /already has 3 autofix commits; limit reached/)
   assert.match(limitedAndUnverified.result.stdout, /cannot verify autofix count \(read 3 of 4 commits\)/)
+  assert.match(limitedAndUnverified.summary, /## Codex Autofix 已跳过/)
+  assert.match(limitedAndUnverified.summary, /无法验证/)
+  assert.match(limitedAndUnverified.result.stdout, /^::notice title=Codex autofix skipped::/m)
 
   const green = prepare({
     pages: { 1: plain },
@@ -748,6 +762,9 @@ for (const file of [
   })
   assert.equal(green.outputs.has_log, 'false')
   assert.match(green.result.stdout, /no failed step/)
+  assert.match(green.summary, /## Codex Autofix 已跳过/)
+  assert.match(green.summary, /未发现失败步骤/)
+  assert.match(green.result.stdout, /^::notice title=Codex autofix skipped::no failed step in the check job/m)
   const pagesAtApiCap = { 1: plainCommits(100), 2: plainCommits(100), 3: plainCommits(50) }
   const atTotal = prepare({ pages: pagesAtApiCap, pull: { commits: 250 }, jobs: failingJobs })
   assert.equal(atTotal.outputs.has_log, 'true')
@@ -757,6 +774,9 @@ for (const file of [
   assert.equal(overTotal.outputs.has_log, 'false')
   assert.match(overTotal.result.stdout, /cannot verify autofix count \(read 250 of 251 commits\)/)
   assert.doesNotMatch(overTotal.result.stdout, /250\+/)
+  assert.match(overTotal.summary, /## Codex Autofix 已跳过/)
+  assert.match(overTotal.summary, /read 250 of 251 commits/)
+  assert.match(overTotal.result.stdout, /^::notice title=Codex autofix skipped::cannot verify autofix commit count/m)
 
   const missingTotal = prepare({ pages: { 1: plain }, pull: {}, jobs: failingJobs })
   assert.equal(missingTotal.outputs.has_log, 'false')
@@ -881,11 +901,14 @@ for (const file of [
     )
     fs.writeFileSync(ghCallsPath, '')
     fs.writeFileSync(gitCallsPath, '')
+    const summaryPath = path.join(directory, 'summary')
+    fs.writeFileSync(summaryPath, '')
     const result = spawnSync(process.execPath, [scriptPath, 'apply'], {
       encoding: 'utf8',
       env: testEnv({
         PATH: prependPath(bin),
         GITHUB_REPOSITORY: 'owner/repo',
+        GITHUB_STEP_SUMMARY: summaryPath,
         RUNNER_TEMP: directory,
         CODEX_AUTOFIX_HEAD_SHA: headSha,
         CODEX_AUTOFIX_HEAD_REF: 'feature/x',
@@ -899,6 +922,7 @@ for (const file of [
     })
     return {
       result,
+      summary: fs.readFileSync(summaryPath, 'utf8'),
       ghCalls: fs.readFileSync(ghCallsPath, 'utf8').trim().split('\n').filter(Boolean),
       gitCalls: fs.readFileSync(gitCallsPath, 'utf8')
     }
@@ -907,6 +931,9 @@ for (const file of [
   const pushed = runApply({ commits: plainCommits(2), total: 2 })
   assert.equal(pushed.result.status, 0, pushed.result.stderr)
   assert.match(pushed.result.stdout, /pushed autofix for 1 files/)
+  assert.match(pushed.summary, /## Codex Autofix 已推送补丁/)
+  assert.match(pushed.summary, /`feature\/x`/)
+  assert.match(pushed.summary, /`packages\/web-ui\/src\/button\.ts`/)
 
   const ghCalls = pushed.ghCalls
   const commitsIndex = ghCalls.findIndex(call => call.includes('/pulls/54/commits?'))
@@ -1214,13 +1241,16 @@ for (const file of [
 }
 
 {
-  // 没有 patch artifact 时 apply 必须安静跳过：它是绝大多数 run 的路径。
+  // 没有 patch artifact 时 apply 必须安静跳过，并在 Step Summary 与 notice 留痕。
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-autofix-apply-'))
+  const summaryPath = path.join(directory, 'summary')
+  fs.writeFileSync(summaryPath, '')
   const result = spawnSync(process.execPath, [scriptPath, 'apply'], {
     encoding: 'utf8',
     env: testEnv({
       PATH: ['/usr/bin', '/bin'].join(path.delimiter),
       GITHUB_REPOSITORY: 'owner/repo',
+      GITHUB_STEP_SUMMARY: summaryPath,
       RUNNER_TEMP: directory,
       CODEX_AUTOFIX_HEAD_SHA: headSha,
       CODEX_AUTOFIX_HEAD_REF: 'feature/x',
@@ -1229,6 +1259,10 @@ for (const file of [
   })
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stdout, /nothing to apply/)
+  assert.match(result.stdout, /^::notice title=Codex autofix apply skipped::/m)
+  const summary = fs.readFileSync(summaryPath, 'utf8')
+  assert.match(summary, /## Codex Autofix 无补丁可应用/)
+  assert.match(summary, /`feature\/x`/)
   fs.rmSync(directory, { recursive: true, force: true })
 }
 
@@ -1236,19 +1270,24 @@ for (const file of [
   // 预检没跑成时模型 job 被跳过，工作区里的零散改动不能变成 patch 交给特权 job。
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-autofix-capture-'))
   const outputPath = path.join(directory, 'output')
+  const summaryPath = path.join(directory, 'summary')
   fs.writeFileSync(outputPath, '')
+  fs.writeFileSync(summaryPath, '')
   const result = spawnSync(process.execPath, [scriptPath, 'capture'], {
     encoding: 'utf8',
     env: testEnv({
       GITHUB_OUTPUT: outputPath,
+      GITHUB_STEP_SUMMARY: summaryPath,
       GITHUB_REPOSITORY: 'owner/repo',
       RUNNER_TEMP: directory,
-      CODEX_AUTOFIX_HEAD_SHA: headSha
+      CODEX_AUTOFIX_HEAD_SHA: headSha,
+      CODEX_AUTOFIX_FAILED_STEPS: 'Build'
     }),
     cwd: directory
   })
   assert.equal(result.status, 0, result.stderr)
   assert.match(result.stdout, /no configuration snapshot/)
+  assert.match(result.stdout, /^::notice title=Codex autofix skipped::the Codex configuration preflight did not run$/m)
   const outputs = Object.fromEntries(
     fs
       .readFileSync(outputPath, 'utf8')
@@ -1258,7 +1297,157 @@ for (const file of [
   )
   assert.equal(outputs.has_patch, 'false')
   assert.match(outputs.reject_reason, /preflight/)
+  const summary = fs.readFileSync(summaryPath, 'utf8')
+  assert.match(summary, /## Codex Autofix 未产出补丁/)
+  assert.match(summary, /`Build`/)
+  assert.match(summary, /preflight did not run/)
   fs.rmSync(directory, { recursive: true, force: true })
+}
+
+{
+  // appendStepSummary 与 readAutofixMessage 辅助函数：空路径跳过、EOL 规范化与 8000 字符截断边界。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-autofix-helpers-'))
+  const savedSummary = Object.hasOwn(process.env, 'GITHUB_STEP_SUMMARY') ? process.env.GITHUB_STEP_SUMMARY : undefined
+  try {
+    delete process.env.GITHUB_STEP_SUMMARY
+    appendStepSummary('ignored when unset')
+    process.env.GITHUB_STEP_SUMMARY = ''
+    appendStepSummary('ignored when empty')
+
+    const summaryPath = path.join(directory, 'step-summary.md')
+    fs.writeFileSync(summaryPath, '')
+    process.env.GITHUB_STEP_SUMMARY = summaryPath
+    appendStepSummary('## Title\n- line 1\r\n- line 2\n')
+    assert.equal(fs.readFileSync(summaryPath, 'utf8'), `## Title${os.EOL}- line 1${os.EOL}- line 2${os.EOL}`)
+
+    assert.equal(readAutofixMessage(directory), '')
+    assert.equal(readAutofixMessage(''), '')
+
+    const messagePath = path.join(directory, 'codex-autofix-message.txt')
+    fs.writeFileSync(messagePath, '   \n\t  ')
+    assert.equal(readAutofixMessage(directory), '')
+
+    const exact = 'a'.repeat(8000)
+    fs.writeFileSync(messagePath, `  ${exact}\n`)
+    assert.equal(readAutofixMessage(directory), exact, 'exactly 8000 characters must not be truncated')
+
+    const oversized = `${'b'.repeat(8000)}TAIL_SHOULD_BE_DROPPED`
+    fs.writeFileSync(messagePath, oversized)
+    const truncated = readAutofixMessage(directory)
+    assert.ok(!truncated.includes('TAIL_SHOULD_BE_DROPPED'), 'characters beyond 8000 must be truncated')
+    assert.match(truncated, /截断/)
+    assert.match(truncated, /8000/)
+
+    // 7999 个字符后紧接一个 2 码元 emoji（代理对跨越 8000 边界）时，不得留下孤立高位代理。
+    const boundary = `${'c'.repeat(7999)}🧪extra`
+    fs.writeFileSync(messagePath, boundary)
+    const boundaryRead = readAutofixMessage(directory)
+    assert.ok(!/[\uD800-\uDBFF](?![\uDC00-\uDFFF])/u.test(boundaryRead), 'must not leave an orphan high surrogate')
+    assert.match(boundaryRead, /截断/)
+  } finally {
+    if (savedSummary === undefined) delete process.env.GITHUB_STEP_SUMMARY
+    else process.env.GITHUB_STEP_SUMMARY = savedSummary
+    fs.rmSync(directory, { recursive: true, force: true })
+  }
+}
+
+{
+  // capture 在已通过预检后：覆盖空 patch + 模型诊断、受保护路径拒绝 + 超长诊断截断、以及成功捕获补丁。
+  const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-autofix-capture-summary-'))
+  const bin = path.join(directory, 'bin')
+  fs.mkdirSync(bin)
+  fs.writeFileSync(path.join(directory, 'codex-config.json'), JSON.stringify({ fingerprint: 'test' }))
+  const fakeDiffPath = path.join(directory, 'fake-diff.patch')
+  fs.writeFileSync(
+    path.join(bin, 'git'),
+    `#!/bin/sh\ncase "$1" in\n  diff) cat ${shQuote(fakeDiffPath)} ;;\nesac\nexit 0\n`,
+    { mode: 0o755 }
+  )
+
+  function runCapture({ diff, message, failedSteps = 'Test' }) {
+    fs.rmSync(path.join(directory, 'autofix.patch'), { force: true })
+    const messagePath = path.join(directory, 'codex-autofix-message.txt')
+    if (message === undefined) fs.rmSync(messagePath, { force: true })
+    else fs.writeFileSync(messagePath, message)
+    fs.writeFileSync(fakeDiffPath, diff)
+    const outputPath = path.join(directory, 'output')
+    const summaryPath = path.join(directory, 'summary')
+    fs.writeFileSync(outputPath, '')
+    fs.writeFileSync(summaryPath, '')
+    const result = spawnSync(process.execPath, [scriptPath, 'capture'], {
+      encoding: 'utf8',
+      env: testEnv({
+        PATH: prependPath(bin),
+        GITHUB_OUTPUT: outputPath,
+        GITHUB_STEP_SUMMARY: summaryPath,
+        GITHUB_REPOSITORY: 'owner/repo',
+        RUNNER_TEMP: directory,
+        CODEX_AUTOFIX_HEAD_SHA: headSha,
+        CODEX_AUTOFIX_FAILED_STEPS: failedSteps,
+        CODEX_TRUSTED_SETTINGS: path.join(import.meta.dirname, '../../.claude/settings.json')
+      }),
+      cwd: directory
+    })
+    const outputs = Object.fromEntries(
+      fs
+        .readFileSync(outputPath, 'utf8')
+        .split('\n')
+        .filter(Boolean)
+        .map(line => [line.slice(0, line.indexOf('=')), line.slice(line.indexOf('=') + 1)])
+    )
+    return { result, outputs, summary: fs.readFileSync(summaryPath, 'utf8') }
+  }
+
+  try {
+    const emptyWithMessage = runCapture({
+      diff: '',
+      message: '根因位于受保护生成物，需人手动重建。',
+      failedSteps: 'Test, Check generated artifacts'
+    })
+    assert.equal(emptyWithMessage.result.status, 0, emptyWithMessage.result.stderr)
+    assert.equal(emptyWithMessage.outputs.has_patch, 'false')
+    assert.equal(emptyWithMessage.outputs.reject_reason, 'patch changes no tracked file')
+    assert.match(emptyWithMessage.summary, /## Codex Autofix 未产出补丁/)
+    assert.match(emptyWithMessage.summary, /`Test, Check generated artifacts`/)
+    assert.match(emptyWithMessage.summary, /patch changes no tracked file/)
+    assert.match(emptyWithMessage.summary, /### 模型诊断结论/)
+    assert.match(emptyWithMessage.summary, /根因位于受保护生成物，需人手动重建。/)
+    assert.match(
+      emptyWithMessage.result.stdout,
+      /^::notice title=Codex autofix skipped::patch changes no tracked file$/m
+    )
+
+    const longBody = `${'x'.repeat(8100)}OVER_LIMIT_TAIL`
+    const guardedRejected = runCapture({
+      diff: modification('.github/workflows/ci.yml'),
+      message: longBody,
+      failedSteps: 'Format + Lint'
+    })
+    assert.equal(guardedRejected.result.status, 0, guardedRejected.result.stderr)
+    assert.equal(guardedRejected.outputs.has_patch, 'false')
+    assert.match(guardedRejected.outputs.reject_reason, /CI 与 workflow 定义/)
+    assert.match(guardedRejected.summary, /## Codex Autofix 未产出补丁/)
+    assert.match(guardedRejected.summary, /CI 与 workflow 定义/)
+    assert.match(guardedRejected.summary, /截断/)
+    assert.ok(!guardedRejected.summary.includes('OVER_LIMIT_TAIL'))
+    assert.match(guardedRejected.result.stdout, /^::notice title=Codex autofix skipped::/m)
+
+    const validCaptured = runCapture({
+      diff: modification('packages/web-ui/src/button.ts'),
+      message: '已修复按钮导出类型遗漏。',
+      failedSteps: 'Type-check'
+    })
+    assert.equal(validCaptured.result.status, 0, validCaptured.result.stderr)
+    assert.equal(validCaptured.outputs.has_patch, 'true')
+    assert.match(validCaptured.summary, /## Codex Autofix 已生成补丁/)
+    assert.match(validCaptured.summary, /`packages\/web-ui\/src\/button\.ts`/)
+    assert.match(validCaptured.summary, /bytes/)
+    assert.match(validCaptured.summary, /### 模型诊断摘要/)
+    assert.match(validCaptured.summary, /已修复按钮导出类型遗漏。/)
+    assert.doesNotMatch(validCaptured.result.stdout, /^::notice title=Codex autofix skipped::/m)
+  } finally {
+    fs.rmSync(directory, { recursive: true, force: true })
+  }
 }
 
 console.log('.github/scripts/codex-autofix.test.mjs: all assertions passed')

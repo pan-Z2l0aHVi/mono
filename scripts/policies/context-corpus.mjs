@@ -39,6 +39,7 @@ export const contextCorpus = defineContextCorpus({
     facades: ['skills/README.md']
   },
   workspaces: readPnpmWorkspaceDirectories(repoRoot),
+  requireWorkspaceEntry: false,
   // 哪些容器目录放应用是语义划分，`pnpm-workspace.yaml` 里没有这一层，只能手写。
   applicationDirs: ['apps'],
   // 时点性研究与方案草稿不入库（见 .gitignore），只剩设计资产需要非权威标记。

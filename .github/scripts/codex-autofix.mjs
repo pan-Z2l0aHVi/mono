@@ -1,5 +1,6 @@
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
+import os from 'node:os'
 import path from 'node:path'
 
 import { readConfig, reviewTarget } from './codex-review.mjs'
@@ -17,6 +18,8 @@ export const REQUIRED_JOB = 'check'
 const PULL_COMMITS_PER_PAGE = 100
 const SHA_PATTERN = /^[0-9a-f]{40,64}$/iu
 const LOG_LIMIT_BYTES = 200_000
+const AUTOFIX_MESSAGE_LIMIT = 8000
+const AUTOFIX_MESSAGE_FILE = 'codex-autofix-message.txt'
 const ANY = '\u0000'
 const ACROSS = '\u0001'
 
@@ -270,6 +273,70 @@ export function assertPushAllowed({
   return live
 }
 
+function oneLine(value) {
+  return String(value ?? '')
+    .replace(/\s+/gu, ' ')
+    .trim()
+}
+
+/**
+ * 当 `process.env.GITHUB_STEP_SUMMARY` 非空时追加 Markdown 内容（按当前系统换行符规范化）。
+ *
+ * @param {string} markdown 要追加的 Markdown 内容
+ */
+export function appendStepSummary(markdown) {
+  const target = process.env.GITHUB_STEP_SUMMARY
+  if (!target || !target.trim()) return
+  const normalized = String(markdown ?? '')
+    .trimEnd()
+    .replace(/\r?\n/gu, os.EOL)
+  if (!normalized) return
+  fs.appendFileSync(target, `${normalized}${os.EOL}`)
+}
+
+/**
+ * 安全读取 `${runnerTemp}/codex-autofix-message.txt`；文件不存在或为空时返回空串，
+ * 超过 8000 字符时截断并附带截断提示。
+ *
+ * @param {string} runnerTemp GitHub Actions `RUNNER_TEMP` 目录路径
+ * @returns {string} 规范化后的模型诊断文本或空串
+ */
+export function readAutofixMessage(runnerTemp) {
+  if (!runnerTemp) return ''
+  const messagePath = path.join(runnerTemp, AUTOFIX_MESSAGE_FILE)
+  let raw = ''
+  try {
+    raw = fs.readFileSync(messagePath, 'utf8')
+  } catch (error) {
+    if (error?.code === 'ENOENT') return ''
+    // 诊断输出只服务于 Step Summary 可观测性；保留读取错误告警但不阻断 patch 判定与交付。
+    console.warn(`codex-autofix: failed to read ${messagePath}: ${error.message}`)
+    return ''
+  }
+  const trimmed = raw.trim()
+  if (!trimmed) return ''
+  if (trimmed.length <= AUTOFIX_MESSAGE_LIMIT) return trimmed
+  let head = trimmed.slice(0, AUTOFIX_MESSAGE_LIMIT)
+  // 避免在 UTF-16 代理对中间截断留下孤立高位代理。
+  const lastCode = head.charCodeAt(head.length - 1)
+  if (lastCode >= 0xd800 && lastCode <= 0xdbff) head = head.slice(0, -1)
+  return `${head}\n\n…（模型输出超过 ${AUTOFIX_MESSAGE_LIMIT} 字符已截断，共 ${trimmed.length} 字符）`
+}
+
+function publishCaptureSkipped({ failedSteps, rejectReason, runnerTemp }) {
+  const autofixMessage = readAutofixMessage(runnerTemp)
+  appendStepSummary(
+    [
+      '## Codex Autofix 未产出补丁',
+      '',
+      `- 失败步骤：${failedSteps ? `\`${oneLine(failedSteps)}\`` : '无'}`,
+      `- 拒绝原因：${oneLine(rejectReason)}`,
+      ...(autofixMessage ? ['', '### 模型诊断结论', '', autofixMessage] : [])
+    ].join('\n')
+  )
+  console.log(`::notice title=Codex autofix skipped::${oneLine(rejectReason)}`)
+}
+
 function writeOutputs(values) {
   const target = process.env.GITHUB_OUTPUT
   if (!target) return
@@ -279,24 +346,21 @@ function writeOutputs(values) {
   fs.appendFileSync(target, `${body}\n`)
 }
 
-function appendSummary(lines) {
-  const target = process.env.GITHUB_STEP_SUMMARY
-  if (target) fs.appendFileSync(target, `${lines.join('\n')}\n`)
-}
-
 /**
  * reviewTarget 的拒绝是「无对象可修」的预期出口，不是 apply 自己的故障：
  * 写回 run 由 CI completed 触发，可能晚于合并完成。绿色收尾并把原因写进 step summary，
  * 与 report 路径的 commandReport（拒绝时绿色退出）保持同一语义。
  */
 function skipApply(reason) {
-  appendSummary([
-    '## Codex autofix 未应用',
-    '',
-    `apply 不推送：${reason}。`,
-    '',
-    '- 写回 run 由「CI completed」触发，可能晚于合并完成；autofix 只服务仍 open 的 PR，本次无事可做。'
-  ])
+  appendStepSummary(
+    [
+      '## Codex autofix 未应用',
+      '',
+      `- apply 不推送：${oneLine(reason)}`,
+      '- 写回 run 由「CI completed」触发，可能晚于合并完成；autofix 只服务仍 open 的 PR，本次无事可做。'
+    ].join('\n')
+  )
+  console.log(`::notice title=Codex autofix skipped::${oneLine(reason)}`)
   console.log(`skipping autofix apply: ${reason}`)
 }
 
@@ -346,6 +410,26 @@ function commandPrepare() {
     if (unverified)
       console.log(`pull request #${number} cannot verify autofix count (${unverifiedDetail}); skipping autofix`)
     if (limitReached || unverified) {
+      const reasons = []
+      const notices = []
+      if (limitReached) {
+        reasons.push(`PR #${number} 已达到 ${MAX_AUTOFIX_COMMITS} 次 \`${AUTOFIX_TRAILER}\` 提交上限`)
+        notices.push(`PR #${number} already has ${MAX_AUTOFIX_COMMITS} autofix commits`)
+      }
+      if (unverified) {
+        reasons.push(`无法验证 PR #${number} 的自动修提交计数（${unverifiedDetail}）`)
+        notices.push(`cannot verify autofix commit count for PR #${number} (${unverifiedDetail})`)
+      }
+      appendStepSummary(
+        [
+          '## Codex Autofix 已跳过',
+          '',
+          `- PR：#${number}`,
+          ...reasons.map(reason => `- 原因：${reason}`),
+          '- 处理：本次不触发模型自动修，请人工排查失败检查。'
+        ].join('\n')
+      )
+      console.log(`::notice title=Codex autofix skipped::${oneLine(notices.join('; '))}`)
       writeOutputs({ has_log: 'false', failed_steps: '', log_path: '' })
       return
     }
@@ -354,6 +438,18 @@ function commandPrepare() {
   if (!failure || failure.steps.length === 0) {
     writeOutputs({ has_log: 'false', failed_steps: '', log_path: '' })
     console.log(`no failed step in the ${REQUIRED_JOB} job`)
+    appendStepSummary(
+      [
+        '## Codex Autofix 已跳过',
+        '',
+        ...(number ? [`- PR：#${number}`] : []),
+        `- 原因：\`${REQUIRED_JOB}\` job 未发现失败步骤（run \`${oneLine(env.GITHUB_RUN_ID)}\`）。`,
+        '- 处理：本次无需自动修，跳过模型调用。'
+      ].join('\n')
+    )
+    console.log(
+      `::notice title=Codex autofix skipped::no failed step in the ${REQUIRED_JOB} job (run ${oneLine(env.GITHUB_RUN_ID)})`
+    )
     return
   }
   const log = tailLog(adapter.jobLog(failure.jobId))
@@ -365,15 +461,18 @@ function commandPrepare() {
 
 function commandCapture() {
   const env = requireEnv(['CODEX_AUTOFIX_HEAD_SHA', 'RUNNER_TEMP'])
+  const failedSteps = String(process.env.CODEX_AUTOFIX_FAILED_STEPS ?? '').trim()
   // 模型 job 没跑成时工作区仍可能有零散改动；没有预检快照就不产出 patch，避免特权 job 推一份来路不明的 diff。
   if (!readConfig()) {
+    const rejectReason = 'the Codex configuration preflight did not run'
     writeOutputs({
       has_patch: 'false',
-      reject_reason: 'the Codex configuration preflight did not run',
+      reject_reason: rejectReason,
       changed_files: '',
       patch_path: ''
     })
     console.log('no configuration snapshot; no autofix patch is published')
+    publishCaptureSkipped({ failedSteps, rejectReason, runnerTemp: env.RUNNER_TEMP })
     return
   }
   const patchPath = path.join(env.RUNNER_TEMP, 'autofix.patch')
@@ -381,7 +480,7 @@ function commandCapture() {
     headSha: env.CODEX_AUTOFIX_HEAD_SHA,
     patchPath,
     guarded: guardedMatcher(),
-    allowNewChangeset: failedStepAllowsChangeset(process.env.CODEX_AUTOFIX_FAILED_STEPS)
+    allowNewChangeset: failedStepAllowsChangeset(failedSteps)
   })
   writeOutputs({
     has_patch: result.reject ? 'false' : 'true',
@@ -391,9 +490,22 @@ function commandCapture() {
   })
   if (result.reject) {
     console.log(`autofix patch discarded: ${result.reject}`)
+    publishCaptureSkipped({ failedSteps, rejectReason: result.reject, runnerTemp: env.RUNNER_TEMP })
     return
   }
   console.log(`autofix patch covers ${result.files.length} files (${result.bytes} bytes)`)
+  const autofixMessage = readAutofixMessage(env.RUNNER_TEMP)
+  appendStepSummary(
+    [
+      '## Codex Autofix 已生成补丁',
+      '',
+      ...(failedSteps ? [`- 失败步骤：\`${oneLine(failedSteps)}\``] : []),
+      `- 补丁大小：${result.bytes} bytes`,
+      `- 改动文件（${result.files.length} 个）：`,
+      ...result.files.map(file => `  - \`${file}\``),
+      ...(autofixMessage ? ['', '### 模型诊断摘要', '', autofixMessage] : [])
+    ].join('\n')
+  )
 }
 
 function commandApply() {
@@ -402,6 +514,18 @@ function commandApply() {
   // 没有 patch 就无事可做：这比「PR 资格不足」更常见，先判它，别让 job 红在一条无关的拒绝上。
   if (!fs.existsSync(patchPath)) {
     console.log('no autofix patch artifact; nothing to apply')
+    appendStepSummary(
+      [
+        '## Codex Autofix 无补丁可应用',
+        '',
+        `- 目标分支：\`${oneLine(env.CODEX_AUTOFIX_HEAD_REF)}\``,
+        '- 原因：未找到 `autofix.patch` 产物（上游 CI run 未产出补丁或已跳过自动修）。',
+        '- 结果：本次跳过应用与推送；请查看上游 CI run 的 Step Summary 了解详情。'
+      ].join('\n')
+    )
+    console.log(
+      `::notice title=Codex autofix apply skipped::no autofix patch artifact for ${oneLine(env.CODEX_AUTOFIX_HEAD_REF)}`
+    )
     return
   }
   const number = pullNumber({ allowRefFallback: false })
@@ -464,6 +588,17 @@ function commandApply() {
     throw error
   }
   console.log(`pushed autofix for ${files.length} files to ${env.CODEX_AUTOFIX_HEAD_REF}`)
+  appendStepSummary(
+    [
+      '## Codex Autofix 已推送补丁',
+      '',
+      `- PR：#${number}`,
+      `- 目标分支：\`${oneLine(env.CODEX_AUTOFIX_HEAD_REF)}\``,
+      `- 基线提交：\`${oneLine(env.CODEX_AUTOFIX_HEAD_SHA)}\``,
+      `- 改动文件（${files.length} 个）：`,
+      ...files.map(file => `  - \`${file}\``)
+    ].join('\n')
+  )
 }
 
 const commands = { prepare: commandPrepare, capture: commandCapture, apply: commandApply }
