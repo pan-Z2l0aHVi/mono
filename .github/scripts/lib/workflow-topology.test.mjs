@@ -21,6 +21,8 @@ import {
 import {
   CODEX_CONFIG_ENV,
   CODEX_CONFIG_INPUTS,
+  CODEX_GATE_JOB_NAME,
+  CODEX_REVIEW_JOB_NAME,
   RELEASE_BRANCH,
   REQUIRED_CONTEXT,
   codexConfigInputViolations,
@@ -705,35 +707,101 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     const eligibilityGuard =
       "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository" +
       ` && github.head_ref != '${RELEASE_BRANCH}'`
-    const eligibleJobs = ['codex-review', 'codex-gate', 'codex-autofix-plan']
+    // 2026-11-23 起判据分道：review 与 autofix-plan 保留 fork 与版本分支排除；gate 升为 required
+    // check 后不再排除任何 PR——GitHub 会为被 if 跳过的 job 上报 skipped check run，而 required 把
+    // skipped 计为通过，gate 的任何排除都是 fail-open（fork 由收窄后的 not_applicable 出口判红）。
+    const gateEligibilityGuard = "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'"
+    const eligibilityGuards = {
+      'codex-review': eligibilityGuard,
+      'codex-gate': gateEligibilityGuard,
+      'codex-autofix-plan': eligibilityGuard
+    }
+    const eligibleJobs = Object.keys(eligibilityGuards)
+
+    // 队列的忙碌判定按 check run 名匹配，名字来自脚本常量；改名却不同步常量会让它静默失效
+    // （找不到 run 就当不忙，update-branch 重新取消在途审查）。这里把常量钉在 ci.yml 的 job 名上。
+    const jobNameBindings = {
+      'codex-review': CODEX_REVIEW_JOB_NAME,
+      'codex-gate': CODEX_GATE_JOB_NAME
+    }
+    const assertJobNameBindings = text => {
+      const workflow = parseWorkflow(text)
+      for (const [jobId, expected] of Object.entries(jobNameBindings)) {
+        assert.equal(
+          workflow.jobs[jobId]?.name,
+          expected,
+          `${jobId} must keep the job name the queue matches (${expected})`
+        )
+      }
+    }
+    assertJobNameBindings(ci)
+    for (const [jobId, expected] of Object.entries(jobNameBindings)) {
+      assert.throws(
+        () => assertJobNameBindings(ci.replace(`name: ${expected}`, `name: ${expected} renamed`)),
+        /must keep the job name the queue matches/,
+        `renaming ${jobId} without updating the constant must fail the assertion`
+      )
+    }
 
     function assertEligibilityGuards(text) {
       const workflow = parseWorkflow(text)
       for (const jobId of eligibleJobs) {
         assert.ok(
-          workflow.jobs[jobId]?.if?.includes(eligibilityGuard),
-          `${jobId} must review only same-repo PRs into main`
+          workflow.jobs[jobId]?.if?.includes(eligibilityGuards[jobId]),
+          `${jobId} must review only PRs into main`
         )
       }
+      // gate 不得重新引入 fork 或版本分支排除：skipped 的 required check 计为通过，排除即放行。
+      assert.ok(
+        !workflow.jobs['codex-gate']?.if?.includes(`github.head_ref != '${RELEASE_BRANCH}'`),
+        'codex-gate must not exclude the release branch once it is a required check'
+      )
+      assert.ok(
+        !workflow.jobs['codex-gate']?.if?.includes(
+          'github.event.pull_request.head.repo.full_name == github.repository'
+        ),
+        'codex-gate must not exclude fork PRs once it is a required check'
+      )
+    }
+
+    // 锚点必须在 assert.throws **之外**单独断言：把校验写在 mutateJobIf 里抛错，那个 Error 会落进
+    // assert.throws 的回调被当成「变异已检出」，锚点失配的变异于是静默通过——这正是上一版的缺陷。
+    function assertMutationAnchor(text, jobId, fragment) {
+      const hits = workflowJob(text, jobId).split(fragment).length - 1
+      assert.equal(hits, 1, `${jobId} mutation anchor must occur exactly once, found ${hits}: ${fragment}`)
     }
 
     function mutateJobIf(text, jobId, fragment) {
       const block = workflowJob(text, jobId)
       const start = text.indexOf(block)
-      assert.equal(block.split(fragment).length - 1, 1, `${jobId} mutation anchor must occur once`)
       return text.slice(0, start) + block.replace(fragment, '') + text.slice(start + block.length)
     }
 
     assertEligibilityGuards(ci)
-    // fork PR 拿不到仓库 secret，版本分支由发布流程自审：判据少一条就必须变红，而不是静默放宽。
-    for (const fragment of [
-      "github.event_name == 'pull_request' && ",
-      "github.event.pull_request.base.ref == 'main' && ",
-      'github.event.pull_request.head.repo.full_name == github.repository && ',
-      `github.head_ref != '${RELEASE_BRANCH}' && `,
-      ` && github.head_ref != '${RELEASE_BRANCH}'`
-    ]) {
-      for (const jobId of eligibleJobs) {
+    // fork PR 拿不到仓库 secret，版本分支由发布流程自审：review 判据少一条就必须变红，而不是静默放宽。
+    // gate 的判据不含这两个排除（也不以 ` && ` 结尾），所以它的片段按自己的形状给：
+    // 用带尾随 ` && ` 的片段去变异 gate 只会让锚点失配，测不到任何东西。
+    // 片段必须按每个 job 的实际形状给：review 的 head_ref 是末尾子句（无尾随 ` && `），
+    // autofix-plan 的 head_ref 后面还跟着 CODEX_AUTOFIX_ENABLED，gate 的 base.ref 是末尾子句。
+    // 逐字抄同一个形状会让锚点失配，变异空转。
+    const fragmentsByJob = {
+      'codex-review': [
+        "github.event_name == 'pull_request' && ",
+        "github.event.pull_request.base.ref == 'main' && ",
+        'github.event.pull_request.head.repo.full_name == github.repository && ',
+        `github.head_ref != '${RELEASE_BRANCH}'`
+      ],
+      'codex-autofix-plan': [
+        "github.event_name == 'pull_request' && ",
+        "github.event.pull_request.base.ref == 'main' && ",
+        'github.event.pull_request.head.repo.full_name == github.repository && ',
+        `github.head_ref != '${RELEASE_BRANCH}' && `
+      ],
+      'codex-gate': ["github.event_name == 'pull_request' && ", "github.event.pull_request.base.ref == 'main'"]
+    }
+    for (const jobId of eligibleJobs) {
+      for (const fragment of fragmentsByJob[jobId]) {
+        assertMutationAnchor(ci, jobId, fragment)
         assert.throws(
           () => assertEligibilityGuards(mutateJobIf(ci, jobId, fragment)),
           `dropping ${fragment.trim()} from ${jobId} must fail the eligibility check`
@@ -829,16 +897,31 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     const assertNotApplicableIsDerived = text =>
       assert.match(
         namedStep(text, 'Apply review gate'),
-        /CODEX_REVIEW_NOT_APPLICABLE: \$\{\{ needs\.codex-review\.result == 'skipped' \}\}/,
-        'not-applicable must be derived from the review job result, never hardcoded'
+        /CODEX_REVIEW_NOT_APPLICABLE: \$\{\{ needs\.codex-review\.result == 'skipped' && github\.event\.pull_request\.head\.repo\.full_name == github\.repository && \(github\.head_ref == 'changeset-release\/main' \|\| needs\.check\.result != 'success'\) \}\}/,
+        'not-applicable must be derived from the review job result and narrowed to same-repo legitimate skips, never hardcoded'
       )
     assertNotApplicableIsDerived(ci)
-    const derivedNotApplicable = "CODEX_REVIEW_NOT_APPLICABLE: ${{ needs.codex-review.result == 'skipped' }}"
+    const derivedNotApplicable =
+      "CODEX_REVIEW_NOT_APPLICABLE: ${{ needs.codex-review.result == 'skipped' && github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'changeset-release/main' || needs.check.result != 'success') }}"
     assert.equal(
       ci.split(derivedNotApplicable).length - 1,
       1,
       'the derived not-applicable assignment must exist exactly once'
     )
+    // fork 的 review skip 不得落入 not_applicable：skipped 的 required check 会被 GitHub 计为通过，
+    // 放宽就是 fail-open。同仓前提与两个合法 skip 分支都不可删。
+    for (const fragment of [
+      'github.event.pull_request.head.repo.full_name == github.repository && ',
+      "github.head_ref == 'changeset-release/main' || ",
+      " || needs.check.result != 'success'"
+    ]) {
+      assert.throws(
+        () =>
+          assertNotApplicableIsDerived(ci.replace(derivedNotApplicable, derivedNotApplicable.replace(fragment, ''))),
+        /never hardcoded/,
+        `dropping ${fragment.trim()} from the not-applicable narrowing must fail the assertion`
+      )
+    }
     for (const pinned of ["CODEX_REVIEW_NOT_APPLICABLE: 'true'", "CODEX_REVIEW_NOT_APPLICABLE: 'false'"]) {
       assert.throws(
         () => assertNotApplicableIsDerived(ci.split(derivedNotApplicable).join(pinned)),
