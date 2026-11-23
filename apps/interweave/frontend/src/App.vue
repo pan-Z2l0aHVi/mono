@@ -19,13 +19,8 @@ void settings.load(settingsRuntime)
 const stopSettingsChanges = settingsRuntime.onChanged(snapshot => settings.applySnapshot(snapshot))
 onScopeDispose(stopSettingsChanges)
 
-/*
- * 启动层退场与启动期揭示压制统一由 useStartupRevealSuppression 编排：boot 期首次外观应用
- * （占位 'system' → Go 快照真实外观）会命中 web-ui-theme 的揭示动画，把启动层当旧帧快照
- * 「收拢」进屏幕中心。suppressed 驱动 no-reveal 的存在/移除——绑定必须表达存在与移除，不能
- * 绑定 false（会被序列化成字符串 "false"，Lit Boolean converter 是存在即真），摘除条件见
- * composable docblock。
- */
+// 启动层退场与启动期揭示压制都由 useStartupRevealSuppression 编排；绑定的
+// 「存在/移除」契约与摘除条件见它的 docblock。
 const { suppressed } = useStartupRevealSuppression(() => settings.loaded)
 
 // 整页 scrollbar 接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
@@ -70,12 +65,8 @@ watch(
 </script>
 
 <template>
-  <!--
-    no-reveal 以「存在/移除」表达压制（Lit Boolean converter 是存在即真，绑定 false 会被
-    序列化成字符串 "false" 而恒真，手动切换的揭示动画会静默永久失效）。`suppressed ||
-    undefined` 是该契约的类型化模板写法：true → setAttribute('no-reveal','true') 仍为存在、
-    undefined → removeAttribute，与 `cond ? '' : null` 运行时语义相同。
-  -->
+  <!-- no-reveal 以「存在/移除」表达压制：`|| undefined` 不能省，直接绑 suppressed 会把
+       false 序列化成 "false" 而恒真。理由见 theme 组件的 noReveal 注释。 -->
   <web-ui-theme
     :appearance="settings.appearance"
     :motion="settings.reducedMotion ? 'reduced' : 'system'"
