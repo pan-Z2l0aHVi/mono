@@ -185,10 +185,11 @@ func isAppearance(value Appearance) bool {
 
 // Settings 是应用设置的持久化形态。字段名即设置文件的 key，改名等于换 schema。
 type Settings struct {
-	Appearance       Appearance `json:"appearance"`
-	Accent           string     `json:"accent"`
-	ReducedMotion    bool       `json:"reducedMotion"`
-	DeveloperOptions bool       `json:"developerOptions"`
+	Appearance            Appearance `json:"appearance"`
+	Accent                string     `json:"accent"`
+	ReducedMotion         bool       `json:"reducedMotion"`
+	DeveloperOptions      bool       `json:"developerOptions"`
+	MinimizeToTrayOnClose bool       `json:"minimizeToTrayOnClose"`
 	// Zoom 是界面缩放的百分比，只能取 zoomPresets 里的值。
 	Zoom int `json:"zoom"`
 }

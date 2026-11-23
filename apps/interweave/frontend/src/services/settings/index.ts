@@ -43,6 +43,7 @@ export const PLACEHOLDER_SNAPSHOT: Snapshot = {
   accent: '#0071e3',
   reducedMotion: false,
   developerOptions: false,
+  minimizeToTrayOnClose: false,
   zoom: 100,
   warnings: [],
   presets: [
@@ -69,6 +70,7 @@ export interface SettingsPatchInput {
   accent?: string
   reducedMotion?: boolean
   developerOptions?: boolean
+  minimizeToTrayOnClose?: boolean
   zoom?: number
 }
 
@@ -92,6 +94,7 @@ function toSnapshot(value: SnapshotDTO): Snapshot {
     accent: value.accent,
     reducedMotion: value.reducedMotion,
     developerOptions: value.developerOptions,
+    minimizeToTrayOnClose: value.minimizeToTrayOnClose,
     zoom: value.zoom,
     warnings: value.warnings ?? [],
     presets: value.presets,
@@ -112,13 +115,14 @@ class WailsSettingsRuntime implements SettingsRuntime {
   }
 
   async update(patch: SettingsPatchInput): Promise<Snapshot> {
-    // 生成类型要求五个字段都在，缺省显式写 null：Go 侧把 null 解释为「不改这一项」。
+    // 生成类型要求六个字段都在，缺省显式写 null：Go 侧把 null 解释为「不改这一项」。
     return toSnapshot(
       await SettingsService.UpdateSettings({
         appearance: (patch.appearance ?? null) as SnapshotDTO['appearance'] | null,
         accent: patch.accent ?? null,
         reducedMotion: patch.reducedMotion ?? null,
         developerOptions: patch.developerOptions ?? null,
+        minimizeToTrayOnClose: patch.minimizeToTrayOnClose ?? null,
         zoom: patch.zoom ?? null
       })
     )
@@ -147,6 +151,7 @@ class PreviewSettingsRuntime implements SettingsRuntime {
       ...(patch.accent === undefined ? {} : { accent: patch.accent }),
       ...(patch.reducedMotion === undefined ? {} : { reducedMotion: patch.reducedMotion }),
       ...(patch.developerOptions === undefined ? {} : { developerOptions: patch.developerOptions }),
+      ...(patch.minimizeToTrayOnClose === undefined ? {} : { minimizeToTrayOnClose: patch.minimizeToTrayOnClose }),
       ...(patch.zoom === undefined ? {} : { zoom: patch.zoom })
     }
     for (const listener of this.listeners) listener(this.snapshot)
@@ -167,6 +172,7 @@ export function isSnapshot(value: unknown): value is Snapshot {
   if (typeof snapshot.accent !== 'string') return false
   if (typeof snapshot.reducedMotion !== 'boolean') return false
   if (typeof snapshot.developerOptions !== 'boolean') return false
+  if (typeof snapshot.minimizeToTrayOnClose !== 'boolean') return false
   if (typeof snapshot.zoom !== 'number') return false
   if (!Array.isArray(snapshot.presets) || !Array.isArray(snapshot.appearances)) return false
   if (!Array.isArray(snapshot.zoomPresets)) return false

@@ -33,11 +33,12 @@ func TestLoadWithoutFileReturnsDefaults(t *testing.T) {
 func TestSaveThenLoadRoundTrips(t *testing.T) {
 	store, path := newTestStore(t)
 	want := Settings{
-		Appearance:       AppearanceDark,
-		Accent:           "#f54096",
-		ReducedMotion:    true,
-		DeveloperOptions: true,
-		Zoom:             110,
+		Appearance:            AppearanceDark,
+		Accent:                "#f54096",
+		ReducedMotion:         true,
+		DeveloperOptions:      true,
+		MinimizeToTrayOnClose: true,
+		Zoom:                  110,
 	}
 
 	if err := store.Save(want); err != nil {

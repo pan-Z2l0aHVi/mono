@@ -386,7 +386,9 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           <span
             class="inline-flex h-7 items-center text-xs leading-none text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
           >
-            {{ queue.length }} 项
+            <span
+              ><span class="font-mono tabular-nums">{{ queue.length }}</span> 项</span
+            >
           </span>
         </div>
 
@@ -536,7 +538,8 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
       @click="emit('submit')"
     >
       <web-ui-icon slot="prefix" :icon="akarIconsCircleCheck" />
-      {{ submitLabel }}
+      <span v-if="busy && progress.total > 0" class="font-mono tabular-nums">{{ submitLabel }}</span>
+      <template v-else>{{ submitLabel }}</template>
     </web-ui-button>
   </web-ui-dialog>
   <ResourceLinkDialog v-model:open="addUrlOpen" initial-value="" mode="add" @submit="emit('addUrl', $event)" />
