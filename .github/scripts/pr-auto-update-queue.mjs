@@ -3,7 +3,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { SPAWN_MAX_BUFFER, commandError } from './lib/github.mjs'
-import { REQUIRED_CONTEXT } from './lib/workflow-topology.mjs'
+import { CODEX_GATE_JOB_NAME, CODEX_REVIEW_JOB_NAME, REQUIRED_CONTEXT } from './lib/workflow-topology.mjs'
 
 export const DEFAULT_BASE_BRANCH = 'main'
 export const RUNNING_CHECK_STATUSES = Object.freeze(['queued', 'in_progress'])
@@ -127,16 +127,17 @@ export function selectNextPrToUpdate(
 
   const entries = eligible.map(pr => ({
     pr,
-    checkRun: resolveRequiredCheck(checkStatusBySha, pr.head.sha, checkName)
+    checkRun: resolveRequiredCheck(checkStatusBySha, pr.head.sha, checkName),
+    // gate 升 required 后，审查链的 review/gate 在途同样代表该 head 的证据尚未落定：
+    // 此时抢跑 update-branch 会触发 per-branch cancel-in-progress 取消在途审查，反复全量重跑。
+    reviewRun: resolveRequiredCheck(checkStatusBySha, pr.head.sha, CODEX_REVIEW_JOB_NAME),
+    gateRun: resolveRequiredCheck(checkStatusBySha, pr.head.sha, CODEX_GATE_JOB_NAME)
   }))
 
-  // 只要队列中已有非 behind、非 dirty 的 PR 正在跑 required check，立即停在 noop，绝不抢跑更新第二个 PR。
-  for (const { pr, checkRun } of entries) {
-    if (
-      pr.mergeable_state !== 'behind' &&
-      pr.mergeable_state !== 'dirty' &&
-      RUNNING_CHECK_STATUSES.includes(checkRun?.status)
-    ) {
+  // 只要队列中已有非 behind、非 dirty 的 PR 在跑 required check 或审查链任一环，立即停在 noop。
+  for (const { pr, checkRun, reviewRun, gateRun } of entries) {
+    const runningRun = [checkRun, reviewRun, gateRun].find(run => RUNNING_CHECK_STATUSES.includes(run?.status))
+    if (pr.mergeable_state !== 'behind' && pr.mergeable_state !== 'dirty' && runningRun) {
       const skipped = entries
         .filter(item => item.pr.number !== pr.number)
         .map(item => classifySkippedPr(item.pr, item.checkRun))
