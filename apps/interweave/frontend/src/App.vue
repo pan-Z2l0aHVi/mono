@@ -5,7 +5,7 @@ import { useOverlayScrollbars } from 'overlayscrollbars-vue'
 import { computed, onMounted, onScopeDispose, watch } from 'vue'
 
 import AppLayout from '@/components/AppLayout.vue'
-import { dismissStartupLayer, scheduleStartupTimeout } from '@/composables/startupLayer'
+import { useStartupRevealSuppression } from '@/composables/useStartupRevealSuppression'
 import { hasWailsRuntime } from '@/services/runtime'
 import { createSettingsRuntime } from '@/services/settings'
 import { onAccentFor, useSettingsStore } from '@/stores/settings'
@@ -20,22 +20,13 @@ const stopSettingsChanges = settingsRuntime.onChanged(snapshot => settings.apply
 onScopeDispose(stopSettingsChanges)
 
 /*
- * 启动层退场的两条路：设置就绪，或超时兜底。
- *
- * 必须等设置落定再撤——撤早了就是「先闪一帧默认主题，再跳成用户主题」，
- * 那正是这一层要解决的问题。超时兜底则是「读不到也不能把人永远挡在 logo 后面」。
+ * 启动层退场与启动期揭示压制统一由 useStartupRevealSuppression 编排：boot 期首次外观应用
+ * （占位 'system' → Go 快照真实外观）会命中 web-ui-theme 的揭示动画，把启动层当旧帧快照
+ * 「收拢」进屏幕中心。suppressed 驱动 no-reveal 的存在/移除——绑定必须表达存在与移除，不能
+ * 绑定 false（会被序列化成字符串 "false"，Lit Boolean converter 是存在即真），摘除条件见
+ * composable docblock。
  */
-const cancelStartupTimeout = scheduleStartupTimeout()
-const stopStartupWatch = watch(
-  () => settings.loaded,
-  loaded => {
-    if (!loaded) return
-    cancelStartupTimeout()
-    // 等一帧，让 theme 属性在同一帧内落到 DOM，再开始淡出。
-    requestAnimationFrame(() => dismissStartupLayer())
-    stopStartupWatch()
-  }
-)
+const { suppressed } = useStartupRevealSuppression(() => settings.loaded)
 
 // 整页 scrollbar 接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，
 // 只能直接初始化 body。资源库列表的 virtua WindowVirtualizer 读的是 document.scrollingElement
@@ -79,9 +70,16 @@ watch(
 </script>
 
 <template>
+  <!--
+    no-reveal 以「存在/移除」表达压制（Lit Boolean converter 是存在即真，绑定 false 会被
+    序列化成字符串 "false" 而恒真，手动切换的揭示动画会静默永久失效）。`suppressed ||
+    undefined` 是该契约的类型化模板写法：true → setAttribute('no-reveal','true') 仍为存在、
+    undefined → removeAttribute，与 `cond ? '' : null` 运行时语义相同。
+  -->
   <web-ui-theme
     :appearance="settings.appearance"
     :motion="settings.reducedMotion ? 'reduced' : 'system'"
+    :no-reveal="suppressed || undefined"
     :style="themeStyle"
   >
     <AppLayout />

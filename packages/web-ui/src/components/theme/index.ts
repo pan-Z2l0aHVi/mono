@@ -145,6 +145,18 @@ export class WebUiTheme extends LitElement {
   }
   private _motion: ThemeMotion = 'system'
 
+  /**
+   * 压制本层外观切换的揭示动画：存在时 appearance 照常提交（走「直接落地」分支），
+   * 但不启动 View Transition。面向宿主的启动期首次外观应用这类「非用户发起」的变更——
+   * 手动切换不应设置它。
+   *
+   * Lit Boolean converter 是「attribute 存在即真」：动态绑定必须以存在/移除表达
+   * （Vue 下 `:no-reveal="cond ? '' : null"`），绑定 `false` 会被序列化成
+   * `no-reveal="false"` 而恒真，导致揭示动画静默永久失效。
+   */
+  @property({ type: Boolean, reflect: true, attribute: 'no-reveal' })
+  noReveal = false
+
   private _transitionOriginListening = false
   /** 当前在途转场的 session（skip / 收尾信号）；无飞行时为 undefined。 */
   private _transitionSession?: ThemeTransitionSession
@@ -231,6 +243,7 @@ export class WebUiTheme extends LitElement {
   }
 
   private _shouldAnimateAppearance(next: ThemeAppearance, resolvedNext: ResolvedThemeAppearance): boolean {
+    if (this.noReveal) return false
     const previous = this._appearance
     if (!previous || previous === next) return false
     if (resolveAppearance(previous) === resolvedNext) return false

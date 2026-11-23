@@ -87,6 +87,15 @@ const meta = [
       { label: 'td', content: "<code>ThemeMotion</code>" },
       { label: 'td', content: "<code>'system'</code>" }
       ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>no-reveal</code>" },
+      { label: 'td', content: "Suppresses this scope's appearance-change reveal: presence takes effect, <code>appearance</code> still commits without starting a View Transition." },
+      { label: 'td', content: "<code>Boolean</code>" },
+      { label: 'td', content: "<code>false</code>" }
+      ]
     }
     ]
   },
@@ -150,6 +159,7 @@ const meta = [
   { label: 'p', content: "Whether a color scheme change plays a reveal is decided by the <code>motion</code> preset of the current theme scope: <code>full</code> always plays it, <code>reduced</code> switches immediately, and <code>system</code> follows <code>prefers-reduced-motion</code>." },
   { label: 'p', content: "The root theme reveals the whole page. A nested theme reveals only its own area. The reveal direction follows the resolved appearance, and the light and dark directions play in reverse." },
   { label: 'p', content: "These cases apply the new appearance immediately, with no reveal: an unsupported browser, a reduced-motion scope, a zero duration, or a reveal that is already running. OS light/dark switches under <code>appearance=\"system\"</code> do not animate." },
+  { label: 'p', content: "When the <code>no-reveal</code> attribute is present, the reveal is skipped as well: <code>appearance</code> still commits without starting a View Transition. It targets host-driven first-appearance applications at boot — changes not initiated by the user — and manual switches should not set it. Presence is the whole contract: toggle the attribute itself for dynamic binding (<code>:no-reveal=\"cond ? '' : null\"</code> in Vue). Binding <code>false</code> serializes to <code>no-reveal=\"false\"</code>, which reads as present and permanently kills the reveal." },
   { label: 'p', content: "During a root reveal, new pointer and keyboard activation and cancelable input events in the document are temporarily blocked. A nested reveal limits protection to its scope when possible, falling back to the document for events that cannot be attributed. Wheel input ends the reveal to restore scrolling. Programmatic assignments, browser shortcuts, and some input method operations are not covered." },
   { label: 'p', content: "The theme host draws no background. The component library does not paint a background on the host page, and the embedder keeps full control over the surface behind the theme subtree." },
   { label: 'h3', id: 'section-16', content: "The <code>motion</code> attribute" },
