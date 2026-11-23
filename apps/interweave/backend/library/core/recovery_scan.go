@@ -81,7 +81,8 @@ func (r *RecoveryScanRunner) Start(sourceIDs []string, directory string) (string
 	r.wg.Add(1)
 	go func() {
 		defer r.wg.Done()
-		defer close(running)
+		defer cancel()
+
 		err := r.scan(ctx, sourceIDs, directory, func(p RecoveryProgress, c *RecoveryCandidate) {
 			session.mu.Lock()
 			defer session.mu.Unlock()
@@ -92,14 +93,16 @@ func (r *RecoveryScanRunner) Start(sourceIDs []string, directory string) (string
 				session.update.Candidates = append(session.update.Candidates, *c)
 			}
 		})
+
 		session.mu.Lock()
-		defer session.mu.Unlock()
 		session.update.Done = true
 		session.update.Cancelled = errors.Is(err, context.Canceled)
 		if err != nil && !session.update.Cancelled {
 			session.update.Error = err.Error()
 		}
-		cancel()
+		// 必须在解锁前关闭 running，确保 Poll 观察到 Done == true 时后续 Start 的 <-r.running 已就绪。
+		close(running)
+		session.mu.Unlock()
 	}()
 	return scanID, nil
 }

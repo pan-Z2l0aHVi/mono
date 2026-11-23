@@ -3,6 +3,7 @@ package core
 import (
 	"context"
 	"errors"
+	"runtime"
 	"testing"
 	"time"
 )
@@ -192,5 +193,38 @@ func TestRecoveryRunnerUnknownIDErrors(t *testing.T) {
 	}
 	if err := r.Cancel("nope"); err == nil {
 		t.Fatal("expected cancel error")
+	}
+}
+
+func TestRecoveryRunnerStartImmediatelyAfterDonePoll(t *testing.T) {
+	r := NewRecoveryScanRunner(func(context.Context, []string, string, func(RecoveryProgress, *RecoveryCandidate)) error {
+		return nil
+	})
+	t.Cleanup(r.Shutdown)
+
+	const iterations = 1000
+	for i := range iterations {
+		scanID, err := r.Start(nil, "")
+		if err != nil {
+			t.Fatalf("iteration %d: Start failed immediately after previous Done poll: %v", i, err)
+		}
+
+		deadline := time.Now().Add(3 * time.Second)
+		for {
+			u, err := r.Poll(scanID)
+			if err != nil {
+				t.Fatalf("iteration %d: Poll failed: %v", i, err)
+			}
+			if u.Done {
+				if u.Cancelled || u.Error != "" {
+					t.Fatalf("iteration %d: unexpected terminal state: %+v", i, u)
+				}
+				break
+			}
+			if time.Now().After(deadline) {
+				t.Fatalf("iteration %d: timed out waiting for scan completion", i)
+			}
+			runtime.Gosched()
+		}
 	}
 }
