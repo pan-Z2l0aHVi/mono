@@ -347,9 +347,9 @@ function writeOutputs(values) {
 }
 
 /**
- * reviewTarget 的拒绝是「无对象可修」的预期出口，不是 apply 自己的故障：
- * 写回 run 由 CI completed 触发，可能晚于合并完成。绿色收尾并把原因写进 step summary，
- * 与 report 路径的 commandReport（拒绝时绿色退出）保持同一语义。
+ * 只有「PR 已 closed（含推送落地前刚被合并）」走这里：写回 run 由 CI completed 触发，必然晚于
+ * mergedAt，那一刻没有可修的对象。绿色收尾并把原因写进 step summary，与 report 路径的
+ * commandReport 同一语义。资格配置不匹配（base 不是 main、fork、版本分支）**不**走这里——它们是故障，保持红色。
  */
 function skipApply(reason) {
   appendStepSummary(
@@ -535,9 +535,9 @@ function commandApply() {
   const pull = adapter.pull(number)
   const target = reviewTarget({ pull, repository: env.GITHUB_REPOSITORY, releaseBranch: RELEASE_BRANCH })
   if (!target.ok) {
-    // 只有「PR 已经不再 open」是预期出口：写回 run 可能晚于合并完成。base 不是 main、fork、版本分支
-    // 属于资格配置不匹配，autofix 本不该为它们产出 patch——那是故障，保持红色可见。
-    if (pull?.state !== 'open') {
+    // 只有明确的 closed 是预期出口：写回 run 可能晚于合并完成。base 不是 main、fork、版本分支，
+    // 以及缺失/异常的 state，都属于不确定性——不确定就不许绿，一律保持红色。
+    if (pull?.state === 'closed') {
       skipApply(target.reason)
       return
     }
@@ -571,8 +571,8 @@ function commandApply() {
       `HEAD:refs/heads/${env.CODEX_AUTOFIX_HEAD_REF}`
     ])
   } catch (error) {
-    // reviewTarget 通过后、push 落地前的秒级窗口里 PR 可能刚被合并删分支：复查一次状态再定颜色，
-    // 确认已不再 open 才绿色收尾；仍 open 的 push 故障原样抛出，保持红色可见。
+    // reviewTarget 通过后、push 落地前的秒级窗口里 PR 可能刚被合并删分支：复查一次状态再定颜色。
+    // 只有明确的 closed 才绿色收尾；仍 open 或 state 不可读时 push 故障原样抛出，保持红色可见。
     let latestTarget
     let latestPull
     try {
@@ -587,7 +587,7 @@ function commandApply() {
       console.error(`push failed and the PR re-check also failed: ${recheckError.message}`)
       throw error
     }
-    if (!latestTarget.ok && latestPull?.state !== 'open') {
+    if (latestPull?.state === 'closed') {
       skipApply(`the pull request closed before the push landed: ${latestTarget.reason}`)
       return
     }

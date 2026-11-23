@@ -950,6 +950,12 @@ for (const file of [
   assert.match(wrongBase.result.stderr, /refusing to push: the PR base is release, not main/)
   assert.doesNotMatch(wrongBase.summary, /## Codex autofix 未应用/)
   assert.doesNotMatch(wrongBase.gitCalls, /^apply | commit| push origin/m)
+
+  // 不确定的 state（缺失或异常值）不能当成「已关闭」走绿：fail-closed 才是正确方向。
+  const unknownState = runApply({ commits: plainCommits(2), total: 2, pull: { state: 'unknown' } })
+  assert.equal(unknownState.result.status, 1, 'an unknown PR state must stay red')
+  assert.match(unknownState.result.stderr, /refusing to push: the pull request is unknown/)
+  assert.doesNotMatch(unknownState.summary, /## Codex autofix 未应用/)
   assert.deepEqual(pullIndexes.length, 1, 'apply reads the PR object exactly once')
   assert.ok(pullIndexes[0] > commitsIndex, 'the PR object snapshot is read after commit pagination')
   assert.match(pushed.gitCalls, /-c user\.name=codex -c user\.email=codex@openai\.com commit/)
