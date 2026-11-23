@@ -56,11 +56,14 @@ const GLOB_SEGMENT = /[*?[\]{}]/u
  * 容器目录，一律显式报错而不是静默跳过：`listPnpmWorkspaceManifests` 的 globSync 仍会匹配到那些包，
  * 静默跳过等于让边界与语料检查漏掉一批 workspace。
  *
- * 返回值不区分两类目录，消费方按「目录自身是否含 package.json」判定身份：有 package.json 即包
- * （只收它根部的入口文档与 README，其子目录不算 workspace），没有即容器（收直接子目录）。
+ * 返回值不区分两类目录，消费方按「目录自身是否含 package.json」判定身份：有 package.json 即包，
+ * 没有即容器。该判定只决定**各自扫描形状**，不改变遍历本身：
  *
- * 这是一条优先级规则而不是互斥判据：容器目录自身若带 package.json，会按包处理、其直接子目录不再扫描。
- * 这种「容器同时是包」的布局不受支持（要收子目录就不要再给容器放 package.json）。
+ * - 边界检查把「包内」的产物名子目录（`dist` / `build` / `coverage` / `__tests__`）整棵跳过，其余照常递归。
+ * - 语料与互指检查只收包根部的入口文档与 README，不再收它的子目录。
+ *
+ * 因此「容器同时是包」的布局不受支持：给容器放 package.json 会让它的产物名子包与子目录 README 被静默忽略。
+ * 要收子目录，就不要给容器放 package.json。
  */
 export function readPnpmWorkspaceDirectories(root: string): string[] {
   const directories = readPnpmWorkspacePatterns(root)
