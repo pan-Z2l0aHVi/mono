@@ -193,9 +193,11 @@ total 缺失/非法时按「无法验证」禁用自动修，不把 250 条 API 
   job `if` 不再排除任何 PR。GitHub 会为被 `if` 跳过的 job 上报 conclusion 为 skipped 的 check run，而 required
   检查把 skipped 计为通过——gate 的任何排除都是 fail-open（初版修订曾错误地认为「fork 排除保留 fail-closed」，
   #588 审查纠正）。fork 的 review skip 因此不得落入 not_applicable：`CODEX_REVIEW_NOT_APPLICABLE` 收窄为
-  「review skipped 且（同仓版本分支 或 check 未成功）」。版本分支（同仓）走内建 `not_applicable` 出口绿色退出，
-  version PR 合并不受阻；check 未成功时 review 的 `needs` 不满足，合并已由红的 required `check` 拦住，
-  gate 再报一次审查故障只是假警报。fork 缺产物判 `error` 红、不可合并——那是真正的 fail-closed 出口。
+  「同仓 且 review skipped 且（版本分支 或 check 未成功）」——同仓是整条表达式的前提，而不是只挂在版本分支
+  这一支上：fork 的 review 必然 skip，只把同仓条件挂在版本分支会让「fork + check 未成功」也拿到绿 gate。
+  版本分支（同仓）走内建 `not_applicable` 出口绿色退出，version PR 合并不受阻；check 未成功时 review 的
+  `needs` 不满足，合并已由红的 required `check` 拦住，gate 再报一次审查故障只是假警报。fork 缺产物判
+  `error` 红、不可合并——那是真正的 fail-closed 出口。
 - **证据载体迁移**：绑 head SHA、不可变的 required gate check 成为 per-head 审查证据的权威载体；持久评论允许在
   auto-merge 路径上落后一个 head，定位改为「open 状态下的审查轨迹与发现明细」。合并前核对以 gate check 为准，
   评论 sha 仅作人工合并路径的辅助。
