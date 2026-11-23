@@ -79,6 +79,24 @@ export default meta
 - `load` is a dynamic import, so the bundler can split it into its own chunk. It exists only when `lang` is listed in `exec`.
 - Identical code blocks share one file.
 
+## Runtime contract
+
+Browser code and tests that only read generated output should import from `@greypan/md-to-meta/contract` instead of the root entry. This subpath has zero runtime dependencies (it does not pull in `shiki` or `tinyglobby`) and exports:
+
+- Class constants: `MDM_CODE_CLASS`, `MDM_HEADING_CLASS`, `MDM_MARKDOWN_CLASS`, `MDM_MARKDOWN_SECONDARY_CLASS`, `LINE_NUMBER_CLASS`, `LINE_CLASS`
+- Helpers: `visibleText(html)` and `lineCountOf(html)`
+
+## CLI
+
+The package exposes a `md-to-meta` binary for headless verification and regeneration in CI:
+
+```bash
+md-to-meta check <app-dir>...
+md-to-meta write <app-dir>...
+```
+
+Each `<app-dir>/vite.config.ts` must export `mdToMetaOptions` (and optionally `mdToMetaAdditionalOptions`). `check` verifies freshness without writing; `write` regenerates the artifacts on disk.
+
 ## Generated files
 
 Commit the generated files. The host app owns `output/**`. The generator writes the meta modules, the declarations, `theme.css`, and the `codeblock` directory on each run.

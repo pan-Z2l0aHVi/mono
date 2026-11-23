@@ -2,7 +2,7 @@
 
 A desktop app for collecting and revisiting resources you want to find again. It is built with Wails 3: a Go backend and a Vue WebView frontend.
 
-Interweave references external content without taking it over. It does not copy, move, rename, or delete your files or web pages, and removing a resource only removes the library record. It has no accounts, cloud sync, full-disk scanning, or background availability polling.
+Interweave references external content without taking it over. It does not copy, move, rename, or delete your files or web pages, and removing a resource only removes the library record. It has no accounts, cloud sync, automatic full-disk indexing, or background availability polling.
 
 ## What it does
 

@@ -1,4 +1,4 @@
-# pi-rex-orchestrator
+# @greypan/pi-rex-orchestrator
 
 > Rex 会话内的 Pi 操作者 + agent 协调者：直接操作 Rex，把代码改动派发给 worker agent，跟踪状态并做全量验收。
 
@@ -74,6 +74,6 @@ pnpm --filter @greypan/pi-rex-orchestrator run link:pi      # 软链到 ~/.pi/ag
 pnpm --filter @greypan/pi-rex-orchestrator run link:pi -- --main   # 删除开发 worktree 前切回主仓库 main 常驻路径，防软链悬空
 ```
 
-开发与验收在临时沙箱仓库做（`git worktree` 创建/回收与 diff 验收不要拿主力 monorepo 联调）；端到端验收清单见方案阶段 4。
+开发与验收在临时沙箱仓库做（`git worktree` 创建/回收与 diff 验收不要拿主力 monorepo 联调）。
 
 清理内容落地分支时，探针先钉住 `refs/heads/<branch>` 的 tip，再对 merge-base 与 tip 之间的每条改动路径比较 base 的最终内容。路径列表使用 `--no-relative --no-renames`，每条 quiet diff 也显式使用 `--no-relative`：前者防止 `diff.relative` 在子目录 cwd 下改写、丢弃范围外路径或把范围外路径错误比较为空集，后者让重命名的删除侧与新增侧分别比较；这些来自 `git diff` 的仓库根相对路径统一用 `:(top,literal)` 解释，避免会话从子目录启动时错配。路径列表与每条 quiet diff 都必须完整且未截断，超过 200 条路径按无法判定处理。探针只读 Git 引用，不需要临时 index，也不读取主仓工作树。删除前必须完整读取 `git worktree list --porcelain`；若分支仍被任一 worktree 检出，或查询失败，则保留分支并说明原因。确认未检出后，再用 `git update-ref -d refs/heads/<branch> <tip>` 原子校验旧值；探针后分支已消失按清理完成，tip 变化时保留分支并重新询问，绝不升级为 `git branch -D`。

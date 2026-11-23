@@ -79,6 +79,24 @@ export default meta
 - `load` 是动态 import，方便打包器单独切分。只有 `lang` 出现在 `exec` 中时才存在。
 - 相同内容的代码围栏共享一个文件。
 
+## 运行时契约
+
+只读取生成产物的浏览器代码与测试应从 `@greypan/md-to-meta/contract` 导入，而不是根入口。该子路径零运行时依赖（不会把 `shiki`、`tinyglobby` 拖进浏览器图），导出：
+
+- 类名常量：`MDM_CODE_CLASS`、`MDM_HEADING_CLASS`、`MDM_MARKDOWN_CLASS`、`MDM_MARKDOWN_SECONDARY_CLASS`、`LINE_NUMBER_CLASS`、`LINE_CLASS`
+- 辅助函数：`visibleText(html)` 与 `lineCountOf(html)`
+
+## 命令行
+
+本包提供 `md-to-meta` 命令用于 CI 无头校验与产物追平：
+
+```bash
+md-to-meta check <app-dir>...
+md-to-meta write <app-dir>...
+```
+
+每个 `<app-dir>/vite.config.ts` 需具名导出 `mdToMetaOptions`（以及可选的 `mdToMetaAdditionalOptions`）。`check` 只校验产物新鲜度不写盘，`write` 重新写入磁盘产物。
+
 ## 生成文件
 
 生成文件需要提交。`output/**` 归宿主应用所有。每次运行时，生成器会写入 meta 模块、类型声明、`theme.css` 和 `codeblock` 目录。

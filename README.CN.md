@@ -8,7 +8,7 @@
 
 [English](./README.md) | 简体中文
 
-本仓库包含 npm 包、workspace 工具和集成应用，可直接配合 Claude、Codex、OpenCode 等 agent 工具使用。按需选择包，再阅读对应 README 了解安装、用法与 API。
+本仓库包含 npm 包、workspace 工具和集成应用，可直接配合 Claude、Codex、Pi、OpenCode 等 agent 工具使用。按需选择包，再阅读对应 README 了解安装、用法与 API。
 
 ## 发布到 npm 的包
 
@@ -33,17 +33,18 @@
 | [`@greypan/wuchale-vue`](./packages/wuchale-vue/README.md)                 | wuchale 的 Vue 单文件组件适配器。                                          |
 | [`@greypan/monorepo-kit`](./packages/monorepo-kit/README.md)               | 仓库检查、策略辅助与构建编排。                                             |
 | [`@greypan/pi-rex-orchestrator`](./packages/pi-rex-orchestrator/README.md) | Rex 操作者与 agent 协调者：直接控制 Rex，并派发、监督与验收 worker agent。 |
-| [`@greypan/doc-demo-kit`](./packages/doc-demo-kit)                         | React 与 Vue 文档 demo 共用的文档示例层。                                  |
+| [`@greypan/doc-demo-kit`](./packages/doc-demo-kit/README.md)               | React 与 Vue 文档 demo 共用的文档示例层。                                  |
+| [`@greypan/route-progress`](./packages/route-progress/README.md)           | 框架无关的路由跳转进度与通用延迟显隐状态机。                               |
 
 ## 应用
 
 这些应用不发布到 npm。它们是集成示例和可分发的终端软件：两个 Web demo 部署到 GitHub Pages，Interweave 通过 GitHub Releases 发布安装包。
 
-| 应用                                             | 技术栈                                           |
-| ------------------------------------------------ | ------------------------------------------------ |
-| [`react-web-ui-demo`](./apps/react-web-ui-demo/) | React 19、TanStack Router、Zustand、Tailwind CSS |
-| [`vue-web-ui-demo`](./apps/vue-web-ui-demo/)     | Vue 3、Vue Router、Pinia、Tailwind CSS           |
-| [`interweave`](./apps/interweave/)               | Wails 3 桌面应用，Go 后端与 Vue WebView 前端     |
+| 应用                                             | 技术栈                                                  |
+| ------------------------------------------------ | ------------------------------------------------------- |
+| [`react-web-ui-demo`](./apps/react-web-ui-demo/) | React 19、TanStack Router、TanStack Query、Tailwind CSS |
+| [`vue-web-ui-demo`](./apps/vue-web-ui-demo/)     | Vue 3、Vue Router、Pinia、TanStack Query、Tailwind CSS  |
+| [`interweave`](./apps/interweave/)               | Wails 3 桌面应用，Go 后端与 Vue WebView 前端            |
 
 ## 开发
 
