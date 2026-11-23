@@ -298,7 +298,7 @@ describe('全局等宽数字字体（mono-digits）', () => {
       expect(candidateMono[0]?.textContent?.trim()).toBe('1 MB')
       const modifiedText = candidateMono[1]?.textContent?.trim() ?? ''
       expect(modifiedText).toMatch(/2026[/.-]0?1[/.-]15|0?1[/.-]15[/.-]2026/)
-      expect(modifiedText).toMatch(/0?9:30/)
+      expect(modifiedText).toMatch(/(^|\D)0?9:30(:00)?(?:\s*AM)?$/)
     } finally {
       notification.mockRestore()
     }
