@@ -153,6 +153,55 @@ it('commit scopes collapse nested workspaces', async () => {
   )
 })
 
+it('allows workspaces without entry files when requireWorkspaceEntry is false while still checking existing ones', async () => {
+  const makeWorkspaceFixture = (withBrokenExistingEntry = false): string => {
+    const root = makeFixture()
+    write(root, 'packages/bare/package.json', `${JSON.stringify({ name: '@acme/bare', private: true })}\n`)
+    if (withBrokenExistingEntry) {
+      write(
+        root,
+        'packages/documented/package.json',
+        `${JSON.stringify({ name: '@acme/documented', private: true })}\n`
+      )
+      write(root, 'packages/documented/AGENTS.md', '# documented\n\n[broken](./missing.md)\n')
+    }
+    return root
+  }
+
+  const defaultRequired = defineContextCorpus({ ...options, workspaces: ['packages'] })
+  assert.match(
+    await failure(defaultRequired, makeWorkspaceFixture()),
+    /^md:[\s\S]*packages\/bare: workspace needs its own AGENTS\.md, or an ancestor directory that has one/
+  )
+
+  const optionalEntry = defineContextCorpus({
+    ...options,
+    workspaces: ['packages'],
+    requireWorkspaceEntry: false
+  })
+  assert.ok((await run(optionalEntry, makeWorkspaceFixture())).ok)
+
+  assert.match(
+    await failure(optionalEntry, makeWorkspaceFixture(true)),
+    /^md:[\s\S]*packages\/documented\/AGENTS\.md: broken local link \.\/missing\.md/
+  )
+})
+
+it('checks direct container workspaces named dist while skipping nested dist artifacts when requireWorkspaceEntry is enabled', async () => {
+  const root = makeFixture()
+  write(root, 'apps/dist/package.json', `${JSON.stringify({ name: '@acme/dist-app', private: true })}\n`)
+  write(root, 'apps/app-a/dist/package.json', `${JSON.stringify({ name: '@acme/nested-dist', private: true })}\n`)
+  write(
+    root,
+    'apps/app-a/coverage/package.json',
+    `${JSON.stringify({ name: '@acme/nested-coverage', private: true })}\n`
+  )
+
+  const withApps = defineContextCorpus({ ...options, workspaces: ['apps'] })
+  const error = await failure(withApps, root)
+  assert.match(error, /^md: failed with 1 error\(s\):\n- apps\/dist: workspace needs its own AGENTS\.md/)
+})
+
 afterAll(() => {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 })

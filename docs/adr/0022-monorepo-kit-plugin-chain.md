@@ -1,7 +1,7 @@
 # ADR-0022: monorepo-kit 判定改为嵌套 run 链
 
 - **Date**: 2026-11-06
-- **Revised**: 2026-11-22
+- **Revised**: 2026-11-22（端口哈希分槽）；2026-11-23（policy 入口按短路链与独立子链全量收集分层）
 - **Status**: 已接受
 
 ## 背景
@@ -20,9 +20,14 @@
 
 **`run` 零参。** `Run` 是包内唯一签名 `() => Promise<Result<void, string>>`。判定要的一切都在装配期就位：仓库事实经 `.make({ root, env })`，判据参数（changeset 的 `base`/`head`、壳文案的 `app`）经 `defineXxx(options)`。入参归零同时收掉两件事：`run` 同签名不再需要维护；`andThen` 也失去长成「两步吃同一份 opts」这种非 Rust 形状的理由。漏传参数从「编译期不拦的可选键」变成装配点当场的缺失。
 
-**归因只有前缀。** 链上没有判定名字，`Err` 文案的域名前缀是唯一抓手（`go:`、`git:`、`turbo:`、`md:`、`changeset:`、`pack:`、`script:`、`i18n:`）；异常由链尾 `defineCatch()` 收敛成 `throw: `。它包前面的 `run` 而不是 `andThen`，所以抛异常与 Promise 拒绝都收得到，也不让异常变成「跳过前面的判定」。能力层读不到权威输入时抛（如根 `turbo.json` 缺失），报成 `throw: …` 而不是域名前缀；判据是「空扫描会不会静默通过」：会静默通过的判定自己把空面报成该域的 `Err`，抛出必然失败的不在每份判定里重复存在性检查。
+**归因只有前缀。** 链上没有判定名字，`Err` 文案的域名前缀是唯一抓手（`go:`、`git:`、`turbo:`、`md:`、`changeset:`、`pack:`、`script:`、`i18n:`、`deps:`）；异常由链尾 `defineCatch()` 收敛成 `throw: `。它包前面的 `run` 而不是 `andThen`，所以抛异常与 Promise 拒绝都收得到，也不让异常变成「跳过前面的判定」。能力层读不到权威输入时抛（如根 `turbo.json` 缺失），报成 `throw: …` 而不是域名前缀；判据是「空扫描会不会静默通过」：会静默通过的判定自己把空面报成该域的 `Err`，抛出必然失败的不在每份判定里重复存在性检查。
 
 **装配期与运行期分开兜。** `.make()` 是 eager 的，装配期抛错不在 `defineCatch()` 射程内；触发层的 `scripts/checks/run-check.mjs` 把「装配 + 运行」包进回调，装配期错误收敛成 `throw: ` 一行 stderr 加 exit 1。`run()` 期的异常仍以链尾 `defineCatch()` 为主，`runCheck` 的 catch 只是漏挂时的格式兜底。
+
+**（2026-11-23 修订）policy 入口按延迟与诊断诉求分层。** 保持 `packages/monorepo-kit/src/runner/` 链协议零改动，`scripts/policies/shared-policies.mjs` 抽取两处共用的 6 条政策：
+
+- `check-pre-commit` 保持单条 `.use()` 短路链（6 条共享政策 + 末尾 `stagedClean` + `defineCatch()`），遇首错即快停，最小化本地提交延迟；
+- `check-policy` 先将 `fullCheckout` 置首位单独运行（稀疏工作区失败即停，避免假绿），随后遍历 `[...sharedPolicies, ...policyOnlyPolicies]` 逐项独立构造 `defineRunner().use(policy).use(defineCatch()).make(ctx).run()`，并用 `try/catch` 包裹 `.make(ctx)` 将同步装配异常记为 `throw: <msg>` 加入错误列表而不中断后续收集；默认全量收集全部失败并以 `\n` 拼成一个 `Err` 交由 `runCheck` 输出（传 `--fail-fast` 可切回首错即停），单轮 CI 即可暴露所有政策违规。入口的参数解析与聚合调度逻辑由 `scripts/checks/check-policy.test.mjs` 覆盖，入口测试边界见 `script-policy.md`。
 
 **root/env 由触发层注入。** `.make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })`；插件与能力目录一律不产出 root，workspace root 的解析在 `shared/` 有唯一实现。
 

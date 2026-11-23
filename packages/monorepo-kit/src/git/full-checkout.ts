@@ -7,7 +7,7 @@ import { defineGit, type GitApi } from './git'
 const { andThen, err, ok } = rust
 
 export interface FullCheckoutOptions {
-  /** 怎么把工作区恢复成全树，属于消费仓库的事实（本仓是 turbo-sparse-scope 的 `--restore`） */
+  /** 怎么把工作区恢复成全树，属于消费仓库的事实（本仓是 apps-sparse-checkout 的 `--restore`） */
   readonly remedy: string
 }
 

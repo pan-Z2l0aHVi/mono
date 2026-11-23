@@ -13,3 +13,4 @@ export {
   readPnpmWorkspacePatterns,
   type WorkspaceApi
 } from './workspace'
+export { defineWorkspaceDepBoundaries, type WorkspaceDepBoundariesOptions } from './workspace-dep-boundaries'

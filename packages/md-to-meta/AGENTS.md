@@ -17,5 +17,3 @@
 - 测试期只判不改：插件工厂实例化时把 `VITEST` 解析成显式 `mode: 'check' | 'write'` 一次，启动与 watcher 触发的重建共用同一个 mode、走同一个写入器——判据只贴在其中一条上，另一条就会在测试期改写工作区。配置就地写在宿主的 `vite.config.ts` 里，不另立配置文件，也不让 spec 去 import 整个 vite config（整文件求值会把插件工厂一并跑一遍）。
 - meta 模块必须 lint-clean：禁止匿名 default export，所以模块写成 `const meta = […]` + `export default meta`。code 文件逐字节来自围栏，不参与 lint 与 format——自动改写会破坏它与页面 `<pre>` 的一致性。
 - watch：input 命中的 markdown 即使不在 app root 的默认 watch 面里也要纳入，add / change / unlink 都重新生成，按批合并写入；去抖值与实现细节以源码为准。
-- `output/**` 是宿主的产物落点，本包只回一份 `GeneratedFile[]`；写盘与孤儿清扫由同一个 emitter 对宿主给定的目录执行。
-- `private` 包，不出包；宿主构建时经 turbo 的 `^build` 自动拿到新 `dist`，改引擎不必发版。

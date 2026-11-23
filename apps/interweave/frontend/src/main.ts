@@ -1,3 +1,5 @@
+// 必须是第一条导入：在 overlayscrollbars 求值前置空 ScrollTimeline（见模块内说明）。
+import './scroll-timeline-guard'
 import '@/assets/global.css'
 
 import { VueQueryPlugin } from '@tanstack/vue-query'
