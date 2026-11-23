@@ -61,10 +61,12 @@ function resolveExportTarget(packageDir, target) {
 
 function collectPackageDirs() {
   const workspaceGlobs = readPnpmWorkspaceDirectories(root)
-  const dirs = []
+  // 容器目录与字面量目录可能重叠（`packages/**` 加字面量 `packages/tools/cli`）：按 Set 去重，
+  // 否则同一个包会被审计两次、诊断重复输出。
+  const dirs = new Set()
   const visit = directory => {
     if (path.basename(directory) === 'node_modules') return
-    if (fs.existsSync(path.join(directory, 'package.json'))) dirs.push(directory)
+    if (fs.existsSync(path.join(directory, 'package.json'))) dirs.add(directory)
     for (const entry of fs.readdirSync(directory, { withFileTypes: true }))
       if (entry.isDirectory()) visit(path.join(directory, entry.name))
   }
@@ -72,7 +74,7 @@ function collectPackageDirs() {
     const base = path.join(root, glob)
     if (fs.existsSync(base)) visit(base)
   }
-  return dirs
+  return [...dirs]
 }
 
 function distAudit() {

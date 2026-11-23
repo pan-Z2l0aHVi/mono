@@ -15,9 +15,11 @@
 
 ### 门禁形态
 
-Codex 审查承担本仓默认的 PR review 结论（2026-11-06 起）。它是约定式门禁，不改 GitHub 分支保护：
-绿色只表示「这次运行有结论可读」，不表示「没问题」；结论、状态与故障信息写进 PR 上同一条持久评论，
-合并准入仍由人决定。绿色 CI 不证明 review 完成，结论也不证明 `check` 通过，两条同时成立才算审过。
+Codex 审查承担本仓默认的 PR review 结论（2026-11-06 起）。门禁形态在 2026-11-23 变更：`Codex review gate`
+成为 ruleset `main protection`（id 20240791）的 required check，由 GitHub 在合并入口拦截（见下文
+「2026-11-23 修订：门升级为 required check」）；在此之前的形态是约定式门禁。绿色只表示「这次运行有结论可读」，
+不表示「没问题」；结论、状态与故障信息写进 PR 上同一条持久评论。绿色 CI 不证明 review 完成，
+结论也不证明 `check` 通过，两条同时成立才算审过。
 现行红绿映射、状态语义与三档处置只在 `review.md` 定义，本 ADR 只记录取舍。
 
 `error` 只表示配置或调用故障（`config_missing`、`model_failed`、`artifact_missing`）；模型跑完没产出可用结论是
@@ -121,7 +123,8 @@ Wails `bindings/**`、单文件生成声明与 icon barrel。被滤除的路径�
 
 - 配置了 `CODEX_AUTOFIX_PUSH_TOKEN` 时，自动修推送的新提交会触发后续 checks 与审查门；未配置时回落
   `GITHUB_TOKEN`，新提交不触发 checks，需要人重跑 CI，结论对新 head 也随之过期。
-- 门是约定式的：绕开它只需忽略一次红叉。2026-11-06 起它是默认 PR review，忽略即等于合并未经审查的 PR。
+- 2026-11-06 起门就是默认 PR review；2026-11-23 起它还是 required check，绕开要改 ruleset 或用 `--admin`
+  （后者被 `review.md` 明令禁止）。「绕开只需忽略一次红叉」是 2026-11-23 之前的形态，已不再是现行代价。
 - 后台配置未填齐时每个 PR 都会红：配置成为可观测的门禁输入，代价是配置变更与门的颜色直接绑定。
 - 引入新可信子命令的 PR 自身无法完成审查（base 还是旧脚本，模型 job 会红），首次落地要先合入脚本再在后续 PR 验证。
 - 读写分居两个 workflow，读代码时看到的 YAML 不能解释全部行为；判据在 ADR 与机器断言里，不只在 CI 定义里。
@@ -176,15 +179,17 @@ total 缺失/非法时按「无法验证」禁用自动修，不把 250 条 API 
 
 - **问题与 token 选择**：个人仓开启 `strict`（Require branches to be up to date before merging）后，多 PR 并行合并会产生连环 `behind`；而默认 `GITHUB_TOKEN` 调用 `update-branch` 推送的 merge commit 不会触发新的 `pull_request` CI run（GitHub 防递归限制）。因此新增 `pr-auto-update-queue.yml`，在配置了单仓 GitHub App Secrets（`PR_QUEUE_APP_ID`、`PR_QUEUE_APP_PRIVATE_KEY`）时通过固定 SHA 的 `actions/create-github-app-token` 申请最小权限（`Contents: Read and write`、`Pull requests: Read and write`）短效 token 调用 `update-branch`，以 App 身份唤醒后续 `check` 与原生 auto-merge；未配置密钥时优雅跳过，不阻断既有流程。
 - **触发唤醒与同仓围栏**：工作流同时监听 `push`（`main`）、`pull_request_target`（`main`，`types: [auto_merge_enabled, auto_merge_disabled, ready_for_review, closed]`）、`workflow_run`（`CI` `completed`）与 `workflow_dispatch`，确保队头 PR 失败、关闭或取消 `auto-merge` 时及时唤醒队列推进下一个 `behind` PR，防止队列饥饿。job 级 `if` 与队列脚本 `pr-auto-update-queue.mjs` 共同执行同仓围栏：只允许 `push`、`workflow_dispatch`、同仓且 base 为 `main` 的 `pull_request_target`，以及同仓 `pull_request` 触发的 `workflow_run`；脚本只纳入 `open`、base 为 `main`、非 `draft`、作者已手动开启 `Enable auto-merge` 且 `head.repo.full_name === base.repo.full_name` 的同仓 PR（绝不触碰 fork PR，也不检出 PR head）。
-- **防雪崩状态机与后果**：状态机按 PR 编号 FIFO 排序：只要队列中已有非 `behind`、非 `dirty` 的 PR 正在运行 required `check`（`queued` / `in_progress`），立即 `noop` 不抢跑；对 `dirty`、`check` 失败/取消/超时（`failure` / `cancelled` / `timed_out`）与 `mergeable_state === 'unknown'` 明确记录并跳过避免死循环；每次最多推进第 1 个可用的 `behind` PR 并附 `expected_head_sha`，遇到 422（head 已变或冲突）时优雅记录并退出 0。多 PR 并行开启 auto-merge 时可按 FIFO 单头串行追平主干并触发确定性 `check` + 零增量复用；若出现文本冲突或单测失败会停在该 PR 等待作者修复，在队头退出或重开检查后由 `pull_request_target` / `workflow_run` 自动接续推进下一位 PR。
+- **防雪崩状态机与后果**：状态机按 PR 编号 FIFO 排序：只要队列中已有非 `dirty` 的 PR 正在运行 required `check` 或审查链（`Codex review` / `Codex review gate`）任一环（`queued` / `in_progress`），立即 `noop` 不抢跑——`behind` 也算在内，因为 `update-branch` 会换掉 head、把在途审查白跑一轮；对 `dirty`、`check` 失败/取消/超时（`failure` / `cancelled` / `timed_out`）与 `mergeable_state === 'unknown'` 明确记录并跳过避免死循环；每次最多推进第 1 个可用的 `behind` PR 并附 `expected_head_sha`，遇到 422（head 已变或冲突）时优雅记录并退出 0。多 PR 并行开启 auto-merge 时可按 FIFO 单头串行追平主干并触发确定性 `check` + 零增量复用；若出现文本冲突或单测失败会停在该 PR 等待作者修复，在队头退出或重开检查后由 `pull_request_target` / `workflow_run` 自动接续推进下一位 PR。
 
 ## 2026-11-23 修订：门升级为 required check
 
 ### 门禁形态（推翻「不改分支保护」）
 
-门从约定式升级为 GitHub required check：ruleset `main protection` 的 required checks 在 `check` 之外加入
-`Codex review gate`。上文本节与「后果」中「它是约定式门禁，不改 GitHub 分支保护」「绕开它只需忽略一次红叉」
-两句自本修订起不再成立——绕开 required gate 需要改 ruleset 或 `--admin`，后者被 `review.md` 明令禁止。
+决策：门从约定式升级为 GitHub required check。落地方式是 ruleset `main protection`（id 20240791）的
+required checks 在 `check` 之外加入 `Codex review gate`，2026-11-23 起按此配置运行。required 状态属于
+仓库设置、不在 diff 里，任何时刻以仓库 ruleset 为准（本记录只说明决策与落地方式，不充当配置快照）。
+上文本节与「后果」中「它是约定式门禁，不改 GitHub 分支保护」「绕开它只需忽略一次红叉」两句自本修订起
+不再成立——绕开 required gate 需要改 ruleset 或 `--admin`，后者被 `review.md` 明令禁止。
 
 - **动机**：auto-merge 只等 required `check` 变绿即触发，而 review 写回由 CI completed 触发、必然晚于
   `mergedAt`，实测 #581 在新 head 的 review 结论与 gate 变绿前 18–44 秒完成合并。人工纪律已在那个场景失效，

@@ -134,10 +134,11 @@ export function selectNextPrToUpdate(
     gateRun: resolveRequiredCheck(checkStatusBySha, pr.head.sha, CODEX_GATE_JOB_NAME)
   }))
 
-  // 只要队列中已有非 behind、非 dirty 的 PR 在跑 required check 或审查链任一环，立即停在 noop。
+  // 只要队列中已有非 dirty 的 PR 在跑 required check 或审查链任一环，立即停在 noop——behind 也算：
+  // update-branch 会以新 head 取代该 head，正在进行的审查随之被取消、白跑一轮。等它跑完再推进。
   for (const { pr, checkRun, reviewRun, gateRun } of entries) {
     const runningRun = [checkRun, reviewRun, gateRun].find(run => RUNNING_CHECK_STATUSES.includes(run?.status))
-    if (pr.mergeable_state !== 'behind' && pr.mergeable_state !== 'dirty' && runningRun) {
+    if (pr.mergeable_state !== 'dirty' && runningRun) {
       const skipped = entries
         .filter(item => item.pr.number !== pr.number)
         .map(item => classifySkippedPr(item.pr, item.checkRun))

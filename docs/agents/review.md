@@ -9,10 +9,10 @@
 ## 自动审查结论的效力
 
 CI 的 `check` 之后还有一道 Codex 审查门：它按本文的三档给发现，把结论写进 PR 上同一条持久评论。这道结论
-就是本仓默认的 PR review。仓库 ruleset **应当**把 `Codex review gate` 这个 check run 列为 required：
-配好后它是合并准入的机器判据（绑 head SHA、不可变），持久评论则是 open 状态下的审查轨迹与发现明细，
-auto-merge 路径上允许落后一个 head。required 状态属于仓库设置、不在 diff 里——核对以仓库 ruleset 为准
-（`gh api repos/<owner>/<repo>/rulesets`），不要从本文或 CI 定义推断。审查范围见下文「审查范围与生成物」；
+就是本仓默认的 PR review。合并门的要求是：`Codex review gate` 在当前 head 上绿才能合并——gate 一旦被
+ruleset 列为 required，它就是绑 head SHA、不可变的机器判据；持久评论则是 open 状态下的审查轨迹与发现明细，
+auto-merge 路径上允许落后一个 head。是否已列为 required 属于仓库设置、不在 diff 里：一律以仓库 ruleset 为准
+（`gh api repos/<owner>/<repo>/rulesets`），本文与 CI 定义都不构成证据。审查范围见下文「审查范围与生成物」；
 设计决策与代价见 [ADR-0021](../adr/0021-codex-review-gate.md)。
 
 - 结论绑定被审查的 head。`reviewed` 只覆盖那一份代码；head 变了结论就过期，`stale`、`unreviewed` 与 `not_applicable` 都不代表已审。

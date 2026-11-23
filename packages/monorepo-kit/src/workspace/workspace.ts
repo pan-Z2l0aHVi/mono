@@ -52,9 +52,20 @@ const GLOB_SEGMENT = /[*?[\]{}]/u
 
 /**
  * `pnpm-workspace.yaml` 里 glob 模式指向的容器目录与字面量模式指向的 workspace 目录本身，按码位排序。
- * 只读配置、不扫盘。glob 段落在模式开头的（如 `{apps,packages}/*`、`** /pkgs`）无法命名一个容器目录，
- * 一律显式报错而不是静默跳过：`listPnpmWorkspaceManifests` 的 globSync 仍会匹配到那些包，
+ * 只读配置、不扫盘。glob 段落在模式开头的（如 `{apps,packages}/*`、双星开头的 `pkgs` 匹配）无法命名一个
+ * 容器目录，一律显式报错而不是静默跳过：`listPnpmWorkspaceManifests` 的 globSync 仍会匹配到那些包，
  * 静默跳过等于让边界与语料检查漏掉一批 workspace。
+ *
+ * 返回值不区分两类目录，消费方按「目录自身是否含 package.json」判定身份：有 package.json 即包，
+ * 没有即容器。该判定只决定**各自扫描形状**，不改变遍历本身：
+ *
+ * - 边界检查（`defineWorkspaceDepBoundaries`）把「包内」的产物名子目录（`dist` / `build` / `coverage` /
+ *   `__tests__`）整棵跳过，其余照常递归。
+ * - 语料检查（`defineContextCorpus`）递归收集包内的入口文档（如 `AGENTS.md`），但工作区 README 只收包根部的那个。
+ * - 互指检查（`defineNoMutualLinks`）对包只收根部的 shallow 文件，容器才按直接子目录收。
+ *
+ * 于是「容器同时是包」的布局会被按包处理：它的产物名子包不再进依赖图，子目录 README 与 shallow 文件
+ * 也不再入语料（入口文档仍递归）。要让这些子目录参与检查，就不要给容器本身放 package.json。
  */
 export function readPnpmWorkspaceDirectories(root: string): string[] {
   const directories = readPnpmWorkspacePatterns(root)
