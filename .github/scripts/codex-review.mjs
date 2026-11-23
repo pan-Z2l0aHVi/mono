@@ -780,7 +780,8 @@ export function renderConclusion({
     // 或清单里本来就有非零档位（空壳结论会带着模型看到的 findings）时才列。
     ...(countsTotal > 0 || conclusion.status === 'reviewed' || conclusion.status === 'stale' ? [countsLine] : []),
     '- 合并判据：`Block`、`error` 与「未审查」让 `codex-gate` 变红；已过时与不适用不拦合并，但结论不覆盖当前 head。',
-    '- 这是约定式门禁，GitHub 没有把它设为必需检查；合并前按 `docs/agents/review.md` 核对。'
+    // ruleset 的 required 状态是仓库设置，会随配置变化：评论只写判据本身，不硬编码远端状态。
+    '- 合并前以当前 head 上 `Codex review gate` 的结论为准；本评论是审查轨迹与发现明细，auto-merge 路径上可能落后于最新 head。'
   ]
   if (meta?.review_start_sha && meta.review_start_sha !== meta.merge_base_sha)
     lines.push(`- 增量基线：${codeSpan(meta.review_start_sha)}；累计 ${meta.review_lineage?.length ?? 0} 轮历史记录`)
