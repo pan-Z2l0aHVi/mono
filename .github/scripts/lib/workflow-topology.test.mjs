@@ -21,6 +21,8 @@ import {
 import {
   CODEX_CONFIG_ENV,
   CODEX_CONFIG_INPUTS,
+  CODEX_GATE_JOB_NAME,
+  CODEX_REVIEW_JOB_NAME,
   RELEASE_BRANCH,
   REQUIRED_CONTEXT,
   codexConfigInputViolations,
@@ -715,6 +717,31 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       'codex-autofix-plan': eligibilityGuard
     }
     const eligibleJobs = Object.keys(eligibilityGuards)
+
+    // 队列的忙碌判定按 check run 名匹配，名字来自脚本常量；改名却不同步常量会让它静默失效
+    // （找不到 run 就当不忙，update-branch 重新取消在途审查）。这里把常量钉在 ci.yml 的 job 名上。
+    const jobNameBindings = {
+      'codex-review': CODEX_REVIEW_JOB_NAME,
+      'codex-gate': CODEX_GATE_JOB_NAME
+    }
+    const assertJobNameBindings = text => {
+      const workflow = parseWorkflow(text)
+      for (const [jobId, expected] of Object.entries(jobNameBindings)) {
+        assert.equal(
+          workflow.jobs[jobId]?.name,
+          expected,
+          `${jobId} must keep the job name the queue matches (${expected})`
+        )
+      }
+    }
+    assertJobNameBindings(ci)
+    for (const [jobId, expected] of Object.entries(jobNameBindings)) {
+      assert.throws(
+        () => assertJobNameBindings(ci.replace(`name: ${expected}`, `name: ${expected} renamed`)),
+        /must keep the job name the queue matches/,
+        `renaming ${jobId} without updating the constant must fail the assertion`
+      )
+    }
 
     function assertEligibilityGuards(text) {
       const workflow = parseWorkflow(text)
