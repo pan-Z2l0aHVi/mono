@@ -27,7 +27,8 @@ it('workspace directories follow the package patterns', () => {
   ])
   try {
     // glob 模式取其容器目录前缀（嵌套容器保留整段）；字面量模式声明的就是 workspace 目录本身，
-    // 必须保留，否则它逃过以容器目录为扫描面的边界与语料检查。glob 开头的模式无容器前缀，不产生目录。
+    // 必须保留，否则它逃过以容器目录为扫描面的边界与语料检查。glob 落在模式首段的没有可判定的容器，
+    // 由下一个用例断言显式报错（不是静默丢弃）。
     // `./` 段被归一化掉（否则 `tools/` 前缀的方向判定匹配不到），`{}` 与 `*` 一样按 glob 处理。
     assert.deepEqual(readPnpmWorkspaceDirectories(root), [
       'apps',
