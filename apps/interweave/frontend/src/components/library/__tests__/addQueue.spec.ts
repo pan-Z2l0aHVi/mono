@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { effect } from 'vue'
 
 import { ResourceLocationMatchDTO } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import {
@@ -682,6 +683,35 @@ describe('library add queue progress', () => {
     ).rejects.toThrow('创建失败')
 
     expect(queue.progress.value).toEqual({ done: 0, total: 2 })
+  })
+})
+
+describe('library add queue reactivity', () => {
+  it('索引写入经响应式代理：改名、标签与预览回填都会触发依赖', async () => {
+    const prepare = deferred<{ kind: ResourceKind; token: string; media_url: string }>()
+    const queue = createQueue(createRuntime({ prepareFilePreview: () => prepare.promise }))
+    await queue.enqueueFileLocations(['/tmp/a.png'])
+    const itemId = queue.queue.value[0]!.id
+
+    const snapshots: string[] = []
+    // 无 scheduler 的 effect 默认同步执行，写入会立即重新跑一遍。
+    const stop = effect(() => {
+      const item = queue.queue.value[0]
+      snapshots.push(`${item?.title}|${item?.tags.join('+')}|${item?.mediaUrl ?? '-'}`)
+    })
+    queue.renameItem(itemId, 'renamed')
+    queue.setItemTags(itemId, ['work', 'draft'])
+    prepare.resolve({
+      kind: ResourceKind.ResourceKindImage,
+      token: 'opaque-token',
+      media_url: '/pending-resource-media/opaque-token'
+    })
+    await queue.waitForPreview(itemId)
+    stop()
+
+    // push 会把入参 toRaw 落盘，索引若存原始对象，这三类更新都不会触发上面的 effect。
+    expect(snapshots[0]).toBe('a||-')
+    expect(snapshots.at(-1)).toBe('renamed|work+draft|/pending-resource-media/opaque-token')
   })
 })
 

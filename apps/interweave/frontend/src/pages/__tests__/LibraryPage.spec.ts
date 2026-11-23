@@ -21,7 +21,7 @@ import {
   MENU_REFRESH_EVENT,
   MENU_TOGGLE_FILTER_BAR_EVENT
 } from '../../composables/menuActions'
-import { queueWindowFileDrop } from '../../composables/windowFileDrop'
+import { queueWindowFileDrop, queueWindowURLDrop } from '../../composables/windowFileDrop'
 import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../../services/library'
 import { useLibraryStore } from '../../stores/library'
 import LibraryPage from '../library/index.vue'
@@ -1026,6 +1026,82 @@ describe('LibraryPage：统一导入入口', () => {
 
       gate.resolve()
       await flush()
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('提交进行中拖入链接被挡下并提示，不入队', async () => {
+    const gate = deferred<void>()
+    runtimeStub.current = createRuntime({
+      resources: { create: async () => gate.promise.then(() => resource()) }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      queueWindowFileDrop(['/tmp/first.png'])
+      await flush()
+      expect(queueItems(mounted.host)).toHaveLength(1)
+
+      // 提交挂起时窗口拖入链接：快照之外的新项会被 close() 丢弃，入口必须挡下。
+      button(mounted.host, '确认导入').click()
+      await flush()
+      queueWindowURLDrop(['https://example.com/late'])
+      await flush()
+
+      expect(toastWarning).toHaveBeenCalledWith('正在导入当前批次，请等它完成再继续添加', { position: 'top-center' })
+      expect(queueItems(mounted.host)).toHaveLength(1)
+
+      gate.resolve()
+      await flush()
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('展开在途时提交开始：展开返回后不再入队', async () => {
+    const expandGate = deferred<string[]>()
+    const createGate = deferred<void>()
+    const create = vi.fn<LibraryRuntime['resources']['create']>(async () => {
+      await createGate.promise
+      return resource()
+    })
+    let gated = false
+    runtimeStub.current = createRuntime({
+      resources: {
+        expandImportEntries: async paths => (gated ? expandGate.promise : paths),
+        create
+      }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      queueWindowFileDrop(['/tmp/first.png'])
+      await flush()
+      expect(queueItems(mounted.host)).toHaveLength(1)
+
+      // 第二次拖入的展开被 gate 拖住；用户在这段时间里点了提交（create 也被拖住）。
+      gated = true
+      queueWindowFileDrop(['/tmp/slow'])
+      await flush()
+      button(mounted.host, '确认导入').click()
+      await flush()
+      expect(create).toHaveBeenCalledTimes(1)
+
+      // 展开返回时提交仍在进行：这一批必须被挡下，而不是塞进正在结算的队列。
+      expandGate.resolve(['/tmp/slow/a.png'])
+      await vi.waitFor(() =>
+        expect(toastWarning).toHaveBeenCalledWith('正在导入当前批次，请等它完成再继续添加', {
+          position: 'top-center'
+        })
+      )
+      expect(queueItems(mounted.host)).toHaveLength(1)
+
+      createGate.resolve()
+      await flush()
+      expect(queueItems(mounted.host)).toHaveLength(0)
     } finally {
       await mounted.close()
     }

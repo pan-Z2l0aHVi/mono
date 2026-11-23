@@ -106,8 +106,8 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
   }
 
   function replaceItem(itemId: string, update: (item: LibraryQueueItem) => LibraryQueueItem) {
-    // 大批次下每项都会走这里：经索引定位并原位合并（ref 深层响应式追踪嵌套变更），
-    // 避免整表复制随项数平方增长。
+    // 大批次下每项都会走这里：经索引定位并原位合并，避免整表复制随项数平方增长。
+    // 索引里必须存响应式代理：push 会对入参执行 toRaw，直接改原始对象不触发任何依赖。
     const current = queueById.get(itemId)
     if (!current) return
     Object.assign(current, update(current))
@@ -209,7 +209,9 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
         mediaUrl: null
       }
       queue.value.push(item)
-      queueById.set(item.id, item)
+      // 从 ref 读回的就是代理：保存它，后续 replaceItem 的原位写入才会触发依赖。
+      const stored = queue.value[queue.value.length - 1]!
+      queueById.set(stored.id, stored)
       queued.add(location)
       // 只有文件能本地准备预览，URL 的入口要等后端抓过才知道它是什么。
       if (kind === 'file') prepareItem(item)

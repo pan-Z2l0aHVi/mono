@@ -144,7 +144,7 @@ watch(
     addError.value = ''
     addOpen.value = true
     for (const urls of batches) {
-      for (const url of urls) void addQueue.enqueueURL(url)
+      for (const url of urls) requestAddURL(url)
     }
   },
   { immediate: true }
@@ -486,13 +486,25 @@ async function pasteFilePaths(clipboardText?: string) {
     if (!addOpen.value) return
     const url = normalizeLibraryURL(text)
     if (url) {
-      await addQueue.enqueueURL(url)
+      requestAddURL(url)
       return
     }
     toast.warning('剪切板中没有可导入的文件或有效链接', { position: 'top-center' })
   } catch {
     toast.warning('无法读取剪切板，请重试', { position: 'top-center' })
   }
+}
+
+/**
+ * 统一挡下提交期间的链接入队：窗口拖入与粘贴文本都不经 enqueueImportEntries，
+ * 提交按快照结算、成功时整队清空，期间入队的链接会被静默丢弃。
+ */
+function requestAddURL(url: string) {
+  if (submitting.value) {
+    toast.warning('正在导入当前批次，请等它完成再继续添加', { position: 'top-center' })
+    return
+  }
+  void addQueue.enqueueURL(url)
 }
 
 /** 单批导入的确认阈值：超过该数量先弹确认——成批纳入是一笔大写，需要一次显式放行。 */
@@ -512,6 +524,11 @@ async function enqueueImportEntries(entries: string[]) {
   }
   const paths = await runtime.resources.expandImportEntries(entries)
   if (!addOpen.value) return
+  // 大目录展开可能跨过用户点提交的时刻：返回后复查一次，别把这一批塞进正在结算的队列。
+  if (submitting.value) {
+    toast.warning('正在导入当前批次，请等它完成再继续添加', { position: 'top-center' })
+    return
+  }
   if (!paths.length) {
     toast.warning('所选内容里没有可导入的文件', { position: 'top-center' })
     return
@@ -819,7 +836,7 @@ onMounted(() => {
     :previews="previewEntries"
     :progress="importProgress"
     @pick-files="pickFiles"
-    @add-url="addQueue.enqueueURL"
+    @add-url="requestAddURL"
     @request-file-paths="pasteFilePaths"
     @remove="addQueue.removeItem"
     @rename="renameQueueItem"
