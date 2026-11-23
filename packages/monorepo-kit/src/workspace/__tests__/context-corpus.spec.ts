@@ -140,6 +140,12 @@ it('literal workspaces are covered as workspace roots themselves', async () => {
   write(readme, 'tools/cli/AGENTS.md', '# cli\n')
   write(readme, 'tools/cli/README.md', '# cli\n\n自动更新尚未实现。\n')
   assert.match(await failure(literal, readme), /tools\/cli\/README\.md: volatile snapshot phrase/)
+
+  // 容器目录（自身没有 package.json）的根级 README 不进指令面：那是容器，不是 workspace 包。
+  const container = defineContextCorpus({ ...options, workspaces: ['packages'] })
+  const containerRoot = makeFixture()
+  write(containerRoot, 'packages/README.md', '# packages\n\n自动更新尚未实现。\n')
+  assert.ok((await run(container, containerRoot)).ok)
 })
 
 it('commit scopes collapse nested workspaces', async () => {

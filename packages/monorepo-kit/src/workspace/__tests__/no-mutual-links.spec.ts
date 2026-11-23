@@ -137,17 +137,33 @@ it('no-mutual-links', async () => {
 it('literal workspace directories contribute their own shallow files', async () => {
   const literal = defineNoMutualLinks({
     ...options,
-    workspaces: [{ directory: 'tools/cli', deep: [], shallow: ['README.md'] }],
+    workspaces: [
+      { directory: 'tools/cli', deep: [], shallow: ['README.md'] },
+      { directory: 'packages', deep: ['notes.md'], shallow: ['index.md'] }
+    ],
     forbiddenDirections: [
       ...(options.forbiddenDirections ?? []),
       { from: 'tools/', to: '.agents/rules/', label: 'workspace-to-rules' }
     ]
   })
   const root = makeFixture()
+  write(root, 'tools/cli/package.json', '{}\n')
   write(root, 'tools/cli/README.md', '[rule](../../.agents/rules/x.md)\n')
   write(root, '.agents/rules/x.md', '# rule\n')
   // 目录自身的 README（而非子目录里的）必须进语料：shallow 只扫子目录会漏掉字面量包。
   assert.match(await failure(literal, root), /^md:[\s\S]*workspace-to-rules link forbidden/)
+
+  // 容器目录（自身没有 package.json）的根级 README 不进语料：那是容器，不是 workspace。
+  const container = defineNoMutualLinks({
+    ...options,
+    workspaces: [{ directory: 'packages', deep: ['notes.md'], shallow: ['README.md'] }]
+  })
+  const containerRoot = makeFixture()
+  write(containerRoot, 'docs/agents/a.md', '[b](b.md)\n')
+  write(containerRoot, 'docs/agents/b.md', '# b\n')
+  write(containerRoot, '.agents/rules/x.md', '# rule\n')
+  write(containerRoot, 'packages/README.md', '[rule](../.agents/rules/x.md)\n')
+  assert.ok((await kit(container, containerRoot)).ok)
 })
 
 afterAll(() => {

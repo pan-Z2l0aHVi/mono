@@ -403,9 +403,12 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
                 walk(directory, file => path.basename(file) === options.entry)
               ),
               // workspace README 与包级入口文档同属指令面，但只能列一层：walk 会连 node_modules 与 dist 一起吞进来。
-              // 字面量 workspace（目录自身即包）的 README 在目录根部，容器型目录该文件通常不存在，存在即收。
+              // 目录自身就是包（含 package.json，即字面量 workspace）时，README 在目录根部而非子目录里；
+              // 容器目录没有这一层，收集它会静默扩大指令面，所以按 package.json 判据收窄。
               ...options.workspaces.flatMap(directory =>
-                exists(`${directory}/README.md`) ? [path.join(root, directory, 'README.md')] : []
+                exists(`${directory}/package.json`) && exists(`${directory}/README.md`)
+                  ? [path.join(root, directory, 'README.md')]
+                  : []
               ),
               ...options.workspaces.flatMap(directory =>
                 exists(directory)

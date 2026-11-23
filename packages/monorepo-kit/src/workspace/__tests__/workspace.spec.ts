@@ -16,11 +16,28 @@ function workspaceFixture(packages: readonly string[]): string {
 }
 
 it('workspace directories follow the package patterns', () => {
-  const root = workspaceFixture(['apps/**', 'packages/*', 'services/api/**', '!apps/legacy', 'tools/cli', '**/pkgs'])
+  const root = workspaceFixture([
+    'apps/**',
+    'packages/*',
+    'services/api/**',
+    '!apps/legacy',
+    'tools/cli',
+    './tools/gen',
+    'tools/{a,b}',
+    '**/pkgs'
+  ])
   try {
     // glob 模式取其容器目录前缀（嵌套容器保留整段）；字面量模式声明的就是 workspace 目录本身，
     // 必须保留，否则它逃过以容器目录为扫描面的边界与语料检查。glob 开头的模式无容器前缀，不产生目录。
-    assert.deepEqual(readPnpmWorkspaceDirectories(root), ['apps', 'packages', 'services/api', 'tools/cli'])
+    // `./` 段被归一化掉（否则 `tools/` 前缀的方向判定匹配不到），`{}` 与 `*` 一样按 glob 处理。
+    assert.deepEqual(readPnpmWorkspaceDirectories(root), [
+      'apps',
+      'packages',
+      'services/api',
+      'tools',
+      'tools/cli',
+      'tools/gen'
+    ])
   } finally {
     fs.rmSync(root, { recursive: true, force: true })
   }
