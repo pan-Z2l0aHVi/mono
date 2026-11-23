@@ -12,7 +12,7 @@
 | `@greypan/doc-demo-kit/testing`          | 语料契约测试辅助：`runExampleDocsContractTests` 与 `runNavCorpusContractTests`                                                                           |
 | `@greypan/doc-demo-kit/testing.viewport` | 视口与布局测试辅助                                                                                                                                       |
 
-运行时只依赖 `@greypan/md-to-meta/contract` 的纯契约常量与文本辅助，不引入 `@greypan/md-to-meta` 根入口的生成期依赖。
+源码运行时只从 `@greypan/md-to-meta/contract` 导入纯契约常量与文本辅助，不从 `@greypan/md-to-meta` 根入口引入生成期依赖。
 
 ## Tailwind 接入
 
