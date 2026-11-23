@@ -102,6 +102,35 @@ export const metadataRowClass =
 export const metadataLabelClass = 'shrink-0 text-xs leading-5 text-[#8a8a94] dark:text-(--wui-color-text-secondary)'
 export const metadataValueClass =
   'min-w-0 truncate text-right text-xs leading-5 text-[#22212a] dark:text-(--wui-color-text)'
+export const monoDigitsClass = 'font-mono tabular-nums'
+
+export interface TextSegment {
+  text: string
+  numeric: boolean
+}
+
+/**
+ * 将含数字的动态文案拆分为普通文本与数字片段（支持小数、千分位及 `done / total` 进度比值），
+ * 便于仅对数字应用等宽字体而不改变周围中文排版。
+ */
+export function splitNumericSegments(text: string): TextSegment[] {
+  if (!text) return []
+  const segments: TextSegment[] = []
+  const pattern = /\d[\d.,]*(?:\s*\/\s*\d[\d.,]*)*/g
+  let lastIndex = 0
+  for (const match of text.matchAll(pattern)) {
+    const index = match.index
+    if (index > lastIndex) {
+      segments.push({ text: text.slice(lastIndex, index), numeric: false })
+    }
+    segments.push({ text: match[0], numeric: true })
+    lastIndex = index + match[0].length
+  }
+  if (lastIndex < text.length) {
+    segments.push({ text: text.slice(lastIndex), numeric: false })
+  }
+  return segments
+}
 
 export function resourceIcon(kind: ResourceKind) {
   return KIND_ICONS[kind] ?? KIND_ICONS.file

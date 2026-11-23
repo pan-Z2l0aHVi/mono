@@ -560,6 +560,24 @@ describe('AddDialog', () => {
     }
   })
 
+  it('待导入计数与提交进度数字使用等宽字体', async () => {
+    const mounted = mountDialog(
+      [queueItem({ id: 'q1' }), queueItem({ id: 'q2' })],
+      {},
+      { busy: true, progress: { done: 1, total: 2 } }
+    )
+
+    try {
+      await nextTick()
+      const monoSpans = [...mounted.host.querySelectorAll<HTMLElement>('.font-mono.tabular-nums')]
+      const texts = monoSpans.map(el => el.textContent?.trim())
+      expect(texts).toContain('2')
+      expect(texts).toContain('1 / 2')
+    } finally {
+      mounted.close()
+    }
+  })
+
   // 高度契约（--wui-dialog-max-height 语义）不在 jsdom 里钉 CSS 值：具体高度由浏览器
   // 验证与 packages/web-ui 的 dialog-content-height.browser.spec.ts 覆盖（test-authoring §4）。
 })

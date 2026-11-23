@@ -2,6 +2,7 @@
 import type { WebUiDialog, WebUiEvent } from '@greypan/web-ui'
 
 import ErrorBanner from './ErrorBanner.vue'
+import { monoDigitsClass, splitNumericSegments } from './presentation'
 
 const props = defineProps<{
   open: boolean
@@ -46,13 +47,21 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   >
     <div slot="header">{{ title }}</div>
     <ErrorBanner :message="error" />
-    <p class="m-0 text-[14px] leading-6 text-[#5b5b66] dark:text-(--wui-color-text-secondary)">{{ message }}</p>
+    <p class="m-0 text-[14px] leading-6 text-[#5b5b66] dark:text-(--wui-color-text-secondary)">
+      <template v-for="(segment, index) in splitNumericSegments(message)" :key="index">
+        <span v-if="segment.numeric" :class="monoDigitsClass">{{ segment.text }}</span>
+        <template v-else>{{ segment.text }}</template>
+      </template>
+    </p>
     <div slot="footer" class="flex gap-3">
       <web-ui-button full variant="secondary" :disabled="busy && !busyCancelLabel" @click="emit('cancel')">
         {{ busy && busyCancelLabel ? busyCancelLabel : '取消' }}
       </web-ui-button>
       <web-ui-button full :variant="danger ? 'danger' : 'primary'" :loading="busy" @click="emit('confirm')">
-        {{ confirmLabel }}
+        <template v-for="(segment, index) in splitNumericSegments(confirmLabel)" :key="index">
+          <span v-if="segment.numeric" :class="monoDigitsClass">{{ segment.text }}</span>
+          <template v-else>{{ segment.text }}</template>
+        </template>
       </web-ui-button>
     </div>
   </web-ui-dialog>
