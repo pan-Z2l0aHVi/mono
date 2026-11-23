@@ -1,5 +1,17 @@
 # @greypan/web-ui
 
+## 14.2.0
+
+### Minor Changes
+
+- 1f63434: `web-ui-drawer` now supports double-clicking the drag handle (`.wui-drawer-drag-zone` and `.wui-drawer-drag-edge`) when `fullable` and `draggable` are enabled to toggle between the viewport-filling full state and the default size, staying consistent with drag-to-full gestures, nested drawer stacking, and reduced-motion behavior.
+- 841a139: `web-ui-theme` gains a `no-reveal` attribute: when present, appearance changes commit directly through the existing no-animation path without starting the circular view-transition reveal. It targets host-driven first-appearance applications at boot, such as applying the real appearance from an async settings snapshot before the startup layer dismisses. Presence is the whole contract — dynamic bindings must toggle the attribute itself (`:no-reveal="cond ? '' : null"` in Vue); binding `false` serializes to `no-reveal="false"`, which reads as present and permanently kills the reveal.
+
+### Patch Changes
+
+- a0ea072: Use GPU-composited `translate3d` positioning for `web-ui-progress` indicator transitions in determinate mode to avoid layout reflows on frequent progress updates while preserving pill border-radius.
+- @greypan/browser-kit@3.1.2
+
 ## 14.1.1
 
 ### Patch Changes

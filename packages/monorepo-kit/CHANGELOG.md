@@ -1,5 +1,20 @@
 # @greypan/monorepo-kit
 
+## 0.2.0
+
+### Minor Changes
+
+- 45083a6: Remove the `defineTestPortCallSites` and `TestPortCallSitesOptions` exports and migrate `./vite` `testPorts()` to zero-config deterministic SHA-256 hash slotting (`23410..49140` in 10-port bands with automatic linked worktree isolation via `.git` file probing and `realpathSync(root)`).
+- 7d32dc8: Add the optional `requireWorkspaceEntry` flag to `ContextCorpusOptions` (defaulting to `true`) so repositories can opt out of requiring an `AGENTS.md` in every workspace while continuing to validate existing entries, and harden `defineWorkspaceDepBoundaries` to skip `dist`/`build`/`coverage`/`__tests__` only below package roots (`depth > 0`) and report duplicate workspace package names instead of silently overwriting earlier manifests.
+- bbd5c40: Add the `defineWorkspaceDepBoundaries` policy plugin and the `deps:` attribution prefix to enforce manifest-level workspace dependency boundaries (zero circular dependencies across all workspace dependency fields, no runtime/peer/optional dependencies from published packages to private workspace packages, and unidirectional layering forbidding non-application workspaces from depending on application workspaces).
+
+### Patch Changes
+
+- 5e9ab88: Keep literal `pnpm-workspace.yaml` package patterns in `readPnpmWorkspaceDirectories` (a pattern without a glob segment names the workspace directory itself, so dropping it let that workspace escape the container-rooted boundary and corpus checks), normalize `./` segments and treat `?`/`[]`/`{}` as glob metacharacters in those patterns, reject a literal root workspace pattern (`'.'`) and patterns whose first segment is a glob instead of silently dropping them (both left workspaces outside the container-rooted checks while the manifest view still matched them), and cover literal workspace directories in `context-corpus` entry/README checks plus `no-mutual-links` shallow files (container directories without their own `package.json` are untouched).
+- 0f69710: Two changes to workspace scanning. First, `defineWorkspaceDepBoundaries` no longer treats a literal workspace directory's own `dist`/`build`/`coverage`/`__tests__` subdirectories as workspaces: the artifact-name skip now starts from whether the scanned root is itself a package, so build output under a literal workspace stays out of the dependency graph. Containers keep scanning those names at their first level, where such directories are real packages.
+  
+  Second, `readPnpmWorkspaceDirectories` now documents that it returns container and literal directories without distinguishing them, and that consumers decide by the presence of `package.json`. That decision changes each consumer's scan shape rather than the traversal: the boundary check stops descending into artifact-named subdirectories of a package, the corpus check keeps walking entry documents recursively but collects only a package's root-level `README.md`, and the link check collects only the package's root-level shallow files. A container directory that itself carries a `package.json` is consequently treated as a package: its artifact-named subpackages stay out of the dependency graph, and its subdirectory `README.md` files and shallow files are no longer collected by the corpus and link checks, while entry documents anywhere below it are still collected. That layout is not supported.
+
 ## 0.1.1
 
 ### Patch Changes
