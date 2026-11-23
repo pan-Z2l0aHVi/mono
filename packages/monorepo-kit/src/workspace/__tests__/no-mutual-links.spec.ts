@@ -164,6 +164,16 @@ it('literal workspace directories contribute their own shallow files', async () 
   write(containerRoot, '.agents/rules/x.md', '# rule\n')
   write(containerRoot, 'packages/README.md', '[rule](../.agents/rules/x.md)\n')
   assert.ok((await kit(container, containerRoot)).ok)
+
+  // 字面量包内部的子目录不是 workspace：它们的 README 不进语料，否则等于把包内任意目录当指令面。
+  const nestedRoot = makeFixture()
+  write(nestedRoot, 'docs/agents/a.md', '[b](b.md)\n')
+  write(nestedRoot, 'docs/agents/b.md', '# b\n')
+  write(nestedRoot, '.agents/rules/x.md', '# rule\n')
+  write(nestedRoot, 'tools/cli/package.json', '{}\n')
+  write(nestedRoot, 'tools/cli/README.md', '# cli\n')
+  write(nestedRoot, 'tools/cli/internal/README.md', '[rule](../../../.agents/rules/x.md)\n')
+  assert.ok((await kit(literal, nestedRoot)).ok)
 })
 
 afterAll(() => {

@@ -405,21 +405,18 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
                 walk(directory, file => path.basename(file) === options.entry)
               ),
               // workspace README 与包级入口文档同属指令面，但只能列一层：walk 会连 node_modules 与 dist 一起吞进来。
-              // 目录自身就是包（含 package.json，即字面量 workspace）时，README 在目录根部而非子目录里；
-              // 容器目录没有这一层，收集它会静默扩大指令面，所以按 package.json 判据收窄。
-              ...options.workspaces.flatMap(directory =>
-                exists(`${directory}/package.json`) && exists(`${directory}/README.md`)
-                  ? [path.join(root, directory, 'README.md')]
-                  : []
-              ),
-              ...options.workspaces.flatMap(directory =>
-                exists(directory)
+              // 目录自身就是包（含 package.json，即字面量 workspace）时只收它根部的 README：包内子目录不是
+              // workspace，把它们也当指令面会静默扩大语料。容器目录反过来只收直接子目录的 README。
+              ...options.workspaces.flatMap(directory => {
+                if (exists(`${directory}/package.json`))
+                  return exists(`${directory}/README.md`) ? [path.join(root, directory, 'README.md')] : []
+                return exists(directory)
                   ? fs
                       .readdirSync(path.join(root, directory), { withFileTypes: true })
                       .filter(entry => entry.isDirectory() && exists(`${directory}/${entry.name}/README.md`))
                       .map(entry => path.join(root, directory, entry.name, 'README.md'))
                   : []
-              )
+              })
             ]
             // 语料门禁只检查可客观判定的漂移属性（ADR-0013）：路由完整性、外部状态快照、授权指针与非权威标记。
             // 文风与 concern 归属不在此列，交给 review。
