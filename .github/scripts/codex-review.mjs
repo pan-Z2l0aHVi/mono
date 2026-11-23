@@ -971,13 +971,19 @@ export function findPriorReviewRun({ adapter, pullNumber, headSha, currentRunId 
   return null
 }
 
-/** 同一个 head SHA 可能挂在多个 PR 上（关掉又重开）；取最近更新的那一个。 */
+/**
+ * 同一个 head SHA 可能挂在多个 PR 上（关掉又重开）；取最近更新的那一个，返回完整 PR。
+ * open 候选优先：更晚更新的 closed PR 不能遮住仍 open 的 PR，否则它的 autofix 会被静默跳过。
+ * 不过滤 state：合并后的写回 run 仍要解析到 closed PR（回退路径），open 与否由 workflow 层按 pull_state 跳过。
+ */
 export function findPullForHead({ adapter, headSha }) {
   const candidates = (adapter.pulls(headSha) ?? []).filter(
     pull => pull?.head?.sha === headSha && Number.isFinite(pull?.number)
   )
-  candidates.sort((left, right) => String(right.updated_at ?? '').localeCompare(String(left.updated_at ?? '')))
-  return candidates[0]?.number ?? null
+  const open = candidates.filter(pull => pull?.state === 'open')
+  const pool = open.length > 0 ? open : candidates
+  pool.sort((left, right) => String(right.updated_at ?? '').localeCompare(String(left.updated_at ?? '')))
+  return pool[0] ?? null
 }
 
 export function conclusionDirectory(env = process.env) {
@@ -2134,13 +2140,16 @@ export function commandPrepareIncremental({
 
 function commandResolvePull() {
   const env = requireEnv(['GITHUB_REPOSITORY', 'CODEX_REVIEW_HEAD_SHA'])
-  const number = findPullForHead({
+  const pull = findPullForHead({
     adapter: createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY }),
     headSha: env.CODEX_REVIEW_HEAD_SHA
   })
-  writeOutputs({ pull_number: String(number ?? '') })
+  // pull_state 给写回 workflow 的 checkout/apply 两步用：closed（含合并）时整体 no-op。
+  writeOutputs({ pull_number: String(pull?.number ?? ''), pull_state: String(pull?.state ?? '') })
   console.log(
-    number ? `head ${env.CODEX_REVIEW_HEAD_SHA} belongs to pull request #${number}` : 'no pull request owns this head'
+    pull
+      ? `head ${env.CODEX_REVIEW_HEAD_SHA} belongs to pull request #${pull.number} (${pull.state})`
+      : 'no pull request owns this head'
   )
 }
 
