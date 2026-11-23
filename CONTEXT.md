@@ -21,32 +21,32 @@ ADR 编号按下表与当前索引解释；更早的 research、CHANGELOG 和 Gi
 
 ADR 只记录技术选型、架构设计与工程化决策；具体实现细节放在源码、测试或对应文档。表内只列仍承载现行决策的 ADR；被取代的 ADR 在表内保留一行取代标注，退役或删除的记录只留在 git 里，旧 ADR 的修订注记不构成现行指引。仓库指令保持编排无关（harness-agnostic）：本地 Task 台账按需记录归属与进度，独立政策检查器运行只读检查。职责分别见 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)、[`docs/agents/commit.md`](docs/agents/commit.md)、[`docs/agents/worktree.md`](docs/agents/worktree.md) 与 [`docs/agents/release.md`](docs/agents/release.md)。
 
-| ADR                                                                   | 决策                                                          | 何时读取                                                                |
-| --------------------------------------------------------------------- | ------------------------------------------------------------- | ----------------------------------------------------------------------- |
-| [0001](docs/adr/0001-ci-pipeline.md)                                  | CI 验证流程                                                   | 修改验证、Changesets 或发布门控                                         |
-| [0002](docs/adr/0002-build-toolchain.md)                              | 构建工具链                                                    | 修改 Vite Plus、构建或测试工具链                                        |
-| [0003](docs/adr/0003-release-planes.md)                               | 发布平面                                                      | 修改 npm/Wails 发布流程                                                 |
-| [0004](docs/adr/0004-progressive-agent-context-architecture.md)       | Agent Context 架构                                            | 修改 agent context、rules、skills 或 instruction system                 |
-| [0005](docs/adr/0005-web-ui-components.md)                            | Web UI 组件架构                                               | 修改 web-ui 组件技术选型、公共契约、事件模型、框架类型适配或 icon 系统  |
-| [0006](docs/adr/0006-web-ui-composition.md)                           | Web UI 组合与渲染架构                                         | 修改 overlay 交互/定位、布局层级、design token 或 @lit/context 组合模式 |
-| [0007](docs/adr/0007-plugin-system.md)                                | Plugin 系统                                                   | 设计可组合状态或行为模块                                                |
-| [0008](docs/adr/0008-interweave-backend.md)                           | Interweave 后端架构                                           | 修改 interweave Go 模块、Wails Service 或 frontend bindings             |
-| [0009](docs/adr/0009-interweave-sqlite.md)                            | SQLite 持久化与 WAL                                           | 修改 interweave 持久化层或 SQLite 并发模型                              |
-| [0010](docs/adr/0010-task-orchestration.md)                           | 仓库指令保持编排无关（harness-agnostic）                      | 修改 worktree 分工、T0 判据或会话协作边界                               |
-| [0012](docs/adr/0012-pr-review.md)                                    | PR review 结论与人工审查的增量复审                            | 修改 task 台账、政策检查集合、PR changeset gate 或 review/merge 前核验  |
-| [0013](docs/adr/0013-context-authority.md)                            | Context 语料权威与漂移门禁                                    | 修改指令文档的权威标记、漂移门禁或非权威语料标注                        |
-| [0014](docs/adr/0014-script-organization.md)                          | 脚本按执行面分类与统一入口                                    | 修改政策检查集合、pre-commit / CI policy 入口或脚本目录布局             |
-| [0015](docs/adr/0015-task-ledger.md)                                  | Task 分级与记账提取为通用 skill                               | 修改 task 分级判据、台账命令、状态目录或跨项目复用方式                  |
-| [0016](docs/adr/0016-accessible-names.md)                             | web-ui 内置无障碍文案固定英文回退，覆盖 prop 统一挂 aria 前缀 | 修改 web-ui 内置 aria 文案、label 覆盖 prop 或 builtin-labels 样表      |
-| [0017](docs/adr/0017-monorepo-tooling-package.md)                     | 门禁与仓库工具收敛到 workspace 包                             | 修改 monorepo-kit 的包边界、产物形态或 `scripts/` 与包的分工            |
-| [0018](docs/adr/0018-monorepo-kit-generic-plugins.md)                 | monorepo-kit 收敛为参数化能力包                               | 修改 monorepo-kit 的分区、插件面、检查参数或构建形态                    |
-| [0019](docs/adr/0019-md-to-meta.md)                                   | md-to-comp 收敛为通用 markdown 结构化引擎 md-to-meta          | 修改 meta 节点形状、围栏落盘策略、`load` thunk 或主题契约               |
-| [0020](docs/adr/0020-skill-self-contained.md)                         | 自撰 skill 保持运行时自包含                                   | 提议统一 skill 与 workspace 包的重复实现，或修改 skill 的依赖边界       |
-| [0021](docs/adr/0021-codex-review-gate.md)                            | Codex 自动 PR 审查门：约定式门禁与只读/写回拆两个 workflow    | 修改 CI 的审查 job、发现分档、自动修边界或这道门的红绿判据              |
-| [0022](docs/adr/0022-monorepo-kit-plugin-chain.md)                    | monorepo-kit 判定改为嵌套 `run` 链                            | 修改检查协议、判定插件的组合方式、`runner/` 或门禁入口的组链            |
-| [0023](docs/adr/0023-layout-controlled-mobile.md)                     | Layout 移动端状态由应用受控驱动                               | 修改 layout `mobile` 契约、应用侧视口订阅或断点选择                     |
-| [0024](docs/adr/0024-interweave-native-menu-and-go-owned-settings.md) | Interweave 顶部菜单走原生，应用设置由 Go 拥有                 | 修改 Interweave 菜单形态、菜单命令契约或设置所有权                      |
-| [0025](docs/adr/0025-apps-sparse-checkout.md)                         | App-only 稀疏检出与默认全树双轨策略                           | 修改 `apps-sparse-checkout`、worktree 隔离策略或稀疏检出边界            |
+| ADR                                                                   | 决策                                                                 | 何时读取                                                                |
+| --------------------------------------------------------------------- | -------------------------------------------------------------------- | ----------------------------------------------------------------------- |
+| [0001](docs/adr/0001-ci-pipeline.md)                                  | CI 验证流程                                                          | 修改验证、Changesets 或发布门控                                         |
+| [0002](docs/adr/0002-build-toolchain.md)                              | 构建工具链                                                           | 修改 Vite Plus、构建或测试工具链                                        |
+| [0003](docs/adr/0003-release-planes.md)                               | 发布平面                                                             | 修改 npm/Wails 发布流程                                                 |
+| [0004](docs/adr/0004-progressive-agent-context-architecture.md)       | Agent Context 架构                                                   | 修改 agent context、rules、skills 或 instruction system                 |
+| [0005](docs/adr/0005-web-ui-components.md)                            | Web UI 组件架构                                                      | 修改 web-ui 组件技术选型、公共契约、事件模型、框架类型适配或 icon 系统  |
+| [0006](docs/adr/0006-web-ui-composition.md)                           | Web UI 组合与渲染架构                                                | 修改 overlay 交互/定位、布局层级、design token 或 @lit/context 组合模式 |
+| [0007](docs/adr/0007-plugin-system.md)                                | Plugin 系统                                                          | 设计可组合状态或行为模块                                                |
+| [0008](docs/adr/0008-interweave-backend.md)                           | Interweave 后端架构                                                  | 修改 interweave Go 模块、Wails Service 或 frontend bindings             |
+| [0009](docs/adr/0009-interweave-sqlite.md)                            | SQLite 持久化与 WAL                                                  | 修改 interweave 持久化层或 SQLite 并发模型                              |
+| [0010](docs/adr/0010-task-orchestration.md)                           | 仓库指令保持编排无关（harness-agnostic）                             | 修改 worktree 分工、T0 判据或会话协作边界                               |
+| [0012](docs/adr/0012-pr-review.md)                                    | PR review 结论与人工审查的增量复审                                   | 修改 task 台账、政策检查集合、PR changeset gate 或 review/merge 前核验  |
+| [0013](docs/adr/0013-context-authority.md)                            | Context 语料权威与漂移门禁                                           | 修改指令文档的权威标记、漂移门禁或非权威语料标注                        |
+| [0014](docs/adr/0014-script-organization.md)                          | 脚本按执行面分类与统一入口                                           | 修改政策检查集合、pre-commit / CI policy 入口或脚本目录布局             |
+| [0015](docs/adr/0015-task-ledger.md)                                  | Task 分级与记账提取为通用 skill                                      | 修改 task 分级判据、台账命令、状态目录或跨项目复用方式                  |
+| [0016](docs/adr/0016-accessible-names.md)                             | web-ui 内置无障碍文案固定英文回退，覆盖 prop 统一挂 aria 前缀        | 修改 web-ui 内置 aria 文案、label 覆盖 prop 或 builtin-labels 样表      |
+| [0017](docs/adr/0017-monorepo-tooling-package.md)                     | 门禁与仓库工具收敛到 workspace 包                                    | 修改 monorepo-kit 的包边界、产物形态或 `scripts/` 与包的分工            |
+| [0018](docs/adr/0018-monorepo-kit-generic-plugins.md)                 | monorepo-kit 收敛为参数化能力包                                      | 修改 monorepo-kit 的分区、插件面、检查参数或构建形态                    |
+| [0019](docs/adr/0019-md-to-meta.md)                                   | md-to-comp 收敛为通用 markdown 结构化引擎 md-to-meta                 | 修改 meta 节点形状、围栏落盘策略、`load` thunk 或主题契约               |
+| [0020](docs/adr/0020-skill-self-contained.md)                         | 自撰 skill 保持运行时自包含                                          | 提议统一 skill 与 workspace 包的重复实现，或修改 skill 的依赖边界       |
+| [0021](docs/adr/0021-codex-review-gate.md)                            | Codex 自动 PR 审查门：required gate check 与只读/写回拆两个 workflow | 修改 CI 的审查 job、发现分档、自动修边界或这道门的红绿判据              |
+| [0022](docs/adr/0022-monorepo-kit-plugin-chain.md)                    | monorepo-kit 判定改为嵌套 `run` 链                                   | 修改检查协议、判定插件的组合方式、`runner/` 或门禁入口的组链            |
+| [0023](docs/adr/0023-layout-controlled-mobile.md)                     | Layout 移动端状态由应用受控驱动                                      | 修改 layout `mobile` 契约、应用侧视口订阅或断点选择                     |
+| [0024](docs/adr/0024-interweave-native-menu-and-go-owned-settings.md) | Interweave 顶部菜单走原生，应用设置由 Go 拥有                        | 修改 Interweave 菜单形态、菜单命令契约或设置所有权                      |
+| [0025](docs/adr/0025-apps-sparse-checkout.md)                         | App-only 稀疏检出与默认全树双轨策略                                  | 修改 `apps-sparse-checkout`、worktree 隔离策略或稀疏检出边界            |
 
 ## 已知边界
 

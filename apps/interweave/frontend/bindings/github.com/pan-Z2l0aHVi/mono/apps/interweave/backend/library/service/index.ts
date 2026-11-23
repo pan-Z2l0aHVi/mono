@@ -16,6 +16,7 @@ export {
     CreateResourceInputDTO,
     FilePreviewDTO,
     GlobalMapDTO,
+    ImportExpansionDTO,
     LocalMapDTO,
     RecoveryCandidateDTO,
     RecoveryScanUpdateDTO,

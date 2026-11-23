@@ -1,4 +1,5 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
+import { effect } from 'vue'
 
 import { ResourceLocationMatchDTO } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import {
@@ -35,6 +36,7 @@ function createRuntime(
         throw new Error('未使用')
       },
       findLocationMatches: async () => [],
+      expandImportEntries: async () => ({ files: [], folders: 0 }),
       prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
       releaseFilePreview: async () => {},
       ...resourceOverrides
@@ -638,3 +640,129 @@ describe('library add queue submit', () => {
     expect(queue.submitting.value).toBe(false)
   })
 })
+
+/*
+ * progress 供加载中的按钮直接展示「已处理 / 总数」。入队链与提交循环不重叠
+ * （提交前入队链必然已结束），因此共用一个 ref。
+ */
+describe('library add queue progress', () => {
+  it('入队链按已消费位置推进，空串与重复跳过也计入进度', async () => {
+    const queue = createQueue(createRuntime())
+
+    await queue.enqueueFileLocations(['/tmp/a.png', '', '/tmp/b.png', '/tmp/a.png'])
+
+    expect(queue.progress.value).toEqual({ done: 4, total: 4 })
+    expect(queue.queue.value).toHaveLength(2)
+  })
+
+  it('提交按已落库项推进进度', async () => {
+    const queue = createQueue(createRuntime())
+    await queue.enqueueFileLocations(['/tmp/a.png', '/tmp/b.png'])
+
+    const gates = [deferred<void>(), deferred<void>()]
+    let call = 0
+    const submitted = queue.submit(() => gates[call++]!.promise)
+    // submit 先等入队链收尾，进度重置发生在链结算之后。
+    await vi.waitFor(() => expect(queue.progress.value).toEqual({ done: 0, total: 2 }))
+
+    gates[0]!.resolve()
+    await vi.waitFor(() => expect(queue.progress.value).toEqual({ done: 1, total: 2 }))
+    gates[1]!.resolve()
+    expect(await submitted).toBe(true)
+    expect(queue.progress.value).toEqual({ done: 2, total: 2 })
+  })
+
+  it('失败项不计入已导入进度，进度停在成功数', async () => {
+    const queue = createQueue(createRuntime())
+    await queue.enqueueFileLocations(['/tmp/first.png', '/tmp/second.png'])
+
+    await expect(
+      queue.submit(async item => {
+        if (item.location === '/tmp/first.png') throw new Error('创建失败')
+      })
+    ).rejects.toThrow('创建失败')
+
+    expect(queue.progress.value).toEqual({ done: 0, total: 2 })
+  })
+})
+
+describe('library add queue reactivity', () => {
+  it('索引写入经响应式代理：改名、标签与预览回填都会触发依赖', async () => {
+    const prepare = deferred<{ kind: ResourceKind; token: string; media_url: string }>()
+    const queue = createQueue(createRuntime({ prepareFilePreview: () => prepare.promise }))
+    await queue.enqueueFileLocations(['/tmp/a.png'])
+    const itemId = queue.queue.value[0]!.id
+
+    const snapshots: string[] = []
+    // 无 scheduler 的 effect 默认同步执行，写入会立即重新跑一遍。
+    const stop = effect(() => {
+      const item = queue.queue.value[0]
+      snapshots.push(`${item?.title}|${item?.tags.join('+')}|${item?.mediaUrl ?? '-'}`)
+    })
+    queue.renameItem(itemId, 'renamed')
+    queue.setItemTags(itemId, ['work', 'draft'])
+    prepare.resolve({
+      kind: ResourceKind.ResourceKindImage,
+      token: 'opaque-token',
+      media_url: '/pending-resource-media/opaque-token'
+    })
+    await queue.waitForPreview(itemId)
+    stop()
+
+    // push 会把入参 toRaw 落盘，索引若存原始对象，这三类更新都不会触发上面的 effect。
+    expect(snapshots[0]).toBe('a||-')
+    expect(snapshots.at(-1)).toBe('renamed|work+draft|/pending-resource-media/opaque-token')
+  })
+})
+
+describe('library add queue submit ordering', () => {
+  it('提交先等入队链收尾：链上剩余位置全部入队后才结算快照', async () => {
+    // 只拖住第一次重复检查：入队链未收尾时点提交，链放行后剩余项也应进入提交快照。
+    let release!: () => void
+    const firstLookup = new Promise<void>(resolve => {
+      release = resolve
+    })
+    let first = true
+    const queue = createQueue(
+      createRuntime({
+        findLocationMatches: async () => {
+          if (first) {
+            first = false
+            await firstLookup
+            return []
+          }
+          return []
+        }
+      })
+    )
+    void queue.enqueueFileLocations(['/tmp/a.png', '/tmp/b.png', '/tmp/c.png'])
+    await flushChain()
+    expect(queue.queue.value).toHaveLength(0) // 首项被 gate 拖住，队列还是空的
+
+    // 首项 create 拖住不结算：快照结算后的中间态才能被稳定观察到（否则一轮微任务就跑完整批）。
+    const held = deferred<void>()
+    const created: string[] = []
+    const submitted = queue.submit(async item => {
+      created.push(item.location)
+      await held.promise
+    })
+    await flushChain()
+    expect(created).toEqual([]) // 链未收尾，提交尚未开始
+
+    release() // 放行首项；剩余两项的重复检查立即返回
+    // 链放行后三项全部入队，提交按完整队列开始处理：快照包含点提交之后才入队的项。
+    await vi.waitFor(() => expect(created).toEqual(['/tmp/a.png']))
+    expect(queue.queue.value.map(item => item.location)).toEqual(['/tmp/a.png', '/tmp/b.png', '/tmp/c.png'])
+
+    held.resolve()
+    expect(await submitted).toBe(true)
+    expect(created).toEqual(['/tmp/a.png', '/tmp/b.png', '/tmp/c.png'])
+    expect(queue.progress.value).toEqual({ done: 3, total: 3 })
+    expect(queue.submitting.value).toBe(false)
+  })
+})
+
+/** 等入队链微任务尘埃落定：连续数轮 microtask 排空后链到达稳定状态。 */
+async function flushChain() {
+  for (let i = 0; i < 12; i++) await Promise.resolve()
+}

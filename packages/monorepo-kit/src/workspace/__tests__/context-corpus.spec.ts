@@ -121,6 +121,41 @@ it('context-corpus', async () => {
   assert.ok((await run(contextCorpus, owned)).ok)
 })
 
+it('literal workspaces are covered as workspace roots themselves', async () => {
+  const literal = defineContextCorpus({ ...options, workspaces: ['tools/cli'] })
+  const missing = makeFixture()
+  write(missing, 'tools/cli/package.json', '{}\n')
+  write(missing, 'tools/cli/README.md', '# cli\n')
+  // 字面量包自身没有入口文档、祖先（tools/）也没有：必须报路由缺口，而不是只查它的子目录。
+  assert.match(await failure(literal, missing), /tools\/cli: workspace needs its own AGENTS\.md/)
+
+  const covered = makeFixture()
+  write(covered, 'tools/cli/package.json', '{}\n')
+  write(covered, 'tools/cli/AGENTS.md', '# cli\n')
+  assert.ok((await run(literal, covered)).ok)
+
+  // 目录自身的 README 进指令面语料：易漂移短语必须被扫到。
+  const readme = makeFixture()
+  write(readme, 'tools/cli/package.json', '{}\n')
+  write(readme, 'tools/cli/AGENTS.md', '# cli\n')
+  write(readme, 'tools/cli/README.md', '# cli\n\n自动更新尚未实现。\n')
+  assert.match(await failure(literal, readme), /tools\/cli\/README\.md: volatile snapshot phrase/)
+
+  // 容器目录（自身没有 package.json）的根级 README 不进指令面：那是容器，不是 workspace 包。
+  const container = defineContextCorpus({ ...options, workspaces: ['packages'] })
+  const containerRoot = makeFixture()
+  write(containerRoot, 'packages/README.md', '# packages\n\n自动更新尚未实现。\n')
+  assert.ok((await run(container, containerRoot)).ok)
+
+  // 字面量包内部的子目录 README 同样不进指令面：包内任意目录不是 workspace。
+  const nested = makeFixture()
+  write(nested, 'tools/cli/package.json', '{}\n')
+  write(nested, 'tools/cli/AGENTS.md', '# cli\n')
+  write(nested, 'tools/cli/README.md', '# cli\n')
+  write(nested, 'tools/cli/internal/README.md', '# internal\n\n自动更新尚未实现。\n')
+  assert.ok((await run(literal, nested)).ok)
+})
+
 it('commit scopes collapse nested workspaces', async () => {
   const scoped = (file: string) =>
     defineContextCorpus({

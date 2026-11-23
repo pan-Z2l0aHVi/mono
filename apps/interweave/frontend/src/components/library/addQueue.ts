@@ -33,6 +33,12 @@ export interface LibraryAddQueueController {
   duplicatePrompt: Ref<LibraryDuplicatePrompt | null>
   /** 正在逐项提交资源；页面据此禁用提交入口。 */
   submitting: Ref<boolean>
+  /**
+   * 最近一段长流程的进度（done / total）。入队链按「已处理位置数」推进，
+   * 提交循环按「已结算项数」推进；submit 会先等入队链收尾再开始，两阶段严格串行，
+   * 因此共用一个 ref 不会交错，供加载中的按钮直接展示「已处理 / 总数」。
+   */
+  progress: Ref<{ done: number; total: number }>
   enqueueFileLocations(locations: string[]): Promise<void>
   enqueueURL(url: string): Promise<void>
   /** 裁决当前重复提示；accept=false（取消）时该项不入队。 */
@@ -82,26 +88,37 @@ export function queueItemTitle(item: LibraryQueueItem) {
 
 export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLease): LibraryAddQueueController {
   const queue = ref<LibraryQueueItem[]>([])
+  // id → 队列项的镜像索引：replaceItem/validity 查找在万级批次下必须 O(1)。
+  // 结构性变更（过滤、清空）后必须调用 rebuildQueueIndex 重建镜像。
+  const queueById = new Map<string, LibraryQueueItem>()
   const duplicatePrompt = ref<LibraryDuplicatePrompt | null>(null)
   const submitting = ref(false)
+  const progress = ref({ done: 0, total: 0 })
   let settleDuplicate: ((accept: boolean) => void) | null = null
   // 逐项查询与逐项确认都是异步的：串在一条链上，弹窗才不会叠加，顺序也与提交顺序一致。
   let chain: Promise<void> = Promise.resolve()
   // close() 递增代次，让链上尚未处理的位置作废：添加 dialog 已经关掉，剩余项不再弹窗。
   let generation = 0
 
+  function rebuildQueueIndex() {
+    queueById.clear()
+    for (const item of queue.value) queueById.set(item.id, item)
+  }
+
   function replaceItem(itemId: string, update: (item: LibraryQueueItem) => LibraryQueueItem) {
-    queue.value = queue.value.map(item => (item.id === itemId ? update(item) : item))
+    // 大批次下每项都会走这里：经索引定位并原位合并，避免整表复制随项数平方增长。
+    // 索引里必须存响应式代理：push 会对入参执行 toRaw，直接改原始对象不触发任何依赖。
+    const current = queueById.get(itemId)
+    if (!current) return
+    Object.assign(current, update(current))
   }
 
   function prepareItem(item: LibraryQueueItem) {
     void lease
-      .prepare(item.id, item.location, () =>
-        queue.value.some(candidate => candidate.id === item.id && candidate.location === item.location)
-      )
+      .prepare(item.id, item.location, () => queueById.get(item.id)?.location === item.location)
       .then(entry => {
         if (!entry) return
-        const current = queue.value.find(candidate => candidate.id === item.id)
+        const current = queueById.get(item.id)
         if (!current || current.location !== item.location) return
         // previewToken/mediaUrl 只作结算簿记；渲染读 lease.entries，驱逐后立即回落 fallback。
         replaceItem(item.id, candidate => ({
@@ -161,11 +178,23 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
   async function enqueueLocations(kind: QueueKind, locations: string[], startedAt: number) {
     const queued = new Set(queue.value.map(item => item.location))
     const decisions = new Map<string, boolean>()
-    for (const value of locations) {
+    // 进度按「已消费的输入位置」计：入队、重复跳过与取消裁决都算处理完成，
+    // 这样加载中的按钮展示的比值始终收敛到 total，不会停在中间值。
+    progress.value = { done: 0, total: locations.length }
+    for (const [index, value] of locations.entries()) {
       if (startedAt !== generation) return
+      const settle = () => {
+        progress.value = { ...progress.value, done: index + 1 }
+      }
       const location = value.trim()
-      if (!location || queued.has(location)) continue
-      if (!(await confirmBeforeEnqueue(location, kind, decisions, startedAt))) continue
+      if (!location || queued.has(location)) {
+        settle()
+        continue
+      }
+      if (!(await confirmBeforeEnqueue(location, kind, decisions, startedAt))) {
+        settle()
+        continue
+      }
       if (startedAt !== generation) return
       const item: LibraryQueueItem = {
         id: queueId(kind),
@@ -180,9 +209,13 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
         mediaUrl: null
       }
       queue.value.push(item)
+      // 从 ref 读回的就是代理：保存它，后续 replaceItem 的原位写入才会触发依赖。
+      const stored = queue.value[queue.value.length - 1]!
+      queueById.set(stored.id, stored)
       queued.add(location)
       // 只有文件能本地准备预览，URL 的入口要等后端抓过才知道它是什么。
       if (kind === 'file') prepareItem(item)
+      settle()
     }
   }
 
@@ -225,12 +258,13 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
   }
 
   async function removeItem(itemId: string) {
-    const item = queue.value.find(candidate => candidate.id === itemId)
+    const item = queueById.get(itemId)
     if (!item) return
     await waitForPreview(itemId)
-    const current = queue.value.find(candidate => candidate.id === itemId)
-    if (!current) return
-    queue.value = queue.value.filter(candidate => candidate.id !== itemId)
+    if (!queueById.has(itemId)) return
+    const index = queue.value.indexOf(item)
+    if (index >= 0) queue.value.splice(index, 1)
+    queueById.delete(itemId)
     await lease.revoke(itemId)
   }
 
@@ -241,16 +275,27 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     await chain
     const itemIds = queue.value.map(item => item.id)
     queue.value = []
+    queueById.clear()
     // lease 与找回弹窗共用，这里只撤销本队列的 key，不整体清空。
     await Promise.allSettled(itemIds.map(itemId => lease.revoke(itemId)))
   }
 
   async function submit(create: (item: LibraryQueueItem) => Promise<void>): Promise<boolean> {
-    if (!queue.value.length || submitting.value) return false
+    if (submitting.value) return false
     submitting.value = true
-    // 以提交开始时的队列快照为准；remaining 记录尚未成功落库的项，失败时按它回卷。
+    // 入队链还在推进时提交会结算出半批队列，close 再把剩余项整批丢弃——先等链收尾，
+    // 快照才是完整批次，progress 的共用前提（两阶段严格串行）也因此成立。
+    // 链上挂着重复提示时它会保持模态，用户裁决后链结束、提交继续；链自身吞掉异常，不会 reject。
+    await chain
+    if (!queue.value.length) {
+      submitting.value = false
+      return false
+    }
+    // 以链结算后的队列快照为准；remaining 记录尚未成功落库的项，失败时按它回卷。
     const remaining = new Set(queue.value.map(item => item.id))
     const items = [...queue.value]
+    // 进度按「已成功落库的项」计；失败项在错误抛出前只结算 preview，不计入已导入。
+    progress.value = { done: 0, total: items.length }
     try {
       for (const item of items) {
         await waitForPreview(item.id)
@@ -261,11 +306,13 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
           // 失败的项同样要结算：token 是预览资源，失败不豁免释放。
           await releasePreview(item.id)
         }
+        progress.value = { ...progress.value, done: progress.value.done + 1 }
       }
       await close()
       return true
     } catch (cause) {
       queue.value = queue.value.filter(item => remaining.has(item.id))
+      rebuildQueueIndex()
       throw cause
     } finally {
       submitting.value = false
@@ -276,6 +323,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     queue,
     duplicatePrompt,
     submitting,
+    progress,
     enqueueFileLocations,
     enqueueURL,
     resolveDuplicate,

@@ -209,7 +209,7 @@ jobs:
   codex-review:
     name: Codex review
     needs: check
-    # 资格判据与 codex-gate 必须逐字一致；fork PR 拿不到仓库 secret，版本分支由发布流程自审。
+    # 审查 job 保留版本分支排除；codex-gate 的判据自 2026-11-23 起分道（见其 if 注释）。
     if: ${{ !cancelled() && needs.check.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' }}
     # 模型步骤自己带 continue-on-error；job 级不再吞掉预检、落结论与上传的失败。
     # 首次落地时 base 的可信脚本还没有 preflight 子命令，这一步的红叉是唯一能暴露 bootstrap 的信号。
@@ -367,7 +367,11 @@ jobs:
     name: Codex review gate
     needs: [check, codex-review]
     # 门禁只判已有结论，不跑模型；check 或 review 谁失败都不该让它缺席。
-    if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' }}
+    # gate 是 required check（ruleset main protection），自 2026-11-23 起不再排除任何 PR：
+    # GitHub 会为被 if 跳过的 job 上报 skipped check run，而 required 把 skipped 计为通过——
+    # 任何排除都是 fail-open。fork 与版本分支因此都在 gate 覆盖内：fork 的 review skip 经
+    # 收窄后的 not_applicable 出口判 error 红，版本分支（同仓）走内建 not_applicable 绿退出。
+    if: ${{ always() && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' }}
     runs-on: ubuntu-latest
     timeout-minutes: 10
     permissions:
@@ -405,8 +409,11 @@ jobs:
         env:
           # 判定要读 live PR head，所以这一步必须有凭据：runner 不会替步骤注入 GITHUB_TOKEN，gh 只认 GH_TOKEN。
           GH_TOKEN: ${{ github.token }}
-          # review job 被整体跳过（例如 check 失败）属于不适用，不是审查故障；其余缺产物一律 error 变红。
-          CODEX_REVIEW_NOT_APPLICABLE: ${{ needs.codex-review.result == 'skipped' }}
+          # not_applicable 只对同仓 PR 成立，且只认两种合法 skip：版本分支（review 按设计不跑），
+          # 以及 check 未成功（review 的 needs 不满足；合并已由红的 required check 拦住）。
+          # 同仓条件是整条表达式的前提：fork 的 review 必然 skip，若不先排除 fork，只要 check 未成功
+          # 就连 fork 也拿到绿 gate——skipped 的 required check 会被 GitHub 计为通过，那正是 fail-open。
+          CODEX_REVIEW_NOT_APPLICABLE: ${{ needs.codex-review.result == 'skipped' && github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'changeset-release/main' || needs.check.result != 'success') }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" gate
 
   codex-autofix-plan:

@@ -130,7 +130,16 @@ function collect(root: string, options: NoMutualLinksOptions): CorpusEntry[] {
   for (const relative of options.roots) addRoot(root, relative, entries)
   for (const workspace of options.workspaces ?? []) {
     addNamed(root, workspace.directory, workspace.deep, true, entries)
-    addNamed(root, workspace.directory, workspace.shallow, false, entries)
+    // 目录自身就是包（含 package.json，即字面量 workspace）时，shallow 文件在目录根部而非子目录里；
+    // 包内子目录不是 workspace，扫它们会静默扩大语料。容器目录才按直接子目录收 shallow。
+    if (fs.existsSync(path.join(root, workspace.directory, 'package.json'))) {
+      for (const name of workspace.shallow ?? []) {
+        const file = `${workspace.directory}/${name}`
+        if (fs.existsSync(path.join(root, file))) entries.set(file, { path: file, file })
+      }
+    } else {
+      addNamed(root, workspace.directory, workspace.shallow, false, entries)
+    }
   }
   if (options.mirror) {
     const locked = new Set(options.mirror.lockedNames(root))

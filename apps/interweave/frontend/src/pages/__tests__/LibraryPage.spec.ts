@@ -21,7 +21,7 @@ import {
   MENU_REFRESH_EVENT,
   MENU_TOGGLE_FILTER_BAR_EVENT
 } from '../../composables/menuActions'
-import { queueWindowFileDrop } from '../../composables/windowFileDrop'
+import { queueWindowFileDrop, queueWindowURLDrop } from '../../composables/windowFileDrop'
 import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../../services/library'
 import { useLibraryStore } from '../../stores/library'
 import LibraryPage from '../library/index.vue'
@@ -156,6 +156,8 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       remove: async () => {},
       setTags: async () => resource(),
       findLocationMatches: async () => [],
+      // 默认按「文件原样通过」展开：既有的文件拖入/粘贴用例路径不经变换直接入队。
+      expandImportEntries: async paths => ({ files: paths, folders: 0 }),
       prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindFile }),
       releaseFilePreview: async () => {},
       ...overrides.resources
@@ -854,6 +856,450 @@ describe('LibraryPage：粘贴链接', () => {
       expect(dialogOpen(dialog)).toBe(true)
       // takeOperationError 优先透出 cause 的 message，fallback 文案只兜无消息错误。
       expect(mounted.host.textContent).toContain('磁盘已满')
+    } finally {
+      await mounted.close()
+    }
+  })
+})
+
+/*
+ * 统一导入入口：选择面板、拖入与剪贴板都走「后端展开目录 → 超阈值先确认 → 入队」同一条链。
+ * 页面层只验证确认与进度接线；逐项重复提示链由 addQueue 拥有，不再重复验证。
+ */
+describe('LibraryPage：统一导入入口', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    route.value = { path: '/library' }
+    runtimeStub.droppedFilesListener = null
+    runtimeStub.availabilityListener = null
+    runtimeStub.availabilityDisposer = null
+    runtimeStub.current = createRuntime()
+    toastWarning.mockClear()
+  })
+
+  afterEach(() => {
+    runtimeStub.current = null
+  })
+
+  /** 统一入口的页面驱动：点按上传区，等展开与入队链尘埃落定。 */
+  async function pickFromDropZone(host: HTMLElement) {
+    const dropZone = host.querySelector<HTMLElement>('[data-file-drop-target="library-add-files"]')
+    if (!dropZone) throw new Error('上传区未渲染')
+    dropZone.click()
+    await flush()
+  }
+
+  it('未超阈值时展开结果直接入队，不弹确认', async () => {
+    const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => ({
+      files: ['/tmp/imports/a.png', '/tmp/imports/sub/b.md'],
+      folders: 1
+    }))
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => ['/tmp/imports'] },
+      resources: { expandImportEntries }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      await pickFromDropZone(mounted.host)
+
+      expect(expandImportEntries).toHaveBeenCalledWith(['/tmp/imports'])
+      expect(queueItems(mounted.host)).toHaveLength(2)
+      expect(mounted.host.textContent).not.toContain('确认批量导入')
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('超过阈值先弹确认；确认按钮忙时展示进度比值，整批入队后关闭', async () => {
+    const files = Array.from({ length: 21 }, (_, index) => `/tmp/imports/file-${index}.png`)
+    // 用重复检查的 gate 控制入队链节奏：确认弹窗的忙按钮应显示实时比值。
+    const gates: Array<() => void> = []
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => ['/tmp/imports'] },
+      resources: {
+        expandImportEntries: async () => ({ files, folders: 1 }),
+        findLocationMatches: async () => new Promise(resolve => gates.push(() => resolve([])))
+      }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      await pickFromDropZone(mounted.host)
+
+      expect(queueItems(mounted.host)).toHaveLength(0)
+      const dialog = confirmDialog(mounted.host, '导入 21 个文件')
+      expect(dialogOpen(dialog)).toBe(true)
+      expect(dialog.textContent).toContain('文件夹已递归展开')
+
+      button(dialog, '导入 21 个文件').click()
+      await flush()
+      // 链上第一项停在重复检查 gate：忙按钮显示 0 / 21。
+      expect(dialog.textContent).toContain('0 / 21')
+
+      gates.shift()!()
+      await flush()
+      expect(dialog.textContent).toContain('1 / 21')
+
+      // 逐个放行剩余项，链走完即弹窗关闭、整批入队。
+      while (gates.length) {
+        gates.shift()!()
+        await flush()
+      }
+      await flush()
+      expect(dialogOpen(dialog)).toBe(false)
+      expect(queueItems(mounted.host)).toHaveLength(21)
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('导入进行中取消按钮变成停止：停止后只结算在途项，剩余项不再入队', async () => {
+    const files = Array.from({ length: 21 }, (_, index) => `/tmp/imports/file-${index}.png`)
+    const gate = deferred<void>()
+    let lookups = 0
+    const findLocationMatches = vi.fn<LibraryRuntime['resources']['findLocationMatches']>(async () => {
+      lookups += 1
+      // 第 4 项停在重复检查上：前三项已入队，停止后第 4 项也不该被推进。
+      if (lookups === 4) await gate.promise
+      return []
+    })
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => ['/tmp/imports'] },
+      resources: {
+        expandImportEntries: async () => ({ files, folders: 0 }),
+        findLocationMatches
+      }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      await pickFromDropZone(mounted.host)
+
+      const dialog = confirmDialog(mounted.host, '导入 21 个文件')
+      // 未开始时按钮仍是「取消」。
+      expect(dialog.textContent).toContain('取消')
+      button(dialog, '导入 21 个文件').click()
+      await flush()
+      // 前三项已入队，第 4 项的查询在途：按钮已换成「停止」。
+      expect(queueItems(mounted.host)).toHaveLength(3)
+      expect(findLocationMatches).toHaveBeenCalledTimes(4)
+      expect(dialog.textContent).not.toContain('取消')
+
+      // 点停止后放行在途查询：代次已变，第 4 项不入队、其余 17 项不再发起查询。
+      button(dialog, '停止').click()
+      gate.resolve()
+      await vi.waitFor(() => expect(dialogOpen(dialog)).toBe(false))
+
+      expect(findLocationMatches).toHaveBeenCalledTimes(4)
+      expect(queueItems(mounted.host)).toHaveLength(0)
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('排队批次确认后从 0 起算进度，不复用上一批的已处理数', async () => {
+    const first = Array.from({ length: 21 }, (_, index) => `/tmp/batch-a/file-${index}.png`)
+    const second = Array.from({ length: 25 }, (_, index) => `/tmp/batch-b/file-${index}.png`)
+    const gates: Array<() => void> = []
+    let gateLookups = false
+    runtimeStub.current = createRuntime({
+      resources: {
+        expandImportEntries: vi
+          .fn<LibraryRuntime['resources']['expandImportEntries']>()
+          .mockResolvedValueOnce({ files: first, folders: 0 })
+          .mockResolvedValueOnce({ files: second, folders: 0 }),
+        findLocationMatches: async () => {
+          if (!gateLookups) return []
+          return new Promise(resolve => gates.push(() => resolve([])))
+        }
+      }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      queueWindowFileDrop(['/tmp/batch-a'])
+      queueWindowFileDrop(['/tmp/batch-b'])
+      await flush()
+
+      // 第一批照常入队完成，进度停在 21 / 21；第二批弹窗随后接上。
+      button(confirmDialog(mounted.host, '导入 21 个文件'), '导入 21 个文件').click()
+      await flush()
+      const dialog = confirmDialog(mounted.host, '导入 25 个文件')
+
+      // 第二批确认后的第一帧就应是本批的 0 / 25：链的起点重置晚于这次渲染，
+      // 不先重置就会拿上一批的 21 配本批的 25。
+      gateLookups = true
+      button(dialog, '导入 25 个文件').click()
+      await nextTick()
+      expect(dialog.textContent).toContain('0 / 25')
+      expect(dialog.textContent).not.toContain('21 / 25')
+      await flush()
+
+      while (gates.length) {
+        gates.shift()!()
+        await flush()
+      }
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('超过阈值时取消确认，一批都不入队', async () => {
+    const files = Array.from({ length: 21 }, (_, index) => `/tmp/imports/file-${index}.png`)
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => ['/tmp/imports'] },
+      resources: { expandImportEntries: async () => ({ files, folders: 0 }) }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      await pickFromDropZone(mounted.host)
+
+      const dialog = confirmDialog(mounted.host, '导入 21 个文件')
+      button(dialog, '取消').click()
+      await flush()
+
+      expect(queueItems(mounted.host)).toHaveLength(0)
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('纯文件多选超过阈值：确认文案只讲批量导入，不提文件夹', async () => {
+    const files = Array.from({ length: 25 }, (_, index) => `/tmp/picked/file-${index}.png`)
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => files },
+      resources: { expandImportEntries: async paths => ({ files: paths, folders: 0 }) }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      await pickFromDropZone(mounted.host)
+
+      const dialog = confirmDialog(mounted.host, '导入 25 个文件')
+      expect(dialog.textContent).toContain('共 25 个文件将加入待导入列表。')
+      expect(dialog.textContent).not.toContain('文件夹')
+      button(dialog, '取消').click()
+      await flush()
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('文件夹递归展开超过阈值：文案补出实际展开的文件夹数', async () => {
+    const files = Array.from({ length: 30 }, (_, index) => `/tmp/dropped/file-${index}.png`)
+    runtimeStub.current = createRuntime({
+      resources: { expandImportEntries: async () => ({ files, folders: 2 }) }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      queueWindowFileDrop(['/tmp/dropped/a', '/tmp/dropped/b'])
+      await flush()
+
+      const dialog = confirmDialog(mounted.host, '导入 30 个文件')
+      expect(dialog.textContent).toContain('共 30 个文件将加入待导入列表（2 个文件夹已递归展开）。')
+      button(dialog, '取消').click()
+      await flush()
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('展开结果为空时给一句可读提示，不弹确认也不入队', async () => {
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => ['/tmp/empty'] },
+      resources: { expandImportEntries: async () => ({ files: [], folders: 0 }) }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      await pickFromDropZone(mounted.host)
+
+      expect(toastWarning).toHaveBeenCalledWith('所选内容里没有可导入的文件', { position: 'top-center' })
+      expect(queueItems(mounted.host)).toHaveLength(0)
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('提交进行中上传区继续入队被挡下并提示，不再扩张队列', async () => {
+    const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => ({
+      files: ['/tmp/late.png'],
+      folders: 0
+    }))
+    const gate = deferred<void>()
+    runtimeStub.current = createRuntime({
+      system: { chooseFilePaths: async () => ['/tmp/late'] },
+      resources: {
+        expandImportEntries,
+        create: async () => gate.promise.then(() => resource())
+      }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      queueWindowFileDrop(['/tmp/first.png'])
+      await flush()
+      expect(queueItems(mounted.host)).toHaveLength(1)
+
+      // 提交被 gate 挂起；此时再走上传区入队必须被挡下。
+      button(mounted.host, '确认导入').click()
+      await flush()
+      await pickFromDropZone(mounted.host)
+
+      expect(toastWarning).toHaveBeenCalledWith('正在导入当前批次，请等它完成再继续添加', { position: 'top-center' })
+      // 只有首次拖入那次合法展开；提交期间的尝试没有走到展开。
+      expect(expandImportEntries).toHaveBeenCalledTimes(1)
+      expect(queueItems(mounted.host)).toHaveLength(1)
+
+      gate.resolve()
+      await flush()
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('提交进行中拖入链接被挡下并提示，不入队', async () => {
+    const gate = deferred<void>()
+    runtimeStub.current = createRuntime({
+      resources: { create: async () => gate.promise.then(() => resource()) }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      queueWindowFileDrop(['/tmp/first.png'])
+      await flush()
+      expect(queueItems(mounted.host)).toHaveLength(1)
+
+      // 提交挂起时窗口拖入链接：快照之外的新项会被 close() 丢弃，入口必须挡下。
+      button(mounted.host, '确认导入').click()
+      await flush()
+      queueWindowURLDrop(['https://example.com/late'])
+      await flush()
+
+      expect(toastWarning).toHaveBeenCalledWith('正在导入当前批次，请等它完成再继续添加', { position: 'top-center' })
+      expect(queueItems(mounted.host)).toHaveLength(1)
+
+      gate.resolve()
+      await flush()
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('展开在途时提交开始：展开返回后不再入队', async () => {
+    const expandGate = deferred<string[]>()
+    const createGate = deferred<void>()
+    const create = vi.fn<LibraryRuntime['resources']['create']>(async () => {
+      await createGate.promise
+      return resource()
+    })
+    let gated = false
+    runtimeStub.current = createRuntime({
+      resources: {
+        expandImportEntries: async paths => ({ files: gated ? await expandGate.promise : paths, folders: 0 }),
+        create
+      }
+    })
+    const mounted = await mountPage()
+
+    try {
+      await openAddDialog(mounted.host)
+      queueWindowFileDrop(['/tmp/first.png'])
+      await flush()
+      expect(queueItems(mounted.host)).toHaveLength(1)
+
+      // 第二次拖入的展开被 gate 拖住；用户在这段时间里点了提交（create 也被拖住）。
+      gated = true
+      queueWindowFileDrop(['/tmp/slow'])
+      await flush()
+      button(mounted.host, '确认导入').click()
+      await flush()
+      expect(create).toHaveBeenCalledTimes(1)
+
+      // 展开返回时提交仍在进行：这一批必须被挡下，而不是塞进正在结算的队列。
+      expandGate.resolve(['/tmp/slow/a.png'])
+      await vi.waitFor(() =>
+        expect(toastWarning).toHaveBeenCalledWith('正在导入当前批次，请等它完成再继续添加', {
+          position: 'top-center'
+        })
+      )
+      expect(queueItems(mounted.host)).toHaveLength(1)
+
+      createGate.resolve()
+      await flush()
+      expect(queueItems(mounted.host)).toHaveLength(0)
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('并发两个超阈值批次排队依次确认，先到的先入队且互不覆盖', async () => {
+    const filesA = Array.from({ length: 21 }, (_, index) => `/tmp/drop-a/file-${index}.png`)
+    const filesB = Array.from({ length: 25 }, (_, index) => `/tmp/drop-b/file-${index}.png`)
+    const expandImportEntries = vi
+      .fn<LibraryRuntime['resources']['expandImportEntries']>()
+      .mockResolvedValueOnce({ files: filesA, folders: 0 })
+      .mockResolvedValueOnce({ files: filesB, folders: 0 })
+    runtimeStub.current = createRuntime({ resources: { expandImportEntries } })
+    const mounted = await mountPage()
+
+    try {
+      // 同一轮里先后拖入两个批次：两个确认请求都超阈值，第二个必须排队而不是覆盖第一个。
+      queueWindowFileDrop(['/tmp/drop-a'])
+      queueWindowFileDrop(['/tmp/drop-b'])
+      await flush()
+
+      const first = confirmDialog(mounted.host, '导入 21 个文件')
+      expect(dialogOpen(first)).toBe(true)
+      expect(queueItems(mounted.host)).toHaveLength(0)
+
+      button(first, '导入 21 个文件').click()
+      // 第一个弹窗退场收尾后，排队的批次 B 依次出现。
+      await vi.waitFor(() => {
+        const second = [...mounted.host.querySelectorAll<WebUiDialog>('web-ui-dialog')].find(candidate =>
+          [...candidate.querySelectorAll('web-ui-button')].some(item => item.textContent?.trim() === '导入 25 个文件')
+        )
+        expect(second).toBeTruthy()
+      })
+      const second = confirmDialog(mounted.host, '导入 25 个文件')
+      expect(dialogOpen(second)).toBe(true)
+      button(second, '导入 25 个文件').click()
+      await flush()
+
+      expect(queueItems(mounted.host)).toHaveLength(46)
+      expect(dialogOpen(second)).toBe(false)
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('拖入文件夹走同一条展开链，目录被递归展开后入队', async () => {
+    const expandImportEntries = vi.fn<LibraryRuntime['resources']['expandImportEntries']>(async () => ({
+      files: ['/tmp/drop/a.png', '/tmp/drop/nested/b.md'],
+      folders: 1
+    }))
+    runtimeStub.current = createRuntime({ resources: { expandImportEntries } })
+    const mounted = await mountPage()
+
+    try {
+      queueWindowFileDrop(['/tmp/drop'])
+      await flush()
+
+      expect(expandImportEntries).toHaveBeenCalledWith(['/tmp/drop'])
+      expect(queueItems(mounted.host)).toHaveLength(2)
     } finally {
       await mounted.close()
     }

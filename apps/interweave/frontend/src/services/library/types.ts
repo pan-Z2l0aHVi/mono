@@ -22,6 +22,12 @@ import type {
  */
 export type { SourceAvailabilityEventDTO }
 
+/** 一次批量导入展开的结果：文件清单 + 实际递归展开的顶层文件夹数。 */
+export interface ImportExpansion {
+  files: string[]
+  folders: number
+}
+
 /** Resource 本体的读写与标签集合；纳入新 Resource 的唯一入口也在这里。 */
 export interface LibraryResourceCapabilities {
   list(): Promise<ResourceDTO[]>
@@ -34,6 +40,11 @@ export interface LibraryResourceCapabilities {
   /** 替换式集合语义：提交的名称集合成为该 Resource 的完整标签集合，规则在后端。 */
   setTags(resourceId: string, tagNames: string[]): Promise<ResourceDTO>
   findLocationMatches(input: string, sourceType: SourceType): Promise<ResourceLocationMatchDTO[]>
+  /**
+   * 把一批文件与文件夹展开为可纳入的文件位置清单；隐藏项、符号链接由后端过滤。
+   * folders 是实际递归展开的顶层文件夹数，页面据此判断确认文案是否补展开说明。
+   */
+  expandImportEntries(paths: string[]): Promise<ImportExpansion>
   /** 本地文件预览；DTO.media_url 是可直接渲染的临时地址。 */
   prepareFilePreview(inputPath: string): Promise<FilePreviewDTO>
   releaseFilePreview(token: string): Promise<void>
