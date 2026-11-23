@@ -1,6 +1,6 @@
 {
   "name": "@greypan/pi-rex-orchestrator",
-  "version": "0.1.1",
+  "version": "0.2.0",
   "description": "Pi Rex operator and agent coordinator that controls Rex and dispatches, supervises, and verifies worker agents",
   "license": "MIT",
   "repository": {

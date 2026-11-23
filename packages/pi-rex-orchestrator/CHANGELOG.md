@@ -1,5 +1,12 @@
 # @greypan/pi-rex-orchestrator
 
+## 0.2.0
+
+### Minor Changes
+
+- b56249d: Add `rex_cli` as the model-only Rex operation surface, with session injection, guarded worker-agent routing, bounded output, and direct Rex control alongside agent coordination.
+- dc7f1b4: Detect squash-merged worker branches against the base tree, preserve safe optional local merge for repositories without a PR flow, and make close prompts distinguish repository flow, local merge, and forced cleanup.
+
 ## 0.1.1
 
 ### Patch Changes

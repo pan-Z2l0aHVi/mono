@@ -1,5 +1,24 @@
 # @greypan/interweave
 
+## 0.3.0
+
+### Minor Changes
+
+- 51b0b0f: The import dialog now accepts folders everywhere a file can enter the queue. The file picker allows mixed file-and-directory selection (NSOpenPanel on macOS; other platforms degrade gracefully), dropped folders and clipboard folder paths are expanded like picked ones, and directories are expanded into their contained files by the backend — hidden entries, symlinks and special files are filtered, while an explicitly selected hidden folder keeps its visible children. Any batch selection that expands to more than 20 files — multi-file picks, recursive folders or a mix of both — requires an explicit confirmation dialog whose copy names how many folders were expanded; its busy button shows the processed/total ratio, as does the add dialog's confirm button while resources are being created. While a batch is enqueuing, the dialog's cancel button stays clickable and turns into Stop, which aborts the remaining entries and clears the pending queue.
+- c764ad9: Add system tray support with show/quit menu actions and a "minimize to tray on close" setting in the settings dialog.
+
+### Patch Changes
+
+- 5c5d031: Speed up Interweave's startup fingerprint backfill: unchanged files are skipped after a single read-only snapshot query, files that need hashing are hashed by a small bounded worker pool with a smaller 128 KB buffer, and results are written in batches inside one transaction using conditional updates so stale hashes never overwrite fingerprints recorded by concurrent refreshes or the watcher.
+- 3522e3b: Use monospace tabular numerals for all numeric displays in the Interweave frontend, including file sizes, timestamps, queue and source counts, scan statistics, and batch progress indicators.
+- 2ad679d: The offline thumbnail index is no longer frozen as empty when the cache directory scan fails. A failed scan now leaves the index unbuilt, so the next offline lookup retries it and recovers once the directory is readable again; a successful scan still builds the index once, and lookups stay free of directory scans afterwards.
+- 094a413: The startup thumbnail prune now checks for cancellation before each source is stat-ed, so closing the media handler no longer waits for one stat per source on slow or archived drives; it stops after the current source.
+- b7b37ca: A finished recovery scan now releases its scan gate before Poll can report it as done, so starting another scan right after seeing completion no longer fails with "a recovery scan is already running".
+- d8e6de0: Unset `window.ScrollTimeline` before OverlayScrollbars is evaluated, so the scrollbar thumb follows the list position on WebKit after dynamic height changes instead of stalling partway down the track.
+- 22854e0: Dedupe concurrent thumbnail builds per source version with refcounted singleflight, bound in-flight builds by CPU count, and drain builds and pruning on shutdown before the database closes. Thumbnail requests now return 500 when a build fails with a live client and stay silent after the client disconnects, and the sources table gains a `(type, location)` index for location lookups. Newly built thumbnails are scaled with bilinear filtering instead of CatmullRom; the 320px output was compared side by side against the previous kernel across ten typical sample images in a human visual review with no visible difference.
+- 89cb292: Source index reconciliation on entry add/edit/remove is now a non-blocking request handled by the file watcher's reconcile loop instead of a synchronous directory scan on the write path. Offline thumbnail serving builds a one-time in-memory index of the cache directory keyed by real modification times, serves lookups without rescanning, keeps the index in sync with fresh builds, frontend backfills and pruning, and self-heals when an indexed file disappears. The startup thumbnail prune runs on the store's shutdown context and is cancelled and drained together with in-flight builds when the media handler closes.
+- @greypan/interweave-frontend@0.0.0
+
 ## 0.2.1
 
 ### Patch Changes
