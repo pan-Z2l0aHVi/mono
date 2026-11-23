@@ -3,7 +3,7 @@ import type { WebUiDialog, WebUiEvent } from '@greypan/web-ui'
 
 import ErrorBanner from './ErrorBanner.vue'
 
-defineProps<{
+const props = defineProps<{
   open: boolean
   title: string
   message: string
@@ -27,7 +27,11 @@ const emit = defineEmits<{
 
 function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   if (event.target !== event.currentTarget) return
-  if (!event.detail.open) emit('cancel')
+  if (event.detail.open) return
+  // 长流程进行中只认显式点「停止」：Escape/关闭请求不当作停止，
+  // 否则一次误触就会静默作废整批入队，而界面上看不到任何停止动作。
+  if (props.busy && props.busyCancelLabel) return
+  emit('cancel')
 }
 </script>
 

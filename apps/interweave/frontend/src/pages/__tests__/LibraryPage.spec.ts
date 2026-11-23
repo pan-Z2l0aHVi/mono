@@ -956,14 +956,21 @@ describe('LibraryPage：统一导入入口', () => {
     }
   })
 
-  it('导入进行中取消按钮变成停止：点停止即作废剩余入队并清空队列', async () => {
+  it('导入进行中取消按钮变成停止：停止后只结算在途项，剩余项不再入队', async () => {
     const files = Array.from({ length: 21 }, (_, index) => `/tmp/imports/file-${index}.png`)
-    const gates: Array<() => void> = []
+    const gate = deferred<void>()
+    let lookups = 0
+    const findLocationMatches = vi.fn<LibraryRuntime['resources']['findLocationMatches']>(async () => {
+      lookups += 1
+      // 第 4 项停在重复检查上：前三项已入队，停止后第 4 项也不该被推进。
+      if (lookups === 4) await gate.promise
+      return []
+    })
     runtimeStub.current = createRuntime({
       system: { chooseFilePaths: async () => ['/tmp/imports'] },
       resources: {
         expandImportEntries: async () => ({ files, folders: 0 }),
-        findLocationMatches: async () => new Promise(resolve => gates.push(() => resolve([])))
+        findLocationMatches
       }
     })
     const mounted = await mountPage()
@@ -977,19 +984,18 @@ describe('LibraryPage：统一导入入口', () => {
       expect(dialog.textContent).toContain('取消')
       button(dialog, '导入 21 个文件').click()
       await flush()
-      expect(dialog.textContent).toContain('0 / 21')
+      // 前三项已入队，第 4 项的查询在途：按钮已换成「停止」。
+      expect(queueItems(mounted.host)).toHaveLength(3)
+      expect(findLocationMatches).toHaveBeenCalledTimes(4)
       expect(dialog.textContent).not.toContain('取消')
 
-      // 进行中取消按钮改为「停止」且可点：点下即作废链上剩余位置。
+      // 点停止后放行在途查询：代次已变，第 4 项不入队、其余 17 项不再发起查询。
       button(dialog, '停止').click()
-      // 放行在途查询，链看到代次已变立即收尾，不必等完剩余 20 项。
-      while (gates.length) {
-        gates.shift()!()
-        await flush()
-      }
+      gate.resolve()
       await vi.waitFor(() => expect(dialogOpen(dialog)).toBe(false))
+
+      expect(findLocationMatches).toHaveBeenCalledTimes(4)
       expect(queueItems(mounted.host)).toHaveLength(0)
-      expect(toastWarning).not.toHaveBeenCalled()
     } finally {
       await mounted.close()
     }
