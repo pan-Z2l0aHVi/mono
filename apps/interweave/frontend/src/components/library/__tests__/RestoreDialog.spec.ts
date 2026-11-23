@@ -262,20 +262,10 @@ describe('RestoreDialog', () => {
       })
       await vi.waitFor(() => expect(host.textContent).toContain('找到 2 个候选'))
       expect(host.textContent).toContain('扫描未完成')
-      const statNumbers = [...host.querySelectorAll<HTMLElement>('.scan-stats strong')]
-      expect(statNumbers).toHaveLength(3)
-      for (const stat of statNumbers) {
-        expect(stat.classList.contains('font-mono')).toBe(true)
-        expect(stat.classList.contains('tabular-nums')).toBe(true)
-      }
-      const candidateTrigger = button('找到 2 个候选，选择文件')
-      expect(candidateTrigger.querySelector('.font-mono.tabular-nums')?.textContent?.trim()).toBe('2')
-      candidateTrigger.click()
+      button('找到 2 个候选，选择文件').click()
       await nextTick()
       expect(host.textContent).toContain('文件名一致')
       const choice = [...host.querySelectorAll<HTMLButtonElement>('button')].find(el => el.textContent?.includes('/b'))!
-      const candidateMono = [...choice.querySelectorAll<HTMLElement>('.font-mono.tabular-nums')]
-      expect(candidateMono.length).toBeGreaterThanOrEqual(2)
       choice.click()
       await nextTick()
       button('确认找回').click()

@@ -121,6 +121,7 @@ dialog[open].is-visible::backdrop {
 .wui-drawer-drag-zone {
   touch-action: none;
   cursor: grab;
+  user-select: none;
 
   position: absolute;
   z-index: 4;
@@ -215,6 +216,7 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
 .wui-drawer-drag-edge {
   touch-action: none;
   cursor: grab;
+  user-select: none;
 
   position: absolute;
   z-index: 4;

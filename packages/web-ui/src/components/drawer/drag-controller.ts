@@ -114,6 +114,7 @@ export interface DrawerDragController {
   isAwaitingWriteback: () => boolean
   handlePointerDown: (e: PointerEvent) => void
   handleSectionPointerDown: (e: PointerEvent) => void
+  handleDblClick: (e: MouseEvent) => void
   handleTransitionEnd: (e: TransitionEvent) => void
   syncControlledOpen: (open: boolean) => void
   handleNativeCloseWhileOpen: () => boolean
@@ -407,6 +408,13 @@ export const defineDrawerDragController = () =>
       return false
     }
 
+    const hasActiveSizeTransition = (dialog: HTMLDialogElement) =>
+      typeof dialog.getAnimations === 'function' &&
+      dialog.getAnimations().some(animation => {
+        const property = (animation as Animation & { propertyName?: string }).propertyName
+        return property === 'width' || property === 'height'
+      })
+
     const handlePointerDown = (e: PointerEvent) => {
       if (!adapter.isOpen() || !adapter.isDraggable() || isDragging()) return
       if (Object.is(e.isPrimary, false)) return
@@ -438,12 +446,7 @@ export const defineDrawerDragController = () =>
       lastMoveTime = e.timeStamp
       exitedFull = false
 
-      const hasSizeTransition =
-        typeof dialog.getAnimations === 'function' &&
-        dialog.getAnimations().some(animation => {
-          const property = (animation as Animation & { propertyName?: string }).propertyName
-          return property === 'width' || property === 'height'
-        })
+      const hasSizeTransition = hasActiveSizeTransition(dialog)
       fullArmed = adapter.isFullable() && adapter.isDraggable() && Math.abs(dragInitialOffset) < 1
       stageOrigin = axisPos
       baseDragSize = stage === 'full' || hasSizeTransition ? baseDragSize || measureDragSize() : measureDragSize()
@@ -565,6 +568,33 @@ export const defineDrawerDragController = () =>
       handlePointerDown(e)
     }
 
+    const handleDblClick = (e: MouseEvent) => {
+      if (e.button !== 0) return
+      if (!adapter.isOpen() || !adapter.isDraggable() || !adapter.isFullable()) return
+      if (isDragging() || isAwaitingWriteback()) return
+
+      const dialog = adapter.getDialog()
+      if (!dialog || !dialog.classList.contains('is-visible')) return
+      if (dialog.classList.contains('is-nested-lower')) return
+
+      abortSettle()
+      clearDragStyles(dialog)
+
+      if (stage === 'full') {
+        stage = 'base'
+        stageOrigin = null
+        exitedFull = false
+        dialog.classList.remove('is-full', 'is-drag-close')
+        adapter.onNestedRecalculate()
+        return
+      }
+
+      const hasSizeTransition = hasActiveSizeTransition(dialog)
+      baseDragSize = hasSizeTransition ? baseDragSize || measureDragSize() : measureDragSize()
+      exitedFull = false
+      transitionToFullState(dialog, null, false)
+    }
+
     const handleTransitionEnd = (e: TransitionEvent) => {
       if (e.propertyName === 'transform') {
         finishSettle()
@@ -610,6 +640,7 @@ export const defineDrawerDragController = () =>
       isAwaitingWriteback,
       handlePointerDown,
       handleSectionPointerDown,
+      handleDblClick,
       handleTransitionEnd,
       syncControlledOpen,
       handleNativeCloseWhileOpen,
