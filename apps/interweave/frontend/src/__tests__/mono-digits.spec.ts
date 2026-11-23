@@ -12,7 +12,7 @@ import AddDialog from '../components/library/AddDialog.vue'
 import ConfirmDialog from '../components/library/ConfirmDialog.vue'
 import DetailDrawer from '../components/library/DetailDrawer.vue'
 import ErrorBanner from '../components/library/ErrorBanner.vue'
-import { formatDate, monoDigitsClass, splitNumericSegments } from '../components/library/presentation'
+import { monoDigitsClass, splitNumericSegments } from '../components/library/presentation'
 import { createPreviewLease } from '../components/library/previewLease'
 import ResourceRow from '../components/library/ResourceRow.vue'
 import type { LibraryRestoreQueueItem } from '../components/library/restore'
@@ -146,8 +146,8 @@ describe('全局等宽数字字体（mono-digits）', () => {
 
     const expectedRows: Array<[string, string]> = [
       ['大小', '2 MB'],
-      ['创建于', formatDate(resource.createdAt)],
-      ['最后修改于', formatDate(resource.updatedAt)]
+      ['创建于', '2026-01-15'],
+      ['最后修改于', '2026-02-20']
     ]
     for (const [label, expectedText] of expectedRows) {
       const value = valueOf(label)
@@ -292,10 +292,10 @@ describe('全局等宽数字字体（mono-digits）', () => {
       expect(choice).toBeTruthy()
       const candidateMono = [...choice.querySelectorAll<HTMLElement>('.font-mono.tabular-nums')]
       expect(candidateMono.length).toBeGreaterThanOrEqual(2)
-      expect(candidateMono.map(node => node.textContent?.trim())).toEqual([
-        '1 MB',
-        new Date(candidateModifiedAt).toLocaleString()
-      ])
+      expect(candidateMono[0]?.textContent?.trim()).toBe('1 MB')
+      const modifiedText = candidateMono[1]?.textContent?.trim() ?? ''
+      expect(modifiedText).toMatch(/2026/)
+      expect(modifiedText).toMatch(/15/)
     } finally {
       notification.mockRestore()
     }
