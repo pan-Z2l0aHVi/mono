@@ -151,8 +151,8 @@ export class WebUiTheme extends LitElement {
    * 手动切换不应设置它。
    *
    * 存在即生效。Lit Boolean converter 读的是 attribute 的存在，动态绑定必须以存在/移除
-   * 切换、不能绑定 `false`（会序列化成 `no-reveal="false"` 而恒真）；各框架的写法见
-   * `docs/theme.md` 的 `no-reveal` 一节。
+   * 切换、不能绑定 `false`（会序列化成 `no-reveal="false"` 而恒真）；绑定写法见
+   * `docs/theme.md` 的 Behavior 一节。
    */
   @property({ type: Boolean, reflect: true, attribute: 'no-reveal' })
   noReveal = false

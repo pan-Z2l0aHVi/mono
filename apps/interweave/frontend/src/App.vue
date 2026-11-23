@@ -66,7 +66,7 @@ watch(
 
 <template>
   <!-- no-reveal 以「存在/移除」表达压制：`|| undefined` 不能省，直接绑 suppressed 会把
-       false 序列化成 "false" 而恒真。理由见 composable docblock。 -->
+       false 序列化成 "false" 而恒真。理由见 theme 组件的 noReveal 注释。 -->
   <web-ui-theme
     :appearance="settings.appearance"
     :motion="settings.reducedMotion ? 'reduced' : 'system'"
