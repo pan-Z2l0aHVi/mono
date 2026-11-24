@@ -169,6 +169,9 @@ class WailsLibraryRuntime implements LibraryRuntime {
     },
     openExternal: async (target: string) => {
       await OSService.OpenExternal(target)
+    },
+    setWallpaper: async (location: string, remote: boolean) => {
+      await OSService.SetWallpaper(location, remote)
     }
   }
 }

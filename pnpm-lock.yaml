@@ -579,6 +579,9 @@ importers:
       '@greypan/browser-kit':
         specifier: workspace:*
         version: link:../../../packages/browser-kit
+      '@greypan/md-to-meta':
+        specifier: workspace:*
+        version: link:../../../packages/md-to-meta
       '@greypan/route-progress':
         specifier: workspace:*
         version: link:../../../packages/route-progress

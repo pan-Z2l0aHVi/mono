@@ -15,6 +15,7 @@
   "dependencies": {
     "@greypan/app-scrollbars": "workspace:*",
     "@greypan/browser-kit": "workspace:*",
+    "@greypan/md-to-meta": "workspace:*",
     "@greypan/route-progress": "workspace:*",
     "@greypan/web-ui": "workspace:*",
     "@tanstack/vue-query": "catalog:",

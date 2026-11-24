@@ -87,6 +87,9 @@ function createRuntime(
       showInFileManager: async () => {},
       openExternal: async () => {
         throw new Error('未使用')
+      },
+      setWallpaper: async () => {
+        throw new Error('未使用')
       }
     }
   }

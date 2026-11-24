@@ -66,6 +66,7 @@ async function mountDrawer(initial: ResourceView | null, options: MountOptions =
           open: open.value,
           resource: current.value,
           mobile: false,
+          openExternal: async () => {},
           onRecover: options.onRecover
         })
     }
@@ -233,7 +234,7 @@ describe('PreviewDrawer', () => {
       )
     )
     const { host } = await mountDrawer(
-      resourceOf(fileSource({ location: '/tmp/a.md' }), ResourceKind.ResourceKindDocument)
+      resourceOf(fileSource({ location: '/tmp/a.txt' }), ResourceKind.ResourceKindDocument)
     )
     await flush()
     expect(host.querySelector('pre')?.textContent).toBe('第一行\n第二行')
@@ -246,7 +247,7 @@ describe('PreviewDrawer', () => {
       vi.fn(async () => new Response('', { status: 404 }))
     )
     const { host } = await mountDrawer(
-      resourceOf(fileSource({ location: '/tmp/a.md' }), ResourceKind.ResourceKindDocument)
+      resourceOf(fileSource({ location: '/tmp/a.txt' }), ResourceKind.ResourceKindDocument)
     )
     await flush()
     expect(host.querySelector('pre')).toBeNull()
@@ -269,7 +270,7 @@ describe('PreviewDrawer', () => {
       )
     )
     const { host, setResource } = await mountDrawer(
-      resourceOf(fileSource({ location: '/tmp/a.md' }), ResourceKind.ResourceKindDocument)
+      resourceOf(fileSource({ location: '/tmp/a.txt' }), ResourceKind.ResourceKindDocument)
     )
     await nextTick()
     expect(signals[0]?.aborted).toBe(false)
@@ -321,7 +322,7 @@ describe('PreviewDrawer', () => {
     expect(video.host.querySelector('iframe')).toBeNull()
 
     const text = await mountDrawer(
-      resourceOf(fileSource({ location: '/tmp/a.md' }), ResourceKind.ResourceKindDocument),
+      resourceOf(fileSource({ location: '/tmp/a.txt' }), ResourceKind.ResourceKindDocument),
       { open: false }
     )
     await flush()

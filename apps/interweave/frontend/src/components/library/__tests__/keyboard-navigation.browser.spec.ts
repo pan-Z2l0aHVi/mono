@@ -148,6 +148,7 @@ describe('Interweave 纯键盘全路径交互（真实浏览器）', () => {
             open: previewOpen.value,
             resource: resources.find(item => item.id === activeId.value) ?? null,
             mobile: false,
+            openExternal: async () => {},
             'onUpdate:open': (v: boolean) => {
               previewOpen.value = v
             }

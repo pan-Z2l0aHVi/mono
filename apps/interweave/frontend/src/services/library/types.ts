@@ -93,6 +93,8 @@ export interface LibrarySystemCapabilities {
   defaultOpenWith(target: string): Promise<string>
   openExternal(target: string): Promise<void>
   showInFileManager(path: string): Promise<void>
+  /** 设为桌面壁纸：location 为原始路径或链接；remote=true 时后端先下载到缓存再设置。 */
+  setWallpaper(location: string, remote: boolean): Promise<void>
 }
 
 /**

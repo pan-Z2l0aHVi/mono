@@ -518,7 +518,10 @@ export function createMockLibraryRuntime(): LibraryRuntime {
       openExternal: target => {
         if (/^https?:\/\//.test(target)) window.open(target, '_blank', 'noopener,noreferrer')
         return Promise.resolve()
-      }
+      },
+
+      // 浏览器预览没有桌面壁纸能力：明确报错而不是假装成功。
+      setWallpaper: () => Promise.reject(new Error('浏览器预览中无法设置桌面壁纸'))
     }
   }
 }

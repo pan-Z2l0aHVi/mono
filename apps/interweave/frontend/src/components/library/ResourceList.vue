@@ -2,6 +2,7 @@
 import type { WebUiContextMenu, WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
 import {
   lucideExternalLink,
+  lucideImage,
   lucideInfo,
   lucidePenLine,
   lucideRefreshCw,
@@ -51,6 +52,8 @@ const emit = defineEmits<{
   /** 用系统默认应用打开该资源；由父级经由 runtime 交给操作系统。 */
   openDefault: [resource: ResourceView]
   showInFileManager: [source: ResourceSourceView]
+  /** 设为桌面壁纸；由父级经 runtime 交后端（URL 先下载缓存）。 */
+  setWallpaper: [resource: ResourceView]
   /** 键盘导航/context menu 请求激活某一行：由父级把 activeResourceId 置为该行资源的 id。 */
   activate: [resource: ResourceView]
 }>()
@@ -520,6 +523,23 @@ function handleShowInFileManager(resource: ResourceView | null) {
   closeContextMenu()
 }
 
+/*
+ * 壁纸入口的可用形态：kind 为 image 且有一个可信入口。file 来源要求 available（文件不在原处
+ * 设置只会报错）；URL 来源不看 available（与预览同一口径：上次抓取失败不代表链接死了），
+ * 有 location 就交给后端，失败由反馈通道提示。
+ */
+function wallpaperCapableResource(resource: ResourceView | null): ResourceView | null {
+  if (!resource || resource.kind !== 'image') return null
+  const source = resource.sources.find(source => (source.type === 'url' ? !!source.location : source.available))
+  return source ? resource : null
+}
+
+function handleSetWallpaper(resource: ResourceView | null) {
+  const target = wallpaperCapableResource(resource)
+  if (target) emit('setWallpaper', target)
+  closeContextMenu()
+}
+
 function contextUnavailableSource(resource: ResourceView | null) {
   return resource?.sources.find(source => !source.available) ?? null
 }
@@ -747,6 +767,13 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
           <web-ui-icon slot="prefix" :icon="fileManagerIcon()" :size="14" />
           {{ fileManagerLabel() }}
         </web-ui-dropdown-item>
+      </web-ui-dropdown-item>
+      <web-ui-dropdown-item
+        v-if="wallpaperCapableResource(contextResource)"
+        @click="handleSetWallpaper(contextResource)"
+      >
+        <web-ui-icon slot="prefix" :icon="lucideImage" :size="14" />
+        设为桌面壁纸
       </web-ui-dropdown-item>
       <web-ui-dropdown-divider />
       <web-ui-dropdown-item v-if="contextResource" @click="handleStartRename(contextResource)">

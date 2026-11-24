@@ -126,6 +126,7 @@ function mountList(resources: ResourceView[]): Mounted {
           open: previewOpen.value,
           resource: previewResource.value,
           mobile: false,
+          openExternal: async () => {},
           'onUpdate:open': (value: boolean) => {
             previewOpen.value = value
           }
