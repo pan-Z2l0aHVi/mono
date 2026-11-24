@@ -990,7 +990,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-shadow-glass</code>" },
       { label: 'td', content: "液态玻璃基础阴影" },
-      { label: 'td', content: "四层扩散阴影" },
+      { label: 'td', content: "<code>0 0 1px rgb(0 0 0 / 0.015), 0 0 6px rgb(0 0 0 / 0.018), 0 2px 12px rgb(0 0 0 / 0.015), 0 6px 24px rgb(0 0 0 / 0.01)</code>" },
       { label: 'td', content: "<code>0 8px 24px rgb(0 0 0 / 0.08)</code>" }
       ]
     }

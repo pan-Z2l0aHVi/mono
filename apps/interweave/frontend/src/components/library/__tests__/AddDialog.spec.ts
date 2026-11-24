@@ -588,6 +588,9 @@ describe('AddDialog', () => {
       const renderedRows = mounted.host.querySelectorAll('[data-dialog-row]')
       expect(renderedRows.length).toBeGreaterThan(0)
       expect(renderedRows.length).toBeLessThan(bulkQueue.length)
+      const tooltips = [...mounted.host.querySelectorAll('web-ui-tooltip')]
+      expect(tooltips.length).toBeGreaterThan(0)
+      expect(tooltips.every(tooltip => tooltip.hasAttribute('portal'))).toBe(true)
     } finally {
       mounted.close()
     }

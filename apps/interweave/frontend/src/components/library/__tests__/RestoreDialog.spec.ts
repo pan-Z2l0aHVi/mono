@@ -392,6 +392,9 @@ describe('RestoreDialog', () => {
       const renderedRows = host.querySelectorAll('[data-dialog-row]')
       expect(renderedRows.length).toBeGreaterThan(0)
       expect(renderedRows.length).toBeLessThan(bulkItems.length)
+      const tooltips = [...host.querySelectorAll('[data-dialog-row] web-ui-tooltip')]
+      expect(tooltips.length).toBeGreaterThan(0)
+      expect(tooltips.every(tooltip => tooltip.hasAttribute('portal'))).toBe(true)
     } finally {
       app.unmount()
       host.remove()

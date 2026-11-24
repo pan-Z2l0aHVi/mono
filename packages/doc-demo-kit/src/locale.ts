@@ -40,6 +40,8 @@ export interface LocaleController {
   register: (component: string) => () => void
   /** 页面切换后只为当前语种补载新组件。 */
   ensure: (component: string) => Promise<void>
+  /** 批量补载当前语种缺失的一组组件文档与运行示例（用于路由切换前预载）。 */
+  ensureAll: (components: readonly string[]) => Promise<void>
 }
 
 /** 准备当前页面所需资源，再同步发布语种和文档；失败保留已提交的视图。 */
@@ -71,17 +73,38 @@ export function createLocaleController(
   /*
    * 页面切换会带来已注册组件之外的新组件：语种提交只覆盖当时注册的那批，后来者由这里单独补齐。
    * 不在同一个语种里重复拉（缓存已经在 meta loader 一层做过，这里只是避免无谓的发布）。
+   * 期间若有语种切换/初始化启动，让本轮让路并在最新语种落定后收敛，避免旧语种写进新快照。
    */
+  async function ensureAll(targetComponents: readonly string[]): Promise<void> {
+    const unique = [...new Set(targetComponents)]
+    if (unique.length === 0) return
+
+    while (true) {
+      if (snapshot.pending) {
+        await latestRequest.catch(() => {})
+        continue
+      }
+      const missing = unique.filter(component => !snapshot.docs.has(component))
+      if (missing.length === 0) return
+
+      const locale = snapshot.locale
+      const changeId = latest
+      const loaded = await deps.loadDocs(locale, missing)
+      if (latest !== changeId || snapshot.pending || snapshot.locale !== locale) continue
+      if (loaded.size === 0) return
+
+      await deps.prepareExamples(loaded)
+      if (latest !== changeId || snapshot.pending || snapshot.locale !== locale) continue
+
+      const nextDocs = new Map(snapshot.docs)
+      for (const [component, doc] of loaded) nextDocs.set(component, doc)
+      publish({ ...snapshot, docs: nextDocs })
+      return
+    }
+  }
+
   async function ensure(component: string) {
-    if (snapshot.docs.has(component)) return
-    const locale = snapshot.locale
-    const loaded = await deps.loadDocs(locale, [component])
-    if (snapshot.locale !== locale) return
-    const doc = loaded.get(component)
-    if (!doc) return
-    await deps.prepareExamples(new Map([[component, doc]]))
-    if (snapshot.locale !== locale) return
-    publish({ ...snapshot, docs: new Map(snapshot.docs).set(component, doc) })
+    await ensureAll([component])
   }
   /*
    * 反复读 revision：注册发生在子组件的挂载期（React effect / Vue watchEffect），可能晚于本次装载，
@@ -116,7 +139,12 @@ export function createLocaleController(
       if (id !== latest) return
       deps.commitCatalog(locale)
       deps.setDocumentLanguage(locale)
-      publish({ locale, docs: result.docs, pending: true })
+      // 同语种提交（如挂载后 bootstrap 对首帧语种的确认）保留此前路由预载已写入的文档，再叠加本轮已注册文档。
+      const nextDocs = locale === snapshot.locale && snapshot.docs.size > 0 ? new Map(snapshot.docs) : result.docs
+      if (nextDocs !== result.docs) {
+        for (const [component, doc] of result.docs) nextDocs.set(component, doc)
+      }
+      publish({ locale, docs: nextDocs, pending: true })
       if (persist) {
         try {
           deps.writePreference(locale)
@@ -175,7 +203,8 @@ export function createLocaleController(
     loadShellLocale,
     bootstrap,
     register,
-    ensure
+    ensure,
+    ensureAll
   }
 }
 

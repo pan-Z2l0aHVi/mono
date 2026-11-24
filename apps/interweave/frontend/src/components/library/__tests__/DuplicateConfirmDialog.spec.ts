@@ -225,6 +225,9 @@ describe('DuplicateConfirmDialog', () => {
       expect(mounted.host.querySelectorAll('li')).toHaveLength(2)
       expect(mounted.host.textContent).toContain('较早的记录')
       expect(mounted.host.textContent).toContain('较晚的记录')
+      const tooltips = [...mounted.host.querySelectorAll('li web-ui-tooltip')]
+      expect(tooltips).toHaveLength(2)
+      expect(tooltips.every(tooltip => tooltip.hasAttribute('portal'))).toBe(true)
     } finally {
       mounted.close()
     }

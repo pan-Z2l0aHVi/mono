@@ -102,4 +102,51 @@ describe('route guards', () => {
     expect(router.currentRoute.value.hash).toBe('#section-1')
     off()
   })
+
+  it('组件文档路由在文档与示例预载完毕后才提交，失败留在当前页', async () => {
+    const localeMod = await import('@/i18n/locale')
+    const ensureSpy = vi.spyOn(localeMod, 'ensureExampleDocs')
+    let resolveDocs!: () => void
+    ensureSpy.mockImplementationOnce(
+      () =>
+        new Promise<void>(resolve => {
+          resolveDocs = resolve
+        })
+    )
+
+    const { progress, failures, off } = setup()
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/home', component: Page },
+        { path: '/components/button', component: Page }
+      ]
+    })
+    installRouteGuards(router, queryClient, progress)
+    await router.push('/home')
+
+    const pending = router.push('/components/button')
+    await vi.advanceTimersByTimeAsync(300)
+    expect(router.currentRoute.value.path).toBe('/home')
+    expect(progress.getSnapshot().visible).toBe(true)
+
+    resolveDocs()
+    await pending
+    expect(ensureSpy).toHaveBeenCalledWith(['button', 'button-group'])
+    expect(router.currentRoute.value.path).toBe('/components/button')
+    expect(['done', 'idle']).toContain(progress.getSnapshot().phase)
+    expect(failures).toEqual([])
+
+    ensureSpy.mockRejectedValueOnce(new Error('doc chunk error'))
+    await router.push('/home')
+    await vi.advanceTimersByTimeAsync(500)
+    await router.push('/components/button')
+    expect(router.currentRoute.value.path).toBe('/home')
+    expect(progress.getSnapshot().phase).toBe('error')
+    expect(failures).toHaveLength(1)
+
+    ensureSpy.mockRestore()
+    off()
+  })
 })

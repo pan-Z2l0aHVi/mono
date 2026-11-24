@@ -1,6 +1,8 @@
+import { routeExampleDocs } from '@greypan/doc-demo-kit'
 import type { QueryClient } from '@tanstack/vue-query'
 import type { LocationQuery, Router, RouteLocationRaw } from 'vue-router'
 
+import { ensureExampleDocs } from '@/i18n/locale'
 import { changelogSummaryQuery, parseFakeFetchOptions } from '@/queries/changelog'
 
 type RoutePrefetcher = (query: LocationQuery) => Array<ReturnType<typeof changelogSummaryQuery>>
@@ -15,17 +17,21 @@ function normalize(path: string) {
   return path.length > 1 ? path.replace(/\/$/, '') : path
 }
 
-/** 路由跳转前必须就绪的数据；任一失败即整体拒绝。 */
+/** 路由跳转前必须就绪的数据与文档示例；任一失败即整体拒绝。 */
 export function ensureRouteData(queryClient: QueryClient, path: string, query: LocationQuery) {
   const options = prefetchers[normalize(path)]?.(query) ?? []
+  const docs = routeExampleDocs(path)
   // 真 SWR：首次无缓存时阻塞跳转；已有缓存（哪怕已过 staleTime）立即返回旧缓存切页，同时后台静默 revalidate
-  return Promise.all(options.map(item => queryClient.ensureQueryData({ ...item, revalidateIfStale: true })))
+  return Promise.all([
+    ...options.map(item => queryClient.ensureQueryData({ ...item, revalidateIfStale: true })),
+    ...(docs.length ? [ensureExampleDocs(docs)] : [])
+  ])
 }
 
 const intentSeen = new Set<string>()
 
 /**
- * 意图预取（hover / focus / touchstart）：解析 matched 组件触发 chunk 下载，同时预热数据。
+ * 意图预取（hover / focus / touchstart）：解析 matched 组件触发 chunk 下载，同时预热数据与文档示例。
  * 同一个目标只做一次；任何失败静默，真正的失败由跳转时的守卫呈现。
  */
 export function prefetchRouteIntent(router: Router, queryClient: QueryClient, to: RouteLocationRaw) {
@@ -41,4 +47,8 @@ export function prefetchRouteIntent(router: Router, queryClient: QueryClient, to
   }
   const options = prefetchers[normalize(resolved.path)]?.(resolved.query) ?? []
   for (const item of options) void queryClient.prefetchQuery(item)
+  const docs = routeExampleDocs(resolved.path)
+  if (docs.length) {
+    void ensureExampleDocs(docs).catch(() => intentSeen.delete(resolved.fullPath))
+  }
 }

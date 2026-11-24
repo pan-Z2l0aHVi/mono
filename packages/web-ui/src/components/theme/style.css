@@ -259,7 +259,7 @@
   --wui-shadow-overlay: 2px 16px 40px rgb(0 0 0 / 0.4);
   --wui-shadow-panel: 0 3px 9px rgb(0 0 0 / 0.27);
   --wui-shadow-glass:
-    0 0 1px rgb(0 0 0 / 0.02), 0 0 8px rgb(0 0 0 / 0.03), 0 2px 16px rgb(0 0 0 / 0.025), 0 8px 32px rgb(0 0 0 / 0.015);
+    0 0 1px rgb(0 0 0 / 0.015), 0 0 6px rgb(0 0 0 / 0.018), 0 2px 12px rgb(0 0 0 / 0.015), 0 6px 24px rgb(0 0 0 / 0.01);
   --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent);
   --wui-scrollbar-handle: rgb(0 0 0 / 0.39);
   color-scheme: light;

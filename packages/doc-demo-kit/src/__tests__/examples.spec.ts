@@ -1,7 +1,7 @@
 import type { MetaNode } from '@greypan/md-to-meta'
 import { describe, expect, it, vi } from 'vite-plus/test'
 
-import { createMetaLoader, metaFileOf, prepareExamples } from '../examples'
+import { createMetaLoader, getResolvedDemo, loadDemoModule, metaFileOf, prepareExamples } from '../examples'
 
 const moduleOf = (nodes: MetaNode[]) => async () => ({ default: nodes })
 
@@ -86,5 +86,25 @@ describe('prepareExamples 预载', () => {
     ])
     await prepareExamples(docs)
     expect(load).toHaveBeenCalledTimes(1)
+  })
+
+  it('预载后写入同步缓存供 getResolvedDemo 读取，失败不缓存以便重试', async () => {
+    const demoComponent = { name: 'ButtonDemo' }
+    const load = vi.fn<() => Promise<{ default: typeof demoComponent }>>(async () => ({ default: demoComponent }))
+    expect(getResolvedDemo(load)).toBeUndefined()
+
+    await prepareExamples(new Map([['button', [{ label: 'codeblock', lang: 'vue', load }]]]))
+    expect(getResolvedDemo(load)).toBe(demoComponent)
+
+    let attempts = 0
+    const flakyLoad = vi.fn<() => Promise<{ default: typeof demoComponent }>>(async () => {
+      attempts += 1
+      if (attempts === 1) throw new Error('chunk error')
+      return { default: demoComponent }
+    })
+    await expect(loadDemoModule(flakyLoad)).rejects.toThrow('chunk error')
+    expect(getResolvedDemo(flakyLoad)).toBeUndefined()
+    await expect(loadDemoModule(flakyLoad)).resolves.toBe(demoComponent)
+    expect(getResolvedDemo(flakyLoad)).toBe(demoComponent)
   })
 })

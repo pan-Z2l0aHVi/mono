@@ -7,6 +7,7 @@ import {
   FLAVOR_ICON_CLASS,
   FLAVOR_LABELS,
   FLAVOR_ICONS,
+  getResolvedDemo,
   PACKAGE_MANAGER_ICONS,
   PEEK_HEIGHT,
   type CodeblockVariant,
@@ -33,7 +34,9 @@ const NATIVE_FLAVOR: Flavor = 'react'
  * `load` 是生成器写进 meta 的字面 thunk，同一份 meta 模块里引用同一个函数，所以按函数身份缓存
  * 就能让 React.lazy 只建一次：重渲染与再进入页面都不会换掉组件身份、重置示例自己的状态。
  */
-const demoOf = createThunkCache((load: DemoThunk) => lazy(load as () => Promise<{ default: ComponentType }>))
+const demoOf = createThunkCache(
+  (load: DemoThunk) => getResolvedDemo<ComponentType>(load) ?? lazy(load as () => Promise<{ default: ComponentType }>)
+)
 
 /*
  * 预览宿主：`Demo` 以 prop 进来，它的组件身份由 kit 的 `createThunkCache` 按 `load` 身份固定，
