@@ -71,7 +71,10 @@ func systemProxyFor(req *http.Request) (*url.URL, error) {
 	if req.URL == nil {
 		return nil, fmt.Errorf("proxy: request has no URL")
 	}
-	cResult := C.copy_system_proxy_for_url(C.CString(req.URL.String()))
+	// C.CString 的输入指针必须释放：代理解析每请求都会走这里，不 free 会持续泄漏。
+	cURL := C.CString(req.URL.String())
+	defer C.free(unsafe.Pointer(cURL))
+	cResult := C.copy_system_proxy_for_url(cURL)
 	if cResult == nil {
 		return nil, nil
 	}

@@ -80,7 +80,7 @@ describe('resolvePreviewTarget', () => {
   })
 
   it('文本类扩展名按展示词表分派：纯 text、markdown 渲染、代码着色，pdf 等二进制落到 unsupported 且仍可外跳', () => {
-    const plainExtensions = ['txt', 'csv', 'tex']
+    const plainExtensions = ['txt', 'csv', 'tsv', 'tex']
     const modes = Object.fromEntries(
       plainExtensions.map(extension => [
         extension,

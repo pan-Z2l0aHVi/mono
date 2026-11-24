@@ -35,14 +35,22 @@ type gsettingsEndpoint struct {
 	port string
 }
 
-// gsettingsDesktops 是会走 gsettings 的桌面集合；其余桌面直接回落环境变量。
+// gsettingsDesktops 是会走 gsettings 的桌面集合（归一后的名字）；其余桌面直接回落环境变量。
 var gsettingsDesktops = map[string]bool{"GNOME": true, "UNITY": true, "CINNAMON": true, "MATE": true}
 
 func systemProxyFor(req *http.Request) (*url.URL, error) {
 	if req.URL == nil {
 		return nil, fmt.Errorf("proxy: request has no URL")
 	}
-	if !gsettingsDesktops[desktopOfCurrentSession()] {
+	// 任一分量命中 GNOME 系桌面（含别名归一）就走 gsettings：ubuntu:GNOME、X-Cinnamon 都算。
+	supported := false
+	for _, desktop := range desktopsOf(os.Getenv("XDG_CURRENT_DESKTOP")) {
+		if gsettingsDesktops[normalizeDesktop(desktop)] {
+			supported = true
+			break
+		}
+	}
+	if !supported {
 		return nil, nil
 	}
 	endpoint, err := gsettingsEndpointFor(req.URL.Scheme)
@@ -55,14 +63,7 @@ func systemProxyFor(req *http.Request) (*url.URL, error) {
 	return &url.URL{Scheme: "http", Host: endpoint.host + ":" + endpoint.port}, nil
 }
 
-// desktopOfCurrentSession 取 XDG_CURRENT_DESKTOP 的第一个分量（GNOME 系场景够用）。
-func desktopOfCurrentSession() string {
-	desktops := desktopsOf(os.Getenv("XDG_CURRENT_DESKTOP"))
-	if len(desktops) == 0 {
-		return ""
-	}
-	return desktops[0]
-}
+// desktopOfCurrentSession 已并入 systemProxyFor 的分量匹配（normalizeDesktop 处理别名），不再单独暴露。
 
 func gsettingsEndpointFor(scheme string) (gsettingsEndpoint, error) {
 	gsettingsMu.Lock()

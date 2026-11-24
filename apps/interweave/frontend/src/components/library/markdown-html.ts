@@ -85,13 +85,13 @@ function pruneElement(node: Element, links: string[]): void {
     return
   }
   for (const attribute of Array.from(node.attributes)) {
-    const keep =
-      allowedAttributes.includes(attribute.name.toLowerCase()) ||
-      attribute.name === SANITIZED_LINK_ATTRIBUTE ||
-      attribute.name === 'alt'
+    // data-md-href 不在放行清单：那是清洗器自己写入的受控属性，输入自带的同名属性必须剥掉，
+    // 否则 raw HTML 可以凭它绕过 scheme 白名单直达系统协议处理器。
+    const keep = allowedAttributes.includes(attribute.name.toLowerCase()) || attribute.name === 'alt'
     if (!keep) node.removeAttribute(attribute.name)
   }
   if (tag === 'a') {
+    node.removeAttribute(SANITIZED_LINK_ATTRIBUTE)
     const href = node.getAttribute('href')
     node.removeAttribute('href')
     const target = href === null ? null : allowedLinkTarget(href)

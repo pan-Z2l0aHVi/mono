@@ -29,7 +29,7 @@ export interface PreviewTarget {
 const MARKDOWN_EXTENSIONS = new Set(['MD', 'MARKDOWN'])
 
 /**
- * 代码扩展名 → shiki 语言（TSV → csv 同表）。只收「值得着色且语言在运行时白名单内」的类型；
+ * 代码扩展名 → shiki 语言。只收「值得着色且语言在运行时白名单内」的类型；
  * 之外的文本扩展名仍走纯文本预览（见 TEXT_EXTENSIONS）。
  */
 const CODE_LANGUAGE_BY_EXTENSION: Record<string, string> = {
@@ -81,7 +81,7 @@ const CODE_LANGUAGE_BY_EXTENSION: Record<string, string> = {
 /** 纯文本扩展名清单（不着色）。刻意只收「以字符为单位阅读」且不在代码词表里的类型：后端
  * `document` / `json` kind 里还混着 pdf、docx、epub 等二进制格式，直接按 kind 铺进 `<pre>`
  * 只会得到乱码。扩展名取自 fileExtension()，统一大写。 */
-const TEXT_EXTENSIONS = new Set(['CSV', 'TEX', 'TXT'])
+const TEXT_EXTENSIONS = new Set(['CSV', 'TEX', 'TSV', 'TXT'])
 
 /** 供语言白名单消费：代码模式的语言集合，运行时只对着色这些语言。 */
 export const PREVIEW_LANGUAGES = [...new Set(Object.values(CODE_LANGUAGE_BY_EXTENSION))]

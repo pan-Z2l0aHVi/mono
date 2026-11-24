@@ -48,10 +48,9 @@ func TestResourceViewMetadataUsesPreferredSource(t *testing.T) {
 			IsPreferred: false,
 		},
 	})
-	// URL 来源也按展示词表分类：直链 .json 归 JSON（直链图片同理归 image），无 size；
-	// 只有页面链接才保持 web。
-	if kind != storage.ResourceKindJSON || size != nil {
-		t.Fatalf("expected URL source to be json without size, got kind=%q size=%v", kind, size)
+	// URL 来源只有直链图片才脱离 web（见 resourceKindForURL）：.json 数据链接保持 web，无 size。
+	if kind != storage.ResourceKindWeb || size != nil {
+		t.Fatalf("expected URL source to be web without size, got kind=%q size=%v", kind, size)
 	}
 }
 
@@ -160,7 +159,7 @@ func TestResourceKindForURLDirectImage(t *testing.T) {
 		}
 	})
 
-	t.Run("页面链接保持 web", func(t *testing.T) {
+	t.Run("页面链接与数据链接保持 web，Content-Type 兑底只认 image", func(t *testing.T) {
 		source := &Source{
 			Type:         storage.SourceTypeURL,
 			Location:     "https://example.com/gallery",
@@ -168,6 +167,11 @@ func TestResourceKindForURLDirectImage(t *testing.T) {
 		}
 		if kind := resourceKindForURL(source); kind != storage.ResourceKindWeb {
 			t.Fatalf("expected web, got %s", kind)
+		}
+		// .json 这类已知扩展名不再是页面/直链资源的决定性证据：页面链接保持 web。
+		dataLink := &Source{Type: storage.SourceTypeURL, Location: "https://example.com/asset.json"}
+		if kind := resourceKindForURL(dataLink); kind != storage.ResourceKindWeb {
+			t.Fatalf("expected web for .json link, got %s", kind)
 		}
 	})
 

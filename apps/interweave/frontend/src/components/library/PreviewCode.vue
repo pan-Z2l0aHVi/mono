@@ -17,19 +17,23 @@ const props = defineProps<{
   language?: string
 }>()
 
-const html = ref('')
-const plain = ref(true)
-
 const overLimit = computed(
   () =>
     new TextEncoder().encode(props.code).byteLength > HIGHLIGHT_INPUT_BYTE_LIMIT ||
     props.code.split('\n').length > HIGHLIGHT_INPUT_LINE_LIMIT
 )
 
+const html = ref('')
+const plain = ref(true)
+// 请求身份：快速切换文件时，旧文本的着色可能晚于新文本完成，没有 token 会把旧结果写进新预览；
+// 着色失败（动态 chunk 加载失败等）退回纯文本而不是留白。
+let requestToken = 0
+
 watch(
   () => [props.code, props.language] as const,
   ([code, language], previous) => {
     if (previous && previous[0] === code && previous[1] === language) return
+    const request = ++requestToken
     html.value = ''
     if (!language || overLimit.value) {
       // 白名单外或超大输入：不进着色器，直接按纯文本展示。
@@ -37,9 +41,15 @@ watch(
       return
     }
     plain.value = false
-    highlightForPreview(code, language).then(rendered => {
-      html.value = rendered
-    })
+    highlightForPreview(code, language)
+      .then(rendered => {
+        if (request !== requestToken) return
+        html.value = rendered
+      })
+      .catch(() => {
+        if (request !== requestToken) return
+        plain.value = true
+      })
   },
   { immediate: true }
 )

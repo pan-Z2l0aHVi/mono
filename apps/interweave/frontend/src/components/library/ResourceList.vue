@@ -17,7 +17,7 @@ import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { FocusNavigator, rowFocusTarget } from './focusNavigator'
 import { arrowUpRight } from './icons'
-import { availableFileSource, fileManagerIcon, fileManagerLabel } from './presentation'
+import { availableFileSource, fileManagerIcon, fileManagerLabel, primarySource } from './presentation'
 import type { NameEditorRef } from './rename'
 import { createResourceContextMenu } from './resourceContextMenu'
 import ResourceRow from './ResourceRow.vue'
@@ -524,14 +524,17 @@ function handleShowInFileManager(resource: ResourceView | null) {
 }
 
 /*
- * 壁纸入口的可用形态：kind 为 image 且有一个可信入口。file 来源要求 available（文件不在原处
- * 设置只会报错）；URL 来源不看 available（与预览同一口径：上次抓取失败不代表链接死了），
- * 有 location 就交给后端，失败由反馈通道提示。
+ * 壁纸入口的可用形态：kind 为 image 且首选来源可信。锁定 preferred（而不是 sources.find 第一个
+ * 可用项）：一键原子替换后首选图片可能不在首位，菜单按 preferred 判定，点击才不会给错来源。
+ * file 来源要求 available（文件不在原处设置只会报错）；URL 来源不看 available（与预览同一口径：
+ * 上次抓取失败不代表链接死了），有 location 就交给后端，失败由反馈通道提示。
  */
 function wallpaperCapableResource(resource: ResourceView | null): ResourceView | null {
   if (!resource || resource.kind !== 'image') return null
-  const source = resource.sources.find(source => (source.type === 'url' ? !!source.location : source.available))
-  return source ? resource : null
+  const source = primarySource(resource)
+  if (!source) return null
+  if (source.type === 'url') return source.location ? resource : null
+  return source.available ? resource : null
 }
 
 function handleSetWallpaper(resource: ResourceView | null) {

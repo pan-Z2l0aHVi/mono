@@ -12,23 +12,26 @@ import (
 	"testing"
 )
 
-func TestWallpaperCommandGroupsFor(t *testing.T) {
-	t.Run("GNOME 写浅色与深色两键", func(t *testing.T) {
-		groups := wallpaperCommandGroupsFor("GNOME", "file:///tmp/w.png")
-		if len(groups) != 2 {
-			t.Fatalf("expected 2 commands, got %v", groups)
+func TestWallpaperPlanFor(t *testing.T) {
+	t.Run("GNOME：picture-uri 必需，dark 尽力而为", func(t *testing.T) {
+		plan := wallpaperPlanFor("GNOME", "file:///tmp/w.png")
+		if len(plan) != 2 {
+			t.Fatalf("expected 2 steps, got %v", plan)
 		}
-		if groups[0][2] != "org.gnome.desktop.background" || groups[0][3] != "picture-uri" {
-			t.Fatalf("unexpected first command: %v", groups[0])
+		if plan[0].kind != wallpaperStepRequired || plan[0].commands[0][3] != "picture-uri" {
+			t.Fatalf("unexpected first step: %+v", plan[0])
 		}
-		if groups[1][3] != "picture-uri-dark" {
-			t.Fatalf("unexpected dark command: %v", groups[1])
+		if plan[1].kind != wallpaperStepOptional || plan[1].commands[0][3] != "picture-uri-dark" {
+			t.Fatalf("unexpected optional step: %+v", plan[1])
 		}
 	})
 
-	t.Run("KDE 脚本写原始 URI 不重复前缀", func(t *testing.T) {
-		groups := wallpaperCommandGroupsFor("KDE", "file:///tmp/w.png")
-		script := groups[0][len(groups[0])-1]
+	t.Run("KDE 是备选步，脚本只引用一次 URI", func(t *testing.T) {
+		plan := wallpaperPlanFor("KDE", "file:///tmp/w.png")
+		if plan[0].kind != wallpaperStepAlternative || len(plan[0].commands) != 2 {
+			t.Fatalf("expected one alternative step with two commands: %+v", plan[0])
+		}
+		script := plan[0].commands[0][len(plan[0].commands[0])-1]
 		if strings.Count(script, "file://") != 1 {
 			t.Fatalf("script should reference the URI exactly once: %s", script)
 		}
@@ -37,9 +40,18 @@ func TestWallpaperCommandGroupsFor(t *testing.T) {
 		}
 	})
 
-	t.Run("未知桌面无命令", func(t *testing.T) {
-		if groups := wallpaperCommandGroupsFor("LXQT", "file:///tmp/w.png"); groups != nil {
-			t.Fatalf("expected nil, got %v", groups)
+	t.Run("别名归一：ubuntu 视作 GNOME，X-Cinnamon 归 CINNAMON", func(t *testing.T) {
+		if plan := wallpaperPlanFor("ubuntu", "file:///tmp/w.png"); len(plan) == 0 || plan[0].commands[0][2] != "org.gnome.desktop.background" {
+			t.Fatalf("ubuntu should map to GNOME plan, got %+v", plan)
+		}
+		if plan := wallpaperPlanFor("X-Cinnamon", "file:///tmp/w.png"); len(plan) == 0 || plan[0].commands[0][2] != "org.cinnamon.desktop.background" {
+			t.Fatalf("X-Cinnamon should map to CINNAMON plan, got %+v", plan)
+		}
+	})
+
+	t.Run("未知桌面无计划（调用方不得假成功）", func(t *testing.T) {
+		if plan := wallpaperPlanFor("LXQT", "file:///tmp/w.png"); plan != nil {
+			t.Fatalf("expected nil, got %v", plan)
 		}
 	})
 }

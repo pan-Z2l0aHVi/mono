@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import { ref, watch } from 'vue'
 
+import { allowedLinkTarget } from './markdown-html'
 import { MarkdownNodeView } from './markdown-node-view'
 import { highlightForPreview, loadPreviewRuntime, type PreviewMarkdownNode } from './previewRuntime'
 
@@ -19,10 +20,13 @@ const props = defineProps<{
 
 const nodes = ref<PreviewMarkdownNode[]>([])
 const failed = ref(false)
+// 请求身份：快速切换资源时，旧文档的解析可能晚于新文档完成，没有 token 会把旧结果写进新预览。
+let requestToken = 0
 
 watch(
   () => props.markdown,
   markdown => {
+    const request = ++requestToken
     nodes.value = []
     failed.value = false
     loadPreviewRuntime()
@@ -33,9 +37,11 @@ watch(
         })
       )
       .then(parsed => {
+        if (request !== requestToken) return
         nodes.value = parsed.nodes
       })
       .catch(() => {
+        if (request !== requestToken) return
         failed.value = true
       })
   },
@@ -46,8 +52,11 @@ function handleRootClick(event: MouseEvent) {
   if (event.defaultPrevented || event.button !== 0) return
   const target = event.target instanceof Element ? event.target.closest('a[data-md-href]') : null
   if (!target) return
+  const href = target.getAttribute('data-md-href') ?? ''
+  // 双重校验：清洗器已剥掉输入自带的同名属性，这里再验一次 scheme，防御纵深。
+  if (allowedLinkTarget(href) === null) return
   event.preventDefault()
-  void props.openExternal(target.getAttribute('data-md-href') ?? '')
+  void props.openExternal(href)
 }
 </script>
 

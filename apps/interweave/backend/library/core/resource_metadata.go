@@ -138,15 +138,15 @@ func resourceKindForFile(location string) storage.ResourceKind {
 	return storage.ResourceKindFile
 }
 
-// resourceKindForURL 把直链图片 URL 归为 image：扩展名优先（路径去掉 query/fragment 后取后缀，
-// 与文件入口同一张词表），Content-Type 兑底（探测成功才有，image/* 即 image）。其余一律 web——
-// 页面链接的展示身份不变。
+// resourceKindForURL 只把「直链图片」归为 image：扩展名优先（词表里 image 档才直接定 kind），
+// Content-Type 兑底（探测成功才有，image/* 即 image）。其余一律 web——.html/.json 这类
+// 已知扩展名是页面/数据的概率远高于直链资源，页面链接的展示身份不变。
 func resourceKindForURL(source *Source) storage.ResourceKind {
 	location := source.Location
 	if parsed, err := url.Parse(location); err == nil {
 		ext := strings.ToLower(filepath.Ext(parsed.Path))
-		if kind, ok := resourceKindByExtension[ext]; ok {
-			return kind
+		if resourceKindByExtension[ext] == storage.ResourceKindImage {
+			return storage.ResourceKindImage
 		}
 	}
 	var metadata remote.URLMetadata
