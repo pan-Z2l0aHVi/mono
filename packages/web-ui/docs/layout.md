@@ -544,6 +544,7 @@ It is independent of `--wui-color-surface-overlay`, which dialog, drawer, and to
 | Name                                   | Description                                                                                                  | Default                 |
 | -------------------------------------- | ------------------------------------------------------------------------------------------------------------ | ----------------------- |
 | `--wui-layout-viewport-height`         | Available layout viewport height; set it to the container height when embedding layout in a fixed-height box | `100vh` / `100dvh`      |
+| `--wui-layout-sticky-top`              | Top offset for sticky sidebar and header; set it to the titlebar height when a custom titlebar sits above    | `0`                     |
 | `--wui-layout-sidebar-content-padding` | Mobile sidebar drawer content padding                                                                        | `20px`                  |
 | `--wui-layout-sidebar-radius`          | Sidebar card radius (shared by desktop and mobile)                                                           | `24px`                  |
 | `--wui-layout-sidebar-padding-top`     | Space above the sidebar card on desktop and mobile                                                           | `--wui-space-2` (`8px`) |

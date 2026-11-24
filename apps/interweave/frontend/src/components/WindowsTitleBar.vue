@@ -1,5 +1,6 @@
 <script setup lang="ts">
 // cspell:ignore maximised
+import type { WebUiDropdown } from '@greypan/web-ui'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 import {
@@ -20,6 +21,7 @@ const props = defineProps<{
 }>()
 
 const menuRuntime = props.runtime ?? createMenuTreeRuntime()
+const headerRef = ref<HTMLElement | null>(null)
 const menuItems = ref<MenuItem[]>([])
 const isMaximised = ref(false)
 let stopMenuUpdates: (() => void) | null = null
@@ -47,11 +49,12 @@ function deepestActiveElement(): HTMLElement | null {
 
 /**
  * 在菜单打开抢走焦点前捕获原聚焦元素与选区：
- * 若当前焦点已落在标题栏内部则跳过，避免连续切换顶级菜单时覆盖页面内的真实焦点。
+ * 若当前焦点已落在标题栏或任意已打开的 portal 菜单项/面板内则跳过，
+ * 避免连续切换顶级菜单时用菜单项覆盖页面内的真实输入框焦点快照。
  */
 function captureFocusAndSelection() {
   const active = deepestActiveElement()
-  if (active?.closest('[data-windows-titlebar]')) return
+  if (active?.closest('[data-windows-titlebar], web-ui-dropdown-item, [data-wui-menu-panel], [role="menu"]')) return
 
   let selectionStart: number | null = null
   let selectionEnd: number | null = null
@@ -109,10 +112,24 @@ async function syncMaximisedState() {
   }
 }
 
+/** 关闭标题栏内所有已展开的下拉菜单，避免叶子项点击后浮层继续遮挡页面。 */
+function closeAllMenus() {
+  const header = headerRef.value
+  if (!header) return
+  for (const dropdown of header.querySelectorAll<WebUiDropdown>('web-ui-dropdown')) {
+    if (dropdown.open || dropdown.hasAttribute('open')) {
+      dropdown.hide?.({ instant: true })
+    }
+  }
+}
+
 function handleSelect(item: MenuItem) {
   if (item.disabled || item.separator) return
 
-  // 编辑菜单与剪贴板命令都依赖页面原先的焦点与选区：先恢复再执行。
+  // 先关闭菜单（dropdown.hide 会尝试把焦点退回 trigger），再恢复页面原焦点与选区，
+  // 确保后续编辑角色与剪贴板命令作用在用户原先聚焦的输入框/选区上。
+  closeAllMenus()
+
   const needsFocusRestore =
     item.role === 'paste' ||
     isWebViewEditRole(item.role) ||
@@ -192,6 +209,7 @@ const captionButtonClass =
 
 <template>
   <header
+    ref="headerRef"
     data-windows-titlebar
     class="sticky top-0 z-[700] flex h-9 w-full shrink-0 items-center justify-between border-b border-[#1b1b20]/6 bg-white select-none dark:border-white/8 dark:bg-(--wui-color-page)"
   >
