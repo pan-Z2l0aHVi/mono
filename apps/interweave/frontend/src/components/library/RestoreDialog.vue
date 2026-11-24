@@ -8,21 +8,19 @@ import {
   lucideFile
 } from '@greypan/web-ui/icons'
 import { Virtualizer } from 'virtua/vue'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { onBeforeUnmount, watch } from 'vue'
 
 import { useLingering } from '@/composables/useLingering'
-import { userMessage } from '@/services/library/userMessage'
-import type { ResourceSourceView } from '@/stores/library'
 
 import ErrorBanner from './ErrorBanner.vue'
 import { doubleArrowRight } from './icons'
 import { formatSize } from './presentation'
 import type { PreviewLease } from './previewLease'
-import { createRecoveryScanController } from './recoveryScan'
 import { resourceDialogColumnClass, resourceDialogQueueClass } from './resourceDialogStyles'
 import ResourceLinkDialog from './ResourceLinkDialog.vue'
-import type { LibraryRestoreQueueItem, RecoveryCandidate, RecoveryScanUpdate } from './restore'
+import type { LibraryRestoreQueueItem, RecoveryScanUpdate } from './restore'
 import RestoreRow from './RestoreRow.vue'
+import { createRestoreSession, formatMatchReason } from './restoreSession'
 
 const props = defineProps<{
   open: boolean
@@ -48,252 +46,63 @@ const emit = defineEmits<{
   addItems: [items: LibraryRestoreQueueItem[]]
 }>()
 
-const scanChoiceOpen = ref(false)
-const candidateItem = ref<LibraryRestoreQueueItem | null>(null)
-const renderedCandidateItem = useLingering(candidateItem)
-const candidates = ref<Record<string, RecoveryCandidate[]>>({})
-const manual = ref<Record<string, boolean>>({})
-const snapshots = ref<Record<string, string>>({})
-const scanProgress = ref<RecoveryScanUpdate | null>(null)
-// 单次会话、代次作废、250ms 轮询与停止竞态都由控制器拥有；这里只提供 UI 回调。
-const scan = createRecoveryScanController(
+const session = createRestoreSession(
   {
-    start: (ids, directory) => props.startScan(ids, directory),
-    poll: id => props.pollScan(id),
-    cancel: id => props.cancelScan(id),
-    discard: id => props.discardScan(id)
+    open: () => props.open,
+    queue: () => props.queue,
+    busy: () => props.busy,
+    allUnavailableFiles: () => props.allUnavailableFiles,
+    failedIds: () => props.failedIds
   },
   {
-    onProgress: update => {
-      scanProgress.value = update
-      for (const candidate of update.candidates) mergeCandidate(candidate)
-    },
-    onDone: update => {
-      if (update.error) validationError.value = userMessage(update.error, '扫描失败，请重试')
-    },
-    onError: (stage, cause) => {
-      if (stage === 'start') validationError.value = userMessage(cause, '启动扫描失败，请重试')
-      else if (stage === 'poll') validationError.value = userMessage(cause, '扫描失败，请重试')
-      else validationError.value = userMessage(cause, '停止扫描失败，请重试')
-    }
+    chooseFilePath: () => props.chooseFilePath(),
+    chooseDirectory: () => props.chooseDirectory(),
+    startScan: (ids, directory) => props.startScan(ids, directory),
+    pollScan: id => props.pollScan(id),
+    cancelScan: id => props.cancelScan(id),
+    discardScan: id => props.discardScan(id),
+    lease: props.lease,
+    notifyInfo: message => toast.info(message, { position: 'top-center' }),
+    onAddItems: items => emit('addItems', items),
+    onSubmit: items => emit('submit', items)
   }
 )
-const scanning = scan.scanning
-const stopping = scan.stopping
-const scanIncomplete = scan.incomplete
-const requestStop = scan.requestStop
-function mergeCandidate(candidate: RecoveryCandidate) {
-  const list = candidates.value[candidate.sourceID] ?? []
-  const next = [...list.filter(item => item.path !== candidate.path), candidate]
-  candidates.value[candidate.sourceID] = next
-  if (manual.value[candidate.sourceID]) return
-  if (next.length === 1) {
-    prepared.value[candidate.sourceID] = candidate.path
-    snapshots.value[candidate.sourceID] = candidate.snapshot
-    void prepareThumbnail(candidate.sourceID, candidate.path, generation)
-  } else {
-    delete prepared.value[candidate.sourceID]
-    delete snapshots.value[candidate.sourceID]
-    releasePreview(candidate.sourceID)
-  }
-}
-function openScanChoice() {
-  scanChoiceOpen.value = true
-}
-async function beginScan(directory: string) {
-  validationError.value = ''
-  const items = [...props.queue]
-  for (const item of props.allUnavailableFiles) if (!items.some(existing => existing.id === item.id)) items.push(item)
-  emit('addItems', items)
-  toast.info(`已找到 ${items.filter(item => item.kind === 'file').length} 条失效资源`, { position: 'top-center' })
-  await scan.beginScan(
-    directory,
-    items.filter(item => item.kind === 'file').map(item => item.sourceId)
-  )
-}
-function scanAllDisks() {
-  scanChoiceOpen.value = false
-  void beginScan('')
-}
-async function chooseScanDirectory() {
-  const request = generation
-  scanChoiceOpen.value = false
-  picking.value = 'directory'
-  try {
-    const directory = await props.chooseDirectory()
-    if (directory && props.open && request === generation) void beginScan(directory)
-  } catch (cause) {
-    if (request === generation) validationError.value = userMessage(cause, '选择文件夹失败，请重试')
-  } finally {
-    if (request === generation) picking.value = null
-  }
-}
-function matchReason(reason: string) {
-  return (
-    ({ identity: '可能是原文件', hash: '内容一致', name: '文件名一致' } as Record<string, string>)[reason] ?? '可能匹配'
-  )
-}
-function chooseCandidate(candidate: RecoveryCandidate) {
-  manual.value[candidate.sourceID] = true
-  prepared.value[candidate.sourceID] = candidate.path
-  snapshots.value[candidate.sourceID] = candidate.snapshot
-  candidateItem.value = null
-  void prepareThumbnail(candidate.sourceID, candidate.path, generation)
-}
-const drafts = ref<Record<string, string>>({})
-const prepared = ref<Record<string, string>>({})
-const picking = ref<string | null>(null)
-const validationError = ref('')
-const editingUrlItem = ref<LibraryRestoreQueueItem | null>(null)
-const urlDraft = ref('')
-const previews = computed(() => props.lease.entries.value)
-// lease 与添加队列共用，这里记下本弹窗发起过的 key，关闭时只撤销自己的授权。
-const previewKeys = new Set<string>()
-function releasePreview(id: string) {
-  previewKeys.delete(id)
-  void props.lease.revoke(id).catch(console.error)
-}
-function clearPreviews() {
-  // releasePreview 会改动集合，先取快照再逐个撤销。
-  for (const id of Array.from(previewKeys)) releasePreview(id)
-}
-function previewSource(id: string): ResourceSourceView | null {
-  const preview = previews.value[id]
-  if (!preview) return null
-  return {
-    id,
-    type: 'file',
-    location: preview.path,
-    available: true,
-    isPreferred: true,
-    orderIndex: 0,
-    mediaUrl: preview.mediaUrl,
-    thumbnailUrl: null,
-    metadata: null
-  }
-}
-function prepareThumbnail(id: string, path: string, request: number) {
-  previewKeys.add(id)
-  void props.lease
-    .prepare(
-      id,
-      path,
-      () => request === generation && prepared.value[id] === path && props.queue.some(item => item.id === id)
-    )
-    .catch(console.error)
-}
-watch(
-  () => props.failedIds,
-  ids => {
-    for (const id of ids) {
-      delete prepared.value[id]
-      delete candidates.value[id]
-      delete manual.value[id]
-      delete snapshots.value[id]
-      releasePreview(id)
-    }
-  }
-)
-watch(
-  () => props.queue.map(item => item.id).join('|'),
-  () => {
-    for (const id of Array.from(previewKeys)) {
-      if (!props.queue.some(item => item.id === id)) releasePreview(id)
-    }
-  }
-)
-onBeforeUnmount(() => {
-  generation++
-  scan.dispose()
-  clearPreviews()
-})
-let generation = 0
-const pendingItems = computed(() => props.queue.filter(item => !prepared.value[item.id]))
-const readyItems = computed(() => props.queue.filter(item => !!prepared.value[item.id]))
-const locked = computed(() => props.busy || picking.value !== null)
 
+const {
+  scanChoiceOpen,
+  candidateItem,
+  candidates,
+  scanProgress,
+  scanning,
+  stopping,
+  scanIncomplete,
+  prepared,
+  validationError,
+  editingUrlItem,
+  urlDraft,
+  previews,
+  pendingItems,
+  readyItems,
+  locked,
+  canClose
+} = session
+
+const renderedCandidateItem = useLingering(candidateItem)
 watch(
   () => props.open,
   open => {
-    generation++
-    scan.stop()
-    clearPreviews()
-    scanChoiceOpen.value = false
-    candidateItem.value = null
-    editingUrlItem.value = null
-    if (open) {
-      renderedCandidateItem.value = null
-      candidates.value = {}
-      manual.value = {}
-      snapshots.value = {}
-      scanProgress.value = null
-      scanIncomplete.value = false
-      drafts.value = {}
-      prepared.value = {}
-      picking.value = null
-      validationError.value = ''
-    }
+    if (open) renderedCandidateItem.value = null
   },
   { immediate: true }
 )
 
+onBeforeUnmount(() => {
+  session.dispose()
+})
+
 function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
-  if (event.target !== event.currentTarget || locked.value || scanning.value) return
+  if (event.target !== event.currentTarget || !canClose.value) return
   emit('update:open', event.detail.open)
-}
-
-function completeUrl(value: string) {
-  const item = editingUrlItem.value
-  if (!item) return
-  drafts.value[item.id] = value
-  prepared.value[item.id] = value
-  editingUrlItem.value = null
-}
-
-async function prepare(item: LibraryRestoreQueueItem) {
-  if (locked.value) return
-  validationError.value = ''
-  if (item.kind === 'url') {
-    urlDraft.value = drafts.value[item.id] ?? ''
-    editingUrlItem.value = item
-    return
-  }
-  const request = generation
-  picking.value = item.id
-  try {
-    const path = await props.chooseFilePath()
-    if (request === generation && path) {
-      manual.value[item.id] = true
-      delete snapshots.value[item.id]
-      prepared.value[item.id] = path
-      void prepareThumbnail(item.id, path, request)
-    }
-  } catch (cause) {
-    if (request === generation) validationError.value = userMessage(cause, '选择文件失败，请重试')
-  } finally {
-    if (request === generation) picking.value = null
-  }
-}
-
-function cancelPrepare(item: LibraryRestoreQueueItem) {
-  if (locked.value) return
-  if (item.kind === 'url') drafts.value[item.id] = prepared.value[item.id]
-  delete prepared.value[item.id]
-  manual.value[item.id] = true
-  delete snapshots.value[item.id]
-  releasePreview(item.id)
-}
-
-function submit() {
-  if (locked.value || scanning.value || !readyItems.value.length) return
-  emit(
-    'submit',
-    readyItems.value.map(item => ({
-      ...item,
-      replacementLocation: prepared.value[item.id],
-      scanSnapshot: snapshots.value[item.id]
-    }))
-  )
 }
 </script>
 
@@ -374,21 +183,15 @@ function submit() {
                     :pending="column === 'pending'"
                     :location="prepared[item.id] ?? ''"
                     :preview="previews[item.id]"
-                    :source="previewSource(item.id)"
+                    :source="session.previewSource(item.id)"
                     :locked="locked"
                     :active="activeItemId === item.id"
                     :is-last="index === (column === 'pending' ? pendingItems.length : readyItems.length) - 1"
-                    @prepare="prepare(item)"
-                    @cancel-prepare="cancelPrepare(item)"
-                    @choose-candidates="candidateItem = item"
+                    @prepare="session.prepare(item)"
+                    @cancel-prepare="session.cancelPrepare(item)"
+                    @choose-candidates="session.openCandidates(item)"
                     :candidate-count="candidates[item.id]?.length ?? 0"
-                    :match-reasons="
-                      snapshots[item.id]
-                        ? (candidates[item.id]
-                            ?.find(candidate => candidate.path === prepared[item.id])
-                            ?.matchReasons.map(matchReason) ?? [])
-                        : []
-                    "
+                    :match-reasons="session.matchReasonsFor(item.id)"
                   />
                 </template>
               </Virtualizer>
@@ -455,7 +258,7 @@ function submit() {
       variant="ghost"
       class="mr-auto shrink-0 [--wui-button-color:var(--wui-color-accent)]"
       :disabled="locked"
-      @click="openScanChoice"
+      @click="session.openScanChoice()"
     >
       <web-ui-icon slot="prefix" :icon="iconParkSolidRadarTwo" :size="16" />一键扫描
     </web-ui-button>
@@ -465,7 +268,7 @@ function submit() {
       variant="ghost"
       class="mr-auto shrink-0 [--wui-button-color:var(--wui-color-danger)]"
       :disabled="stopping"
-      @click="requestStop"
+      @click="session.requestStopScan()"
       ><web-ui-icon slot="prefix" :icon="emojioneMonotoneStopButton" :size="16" />{{
         stopping ? '正在停止' : '停止扫描'
       }}</web-ui-button
@@ -475,7 +278,7 @@ function submit() {
       :full="mobile"
       variant="secondary"
       class="cancel-button"
-      :disabled="locked || scanning"
+      :disabled="!canClose"
       @click="emit('update:open', false)"
       >取消</web-ui-button
     >
@@ -484,8 +287,8 @@ function submit() {
       :full="mobile"
       variant="primary"
       :loading="busy"
-      :disabled="locked || scanning || readyItems.length === 0"
-      @click="submit"
+      :disabled="!canClose || readyItems.length === 0"
+      @click="session.submit()"
     >
       <web-ui-icon slot="prefix" :icon="akarIconsCircleCheck" />确认找回
     </web-ui-button>
@@ -493,15 +296,17 @@ function submit() {
   <web-ui-dialog :open="scanChoiceOpen" controlled no-backdrop-close @open-change="scanChoiceOpen = $event.detail.open">
     <span slot="header">扫描范围</span>
     <p>选择要查找的位置，包含其中所有子文件夹</p>
-    <web-ui-button slot="footer" full variant="primary" @click="chooseScanDirectory">扫描选定文件夹</web-ui-button>
-    <web-ui-button slot="footer" full variant="secondary" @click="scanAllDisks">扫描全盘</web-ui-button>
-    <web-ui-button slot="footer" full variant="secondary" @click="scanChoiceOpen = false">取消</web-ui-button>
+    <web-ui-button slot="footer" full variant="primary" @click="session.chooseScanDirectory()"
+      >扫描选定文件夹</web-ui-button
+    >
+    <web-ui-button slot="footer" full variant="secondary" @click="session.scanAllDisks()">扫描全盘</web-ui-button>
+    <web-ui-button slot="footer" full variant="secondary" @click="session.closeScanChoice()">取消</web-ui-button>
   </web-ui-dialog>
   <web-ui-dialog
     :open="candidateItem !== null"
     controlled
     no-backdrop-close
-    @open-change="!$event.detail.open && (candidateItem = null)"
+    @open-change="!$event.detail.open && session.closeCandidates()"
   >
     <span slot="header">选择找回的文件</span>
     <p v-if="renderedCandidateItem" class="mt-0 mb-3 text-xs text-(--wui-color-text-secondary)">
@@ -512,7 +317,7 @@ function submit() {
         <button
           type="button"
           class="candidate-option flex w-full cursor-pointer items-center gap-3 rounded-xl border-0 bg-(--wui-color-surface-raised,white) p-3 text-left text-(--wui-color-text) hover:bg-[color-mix(in_srgb,var(--wui-color-accent)_10%,var(--wui-color-surface-raised,white))] focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring)"
-          @click="chooseCandidate(candidate)"
+          @click="session.chooseCandidate(candidate)"
         >
           <span
             class="candidate-icon grid size-9 shrink-0 place-items-center rounded-[9px] bg-[color-mix(in_srgb,var(--wui-color-accent)_14%,transparent)] text-(--wui-color-accent)"
@@ -524,14 +329,14 @@ function submit() {
             <span class="block text-xs text-(--wui-color-text-secondary)"
               ><span class="font-mono tabular-nums">{{ formatSize(candidate.size) }}</span> ·
               <span class="font-mono tabular-nums">{{ new Date(candidate.modifiedAt).toLocaleString() }}</span> ·
-              {{ candidate.matchReasons.map(matchReason).join('、') }}</span
+              {{ candidate.matchReasons.map(formatMatchReason).join('、') }}</span
             >
           </span>
           <web-ui-icon :icon="lucideChevronRight" :size="16" class="shrink-0 text-(--wui-color-text-secondary)" />
         </button>
       </li>
     </ul>
-    <web-ui-button slot="footer" full variant="secondary" @click="candidateItem = null">取消</web-ui-button>
+    <web-ui-button slot="footer" full variant="secondary" @click="session.closeCandidates()">取消</web-ui-button>
   </web-ui-dialog>
   <ResourceLinkDialog
     :open="editingUrlItem !== null"
@@ -539,10 +344,10 @@ function submit() {
     mode="restore"
     @update:open="
       value => {
-        if (!value) editingUrlItem = null
+        if (!value) session.closeUrlEditor()
       }
     "
-    @submit="completeUrl"
+    @submit="session.completeUrl"
   />
 </template>
 
