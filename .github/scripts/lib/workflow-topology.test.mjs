@@ -1541,10 +1541,10 @@ for (const file of ['wails-verify.yml', 'wails-release.yml']) {
 
   // SKIP_FRONTEND 只在 dist 已存在时让 Taskfile 跳过 bundle：前置步骤必须真的构建 frontend 本体，
   // 只构建它的依赖（^...）会让信号成为死开关，原生构建仍会重复 bundle。
-  const depsAt = workflowText[file].indexOf('      - name: Build WebView workspace dependencies\n')
+  const depsAt = workflowText[file].indexOf('      - name: Build WebView frontend and dependencies\n')
   assert.ok(depsAt >= 0 && depsAt < buildAt, `${file} frontend build must precede the native artifact build`)
   assert.deepEqual(
-    runTexts(namedStep(workflowText[file], 'Build WebView workspace dependencies')),
+    runTexts(namedStep(workflowText[file], 'Build WebView frontend and dependencies')),
     ['pnpm exec turbo build --filter=@greypan/interweave-frontend'],
     `${file} must build @greypan/interweave-frontend itself so its dist can be reused`
   )

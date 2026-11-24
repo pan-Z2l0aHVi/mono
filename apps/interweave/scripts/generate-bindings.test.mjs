@@ -85,6 +85,18 @@ const rootTurbo = JSON.parse(fs.readFileSync(path.join(repoRoot, 'turbo.json'), 
 assert.ok(rootTurbo.tasks.build.outputs.includes('dist/**'), 'the root build task must own dist/**')
 const frontendTurbo = JSON.parse(fs.readFileSync(path.join(repoRoot, 'apps/interweave/frontend/turbo.json'), 'utf8'))
 assert.equal(frontendTurbo.tasks.build.outputs, undefined, 'the frontend build must inherit the root dist/** output')
+assert.ok(
+  appTurbo.tasks.build.inputs.includes('!frontend/bindings/**'),
+  'the app build must exclude generated bindings from its hash'
+)
+assert.ok(
+  frontendTurbo.tasks.build.inputs.includes('!**/bindings/**'),
+  'the frontend build must exclude generated bindings from its hash'
+)
+assert.ok(
+  frontendTurbo.tasks.test.inputs.includes('!**/bindings/**'),
+  'the frontend test must exclude generated bindings from its hash'
+)
 
 const realBefore = hashTree(realBindings)
 
