@@ -1,4 +1,4 @@
-import { ref, type Ref } from 'vue'
+import { computed, ref, type ComputedRef, type Ref } from 'vue'
 
 import type { LibraryQueueItem, LibraryRuntime } from '@/services/library'
 
@@ -38,7 +38,9 @@ export interface LibraryAddQueueController {
    * 提交循环按「已结算项数」推进；submit 会先等入队链收尾再开始，两阶段严格串行，
    * 因此共用一个 ref 不会交错，供加载中的按钮直接展示「已处理 / 总数」。
    */
-  progress: Ref<{ done: number; total: number }>
+  progress: ComputedRef<{ done: number; total: number }>
+  /** 在批量入队确认放行前把共享进度重置为本批规模（0 / total），收口 progress 写入权。 */
+  prepareBatchProgress(total: number): void
   enqueueFileLocations(locations: string[]): Promise<void>
   enqueueURL(url: string): Promise<void>
   /** 裁决当前重复提示；accept=false（取消）时该项不入队。 */
@@ -94,6 +96,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
   const duplicatePrompt = ref<LibraryDuplicatePrompt | null>(null)
   const submitting = ref(false)
   const progress = ref({ done: 0, total: 0 })
+  const readonlyProgress = computed(() => progress.value)
   let settleDuplicate: ((accept: boolean) => void) | null = null
   // 逐项查询与逐项确认都是异步的：串在一条链上，弹窗才不会叠加，顺序也与提交顺序一致。
   let chain: Promise<void> = Promise.resolve()
@@ -226,6 +229,10 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     return chain
   }
 
+  function prepareBatchProgress(total: number) {
+    progress.value = { done: 0, total }
+  }
+
   function enqueueFileLocations(locations: string[]) {
     return enqueue('file', locations)
   }
@@ -323,7 +330,8 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     queue,
     duplicatePrompt,
     submitting,
-    progress,
+    progress: readonlyProgress,
+    prepareBatchProgress,
     enqueueFileLocations,
     enqueueURL,
     resolveDuplicate,
