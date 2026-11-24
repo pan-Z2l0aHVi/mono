@@ -37,10 +37,18 @@ export const ROW_ESTIMATE = 64
 
 /**
  * 被量的是虚拟器自建的条目包裹层——它里面含着一行；行本身被直接观察时同样算。
- * 除了这层，虚拟器还会观察滚动元素（视口）本身，那一条按 0 走它自己的分支。
+ * 容器虚拟化时还会观察滚动容器（scrollport）本身，需要返回视口高度才能算出渲染窗。
  */
 function isMeasuredRow(element: Element) {
-  return element.hasAttribute('data-resource-row') || element.querySelector('[data-resource-row]') !== null
+  return (
+    element.hasAttribute('data-resource-row') ||
+    element.hasAttribute('data-dialog-row') ||
+    element.querySelector('[data-resource-row], [data-dialog-row]') !== null
+  )
+}
+
+function isVirtualScrollport(element: Element) {
+  return element.hasAttribute('data-virtual-scrollport') || element.hasAttribute('data-overlayscrollbars-viewport')
 }
 
 /**
@@ -66,7 +74,7 @@ class StubResizeObserver implements ResizeObserver {
   }
   private deliver(target: Element) {
     if (!this.targets.has(target)) return
-    const height = isMeasuredRow(target) ? ROW_HEIGHT : 0
+    const height = isVirtualScrollport(target) ? VIEWPORT_HEIGHT : isMeasuredRow(target) ? ROW_HEIGHT : 0
     // contentRect 是 virtua 读尺寸的那一份（窗口模式与容器模式都取 contentRect.height），
     // 它要有 width / height 两个键；只给 blockSize 的话读出来是 undefined，尺寸会被整批丢掉。
     const contentRect = {
@@ -95,6 +103,7 @@ class StubResizeObserver implements ResizeObserver {
 const originalInnerHeight = Object.getOwnPropertyDescriptor(window, 'innerHeight')
 const originalInnerWidth = Object.getOwnPropertyDescriptor(window, 'innerWidth')
 const originalOffsetHeight = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetHeight')
+const originalClientHeight = Object.getOwnPropertyDescriptor(Element.prototype, 'clientHeight')
 const originalOffsetParent = Object.getOwnPropertyDescriptor(HTMLElement.prototype, 'offsetParent')
 const originalResizeObserver = globalThis.ResizeObserver
 const originalWindowResizeObserver = Object.getOwnPropertyDescriptor(window, 'ResizeObserver')
@@ -141,6 +150,8 @@ export function stubLayout() {
     else delete (window as { innerWidth?: unknown }).innerWidth
     if (originalOffsetHeight) defineProperty(HTMLElement.prototype, 'offsetHeight', originalOffsetHeight)
     else delete (HTMLElement.prototype as { offsetHeight?: unknown }).offsetHeight
+    if (originalClientHeight) defineProperty(Element.prototype, 'clientHeight', originalClientHeight)
+    else delete (Element.prototype as { clientHeight?: unknown }).clientHeight
     if (originalOffsetParent) defineProperty(HTMLElement.prototype, 'offsetParent', originalOffsetParent)
     else delete (HTMLElement.prototype as { offsetParent?: unknown }).offsetParent
     if (originalScrollY) defineProperty(window, 'scrollY', originalScrollY)
@@ -217,6 +228,13 @@ export function stubLayout() {
     configurable: true,
     get(this: HTMLElement) {
       return isMeasuredRow(this) ? ROW_HEIGHT : 0
+    }
+  })
+  defineProperty(Element.prototype, 'clientHeight', {
+    configurable: true,
+    get(this: Element) {
+      if (this === document.documentElement || isVirtualScrollport(this)) return VIEWPORT_HEIGHT
+      return originalClientHeight?.get ? (originalClientHeight.get.call(this) as number) : 0
     }
   })
   // virtua 只接受 offsetParent 非空的元素上报尺寸（用它排除 display:none / 未挂载的节点）。

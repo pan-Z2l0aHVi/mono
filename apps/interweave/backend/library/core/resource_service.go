@@ -52,12 +52,12 @@ func (s *ResourceService) SetIndexSync(h SourceIndexSync) {
 	s.indexSync = h
 }
 
-// 入口集合变化后请求监听重建；对账失败不回滚已提交的事务，下一次对账会补上。
-func (s *ResourceService) resyncIndex(ctx context.Context) {
+// 入口集合变化后非阻塞地请求监听重建；对账由外部监听协程异步合并执行。
+func (s *ResourceService) resyncIndex() {
 	if s.indexSync == nil {
 		return
 	}
-	_ = s.indexSync.SyncSources(ctx)
+	s.indexSync.RequestSync()
 }
 
 // 规范化待添加文件并复用 Resource 展示分类，不读取文件内容。
@@ -162,7 +162,7 @@ func (s *ResourceService) CreateResource(ctx context.Context, input CreateResour
 		return nil, fmt.Errorf("failed to create resource: %w", err)
 	}
 
-	s.resyncIndex(ctx)
+	s.resyncIndex()
 	return s.GetResource(ctx, result.resourceID)
 }
 
@@ -207,7 +207,7 @@ func (s *ResourceService) DeleteResource(ctx context.Context, resourceID string)
 	}
 
 	// 外键 ON DELETE CASCADE 已连带删除该 Resource 的 Source，监听集合需要跟着收敛。
-	s.resyncIndex(ctx)
+	s.resyncIndex()
 	return nil
 }
 

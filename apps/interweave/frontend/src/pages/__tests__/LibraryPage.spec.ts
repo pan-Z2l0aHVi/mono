@@ -954,7 +954,9 @@ describe('LibraryPage：统一导入入口', () => {
       }
       await flush()
       expect(dialogOpen(dialog)).toBe(false)
-      expect(queueItems(mounted.host)).toHaveLength(21)
+      expect(addDialog(mounted.host).textContent).toContain('21 项')
+      expect(queueItems(mounted.host).length).toBeGreaterThan(0)
+      expect(queueItems(mounted.host).length).toBeLessThan(21)
     } finally {
       await mounted.close()
     }
@@ -1283,7 +1285,9 @@ describe('LibraryPage：统一导入入口', () => {
       button(second, '导入 25 个文件').click()
       await flush()
 
-      expect(queueItems(mounted.host)).toHaveLength(46)
+      expect(addDialog(mounted.host).textContent).toContain('46 项')
+      expect(queueItems(mounted.host).length).toBeGreaterThan(0)
+      expect(queueItems(mounted.host).length).toBeLessThan(46)
       expect(dialogOpen(second)).toBe(false)
     } finally {
       await mounted.close()
