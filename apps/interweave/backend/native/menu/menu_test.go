@@ -407,3 +407,41 @@ func TestBuildReportsTheClickedCommand(t *testing.T) {
 		t.Fatalf("expected a single navigate-back command, got %v", reported)
 	}
 }
+
+func TestSnapshotBuildsWindowsMenuTreeWithDisabledAndRoles(t *testing.T) {
+	items := Snapshot(State{
+		DeveloperOptions: true,
+		Disabled: func(command menucontract.Command) bool {
+			return command == menucontract.CommandNavigateBack
+		},
+	}, "windows")
+
+	if len(items) != 7 {
+		t.Fatalf("expected 7 top-level menus on Windows with developer options, got %d", len(items))
+	}
+	if items[0].Label != "Interweave" || items[len(items)-1].Label != "开发" {
+		t.Fatalf("unexpected top-level menu boundaries: first=%q last=%q", items[0].Label, items[len(items)-1].Label)
+	}
+
+	var foundAbout, foundDisabledBack, foundExportPlaceholder bool
+	var walk func(list []menucontract.MenuItem)
+	walk = func(list []menucontract.MenuItem) {
+		for _, item := range list {
+			if item.Label == "关于 Interweave" && item.Role == menucontract.RoleAbout {
+				foundAbout = true
+			}
+			if item.Command == menucontract.CommandNavigateBack && item.Disabled {
+				foundDisabledBack = true
+			}
+			if item.Label == "导出…" && item.Disabled {
+				foundExportPlaceholder = true
+			}
+			walk(item.Children)
+		}
+	}
+	walk(items)
+
+	if !foundAbout || !foundDisabledBack || !foundExportPlaceholder {
+		t.Fatalf("expected about=%v disabledBack=%v exportPlaceholder=%v", foundAbout, foundDisabledBack, foundExportPlaceholder)
+	}
+}
