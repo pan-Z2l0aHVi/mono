@@ -200,7 +200,7 @@ describe('AppLayout：应用外壳', () => {
     reportDisabled.mockClear()
   })
 
-  it('macOS 侧边栏展开时贴顶容纳红绿灯，收起时才留出 48px 顶部间隙', async () => {
+  it('macOS 侧边栏展开时贴顶容纳红绿灯，收起时才留出 40px 顶部间隙', async () => {
     vi.stubGlobal('_wails', { environment: { OS: 'darwin' } })
     await mountLayout()
 
@@ -210,7 +210,7 @@ describe('AppLayout：应用外壳', () => {
     layoutRoot().dispatchEvent(new CustomEvent('sidebar-collapsed-change', { detail: { collapsed: true } }))
     await nextTick()
 
-    expect([...layoutRoot().classList].some(name => name.startsWith('[--wui-layout-sidebar-padding-top:'))).toBe(true)
+    expect(layoutRoot().classList.contains('[--wui-layout-sidebar-padding-top:40px]')).toBe(true)
     expect(navRoot().hasAttribute('data-traffic-light-inset')).toBe(false)
   })
 
