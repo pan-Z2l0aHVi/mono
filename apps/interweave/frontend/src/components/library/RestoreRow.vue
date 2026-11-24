@@ -25,8 +25,9 @@ const emit = defineEmits<{ prepare: []; cancelPrepare: []; chooseCandidates: [] 
   <li :class="resourceDialogRowClass">
     <ResourceThumbnail
       :kind="!pending && preview ? preview.kind : item.resourceKind"
-      :source="item.kind === 'url' ? (item.source ?? null) : pending ? null : source"
+      :source="pending || item.kind === 'url' ? (item.source ?? null) : source"
       :media-url="pending ? null : (preview?.mediaUrl ?? null)"
+      :thumbnail-url="pending ? (item.source?.thumbnailUrl ?? null) : null"
     />
     <div class="grid min-w-0 flex-[1_1_auto] grid-cols-[minmax(0,1fr)] gap-1">
       <span
