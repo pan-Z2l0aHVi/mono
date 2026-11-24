@@ -2,7 +2,7 @@
 
 import type * as WebUiModule from '@greypan/web-ui'
 import { imagePreview } from '@greypan/web-ui'
-import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, ref } from 'vue'
 
 import {
@@ -12,6 +12,8 @@ import {
 import type { LibraryQueueItem } from '../../../services/library'
 import AddDialog from '../AddDialog.vue'
 import type { PreviewLeaseEntry } from '../previewLease'
+
+import { stubLayout } from './virtualLayout'
 
 vi.mock('@greypan/web-ui', async importOriginal => {
   const actual = await importOriginal<typeof WebUiModule>()
@@ -131,8 +133,16 @@ function previewHandle(): WebUiModule.ImagePreviewHandle {
 }
 
 describe('AddDialog', () => {
+  let restoreLayout: (() => void) | null = null
+
   beforeEach(() => {
     openPreview.mockReset()
+    restoreLayout = stubLayout()
+  })
+
+  afterEach(() => {
+    restoreLayout?.()
+    restoreLayout = null
   })
 
   it('内部 web-ui-dialog 的 closed 事件透传给宿主', async () => {
@@ -555,6 +565,29 @@ describe('AddDialog', () => {
 
       await mounted.setOpen(false)
       expect(handle.close).toHaveBeenCalledOnce()
+    } finally {
+      mounted.close()
+    }
+  })
+
+  it('大批量待导入队列通过虚拟滚动只挂载窗口内的行', async () => {
+    const bulkQueue = Array.from({ length: 200 }, (_, index) =>
+      queueItem({
+        id: `bulk-${index}`,
+        title: `批量资源 ${index}`,
+        location: `/tmp/bulk-${index}.png`,
+        previewToken: undefined,
+        mediaUrl: undefined
+      })
+    )
+    const mounted = mountDialog(bulkQueue)
+    try {
+      await nextTick()
+      await Promise.resolve()
+      await nextTick()
+      const renderedRows = mounted.host.querySelectorAll('[data-dialog-row]')
+      expect(renderedRows.length).toBeGreaterThan(0)
+      expect(renderedRows.length).toBeLessThan(bulkQueue.length)
     } finally {
       mounted.close()
     }
