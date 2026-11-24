@@ -16,8 +16,8 @@ pnpm dev:react-web-ui-demo
 
 ## 开发须知
 
-- 示例代码与 API 表由 `packages/web-ui/docs/*.md` 生成到 `src/generated/`，不要手改。改完 markdown 后，dev 或 build 会自动重新生成。
-- 路由以 `src/routes/**` 和 `vite.config.ts` 为准，不要手改 `src/routeTree.gen.ts`。
+- 示例代码、API 表与首页文档由 `packages/web-ui/docs/*.md` 及 `packages/web-ui/README*.md` 经 `@greypan/md-to-meta` 生成到 `src/generated/`，不要手改。改完 markdown 后，dev 或 build 会自动重新生成。
+- 路由以 `src/routes/**` 和 `vite.config.ts` 为准，不要手改 `src/routeTree.gen.ts`；应用壳状态与路由进度分别复用 `@greypan/doc-demo-kit` 与 `@greypan/route-progress`。
 - 界面文案在源码中写中文，译文在 `src/locales/<locale>.po`。增删文案后在应用目录运行 `pnpm exec wuchale --clean`。
 
 更多说明见同目录 [`AGENTS.md`](./AGENTS.md)。

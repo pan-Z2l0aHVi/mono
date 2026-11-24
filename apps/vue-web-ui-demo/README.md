@@ -24,11 +24,12 @@ pnpm dev:vue-web-ui-demo
 mise exec -- pnpm exec wuchale --clean
 ```
 
-PO 文件是入库的译文源。正文、API 和示例来自 `packages/web-ui/docs/*.md`，由 md-to-meta 生成到 `src/generated/`，不要手改。
+PO 文件是入库的译文源。正文、API、示例与首页文档来自 `packages/web-ui/docs/*.md` 及 `packages/web-ui/README*.md`，由 `@greypan/md-to-meta` 生成到 `src/generated/`，不要手改。
 
 ## 开发须知
 
-- 示例代码与 API 表由 `packages/web-ui/docs/*.md` 生成到 `src/generated/`，改完 markdown 后由 Vite 插件在 dev 或 build 时重新生成。
+- 示例代码、API 表与首页文档由 `packages/web-ui/docs/*.md` 及 `packages/web-ui/README*.md` 生成到 `src/generated/`，改完 markdown 后由 Vite 插件在 dev 或 build 时重新生成。
+- 应用壳状态与路由进度分别复用 `@greypan/doc-demo-kit` 与 `@greypan/route-progress`。
 - 命名 handler 的事件类型统一使用 `WebUiEvent`，不要手写 host 类型。
 
 更多说明见同目录 [`AGENTS.md`](./AGENTS.md)。

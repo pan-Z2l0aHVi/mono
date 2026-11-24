@@ -1,4 +1,4 @@
-# monorepo-kit
+# @greypan/monorepo-kit
 
 > 本仓库的门禁、策略检查与构建编排实现。
 

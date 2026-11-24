@@ -8,7 +8,7 @@
 
 English | [简体中文](./README.CN.md)
 
-This repository contains npm packages, workspace tooling, and integration apps. It is set up to work with agent tools such as Claude, Codex, and OpenCode. Pick a package and read its README for installation, usage, and API.
+This repository contains npm packages, workspace tooling, and integration apps. It is set up to work with agent tools such as Claude, Codex, Pi, and OpenCode. Pick a package and read its README for installation, usage, and API.
 
 ## Published packages
 
@@ -33,17 +33,18 @@ These packages stay inside the repository. Add them to a workspace app with the 
 | [`@greypan/wuchale-vue`](./packages/wuchale-vue/README.md)                 | Vue single-file component adapter for wuchale.                                                                  |
 | [`@greypan/monorepo-kit`](./packages/monorepo-kit/README.md)               | Repository checks, policy helpers, and build coordination.                                                      |
 | [`@greypan/pi-rex-orchestrator`](./packages/pi-rex-orchestrator/README.md) | Pi Rex operator and agent coordinator that controls Rex and dispatches, supervises, and verifies worker agents. |
-| [`@greypan/doc-demo-kit`](./packages/doc-demo-kit)                         | Shared documentation demo layer for the React and Vue demos.                                                    |
+| [`@greypan/doc-demo-kit`](./packages/doc-demo-kit/README.md)               | Shared documentation demo layer for the React and Vue demos.                                                    |
+| [`@greypan/route-progress`](./packages/route-progress/README.md)           | Framework-agnostic route progress bar and delayed visibility state machine.                                     |
 
 ## Apps
 
 These apps are not published to npm. They are integration surfaces and shippable end-user software: the two web demos deploy to GitHub Pages, and Interweave ships installers through GitHub Releases.
 
-| App                                              | Stack                                                   |
-| ------------------------------------------------ | ------------------------------------------------------- |
-| [`react-web-ui-demo`](./apps/react-web-ui-demo/) | React 19, TanStack Router, Zustand, Tailwind CSS        |
-| [`vue-web-ui-demo`](./apps/vue-web-ui-demo/)     | Vue 3, Vue Router, Pinia, Tailwind CSS                  |
-| [`interweave`](./apps/interweave/)               | Wails 3 desktop app with a Go backend and a Vue WebView |
+| App                                              | Stack                                                            |
+| ------------------------------------------------ | ---------------------------------------------------------------- |
+| [`react-web-ui-demo`](./apps/react-web-ui-demo/) | React 19, TanStack Router, TanStack Query, Tailwind CSS          |
+| [`vue-web-ui-demo`](./apps/vue-web-ui-demo/)     | Vue 3, Vue Router, Pinia, TanStack Query, Tailwind CSS           |
+| [`interweave`](./apps/interweave/)               | Wails 3 desktop app with a Go backend and a Vue WebView frontend |
 
 ## Development
 
