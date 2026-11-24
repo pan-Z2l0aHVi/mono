@@ -99,6 +99,14 @@ assert.ok(
   appTurbo.tasks.test.inputs.includes('!frontend/bindings/**'),
   'the app test must exclude generated bindings from its hash'
 )
+for (const generated of ['frontend/auto-imports.d.ts', 'frontend/typed-router.d.ts']) {
+  for (const task of ['build', 'test']) {
+    assert.ok(
+      appTurbo.tasks[task].inputs.includes(`!${generated}`),
+      `the app ${task} must exclude ${generated} from its hash`
+    )
+  }
+}
 assert.ok(
   frontendTurbo.tasks.build.inputs.includes('!**/bindings/**'),
   'the frontend build must exclude generated bindings from its hash'

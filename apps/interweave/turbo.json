@@ -6,6 +6,8 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "!frontend/bindings/**",
+        "!frontend/auto-imports.d.ts",
+        "!frontend/typed-router.d.ts",
         "!docs/**",
         "!**/*.md",
         "!**/*.spec.ts",
@@ -21,6 +23,8 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "!frontend/bindings/**",
+        "!frontend/auto-imports.d.ts",
+        "!frontend/typed-router.d.ts",
         "!docs/**",
         "!**/*.md",
         "!**/*.spec.ts",
