@@ -906,9 +906,11 @@ describe('LibraryPage：统一导入入口', () => {
 
       expect(expandImportEntries).toHaveBeenCalledWith(['/tmp/imports'])
       expect(queueItems(mounted.host)).toHaveLength(2)
-      expect(
-        [...mounted.host.querySelectorAll('web-ui-dialog[open] [slot="header"]')].map(node => node.textContent?.trim())
-      ).not.toContain('批量导入')
+      const openHeaders = [...mounted.host.querySelectorAll<HTMLElement>('web-ui-dialog')]
+        .filter(dialogOpen)
+        .map(dialog => dialog.querySelector('[slot="header"]')?.textContent?.trim())
+      expect(openHeaders).toContain('导入资源')
+      expect(openHeaders).not.toContain('批量导入')
     } finally {
       await mounted.close()
     }
