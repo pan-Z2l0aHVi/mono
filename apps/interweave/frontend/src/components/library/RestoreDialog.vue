@@ -395,7 +395,7 @@ function submit() {
       <div
         v-if="scanning || scanProgress || scanIncomplete"
         role="status"
-        class="mt-2 shrink-0 items-center gap-4 rounded-[18px] bg-[#eceef4] p-3 dark:bg-white/6"
+        class="mt-4 shrink-0 items-center gap-4 rounded-[18px] bg-[#eceef4] p-3 dark:bg-white/6"
         :class="[mobile ? 'block' : 'flex', { 'motion-reduced': !scanning }]"
       >
         <div class="flex min-w-0 flex-1 items-center gap-2">
@@ -424,16 +424,16 @@ function submit() {
             >已检查</span
           >
           <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
-            ><strong class="scan-shimmer font-mono text-sm tabular-nums text-(--wui-color-accent)">{{
-              Object.values(candidates).filter(items => items.length).length
-            }}</strong
-            >已找到</span
-          >
-          <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
             ><strong class="font-mono text-sm tabular-nums text-(--wui-color-text)">{{
               scanProgress?.skipped ?? 0
             }}</strong
             >已跳过</span
+          >
+          <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
+            ><strong class="scan-shimmer font-mono text-sm tabular-nums text-(--wui-color-accent)">{{
+              Object.values(candidates).filter(items => items.length).length
+            }}</strong
+            >已找到</span
           >
         </div>
       </div>
