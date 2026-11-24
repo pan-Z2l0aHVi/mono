@@ -39,6 +39,12 @@ async function waitFor(predicate: () => boolean, label: string, maxFrames = 120)
   throw new Error(`条件在 ${maxFrames} 帧内未成立：${label}`)
 }
 
+function queryPortalPanels(): HTMLElement[] {
+  const overlayRoot = document.querySelector<HTMLElement>('[data-wui-overlay-root]')?.shadowRoot
+  if (!overlayRoot) return []
+  return [...overlayRoot.querySelectorAll<HTMLElement>('.wui-menu-portal-overlay')]
+}
+
 describe('WindowsTitleBar：真实 portal 菜单、焦点恢复与关闭（浏览器）', () => {
   it('切换顶级菜单不覆盖原 textarea 焦点快照，点选编辑菜单叶子项后关闭菜单并恢复焦点选区', async () => {
     const invokeItem = vi.fn<(command: Command, role: string) => Promise<void>>(async () => {})
@@ -82,25 +88,29 @@ describe('WindowsTitleBar：真实 portal 菜单、焦点恢复与关闭（浏�
     const fileTrigger = fileDropdown.querySelector<HTMLButtonElement>('button[slot="trigger"]')!
     const editTrigger = editDropdown.querySelector<HTMLButtonElement>('button[slot="trigger"]')!
 
-    // 1. 先打开「文件」菜单（焦点移入 portal 菜单项）
+    // 1. 先打开「文件」菜单，等到真实 portal panel 挂载，并把焦点移入菜单项内部 Shadow DOM
     fileTrigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
     fileTrigger.click()
-    await waitFor(() => fileDropdown.open, '文件菜单打开')
+    await waitFor(
+      () => fileDropdown.open && queryPortalPanels().some(panel => panel.textContent?.includes('导入资源')),
+      '文件菜单 portal panel 打开'
+    )
+    const filePanel = queryPortalPanels().find(panel => panel.textContent?.includes('导入资源'))!
+    const fileFirstItem = filePanel.querySelector<HTMLElement>('web-ui-dropdown-item')!
+    fileFirstItem.focus()
+    await waitFor(() => Boolean(fileFirstItem.shadowRoot?.activeElement), '文件菜单首项 Shadow DOM 获得焦点')
 
-    // 2. 不点页面，直接切到「编辑」菜单（验证 portal 菜单项不会覆盖原 textarea 快照）
+    // 2. 不点页面，直接切到「编辑」菜单（此时焦点正位于 portal 菜单项的 Shadow DOM 内，验证不覆盖 textarea 快照）
     editTrigger.dispatchEvent(new PointerEvent('pointerdown', { bubbles: true }))
     editTrigger.click()
-    await waitFor(() => editDropdown.open, '编辑菜单打开')
-
-    // 3. 点击 portal 中的「粘贴」叶子项
     await waitFor(
-      () =>
-        [...document.querySelectorAll<HTMLElement>('web-ui-dropdown-item')].some(
-          item => item.textContent?.includes('粘贴') && item.isConnected
-        ),
-      '粘贴菜单项进入 DOM'
+      () => editDropdown.open && queryPortalPanels().some(panel => panel.textContent?.includes('粘贴')),
+      '编辑菜单 portal panel 打开'
     )
-    const pasteItem = [...document.querySelectorAll<HTMLElement>('web-ui-dropdown-item')].find(item =>
+
+    // 3. 仅在已打开的 portal panel 中定位并点击「粘贴」叶子项
+    const editPanel = queryPortalPanels().find(panel => panel.textContent?.includes('粘贴'))!
+    const pasteItem = [...editPanel.querySelectorAll<HTMLElement>('web-ui-dropdown-item')].find(item =>
       item.textContent?.includes('粘贴')
     )!
     pasteItem.click()

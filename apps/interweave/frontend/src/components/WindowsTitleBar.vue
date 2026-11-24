@@ -47,14 +47,31 @@ function deepestActiveElement(): HTMLElement | null {
   return active instanceof HTMLElement ? active : null
 }
 
+/** 跨 ShadowRoot 边界判断元素是否位于标题栏或已打开的下拉菜单浮层内。 */
+function isInsideTitleBarOrMenu(element: Element | null): boolean {
+  let current: Element | null = element
+  while (current) {
+    if (
+      current.matches(
+        '[data-windows-titlebar], web-ui-dropdown-item, .wui-menu-portal-overlay, [data-wui-menu-panel], [role="menu"]'
+      )
+    ) {
+      return true
+    }
+    const root = current.getRootNode()
+    current = current.parentElement ?? (root instanceof ShadowRoot ? root.host : null)
+  }
+  return false
+}
+
 /**
  * 在菜单打开抢走焦点前捕获原聚焦元素与选区：
- * 若当前焦点已落在标题栏或任意已打开的 portal 菜单项/面板内则跳过，
+ * 若当前焦点已落在标题栏或任意已打开的 portal 菜单项/面板内（含其 ShadowRoot 内部节点）则跳过，
  * 避免连续切换顶级菜单时用菜单项覆盖页面内的真实输入框焦点快照。
  */
 function captureFocusAndSelection() {
   const active = deepestActiveElement()
-  if (active?.closest('[data-windows-titlebar], web-ui-dropdown-item, [data-wui-menu-panel], [role="menu"]')) return
+  if (isInsideTitleBarOrMenu(active)) return
 
   let selectionStart: number | null = null
   let selectionEnd: number | null = null
