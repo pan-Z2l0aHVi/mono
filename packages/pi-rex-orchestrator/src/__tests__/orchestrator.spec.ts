@@ -510,8 +510,8 @@ describe('spawn 与投递', () => {
       expect(stub.sends[0]?.text).toContain('turn-002.brief.md')
       expect(stub.keys).toEqual([{ blockId: worker.blockId, key: 'enter' }])
       expect(result.content[0]?.text).toContain('未观察到状态跃迁')
-      expect(worker.turn).toBe(2)
-      expect(worker.status).toBe('blocked')
+      expect(registry.get(worker.workerId)?.turn).toBe(2)
+      expect(registry.get(worker.workerId)?.status).toBe('blocked')
       dispose()
     })
   )
@@ -537,11 +537,12 @@ describe('spawn 与投递', () => {
       }
       expect(result.content[0]?.text).toContain('headless 续跑已启动')
       expect(result.content[0]?.text).toContain('旧 Tab 已自动回收')
-      expect(worker.agentSessionId).toBe('agent-sid-9')
-      expect(worker.blockId).not.toBe(`block:1`)
+      const updated = registry.get(worker.workerId)
+      expect(updated?.agentSessionId).toBe('agent-sid-9')
+      expect(updated?.blockId).not.toBe(`block:1`)
       // V3-02 单活跃 Tab：回收成功的旧 Block 从 retired 列表移除，
       // 不留给 /rex-cleanup 反复重关。
-      expect(worker.retiredBlockIds).toEqual([])
+      expect(updated?.retiredBlockIds).toEqual([])
       expect(stub.closedBlocks).toContain('block:1')
       dispose()
     })
@@ -568,7 +569,7 @@ describe('spawn 与投递', () => {
         content: Array<{ text: string }>
       }
       expect(result.content[0]?.text).toContain('旧 Tab 关闭失败')
-      expect(worker.retiredBlockIds).toEqual(['block:1'])
+      expect(registry.get(worker.workerId)?.retiredBlockIds).toEqual(['block:1'])
       dispose()
     })
   )
@@ -1087,24 +1088,23 @@ describe('关闭、合并与内容落地', () => {
     '关闭顺序：retired 先关且成功即出列，失败整体中止；重试不重复关闭（codex exec 八轮 #2）',
     withTempRoot(async () => {
       const { mock, stub, registry, orchestrator } = makeCloseOrchestrator(fakeGit())
-      const worker = registry.get('claude-1')
-      worker?.retiredBlockIds.push('block:R')
+      registry.restore([{ ...registry.get('claude-1')!, retiredBlockIds: ['block:R'] }])
       stub.failBlockClose = true
 
       // 第一次：retired 关闭失败 → 活跃 Block 尚未被关，列表保留待重试。
       const first = await closeWorker(mock)
       expect(first.isError).toBe(true)
       expect(stub.closedBlocks).toEqual([])
-      expect(worker?.retiredBlockIds).toEqual(['block:R'])
-      expect(worker?.status).not.toBe('closed')
+      expect(registry.get('claude-1')?.retiredBlockIds).toEqual(['block:R'])
+      expect(registry.get('claude-1')?.status).not.toBe('closed')
 
       // 第二次：一次性失败已重置 → retired 与活跃 Block 依序关闭，worker 收尾。
       const second = await closeWorker(mock)
       expect(second.isError).toBeFalsy()
       expect(stub.closedBlocks).toEqual(['block:R', 'block:A'])
-      expect(worker?.retiredBlockIds).toEqual([])
-      expect(worker?.activeBlockClosed).toBe(true)
-      expect(worker?.status).toBe('closed')
+      expect(registry.get('claude-1')?.retiredBlockIds).toEqual([])
+      expect(registry.get('claude-1')?.activeBlockClosed).toBe(true)
+      expect(registry.get('claude-1')?.status).toBe('closed')
       orchestrator.dispose()
     })
   )
@@ -1172,24 +1172,24 @@ describe('事件环与验收折叠', () => {
     withTempRoot(async () => {
       const { mock, stub, registry, dispose } = makeOrchestrator()
       mock.emit('session_start', { reason: 'startup' })
-      const worker = registry.register({
+      registry.register({
         workerId: 'claude-1',
         agent: 'claude',
         mode: 'headless',
         label: 'claude-1',
-        blockId: 'block:B',
-        turn: 2,
+        blockId: 'block:R',
+        turn: 1,
         cwd: '/repo',
         baseCommit: null,
         baseDirty: [],
         paused: false
       })
-      worker.retiredBlockIds.push('block:R')
+      registry.replaceBlock('claude-1', 'block:B')
       stub.failBlockClose = true
 
       await mock.commands.get('rex-cleanup')?.handler('', mock.ctx as never)
 
-      expect(worker.retiredBlockIds).toEqual(['block:R'])
+      expect(registry.get('claude-1')?.retiredBlockIds).toEqual(['block:R'])
       expect(mock.ctx.notifies.some(note => note.message.includes('旧 Tab 关闭失败'))).toBe(true)
       dispose()
     })
@@ -1224,7 +1224,7 @@ describe('事件环与验收折叠', () => {
             }
           })
         )
-        expect(worker.status).toBe('done')
+        expect(registry.get(worker.workerId)?.status).toBe('done')
 
         await vi.advanceTimersByTimeAsync(1100)
         const wake = mock.messages.find(message => message.options?.triggerTurn === true)

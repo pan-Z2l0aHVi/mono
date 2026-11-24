@@ -467,7 +467,7 @@ describe('WebUiDrawer fullable 拖拽全屏（浏览器）', () => {
     // 回写 false → 走标准关闭管线。
     el.open = false
     await el.updateComplete
-    await waitFor(() => getDialog(el).getAnimations({ subtree: true }).length === 0)
+    await waitFor(() => !getDialog(el).open)
     expect(getDialog(el).open).toBe(false)
   })
 
