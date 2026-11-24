@@ -798,3 +798,50 @@ async function canonicalize(pathname: string): Promise<string> {
     }
   }
 }
+
+export type MergeHeadState = { kind: 'clean' } | { kind: 'merging' } | { kind: 'unknown'; code: number }
+
+/**
+ * 合并门（fail closed）：`MERGE_HEAD` 探针按退出码与完整输出严格解释——
+ * 0 合并中、1 无合并、其余（128 等、killed 或 truncated）一律判为状态未知，绝不放行。
+ */
+export async function probeMergeHead(exec: GitExec, mainCwd: string): Promise<MergeHeadState> {
+  const probe = await exec(['rev-parse', '--verify', '-q', 'MERGE_HEAD'], { cwd: mainCwd })
+  if (probe.killed || probe.truncated) return { kind: 'unknown', code: probe.code }
+  if (probe.code === 1) return { kind: 'clean' }
+  if (probe.code === 0) return { kind: 'merging' }
+  return { kind: 'unknown', code: probe.code }
+}
+
+/**
+ * 钉住主仓当前「分支身份 + commit」：只比 SHA 挡不住切到指向同一 commit 的另一分支；
+ * detached HEAD 同样纳入身份，killed/truncated 按 fail-closed 报错。
+ */
+export async function captureHeadTarget(
+  exec: GitExec,
+  mainCwd: string
+): Promise<{ target: string } | { error: string }> {
+  const refProbe = await exec(['symbolic-ref', '-q', 'HEAD'], { cwd: mainCwd })
+  const shaProbe = await exec(['rev-parse', 'HEAD'], { cwd: mainCwd })
+  if (
+    refProbe.killed ||
+    refProbe.truncated ||
+    shaProbe.killed ||
+    shaProbe.truncated ||
+    (refProbe.code !== 0 && refProbe.code !== 1) ||
+    shaProbe.code !== 0
+  ) {
+    return {
+      error: `无法读取主仓 HEAD（symbolic-ref exit ${refProbe.code}，rev-parse exit ${shaProbe.code}）`
+    }
+  }
+  const ref = refProbe.code === 0 ? refProbe.stdout.trim() : '(detached)'
+  return { target: `${ref}@${shaProbe.stdout.trim()}` }
+}
+
+/** worktree 的主仓 cwd：从 worktree 里问 git 一次。 */
+export async function findMainRepo(exec: GitExec, cwd: string): Promise<string> {
+  return (await runGit(exec, cwd, ['rev-parse', '--path-format=absolute', '--git-common-dir']))
+    .trim()
+    .replace(/\/\.git$/, '')
+}
