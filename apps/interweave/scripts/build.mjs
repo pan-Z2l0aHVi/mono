@@ -30,8 +30,12 @@ const scripts =
 
 const pnpm = process.platform === 'win32' ? 'pnpm.cmd' : 'pnpm'
 
+// turbo 已经构建过 frontend/dist 时，wails 内部的 build:frontend 不必再 bundle 一遍。
+// TURBO_HASH 是 turbo 注入的环境变量；共享 Taskfile 里的 dist/index.html 兜底负责确认产物还在。
+const env = process.env.TURBO_HASH ? { ...process.env, SKIP_FRONTEND: '1' } : process.env
+
 for (const script of scripts) {
-  const result = spawnSync(pnpm, ['run', script], { stdio: 'inherit' })
+  const result = spawnSync(pnpm, ['run', script], { stdio: 'inherit', env })
 
   if (result.error) {
     throw result.error

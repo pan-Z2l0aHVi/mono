@@ -70,6 +70,10 @@ const frontendTask =
 
 assert.ok(frontendTask, 'the shared Wails Taskfile must declare build:frontend')
 assert.match(frontendTask, /- task: generate:bindings/)
+assert.ok(
+  frontendTask.includes('[ -n "$SKIP_FRONTEND" ] && [ -f dist/index.html ]'),
+  'the shared build:frontend must reuse an existing dist when SKIP_FRONTEND is set'
+)
 assert.match(frontendTask, /pnpm run \{\{if eq \.DEV "true"\}\}build:bundle:dev\{\{else\}\}build:bundle\{\{end\}\}/)
 assert.doesNotMatch(frontendTask, /pnpm run \{\{if eq \.DEV "true"\}\}build:dev\{\{else\}\}build\{\{end\}\}/)
 const bindingTaskStart = taskfile.indexOf('  generate:bindings:\n')
@@ -300,6 +304,7 @@ printf '%s|%s\\n' "$command" "$mode" >> "$BUNDLE_CALLS"
       GENERATOR_CALLS: generatorCalls,
       BUNDLE_CALLS: bundleCalls
     }
+    delete env.SKIP_FRONTEND
     fs.mkdirSync(env.XDG_CACHE_HOME, { recursive: true })
     fs.mkdirSync(env.TMPDIR, { recursive: true })
 
@@ -354,6 +359,27 @@ printf '%s|%s\\n' "$command" "$mode" >> "$BUNDLE_CALLS"
         fs.readFileSync(path.join(taskRoot, 'frontend/dist/bundle.txt'), 'utf8').trim(),
         'build:bundle|production',
         'multi-architecture dependencies must consume the current production bindings'
+      )
+
+      // turbo 已产出 dist 后，wails 内部 bundle 必须让位；但 bindings 依赖仍照常运行。
+      fs.writeFileSync(path.join(taskRoot, 'frontend/index.ts'), 'changed\n')
+      fs.writeFileSync(path.join(taskRoot, 'frontend/dist/index.html'), 'already built\n')
+      const generatorCallsBeforeSkip = fs.readFileSync(generatorCalls, 'utf8').trim().split('\n').length
+      const bundleCallsBeforeSkip = fs.readFileSync(bundleCalls, 'utf8').trim().split('\n').length
+      execFileSync(
+        'wails3',
+        ['task', 'common:build:frontend', 'BUILD_FLAGS=-tags production', 'DEV=false', 'OBFUSCATED=false'],
+        { cwd: taskRoot, env: { ...env, SKIP_FRONTEND: '1' }, encoding: 'utf8', stdio: 'pipe' }
+      )
+      assert.equal(
+        fs.readFileSync(bundleCalls, 'utf8').trim().split('\n').length,
+        bundleCallsBeforeSkip,
+        'a turbo-built dist must prevent the wails frontend bundle from running again'
+      )
+      assert.equal(
+        fs.readFileSync(generatorCalls, 'utf8').trim().split('\n').length,
+        generatorCallsBeforeSkip + 1,
+        'the bindings dependency must still run when the frontend bundle is skipped'
       )
     } finally {
       fs.rmSync(taskRoot, { recursive: true, force: true })

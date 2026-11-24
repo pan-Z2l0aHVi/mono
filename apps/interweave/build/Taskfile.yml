@@ -32,7 +32,16 @@ tasks:
           OBFUSCATED:
             ref: .OBFUSCATED
     cmds:
-      - pnpm run {{if eq .DEV "true"}}build:bundle:dev{{else}}build:bundle{{end}}
+      # turbo 已在 @greypan/interweave-frontend#build 里产出 dist 时，wails 内部再 bundle 一次既重复，
+      # 又会覆盖不属于 app build 缓存输出的 dist。SKIP_FRONTEND 由 turbo 路径注入；dist/index.html
+      # 是兜底，信号成立但产物缺失时仍照常构建。go-task 的 deps 不受此守卫影响，bindings 仍会生成，
+      # 而它已从两个 build 的 inputs 排除，不会改变下一次 turbo hash。
+      - |
+        if [ -n "$SKIP_FRONTEND" ] && [ -f dist/index.html ]; then
+          echo 'frontend bundle skipped: dist already built'
+        else
+          pnpm run {{if eq .DEV "true"}}build:bundle:dev{{else}}build:bundle{{end}}
+        fi
     env:
       PRODUCTION: '{{if eq .DEV "true"}}false{{else}}true{{end}}'
 
