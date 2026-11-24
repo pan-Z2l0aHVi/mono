@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -43,6 +44,14 @@ const (
 )
 
 func mainWindowOptions() application.WebviewWindowOptions {
+	return mainWindowOptionsFor(runtime.GOOS)
+}
+
+// mainWindowOptionsFor 按目标平台构造主窗口选项，便于在非 Windows 主机上直接单测 Windows 配置。
+// Windows 端启用 Frameless + NonClientRegionSupport 并关闭原生菜单栏，由前端渲染一体化顶栏
+// （左侧 top menu + 中间拖动区 + 右侧系统风格三键），同时保留 Win11 原生圆角、阴影与贴边分屏。
+func mainWindowOptionsFor(goos string) application.WebviewWindowOptions {
+	isWindows := goos == "windows"
 	return application.WebviewWindowOptions{
 		Title:              "Interweave",
 		Width:              defaultWindowWidth,
@@ -50,7 +59,8 @@ func mainWindowOptions() application.WebviewWindowOptions {
 		MinWidth:           minWindowWidth,
 		MinHeight:          minWindowHeight,
 		EnableFileDrop:     true,
-		UseApplicationMenu: true,
+		Frameless:          isWindows,
+		UseApplicationMenu: !isWindows,
 		Mac: application.MacWindow{
 			Backdrop: application.MacBackdropTranslucent,
 			TitleBar: application.MacTitleBarHiddenInset,
@@ -60,6 +70,9 @@ func mainWindowOptions() application.WebviewWindowOptions {
 			WebviewPreferences: application.MacWebviewPreferences{
 				TabFocusesLinks: application.Enabled,
 			},
+		},
+		Windows: application.WindowsWindow{
+			NonClientRegionSupport: isWindows,
 		},
 		BackgroundColour: application.NewRGB(6, 7, 15),
 		URL:              "/",
@@ -279,14 +292,42 @@ func main() {
 		}
 	}
 
-	// installMenu 整体重建菜单并重新挂上窗口。Windows 上 Menu.Update 不重绘已存在的
-	// 菜单栏，只有 window.SetMenu 会 SetMenu + DrawMenuBar，所以两条都要做；
-	// macOS 上 window.SetMenu 是 no-op，app.Menu.Set 才是生效点。
-	installMenu := func() {
-		tree := nativeMenu.Build(nativeMenu.State{
+	menuState := func() nativeMenu.State {
+		return nativeMenu.State{
 			DeveloperOptions: settingsService.DeveloperOptionsEnabled(),
 			Disabled:         menuService.IsDisabled,
-		}, menuSink)
+		}
+	}
+	menuService.SetTreeProvider(func() []menucontract.MenuItem {
+		return nativeMenu.Snapshot(menuState(), runtime.GOOS)
+	})
+	menuService.SetInvokeHandler(func(command menucontract.Command, role string) {
+		if command != "" {
+			menuSink(command)
+			return
+		}
+		switch role {
+		case menucontract.RoleAbout:
+			app.Menu.ShowAbout()
+		case menucontract.RoleQuit:
+			app.Quit()
+		case menucontract.RoleMinimise:
+			window.Minimise()
+		case menucontract.RoleCloseWindow:
+			window.Close()
+		}
+	})
+
+	// installMenu 整体重建菜单并同步到当前平台呈现面：
+	// - macOS / Linux 挂原生应用菜单；
+	// - Windows 使用 Frameless 一体化顶栏，不挂 Win32 菜单条，改向前端推送最新菜单快照。
+	installMenu := func() {
+		state := menuState()
+		if runtime.GOOS == "windows" {
+			window.EmitEvent(menucontract.TreeChangedEventName, nativeMenu.Snapshot(state, runtime.GOOS))
+			return
+		}
+		tree := nativeMenu.Build(state, menuSink)
 		app.Menu.Set(tree.Menu)
 		window.SetMenu(tree.Menu)
 	}

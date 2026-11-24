@@ -12,9 +12,28 @@ func TestAppDescriptionCarriesVersion(t *testing.T) {
 }
 
 func TestMainWindowEnablesMacTabFocus(t *testing.T) {
-	opts := mainWindowOptions()
+	opts := mainWindowOptionsFor("darwin")
 	if !opts.Mac.WebviewPreferences.TabFocusesLinks.IsSet() || !opts.Mac.WebviewPreferences.TabFocusesLinks.Get() {
 		t.Fatalf("expected Mac.WebviewPreferences.TabFocusesLinks to be enabled so Tab reaches buttons and links on macOS")
+	}
+	if opts.Frameless {
+		t.Fatal("expected macOS window not to be frameless")
+	}
+	if !opts.UseApplicationMenu {
+		t.Fatal("expected macOS window to keep UseApplicationMenu enabled")
+	}
+}
+
+func TestMainWindowUsesFramelessIntegratedTitleBarOnWindows(t *testing.T) {
+	opts := mainWindowOptionsFor("windows")
+	if !opts.Frameless {
+		t.Fatal("expected Windows window to enable Frameless for integrated titlebar")
+	}
+	if opts.UseApplicationMenu {
+		t.Fatal("expected Windows window to disable native Win32 menu bar")
+	}
+	if !opts.Windows.NonClientRegionSupport {
+		t.Fatal("expected Windows window to enable NonClientRegionSupport for native drag/snap")
 	}
 }
 

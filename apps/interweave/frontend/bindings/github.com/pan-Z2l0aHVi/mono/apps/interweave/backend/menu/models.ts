@@ -90,5 +90,42 @@ export class MenuCommand {
     }
 }
 
+/**
+ * MenuItem 是推送给自定义顶栏（Windows）的可序列化菜单节点。
+ * 形状、文案、快捷键与禁用态全部由 Go 侧生成，前端只负责呈现与回调触发。
+ */
+export class MenuItem {
+    "label": string;
+    "separator"?: boolean;
+    "disabled"?: boolean;
+    "accelerator"?: string;
+    "command"?: Command;
+    "role"?: string;
+    "children"?: MenuItem[];
+
+    /** Creates a new MenuItem instance. */
+    constructor($$source: Partial<MenuItem> = {}) {
+        if (!("label" in $$source)) {
+            this["label"] = "";
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new MenuItem instance from a string or object.
+     */
+    static createFrom($$source: any = {}): MenuItem {
+        const $$createField6_0 = $$createType2;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("children" in $$parsedSource) {
+            $$parsedSource["children"] = $$createField6_0($$parsedSource["children"]);
+        }
+        return new MenuItem($$parsedSource as Partial<MenuItem>);
+    }
+}
+
 // Private type creation functions
 const $$createType0 = $Create.Map($Create.Any, $Create.Any);
+const $$createType1 = MenuItem.createFrom;
+const $$createType2 = $Create.Array($$createType1);

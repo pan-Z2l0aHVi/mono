@@ -8,5 +8,6 @@ export {
 
 export {
     Command,
-    MenuCommand
+    MenuCommand,
+    MenuItem
 } from "./models.js";

@@ -216,6 +216,17 @@ describe('AppLayout：应用外壳', () => {
     )
   })
 
+  it.each([
+    ['windows', true],
+    ['darwin', false],
+    ['linux', false]
+  ])('仅 Windows 平台渲染一体化顶栏（%s）', async (os, expected) => {
+    vi.stubGlobal('_wails', { environment: { OS: os } })
+    await mountLayout()
+
+    expect(host.querySelector('[data-windows-titlebar]') !== null).toBe(expected)
+  })
+
   it('切路由不重建 layout 与 AppNav 实例', async () => {
     await mountLayout()
     const layout = layoutRoot()

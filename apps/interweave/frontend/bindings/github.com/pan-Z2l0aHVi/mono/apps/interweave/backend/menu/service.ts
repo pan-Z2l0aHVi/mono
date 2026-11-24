@@ -18,6 +18,23 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as $models from "./models.js";
 
 /**
+ * GetMenu 返回当前菜单树快照（含开发者菜单开关与禁用态），供 Windows 一体化顶栏渲染。
+ */
+export function GetMenu(): $CancellablePromise<$models.MenuItem[]> {
+    return $Call.ByID(714686459).then(($result: any) => {
+        return $$createType1($result);
+    });
+}
+
+/**
+ * InvokeMenuItem 触发自定义顶栏中的一个菜单项（业务命令或系统角色）。
+ * 业务命令若当前处于禁用集合则静默忽略，防止前端旧快照误触。
+ */
+export function InvokeMenuItem(command: $models.Command, role: string): $CancellablePromise<void> {
+    return $Call.ByID(1718368088, command, role);
+}
+
+/**
  * ReportDisabledCommands 记录当前的禁用集合；集合真的变了才触发重建。
  * 
  * 前端会在路由与历史栈变化时上报，这些变化可能很频繁，而重建整棵菜单在 Windows 上
@@ -27,3 +44,7 @@ import * as $models from "./models.js";
 export function ReportDisabledCommands(disabled: $models.Command[]): $CancellablePromise<void> {
     return $Call.ByID(1596450568, disabled);
 }
+
+// Private type creation functions
+const $$createType0 = $models.MenuItem.createFrom;
+const $$createType1 = $Create.Array($$createType0);

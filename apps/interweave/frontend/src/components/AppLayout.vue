@@ -8,6 +8,7 @@ import { RouterView, useRouter } from 'vue-router'
 import AppNav from '@/components/AppNav.vue'
 import RouteProgressBar from '@/components/RouteProgressBar.vue'
 import SettingsDialog from '@/components/SettingsDialog.vue'
+import WindowsTitleBar from '@/components/WindowsTitleBar.vue'
 import {
   MENU_ADD_RESOURCE_EVENT,
   MENU_FOCUS_SEARCH_EVENT,
@@ -50,6 +51,7 @@ const desktopSidebarWidth = ref('240px')
 
 /* 首次渲染已等过 runtime core 注入（见 main.ts 的启动序），这里读到的平台就是终值。 */
 const isMac = System.IsMac()
+const isWindows = System.IsWindows()
 
 /** 与 web-ui-layout 的 collapsedWidth 一致：收窄后 aside 的宽度，拖动条与它同宽。 */
 const COLLAPSED_SIDEBAR_WIDTH = '60px'
@@ -249,6 +251,7 @@ watch(
 
 <template>
   <RouteProgressBar />
+  <WindowsTitleBar v-if="isWindows" :mobile="mobile" />
   <!--
     shell 在这里，页面在 RouterView 里：web-ui-layout 与 AppNav 挂在 RouterView 之外，
     切路由只换默认 slot 的内容，不重建 sidebar。页面若要占 header slot，让自己的根节点带
@@ -266,8 +269,10 @@ watch(
     sidebarMaxWidth="320px"
     mobile-header-full-width
     collapsedWidth="60px"
-    class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-mobile-toggle-top:12px] mobile:[--wui-layout-sidebar-content-padding:8px_20px_8px_8px] mobile:[--wui-layout-sidebar-radius:calc(18px_+_8px)]"
+    class="overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-mobile-toggle-top:12px] mobile:[--wui-layout-sidebar-content-padding:8px_20px_8px_8px] mobile:[--wui-layout-sidebar-radius:calc(18px_+_8px)]"
     :class="{
+      'min-h-dvh': !isWindows,
+      'min-h-[calc(100dvh-36px)] [--wui-layout-viewport-height:calc(100dvh_-_36px)]': isWindows,
       '[--wui-layout-sidebar-padding-top:48px] mobile:[--wui-layout-mobile-toggle-left:96px]': isMac,
       'mobile:[--wui-layout-mobile-toggle-left:12px]': !isMac
     }"
