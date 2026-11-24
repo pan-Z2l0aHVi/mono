@@ -22,6 +22,10 @@ type Service struct {
 	disabled map[Command]struct{}
 	// changed 是重建触发器，晚绑定：main.go 在 window 就绪后接线。
 	changed func()
+	// treeProvider 返回当前平台物化后的菜单快照，供 Windows 一体化顶栏读取。
+	treeProvider func() []MenuItem
+	// invokeHandler 执行来自前端自定义顶栏的菜单点击（command 或系统 role）。
+	invokeHandler func(command Command, role string)
 }
 
 // NewService 建一个全部命令可用的菜单状态。
@@ -36,6 +40,65 @@ func (s *Service) SetChangeHandler(handler func()) {
 	s.mu.Lock()
 	defer s.mu.Unlock()
 	s.changed = handler
+}
+
+// SetTreeProvider 晚绑定菜单树快照生成器，供自定义顶栏首次加载与测试读取。
+//
+//wails:ignore
+func (s *Service) SetTreeProvider(provider func() []MenuItem) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.treeProvider = provider
+}
+
+// SetInvokeHandler 晚绑定自定义顶栏的菜单执行出口。
+//
+//wails:ignore
+func (s *Service) SetInvokeHandler(handler func(command Command, role string)) {
+	s.mu.Lock()
+	defer s.mu.Unlock()
+	s.invokeHandler = handler
+}
+
+// GetMenu 返回当前菜单树快照（含开发者菜单开关与禁用态），供 Windows 一体化顶栏渲染。
+func (s *Service) GetMenu(ctx context.Context) []MenuItem {
+	if err := ctx.Err(); err != nil {
+		return []MenuItem{}
+	}
+	s.mu.Lock()
+	provider := s.treeProvider
+	s.mu.Unlock()
+	if provider == nil {
+		return []MenuItem{}
+	}
+	items := provider()
+	if items == nil {
+		return []MenuItem{}
+	}
+	return items
+}
+
+// InvokeMenuItem 触发自定义顶栏中的一个菜单项（业务命令或系统角色）。
+// 业务命令若当前处于禁用集合则静默忽略，防止前端旧快照误触。
+func (s *Service) InvokeMenuItem(ctx context.Context, command Command, role string) {
+	if err := ctx.Err(); err != nil {
+		return
+	}
+	if command != "" {
+		if !IsCommand(string(command)) {
+			log.Printf("interweave: menu service ignored unknown command %q", command)
+			return
+		}
+		if s.IsDisabled(command) {
+			return
+		}
+	}
+	s.mu.Lock()
+	handler := s.invokeHandler
+	s.mu.Unlock()
+	if handler != nil {
+		handler(command, role)
+	}
 }
 
 // ReportDisabledCommands 记录当前的禁用集合；集合真的变了才触发重建。

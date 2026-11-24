@@ -314,6 +314,14 @@ const meta = [
     {
       label: 'tr',
       children: [
+      { label: 'td', content: "<code>--wui-layout-sticky-top</code>" },
+      { label: 'td', content: "Top offset for sticky sidebar and header; set it to the titlebar height when a custom titlebar sits above" },
+      { label: 'td', content: "<code>0</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
       { label: 'td', content: "<code>--wui-layout-sidebar-content-padding</code>" },
       { label: 'td', content: "Mobile sidebar drawer content padding" },
       { label: 'td', content: "<code>20px</code>" }

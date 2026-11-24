@@ -47,7 +47,7 @@
 aside {
   position: sticky;
   z-index: var(--wui-layer-sidebar, 500);
-  top: 0;
+  top: var(--wui-layout-sticky-top, 0);
 
   display: flex;
   flex-direction: column;
@@ -189,7 +189,7 @@ header {
   isolation: isolate;
   position: sticky;
   z-index: var(--wui-layer-header, 100);
-  top: 0;
+  top: var(--wui-layout-sticky-top, 0);
 
   display: flex;
   gap: var(--wui-space-2, 8px);

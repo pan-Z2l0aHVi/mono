@@ -519,16 +519,17 @@ const open = ref(false)
 
 ### CSS 自定义属性
 
-| 名称                                   | 说明                                                            | 默认值                   |
-| -------------------------------------- | --------------------------------------------------------------- | ------------------------ |
-| `--wui-layout-viewport-height`         | layout 使用的可用视口高度；嵌入限高容器时设为容器高度           | `100vh` / `100dvh`       |
-| `--wui-layout-sidebar-content-padding` | 移动端侧边栏抽屉内容的内边距                                    | `20px`                   |
-| `--wui-layout-sidebar-radius`          | 侧边栏卡片圆角（桌面端和移动端共用）                            | `24px`                   |
-| `--wui-layout-sidebar-padding-top`     | 侧边栏卡片上方间距（桌面及移动端）                              | `--wui-space-2`（`8px`） |
-| `--wui-layout-sidebar-padding-left`    | 侧边栏卡片左侧间距（桌面及移动端）                              | `--wui-space-2`（`8px`） |
-| `--wui-layout-sidebar-padding-bottom`  | 侧边栏卡片下方间距（桌面及移动端）                              | `--wui-space-2`（`8px`） |
-| `--wui-layout-mobile-toggle-top`       | 移动端头部开关的上边距                                          | `8px`                    |
-| `--wui-layout-mobile-toggle-right`     | 移动端头部开关的右边距                                          | `0`                      |
-| `--wui-layout-mobile-toggle-bottom`    | 移动端头部开关的下边距                                          | `0`                      |
-| `--wui-layout-mobile-toggle-left`      | 移动端头部开关的左缩进                                          | `8px`                    |
-| `--wui-layout-sidebar-toggle-width`    | 桌面端侧边栏收起按钮的宽度，下限为 `--wui-control-size`（36px） | `36px`                   |
+| 名称                                   | 说明                                                                    | 默认值                   |
+| -------------------------------------- | ----------------------------------------------------------------------- | ------------------------ |
+| `--wui-layout-viewport-height`         | layout 使用的可用视口高度；嵌入限高容器时设为容器高度                   | `100vh` / `100dvh`       |
+| `--wui-layout-sticky-top`              | sticky 侧边栏与头部的顶部偏移；上方存在固定自定义标题栏时设为标题栏高度 | `0`                      |
+| `--wui-layout-sidebar-content-padding` | 移动端侧边栏抽屉内容的内边距                                            | `20px`                   |
+| `--wui-layout-sidebar-radius`          | 侧边栏卡片圆角（桌面端和移动端共用）                                    | `24px`                   |
+| `--wui-layout-sidebar-padding-top`     | 侧边栏卡片上方间距（桌面及移动端）                                      | `--wui-space-2`（`8px`） |
+| `--wui-layout-sidebar-padding-left`    | 侧边栏卡片左侧间距（桌面及移动端）                                      | `--wui-space-2`（`8px`） |
+| `--wui-layout-sidebar-padding-bottom`  | 侧边栏卡片下方间距（桌面及移动端）                                      | `--wui-space-2`（`8px`） |
+| `--wui-layout-mobile-toggle-top`       | 移动端头部开关的上边距                                                  | `8px`                    |
+| `--wui-layout-mobile-toggle-right`     | 移动端头部开关的右边距                                                  | `0`                      |
+| `--wui-layout-mobile-toggle-bottom`    | 移动端头部开关的下边距                                                  | `0`                      |
+| `--wui-layout-mobile-toggle-left`      | 移动端头部开关的左缩进                                                  | `8px`                    |
+| `--wui-layout-sidebar-toggle-width`    | 桌面端侧边栏收起按钮的宽度，下限为 `--wui-control-size`（36px）         | `36px`                   |

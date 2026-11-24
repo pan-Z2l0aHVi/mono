@@ -6,7 +6,7 @@
 
 - Go Wails host 入口是 [`main.go`](./main.go)，后端能力边界在 [`backend/`](./backend/)，前端集成在 [`frontend/src/`](./frontend/src/)。
 - [`backend/library/`](./backend/library/) 拥有 Resource、Source、语义标签、Map 与其本地持久化；[`backend/native/`](./backend/native/) 拥有受控的 OS 能力；[`backend/settings/`](./backend/settings/) 拥有应用设置的类型、校验与持久化；[`backend/remote/`](./backend/remote/) 仅供 Go 发起出站 HTTP；[`backend/internal/`](./backend/internal/) 只放跨后端模块复用的工具。
-- 顶部菜单的形状定义在 [`backend/native/menu/`](./backend/native/menu/)（`Describe` 是纯数据，`Build` 物化成 Wails 菜单），跨端命令契约与菜单可用性上报在 [`backend/menu/`](./backend/menu/)。点击只发 `menu:command` 事件，由前端分发；`backend/menu` 注册的 Service 只有 `ReportDisabledCommands`——禁用集合是菜单的呈现状态，不落盘，不属于 settings。
+- 顶部菜单的形状定义在 [`backend/native/menu/`](./backend/native/menu/)（`Describe` 是纯数据，`Build` 物化成 Wails 菜单，`Snapshot` 产出供 Windows 一体化顶栏消费的菜单快照），跨端命令契约与菜单 Service 在 [`backend/menu/`](./backend/menu/)。macOS/Linux 菜单点击发 `menu:command` 事件由前端分发；Windows 一体化顶栏订阅 `menu:tree-changed`、启动时拉取 `GetMenu`，点击时通过 `InvokeMenuItem` 回传 Go 统一执行（Go 侧命令就地处理，前端命令仍走 `menu:command`）；禁用集合经 `ReportDisabledCommands` 上报，不落盘，不属于 settings。
 - 前端保留模块边界，即 [`frontend/src/`](./frontend/src/) 下的 [`components/`](./frontend/src/components/)、[`pages/`](./frontend/src/pages/)、[`stores/`](./frontend/src/stores/)、[`composables/`](./frontend/src/composables/) 和 [`services/`](./frontend/src/services/)，以及由 `vue-router/vite` 从 [`frontend/src/pages/`](./frontend/src/pages/) 生成的 file-based 路由表。
 - 应用壳只有一套：[`frontend/src/components/AppLayout.vue`](./frontend/src/components/AppLayout.vue) 独占 `web-ui-layout` 与 [`frontend/src/components/AppNav.vue`](./frontend/src/components/AppNav.vue)，`RouterView` 只往默认 slot 换页面内容，并内置按 `route.meta.keepAlive` 控制的 `<KeepAlive>` 扩展点。
 - 路由层复用 `@greypan/route-progress` 与 Vue 端守卫模式：[`frontend/vite.config.ts`](./frontend/vite.config.ts) 通过 `importMode` 仅保持 `/library` 同步，其余页面按页懒加载；[`frontend/src/router/guards.ts`](./frontend/src/router/guards.ts) 统一收口延迟跳转与顶部进度条（[`RouteProgressBar.vue`](./frontend/src/components/RouteProgressBar.vue)），[`AppNav.vue`](./frontend/src/components/AppNav.vue) 悬停/聚焦/触摸时触发意图预取，[`frontend/src/router/prefetch.ts`](./frontend/src/router/prefetch.ts) 提供集中式真 SWR（`revalidateIfStale: true`）预取注册表，局部 loading 复用 [`useDelayedLoading.ts`](./frontend/src/composables/useDelayedLoading.ts)。
@@ -66,7 +66,7 @@ _Avoid_: 文件树、画布编辑器、关系连线器、资源容器
 ## Wails Service 与 bindings allowlist
 
 - 只有 `library`、`native` 与 `settings` 可注册 Wails Service 并生成、消费 Interweave Go Service bindings。`remote` 与 `internal` 禁止注册 Wails Service，也不得被前端直接调用或消费其 bindings。Wails runtime bindings 不属于此业务 allowlist。
-- `backend/menu/` 拥有事件名、命令契约与菜单可用性 Service（`ReportDisabledCommands`），`backend/native/menu/` 只被 `main.go` 装配、不注册 Service。菜单的形状与置灰由 Go 拥有，前端唯一能做的调用是上报当前不可用的命令集合。
+- `backend/menu/` 拥有事件名、命令契约与菜单 Service（`ReportDisabledCommands`、`GetMenu`、`InvokeMenuItem`），`backend/native/menu/` 只被 `main.go` 装配、不注册 Service。菜单的形状与置灰由 Go 拥有，前端只负责上报禁用集合并在 Windows 端渲染顶栏快照。
 - 菜单命令的前端分发在 [`frontend/src/services/menu/index.ts`](./frontend/src/services/menu/index.ts)，可用性上报在 [`frontend/src/services/menu/state.ts`](./frontend/src/services/menu/state.ts)；纯文本剪贴板的前端动作在 [`frontend/src/composables/plainTextClipboard.ts`](./frontend/src/composables/plainTextClipboard.ts)。
 - 公开 Go API 变更后运行 `pnpm exec turbo build --filter=@greypan/interweave-frontend` 生成 [`frontend/bindings/`](./frontend/bindings/) 并核对前端类型检查（生成边界见 [`docs/agents/generated-artifacts.md`](../../docs/agents/generated-artifacts.md)）。
 

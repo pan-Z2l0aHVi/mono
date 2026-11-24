@@ -23,7 +23,8 @@ function configure() {
         "library:source-availability-changed": $$createType1,
         "library:urls-dropped": $$createType0,
         "menu:command": $$createType2,
-        "settings:changed": $$createType3,
+        "menu:tree-changed": $$createType4,
+        "settings:changed": $$createType5,
     }));
 }
 
@@ -31,6 +32,8 @@ function configure() {
 const $$createType0 = $Create.Array($Create.Any);
 const $$createType1 = service$0.SourceAvailabilityEventDTO.createFrom;
 const $$createType2 = menu$0.MenuCommand.createFrom;
-const $$createType3 = settings$0.Snapshot.createFrom;
+const $$createType3 = menu$0.MenuItem.createFrom;
+const $$createType4 = $Create.Array($$createType3);
+const $$createType5 = settings$0.Snapshot.createFrom;
 
 configure();

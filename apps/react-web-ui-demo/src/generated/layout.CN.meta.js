@@ -314,6 +314,14 @@ const meta = [
     {
       label: 'tr',
       children: [
+      { label: 'td', content: "<code>--wui-layout-sticky-top</code>" },
+      { label: 'td', content: "sticky 侧边栏与头部的顶部偏移；上方存在固定自定义标题栏时设为标题栏高度" },
+      { label: 'td', content: "<code>0</code>" }
+      ]
+    },
+    {
+      label: 'tr',
+      children: [
       { label: 'td', content: "<code>--wui-layout-sidebar-content-padding</code>" },
       { label: 'td', content: "移动端侧边栏抽屉内容的内边距" },
       { label: 'td', content: "<code>20px</code>" }

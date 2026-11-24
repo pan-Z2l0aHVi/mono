@@ -4,6 +4,7 @@ package main
 
 import (
 	"context"
+	"runtime"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -58,14 +59,19 @@ func (h *wailsDesktopHost) OpenExternal(ctx context.Context, targetURL string) e
 	return h.osService.OpenExternal(ctx, targetURL)
 }
 
-// InstallMenu 整体重建原生菜单并重新挂上窗口。Windows 上 Menu.Update 不重绘已存在的
-// 菜单栏，只有 window.SetMenu 会 SetMenu + DrawMenuBar，所以两条都要做；
-// macOS 上 window.SetMenu 是 no-op，app.Menu.Set 才是生效点。
+// InstallMenu 整体重建菜单并同步到当前平台呈现面：
+// - Windows 使用 Frameless 一体化顶栏，不挂 Win32 菜单条，改向前端推送最新菜单快照；
+// - macOS / Linux 挂原生应用菜单（macOS 上 window.SetMenu 是 no-op，app.Menu.Set 才是生效点）。
 func (h *wailsDesktopHost) InstallMenu(state shell.MenuState, sink func(menucontract.Command)) {
-	tree := nativeMenu.Build(nativeMenu.State{
+	nativeState := nativeMenu.State{
 		DeveloperOptions: state.DeveloperOptions,
 		Disabled:         state.IsDisabled,
-	}, sink)
+	}
+	if runtime.GOOS == "windows" {
+		h.window.EmitEvent(menucontract.TreeChangedEventName, nativeMenu.Snapshot(nativeState, runtime.GOOS))
+		return
+	}
+	tree := nativeMenu.Build(nativeState, sink)
 	h.app.Menu.Set(tree.Menu)
 	h.window.SetMenu(tree.Menu)
 }
