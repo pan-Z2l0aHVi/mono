@@ -1,6 +1,6 @@
 // cspell:ignore bplist plutil
 
-package main
+package shell
 
 import (
 	"bytes"
@@ -14,27 +14,30 @@ import (
 	"sync"
 )
 
-type dockDropSink interface {
+// DockDropSink 接收解包后的文件/URL 拖放事件并前置窗口。
+type DockDropSink interface {
 	EmitFiles(paths []string)
 	EmitURLs(urls []string)
 	PresentWindow()
 }
 
-// dockDropDispatcher 缓冲冷启动时由 Dock/任务栏图标拖入的文件与链接，
+// DockDropDispatcher 缓冲冷启动时由 Dock/任务栏图标拖入的文件与链接，
 // 待前端运行时就绪后再一次性发往导入队列并前置窗口。
-type dockDropDispatcher struct {
+type DockDropDispatcher struct {
 	mu           sync.Mutex
 	ready        bool
 	pendingFiles []string
 	pendingURLs  []string
-	sink         dockDropSink
+	sink         DockDropSink
 }
 
-func newDockDropDispatcher(sink dockDropSink) *dockDropDispatcher {
-	return &dockDropDispatcher{sink: sink}
+// NewDockDropDispatcher 创建 Dock/任务栏拖放分发器。
+func NewDockDropDispatcher(sink DockDropSink) *DockDropDispatcher {
+	return &DockDropDispatcher{sink: sink}
 }
 
-func (d *dockDropDispatcher) MarkReady() {
+// MarkReady 标记前端就绪并一次性冲刷缓冲的拖放项。
+func (d *DockDropDispatcher) MarkReady() {
 	d.mu.Lock()
 	d.ready = true
 	files := dedupeTrimmed(d.pendingFiles)
@@ -54,7 +57,8 @@ func (d *dockDropDispatcher) MarkReady() {
 	}
 }
 
-func (d *dockDropDispatcher) HandleOpenedFiles(paths []string) {
+// HandleOpenedFiles 分离普通文件与链接快捷方式，并在就绪后立即派发或缓冲。
+func (d *DockDropDispatcher) HandleOpenedFiles(paths []string) {
 	files, urls := splitOpenedPaths(paths)
 	if len(files) == 0 && len(urls) == 0 {
 		return
@@ -78,7 +82,8 @@ func (d *dockDropDispatcher) HandleOpenedFiles(paths []string) {
 	d.sink.PresentWindow()
 }
 
-func (d *dockDropDispatcher) HandleLaunchedURL(raw string) {
+// HandleLaunchedURL 校验并派发或缓冲启动 URL。
+func (d *DockDropDispatcher) HandleLaunchedURL(raw string) {
 	parsed, ok := normalizeHTTPURL(raw)
 	if !ok {
 		return

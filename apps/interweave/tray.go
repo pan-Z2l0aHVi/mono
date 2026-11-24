@@ -20,21 +20,6 @@ func presentMainWindow(window *application.WebviewWindow) {
 	window.Focus()
 }
 
-// handleWindowClose 决定窗口关闭请求是隐藏到系统托盘还是按默认路径退出。
-// 开启最小化到托盘时取消关闭事件并隐藏窗口，返回 true；否则放行关闭，返回 false。
-func handleWindowClose(minimizeToTray bool, cancel func(), hide func()) bool {
-	if !minimizeToTray {
-		return false
-	}
-	if cancel != nil {
-		cancel()
-	}
-	if hide != nil {
-		hide()
-	}
-	return true
-}
-
 // buildTrayMenu 构建系统托盘菜单，提供显示主窗口与退出应用入口。
 func buildTrayMenu(onShow func(), onQuit func()) *application.Menu {
 	trayMenu := application.NewMenu()

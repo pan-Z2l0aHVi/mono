@@ -17,10 +17,10 @@ import (
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 	libraryWatch "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/watch"
 	menucontract "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu"
-	nativeMenu "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/menu"
 	nativeService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/settings"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/internal/shell"
 )
 
 // 将前端产物随桌面应用交付，避免运行时依赖外部开发服务器。
@@ -104,22 +104,6 @@ func windowsOptions(dir string) application.WindowsOptions {
 	return application.WindowsOptions{
 		WebviewUserDataPath: webviewUserDataDir(dir),
 	}
-}
-
-type windowDockDropSink struct {
-	window *application.WebviewWindow
-}
-
-func (s windowDockDropSink) EmitFiles(paths []string) {
-	s.window.EmitEvent(libraryService.FileDropEventName, paths)
-}
-
-func (s windowDockDropSink) EmitURLs(urls []string) {
-	s.window.EmitEvent(libraryService.URLDropEventName, urls)
-}
-
-func (s windowDockDropSink) PresentWindow() {
-	presentMainWindow(s.window)
 }
 
 func main() {
@@ -219,84 +203,34 @@ func main() {
 
 	window := app.Window.NewWithOptions(mainWindowOptions())
 	setupSystemTray(app, window)
+
+	desktopShell := shell.NewDesktopShell(
+		&wailsDesktopHost{app: app, window: window, osService: osService},
+		&wailsShellState{settings: settingsService, menu: menuService},
+		shell.Config{
+			MinSize:      shell.WindowSize{Width: minWindowWidth, Height: minWindowHeight},
+			FallbackSize: shell.WindowSize{Width: defaultWindowWidth, Height: defaultWindowHeight},
+			ReleasesURL:  releasesURL,
+		},
+	)
+
 	window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
-		handleWindowClose(settingsService.MinimizeToTrayOnCloseEnabled(), event.Cancel, func() {
-			window.Hide()
-		})
+		desktopShell.HandleWindowClosing(event.Cancel)
 	})
 	app.Event.OnApplicationEvent(events.Mac.ApplicationShouldHandleReopen, func(_ *application.ApplicationEvent) {
-		presentMainWindow(window)
+		desktopShell.PresentWindow()
 	})
 	// pending 预览的 LRU 驱逐只发生在后端，前端无从感知；被淘汰的 token 必须显式推给
 	// 窗口，否则预览 404 与「文件消失」在前端不可区分。
 	pendingPreviews.SetEvictHandler(func(token string) {
 		window.EmitEvent(libraryService.PreviewRevokedEventName, []string{token})
 	})
-	windowMode := newWindowModeToggler(
-		windowSize{width: minWindowWidth, height: minWindowHeight},
-		windowSize{width: defaultWindowWidth, height: defaultWindowHeight},
-	)
 
-	// emitCommand 是菜单与前端之间唯一的通道：菜单点击不直接操作窗口或页面，
-	// 只报告一个命令，由前端按当前上下文执行。
-	emitCommand := func(command menucontract.Command) {
-		window.EmitEvent(menucontract.CommandEventName, menucontract.MenuCommand{
-			Command: command,
-			Payload: map[string]string{},
-		})
-	}
-
-	// menuSink 处理那些必须在 Go 侧完成的命令：重新载入、开发者控制台、窗口最大化、
-	// 切换窗口模式与「检查更新」是窗口 / OS 能力，绕过前端反而更稳；缩放三项改的是 Go 拥有的缩放档位，
-	// 前端拿到快照后才会把档位落到窗口上；其余命令转发给前端，由前者按当前路由与历史栈执行。
-	zoom := func(change func(context.Context) (settings.Snapshot, error)) {
-		if _, err := change(context.Background()); err != nil {
-			log.Printf("interweave: failed to change the interface zoom: %v", err)
-		}
-	}
-	menuSink := func(command menucontract.Command) {
-		switch command {
-		case menucontract.CommandReloadWindow:
-			window.Reload()
-		case menucontract.CommandOpenDevTools:
-			window.OpenDevTools()
-		case menucontract.CommandMaximiseWindow:
-			window.ToggleMaximise()
-		case menucontract.CommandToggleWindowMode:
-			windowMode.Toggle(webviewWindowAdapter{window: window})
-		case menucontract.CommandZoomIn:
-			zoom(settingsService.ZoomIn)
-		case menucontract.CommandZoomOut:
-			zoom(settingsService.ZoomOut)
-		case menucontract.CommandZoomReset:
-			zoom(settingsService.ZoomReset)
-		case menucontract.CommandCheckForUpdates:
-			if err := osService.OpenExternal(context.Background(), releasesURL); err != nil {
-				log.Printf("interweave: failed to open the releases page: %v", err)
-			}
-		default:
-			emitCommand(command)
-		}
-	}
-
-	// installMenu 整体重建菜单并重新挂上窗口。Windows 上 Menu.Update 不重绘已存在的
-	// 菜单栏，只有 window.SetMenu 会 SetMenu + DrawMenuBar，所以两条都要做；
-	// macOS 上 window.SetMenu 是 no-op，app.Menu.Set 才是生效点。
-	installMenu := func() {
-		tree := nativeMenu.Build(nativeMenu.State{
-			DeveloperOptions: settingsService.DeveloperOptionsEnabled(),
-			Disabled:         menuService.IsDisabled,
-		}, menuSink)
-		app.Menu.Set(tree.Menu)
-		window.SetMenu(tree.Menu)
-	}
-	installMenu()
-
-	// 菜单里有随设置出现/消失的整组条目，也有随页面与历史栈变化的置灰项，两者都走
-	// 同一个重建入口。设置监听在保存成功后同步触发；禁用集合由前端去重后上报，
-	// 服务侧再兜一次底，重建本身是幂等的。
-	settingsService.OnChange(func(settings.Settings) { installMenu() })
-	menuService.SetChangeHandler(installMenu)
+	desktopShell.SyncMenu()
+	// SyncMenu 在独立串行安装锁内回读最新规范化快照并比对：仅在菜单相关字段真实变化时
+	// 才重建原生菜单，避免 zoom / minimizeToTray 等无关设置变更误触发重建与并发乱序落盘。
+	settingsService.OnChange(func(settings.Settings) { desktopShell.SyncMenu() })
+	menuService.SetChangeHandler(func() { desktopShell.SyncMenu() })
 	settingsService.SetEmitter(func(snapshot settings.Snapshot) {
 		window.EmitEvent(settings.SettingsChangedEventName, snapshot)
 	})
@@ -304,10 +238,8 @@ func main() {
 	window.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
 		window.EmitEvent(libraryService.FileDropEventName, event.Context().DroppedFiles())
 	})
-
-	dockDrop := newDockDropDispatcher(windowDockDropSink{window: window})
 	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(_ *application.WindowEvent) {
-		dockDrop.MarkReady()
+		desktopShell.MarkRuntimeReady()
 	})
 	app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
 		files := event.Context().OpenedFiles()
@@ -316,10 +248,10 @@ func main() {
 				files = []string{filename}
 			}
 		}
-		dockDrop.HandleOpenedFiles(files)
+		desktopShell.HandleOpenedFiles(files)
 	})
 	app.Event.OnApplicationEvent(events.Common.ApplicationLaunchedWithUrl, func(event *application.ApplicationEvent) {
-		dockDrop.HandleLaunchedURL(event.Context().URL())
+		desktopShell.HandleLaunchedURL(event.Context().URL())
 	})
 
 	// watcher 不注册为 Wails Service（ADR-0008 §2 的暴露面 allowlist）：它是产品能力之外的
