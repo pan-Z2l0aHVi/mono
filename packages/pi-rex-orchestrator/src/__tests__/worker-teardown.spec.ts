@@ -17,7 +17,7 @@ describe('worker-teardown fresh snapshot across awaits', () => {
         blockId: 'blk-active',
         retiredBlockIds: ['blk-retired'],
         activeBlockClosed: false,
-        status: 'running',
+        status: 'working',
         cwd: '/tmp/repo'
       }
     ])
@@ -28,9 +28,9 @@ describe('worker-teardown fresh snapshot across awaits', () => {
         adapter: {
           blockClose: async blockId => {
             closedBlocks.push(blockId)
-            // 模拟 retired blockClose 期间事件环已将活跃 Block 标记为关闭
+            // 模拟 retired blockClose 期间事件环已将活跃 Block 关闭
             if (blockId === 'blk-retired') {
-              registry.markActiveBlockClosed('w-1')
+              registry.applyBlockClosed('blk-active')
             }
           }
         },
@@ -60,7 +60,7 @@ describe('worker-teardown fresh snapshot across awaits', () => {
         label: 'w-2',
         blockId: 'blk-active',
         retiredBlockIds: ['blk-old'],
-        status: 'running',
+        status: 'working',
         cwd: '/tmp/wt-missing',
         worktree: { path: '/tmp/wt-missing', branch: 'feat/x' }
       }
@@ -78,8 +78,8 @@ describe('worker-teardown fresh snapshot across awaits', () => {
         hasUI: true,
         ui: {
           confirm: async () => {
-            // 模拟确认弹窗期间 worker 状态转为 closed
-            registry.markClosed('w-2')
+            // 模拟确认弹窗期间事件环收到 Block 关闭事件，worker 状态转为 closed
+            registry.applyBlockClosed('blk-active')
             return true
           },
           notify: msg => {
