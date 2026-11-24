@@ -22,7 +22,7 @@ import type { WebUiSegmented } from '..'
  * 零余量容器必须触发**同一条**断言。只留前者的话，一个恒真断言（读错盒子、祖先链压根
  * 没收集到、或几何根本没量到放大态）同样会绿。
  *
- * 静止态的 track 玻璃投影（`.wui-glass` 的 `0 8px 32px`，横向最多外扩半个模糊半径）在零余量
+ * 静止态的 track 玻璃投影（`.wui-glass` 的 `0 6px 24px`，横向最多外扩半个模糊半径）在零余量
  * 容器里同样被裁——这是 t-0081 记下的「不用按住也看得见」的那一处，一并钉住。
  *
  * 必须 browser mode：裁剪发生在布局与合成层，jsdom 没有盒子。
@@ -102,7 +102,7 @@ function clipOffenders(element: Element, box: Rect): string[] {
 }
 
 /**
- * track 玻璃投影的横向外扩量。`0 8px 32px` 这类阴影在自身盒外铺半个模糊半径，取计算值里
+ * track 玻璃投影的横向外扩量。`0 6px 24px` 这类阴影在自身盒外铺半个模糊半径，取计算值里
  * 最大的长度除以 2 作上界；一旦阴影配方变大，要求消费方的余量跟着变大，不会静默失效。
  */
 function shadowReachX(element: Element): number {

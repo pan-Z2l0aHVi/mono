@@ -976,11 +976,11 @@ In `.wui-scroll` containers the token applies only on fine-pointer devices; coar
 
 ### Shadow tokens
 
-| Name                   | Description                 | Light default                    | Dark default                    |
-| ---------------------- | --------------------------- | -------------------------------- | ------------------------------- |
-| `--wui-shadow-overlay` | Modal/Drawer shadow         | `2px 16px 40px rgb(0 0 0 / 0.4)` | `0 18px 48px rgb(0 0 0 / 0.48)` |
-| `--wui-shadow-panel`   | Small floating panel shadow | `0 3px 9px rgb(0 0 0 / 0.27)`    | `0 4px 16px rgb(0 0 0 / 0.32)`  |
-| `--wui-shadow-glass`   | Liquid glass base shadow    | Four-layer diffuse shadow        | `0 8px 24px rgb(0 0 0 / 0.08)`  |
+| Name                   | Description                 | Light default                                                                                                         | Dark default                    |
+| ---------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `--wui-shadow-overlay` | Modal/Drawer shadow         | `2px 16px 40px rgb(0 0 0 / 0.4)`                                                                                      | `0 18px 48px rgb(0 0 0 / 0.48)` |
+| `--wui-shadow-panel`   | Small floating panel shadow | `0 3px 9px rgb(0 0 0 / 0.27)`                                                                                         | `0 4px 16px rgb(0 0 0 / 0.32)`  |
+| `--wui-shadow-glass`   | Liquid glass base shadow    | `0 0 1px rgb(0 0 0 / 0.015), 0 0 6px rgb(0 0 0 / 0.018), 0 2px 12px rgb(0 0 0 / 0.015), 0 6px 24px rgb(0 0 0 / 0.01)` | `0 8px 24px rgb(0 0 0 / 0.08)`  |
 
 ### Glass effect notes
 
