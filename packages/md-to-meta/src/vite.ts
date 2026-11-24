@@ -4,6 +4,7 @@ import type { Plugin, ViteDevServer } from 'vite'
 
 import { checkArtifacts, writeArtifacts } from './emit'
 import { generate } from './generate'
+import { renderCss } from './render'
 import type { GenerateResult, MdToMetaOptions, ResolvedOptions } from './types'
 
 /** markdown 常被编辑器连写保存，一次改动会连着来几串事件；合成一次生成就够了。 */
@@ -39,6 +40,34 @@ export function resolveArtifactsMode(env: { VITEST?: string | undefined }): 'che
 function applyArtifacts(mode: 'check' | 'write', result: GenerateResult): void {
   if (mode === 'check') checkArtifacts(result.files, result.output)
   else writeArtifacts(result.files, result.output)
+}
+
+/**
+ * `virtual:mdm-theme.css` 的模块 id：浏览器消费方经它拿与生成产物同一份 `renderCss` 产出的主题 CSS。
+ */
+export const MDM_THEME_MODULE_ID = 'virtual:mdm-theme.css'
+
+export interface MdmThemeOptions {
+  /** 深色选择器；与 `MdToMetaOptions.darkSelector` 同语义，宿主 DOM 的概念，包内不给默认值。 */
+  darkSelector?: string
+}
+
+/**
+ * 主题 CSS 插件：把 `renderCss(darkSelector)` 挂成虚拟模块，构建期落地为普通样式表，
+ * 不经运行时注入 `document.head`，宿主也不手写 `.mdm-*` CSS。与生成产物（每份 output 一份
+ * `theme.css`）同源，只是服务运行时消费方；生成路径不经此插件。
+ */
+export function mdmThemePlugin(options: MdmThemeOptions = {}): Plugin {
+  const moduleId = `\0${MDM_THEME_MODULE_ID}`
+  return {
+    name: 'md-to-meta:mdm-theme',
+    resolveId(id) {
+      return id === MDM_THEME_MODULE_ID ? moduleId : null
+    },
+    load(id) {
+      return id === moduleId ? renderCss(options.darkSelector) : null
+    }
+  }
 }
 
 /**

@@ -12,6 +12,12 @@ export default {
       entry: 'src/contract.ts',
       dts: true
     },
+    // 浏览器运行时子路径：parseMarkdown（hash/highlight 可注入）+ highlightRuntime + 契约常量。
+    // 模块图不得触及 node: 与 vite/fs——`runtime-graph` 测试钉住这条边界。
+    {
+      entry: 'src/runtime.ts',
+      dts: true
+    },
     // headless CLI：`md-to-meta check|write <app-dir>`，bin 指到 dist/cli.mjs。
     {
       entry: 'src/cli.ts'

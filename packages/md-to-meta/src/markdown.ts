@@ -1,5 +1,3 @@
-import { createHash } from 'node:crypto'
-
 import { toHtml } from 'hast-util-to-html'
 import remarkParse from 'remark-parse'
 import remarkRehype from 'remark-rehype'
@@ -27,9 +25,18 @@ interface MdNode {
   position?: MdPosition
 }
 
-/** 解析一篇 markdown 需要的外部规则：只有 `exec`，它决定哪些围栏额外带上加载 thunk。 */
+/**
+ * 解析一篇 markdown 需要的外部规则：`exec` 决定哪些围栏额外带上加载 thunk；`hash` 决定代码文件的
+ * 内容寻址名；`highlight` 决定围栏的高亮实现（含失败策略）。
+ *
+ * `hash` 缺省用内置的纯 JS 48 位哈希（浏览器可用，稳定即可）；生成路径显式注入 Node sha256
+ * （`./node-hash`），产物文件名由此保持逐字节不变。`highlight` 缺省是生成期实现（自证失败抛
+ * `DocError`）；浏览器消费方应注入 `./runtime` 的 `highlightRuntime`（失配回退纯文本）。
+ */
 export interface ParseOptions {
   exec: readonly string[]
+  hash?: (code: string) => string
+  highlight?: (code: string, lang: string, file: string) => Promise<string>
 }
 
 /** 一篇 markdown 的解析结果：通用节点树，加上围栏落成的代码文件。 */
@@ -75,16 +82,18 @@ function extensionOf(lang: string, file: string): string {
 }
 
 /**
- * 代码文件按内容寻址：同一段围栏跨文档、同文档重复出现都落到同一个文件，
- * 改一块只换一个文件名，diff 噪音最小。
+ * 内置纯 JS 内容哈希：两组 32 位混合取 48 位 hex。运行时消费方的代码文件不落盘，只要名字稳定、
+ * 不跨内容冲突即可，不必与生成器的 sha256 同算法。
  */
-function codeFileOf(code: string, ext: string): CodeFile {
-  const hash = createHash('sha256').update(code).digest('hex').slice(0, 12)
-  return {
-    path: `./codeblock/${hash}.${ext}`,
-    // mdast 的 code 值不含行尾换行：去掉尾部空白后补一个，落盘文件就是可直接编译的源码。
-    content: `${code.trimEnd()}\n`
+function contentHash48(code: string): string {
+  let a = 0x811c9dc5
+  let b = 0x01000193
+  for (let index = 0; index < code.length; index++) {
+    const unit = code.charCodeAt(index)
+    a = Math.imul(a ^ unit, 0x01000193) >>> 0
+    b = Math.imul((b + unit) | 0, 0x85ebca6b) >>> 0
   }
+  return a.toString(16).padStart(8, '0') + b.toString(16).padStart(8, '0').slice(0, 4)
 }
 
 /**
@@ -116,8 +125,16 @@ function splitCells(line: string): string[] {
   return cells
 }
 
-function isDelimiterRow(cells: string[]): boolean {
-  return cells.length > 0 && cells.every(cell => /^:?-+:?$/.test(cell))
+/**
+ * 代码文件按内容寻址：同一段围栏跨文档、同文档重复出现都落到同一个文件，
+ * 改一块只换一个文件名，diff 噪音最小。
+ */
+function codeFileOf(code: string, ext: string, hash: (code: string) => string): CodeFile {
+  return {
+    path: `./codeblock/${hash(code)}.${ext}`,
+    // mdast 的 code 值不含行尾换行：去掉尾部空白后补一个，落盘文件就是可直接编译的源码。
+    content: `${code.trimEnd()}\n`
+  }
 }
 
 /**
@@ -138,6 +155,10 @@ function tableRowsOf(node: MdNode, source: string): string[][] | undefined {
   const delimiter = splitCells(lines[1]?.trim() ?? '')
   if (delimiter.length !== head.length || !isDelimiterRow(delimiter)) return undefined
   return [head, ...lines.slice(2).map(line => splitCells(line.trim()))]
+}
+
+function isDelimiterRow(cells: string[]): boolean {
+  return cells.length > 0 && cells.every(cell => /^:?-+:?$/.test(cell))
 }
 
 function tableNode(rows: string[][]): MetaNode {
@@ -208,9 +229,9 @@ async function blockNode(node: MdNode, ctx: ParseContext): Promise<MetaNode | un
     case 'code': {
       const code = node.value ?? ''
       const lang = node.lang ?? ''
-      const codeFile = codeFileOf(code, extensionOf(lang, ctx.file))
+      const codeFile = codeFileOf(code, extensionOf(lang, ctx.file), ctx.hash)
       ctx.codeFiles.set(codeFile.path, codeFile)
-      const content = await highlight(code, lang, ctx.file)
+      const content = await ctx.highlight(code, lang, ctx.file)
       return {
         label: 'codeblock',
         lang,
@@ -234,6 +255,8 @@ interface ParseContext {
   file: string
   source: string
   exec: readonly string[]
+  hash: (code: string) => string
+  highlight: (code: string, lang: string, file: string) => Promise<string>
   headings: number
   codeFiles: Map<string, CodeFile>
 }
@@ -248,6 +271,8 @@ export async function parseMarkdown(source: string, file: string, options: Parse
     file,
     source,
     exec: options.exec,
+    hash: options.hash ?? contentHash48,
+    highlight: options.highlight ?? highlight,
     headings: 0,
     codeFiles: new Map()
   }

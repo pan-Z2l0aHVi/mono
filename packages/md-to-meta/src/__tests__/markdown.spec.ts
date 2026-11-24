@@ -124,4 +124,24 @@ describe('parseMarkdown 的结构投影', () => {
   it('围栏语言名不能带路径分隔符', async () => {
     await expect(parseMarkdown('```a/b\nx\n```', 'bad.md', { exec: [] })).rejects.toThrow(/路径分隔符/)
   })
+
+  it('hash 可注入：注入函数决定代码文件名；缺省也是 12 位 hex，但不与 sha256 同源', async () => {
+    const doc = ['```tsx', TSX_BODY, '```'].join('\n')
+    const { codeFiles } = await parseMarkdown(doc, 'button.md', { exec: [], hash: () => 'custom' })
+    expect(codeFiles[0]?.path).toBe('./codeblock/custom.tsx')
+
+    const fallback = await parseMarkdown(doc, 'button.md', { exec: [] })
+    expect(fallback.codeFiles[0]?.path).toMatch(/^\.\/codeblock\/[\da-f]{12}\.tsx$/)
+    expect(fallback.codeFiles[0]?.path).not.toBe(codeFiles[0]?.path)
+  })
+
+  it('highlight 可注入：运行时消费方换成自己的失败策略', async () => {
+    const doc = ['```tsx', TSX_BODY, '```'].join('\n')
+    const { nodes } = await parseMarkdown(doc, 'button.md', {
+      exec: [],
+      highlight: async code => `<pre class="shiki mdm-code"><code>${code}</code></pre>`
+    })
+    const block = nodes.find(node => node.label === 'codeblock')
+    expect(block?.content).toContain(`<code>${TSX_BODY}</code>`)
+  })
 })
