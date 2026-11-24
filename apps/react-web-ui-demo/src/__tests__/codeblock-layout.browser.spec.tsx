@@ -1,4 +1,5 @@
 import '@/assets/global.css'
+import '@/generated/theme.css'
 
 import { setViewport } from '@greypan/doc-demo-kit/testing.viewport'
 import { cleanup, render, waitFor } from '@testing-library/react'
@@ -6,7 +7,7 @@ import { act } from 'react'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import ExampleDoc from '@/components/example-doc'
-import { loadShellLocale, LocaleProvider } from '@/i18n/locale'
+import { ensureExampleDocs, loadShellLocale, LocaleProvider } from '@/i18n/locale'
 
 /*
  * 代码卡的两条布局回归，读回的都是真实渲染结果。
@@ -27,12 +28,15 @@ const VIEWPORT_HEIGHT = 750
 
 async function mountExampleDoc(component: string) {
   await loadShellLocale('zh-CN')
+  // 与 Vue 同名 spec 一致：先等文档与可执行 codeblock 装载落定再 render。render 后再用默认 1s
+  // waitFor 赌动态装载，会在 CI 并发或加压下假红（grid-columns spec 记录过同一成因）。
+  await ensureExampleDocs([component])
   render(
     <LocaleProvider>
       <ExampleDoc component={component} />
     </LocaleProvider>
   )
-  // 示例文档按组件异步装载；预览区出现即表示文档与可运行示例都已落定。
+  // 预览区出现即表示文档与可运行示例都已落定。
   await waitFor(() => {
     if (!document.querySelector(`[data-example-doc="${component}"] [data-codeblock-preview]`)) {
       throw new Error('example doc not mounted')
