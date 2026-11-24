@@ -18,10 +18,13 @@ import { randomUUID } from 'node:crypto'
 import { basename } from 'node:path'
 
 import {
+  captureHeadTarget,
   cleanupWorktree,
   createWorktree,
+  findMainRepo,
   inspectChanges,
   mergeHint,
+  probeMergeHead,
   runGit,
   scanIgnoredDeps,
   snapshotBase,
@@ -36,7 +39,7 @@ import { HANDOFF_ROOT } from './handoff-store'
 import type { ExtensionContext, PiExecOptions, PiToolDefinition, PiToolResult } from './pi-types'
 import { auditProfileArgs, resolveExecutable, type AgentProfile, type RexOrchestratorConfig } from './profiles'
 import { coordinatorGuidelines, renderCoordinatorSection, renderWelcome } from './prompt'
-import type { RexAdapter } from './rex-adapter'
+import { withAntiRecursionPrefix, type RexAdapter } from './rex-adapter'
 import { DEFAULT_WORKER_AGENT_BINARIES, executeRexCli } from './rex-cli'
 import { parseRexEventLine } from './rex-events'
 import type { WorkerRegistry } from './state-machine'
@@ -674,20 +677,17 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         // extraArgs 已由 resolveProfiles 包进模板，这里再追加就是重复传参。
         const args = profile.headlessArgs(launchCtx)
         const eventsOut = store.eventsPath(workerId, 1)
-        commandSegments = [
-          '/usr/bin/env',
-          'PI_REX_ORCH=0',
-          deps.nodePath,
+        commandSegments = withAntiRecursionPrefix(deps.nodePath, [
           deps.runHeadlessPath,
           '--events-out',
           eventsOut,
           '--',
           binary,
           ...args
-        ]
+        ])
       } else {
         const args = profile.interactiveArgs(launchCtx)
-        commandSegments = ['/usr/bin/env', 'PI_REX_ORCH=0', binary, ...args]
+        commandSegments = withAntiRecursionPrefix(binary, args)
       }
 
       const dangerWarnings = auditProfileArgs(profile, commandSegments)
@@ -873,17 +873,14 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
           keepOpen: true,
           focus: false,
           interactiveShell: profile.interactiveShell,
-          commandSegments: [
-            '/usr/bin/env',
-            'PI_REX_ORCH=0',
-            deps.nodePath,
+          commandSegments: withAntiRecursionPrefix(deps.nodePath, [
             deps.runHeadlessPath,
             '--events-out',
             store.eventsPath(worker.workerId, turn),
             '--',
             await resolveExecutableOrThrow(profile),
             ...args
-          ]
+          ])
         })
         registry.replaceBlock(worker.workerId, created.blockIds[0] as string)
         registry.markTurnDispatched(worker.workerId, turn)
@@ -1140,26 +1137,11 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
         // 都必须再次显式确认；合并失败只诊断，不自动 abort，归属不明的处置交还用户。
         let mergedByUs = false
         if (outcome.kind === 'kept' && outcome.unmerged && ctx.hasUI && !unconfirmed && params.force !== true) {
-          // 合并门（fail closed）：MERGE_HEAD 探针按退出码严格解释——0 合并中、
-          // 1 无合并、其余（128 等）状态未知；只有 1 放行。目标钉住「分支身份 +
-          // commit」：只比 SHA 挡不住「切到指向同一 commit 的另一分支」。
-          const captureHeadTarget = async (): Promise<{ target: string } | { error: string }> => {
-            const refProbe = await gitExec(['symbolic-ref', '-q', 'HEAD'], { cwd: mainCwd })
-            const shaProbe = await gitExec(['rev-parse', 'HEAD'], { cwd: mainCwd })
-            if ((refProbe.code !== 0 && refProbe.code !== 1) || shaProbe.code !== 0) {
-              return {
-                error: `无法读取主仓 HEAD（symbolic-ref exit ${refProbe.code}，rev-parse exit ${shaProbe.code}）`
-              }
-            }
-            // detached HEAD 也是合法目标；把它纳入身份，切到别的 detached 同样能被发现。
-            const ref = refProbe.code === 0 ? refProbe.stdout.trim() : '(detached)'
-            return { target: `${ref}@${shaProbe.stdout.trim()}` }
-          }
-          const mergeGateBefore = await gitExec(['rev-parse', '--verify', '-q', 'MERGE_HEAD'], { cwd: mainCwd })
-          const targetBefore = await captureHeadTarget()
-          if (mergeGateBefore.code !== 1) {
+          const mergeGateBefore = await probeMergeHead(gitExec, mainCwd)
+          const targetBefore = await captureHeadTarget(gitExec, mainCwd)
+          if (mergeGateBefore.kind !== 'clean') {
             const gateFailure =
-              mergeGateBefore.code === 0
+              mergeGateBefore.kind === 'merging'
                 ? `主仓正处于合并中：请先解决当前合并，再回来执行 ${mergeHint(worktree.branch)}`
                 : `无法确认主仓合并状态（rev-parse exit ${mergeGateBefore.code}）：状态不明不发起代合并`
             cleanupNote = `${gateFailure}；worktree 保留在原处。\n${formatCleanupOutcome(worktree, outcome)}`
@@ -1174,13 +1156,12 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
                 '拒绝则保留现状，并继续给出仓库流程 / force 选择。'
               ].join('\n')
             )
-            const mergeGateAfter = mergeOk
-              ? await gitExec(['rev-parse', '--verify', '-q', 'MERGE_HEAD'], { cwd: mainCwd })
-              : undefined
-            const targetAfter = mergeOk && mergeGateAfter?.code === 1 ? await captureHeadTarget() : undefined
+            const mergeGateAfter = mergeOk ? await probeMergeHead(gitExec, mainCwd) : undefined
+            const targetAfter =
+              mergeOk && mergeGateAfter?.kind === 'clean' ? await captureHeadTarget(gitExec, mainCwd) : undefined
             if (!mergeOk) {
               cleanupNote = formatCleanupOutcome(worktree, outcome)
-            } else if (mergeGateAfter?.code !== 1) {
+            } else if (mergeGateAfter?.kind !== 'clean') {
               cleanupNote =
                 '确认期间主仓进入了合并状态（或状态不明）：为避免误伤你的合并，未执行代合并；worktree 保留在原处。\n' +
                 formatCleanupOutcome(worktree, outcome)
@@ -1201,11 +1182,11 @@ export function createOrchestrator(pi: BridgePi, deps: OrchestrationDeps): { dis
                 // 失败后的主仓状态无法可靠归因给本次操作：用户可以在毫秒级窗口里
                 // 发起同分支合并、甚至分支 tip 恰好相同。自动 merge --abort 有
                 // 毁掉用户合并进度的真实风险——代跑的合并失败只诊断、不处置。
-                const headProbe = await gitExec(['rev-parse', '--verify', '-q', 'MERGE_HEAD'], { cwd: mainCwd })
+                const headProbe = await probeMergeHead(gitExec, mainCwd)
                 const diagnosis =
-                  headProbe.code === 1
+                  headProbe.kind === 'clean'
                     ? `本地合并未开始即失败（${failure}）：主仓仍在合并前状态。请先解决原因，再走仓库流程或重试 ${mergeHint(worktree.branch)}。`
-                    : headProbe.code === 0
+                    : headProbe.kind === 'merging'
                       ? `本地合并失败（${failure}），主仓当前存在进行中的合并。无法证明它属于本次操作，未执行 git merge --abort；请人工检查后决定继续解决或自行 abort。`
                       : `本地合并失败（${failure}），且无法读取主仓合并状态（rev-parse exit ${headProbe.code}）：请人工检查主仓后决定。`
                 cleanupNote = `${diagnosis}\nworktree 保留在原处。\n${formatCleanupOutcome(worktree, outcome)}`
@@ -1530,12 +1511,4 @@ function formatCleanupOutcome(worktree: { path: string; branch: string }, outcom
 /** 单引号 shell 转义：供 worktreeSetupHook 的 $MAIN_CWD 前缀注入使用。 */
 function shellQuote(value: string): string {
   return `'${value.replace(/'/g, `'\\''`)}'`
-}
-
-/** worktree 的主仓 cwd：从 worktree 里问 git 一次。 */
-async function findMainRepo(gitExec: GitExec, cwd: string): Promise<string> {
-  return (await runGit(gitExec, cwd, ['rev-parse', '--path-format=absolute', '--git-common-dir'])).replace(
-    /\/\.git$/,
-    ''
-  )
 }

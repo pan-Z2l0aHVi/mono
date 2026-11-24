@@ -13,7 +13,10 @@ import path from 'node:path'
 import { afterEach, describe, expect, it } from 'vite-plus/test'
 
 import {
+  captureHeadTarget,
   cleanupWorktree,
+  findMainRepo,
+  probeMergeHead,
   contentLanding,
   createWorktree,
   inspectChanges,
@@ -933,5 +936,52 @@ describe('worktree 生命周期（V3-04）', () => {
     // force：只移除 worktree（--force 丢弃未提交内容），不再跑 branch -D。
     const forced = await cleanupWorktree(gitExec, { mainCwd: repo, path: wtPath, branch }, { force: true })
     expect(forced.kind).toBe('removed')
+  })
+})
+
+describe('MERGE_HEAD gate & findMainRepo (fail-closed)', () => {
+  it('probeMergeHead strictly separates clean (1), merging (0), and unknown (128 / killed / truncated)', async () => {
+    const cleanExec = async () => ({ stdout: '', stderr: '', code: 1, killed: false, truncated: false })
+    expect(await probeMergeHead(cleanExec, '/repo')).toEqual({ kind: 'clean' })
+
+    const mergingExec = async () => ({ stdout: 'deadbeef\n', stderr: '', code: 0, killed: false, truncated: false })
+    expect(await probeMergeHead(mergingExec, '/repo')).toEqual({ kind: 'merging' })
+
+    const errExec = async () => ({ stdout: '', stderr: 'fatal', code: 128, killed: false, truncated: false })
+    expect(await probeMergeHead(errExec, '/repo')).toEqual({ kind: 'unknown', code: 128 })
+
+    const killedExec = async () => ({ stdout: '', stderr: '', code: 1, killed: true, truncated: false })
+    expect(await probeMergeHead(killedExec, '/repo')).toEqual({ kind: 'unknown', code: 1 })
+
+    const truncatedExec = async () => ({ stdout: '', stderr: '', code: 1, killed: false, truncated: true })
+    expect(await probeMergeHead(truncatedExec, '/repo')).toEqual({ kind: 'unknown', code: 1 })
+  })
+
+  it('captureHeadTarget pins branch + sha, handles detached HEAD, and fails closed on killed/truncated', async () => {
+    const branchExec = async (args: string[]) =>
+      args[0] === 'symbolic-ref'
+        ? { stdout: 'refs/heads/main\n', stderr: '', code: 0, killed: false, truncated: false }
+        : { stdout: 'abc123\n', stderr: '', code: 0, killed: false, truncated: false }
+    expect(await captureHeadTarget(branchExec, '/repo')).toEqual({ target: 'refs/heads/main@abc123' })
+
+    const detachedExec = async (args: string[]) =>
+      args[0] === 'symbolic-ref'
+        ? { stdout: '', stderr: '', code: 1, killed: false, truncated: false }
+        : { stdout: 'def456\n', stderr: '', code: 0, killed: false, truncated: false }
+    expect(await captureHeadTarget(detachedExec, '/repo')).toEqual({ target: '(detached)@def456' })
+
+    const killedExec = async () => ({ stdout: 'abc\n', stderr: '', code: 0, killed: true, truncated: false })
+    expect('error' in (await captureHeadTarget(killedExec, '/repo'))).toBe(true)
+  })
+
+  it('findMainRepo strips trailing /.git and whitespace', async () => {
+    const exec = async () => ({
+      stdout: '/workspace/main/.git\n',
+      stderr: '',
+      code: 0,
+      killed: false,
+      truncated: false
+    })
+    expect(await findMainRepo(exec, '/workspace/wt')).toBe('/workspace/main')
   })
 })
