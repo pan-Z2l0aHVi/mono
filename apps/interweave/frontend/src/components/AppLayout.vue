@@ -281,7 +281,8 @@ watch(
     class="overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-mobile-toggle-top:12px] mobile:[--wui-layout-sidebar-content-padding:8px_20px_8px_8px] mobile:[--wui-layout-sidebar-radius:calc(18px_+_8px)]"
     :class="{
       'min-h-dvh': !isWindows,
-      'min-h-[calc(100dvh-36px)] [--wui-layout-viewport-height:calc(100dvh_-_36px)]': isWindows,
+      'min-h-[calc(100dvh-36px)] [--wui-layout-viewport-height:calc(100dvh_-_36px)] [--wui-layout-sticky-top:36px]':
+        isWindows,
       '[--wui-layout-sidebar-padding-top:40px]': macCollapsedSidebarGap,
       'mobile:[--wui-layout-mobile-toggle-left:96px]': isMac,
       'mobile:[--wui-layout-mobile-toggle-left:12px]': !isMac

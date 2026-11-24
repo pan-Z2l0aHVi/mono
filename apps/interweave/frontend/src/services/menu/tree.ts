@@ -19,7 +19,10 @@ export interface MenuTreeRuntime {
 }
 
 class WailsMenuTreeRuntime implements MenuTreeRuntime {
-  readonly isAvailable = hasWailsRuntime()
+  /** 动态读取 runtime 注入态，避免模块静态 import 早于 wails:runtime-config-ready 导致永久为 false。 */
+  get isAvailable(): boolean {
+    return hasWailsRuntime()
+  }
 
   async getMenu(): Promise<MenuItem[]> {
     if (!this.isAvailable) return []
@@ -65,13 +68,16 @@ export function createMenuTreeRuntime(): MenuTreeRuntime {
   return runtime
 }
 
-/** 浏览器原生编辑命令由当前 WebView 焦点直接承担，不经 Go 往返。 */
+/**
+ * 浏览器原生编辑命令由当前 WebView 焦点直接承担，不经 Go 往返。
+ * 注意：不包含 paste——Chromium 安全策略会拒绝 document.execCommand('paste')，
+ * 粘贴动作由 WindowsTitleBar 走 Go 剪贴板读取（CommandPasteAsPlainText）完成。
+ */
 const WEBVIEW_EDIT_ROLE_COMMAND: Record<string, string> = {
   undo: 'undo',
   redo: 'redo',
   cut: 'cut',
   copy: 'copy',
-  paste: 'paste',
   delete: 'delete',
   'select-all': 'selectAll'
 }
@@ -108,7 +114,9 @@ export function formatWindowsAccelerator(accelerator?: string): string {
  * 仅处理非 WebView 原生编辑类的组合键，避免拦截输入框里的 Ctrl+C/V/X/Z/A/Backspace。
  */
 export function matchWindowsAccelerator(event: KeyboardEvent, item: MenuItem): boolean {
-  if (!item.accelerator || item.disabled || item.separator || isWebViewEditRole(item.role)) return false
+  if (!item.accelerator || item.disabled || item.separator || item.role === 'paste' || isWebViewEditRole(item.role)) {
+    return false
+  }
   const parts = item.accelerator
     .split('+')
     .map(part => part.trim().toLowerCase())

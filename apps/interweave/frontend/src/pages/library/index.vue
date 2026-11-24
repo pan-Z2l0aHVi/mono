@@ -781,7 +781,10 @@ onMounted(() => {
     />
   </header>
 
-  <div class="flex min-h-0 flex-1" :style="{ minHeight: `calc(100dvh - ${headerHeight}px)` }">
+  <div
+    class="flex min-h-0 flex-1"
+    :style="{ minHeight: `calc(var(--wui-layout-viewport-height, 100dvh) - ${headerHeight}px)` }"
+  >
     <!--
       整页滚动（body/document 滚动），不做内部滚动容器——用户裁决保留原样。因此这里没有
       overflow-y-auto 或 max-h-dvh。最小高度扣除实际 header 高度，让空态在可用内容区居中。

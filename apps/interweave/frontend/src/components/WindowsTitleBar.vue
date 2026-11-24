@@ -27,6 +27,80 @@ let stopMenuUpdates: (() => void) | null = null
 // 丢弃较旧的 getMenu() 结果，防止陈旧禁用态覆盖最新事件快照。
 let menuSnapshotVersion = 0
 
+interface SavedFocusSnapshot {
+  element: HTMLElement | null
+  selectionStart: number | null
+  selectionEnd: number | null
+  range: Range | null
+}
+
+let savedFocus: SavedFocusSnapshot | null = null
+
+/** 穿透开放 ShadowRoot 取最深层当前聚焦元素。 */
+function deepestActiveElement(): HTMLElement | null {
+  let active: Element | null = document.activeElement
+  while (active instanceof HTMLElement && active.shadowRoot?.activeElement) {
+    active = active.shadowRoot.activeElement
+  }
+  return active instanceof HTMLElement ? active : null
+}
+
+/**
+ * 在菜单打开抢走焦点前捕获原聚焦元素与选区：
+ * 若当前焦点已落在标题栏内部则跳过，避免连续切换顶级菜单时覆盖页面内的真实焦点。
+ */
+function captureFocusAndSelection() {
+  const active = deepestActiveElement()
+  if (active?.closest('[data-windows-titlebar]')) return
+
+  let selectionStart: number | null = null
+  let selectionEnd: number | null = null
+  if (active instanceof HTMLInputElement || active instanceof HTMLTextAreaElement) {
+    selectionStart = active.selectionStart
+    selectionEnd = active.selectionEnd
+  }
+
+  let range: Range | null = null
+  const selection = window.getSelection()
+  if (selection && selection.rangeCount > 0) {
+    range = selection.getRangeAt(0).cloneRange()
+  }
+
+  savedFocus = { element: active, selectionStart, selectionEnd, range }
+}
+
+/** 在执行编辑角色或剪贴板命令前把焦点与选区归还给原页面元素。 */
+function restoreFocusAndSelection() {
+  const snapshot = savedFocus
+  savedFocus = null
+  if (!snapshot) return
+
+  const target = snapshot.element
+  if (target && target.isConnected) {
+    target.focus({ preventScroll: true })
+    if (
+      (target instanceof HTMLInputElement || target instanceof HTMLTextAreaElement) &&
+      snapshot.selectionStart !== null &&
+      snapshot.selectionEnd !== null
+    ) {
+      try {
+        target.setSelectionRange(snapshot.selectionStart, snapshot.selectionEnd)
+      } catch {
+        // 部分 input type（如 checkbox）不支持 setSelectionRange，忽略。
+      }
+      return
+    }
+  }
+
+  if (snapshot.range && snapshot.range.startContainer.isConnected && snapshot.range.endContainer.isConnected) {
+    const selection = window.getSelection()
+    if (selection) {
+      selection.removeAllRanges()
+      selection.addRange(snapshot.range)
+    }
+  }
+}
+
 async function syncMaximisedState() {
   try {
     isMaximised.value = await menuRuntime.isWindowMaximised()
@@ -37,10 +111,27 @@ async function syncMaximisedState() {
 
 function handleSelect(item: MenuItem) {
   if (item.disabled || item.separator) return
+
+  // 编辑菜单与剪贴板命令都依赖页面原先的焦点与选区：先恢复再执行。
+  const needsFocusRestore =
+    item.role === 'paste' ||
+    isWebViewEditRole(item.role) ||
+    item.command === Command.CommandCopyAsPlainText ||
+    item.command === Command.CommandPasteAsPlainText
+
+  if (needsFocusRestore) restoreFocusAndSelection()
+
+  // Chromium 会拒绝 document.execCommand('paste')，统一转走 Go 剪贴板读取通道。
+  if (item.role === 'paste') {
+    void menuRuntime.invokeItem(Command.CommandPasteAsPlainText, '')
+    return
+  }
+
   if (item.role && isWebViewEditRole(item.role)) {
     executeWebViewEditRole(item.role)
     return
   }
+
   const command = item.command ?? Command.$zero
   const role = item.role ?? ''
   if (!command && !role) return
@@ -115,6 +206,7 @@ const captionButtonClass =
           :class="triggerButtonClass"
           aria-label="应用菜单"
           data-windows-menu-hamburger
+          @pointerdown="captureFocusAndSelection"
         >
           <svg width="14" height="14" viewBox="0 0 14 14" fill="none" aria-hidden="true">
             <path d="M2 3.5h10M2 7h10M2 10.5h10" stroke="currentColor" stroke-width="1.2" stroke-linecap="round" />
@@ -130,7 +222,7 @@ const captionButtonClass =
           placement="bottom-start"
           data-windows-top-menu
         >
-          <button slot="trigger" type="button" :class="triggerButtonClass">
+          <button slot="trigger" type="button" :class="triggerButtonClass" @pointerdown="captureFocusAndSelection">
             {{ topItem.label }}
           </button>
           <WindowsMenuItems v-if="topItem.children?.length" :items="topItem.children" @select="handleSelect" />
