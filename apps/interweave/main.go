@@ -108,6 +108,16 @@ func webviewUserDataDir(dir string) string {
 	return filepath.Join(dir, "webview")
 }
 
+// macOptions 集中声明 macOS 应用级选项，供测试直接校验：
+// ApplicationShouldTerminateAfterLastWindowClosed 必须为 false——设为 true 时，
+// window.Hide() 触发的 orderOut: 会被 AppKit 视为最后一个窗口关闭而直接终止应用，
+// 使「关闭时最小化到托盘」在 macOS 上失效。未开启托盘时的退出改由 WindowClosing 钩子显式驱动。
+func macOptions() application.MacOptions {
+	return application.MacOptions{
+		ApplicationShouldTerminateAfterLastWindowClosed: false,
+	}
+}
+
 // windowsOptions 把传给 application.New 的 Windows 配置锚定到数据目录，
 // 供测试断言 WebView2 用户数据确实来自当前 build tag 对应的目录。
 func windowsOptions(dir string) application.WindowsOptions {
@@ -228,18 +238,29 @@ func run() error {
 			Handler:    application.AssetFileServerFS(assets),
 			Middleware: rt.MediaHandler().Middleware,
 		},
-		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
-		},
+		Mac:     macOptions(),
 		Windows: windowsOptions(dir),
 	})
 
 	window := app.Window.NewWithOptions(mainWindowOptions())
-	setupSystemTray(app, window)
+	// Wails v3.1.0 中 SystemTray.New/SetIcon/SetTooltip/SetMenu 内部均已走 runOrDeferToAppRun
+	// 或 InvokeSync 跨线程安全执行；唯独 SystemTray.Destroy() 直接调 impl.destroy() 未包装
+	// InvokeSync，因此销毁路径显式经 application.InvokeSync 切回主线程。
+	// 运行期由 OnChange 经 application.InvokeAsync 派发到主线程串行执行 Sync，
+	// 避免后台线程持有 trayController.mu 等待主线程而主线程反向等待同一把锁的死锁。
+	trayController := newSystemTrayController(
+		settingsService.MinimizeToTrayOnCloseEnabled,
+		func() trayHandle { return setupSystemTray(app, window) },
+		func(handle trayHandle) { application.InvokeSync(handle.Destroy) },
+	)
+	trayController.Sync()
 	window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
-		handleWindowClose(settingsService.MinimizeToTrayOnCloseEnabled(), event.Cancel, func() {
-			window.Hide()
-		})
+		handleWindowClose(
+			settingsService.MinimizeToTrayOnCloseEnabled(),
+			event.Cancel,
+			func() { window.Hide() },
+			func() { go app.Quit() },
+		)
 	})
 	app.Event.OnApplicationEvent(events.Mac.ApplicationShouldHandleReopen, func(_ *application.ApplicationEvent) {
 		presentMainWindow(window)
@@ -336,7 +357,10 @@ func run() error {
 	// 菜单里有随设置出现/消失的整组条目，也有随页面与历史栈变化的置灰项，两者都走
 	// 同一个重建入口。设置监听在保存成功后同步触发；禁用集合由前端去重后上报，
 	// 服务侧再兜一次底，重建本身是幂等的。
-	settingsService.OnChange(func(settings.Settings) { installMenu() })
+	settingsService.OnChange(func(settings.Settings) {
+		installMenu()
+		application.InvokeAsync(trayController.Sync)
+	})
 	menuService.SetChangeHandler(installMenu)
 	settingsService.SetEmitter(func(snapshot settings.Snapshot) {
 		window.EmitEvent(settings.SettingsChangedEventName, snapshot)
