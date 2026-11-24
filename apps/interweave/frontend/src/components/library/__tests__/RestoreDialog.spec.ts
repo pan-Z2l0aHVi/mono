@@ -1,6 +1,6 @@
 // @vitest-environment jsdom
 import { toast } from '@greypan/web-ui'
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick } from 'vue'
 
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
@@ -8,6 +8,9 @@ import type { LibraryRuntime } from '../../../services/library'
 import { createPreviewLease } from '../previewLease'
 import type { LibraryRestoreQueueItem, RecoveryScanUpdate } from '../restore'
 import RestoreDialog from '../RestoreDialog.vue'
+import RestoreRow from '../RestoreRow.vue'
+
+import { stubLayout } from './virtualLayout'
 
 function createLease(
   prepareFilePreview: LibraryRuntime['resources']['prepareFilePreview'],
@@ -45,6 +48,16 @@ const items: LibraryRestoreQueueItem[] = [
 ]
 
 describe('RestoreDialog', () => {
+  let restoreLayout: (() => void) | null = null
+
+  beforeEach(() => {
+    restoreLayout = stubLayout()
+  })
+
+  afterEach(() => {
+    restoreLayout?.()
+    restoreLayout = null
+  })
   it('取消文件选择保留失效项，选择后可撤回，确认只提交已准备项', async () => {
     const host = document.createElement('div')
     document.body.append(host)
@@ -272,6 +285,114 @@ describe('RestoreDialog', () => {
       expect(submit).toHaveBeenCalledWith([expect.objectContaining({ replacementLocation: '/b', scanSnapshot: '/b' })])
     } finally {
       notification.mockRestore()
+      app.unmount()
+      host.remove()
+    }
+  })
+
+  it('待找回列表优先展示原来源缩略图，无缩略图或加载失败时回退图标', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const itemWithThumb: LibraryRestoreQueueItem = {
+      ...items[0],
+      source: {
+        id: 'file',
+        type: 'file',
+        location: '/old',
+        available: false,
+        isPreferred: true,
+        orderIndex: 0,
+        mediaUrl: null,
+        thumbnailUrl: '/media/thumbnails/file.jpg',
+        metadata: null
+      }
+    }
+    const app = createApp({
+      render: () =>
+        h(RestoreRow, {
+          item: itemWithThumb,
+          pending: true,
+          location: '',
+          source: null,
+          locked: false,
+          active: false,
+          candidateCount: 0,
+          matchReasons: []
+        })
+    })
+    app.mount(host)
+    try {
+      await nextTick()
+      const thumbImg = host.querySelector<HTMLImageElement>('img[src="/media/thumbnails/file.jpg"]')
+      expect(thumbImg).toBeTruthy()
+      thumbImg!.dispatchEvent(new Event('load'))
+      await nextTick()
+      expect(host.querySelector('img[src="/media/thumbnails/file.jpg"]')).toBeTruthy()
+      expect(host.querySelector('[data-dialog-row] > div web-ui-icon')).toBeNull()
+
+      thumbImg!.dispatchEvent(new Event('error'))
+      await nextTick()
+      expect(host.querySelector('img[src="/media/thumbnails/file.jpg"]')).toBeNull()
+      expect(host.querySelector('[data-dialog-row] > div web-ui-icon')).toBeTruthy()
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
+  it('大批量失效资源列表通过虚拟滚动只挂载窗口内的行', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const bulkItems: LibraryRestoreQueueItem[] = Array.from({ length: 200 }, (_, index) => ({
+      id: `missing-${index}`,
+      sourceId: `missing-${index}`,
+      resourceId: `res-${index}`,
+      resourceTitle: `失效资源 ${index}`,
+      resourceKind: ResourceKind.ResourceKindImage,
+      kind: 'file',
+      location: `/old/file-${index}.png`,
+      replacementLocation: ''
+    }))
+    const app = createApp({
+      render: () =>
+        h(RestoreDialog, {
+          open: true,
+          queue: bulkItems,
+          busy: false,
+          error: '',
+          mobile: false,
+          activeItemId: null,
+          chooseFilePath: async () => null,
+          allUnavailableFiles: [],
+          failedIds: [],
+          chooseDirectory: async () => null,
+          startScan: async () => 'scan',
+          pollScan: async () => ({
+            candidates: [],
+            checked: 0,
+            currentDirectory: '',
+            skipped: 0,
+            done: true,
+            cancelled: false,
+            error: ''
+          }),
+          cancelScan: async () => undefined,
+          discardScan: async () => undefined,
+          lease: createLease(
+            async () => ({ kind: ResourceKind.ResourceKindImage }),
+            async () => undefined
+          )
+        })
+    })
+    app.mount(host)
+    try {
+      await nextTick()
+      await Promise.resolve()
+      await nextTick()
+      const renderedRows = host.querySelectorAll('[data-dialog-row]')
+      expect(renderedRows.length).toBeGreaterThan(0)
+      expect(renderedRows.length).toBeLessThan(bulkItems.length)
+    } finally {
       app.unmount()
       host.remove()
     }

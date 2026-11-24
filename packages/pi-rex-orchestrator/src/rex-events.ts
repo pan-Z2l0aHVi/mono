@@ -202,3 +202,52 @@ export function parseRunResult(stdout: string): RexRunResult {
   }
   return { windowId, blockIds: blockIds as string[] }
 }
+
+/** `rex block call program_status` 的响应（实测为 `{records:[{state,app,msg,...}]}`）。 */
+export function parseProgramStatus(stdout: string): StatusChange[] {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(stdout)
+  } catch {
+    throw new Error(`program_status 输出不是合法 JSON: ${stdout.slice(0, 200)}`)
+  }
+  const records =
+    typeof parsed === 'object' && parsed !== null && Array.isArray((parsed as { records?: unknown }).records)
+      ? ((parsed as { records: unknown[] }).records as unknown[])
+      : []
+  const changes: StatusChange[] = []
+  for (const record of records) {
+    const entry = asRecord(record)
+    if (!entry) continue
+    const state = asString(entry.state)
+    if (state === undefined) continue
+    changes.push({
+      // 事件形态里 id 是 OSC 状态记录 id；call 响应里没有对应字段，用 app 兜底。
+      id: asString(entry.app) ?? 'unknown',
+      record: {
+        state,
+        kind: asString(entry.kind),
+        msg: asString(entry.msg),
+        app: asString(entry.app),
+        updatedAt: asString(entry.updated_at)
+      }
+    })
+  }
+  return changes
+}
+
+/**
+ * `rex block call process` 的 `last_exit`（实测为 `{last_exit:{exit_code,error}|null}`）。
+ * `--keep-open` 的 headless Block 在子进程退出后仍存活，靠它在对账时补 `child_exited`。
+ */
+export function parseLastExit(stdout: string): number | undefined {
+  let parsed: unknown
+  try {
+    parsed = JSON.parse(stdout)
+  } catch {
+    throw new Error(`process 输出不是合法 JSON: ${stdout.slice(0, 200)}`)
+  }
+  const lastExit = asRecord(asRecord(parsed)?.last_exit)
+  if (!lastExit) return undefined
+  return typeof lastExit.exit_code === 'number' ? lastExit.exit_code : undefined
+}

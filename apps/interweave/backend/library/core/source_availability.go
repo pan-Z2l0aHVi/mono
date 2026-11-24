@@ -38,9 +38,9 @@ func probeOutcomeFrom(reachability remote.Reachability) ProbeOutcome {
 }
 
 // SourceIndexSync 是文件可用性监听在 core 侧的窄接缝：core 不感知 fsnotify，
-// 只在入口集合变化后请求外部重建监听索引。
+// 只在入口集合变化后非阻塞地请求外部重建监听索引。
 type SourceIndexSync interface {
-	SyncSources(ctx context.Context) error
+	RequestSync()
 }
 
 // AvailabilityChange 是一次实际发生的可用性翻转及其推送载荷。
@@ -171,11 +171,11 @@ func ProbeFileServability(location string) (FileServability, *int64) {
 	return verdict, &size
 }
 
-// resyncIndex 在入口集合变化后请求监听重建。对账失败不回滚已提交的事务：
-// 文件已经入库，缺的是监听索引而不是库内记录，下一次对账会补上。
-func (s *SourceService) resyncIndex(ctx context.Context) {
+// resyncIndex 在入口集合变化后非阻塞地请求监听重建：
+// 文件已经入库，对账由外部监听协程异步合并执行。
+func (s *SourceService) resyncIndex() {
 	if s.indexSync == nil {
 		return
 	}
-	_ = s.indexSync.SyncSources(ctx)
+	s.indexSync.RequestSync()
 }

@@ -7,7 +7,7 @@
 
 import { describe, expect, it } from 'vite-plus/test'
 
-import { parseBlockList, parseRexEventLine, parseRunResult } from '../rex-events'
+import { parseBlockList, parseLastExit, parseProgramStatus, parseRexEventLine, parseRunResult } from '../rex-events'
 
 const BLOCK = 'block:01a1f351-1449-784d-b946-af5d16db98e5'
 const SESSION = 'session:01a1f203-b75e-7ca2-adad-9f68dc2c087c'
@@ -138,5 +138,44 @@ describe('block ls / run 的 JSON 输出', () => {
     const stdout = JSON.stringify({ window_id: 'window:w1', block_ids: [BLOCK], revision: 2000000064 })
     expect(parseRunResult(stdout)).toEqual({ windowId: 'window:w1', blockIds: [BLOCK] })
     expect(() => parseRunResult('{"window_id":"w"}')).toThrow('block_ids')
+  })
+})
+
+describe('parseProgramStatus & parseLastExit', () => {
+  it('parses program_status records and falls back id to app or unknown', () => {
+    const changes = parseProgramStatus(
+      JSON.stringify({
+        records: [
+          { state: 'blocked', kind: 'permission', msg: 'approve?', app: 'claude', updated_at: '2026-11-24T00:00:00Z' },
+          { state: 'running' },
+          { notState: true }
+        ]
+      })
+    )
+    expect(changes).toEqual([
+      {
+        id: 'claude',
+        record: {
+          state: 'blocked',
+          kind: 'permission',
+          msg: 'approve?',
+          app: 'claude',
+          updatedAt: '2026-11-24T00:00:00Z'
+        }
+      },
+      {
+        id: 'unknown',
+        record: { state: 'running', kind: undefined, msg: undefined, app: undefined, updatedAt: undefined }
+      }
+    ])
+    expect(() => parseProgramStatus('not-json')).toThrow(/program_status/)
+  })
+
+  it('parses process last_exit exit_code or returns undefined when absent', () => {
+    expect(parseLastExit(JSON.stringify({ last_exit: { exit_code: 0 } }))).toBe(0)
+    expect(parseLastExit(JSON.stringify({ last_exit: { exit_code: 130, error: 'sigint' } }))).toBe(130)
+    expect(parseLastExit(JSON.stringify({ last_exit: null }))).toBeUndefined()
+    expect(parseLastExit(JSON.stringify({}))).toBeUndefined()
+    expect(() => parseLastExit('{bad')).toThrow(/process/)
   })
 })

@@ -176,8 +176,11 @@ export class WebUiButton extends FormAssociated(LitElement) {
               ? html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>`
               : html`<slot></slot>`
             : html`
-                ${this.loading ? html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>` : ''}
-                <slot name="prefix"></slot>
+                ${
+                  this.loading
+                    ? html`<web-ui-icon .icon=${lucideLoaderCircle} spin></web-ui-icon>`
+                    : html`<slot name="prefix"></slot>`
+                }
                 <span class="label"><slot></slot></span>
                 <slot name="suffix"></slot>
               `

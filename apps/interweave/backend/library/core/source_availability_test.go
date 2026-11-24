@@ -325,25 +325,6 @@ func TestSourceMutationsResyncIndex(t *testing.T) {
 	}
 }
 
-// 索引重建失败不能回滚已提交的事务：文件已经入库，缺的只是监听索引。
-func TestIndexSyncFailureDoesNotFailMutation(t *testing.T) {
-	db := openAvailabilityDB(t)
-	present := filepath.Join(t.TempDir(), "existing.mp4")
-	writeFixture(t, present)
-	seedResource(t, db, "resource-anchor")
-	sync := &recordingIndexSync{err: errors.New("watch unavailable")}
-	svc := NewSourceService(db, remote.NewFetcher())
-	svc.SetIndexSync(sync)
-
-	src, err := svc.AddSource(context.Background(), "resource-anchor", storage.SourceTypeFile, present)
-	if err != nil {
-		t.Fatalf("expected AddSource to succeed despite index sync failure, got %v", err)
-	}
-	if !src.Available {
-		t.Fatalf("expected source persisted as available, got %+v", src)
-	}
-}
-
 // 三态必须可区分：权限错误不等于文件消失，目录/管道不是可服务文件。
 func TestClassifyFileStat(t *testing.T) {
 	directory := t.TempDir()
@@ -396,12 +377,10 @@ func TestProbeFileServabilityReportsSizeOnlyWhenServable(t *testing.T) {
 
 type recordingIndexSync struct {
 	calls int
-	err   error
 }
 
-func (s *recordingIndexSync) SyncSources(context.Context) error {
+func (s *recordingIndexSync) RequestSync() {
 	s.calls++
-	return s.err
 }
 
 func (s *recordingIndexSync) count() int { return s.calls }
