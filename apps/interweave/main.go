@@ -199,10 +199,11 @@ func run() error {
 		}
 	}()
 
-	resourceService := libraryService.NewResourceService(rt.ResourceService(), rt.PendingPreviews())
-	sourceService := libraryService.NewSourceService(rt.SourceService(), rt.ResourceService())
-	tagService := libraryService.NewTagService(rt.TagService(), rt.ResourceService())
-	mapService := libraryService.NewMapService(rt.MapService())
+	coreLib := rt.Core()
+	resourceService := libraryService.NewResourceService(coreLib, rt.PendingPreviews())
+	sourceService := libraryService.NewSourceService(coreLib)
+	tagService := libraryService.NewTagService(coreLib)
+	mapService := libraryService.NewMapService(coreLib)
 	osService := nativeService.NewOSService()
 
 	// 仅暴露产品与受控原生能力，避免基础设施绕过后端边界。

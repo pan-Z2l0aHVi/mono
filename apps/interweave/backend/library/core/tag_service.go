@@ -13,26 +13,8 @@ import (
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 )
 
-// 将标签维护限制在单个 Resource 的上下文，避免演变为全局标签管理。
-type TagService struct {
-	db        *storage.DB
-	resources storage.ResourceStore
-	tags      storage.TagStore
-	taggings  storage.TaggingStore
-}
-
-// 保持标签规则与持久化实现解耦。
-func NewTagService(db *storage.DB) *TagService {
-	return &TagService{
-		db:        db,
-		resources: storage.ResourceStore{},
-		tags:      storage.TagStore{},
-		taggings:  storage.TaggingStore{},
-	}
-}
-
 // 标准名称决定标签身份，确保全库复用而不依赖别名或层级。
-func (s *TagService) AddTagToResource(ctx context.Context, resourceID string, inputTagName string) (Tag, error) {
+func (s *Library) AddTagToResource(ctx context.Context, resourceID string, inputTagName string) (Tag, error) {
 	stdName, err := normalize.TagName(inputTagName)
 	if err != nil {
 		return Tag{}, fmt.Errorf("invalid tag name: %w", err)
@@ -74,7 +56,7 @@ func (s *TagService) AddTagToResource(ctx context.Context, resourceID string, in
 // SetResourceTags 以替换式集合语义重设单个 Resource 的标签：提交的名称集合归一化后
 // 就是该 Resource 的完整标签集合，集合外的既有归属被解除，缺失的被补插。
 // 名称先整体校验再写库，任一非法即整体失败，不留下半应用的集合。
-func (s *TagService) SetResourceTags(ctx context.Context, resourceID string, names []string) ([]Tag, error) {
+func (s *Library) SetResourceTags(ctx context.Context, resourceID string, names []string) ([]Tag, error) {
 	stdNames, err := normalizeTagNames(names)
 	if err != nil {
 		return nil, err
@@ -165,7 +147,7 @@ func resolveOrCreateTag(ctx context.Context, tx *sql.Tx, tags storage.TagStore, 
 }
 
 // 解除单个 Resource 的归属，不暗中改变其他资源。
-func (s *TagService) RemoveTagFromResource(ctx context.Context, resourceID string, tagID string) error {
+func (s *Library) RemoveTagFromResource(ctx context.Context, resourceID string, tagID string) error {
 	err := s.db.WithTx(ctx, func(tx *sql.Tx) error {
 		return mapNotFound(s.taggings.Delete(ctx, tx, resourceID, tagID))
 	})
@@ -173,7 +155,7 @@ func (s *TagService) RemoveTagFromResource(ctx context.Context, resourceID strin
 }
 
 // 通过已有标签建议降低新建近义标签的概率。
-func (s *TagService) SuggestTags(ctx context.Context, query string, limit int) ([]Tag, error) {
+func (s *Library) SuggestTags(ctx context.Context, query string, limit int) ([]Tag, error) {
 	if limit <= 0 {
 		limit = 10
 	}

@@ -7,7 +7,6 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { changelogSummaryQuery, parseFakeFetchOptions } from '@/queries/changelog'
 
 import { handleRouteLoadFailure, installRouterProgress } from '../guards'
-import { onRouteFailure } from '../progress'
 
 interface TestRouterContext {
   queryClient: QueryClient
@@ -73,7 +72,7 @@ function setup(ensureDocs: (docs: readonly string[]) => Promise<void> = async ()
   })
   const stopProgress = installRouterProgress(router, progress)
   const failures: unknown[] = []
-  const offFailure = onRouteFailure(error => failures.push(error))
+  const offFailure = progress.onFailure(error => failures.push(error))
 
   return {
     router,

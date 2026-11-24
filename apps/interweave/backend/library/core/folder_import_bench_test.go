@@ -106,7 +106,7 @@ func BenchmarkListFolderImportFiles(b *testing.B) {
 	if err != nil {
 		b.Fatal(err)
 	}
-	service := NewResourceService(nil, nil)
+	service := NewLibrary(nil, nil)
 	ctx := context.Background()
 	b.ResetTimer()
 	for range b.N {
@@ -121,7 +121,7 @@ func BenchmarkListFolderImportFiles(b *testing.B) {
 }
 
 // benchEnqueueService 构建带 2000 条 file source 的库，模拟一个已有规模的资源库。
-func benchEnqueueService(b *testing.B) *ResourceService {
+func benchEnqueueService(b *testing.B) *Library {
 	benchDBOnce.Do(func() {
 		dir, err := os.MkdirTemp("", "iw-bench-db-*")
 		if err != nil {
@@ -139,7 +139,7 @@ func benchEnqueueService(b *testing.B) *ResourceService {
 	if benchDBErr != nil {
 		b.Fatal(benchDBErr)
 	}
-	service := NewResourceService(benchDB, remote.NewFetcher())
+	service := NewLibrary(benchDB, remote.NewFetcher())
 	ctx := context.Background()
 
 	row := benchDB.SqlDB().QueryRowContext(ctx, `SELECT COUNT(*) FROM sources WHERE type = 'file'`)

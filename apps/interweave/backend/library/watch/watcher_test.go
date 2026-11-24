@@ -776,12 +776,12 @@ func TestWatcherDetectsRemovalAndSelfHeal(t *testing.T) {
 		t.Fatalf("open test database: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	sources := core.NewSourceService(db, remote.NewFetcher())
+	sources := core.NewLibrary(db, remote.NewFetcher())
 	libraryDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(libraryDir, "clip.mp4"), []byte("0123456789"), 0o600); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	view, err := core.NewResourceService(db, remote.NewFetcher()).CreateResource(
+	view, err := sources.CreateResource(
 		context.Background(),
 		core.CreateResourceInput{Kind: storage.SourceTypeFile, Location: filepath.Join(libraryDir, "clip.mp4")},
 	)
@@ -863,12 +863,12 @@ func TestWatcherHandlesAtomicReplace(t *testing.T) {
 		t.Fatalf("open test database: %v", err)
 	}
 	t.Cleanup(func() { _ = db.Close() })
-	sources := core.NewSourceService(db, remote.NewFetcher())
+	sources := core.NewLibrary(db, remote.NewFetcher())
 	libraryDir := t.TempDir()
 	if err := os.WriteFile(filepath.Join(libraryDir, "notes.md"), []byte("first"), 0o600); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}
-	view, err := core.NewResourceService(db, remote.NewFetcher()).CreateResource(
+	view, err := sources.CreateResource(
 		context.Background(),
 		core.CreateResourceInput{Kind: storage.SourceTypeFile, Location: filepath.Join(libraryDir, "notes.md")},
 	)

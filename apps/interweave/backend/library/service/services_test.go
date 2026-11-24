@@ -43,12 +43,10 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 	defer cleanup()
 
 	fetcher := remote.NewFetcher()
-	coreResource := coreLibrary.NewResourceService(db, fetcher)
-	coreSource := coreLibrary.NewSourceService(db, fetcher)
-	coreTag := coreLibrary.NewTagService(db)
-	resService := service.NewResourceService(coreResource, libraryMedia.NewPendingPreviewRegistry())
-	srcService := service.NewSourceService(coreSource, coreResource)
-	tagService := service.NewTagService(coreTag, coreResource)
+	coreLib := coreLibrary.NewLibrary(db, fetcher)
+	resService := service.NewResourceService(coreLib, libraryMedia.NewPendingPreviewRegistry())
+	srcService := service.NewSourceService(coreLib)
+	tagService := service.NewTagService(coreLib)
 
 	ctx := context.Background()
 
@@ -174,7 +172,7 @@ func TestPrepareFilePreviewRegistersMediaAndShutdownClearsTokens(t *testing.T) {
 
 	previews := libraryMedia.NewPendingPreviewRegistry()
 	resService := service.NewResourceService(
-		coreLibrary.NewResourceService(db, remote.NewFetcher()),
+		coreLibrary.NewLibrary(db, remote.NewFetcher()),
 		previews,
 	)
 	handler := libraryMedia.NewHandler(storage.SourceStore{}, db.SqlDB(), previews, nil, nil)
@@ -250,12 +248,10 @@ func TestMapServiceDerivedExploration(t *testing.T) {
 	defer cleanup()
 
 	fetcher := remote.NewFetcher()
-	coreResource := coreLibrary.NewResourceService(db, fetcher)
-	coreTag := coreLibrary.NewTagService(db)
-	coreMap := coreLibrary.NewMapService(db)
-	resService := service.NewResourceService(coreResource, libraryMedia.NewPendingPreviewRegistry())
-	tagService := service.NewTagService(coreTag, coreResource)
-	mapService := service.NewMapService(coreMap)
+	coreLib := coreLibrary.NewLibrary(db, fetcher)
+	resService := service.NewResourceService(coreLib, libraryMedia.NewPendingPreviewRegistry())
+	tagService := service.NewTagService(coreLib)
+	mapService := service.NewMapService(coreLib)
 
 	ctx := context.Background()
 

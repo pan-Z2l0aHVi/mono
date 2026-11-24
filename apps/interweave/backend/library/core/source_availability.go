@@ -63,12 +63,12 @@ type SourceLocationRef struct {
 }
 
 // ListFileSourceLocations 返回库内全部文件 Source 的位置，供监听集合全量重建。
-func (s *SourceService) ListFileSourceLocations(ctx context.Context) ([]string, error) {
+func (s *Library) ListFileSourceLocations(ctx context.Context) ([]string, error) {
 	return s.sources.ListFileSourceLocations(ctx, s.db.SqlDB())
 }
 
 // FileSourceIDsByLocations 按位置反查文件 Source，把内核事件路径解析为受影响入口。
-func (s *SourceService) FileSourceIDsByLocations(ctx context.Context, locations []string) ([]SourceLocationRef, error) {
+func (s *Library) FileSourceIDsByLocations(ctx context.Context, locations []string) ([]SourceLocationRef, error) {
 	models, err := s.sources.ListFileSourcesByLocations(ctx, s.db.SqlDB(), locations)
 	if err != nil {
 		return nil, err
@@ -84,7 +84,7 @@ func (s *SourceService) FileSourceIDsByLocations(ctx context.Context, locations 
 // 只在可用性真的翻转时写 availability 并返回该次翻转的载荷（nil 表示无变化）。
 // 但 `available=true` 的调用每次都会 refresh 一遍 source_fingerprints 的幂等 upsert：
 // 文件可用时属性可能已经变了，扫描要靠这份指纹认定身份与内容，所以这条路径不是无 IO 的 no-op。
-func (s *SourceService) ApplyFileAvailability(ctx context.Context, sourceID string, available bool) (*AvailabilityChange, error) {
+func (s *Library) ApplyFileAvailability(ctx context.Context, sourceID string, available bool) (*AvailabilityChange, error) {
 	now := time.Now().UnixMilli()
 	var change *AvailabilityChange
 	var fileLocation string
@@ -172,10 +172,3 @@ func ProbeFileServability(location string) (FileServability, *int64) {
 }
 
 // resyncIndex 在入口集合变化后非阻塞地请求监听重建：
-// 文件已经入库，对账由外部监听协程异步合并执行。
-func (s *SourceService) resyncIndex() {
-	if s.indexSync == nil {
-		return
-	}
-	s.indexSync.RequestSync()
-}
