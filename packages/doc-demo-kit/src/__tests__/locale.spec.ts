@@ -382,4 +382,47 @@ describe('ensureAll 批量预载', () => {
     await expect(state.ensureAll(['input'])).rejects.toThrow('network error')
     expect(state.getSnapshot().docs.has('input')).toBe(false)
   })
+
+  it('预载完成后触发同语种 bootstrap/change 仍保留未 register 的预载文档', async () => {
+    const { state, deps } = setup()
+    deps.loadDocs.mockImplementation(async (_locale, components) => {
+      const next = new Map<string, MetaNode[]>()
+      for (const component of components) next.set(component, [{ label: 'p', content: component } as MetaNode])
+      return next
+    })
+
+    await state.ensureAll(['button', 'button-group'])
+    expect([...state.getSnapshot().docs.keys()]).toEqual(['button', 'button-group'])
+
+    // 模拟挂载后 bootstrap() 对当前默认语种 zh-CN 发起同语种 change（此时新页尚未 register）
+    await state.change('zh-CN', false)
+    expect([...state.getSnapshot().docs.keys()]).toEqual(['button', 'button-group'])
+  })
+
+  it('ensureAll 进行中触发同语种与异语种 change 时等待落定并收敛到目标语种文档', async () => {
+    const { state, deps } = setup()
+    const firstLoad = deferred<MetaDocs>()
+    deps.loadDocs
+      .mockImplementationOnce(() => firstLoad.promise)
+      .mockImplementation(async (locale, components) => {
+        const next = new Map<string, MetaNode[]>()
+        for (const component of components) {
+          next.set(component, [{ label: 'p', content: `${locale}:${component}` } as MetaNode])
+        }
+        return next
+      })
+
+    const preload = state.ensureAll(['button'])
+    await vi.waitFor(() => expect(deps.loadDocs).toHaveBeenCalledTimes(1))
+
+    // 预载尚在途中时，触发同语种 change 与异语种 change
+    const sameChange = state.change('zh-CN', false)
+    const switchChange = state.change('en', false)
+
+    firstLoad.resolve(new Map([['button', [{ label: 'p', content: 'stale-zh:button' } as MetaNode]]]))
+    await Promise.all([preload, sameChange, switchChange])
+
+    expect(state.getSnapshot().locale).toBe('en')
+    expect(state.getSnapshot().docs.get('button')).toEqual([{ label: 'p', content: 'en:button' }])
+  })
 })
