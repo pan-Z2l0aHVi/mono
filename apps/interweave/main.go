@@ -135,6 +135,41 @@ func (s windowDockDropSink) PresentWindow() {
 	presentMainWindow(s.window)
 }
 
+type menuRoleActions struct {
+	showAbout   func()
+	quit        func()
+	minimise    func()
+	closeWindow func()
+}
+
+// dispatchMenuRole 将自定义顶栏上报的系统 role 映射到宿主应用/窗口动作，抽成纯路由便于单测。
+func dispatchMenuRole(role string, actions menuRoleActions) bool {
+	switch role {
+	case menucontract.RoleAbout:
+		if actions.showAbout != nil {
+			actions.showAbout()
+		}
+		return true
+	case menucontract.RoleQuit:
+		if actions.quit != nil {
+			actions.quit()
+		}
+		return true
+	case menucontract.RoleMinimise:
+		if actions.minimise != nil {
+			actions.minimise()
+		}
+		return true
+	case menucontract.RoleCloseWindow:
+		if actions.closeWindow != nil {
+			actions.closeWindow()
+		}
+		return true
+	default:
+		return false
+	}
+}
+
 func main() {
 	version := appVersion(configYAML)
 
@@ -306,16 +341,12 @@ func main() {
 			menuSink(command)
 			return
 		}
-		switch role {
-		case menucontract.RoleAbout:
-			app.Menu.ShowAbout()
-		case menucontract.RoleQuit:
-			app.Quit()
-		case menucontract.RoleMinimise:
-			window.Minimise()
-		case menucontract.RoleCloseWindow:
-			window.Close()
-		}
+		dispatchMenuRole(role, menuRoleActions{
+			showAbout:   app.Menu.ShowAbout,
+			quit:        app.Quit,
+			minimise:    func() { window.Minimise() },
+			closeWindow: window.Close,
+		})
 	})
 
 	// installMenu 整体重建菜单并同步到当前平台呈现面：

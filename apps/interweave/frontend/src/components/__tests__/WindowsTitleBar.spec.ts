@@ -142,6 +142,54 @@ describe('WindowsTitleBar', () => {
     }
   })
 
+  it('menu:tree-changed 先于初始 getMenu 响应到达时，不被旧快照覆盖', async () => {
+    let resolveInitial!: (items: MenuItem[]) => void
+    const eventState: { listener: ((items: MenuItem[]) => void) | null } = { listener: null }
+    const runtime: MenuTreeRuntime = {
+      isAvailable: true,
+      getMenu: () =>
+        new Promise<MenuItem[]>(resolve => {
+          resolveInitial = resolve
+        }),
+      onMenuChanged: cb => {
+        eventState.listener = cb
+        return () => {
+          eventState.listener = null
+        }
+      },
+      invokeItem: async () => {},
+      minimiseWindow: async () => {},
+      toggleMaximiseWindow: async () => {},
+      isWindowMaximised: async () => false,
+      closeWindow: async () => {}
+    }
+
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp({
+      render: () => h(WindowsTitleBar, { mobile: false, runtime })
+    })
+    app.mount(host)
+
+    try {
+      await nextTick()
+      // 较新的事件快照先到达（含「开发」菜单）。
+      eventState.listener?.([...sampleMenu, { label: '开发', children: [] }])
+      await nextTick()
+      expect(host.querySelectorAll('[data-windows-top-menu]').length).toBe(3)
+
+      // 随后初始 getMenu 响应返回较旧快照（仅 2 项），应被忽略。
+      resolveInitial(sampleMenu)
+      await nextTick()
+      await Promise.resolve()
+      await nextTick()
+      expect(host.querySelectorAll('[data-windows-top-menu]').length).toBe(3)
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
   it('将 Wails 快捷键文案格式化为 Windows 习惯显示', () => {
     expect(formatWindowsAccelerator('CmdOrCtrl+Shift+V')).toBe('Ctrl+Shift+V')
     expect(formatWindowsAccelerator('CmdOrCtrl+plus')).toBe('Ctrl++')

@@ -3,6 +3,8 @@ package main
 import (
 	"path/filepath"
 	"testing"
+
+	menucontract "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu"
 )
 
 func TestAppDescriptionCarriesVersion(t *testing.T) {
@@ -34,6 +36,39 @@ func TestMainWindowUsesFramelessIntegratedTitleBarOnWindows(t *testing.T) {
 	}
 	if !opts.Windows.NonClientRegionSupport {
 		t.Fatal("expected Windows window to enable NonClientRegionSupport for native drag/snap")
+	}
+}
+
+func TestDispatchMenuRoleRoutesAllWindowAndAppRoles(t *testing.T) {
+	var called []string
+	actions := menuRoleActions{
+		showAbout:   func() { called = append(called, "about") },
+		quit:        func() { called = append(called, "quit") },
+		minimise:    func() { called = append(called, "minimise") },
+		closeWindow: func() { called = append(called, "close") },
+	}
+
+	for _, role := range []string{
+		menucontract.RoleAbout,
+		menucontract.RoleQuit,
+		menucontract.RoleMinimise,
+		menucontract.RoleCloseWindow,
+	} {
+		if !dispatchMenuRole(role, actions) {
+			t.Fatalf("expected role %q to be handled", role)
+		}
+	}
+	if dispatchMenuRole("unknown-role", actions) {
+		t.Fatal("expected unknown role to return false")
+	}
+	want := []string{"about", "quit", "minimise", "close"}
+	if len(called) != len(want) {
+		t.Fatalf("expected %v, got %v", want, called)
+	}
+	for i := range want {
+		if called[i] != want[i] {
+			t.Fatalf("expected %v, got %v", want, called)
+		}
 	}
 }
 

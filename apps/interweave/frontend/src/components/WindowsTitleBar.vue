@@ -23,6 +23,9 @@ const menuRuntime = props.runtime ?? createMenuTreeRuntime()
 const menuItems = ref<MenuItem[]>([])
 const isMaximised = ref(false)
 let stopMenuUpdates: (() => void) | null = null
+// 单调版本号：若 menu:tree-changed 事件先于初始 getMenu() 响应到达，
+// 丢弃较旧的 getMenu() 结果，防止陈旧禁用态覆盖最新事件快照。
+let menuSnapshotVersion = 0
 
 async function syncMaximisedState() {
   try {
@@ -66,11 +69,14 @@ async function handleClose() {
 
 onMounted(() => {
   stopMenuUpdates = menuRuntime.onMenuChanged(items => {
+    menuSnapshotVersion += 1
     menuItems.value = items
   })
+  const requestVersion = menuSnapshotVersion
   void menuRuntime
     .getMenu()
     .then(items => {
+      if (menuSnapshotVersion !== requestVersion) return
       menuItems.value = items
     })
     .catch(() => {})

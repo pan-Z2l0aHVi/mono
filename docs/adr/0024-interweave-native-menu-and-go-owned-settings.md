@@ -6,6 +6,7 @@
 - **修订（2026-11-14 第二轮）**: 七菜单结构；`backend/menu` 注册窄 Service `ReportDisabledCommands` 接收禁用命令集合；`backend/native/menu` 不注册 Service。
 - **修订（2026-11-15 第三轮）**: 缩放改为 Go 拥有的设置；窗口拖动区改为按元素声明；壳在 runtime 注入后渲染。可执行口径见 [apps/interweave/AGENTS.md](../../apps/interweave/AGENTS.md)。
 - **修订（2026-11-20 第四轮）**: 正文「`interweave/` 子目录」仅指 production 构建；development 构建的数据目录是 `interweave-dev/`（由 Go `production` build tag 决定，`library.db`、缩略图与 `settings.json` 同构）。配套：macOS `interweave.dev.app` 的构建产物 `CFBundleIdentifier` 改写为 `com.greypan.interweave.dev`，Windows `WebviewUserDataPath` 显式指向数据目录下的 `webview/`，使 dev 与正式版的本地持久化完全隔离。
+- **修订（2026-11-24 第五轮）**: Windows 端因 Win32 原生标题栏与原生 `HMENU` 无法合并同行，改为启用 `Frameless: true` + `Windows.NonClientRegionSupport: true` 并关闭 `UseApplicationMenu`，由前端 `WindowsTitleBar` 渲染一体化顶栏（左侧平铺菜单、移动端断点收进汉堡按钮、中间拖动区、右侧 Fluent 窗口三键）；macOS 与 Linux 保持原生菜单不变。菜单形状、快捷键与禁用态仍全部由 Go 侧 `backend/native/menu` 拥有，`backend/menu` 扩展 `GetMenu` / `InvokeMenuItem` 与 `menu:tree-changed` 事件供 Windows 顶栏消费。
 
 ## 背景
 
@@ -19,9 +20,9 @@ Interweave 此前只注册 Wails 默认菜单加一个「Paste Files」项，业
 
 ## 决策
 
-### 1. 顶部菜单使用 Wails 的原生菜单，不在 web-ui 里自绘
+### 1. 顶部菜单由 Go 拥有；macOS 走原生菜单，Windows 走 Frameless 一体化顶栏
 
-macOS 用 `app.Menu.Set` 设置全局 NSMenu，Windows 用 `WebviewWindowOptions.UseApplicationMenu` 附着 Win32 菜单栏。不自绘 HTML 菜单栏，也不启用 frameless 窗口。菜单树由 Go 构建、按平台分支；顶层顺序、文案、快捷键与命令归属以 `backend/native/menu` 的 `Describe(goos)` 为准。
+macOS 用 `app.Menu.Set` 设置全局 NSMenu；Windows 为使顶部菜单与窗口标题栏一体化（Win32 无法将原生 `HMENU` 嵌进系统标题栏同行），启用 `Frameless: true` + `Windows.NonClientRegionSupport: true` 并关闭 `UseApplicationMenu`，由前端渲染一体化顶栏消费 Go 下发的菜单快照。菜单树仍由 Go 唯一构建、按平台分支；顶层顺序、文案、快捷键与命令归属以 `backend/native/menu` 的 `Describe(goos)` 为准。
 
 文案全中文意味着**不直接沿用 Wails 的 role 生成器**（label 写死英文，键位也自成一套）：做法是「挂 role、用应用自己的 label 与 accelerator」，`undo:`、`cut:`、`terminate:` 等系统 selector 保留，只覆盖展示层。`Reload` / `ForceReload` / `OpenDevTools` role 不使用：`Reload` 的 `Cmd+R` 与「刷新可用性」抢 chord，`OpenDevTools` 在 `production` tag 下是空实现；这两项做成普通菜单项，点击由 Go 直接调窗口方法，是否出现由设置决定。
 
@@ -33,7 +34,7 @@ AppKit 的 `Find` role 只设 `performTextFinderAction:`、没有 find-panel act
 
 菜单点击不按项拆事件，而是发一个菜单命令事件，载荷为 `{command, payload}`，`command` 是字符串枚举。命令契约与事件名常量由 `backend/menu/` 拥有，菜单树构建与平台分支由 `backend/native/menu/` 实现，后者作为 Go 包由 `main.go` 装配，**不注册 Wails Service**。
 
-`backend/menu` 注册的唯一 Service 是 `ReportDisabledCommands(disabled []Command)`，另有两个 `//wails:ignore` 的读取方法给菜单构建器用。禁用集合是菜单的呈现状态：没有持久化、没有跨会话语义，不属于「设置由 Go 拥有」。菜单重建走 `main.go` 的 `installMenu()`，触发路径是启动、设置变更与禁用集合变更三条；Windows 上每次重建都是 `app.Menu.Set` 加 `window.SetMenu`。
+`backend/menu` 注册的 Service 暴露 `ReportDisabledCommands(disabled []Command)`、`GetMenu()` 与 `InvokeMenuItem(command, role)`，另有两个 `//wails:ignore` 的读取方法给菜单构建器用。禁用集合是菜单的呈现状态：没有持久化、没有跨会话语义，不属于「设置由 Go 拥有」。菜单重建走 `main.go` 的 `installMenu()`，触发路径是启动、设置变更与禁用集合变更三条；macOS/Linux 走 `app.Menu.Set` + `window.SetMenu`，Windows 向前端推送 `menu:tree-changed` 快照事件。
 
 ### 3. 应用设置由 Go 拥有并持久化
 
@@ -67,6 +68,6 @@ Go 侧在 `WebViewDidFinishNavigation` 之后才注入 `window._wails`，早于�
 
 ## 备选方案
 
-- **Windows 自绘菜单栏**：需要 frameless 窗口加 `NonClientRegionSupport` 与自绘窗口控件，且 Wails 的 frameless 路径不为 Win32 菜单栏预留高度，组合无支持；也要在 web-ui 里新增 menubar 组件、键盘焦点与拖拽区。放弃。
+- **Windows 原生标题栏 + Win32 菜单栏双层布局**：首版采用以规避自绘成本，但系统标题栏与菜单栏分居上下两层、视觉割裂；已在第五轮修订中改为 Frameless 一体化顶栏（复用 Go 菜单树，仅在 Interweave 前端渲染，不扩充 `packages/web-ui` 公共契约）。
 - **官方 kvstore 直接注册**：省一层代码，但数据无类型、写入非原子，且 `Set`/`Clear` 会直接变成 JS 可调用方法，与「Go 拥有设置」冲突。放弃。
 - **第三方配置库（viper / koanf）**：只提供分层配置合并，不提供原子写与并发保护，且仓库的依赖变更需要单独授权。放弃。
