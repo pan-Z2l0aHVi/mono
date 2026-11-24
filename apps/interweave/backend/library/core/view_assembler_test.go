@@ -51,8 +51,8 @@ func (f *failingQueryer) QueryContext(ctx context.Context, query string, args ..
 // 建立四个带首选来源的资源，前三个各带两个标签，末尾保持无标签。
 func seedAssemblerFixtures(t *testing.T, ctx context.Context, db *storage.DB) []Resource {
 	t.Helper()
-	resService := NewResourceService(db, remote.NewFetcher())
-	tagService := NewTagService(db)
+	lib := NewLibrary(db, remote.NewFetcher())
+	resService, tagService := lib, lib
 
 	fixtures := make([]Resource, 0, 4)
 	for i := 0; i < 4; i++ {

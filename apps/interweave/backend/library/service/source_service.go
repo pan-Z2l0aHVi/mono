@@ -10,19 +10,17 @@ import (
 // 作为 Wails 外观呈现 Source 能力，产品规则由 core 承载。
 // 变更类方法直接回传变更后的完整 Resource 视图，前端不再二次往返读取。
 type SourceService struct {
-	core *core.SourceService
-	// resources 复用 core 现成的视图装配出口（core API 不新增方法）。
-	resources *core.ResourceService
+	core *core.Library
 }
 
 // 保持外观与产品规则解耦。
-func NewSourceService(c *core.SourceService, r *core.ResourceService) *SourceService {
-	return &SourceService{core: c, resources: r}
+func NewSourceService(c *core.Library) *SourceService {
+	return &SourceService{core: c}
 }
 
 // 变更落库后按 resource_id 装配完整资源视图；变更后的 Source 在 resource.sources 里按 id 可取。
 func (s *SourceService) resourceDTO(ctx context.Context, resourceID string) (*ResourceDTO, error) {
-	view, err := s.resources.GetResource(ctx, resourceID)
+	view, err := s.core.GetResource(ctx, resourceID)
 	if err != nil {
 		return nil, err
 	}

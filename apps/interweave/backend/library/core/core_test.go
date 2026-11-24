@@ -52,8 +52,8 @@ func TestCoreSeamRules(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	resService := core.NewResourceService(db, remote.NewFetcher())
-	tagService := core.NewTagService(db)
+	lib := core.NewLibrary(db, remote.NewFetcher())
+	resService, tagService := lib, lib
 	ctx := context.Background()
 
 	view, err := addFileResource(ctx, resService, tempFile(t, "core-*.txt"))
@@ -98,10 +98,8 @@ func TestCoreErrorIdentityAndEmptySlices(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	resService := core.NewResourceService(db, remote.NewFetcher())
-	srcService := core.NewSourceService(db, remote.NewFetcher())
-	tagService := core.NewTagService(db)
-	mapService := core.NewMapService(db)
+	lib := core.NewLibrary(db, remote.NewFetcher())
+	resService, srcService, tagService, mapService := lib, lib, lib, lib
 	ctx := context.Background()
 
 	if _, err := resService.GetResource(ctx, "missing"); !errors.Is(err, core.ErrResourceNotFound) {
@@ -146,8 +144,8 @@ func TestFindResourceLocationMatchesNormalizesBeforeComparing(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	resService := core.NewResourceService(db, remote.NewFetcher())
-	srcService := core.NewSourceService(db, remote.NewFetcher())
+	lib := core.NewLibrary(db, remote.NewFetcher())
+	resService, srcService := lib, lib
 	ctx := context.Background()
 
 	path := tempFile(t, "dupe-*.txt")
@@ -209,7 +207,7 @@ func TestFindResourceLocationMatchesCoversURLSources(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	resService := core.NewResourceService(db, remote.NewFetcher())
+	resService := core.NewLibrary(db, remote.NewFetcher())
 	ctx := context.Background()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
@@ -249,7 +247,7 @@ func TestFindResourceLocationMatchesOrdersNewestFirst(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	resService := core.NewResourceService(db, remote.NewFetcher())
+	resService := core.NewLibrary(db, remote.NewFetcher())
 	ctx := context.Background()
 
 	path := tempFile(t, "shared-*.txt")
@@ -285,8 +283,8 @@ func TestSourceAddChecksExistenceBeforeFetch(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	resService := core.NewResourceService(db, remote.NewFetcher())
-	srcService := core.NewSourceService(db, remote.NewFetcher())
+	lib := core.NewLibrary(db, remote.NewFetcher())
+	resService, srcService := lib, lib
 	ctx := context.Background()
 
 	if _, err := srcService.AddSource(ctx, "missing", storage.SourceTypeFile, tempFile(t, "add-*.txt")); !errors.Is(err, core.ErrResourceNotFound) {
@@ -329,8 +327,8 @@ func TestSearchEscapesLikeWildcards(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	resService := core.NewResourceService(db, remote.NewFetcher())
-	tagService := core.NewTagService(db)
+	lib := core.NewLibrary(db, remote.NewFetcher())
+	resService, tagService := lib, lib
 	ctx := context.Background()
 
 	plain, err := addFileResource(ctx, resService, tempFile(t, "plain-*.txt"))
@@ -362,11 +360,11 @@ func TestSearchEscapesLikeWildcards(t *testing.T) {
 
 // addFileResource / addURLResource 是测试最常用的纳入封装，只按入口类型补 Kind，
 // 创建规则本身统一走 CreateResource。
-func addFileResource(ctx context.Context, svc *core.ResourceService, inputPath string) (*core.ResourceView, error) {
+func addFileResource(ctx context.Context, svc *core.Library, inputPath string) (*core.ResourceView, error) {
 	return svc.CreateResource(ctx, core.CreateResourceInput{Kind: storage.SourceTypeFile, Location: inputPath})
 }
 
-func addURLResource(ctx context.Context, svc *core.ResourceService, inputURL string) (*core.ResourceView, error) {
+func addURLResource(ctx context.Context, svc *core.Library, inputURL string) (*core.ResourceView, error) {
 	return svc.CreateResource(ctx, core.CreateResourceInput{Kind: storage.SourceTypeURL, Location: inputURL})
 }
 
@@ -375,8 +373,8 @@ func TestSetResourceTagsReplacesWholeSet(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	resService := core.NewResourceService(db, remote.NewFetcher())
-	tagService := core.NewTagService(db)
+	lib := core.NewLibrary(db, remote.NewFetcher())
+	resService, tagService := lib, lib
 	ctx := context.Background()
 
 	view, err := addFileResource(ctx, resService, tempFile(t, "set-*.txt"))
@@ -438,8 +436,8 @@ func TestSetResourceTagsKeepsRequestOrderForNewTaggings(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	resService := core.NewResourceService(db, remote.NewFetcher())
-	tagService := core.NewTagService(db)
+	lib := core.NewLibrary(db, remote.NewFetcher())
+	resService, tagService := lib, lib
 	ctx := context.Background()
 
 	view, err := addFileResource(ctx, resService, tempFile(t, "order-*.txt"))
@@ -498,8 +496,8 @@ func TestSetResourceTagsRejectsInvalidNamesAtomically(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	resService := core.NewResourceService(db, remote.NewFetcher())
-	tagService := core.NewTagService(db)
+	lib := core.NewLibrary(db, remote.NewFetcher())
+	resService, tagService := lib, lib
 	ctx := context.Background()
 
 	view, err := addFileResource(ctx, resService, tempFile(t, "atomic-*.txt"))
@@ -532,7 +530,7 @@ func TestCreateResourceBuildsResourceWithSourceAndTags(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	resService := core.NewResourceService(db, remote.NewFetcher())
+	resService := core.NewLibrary(db, remote.NewFetcher())
 	ctx := context.Background()
 
 	view, err := resService.CreateResource(ctx, core.CreateResourceInput{
@@ -589,7 +587,7 @@ func TestCreateResourceRejectsInvalidTagsAtomically(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	resService := core.NewResourceService(db, remote.NewFetcher())
+	resService := core.NewLibrary(db, remote.NewFetcher())
 	ctx := context.Background()
 
 	if _, err := resService.CreateResource(ctx, core.CreateResourceInput{
@@ -614,7 +612,7 @@ func TestCreateResourceURLTitleRules(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
-	resService := core.NewResourceService(db, remote.NewFetcher())
+	resService := core.NewLibrary(db, remote.NewFetcher())
 	ctx := context.Background()
 
 	srv := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
