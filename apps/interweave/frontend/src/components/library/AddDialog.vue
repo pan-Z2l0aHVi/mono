@@ -323,12 +323,12 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             支持本地文件与远程链接，支持拖入或粘贴
           </p>
           <div class="flex shrink-0 items-center gap-2">
-            <web-ui-tooltip content="导入链接" placement="bottom">
+            <web-ui-tooltip portal content="导入链接" placement="bottom">
               <web-ui-button icon size="28" aria-label="导入链接" :disabled="busy" @click="addUrlOpen = true">
                 <web-ui-icon :icon="linkPlus" :size="15" />
               </web-ui-button>
             </web-ui-tooltip>
-            <web-ui-tooltip content="从剪切板导入" placement="bottom">
+            <web-ui-tooltip portal content="从剪切板导入" placement="bottom">
               <web-ui-button icon size="28" aria-label="粘贴复制的文件" @click="emit('requestFilePaths')">
                 <web-ui-icon :icon="lucideClipboardPaste" :size="15" />
               </web-ui-button>
@@ -480,7 +480,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                     </span>
                     <span class="flex shrink-0 items-center gap-1">
                       <span v-if="editingItemId === item.id" class="size-7" aria-hidden="true" />
-                      <web-ui-tooltip v-else content="重命名" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                      <web-ui-tooltip v-else portal content="重命名" :placement="itemIndex < 5 ? 'bottom' : 'top'">
                         <web-ui-button
                           :ref="setRenameButtonRef(item.id)"
                           icon
@@ -492,7 +492,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                           <web-ui-icon :icon="lucidePenLine" :size="14" />
                         </web-ui-button>
                       </web-ui-tooltip>
-                      <web-ui-tooltip content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                      <web-ui-tooltip portal content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
                         <web-ui-button
                           icon
                           variant="ghost"
@@ -503,7 +503,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                           <web-ui-icon :icon="lucideTags" :size="14" />
                         </web-ui-button>
                       </web-ui-tooltip>
-                      <web-ui-tooltip content="移除待导入资源" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                      <web-ui-tooltip portal content="移除待导入资源" :placement="itemIndex < 5 ? 'bottom' : 'top'">
                         <web-ui-button
                           class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
                           icon

@@ -101,7 +101,11 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
             class="flex min-w-0 items-center gap-1 text-xs leading-5 text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
             :title="match.location"
           >
-            <web-ui-tooltip class="shrink-0" :content="copiedResourceId === match.resource_id ? '已复制' : '复制路径'">
+            <web-ui-tooltip
+              portal
+              class="shrink-0"
+              :content="copiedResourceId === match.resource_id ? '已复制' : '复制路径'"
+            >
               <web-ui-button
                 icon
                 variant="ghost"
