@@ -1,13 +1,14 @@
 // @vitest-environment jsdom
 
 import { toast } from '@greypan/web-ui'
-import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, type App as VueApp } from 'vue'
 
 import type { LibraryQueueItem, LibraryRuntime } from '@/services/library'
 import type { ResourceView } from '@/stores/library'
 
 import { ResourceKind } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import { stubLayout } from '../components/library/__tests__/virtualLayout'
 import AddDialog from '../components/library/AddDialog.vue'
 import ConfirmDialog from '../components/library/ConfirmDialog.vue'
 import DetailDrawer from '../components/library/DetailDrawer.vue'
@@ -20,6 +21,16 @@ import RestoreDialog from '../components/library/RestoreDialog.vue'
 import RestoreRow from '../components/library/RestoreRow.vue'
 
 const mounted: Array<{ app: VueApp; host: HTMLElement }> = []
+let restoreLayout: (() => void) | null = null
+
+beforeEach(() => {
+  restoreLayout = stubLayout()
+})
+
+afterEach(() => {
+  restoreLayout?.()
+  restoreLayout = null
+})
 
 function mountComponent(render: () => ReturnType<typeof h>): HTMLElement {
   const host = document.createElement('div')
