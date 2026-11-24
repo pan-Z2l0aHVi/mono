@@ -19,6 +19,17 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
   const refreshingSourceIds = ref<string[]>([])
   const replacingSourceIds = ref<string[]>([])
   const error = ref('')
+  const readonlyError = computed(() => error.value)
+
+  function clearError() {
+    error.value = ''
+  }
+
+  function consumeError(cause: unknown, fallback: string) {
+    const message = userMessage(cause, error.value || fallback)
+    error.value = ''
+    return message
+  }
   const isBusy = computed(
     () =>
       isLoading.value ||
@@ -245,7 +256,9 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     pendingResourceIds,
     refreshingSourceIds,
     replacingSourceIds,
-    error,
+    error: readonlyError,
+    clearError,
+    consumeError,
     loadResources,
     addResource,
     renameResource,

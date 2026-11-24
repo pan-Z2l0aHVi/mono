@@ -14,13 +14,7 @@ import PreviewDrawer from '@/components/library/PreviewDrawer.vue'
 import { createPreviewLease } from '@/components/library/previewLease'
 import { DRAWER_TITLE_EDITOR_KEY, type NameEditorRef } from '@/components/library/rename'
 import ResourceList from '@/components/library/ResourceList.vue'
-import {
-  createLibraryRestoreQueue,
-  createLibraryRestoreQueueItem,
-  normalizeLibraryURL,
-  restoreLibraryQueue,
-  type LibraryRestoreQueueItem
-} from '@/components/library/restore'
+import { createLibraryRestoreQueue, createLibraryRestoreQueueItem } from '@/components/library/restore'
 import RestoreDialog from '@/components/library/RestoreDialog.vue'
 import Toolbar from '@/components/library/Toolbar.vue'
 import {
@@ -39,29 +33,10 @@ import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
 import { useLibrarySelection } from '@/composables/useLibrarySelection'
 import { pendingWindowFileDrops, pendingWindowURLDrops } from '@/composables/windowFileDrop'
 import type { LibraryQueueItem } from '@/services/library'
-import { userMessage } from '@/services/library/userMessage'
 import { useLibraryStore } from '@/stores/library'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
-interface ConfirmRequest {
-  title: string
-  message: string
-  confirmLabel: string
-  danger: boolean
-  /** 紧凑变体走窄一档的弹窗宽度（320px）。由调用点声明，不从标题文案反推。 */
-  compact?: boolean
-  /**
-   * 声明后，确认弹窗在 busy 期间把按钮文案换成「已处理 / 总数」的实时进度；
-   * 进度数值读 addQueue.progress，与本请求的 progressTotal 对应同一批长流程。
-   */
-  progressTotal?: number
-  /**
-   * busy 期间取消按钮的文案；声明即表示该流程可中途停止（批量导入）。
-   * 未声明时取消按钮照旧禁用，删除等一次性操作不被半途取消。
-   */
-  busyCancelLabel?: string
-  action: () => Promise<void> | void
-}
+import { createLibraryWorkflow } from './libraryWorkflow'
 
 const router = useRouter()
 const store = useLibraryStore()
@@ -71,6 +46,8 @@ const {
   pendingResourceIds,
   replacingSourceIds,
   error: runtimeError,
+  clearError: clearRuntimeError,
+  consumeError: consumeRuntimeError,
   loadResources,
   addResource,
   renameResource,
@@ -101,13 +78,7 @@ const detailOpenView = computed({
 })
 const previewOpen = ref(false)
 const tagsOpen = ref(false)
-const addOpen = ref(false)
-const restoreOpen = ref(false)
-const restoreQueue = ref<LibraryRestoreQueueItem[]>([])
-const restoreBusy = ref(false)
-const restoreError = ref('')
-const failedRestoreIds = ref<string[]>([])
-const activeRestoreItemId = ref<string | null>(null)
+
 // 添加队列与找回弹窗共用一本预览账本：token 结算、驱逐对账都只在 lease 里发生。
 const previewLease = createPreviewLease(runtime)
 const previewEntries = previewLease.entries
@@ -116,28 +87,50 @@ const queue = addQueue.queue
 const duplicatePrompt = addQueue.duplicatePrompt
 const submitting = addQueue.submitting
 const importProgress = addQueue.progress
-const confirmBusy = ref(false)
-const confirmOpen = ref(false)
-const confirmRequest = ref<ConfirmRequest | null>(null)
-const confirmError = ref('')
+
+const workflow = createLibraryWorkflow({
+  addQueue,
+  expandImportEntries: entries => runtime.resources.expandImportEntries(entries),
+  chooseFilePaths: () => runtime.system.chooseFilePaths(),
+  getClipboardFilePaths: () => runtime.system.getClipboardFilePaths(),
+  readClipboardText: () => runtime.system.readClipboardText(),
+  addResource,
+  replaceSource,
+  replaceScannedFileSource: async (sourceId, path, snapshot) => {
+    const updated = await runtime.sources.replaceScannedFile(sourceId, path, snapshot)
+    store.upsertResource(updated)
+  },
+  consumeError: consumeRuntimeError,
+  notifyWarning: message => toast.warning(message, { position: 'top-center' })
+})
+
+const {
+  addOpen,
+  addError,
+  confirmBusy,
+  confirmOpen,
+  confirmRequest,
+  confirmError,
+  confirmButtonLabel,
+  restoreOpen,
+  restoreQueue,
+  restoreBusy,
+  restoreError,
+  failedRestoreIds,
+  activeRestoreItemId
+} = workflow
+
 const resourceListRef = ref<InstanceType<typeof ResourceList>>()
 let pendingDeleteFocus: number | null = null
-const addError = ref('')
 /** 菜单「导入来自 › 链接」要把 AddDialog 直接翻到链接输入，因此保留组件引用。 */
 const addDialogRef = ref<InstanceType<typeof AddDialog> | null>(null)
+
 watch(
   pendingWindowFileDrops,
   batches => {
     if (!batches.length) return
     pendingWindowFileDrops.value = []
-    addError.value = ''
-    addOpen.value = true
-    for (const entries of batches) {
-      // 拖入与点选同口径：目录递归展开、超阈值先确认再入队。
-      enqueueImportEntries(entries).catch(cause => {
-        addError.value = takeOperationError(cause, '读取文件失败')
-      })
-    }
+    workflow.handleWindowFileDrops(batches)
   },
   { immediate: true }
 )
@@ -146,11 +139,7 @@ watch(
   batches => {
     if (!batches.length) return
     pendingWindowURLDrops.value = []
-    addError.value = ''
-    addOpen.value = true
-    for (const urls of batches) {
-      for (const url of urls) requestAddURL(url)
-    }
+    workflow.handleWindowURLDrops(batches)
   },
   { immediate: true }
 )
@@ -164,10 +153,10 @@ const stopSourceAvailability = runtime.events.onSourceAvailability(event => {
  * 翻开筛选栏与聚焦搜索。
  */
 const stopMenuActions = [
-  onMenuAction(MENU_ADD_RESOURCE_EVENT, openAddDialog),
+  onMenuAction(MENU_ADD_RESOURCE_EVENT, () => workflow.openAddDialog()),
   onMenuAction(MENU_IMPORT_FROM_CLIPBOARD_EVENT, () => {
-    addOpen.value = true
-    void pasteFilePaths()
+    workflow.openAddDialog()
+    void workflow.pasteFilePaths()
   }),
   onMenuAction(MENU_IMPORT_FROM_LINK_EVENT, openAddLinkDialog),
   onMenuAction(MENU_REFRESH_EVENT, () => {
@@ -336,7 +325,7 @@ function setDetailOpen(open: boolean) {
 }
 
 function requestDeleteResource(resource: ResourceView) {
-  openConfirmDialog({
+  workflow.openConfirmDialog({
     title: '删除资源',
     message: `删除「${resource.title}」后无法恢复。`,
     confirmLabel: '删除',
@@ -353,7 +342,7 @@ function requestDeleteResource(resource: ResourceView) {
 function requestDeleteSelected() {
   const ids = [...checkedIds.value]
   if (!ids.length) return
-  openConfirmDialog({
+  workflow.openConfirmDialog({
     title: '删除资源',
     message: `删除选中的 ${ids.length} 个资源后无法恢复。`,
     confirmLabel: '删除',
@@ -380,86 +369,11 @@ function finishDelete(deletedIds: string[]) {
   }
 }
 
-/** 批量确认串行排队：并发触发的多个超阈值批次依次展示，后到的等待当前弹窗结算，不互相覆盖。 */
-const pendingConfirmRequests: ConfirmRequest[] = []
-
-function openConfirmDialog(request: ConfirmRequest) {
-  if (confirmOpen.value) {
-    pendingConfirmRequests.push(request)
-    return
-  }
-  confirmError.value = ''
-  confirmRequest.value = request
-  confirmOpen.value = true
-}
-
-async function runConfirmedAction() {
-  const request = confirmRequest.value
-  if (!request || confirmBusy.value) return
-  confirmError.value = ''
-  confirmBusy.value = true
-  try {
-    await request.action()
-    closeConfirmDialog()
-  } catch (cause) {
-    confirmError.value = takeOperationError(cause, '操作失败，请稍后重试')
-  } finally {
-    confirmBusy.value = false
-  }
-}
-
-function closeConfirmDialog() {
-  // 只翻 open、不清内容：退场期间保留上次内容的合同见 useLingering。
-  // 关闭即原子串接排队的下一批：confirm-open-change 的 cancel 与显式取消都收敛到这里，
-  // open 已为 false 的重复调用直接返回，不会把同一份排队请求消费两次。
-  if (!confirmOpen.value) return
-  confirmOpen.value = false
-  const next = pendingConfirmRequests.shift()
-  if (!next) return
-  confirmError.value = ''
-  confirmRequest.value = next
-  confirmOpen.value = true
-}
-
-/**
- * 确认弹窗的取消：导入进行中它显示为「停止」。
- * 停止只作用于当前批次与已入队项，排队等待确认的其它批次仍会依次弹出——
- * 它们还没开始导入，各自仍需要一次显式放行，停止不该替用户把它们一并丢弃。
- * action 随后自行结算，runConfirmedAction 走正常关闭，这里不提前翻 open。
- */
-function cancelConfirmDialog() {
-  if (confirmBusy.value && confirmRequest.value?.busyCancelLabel) {
-    void addQueue.close()
-    return
-  }
-  closeConfirmDialog()
-}
-
-/** 确认按钮文案：声明了 progressTotal 的请求在 busy 期间展示实时进度比值。 */
-const confirmButtonLabel = computed(() => {
-  const request = confirmRequest.value
-  const label = request?.confirmLabel ?? '确认'
-  const total = request?.progressTotal ?? 0
-  if (confirmBusy.value && total > 0) return `${importProgress.value.done} / ${total}`
-  return label
-})
-
 function restoreDeletedFocus() {
   if (pendingDeleteFocus === null) return
   const index = pendingDeleteFocus
   pendingDeleteFocus = null
   void nextTick(() => resourceListRef.value?.focusNearest(index))
-}
-
-function takeOperationError(cause: unknown, fallback: string) {
-  const message = userMessage(cause, runtimeError.value || fallback)
-  runtimeError.value = ''
-  return message
-}
-
-function openAddDialog() {
-  addError.value = ''
-  addOpen.value = true
 }
 
 /*
@@ -469,154 +383,14 @@ function openAddDialog() {
  * 对话框，是因为链接提交后它会被并入同一个待添加队列，用户还能在提交前改名称与标签。
  */
 function openAddLinkDialog() {
-  openAddDialog()
+  workflow.openAddDialog()
   // 同步调用是安全的：AddDialog 的 open watch 复位的是它自己的子面板状态，
   // 而 openLinkDialog 写的是同一个 ref，后写的这一次才是用户要的结果。
   addDialogRef.value?.openLinkDialog()
 }
 
-function setAddOpen(open: boolean) {
-  addOpen.value = open
-  if (!open) addQueue.resolveDuplicate(false)
-}
-
-function handleAddDialogClosed() {
-  if (addOpen.value) return
-  addError.value = ''
-  void addQueue.close()
-}
-
-/*
- * 粘贴（#188）。
- *
- * OS 的剪贴板文件接口只认文件；没有文件时读取文本并尝试作为链接入队。
- * paste 事件直接传入文本，按钮入口则读取当前剪贴板。
- */
-async function pasteFilePaths(clipboardText?: string) {
-  try {
-    addError.value = ''
-    const paths = await runtime.system.getClipboardFilePaths()
-    if (!addOpen.value) return
-    if (paths.length) {
-      await enqueueImportEntries(paths)
-      return
-    }
-    const text = clipboardText ?? (await runtime.system.readClipboardText())
-    if (!addOpen.value) return
-    const url = normalizeLibraryURL(text)
-    if (url) {
-      requestAddURL(url)
-      return
-    }
-    toast.warning('剪切板中没有可导入的文件或有效链接', { position: 'top-center' })
-  } catch {
-    toast.warning('无法读取剪切板，请重试', { position: 'top-center' })
-  }
-}
-
-/** 提交期间所有入队入口共用的提示：文案只在这里维护。 */
-function warnImportInProgress() {
-  toast.warning('正在导入当前批次，请等它完成再继续添加', { position: 'top-center' })
-}
-
-/**
- * 统一挡下提交期间的链接入队：窗口拖入与粘贴文本都不经 enqueueImportEntries，
- * 提交按快照结算、成功时整队清空，期间入队的链接会被静默丢弃。
- */
-function requestAddURL(url: string) {
-  if (submitting.value) {
-    warnImportInProgress()
-    return
-  }
-  void addQueue.enqueueURL(url)
-}
-
-/**
- * 单批导入的确认阈值，按展开后的文件总数计（文件多选、文件夹递归、两者混选同一条链）。
- *
- * 数值依据：目标是「点导入 → 待导入列表就绪」不超过 1s，超过就该先拦下来征得同意。
- * 实测（M2/16G，300 文件批）前 1.5s 只入队 32 项、末段降到约 3 项/秒；后端侧展开与重复
- * 检查摊销仅约 15µs/文件，耗时几乎全在待导入列表逐项渲染，因此 1s 大约只对应 20 个文件。
- * 列表渲染优化（虚拟化/延迟挂预览）后应按新曲线重估，而不是凭感觉调大。
- */
-const IMPORT_CONFIRM_THRESHOLD = 20
-
-/*
- * 统一的导入入口展开：选择面板、拖入与剪贴板都走同一条链——
- * 后端把目录递归展开成文件清单（文件原样保留，隐藏项与符号链接由后端过滤），
- * 超过阈值先经页面确认弹窗显式放行，确认动作就是整条入队链，逐项重复提示结算完毕它才关闭。
- */
-async function enqueueImportEntries(entries: string[]) {
-  // 提交循环按快照结算、结束时整队清空：提交期间继续入队的项会被静默丢弃，
-  // 三个入口（面板/拖入/粘贴）统一在这里挡下并给出可读提示。
-  if (submitting.value) {
-    warnImportInProgress()
-    return
-  }
-  const expansion = await runtime.resources.expandImportEntries(entries)
-  if (!addOpen.value) return
-  // 大目录展开可能跨过用户点提交的时刻：返回后复查一次，别把这一批塞进正在结算的队列。
-  if (submitting.value) {
-    warnImportInProgress()
-    return
-  }
-  const paths = expansion.files
-  if (!paths.length) {
-    toast.warning('所选内容里没有可导入的文件', { position: 'top-center' })
-    return
-  }
-  if (paths.length > IMPORT_CONFIRM_THRESHOLD) {
-    // 句子的前半句对所有批量选中成立；只有确实展开了文件夹才补一句展开说明。
-    const expanded = expansion.folders > 0 ? `（${expansion.folders} 个文件夹已递归展开）` : ''
-    openConfirmDialog({
-      title: '批量导入',
-      message: `共 ${paths.length} 个文件将加入待导入列表${expanded}。`,
-      confirmLabel: `导入 ${paths.length} 个文件`,
-      danger: false,
-      progressTotal: paths.length,
-      busyCancelLabel: '停止',
-      action: () => {
-        // 入队链可能还在处理上一批：先把共享进度重置到本批规模，
-        // 忙按钮一出现就是「0 / N」，不会拿上一批的 done 配本批的 total。
-        importProgress.value = { done: 0, total: paths.length }
-        return addQueue.enqueueFileLocations(paths)
-      }
-    })
-    return
-  }
-  await addQueue.enqueueFileLocations(paths)
-}
-
-async function pickFiles() {
-  try {
-    addError.value = ''
-    const entries = await runtime.system.chooseFilePaths()
-    if (!entries.length || !addOpen.value) return
-    await enqueueImportEntries(entries)
-  } catch (cause) {
-    addError.value = takeOperationError(cause, '选择文件失败')
-  }
-}
-
 function renameQueueItem(itemId: string, title: string) {
   addQueue.renameItem(itemId, title)
-}
-
-/*
- * 提交循环、preview token 结算与失败回卷都由 addQueue.submit 拥有；页面只保留
- * dialog 开合（#189 退场动画约定）与错误展示。controller 的 close 是队列收尾
- * （token 结算、代次推进），不是 dialog 开合——成功路径由页面关闭 AddDialog。
- */
-async function submitQueue() {
-  addError.value = ''
-  try {
-    const completed = await addQueue.submit(async item => {
-      await addResource(item)
-    })
-    if (completed) addOpen.value = false
-  } catch (cause) {
-    addError.value = takeOperationError(cause, '导入资源失败，请稍后重试')
-  }
 }
 
 async function handleRename(resourceId: string, title: string) {
@@ -670,61 +444,15 @@ async function handleSaveTags(resourceId: string, tagNames: string[]) {
   }
 }
 
-function openRestoreDialog(items: LibraryRestoreQueueItem[]) {
-  if (!items.length || restoreBusy.value) return
-  restoreQueue.value = items
-  restoreError.value = ''
-  failedRestoreIds.value = []
-  activeRestoreItemId.value = null
-  restoreOpen.value = true
-}
-
-function setRestoreOpen(open: boolean) {
-  restoreOpen.value = open
-}
-
 function handleRecoverSource(source: ResourceSourceView) {
   const resource = store.resources.find(item => item.sources.some(itemSource => itemSource.id === source.id))
   if (!resource) return
-  openRestoreDialog([createLibraryRestoreQueueItem(resource, source)])
+  workflow.openRestoreDialog([createLibraryRestoreQueueItem(resource, source)])
 }
 
 function handleBatchRestore() {
   if (!canRestore.value) return
-  openRestoreDialog(createLibraryRestoreQueue(selectedResources.value))
-}
-
-async function submitRestoreQueue(items: LibraryRestoreQueueItem[]) {
-  if (!items.length || restoreBusy.value) return
-  restoreBusy.value = true
-  restoreError.value = ''
-  activeRestoreItemId.value = null
-  try {
-    const result = await restoreLibraryQueue(items, {
-      replaceSource,
-      replaceScannedFileSource: async (sourceId, path, snapshot) => {
-        const updated = await runtime.sources.replaceScannedFile(sourceId, path, snapshot)
-        store.upsertResource(updated)
-      },
-      onItemStart: itemId => {
-        activeRestoreItemId.value = itemId
-      }
-    })
-    const completedIds = new Set(result.completedIds)
-    restoreQueue.value = restoreQueue.value.filter(item => !completedIds.has(item.id))
-    if (result.failures.length) {
-      failedRestoreIds.value = result.failures.map(failure => failure.item.id)
-      restoreError.value = takeOperationError(
-        result.failures[0].cause,
-        `有 ${result.failures.length} 项找回失败，请重试`
-      )
-      return
-    }
-    if (!restoreQueue.value.length) setRestoreOpen(false)
-  } finally {
-    activeRestoreItemId.value = null
-    restoreBusy.value = false
-  }
+  workflow.openRestoreDialog(createLibraryRestoreQueue(selectedResources.value))
 }
 
 onMounted(() => {
@@ -770,7 +498,7 @@ onMounted(() => {
       @update:sort-direction="store.sortDirection = $event"
       @update:filter-open="filterOpen = $event"
       @update:search-open="searchOpen = $event"
-      @add="openAddDialog"
+      @add="workflow.openAddDialog()"
       @select="toggleSelectionMode"
       @select-all="toggleCheckAll"
       @delete-selected="requestDeleteSelected"
@@ -805,7 +533,7 @@ onMounted(() => {
         role="alert"
       >
         <span class="min-w-0 wrap-break-word">{{ runtimeError }}</span>
-        <web-ui-button size="28" variant="ghost" @click="runtimeError = ''">关闭</web-ui-button>
+        <web-ui-button size="28" variant="ghost" @click="clearRuntimeError()">关闭</web-ui-button>
       </div>
 
       <ResourceList
@@ -875,15 +603,15 @@ onMounted(() => {
     :tag-colors="store.tagColors"
     :previews="previewEntries"
     :progress="importProgress"
-    @pick-files="pickFiles"
-    @add-url="requestAddURL"
-    @request-file-paths="pasteFilePaths"
+    @pick-files="workflow.pickFiles()"
+    @add-url="workflow.requestAddURL($event)"
+    @request-file-paths="workflow.pasteFilePaths($event)"
     @remove="addQueue.removeItem"
     @rename="renameQueueItem"
     @edit-tags="editQueueTags"
-    @submit="submitQueue"
-    @update:open="setAddOpen"
-    @closed="handleAddDialogClosed"
+    @submit="workflow.submitQueue()"
+    @update:open="workflow.setAddOpen($event)"
+    @closed="workflow.handleAddDialogClosed()"
   />
 
   <!--
@@ -929,9 +657,9 @@ onMounted(() => {
     :cancel-scan="runtime.sources.cancelRecoveryScan"
     :discard-scan="runtime.sources.discardRecoveryScan"
     :lease="previewLease"
-    @update:open="setRestoreOpen"
-    @add-items="restoreQueue = $event"
-    @submit="submitRestoreQueue"
+    @update:open="workflow.setRestoreOpen($event)"
+    @add-items="workflow.setRestoreQueue($event)"
+    @submit="workflow.submitRestoreQueue($event)"
   />
 
   <ConfirmDialog
@@ -944,8 +672,8 @@ onMounted(() => {
     :busy-cancel-label="confirmRequest?.busyCancelLabel"
     :error="confirmError"
     :compact="confirmRequest?.compact ?? false"
-    @confirm="runConfirmedAction"
-    @cancel="cancelConfirmDialog"
+    @confirm="workflow.runConfirmedAction()"
+    @cancel="workflow.cancelConfirmDialog()"
     @closed="restoreDeletedFocus"
   />
 
