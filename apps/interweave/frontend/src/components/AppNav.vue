@@ -9,7 +9,7 @@ import PressDrawIcon from './PressDrawIcon.vue'
 
 type NavKey = 'library' | 'map'
 
-defineProps<{ collapsed?: boolean; mobile?: boolean }>()
+defineProps<{ collapsed?: boolean; mobile?: boolean; trafficLightInset?: boolean }>()
 
 const emit = defineEmits<{
   navigate: [key: NavKey]
@@ -44,7 +44,12 @@ function prefetchNav(path: string) {
 </script>
 
 <template>
-  <div class="relative z-20 flex h-full flex-col" :class="mobile ? 'p-0' : 'p-2'" aria-label="应用导航">
+  <div
+    class="relative z-20 flex h-full flex-col"
+    :class="[mobile ? 'p-0' : 'p-2', { 'pt-10': trafficLightInset }]"
+    :data-traffic-light-inset="trafficLightInset ? 'true' : undefined"
+    aria-label="应用导航"
+  >
     <nav class="grid gap-1 mb-1" aria-label="主导航">
       <button
         v-for="item in navItems"

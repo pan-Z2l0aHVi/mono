@@ -465,3 +465,57 @@ func TestHandlerCloseStopsThumbnailBuilds(t *testing.T) {
 	}
 	releaseBuilds()
 }
+
+// 并发 404 请求与 Handler.Close() 竞速：Close 先拒绝新入队再关闭通道并排空，
+// 绝不触发 send on closed channel panic。
+func TestHandlerConcurrent404AndCloseNoPanic(t *testing.T) {
+	db := openTestDB(t)
+	missing := filepath.Join(t.TempDir(), "deleted-race.mp4")
+	insertSource(t, db, storage.SourceModel{
+		ID: "source-race-404", ResourceID: "resource-race-404", Type: storage.SourceTypeFile,
+		Location: missing, Available: true, IsPreferred: true,
+		CreatedAt: time.Now().UnixMilli(), UpdatedAt: time.Now().UnixMilli(),
+	})
+	reporter := &recordingReporter{}
+	handler := NewHandler(storage.SourceStore{}, db.SqlDB(), NewPendingPreviewRegistry(), nil, reporter)
+	t.Cleanup(handler.Close)
+
+	const workers = 16
+	const requestsPerWorker = 40
+	start := make(chan struct{})
+	var wg sync.WaitGroup
+	for i := 0; i < workers; i++ {
+		wg.Add(1)
+		go func() {
+			defer wg.Done()
+			<-start
+			for j := 0; j < requestsPerWorker; j++ {
+				rec := httptest.NewRecorder()
+				handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, PathPrefix+"source-race-404", nil))
+				if rec.Code != http.StatusNotFound {
+					t.Errorf("expected 404, got %d", rec.Code)
+					return
+				}
+			}
+		}()
+	}
+
+	var closeWg sync.WaitGroup
+	closeWg.Add(1)
+	go func() {
+		defer closeWg.Done()
+		<-start
+		handler.Close()
+	}()
+
+	close(start)
+	wg.Wait()
+	closeWg.Wait()
+
+	// Close 返回后再次命中 404 也不得 panic 或再入队。
+	rec := httptest.NewRecorder()
+	handler.ServeHTTP(rec, httptest.NewRequest(http.MethodGet, PathPrefix+"source-race-404", nil))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected 404 after close, got %d", rec.Code)
+	}
+}
