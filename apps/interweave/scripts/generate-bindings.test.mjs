@@ -107,6 +107,14 @@ assert.ok(
   frontendTurbo.tasks.test.inputs.includes('!**/bindings/**'),
   'the frontend test must exclude generated bindings from its hash'
 )
+for (const generated of ['auto-imports.d.ts', 'typed-router.d.ts']) {
+  for (const task of ['build', 'test']) {
+    assert.ok(
+      frontendTurbo.tasks[task].inputs.includes(`!${generated}`),
+      `the frontend ${task} must exclude ${generated} from its hash`
+    )
+  }
+}
 
 const realBefore = hashTree(realBindings)
 

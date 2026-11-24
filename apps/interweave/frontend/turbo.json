@@ -6,6 +6,8 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "!**/bindings/**",
+        "!auto-imports.d.ts",
+        "!typed-router.d.ts",
         "!**/*.md",
         "!**/*.spec.ts",
         "!**/*.spec.mjs",
@@ -24,6 +26,8 @@
       "inputs": [
         "$TURBO_DEFAULT$",
         "!**/bindings/**",
+        "!auto-imports.d.ts",
+        "!typed-router.d.ts",
         "!**/*.md",
         "$TURBO_ROOT$/apps/interweave/**/*.go",
         "!$TURBO_ROOT$/apps/interweave/**/*_test.go",

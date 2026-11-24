@@ -53,6 +53,18 @@ export const interweaveTurboInputs = defineTurboInputs({
       contents: 'export const service = 1\n',
       label: 'generated bindings',
       change: 'export const service = 2\n'
+    },
+    {
+      path: 'apps/interweave/frontend/auto-imports.d.ts',
+      contents: 'export {}\n',
+      label: 'generated auto-import declarations',
+      change: 'export { foo }\n'
+    },
+    {
+      path: 'apps/interweave/frontend/typed-router.d.ts',
+      contents: 'export {}\n',
+      label: 'generated typed router declarations',
+      change: 'export { RouteNamedMap }\n'
     }
   ]
 })

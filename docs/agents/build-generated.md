@@ -22,7 +22,7 @@ CI 在 Build 步之前经各文档 demo 的 `check-generated` turbo 任务以同
 
 读取生成物的测试与会改写同一路径的生成任务必须有明确的执行依赖，不能并行读写：生成器由本 workspace `build` 承担时，`test` 须依赖该 `build` 并保留适用的上游依赖。`inputs` 只影响缓存哈希，不建立执行先后，不能替代 `dependsOn`。
 
-同一个 workspace 的 `build` 若在运行中重写 tracked 生成物，那份产物必须从同类任务的 `inputs` 里排除，只保留它真正的上游（生成器、源文件与模块文件）。turbo 在 run 开始时就固定 hash，写盘发生在之后：生成物留在 `inputs` 里，下一次 run 会拿到与上一次不同的 hash，每次生成内容变化都要多付一次必然 miss。`apps/interweave` 的 `frontend/bindings/**` 按这条处理——两个 `build` 与 frontend `test` 都排除它，用 Go 源、`go.mod`/`go.sum` 和 bindings generator 表达它的因。turbo 2.11.10 已提供 deferred hashing（`mode: "jit"` inputs），但此处不采用：JIT 在依赖完成后、当前 task 执行前取 hash，而 bindings 由该 `build` 脚本自身生成，时机仍早于写盘。要让 JIT 生效必须把 generator 拆成上游 task，并同步改造 policy 依赖的 dry-run hash 判据，需另起任务评估。
+同一个 workspace 的 `build` 若在运行中重写 tracked 生成物，那份产物必须从同类任务的 `inputs` 里排除，只保留它真正的上游（生成器、源文件与模块文件）。turbo 在 run 开始时就固定 hash，写盘发生在之后：生成物留在 `inputs` 里，下一次 run 会拿到与上一次不同的 hash，每次生成内容变化都要多付一次必然 miss。`apps/interweave` 的 `frontend/bindings/**`、`frontend/auto-imports.d.ts` 与 `frontend/typed-router.d.ts` 按这条处理——两个 `build` 与 frontend `test` 都排除它们，用 Go 源、`go.mod`/`go.sum`、bindings generator 与前端源文件表达真正的因。当前 pinned 的 Turbo 已提供 deferred hashing（`mode: "jit"` inputs），但此处不采用：JIT 在依赖完成后、当前 task 执行前取 hash，而 bindings 由该 `build` 脚本自身生成，时机仍早于写盘。要让 JIT 生效必须把 generator 拆成上游 task，并同步改造 policy 依赖的 dry-run hash 判据，需另起任务评估。
 
 ## 壳文案（wuchale）
 
