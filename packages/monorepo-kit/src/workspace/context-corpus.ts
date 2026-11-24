@@ -14,11 +14,15 @@ import {
   findUnmarkedReferenceDocs,
   findUnroutedAgentDocs,
   isUnqualifiedRelativeTarget,
-  parseLocalLinkTarget,
-  readInlineLinkTarget,
-  scanVolatilePhrases,
-  stripCodeSegments
+  scanVolatilePhrases
 } from './context-invariants'
+import {
+  collectMirrorFiles,
+  collectWorkspaceFiles,
+  extractInlineLinks,
+  relativePosix as toRelativePosix,
+  walkFiles
+} from './corpus'
 import { defineWorkspace, type WorkspaceApi } from './workspace'
 
 const { andThen, err, ok } = rust
@@ -103,21 +107,11 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
 
             const relative = (file: string): string => path.relative(root, file) || '.'
             // context index 要与 worktree 的绝对路径无关：先归一为正斜杠，跨平台才能得到一致的路径键。
-            const relativePosix = (file: string): string => relative(file).split(path.sep).join('/')
+            const relativePosix = (file: string): string => toRelativePosix(root, file)
             const exists = (file: string): boolean => fs.existsSync(path.join(root, file))
             const read = (file: string): string => fs.readFileSync(path.join(root, file), 'utf8')
-
-            function walk(directory: string, predicate: (file: string) => boolean = () => true): string[] {
-              const absolute = path.join(root, directory)
-              if (!fs.existsSync(absolute)) return []
-              const files: string[] = []
-              for (const entry of fs.readdirSync(absolute, { withFileTypes: true })) {
-                const file = path.join(absolute, entry.name)
-                if (entry.isDirectory()) files.push(...walk(path.relative(root, file), predicate))
-                else if (predicate(file)) files.push(file)
-              }
-              return files
-            }
+            const walk = (directory: string, predicate: (file: string) => boolean = () => true): string[] =>
+              walkFiles(root, directory, predicate)
 
             // 同一条诊断可能由两条扫描路径（容器的递归与字面量目录的自检）各产生一次：
             // 去重后报告，避免同一个缺口在输出里重复出现。
@@ -392,31 +386,19 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
               // 自撰写 skill 的实体在实体目录（消费面里只是逐 skill 软链，walk 不跟随）。
               // skill 文档里的相对链接是按 agent 经消费面读取的位置写的，深度与实体路径不同，
               // 所以检查时把这些文件映射回消费面路径——内容相同（软链），链接按消费面解析。
-              // 第三方依赖镜像也是锁定的上游件，同样按 fromLockedSkill 排除出链接面。
-              ...walk(options.skills.entity, file => file.endsWith('.md'))
-                .filter(file => !fromLockedSkill(file))
-                // 实体根的门面文档不在任何 skill 目录内，没有对应的消费面路径——按真实路径入面即可。
-                .filter(file => path.dirname(relativePosix(file)) !== options.skills.entity)
-                .map(file =>
-                  path.join(root, options.skills.surface, path.relative(path.join(root, options.skills.entity), file))
-                ),
+              // 第三方依赖镜像也是锁定的上游件，同样按 lockedSkills 排除出链接面。
+              ...collectMirrorFiles(root, {
+                entity: options.skills.entity,
+                surface: options.skills.surface,
+                isLocked: name => lockedSkills.has(name)
+              }).map(entry => path.join(root, entry.path)),
               ...options.skills.facades.filter(exists).map(file => path.join(root, file)),
               ...options.workspaces.flatMap(directory =>
-                walk(directory, file => path.basename(file) === options.entry)
-              ),
-              // workspace README 与包级入口文档同属指令面，但只能列一层：walk 会连 node_modules 与 dist 一起吞进来。
-              // 目录自身就是包（含 package.json，即字面量 workspace）时只收它根部的 README：包内子目录不是
-              // workspace，把它们也当指令面会静默扩大语料。容器目录反过来只收直接子目录的 README。
-              ...options.workspaces.flatMap(directory => {
-                if (exists(`${directory}/package.json`))
-                  return exists(`${directory}/README.md`) ? [path.join(root, directory, 'README.md')] : []
-                return exists(directory)
-                  ? fs
-                      .readdirSync(path.join(root, directory), { withFileTypes: true })
-                      .filter(entry => entry.isDirectory() && exists(`${directory}/${entry.name}/README.md`))
-                      .map(entry => path.join(root, directory, entry.name, 'README.md'))
-                  : []
-              })
+                collectWorkspaceFiles(root, directory, {
+                  deep: [options.entry],
+                  shallow: ['README.md']
+                }).map(entry => path.join(root, entry.path))
+              )
             ]
             // 语料门禁只检查可客观判定的漂移属性（ADR-0013）：路由完整性、外部状态快照、授权指针与非权威标记。
             // 文风与 concern 归属不在此列，交给 review。
@@ -499,20 +481,7 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
               linkSurfaceSeen.add(identity)
               linkSurface.push(identity)
             }
-            // 同一份文档会被多篇引用，剥代码片段的结果按文件缓存，锚点另有 anchorCache。
-            const linkSourceCache = new Map<string, string>()
-            function linkSource(file: string): string {
-              const cached = linkSourceCache.get(file)
-              if (cached !== undefined) return cached
-              const stripped = stripCodeSegments(fs.readFileSync(file, 'utf8'))
-              linkSourceCache.set(file, stripped)
-              return stripped
-            }
 
-            // (?<!!?) 的 `!?` 允许匹配空串，lookbehind 恒假，链接扫描因此从未跑过；这里要求前面确实不是 `!`（图片语法）。
-            // 只定位到 `](`，target 由 readInlineLinkTarget 读出：destination 里的括号合法（`./a_(b)/c.md`），
-            // 用 `[^)]+` 截断会把它切成半截路径，报成断链。
-            const linkPattern = /(?<!!)\[[^\]]*\]\(/g
             // 只校验节级锚点：文件存在性由下方文件存在校验负责；`#fragment` 可能是节锚点（`#title`）或显式锚点（`{#custom}`）。
             // Markdown 引擎把节标题转成 GitHub 风格 anchor：小写、去标点、空格转 `-`、连续/首尾 `-` 折叠；显式 `{#name}` 优先。
             const ghAnchor = (text: string): string =>
@@ -560,17 +529,13 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
             // 同一篇文档里同一个 target 常出现多次（目录表反复引用同一入口）；按文件+target 去重，避免同因刷屏。
             const reportedUnqualified = new Set<string>()
             for (const file of linkSurface) {
-              const source = linkSource(file)
+              const source = fs.readFileSync(file, 'utf8')
               const isAdr = adrDocuments.has(file)
               // 入站与「加载路径」都只认指令面的链接：研究记录或 changelog 里的引用不能替代路由。
               const onInstructionSurface = instructionSurface.has(identityOf(file))
-              for (const match of source.matchAll(linkPattern)) {
-                const rawTarget = readInlineLinkTarget(source, match.index + match[0].length)
-                if (rawTarget === null) continue
-                const target = rawTarget.trim()
-                const parsed = parseLocalLinkTarget(target)
-                if (!parsed) continue
-                const { location, fragment } = parsed
+              for (const { rawTarget: target, location, fragment } of extractInlineLinks(source, {
+                allowRootRelative: true
+              })) {
                 const resolved = path.resolve(path.dirname(file), location)
                 const targetExists = fs.existsSync(resolved)
                 if (!targetExists) addError(`${relative(file)}: broken local link ${target}`)
