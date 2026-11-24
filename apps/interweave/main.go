@@ -202,10 +202,11 @@ func run() error {
 		}
 	}()
 
-	resourceService := libraryService.NewResourceService(rt.ResourceService(), rt.PendingPreviews())
-	sourceService := libraryService.NewSourceService(rt.SourceService(), rt.ResourceService())
-	tagService := libraryService.NewTagService(rt.TagService(), rt.ResourceService())
-	mapService := libraryService.NewMapService(rt.MapService())
+	coreLib := rt.Core()
+	resourceService := libraryService.NewResourceService(coreLib, rt.PendingPreviews())
+	sourceService := libraryService.NewSourceService(coreLib)
+	tagService := libraryService.NewTagService(coreLib)
+	mapService := libraryService.NewMapService(coreLib)
 	osService := nativeService.NewOSService(
 		nativeService.WithStreamFetcher(fetcher.GetStream),
 		nativeService.WithWallpaperCacheDir(filepath.Join(dir, "cache", "wallpapers")),

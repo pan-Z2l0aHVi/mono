@@ -70,7 +70,7 @@ func writeFixture(t *testing.T, path string) {
 func TestApplyFileAvailabilityReportsRealFlip(t *testing.T) {
 	db := openAvailabilityDB(t)
 	seedSource(t, db, "source-flip", storage.SourceTypeFile, filepath.Join(t.TempDir(), "gone.mp4"), true, true, "")
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 
 	change, err := svc.ApplyFileAvailability(context.Background(), "source-flip", false)
 	if err != nil {
@@ -96,7 +96,7 @@ func TestApplyFileAvailabilitySameValueKeepsUpdatedAt(t *testing.T) {
 	present := filepath.Join(t.TempDir(), "here.mp4")
 	writeFixture(t, present)
 	seedSource(t, db, "source-stable", storage.SourceTypeFile, present, true, true, "")
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 	if _, err := db.SqlDB().ExecContext(context.Background(), "UPDATE sources SET updated_at = 1 WHERE id = ?", "source-stable"); err != nil {
 		t.Fatalf("seed source timestamp: %v", err)
 	}
@@ -116,7 +116,7 @@ func TestApplyFileAvailabilitySameValueKeepsUpdatedAt(t *testing.T) {
 // Source 已删不是错误：移除 Resource 会级联删掉它的 Source。
 func TestApplyFileAvailabilityOnMissingSourceIsNotError(t *testing.T) {
 	db := openAvailabilityDB(t)
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 
 	change, err := svc.ApplyFileAvailability(context.Background(), "source-absent", false)
 	if err != nil {
@@ -130,7 +130,7 @@ func TestApplyFileAvailabilityOnMissingSourceIsNotError(t *testing.T) {
 func TestApplyFileAvailabilityRejectsNonFileSource(t *testing.T) {
 	db := openAvailabilityDB(t)
 	seedSource(t, db, "source-url", storage.SourceTypeURL, "https://example.com", true, true, "")
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 
 	if _, err := svc.ApplyFileAvailability(context.Background(), "source-url", false); !errors.Is(err, ErrOnlyFileSourceRefreshable) {
 		t.Fatalf("expected ErrOnlyFileSourceRefreshable, got %v", err)
@@ -147,7 +147,7 @@ func TestApplyFileAvailabilityCarriesSizeOnlyForPreferred(t *testing.T) {
 	writeFixture(t, backup)
 	seedSource(t, db, "source-primary", storage.SourceTypeFile, primary, true, true, "")
 	seedSource(t, db, "source-backup", storage.SourceTypeFile, backup, true, false, "")
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 
 	// 先把首选翻成不可用再翻回可用，使翻转真实发生且 size 应当有值。
 	disabled, err := svc.ApplyFileAvailability(context.Background(), "source-primary", false)
@@ -196,7 +196,7 @@ func TestProbeURLSourceOnOpenKeepsValueWhenInconclusive(t *testing.T) {
 	}
 	seedSource(t, db, "source-hanging", storage.SourceTypeURL, location, false, true, "")
 	before := readSource(t, db, "source-hanging")
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 
 	_, outcome, err := svc.ProbeURLSourceOnOpen(context.Background(), "source-hanging")
 	if err != nil {
@@ -226,7 +226,7 @@ func TestProbeURLSourceOnOpenPersistsRejection(t *testing.T) {
 		t.Fatalf("normalize.URL error: %v", err)
 	}
 	seedSource(t, db, "source-dead", storage.SourceTypeURL, location, true, true, "")
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 
 	src, outcome, err := svc.ProbeURLSourceOnOpen(context.Background(), "source-dead")
 	if err != nil {
@@ -256,7 +256,7 @@ func TestProbeURLSourceOnOpenKeepsMetadataWhenFetchFails(t *testing.T) {
 	}
 	metadata := `{"title":"Known Title"}`
 	seedSource(t, db, "source-broken", storage.SourceTypeURL, location, true, true, metadata)
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 
 	if _, _, err := svc.ProbeURLSourceOnOpen(context.Background(), "source-broken"); err != nil {
 		t.Fatalf("ProbeURLSourceOnOpen error: %v", err)
@@ -271,7 +271,7 @@ func TestProbeURLSourceOnOpenRejectsFileSource(t *testing.T) {
 	present := filepath.Join(t.TempDir(), "here.mp4")
 	writeFixture(t, present)
 	seedSource(t, db, "source-file", storage.SourceTypeFile, present, true, true, "")
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 
 	if _, _, err := svc.ProbeURLSourceOnOpen(context.Background(), "source-file"); !errors.Is(err, ErrOnlyURLSourceRefreshable) {
 		t.Fatalf("expected ErrOnlyURLSourceRefreshable, got %v", err)
@@ -282,8 +282,8 @@ func TestProbeURLSourceOnOpenRejectsFileSource(t *testing.T) {
 func TestSourceMutationsResyncIndex(t *testing.T) {
 	db := openAvailabilityDB(t)
 	fetcher := remote.NewFetcher()
-	sourceSvc := NewSourceService(db, fetcher)
-	resourceSvc := NewResourceService(db, fetcher)
+	lib := NewLibrary(db, fetcher)
+	sourceSvc, resourceSvc := lib, lib
 	sync := &recordingIndexSync{}
 	sourceSvc.SetIndexSync(sync)
 	resourceSvc.SetIndexSync(sync)

@@ -6,7 +6,6 @@ import { createMemoryHistory, createRouter } from 'vue-router'
 import type { RouteRecordRaw } from 'vue-router'
 
 import { installRouteGuards } from '../guards'
-import { onRouteFailure } from '../progress'
 
 const Page = defineComponent({ template: '<div />' })
 
@@ -25,7 +24,7 @@ function setup(
   })
   installRouteGuards(router, queryClient, progress)
   const failures: unknown[] = []
-  const off = onRouteFailure(error => failures.push(error))
+  const off = progress.onFailure(error => failures.push(error))
   return { router, progress, failures, off }
 }
 

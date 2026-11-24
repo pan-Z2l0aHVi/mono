@@ -8,14 +8,12 @@ import (
 
 // 作为 Wails 外观呈现标签能力，产品规则由 core 承载。
 type TagService struct {
-	core *core.TagService
-	// resources 复用 core 现成的视图装配出口（core API 不新增方法）。
-	resources *core.ResourceService
+	core *core.Library
 }
 
 // 保持外观与产品规则解耦。
-func NewTagService(c *core.TagService, r *core.ResourceService) *TagService {
-	return &TagService{core: c, resources: r}
+func NewTagService(c *core.Library) *TagService {
+	return &TagService{core: c}
 }
 
 // 标准名称决定标签身份，确保全库复用而不依赖别名或层级。
@@ -39,7 +37,7 @@ func (s *TagService) SetResourceTags(ctx context.Context, resourceID string, tag
 	if _, err := s.core.SetResourceTags(ctx, resourceID, tagNames); err != nil {
 		return nil, err
 	}
-	view, err := s.resources.GetResource(ctx, resourceID)
+	view, err := s.core.GetResource(ctx, resourceID)
 	if err != nil {
 		return nil, err
 	}

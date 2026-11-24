@@ -51,7 +51,7 @@ func TestRecoveryMatchesHashAndNameAndRejectsChangedCandidate(t *testing.T) {
 	if err = os.WriteFile(sameName, []byte("different length and content"), 0600); err != nil {
 		t.Fatal(err)
 	}
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 	results := map[string]RecoveryCandidate{}
 	if err = svc.ScanRecovery(ctx, []string{"s"}, folder, func(_ RecoveryProgress, c *RecoveryCandidate) {
 		if c != nil {
@@ -104,7 +104,7 @@ func TestRecoveryCancelled(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 	var callbacks int
 	err = svc.ScanRecovery(ctx, []string{"s"}, folder, func(RecoveryProgress, *RecoveryCandidate) {
 		callbacks++
@@ -156,7 +156,7 @@ func TestRecoveryDeduplicatesFileIdentityWithoutLosingNameMatches(t *testing.T) 
 	if err != nil {
 		t.Fatal(err)
 	}
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 	got := map[string][]RecoveryCandidate{}
 	var checked int
 	err = svc.ScanRecovery(ctx, []string{"byHash", "byName"}, folder, func(p RecoveryProgress, c *RecoveryCandidate) {
@@ -218,7 +218,7 @@ func TestRecoveryAliasArrivingBeforePrimaryHashKeepsHashReason(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 	var candidates []RecoveryCandidate
 	var checked int
 	if err = svc.ScanRecovery(ctx, []string{"s"}, folder, func(p RecoveryProgress, c *RecoveryCandidate) {
@@ -291,7 +291,7 @@ func TestRecoveryAliasResolvesWhenPrimaryHashFails(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 	got := map[string][]RecoveryCandidate{}
 	if err = svc.ScanRecovery(ctx, []string{"hashTarget", "nameTarget"}, folder, func(_ RecoveryProgress, c *RecoveryCandidate) {
 		if c != nil {
@@ -349,7 +349,7 @@ func TestRecoveryThrottlesProgressCallbacks(t *testing.T) {
 		}
 	}
 
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 	var calls int
 	var lastProgress RecoveryProgress
 	candidates := map[string]RecoveryCandidate{}
@@ -425,7 +425,7 @@ func TestRecoveryCancelDuringHashingReturnsContextError(t *testing.T) {
 
 	ctx, cancel := context.WithCancel(context.Background())
 	defer cancel()
-	svc := NewSourceService(db, remote.NewFetcher())
+	svc := NewLibrary(db, remote.NewFetcher())
 	var callbacks int
 	err = svc.ScanRecovery(ctx, []string{"big", "small"}, folder, func(_ RecoveryProgress, c *RecoveryCandidate) {
 		callbacks++

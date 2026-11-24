@@ -3,7 +3,6 @@ import { isNavigationFailure, NavigationFailureType } from 'vue-router'
 import type { RouteLocationNormalized, Router } from 'vue-router'
 
 import { ensureRouteData } from './prefetch'
-import { reportRouteFailure } from './progress'
 import type { routeProgress } from './progress'
 
 type Progress = typeof routeProgress
@@ -54,14 +53,12 @@ export function installRouteGuards(router: Router, queryClient: QueryClient, pro
       }
       const error = prefetchErrors.get(to) ?? failure
       progress.fail(id, error)
-      reportRouteFailure(error)
     })
   })
 
   router.onError((error, to) => {
     settle(navIds.get(to), id => {
       progress.fail(id, error)
-      reportRouteFailure(error)
     })
   })
 }

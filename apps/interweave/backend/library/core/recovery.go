@@ -35,7 +35,7 @@ type RecoveryProgress struct {
 	Skipped          int    `json:"skipped"`
 }
 
-func (s *SourceService) ScanRecovery(ctx context.Context, sourceIDs []string, directory string, report func(RecoveryProgress, *RecoveryCandidate)) error {
+func (s *Library) ScanRecovery(ctx context.Context, sourceIDs []string, directory string, report func(RecoveryProgress, *RecoveryCandidate)) error {
 	targets := make([]recoveryTarget, 0, len(sourceIDs))
 	seen := map[string]bool{}
 	for _, id := range sourceIDs {
@@ -450,7 +450,7 @@ func (a *scanAggregator) doReport(c *RecoveryCandidate) {
 	a.report(a.progress, c)
 }
 
-func (s *SourceService) ReplaceScannedFileSource(ctx context.Context, sourceID, path, snapshot string) (Source, error) {
+func (s *Library) ReplaceScannedFileSource(ctx context.Context, sourceID, path, snapshot string) (Source, error) {
 	raw, err := base64.RawURLEncoding.DecodeString(snapshot)
 	if err != nil {
 		return Source{}, fmt.Errorf("invalid scan snapshot: %w", err)
