@@ -144,15 +144,21 @@ export async function closeWorker(
     }
   }
 
+  // 确认弹窗期间事件环可能更新 worker 快照；重新读取后再做后续判定。
+  let current = registry.get(params.workerId)
+  if (!current) return text(`未知 worker "${params.workerId}"。`, true)
+
   if (params.force === true && !ctx.hasUI) {
     return text('force 关闭需要弹窗确认，当前会话没有 UI。请先征得用户同意。', true)
   }
   if (params.force === true) {
     const ok = await ctx.ui.confirm(
       '放弃未合并分支？',
-      `${worker.worktree?.branch ?? worker.workerId} 将绕过祖先链与内容落地判定；force 会执行 git branch -D，尚未进入主分支的提交不可找回。`
+      `${current.worktree?.branch ?? current.workerId} 将绕过祖先链与内容落地判定；force 会执行 git branch -D，尚未进入主分支的提交不可找回。`
     )
     if (!ok) return text('用户拒绝 force，worker 保持原状。', true)
+    current = registry.get(params.workerId)
+    if (!current) return text(`未知 worker "${params.workerId}"。`, true)
   }
 
   // 任一真实 Block 关不掉（焦点占用/瞬时错误）就整体中止：Block 可能还活着，
@@ -163,45 +169,56 @@ export async function closeWorker(
   const closeFailure = (blockId: string, reason: string) =>
     text(
       [
-        `worker ${worker.workerId} 保持原状：Block ${blockId} 关闭失败（${reason}）。`,
+        `worker ${params.workerId} 保持原状：Block ${blockId} 关闭失败（${reason}）。`,
         '未清理其 worktree（Block 可能仍在运行）；请先在 Rex Tab 确认该 Block 状态，稍后重试 rex_close_worker。'
       ].join('\n'),
       true
     )
 
-  for (const blockId of worker.retiredBlockIds) {
+  for (const blockId of current.retiredBlockIds) {
     const closed: string | true = await adapter.blockClose(blockId).then(
       () => true as const,
       error => (error instanceof Error ? error.message : String(error))
     )
     if (closed !== true) return closeFailure(blockId, closed)
-    registry.removeRetiredBlock(worker.workerId, blockId)
+    registry.removeRetiredBlock(params.workerId, blockId)
     // 关掉一个就落一次盘：后续 Block 失败早退时，已关闭的 retired 不能留在快照里。
     deps.persistRegistry()
   }
-  if (!worker.activeBlockClosed && !unconfirmed) {
-    const closed: string | true = await adapter.blockClose(worker.blockId).then(
+
+  // retired blockClose 期间事件环可能已推进 activeBlockClosed / blockId / worktree；重新读取最新快照。
+  const latestBeforeActive = registry.get(params.workerId)
+  if (!latestBeforeActive) return text(`未知 worker "${params.workerId}"。`, true)
+  const unconfirmedNow = latestBeforeActive.blockId.startsWith('unconfirmed:')
+  if (!latestBeforeActive.activeBlockClosed && !unconfirmedNow) {
+    const closed: string | true = await adapter.blockClose(latestBeforeActive.blockId).then(
       () => true as const,
       error => (error instanceof Error ? error.message : String(error))
     )
-    if (closed !== true) return closeFailure(worker.blockId, closed)
-    registry.markActiveBlockClosed(worker.workerId)
+    if (closed !== true) return closeFailure(latestBeforeActive.blockId, closed)
+    registry.markActiveBlockClosed(params.workerId)
     deps.persistRegistry()
   }
 
+  const latestBeforeWorktree = registry.get(params.workerId)
+  if (!latestBeforeWorktree) return text(`未知 worker "${params.workerId}"。`, true)
+  const unconfirmedForWorktree = latestBeforeWorktree.blockId.startsWith('unconfirmed:')
+
   let cleanupNote: string | undefined
-  if (worker.worktree) {
-    const worktree = worker.worktree
-    const mainCwd = worker.mainCwd ?? (await findMainRepo(gitExec, worker.cwd).catch(() => worker.cwd))
+  if (latestBeforeWorktree.worktree) {
+    const worktree = latestBeforeWorktree.worktree
+    const mainCwd =
+      latestBeforeWorktree.mainCwd ??
+      (await findMainRepo(gitExec, latestBeforeWorktree.cwd).catch(() => latestBeforeWorktree.cwd))
     let outcome = await cleanupWorktree(
       gitExec,
       { mainCwd, path: worktree.path, branch: worktree.branch },
-      { force: unconfirmed || params.force === true }
+      { force: unconfirmedForWorktree || params.force === true }
     )
     // 干净但未确认落地：保留本地 merge 作为无 PR 流程仓库的兜底。任何 merge
     // 都必须再次显式确认；合并失败只诊断，不自动 abort，归属不明的处置交还用户。
     let mergedByUs = false
-    if (outcome.kind === 'kept' && outcome.unmerged && ctx.hasUI && !unconfirmed && params.force !== true) {
+    if (outcome.kind === 'kept' && outcome.unmerged && ctx.hasUI && !unconfirmedForWorktree && params.force !== true) {
       const mergeGateBefore = await probeMergeHead(gitExec, mainCwd)
       const targetBefore = await captureHeadTarget(gitExec, mainCwd)
       if (mergeGateBefore.kind !== 'clean') {
@@ -299,18 +316,23 @@ export async function cleanupWorkers(deps: TeardownDeps, ctx: TeardownUiContext)
     ctx.ui.notify('没有需要回收的 worker', 'info')
     return
   }
-  for (const worker of candidates) {
-    const unconfirmed = worker.blockId.startsWith('unconfirmed:')
+  for (const candidate of candidates) {
+    const initialUnconfirmed = candidate.blockId.startsWith('unconfirmed:')
     const ok = await ctx.ui.confirm(
-      `回收 ${worker.workerId} 的残留资源？`,
-      unconfirmed
+      `回收 ${candidate.workerId} 的残留资源？`,
+      initialUnconfirmed
         ? '该 worker 派生结果不明：请先确认 Rex Tab 里没有对应 label 的 Block 在运行。确认后强制清理其 worktree 与分支。'
         : '将关闭其 retired Block；worktree 按已合并/干净与否自动处理或保留。'
     )
     if (!ok) continue
+
+    // 确认弹窗期间事件环可能推进了状态；重新读取最新快照。
+    const current = registry.get(candidate.workerId)
+    if (!current) continue
+
     // 关不掉的旧 Tab 留在 retired 列表等下次重试；清空跟踪会让它永远没人管。
     const closeFailures: string[] = []
-    for (const blockId of worker.retiredBlockIds) {
+    for (const blockId of current.retiredBlockIds) {
       const closed = await adapter.blockClose(blockId).then(
         () => true,
         error => {
@@ -319,51 +341,58 @@ export async function cleanupWorkers(deps: TeardownDeps, ctx: TeardownUiContext)
         }
       )
       if (!closed) continue
-      registry.removeRetiredBlock(worker.workerId, blockId)
+      registry.removeRetiredBlock(current.workerId, blockId)
       deps.persistRegistry()
     }
+
+    // retired blockClose 期间事件环可能更新了 status / worktree；重新读取最新快照再决定是否清理 worktree。
+    const latest = registry.get(candidate.workerId)
+    if (!latest) continue
+
     if (closeFailures.length > 0) {
       ctx.ui.notify(
-        `${worker.workerId} 有 ${closeFailures.length} 个旧 Tab 关闭失败，已留在待回收列表：\n${closeFailures.join('\n')}`,
+        `${latest.workerId} 有 ${closeFailures.length} 个旧 Tab 关闭失败，已留在待回收列表：\n${closeFailures.join('\n')}`,
         'warning'
       )
       // Block 关不掉就绝不动它的 worktree（Block 可能还在跑，cwd 就在里面），
       // 本轮跳过清理、保持跟踪，下轮重试。
-      if (worker.worktree) {
-        ctx.ui.notify(`${worker.workerId} 的 worktree 本轮不清理：先确认上述 Block 状态`, 'warning')
+      if (latest.worktree) {
+        ctx.ui.notify(`${latest.workerId} 的 worktree 本轮不清理：先确认上述 Block 状态`, 'warning')
       }
       continue
     }
-    if (worker.worktree && worker.status === 'closed') {
+    if (latest.worktree && latest.status === 'closed') {
+      const unconfirmedNow = latest.blockId.startsWith('unconfirmed:')
+      const worktree = latest.worktree
       // 清理命令要在主仓执行：worker.cwd 是即将被删除的 worktree 本身。
-      const mainCwd = worker.mainCwd ?? (await findMainRepo(gitExec, worker.cwd).catch(() => worker.cwd))
+      const mainCwd = latest.mainCwd ?? (await findMainRepo(gitExec, latest.cwd).catch(() => latest.cwd))
       const outcome = await cleanupWorktree(
         gitExec,
         {
           mainCwd,
-          path: worker.worktree.path,
-          branch: worker.worktree.branch
+          path: worktree.path,
+          branch: worktree.branch
         },
         // placeholder 的全新 worktree「干净且无独立提交」，非 force 会命中
         // clean+merged 判定误删可能正被使用的 worktree；用户已确认才 force。
-        { force: unconfirmed }
+        { force: unconfirmedNow }
       ).catch(error => ({
         kind: 'kept' as const,
         reason: String(error),
-        path: worker.worktree?.path ?? '',
-        branch: worker.worktree?.branch ?? '',
-        mergeHint: mergeHint(worker.worktree?.branch ?? ''),
+        path: worktree.path,
+        branch: worktree.branch,
+        mergeHint: mergeHint(worktree.branch),
         unmerged: false,
         worktreeRemoved: false,
         branchDeleteCommand: undefined
       }))
       ctx.ui.notify(
-        `${worker.workerId} ${formatCleanupOutcome(worker.worktree, outcome)}`,
+        `${latest.workerId} ${formatCleanupOutcome(worktree, outcome)}`,
         outcome.kind === 'removed' ? 'info' : 'warning'
       )
       // 清理完成解除跟踪：重复 /rex-cleanup 不再对已清理 worker 重复跑。
       if (outcome.kind === 'removed') {
-        registry.clearWorktree(worker.workerId)
+        registry.clearWorktree(latest.workerId)
         deps.persistRegistry()
       }
     }
