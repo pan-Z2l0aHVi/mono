@@ -88,6 +88,25 @@ it('no-mutual-links', async () => {
   write(noEdges, 'docs/agents/a.md', '[external](https://example.com)\n')
   assert.match(await failure(noMutualLinks, noEdges), /^md:[\s\S]*found 0 local Markdown links/)
 
+  // 代码块、行内 code、图片语法与仓库根相对路径 `/` 不计入本地链接边。
+  const ignoredLinks = makeFixture()
+  write(
+    ignoredLinks,
+    'docs/agents/a.md',
+    [
+      '[b](b.md)',
+      '![img](../../.agents/rules/x.md)',
+      '`[inline](../../.agents/rules/x.md)`',
+      '[root](/.agents/rules/x.md)',
+      '```md',
+      '[fenced](../../.agents/rules/x.md)',
+      '```'
+    ].join('\n') + '\n'
+  )
+  write(ignoredLinks, 'docs/agents/b.md', '# b\n')
+  write(ignoredLinks, '.agents/rules/x.md', '# rule\n')
+  assert.ok((await kit(noMutualLinks, ignoredLinks)).ok)
+
   // workspace 面：直接子目录的 `shallow` 文件与递归的 `deep` 文件都在语料内。
   const shallow = makeFixture()
   write(shallow, 'packages/a/index.md', '[rule](../../.agents/rules/x.md)\n')
