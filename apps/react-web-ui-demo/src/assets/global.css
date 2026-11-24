@@ -5,6 +5,16 @@
 /* Tailwind 的自动源检测止步于当前 workspace；共享类串在 doc-demo-kit 里，要显式登记源目录。 */
 @source '../../../../packages/doc-demo-kit/src';
 
+/*
+ * 可运行示例的源码落在生成目录，类名只在那里出现。根 `.ignore` 为静音检索排除了各 demo 的 `src/generated` 目录，
+ * Tailwind 的自动源检测同样遵守它，这些类名就不会进 CSS（示例布局因此散架：progress 条贴在一起、限宽失效）。
+ * 这里显式登记可执行示例的落盘目录；它们是生成物，不能靠改写源码把类名挪出去。
+ *
+ * 写成文件 glob 而不是目录：目录形式的 `@source` 仍按 ignore 规则过滤，被 `.ignore` 排除的目录照样扫不到；
+ * 文件 glob 逐个登记，才绕得开。换 exec 语言时这里的扩展名要跟着改。
+ */
+@source '../generated/codeblock/*.{tsx,vue}';
+
 @custom-variant dark (&:where(web-ui-theme[resolved-appearance='dark'] *));
 
 /* 应用将全局移动端状态传入 layout，样式跟随反射的属性。 */

@@ -238,6 +238,10 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
           点击不再改状态——否则读到一半想选中一个标识符，整块代码会当场收回去。
 
           只有超过 PEEK_LINES 的卡才挂折叠：更短的代码没有可裁掉的部分，渐隐只会盖住正文。
+
+          滚动容器带 `contain-inline-size`：它的固有行内宽度不计内容。收进 collapse 时它内部的网格轨道按内容的
+          min-content 撑宽（展开稳态不裁剪，见其测试），长行会把整张卡顶出页面；声明后容器回到卡片宽度，
+          长行仍在本块内横向滚动。
         -->
         <web-ui-collapse
           v-if="collapsible"
@@ -251,7 +255,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
             :id="panelId"
             :options="appScrollbarsOptions"
             :events="codeScrollbarsEvents"
-            class="overflow-x-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 pt-0 font-mono text-xs leading-6"
+            class="contain-inline-size overflow-x-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 pt-0 font-mono text-xs leading-6"
             data-code
           >
             <!-- 生成期的高亮 HTML，不是运行时拼的用户输入。 -->
