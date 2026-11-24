@@ -15,7 +15,9 @@ import {
   lucideTags,
   lucideTrash2
 } from '@greypan/web-ui/icons'
+import type { OverlayScrollbars } from 'overlayscrollbars'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
+import { Virtualizer } from 'virtua/vue'
 import { computed, nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
 
 import { selectLitEditor, useEditorFocusRestore } from '@/composables/useEditorFocusRestore'
@@ -79,9 +81,24 @@ defineExpose({
 const dragActive = ref(false)
 const addUrlOpen = ref(false)
 const editingItemId = ref<string | null>(null)
+const queueScrollRef = ref<HTMLElement | undefined>(undefined)
 const nameEditors = new Map<string, WebUiEditableText>()
 const renameButtons = new Map<string, HTMLElement>()
 let pendingImagePreview: ImagePreviewHandle | null = null
+
+const keepMountedIndices = computed(() => {
+  if (!editingItemId.value) return undefined
+  const index = props.queue.findIndex(item => item.id === editingItemId.value)
+  return index >= 0 ? [index] : undefined
+})
+
+function handleQueueScrollbarsInitialized(instance: OverlayScrollbars) {
+  queueScrollRef.value = instance.elements().viewport
+}
+
+function handleQueueScrollbarsDestroyed() {
+  queueScrollRef.value = undefined
+}
 
 /* 静态态与编辑态共用排版，长名称在两态下保持相同换行。 */
 const queueNameClass =
@@ -397,106 +414,125 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           :options="appScrollbarsOptions"
           :class="resourceDialogQueueClass"
           class="[&_[data-overlayscrollbars-viewport]:focus-visible]:rounded-[18px] [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-3 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-offset-2 [&_[data-overlayscrollbars-viewport]:focus-visible]:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))"
+          @os-initialized="handleQueueScrollbarsInitialized"
+          @os-destroyed="handleQueueScrollbarsDestroyed"
         >
           <!--
-            scrollbar 接在宿主 div 上，列表本身留在它里面：OverlayScrollbars 会把宿主的子节点搬进
-            自己生成的 viewport，而 <ol> 的内容模型只容得下 <li>——宿主若还是这个 <ol>，
-            搬进去的 viewport div 就落进列表里了。卡片装饰与 overflow 一并上移到宿主。
+            scrollbar 接在宿主 div 上，虚拟列表留在它里面：OverlayScrollbars 会把宿主的子节点搬进
+            自己生成的 viewport，由 scrollRef 显式指向该 viewport，确保 virtua 测量与滚动监听落在
+            真实滚动容器上。editingItemId 经 keepMounted 钉住，避免行内改名时滚出视口被卸载。
           -->
-          <ol class="m-0 list-none p-0">
-            <li v-for="(item, itemIndex) in queue" :key="item.id" :class="resourceDialogRowClass">
-              <button
-                v-if="isImagePreviewItem(item)"
-                data-queue-thumbnail
-                type="button"
-                class="grid size-10 shrink-0 cursor-zoom-in place-items-center overflow-hidden rounded-[10px] p-0 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))"
-                :aria-label="`预览 ${item.title}`"
-                aria-haspopup="dialog"
-                @click="openImagePreview(item, $event)"
+          <Virtualizer
+            :key="queueScrollRef ? 'os-viewport' : 'fallback'"
+            :data="queue"
+            as="ol"
+            item="li"
+            :item-size="64"
+            :buffer-size="256"
+            :ssr-count="16"
+            :scroll-ref="queueScrollRef"
+            :keep-mounted="keepMountedIndices"
+            class="m-0 list-none p-0"
+          >
+            <template #default="{ item, index: itemIndex }">
+              <div
+                :key="item.id"
+                data-dialog-row
+                :class="[resourceDialogRowClass, itemIndex === queue.length - 1 ? 'after:hidden' : '']"
               >
+                <button
+                  v-if="isImagePreviewItem(item)"
+                  data-queue-thumbnail
+                  type="button"
+                  class="grid size-10 shrink-0 cursor-zoom-in place-items-center overflow-hidden rounded-[10px] p-0 focus-visible:outline-3 focus-visible:outline-offset-2 focus-visible:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))"
+                  :aria-label="`预览 ${item.title}`"
+                  aria-haspopup="dialog"
+                  @click="openImagePreview(item, $event)"
+                >
+                  <ResourceThumbnail
+                    :kind="item.resourceKind"
+                    :source="queueSource(item)"
+                    :media-url="itemMediaUrl(item)"
+                  />
+                </button>
                 <ResourceThumbnail
+                  v-else
+                  data-queue-thumbnail
                   :kind="item.resourceKind"
                   :source="queueSource(item)"
                   :media-url="itemMediaUrl(item)"
                 />
-              </button>
-              <ResourceThumbnail
-                v-else
-                data-queue-thumbnail
-                :kind="item.resourceKind"
-                :source="queueSource(item)"
-                :media-url="itemMediaUrl(item)"
-              />
-              <span class="grid min-w-0 flex-[1_1_auto] gap-1">
-                <div class="flex min-w-0 items-center gap-2">
-                  <web-ui-editable-text
-                    v-if="editingItemId === item.id"
-                    :ref="setNameEditorRef(item.id)"
-                    :value="queueItemTitle(item)"
-                    :class="queueNameClass"
-                    class="caret-(--wui-color-accent,#08f) select-text"
-                    :aria-label="`修改 ${queueItemTitle(item)} 的名称`"
-                    @click.stop
-                    @change="handleRenameChange(item, $event)"
-                    @cancel="stopRename"
-                  />
-                  <span v-else :class="[queueNameClass, 'whitespace-pre-wrap']">
-                    {{ queueItemTitle(item) }}
-                  </span>
-                  <span class="flex shrink-0 items-center gap-1">
-                    <span v-if="editingItemId === item.id" class="size-7" aria-hidden="true" />
-                    <web-ui-tooltip v-else content="重命名" :placement="itemIndex < 5 ? 'bottom' : 'top'">
-                      <web-ui-button
-                        :ref="setRenameButtonRef(item.id)"
-                        icon
-                        variant="ghost"
-                        size="28"
-                        aria-label="重命名"
-                        @click="startRename(item)"
-                      >
-                        <web-ui-icon :icon="lucidePenLine" :size="14" />
-                      </web-ui-button>
-                    </web-ui-tooltip>
-                    <web-ui-tooltip content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
-                      <web-ui-button
-                        icon
-                        variant="ghost"
-                        size="28"
-                        aria-label="编辑标签"
-                        @click="emit('editTags', item)"
-                      >
-                        <web-ui-icon :icon="lucideTags" :size="14" />
-                      </web-ui-button>
-                    </web-ui-tooltip>
-                    <web-ui-tooltip content="移除待导入资源" :placement="itemIndex < 5 ? 'bottom' : 'top'">
-                      <web-ui-button
-                        class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
-                        icon
-                        variant="ghost"
-                        size="28"
-                        aria-label="移除待导入资源"
-                        @click="emit('remove', item.id)"
-                      >
-                        <web-ui-icon :icon="lucideTrash2" :size="14" />
-                      </web-ui-button>
-                    </web-ui-tooltip>
-                  </span>
-                </div>
-                <div class="flex min-w-0 flex-wrap items-center gap-1.5">
-                  <span
-                    class="min-w-0 wrap-anywhere text-xs leading-4 text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
-                    :title="item.location"
-                    :class="item.kind === 'url' ? 'text-(--wui-color-accent) underline' : ''"
-                  >
-                    {{ item.location }}
-                  </span>
-                  <div v-if="item.tags.length" class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
-                    <ResourceTag v-for="tag in item.tags" :key="tag" :name="tag" :color="props.tagColors[tag]" />
+                <span class="grid min-w-0 flex-[1_1_auto] gap-1">
+                  <div class="flex min-w-0 items-center gap-2">
+                    <web-ui-editable-text
+                      v-if="editingItemId === item.id"
+                      :ref="setNameEditorRef(item.id)"
+                      :value="queueItemTitle(item)"
+                      :class="queueNameClass"
+                      class="caret-(--wui-color-accent,#08f) select-text"
+                      :aria-label="`修改 ${queueItemTitle(item)} 的名称`"
+                      @click.stop
+                      @change="handleRenameChange(item, $event)"
+                      @cancel="stopRename"
+                    />
+                    <span v-else :class="[queueNameClass, 'whitespace-pre-wrap']">
+                      {{ queueItemTitle(item) }}
+                    </span>
+                    <span class="flex shrink-0 items-center gap-1">
+                      <span v-if="editingItemId === item.id" class="size-7" aria-hidden="true" />
+                      <web-ui-tooltip v-else content="重命名" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                        <web-ui-button
+                          :ref="setRenameButtonRef(item.id)"
+                          icon
+                          variant="ghost"
+                          size="28"
+                          aria-label="重命名"
+                          @click="startRename(item)"
+                        >
+                          <web-ui-icon :icon="lucidePenLine" :size="14" />
+                        </web-ui-button>
+                      </web-ui-tooltip>
+                      <web-ui-tooltip content="编辑标签" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                        <web-ui-button
+                          icon
+                          variant="ghost"
+                          size="28"
+                          aria-label="编辑标签"
+                          @click="emit('editTags', item)"
+                        >
+                          <web-ui-icon :icon="lucideTags" :size="14" />
+                        </web-ui-button>
+                      </web-ui-tooltip>
+                      <web-ui-tooltip content="移除待导入资源" :placement="itemIndex < 5 ? 'bottom' : 'top'">
+                        <web-ui-button
+                          class="[--wui-button-color:var(--wui-color-danger,#dc2626)]"
+                          icon
+                          variant="ghost"
+                          size="28"
+                          aria-label="移除待导入资源"
+                          @click="emit('remove', item.id)"
+                        >
+                          <web-ui-icon :icon="lucideTrash2" :size="14" />
+                        </web-ui-button>
+                      </web-ui-tooltip>
+                    </span>
                   </div>
-                </div>
-              </span>
-            </li>
-          </ol>
+                  <div class="flex min-w-0 flex-wrap items-center gap-1.5">
+                    <span
+                      class="min-w-0 wrap-anywhere text-xs leading-4 text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
+                      :title="item.location"
+                      :class="item.kind === 'url' ? 'text-(--wui-color-accent) underline' : ''"
+                    >
+                      {{ item.location }}
+                    </span>
+                    <div v-if="item.tags.length" class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
+                      <ResourceTag v-for="tag in item.tags" :key="tag" :name="tag" :color="props.tagColors[tag]" />
+                    </div>
+                  </div>
+                </span>
+              </div>
+            </template>
+          </Virtualizer>
         </OverlayScrollbarsComponent>
 
         <div v-else :class="resourceDialogEmptyClass">
