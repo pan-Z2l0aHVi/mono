@@ -413,7 +413,7 @@ func TestWindowModeTogglerBehavior(t *testing.T) {
 		toggler := NewWindowModeToggler(WindowSize{400, 600}, WindowSize{1280, 800})
 		toggler.Toggle(win)
 		if win.unfullscreen != 1 || win.unmaximised != 1 || win.width != 400 || win.height != 600 {
-			t.Fatalf("unexpected state: unfull=%d unmax=%d size=%dx%d", win.unfullscreen, win.unmaximised, win.width, win.height)
+			t.Fatalf("unexpected state: unfullscreen=%d unmaximised=%d size=%dx%d", win.unfullscreen, win.unmaximised, win.width, win.height)
 		}
 		toggler.Toggle(win)
 		if win.width != 1440 || win.height != 900 {
