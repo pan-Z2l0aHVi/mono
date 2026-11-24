@@ -91,13 +91,18 @@ function Codeblock({ nodes, preview, variants, switchLabel }: CodeblockProps) {
   const copyIcon = copied === 'failed' ? lucideCircleAlert : lucideCopy
   const copyAnnouncement = copied === 'idle' ? '' : copyLabel
 
+  /*
+   * `contain-inline-size` 让这块的固有行内宽度不计内容：收进 web-ui-collapse 时，它内部的网格轨道按内容的
+   * min-content 撑宽（collapse 展开稳态不裁剪，见其测试），长行会把整张卡顶出页面。声明后滚动容器回到卡片宽度，
+   * 长行仍在本块内横向滚动。
+   */
   const codePanel = (
     <OverlayScrollbarsComponent
       slot="content"
       id={panelId}
       options={appScrollbarsOptions}
       events={codeScrollbarsEvents}
-      className="overflow-x-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 pt-0 font-mono text-xs leading-6"
+      className="contain-inline-size overflow-x-auto rounded-b-[var(--codeblock-radius)] bg-(--wui-color-page) p-3 pt-0 font-mono text-xs leading-6"
       data-code
     >
       {/* 生成期的高亮 HTML，不是运行时拼的用户输入。 */}
