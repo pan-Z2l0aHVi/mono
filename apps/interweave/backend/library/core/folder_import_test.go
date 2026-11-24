@@ -38,7 +38,7 @@ func TestExpandImportPathsWalksDirectoriesAndKeepsFiles(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	service := NewResourceService(nil, nil)
+	service := NewLibrary(nil, nil)
 	// 目录与文件混选，且重复选中同一目录、以及已随父目录展开的子目录：
 	// 目录只展开一次、只计一个，文件去重；最终清单全局按字典序产出，不依赖选中顺序。
 	expansion, err := service.ExpandImportPaths(context.Background(), []string{
@@ -87,7 +87,7 @@ func TestExpandImportPathsSkipsHiddenEntriesAndSymlinks(t *testing.T) {
 		t.Skipf("symlink unavailable: %v", err)
 	}
 
-	service := NewResourceService(nil, nil)
+	service := NewLibrary(nil, nil)
 	expansion, err := service.ExpandImportPaths(context.Background(), []string{root})
 	if err != nil {
 		t.Fatal(err)
@@ -119,7 +119,7 @@ func TestExpandImportPathsKeepsChildrenOfExplicitHiddenRoot(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	service := NewResourceService(nil, nil)
+	service := NewLibrary(nil, nil)
 	expansion, err := service.ExpandImportPaths(context.Background(), []string{root})
 	if err != nil {
 		t.Fatal(err)
@@ -159,7 +159,7 @@ func TestExpandImportPathsResolvesExplicitSymlinks(t *testing.T) {
 		t.Skipf("symlink unavailable: %v", err)
 	}
 
-	service := NewResourceService(nil, nil)
+	service := NewLibrary(nil, nil)
 	expansion, err := service.ExpandImportPaths(context.Background(), []string{dirLink, fileLink})
 	if err != nil {
 		t.Fatal(err)
@@ -182,7 +182,7 @@ func TestExpandImportPathsSkipsMissingEntries(t *testing.T) {
 		t.Fatal(err)
 	}
 
-	service := NewResourceService(nil, nil)
+	service := NewLibrary(nil, nil)
 	// 选中到展开之间被删除的条目只影响自身；空串按无效输入整体报错（防御路径，面板不会给出）。
 	expansion, err := service.ExpandImportPaths(context.Background(), []string{file, filepath.Join(root, "missing")})
 	if err != nil {

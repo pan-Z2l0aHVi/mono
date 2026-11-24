@@ -16,8 +16,8 @@ func TestTagColorIsStableForSameName(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	resService := core.NewResourceService(db, remote.NewFetcher())
-	tagService := core.NewTagService(db)
+	lib := core.NewLibrary(db, remote.NewFetcher())
+	resService, tagService := lib, lib
 
 	first, err := addFileResource(ctx, resService, tempFile(t, "tag-color-a-*.txt"))
 	if err != nil {
@@ -73,8 +73,8 @@ func TestTagColorsVaryAcrossNewTags(t *testing.T) {
 	defer cleanup()
 
 	ctx := context.Background()
-	resService := core.NewResourceService(db, remote.NewFetcher())
-	tagService := core.NewTagService(db)
+	lib := core.NewLibrary(db, remote.NewFetcher())
+	resService, tagService := lib, lib
 	view, err := addFileResource(ctx, resService, tempFile(t, "tag-color-spread-*.txt"))
 	if err != nil {
 		t.Fatalf("addFileResource error: %v", err)

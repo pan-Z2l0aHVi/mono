@@ -20,7 +20,7 @@ type RecoveryScanUpdate struct {
 	Error            string
 }
 
-// ScanFunc 是 runner 驱动的扫描实现；SourceService.ScanRecovery 即其生产实现。
+// ScanFunc 是 runner 驱动的扫描实现；Library.ScanRecovery 即其生产实现。
 type ScanFunc func(ctx context.Context, sourceIDs []string, directory string, onProgress func(RecoveryProgress, *RecoveryCandidate)) error
 
 type recoverySession struct {
