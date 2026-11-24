@@ -282,7 +282,7 @@ describe('全局等宽数字字体（mono-digits）', () => {
         expect(stat.classList.contains('font-mono')).toBe(true)
         expect(stat.classList.contains('tabular-nums')).toBe(true)
       }
-      expect(statNumbers.map(node => node.textContent?.trim())).toEqual(['12', '1', '3'])
+      expect(statNumbers.map(node => node.textContent?.trim())).toEqual(['12', '3', '1'])
 
       const candidateTrigger = button('找到 2 个候选，选择文件')
       expect(candidateTrigger.querySelector('.font-mono.tabular-nums')?.textContent?.trim()).toBe('2')

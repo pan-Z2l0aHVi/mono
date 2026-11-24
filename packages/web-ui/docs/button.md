@@ -286,7 +286,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 Both `disabled` and `loading` disable the control: it dispatches no `click` and leaves the tab order. The disabled state drops the whole control to 40% opacity and has no hover or pressed state.
 
-Outside icon mode, `loading` puts a spinner before the label. The text and prefix/suffix still show, so the width changes; use icon mode when the width must stay stable.
+Outside icon mode, `loading` renders a spinner before the label and replaces the `prefix` slot, while the label and `suffix` still show. Without a prefix the width changes; use icon mode when the width must stay stable.
 
 The page holds `loading` itself: click "Save" to enter the loading state and "Stop waiting" to leave it.
 

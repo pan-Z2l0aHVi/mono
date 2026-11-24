@@ -291,6 +291,37 @@ describe('WebUiButton 组件', () => {
       cleanupElement(el)
     })
 
+    it('非 icon 模式 loading 时 spinner 替换 prefix slot，保留默认与 suffix slot，恢复后还原 prefix', async () => {
+      const el = createButton()
+      el.innerHTML =
+        '<web-ui-icon slot="prefix" data-role="prefix"></web-ui-icon>确认<web-ui-icon slot="suffix" data-role="suffix"></web-ui-icon>'
+      await waitForUpdate(el)
+
+      expect(el.shadowRoot?.querySelector('slot[name="prefix"]')).toBeTruthy()
+      expect(el.shadowRoot?.querySelector('slot[name="suffix"]')).toBeTruthy()
+
+      el.loading = true
+      await waitForUpdate(el)
+
+      expect(parts(el).spinner).toBeTruthy()
+      expect(el.shadowRoot?.querySelector('slot[name="prefix"]')).toBeNull()
+      expect(parts(el).defaultSlot).toBeTruthy()
+      expect(el.shadowRoot?.querySelector('slot[name="suffix"]')).toBeTruthy()
+
+      el.loading = false
+      await waitForUpdate(el)
+
+      expect(parts(el).spinner).toBeNull()
+      const prefixSlot = el.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="prefix"]')
+      expect(prefixSlot).toBeTruthy()
+      expect(
+        (prefixSlot?.assignedNodes({ flatten: true }) ?? []).some(
+          n => n instanceof Element && n.matches('[data-role="prefix"]')
+        )
+      ).toBe(true)
+      cleanupElement(el)
+    })
+
     it('icon + loading 阻断 click，保持不可点击语义', async () => {
       const el = createButton()
       el.setAttribute('icon', '')
