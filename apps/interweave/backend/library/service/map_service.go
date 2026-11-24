@@ -8,11 +8,11 @@ import (
 
 // 作为 Wails 外观呈现 Map 能力，产品规则由 core 承载。
 type MapService struct {
-	core *core.MapService
+	core *core.Library
 }
 
 // 保持外观与产品规则解耦。
-func NewMapService(c *core.MapService) *MapService {
+func NewMapService(c *core.Library) *MapService {
 	return &MapService{core: c}
 }
 

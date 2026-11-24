@@ -26,7 +26,7 @@ import (
 // Emitter 把一次实际发生的可用性翻转交给装配层推送；watch 不感知 Wails 与 DTO。
 type Emitter func(change core.AvailabilityChange)
 
-// AvailabilitySink 是监听侧依赖 core 的窄接缝，由 core.SourceService 实现。
+// AvailabilitySink 是监听侧依赖 core 的窄接缝，由 core.Library 实现。
 type AvailabilitySink interface {
 	// ApplyFileAvailability 写入口；返回 nil 表示可用性没有翻转。
 	ApplyFileAvailability(ctx context.Context, sourceID string, available bool) (*core.AvailabilityChange, error)

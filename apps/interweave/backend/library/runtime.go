@@ -36,16 +36,13 @@ type RuntimeOptions struct {
 // watcher → media/thumbs（含 PendingPreviewRegistry 清空）→ RecoveryScanRunner.Shutdown() → db.Close()。
 // ScheduleBackground 及其排空仍留在 storage.DB.Close() 内部，不外迁。
 type Runtime struct {
-	db        *storage.DB
-	resources *core.ResourceService
-	sources   *core.SourceService
-	tags      *core.TagService
-	maps      *core.MapService
-	previews  *media.PendingPreviewRegistry
-	gate      *watch.AvailabilityGate
-	watcher   *watch.Watcher
-	thumbs    *media.ThumbnailStore
-	media     *media.Handler
+	db       *storage.DB
+	core     *core.Library
+	previews *media.PendingPreviewRegistry
+	gate     *watch.AvailabilityGate
+	watcher  *watch.Watcher
+	thumbs   *media.ThumbnailStore
+	media    *media.Handler
 
 	stateMu   sync.Mutex
 	started   bool
@@ -81,24 +78,20 @@ func NewRuntime(opts RuntimeOptions) (*Runtime, error) {
 		return nil, fmt.Errorf("failed to open database at %s: %w", dbPath, err)
 	}
 
-	resources := core.NewResourceService(db, fetcher)
-	sources := core.NewSourceService(db, fetcher)
-	tags := core.NewTagService(db)
-	maps := core.NewMapService(db)
+	coreLib := core.NewLibrary(db, fetcher)
 	previews := media.NewPendingPreviewRegistry()
 
 	// gate 恒存在：可用性写入口不依赖 fsnotify 是否可用，监听不可用时媒体 404 兜底照常
 	// 落库，只降级目录监听方向。事件出口要等 window 就绪才能确定，gate 未接线时只落库
 	// 不发事件；SetAvailabilityEmitter 必须在 Start 之前完成。
-	gate := watch.NewAvailabilityGate(sources)
+	gate := watch.NewAvailabilityGate(coreLib)
 	watcher, watchErr := watch.NewWatcher(gate)
 	if watchErr != nil {
 		log.Printf("interweave: file watch unavailable, availability relies on manual refresh: %v", watchErr)
 	} else {
 		// core 写路径直接经 *watch.Watcher.RequestSync 非阻塞投递对账请求，
 		// 前台写入不被 os.ReadDir 阻塞。
-		sources.SetIndexSync(watcher)
-		resources.SetIndexSync(watcher)
+		coreLib.SetIndexSync(watcher)
 	}
 
 	// 缩略图缓存与库文件同级；目录建不出来只降级缩略图能力（读取一律 404，
@@ -116,30 +109,18 @@ func NewRuntime(opts RuntimeOptions) (*Runtime, error) {
 	mediaHandler := media.NewHandler(storage.SourceStore{}, db.SqlDB(), previews, thumbs, gate)
 
 	return &Runtime{
-		db:        db,
-		resources: resources,
-		sources:   sources,
-		tags:      tags,
-		maps:      maps,
-		previews:  previews,
-		gate:      gate,
-		watcher:   watcher,
-		thumbs:    thumbs,
-		media:     mediaHandler,
+		db:       db,
+		core:     coreLib,
+		previews: previews,
+		gate:     gate,
+		watcher:  watcher,
+		thumbs:   thumbs,
+		media:    mediaHandler,
 	}, nil
 }
 
-// ResourceService 返回核心 Resource 规则服务，供 Wails 外观层装配。
-func (r *Runtime) ResourceService() *core.ResourceService { return r.resources }
-
-// SourceService 返回核心 Source 规则服务，供 Wails 外观层装配。
-func (r *Runtime) SourceService() *core.SourceService { return r.sources }
-
-// TagService 返回核心 Tag 规则服务，供 Wails 外观层装配。
-func (r *Runtime) TagService() *core.TagService { return r.tags }
-
-// MapService 返回核心 Map 规则服务，供 Wails 外观层装配。
-func (r *Runtime) MapService() *core.MapService { return r.maps }
+// Core 返回核心资源库领域服务，供 Wails 外观层装配。
+func (r *Runtime) Core() *core.Library { return r.core }
 
 // PendingPreviews 返回统一持有的 pending 媒体预览注册表。
 func (r *Runtime) PendingPreviews() *media.PendingPreviewRegistry { return r.previews }
@@ -176,7 +157,7 @@ func (r *Runtime) Start(ctx context.Context) {
 		})
 	}
 	// 指纹回填是启动期后台补账，不在构造函数里隐藏调度。
-	r.db.ScheduleBackground("fingerprint:backfill", r.sources.BackfillFingerprints)
+	r.db.ScheduleBackground("fingerprint:backfill", r.core.BackfillFingerprints)
 	if r.watcher != nil {
 		if err := r.watcher.Start(ctx); err != nil {
 			log.Printf("interweave: failed to start file watch: %v", err)
@@ -203,7 +184,7 @@ func (r *Runtime) Close() error {
 		r.previews.Clear()
 
 		// 3. 取消并等待在途找回扫描退出。
-		r.sources.RecoveryScans().Shutdown()
+		r.core.RecoveryScans().Shutdown()
 
 		// 4. 最后关闭数据库（其内部同步取消并排空 ScheduleBackground 后台任务）。
 		r.closeErr = r.db.Close()
