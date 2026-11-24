@@ -569,7 +569,7 @@ async function enqueueImportEntries(entries: string[]) {
     // 句子的前半句对所有批量选中成立；只有确实展开了文件夹才补一句展开说明。
     const expanded = expansion.folders > 0 ? `（${expansion.folders} 个文件夹已递归展开）` : ''
     openConfirmDialog({
-      title: '确认批量导入',
+      title: '批量导入',
       message: `共 ${paths.length} 个文件将加入待导入列表${expanded}。`,
       confirmLabel: `导入 ${paths.length} 个文件`,
       danger: false,

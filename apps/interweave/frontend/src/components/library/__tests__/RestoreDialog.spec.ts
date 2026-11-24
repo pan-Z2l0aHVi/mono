@@ -8,6 +8,7 @@ import type { LibraryRuntime } from '../../../services/library'
 import { createPreviewLease } from '../previewLease'
 import type { LibraryRestoreQueueItem, RecoveryScanUpdate } from '../restore'
 import RestoreDialog from '../RestoreDialog.vue'
+import RestoreRow from '../RestoreRow.vue'
 
 function createLease(
   prepareFilePreview: LibraryRuntime['resources']['prepareFilePreview'],
@@ -272,6 +273,56 @@ describe('RestoreDialog', () => {
       expect(submit).toHaveBeenCalledWith([expect.objectContaining({ replacementLocation: '/b', scanSnapshot: '/b' })])
     } finally {
       notification.mockRestore()
+      app.unmount()
+      host.remove()
+    }
+  })
+
+  it('待找回列表优先展示原来源缩略图，无缩略图或加载失败时回退图标', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const itemWithThumb: LibraryRestoreQueueItem = {
+      ...items[0],
+      source: {
+        id: 'file',
+        type: 'file',
+        location: '/old',
+        available: false,
+        isPreferred: true,
+        orderIndex: 0,
+        mediaUrl: null,
+        thumbnailUrl: '/media/thumbnails/file.jpg',
+        metadata: null
+      }
+    }
+    const app = createApp({
+      render: () =>
+        h(RestoreRow, {
+          item: itemWithThumb,
+          pending: true,
+          location: '',
+          source: null,
+          locked: false,
+          active: false,
+          candidateCount: 0,
+          matchReasons: []
+        })
+    })
+    app.mount(host)
+    try {
+      await nextTick()
+      const thumbImg = host.querySelector<HTMLImageElement>('img[src="/media/thumbnails/file.jpg"]')
+      expect(thumbImg).toBeTruthy()
+      thumbImg!.dispatchEvent(new Event('load'))
+      await nextTick()
+      expect(host.querySelector('img[src="/media/thumbnails/file.jpg"]')).toBeTruthy()
+      expect(host.querySelector('li > div web-ui-icon')).toBeNull()
+
+      thumbImg!.dispatchEvent(new Event('error'))
+      await nextTick()
+      expect(host.querySelector('img[src="/media/thumbnails/file.jpg"]')).toBeNull()
+      expect(host.querySelector('li > div web-ui-icon')).toBeTruthy()
+    } finally {
       app.unmount()
       host.remove()
     }
