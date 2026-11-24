@@ -7,6 +7,7 @@ import (
 	"log"
 	"os"
 	"path/filepath"
+	"runtime"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -15,6 +16,7 @@ import (
 	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
 	libraryService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service"
 	menucontract "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu"
+	nativeMenu "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/menu"
 	nativeService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/settings"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/internal/shell"
@@ -40,6 +42,14 @@ const (
 )
 
 func mainWindowOptions() application.WebviewWindowOptions {
+	return mainWindowOptionsFor(runtime.GOOS)
+}
+
+// mainWindowOptionsFor 按目标平台构造主窗口选项，便于在非 Windows 主机上直接单测 Windows 配置。
+// Windows 端启用 Frameless + NonClientRegionSupport 并关闭原生菜单栏，由前端渲染一体化顶栏
+// （左侧 top menu + 中间拖动区 + 右侧系统风格三键），同时保留 Win11 原生圆角、阴影与贴边分屏。
+func mainWindowOptionsFor(goos string) application.WebviewWindowOptions {
+	isWindows := goos == "windows"
 	return application.WebviewWindowOptions{
 		Title:              "Interweave",
 		Width:              defaultWindowWidth,
@@ -47,7 +57,8 @@ func mainWindowOptions() application.WebviewWindowOptions {
 		MinWidth:           minWindowWidth,
 		MinHeight:          minWindowHeight,
 		EnableFileDrop:     true,
-		UseApplicationMenu: true,
+		Frameless:          isWindows,
+		UseApplicationMenu: !isWindows,
 		Mac: application.MacWindow{
 			Backdrop: application.MacBackdropTranslucent,
 			TitleBar: application.MacTitleBarHiddenInset,
@@ -57,6 +68,9 @@ func mainWindowOptions() application.WebviewWindowOptions {
 			WebviewPreferences: application.MacWebviewPreferences{
 				TabFocusesLinks: application.Enabled,
 			},
+		},
+		Windows: application.WindowsWindow{
+			NonClientRegionSupport: isWindows,
 		},
 		BackgroundColour: application.NewRGB(6, 7, 15),
 		URL:              "/",
@@ -110,6 +124,41 @@ func macOptions() application.MacOptions {
 func windowsOptions(dir string) application.WindowsOptions {
 	return application.WindowsOptions{
 		WebviewUserDataPath: webviewUserDataDir(dir),
+	}
+}
+
+type menuRoleActions struct {
+	showAbout   func()
+	quit        func()
+	minimise    func()
+	closeWindow func()
+}
+
+// dispatchMenuRole 将自定义顶栏上报的系统 role 映射到宿主应用/窗口动作，抽成纯路由便于单测。
+func dispatchMenuRole(role string, actions menuRoleActions) bool {
+	switch role {
+	case menucontract.RoleAbout:
+		if actions.showAbout != nil {
+			actions.showAbout()
+		}
+		return true
+	case menucontract.RoleQuit:
+		if actions.quit != nil {
+			actions.quit()
+		}
+		return true
+	case menucontract.RoleMinimise:
+		if actions.minimise != nil {
+			actions.minimise()
+		}
+		return true
+	case menucontract.RoleCloseWindow:
+		if actions.closeWindow != nil {
+			actions.closeWindow()
+		}
+		return true
+	default:
+		return false
 	}
 }
 
@@ -213,9 +262,28 @@ func run() error {
 		window.EmitEvent(libraryService.PreviewRevokedEventName, []string{token})
 	})
 
+	menuService.SetTreeProvider(func() []menucontract.MenuItem {
+		return nativeMenu.Snapshot(nativeMenu.State{
+			DeveloperOptions: settingsService.DeveloperOptionsEnabled(),
+			Disabled:         menuService.IsDisabled,
+		}, runtime.GOOS)
+	})
+	menuService.SetInvokeHandler(func(command menucontract.Command, role string) {
+		if command != "" {
+			desktopShell.HandleMenuCommand(command)
+			return
+		}
+		dispatchMenuRole(role, menuRoleActions{
+			showAbout:   app.Menu.ShowAbout,
+			quit:        app.Quit,
+			minimise:    func() { window.Minimise() },
+			closeWindow: window.Close,
+		})
+	})
+
 	desktopShell.SyncMenu()
 	// SyncMenu 在独立串行安装锁内回读最新规范化快照并比对：仅在菜单相关字段真实变化时
-	// 才重建原生菜单，避免 zoom / minimizeToTray 等无关设置变更误触发重建与并发乱序落盘。
+	// 才重建原生菜单（或向 Windows 一体化顶栏推送新快照），避免无关设置变更误触发与并发乱序落盘。
 	settingsService.OnChange(func(settings.Settings) {
 		desktopShell.SyncMenu()
 		application.InvokeAsync(trayController.Sync)

@@ -87,3 +87,36 @@ func TestDisabledCommandsReturnsACopy(t *testing.T) {
 		t.Fatal("expected the service state to survive a mutation of the returned slice")
 	}
 }
+
+func TestGetMenuReturnsSnapshotFromProvider(t *testing.T) {
+	service := NewService()
+	if got := service.GetMenu(context.Background()); len(got) != 0 {
+		t.Fatalf("expected empty menu when no provider registered, got %#v", got)
+	}
+
+	service.SetTreeProvider(func() []MenuItem {
+		return []MenuItem{{Label: "文件", Children: []MenuItem{{Label: "导入资源", Command: CommandAddResource}}}}
+	})
+	got := service.GetMenu(context.Background())
+	if len(got) != 1 || got[0].Label != "文件" || len(got[0].Children) != 1 {
+		t.Fatalf("unexpected menu snapshot: %#v", got)
+	}
+}
+
+func TestInvokeMenuItemRespectsDisabledAndForwardsRole(t *testing.T) {
+	service := NewService()
+	var invoked []string
+	service.SetInvokeHandler(func(command Command, role string) {
+		invoked = append(invoked, string(command)+"|"+role)
+	})
+	service.ReportDisabledCommands(context.Background(), []Command{CommandNavigateBack})
+
+	service.InvokeMenuItem(context.Background(), CommandNavigateBack, "")
+	service.InvokeMenuItem(context.Background(), Command("unknown-command"), "")
+	service.InvokeMenuItem(context.Background(), CommandOpenSettings, "")
+	service.InvokeMenuItem(context.Background(), "", RoleAbout)
+
+	if len(invoked) != 2 || invoked[0] != "open-settings|" || invoked[1] != "|about" {
+		t.Fatalf("unexpected invocations: %#v", invoked)
+	}
+}

@@ -277,7 +277,12 @@ func Build(state State, sink CommandSink) Tree {
 // TreeNodes 是 Build 实际物化的节点序列：默认树加上可选的开发者菜单。
 // 它是 Build 的唯一输入，测试因此可以断言「实际构建的形状」而不必启动 Wails 应用。
 func TreeNodes(state State) []Node {
-	nodes := Describe("")
+	return TreeNodesFor(state, "")
+}
+
+// TreeNodesFor 按指定平台构造完整节点序列，便于跨平台快照与单元测试。
+func TreeNodesFor(state State, goos string) []Node {
+	nodes := Describe(goos)
 	if !state.DeveloperOptions {
 		return nodes
 	}
@@ -285,6 +290,64 @@ func TreeNodes(state State) []Node {
 	cloned := make([]Node, len(nodes), len(nodes)+1)
 	copy(cloned, nodes)
 	return append(cloned, developerMenu())
+}
+
+// Snapshot 把当前平台菜单树与禁用态转换成可序列化的跨端 DTO，供 Windows 一体化顶栏渲染。
+func Snapshot(state State, goos string) []menucontract.MenuItem {
+	return snapshotNodes(TreeNodesFor(state, goos), state.Disabled)
+}
+
+func snapshotNodes(nodes []Node, isDisabled func(menucontract.Command) bool) []menucontract.MenuItem {
+	items := make([]menucontract.MenuItem, 0, len(nodes))
+	for _, node := range nodes {
+		if node.Separator {
+			items = append(items, menucontract.MenuItem{Separator: true})
+			continue
+		}
+		item := menucontract.MenuItem{
+			Label:       node.Label,
+			Accelerator: node.Accelerator,
+			Command:     node.Command,
+			Role:        roleName(node.Role),
+		}
+		if node.Placeholder || (node.Command != "" && isDisabled != nil && isDisabled(node.Command)) {
+			item.Disabled = true
+		}
+		if len(node.Children) > 0 {
+			item.Children = snapshotNodes(node.Children, isDisabled)
+		}
+		items = append(items, item)
+	}
+	return items
+}
+
+func roleName(role application.Role) string {
+	switch role {
+	case application.About:
+		return menucontract.RoleAbout
+	case application.Quit:
+		return menucontract.RoleQuit
+	case application.Minimise:
+		return menucontract.RoleMinimise
+	case application.CloseWindow:
+		return menucontract.RoleCloseWindow
+	case application.Undo:
+		return menucontract.RoleUndo
+	case application.Redo:
+		return menucontract.RoleRedo
+	case application.Cut:
+		return menucontract.RoleCut
+	case application.Copy:
+		return menucontract.RoleCopy
+	case application.Paste:
+		return menucontract.RolePaste
+	case application.Delete:
+		return menucontract.RoleDelete
+	case application.SelectAll:
+		return menucontract.RoleSelectAll
+	default:
+		return ""
+	}
 }
 
 func (t Tree) materialize(nodes []Node, sink CommandSink) {

@@ -23,6 +23,7 @@ declare module "@wailsio/runtime" {
             "library:source-availability-changed": service$0.SourceAvailabilityEventDTO;
             "library:urls-dropped": string[];
             "menu:command": menu$0.MenuCommand;
+            "menu:tree-changed": menu$0.MenuItem[];
             "settings:changed": settings$0.Snapshot;
         }
     }

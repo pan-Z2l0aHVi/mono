@@ -7,6 +7,36 @@ package menu
 // 前端按 command 分发，新增菜单项只需要两端各加一个枚举值。
 const CommandEventName = "menu:command"
 
+// TreeChangedEventName 是自定义顶栏菜单树（Windows 一体化顶栏）的更新推送事件。
+const TreeChangedEventName = "menu:tree-changed"
+
+// Role 是自定义顶栏菜单中系统角色条目的跨端动作标识。
+const (
+	RoleAbout       = "about"
+	RoleQuit        = "quit"
+	RoleMinimise    = "minimise"
+	RoleCloseWindow = "close-window"
+	RoleUndo        = "undo"
+	RoleRedo        = "redo"
+	RoleCut         = "cut"
+	RoleCopy        = "copy"
+	RolePaste       = "paste"
+	RoleDelete      = "delete"
+	RoleSelectAll   = "select-all"
+)
+
+// MenuItem 是推送给自定义顶栏（Windows）的可序列化菜单节点。
+// 形状、文案、快捷键与禁用态全部由 Go 侧生成，前端只负责呈现与回调触发。
+type MenuItem struct {
+	Label       string     `json:"label"`
+	Separator   bool       `json:"separator,omitempty"`
+	Disabled    bool       `json:"disabled,omitempty"`
+	Accelerator string     `json:"accelerator,omitempty"`
+	Command     Command    `json:"command,omitempty"`
+	Role        string     `json:"role,omitempty"`
+	Children    []MenuItem `json:"children,omitempty"`
+}
+
 // Command 是菜单命令的字符串枚举。前端据此分发，Go 侧据此构建菜单项。
 type Command string
 

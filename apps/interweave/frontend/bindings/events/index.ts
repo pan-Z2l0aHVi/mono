@@ -34,6 +34,11 @@ export const LibraryUrlsDropped = "library:urls-dropped";
 export const MenuCommand = "menu:command";
 
 /**
+ * Name of the custom event "menu:tree-changed".
+ */
+export const MenuTreeChanged = "menu:tree-changed";
+
+/**
  * Name of the custom event "settings:changed".
  */
 export const SettingsChanged = "settings:changed";
