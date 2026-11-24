@@ -9,19 +9,7 @@ import (
 	"time"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
-	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 )
-
-// 聚合 Resource 生命周期中不涉及外部内容修改的产品规则。
-type ResourceService struct {
-	db        *storage.DB
-	ingest    *ingestion
-	views     viewAssembler
-	resources storage.ResourceStore
-	sources   storage.SourceStore
-	// indexSync 只在装配期注入一次（main.go），运行期只读，无需加锁。
-	indexSync SourceIndexSync
-}
 
 // PreparedFilePreview 是待添加文件的稳定位置与权威展示分类。
 type PreparedFilePreview struct {
@@ -36,32 +24,8 @@ type ResourceLocationMatch struct {
 	Location   string
 }
 
-// 保持资源规则与持久化实现解耦。
-func NewResourceService(db *storage.DB, fetcher *remote.Fetcher) *ResourceService {
-	return &ResourceService{
-		db:        db,
-		ingest:    newIngestion(db, fetcher),
-		views:     viewAssembler{},
-		resources: storage.ResourceStore{},
-		sources:   storage.SourceStore{},
-	}
-}
-
-// SetIndexSync 注入入口集合的对账回调，使增删 Resource 后监听集合能立即重建。
-func (s *ResourceService) SetIndexSync(h SourceIndexSync) {
-	s.indexSync = h
-}
-
-// 入口集合变化后非阻塞地请求监听重建；对账由外部监听协程异步合并执行。
-func (s *ResourceService) resyncIndex() {
-	if s.indexSync == nil {
-		return
-	}
-	s.indexSync.RequestSync()
-}
-
 // 规范化待添加文件并复用 Resource 展示分类，不读取文件内容。
-func (s *ResourceService) PrepareFilePreview(inputPath string) (PreparedFilePreview, error) {
+func (s *Library) PrepareFilePreview(inputPath string) (PreparedFilePreview, error) {
 	location, err := s.ingest.normalizeInput(inputPath, storage.SourceTypeFile)
 	if err != nil {
 		return PreparedFilePreview{}, err
@@ -71,7 +35,7 @@ func (s *ResourceService) PrepareFilePreview(inputPath string) (PreparedFilePrev
 
 // 按归一化位置反查库内已有该入口的 Resource，供添加前的重复提示使用。
 // 比对以 normalizeInput 的结果为准，因此 `~/a.png` 与其绝对路径命中同一条记录。
-func (s *ResourceService) FindResourceLocationMatches(
+func (s *Library) FindResourceLocationMatches(
 	ctx context.Context,
 	input string,
 	srcType storage.SourceType,
@@ -133,13 +97,13 @@ type CreateResourceInput struct {
 	// InitialTitle 是可选的初始标题；trim 后非空才生效，否则用 probe 的默认标题
 	//（AGENTS.md「Resource 标题」：只有首次纳入可从首个 Source 取得默认值）。
 	InitialTitle string
-	// Tags 是可选的初始标签名集合（原始输入），语义同 TagService.SetResourceTags。
+	// Tags 是可选的初始标签名集合（原始输入），语义同 Library.SetResourceTags。
 	Tags []string
 }
 
 // CreateResource 是纳入新 Resource 的唯一入口：归一化、可用性探测、Resource + 首选 Source
 // 与初始标签在单事务内一次建齐，失败不留半成品。
-func (s *ResourceService) CreateResource(ctx context.Context, input CreateResourceInput) (*ResourceView, error) {
+func (s *Library) CreateResource(ctx context.Context, input CreateResourceInput) (*ResourceView, error) {
 	location, err := s.ingest.normalizeInput(input.Location, input.Kind)
 	if err != nil {
 		return nil, err
@@ -167,7 +131,7 @@ func (s *ResourceService) CreateResource(ctx context.Context, input CreateResour
 }
 
 // 允许用户维护库内语义，不影响外部内容。
-func (s *ResourceService) UpdateResourceTitle(ctx context.Context, resourceID string, newTitle string) (*ResourceView, error) {
+func (s *Library) UpdateResourceTitle(ctx context.Context, resourceID string, newTitle string) (*ResourceView, error) {
 	trimmed := strings.TrimSpace(newTitle)
 	if trimmed == "" {
 		return nil, ErrResourceTitleEmpty
@@ -185,7 +149,7 @@ func (s *ResourceService) UpdateResourceTitle(ctx context.Context, resourceID st
 }
 
 // 仅保存简短个人上下文。
-func (s *ResourceService) UpdateResourceNote(ctx context.Context, resourceID string, note string) (*ResourceView, error) {
+func (s *Library) UpdateResourceNote(ctx context.Context, resourceID string, note string) (*ResourceView, error) {
 	now := time.Now().UnixMilli()
 	err := s.db.WithTx(ctx, func(tx *sql.Tx) error {
 		return mapNotFound(s.resources.UpdateNote(ctx, tx, resourceID, note, now))
@@ -198,7 +162,7 @@ func (s *ResourceService) UpdateResourceNote(ctx context.Context, resourceID str
 }
 
 // 从资源库移除记录，不触及任何外部内容。
-func (s *ResourceService) DeleteResource(ctx context.Context, resourceID string) error {
+func (s *Library) DeleteResource(ctx context.Context, resourceID string) error {
 	err := s.db.WithTx(ctx, func(tx *sql.Tx) error {
 		return mapNotFound(s.resources.Delete(ctx, tx, resourceID))
 	})
@@ -212,7 +176,7 @@ func (s *ResourceService) DeleteResource(ctx context.Context, resourceID string)
 }
 
 // 以稳定身份读取资源详情。
-func (s *ResourceService) GetResource(ctx context.Context, resourceID string) (*ResourceView, error) {
+func (s *Library) GetResource(ctx context.Context, resourceID string) (*ResourceView, error) {
 	res, err := s.resources.Get(ctx, s.db.SqlDB(), resourceID)
 	if err != nil {
 		return nil, mapNotFound(err)
@@ -226,7 +190,7 @@ func (s *ResourceService) GetResource(ctx context.Context, resourceID string) (*
 }
 
 // 以最近纳入优先的顺序支持资源库浏览。
-func (s *ResourceService) ListResources(ctx context.Context) ([]ResourceView, error) {
+func (s *Library) ListResources(ctx context.Context) ([]ResourceView, error) {
 	models, err := s.resources.List(ctx, s.db.SqlDB())
 	if err != nil {
 		return nil, err

@@ -12,45 +12,15 @@ import (
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 )
 
-// 维护 Resource 的外部入口，同时保证 Resource 始终可被保留。
-type SourceService struct {
-	db        *storage.DB
-	ingest    *ingestion
-	resources storage.ResourceStore
-	sources   storage.SourceStore
-	// indexSync 只在装配期注入一次（main.go），运行期只读，无需加锁。
-	indexSync SourceIndexSync
-	// recovery 拥有找回扫描的会话状态机；扫描算法是本服务的 ScanRecovery。
-	recovery *RecoveryScanRunner
-}
-
-// 保持 Source 规则与持久化实现解耦。
-func NewSourceService(db *storage.DB, fetcher *remote.Fetcher) *SourceService {
-	svc := &SourceService{
-		db:        db,
-		ingest:    newIngestion(db, fetcher),
-		resources: storage.ResourceStore{},
-		sources:   storage.SourceStore{},
-	}
-	svc.recovery = NewRecoveryScanRunner(svc.ScanRecovery)
-	return svc
-}
-
 // RecoveryScans 返回找回扫描的会话 runner，外观层只做传递与 DTO 映射。
-func (s *SourceService) RecoveryScans() *RecoveryScanRunner {
+func (s *Library) RecoveryScans() *RecoveryScanRunner {
 	return s.recovery
 }
 
 // BackfillFingerprints 为库内已可用的文件 Source 补齐指纹。构造函数不再隐藏调度：
 // 由装配层（main.go）决定何时在后台启动它。
-func (s *SourceService) BackfillFingerprints(ctx context.Context) {
+func (s *Library) BackfillFingerprints(ctx context.Context) {
 	s.ingest.fingerprints.Backfill(ctx)
-}
-
-// SetIndexSync 注入入口集合的对账接缝：增删改 Source 后仅投递对账请求，
-// 监听集合由 watcher 的对账协程异步重建。
-func (s *SourceService) SetIndexSync(h SourceIndexSync) {
-	s.indexSync = h
 }
 
 // AddSource 为既有 Resource 补充备用入口；补充入口不应意外改变用户当前的首选入口，
@@ -58,7 +28,7 @@ func (s *SourceService) SetIndexSync(h SourceIndexSync) {
 //
 // 三个变更方法共享同一编排：归一化 → 存在性检查 → 探测 → 写入 → 对账监听 → 回读。
 // 存在性检查必须先于探测：URL 探测最多阻塞 10 秒，不能在不存在的目标上白等。
-func (s *SourceService) AddSource(ctx context.Context, resourceID string, srcType storage.SourceType, input string) (Source, error) {
+func (s *Library) AddSource(ctx context.Context, resourceID string, srcType storage.SourceType, input string) (Source, error) {
 	location, err := s.ingest.normalizeInput(input, srcType)
 	if err != nil {
 		return Source{}, err
@@ -86,7 +56,7 @@ func (s *SourceService) AddSource(ctx context.Context, resourceID string, srcTyp
 
 // ReplaceSource 用新输入找回失效入口，保留其身份、顺位与首选角色；它不是同位置刷新。
 // 类型由存量行派生：行是类型的权威，替换不会把文件入口变成 URL 入口。
-func (s *SourceService) ReplaceSource(ctx context.Context, sourceID string, input string) (Source, error) {
+func (s *Library) ReplaceSource(ctx context.Context, sourceID string, input string) (Source, error) {
 	existing, err := s.getSource(ctx, sourceID)
 	if err != nil {
 		return Source{}, err
@@ -115,7 +85,7 @@ func (s *SourceService) ReplaceSource(ctx context.Context, sourceID string, inpu
 // RefreshSource 仅在用户明确请求时重新检查同一位置的可用性与展示信息，不改变 location，
 // 不回写 Resource 标题（AGENTS.md「Resource 标题」）。类型由存量行派生；
 // 文件入口可用时同时记录指纹。
-func (s *SourceService) RefreshSource(ctx context.Context, sourceID string) (Source, error) {
+func (s *Library) RefreshSource(ctx context.Context, sourceID string) (Source, error) {
 	src, err := s.getSource(ctx, sourceID)
 	if err != nil {
 		return Source{}, err
@@ -144,7 +114,7 @@ func sourceTypeLabel(srcType storage.SourceType) string {
 }
 
 // 首选入口是用户的明确选择，不能出现多个候选。
-func (s *SourceService) SetPreferredSource(ctx context.Context, resourceID string, sourceID string) error {
+func (s *Library) SetPreferredSource(ctx context.Context, resourceID string, sourceID string) error {
 	now := time.Now().UnixMilli()
 	return s.db.WithTx(ctx, func(tx *sql.Tx) error {
 		// 先清除旧选择，维持唯一首选的不变量。
@@ -161,7 +131,7 @@ func (s *SourceService) SetPreferredSource(ctx context.Context, resourceID strin
 
 // Resource 必须保留至少一个入口；失去首选入口时按既有顺位延续访问路径。
 // 返回被删 Source 归属的 ResourceID，供外观层在变更后装配完整资源视图。
-func (s *SourceService) RemoveSource(ctx context.Context, sourceID string) (string, error) {
+func (s *Library) RemoveSource(ctx context.Context, sourceID string) (string, error) {
 	var resourceID string
 	now := time.Now().UnixMilli()
 	err := s.db.WithTx(ctx, func(tx *sql.Tx) error {
@@ -206,7 +176,7 @@ func (s *SourceService) RemoveSource(ctx context.Context, sourceID string) (stri
 //
 // 与手动刷新的差别只在三态：Inconclusive（断网、超时、DNS 失败）不落库，保留原值。
 // 一次断网不该把整片 URL 资源标成失效。
-func (s *SourceService) ProbeURLSourceOnOpen(ctx context.Context, sourceID string) (Source, ProbeOutcome, error) {
+func (s *Library) ProbeURLSourceOnOpen(ctx context.Context, sourceID string) (Source, ProbeOutcome, error) {
 	src, err := s.sources.Get(ctx, s.db.SqlDB(), sourceID)
 	if err != nil {
 		return Source{}, ProbeOutcomeInconclusive, mapNotFound(err)
@@ -242,7 +212,7 @@ func (s *SourceService) ProbeURLSourceOnOpen(ctx context.Context, sourceID strin
 	return updated, outcome, err
 }
 
-func (s *SourceService) getSource(ctx context.Context, sourceID string) (Source, error) {
+func (s *Library) getSource(ctx context.Context, sourceID string) (Source, error) {
 	src, err := s.sources.Get(ctx, s.db.SqlDB(), sourceID)
 	if err != nil {
 		return Source{}, mapNotFound(err)
@@ -251,7 +221,7 @@ func (s *SourceService) getSource(ctx context.Context, sourceID string) (Source,
 }
 
 // 写入归属前确认目标 Resource 存在，返回用户可见的哨兵文案而非 SQL 错误。
-func (s *SourceService) requireResource(ctx context.Context, resourceID string) error {
+func (s *Library) requireResource(ctx context.Context, resourceID string) error {
 	exists, err := s.resources.Exists(ctx, s.db.SqlDB(), resourceID)
 	if err != nil {
 		return err

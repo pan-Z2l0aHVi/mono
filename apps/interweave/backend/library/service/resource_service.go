@@ -10,12 +10,12 @@ import (
 
 // 作为 Wails 外观呈现 Resource 能力，产品规则由 core 承载。
 type ResourceService struct {
-	core     *core.ResourceService
+	core     *core.Library
 	previews *media.PendingPreviewRegistry
 }
 
 // 保持外观与产品规则解耦。
-func NewResourceService(c *core.ResourceService, previews *media.PendingPreviewRegistry) *ResourceService {
+func NewResourceService(c *core.Library, previews *media.PendingPreviewRegistry) *ResourceService {
 	return &ResourceService{core: c, previews: previews}
 }
 
