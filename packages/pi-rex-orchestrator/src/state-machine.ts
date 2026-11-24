@@ -6,6 +6,10 @@
  * （`child_exited` / `done`）按 `(blockId, turn)` 幂等合并，自动唤醒经熔断器约束：
  * 单 Worker 连续 2 次 `error` 或 3 分钟内自动唤醒 > 5 次即熔断，降级为一次性通知。
  *
+ * 外部只能通过本模块的写方法变更状态；读方法（`get` / `list` / `register` /
+ * `findActiveByBlockId` / `findByBlockId`）一律返回只读快照，防止调用方绕过状态机
+ * 直接改写内部字段。
+ *
  * 本模块不碰 I/O 与时间（`now` 由调用方注入），方便单测覆盖状态转移与门禁。
  */
 
@@ -17,7 +21,53 @@ export type WorkerStatus = 'starting' | 'working' | 'idle' | 'blocked' | 'done' 
 
 export const TERMINAL_STATUSES: readonly WorkerStatus[] = ['done', 'error', 'closed']
 
+export interface WorkerWorktree {
+  readonly path: string
+  readonly branch: string
+}
+
+/** 外部可见的只读 Worker 视图；内部变更必须经 `WorkerRegistry` 写方法。 */
 export interface WorkerEntry {
+  readonly workerId: string
+  readonly agent: string
+  readonly mode: WorkerMode
+  readonly label: string
+  readonly blockId: string
+  readonly retiredBlockIds: readonly string[]
+  readonly status: WorkerStatus
+  /** `blocked` 的原因类别（permission / auth 等）。 */
+  readonly blockedKind?: string
+  readonly msg?: string
+  /** 已派发的轮次数（从 1 起）。 */
+  readonly turn: number
+  /** worker cwd（主仓或独立 worktree）。 */
+  readonly cwd: string
+  /** 期望的 git 基线；`rex_inspect_changes` 按它出全量 diff。 */
+  readonly baseCommit: string | null
+  /** worker 派生前的脏文件行；Untracked 新文件按它对比。 */
+  readonly baseDirty: readonly string[]
+  readonly worktree?: WorkerWorktree
+  /** worktree 模式下的主仓路径；清理分支要在主仓执行。 */
+  readonly mainCwd?: string
+  readonly agentSessionId?: string
+  readonly exitCode?: number
+  /** `/rex-pause` 的人工接管保护。 */
+  readonly paused: boolean
+  /** 最近一次进入稳定状态（idle/done/error/blocked）的时刻。 */
+  readonly stableSince?: number
+  readonly errorStreak: number
+  /** 活跃 Block 已确认关闭（成功关过一次）；重试时跳过重复关闭。 */
+  readonly activeBlockClosed?: boolean
+  /** 最近一次计过数的 error 轮次；同一轮的重放/交叉来源不重复计数。 */
+  readonly errorTurn?: number
+  /** 最近一次接受的 OSC 记录 updated_at；更旧的重放直接丢弃。 */
+  readonly lastStatusAt?: string
+  /** 自动唤醒时间戳（熔断窗口用）。 */
+  readonly wakeups: readonly number[]
+  readonly fused: boolean
+}
+
+interface MutableWorkerEntry {
   workerId: string
   agent: string
   mode: WorkerMode
@@ -25,34 +75,22 @@ export interface WorkerEntry {
   blockId: string
   retiredBlockIds: string[]
   status: WorkerStatus
-  /** `blocked` 的原因类别（permission / auth 等）。 */
   blockedKind?: string
   msg?: string
-  /** 已派发的轮次数（从 1 起）。 */
   turn: number
-  /** worker cwd（主仓或独立 worktree）。 */
   cwd: string
-  /** 期望的 git 基线；`rex_inspect_changes` 按它出全量 diff。 */
   baseCommit: string | null
-  /** worker 派生前的脏文件行；Untracked 新文件按它对比。 */
   baseDirty: string[]
   worktree?: { path: string; branch: string }
-  /** worktree 模式下的主仓路径；清理分支要在主仓执行。 */
   mainCwd?: string
   agentSessionId?: string
   exitCode?: number
-  /** `/rex-pause` 的人工接管保护。 */
   paused: boolean
-  /** 最近一次进入稳定状态（idle/done/error/blocked）的时刻。 */
   stableSince?: number
   errorStreak: number
-  /** 活跃 Block 已确认关闭（成功关过一次）；重试时跳过重复关闭。 */
   activeBlockClosed?: boolean
-  /** 最近一次计过数的 error 轮次；同一轮的重放/交叉来源不重复计数。 */
   errorTurn?: number
-  /** 最近一次接受的 OSC 记录 updated_at；更旧的重放直接丢弃。 */
   lastStatusAt?: string
-  /** 自动唤醒时间戳（熔断窗口用）。 */
   wakeups: number[]
   fused: boolean
 }
@@ -80,8 +118,18 @@ export interface RegistryEvents {
   onTransition(transition: StatusTransition): void
 }
 
+function toSnapshot(worker: MutableWorkerEntry): WorkerEntry {
+  return {
+    ...worker,
+    retiredBlockIds: [...worker.retiredBlockIds],
+    baseDirty: [...worker.baseDirty],
+    wakeups: [...worker.wakeups],
+    worktree: worker.worktree ? { ...worker.worktree } : undefined
+  }
+}
+
 export class WorkerRegistry {
-  private readonly workers = new Map<string, WorkerEntry>()
+  private readonly workers = new Map<string, MutableWorkerEntry>()
   /** `(blockId, turn)` → 终态是否已通知，幂等合并用。 */
   private readonly settledTurns = new Set<string>()
   private readonly listeners: RegistryEvents[] = []
@@ -101,8 +149,10 @@ export class WorkerRegistry {
     entry: Omit<WorkerEntry, 'retiredBlockIds' | 'status' | 'errorStreak' | 'wakeups' | 'fused'>,
     options: { initialStatus?: WorkerStatus } = {}
   ): WorkerEntry {
-    const worker: WorkerEntry = {
+    const worker: MutableWorkerEntry = {
       ...entry,
+      baseDirty: [...entry.baseDirty],
+      worktree: entry.worktree ? { ...entry.worktree } : undefined,
       retiredBlockIds: [],
       // 直接赋值不触发转移通知：派生结果不明时登记的 closed placeholder 不该
       // 产生「Block 已被关闭」事件。
@@ -112,7 +162,7 @@ export class WorkerRegistry {
       fused: false
     }
     this.workers.set(worker.workerId, worker)
-    return worker
+    return toSnapshot(worker)
   }
 
   /** 从持久化快照重建注册表（/reload 或会话恢复）；只接受形状完整的条目。 */
@@ -120,10 +170,10 @@ export class WorkerRegistry {
     let restored = 0
     for (const entry of entries) {
       if (typeof entry !== 'object' || entry === null) continue
-      const candidate = entry as Partial<WorkerEntry>
+      const candidate = entry as Partial<MutableWorkerEntry>
       if (typeof candidate.workerId !== 'string' || typeof candidate.blockId !== 'string') continue
       if (typeof candidate.agent !== 'string' || typeof candidate.mode !== 'string') continue
-      const worker: WorkerEntry = {
+      const worker: MutableWorkerEntry = {
         workerId: candidate.workerId,
         agent: candidate.agent,
         mode: candidate.mode === 'headless' ? 'headless' : 'interactive',
@@ -141,7 +191,9 @@ export class WorkerRegistry {
           ? candidate.baseDirty.filter((line): line is string => typeof line === 'string')
           : [],
         worktree:
-          typeof candidate.worktree === 'object' && candidate.worktree !== null ? candidate.worktree : undefined,
+          typeof candidate.worktree === 'object' && candidate.worktree !== null
+            ? { path: candidate.worktree.path, branch: candidate.worktree.branch }
+            : undefined,
         mainCwd: candidate.mainCwd,
         agentSessionId: candidate.agentSessionId,
         exitCode: candidate.exitCode,
@@ -166,14 +218,20 @@ export class WorkerRegistry {
   }
 
   get(workerId: string): WorkerEntry | undefined {
-    return this.workers.get(workerId)
+    const worker = this.workers.get(workerId)
+    return worker ? toSnapshot(worker) : undefined
   }
 
   list(): WorkerEntry[] {
-    return [...this.workers.values()]
+    return [...this.workers.values()].map(toSnapshot)
   }
 
-  private transition(worker: WorkerEntry, to: WorkerStatus, now: number, extra?: Partial<WorkerEntry>): void {
+  private transition(
+    worker: MutableWorkerEntry,
+    to: WorkerStatus,
+    now: number,
+    extra?: Partial<MutableWorkerEntry>
+  ): void {
     const from = worker.status
     if (from === to && !extra) return
     Object.assign(worker, extra)
@@ -194,16 +252,32 @@ export class WorkerRegistry {
 
   /** 只匹配活跃 Block：retired Block 的延迟事件不允许再改写 worker 状态。 */
   findActiveByBlockId(blockId: string): WorkerEntry | undefined {
-    return this.list().find(worker => worker.blockId === blockId)
+    const found = this.findMutableActiveByBlockId(blockId)
+    return found ? toSnapshot(found) : undefined
   }
 
   findByBlockId(blockId: string): WorkerEntry | undefined {
-    return this.list().find(worker => worker.blockId === blockId || worker.retiredBlockIds.includes(blockId))
+    const found = this.findMutableByBlockId(blockId)
+    return found ? toSnapshot(found) : undefined
+  }
+
+  private findMutableActiveByBlockId(blockId: string): MutableWorkerEntry | undefined {
+    for (const worker of this.workers.values()) {
+      if (worker.blockId === blockId) return worker
+    }
+    return undefined
+  }
+
+  private findMutableByBlockId(blockId: string): MutableWorkerEntry | undefined {
+    for (const worker of this.workers.values()) {
+      if (worker.blockId === blockId || worker.retiredBlockIds.includes(blockId)) return worker
+    }
+    return undefined
   }
 
   /** OSC 状态更新；按 `record.state` 直接读明文，不做解码。转移经 `subscribe` 通知。 */
   applyProgramStatus(blockId: string, record: ProgramStatusRecord, options: { now?: number } = {}): void {
-    const worker = this.findActiveByBlockId(blockId)
+    const worker = this.findMutableActiveByBlockId(blockId)
     if (!worker || worker.status === 'closed') return
     // 单调时间戳护栏：断连重连对账与事件流都会重放历史记录。真实 `updated_at` 是
     // 微秒精度，同一时间戳的再报必是重放——`<=` 一并拒绝，旧记录不得把已推进的
@@ -235,20 +309,20 @@ export class WorkerRegistry {
   }
 
   /** error 只按轮次计一次：OSC error、退出码 error 与二者的重放同属一轮失败。 */
-  private noteError(worker: WorkerEntry): void {
+  private noteError(worker: MutableWorkerEntry): void {
     if (worker.errorTurn === worker.turn) return
     worker.errorTurn = worker.turn
     worker.errorStreak += 1
     if (worker.errorStreak >= POLICY.maxErrorStreak) worker.fused = true
   }
 
-  private resetErrorStreakOnSuccess(worker: WorkerEntry): void {
+  private resetErrorStreakOnSuccess(worker: MutableWorkerEntry): void {
     worker.errorStreak = 0
   }
 
   /** 终态幂等合并：同一 Block 的 child_exited 只结算一次。 */
   applyChildExited(blockId: string, exitCode: number | undefined): 'settled' | 'duplicate' | 'unknown' {
-    const worker = this.findActiveByBlockId(blockId)
+    const worker = this.findMutableActiveByBlockId(blockId)
     if (!worker) return 'unknown'
     const key = `${blockId}:${worker.turn}`
     if (this.settledTurns.has(key)) return 'duplicate'
@@ -270,7 +344,7 @@ export class WorkerRegistry {
 
   /** headless 续跑：旧 Block 原子移入 retired，新 Block 顶上（V3-02）。 */
   replaceBlock(workerId: string, newBlockId: string): void {
-    const worker = this.get(workerId)
+    const worker = this.workers.get(workerId)
     if (!worker) return
     if (worker.blockId !== newBlockId && !worker.retiredBlockIds.includes(worker.blockId)) {
       worker.retiredBlockIds.push(worker.blockId)
@@ -283,7 +357,7 @@ export class WorkerRegistry {
 
   /** 活跃 Block 被关闭；retired Block 的关闭不改变 worker 状态。 */
   applyBlockClosed(blockId: string): boolean {
-    const worker = this.findByBlockId(blockId)
+    const worker = this.findMutableByBlockId(blockId)
     if (!worker) return false
     if (worker.retiredBlockIds.includes(blockId)) return false
     if (blockId !== worker.blockId) return false
@@ -293,9 +367,35 @@ export class WorkerRegistry {
     return true
   }
 
+  /** 从 retired 列表中移除已确认关闭的旧 Block。 */
+  removeRetiredBlock(workerId: string, blockId: string): boolean {
+    const worker = this.workers.get(workerId)
+    if (!worker) return false
+    const index = worker.retiredBlockIds.indexOf(blockId)
+    if (index === -1) return false
+    worker.retiredBlockIds.splice(index, 1)
+    return true
+  }
+
+  /** 标记活跃 Block 已由关闭工具主动关掉，重试时跳过重复关闭。 */
+  markActiveBlockClosed(workerId: string): boolean {
+    const worker = this.workers.get(workerId)
+    if (!worker) return false
+    worker.activeBlockClosed = true
+    return true
+  }
+
+  /** 清理完成后解除 worktree 跟踪，避免重复 `/rex-cleanup` 重复清理。 */
+  clearWorktree(workerId: string): boolean {
+    const worker = this.workers.get(workerId)
+    if (!worker || worker.worktree === undefined) return false
+    worker.worktree = undefined
+    return true
+  }
+
   /** 记录一次自动唤醒；返回熔断是否被触发。 */
   noteAutoWakeup(workerId: string): boolean {
-    const worker = this.get(workerId)
+    const worker = this.workers.get(workerId)
     if (!worker) return false
     const now = this.now()
     worker.wakeups.push(now)
@@ -313,7 +413,7 @@ export class WorkerRegistry {
    * 会把 ACK 永远判成已确认。
    */
   markTurnDispatched(workerId: string, turn: number, options: { notifyTransition?: boolean } = {}): void {
-    const worker = this.get(workerId)
+    const worker = this.workers.get(workerId)
     if (!worker) return
     worker.turn = turn
     if (options.notifyTransition !== false) {
@@ -322,19 +422,19 @@ export class WorkerRegistry {
   }
 
   setPaused(workerId: string, paused: boolean): boolean {
-    const worker = this.get(workerId)
+    const worker = this.workers.get(workerId)
     if (!worker) return false
     worker.paused = paused
     return true
   }
 
   setAgentSessionId(workerId: string, sessionId: string): void {
-    const worker = this.get(workerId)
+    const worker = this.workers.get(workerId)
     if (worker) worker.agentSessionId = sessionId
   }
 
   markClosed(workerId: string): void {
-    const worker = this.get(workerId)
+    const worker = this.workers.get(workerId)
     if (worker) this.transition(worker, 'closed', this.now())
   }
 
@@ -344,7 +444,7 @@ export class WorkerRegistry {
    * 已暂停一律要求用户确认。
    */
   canAutoDeliver(workerId: string, now: number = this.now()): { allowed: boolean; reason?: string } {
-    const worker = this.get(workerId)
+    const worker = this.workers.get(workerId)
     if (!worker) return { allowed: false, reason: 'unknown worker' }
     if (worker.status === 'closed') return { allowed: false, reason: 'worker 已关闭' }
     if (worker.paused) return { allowed: false, reason: 'worker 处于 /rex-pause 人工接管保护' }

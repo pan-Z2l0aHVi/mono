@@ -85,10 +85,12 @@ jobs:
         with:
           go-cache: 'true'
 
-      - name: Build WebView workspace dependencies
-        run: pnpm exec turbo build --filter=@greypan/interweave-frontend^...
+      - name: Build WebView frontend and dependencies
+        run: pnpm exec turbo build --filter=@greypan/interweave-frontend
 
       - name: Build native artifact
+        env:
+          SKIP_FRONTEND: '1'
         run: pnpm --filter @greypan/interweave run ${{ matrix.command }}
 
       - name: Check linked macOS SDK

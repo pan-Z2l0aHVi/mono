@@ -2,7 +2,7 @@ import { defineTurboInputs } from '@greypan/monorepo-kit'
 
 /**
  * 前端构建从 Go 工具链恢复生成物，缓存键必须覆盖 Go 源码、绑定生成器与 mise pin，
- * 又不能被文档和 Go 测试文件污染。判据在包里的隔离 workspace 副本上跑 Turbo dry-run，
+ * 又不能被文档、Go 测试文件和 bindings 生成物污染。判据在包里的隔离 workspace 副本上跑 Turbo dry-run，
  * 这里只给本仓的包名、目录与输入清单。
  */
 export const interweaveTurboInputs = defineTurboInputs({
@@ -47,6 +47,24 @@ export const interweaveTurboInputs = defineTurboInputs({
       contents: 'package backend\n\n// test input\n',
       label: 'Go *_test.go files',
       change: 'package backend\n\n// test-only change\n'
+    },
+    {
+      path: 'apps/interweave/frontend/bindings/service.ts',
+      contents: 'export const service = 1\n',
+      label: 'generated bindings',
+      change: 'export const service = 2\n'
+    },
+    {
+      path: 'apps/interweave/frontend/auto-imports.d.ts',
+      contents: 'export {}\n',
+      label: 'generated auto-import declarations',
+      change: 'export { foo }\n'
+    },
+    {
+      path: 'apps/interweave/frontend/typed-router.d.ts',
+      contents: 'export {}\n',
+      label: 'generated typed router declarations',
+      change: 'export { RouteNamedMap }\n'
     }
   ]
 })
