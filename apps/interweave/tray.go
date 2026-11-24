@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -21,9 +22,14 @@ func presentMainWindow(window *application.WebviewWindow) {
 }
 
 // handleWindowClose 决定窗口关闭请求是隐藏到系统托盘还是按默认路径退出。
-// 开启最小化到托盘时取消关闭事件并隐藏窗口，返回 true；否则放行关闭，返回 false。
-func handleWindowClose(minimizeToTray bool, cancel func(), hide func()) bool {
+// 开启最小化到托盘时取消关闭事件并隐藏窗口，返回 true；否则放行关闭并触发 quit，返回 false。
+// macOS 上为避免 window.Hide()（orderOut:）误触发 ApplicationShouldTerminateAfterLastWindowClosed，
+// 该选项必须保持关闭，因此未开启最小化到托盘时的退出由这里显式驱动。
+func handleWindowClose(minimizeToTray bool, cancel func(), hide func(), quit func()) bool {
 	if !minimizeToTray {
+		if quit != nil {
+			quit()
+		}
 		return false
 	}
 	if cancel != nil {
@@ -50,6 +56,54 @@ func buildTrayMenu(onShow func(), onQuit func()) *application.Menu {
 		}
 	})
 	return trayMenu
+}
+
+// trayHandle 抽象系统托盘的销毁能力，便于在单测中验证开关切换时的创建与移除时序。
+type trayHandle interface {
+	Destroy()
+}
+
+// systemTrayController 保证系统托盘的展示状态与「关闭时最小化到托盘」设置严格同步：
+// 每次 Sync 在锁内读取当前已提交的开关真值（避免并发保存时旧快照覆盖新状态）：
+// 开启且尚未创建时按需创建，关闭且已存在时立即移除，重复同步保持幂等。
+type systemTrayController struct {
+	mu      sync.Mutex
+	enabled func() bool
+	create  func() trayHandle
+	destroy func(trayHandle)
+	current trayHandle
+}
+
+func newSystemTrayController(enabled func() bool, create func() trayHandle, destroy func(trayHandle)) *systemTrayController {
+	return &systemTrayController{
+		enabled: enabled,
+		create:  create,
+		destroy: destroy,
+	}
+}
+
+func (c *systemTrayController) Sync() {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if c.enabled != nil && c.enabled() {
+		if c.current != nil || c.create == nil {
+			return
+		}
+		c.current = c.create()
+		return
+	}
+
+	if c.current == nil {
+		return
+	}
+	handle := c.current
+	c.current = nil
+	if c.destroy != nil {
+		c.destroy(handle)
+	} else {
+		handle.Destroy()
+	}
 }
 
 // setupSystemTray 创建并配置系统托盘图标、菜单与点击交互。
