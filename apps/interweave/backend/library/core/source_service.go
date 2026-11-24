@@ -80,7 +80,7 @@ func (s *SourceService) AddSource(ctx context.Context, resourceID string, srcTyp
 		return Source{}, fmt.Errorf("failed to add %s source: %w", sourceTypeLabel(srcType), err)
 	}
 
-	s.resyncIndex(ctx)
+	s.resyncIndex()
 	return s.getSource(ctx, result.sourceID)
 }
 
@@ -108,7 +108,7 @@ func (s *SourceService) ReplaceSource(ctx context.Context, sourceID string, inpu
 		return Source{}, fmt.Errorf("failed to replace source: %w", err)
 	}
 
-	s.resyncIndex(ctx)
+	s.resyncIndex()
 	return s.getSource(ctx, sourceID)
 }
 
@@ -197,7 +197,7 @@ func (s *SourceService) RemoveSource(ctx context.Context, sourceID string) (stri
 		return "", err
 	}
 
-	s.resyncIndex(ctx)
+	s.resyncIndex()
 	return resourceID, nil
 }
 

@@ -257,8 +257,11 @@ func (w *Watcher) Stop() {
 	})
 }
 
+// 编译期钉住 core 侧接缝的形状：*Watcher 直接满足 core.SourceIndexSync。
+var _ core.SourceIndexSync = (*Watcher)(nil)
+
 // RequestSync 非阻塞地请求一次全量对账：缓冲未满时投递，已满（尚有未消费的请求）
-// 直接丢弃，多次请求因此合并为一次。供 core 写路径经 AsyncIndexSync 调用，入口
+// 直接丢弃，多次请求因此合并为一次。供 core 写路径经 SourceIndexSync 直接调用，入口
 // 增删改绝不等待目录扫描；对账由 runReconcile 在自己的协程上执行。未启动时请求
 // 留在缓冲里待 Start 后消费，已停止后是没有消费者的无害投递。
 func (w *Watcher) RequestSync() {
@@ -266,31 +269,6 @@ func (w *Watcher) RequestSync() {
 	case w.syncCh <- struct{}{}:
 	default:
 	}
-}
-
-// AsyncIndexSync 把 core 的 SourceIndexSync 接缝桥接成 watcher 的非阻塞对账请求：
-// 入口集合增删改（core 写路径）不再同步执行 dirWatchCost 的目录扫描，
-// 全量对账由 watcher 的定期对账协程合并执行。
-type AsyncIndexSync struct {
-	watcher *Watcher
-}
-
-// 编译期钉住 core 侧接缝的形状：main.go 经 SetIndexSync 注入它。
-var _ core.SourceIndexSync = (*AsyncIndexSync)(nil)
-
-// NewAsyncIndexSync 用给定的 Watcher 构造适配器；watcher 为 nil 时 SyncSources 是空操作。
-func NewAsyncIndexSync(watcher *Watcher) *AsyncIndexSync {
-	return &AsyncIndexSync{watcher: watcher}
-}
-
-// SyncSources 实现 core.SourceIndexSync：只投递请求立即返回，永不阻塞调用方，
-// 也不返回对账错误——对账失败由 watcher 记日志，定期巡检兜底。
-func (s *AsyncIndexSync) SyncSources(context.Context) error {
-	if s == nil || s.watcher == nil {
-		return nil
-	}
-	s.watcher.RequestSync()
-	return nil
 }
 
 // canAfford 按 fd 预算判断能否承担一个新目录的监听。
@@ -551,12 +529,6 @@ func (w *Watcher) clearSuspect(path string) {
 // 由 gate 保证，这里不关心是否翻转。
 func (w *Watcher) applyAvailability(ctx context.Context, sourceID string, available bool) {
 	_, _ = w.gate.Report(ctx, sourceID, available)
-}
-
-// ReportFileUnavailable 让媒体 404 兜底与目录监听共用同一个写入口与发射出口：
-// 媒体路径不需要监听，两条信号都汇入 gate。返回值表示库内可用性是否真的翻转。
-func (w *Watcher) ReportFileUnavailable(ctx context.Context, sourceID string) (bool, error) {
-	return w.gate.ReportFileUnavailable(ctx, sourceID)
 }
 
 // runReconcile 定期全量对账，覆盖 fsnotify 静默丢失的 watch：
