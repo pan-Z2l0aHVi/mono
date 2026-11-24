@@ -56,15 +56,46 @@ export function createMetaLoader({ modules, resolve }: MetaLoaderOptions): MetaL
   return { loadMeta, loadMetaDocs }
 }
 
+import type { DemoThunk } from './codeblock'
+
+const resolvedDemos = new WeakMap<DemoThunk, unknown>()
+const pendingDemoLoads = new WeakMap<DemoThunk, Promise<unknown>>()
+
+/** 读取已预载完成的运行示例默认导出；未就绪时返回 undefined，供宿主决定同步或异步挂载。 */
+export function getResolvedDemo<T = unknown>(load: DemoThunk): T | undefined {
+  return resolvedDemos.get(load) as T | undefined
+}
+
+/** 加载并缓存单个运行示例的默认导出；同一 thunk 并发复用，失败不缓存以便重试。 */
+export function loadDemoModule<T = unknown>(load: DemoThunk): Promise<T> {
+  if (resolvedDemos.has(load)) return Promise.resolve(resolvedDemos.get(load) as T)
+  const inflight = pendingDemoLoads.get(load)
+  if (inflight) return inflight as Promise<T>
+  const pending = load()
+    .then(module => {
+      const resolved =
+        module !== null && typeof module === 'object' && 'default' in module
+          ? (module as { default: T }).default
+          : (module as T)
+      resolvedDemos.set(load, resolved)
+      return resolved
+    })
+    .finally(() => {
+      pendingDemoLoads.delete(load)
+    })
+  pendingDemoLoads.set(load, pending)
+  return pending
+}
+
 /**
- * 预载当前文档里带 `load` 的代码块，切语种提交前先把运行示例拉下来。
+ * 预载当前文档里带 `load` 的代码块，切语种或切路由提交前先把运行示例拉下来并写入同步缓存。
  * 没有 `load` 的围栏只是源码，不需要额外请求。
  */
 export async function prepareExamples(docs: MetaDocs): Promise<void> {
   const pending: Promise<unknown>[] = []
   for (const nodes of docs.values()) {
     for (const node of nodes) {
-      if (node.label === 'codeblock' && node.load) pending.push(node.load())
+      if (node.label === 'codeblock' && node.load) pending.push(loadDemoModule(node.load))
     }
   }
   await Promise.all(pending)

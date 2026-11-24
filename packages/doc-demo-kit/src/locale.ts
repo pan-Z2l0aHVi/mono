@@ -40,6 +40,8 @@ export interface LocaleController {
   register: (component: string) => () => void
   /** 页面切换后只为当前语种补载新组件。 */
   ensure: (component: string) => Promise<void>
+  /** 批量补载当前语种缺失的一组组件文档与运行示例（用于路由切换前预载）。 */
+  ensureAll: (components: readonly string[]) => Promise<void>
 }
 
 /** 准备当前页面所需资源，再同步发布语种和文档；失败保留已提交的视图。 */
@@ -72,16 +74,32 @@ export function createLocaleController(
    * 页面切换会带来已注册组件之外的新组件：语种提交只覆盖当时注册的那批，后来者由这里单独补齐。
    * 不在同一个语种里重复拉（缓存已经在 meta loader 一层做过，这里只是避免无谓的发布）。
    */
-  async function ensure(component: string) {
-    if (snapshot.docs.has(component)) return
+  async function ensureAll(components: readonly string[]): Promise<void> {
+    if (snapshot.pending) await latestRequest.catch(() => {})
+    const missing = [...new Set(components)].filter(component => !snapshot.docs.has(component))
+    if (missing.length === 0) return
+
     const locale = snapshot.locale
-    const loaded = await deps.loadDocs(locale, [component])
-    if (snapshot.locale !== locale) return
-    const doc = loaded.get(component)
-    if (!doc) return
-    await deps.prepareExamples(new Map([[component, doc]]))
-    if (snapshot.locale !== locale) return
-    publish({ ...snapshot, docs: new Map(snapshot.docs).set(component, doc) })
+    const loaded = await deps.loadDocs(locale, missing)
+    if (snapshot.locale !== locale) {
+      await ensureAll(components)
+      return
+    }
+    if (loaded.size === 0) return
+
+    await deps.prepareExamples(loaded)
+    if (snapshot.locale !== locale) {
+      await ensureAll(components)
+      return
+    }
+
+    const nextDocs = new Map(snapshot.docs)
+    for (const [component, doc] of loaded) nextDocs.set(component, doc)
+    publish({ ...snapshot, docs: nextDocs })
+  }
+
+  async function ensure(component: string) {
+    await ensureAll([component])
   }
   /*
    * 反复读 revision：注册发生在子组件的挂载期（React effect / Vue watchEffect），可能晚于本次装载，
@@ -175,7 +193,8 @@ export function createLocaleController(
     loadShellLocale,
     bootstrap,
     register,
-    ensure
+    ensure,
+    ensureAll
   }
 }
 

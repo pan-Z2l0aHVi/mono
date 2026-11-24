@@ -8,6 +8,7 @@ import {
   FLAVOR_ICON_CLASS,
   FLAVOR_LABELS,
   FLAVOR_ICONS,
+  getResolvedDemo,
   PACKAGE_MANAGER_ICONS,
   PEEK_HEIGHT,
   type CodeblockVariant,
@@ -23,7 +24,7 @@ import {
   lucideCopy
 } from '@greypan/web-ui/icons'
 import { OverlayScrollbarsComponent } from 'overlayscrollbars-vue'
-import { computed, defineAsyncComponent, onBeforeUnmount, shallowRef, useId, watch, type Component } from 'vue'
+import { computed, defineAsyncComponent, markRaw, onBeforeUnmount, shallowRef, useId, watch, type Component } from 'vue'
 
 import PressDrawIcon from '../PressDrawIcon.vue'
 
@@ -81,7 +82,12 @@ const flavor = computed(() => snapshot.value.flavor)
 const expanded = computed(() => snapshot.value.expanded)
 const active = computed(() => snapshot.value.active)
 const collapsible = computed(() => snapshot.value.collapsible)
-const demo = () => (props.preview && snapshot.value.preview?.load ? demoOf(snapshot.value.preview.load) : null)
+const demo = () => {
+  const load = snapshot.value.preview?.load
+  if (!props.preview || !load) return null
+  const resolved = getResolvedDemo<Component>(load)
+  return resolved ? markRaw(resolved) : demoOf(load)
+}
 const copied = computed(() => snapshot.value.copy.status)
 
 function selectFlavorFromEvent(event: Event) {

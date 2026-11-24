@@ -4,6 +4,8 @@ export interface NavItem {
   readonly label: string
   /** 中文关键词（按钮 / 输入框 …）：搜索用，不是渲染文案（wuchale 只扫宿主 src，见下）。 */
   readonly zhName: string
+  /** 该路由实际挂载的 ExampleDoc 组件列表；缺省时由路径尾段推导为 `[basename]`。 */
+  readonly docs?: readonly string[]
 }
 
 export type NavSectionId = 'general' | 'layout' | 'form' | 'display' | 'feedback'
@@ -18,13 +20,18 @@ export interface NavSection {
  * 文案进了共享包就既提取不到、也翻译不了。这里只给结构与顺序。
  */
 function section(id: NavSectionId, items: NavItem[]): NavSection {
-  return Object.freeze({ id, items: Object.freeze(items.map(item => Object.freeze(item))) })
+  return Object.freeze({
+    id,
+    items: Object.freeze(
+      items.map(item => Object.freeze(item.docs ? { ...item, docs: Object.freeze([...item.docs]) } : item))
+    )
+  })
 }
 
 /** 两端渲染的是同一份导航数据，冻结后一端误改会立即暴露，而不是静默改掉另一端的导航。 */
 export const NAV_SECTIONS: readonly NavSection[] = Object.freeze([
   section('general', [
-    { path: '/components/button', label: 'Button', zhName: '按钮' },
+    { path: '/components/button', label: 'Button', zhName: '按钮', docs: ['button', 'button-group'] },
     { path: '/components/icon', label: 'Icon', zhName: '图标' }
   ]),
   section('layout', [
@@ -36,13 +43,13 @@ export const NAV_SECTIONS: readonly NavSection[] = Object.freeze([
     { path: '/components/input', label: 'Input', zhName: '输入框' },
     { path: '/components/textarea', label: 'Textarea', zhName: '多行输入框' },
     { path: '/components/input-number', label: 'InputNumber', zhName: '数字输入框' },
-    { path: '/components/select', label: 'Select', zhName: '选择器' },
-    { path: '/components/autocomplete', label: 'Autocomplete', zhName: '自动补全' },
+    { path: '/components/select', label: 'Select', zhName: '选择器', docs: ['select', 'option'] },
+    { path: '/components/autocomplete', label: 'Autocomplete', zhName: '自动补全', docs: ['autocomplete', 'option'] },
     { path: '/components/switch', label: 'Switch', zhName: '开关' },
     { path: '/components/slider', label: 'Slider', zhName: '滑块' },
-    { path: '/components/radio', label: 'Radio', zhName: '单选' },
-    { path: '/components/checkbox', label: 'Checkbox', zhName: '复选' },
-    { path: '/components/segmented', label: 'Segmented', zhName: '分段控件' }
+    { path: '/components/radio', label: 'Radio', zhName: '单选', docs: ['radio', 'radio-group'] },
+    { path: '/components/checkbox', label: 'Checkbox', zhName: '复选', docs: ['checkbox', 'checkbox-group'] },
+    { path: '/components/segmented', label: 'Segmented', zhName: '分段控件', docs: ['segmented', 'segmented-trigger'] }
   ]),
   section('display', [
     { path: '/components/collapse', label: 'Collapse', zhName: '折叠' },
@@ -59,8 +66,18 @@ export const NAV_SECTIONS: readonly NavSection[] = Object.freeze([
     { path: '/components/drawer', label: 'Drawer', zhName: '抽屉' },
     { path: '/components/tooltip', label: 'Tooltip', zhName: '文字提示' },
     { path: '/components/popover', label: 'Popover', zhName: '弹出层' },
-    { path: '/components/dropdown', label: 'Dropdown', zhName: '下拉菜单' },
-    { path: '/components/context-menu', label: 'ContextMenu', zhName: '右键菜单' },
+    {
+      path: '/components/dropdown',
+      label: 'Dropdown',
+      zhName: '下拉菜单',
+      docs: ['dropdown', 'dropdown-item', 'dropdown-divider', 'dropdown-header']
+    },
+    {
+      path: '/components/context-menu',
+      label: 'ContextMenu',
+      zhName: '右键菜单',
+      docs: ['context-menu', 'dropdown-item', 'dropdown-divider', 'dropdown-header']
+    },
     { path: '/components/toast', label: 'Toast', zhName: '通知' },
     { path: '/components/image-preview', label: 'ImagePreview', zhName: '图片预览' },
     { path: '/components/shake', label: 'Shake', zhName: '抖动' },
@@ -68,6 +85,18 @@ export const NAV_SECTIONS: readonly NavSection[] = Object.freeze([
     { path: '/components/progress', label: 'Progress', zhName: '进度' }
   ])
 ])
+
+const ROUTE_DOCS_MAP = new Map<string, readonly string[]>(
+  NAV_SECTIONS.flatMap(s =>
+    s.items.map(item => [item.path, Object.freeze(item.docs ?? [item.path.split('/').at(-1)!])] as const)
+  )
+)
+
+/** 返回组件文档路由需要预载的 ExampleDoc 组件列表；非组件文档路由返回空数组。 */
+export function routeExampleDocs(pathname: string): readonly string[] {
+  const normalized = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname
+  return ROUTE_DOCS_MAP.get(normalized) ?? []
+}
 
 /** 章节标题的排版类；折叠时宿主自行追加 `sr-only`，只保留给读屏的标题。 */
 export const NAV_SECTION_TITLE_CLASS =

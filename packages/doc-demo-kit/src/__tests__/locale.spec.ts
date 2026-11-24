@@ -351,3 +351,35 @@ describe('本机语种判定', () => {
     ).toBe('zh-CN')
   })
 })
+
+describe('ensureAll 批量预载', () => {
+  it('批量装载缺失文档与示例并一次发布；已缓存组件不重复请求；失败向上抛错', async () => {
+    const { state, deps } = setup()
+    const groupDocs: MetaDocs = new Map([
+      ['button', [{ label: 'p', content: 'button' } as MetaNode]],
+      ['button-group', [{ label: 'p', content: 'button-group' } as MetaNode]]
+    ])
+    deps.loadDocs.mockImplementation(async (_locale, components) => {
+      const next = new Map<string, MetaNode[]>()
+      for (const component of components) {
+        const doc = groupDocs.get(component)
+        if (doc) next.set(component, doc)
+      }
+      return next
+    })
+
+    await state.ensureAll(['button', 'button-group', 'button'])
+    expect(deps.loadDocs).toHaveBeenCalledTimes(1)
+    expect(deps.loadDocs).toHaveBeenCalledWith('zh-CN', ['button', 'button-group'])
+    expect(deps.prepareExamples).toHaveBeenCalledTimes(1)
+    expect(state.getSnapshot().docs.has('button')).toBe(true)
+    expect(state.getSnapshot().docs.has('button-group')).toBe(true)
+
+    await state.ensureAll(['button', 'button-group'])
+    expect(deps.loadDocs).toHaveBeenCalledTimes(1)
+
+    deps.loadDocs.mockRejectedValueOnce(new Error('network error'))
+    await expect(state.ensureAll(['input'])).rejects.toThrow('network error')
+    expect(state.getSnapshot().docs.has('input')).toBe(false)
+  })
+})

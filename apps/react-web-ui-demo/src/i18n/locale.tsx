@@ -8,7 +8,7 @@ import {
   type LocaleDependencies
 } from '@greypan/doc-demo-kit'
 import type { MetaNode } from '@greypan/md-to-meta'
-import { createContext, useContext, useEffect, useMemo, useState, useSyncExternalStore, type ReactNode } from 'react'
+import { createContext, useContext, useEffect, useMemo, useSyncExternalStore, type ReactNode } from 'react'
 import { commitLocale, loadLocale } from 'wuchale/load-utils'
 
 import { loadMetaDocs, prepareExamples, type MetaDocs } from './examples'
@@ -58,11 +58,19 @@ function createDemoDependencies(): LocaleDependencies {
   }
 }
 
-export function LocaleProvider({ children }: { children: ReactNode }) {
-  // 首帧语种就按本机判定：子组件挂载时补载文档会直接命中正确语种，不会先拉一份再被切走。
-  const [controller] = useState<LocaleController>(() =>
-    createLocaleController(createDemoDependencies(), detectLocale())
-  )
+/** 共享语料控制器：路由守卫预载与 React 树内 LocaleProvider 读写同一份状态快照。 */
+export const localeController: LocaleController = createLocaleController(createDemoDependencies(), detectLocale())
+
+/** 路由切换前批量补载缺失的文档 meta 与运行示例。 */
+export const ensureExampleDocs = localeController.ensureAll
+
+export function LocaleProvider({
+  children,
+  controller = localeController
+}: {
+  children: ReactNode
+  controller?: LocaleController
+}) {
   // kit 约定：snapshot 整体引用只在 publish 时更换，`useSyncExternalStore` 按引用相等跳过无关渲染。
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot)
 

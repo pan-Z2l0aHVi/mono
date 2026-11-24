@@ -40,3 +40,4 @@ export const bootstrapLocale = controller.bootstrap
 export const bootDegraded = ref(false)
 export const registerExampleDoc = controller.register
 export const ensureExampleDoc = controller.ensure
+export const ensureExampleDocs = controller.ensureAll

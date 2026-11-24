@@ -1,14 +1,22 @@
-import { existsSync } from 'node:fs'
+import { existsSync, readdirSync, readFileSync } from 'node:fs'
 import path from 'node:path'
 
 import { describe, expect, it } from 'vite-plus/test'
 
-import { NAV_SECTIONS } from './nav'
+import { NAV_SECTIONS, routeExampleDocs } from './nav'
 
 /** 宿主注入的语料目录；kit 不硬编码仓库路径。 */
 export interface NavCorpusContractOptions {
   /** 语料目录（本仓是 `packages/web-ui/docs`），由宿主解析后传入。 */
   readonly docsDir: string
+}
+
+/** 宿主组件路由目录与文件后缀，用于校验路由源码与 `routeExampleDocs` 映射一致。 */
+export interface RouteExampleDocsContractOptions {
+  /** 组件路由所在目录（如 `apps/vue-web-ui-demo/src/pages/components`）。 */
+  readonly routesDir: string
+  /** 路由文件后缀（`.vue` 或 `.tsx`）。 */
+  readonly fileExtension: '.vue' | '.tsx'
 }
 
 /**
@@ -27,6 +35,27 @@ export function runNavCorpusContractTests({ docsDir }: NavCorpusContractOptions)
         const basename = navPath.split('/').at(-1)!
         expect(existsSync(path.join(docsDir, `${basename}.md`)), `${basename}.md 缺失`).toBe(true)
         expect(existsSync(path.join(docsDir, `${basename}.CN.md`)), `${basename}.CN.md 缺失`).toBe(true)
+      }
+    )
+  })
+}
+
+/**
+ * 校验宿主组件路由文件中的 `<ExampleDoc component="..." />` 声明与 `routeExampleDocs` 一致，
+ * 防止新增或修改子文档时路由预载清单漏掉组件导致白屏。
+ */
+export function runRouteExampleDocsContractTests({ routesDir, fileExtension }: RouteExampleDocsContractOptions): void {
+  const files = readdirSync(routesDir)
+    .filter(file => file.endsWith(fileExtension))
+    .sort()
+
+  describe('路由文档预载映射契约', () => {
+    it.each(files.map(file => [file.slice(0, -fileExtension.length), file] as const))(
+      '/components/%s 的 ExampleDoc 列表与 routeExampleDocs 一致',
+      (slug, file) => {
+        const source = readFileSync(path.join(routesDir, file), 'utf8')
+        const declared = [...source.matchAll(/<ExampleDoc\s+component="([^"]+)"/g)].map(match => match[1]!)
+        expect(routeExampleDocs(`/components/${slug}`)).toEqual(declared)
       }
     )
   })

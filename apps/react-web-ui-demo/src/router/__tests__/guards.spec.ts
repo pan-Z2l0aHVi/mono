@@ -1,3 +1,4 @@
+import { routeExampleDocs } from '@greypan/doc-demo-kit'
 import { createRouteProgressStarter } from '@greypan/route-progress'
 import { QueryClient } from '@tanstack/react-query'
 import { createMemoryHistory, createRootRouteWithContext, createRoute, createRouter } from '@tanstack/react-router'
@@ -12,10 +13,21 @@ interface TestRouterContext {
   queryClient: QueryClient
 }
 
-function setup() {
+function setup(ensureDocs: (docs: readonly string[]) => Promise<void> = async () => {}) {
   const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
   const progress = createRouteProgressStarter()
   const rootRoute = createRootRouteWithContext<TestRouterContext>()({
+    beforeLoad: async ({ location, preload }) => {
+      const docs = routeExampleDocs(location.pathname)
+      if (docs.length > 0) {
+        try {
+          await ensureDocs(docs)
+        } catch (error) {
+          if (preload) throw error
+          handleRouteLoadFailure(error, router)
+        }
+      }
+    },
     component: () => null
   })
   const homeRoute = createRoute({
@@ -26,6 +38,11 @@ function setup() {
   const otherRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/other',
+    component: () => null
+  })
+  const buttonRoute = createRoute({
+    getParentRoute: () => rootRoute,
+    path: '/components/button',
     component: () => null
   })
   const changelogRoute = createRoute({
@@ -44,7 +61,7 @@ function setup() {
   })
 
   const router = createRouter({
-    routeTree: rootRoute.addChildren([homeRoute, otherRoute, changelogRoute]),
+    routeTree: rootRoute.addChildren([homeRoute, otherRoute, buttonRoute, changelogRoute]),
     context: { queryClient },
     defaultPendingMs: Infinity,
     history: createMemoryHistory({ initialEntries: ['/home'] })
@@ -146,6 +163,47 @@ describe('react router progress & guards', () => {
 
     expect(router.state.resolvedLocation?.pathname).toBe('/other')
     expect(failures).toEqual([])
+    cleanup()
+  })
+
+  it('组件文档路由在文档与示例预载完毕后才提交，失败留在当前页，preload 不触发进度', async () => {
+    let resolveDocs!: () => void
+    const ensureDocs = vi.fn<(docs: readonly string[]) => Promise<void>>(
+      () =>
+        new Promise<void>(resolve => {
+          resolveDocs = resolve
+        })
+    )
+    const { router, progress, failures, cleanup } = setup(ensureDocs)
+    await router.load()
+    await vi.advanceTimersByTimeAsync(500)
+
+    const pending = router.navigate({ to: '/components/button' })
+    await vi.advanceTimersByTimeAsync(260)
+    expect(ensureDocs).toHaveBeenCalledWith(['button', 'button-group'])
+    expect(router.state.resolvedLocation?.pathname).toBe('/home')
+    expect(progress.getSnapshot().visible).toBe(true)
+
+    resolveDocs()
+    await pending
+    expect(router.state.resolvedLocation?.pathname).toBe('/components/button')
+    expect(['done', 'idle']).toContain(progress.getSnapshot().phase)
+    expect(failures).toEqual([])
+
+    ensureDocs.mockRejectedValueOnce(new Error('doc chunk error'))
+    await router.navigate({ to: '/home' })
+    await vi.advanceTimersByTimeAsync(500)
+    await router.navigate({ to: '/components/button' })
+    expect(router.state.location.pathname).toBe('/home')
+    expect(router.state.resolvedLocation?.pathname).toBe('/home')
+    expect(progress.getSnapshot().visible).toBe(false)
+    expect(failures).toHaveLength(1)
+
+    ensureDocs.mockRejectedValueOnce(new Error('preload doc error'))
+    await router.preloadRoute({ to: '/components/button' }).catch(() => {})
+    expect(failures).toHaveLength(1)
+    expect(progress.getSnapshot().visible).toBe(false)
+
     cleanup()
   })
 })

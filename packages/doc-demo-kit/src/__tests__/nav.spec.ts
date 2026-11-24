@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { isNavActive, NAV_SECTIONS } from '../nav'
+import { isNavActive, NAV_SECTIONS, routeExampleDocs } from '../nav'
 
 const COMPONENT_PATHS = [
   '/components/button',
@@ -50,12 +50,31 @@ describe('导航数据', () => {
 
   it('条目标签是组件名，两版都不译；zhName 是搜索关键词，不是渲染文案', () => {
     const items = NAV_SECTIONS.flatMap(section => section.items)
-    expect(items[0]).toEqual({ path: '/components/button', label: 'Button', zhName: '按钮' })
+    expect(items[0]).toEqual({
+      path: '/components/button',
+      label: 'Button',
+      zhName: '按钮',
+      docs: ['button', 'button-group']
+    })
     expect(items.at(-1)).toEqual({ path: '/components/progress', label: 'Progress', zhName: '进度' })
     for (const item of items) {
       expect(item.label.length).toBeGreaterThan(0)
       expect(item.zhName.length).toBeGreaterThan(0)
     }
+  })
+
+  it('routeExampleDocs 解析单/多文档路由并兼容尾斜杠', () => {
+    expect(routeExampleDocs('/components/button')).toEqual(['button', 'button-group'])
+    expect(routeExampleDocs('/components/button/')).toEqual(['button', 'button-group'])
+    expect(routeExampleDocs('/components/dropdown')).toEqual([
+      'dropdown',
+      'dropdown-item',
+      'dropdown-divider',
+      'dropdown-header'
+    ])
+    expect(routeExampleDocs('/components/input')).toEqual(['input'])
+    expect(routeExampleDocs('/home')).toEqual([])
+    expect(routeExampleDocs('/changelog')).toEqual([])
   })
 })
 
