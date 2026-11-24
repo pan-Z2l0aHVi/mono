@@ -70,13 +70,59 @@ const frontendTask =
 
 assert.ok(frontendTask, 'the shared Wails Taskfile must declare build:frontend')
 assert.match(frontendTask, /- task: generate:bindings/)
-assert.match(frontendTask, /pnpm run \{\{if eq \.DEV "true"\}\}build:bundle:dev\{\{else\}\}build:bundle\{\{end\}\}/)
-assert.doesNotMatch(frontendTask, /pnpm run \{\{if eq \.DEV "true"\}\}build:dev\{\{else\}\}build\{\{end\}\}/)
+// SKIP_FRONTEND 的 skip / fallback 两侧都由下面的真实 wails3 fixture 覆盖，不在这里绑定 shell 文本。
+// 判定与 bundle 都走 node -e + spawnSync：Windows 的 cmd.exe 不认识 POSIX 条件语法。
+assert.match(frontendTask, /node -e "const \{spawnSync\}/)
+assert.match(frontendTask, /process\.env\.SKIP_FRONTEND && require\('fs'\)\.existsSync\('dist\/index\.html'\)/)
+assert.match(frontendTask, /spawnSync\('pnpm', \['run', command\]/)
+assert.match(frontendTask, /shell: process\.platform === 'win32'/)
+assert.match(frontendTask, /PRODUCTION: '\{\{if eq \.DEV "true"\}\}false\{\{else\}\}true\{\{end\}\}'/)
+assert.doesNotMatch(frontendTask, /if \[ -n "\$SKIP_FRONTEND" \]/)
+assert.doesNotMatch(frontendTask, /\n {8}if:/)
 const bindingTaskStart = taskfile.indexOf('  generate:bindings:\n')
 const bindingTaskEnd = taskfile.indexOf('\n  generate:icons:', bindingTaskStart)
 const bindingTask = bindingTaskStart < 0 || bindingTaskEnd < 0 ? '' : taskfile.slice(bindingTaskStart, bindingTaskEnd)
 assert.match(bindingTask, /\n {4}run: once\n/)
 assert.doesNotMatch(bindingTask, /\n {4}(?:sources|generates):/)
+
+const appTurbo = JSON.parse(fs.readFileSync(path.join(repoRoot, 'apps/interweave/turbo.json'), 'utf8'))
+assert.deepEqual(appTurbo.tasks.build.outputs, ['bin/**'], 'the app build must not claim the frontend dist as output')
+const rootTurbo = JSON.parse(fs.readFileSync(path.join(repoRoot, 'turbo.json'), 'utf8'))
+assert.ok(rootTurbo.tasks.build.outputs.includes('dist/**'), 'the root build task must own dist/**')
+const frontendTurbo = JSON.parse(fs.readFileSync(path.join(repoRoot, 'apps/interweave/frontend/turbo.json'), 'utf8'))
+assert.equal(frontendTurbo.tasks.build.outputs, undefined, 'the frontend build must inherit the root dist/** output')
+assert.ok(
+  appTurbo.tasks.build.inputs.includes('!frontend/bindings/**'),
+  'the app build must exclude generated bindings from its hash'
+)
+assert.ok(
+  appTurbo.tasks.test.inputs.includes('!frontend/bindings/**'),
+  'the app test must exclude generated bindings from its hash'
+)
+for (const generated of ['frontend/auto-imports.d.ts', 'frontend/typed-router.d.ts']) {
+  for (const task of ['build', 'test']) {
+    assert.ok(
+      appTurbo.tasks[task].inputs.includes(`!${generated}`),
+      `the app ${task} must exclude ${generated} from its hash`
+    )
+  }
+}
+assert.ok(
+  frontendTurbo.tasks.build.inputs.includes('!**/bindings/**'),
+  'the frontend build must exclude generated bindings from its hash'
+)
+assert.ok(
+  frontendTurbo.tasks.test.inputs.includes('!**/bindings/**'),
+  'the frontend test must exclude generated bindings from its hash'
+)
+for (const generated of ['auto-imports.d.ts', 'typed-router.d.ts']) {
+  for (const task of ['build', 'test']) {
+    assert.ok(
+      frontendTurbo.tasks[task].inputs.includes(`!${generated}`),
+      `the frontend ${task} must exclude ${generated} from its hash`
+    )
+  }
+}
 
 const realBefore = hashTree(realBindings)
 
@@ -269,6 +315,11 @@ tasks:
     fs.writeFileSync(
       path.join(tools, 'node'),
       `#!/bin/sh
+# Taskfile 的 node -e 守卫交给真实 node 执行，只 stub 它调用的 pnpm：
+# skip / fallback 与 PRODUCTION 选择必须由 Taskfile 里的内联代码自身决定。
+if [ "$1" = "-e" ]; then
+  exec "$REAL_NODE" "$@"
+fi
 printf '%s\\n' "$*" >> "$GENERATOR_CALLS"
 mode=production
 for arg in "$@"; do
@@ -298,8 +349,10 @@ printf '%s|%s\\n' "$command" "$mode" >> "$BUNDLE_CALLS"
       XDG_CACHE_HOME: path.join(taskRoot, 'cache'),
       TMPDIR: path.join(taskRoot, 'tmp'),
       GENERATOR_CALLS: generatorCalls,
-      BUNDLE_CALLS: bundleCalls
+      BUNDLE_CALLS: bundleCalls,
+      REAL_NODE: process.execPath
     }
+    delete env.SKIP_FRONTEND
     fs.mkdirSync(env.XDG_CACHE_HOME, { recursive: true })
     fs.mkdirSync(env.TMPDIR, { recursive: true })
 
@@ -354,6 +407,47 @@ printf '%s|%s\\n' "$command" "$mode" >> "$BUNDLE_CALLS"
         fs.readFileSync(path.join(taskRoot, 'frontend/dist/bundle.txt'), 'utf8').trim(),
         'build:bundle|production',
         'multi-architecture dependencies must consume the current production bindings'
+      )
+
+      // turbo 已产出 dist 后，wails 内部 bundle 必须让位；但 bindings 依赖仍照常运行。
+      fs.writeFileSync(path.join(taskRoot, 'frontend/index.ts'), 'changed\n')
+      fs.writeFileSync(path.join(taskRoot, 'frontend/dist/index.html'), 'already built\n')
+      const generatorCallsBeforeSkip = fs.readFileSync(generatorCalls, 'utf8').trim().split('\n').length
+      const bundleCallsBeforeSkip = fs.readFileSync(bundleCalls, 'utf8').trim().split('\n').length
+      execFileSync(
+        'wails3',
+        ['task', 'common:build:frontend', 'BUILD_FLAGS=-tags production', 'DEV=false', 'OBFUSCATED=false'],
+        { cwd: taskRoot, env: { ...env, SKIP_FRONTEND: '1' }, encoding: 'utf8', stdio: 'pipe' }
+      )
+      assert.equal(
+        fs.readFileSync(bundleCalls, 'utf8').trim().split('\n').length,
+        bundleCallsBeforeSkip,
+        'a turbo-built dist must prevent the wails frontend bundle from running again'
+      )
+      assert.equal(
+        fs.readFileSync(generatorCalls, 'utf8').trim().split('\n').length,
+        generatorCallsBeforeSkip + 1,
+        'the bindings dependency must still run when the frontend bundle is skipped'
+      )
+
+      // 兜底：信号成立但 dist 已被移除时仍须照常 bundle，否则会把没有前端资源的二进制当成成功。
+      fs.rmSync(path.join(taskRoot, 'frontend/dist/index.html'))
+      const bundleCallsBeforeFallback = fs.readFileSync(bundleCalls, 'utf8').trim().split('\n').length
+      const generatorCallsBeforeFallback = fs.readFileSync(generatorCalls, 'utf8').trim().split('\n').length
+      execFileSync(
+        'wails3',
+        ['task', 'common:build:frontend', 'BUILD_FLAGS=-tags production', 'DEV=false', 'OBFUSCATED=false'],
+        { cwd: taskRoot, env: { ...env, SKIP_FRONTEND: '1' }, encoding: 'utf8', stdio: 'pipe' }
+      )
+      assert.equal(
+        fs.readFileSync(bundleCalls, 'utf8').trim().split('\n').length,
+        bundleCallsBeforeFallback + 1,
+        'a missing dist must still bundle the frontend even when SKIP_FRONTEND is set'
+      )
+      assert.equal(
+        fs.readFileSync(generatorCalls, 'utf8').trim().split('\n').length,
+        generatorCallsBeforeFallback + 1,
+        'the bindings dependency must run in the fallback path too'
       )
     } finally {
       fs.rmSync(taskRoot, { recursive: true, force: true })
