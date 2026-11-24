@@ -307,11 +307,10 @@ watch(
   </web-ui-layout>
 
   <!--
-    macOS 上窗口左上角那条 48px 高的空白是 aside 的 padding 区（给红绿灯留的位置），
-    web-ui-layout 的 shadow 里没有可挂载的元素，这里用一层透明覆盖把它声明成窗口拖动区：
-    红绿灯所在的一整条带子在任何页面都能拖窗口，与被拖动的 header 相邻。宽度跟随 aside，
-    高度与 `--wui-layout-sidebar-padding-top` 的 48px 一致；不覆盖内容区，也放行红绿灯
-    （那是原生 button，不在 web 层）。
+    macOS 上窗口左上角那条 40px 高的区域覆盖红绿灯所在带子（展开态落在侧边栏卡片顶部安全区，
+    收起态对应 `--wui-layout-sidebar-padding-top` 的 40px 顶部间隙），web-ui-layout 的 shadow 里
+    没有可挂载的元素，这里用一层透明覆盖把它声明成窗口拖动区：在任何页面都能拖窗口，与被拖动的
+    header 相邻。宽度跟随 aside；不覆盖内容区，也放行红绿灯（那是原生 button，不在 web 层）。
   -->
   <div
     v-if="isMac && !mobile"
