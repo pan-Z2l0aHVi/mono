@@ -70,10 +70,7 @@ const frontendTask =
 
 assert.ok(frontendTask, 'the shared Wails Taskfile must declare build:frontend')
 assert.match(frontendTask, /- task: generate:bindings/)
-assert.ok(
-  frontendTask.includes('[ -n "$SKIP_FRONTEND" ] && [ -f dist/index.html ]'),
-  'the shared build:frontend must reuse an existing dist when SKIP_FRONTEND is set'
-)
+// SKIP_FRONTEND 的 skip / fallback 两侧都由下面的真实 wails3 fixture 覆盖，不在这里绑定 shell 文本。
 assert.match(frontendTask, /pnpm run \{\{if eq \.DEV "true"\}\}build:bundle:dev\{\{else\}\}build:bundle\{\{end\}\}/)
 assert.doesNotMatch(frontendTask, /pnpm run \{\{if eq \.DEV "true"\}\}build:dev\{\{else\}\}build\{\{end\}\}/)
 const bindingTaskStart = taskfile.indexOf('  generate:bindings:\n')
@@ -81,6 +78,13 @@ const bindingTaskEnd = taskfile.indexOf('\n  generate:icons:', bindingTaskStart)
 const bindingTask = bindingTaskStart < 0 || bindingTaskEnd < 0 ? '' : taskfile.slice(bindingTaskStart, bindingTaskEnd)
 assert.match(bindingTask, /\n {4}run: once\n/)
 assert.doesNotMatch(bindingTask, /\n {4}(?:sources|generates):/)
+
+const appTurbo = JSON.parse(fs.readFileSync(path.join(repoRoot, 'apps/interweave/turbo.json'), 'utf8'))
+assert.deepEqual(appTurbo.tasks.build.outputs, ['bin/**'], 'the app build must not claim the frontend dist as output')
+const rootTurbo = JSON.parse(fs.readFileSync(path.join(repoRoot, 'turbo.json'), 'utf8'))
+assert.ok(rootTurbo.tasks.build.outputs.includes('dist/**'), 'the root build task must own dist/**')
+const frontendTurbo = JSON.parse(fs.readFileSync(path.join(repoRoot, 'apps/interweave/frontend/turbo.json'), 'utf8'))
+assert.equal(frontendTurbo.tasks.build.outputs, undefined, 'the frontend build must inherit the root dist/** output')
 
 const realBefore = hashTree(realBindings)
 
@@ -380,6 +384,26 @@ printf '%s|%s\\n' "$command" "$mode" >> "$BUNDLE_CALLS"
         fs.readFileSync(generatorCalls, 'utf8').trim().split('\n').length,
         generatorCallsBeforeSkip + 1,
         'the bindings dependency must still run when the frontend bundle is skipped'
+      )
+
+      // 兜底：信号成立但 dist 已被移除时仍须照常 bundle，否则会把没有前端资源的二进制当成成功。
+      fs.rmSync(path.join(taskRoot, 'frontend/dist/index.html'))
+      const bundleCallsBeforeFallback = fs.readFileSync(bundleCalls, 'utf8').trim().split('\n').length
+      const generatorCallsBeforeFallback = fs.readFileSync(generatorCalls, 'utf8').trim().split('\n').length
+      execFileSync(
+        'wails3',
+        ['task', 'common:build:frontend', 'BUILD_FLAGS=-tags production', 'DEV=false', 'OBFUSCATED=false'],
+        { cwd: taskRoot, env: { ...env, SKIP_FRONTEND: '1' }, encoding: 'utf8', stdio: 'pipe' }
+      )
+      assert.equal(
+        fs.readFileSync(bundleCalls, 'utf8').trim().split('\n').length,
+        bundleCallsBeforeFallback + 1,
+        'a missing dist must still bundle the frontend even when SKIP_FRONTEND is set'
+      )
+      assert.equal(
+        fs.readFileSync(generatorCalls, 'utf8').trim().split('\n').length,
+        generatorCallsBeforeFallback + 1,
+        'the bindings dependency must run in the fallback path too'
       )
     } finally {
       fs.rmSync(taskRoot, { recursive: true, force: true })

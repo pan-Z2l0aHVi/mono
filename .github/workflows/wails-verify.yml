@@ -85,7 +85,7 @@ jobs:
           go-cache: 'true'
 
       - name: Build WebView workspace dependencies
-        run: pnpm exec turbo build --filter=@greypan/interweave-frontend^...
+        run: pnpm exec turbo build --filter=@greypan/interweave-frontend
 
       - name: Build native artifact
         env:

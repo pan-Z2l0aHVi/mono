@@ -1538,6 +1538,21 @@ for (const file of ['wails-verify.yml', 'wails-release.yml']) {
     buildAt >= 0 && uploadAt >= 0 && buildAt < gateAt && gateAt < uploadAt,
     `${file} SDK gate must run between the native build and the artifact upload`
   )
+
+  // SKIP_FRONTEND 只在 dist 已存在时让 Taskfile 跳过 bundle：前置步骤必须真的构建 frontend 本体，
+  // 只构建它的依赖（^...）会让信号成为死开关，原生构建仍会重复 bundle。
+  const depsAt = workflowText[file].indexOf('      - name: Build WebView workspace dependencies\n')
+  assert.ok(depsAt >= 0 && depsAt < buildAt, `${file} frontend build must precede the native artifact build`)
+  assert.deepEqual(
+    runTexts(namedStep(workflowText[file], 'Build WebView workspace dependencies')),
+    ['pnpm exec turbo build --filter=@greypan/interweave-frontend'],
+    `${file} must build @greypan/interweave-frontend itself so its dist can be reused`
+  )
+  assert.match(
+    namedStep(workflowText[file], 'Build native artifact'),
+    /SKIP_FRONTEND: '1'/,
+    `${file} native build must consume the turbo-built frontend dist`
+  )
 }
 
 console.log('.github/scripts/lib/workflow-topology.test.mjs: all assertions passed')
