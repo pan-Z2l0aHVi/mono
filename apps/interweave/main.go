@@ -226,11 +226,15 @@ func main() {
 	})
 
 	window := app.Window.NewWithOptions(mainWindowOptions())
+	// Wails v3.1.0 中 SystemTray.New/SetIcon/SetTooltip/SetMenu 内部均已走 runOrDeferToAppRun
+	// 或 InvokeSync 跨线程安全执行；唯独 SystemTray.Destroy() 直接调 impl.destroy() 未包装
+	// InvokeSync，因此销毁路径由这里显式经 application.InvokeSync 切回主线程。
 	trayController := newSystemTrayController(
+		settingsService.MinimizeToTrayOnCloseEnabled,
 		func() trayHandle { return setupSystemTray(app, window) },
 		func(handle trayHandle) { application.InvokeSync(handle.Destroy) },
 	)
-	trayController.Sync(settingsService.MinimizeToTrayOnCloseEnabled())
+	trayController.Sync()
 	window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
 		handleWindowClose(
 			settingsService.MinimizeToTrayOnCloseEnabled(),
@@ -310,9 +314,9 @@ func main() {
 	// 菜单里有随设置出现/消失的整组条目，也有随页面与历史栈变化的置灰项，两者都走
 	// 同一个重建入口。设置监听在保存成功后同步触发；禁用集合由前端去重后上报，
 	// 服务侧再兜一次底，重建本身是幂等的。
-	settingsService.OnChange(func(next settings.Settings) {
+	settingsService.OnChange(func(settings.Settings) {
 		installMenu()
-		trayController.Sync(next.MinimizeToTrayOnClose)
+		trayController.Sync()
 	})
 	menuService.SetChangeHandler(installMenu)
 	settingsService.SetEmitter(func(snapshot settings.Snapshot) {
