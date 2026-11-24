@@ -1,6 +1,5 @@
 import type { AnyRouter } from '@tanstack/react-router'
 
-import { reportRouteFailure } from './progress'
 import type { routeProgress } from './progress'
 
 type Progress = typeof routeProgress
@@ -27,7 +26,7 @@ export function isRouteAbortError(error: unknown): error is RouteAbortError {
  *   `preloadRoute` 不 emit 该事件，因此 hover 意图预取不会触发顶部进度；
  *   `/` -> `/home` 重定向或快速连点连续触发 `onBeforeLoad` 时，新 `start` 自动覆盖旧 `navId`。
  * - 路由 `beforeLoad`/`loader` 失败时，若存在已就绪的旧位置（`resolvedLocation`），
- *   通过 `noteRouteLoadError` 记录并回退到原位置（留在当前页），由本收口器统一触发 `progress.fail` + `reportRouteFailure`。
+ *   通过 `noteRouteLoadError` 记录并回退到原位置（留在当前页），由本收口器统一触发 `progress.fail`。
  * - `onResolved`：检查 `matches` 是否存在 `status === 'error'` 区分 `done` 与 `fail`。
  */
 const routerAbortState = new WeakMap<
@@ -81,7 +80,6 @@ export function installRouterProgress(router: AnyRouter, progress: Progress) {
     if (id === 0 || settled.has(id)) return
     rememberSettled(id)
     progress.fail(id, error)
-    reportRouteFailure(error)
   }
 
   const state = {
