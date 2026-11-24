@@ -7,6 +7,7 @@ import {
   lucideChevronRight,
   lucideFile
 } from '@greypan/web-ui/icons'
+import { Virtualizer } from 'virtua/vue'
 import { computed, onBeforeUnmount, ref, watch } from 'vue'
 
 import { useLingering } from '@/composables/useLingering'
@@ -356,31 +357,41 @@ function submit() {
                 />
               </web-ui-empty>
             </div>
-            <div v-else :class="resourceDialogQueueClass">
-              <ol class="m-0 list-none p-0">
-                <RestoreRow
-                  v-for="item in column === 'pending' ? pendingItems : readyItems"
-                  :key="item.id"
-                  :item="item"
-                  :pending="column === 'pending'"
-                  :location="prepared[item.id] ?? ''"
-                  :preview="previews[item.id]"
-                  :source="previewSource(item.id)"
-                  :locked="locked"
-                  :active="activeItemId === item.id"
-                  @prepare="prepare(item)"
-                  @cancel-prepare="cancelPrepare(item)"
-                  @choose-candidates="candidateItem = item"
-                  :candidate-count="candidates[item.id]?.length ?? 0"
-                  :match-reasons="
-                    snapshots[item.id]
-                      ? (candidates[item.id]
-                          ?.find(candidate => candidate.path === prepared[item.id])
-                          ?.matchReasons.map(matchReason) ?? [])
-                      : []
-                  "
-                />
-              </ol>
+            <div v-else data-virtual-scrollport :class="resourceDialogQueueClass">
+              <Virtualizer
+                :data="column === 'pending' ? pendingItems : readyItems"
+                as="ol"
+                item="li"
+                :item-size="64"
+                :buffer-size="256"
+                :ssr-count="16"
+                class="m-0 list-none p-0"
+              >
+                <template #default="{ item, index }">
+                  <RestoreRow
+                    :key="item.id"
+                    :item="item"
+                    :pending="column === 'pending'"
+                    :location="prepared[item.id] ?? ''"
+                    :preview="previews[item.id]"
+                    :source="previewSource(item.id)"
+                    :locked="locked"
+                    :active="activeItemId === item.id"
+                    :is-last="index === (column === 'pending' ? pendingItems.length : readyItems.length) - 1"
+                    @prepare="prepare(item)"
+                    @cancel-prepare="cancelPrepare(item)"
+                    @choose-candidates="candidateItem = item"
+                    :candidate-count="candidates[item.id]?.length ?? 0"
+                    :match-reasons="
+                      snapshots[item.id]
+                        ? (candidates[item.id]
+                            ?.find(candidate => candidate.path === prepared[item.id])
+                            ?.matchReasons.map(matchReason) ?? [])
+                        : []
+                    "
+                  />
+                </template>
+              </Virtualizer>
             </div>
           </section>
           <div
@@ -395,7 +406,7 @@ function submit() {
       <div
         v-if="scanning || scanProgress || scanIncomplete"
         role="status"
-        class="mt-2 shrink-0 items-center gap-4 rounded-[18px] bg-[#eceef4] p-3 dark:bg-white/6"
+        class="mt-4 shrink-0 items-center gap-4 rounded-[18px] bg-[#eceef4] p-3 dark:bg-white/6"
         :class="[mobile ? 'block' : 'flex', { 'motion-reduced': !scanning }]"
       >
         <div class="flex min-w-0 flex-1 items-center gap-2">
@@ -424,16 +435,16 @@ function submit() {
             >已检查</span
           >
           <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
-            ><strong class="scan-shimmer font-mono text-sm tabular-nums text-(--wui-color-accent)">{{
-              Object.values(candidates).filter(items => items.length).length
-            }}</strong
-            >已找到</span
-          >
-          <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
             ><strong class="font-mono text-sm tabular-nums text-(--wui-color-text)">{{
               scanProgress?.skipped ?? 0
             }}</strong
             >已跳过</span
+          >
+          <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
+            ><strong class="scan-shimmer font-mono text-sm tabular-nums text-(--wui-color-accent)">{{
+              Object.values(candidates).filter(items => items.length).length
+            }}</strong
+            >已找到</span
           >
         </div>
       </div>

@@ -200,20 +200,32 @@ describe('AppLayout：应用外壳', () => {
     reportDisabled.mockClear()
   })
 
-  it.each([
-    ['darwin', true],
-    ['windows', false],
-    ['linux', false]
-  ])('仅 macOS 为系统窗口按钮留出顶部空间（%s）', async (os, expected) => {
+  it('macOS 侧边栏展开时贴顶容纳红绿灯，收起时才留出 40px 顶部间隙', async () => {
+    vi.stubGlobal('_wails', { environment: { OS: 'darwin' } })
+    await mountLayout()
+
+    expect([...layoutRoot().classList].some(name => name.startsWith('[--wui-layout-sidebar-padding-top:'))).toBe(false)
+    expect(navRoot().getAttribute('data-traffic-light-inset')).toBe('true')
+
+    layoutRoot().dispatchEvent(new CustomEvent('sidebar-collapsed-change', { detail: { collapsed: true } }))
+    await nextTick()
+
+    expect(layoutRoot().classList.contains('[--wui-layout-sidebar-padding-top:40px]')).toBe(true)
+    expect(navRoot().hasAttribute('data-traffic-light-inset')).toBe(false)
+  })
+
+  it.each(['windows', 'linux'])('非 macOS 平台无论展开还是收起都不加红绿灯顶距（%s）', async os => {
     vi.stubGlobal('_wails', { environment: { OS: os } })
     await mountLayout()
-    // class 文本锚是 jsdom 被迫：AppLayout 没有 browser spec，Tailwind arbitrary
-    // property 类也不经 shadow 样式表、jsdom 不加载应用层样式表，computed 值读不到。
-    // 锚有判别力（OS 翻转即红）；有 browser spec 后应换成 computed padding-top 的
-    // 行为对比再弃用这条锚。
-    expect([...layoutRoot().classList].some(name => name.startsWith('[--wui-layout-sidebar-padding-top:'))).toBe(
-      expected
-    )
+
+    expect([...layoutRoot().classList].some(name => name.startsWith('[--wui-layout-sidebar-padding-top:'))).toBe(false)
+    expect(navRoot().hasAttribute('data-traffic-light-inset')).toBe(false)
+
+    layoutRoot().dispatchEvent(new CustomEvent('sidebar-collapsed-change', { detail: { collapsed: true } }))
+    await nextTick()
+
+    expect([...layoutRoot().classList].some(name => name.startsWith('[--wui-layout-sidebar-padding-top:'))).toBe(false)
+    expect(navRoot().hasAttribute('data-traffic-light-inset')).toBe(false)
   })
 
   it('切路由不重建 layout 与 AppNav 实例', async () => {

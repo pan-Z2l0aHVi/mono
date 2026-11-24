@@ -34,6 +34,7 @@ func (h *wailsDesktopHost) UnMaximise()        { h.window.UnMaximise() }
 
 func (h *wailsDesktopHost) PresentWindow()  { presentMainWindow(h.window) }
 func (h *wailsDesktopHost) HideWindow()     { h.window.Hide() }
+func (h *wailsDesktopHost) QuitApp()        { go h.app.Quit() }
 func (h *wailsDesktopHost) ReloadWindow()   { h.window.Reload() }
 func (h *wailsDesktopHost) OpenDevTools()   { h.window.OpenDevTools() }
 func (h *wailsDesktopHost) ToggleMaximise() { h.window.ToggleMaximise() }

@@ -12,7 +12,15 @@
 import { spawn } from 'node:child_process'
 
 import type { PiExecOptions, PiExecResult } from './pi-types'
-import { parseBlockList, parseRunResult, type RexBlockInfo, type RexRunResult, type StatusChange } from './rex-events'
+import {
+  parseBlockList,
+  parseLastExit,
+  parseProgramStatus,
+  parseRunResult,
+  type RexBlockInfo,
+  type RexRunResult,
+  type StatusChange
+} from './rex-events'
 
 export type RexExec = (command: string, args: string[], options?: PiExecOptions) => Promise<PiExecResult>
 
@@ -139,17 +147,7 @@ export class RexAdapter {
       timeout: 15000
     })
     if (result.code !== 0) throw fail('block call process', result)
-    let parsed: unknown
-    try {
-      parsed = JSON.parse(result.stdout)
-    } catch {
-      throw new Error(`process 输出不是合法 JSON: ${result.stdout.slice(0, 200)}`)
-    }
-    const lastExit =
-      typeof parsed === 'object' && parsed !== null ? (parsed as { last_exit?: unknown }).last_exit : undefined
-    if (typeof lastExit !== 'object' || lastExit === null) return undefined
-    const exitCode = (lastExit as { exit_code?: unknown }).exit_code
-    return typeof exitCode === 'number' ? exitCode : undefined
+    return parseLastExit(result.stdout)
   }
 
   async blockClose(blockId: string): Promise<void> {
@@ -211,36 +209,4 @@ export class RexAdapter {
     child.stdin?.end()
     return { kill: () => child.kill('SIGTERM') }
   }
-}
-
-/** `rex block call program_status` 的响应（实测为 `{records:[{state,app,msg,...}]}`）。 */
-function parseProgramStatus(stdout: string): StatusChange[] {
-  let parsed: unknown
-  try {
-    parsed = JSON.parse(stdout)
-  } catch {
-    throw new Error(`program_status 输出不是合法 JSON: ${stdout.slice(0, 200)}`)
-  }
-  const records =
-    typeof parsed === 'object' && parsed !== null && Array.isArray((parsed as { records?: unknown }).records)
-      ? ((parsed as { records: unknown[] }).records as unknown[])
-      : []
-  const changes: StatusChange[] = []
-  for (const record of records) {
-    if (typeof record !== 'object' || record === null) continue
-    const entry = record as Record<string, unknown>
-    if (typeof entry.state !== 'string') continue
-    changes.push({
-      // 事件形态里 id 是 OSC 状态记录 id；call 响应里没有对应字段，用 app 兜底。
-      id: typeof entry.app === 'string' ? entry.app : 'unknown',
-      record: {
-        state: entry.state,
-        kind: typeof entry.kind === 'string' ? entry.kind : undefined,
-        msg: typeof entry.msg === 'string' ? entry.msg : undefined,
-        app: typeof entry.app === 'string' ? entry.app : undefined,
-        updatedAt: typeof entry.updated_at === 'string' ? entry.updated_at : undefined
-      }
-    })
-  }
-  return changes
 }

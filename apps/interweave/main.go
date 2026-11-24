@@ -11,14 +11,11 @@ import (
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
 
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library"
 	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
-	libraryMedia "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/media"
 	libraryService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service"
-	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
-	libraryWatch "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/watch"
 	menucontract "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu"
 	nativeService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service"
-	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/settings"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/internal/shell"
 )
@@ -98,6 +95,16 @@ func webviewUserDataDir(dir string) string {
 	return filepath.Join(dir, "webview")
 }
 
+// macOptions 集中声明 macOS 应用级选项，供测试直接校验：
+// ApplicationShouldTerminateAfterLastWindowClosed 必须为 false——设为 true 时，
+// window.Hide() 触发的 orderOut: 会被 AppKit 视为最后一个窗口关闭而直接终止应用，
+// 使「关闭时最小化到托盘」在 macOS 上失效。未开启托盘时的退出改由 WindowClosing 钩子显式驱动。
+func macOptions() application.MacOptions {
+	return application.MacOptions{
+		ApplicationShouldTerminateAfterLastWindowClosed: false,
+	}
+}
+
 // windowsOptions 把传给 application.New 的 Windows 配置锚定到数据目录，
 // 供测试断言 WebView2 用户数据确实来自当前 build tag 对应的目录。
 func windowsOptions(dir string) application.WindowsOptions {
@@ -107,18 +114,23 @@ func windowsOptions(dir string) application.WindowsOptions {
 }
 
 func main() {
+	if err := run(); err != nil {
+		log.Fatal(err)
+	}
+}
+
+func run() error {
 	version := appVersion(configYAML)
 
 	dir, err := dataDir()
 	if err != nil {
-		log.Fatalf("failed to prepare application data location: %v", err)
+		return fmt.Errorf("failed to prepare application data location: %w", err)
 	}
-	dbPath := filepath.Join(dir, "library.db")
 
 	// 设置要在建菜单之前读到：开发者选项决定菜单里出不出现那两项。
 	settingsStore, err := settings.NewStore(filepath.Join(dir, "settings.json"))
 	if err != nil {
-		log.Fatalf("failed to prepare settings location: %v", err)
+		return fmt.Errorf("failed to prepare settings location: %w", err)
 	}
 	initialSettings, settingsWarnings := settingsStore.Load()
 	for _, warning := range settingsWarnings {
@@ -128,54 +140,21 @@ func main() {
 	// 菜单可用性上报不属于设置：它不落盘、不跨会话，只描述菜单当下的呈现状态。
 	menuService := menucontract.NewService()
 
-	db, err := storage.Open(dbPath)
+	rt, err := library.NewRuntime(library.RuntimeOptions{DataDir: dir})
 	if err != nil {
-		log.Fatalf("failed to open database at %s: %v", dbPath, err)
+		return err
 	}
-	defer db.Close()
+	defer func() {
+		if err := rt.Close(); err != nil {
+			log.Printf("interweave: close library runtime failed: %v", err)
+		}
+	}()
 
-	fetcher := remote.NewFetcher()
-
-	coreResourceService := coreLibrary.NewResourceService(db, fetcher)
-	coreSourceService := coreLibrary.NewSourceService(db, fetcher)
-	coreTagService := coreLibrary.NewTagService(db)
-	coreMapService := coreLibrary.NewMapService(db)
-
-	pendingPreviews := libraryMedia.NewPendingPreviewRegistry()
-	resourceService := libraryService.NewResourceService(coreResourceService, pendingPreviews)
-	sourceService := libraryService.NewSourceService(coreSourceService, coreResourceService)
-	tagService := libraryService.NewTagService(coreTagService, coreResourceService)
-	mapService := libraryService.NewMapService(coreMapService)
+	resourceService := libraryService.NewResourceService(rt.ResourceService(), rt.PendingPreviews())
+	sourceService := libraryService.NewSourceService(rt.SourceService(), rt.ResourceService())
+	tagService := libraryService.NewTagService(rt.TagService(), rt.ResourceService())
+	mapService := libraryService.NewMapService(rt.MapService())
 	osService := nativeService.NewOSService()
-
-	// gate 恒存在：可用性写入口不依赖 fsnotify 是否可用，监听不可用时媒体 404 兜底照常
-	// 落库，只降级目录监听方向。事件出口要等 window 就绪才能确定，gate 未接线时只落库
-	// 不发事件；SetEmitter 必须在 watcher.Start 之前完成——watcher 的 goroutine 由 Start
-	// 创建，媒体回写 worker 读到的第一条消息必然来自 app.Run 之后建立的请求 goroutine。
-	gate := libraryWatch.NewAvailabilityGate(coreSourceService)
-	watcher, watchErr := libraryWatch.NewWatcher(gate)
-	if watchErr != nil {
-		log.Printf("interweave: file watch unavailable, availability relies on manual refresh: %v", watchErr)
-	}
-	// 缩略图缓存与库文件同级；目录建不出来只降级缩略图能力（读取一律 404，
-	// 前端回退原图），不影响媒体读取与库本身。
-	var thumbs *libraryMedia.ThumbnailStore
-	if store, err := libraryMedia.NewThumbnailStore(filepath.Join(dir, "thumbnails")); err != nil {
-		log.Printf("interweave: thumbnail cache unavailable: %v", err)
-	} else {
-		thumbs = store
-	}
-	mediaHandler := libraryMedia.NewHandler(storage.SourceStore{}, db.SqlDB(), pendingPreviews, thumbs, gate)
-	defer mediaHandler.Close()
-
-	// 启动清理一次过期版本：文件被外部改写或 Source 被删除后，旧文件名不会再生效。
-	// 失败只留垃圾不留错误，不阻塞启动；goroutine 由 StartPrune 纳入 ThumbnailStore
-	// 自身的 wg 与关停上下文，mediaHandler.Close() 统一取消并排空。
-	if thumbs != nil {
-		thumbs.StartPrune(func(ctx context.Context) ([]storage.SourceModel, error) {
-			return storage.SourceStore{}.ListFileSources(ctx, db.SqlDB())
-		})
-	}
 
 	// 仅暴露产品与受控原生能力，避免基础设施绕过后端边界。
 	app := application.New(application.Options{
@@ -193,16 +172,24 @@ func main() {
 		},
 		Assets: application.AssetOptions{
 			Handler:    application.AssetFileServerFS(assets),
-			Middleware: mediaHandler.Middleware,
+			Middleware: rt.MediaHandler().Middleware,
 		},
-		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
-		},
+		Mac:     macOptions(),
 		Windows: windowsOptions(dir),
 	})
 
 	window := app.Window.NewWithOptions(mainWindowOptions())
-	setupSystemTray(app, window)
+	// Wails v3.1.0 中 SystemTray.New/SetIcon/SetTooltip/SetMenu 内部均已走 runOrDeferToAppRun
+	// 或 InvokeSync 跨线程安全执行；唯独 SystemTray.Destroy() 直接调 impl.destroy() 未包装
+	// InvokeSync，因此销毁路径显式经 application.InvokeSync 切回主线程。
+	// 运行期由 OnChange 经 application.InvokeAsync 派发到主线程串行执行 Sync，
+	// 避免后台线程持有 trayController.mu 等待主线程而主线程反向等待同一把锁的死锁。
+	trayController := newSystemTrayController(
+		settingsService.MinimizeToTrayOnCloseEnabled,
+		func() trayHandle { return setupSystemTray(app, window) },
+		func(handle trayHandle) { application.InvokeSync(handle.Destroy) },
+	)
+	trayController.Sync()
 
 	desktopShell := shell.NewDesktopShell(
 		&wailsDesktopHost{app: app, window: window, osService: osService},
@@ -222,14 +209,17 @@ func main() {
 	})
 	// pending 预览的 LRU 驱逐只发生在后端，前端无从感知；被淘汰的 token 必须显式推给
 	// 窗口，否则预览 404 与「文件消失」在前端不可区分。
-	pendingPreviews.SetEvictHandler(func(token string) {
+	rt.SetPreviewEvictHandler(func(token string) {
 		window.EmitEvent(libraryService.PreviewRevokedEventName, []string{token})
 	})
 
 	desktopShell.SyncMenu()
 	// SyncMenu 在独立串行安装锁内回读最新规范化快照并比对：仅在菜单相关字段真实变化时
 	// 才重建原生菜单，避免 zoom / minimizeToTray 等无关设置变更误触发重建与并发乱序落盘。
-	settingsService.OnChange(func(settings.Settings) { desktopShell.SyncMenu() })
+	settingsService.OnChange(func(settings.Settings) {
+		desktopShell.SyncMenu()
+		application.InvokeAsync(trayController.Sync)
+	})
 	menuService.SetChangeHandler(func() { desktopShell.SyncMenu() })
 	settingsService.SetEmitter(func(snapshot settings.Snapshot) {
 		window.EmitEvent(settings.SettingsChangedEventName, snapshot)
@@ -254,29 +244,17 @@ func main() {
 		desktopShell.HandleLaunchedURL(event.Context().URL())
 	})
 
-	// watcher 不注册为 Wails Service（ADR-0008 §2 的暴露面 allowlist）：它是产品能力之外的
-	// 基础设施编排，只由 main.go 装配、由 OnShutdown 收尾。window 已就绪，接上事件出口，
-	// 且必须在 watcher.Start 之前（见上方 gate 的时序说明）。
-	gate.SetEmitter(func(change coreLibrary.AvailabilityChange) {
+	// 资源库后台管线不注册为 Wails Service（ADR-0008 §2 的暴露面 allowlist）：
+	// window 已就绪，先接上事件出口再 Start，由 OnShutdown + defer rt.Close() 双兜底排空。
+	rt.SetAvailabilityEmitter(func(change coreLibrary.AvailabilityChange) {
 		window.EmitEvent(libraryService.SourceAvailabilityEventName, libraryService.NewSourceAvailabilityEventDTO(change))
 	})
-	// 指纹回填是启动期后台补账，不在构造函数里隐藏调度。
-	db.ScheduleBackground("fingerprint:backfill", coreSourceService.BackfillFingerprints)
-	if watcher != nil {
-		// core 写路径的对账改走非阻塞请求：入口增删改不再同步执行 dirWatchCost 的
-		// 目录扫描（前台写路径不被 os.ReadDir 阻塞），对账由 watcher 的对账协程合并执行。
-		indexSync := libraryWatch.NewAsyncIndexSync(watcher)
-		coreSourceService.SetIndexSync(indexSync)
-		coreResourceService.SetIndexSync(indexSync)
-		if err := watcher.Start(context.Background()); err != nil {
-			log.Printf("interweave: failed to start file watch: %v", err)
+	rt.Start(context.Background())
+	app.OnShutdown(func() {
+		if err := rt.Close(); err != nil {
+			log.Printf("interweave: close library runtime failed: %v", err)
 		}
-		// 双保险：OnShutdown 覆盖正常退出，defer 覆盖 app.Run 返回错误的路径。
-		app.OnShutdown(watcher.Stop)
-		defer watcher.Stop()
-	}
+	})
 
-	if err := app.Run(); err != nil {
-		log.Fatal(err)
-	}
+	return app.Run()
 }

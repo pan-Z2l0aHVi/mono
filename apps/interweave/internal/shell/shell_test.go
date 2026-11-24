@@ -23,6 +23,7 @@ type fakeDesktopHost struct {
 	unmaximised  int
 	presented    int
 	hidden       int
+	quits        int
 	reloaded     int
 	devTools     int
 	toggledMax   int
@@ -83,6 +84,12 @@ func (f *fakeDesktopHost) HideWindow() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
 	f.hidden++
+}
+
+func (f *fakeDesktopHost) QuitApp() {
+	f.mu.Lock()
+	defer f.mu.Unlock()
+	f.quits++
 }
 
 func (f *fakeDesktopHost) ReloadWindow() {
@@ -316,8 +323,8 @@ func TestDesktopShellWindowClosingMinimizeToTray(t *testing.T) {
 	if !sh.HandleWindowClosing(func() { cancelled = true }) {
 		t.Fatal("expected HandleWindowClosing to intercept when minimizeToTray is enabled")
 	}
-	if !cancelled || host.hidden != 1 {
-		t.Fatalf("expected cancel=true and hidden=1, got cancel=%v hidden=%d", cancelled, host.hidden)
+	if !cancelled || host.hidden != 1 || host.quits != 0 {
+		t.Fatalf("expected cancel=true hidden=1 quits=0, got cancel=%v hidden=%d quits=%d", cancelled, host.hidden, host.quits)
 	}
 
 	state.minimizeToTray = false
@@ -325,8 +332,8 @@ func TestDesktopShellWindowClosingMinimizeToTray(t *testing.T) {
 	if sh.HandleWindowClosing(func() { cancelled = true }) {
 		t.Fatal("expected HandleWindowClosing to allow exit when minimizeToTray is disabled")
 	}
-	if cancelled || host.hidden != 1 {
-		t.Fatalf("expected no cancel/hide when disabled, got cancel=%v hidden=%d", cancelled, host.hidden)
+	if cancelled || host.hidden != 1 || host.quits != 1 {
+		t.Fatalf("expected cancel=false hidden=1 quits=1 when disabled, got cancel=%v hidden=%d quits=%d", cancelled, host.hidden, host.quits)
 	}
 }
 

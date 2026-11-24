@@ -286,7 +286,7 @@ import { lucideSearch } from '@greypan/web-ui/icons'
 
 `disabled` 与 `loading` 都会真正禁用控件：不派发 `click`，也退出 Tab 序。禁用态整体降到四成不透明度，没有悬停与按下态。
 
-非图标模式下 `loading` 在标签之前加一个 spinner，文字与前后缀照常显示，因此宽度会变。需要固定宽度时用图标模式。
+非图标模式下 `loading` 在标签之前渲染 spinner 并替换 `prefix` 插槽，文字与 `suffix` 照常显示；无前缀时宽度会变，需要固定宽度时用图标模式。
 
 `loading` 由页面持有：点「保存」进入加载态，点「结束等待」退出。
 

@@ -906,7 +906,11 @@ describe('LibraryPage：统一导入入口', () => {
 
       expect(expandImportEntries).toHaveBeenCalledWith(['/tmp/imports'])
       expect(queueItems(mounted.host)).toHaveLength(2)
-      expect(mounted.host.textContent).not.toContain('确认批量导入')
+      const openHeaders = [...mounted.host.querySelectorAll<HTMLElement>('web-ui-dialog')]
+        .filter(dialogOpen)
+        .map(dialog => dialog.querySelector('[slot="header"]')?.textContent?.trim())
+      expect(openHeaders).toContain('导入资源')
+      expect(openHeaders).not.toContain('批量导入')
     } finally {
       await mounted.close()
     }
@@ -950,7 +954,9 @@ describe('LibraryPage：统一导入入口', () => {
       }
       await flush()
       expect(dialogOpen(dialog)).toBe(false)
-      expect(queueItems(mounted.host)).toHaveLength(21)
+      expect(addDialog(mounted.host).textContent).toContain('21 项')
+      expect(queueItems(mounted.host).length).toBeGreaterThan(0)
+      expect(queueItems(mounted.host).length).toBeLessThan(21)
     } finally {
       await mounted.close()
     }
@@ -1279,7 +1285,9 @@ describe('LibraryPage：统一导入入口', () => {
       button(second, '导入 25 个文件').click()
       await flush()
 
-      expect(queueItems(mounted.host)).toHaveLength(46)
+      expect(addDialog(mounted.host).textContent).toContain('46 项')
+      expect(queueItems(mounted.host).length).toBeGreaterThan(0)
+      expect(queueItems(mounted.host).length).toBeLessThan(46)
       expect(dialogOpen(second)).toBe(false)
     } finally {
       await mounted.close()

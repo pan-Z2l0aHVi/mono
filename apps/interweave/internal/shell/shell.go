@@ -53,6 +53,7 @@ type DesktopHost interface {
 	DockDropSink
 
 	HideWindow()
+	QuitApp()
 	ReloadWindow()
 	OpenDevTools()
 	ToggleMaximise()
@@ -160,10 +161,13 @@ func (s *DesktopShell) applyZoom(change func(context.Context) error) {
 	}
 }
 
-// HandleWindowClosing 决定窗口关闭请求是隐藏到系统托盘还是按默认路径退出。
-// 开启最小化到托盘时取消关闭事件并隐藏窗口，返回 true；否则放行关闭，返回 false。
+// HandleWindowClosing 决定窗口关闭请求是隐藏到系统托盘还是显式退出。
+// 开启最小化到托盘时取消关闭事件并隐藏窗口，返回 true；否则放行关闭并触发宿主退出，返回 false。
+// macOS 上为避免 window.Hide() 误触发 ApplicationShouldTerminateAfterLastWindowClosed，
+// 该选项保持关闭，因此未开启最小化到托盘时的退出由这里显式驱动。
 func (s *DesktopShell) HandleWindowClosing(cancel func()) bool {
 	if !s.state.MinimizeToTrayOnCloseEnabled() {
+		s.host.QuitApp()
 		return false
 	}
 	if cancel != nil {

@@ -25,6 +25,13 @@ func TestWebviewUserDataDirUsesDataSubdirectory(t *testing.T) {
 	}
 }
 
+func TestMacOptionsAllowMinimizeToTrayWithoutTerminating(t *testing.T) {
+	opts := macOptions()
+	if opts.ApplicationShouldTerminateAfterLastWindowClosed {
+		t.Fatal("expected Mac.ApplicationShouldTerminateAfterLastWindowClosed to be false so window.Hide() does not terminate the app on macOS")
+	}
+}
+
 func TestWindowsOptionsAnchorWebView2ToTaggedDataDir(t *testing.T) {
 	dir, err := dataDirAt(t.TempDir())
 	if err != nil {
