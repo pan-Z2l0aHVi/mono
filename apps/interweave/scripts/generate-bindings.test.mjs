@@ -71,8 +71,13 @@ const frontendTask =
 assert.ok(frontendTask, 'the shared Wails Taskfile must declare build:frontend')
 assert.match(frontendTask, /- task: generate:bindings/)
 // SKIP_FRONTEND 的 skip / fallback 两侧都由下面的真实 wails3 fixture 覆盖，不在这里绑定 shell 文本。
-assert.match(frontendTask, /pnpm run \{\{if eq \.DEV "true"\}\}build:bundle:dev\{\{else\}\}build:bundle\{\{end\}\}/)
-assert.doesNotMatch(frontendTask, /pnpm run \{\{if eq \.DEV "true"\}\}build:dev\{\{else\}\}build\{\{end\}\}/)
+// 判定与 bundle 都走 node -e + spawnSync：Windows 的 cmd.exe 不认识 POSIX 条件语法。
+assert.match(frontendTask, /node -e "const \{spawnSync\}/)
+assert.match(frontendTask, /process\.env\.SKIP_FRONTEND && require\('fs'\)\.existsSync\('dist\/index\.html'\)/)
+assert.match(frontendTask, /spawnSync\('pnpm', \['run', command\]/)
+assert.match(frontendTask, /PRODUCTION: '\{\{if eq \.DEV "true"\}\}false\{\{else\}\}true\{\{end\}\}'/)
+assert.doesNotMatch(frontendTask, /if \[ -n "\$SKIP_FRONTEND" \]/)
+assert.doesNotMatch(frontendTask, /\n {8}if:/)
 const bindingTaskStart = taskfile.indexOf('  generate:bindings:\n')
 const bindingTaskEnd = taskfile.indexOf('\n  generate:icons:', bindingTaskStart)
 const bindingTask = bindingTaskStart < 0 || bindingTaskEnd < 0 ? '' : taskfile.slice(bindingTaskStart, bindingTaskEnd)
@@ -289,6 +294,13 @@ tasks:
     fs.writeFileSync(
       path.join(tools, 'node'),
       `#!/bin/sh
+# Taskfile 的 node -e 守卫：复用真实 pnpm stub 记录 bundle 调用。
+# PRODUCTION 由 Taskfile 的 env 注入，因此这里不必解析内联 JS。
+if [ "$1" = "-e" ]; then
+  if [ -n "\${SKIP_FRONTEND:-}" ] && [ -f dist/index.html ]; then exit 0; fi
+  if [ "\${PRODUCTION:-}" = "true" ]; then command=build:bundle; else command=build:bundle:dev; fi
+  exec pnpm run "$command"
+fi
 printf '%s\\n' "$*" >> "$GENERATOR_CALLS"
 mode=production
 for arg in "$@"; do

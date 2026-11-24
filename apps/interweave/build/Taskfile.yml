@@ -36,12 +36,17 @@ tasks:
       # 又会覆盖不属于 app build 缓存输出的 dist。SKIP_FRONTEND 由 turbo 路径注入；dist/index.html
       # 是兜底，信号成立但产物缺失时仍照常构建。go-task 的 deps 不受此守卫影响，bindings 仍会生成，
       # 而它已从两个 build 的 inputs 排除，不会改变下一次 turbo hash。
-      - |
-        if [ -n "$SKIP_FRONTEND" ] && [ -f dist/index.html ]; then
-          echo 'frontend bundle skipped: dist already built'
-        else
-          pnpm run {{if eq .DEV "true"}}build:bundle:dev{{else}}build:bundle{{end}}
-        fi
+      # 判定与 bundle 都由 node -e 驱动，而不是 POSIX `if [ ... ]`：Windows 的 cmd.exe 不认识 POSIX
+      # 条件语法；node 子进程用 spawnSync 启动 pnpm，两个平台共用同一段逻辑。
+      - cmd: >-
+          node -e "const {spawnSync} = require('child_process');
+          const command = process.env.PRODUCTION === 'true' ? 'build:bundle' : 'build:bundle:dev';
+          if (process.env.SKIP_FRONTEND && require('fs').existsSync('dist/index.html')) {
+          console.log('frontend bundle skipped: dist already built');
+          process.exit(0);
+          }
+          const result = spawnSync('pnpm', ['run', command], {stdio: 'inherit', shell: process.platform === 'win32'});
+          process.exit(result.status === null ? 1 : result.status)"
     env:
       PRODUCTION: '{{if eq .DEV "true"}}false{{else}}true{{end}}'
 
