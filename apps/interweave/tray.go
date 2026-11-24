@@ -21,9 +21,14 @@ func presentMainWindow(window *application.WebviewWindow) {
 }
 
 // handleWindowClose 决定窗口关闭请求是隐藏到系统托盘还是按默认路径退出。
-// 开启最小化到托盘时取消关闭事件并隐藏窗口，返回 true；否则放行关闭，返回 false。
-func handleWindowClose(minimizeToTray bool, cancel func(), hide func()) bool {
+// 开启最小化到托盘时取消关闭事件并隐藏窗口，返回 true；否则放行关闭并触发 quit，返回 false。
+// macOS 上为避免 window.Hide()（orderOut:）误触发 ApplicationShouldTerminateAfterLastWindowClosed，
+// 该选项必须保持关闭，因此未开启最小化到托盘时的退出由这里显式驱动。
+func handleWindowClose(minimizeToTray bool, cancel func(), hide func(), quit func()) bool {
 	if !minimizeToTray {
+		if quit != nil {
+			quit()
+		}
 		return false
 	}
 	if cancel != nil {

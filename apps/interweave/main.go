@@ -98,6 +98,16 @@ func webviewUserDataDir(dir string) string {
 	return filepath.Join(dir, "webview")
 }
 
+// macOptions 集中声明 macOS 应用级选项，供测试直接校验：
+// ApplicationShouldTerminateAfterLastWindowClosed 必须为 false——设为 true 时，
+// window.Hide() 触发的 orderOut: 会被 AppKit 视为最后一个窗口关闭而直接终止应用，
+// 使「关闭时最小化到托盘」在 macOS 上失效。未开启托盘时的退出改由 WindowClosing 钩子显式驱动。
+func macOptions() application.MacOptions {
+	return application.MacOptions{
+		ApplicationShouldTerminateAfterLastWindowClosed: false,
+	}
+}
+
 // windowsOptions 把传给 application.New 的 Windows 配置锚定到数据目录，
 // 供测试断言 WebView2 用户数据确实来自当前 build tag 对应的目录。
 func windowsOptions(dir string) application.WindowsOptions {
@@ -211,18 +221,19 @@ func main() {
 			Handler:    application.AssetFileServerFS(assets),
 			Middleware: mediaHandler.Middleware,
 		},
-		Mac: application.MacOptions{
-			ApplicationShouldTerminateAfterLastWindowClosed: true,
-		},
+		Mac:     macOptions(),
 		Windows: windowsOptions(dir),
 	})
 
 	window := app.Window.NewWithOptions(mainWindowOptions())
 	setupSystemTray(app, window)
 	window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
-		handleWindowClose(settingsService.MinimizeToTrayOnCloseEnabled(), event.Cancel, func() {
-			window.Hide()
-		})
+		handleWindowClose(
+			settingsService.MinimizeToTrayOnCloseEnabled(),
+			event.Cancel,
+			func() { window.Hide() },
+			func() { go app.Quit() },
+		)
 	})
 	app.Event.OnApplicationEvent(events.Mac.ApplicationShouldHandleReopen, func(_ *application.ApplicationEvent) {
 		presentMainWindow(window)

@@ -11,11 +11,13 @@ func TestTrayIconEmbedded(t *testing.T) {
 func TestHandleWindowCloseMinimizesToTrayWhenEnabled(t *testing.T) {
 	cancelled := false
 	hidden := false
+	quit := false
 
 	handled := handleWindowClose(
 		true,
 		func() { cancelled = true },
 		func() { hidden = true },
+		func() { quit = true },
 	)
 
 	if !handled {
@@ -27,16 +29,21 @@ func TestHandleWindowCloseMinimizesToTrayWhenEnabled(t *testing.T) {
 	if !hidden {
 		t.Fatal("expected window to be hidden when minimizeToTray is enabled")
 	}
+	if quit {
+		t.Fatal("expected app not to quit when minimizeToTray is enabled")
+	}
 }
 
 func TestHandleWindowCloseAllowsExitWhenDisabled(t *testing.T) {
 	cancelled := false
 	hidden := false
+	quit := false
 
 	handled := handleWindowClose(
 		false,
 		func() { cancelled = true },
 		func() { hidden = true },
+		func() { quit = true },
 	)
 
 	if handled {
@@ -44,5 +51,8 @@ func TestHandleWindowCloseAllowsExitWhenDisabled(t *testing.T) {
 	}
 	if cancelled || hidden {
 		t.Fatalf("expected neither cancel nor hide when disabled, got cancelled=%v hidden=%v", cancelled, hidden)
+	}
+	if !quit {
+		t.Fatal("expected app to quit when minimizeToTray is disabled")
 	}
 }
