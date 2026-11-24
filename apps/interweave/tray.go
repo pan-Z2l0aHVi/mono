@@ -2,6 +2,7 @@ package main
 
 import (
 	_ "embed"
+	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
@@ -55,6 +56,51 @@ func buildTrayMenu(onShow func(), onQuit func()) *application.Menu {
 		}
 	})
 	return trayMenu
+}
+
+// trayHandle 抽象系统托盘的销毁能力，便于在单测中验证开关切换时的创建与移除时序。
+type trayHandle interface {
+	Destroy()
+}
+
+// systemTrayController 保证系统托盘的展示状态与「关闭时最小化到托盘」设置严格同步：
+// 开启且尚未创建时按需创建，关闭且已存在时立即移除，重复同步保持幂等。
+type systemTrayController struct {
+	mu      sync.Mutex
+	create  func() trayHandle
+	destroy func(trayHandle)
+	current trayHandle
+}
+
+func newSystemTrayController(create func() trayHandle, destroy func(trayHandle)) *systemTrayController {
+	return &systemTrayController{
+		create:  create,
+		destroy: destroy,
+	}
+}
+
+func (c *systemTrayController) Sync(enabled bool) {
+	c.mu.Lock()
+	defer c.mu.Unlock()
+
+	if enabled {
+		if c.current != nil || c.create == nil {
+			return
+		}
+		c.current = c.create()
+		return
+	}
+
+	if c.current == nil {
+		return
+	}
+	handle := c.current
+	c.current = nil
+	if c.destroy != nil {
+		c.destroy(handle)
+	} else {
+		handle.Destroy()
+	}
 }
 
 // setupSystemTray 创建并配置系统托盘图标、菜单与点击交互。
