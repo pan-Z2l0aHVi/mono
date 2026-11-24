@@ -17,12 +17,13 @@ defineProps<{
   active: boolean
   candidateCount: number
   matchReasons: string[]
+  isLast?: boolean
 }>()
 const emit = defineEmits<{ prepare: []; cancelPrepare: []; chooseCandidates: [] }>()
 </script>
 
 <template>
-  <li :class="resourceDialogRowClass">
+  <div data-dialog-row :class="[resourceDialogRowClass, isLast ? 'after:hidden' : '']">
     <ResourceThumbnail
       :kind="!pending && preview ? preview.kind : item.resourceKind"
       :source="pending || item.kind === 'url' ? (item.source ?? null) : source"
@@ -71,5 +72,5 @@ const emit = defineEmits<{ prepare: []; cancelPrepare: []; chooseCandidates: [] 
         />
       </web-ui-button>
     </web-ui-tooltip>
-  </li>
+  </div>
 </template>

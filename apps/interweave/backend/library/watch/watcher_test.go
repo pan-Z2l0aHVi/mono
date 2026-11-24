@@ -395,10 +395,10 @@ func TestWatcherRequestSyncCoalescesDuringRunningPass(t *testing.T) {
 	waitForStableCount(t, sink.locationCallCount, 3, 300*time.Millisecond)
 }
 
-// AsyncIndexSync 是 main.go 注入 core 的适配器：SyncSources 只投递请求立即返回
+// *Watcher 直接实现 core.SourceIndexSync：RequestSync 只投递请求立即返回
 // （未启动的 watcher 上也不阻塞、不同步对账），对账在 watcher 启动后由
 // runReconcile 合并补上。
-func TestAsyncIndexSyncRequestsNonBlockingReconcile(t *testing.T) {
+func TestWatcherImplementsSourceIndexSyncNonBlocking(t *testing.T) {
 	fs := newFakeFS()
 	useFakeFS(t, fs)
 	sink := newFakeSink([]string{"/library/bridged/one.mp4"})
@@ -408,15 +408,11 @@ func TestAsyncIndexSyncRequestsNonBlockingReconcile(t *testing.T) {
 	}
 	t.Cleanup(watcher.Stop)
 
-	var indexSync core.SourceIndexSync = NewAsyncIndexSync(watcher)
-	if err := indexSync.SyncSources(context.Background()); err != nil {
-		t.Fatalf("adapter SyncSources must always succeed: %v", err)
-	}
-	if err := indexSync.SyncSources(context.Background()); err != nil {
-		t.Fatalf("adapter SyncSources must always succeed: %v", err)
-	}
+	var indexSync core.SourceIndexSync = watcher
+	indexSync.RequestSync()
+	indexSync.RequestSync()
 	if got := sink.locationCallCount(); got != 0 {
-		t.Fatalf("adapter must not reconcile synchronously, got %d listing calls", got)
+		t.Fatalf("RequestSync must not reconcile synchronously, got %d listing calls", got)
 	}
 
 	if err := watcher.Start(context.Background()); err != nil {

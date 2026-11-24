@@ -43,9 +43,11 @@ type Handler struct {
 	thumbs   *ThumbnailStore
 	reporter AvailabilityReporter
 
-	unavailableCh  chan string
-	closeOnce      sync.Once
-	drainCompleted chan struct{}
+	unavailableMu     sync.Mutex
+	unavailableClosed bool
+	unavailableCh     chan string
+	closeOnce         sync.Once
+	drainCompleted    chan struct{}
 }
 
 // statFile 允许单测注入 stat 错误：以 root 或属主身份运行时 chmod 拦不住权限错误，
@@ -70,7 +72,12 @@ func NewHandler(sources sourceStore, query storage.Queryer, previews *PendingPre
 // 排空在途构建与启动期 Prune。main.go 的 defer 是 LIFO：本方法先于 db.Close() 执行，
 // 因此排空严格发生在数据库关闭之前。
 func (h *Handler) Close() {
-	h.closeOnce.Do(func() { close(h.unavailableCh) })
+	h.closeOnce.Do(func() {
+		h.unavailableMu.Lock()
+		h.unavailableClosed = true
+		close(h.unavailableCh)
+		h.unavailableMu.Unlock()
+	})
 	<-h.drainCompleted
 	if h.thumbs != nil {
 		h.thumbs.Close()
@@ -278,6 +285,11 @@ func (h *Handler) serveLocalFileForSource(w http.ResponseWriter, r *http.Request
 
 func (h *Handler) enqueueUnavailable(sourceID string) {
 	if h.reporter == nil {
+		return
+	}
+	h.unavailableMu.Lock()
+	defer h.unavailableMu.Unlock()
+	if h.unavailableClosed {
 		return
 	}
 	select {
