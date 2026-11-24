@@ -16,6 +16,19 @@
         "!**/*_test.go"
       ],
       "outputs": ["bin/**"]
+    },
+    "test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!frontend/bindings/**",
+        "!docs/**",
+        "!**/*.md",
+        "!**/*.spec.ts",
+        "!**/*.spec.mjs",
+        "!**/*.test.ts",
+        "!**/*.test.mjs",
+        "!**/__tests__/**"
+      ]
     }
   }
 }

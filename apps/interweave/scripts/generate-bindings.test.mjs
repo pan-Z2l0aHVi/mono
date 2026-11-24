@@ -96,6 +96,10 @@ assert.ok(
   'the app build must exclude generated bindings from its hash'
 )
 assert.ok(
+  appTurbo.tasks.test.inputs.includes('!frontend/bindings/**'),
+  'the app test must exclude generated bindings from its hash'
+)
+assert.ok(
   frontendTurbo.tasks.build.inputs.includes('!**/bindings/**'),
   'the frontend build must exclude generated bindings from its hash'
 )
