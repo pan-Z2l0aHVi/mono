@@ -228,7 +228,9 @@ func main() {
 	window := app.Window.NewWithOptions(mainWindowOptions())
 	// Wails v3.1.0 中 SystemTray.New/SetIcon/SetTooltip/SetMenu 内部均已走 runOrDeferToAppRun
 	// 或 InvokeSync 跨线程安全执行；唯独 SystemTray.Destroy() 直接调 impl.destroy() 未包装
-	// InvokeSync，因此销毁路径由这里显式经 application.InvokeSync 切回主线程。
+	// InvokeSync，因此销毁路径显式经 application.InvokeSync 切回主线程。
+	// 运行期由 OnChange 经 application.InvokeAsync 派发到主线程串行执行 Sync，
+	// 避免后台线程持有 trayController.mu 等待主线程而主线程反向等待同一把锁的死锁。
 	trayController := newSystemTrayController(
 		settingsService.MinimizeToTrayOnCloseEnabled,
 		func() trayHandle { return setupSystemTray(app, window) },
@@ -316,7 +318,7 @@ func main() {
 	// 服务侧再兜一次底，重建本身是幂等的。
 	settingsService.OnChange(func(settings.Settings) {
 		installMenu()
-		trayController.Sync()
+		application.InvokeAsync(trayController.Sync)
 	})
 	menuService.SetChangeHandler(installMenu)
 	settingsService.SetEmitter(func(snapshot settings.Snapshot) {
