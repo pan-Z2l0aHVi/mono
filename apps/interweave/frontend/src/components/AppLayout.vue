@@ -65,6 +65,15 @@ const sidebarWidth = computed(() => (mobile.value ? 'min(320px, 80vw)' : desktop
  */
 const navCollapsed = computed(() => sidebarCollapsed.value && !mobile.value)
 
+/*
+ * macOS 侧边栏与红绿灯的关系随展开/收起切换：
+ * - 展开态（含移动端 Drawer）：侧边栏卡片使用默认 8px 悬浮顶边距，高度贴顶以容纳左上角红绿灯，
+ *   导航项通过 AppNav 的 trafficLightInset 在红绿灯下方起始；
+ * - 桌面收起态（60px 宽，放不下红绿灯）：侧边栏卡片顶部留出 48px 间隙以绕开红绿灯。
+ */
+const macCollapsedSidebarGap = computed(() => isMac && sidebarCollapsed.value && !mobile.value)
+const macExpandedTrafficLightInset = computed(() => isMac && !navCollapsed.value)
+
 function updateSidebarCollapsed(event: WebUiEvent<WebUiLayout, 'sidebar-collapsed-change'>) {
   sidebarCollapsed.value = event.detail.collapsed
 }
@@ -268,7 +277,8 @@ watch(
     collapsedWidth="60px"
     class="min-h-dvh overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-mobile-toggle-top:12px] mobile:[--wui-layout-sidebar-content-padding:8px_20px_8px_8px] mobile:[--wui-layout-sidebar-radius:calc(18px_+_8px)]"
     :class="{
-      '[--wui-layout-sidebar-padding-top:48px] mobile:[--wui-layout-mobile-toggle-left:96px]': isMac,
+      '[--wui-layout-sidebar-padding-top:48px]': macCollapsedSidebarGap,
+      'mobile:[--wui-layout-mobile-toggle-left:96px]': isMac,
       'mobile:[--wui-layout-mobile-toggle-left:12px]': !isMac
     }"
     :mobile="mobile"
@@ -283,6 +293,7 @@ watch(
       slot="sidebar"
       :collapsed="navCollapsed"
       :mobile="mobile"
+      :traffic-light-inset="macExpandedTrafficLightInset"
       @navigate="closeSidebar"
       @open-settings="settingsOpen = true"
     />
