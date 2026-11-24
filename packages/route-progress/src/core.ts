@@ -28,6 +28,7 @@ export interface RouteProgressCore {
   done: (navId: number | string) => void
   fail: (navId: number | string, error: unknown) => void
   subscribe: (listener: () => void) => () => void
+  onFailure: (listener: (error: unknown) => void) => () => void
   getSnapshot: () => RouteProgressSnapshot
 }
 
@@ -47,6 +48,7 @@ export function defineRouteProgressCore(options: RouteProgressOptions = {}) {
       let resetTimer: unknown
       let trickleTimer: unknown
       const listeners = new Set<() => void>()
+      const failureListeners = new Set<(error: unknown) => void>()
 
       const set = (next: RouteProgressSnapshot) => {
         if (next.phase === snapshot.phase && next.visible === snapshot.visible && next.value === snapshot.value) {
@@ -140,7 +142,7 @@ export function defineRouteProgressCore(options: RouteProgressOptions = {}) {
               }, resetHold)
             }, wait)
           },
-          fail(navId) {
+          fail(navId, error) {
             if (navId !== currentId) return
             clearShow()
             clearReset()
@@ -148,6 +150,13 @@ export function defineRouteProgressCore(options: RouteProgressOptions = {}) {
             clearHide()
             // 错误反馈由 toast 承担，顶部条立即隐藏；error 相位保留到下一次 start。
             set({ phase: 'error', visible: false, value: 0 })
+            for (const listener of failureListeners) listener(error)
+          },
+          onFailure(listener) {
+            failureListeners.add(listener)
+            return () => {
+              failureListeners.delete(listener)
+            }
           },
           subscribe(listener) {
             listeners.add(listener)

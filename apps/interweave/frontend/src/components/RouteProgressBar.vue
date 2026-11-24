@@ -2,7 +2,7 @@
 import { toast } from '@greypan/web-ui'
 import { onScopeDispose, shallowRef } from 'vue'
 
-import { onRouteFailure, routeProgress } from '@/router/progress'
+import { routeProgress } from '@/router/progress'
 
 // 直接订阅外部 store：进度状态不进 pinia，也不引入额外状态库。
 const snapshot = shallowRef(routeProgress.getSnapshot())
@@ -10,7 +10,7 @@ const stopProgress = routeProgress.subscribe(() => {
   snapshot.value = routeProgress.getSnapshot()
 })
 // 失败反馈走 toast：顶部条在失败时立即收起，避免残留误导。
-const stopFailure = onRouteFailure(() => {
+const stopFailure = routeProgress.onFailure(() => {
   toast.error('页面加载失败，请重试')
 })
 onScopeDispose(() => {
