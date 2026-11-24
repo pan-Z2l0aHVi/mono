@@ -5,6 +5,7 @@
     "build": {
       "inputs": [
         "$TURBO_DEFAULT$",
+        "!frontend/bindings/**",
         "!docs/**",
         "!**/*.md",
         "!**/*.spec.ts",

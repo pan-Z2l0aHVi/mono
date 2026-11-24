@@ -5,6 +5,7 @@
     "build": {
       "inputs": [
         "$TURBO_DEFAULT$",
+        "!**/bindings/**",
         "!**/*.md",
         "!**/*.spec.ts",
         "!**/*.spec.mjs",
@@ -22,6 +23,7 @@
       "dependsOn": ["^build", "build"],
       "inputs": [
         "$TURBO_DEFAULT$",
+        "!**/bindings/**",
         "!**/*.md",
         "$TURBO_ROOT$/apps/interweave/**/*.go",
         "!$TURBO_ROOT$/apps/interweave/**/*_test.go",
