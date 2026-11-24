@@ -72,7 +72,7 @@ func TestRuntimeConcurrentServeHTTP404AndClose(t *testing.T) {
 	if err := os.WriteFile(missingFile, []byte("0123456789"), 0o600); err != nil {
 		t.Fatalf("write media fixture: %v", err)
 	}
-	view, err := rt.ResourceService().CreateResource(context.Background(), core.CreateResourceInput{
+	view, err := rt.Core().CreateResource(context.Background(), core.CreateResourceInput{
 		Kind:     storage.SourceTypeFile,
 		Location: missingFile,
 	})
@@ -136,7 +136,7 @@ func TestRuntimeCloseShutsDownRecoveryScans(t *testing.T) {
 	if err := rt.Close(); err != nil {
 		t.Fatalf("Close error: %v", err)
 	}
-	if _, err := rt.SourceService().RecoveryScans().Start([]string{"s1"}, t.TempDir()); err == nil {
+	if _, err := rt.Core().RecoveryScans().Start([]string{"s1"}, t.TempDir()); err == nil {
 		t.Fatal("expected RecoveryScans().Start to fail after Runtime.Close")
 	}
 }

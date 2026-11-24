@@ -1,13 +1,13 @@
 import { toast } from '@greypan/web-ui'
 import { useEffect, useSyncExternalStore } from 'react'
 
-import { onRouteFailure, routeProgress } from '@/router/progress'
+import { routeProgress } from '@/router/progress'
 
 export function RouteProgressBar() {
   const snapshot = useSyncExternalStore(routeProgress.subscribe, routeProgress.getSnapshot, routeProgress.getSnapshot)
 
   useEffect(() => {
-    return onRouteFailure(() => {
+    return routeProgress.onFailure(() => {
       toast.error('页面加载失败，请重试')
     })
   }, [])

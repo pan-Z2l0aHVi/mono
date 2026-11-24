@@ -199,4 +199,28 @@ describe('route progress', () => {
     vi.advanceTimersByTime(1)
     expect(v.getSnapshot().visible).toBe(false)
   })
+
+  it('onFailure 仅在当前 navId 失败时透传 error，并支持取消订阅', () => {
+    const p = createRouteProgressStarter()
+    const seen: unknown[] = []
+    const off = p.onFailure(error => seen.push(error))
+    const err1 = new Error('boom-1')
+    const err2 = new Error('boom-2')
+
+    p.start(1)
+    p.start(2)
+    // 旧导航 fail 不触发
+    p.fail(1, err1)
+    expect(seen).toEqual([])
+
+    // 当前导航 fail 触发并透传 error
+    p.fail(2, err2)
+    expect(seen).toEqual([err2])
+
+    // 取消订阅后不再触发
+    off()
+    p.start(3)
+    p.fail(3, new Error('boom-3'))
+    expect(seen).toEqual([err2])
+  })
 })

@@ -20,14 +20,11 @@ func newTestServices(t *testing.T) (*service.ResourceService, *service.SourceSer
 	t.Helper()
 	db, cleanup := setupTestDB(t)
 	fetcher := remote.NewFetcher()
-	coreResource := coreLibrary.NewResourceService(db, fetcher)
-	coreSource := coreLibrary.NewSourceService(db, fetcher)
-	coreTag := coreLibrary.NewTagService(db)
-	coreMap := coreLibrary.NewMapService(db)
-	resService := service.NewResourceService(coreResource, libraryMedia.NewPendingPreviewRegistry())
-	srcService := service.NewSourceService(coreSource, coreResource)
-	tagService := service.NewTagService(coreTag, coreResource)
-	mapService := service.NewMapService(coreMap)
+	coreLib := coreLibrary.NewLibrary(db, fetcher)
+	resService := service.NewResourceService(coreLib, libraryMedia.NewPendingPreviewRegistry())
+	srcService := service.NewSourceService(coreLib)
+	tagService := service.NewTagService(coreLib)
+	mapService := service.NewMapService(coreLib)
 	return resService, srcService, tagService, mapService, cleanup
 }
 
