@@ -3,13 +3,16 @@ package remote
 import (
 	"context"
 	"io"
+	"mime"
 	"net/http"
 	"net/url"
 	"strings"
-	"time"
 
 	"golang.org/x/net/html"
 )
+
+// 与 WebView 一致的 UA：部分站点按 UA 决定响应形态，也便于远端识别来源。
+const userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Interweave/1.0"
 
 // 只保存 URL 的基础展示上下文，不保存远程正文。
 type URLMetadata struct {
@@ -17,6 +20,9 @@ type URLMetadata struct {
 	SiteName    string `json:"site_name"`
 	Description string `json:"description"`
 	FaviconURL  string `json:"favicon_url"`
+	// 响应的 Content-Type（去参数后的 media type，如 "image/png"）。展示层用它把直链图片
+	// 归类为 image；非 HTML 内容也有值，这是直链资源唯一的类型证据。
+	ContentType string `json:"content_type,omitempty"`
 }
 
 // Reachability 区分「服务端明确拒绝」与「本次无法判定」：
@@ -32,18 +38,11 @@ const (
 	ReachabilityUnavailable
 )
 
-// 将远程读取限制为用户触发的一次短时操作。
+// 将远程读取限制为用户触发的一次短时操作。构造在 fetch.go：默认 10 秒总时限，
+// 可经 WithProxy 注入系统代理解析。
 type Fetcher struct {
 	client *http.Client
-}
-
-// 为远程读取设置明确上限，避免阻塞纳入流程。
-func NewFetcher() *Fetcher {
-	return &Fetcher{
-		client: &http.Client{
-			Timeout: 10 * time.Second,
-		},
-	}
+	proxy  ProxyFunc
 }
 
 // 以一次请求判断入口可达性；展示信息缺失不应否定可达性。
@@ -54,7 +53,7 @@ func (f *Fetcher) FetchURL(ctx context.Context, targetURL string) (*URLMetadata,
 		return nil, ReachabilityUnknown, err
 	}
 
-	req.Header.Set("User-Agent", "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Interweave/1.0")
+	req.Header.Set("User-Agent", userAgent)
 
 	resp, err := f.client.Do(req)
 	if err != nil {
@@ -68,6 +67,7 @@ func (f *Fetcher) FetchURL(ctx context.Context, targetURL string) (*URLMetadata,
 
 	meta := &URLMetadata{}
 	contentType := resp.Header.Get("Content-Type")
+	meta.ContentType = mediaTypeOf(contentType)
 
 	// 非 HTML 内容仍可作为可用入口保留。
 	if !strings.Contains(strings.ToLower(contentType), "text/html") {
@@ -79,6 +79,16 @@ func (f *Fetcher) FetchURL(ctx context.Context, targetURL string) (*URLMetadata,
 	parseHTMLMetadata(bodyReader, targetURL, meta)
 
 	return meta, ReachabilityAvailable, nil
+}
+
+// mediaTypeOf 取 Content-Type 的 media type 部分并小写："Image/PNG; charset=binary" → "image/png"。
+// 展示层用它判断直链图片；解析失败或为空都返回空串。
+func mediaTypeOf(contentType string) string {
+	mediaType, _, err := mime.ParseMediaType(contentType)
+	if err != nil {
+		return strings.ToLower(strings.TrimSpace(strings.SplitN(contentType, ";", 2)[0]))
+	}
+	return strings.ToLower(mediaType)
 }
 
 func parseHTMLMetadata(r io.Reader, baseURLStr string, meta *URLMetadata) {

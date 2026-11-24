@@ -18,6 +18,7 @@ import (
 	menucontract "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu"
 	nativeMenu "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/menu"
 	nativeService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/settings"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/internal/shell"
 )
@@ -189,7 +190,9 @@ func run() error {
 	// 菜单可用性上报不属于设置：它不落盘、不跨会话，只描述菜单当下的呈现状态。
 	menuService := menucontract.NewService()
 
-	rt, err := library.NewRuntime(library.RuntimeOptions{DataDir: dir})
+	// 出站 HTTP 只经 backend/remote；系统代理读取属于 native，装配处把两者接起来。
+	fetcher := remote.NewFetcher(remote.WithProxy(nativeService.SystemProxy))
+	rt, err := library.NewRuntime(library.RuntimeOptions{DataDir: dir, Fetcher: fetcher})
 	if err != nil {
 		return err
 	}
@@ -203,7 +206,10 @@ func run() error {
 	sourceService := libraryService.NewSourceService(rt.SourceService(), rt.ResourceService())
 	tagService := libraryService.NewTagService(rt.TagService(), rt.ResourceService())
 	mapService := libraryService.NewMapService(rt.MapService())
-	osService := nativeService.NewOSService()
+	osService := nativeService.NewOSService(
+		nativeService.WithStreamFetcher(fetcher.GetStream),
+		nativeService.WithWallpaperCacheDir(filepath.Join(dir, "cache", "wallpapers")),
+	)
 
 	// 仅暴露产品与受控原生能力，避免基础设施绕过后端边界。
 	app := application.New(application.Options{

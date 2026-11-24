@@ -3,8 +3,11 @@ package remote_test
 import (
 	"context"
 	"errors"
+	"io"
 	"net/http"
 	"net/http/httptest"
+	"net/url"
+	"strings"
 	"testing"
 	"time"
 
@@ -122,5 +125,80 @@ func TestFetcher_FetchURL_ClosedServerIsUnknown(t *testing.T) {
 	}
 	if reachability != remote.ReachabilityUnknown {
 		t.Fatalf("expected ReachabilityUnknown after server close, got %v", reachability)
+	}
+}
+
+func TestFetcher_FetchURL_RecordsContentTypeForDirectImage(t *testing.T) {
+	var gotType string
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		gotType = r.Header.Get("Accept")
+		w.Header().Set("Content-Type", "Image/PNG; charset=binary")
+		_, _ = w.Write([]byte("fake png bytes"))
+	}))
+	defer ts.Close()
+
+	fetcher := remote.NewFetcher()
+	meta, reachability, err := fetcher.FetchURL(context.Background(), ts.URL)
+	if err != nil {
+		t.Fatalf("FetchURL failed: %v", err)
+	}
+	if reachability != remote.ReachabilityAvailable {
+		t.Fatalf("expected available, got %v", reachability)
+	}
+	// media type 去参数并小写：展示层拿它把直链图片归为 image。
+	if meta.ContentType != "image/png" {
+		t.Fatalf("expected content_type image/png, got %q (accept header %q)", meta.ContentType, gotType)
+	}
+}
+
+func TestFetcher_WithProxyInjectsTransport(t *testing.T) {
+	seenHost := ""
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		seenHost = r.Host
+		w.Header().Set("Content-Type", "text/plain")
+	}))
+	defer ts.Close()
+
+	// 伪造一个「系统代理」：把请求改写到测试服务器上（仅改 Host，直连 URL 的请求头保留）。
+	proxy := func(req *http.Request) (*url.URL, error) {
+		return &url.URL{Scheme: "http", Host: strings.TrimPrefix(ts.URL, "http://")}, nil
+	}
+	fetcher := remote.NewFetcher(remote.WithProxy(proxy))
+	_, _, err := fetcher.FetchURL(context.Background(), "http://original.example.com/page")
+	if err != nil {
+		t.Fatalf("FetchURL via proxy failed: %v", err)
+	}
+	if seenHost != "original.example.com" {
+		t.Fatalf("proxy was not used (host seen: %q)", seenHost)
+	}
+}
+
+func TestFetcher_GetStreamReturnsBody(t *testing.T) {
+	ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+		if strings.HasSuffix(r.URL.Path, "/missing") {
+			http.Error(w, "gone", http.StatusNotFound)
+			return
+		}
+		w.Header().Set("Content-Type", "image/png")
+		_, _ = w.Write([]byte("streamed bytes"))
+	}))
+	defer ts.Close()
+
+	fetcher := remote.NewFetcher()
+	body, err := fetcher.GetStream(context.Background(), ts.URL)
+	if err != nil {
+		t.Fatalf("GetStream failed: %v", err)
+	}
+	defer body.Close()
+	data, err := io.ReadAll(body)
+	if err != nil {
+		t.Fatalf("read body failed: %v", err)
+	}
+	if string(data) != "streamed bytes" {
+		t.Fatalf("unexpected body %q", data)
+	}
+
+	if _, err := fetcher.GetStream(context.Background(), ts.URL+"/missing"); err == nil {
+		t.Fatalf("expected error for non-2xx response")
 	}
 }
