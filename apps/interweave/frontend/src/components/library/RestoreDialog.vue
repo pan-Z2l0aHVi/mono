@@ -12,7 +12,6 @@ import { onBeforeUnmount, watch } from 'vue'
 
 import { useLingering } from '@/composables/useLingering'
 
-import ErrorBanner from './ErrorBanner.vue'
 import { doubleArrowRight } from './icons'
 import { formatSize } from './presentation'
 import type { PreviewLease } from './previewLease'
@@ -26,7 +25,6 @@ const props = defineProps<{
   open: boolean
   queue: LibraryRestoreQueueItem[]
   busy: boolean
-  error: string
   mobile: boolean
   activeItemId: string | null
   allUnavailableFiles: LibraryRestoreQueueItem[]
@@ -87,6 +85,10 @@ const {
   canClose
 } = session
 
+watch(validationError, message => {
+  if (message) toast.error(message, { position: 'top-center' })
+})
+
 const renderedCandidateItem = useLingering(candidateItem)
 watch(
   () => props.open,
@@ -121,7 +123,6 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   >
     <span slot="header">找回资源</span>
     <div class="flex h-(--wui-dialog-max-height) min-h-0 flex-col">
-      <ErrorBanner :message="validationError || error" />
       <div
         class="grid min-h-0 flex-1"
         :class="

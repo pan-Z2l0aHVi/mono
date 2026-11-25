@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import type { WebUiDialog, WebUiEvent, WebUiInput } from '@greypan/web-ui'
+import { toast, type WebUiDialog, type WebUiEvent, type WebUiInput } from '@greypan/web-ui'
 import { lucideClipboardPaste } from '@greypan/web-ui/icons'
 import { ref, watch } from 'vue'
 
@@ -11,15 +11,11 @@ const props = defineProps<{ open: boolean; initialValue: string; mode: 'add' | '
 const emit = defineEmits<{ 'update:open': [value: boolean]; submit: [url: string] }>()
 const runtime = createLibraryRuntime()
 const draft = ref('')
-const error = ref('')
 
 watch(
   () => props.open,
   open => {
-    if (open) {
-      draft.value = props.initialValue
-      error.value = ''
-    }
+    if (open) draft.value = props.initialValue
   },
   { immediate: true }
 )
@@ -29,22 +25,19 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 }
 function handleInput(event: WebUiEvent<WebUiInput, 'input'>) {
   draft.value = event.target.value
-  error.value = ''
 }
 async function pasteClipboard() {
   try {
     const value = await runtime.system.readClipboardText()
-    if (!props.open) return
-    draft.value = value
-    error.value = ''
+    if (props.open) draft.value = value
   } catch {
-    error.value = '无法读取剪切板，请手动粘贴链接'
+    toast.error('无法读取剪切板，请手动粘贴链接', { position: 'top-center' })
   }
 }
 function submit() {
   const url = normalizeLibraryURL(draft.value)
   if (!url) {
-    error.value = '请输入有效的网页链接'
+    toast.error('请输入有效的网页链接', { position: 'top-center' })
     return
   }
   emit('submit', url)
@@ -70,7 +63,6 @@ function submit() {
         </web-ui-button>
       </web-ui-tooltip>
     </web-ui-input>
-    <p v-if="error" role="alert" class="m-0 mt-2 text-sm text-red-700">{{ error }}</p>
     <web-ui-button slot="footer" variant="primary" full @click="submit">{{
       mode === 'add' ? '导入链接' : '更新链接'
     }}</web-ui-button>

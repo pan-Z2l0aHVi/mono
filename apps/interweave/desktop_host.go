@@ -18,41 +18,110 @@ import (
 
 // wailsDesktopHost 是 internal/shell.DesktopHost 在 Wails 宿主的极简适配器：
 // 只做窗口动作、事件发射与原生菜单物化转发，不包含状态与业务编排。
+// 窗口经 mainWindowController 间接取得：轻量模式下 WebView 被销毁，所有窗口动作都要无操作。
 type wailsDesktopHost struct {
 	app       *application.App
-	window    *application.WebviewWindow
+	windows   *mainWindowController
 	osService *nativeService.OSService
 }
 
 var _ shell.DesktopHost = (*wailsDesktopHost)(nil)
 
-func (h *wailsDesktopHost) Size() (int, int)   { return h.window.Size() }
-func (h *wailsDesktopHost) SetSize(w, ht int)  { h.window.SetSize(w, ht) }
-func (h *wailsDesktopHost) IsFullscreen() bool { return h.window.IsFullscreen() }
-func (h *wailsDesktopHost) UnFullscreen()      { h.window.UnFullscreen() }
-func (h *wailsDesktopHost) IsMaximised() bool  { return h.window.IsMaximised() }
-func (h *wailsDesktopHost) UnMaximise()        { h.window.UnMaximise() }
+func (h *wailsDesktopHost) currentWindow() *application.WebviewWindow {
+	if h.windows == nil {
+		return nil
+	}
+	return h.windows.Window()
+}
 
-func (h *wailsDesktopHost) PresentWindow()  { presentMainWindow(h.window) }
-func (h *wailsDesktopHost) HideWindow()     { h.window.Hide() }
-func (h *wailsDesktopHost) QuitApp()        { go h.app.Quit() }
-func (h *wailsDesktopHost) ReloadWindow()   { h.window.Reload() }
-func (h *wailsDesktopHost) OpenDevTools()   { h.window.OpenDevTools() }
-func (h *wailsDesktopHost) ToggleMaximise() { h.window.ToggleMaximise() }
+func (h *wailsDesktopHost) Size() (int, int) {
+	if window := h.currentWindow(); window != nil {
+		return window.Size()
+	}
+	return 0, 0
+}
+
+func (h *wailsDesktopHost) SetSize(w, ht int) {
+	if window := h.currentWindow(); window != nil {
+		window.SetSize(w, ht)
+	}
+}
+
+func (h *wailsDesktopHost) IsFullscreen() bool {
+	if window := h.currentWindow(); window != nil {
+		return window.IsFullscreen()
+	}
+	return false
+}
+
+func (h *wailsDesktopHost) UnFullscreen() {
+	if window := h.currentWindow(); window != nil {
+		window.UnFullscreen()
+	}
+}
+
+func (h *wailsDesktopHost) IsMaximised() bool {
+	if window := h.currentWindow(); window != nil {
+		return window.IsMaximised()
+	}
+	return false
+}
+
+func (h *wailsDesktopHost) UnMaximise() {
+	if window := h.currentWindow(); window != nil {
+		window.UnMaximise()
+	}
+}
+
+func (h *wailsDesktopHost) PresentWindow() {
+	h.windows.Present()
+}
+
+func (h *wailsDesktopHost) HideWindow() {
+	if window := h.currentWindow(); window != nil {
+		window.Hide()
+	}
+}
+
+func (h *wailsDesktopHost) QuitApp() { go h.app.Quit() }
+
+func (h *wailsDesktopHost) ReloadWindow() {
+	if window := h.currentWindow(); window != nil {
+		window.Reload()
+	}
+}
+
+func (h *wailsDesktopHost) OpenDevTools() {
+	if window := h.currentWindow(); window != nil {
+		window.OpenDevTools()
+	}
+}
+
+func (h *wailsDesktopHost) ToggleMaximise() {
+	if window := h.currentWindow(); window != nil {
+		window.ToggleMaximise()
+	}
+}
 
 func (h *wailsDesktopHost) EmitMenuCommand(command menucontract.Command) {
-	h.window.EmitEvent(menucontract.CommandEventName, menucontract.MenuCommand{
-		Command: command,
-		Payload: map[string]string{},
-	})
+	if window := h.currentWindow(); window != nil {
+		window.EmitEvent(menucontract.CommandEventName, menucontract.MenuCommand{
+			Command: command,
+			Payload: map[string]string{},
+		})
+	}
 }
 
 func (h *wailsDesktopHost) EmitFiles(paths []string) {
-	h.window.EmitEvent(libraryService.FileDropEventName, paths)
+	if window := h.currentWindow(); window != nil {
+		window.EmitEvent(libraryService.FileDropEventName, paths)
+	}
 }
 
 func (h *wailsDesktopHost) EmitURLs(urls []string) {
-	h.window.EmitEvent(libraryService.URLDropEventName, urls)
+	if window := h.currentWindow(); window != nil {
+		window.EmitEvent(libraryService.URLDropEventName, urls)
+	}
 }
 
 func (h *wailsDesktopHost) OpenExternal(ctx context.Context, targetURL string) error {
@@ -67,13 +136,18 @@ func (h *wailsDesktopHost) InstallMenu(state shell.MenuState, sink func(menucont
 		DeveloperOptions: state.DeveloperOptions,
 		Disabled:         state.IsDisabled,
 	}
+	window := h.currentWindow()
 	if runtime.GOOS == "windows" {
-		h.window.EmitEvent(menucontract.TreeChangedEventName, nativeMenu.Snapshot(nativeState, runtime.GOOS))
+		if window != nil {
+			window.EmitEvent(menucontract.TreeChangedEventName, nativeMenu.Snapshot(nativeState, runtime.GOOS))
+		}
 		return
 	}
 	tree := nativeMenu.Build(nativeState, sink)
 	h.app.Menu.Set(tree.Menu)
-	h.window.SetMenu(tree.Menu)
+	if window != nil {
+		window.SetMenu(tree.Menu)
+	}
 }
 
 // wailsShellState 把 settings.Service 与 menu.Service 适配成纯 Go 的 shell.StateSource。

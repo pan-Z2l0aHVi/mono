@@ -66,7 +66,6 @@ describe('删除确认后的焦点恢复', () => {
             confirmLabel: '删除',
             busy: false,
             danger: true,
-            error: '',
             compact: false,
             onConfirm: () => {
               resources.value = resources.value.slice(1)

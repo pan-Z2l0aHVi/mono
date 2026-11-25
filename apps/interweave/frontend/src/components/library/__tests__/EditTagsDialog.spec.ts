@@ -23,7 +23,6 @@ function mountDialog(
         allTagNames: ['设计', '旅行'],
         tagColors: {},
         busy: false,
-        error: '',
         onSave,
         'onUpdate:open': onClose
       })

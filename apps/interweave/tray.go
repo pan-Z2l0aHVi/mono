@@ -2,13 +2,32 @@ package main
 
 import (
 	_ "embed"
+	"runtime"
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 )
 
-//go:embed build/appicon.png
-var trayIcon []byte
+// 图标按平台语义分别嵌入：
+// - macOS 用 template 图（黑+透明），由系统按浅/深色菜单栏自动反色；
+// - Windows 按任务栏底色切换：深色图案配浅色任务栏，浅色图案配深色任务栏。
+// Wails 的 SetIcon 对应系统浅色模式，SetDarkModeIcon 对应系统深色模式。
+//
+//go:embed build/tray/macos/trayTemplate.png
+var trayTemplateIcon []byte
+
+//go:embed build/tray/windows/tray-dark.ico
+var trayIconForLightTaskbar []byte
+
+//go:embed build/tray/windows/tray-light.ico
+var trayIconForDarkTaskbar []byte
+
+const (
+	trayMenuShowLabel      = "主界面"
+	trayMenuEnterLightMode = "进入轻量模式"
+	trayMenuExitLightMode  = "退出轻量模式"
+	trayMenuQuitLabel      = "退出 Interweave"
+)
 
 // presentMainWindow 将主窗口从最小化或隐藏状态恢复并置前聚焦。
 // macOS 的 Show 只做 makeKeyAndOrderFront，最小化的窗口要先显式恢复。
@@ -21,26 +40,78 @@ func presentMainWindow(window *application.WebviewWindow) {
 	window.Focus()
 }
 
-// buildTrayMenu 构建系统托盘菜单，提供显示主窗口与退出应用入口。
-func buildTrayMenu(onShow func(), onQuit func()) *application.Menu {
+func trayLightModeLabel(light bool) string {
+	if light {
+		return trayMenuExitLightMode
+	}
+	return trayMenuEnterLightMode
+}
+
+// trayIconsFor 按平台返回 Wails 托盘需要的图标字节，便于纯单测校验映射语义。
+func trayIconsFor(goos string) (icon, darkIcon, template []byte) {
+	if goos == "darwin" {
+		return nil, nil, trayTemplateIcon
+	}
+	// Windows 与 Linux 都以 ICO 作为普通图标；dark 变体只在 Windows 上有意义。
+	return trayIconForLightTaskbar, trayIconForDarkTaskbar, nil
+}
+
+func applyTrayIcons(tray *application.SystemTray, goos string) {
+	icon, darkIcon, template := trayIconsFor(goos)
+	if len(template) > 0 {
+		tray.SetTemplateIcon(template)
+		return
+	}
+	if len(icon) > 0 {
+		tray.SetIcon(icon)
+	}
+	if len(darkIcon) > 0 {
+		tray.SetDarkModeIcon(darkIcon)
+	}
+}
+
+// buildTrayMenu 构建系统托盘菜单：主界面、轻量模式切换与退出；
+// 返回轻量模式项，供状态变化时原地改标签（保留同一个菜单项，避免右键菜单闪烁）。
+func buildTrayMenu(onShow func(), onToggleLight func(), onQuit func()) (*application.Menu, *application.MenuItem) {
 	trayMenu := application.NewMenu()
-	trayMenu.Add("显示 Interweave").OnClick(func(*application.Context) {
+	trayMenu.Add(trayMenuShowLabel).OnClick(func(*application.Context) {
 		if onShow != nil {
 			onShow()
 		}
 	})
 	trayMenu.AddSeparator()
-	trayMenu.Add("退出 Interweave").OnClick(func(*application.Context) {
+	toggleItem := trayMenu.Add(trayLightModeLabel(false)).OnClick(func(*application.Context) {
+		if onToggleLight != nil {
+			onToggleLight()
+		}
+	})
+	trayMenu.AddSeparator()
+	trayMenu.Add(trayMenuQuitLabel).OnClick(func(*application.Context) {
 		if onQuit != nil {
 			onQuit()
 		}
 	})
-	return trayMenu
+	return trayMenu, toggleItem
 }
 
 // trayHandle 抽象系统托盘的销毁能力，便于在单测中验证开关切换时的创建与移除时序。
 type trayHandle interface {
 	Destroy()
+}
+
+// managedSystemTray 在托盘销毁时一并注销轻量模式监听，避免设置反复开关后旧菜单回调叠加。
+type managedSystemTray struct {
+	tray    *application.SystemTray
+	dispose func()
+}
+
+func (t *managedSystemTray) Destroy() {
+	if t.dispose != nil {
+		dispose := t.dispose
+		t.dispose = nil
+		dispose()
+	}
+	t.tray.Destroy()
 }
 
 // systemTrayController 保证系统托盘的展示状态与「关闭时最小化到托盘」设置严格同步：
@@ -87,17 +158,37 @@ func (c *systemTrayController) Sync() {
 }
 
 // setupSystemTray 创建并配置系统托盘图标、菜单与点击交互。
-func setupSystemTray(app *application.App, window *application.WebviewWindow) *application.SystemTray {
+func setupSystemTray(app *application.App, windows *mainWindowController) trayHandle {
 	tray := app.SystemTray.New()
-	tray.SetIcon(trayIcon)
+	applyTrayIcons(tray, runtime.GOOS)
 	tray.SetTooltip("Interweave")
-	tray.SetMenu(buildTrayMenu(
-		func() { presentMainWindow(window) },
-		func() { app.Quit() },
-	))
-	tray.OnClick(func() {
-		presentMainWindow(window)
-	})
+
+	var (
+		menu       *application.Menu
+		toggleItem *application.MenuItem
+	)
+	refreshToggleLabel := func() {
+		label := trayLightModeLabel(windows.IsLightMode())
+		application.InvokeSync(func() {
+			if toggleItem != nil {
+				toggleItem.SetLabel(label)
+			}
+			if menu != nil {
+				menu.Update()
+			}
+		})
+	}
+	menu, toggleItem = buildTrayMenu(
+		windows.Present,
+		func() {
+			windows.ToggleLightMode()
+			refreshToggleLabel()
+		},
+		app.Quit,
+	)
+	dispose := windows.addStateListener(func(bool) { refreshToggleLabel() })
+	tray.SetMenu(menu)
+	tray.OnClick(windows.Present)
 	tray.OnRightClick(tray.OpenMenu)
-	return tray
+	return &managedSystemTray{tray: tray, dispose: dispose}
 }

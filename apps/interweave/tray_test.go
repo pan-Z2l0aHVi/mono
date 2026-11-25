@@ -1,10 +1,61 @@
 package main
 
-import "testing"
+import (
+	"bytes"
+	"testing"
+)
 
-func TestTrayIconEmbedded(t *testing.T) {
-	if len(trayIcon) == 0 {
-		t.Fatal("expected embedded tray icon bytes to be non-empty")
+func TestTrayIconsEmbedded(t *testing.T) {
+	for name, icon := range map[string][]byte{
+		"macOS template":        trayTemplateIcon,
+		"Windows light taskbar": trayIconForLightTaskbar,
+		"Windows dark taskbar":  trayIconForDarkTaskbar,
+	} {
+		if len(icon) == 0 {
+			t.Fatalf("expected embedded %s tray icon bytes to be non-empty", name)
+		}
+	}
+}
+
+func TestTrayIconsForPlatform(t *testing.T) {
+	macIcon, macDark, macTemplate := trayIconsFor("darwin")
+	if len(macTemplate) == 0 || len(macIcon) != 0 || len(macDark) != 0 {
+		t.Fatal("macOS should use a template icon only")
+	}
+	if !bytes.Equal(macTemplate, trayTemplateIcon) {
+		t.Fatal("macOS template icon must come from the supplied asset")
+	}
+
+	winIcon, winDark, winTemplate := trayIconsFor("windows")
+	if len(winTemplate) != 0 || !bytes.Equal(winIcon, trayIconForLightTaskbar) || !bytes.Equal(winDark, trayIconForDarkTaskbar) {
+		t.Fatal("Windows should map dark artwork to light taskbars and light artwork to dark taskbars")
+	}
+}
+
+func TestTrayLightModeLabel(t *testing.T) {
+	if got := trayLightModeLabel(false); got != trayMenuEnterLightMode {
+		t.Fatalf("expected %q in normal mode, got %q", trayMenuEnterLightMode, got)
+	}
+	if got := trayLightModeLabel(true); got != trayMenuExitLightMode {
+		t.Fatalf("expected %q in light mode, got %q", trayMenuExitLightMode, got)
+	}
+}
+
+func TestMainWindowControllerStateListenerDispose(t *testing.T) {
+	controller := &mainWindowController{}
+	calls := 0
+	dispose := controller.addStateListener(func(bool) { calls++ })
+
+	controller.setLightMode(true)
+	if calls != 1 {
+		t.Fatalf("expected state listener to be called once, got %d", calls)
+	}
+
+	// 托盘随设置销毁时必须注销监听，重建后不能叠加旧菜单的刷新回调。
+	dispose()
+	controller.setLightMode(false)
+	if calls != 1 {
+		t.Fatalf("expected disposed state listener not to be called, got %d extra calls", calls-1)
 	}
 }
 

@@ -98,4 +98,13 @@ func TestWindowsOptionsAnchorWebView2ToTaggedDataDir(t *testing.T) {
 	if got, want := opts.WebviewUserDataPath, filepath.Join(dir, "webview"); got != want {
 		t.Fatalf("expected WebView2 user data at %q, got %q", want, got)
 	}
+	if !opts.DisableQuitOnLastWindowClosed {
+		t.Fatal("expected Windows app to survive WebView destruction in light mode")
+	}
+}
+
+func TestLinuxOptionsKeepAppAliveInLightMode(t *testing.T) {
+	if !linuxOptions().DisableQuitOnLastWindowClosed {
+		t.Fatal("expected Linux app to survive WebView destruction in light mode")
+	}
 }
