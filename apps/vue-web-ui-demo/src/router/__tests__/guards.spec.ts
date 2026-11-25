@@ -1,3 +1,4 @@
+import { routeExampleDocs } from '@greypan/doc-demo-kit'
 import { createRouteProgressStarter } from '@greypan/route-progress'
 import { QueryClient } from '@tanstack/vue-query'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -144,6 +145,31 @@ describe('route guards', () => {
     expect(router.currentRoute.value.path).toBe('/home')
     expect(progress.getSnapshot().phase).toBe('error')
     expect(failures).toHaveLength(1)
+
+    ensureSpy.mockRestore()
+    off()
+  })
+
+  it('未知组件 slug 不触发文档预载且命中未登记态（404）', async () => {
+    const localeMod = await import('@/i18n/locale')
+    const ensureSpy = vi.spyOn(localeMod, 'ensureExampleDocs').mockResolvedValue(undefined)
+    const { progress, failures, off } = setup()
+    const queryClient = new QueryClient({ defaultOptions: { queries: { retry: false } } })
+    const router = createRouter({
+      history: createMemoryHistory(),
+      routes: [
+        { path: '/home', component: Page },
+        { path: '/components/:component', component: Page }
+      ]
+    })
+    installRouteGuards(router, queryClient, progress)
+    await router.push('/home')
+
+    await router.push('/components/non-existent')
+    expect(ensureSpy).not.toHaveBeenCalled()
+    expect(failures).toEqual([])
+    expect(router.currentRoute.value.path).toBe('/components/non-existent')
+    expect(routeExampleDocs(router.currentRoute.value.path)).toEqual([])
 
     ensureSpy.mockRestore()
     off()

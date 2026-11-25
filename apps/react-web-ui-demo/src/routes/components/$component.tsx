@@ -4,7 +4,7 @@ import { createFileRoute, notFound } from '@tanstack/react-router'
 import ExampleDoc from '@/components/example-doc'
 
 function Component() {
-  const { entry } = Route.useLoaderData()
+  const { entry } = Route.useRouteContext()
   return (
     <>
       {entry.docs.map(doc => (
@@ -15,7 +15,7 @@ function Component() {
 }
 
 export const Route = createFileRoute('/components/$component')({
-  loader: ({ params }) => {
+  beforeLoad: ({ params }) => {
     const entry = findComponentRoute(params.component)
     if (!entry) throw notFound()
     return { entry }

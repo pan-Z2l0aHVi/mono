@@ -1,11 +1,7 @@
 import path from 'node:path'
 
 import { fenceGroupVariants, groupedMetaNodes } from '@greypan/doc-demo-kit'
-import {
-  runExampleDocsContractTests,
-  runNavCorpusContractTests,
-  runRouteExampleDocsContractTests
-} from '@greypan/doc-demo-kit/testing'
+import { runExampleDocsContractTests, runNavCorpusContractTests } from '@greypan/doc-demo-kit/testing'
 import type { MetaNode } from '@greypan/md-to-meta'
 import { visibleText } from '@greypan/md-to-meta/contract'
 import { flushPromises, mount } from '@vue/test-utils'
@@ -36,10 +32,6 @@ runExampleDocsContractTests({
 
 // nav 是两端共享的侧栏与搜索入口；宿主注入语料目录，kit 不硬编码仓库路径。
 runNavCorpusContractTests({ docsDir })
-runRouteExampleDocsContractTests({
-  routesDir: path.resolve(import.meta.dirname, '../pages/components'),
-  fileExtension: '.vue'
-})
 
 describe('通用 meta 渲染', () => {
   const sampleNodes = (content: string) =>
