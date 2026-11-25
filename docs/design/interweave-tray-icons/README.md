@@ -1,4 +1,8 @@
+<!-- corpus-status: reference -->
+
 # Interweave 托盘图标
+
+> 状态：非权威参考（设计资产归档）。结论以源码、测试与 `apps/interweave/build/tray/` 为准。
 
 Interweave 桌面端系统托盘当前实际使用的设计资源。本目录与 `apps/interweave/build/tray/` 中的文件逐字节一致（见「同步」），是同一套资源的归档；应用运行时只读取 `build/tray/` 下的副本。
 
