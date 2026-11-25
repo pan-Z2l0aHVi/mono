@@ -5,6 +5,7 @@ import { customElement, property } from 'lit/decorators.js'
 import {
   createMenuPortalOverlay,
   createMenuSession,
+  getDeepActiveElement,
   getMenuItemFromEvent,
   type MenuSurface
 } from '@/shared/menu-session'
@@ -312,16 +313,6 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
     return active === null || active === document.body || active === document.documentElement
   }
 
-  private _getDeepActiveElement(): HTMLElement | undefined {
-    let active: Element | null = document.activeElement
-    while (active instanceof HTMLElement) {
-      const nested = active.shadowRoot?.activeElement
-      if (!(nested instanceof HTMLElement)) return active
-      active = nested
-    }
-    return undefined
-  }
-
   private _syncOpenOverlay(takeFocus: boolean) {
     const focusFirst = takeFocus && this._takeFocusOnOpen
     const isInstant = this._shouldOpenInstantly
@@ -396,7 +387,7 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
     const trigger = this._queryTriggerAnchor()
     if (!trigger) return
     trigger.focus()
-    const active = this._getDeepActiveElement()
+    const active = getDeepActiveElement()
     if (active && isComposedDescendant(active, trigger)) return
 
     const control = trigger.shadowRoot?.querySelector<HTMLElement>(
@@ -498,7 +489,7 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
   }
 
   private _onFocusIn = (event: FocusEvent) => {
-    if (!this.open) return
+    if (!this.open || !this._session.getRootSurface()) return
     if (!this._session.isEventInside(event, { includeHost: false })) {
       if (this._pendingTabNavigation) return
       if (this._pointerInteraction?.startedWithinDropdown && !this._pointerInteraction.completed) return
@@ -540,7 +531,7 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
       previousFocus:
         focusedItem.shadowRoot?.activeElement instanceof HTMLElement
           ? focusedItem.shadowRoot.activeElement
-          : this._getDeepActiveElement(),
+          : getDeepActiveElement(),
       focusTrigger: !isInsideNativeModal || !e.shiftKey
     }
     this._pendingTabNavigation = navigation
@@ -553,7 +544,7 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
 
       if (e.defaultPrevented) {
         this._setMenuTabStop(focusedItem)
-        if (navigation.previousFocus?.isConnected && this._getDeepActiveElement() !== navigation.previousFocus) {
+        if (navigation.previousFocus?.isConnected && getDeepActiveElement() !== navigation.previousFocus) {
           navigation.previousFocus.focus()
         }
         return
