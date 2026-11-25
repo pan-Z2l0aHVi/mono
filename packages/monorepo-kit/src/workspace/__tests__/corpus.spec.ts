@@ -3,14 +3,16 @@ import assert from 'node:assert/strict'
 import { it } from 'vite-plus/test'
 
 import {
-  findUnlinkedAgentDocReferences,
+  extractInlineLinks,
+  extractMarkdownAnchors,
+  ghAnchor,
   isUnqualifiedRelativeTarget,
   parseLocalLinkTarget,
   readInlineLinkTarget,
   stripCodeSegments
-} from '../context-invariants'
+} from '../corpus'
 
-it('context-invariants', () => {
+it('corpus markdown primitives', () => {
   // 远程与协议链接不判定可触达性：离线无法验证，域名失效也不是本仓漂移。
   for (const remote of [
     'https://example.com/dead',
@@ -126,14 +128,17 @@ it('context-invariants', () => {
   // 围栏外的行数不能因剥离而变化：锚点与报错按行读取时要能对上。
   assert.equal(stripCodeSegments('a\n```\nb\n```\nc').split('\n').length, 5)
 
-  // 文档名的裸文本与「整段只是一个文件名的行内 code」都要进互指图；命令片段与代码块不算引用。
-  const docReferences = (source: string) =>
-    findUnlinkedAgentDocReferences([
-      { file: 'docs/agents/a.md', source },
-      { file: 'docs/agents/workflow.md', source: '' }
-    ])
-  assert.deepEqual(docReferences('参见 workflow.md'), [{ file: 'docs/agents/a.md', name: 'workflow.md' }])
-  assert.deepEqual(docReferences('参见 `workflow.md`'), [{ file: 'docs/agents/a.md', name: 'workflow.md' }])
-  assert.deepEqual(docReferences('参见 [workflow.md](./workflow.md)'), [])
-  assert.deepEqual(docReferences('`cat workflow.md`\n```sh\ncat workflow.md\n```'), [])
+  // extractInlineLinks 忽略图片、代码内链接，并支持 allowRootRelative 开关。
+  assert.deepEqual(
+    extractInlineLinks('![img](./a.png) `[c](./c.md)` [ok](./b.md#sec) [root](/docs/x.md)', {
+      allowRootRelative: false
+    }),
+    [{ rawTarget: './b.md#sec', location: './b.md', fragment: 'sec' }]
+  )
+
+  // ghAnchor 与 extractMarkdownAnchors（显式 {#id} 优先于标题推导）
+  assert.equal(ghAnchor('Hello, World! 123'), 'hello-world-123')
+  assert.equal(ghAnchor('怎么取得这个授权？'), '怎么取得这个授权')
+  const anchors = extractMarkdownAnchors('# 概述\n## 自定义标题 {#custom-id}\n### Section 2.0!\n')
+  assert.deepEqual([...anchors].sort(), ['custom-id', 'section-20', '概述'])
 })
