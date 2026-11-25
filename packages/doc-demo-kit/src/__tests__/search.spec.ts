@@ -1,9 +1,14 @@
-import { describe, expect, it } from 'vite-plus/test'
+// @vitest-environment jsdom
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { NAV_SECTIONS } from '../nav'
-import { searchNavigation, SHELL_NAV_PAGES } from '../search'
+import { createSearchController, searchNavigation, SHELL_NAV_PAGES } from '../search'
 
 const pages = [{ path: '/getting-started', zh: '快速开始', en: 'Getting Started' }]
+
+afterEach(() => {
+  document.body.replaceChildren()
+})
 
 describe('导航搜索', () => {
   it('忽略大小写并匹配中英文页面及组件名称', () => {
@@ -33,5 +38,90 @@ describe('导航搜索', () => {
     expect(searchNavigation('组件总览').map(item => item.path)).toContain('/home')
     expect(searchNavigation('Changelog').map(item => item.path)).toContain('/changelog')
     expect(SHELL_NAV_PAGES.map(item => item.path)).toEqual(['/home', '/getting-started', '/changelog'])
+  })
+})
+
+describe('SearchController', () => {
+  it('清空查询时保留 displayQuery，结果链接按 Escape 只收起面板并把焦点还给输入框', () => {
+    const controls = document.createElement('div')
+    const input = document.createElement('input')
+    const results = document.createElement('div')
+    const link = document.createElement('a')
+    link.href = '/components/button'
+    results.append(link)
+    controls.append(input, results)
+    document.body.append(controls)
+
+    const onOpenChange = vi.fn<(open: boolean) => void>()
+    const controller = createSearchController({ onOpenChange })
+    controller.syncElements({ controls, input, results })
+    controller.syncOpen(true)
+
+    controller.setQuery('button')
+    expect(controller.getSnapshot().hasQuery).toBe(true)
+    expect(controller.getSnapshot().popoverOpen).toBe(true)
+    expect(controller.getSnapshot().matches.some(item => item.path === '/components/button')).toBe(true)
+
+    link.focus()
+    const esc = new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true })
+    Object.defineProperty(esc, 'target', { value: link })
+    controller.handleKeydown(esc)
+    expect(controller.getSnapshot().panelOpen).toBe(false)
+    expect(controller.getSnapshot().popoverOpen).toBe(false)
+    expect(document.activeElement).toBe(input)
+    expect(onOpenChange).not.toHaveBeenCalled()
+
+    controller.setQuery('')
+    expect(controller.getSnapshot().hasQuery).toBe(false)
+    expect(controller.getSnapshot().displayQuery).toBe('button')
+
+    controller.dispose()
+  })
+
+  it('controls 内点击不关闭并在点击后归还焦点，点击外部或输入框 Escape 关闭', () => {
+    const controls = document.createElement('div')
+    const input = document.createElement('input')
+    const siblingBtn = document.createElement('button')
+    const outsideBtn = document.createElement('button')
+    controls.append(input, siblingBtn)
+    document.body.append(controls, outsideBtn)
+
+    const onOpenChange = vi.fn<(open: boolean) => void>()
+    const controller = createSearchController({ onOpenChange })
+    controller.syncElements({ controls, input })
+    controller.syncOpen(true)
+
+    input.focus()
+    siblingBtn.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    input.dispatchEvent(new FocusEvent('focusout', { relatedTarget: siblingBtn }))
+    expect(onOpenChange).not.toHaveBeenCalled()
+
+    siblingBtn.focus()
+    siblingBtn.dispatchEvent(new MouseEvent('click', { bubbles: true }))
+    expect(document.activeElement).toBe(input)
+    expect(onOpenChange).not.toHaveBeenCalled()
+
+    input.dispatchEvent(new FocusEvent('focusout', { relatedTarget: outsideBtn }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+
+    onOpenChange.mockClear()
+    input.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+
+    controller.dispose()
+  })
+
+  it('handleResultClick 仅在普通左键点击时关闭，修饰键不关闭', () => {
+    const onOpenChange = vi.fn<(open: boolean) => void>()
+    const controller = createSearchController({ onOpenChange })
+
+    controller.handleResultClick(new MouseEvent('click', { button: 0, metaKey: true }))
+    controller.handleResultClick(new MouseEvent('click', { button: 1 }))
+    expect(onOpenChange).not.toHaveBeenCalled()
+
+    controller.handleResultClick(new MouseEvent('click', { button: 0 }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+
+    controller.dispose()
   })
 })
