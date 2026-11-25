@@ -218,7 +218,8 @@
   /* 侧边栏专用表面：浅色保持中性分层，深色单独抬升一档（见下方 dark 块注释）。 */
   --wui-color-surface-sidebar: rgb(241 241 246 / 0.82);
 
-  /* 凹变种 indicator 与中性可交互控件同面：浅色与深色的默认值都取 control（= secondary button 的面）。
+  /* 凹变种 indicator 与中性可交互控件同面：浅色与深色的默认值都取 control；secondary button 还在浅色
+     从 control 向 shade 再压深半档，所以它不再与这颗 indicator 完全同面。
      凸变种那颗另走一条等式（chip 与 page 同色、track 沉到 page 之下），规则见 segmented/style.css。 */
   --wui-color-surface-segmented: #eeeef3;
   --wui-color-surface-segmented-track: #eeeef3;
@@ -266,6 +267,9 @@
   --wui-internal-switch-thumb-shadow-pressed: 0 2px 16px rgb(0 0 0 / 0.1);
   --wui-internal-segmented-indicator-shadow: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04);
   --wui-internal-segmented-indicator-shadow-pressed: 0 2px 16px rgb(0 0 0 / 0.1);
+
+  /* secondary button 只在浅色比 control 再深半档（94% control + 6% shade 的计算值）；深色维持原面。 */
+  --wui-internal-button-secondary-bg: #e1e1e7;
   --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent);
   --wui-scrollbar-handle: rgb(0 0 0 / 0.39);
   color-scheme: light;
@@ -298,7 +302,7 @@
      关系：浅色是 chip #fff（= page）浮在 #eeeef3 上，深色 page（#242428）本来就是阶梯最暗的一档，
      所以要让 chip 取到 page 色，只能把 track 再往下开一档到 #17171b（比 page 暗 13~14/255，与该主题
      往上走的档差同量级：page→surface +6~+8、surface→control +14、control→track +10）。凸起方向仍由
-     「chip 比 track 亮」读出，WCAG 亮度比 1.16:1，与浅色的 1.26:1 同量级，不会盖过柔投影。
+     「chip 比 track 亮」读出，WCAG 亮度比 1.16:1，与浅色的 1.16:1 同量级，不会盖过柔投影。
      凹变种（inset）不参与：它的语义是「按下去的灰面」，track 取 surface（#2c2c2e）、indicator 取
      control（#3a3a3c，与浅色那颗同档），与 page 同色反而读不出选中。 */
   --wui-color-surface-segmented: #3a3a3c;
@@ -332,6 +336,7 @@
   --wui-internal-switch-thumb-shadow-pressed: 0 2px 20px rgb(0 0 0 / 0.2);
   --wui-internal-segmented-indicator-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 1px 2px rgb(0 0 0 / 0.08);
   --wui-internal-segmented-indicator-shadow-pressed: 0 2px 20px rgb(0 0 0 / 0.2);
+  --wui-internal-button-secondary-bg: var(--wui-color-surface-control);
   --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%);
   --wui-scrollbar-handle: rgb(255 255 255 / 0.5);
   color-scheme: dark;
@@ -382,6 +387,7 @@
     --wui-internal-switch-thumb-shadow-pressed: 0 2px 20px rgb(0 0 0 / 0.2);
     --wui-internal-segmented-indicator-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 1px 2px rgb(0 0 0 / 0.08);
     --wui-internal-segmented-indicator-shadow-pressed: 0 2px 20px rgb(0 0 0 / 0.2);
+    --wui-internal-button-secondary-bg: var(--wui-color-surface-control);
     --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%);
     --wui-scrollbar-handle: rgb(255 255 255 / 0.5);
     color-scheme: dark;

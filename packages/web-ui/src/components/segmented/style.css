@@ -86,8 +86,9 @@
 
   /* inset 变体（默认）静止态是纯灰底：.wui-glass 恒挂只为复用按压态配方，这里把它的
      glass-only 输出逐条关掉——backdrop blur、::before 描边环、inset 高光与投影，
-     只留 surface-segmented 实色（该 token 浅色与深色的默认值都等于 surface-control，也就是 secondary
-     button 的面；这条等式由 segmented-contrast 用例守着，两枚 token 在 theme 里各自是字面量定义）。 */
+     只留 surface-segmented 实色（该 token 浅色与深色的默认值都取 surface-control；secondary button 在浅色
+     还向 shade 压深半档，不再与它同面。segmented-contrast 用例守的是 segmented 与 control 的等式，
+     两枚 token 在 theme 里各自是字面量定义）。 */
   background-color: var(--wui-color-surface-segmented, #eeeef3);
   backdrop-filter: none;
   box-shadow: none;

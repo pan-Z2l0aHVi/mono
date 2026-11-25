@@ -99,12 +99,8 @@ button:active:not(:disabled, [data-pointer-outside]) {
   --wui-button-color: var(--wui-color-text, #1b1b20);
 
   /* secondary 是可点控件而非普通填充面：在近白的 dialog 卡片上直接取 surface-control 会与卡片底糊在一起。
-     从同一 token 派生、朝控制面 shade 压深半档，保留冷调的同时把按钮从背景里抬出来。 */
-  --wui-button-bg: color-mix(
-    in srgb,
-    var(--wui-color-surface-control, #eeeef3) 94%,
-    var(--wui-color-surface-control-shade, #1b1b30)
-  );
+     浅色从同一 token 派生、朝控制面 shade 压深半档把按钮抬出来；深色由主题内部变量维持原面。 */
+  --wui-button-bg: var(--wui-internal-button-secondary-bg, #e1e1e7);
   --wui-button-bg-hover: color-mix(
     in srgb,
     var(--wui-button-bg, #eeeef3) 92%,

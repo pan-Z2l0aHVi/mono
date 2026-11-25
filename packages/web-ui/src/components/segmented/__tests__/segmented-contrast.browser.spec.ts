@@ -220,9 +220,9 @@ describe('WebUiSegmented 可辨度（浏览器）', () => {
   })
 
   /*
-   * 凹变种那颗走的是另一条等式：静止 indicator 与同主题的中性可交互控件同面，也就是 `secondary`
-   * button 用的那一档（浅色 #eeeef3、深色 #3a3a3c）。写法与上一条完全对称，只是参照物从 page 换成
-   * control——两个变体各自钉住一档，谁也不跟着谁漂。
+   * 凹变种那颗走的是另一条等式：静止 indicator 与同主题的 control 面同色（浅色 #eeeef3、深色
+   * #3a3a3c）。`secondary` button 浅色还会从 control 向 shade 压深半档，不在这条等式的覆盖内。
+   * 写法与上一条完全对称，只是参照物从 page 换成 control——两个变体各自钉住一档，谁也不跟着谁漂。
    *
    * 失效模式：只把 control 或 segmented 的颜色挪走，这条就红。两枚 token 在 theme 里是互不引用的
    * 字面量定义，这条等式没有结构耦合兜着，「要不要一起动」只能由这条用例来逼。

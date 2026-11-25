@@ -994,4 +994,4 @@ Pill controls are the exception: the light and shade gradient needs physical dim
 
 Variables prefixed with `--wui-internal-*` are not part of the public token API, and callers should not override them.
 
-A few are theme-scoped so handles and indicators can use a lighter lift in light mode without per-component hardcoding: `--wui-internal-switch-thumb-shadow`, `--wui-internal-switch-thumb-shadow-pressed`, `--wui-internal-segmented-indicator-shadow` and `--wui-internal-segmented-indicator-shadow-pressed`.
+A few are theme-scoped so handles and indicators can use a lighter lift in light mode without per-component hardcoding: `--wui-internal-switch-thumb-shadow`, `--wui-internal-switch-thumb-shadow-pressed`, `--wui-internal-segmented-indicator-shadow` and `--wui-internal-segmented-indicator-shadow-pressed`. `--wui-internal-button-secondary-bg` lives in the same layer: it derives the secondary button background one half-step toward the control shade in light mode, and resolves to the plain control surface in dark mode.

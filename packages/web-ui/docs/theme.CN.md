@@ -964,4 +964,4 @@ duration 默认值：
 
 以 `--wui-internal-*` 为前缀的变量不属于公共 token API，调用方不应覆盖。
 
-其中少数按主题分档，让 handle 与 indicator 在浅色下用更轻的浮起强度，而不必在组件里写死：`--wui-internal-switch-thumb-shadow`、`--wui-internal-switch-thumb-shadow-pressed`、`--wui-internal-segmented-indicator-shadow`、`--wui-internal-segmented-indicator-shadow-pressed`。
+其中少数按主题分档，让 handle 与 indicator 在浅色下用更轻的浮起强度，而不必在组件里写死：`--wui-internal-switch-thumb-shadow`、`--wui-internal-switch-thumb-shadow-pressed`、`--wui-internal-segmented-indicator-shadow`、`--wui-internal-segmented-indicator-shadow-pressed`。`--wui-internal-button-secondary-bg` 也在这一层：浅色把 secondary button 底色朝 control shade 压深半档，深色解析为未经改动的 control 面。

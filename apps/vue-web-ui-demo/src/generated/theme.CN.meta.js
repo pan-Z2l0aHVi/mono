@@ -1002,7 +1002,7 @@ const meta = [
   { label: 'p', content: "胶囊控件是例外：光影渐变需要物理尺寸，所以继续使用由控件实际尺寸推导出的有限圆角值。" },
   { label: 'h3', id: 'section-30', content: "<code>--wui-internal-*</code>" },
   { label: 'p', content: "以 <code>--wui-internal-*</code> 为前缀的变量不属于公共 token API，调用方不应覆盖。" },
-  { label: 'p', content: "其中少数按主题分档，让 handle 与 indicator 在浅色下用更轻的浮起强度，而不必在组件里写死：<code>--wui-internal-switch-thumb-shadow</code>、<code>--wui-internal-switch-thumb-shadow-pressed</code>、<code>--wui-internal-segmented-indicator-shadow</code>、<code>--wui-internal-segmented-indicator-shadow-pressed</code>。" }
+  { label: 'p', content: "其中少数按主题分档，让 handle 与 indicator 在浅色下用更轻的浮起强度，而不必在组件里写死：<code>--wui-internal-switch-thumb-shadow</code>、<code>--wui-internal-switch-thumb-shadow-pressed</code>、<code>--wui-internal-segmented-indicator-shadow</code>、<code>--wui-internal-segmented-indicator-shadow-pressed</code>。<code>--wui-internal-button-secondary-bg</code> 也在这一层：浅色把 secondary button 底色朝 control shade 压深半档，深色解析为未经改动的 control 面。" }
 ]
 
 export default meta

@@ -1002,7 +1002,7 @@ const meta = [
   { label: 'p', content: "Pill controls are the exception: the light and shade gradient needs physical dimensions, so they keep using a finite radius derived from the control's actual size." },
   { label: 'h3', id: 'section-30', content: "Internal tokens" },
   { label: 'p', content: "Variables prefixed with <code>--wui-internal-*</code> are not part of the public token API, and callers should not override them." },
-  { label: 'p', content: "A few are theme-scoped so handles and indicators can use a lighter lift in light mode without per-component hardcoding: <code>--wui-internal-switch-thumb-shadow</code>, <code>--wui-internal-switch-thumb-shadow-pressed</code>, <code>--wui-internal-segmented-indicator-shadow</code> and <code>--wui-internal-segmented-indicator-shadow-pressed</code>." }
+  { label: 'p', content: "A few are theme-scoped so handles and indicators can use a lighter lift in light mode without per-component hardcoding: <code>--wui-internal-switch-thumb-shadow</code>, <code>--wui-internal-switch-thumb-shadow-pressed</code>, <code>--wui-internal-segmented-indicator-shadow</code> and <code>--wui-internal-segmented-indicator-shadow-pressed</code>. <code>--wui-internal-button-secondary-bg</code> lives in the same layer: it derives the secondary button background one half-step toward the control shade in light mode, and resolves to the plain control surface in dark mode." }
 ]
 
 export default meta
