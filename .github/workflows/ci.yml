@@ -1,15 +1,31 @@
 name: CI
 
-# main push 只预热 Wails apt 缓存；pull_request 验证 GitHub 生成的合并对象，标题更新也触发检查。
+# main push（环境/依赖/Go 路径变动）、每 4 天 schedule 与 workflow_dispatch(warm_only=true) 预热默认分支基线缓存；
+# pull_request 直接进入 check 验证 GitHub 生成的合并对象，标题更新也触发检查。
 # strict 只要求 PR 分支跟上 base；squash 会创建新提交，不能据此断言合并提交与先前测试对象完全相同。
-# trunk 全量复检走 workflow_dispatch。
+# trunk 全量复检走 workflow_dispatch（默认 warm_only=false）。
 on:
   pull_request:
     branches: [main]
     types: [opened, synchronize, reopened, edited]
   push:
     branches: [main]
+    paths:
+      - '.mise.toml'
+      - 'pnpm-lock.yaml'
+      - 'apps/interweave/go.mod'
+      - 'apps/interweave/go.sum'
+      - 'apps/interweave/**/*.go'
+      - '.github/actions/setup-deps/action.yml'
+      - '.github/workflows/ci.yml'
+  schedule:
+    - cron: '0 4 */4 * *'
   workflow_dispatch:
+    inputs:
+      warm_only:
+        description: 'Only warm main baseline caches without running full check'
+        type: boolean
+        default: false
 
 permissions:
   contents: read
@@ -20,31 +36,55 @@ concurrency:
   cancel-in-progress: true
 
 jobs:
-  prepare-wails-apt-cache:
-    name: Prepare Wails apt cache
+  warm-ci-caches:
+    name: Warm CI baseline caches
     runs-on: ubuntu-latest
-    # Historical cold installs took up to 26.9 minutes in setup-deps; leave room to seed the PR cache.
+    if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.warm_only) }}
+    # Historical cold installs took up to 26.9 minutes in setup-deps; leave room to seed the default-branch cache.
     timeout-minutes: 35
 
     steps:
+      - name: Require main ref for warm_only dispatch
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.warm_only && github.ref != 'refs/heads/main' }}
+        shell: bash
+        run: |
+          echo "warm_only dispatch must run on refs/heads/main (got ${GITHUB_REF})" >&2
+          exit 1
+
       - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-deps
         with:
-          skip-mise: 'true'
-          skip-install: 'true'
           wails: 'true'
-          wails-download-only: 'true'
+          go-cache: 'true'
+
+      - name: Cache Playwright browsers
+        uses: actions/cache@v5
+        with:
+          path: ~/.cache/ms-playwright
+          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          restore-keys: |
+            ${{ runner.os }}-playwright-
+
+      - name: Install Playwright browsers
+        run: pnpm exec playwright install chromium
+
+      # apps/interweave/main.go:28 含 `//go:embed all:frontend/dist`；无 dist 时 go vet 必败并阻断 post-save。
+      # 仅用临时点文件占位并经 trap 在同一步清理，预热 GOMODCACHE 与非 -race GOCACHE。
+      - name: Warm Go module and build caches
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'rm -rf apps/interweave/frontend/dist' EXIT
+          mkdir -p apps/interweave/frontend/dist
+          touch apps/interweave/frontend/dist/.keep
+          pnpm --filter @greypan/interweave exec go vet ./...
 
   check:
     runs-on: ubuntu-latest
-    needs: prepare-wails-apt-cache
-    # On pushes only warm the default-branch cache. For PRs, continue after preparation failure but honor cancellation.
-    if: ${{ github.event_name != 'push' && !cancelled() }}
+    # On pushes, schedules, and warm_only dispatches only warm the default-branch cache. For PRs and full dispatches, run check directly.
+    if: ${{ github.event_name != 'push' && github.event_name != 'schedule' && !(github.event_name == 'workflow_dispatch' && inputs.warm_only) && !cancelled() }}
     timeout-minutes: 15
-    env:
-      # CI 显式把 artifact cache 放在 workspace 内，供 actions/cache 保存与恢复；mise 保留此覆盖。
-      TURBO_CACHE_DIR: ${{ github.workspace }}/.turbo
 
     steps:
       - uses: actions/checkout@v7
@@ -127,29 +167,28 @@ jobs:
       - name: Verify Wails CLI
         run: bash .github/scripts/verify-wails.sh
 
-      # 按 SHA 保存新构建的 Turbo artifacts；restore-keys 仍允许复用最近的 cache。
-      # 只按 lockfile 做主 key 会在代码变化时命中旧 key，导致 post 阶段跳过保存。
-      - name: Cache turbo
-        uses: actions/cache@v5
-        with:
-          path: .turbo
-          key: ${{ runner.os }}-${{ runner.arch }}-turbo-${{ hashFiles('.mise.toml') }}-${{ github.sha }}
-          restore-keys: |
-            ${{ runner.os }}-${{ runner.arch }}-turbo-${{ hashFiles('.mise.toml') }}-
-
       # 生成物新鲜度在 Build 之前只判不改地校验：Build 里 md-to-meta 插件的 writeArtifacts 会把
       # 失步的 src/generated/** 原地写新（healing），挂在测试档的 checkArtifacts 到那时永远空转。
       - name: Check generated artifacts
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
         run: pnpm exec turbo run check-generated --filter=@greypan/react-web-ui-demo --filter=@greypan/vue-web-ui-demo
 
       # 跨 app 的生成物 parity 同样抢在 Build 前：判据在根任务 //#check-generated-parity，
       # 只用 Node 内置模块，不依赖任何 workspace 产物（门禁 dist 那时还不存在）。
       - name: Check generated parity
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
         run: pnpm exec turbo run check-generated-parity
 
       # 门禁实现住在 @greypan/monorepo-kit 的 dist 里：context/policy/changeset/pack 都消费构建产物，
       # 干净 runner 上必须先构建，否则门禁读到的是不存在的入口。
       - name: Build
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
         run: pnpm exec turbo run build --filter=!@greypan/interweave
 
       - name: Check shared agent context
@@ -200,6 +239,9 @@ jobs:
         run: pnpm exec playwright install chromium
 
       - name: Test
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
         # runner 核数少于本地时，turbo 默认的任务并发会让多个包的浏览器与 Go 测试互相抢占 CPU，
         # 表现为随机的等待预算耗尽。只在 CI 收敛任务并发，本地 `pnpm run test` 保持默认。
         run: pnpm exec turbo test --concurrency=2
