@@ -11,6 +11,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/wailsapp/wails/v3/pkg/services/dock"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library"
 	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
@@ -117,6 +118,8 @@ func webviewUserDataDir(dir string) string {
 func macOptions() application.MacOptions {
 	return application.MacOptions{
 		ApplicationShouldTerminateAfterLastWindowClosed: false,
+		// 启动时显式 Regular；隐藏到托盘后由 dock service 切到 Accessory，恢复时切回。
+		ActivationPolicy: application.ActivationPolicyRegular,
 	}
 }
 
@@ -217,21 +220,30 @@ func run() error {
 		nativeService.WithStreamFetcher(fetcher.GetStream),
 		nativeService.WithWallpaperCacheDir(filepath.Join(dir, "cache", "wallpapers")),
 	)
+	// macOS 上把 Dock 图标可见性与托盘状态绑定；其他平台这两个调用是 no-op。
+	dockService := dock.New()
+	dockPresence := newPlatformDockPresence(runtime.GOOS, dockService)
 
 	// 仅暴露产品与受控原生能力，避免基础设施绕过后端边界。
+	services := []application.Service{
+		application.NewService(resourceService),
+		application.NewService(sourceService),
+		application.NewService(tagService),
+		application.NewService(mapService),
+		application.NewService(osService),
+		application.NewService(settingsService),
+		application.NewService(menuService),
+	}
+	// Dock service 只在 macOS 注册：Windows 的 ServiceStartup 会初始化 COM TaskbarList3，
+	// 失败即中止应用，而图标显隐在 Windows/Linux 都是 no-op。
+	if runtime.GOOS == "darwin" {
+		services = append(services, application.NewService(dockService))
+	}
 	app := application.New(application.Options{
 		Name: "Interweave",
 		// 原生关于面板没有版本字段，版本拼进 Description。
 		Description: appDescription(version),
-		Services: []application.Service{
-			application.NewService(resourceService),
-			application.NewService(sourceService),
-			application.NewService(tagService),
-			application.NewService(mapService),
-			application.NewService(osService),
-			application.NewService(settingsService),
-			application.NewService(menuService),
-		},
+		Services:    services,
 		Assets: application.AssetOptions{
 			Handler:    application.AssetFileServerFS(assets),
 			Middleware: rt.MediaHandler().Middleware,
@@ -242,8 +254,9 @@ func run() error {
 	})
 
 	windows := newMainWindowController(app, mainWindowOptions())
+	host := &wailsDesktopHost{app: app, windows: windows, osService: osService, presence: dockPresence}
 	desktopShell := shell.NewDesktopShell(
-		&wailsDesktopHost{app: app, windows: windows, osService: osService},
+		host,
 		&wailsShellState{settings: settingsService, menu: menuService},
 		shell.Config{
 			MinSize:      shell.WindowSize{Width: minWindowWidth, Height: minWindowHeight},
@@ -258,9 +271,14 @@ func run() error {
 	}
 	windows.addStateListener(func(light bool) {
 		if light {
-			// 没有窗口时到达的 Dock/URL 事件先缓冲，等新窗口 runtime 就绪再冲刷。
+			// 轻量模式同样没有窗口：缓冲无窗口期间到达的 Dock/URL 事件，并隐藏 Dock 图标，
+			// 只保留菜单栏托盘作为恢复入口。此时不算「藏进托盘」，关掉托盘不会靠这里恢复。
+			host.hiddenToTray.Store(false)
 			desktopShell.MarkWindowUnready()
+			dockPresence.hide()
+			return
 		}
+		dockPresence.show()
 	})
 	windows.onCreated = func(window *application.WebviewWindow) {
 		window.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
@@ -281,7 +299,7 @@ func run() error {
 	// 避免后台线程持有 trayController.mu 等待主线程而主线程反向等待同一把锁的死锁。
 	trayController := newSystemTrayController(
 		settingsService.MinimizeToTrayOnCloseEnabled,
-		func() trayHandle { return setupSystemTray(app, windows) },
+		func() trayHandle { return setupSystemTray(app, windows, desktopShell.PresentWindow) },
 		func(handle trayHandle) { application.InvokeSync(handle.Destroy) },
 	)
 	trayController.Sync()
@@ -329,9 +347,13 @@ func run() error {
 		desktopShell.SyncMenu()
 		application.InvokeAsync(func() {
 			trayController.Sync()
-			// 轻量模式靠托盘恢复窗口；用户关掉托盘开关时不能再留一个无入口的空壳。
-			if windows.IsLightMode() && !settingsService.MinimizeToTrayOnCloseEnabled() {
-				windows.LeaveLightMode()
+			// 无窗口状态都靠托盘恢复；用户关掉托盘开关时不能再留一个无入口的空壳。
+			if !settingsService.MinimizeToTrayOnCloseEnabled() {
+				if windows.IsLightMode() {
+					windows.LeaveLightMode()
+				} else if host.hiddenByTray() {
+					desktopShell.PresentWindow()
+				}
 			}
 		})
 	})
@@ -374,6 +396,7 @@ func run() error {
 		if err := rt.Close(); err != nil {
 			log.Printf("interweave: close library runtime failed: %v", err)
 		}
+		dockPresence.shutdown()
 	})
 
 	return app.Run()

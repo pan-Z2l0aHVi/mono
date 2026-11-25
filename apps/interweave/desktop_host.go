@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"runtime"
+	"sync/atomic"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -23,6 +24,12 @@ type wailsDesktopHost struct {
 	app       *application.App
 	windows   *mainWindowController
 	osService *nativeService.OSService
+	// presence 只在 macOS 上切换 Dock 可见性：隐藏窗口进托盘时隐藏 Dock，
+	// 从托盘/Dock 恢复窗口时再显示，避免只剩菜单栏托盘后无处点击 Dock。
+	presence *platformDockPresence
+	// hiddenToTray 标记窗口是「关闭时最小化到托盘」藏起来的，不是用户主动最小化。
+	// 关闭该设置时只有这类窗口需要主动恢复，否则没有窗口、托盘和 Dock 三个入口。
+	hiddenToTray atomic.Bool
 }
 
 var _ shell.DesktopHost = (*wailsDesktopHost)(nil)
@@ -75,11 +82,18 @@ func (h *wailsDesktopHost) UnMaximise() {
 
 func (h *wailsDesktopHost) PresentWindow() {
 	h.windows.Present()
+	h.presence.show()
+	h.hiddenToTray.Store(false)
 }
+
+// hiddenByTray 仅供设置变更时判断是否需要把藏进托盘的窗口拉回来。
+func (h *wailsDesktopHost) hiddenByTray() bool { return h.hiddenToTray.Load() }
 
 func (h *wailsDesktopHost) HideWindow() {
 	if window := h.currentWindow(); window != nil {
 		window.Hide()
+		h.hiddenToTray.Store(true)
+		h.presence.hide()
 	}
 }
 

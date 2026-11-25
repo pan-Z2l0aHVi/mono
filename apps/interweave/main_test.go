@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/wailsapp/wails/v3/pkg/application"
+
 	menucontract "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu"
 )
 
@@ -83,6 +85,9 @@ func TestMacOptionsAllowMinimizeToTrayWithoutTerminating(t *testing.T) {
 	opts := macOptions()
 	if opts.ApplicationShouldTerminateAfterLastWindowClosed {
 		t.Fatal("expected Mac.ApplicationShouldTerminateAfterLastWindowClosed to be false so window.Hide() does not terminate the app on macOS")
+	}
+	if opts.ActivationPolicy != application.ActivationPolicyRegular {
+		t.Fatalf("expected Mac.ActivationPolicy to start as Regular, got %v", opts.ActivationPolicy)
 	}
 }
 
