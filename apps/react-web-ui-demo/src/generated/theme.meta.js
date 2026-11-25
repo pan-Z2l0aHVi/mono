@@ -650,7 +650,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-control</code>" },
       { label: 'td', content: "Neutral interactive control surface" },
-      { label: 'td', content: "<code>#e5e5eb</code>" },
+      { label: 'td', content: "<code>#eeeef3</code>" },
       { label: 'td', content: "<code>#3a3a3c</code>" }
       ]
     },
@@ -668,7 +668,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-track</code>" },
       { label: 'td', content: "Slider/Switch track surface" },
-      { label: 'td', content: "<code>#e5e5eb</code>" },
+      { label: 'td', content: "<code>#eeeef3</code>" },
       { label: 'td', content: "<code>#444446</code>" }
       ]
     },
@@ -722,7 +722,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-sidebar</code>" },
       { label: 'td', content: "Sidebar panel surface" },
-      { label: 'td', content: "<code>rgb(233 233 239 / 0.82)</code>" },
+      { label: 'td', content: "<code>rgb(241 241 246 / 0.82)</code>" },
       { label: 'td', content: "<code>rgb(44 44 46 / 0.8)</code>" }
       ]
     },
@@ -731,7 +731,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-segmented</code>" },
       { label: 'td', content: "Segmented concave variant indicator surface (same step as control)" },
-      { label: 'td', content: "<code>#e5e5eb</code>" },
+      { label: 'td', content: "<code>#eeeef3</code>" },
       { label: 'td', content: "<code>#3a3a3c</code>" }
       ]
     },
@@ -740,7 +740,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-segmented-track</code>" },
       { label: 'td', content: "Segmented convex variant track surface" },
-      { label: 'td', content: "<code>#e5e5eb</code>" },
+      { label: 'td', content: "<code>#eeeef3</code>" },
       { label: 'td', content: "<code>#17171b</code>" }
       ]
     },
@@ -990,7 +990,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-shadow-glass</code>" },
       { label: 'td', content: "Liquid glass base shadow" },
-      { label: 'td', content: "<code>0 0 1px rgb(0 0 0 / 0.015), 0 0 6px rgb(0 0 0 / 0.018), 0 2px 12px rgb(0 0 0 / 0.015), 0 6px 24px rgb(0 0 0 / 0.01)</code>" },
+      { label: 'td', content: "<code>0 0 1px rgb(0 0 0 / 0.009), 0 0 6px rgb(0 0 0 / 0.011), 0 2px 12px rgb(0 0 0 / 0.009), 0 6px 24px rgb(0 0 0 / 0.006)</code>" },
       { label: 'td', content: "<code>0 8px 24px rgb(0 0 0 / 0.08)</code>" }
       ]
     }
@@ -1001,7 +1001,8 @@ const meta = [
   { label: 'p', content: "<code>--wui-glass-corner-radius</code> defaults to <code>32px</code>. Non-pill glass surfaces override it with their own semantic radius (<code>--wui-radius-menu</code> / <code>--wui-radius-overlay</code>, and <code>--wui-drawer-radius</code> for the drawer), so the diagonal stroke light and shade follow the token override." },
   { label: 'p', content: "Pill controls are the exception: the light and shade gradient needs physical dimensions, so they keep using a finite radius derived from the control's actual size." },
   { label: 'h3', id: 'section-30', content: "Internal tokens" },
-  { label: 'p', content: "Variables prefixed with <code>--wui-internal-*</code> are not part of the public token API, and callers should not override them." }
+  { label: 'p', content: "Variables prefixed with <code>--wui-internal-*</code> are not part of the public token API, and callers should not override them." },
+  { label: 'p', content: "A few are theme-scoped so handles and indicators can use a lighter lift in light mode without per-component hardcoding: <code>--wui-internal-switch-thumb-shadow</code>, <code>--wui-internal-switch-thumb-shadow-pressed</code>, <code>--wui-internal-segmented-indicator-shadow</code> and <code>--wui-internal-segmented-indicator-shadow-pressed</code>." }
 ]
 
 export default meta
