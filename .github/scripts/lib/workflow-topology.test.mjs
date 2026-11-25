@@ -1693,4 +1693,49 @@ for (const file of ['wails-verify.yml', 'wails-release.yml']) {
   )
 }
 
+// 静态 import 闭包校验：codex-review.mjs 与 codex-autofix.mjs 在 $RUNNER_TEMP/trusted/scripts 下执行，
+// 它们传递引用的全部本地 ./lib/*.mjs（以及其它相对脚本模块）必须全部登记在 stage-codex-inputs/action.yml 中，
+// 防止新增共享 helper 后在 PR 门禁中出现 ERR_MODULE_NOT_FOUND。
+{
+  const actionYml = fs.readFileSync(path.join(repoRoot, '.github/actions/stage-codex-inputs/action.yml'), 'utf8')
+  const trackedMatch = actionYml.match(/for tracked in([\s\S]*?); do/u)
+  assert.ok(trackedMatch, 'stage-codex-inputs/action.yml must declare a tracked file list')
+  const trackedSet = new Set(
+    trackedMatch[1]
+      .split(/\s+/u)
+      .map(token => token.replace(/\\$/u, '').trim())
+      .filter(Boolean)
+  )
+
+  const collectRelativeImports = entryRelPath => {
+    const visited = new Set()
+    const stack = [entryRelPath]
+    while (stack.length > 0) {
+      const current = stack.pop()
+      if (visited.has(current)) continue
+      visited.add(current)
+      const fullPath = path.join(repoRoot, current)
+      const source = fs.readFileSync(fullPath, 'utf8')
+      for (const match of source.matchAll(/\b(?:import|export)\b[\s\S]*?\bfrom\s+['"](\.\.?\/[^'"]+)['"]/gu)) {
+        const resolved = path.posix.normalize(path.posix.join(path.posix.dirname(current), match[1]))
+        stack.push(resolved)
+      }
+    }
+    return visited
+  }
+
+  for (const entry of ['.github/scripts/codex-review.mjs', '.github/scripts/codex-autofix.mjs']) {
+    for (const dep of collectRelativeImports(entry)) {
+      assert.ok(
+        trackedSet.has(dep),
+        `${entry} transitively imports ${dep}, but .github/actions/stage-codex-inputs/action.yml does not stage it`
+      )
+    }
+  }
+  assert.ok(
+    trackedSet.has('.github/scripts/lib/actions-runtime.mjs'),
+    'stage-codex-inputs/action.yml must stage .github/scripts/lib/actions-runtime.mjs'
+  )
+}
+
 console.log('.github/scripts/lib/workflow-topology.test.mjs: all assertions passed')
