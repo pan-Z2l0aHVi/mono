@@ -693,19 +693,33 @@ export function trajectoryEntries({ previousBody = '', verdict, code = '', autoR
   return [...previous, entry].slice(-TRAJECTORY_LIMIT)
 }
 
-// 纯文本 ERROR 行只认行首（允许带 Actions 时间戳前缀），避免误捕获模型思考或工具输出中间夹带的 ERROR:。
+const RUN_CODEX_START_MARKER = '##[start-action display=Run codex exec;id=review.run_codex]'
+const RUN_CODEX_END_MARKER = '##[end-action id=review.run_codex;'
+// 纯文本回退只认 codex CLI 自己发出的红色 ANSI `ERROR:` 前缀（如 `ESC[1mESC[31mERROR:ESC[0m`），
+// 避免把模型执行的工具输出打印的无色行首 `ERROR:` 误报为模型错误。
+const CODEX_PLAIN_ERROR_LINE =
+  // eslint-disable-next-line no-control-regex
+  /^(?:\d{4}-\d{2}-\d{2}T\S+\s+)?(?:\u001b\[[0-9;]*m)*\u001b\[(?:[0-9;]*;)?31mERROR:\u001b\[0m/u
 const PLAIN_MODEL_ERROR_LINE = /^(?:\d{4}-\d{2}-\d{2}T\S+\s+)?ERROR:\s*(.+)$/u
+
+function sliceCodexExecLog(log) {
+  const start = log.indexOf(RUN_CODEX_START_MARKER)
+  if (start === -1) return log
+  const afterStart = log.slice(start + RUN_CODEX_START_MARKER.length)
+  const end = afterStart.indexOf(RUN_CODEX_END_MARKER)
+  return end === -1 ? afterStart : afterStart.slice(0, end)
+}
 
 /**
  * 从 codex-action 的 job 日志里取第一条模型错误。
- * 日志行带时间戳，且 `ERROR:` 本身被 ANSI 颜色码包住（`ESC[1mESC[31mERROR:ESC[0m ...`），
- * 先剥控制序列再提取：优先取第一条结构化 JSON 的 `error.message`；若全文没有结构化错误，
- * 再回退取第一条行首非空纯文本 `ERROR:`（如 `Incomplete response returned, reason: max_output_tokens`）。
+ * 若传入整份 job 日志，先截取 `Run codex exec` 区间以排除其它步骤干扰；
+ * 提取时优先取第一条结构化 JSON 的 `error.message`，若区间内没有结构化错误，
+ * 再回退取第一条带 codex CLI 红色 ANSI 标记的行首纯文本 `ERROR:`（如 `Incomplete response returned, reason: max_output_tokens`）。
  */
 export function firstModelErrorLine(log) {
   if (typeof log !== 'string' || log === '') return ''
   let plainFallback = ''
-  for (const rawLine of log.split('\n')) {
+  for (const rawLine of sliceCodexExecLog(log).split('\n')) {
     const line = rawLine.replace(ANSI_PATTERN, '')
     const index = line.indexOf('ERROR:')
     if (index === -1) continue
@@ -721,7 +735,7 @@ export function firstModelErrorLine(log) {
       if (typeof message === 'string' && message.trim() !== '') return oneLine(message.replace(ANSI_PATTERN, ''))
       continue
     }
-    if (plainFallback === '') {
+    if (plainFallback === '' && CODEX_PLAIN_ERROR_LINE.test(rawLine.trimStart())) {
       const plain = PLAIN_MODEL_ERROR_LINE.exec(line.trim())?.[1]?.trim() ?? ''
       if (plain !== '') plainFallback = oneLine(plain)
     }
