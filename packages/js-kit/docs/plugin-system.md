@@ -1,28 +1,35 @@
-# plugin-system
+---
+title: Plugin System
+---
 
-English | [简体中文](./plugin-system.CN.md)
+# Plugin System
 
-Composable plugin builder (`definePlugin`) plus built-in plugins for batched event emission (`defineBatchEmitter`) and pauseable queues (`defineQueue`, `defineAckQueue`).
+`definePlugin` provides a typed, zero-dependency plugin builder used across `@greypan/js-kit` and `@greypan/browser-kit`. This module also includes three ready-to-use plugins built on top of it: `defineBatchEmitter`, `defineQueue`, and `defineAckQueue`.
 
-## Examples
+## Composing plugins with `definePlugin`
 
-### Composable plugins with `definePlugin`
+Pass a setup function `(ctx) => exports` to `definePlugin`. Each `.use()` call merges the new plugin's exports onto the accumulated `ctx`, and `.make()` executes the chain once to return the final object.
+
+- **Overriding methods.** If a later plugin returns a property with the same name as an earlier one, it overrides that property on the final instance while still able to call the previous implementation through `ctx`.
+- **Typing the final instance.** Use `PluginMade<typeof defineMyPlugin>` to extract the concrete return type of a plugin factory.
 
 ```ts demo=plugin-compose
 import { definePlugin } from '@greypan/js-kit'
 
 const defineLogger = () =>
   definePlugin(() => ({
-    log: (message: string) => `[log] ${message}`
+    log: (msg: string) => `[log] ${msg}`
   }))
 
 const defineAuth = () =>
-  definePlugin(() => ({
-    token: 'demo-token'
+  definePlugin((ctx: { log: (msg: string) => string }) => ({
+    token: 'demo-token',
+    authLog: (msg: string) => `${ctx.log(msg)} (token: demo-token)`
   }))
 
 const app = defineLogger().use(defineAuth()).make()
-console.log(app.log(app.token))
+
+console.log(app.authLog('request sent'))
 ```
 
 ```js
@@ -30,91 +37,106 @@ import { definePlugin } from '@greypan/js-kit'
 
 const defineLogger = () =>
   definePlugin(() => ({
-    log: message => `[log] ${message}`
+    log: msg => `[log] ${msg}`
   }))
 
 const defineAuth = () =>
-  definePlugin(() => ({
-    token: 'demo-token'
+  definePlugin(ctx => ({
+    token: 'demo-token',
+    authLog: msg => `${ctx.log(msg)} (token: demo-token)`
   }))
 
 const app = defineLogger().use(defineAuth()).make()
-console.log(app.log(app.token))
+
+console.log(app.authLog('request sent'))
 ```
 
-### Batched emission with `defineBatchEmitter`
+## Batching calls with `defineBatchEmitter`
+
+`defineBatchEmitter` collects items emitted via `batchEmit(item, delay)` and invokes `onFlushed(items)` once the delay window elapses. Call `flush()` to drain buffered items immediately.
 
 ```ts demo=batch-emitter
 import { defineBatchEmitter } from '@greypan/js-kit'
 
-const emitter = defineBatchEmitter<{ id: number }>({
+const batches: string[][] = []
+const emitter = defineBatchEmitter<string>({
   onFlushed: items => {
-    console.log('Flushed batch:', items.length)
+    batches.push(items)
   }
 }).make()
 
-void emitter.batchEmit({ id: 1 }, 300)
-void emitter.batchEmit({ id: 2 }, 300)
+void emitter.batchEmit('click', 200)
+void emitter.batchEmit('scroll', 200)
+emitter.flush()
+
+console.log(batches)
 ```
 
 ```js
 import { defineBatchEmitter } from '@greypan/js-kit'
 
+const batches = []
 const emitter = defineBatchEmitter({
   onFlushed: items => {
-    console.log('Flushed batch:', items.length)
+    batches.push(items)
   }
 }).make()
 
-void emitter.batchEmit({ id: 1 }, 300)
-void emitter.batchEmit({ id: 2 }, 300)
+void emitter.batchEmit('click', 200)
+void emitter.batchEmit('scroll', 200)
+emitter.flush()
+
+console.log(batches)
 ```
 
-### Queues with `defineQueue` and `defineAckQueue`
+## At-least-once delivery with `defineAckQueue`
 
-`defineQueue` removes an item as soon as `onConsume` is invoked. `defineAckQueue` waits for the returned promise to resolve; a rejected item stays queued for retry on `resume()` or `flush()`. Do not call `flush()` from inside `onConsume`.
+`defineAckQueue` consumes items in FIFO order and removes the head item only after `onConsume` resolves. If `onConsume` throws or rejects, the item stays at the head of the queue so a later `resume()` or `flush()` can retry it.
+
+Use `defineQueue` instead when you want fire-and-forget FIFO draining without retaining failed items.
 
 ```ts demo=ack-queue
 import { defineAckQueue } from '@greypan/js-kit'
 
-const queue = defineAckQueue<{ id: number }>({
+const delivered: string[] = []
+const queue = defineAckQueue<string>({
   onConsume: async item => {
-    console.log('Consumed item', item.id)
-  },
-  onConsumeError: (error, item) => {
-    console.error('Failed item', item.id, error)
+    delivered.push(item)
   }
 }).make()
 
-queue.enqueue({ id: 1 })
 queue.pause()
-queue.enqueue({ id: 2 })
-queue.resume()
+await queue.enqueue('job-1')
+await queue.enqueue('job-2')
+await queue.resume()
+
+console.log(delivered)
 ```
 
 ```js
 import { defineAckQueue } from '@greypan/js-kit'
 
+const delivered = []
 const queue = defineAckQueue({
   onConsume: async item => {
-    console.log('Consumed item', item.id)
-  },
-  onConsumeError: (error, item) => {
-    console.error('Failed item', item.id, error)
+    delivered.push(item)
   }
 }).make()
 
-queue.enqueue({ id: 1 })
 queue.pause()
-queue.enqueue({ id: 2 })
-queue.resume()
+await queue.enqueue('job-1')
+await queue.enqueue('job-2')
+await queue.resume()
+
+console.log(delivered)
 ```
 
 ## API
 
-| Export                         | Description                                                                                        |
-| ------------------------------ | -------------------------------------------------------------------------------------------------- |
-| `definePlugin(setup)`          | Creates a composable plugin with `.use(other)` and `.make()`.                                      |
-| `defineBatchEmitter(options?)` | Collects events and delivers them as a batch after a delay or on `flush()`.                        |
-| `defineQueue(options)`         | Fire-and-forget queue with `enqueue`, `pause`, `resume`, `flush`, `initialItems`, and `onPersist`. |
-| `defineAckQueue(options)`      | Acknowledged queue that removes items only after `onConsume` resolves.                             |
+| Export                               | Description                                                                       |
+| ------------------------------------ | --------------------------------------------------------------------------------- |
+| `definePlugin(setup)`                | Create a composable plugin builder with `.use()` and `.make()`                    |
+| `PluginMade<T>`                      | Utility type that extracts the instance type produced by a plugin factory         |
+| `defineBatchEmitter({ onFlushed })`  | Coalesce calls over a delay window with `batchEmit(item, delay)` and `flush()`    |
+| `defineQueue({ onConsume, ... })`    | FIFO queue with `enqueue`, `pause`, `resume`, `flush`, and optional persistence   |
+| `defineAckQueue({ onConsume, ... })` | Acknowledged FIFO queue that retains items on `onConsume` rejection until retried |

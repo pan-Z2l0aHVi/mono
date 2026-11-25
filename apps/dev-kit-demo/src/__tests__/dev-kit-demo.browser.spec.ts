@@ -53,6 +53,29 @@ describe('dev-kit-demo 浏览器端冒烟测试', () => {
     }
   })
 
+  it('侧边栏一级菜单 js-kit 与 browser-kit 支持折叠展开，并在进入子路由时自动展开', async () => {
+    const { host, router, cleanup } = await mountAppAt('/home')
+    try {
+      const jsTrigger = await waitFor(() => host.querySelector<HTMLButtonElement>('[data-nav-group="js-kit"]'))
+      const browserTrigger = await waitFor(() =>
+        host.querySelector<HTMLButtonElement>('[data-nav-group="browser-kit"]')
+      )
+
+      expect(jsTrigger.getAttribute('aria-expanded')).toBe('true')
+      expect(browserTrigger.getAttribute('aria-expanded')).toBe('true')
+
+      jsTrigger.click()
+      await waitFor(() => (jsTrigger.getAttribute('aria-expanded') === 'false' ? true : null))
+
+      // 导航至子路由后自动重新展开对应一级菜单并标记激活态
+      await router.push('/js-kit/number')
+      await waitFor(() => (jsTrigger.getAttribute('aria-expanded') === 'true' ? true : null))
+      expect(jsTrigger.getAttribute('data-group-active')).toBe('true')
+    } finally {
+      cleanup()
+    }
+  })
+
   it('ts/js 代码块切换不卸载交互演示面板，纯 ts 模块隐藏语言切换器', async () => {
     const { host, router, cleanup } = await mountAppAt('/js-kit/number')
     try {

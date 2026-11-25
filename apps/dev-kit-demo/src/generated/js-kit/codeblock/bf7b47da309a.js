@@ -2,13 +2,15 @@ import { definePlugin } from '@greypan/js-kit'
 
 const defineLogger = () =>
   definePlugin(() => ({
-    log: (message: string) => `[log] ${message}`
+    log: msg => `[log] ${msg}`
   }))
 
 const defineAuth = () =>
-  definePlugin(() => ({
-    token: 'demo-token'
+  definePlugin(ctx => ({
+    token: 'demo-token',
+    authLog: msg => `${ctx.log(msg)} (token: demo-token)`
   }))
 
 const app = defineLogger().use(defineAuth()).make()
-console.log(app.log(app.token))
+
+console.log(app.authLog('request sent'))

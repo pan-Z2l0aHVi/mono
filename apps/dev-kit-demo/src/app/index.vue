@@ -28,6 +28,7 @@ import { BROWSER_KIT_NAV_SECTION, JS_KIT_NAV_SECTION } from '@/nav'
 import { useMobile } from '@/state/mobile'
 
 import RouteProgressBar from './route-progress-bar.vue'
+import SidebarNavGroup from './sidebar-nav-group.vue'
 import SidebarNavLink from './sidebar-nav-link.vue'
 
 const ZH_LABEL = '简体中文'
@@ -84,6 +85,21 @@ const shellLayout = ref<WebUiLayout | null>(null)
 
 const route = useRoute()
 const router = useRouter()
+
+const jsKitOpen = ref(true)
+const browserKitOpen = ref(true)
+
+const isJsKitActive = computed(() => route.path.startsWith('/js-kit/'))
+const isBrowserKitActive = computed(() => route.path.startsWith('/browser-kit/'))
+
+watch(
+  () => route.path,
+  path => {
+    if (path.startsWith('/js-kit/')) jsKitOpen.value = true
+    if (path.startsWith('/browser-kit/')) browserKitOpen.value = true
+  },
+  { immediate: true }
+)
 
 useHead({ title: () => route.meta.title ?? 'Dev Kit Demo' })
 const navSidebar = ref<OverlayScrollbarsComponentRef>()
@@ -222,9 +238,13 @@ onMounted(async () => {
               @navigate="closeSidebar"
             />
 
-            <div role="group" aria-labelledby="nav-section-js-kit" class="grid gap-1">
-              <div v-if="navCollapsed" class="mx-2 my-1 h-px bg-(--wui-color-border)" aria-hidden="true"></div>
-              <h2 id="nav-section-js-kit" :class="[NAV_SECTION_TITLE_CLASS, navCollapsed ? 'sr-only' : '']">js-kit</h2>
+            <SidebarNavGroup
+              v-model:open="jsKitOpen"
+              group-id="js-kit"
+              label="js-kit"
+              :active="isJsKitActive"
+              :collapsed="navCollapsed"
+            >
               <SidebarNavLink
                 to="/js-kit/getting-started"
                 label="快速开始"
@@ -251,13 +271,15 @@ onMounted(async () => {
                 :item-class="NAV_ITEM_CLASS"
                 @navigate="closeSidebar"
               />
-            </div>
+            </SidebarNavGroup>
 
-            <div role="group" aria-labelledby="nav-section-browser-kit" class="grid gap-1">
-              <div v-if="navCollapsed" class="mx-2 my-1 h-px bg-(--wui-color-border)" aria-hidden="true"></div>
-              <h2 id="nav-section-browser-kit" :class="[NAV_SECTION_TITLE_CLASS, navCollapsed ? 'sr-only' : '']">
-                browser-kit
-              </h2>
+            <SidebarNavGroup
+              v-model:open="browserKitOpen"
+              group-id="browser-kit"
+              label="browser-kit"
+              :active="isBrowserKitActive"
+              :collapsed="navCollapsed"
+            >
               <SidebarNavLink
                 to="/browser-kit/getting-started"
                 label="快速开始"
@@ -284,7 +306,7 @@ onMounted(async () => {
                 :item-class="NAV_ITEM_CLASS"
                 @navigate="closeSidebar"
               />
-            </div>
+            </SidebarNavGroup>
           </nav>
         </OverlayScrollbarsComponent>
 
