@@ -103,6 +103,15 @@ const COMPONENT_ROUTES_BY_SLUG = new Map<string, ComponentRouteEntry>(
   )
 )
 
+function extractComponentSlug(slugOrPath: string): string | null {
+  if (!slugOrPath) return null
+  if (!slugOrPath.includes('/')) return slugOrPath
+  if (!slugOrPath.startsWith('/components/')) return null
+  const rest = slugOrPath.slice('/components/'.length)
+  const slug = rest.endsWith('/') ? rest.slice(0, -1) : rest
+  return slug && !slug.includes('/') ? slug : null
+}
+
 /** 根据任意导航树构造路由到 ExampleDoc 文档键集合的查询器。 */
 export function createRouteExampleDocs<Id extends string>(
   sections: readonly NavSection<Id>[],
@@ -117,9 +126,10 @@ export function createRouteExampleDocs<Id extends string>(
   }
 }
 
-/** 按组件 slug（如 `button`）查找共享导航中登记的组件页条目；未登记返回 undefined。 */
-export function findComponentRoute(slug: string): ComponentRouteEntry | undefined {
-  return COMPONENT_ROUTES_BY_SLUG.get(slug)
+/** 按组件 slug（如 `button`）或路径（`/components/button`、`/components/button/`）查找组件页条目；未登记返回 undefined。 */
+export function findComponentRoute(slugOrPath: string): ComponentRouteEntry | undefined {
+  const slug = extractComponentSlug(slugOrPath)
+  return slug ? COMPONENT_ROUTES_BY_SLUG.get(slug) : undefined
 }
 
 /** 返回组件文档路由需要预载的 ExampleDoc 组件列表；非组件文档路由返回空数组。 */

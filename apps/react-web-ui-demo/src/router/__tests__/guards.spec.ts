@@ -1,7 +1,13 @@
-import { routeExampleDocs } from '@greypan/doc-demo-kit'
+import { findComponentRoute, routeExampleDocs } from '@greypan/doc-demo-kit'
 import { createRouteProgressStarter } from '@greypan/route-progress'
 import { QueryClient } from '@tanstack/react-query'
-import { createMemoryHistory, createRootRouteWithContext, createRoute, createRouter } from '@tanstack/react-router'
+import {
+  createMemoryHistory,
+  createRootRouteWithContext,
+  createRoute,
+  createRouter,
+  notFound
+} from '@tanstack/react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { changelogSummaryQuery, parseFakeFetchOptions } from '@/queries/changelog'
@@ -42,6 +48,11 @@ function setup(ensureDocs: (docs: readonly string[]) => Promise<void> = async ()
   const buttonRoute = createRoute({
     getParentRoute: () => rootRoute,
     path: '/components/$component',
+    beforeLoad: ({ params }) => {
+      const entry = findComponentRoute(params.component)
+      if (!entry) throw notFound()
+      return { entry }
+    },
     component: () => null
   })
   const changelogRoute = createRoute({
@@ -202,6 +213,20 @@ describe('react router progress & guards', () => {
     await router.preloadRoute({ to: '/components/$component', params: { component: 'button' } }).catch(() => {})
     expect(failures).toHaveLength(1)
     expect(progress.getSnapshot().visible).toBe(false)
+
+    cleanup()
+  })
+
+  it('未知组件 slug 进入 notFound 且不触发文档预载', async () => {
+    const ensureDocs = vi.fn<(docs: readonly string[]) => Promise<void>>(async () => {})
+    const { router, failures, cleanup } = setup(ensureDocs)
+    await router.load()
+    await vi.advanceTimersByTimeAsync(500)
+
+    await router.navigate({ to: '/components/$component', params: { component: 'non-existent' } })
+    expect(ensureDocs).not.toHaveBeenCalled()
+    expect(failures).toEqual([])
+    expect(router.state.matches.some(match => match.status === 'notFound')).toBe(true)
 
     cleanup()
   })

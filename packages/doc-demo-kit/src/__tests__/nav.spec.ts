@@ -90,6 +90,12 @@ describe('导航数据', () => {
       title: 'Input',
       docs: ['input']
     })
+    expect(findComponentRoute('/components/button')).toEqual(findComponentRoute('button'))
+    expect(findComponentRoute('/components/button/')).toEqual(findComponentRoute('button'))
+    expect(findComponentRoute('/components/button//')).toBeUndefined()
+    expect(findComponentRoute('/components/button/extra')).toBeUndefined()
+    expect(findComponentRoute('/home')).toBeUndefined()
+    expect(findComponentRoute('')).toBeUndefined()
     expect(findComponentRoute('non-existent')).toBeUndefined()
   })
 })

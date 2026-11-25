@@ -4,7 +4,7 @@ import { computed } from 'vue'
 import { useRoute } from 'vue-router'
 
 import ExampleDoc from '@/components/example-doc/index.vue'
-import NotFound from '@/pages/[...all]/index.vue'
+import NotFound from '@/components/not-found/index.vue'
 
 const route = useRoute('/components/[component]')
 const entry = computed(() =>
