@@ -14,7 +14,9 @@ export interface MenuStateRuntime {
 }
 
 class WailsMenuStateRuntime implements MenuStateRuntime {
-  readonly isAvailable = hasWailsRuntime()
+  get isAvailable(): boolean {
+    return hasWailsRuntime()
+  }
 
   async reportDisabled(disabled: Command[]): Promise<void> {
     if (!this.isAvailable) return

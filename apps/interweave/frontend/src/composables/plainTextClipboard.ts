@@ -27,7 +27,7 @@ export function readSelectionText(root: Document = document): string {
 }
 
 /** 沿着 shadow root 的 activeElement 链下钻，拿到真正持有焦点的元素。 */
-function deepestActiveElement(root: Document): Element | null {
+export function deepestActiveElement(root: Document = document): Element | null {
   let current: Element | null = root.activeElement
   while (current?.shadowRoot?.activeElement) current = current.shadowRoot.activeElement
   return current
