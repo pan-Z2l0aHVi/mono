@@ -44,6 +44,13 @@ jobs:
     timeout-minutes: 35
 
     steps:
+      - name: Require main ref for warm_only dispatch
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.warm_only && github.ref != 'refs/heads/main' }}
+        shell: bash
+        run: |
+          echo "warm_only dispatch must run on refs/heads/main (got ${GITHUB_REF})" >&2
+          exit 1
+
       - uses: actions/checkout@v7
 
       - uses: ./.github/actions/setup-deps

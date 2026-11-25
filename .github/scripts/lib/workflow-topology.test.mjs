@@ -258,7 +258,13 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   )
   assert.equal(ciWorkflow.jobs.check.if, EXPECTED_CHECK_IF)
   assert.match(cacheWarmup, /timeout-minutes: 35/)
-  assert.match(cacheWarmup, /wails: 'true'[\s\S]*go-cache: 'true'/)
+  assert.match(
+    cacheWarmup,
+    /github\.event_name == 'workflow_dispatch' && inputs\.warm_only && github\.ref != 'refs\/heads\/main'/
+  )
+  assert.match(cacheWarmup, /wails: 'true'/)
+  assert.match(cacheWarmup, /go-cache: 'true'/)
+  assert.doesNotMatch(cacheWarmup, /skip-(mise|install):\s*'true'/)
   assert.match(cacheWarmup, /playwright install chromium/)
   assert.match(
     cacheWarmup,
