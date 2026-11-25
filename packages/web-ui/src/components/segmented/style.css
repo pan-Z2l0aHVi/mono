@@ -54,9 +54,9 @@
 
 /* raised 变体（「凸」）：经典形态的 flat 灰 track——surface-segmented-track 实色，无描边环、无投影
    （.wui-glass 的 box-shadow 与 ::before 环整体关掉），三种状态下保持同值。浅色它是 page（#fff）之下
-   的 #e5e5eb，深色让 track 沉到 page 之下（#17171b），两种都是给 indicator 留出「与 page 同色」那一档。 */
+   的 #eeeef3，深色让 track 沉到 page 之下（#17171b），两种都是给 indicator 留出「与 page 同色」那一档。 */
 :host([variant='raised']) .wui-segmented {
-  background-color: var(--wui-color-surface-segmented-track, #e5e5eb);
+  background-color: var(--wui-color-surface-segmented-track, #eeeef3);
   box-shadow: none;
 }
 
@@ -86,9 +86,10 @@
 
   /* inset 变体（默认）静止态是纯灰底：.wui-glass 恒挂只为复用按压态配方，这里把它的
      glass-only 输出逐条关掉——backdrop blur、::before 描边环、inset 高光与投影，
-     只留 surface-segmented 实色（该 token 浅色与深色的默认值都等于 surface-control，也就是 secondary
-     button 的面；这条等式由 segmented-contrast 用例守着，两枚 token 在 theme 里各自是字面量定义）。 */
-  background-color: var(--wui-color-surface-segmented, #e5e5eb);
+     只留 surface-segmented 实色（该 token 浅色与深色的默认值都取 surface-control；secondary button 在浅色
+     还向 shade 压深半档，不再与它同面。segmented-contrast 用例守的是 segmented 与 control 的等式，
+     两枚 token 在 theme 里各自是字面量定义）。 */
+  background-color: var(--wui-color-surface-segmented, #eeeef3);
   backdrop-filter: none;
   box-shadow: none;
 
@@ -139,9 +140,7 @@
    才能把实体底/柔投影覆盖成透明玻璃配方。 */
 :host([variant='raised']) .wui-segmented-indicator {
   background-color: var(--wui-color-surface-selected, #fff);
-  box-shadow:
-    0 1px 3px rgb(0 0 0 / 0.12),
-    0 1px 2px rgb(0 0 0 / 0.08);
+  box-shadow: var(--wui-internal-segmented-indicator-shadow, 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04));
 }
 
 /* 静止态不绘制玻璃描边环：.wui-glass::before 是角点环 + 对角光泽层，纯灰底不需要它。
@@ -161,10 +160,11 @@
    backdrop-filter 直接写死值（与 drawer/dialog/toast 的玻璃态同法）：静止态是 none，
    glass 配方由这一态自己声明，不随 .wui-glass 类是否挂载而变；该属性同样不进 transition，
    理由见静止态规则上方的说明。
-   box-shadow 直接写死值（不经 --wui-internal-glass-shadow 中转）：iOS Safari 对 var
-   离散切换驱动的 box-shadow 不触发过渡且可能整体不生效（slider thumb 同法），直接写值
-   后是普通属性变化，transition 正常插值；三条 inset 高光复制自 .wui-glass，避免整段
-   覆盖后按压态丢失玻璃描边。 */
+   box-shadow 的三条 inset 高光与投影几何仍写死：iOS Safari 对 var 离散切换驱动的
+   box-shadow 不触发过渡且可能整体不生效（slider thumb 同法），写死保证按压过渡正常插值，
+   三条 inset 高光复制自 .wui-glass，避免整段覆盖后按压态丢失玻璃描边。外投影层的
+   强度改由主题内部变量分档给值（light 调轻、dark 保留原值）；该 var 只随主题切换、
+   不随交互态离散切换，不触碰上述 Safari 约束。 */
 .wui-segmented.is-pressed .wui-segmented-indicator,
 .wui-segmented.is-dragging .wui-segmented-indicator {
   /* 环底色随按压/拖拽态转 transparent（理由见 menu-portal.css）。 */
@@ -178,7 +178,7 @@
     inset 0 0 0 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 38%, transparent),
     inset 0 1px 0.5px color-mix(in srgb, var(--wui-color-glass-highlight, rgb(255 255 255 / 0.9)) 52%, transparent),
     inset 0 -0.5px 1px rgb(0 0 0 / 0.03),
-    0 2px 20px rgb(0 0 0 / 0.2);
+    var(--wui-internal-segmented-indicator-shadow-pressed, 0 2px 16px rgb(0 0 0 / 0.1));
 
   transition:
     transform var(--wui-duration-press, 80ms) cubic-bezier(0.4, 0, 0.2, 1),

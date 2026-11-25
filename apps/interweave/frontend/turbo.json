@@ -3,6 +3,7 @@
   "extends": ["//"],
   "tasks": {
     "build": {
+      "env": ["RUNNER_OS"],
       "inputs": [
         "$TURBO_DEFAULT$",
         "!**/bindings/**",

@@ -191,6 +191,55 @@ describe('WebUiButton 组件（浏览器）', () => {
     expect(contrastRatio(styles.color, styles.backgroundColor)).toBeGreaterThanOrEqual(3)
   })
 
+  /** color-mix 输出 color(srgb …)，token 直读输出 rgb(…)：归一到 rgb(…) 再比。 */
+  function normalizedRgb(color: string): string {
+    const channels = color
+      .match(/[\d.]+/g)
+      ?.slice(0, 3)
+      .map(Number)
+    if (!channels || channels.length !== 3) throw new Error(`Expected an rgb color, received ${color}`)
+    const values = color.startsWith('color(') ? channels.map(channel => Math.round(channel * 255)) : channels
+    return `rgb(${values.join(', ')})`
+  }
+
+  it('secondary 在浅色与深色都从当前继承的 control 面派生，作用域覆盖依然生效', async () => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', 'light')
+    theme.setAttribute('motion', 'reduced')
+    const scope = document.createElement('div')
+    const button = document.createElement('web-ui-button') as WebUiButton
+    button.variant = 'secondary'
+    button.textContent = 'Secondary'
+    scope.append(button)
+    theme.append(scope)
+    document.body.append(theme)
+    await waitForUpdate(theme)
+    await waitForUpdate(button)
+
+    const inner = button.shadowRoot?.querySelector('button')
+    expect(inner).toBeTruthy()
+    const readBg = () => normalizedRgb(getComputedStyle(inner!).backgroundColor)
+    const controlProbe = document.createElement('span')
+    controlProbe.style.color = 'var(--wui-color-surface-control)'
+    scope.append(controlProbe)
+    const readControl = () => normalizedRgb(getComputedStyle(controlProbe).color)
+
+    const lightControl = readControl()
+    const lightBg = readBg()
+    expect(lightBg).not.toBe(lightControl)
+    expect(contrastRatio(lightControl, lightBg)).toBeGreaterThan(1)
+
+    const override = 'rgb(12, 34, 56)'
+    scope.style.setProperty('--wui-color-surface-control', override)
+    expect(readControl()).toBe(override)
+    expect(readBg()).not.toBe(lightBg)
+
+    theme.setAttribute('appearance', 'dark')
+    await waitForUpdate(theme)
+    expect(readBg()).toBe(readControl())
+    controlProbe.remove()
+  })
+
   it('组内分割线是取 border token 的 1px 视觉线；末位与离组后不渲染', async () => {
     const group = document.createElement('web-ui-button-group')
     group.innerHTML = '<web-ui-button>A</web-ui-button><web-ui-button>B</web-ui-button>'

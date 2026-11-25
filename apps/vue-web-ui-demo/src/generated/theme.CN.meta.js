@@ -650,7 +650,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-control</code>" },
       { label: 'td', content: "中性可交互控件表面" },
-      { label: 'td', content: "<code>#e5e5eb</code>" },
+      { label: 'td', content: "<code>#eeeef3</code>" },
       { label: 'td', content: "<code>#3a3a3c</code>" }
       ]
     },
@@ -668,7 +668,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-track</code>" },
       { label: 'td', content: "Slider/Switch 轨道表面" },
-      { label: 'td', content: "<code>#e5e5eb</code>" },
+      { label: 'td', content: "<code>#eeeef3</code>" },
       { label: 'td', content: "<code>#444446</code>" }
       ]
     },
@@ -722,7 +722,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-sidebar</code>" },
       { label: 'td', content: "侧边栏面板表面" },
-      { label: 'td', content: "<code>rgb(233 233 239 / 0.82)</code>" },
+      { label: 'td', content: "<code>rgb(241 241 246 / 0.82)</code>" },
       { label: 'td', content: "<code>rgb(44 44 46 / 0.8)</code>" }
       ]
     },
@@ -731,7 +731,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-segmented</code>" },
       { label: 'td', content: "Segmented 凹变种 indicator 表面（与控件同级）" },
-      { label: 'td', content: "<code>#e5e5eb</code>" },
+      { label: 'td', content: "<code>#eeeef3</code>" },
       { label: 'td', content: "<code>#3a3a3c</code>" }
       ]
     },
@@ -740,7 +740,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-color-surface-segmented-track</code>" },
       { label: 'td', content: "Segmented 凸变种轨道表面" },
-      { label: 'td', content: "<code>#e5e5eb</code>" },
+      { label: 'td', content: "<code>#eeeef3</code>" },
       { label: 'td', content: "<code>#17171b</code>" }
       ]
     },
@@ -990,7 +990,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-shadow-glass</code>" },
       { label: 'td', content: "液态玻璃基础阴影" },
-      { label: 'td', content: "<code>0 0 1px rgb(0 0 0 / 0.015), 0 0 6px rgb(0 0 0 / 0.018), 0 2px 12px rgb(0 0 0 / 0.015), 0 6px 24px rgb(0 0 0 / 0.01)</code>" },
+      { label: 'td', content: "<code>0 0 1px rgb(0 0 0 / 0.009), 0 0 6px rgb(0 0 0 / 0.011), 0 2px 12px rgb(0 0 0 / 0.009), 0 6px 24px rgb(0 0 0 / 0.006)</code>" },
       { label: 'td', content: "<code>0 8px 24px rgb(0 0 0 / 0.08)</code>" }
       ]
     }
@@ -1001,7 +1001,8 @@ const meta = [
   { label: 'p', content: "<code>--wui-glass-corner-radius</code> 默认值为 <code>32px</code>。非胶囊玻璃表面会用自身的语义圆角覆盖它（<code>--wui-radius-menu</code> / <code>--wui-radius-overlay</code>，抽屉为 <code>--wui-drawer-radius</code>），这样对角描边的光影会跟随 token 覆盖一起变化。" },
   { label: 'p', content: "胶囊控件是例外：光影渐变需要物理尺寸，所以继续使用由控件实际尺寸推导出的有限圆角值。" },
   { label: 'h3', id: 'section-30', content: "内部自定义属性（wui-internal）" },
-  { label: 'p', content: "以 <code>--wui-internal-*</code> 为前缀的变量不属于公共 token API，调用方不应覆盖。" }
+  { label: 'p', content: "以 <code>--wui-internal-*</code> 为前缀的变量不属于公共 token API，调用方不应覆盖。" },
+  { label: 'p', content: "其中少数按主题分档，让 handle 与 indicator 在浅色下用更轻的浮起强度，而不必在组件里写死：<code>--wui-internal-switch-thumb-shadow</code>、<code>--wui-internal-switch-thumb-shadow-pressed</code>、<code>--wui-internal-segmented-indicator-shadow</code>、<code>--wui-internal-segmented-indicator-shadow-pressed</code>。<code>--wui-internal-secondary-shade-weight</code> 也在这一层：它决定 secondary button 混入多少 control shade（浅色 6%、深色 0%），按钮底色仍从继承的 control token 派生，作用域内覆盖依然生效。" }
 ]
 
 export default meta

@@ -907,17 +907,17 @@ duration 默认值：
 | `--wui-color-page`                    | 页面背景                                      | `#fff`                                                                  | `#242428`                                                                             |
 | `--wui-color-surface`                 | 普通表面                                      | `#fff`                                                                  | `#2c2c2e`                                                                             |
 | `--wui-color-surface-raised`          | 抬升表面                                      | `#f2f2f7`                                                               | `#2c2c2e`                                                                             |
-| `--wui-color-surface-control`         | 中性可交互控件表面                            | `#e5e5eb`                                                               | `#3a3a3c`                                                                             |
+| `--wui-color-surface-control`         | 中性可交互控件表面                            | `#eeeef3`                                                               | `#3a3a3c`                                                                             |
 | `--wui-color-surface-control-shade`   | 中性控件交互态混色基准                        | `#1b1b30`                                                               | `#000`                                                                                |
-| `--wui-color-surface-track`           | Slider/Switch 轨道表面                        | `#e5e5eb`                                                               | `#444446`                                                                             |
+| `--wui-color-surface-track`           | Slider/Switch 轨道表面                        | `#eeeef3`                                                               | `#444446`                                                                             |
 | `--wui-color-surface-menu`            | 菜单和浮动面板表面                            | `rgb(250 250 253 / 0.76)`                                               | `rgb(49 49 53 / 0.74)`                                                                |
 | `--wui-color-surface-glass`           | 液态玻璃表面                                  | `rgb(250 250 253 / 0.34)`                                               | `rgb(44 44 46 / 0.42)`                                                                |
 | `--wui-color-surface-glass-hover`     | 玻璃完整悬停背景                              | `color-mix(... text 6%, surface-glass)`                                 | `color-mix(... text 6%, surface-glass)`                                               |
 | `--wui-color-surface-glass-active`    | 玻璃完整按下背景                              | `color-mix(... text 15%, surface-glass)`                                | `color-mix(... text 15%, surface-glass)`                                              |
 | `--wui-color-surface-overlay`         | 半透明覆盖层表面                              | `rgb(248 248 252 / 0.92)`                                               | `rgb(32 32 36 / 0.92)`                                                                |
-| `--wui-color-surface-sidebar`         | 侧边栏面板表面                                | `rgb(233 233 239 / 0.82)`                                               | `rgb(44 44 46 / 0.8)`                                                                 |
-| `--wui-color-surface-segmented`       | Segmented 凹变种 indicator 表面（与控件同级） | `#e5e5eb`                                                               | `#3a3a3c`                                                                             |
-| `--wui-color-surface-segmented-track` | Segmented 凸变种轨道表面                      | `#e5e5eb`                                                               | `#17171b`                                                                             |
+| `--wui-color-surface-sidebar`         | 侧边栏面板表面                                | `rgb(241 241 246 / 0.82)`                                               | `rgb(44 44 46 / 0.8)`                                                                 |
+| `--wui-color-surface-segmented`       | Segmented 凹变种 indicator 表面（与控件同级） | `#eeeef3`                                                               | `#3a3a3c`                                                                             |
+| `--wui-color-surface-segmented-track` | Segmented 凸变种轨道表面                      | `#eeeef3`                                                               | `#17171b`                                                                             |
 | `--wui-color-surface-selected`        | 选中面（凸变种 indicator，与页面同色）        | `#fff`                                                                  | `#242428`                                                                             |
 | `--wui-color-text`                    | 主要文本                                      | `#1b1b20`                                                               | `#e9e9ed`                                                                             |
 | `--wui-color-text-secondary`          | 次要文本                                      | `#6a6a70`                                                               | `#a1a1a6`                                                                             |
@@ -946,11 +946,11 @@ duration 默认值：
 
 ### 阴影 token
 
-| 名称                   | 说明             | 浅色默认值                                                                                                            | 深色默认值                      |
-| ---------------------- | ---------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| `--wui-shadow-overlay` | 模态 / 抽屉阴影  | `2px 16px 40px rgb(0 0 0 / 0.4)`                                                                                      | `0 18px 48px rgb(0 0 0 / 0.48)` |
-| `--wui-shadow-panel`   | 小型浮动面板阴影 | `0 3px 9px rgb(0 0 0 / 0.27)`                                                                                         | `0 4px 16px rgb(0 0 0 / 0.32)`  |
-| `--wui-shadow-glass`   | 液态玻璃基础阴影 | `0 0 1px rgb(0 0 0 / 0.015), 0 0 6px rgb(0 0 0 / 0.018), 0 2px 12px rgb(0 0 0 / 0.015), 0 6px 24px rgb(0 0 0 / 0.01)` | `0 8px 24px rgb(0 0 0 / 0.08)`  |
+| 名称                   | 说明             | 浅色默认值                                                                                                             | 深色默认值                      |
+| ---------------------- | ---------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `--wui-shadow-overlay` | 模态 / 抽屉阴影  | `2px 16px 40px rgb(0 0 0 / 0.4)`                                                                                       | `0 18px 48px rgb(0 0 0 / 0.48)` |
+| `--wui-shadow-panel`   | 小型浮动面板阴影 | `0 3px 9px rgb(0 0 0 / 0.27)`                                                                                          | `0 4px 16px rgb(0 0 0 / 0.32)`  |
+| `--wui-shadow-glass`   | 液态玻璃基础阴影 | `0 0 1px rgb(0 0 0 / 0.009), 0 0 6px rgb(0 0 0 / 0.011), 0 2px 12px rgb(0 0 0 / 0.009), 0 6px 24px rgb(0 0 0 / 0.006)` | `0 8px 24px rgb(0 0 0 / 0.08)`  |
 
 ### 玻璃效果 token
 
@@ -963,3 +963,5 @@ duration 默认值：
 ### 内部自定义属性（wui-internal）
 
 以 `--wui-internal-*` 为前缀的变量不属于公共 token API，调用方不应覆盖。
+
+其中少数按主题分档，让 handle 与 indicator 在浅色下用更轻的浮起强度，而不必在组件里写死：`--wui-internal-switch-thumb-shadow`、`--wui-internal-switch-thumb-shadow-pressed`、`--wui-internal-segmented-indicator-shadow`、`--wui-internal-segmented-indicator-shadow-pressed`。`--wui-internal-secondary-shade-weight` 也在这一层：它决定 secondary button 混入多少 control shade（浅色 6%、深色 0%），按钮底色仍从继承的 control token 派生，作用域内覆盖依然生效。

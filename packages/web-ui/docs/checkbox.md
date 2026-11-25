@@ -235,7 +235,7 @@ The mark uses `--wui-color-on-control` and defaults to the size of `--wui-select
 
 ### Inactive state
 
-The unchecked indicator takes its background from `--wui-color-surface-control` (the same control surface as the neutral button), which stays distinguishable from `--wui-color-page` in dark mode too.
+The unchecked indicator takes its background from `--wui-color-surface-control`, the same control surface the neutral button derives from. The secondary button darkens that surface half a step in light mode, so it no longer matches the indicator exactly. Both stay distinguishable from `--wui-color-page` in dark mode too.
 
 When any part of the trigger area (the indicator, the gap, or the slot label on the right) is hovered, a state layer is overlaid on that background.
 

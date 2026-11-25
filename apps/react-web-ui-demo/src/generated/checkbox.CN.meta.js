@@ -141,7 +141,7 @@ const meta = [
   { label: 'p', content: "勾选时对勾从左端画出，取消时沿原路收回；<code>motion=\"reduced\"</code> 时直接切换，挂载时已勾选的控件显示静态勾。" },
   { label: 'p', content: "对勾颜色取 <code>--wui-color-on-control</code>；尺寸默认等于 <code>--wui-selection-control-size</code>，可通过 <code>--wui-checkbox-icon-size</code> 单独覆盖。" },
   { label: 'h3', id: 'section-13', content: "未激活态" },
-  { label: 'p', content: "未选中 indicator 的底色取 <code>--wui-color-surface-control</code>（与中性按钮使用同一种控件底色），深色模式下也能和 <code>--wui-color-page</code> 分辨开。" },
+  { label: 'p', content: "未选中 indicator 的底色取 <code>--wui-color-surface-control</code>，与中性按钮使用同一种控件底色；secondary button 在浅色下会再向 shade 压深半档，因此与这颗 indicator 不再完全同面。两者在深色模式下也都能和 <code>--wui-color-page</code> 分辨开。" },
   { label: 'p', content: "触发区内任意位置（indicator、间距或右侧插槽中的标签）悬停时叠加状态层。" },
   { label: 'p', content: "悬停只在 <code>(hover: hover) and (pointer: fine)</code> 设备上生效；没有按下态，已选中和禁用态保持各自底色。" },
   { label: 'p', content: "<code>&lt;web-ui-radio></code> 共用同一套状态。" }
