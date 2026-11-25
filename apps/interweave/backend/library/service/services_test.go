@@ -44,7 +44,7 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 
 	fetcher := remote.NewFetcher()
 	coreLib := coreLibrary.NewLibrary(db, fetcher)
-	resService := service.NewResourceService(coreLib, libraryMedia.NewPendingPreviewRegistry())
+	resService := service.NewResourceService(coreLib)
 	srcService := service.NewSourceService(coreLib)
 	tagService := service.NewTagService(coreLib)
 
@@ -171,10 +171,9 @@ func TestPrepareFilePreviewRegistersMediaAndShutdownClearsTokens(t *testing.T) {
 	defer cleanup()
 
 	previews := libraryMedia.NewPendingPreviewRegistry()
-	resService := service.NewResourceService(
-		coreLibrary.NewLibrary(db, remote.NewFetcher()),
-		previews,
-	)
+	coreLib := coreLibrary.NewLibrary(db, remote.NewFetcher())
+	coreLib.SetPendingPreviews(testPendingPreviewStore{registry: previews})
+	resService := service.NewResourceService(coreLib)
 	handler := libraryMedia.NewHandler(storage.SourceStore{}, db.SqlDB(), previews, nil, nil)
 	defer handler.Close()
 	directory := t.TempDir()
@@ -235,9 +234,7 @@ func TestPrepareFilePreviewRegistersMediaAndShutdownClearsTokens(t *testing.T) {
 		t.Fatalf("expected released pending preview 404, got %d", status)
 	}
 
-	if err := resService.ServiceShutdown(); err != nil {
-		t.Fatalf("ServiceShutdown error: %v", err)
-	}
+	previews.Clear()
 	if status := pendingRequest(video.Token); status != http.StatusNotFound {
 		t.Fatalf("expected shutdown to clear pending preview, got %d", status)
 	}
@@ -249,7 +246,7 @@ func TestMapServiceDerivedExploration(t *testing.T) {
 
 	fetcher := remote.NewFetcher()
 	coreLib := coreLibrary.NewLibrary(db, fetcher)
-	resService := service.NewResourceService(coreLib, libraryMedia.NewPendingPreviewRegistry())
+	resService := service.NewResourceService(coreLib)
 	tagService := service.NewTagService(coreLib)
 	mapService := service.NewMapService(coreLib)
 
@@ -312,4 +309,20 @@ func addFileResource(ctx context.Context, svc *service.ResourceService, inputPat
 
 func addURLResource(ctx context.Context, svc *service.ResourceService, inputURL string) (*service.ResourceDTO, error) {
 	return svc.CreateResource(ctx, service.CreateResourceInputDTO{Kind: storage.SourceTypeURL, Location: inputURL})
+}
+
+type testPendingPreviewStore struct {
+	registry *libraryMedia.PendingPreviewRegistry
+}
+
+func (s testPendingPreviewStore) Register(location string) (string, string, error) {
+	token, err := s.registry.Register(location)
+	if err != nil {
+		return "", "", err
+	}
+	return token, libraryMedia.PendingMediaURL(token), nil
+}
+
+func (s testPendingPreviewStore) Release(token string) bool {
+	return s.registry.Release(token)
 }

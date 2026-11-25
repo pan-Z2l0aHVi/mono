@@ -12,11 +12,6 @@ import (
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 )
 
-// RecoveryScans 返回找回扫描的会话 runner，外观层只做传递与 DTO 映射。
-func (s *Library) RecoveryScans() *RecoveryScanRunner {
-	return s.recovery
-}
-
 // BackfillFingerprints 为库内已可用的文件 Source 补齐指纹。构造函数不再隐藏调度：
 // 由装配层（main.go）决定何时在后台启动它。
 func (s *Library) BackfillFingerprints(ctx context.Context) {

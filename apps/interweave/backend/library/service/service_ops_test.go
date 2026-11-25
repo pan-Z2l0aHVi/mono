@@ -10,7 +10,6 @@ import (
 	"testing"
 
 	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
-	libraryMedia "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/media"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
@@ -21,7 +20,7 @@ func newTestServices(t *testing.T) (*service.ResourceService, *service.SourceSer
 	db, cleanup := setupTestDB(t)
 	fetcher := remote.NewFetcher()
 	coreLib := coreLibrary.NewLibrary(db, fetcher)
-	resService := service.NewResourceService(coreLib, libraryMedia.NewPendingPreviewRegistry())
+	resService := service.NewResourceService(coreLib)
 	srcService := service.NewSourceService(coreLib)
 	tagService := service.NewTagService(coreLib)
 	mapService := service.NewMapService(coreLib)
@@ -471,38 +470,5 @@ func TestEdgeErrorPathsAndRemoval(t *testing.T) {
 	tagged, _ := resService.GetResource(ctx, res.ID)
 	if len(tagged.Tags) != 1 || tagged.Tags[0].Name != "Dedup" {
 		t.Errorf("expected single Dedup tag, got %+v", tagged.Tags)
-	}
-}
-
-func TestRecoveryScanShutdownRejectsNewScan(t *testing.T) {
-	resService, srcService, _, _, cleanup := newTestServices(t)
-	defer cleanup()
-	ctx := context.Background()
-
-	dir := t.TempDir()
-	path := filepath.Join(dir, "lost.txt")
-	if err := os.WriteFile(path, []byte("lost-content"), 0o644); err != nil {
-		t.Fatalf("write fixture: %v", err)
-	}
-	res, err := addFileResource(ctx, resService, path)
-	if err != nil {
-		t.Fatalf("addFileResource error: %v", err)
-	}
-	sourceID := res.Sources[0].ID
-	if err := os.Remove(path); err != nil {
-		t.Fatalf("remove fixture: %v", err)
-	}
-	if _, err := srcService.RefreshSource(ctx, sourceID); err != nil {
-		t.Fatalf("RefreshSource error: %v", err)
-	}
-
-	if _, err := srcService.StartRecoveryScan(ctx, []string{sourceID}, dir); err != nil {
-		t.Fatalf("StartRecoveryScan before shutdown error: %v", err)
-	}
-	if err := srcService.ServiceShutdown(); err != nil {
-		t.Fatalf("ServiceShutdown error: %v", err)
-	}
-	if _, err := srcService.StartRecoveryScan(ctx, []string{sourceID}, dir); err == nil || err.Error() != "recovery service is shut down" {
-		t.Fatalf("expected shutdown rejection error, got %v", err)
 	}
 }

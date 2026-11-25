@@ -11,10 +11,12 @@ import (
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 )
 
-// PreparedFilePreview 是待添加文件的稳定位置与权威展示分类。
+// PreparedFilePreview 是待添加文件的稳定位置、权威展示分类与短期媒体预览授权。
 type PreparedFilePreview struct {
 	Location string
 	Kind     storage.ResourceKind
+	Token    string
+	MediaURL string
 }
 
 // ResourceLocationMatch 是「库内已有同一入口」的命中项，只带确认框需要的字段。
@@ -24,13 +26,31 @@ type ResourceLocationMatch struct {
 	Location   string
 }
 
-// 规范化待添加文件并复用 Resource 展示分类，不读取文件内容。
+// 规范化待添加文件并复用 Resource 展示分类；仅图片与视频在已注入预览存储时授予短期媒体读取 token。
 func (s *Library) PrepareFilePreview(inputPath string) (PreparedFilePreview, error) {
 	location, err := s.ingest.normalizeInput(inputPath, storage.SourceTypeFile)
 	if err != nil {
 		return PreparedFilePreview{}, err
 	}
-	return PreparedFilePreview{Location: location, Kind: resourceKindForFile(location)}, nil
+	kind := resourceKindForFile(location)
+	prepared := PreparedFilePreview{Location: location, Kind: kind}
+	if (kind == storage.ResourceKindImage || kind == storage.ResourceKindVideo) && s.previews != nil {
+		token, mediaURL, err := s.previews.Register(location)
+		if err != nil {
+			return PreparedFilePreview{}, err
+		}
+		prepared.Token = token
+		prepared.MediaURL = mediaURL
+	}
+	return prepared, nil
+}
+
+// ReleaseFilePreview 撤销不再需要的待添加文件短期媒体预览授权。
+func (s *Library) ReleaseFilePreview(token string) bool {
+	if token == "" || s.previews == nil {
+		return false
+	}
+	return s.previews.Release(token)
 }
 
 // 按归一化位置反查库内已有该入口的 Resource，供添加前的重复提示使用。

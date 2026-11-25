@@ -32,12 +32,12 @@ func recoveryScanUpdateToDTO(u core.RecoveryScanUpdate) *RecoveryScanUpdateDTO {
 
 // StartRecoveryScan starts one cancellable scan; an empty directory requests local mounted disks.
 func (s *SourceService) StartRecoveryScan(_ context.Context, sourceIDs []string, directory string) (string, error) {
-	return s.core.RecoveryScans().Start(sourceIDs, directory)
+	return s.core.StartRecoveryScan(sourceIDs, directory)
 }
 
 // PollRecoveryScan returns and consumes candidates accumulated since the last poll.
 func (s *SourceService) PollRecoveryScan(_ context.Context, scanID string) (*RecoveryScanUpdateDTO, error) {
-	update, err := s.core.RecoveryScans().Poll(scanID)
+	update, err := s.core.PollRecoveryScan(scanID)
 	if err != nil {
 		return nil, err
 	}
@@ -46,12 +46,12 @@ func (s *SourceService) PollRecoveryScan(_ context.Context, scanID string) (*Rec
 
 // CancelRecoveryScan requests cancellation; poll until done to consume the remaining results.
 func (s *SourceService) CancelRecoveryScan(_ context.Context, scanID string) error {
-	return s.core.RecoveryScans().Cancel(scanID)
+	return s.core.CancelRecoveryScan(scanID)
 }
 
 // DiscardRecoveryScan cancels and releases a scan when its dialog is closed.
 func (s *SourceService) DiscardRecoveryScan(_ context.Context, scanID string) {
-	s.core.RecoveryScans().Discard(scanID)
+	s.core.DiscardRecoveryScan(scanID)
 }
 
 // ReplaceScannedFileSource verifies the scan snapshot before replacing the source.
@@ -61,10 +61,4 @@ func (s *SourceService) ReplaceScannedFileSource(ctx context.Context, sourceID, 
 		return nil, err
 	}
 	return s.resourceDTO(ctx, src.ResourceID)
-}
-
-// ServiceShutdown stops and joins scans before the database is closed.
-func (s *SourceService) ServiceShutdown() error {
-	s.core.RecoveryScans().Shutdown()
-	return nil
 }
