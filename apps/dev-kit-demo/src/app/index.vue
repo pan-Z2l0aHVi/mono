@@ -227,7 +227,6 @@ onMounted(async () => {
           aria-label="应用导航"
         >
           <nav class="grid min-w-0 grid-cols-1 gap-1" aria-label="主导航">
-            <h2 id="nav-section-overview" :class="[NAV_SECTION_TITLE_CLASS, navCollapsed ? 'sr-only' : '']">概览</h2>
             <SidebarNavLink
               to="/home"
               label="总览"
@@ -238,77 +237,80 @@ onMounted(async () => {
               @navigate="closeSidebar"
             />
 
-            <SidebarNavGroup
-              v-model:open="jsKitOpen"
-              group-id="js-kit"
-              label="js-kit"
-              :active="isJsKitActive"
-              :collapsed="navCollapsed"
-              :item-class="NAV_ITEM_CLASS"
-            >
-              <SidebarNavLink
-                to="/js-kit/getting-started"
-                label="快速开始"
-                :active="isNavActive(route.path, '/js-kit/getting-started')"
+            <div role="group" aria-labelledby="nav-section-utils" class="grid min-w-0 grid-cols-1 gap-1">
+              <h2 id="nav-section-utils" :class="[NAV_SECTION_TITLE_CLASS, navCollapsed ? 'sr-only' : '']">工具库</h2>
+              <SidebarNavGroup
+                v-model:open="jsKitOpen"
+                group-id="js-kit"
+                label="js-kit"
+                :active="isJsKitActive"
                 :collapsed="navCollapsed"
                 :item-class="NAV_ITEM_CLASS"
-                @navigate="closeSidebar"
-              />
-              <SidebarNavLink
-                to="/js-kit/changelog"
-                label="更新日志"
-                :active="isNavActive(route.path, '/js-kit/changelog')"
-                :collapsed="navCollapsed"
-                :item-class="NAV_ITEM_CLASS"
-                @navigate="closeSidebar"
-              />
-              <SidebarNavLink
-                v-for="item in JS_KIT_NAV_SECTION.items"
-                :key="item.path"
-                :to="item.path"
-                :label="item.label"
-                :active="isNavActive(route.path, item.path)"
-                :collapsed="navCollapsed"
-                :item-class="NAV_ITEM_CLASS"
-                @navigate="closeSidebar"
-              />
-            </SidebarNavGroup>
+              >
+                <SidebarNavLink
+                  to="/js-kit/getting-started"
+                  label="快速开始"
+                  :active="isNavActive(route.path, '/js-kit/getting-started')"
+                  :collapsed="navCollapsed"
+                  :item-class="NAV_ITEM_CLASS"
+                  @navigate="closeSidebar"
+                />
+                <SidebarNavLink
+                  to="/js-kit/changelog"
+                  label="更新日志"
+                  :active="isNavActive(route.path, '/js-kit/changelog')"
+                  :collapsed="navCollapsed"
+                  :item-class="NAV_ITEM_CLASS"
+                  @navigate="closeSidebar"
+                />
+                <SidebarNavLink
+                  v-for="item in JS_KIT_NAV_SECTION.items"
+                  :key="item.path"
+                  :to="item.path"
+                  :label="item.label"
+                  :active="isNavActive(route.path, item.path)"
+                  :collapsed="navCollapsed"
+                  :item-class="NAV_ITEM_CLASS"
+                  @navigate="closeSidebar"
+                />
+              </SidebarNavGroup>
 
-            <SidebarNavGroup
-              v-model:open="browserKitOpen"
-              group-id="browser-kit"
-              label="browser-kit"
-              :active="isBrowserKitActive"
-              :collapsed="navCollapsed"
-              :item-class="NAV_ITEM_CLASS"
-            >
-              <SidebarNavLink
-                to="/browser-kit/getting-started"
-                label="快速开始"
-                :active="isNavActive(route.path, '/browser-kit/getting-started')"
+              <SidebarNavGroup
+                v-model:open="browserKitOpen"
+                group-id="browser-kit"
+                label="browser-kit"
+                :active="isBrowserKitActive"
                 :collapsed="navCollapsed"
                 :item-class="NAV_ITEM_CLASS"
-                @navigate="closeSidebar"
-              />
-              <SidebarNavLink
-                to="/browser-kit/changelog"
-                label="更新日志"
-                :active="isNavActive(route.path, '/browser-kit/changelog')"
-                :collapsed="navCollapsed"
-                :item-class="NAV_ITEM_CLASS"
-                @navigate="closeSidebar"
-              />
-              <SidebarNavLink
-                v-for="item in BROWSER_KIT_NAV_SECTION.items"
-                :key="item.path"
-                :to="item.path"
-                :label="item.label"
-                :active="isNavActive(route.path, item.path)"
-                :collapsed="navCollapsed"
-                :item-class="NAV_ITEM_CLASS"
-                @navigate="closeSidebar"
-              />
-            </SidebarNavGroup>
+              >
+                <SidebarNavLink
+                  to="/browser-kit/getting-started"
+                  label="快速开始"
+                  :active="isNavActive(route.path, '/browser-kit/getting-started')"
+                  :collapsed="navCollapsed"
+                  :item-class="NAV_ITEM_CLASS"
+                  @navigate="closeSidebar"
+                />
+                <SidebarNavLink
+                  to="/browser-kit/changelog"
+                  label="更新日志"
+                  :active="isNavActive(route.path, '/browser-kit/changelog')"
+                  :collapsed="navCollapsed"
+                  :item-class="NAV_ITEM_CLASS"
+                  @navigate="closeSidebar"
+                />
+                <SidebarNavLink
+                  v-for="item in BROWSER_KIT_NAV_SECTION.items"
+                  :key="item.path"
+                  :to="item.path"
+                  :label="item.label"
+                  :active="isNavActive(route.path, item.path)"
+                  :collapsed="navCollapsed"
+                  :item-class="NAV_ITEM_CLASS"
+                  @navigate="closeSidebar"
+                />
+              </SidebarNavGroup>
+            </div>
           </nav>
         </OverlayScrollbarsComponent>
 

@@ -20,9 +20,9 @@ const emit = defineEmits<{
 const isSelected = computed(() => Boolean(props.active && !props.open))
 
 const triggerClass = computed(() => [
-  'demo-nav-link text-sm font-medium',
+  'demo-nav-link',
   props.itemClass,
-  props.collapsed ? 'h-9 w-9 justify-center' : 'w-full min-w-0 justify-between',
+  props.collapsed ? 'w-9 justify-center' : 'w-full min-w-0 justify-between',
   isSelected.value ? '' : 'hover:bg-[#1b1b30]/4 dark:hover:bg-white/6'
 ])
 
@@ -63,12 +63,12 @@ function onOpenChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
       :data-nav-group="groupId"
       :data-group-active="active ? 'true' : undefined"
     >
-      <span class="min-w-0 flex-1 truncate">{{ label }}</span>
+      <span class="min-w-0 flex-1 truncate text-sm">{{ label }}</span>
       <web-ui-icon :icon="lucideChevronRight" :size="15" :class="arrowClass"></web-ui-icon>
     </button>
 
-    <div slot="content" :class="collapsed ? 'w-full min-w-0 pt-1 pb-0.5' : 'w-full min-w-0 px-0.5 pt-1 pb-0.5'">
-      <div :class="collapsed ? 'grid min-w-0 grid-cols-1 gap-1' : 'grid min-w-0 grid-cols-1 gap-0.5 pl-3'">
+    <div slot="content" class="w-full min-w-0 pt-1">
+      <div :class="collapsed ? 'grid min-w-0 grid-cols-1 gap-1' : 'grid min-w-0 grid-cols-1 gap-1 pl-3'">
         <slot />
       </div>
     </div>

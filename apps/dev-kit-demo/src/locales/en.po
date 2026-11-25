@@ -76,10 +76,6 @@ msgid "主导航"
 msgstr "Main navigation"
 
 #: src/app/index.vue
-msgid "概览"
-msgstr "Overview"
-
-#: src/app/index.vue
 #: src/app/index.vue
 msgid "总览"
 msgstr "Overview"
@@ -139,6 +135,7 @@ msgstr "Example documentation"
 msgid "搜索"
 msgstr "Search"
 
+#: src/components/search/index.vue
 #: src/components/search/index.vue
 msgid "搜索页面和模块"
 msgstr "Search pages and modules"
@@ -469,3 +466,7 @@ msgstr "URL to parse"
 #: src/demos/js-kit/url/UrlPlaygroundDemo.vue
 msgid "附加 key"
 msgstr "Append key"
+
+#: src/app/index.vue
+msgid "工具库"
+msgstr "Utils library"

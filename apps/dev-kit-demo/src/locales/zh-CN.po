@@ -76,10 +76,6 @@ msgid "主导航"
 msgstr "主导航"
 
 #: src/app/index.vue
-msgid "概览"
-msgstr "概览"
-
-#: src/app/index.vue
 #: src/app/index.vue
 msgid "总览"
 msgstr "总览"
@@ -470,3 +466,7 @@ msgstr "待解析 URL"
 #: src/demos/js-kit/url/UrlPlaygroundDemo.vue
 msgid "附加 key"
 msgstr "附加 key"
+
+#: src/app/index.vue
+msgid "工具库"
+msgstr "工具库"
