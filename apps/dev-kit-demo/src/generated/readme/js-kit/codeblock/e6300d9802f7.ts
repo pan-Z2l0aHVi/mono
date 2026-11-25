@@ -1,4 +1,4 @@
-import { definePlugin } from '@greypan/js-kit'
+import { definePlugin } from '@greypan/js-kit/plugin-system'
 
 const defineLogger = () =>
   definePlugin(() => ({

@@ -1,4 +1,4 @@
-import { defineLocal } from '@greypan/browser-kit'
+import { defineLocal } from '@greypan/browser-kit/storage'
 
 const storage = defineLocal('my-app')
 

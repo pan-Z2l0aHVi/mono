@@ -89,6 +89,8 @@ msgstr "快速开始"
 
 #: src/app/index.vue
 #: src/app/index.vue
+#: src/pages/home/index.vue
+#: src/pages/home/index.vue
 msgid "更新日志"
 msgstr "更新日志"
 
@@ -178,16 +180,9 @@ msgid "浏览器运行时工具集：带 TTL 的命名空间存储、可组合�
 msgstr "浏览器运行时工具集：带 TTL 的命名空间存储、可组合埋点、环境检测、文件下载、剪贴板与历史导航。"
 
 #: src/pages/home/index.vue
+#: src/pages/home/index.vue
 msgid "模块清单"
 msgstr "模块清单"
-
-#: src/pages/home/index.vue
-msgid "js-kit 模块"
-msgstr "js-kit 模块"
-
-#: src/pages/home/index.vue
-msgid "browser-kit 模块"
-msgstr "browser-kit 模块"
 
 #: src/demos/browser-kit/copy/CopyDemo.vue
 msgid "待复制文本"
@@ -470,3 +465,100 @@ msgstr "附加 key"
 #: src/app/index.vue
 msgid "工具库"
 msgstr "工具库"
+
+#: src/pages/home/index.vue
+msgid "零框架依赖"
+msgstr "零框架依赖"
+
+#: src/pages/home/index.vue
+msgid "TypeScript 类型安全"
+msgstr "TypeScript 类型安全"
+
+#: src/pages/home/index.vue
+msgid "ESM 与按需导出"
+msgstr "ESM 与按需导出"
+
+#: src/pages/home/index.vue
+msgid "可组合插件架构"
+msgstr "可组合插件架构"
+
+#: src/pages/home/index.vue
+msgid "适用于浏览器、Node.js 与 Worker 的通用工具集"
+msgstr "适用于浏览器、Node.js 与 Worker 的通用工具集"
+
+#: src/pages/home/index.vue
+msgid "插件组合、批量聚合事件与 ACK 确认队列"
+msgstr "插件组合、批量聚合事件与 ACK 确认队列"
+
+#: src/pages/home/index.vue
+msgid "查询参数解析、拼接与 URL 规范化"
+msgstr "查询参数解析、拼接与 URL 规范化"
+
+#: src/pages/home/index.vue
+msgid "范围裁剪、精度处理与数值格式化"
+msgstr "范围裁剪、精度处理与数值格式化"
+
+#: src/pages/home/index.vue
+msgid "文件扩展名提取与常用字符串工具"
+msgstr "文件扩展名提取与常用字符串工具"
+
+#: src/pages/home/index.vue
+msgid "可取消防抖控制对象与可控定时器插件"
+msgstr "可取消防抖控制对象与可控定时器插件"
+
+#: src/pages/home/index.vue
+msgid "Result 类型、错误兜底与异步链式组合"
+msgstr "Result 类型、错误兜底与异步链式组合"
+
+#: src/pages/home/index.vue
+msgid "只读、深度可选与品牌类型工具集"
+msgstr "只读、深度可选与品牌类型工具集"
+
+#: src/pages/home/index.vue
+msgid "面向现代浏览器的运行时与交互工具集"
+msgstr "面向现代浏览器的运行时与交互工具集"
+
+#: src/pages/home/index.vue
+msgid "命名空间存储、TTL 过期与跨标签页监听"
+msgstr "命名空间存储、TTL 过期与跨标签页监听"
+
+#: src/pages/home/index.vue
+msgid "可组合埋点内核、自动采集插件与离线队列"
+msgstr "可组合埋点内核、自动采集插件与离线队列"
+
+#: src/pages/home/index.vue
+msgid "SSR 守卫、浏览器与设备环境检测"
+msgstr "SSR 守卫、浏览器与设备环境检测"
+
+#: src/pages/home/index.vue
+msgid "视口尺寸、滚动位置与基础 DOM 查询"
+msgstr "视口尺寸、滚动位置与基础 DOM 查询"
+
+#: src/pages/home/index.vue
+msgid "Base64 校验解析与浏览器文件下载"
+msgstr "Base64 校验解析与浏览器文件下载"
+
+#: src/pages/home/index.vue
+msgid "文本与 Blob 剪贴板写入及降级兜底"
+msgstr "文本与 Blob 剪贴板写入及降级兜底"
+
+#: src/pages/home/index.vue
+msgid "同文档导航拦截与前进后退状态管理"
+msgstr "同文档导航拦截与前进后退状态管理"
+
+#: src/pages/home/index.vue
+msgid "事件监听便捷绑定与解绑工具"
+msgstr "事件监听便捷绑定与解绑工具"
+
+#: src/pages/home/index.vue
+msgid "js-kit 快速开始"
+msgstr "js-kit 快速开始"
+
+#: src/pages/home/index.vue
+msgid "browser-kit 快速开始"
+msgstr "browser-kit 快速开始"
+
+#: src/pages/home/index.vue
+#: src/pages/home/index.vue
+msgid "8 个模块"
+msgstr "8 个模块"

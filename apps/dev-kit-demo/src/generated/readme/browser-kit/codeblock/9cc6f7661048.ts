@@ -4,7 +4,7 @@ import {
   defineOfflineRestore,
   definePageErrors,
   defineTracker
-} from '@greypan/browser-kit'
+} from '@greypan/browser-kit/tracker'
 
 const tracker = defineTracker({
   url: '/api/track',
@@ -18,5 +18,5 @@ const tracker = defineTracker({
 
 tracker.track({ event: 'page_view', path: '/' })
 
-// Detach global listeners when tearing down
+// Detach global listeners on teardown (does not clear the outbox)
 tracker.stop()

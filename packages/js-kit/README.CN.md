@@ -6,44 +6,32 @@
 [![CI](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml/badge.svg)](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/npm/l/@greypan/js-kit)](https://www.npmjs.com/package/@greypan/js-kit)
 
-> 零框架依赖的 JavaScript 工具库与可组合插件系统，适用于浏览器、Node.js 和 Worker。
+> 零框架依赖的 JavaScript/TypeScript 工具库与可组合插件构建器，适用于浏览器、Node.js 与 Worker。
 
 [English](./README.md) | 简体中文 | [在线演示](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/js-kit/getting-started)
 
+- **零框架依赖**：不含 DOM 或 UI 框架绑定，可在浏览器、Node.js（`>=20.11.0`）和 Worker 中运行。
+- **ESM-only 与 Tree-shakable**：原生 ES Module 输出，声明 `"sideEffects": false`，支持按子路径导入单个模块。
+- **严格 TypeScript 类型**：覆盖插件链组合、`Result` 范式与纯编译期类型工具的完整类型推导。
+
 ## 安装
 
-```npm
+```bash
 npm install @greypan/js-kit
-```
-
-```pnpm
+# 或
 pnpm add @greypan/js-kit
-```
-
-```bun
+yarn add @greypan/js-kit
 bun add @greypan/js-kit
 ```
-
-```yarn
-yarn add @greypan/js-kit
-```
-
-## 导入入口
-
-默认入口 `@greypan/js-kit` 导出全部运行时工具和 TypeScript 工具类型。如果希望缩小导入范围或直接使用顶层 `Result` 函数，可以按子路径导入：
-
-- `@greypan/js-kit` 导出全部模块，以及命名空间对象 `rust`。
-- `@greypan/js-kit/rust` 直接在顶层导出 `ok`、`err`、`isOk`、`isErr`、`to`、`andThen`、`map`、`mapErr` 和 `unwrap`。
-- `@greypan/js-kit/plugin-system`、`@greypan/js-kit/timer` 和 `@greypan/js-kit/paradigm` 分别对应各自独立模块。
 
 ## 快速开始
 
 ### 组合插件
 
-`definePlugin` 返回一个惰性构建器。通过 `.use()` 逐层叠加能力，后注册的插件通过 `ctx` 访问前序插件的返回值，并可以覆盖同名方法；最后调用 `.make()` 生成实例。
+`definePlugin` 返回一个惰性构建器。通过 `.use()` 逐层叠加能力——每个插件通过 `ctx` 访问前序插件的输出，也可覆写同名方法——最后调用 `.make()` 生成实例。
 
 ```ts
-import { definePlugin } from '@greypan/js-kit'
+import { definePlugin } from '@greypan/js-kit/plugin-system'
 
 const defineLogger = () =>
   definePlugin(() => ({
@@ -59,43 +47,62 @@ const app = defineLogger().use(definePrefix('auth')).make()
 app.log('token refreshed') // [app] auth: token refreshed
 ```
 
-### 用 `Result` 处理错误
+### 用 `Result` 处理异步错误
 
-当希望把错误作为显式返回值而不是到处写 `try/catch` 时，可以从 `@greypan/js-kit/rust` 导入 `Result` 工具。`to()` 会把同步抛错或异步 rejection 转为 `Result<T, E>`。
+需要把失败表示为显式返回值、避免分散的 `try/catch` 时，可从 `@greypan/js-kit/rust` 导入 `Result` 工具。`to()` 将任意 `Promise` 包装为 `Promise<Result<T, E>>`，`andThen()` 串联后续步骤并在遇到 `Err` 时短路返回。
 
 ```ts
 import { andThen, err, ok, to } from '@greypan/js-kit/rust'
 
-const parsed = to(() => JSON.parse('{"port": 8080}') as { port?: number })
-const port = andThen(parsed, data => (typeof data.port === 'number' ? ok(data.port) : err(new Error('Missing port'))))
+const fetched = await to(Promise.resolve('{"port": 8080}'))
+const port = await andThen(fetched, raw => {
+  const data = JSON.parse(raw) as { port?: number }
+  return typeof data.port === 'number' ? ok(data.port) : err(new Error('Missing port'))
+})
 
 if (port.ok) {
-  console.log('Listening on', port.value)
+  console.log('Listening on', port.value) // Listening on 8080
 } else {
-  console.error(port.error.message)
+  console.error(port.error)
 }
 ```
 
-## 使用细节
+## 子路径导入
 
-- **批量发射与确认队列。** `defineBatchEmitter` 在延迟窗口内合并高频调用，并提供 `flush()` 立即冲刷。`defineAckQueue` 只有在 `onConsume` 成功 resolve 后才移出队头元素；如果消费失败，元素会保留在队列中等待下次 `resume()` 或 `flush()` 重试。
-- **相对路径 URL 解析。** `parseUrl` 与 `stringifyUrl` 支持完整 URL、站内相对路径（`/api/items?page=1`）和协议相对地址（`//cdn.example.com/a.js`），不会因为缺少 origin 而抛错。
-- **定时器控制。** `debounce` 返回的包装函数带有 `.cancel()` 和 `.flush()`。`defineControllableInterval` 支持 `start()`、`pause()`、`resume()`、`restart()` 和 `stop()`，并在暂停期间保留剩余时间。
-- **兜底调用。** `safeCall(fn, { onError })` 同时捕获同步异常和异步 rejection，适合放在卸载钩子或事件监听器里，避免产生未处理的 Promise 拒绝。
-- **纯编译期类型。** `DeepPartial`、`DeepRequired`、`ValueOf`、`ArrayItem`、`ArgumentType`、`Equal` 和 `ClassPropertyTypes` 不产生任何运行时代码。
+可以直接从根入口 `@greypan/js-kit` 导入全部能力，或按子路径按需引入以缩小打包体积：
 
-## 模块索引
+```ts
+// 根入口：全部模块 + `rust` 命名空间
+import { definePlugin, parseUrl, rust } from '@greypan/js-kit'
+// 顶层 `Result` 工具函数，无需 `rust.` 前缀
+import { andThen, err, ok, to } from '@greypan/js-kit/rust'
+import { debounce, defineControllableInterval } from '@greypan/js-kit/timer'
+// 按模块子路径导入
+import { parseUrl, stringifyUrl } from '@greypan/js-kit/url'
+```
 
-| 模块            | 导出内容                                                                                             | 文档                                                     |
-| --------------- | ---------------------------------------------------------------------------------------------------- | -------------------------------------------------------- |
-| `plugin-system` | `definePlugin`、`defineBatchEmitter`、`defineQueue`、`defineAckQueue`、`PluginMade`                  | [`docs/plugin-system.CN.md`](./docs/plugin-system.CN.md) |
-| `url`           | `parseUrl`、`stringifyUrl`                                                                           | [`docs/url.CN.md`](./docs/url.CN.md)                     |
-| `number`        | `clamp`、`formatFileSize`                                                                            | [`docs/number.CN.md`](./docs/number.CN.md)               |
-| `string`        | `getFileExtension`                                                                                   | [`docs/string.CN.md`](./docs/string.CN.md)               |
-| `timer`         | `debounce`、`defineControllableInterval`                                                             | [`docs/timer.CN.md`](./docs/timer.CN.md)                 |
-| `paradigm`      | `rust`（`ok`、`err`、`to`、`andThen`、`map`、`mapErr`、`unwrap`）                                    | [`docs/paradigm.CN.md`](./docs/paradigm.CN.md)           |
-| `shortcut`      | `safeCall`                                                                                           | [`docs/shortcut.CN.md`](./docs/shortcut.CN.md)           |
-| `utility-types` | `DeepPartial`、`DeepRequired`、`ValueOf`、`ArrayItem`、`ArgumentType`、`Equal`、`ClassPropertyTypes` | [`docs/utility-types.CN.md`](./docs/utility-types.CN.md) |
+全部模块目录（`plugin-system`、`url`、`number`、`string`、`timer`、`paradigm`、`shortcut`、`utility-types`）均可通过 `@greypan/js-kit/<module>` 导入。
+
+## 模块总览
+
+| 模块                                          | 子路径                          | 解决什么问题                                        | 核心导出                                                                                                                         |
+| --------------------------------------------- | ------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| [`plugin-system`](./docs/plugin-system.CN.md) | `@greypan/js-kit/plugin-system` | 可组合插件构建器、批量发射器、待消费队列与确认队列  | `definePlugin`、`defineBatchEmitter`、`defineQueue`、`defineAckQueue`、`Plugin`、`PluginMade`、`QueueOptions`、`QueueController` |
+| [`paradigm`](./docs/paradigm.CN.md)           | `@greypan/js-kit/paradigm`      | Rust 风格 `Result<T, E>` 错误处理（另提供 `/rust`） | `rust`（`ok`、`err`、`isOk`、`isErr`、`to`、`andThen`、`unwrap`、`Ok`、`Err`、`Result`）                                         |
+| [`url`](./docs/url.CN.md)                     | `@greypan/js-kit/url`           | 解析与序列化完整 URL、站内相对路径及协议相对地址    | `parseUrl`、`stringifyUrl`                                                                                                       |
+| [`timer`](./docs/timer.CN.md)                 | `@greypan/js-kit/timer`         | 带取消/冲刷控制的防抖器与可暂停定时器插件           | `debounce`、`defineControllableInterval`                                                                                         |
+| [`shortcut`](./docs/shortcut.CN.md)           | `@greypan/js-kit/shortcut`      | 吞掉同步异常与异步 rejection 的兜底调用             | `safeCall`、`SafeCallOptions`                                                                                                    |
+| [`number`](./docs/number.CN.md)               | `@greypan/js-kit/number`        | 数值区间钳制与可读文件大小格式化                    | `clamp`、`formatFileSize`                                                                                                        |
+| [`string`](./docs/string.CN.md)               | `@greypan/js-kit/string`        | 带边界校验的小写文件扩展名提取                      | `getFileExtension`                                                                                                               |
+| [`utility-types`](./docs/utility-types.CN.md) | `@greypan/js-kit/utility-types` | 零运行时开销的 TypeScript 工具类型                  | `DeepPartial`、`DeepRequired`、`ValueOf`、`ArrayItem`、`ArgumentType`、`Equal`、`ClassPropertyTypes`                             |
+
+## 关键行为说明
+
+- **队列与批量发射**：`defineBatchEmitter` 在 `batchingDelay` 窗口内合并高频调用并提供 `flush()` 立即冲刷。`defineQueue` 交付即视为完成；`defineAckQueue` 仅在 `onConsume` 成功 fulfill 后移除条目，单条失败保留为失败状态且不阻塞后续条目，显式调用 `resume()` 或 `flush()` 时重试。两种队列均支持同步 `onPersist` 持久化快照（先持久化再提交内存状态）。
+- **相对路径 URL**：`parseUrl` 与 `stringifyUrl` 支持完整 URL、站内相对路径（`/api/items?page=1`）和协议相对地址（`//cdn.example.com/a.js`），不会因缺少 origin 抛错。`stringifyUrl` 默认忽略 `null`/`undefined` 参数（`omitNil = true`）。
+- **定时器**：`debounce(fn, options)` 返回控制对象（`{ call, cancel, flush, isPending, cachedValue }`），支持 `waitMs`、`maxWaitMs` 和 `timing`（`'trailing' | 'leading' | 'both'`）。`defineControllableInterval` 返回插件，`.make()` 实例化后提供 `start()`、`pause()`、`resume()`、`stop()` 和 `tick(delay)`，并在暂停期间保留剩余时间。
+- **兜底调用**：`safeCall(fn, { onError })` 同时捕获同步抛出与异步 rejection，并会吸收 `onError` 自身抛出的异常，适合清理钩子和事件监听器。
+- **纯编译期类型**：从 `@greypan/js-kit/utility-types` 导入不会产生任何运行时 JavaScript 代码。
 
 > 面向浏览器的存储、埋点上报、环境检测、DOM、文件、剪贴板和历史导航工具位于 [`@greypan/browser-kit`](../browser-kit/README.CN.md)。
 

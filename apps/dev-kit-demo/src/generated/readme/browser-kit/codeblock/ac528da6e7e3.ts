@@ -4,7 +4,7 @@ import {
   defineOfflineRestore,
   definePageErrors,
   defineTracker
-} from '@greypan/browser-kit'
+} from '@greypan/browser-kit/tracker'
 
 const tracker = defineTracker({
   url: '/api/track',
@@ -18,5 +18,5 @@ const tracker = defineTracker({
 
 tracker.track({ event: 'page_view', path: '/' })
 
-// 实例销毁时移除全局监听
+// 实例销毁时移除全局监听（不会清空 outbox）
 tracker.stop()
