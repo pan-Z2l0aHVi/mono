@@ -143,7 +143,7 @@ export default function Demo() {
 | ------------------------------- | ---------------------- | ------------------------------------------------- |
 | `--wui-progress-height`         | 轨道高度。             | `8px`                                             |
 | `--wui-progress-radius`         | 轨道与完成部分的圆角。 | `var(--wui-radius-control, calc(infinity * 1px))` |
-| `--wui-progress-track-color`    | 轨道底色。             | `var(--wui-color-surface-track, #e5e5eb)`         |
+| `--wui-progress-track-color`    | 轨道底色。             | `var(--wui-color-surface-track, #eeeef3)`         |
 | `--wui-progress-fill-color`     | 完成部分颜色。         | `var(--wui-color-accent, #0071e3)`                |
 | `--wui-progress-sport-duration` | sport 动画周期。       | `calc(var(--wui-duration-spinner, 800ms) * 1.25)` |
 | `--wui-progress-sport-easing`   | sport 动画缓动曲线。   | `cubic-bezier(0.65, 0, 0.35, 1)`                  |

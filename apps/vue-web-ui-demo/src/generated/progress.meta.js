@@ -110,7 +110,7 @@ const meta = [
       children: [
       { label: 'td', content: "<code>--wui-progress-track-color</code>" },
       { label: 'td', content: "Track background." },
-      { label: 'td', content: "<code>var(--wui-color-surface-track, #e5e5eb)</code>" }
+      { label: 'td', content: "<code>var(--wui-color-surface-track, #eeeef3)</code>" }
       ]
     },
     {

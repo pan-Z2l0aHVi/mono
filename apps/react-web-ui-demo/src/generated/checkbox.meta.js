@@ -141,7 +141,7 @@ const meta = [
   { label: 'p', content: "On check the mark is drawn from the left end, and on uncheck it retracts along the same path; with <code>motion=\"reduced\"</code> the two states switch directly, and a control already checked at mount shows a static check." },
   { label: 'p', content: "The mark uses <code>--wui-color-on-control</code> and defaults to the size of <code>--wui-selection-control-size</code>. Override <code>--wui-checkbox-icon-size</code> to size it independently." },
   { label: 'h3', id: 'section-13', content: "Inactive state" },
-  { label: 'p', content: "The unchecked indicator takes its background from <code>--wui-color-surface-control</code> (the same control surface as the neutral button), which stays distinguishable from <code>--wui-color-page</code> in dark mode too." },
+  { label: 'p', content: "The unchecked indicator takes its background from <code>--wui-color-surface-control</code>, the same control surface the neutral button derives from. The secondary button darkens that surface half a step in light mode, so it no longer matches the indicator exactly. Both stay distinguishable from <code>--wui-color-page</code> in dark mode too." },
   { label: 'p', content: "When any part of the trigger area (the indicator, the gap, or the slot label on the right) is hovered, a state layer is overlaid on that background." },
   { label: 'p', content: "Hover applies only on devices matching <code>(hover: hover) and (pointer: fine)</code>; there is no pressed state, and the checked and disabled states keep their own backgrounds." },
   { label: 'p', content: "<code>&lt;web-ui-radio></code> shares this same set of states." }

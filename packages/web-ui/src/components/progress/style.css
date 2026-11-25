@@ -28,7 +28,7 @@
   height: var(--wui-progress-height, 8px);
   border-radius: var(--wui-progress-radius, var(--wui-radius-control, calc(infinity * 1px)));
 
-  background-color: var(--wui-progress-track-color, var(--wui-color-surface-track, #e5e5eb));
+  background-color: var(--wui-progress-track-color, var(--wui-color-surface-track, #eeeef3));
 }
 
 .wui-progress-indicator {

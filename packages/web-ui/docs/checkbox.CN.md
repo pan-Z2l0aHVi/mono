@@ -229,7 +229,7 @@ function reset() {
 
 ### 未激活态
 
-未选中 indicator 的底色取 `--wui-color-surface-control`（与中性按钮使用同一种控件底色），深色模式下也能和 `--wui-color-page` 分辨开。
+未选中 indicator 的底色取 `--wui-color-surface-control`，与中性按钮使用同一种控件底色；secondary button 在浅色下会再向 shade 压深半档，因此与这颗 indicator 不再完全同面。两者在深色模式下也都能和 `--wui-color-page` 分辨开。
 
 触发区内任意位置（indicator、间距或右侧插槽中的标签）悬停时叠加状态层。
 
