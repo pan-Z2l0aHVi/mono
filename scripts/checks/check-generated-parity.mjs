@@ -18,10 +18,9 @@ const vuePages = path.join(root, 'apps', 'vue-web-ui-demo', 'src', 'pages', 'com
 // 判据结构的固定计数：两端各一条 load 判据，其余手写单例。meta 的用例数按目录实时推导，
 // 语料增删不改这两个常量；重构判据结构、合并单例时同步更新。
 const LOAD_CASES = 2
-const SINGLETON_CASES = 7
+const SINGLETON_CASES = 6
 
 const only = (a, b) => a.filter(value => !b.includes(value))
-const sameSet = (a, b) => a.length === b.length && a.every(value => b.includes(value))
 const filesIn = dir => fs.readdirSync(dir).sort()
 const metaFilesIn = dir => filesIn(dir).filter(name => name.endsWith('.meta.js'))
 const read = (dir, name) => fs.readFileSync(path.join(dir, name), 'utf8')
@@ -124,30 +123,11 @@ test('中英文档集合对齐（CHANGELOG 只存在于英文）', () => {
   assert.deepEqual(only(zhNames, enNames), [], `英文缺译文：${only(zhNames, enNames).join(', ')}`)
 })
 
-// 规则一：路由名集合 == 页面名集合：两端不许各自漂移。子组件不单开页面
-// （radio-group 挂在 radio 页，dropdown-item 同时挂在 dropdown 与 context-menu 两页），
-// 一一对应就成了一条与意图相反的门槛，改判集合相等。
-test('React 路由名集合 == Vue 页面名集合', () => {
-  const reactNames = fs
-    .readdirSync(reactRoutes)
-    .filter(file => file.endsWith('.tsx'))
-    .map(file => file.slice(0, -4))
-    .sort()
-  const vueNames = fs
-    .readdirSync(vuePages)
-    .filter(file => file.endsWith('.vue'))
-    .map(file => file.slice(0, -4))
-    .sort()
-  assert.ok(
-    sameSet(reactNames, vueNames),
-    `React 路由与 Vue 页面不同步；仅路由有：${only(reactNames, vueNames).join('、')}；仅页面有：${only(vueNames, reactNames).join('、')}`
-  )
-  assert.ok(reactNames.length > 0, '两侧页面都为空：对齐判据空转')
-})
-
-test('sameSet 判据本身能识别差异', () => {
-  assert.ok(!sameSet(['a', 'b'], ['a', 'c']))
-  assert.ok(sameSet(['a', 'b'], ['b', 'a']))
+// 规则一：两端组件页均收敛为单一动态路由（$component.tsx / [component].vue），
+// 由 @greypan/doc-demo-kit 的 NAV_SECTIONS / findComponentRoute 作为唯一真相源驱动。
+test('React 与 Vue 组件页均收敛为单一动态路由', () => {
+  assert.deepEqual(filesIn(reactRoutes), ['$component.tsx'], 'React 组件路由目录只能包含 $component.tsx')
+  assert.deepEqual(filesIn(vuePages), ['[component].vue'], 'Vue 组件页面目录只能包含 [component].vue')
 })
 
 // 用例数按目录推导自检：判据结构与这两个常量漂移时，计数口径先红，而不是静默少判。

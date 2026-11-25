@@ -119,7 +119,7 @@ describe('route guards', () => {
       history: createMemoryHistory(),
       routes: [
         { path: '/home', component: Page },
-        { path: '/components/button', component: Page }
+        { path: '/components/:component', component: Page }
       ]
     })
     installRouteGuards(router, queryClient, progress)

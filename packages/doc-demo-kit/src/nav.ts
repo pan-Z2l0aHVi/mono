@@ -86,6 +86,23 @@ export const NAV_SECTIONS: readonly NavSection[] = Object.freeze([
   ])
 ])
 
+export interface ComponentRouteEntry {
+  readonly slug: string
+  readonly path: string
+  readonly title: string
+  readonly docs: readonly string[]
+}
+
+const COMPONENT_ROUTES_BY_SLUG = new Map<string, ComponentRouteEntry>(
+  NAV_SECTIONS.flatMap(s =>
+    s.items.map(item => {
+      const slug = item.path.split('/').at(-1)!
+      const docs = Object.freeze(item.docs ?? [slug])
+      return [slug, Object.freeze({ slug, path: item.path, title: item.label, docs })] as const
+    })
+  )
+)
+
 /** 根据任意导航树构造路由到 ExampleDoc 文档键集合的查询器。 */
 export function createRouteExampleDocs<Id extends string>(
   sections: readonly NavSection<Id>[],
@@ -98,6 +115,11 @@ export function createRouteExampleDocs<Id extends string>(
     const normalized = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname
     return routeDocsMap.get(normalized) ?? []
   }
+}
+
+/** 按组件 slug（如 `button`）查找共享导航中登记的组件页条目；未登记返回 undefined。 */
+export function findComponentRoute(slug: string): ComponentRouteEntry | undefined {
+  return COMPONENT_ROUTES_BY_SLUG.get(slug)
 }
 
 /** 返回组件文档路由需要预载的 ExampleDoc 组件列表；非组件文档路由返回空数组。 */
