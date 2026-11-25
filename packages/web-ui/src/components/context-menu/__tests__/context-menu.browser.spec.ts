@@ -9,7 +9,7 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import { userEvent } from 'vite-plus/test/browser'
 
 import type { WebUiPopover } from '@/components/popover'
-import { getMenuChildren, getMovableMenuSubtrees } from '@/shared/menu-portal/menu-tree'
+import { getMenuChildren, getMovableMenuSubtrees } from '@/shared/menu-session'
 import { getMenuPanels, getPortalPanels, pollUntil, waitForFrame } from '@/shared/test-utils'
 
 import type { WebUiContextMenu } from '..'
@@ -1167,12 +1167,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     document.body.append(menu)
     await menu.updateComplete
 
-    interface InternalMenuLedger {
-      _menuHandle: { contains(node: Node): boolean } | null
-      _submenuHandles: Map<HTMLElement, { release(): void }>
-    }
-    const internal = menu as unknown as InternalMenuLedger
-
     menu.openAt(20, 20)
     await menu.updateComplete
     await waitForFrame()
@@ -1186,36 +1180,36 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     const submenuPanel = getMenus()[1]!
     submenuPanel.style.transition = 'opacity 5s'
 
-    // 1. 子菜单进入 closing 栈，但在退场完成前被重新取回（走 _openSubmenu 的 closingSubmenu 分支）。
+    // 1. 子菜单进入 closing 栈，但在退场完成前被重新取回（走 closingSubmenu 复用分支）。
     dispatchEscape()
     await waitForFrame()
-    const handleBeforeTake = internal._submenuHandles.get(submenuPanel)
-    expect(handleBeforeTake).toBeDefined()
+    submenuPanel.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true }))
+    await menu.updateComplete
+    expect(menu.isOpen, 'closing 中的 submenu 仍应归属根 overlay 子树').toBe(true)
 
     parentItem.click()
     await waitForFrame()
     await waitForFrame()
     expect(getMenus()).toHaveLength(2)
     expect(getMenus()[1]).toBe(submenuPanel)
-    // 取回分支重认领后必须刷新 _submenuHandles，避免持有已被 adopt 释放的旧 handle。
-    const handleAfterTake = internal._submenuHandles.get(submenuPanel)
-    expect(handleAfterTake).toBeDefined()
-    expect(handleAfterTake).not.toBe(handleBeforeTake)
-    expect(internal._menuHandle?.contains(submenuPanel)).toBe(true)
+    submenuPanel.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true }))
+    await menu.updateComplete
+    expect(menu.isOpen, '取回后的 submenu 应继续归属根 overlay 子树').toBe(true)
 
-    // 2. 再次关闭子菜单并让退场完成：_releaseSubmenu 必须用新 handle 彻底释放，不留台账与子树残留。
+    // 2. 再次关闭子菜单并让退场完成：submenu 彻底移出 DOM 与 overlay 子树，不留句柄泄漏。
     submenuPanel.style.transition = 'none'
     dispatchEscape()
     await waitForFrame()
     await waitForFrame()
     expect(getMenus()).toHaveLength(1)
-    expect(internal._submenuHandles.has(submenuPanel)).toBe(false)
-    expect(internal._menuHandle?.contains(submenuPanel)).toBe(false)
+    expect(submenuPanel.isConnected).toBe(false)
 
-    // 3. 根菜单仍正常响应 Escape 关闭。
-    dispatchEscape()
+    // 3. 若旧句柄泄漏在根子树中，重新挂载的 submenuPanel 会被误判为「内部」而不关闭根菜单。
+    document.body.append(submenuPanel)
+    submenuPanel.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true }))
     await menu.updateComplete
-    expect(menu.isOpen).toBe(false)
+    expect(menu.isOpen, '已释放的旧 submenu panel 不应再留在根 overlay 子树中').toBe(false)
+    submenuPanel.remove()
   })
 
   it('根菜单退场窗口内重开并取回 closing submenu 后，再次关闭子菜单同样清空台账与子树', async () => {
@@ -1223,12 +1217,6 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     menu.innerHTML = SUBMENU
     document.body.append(menu)
     await menu.updateComplete
-
-    interface InternalMenuLedger {
-      _menuHandle: { contains(node: Node): boolean } | null
-      _submenuHandles: Map<HTMLElement, { release(): void }>
-    }
-    const internal = menu as unknown as InternalMenuLedger
 
     menu.openAt(20, 20)
     await menu.updateComplete
@@ -1254,23 +1242,27 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await menu.updateComplete
     await waitForFrame()
     await menu.updateComplete
-    const handleAfterReclaim = internal._submenuHandles.get(submenuPanel)
-    expect(handleAfterReclaim).toBeDefined()
+    submenuPanel.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true }))
+    await menu.updateComplete
+    expect(menu.isOpen, '根重开后 closing 中的 submenu 应已被重新 adopt').toBe(true)
 
     parentItem.click()
     await waitForFrame()
     await waitForFrame()
-    const handleAfterTake = internal._submenuHandles.get(submenuPanel)
-    expect(handleAfterTake).toBeDefined()
-    expect(handleAfterTake).not.toBe(handleAfterReclaim)
-    expect(internal._menuHandle?.contains(submenuPanel)).toBe(true)
+    expect(getMenus()).toHaveLength(2)
+    expect(getMenus()[1]).toBe(submenuPanel)
 
     submenuPanel.style.transition = 'none'
     dispatchEscape()
     await waitForFrame()
     await waitForFrame()
     expect(getMenus()).toHaveLength(1)
-    expect(internal._submenuHandles.size).toBe(0)
-    expect(internal._menuHandle?.contains(submenuPanel)).toBe(false)
+    expect(submenuPanel.isConnected).toBe(false)
+
+    document.body.append(submenuPanel)
+    submenuPanel.dispatchEvent(new MouseEvent('contextmenu', { bubbles: true, composed: true }))
+    await menu.updateComplete
+    expect(menu.isOpen, '再次关闭子菜单后旧 panel 句柄应已彻底释放').toBe(false)
+    submenuPanel.remove()
   })
 })
