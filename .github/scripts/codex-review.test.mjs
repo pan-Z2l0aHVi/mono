@@ -3111,6 +3111,23 @@ exit 2
     'Upstream request failed: [invalid_request_error] This response_format type is unavailable now (request_id: 5cb0fe7f-e014-4679-a5ac-4777152d861b)',
     'the first structured ERROR payload must win over the prose one'
   )
+  // 无结构化 JSON 时回退提取行首纯文本 ERROR（取自 PR #620 真实日志的 max_output_tokens 截断），
+  // 但非行首夹带的 `ERROR:` 不得误捕获。
+  const truncatedLog = [
+    '2026-11-25T04:19:45.5223455Z ModuleNotFoundError No module named PIL; note ERROR: not a CLI error line',
+    '2026-11-25T04:28:35.2009645Z \u001b[1m\u001b[31mERROR:\u001b[0m\u001b[0m Incomplete response returned, reason: max_output_tokens',
+    '2026-11-25T04:28:35.2184742Z \u001b[1m\u001b[31mERROR:\u001b[0m\u001b[0m Incomplete response returned, reason: max_output_tokens'
+  ].join('\n')
+  assert.equal(
+    firstModelErrorLine(truncatedLog),
+    'Incomplete response returned, reason: max_output_tokens',
+    'plain-text CLI ERROR line must be extracted when no structured JSON error is present'
+  )
+  assert.equal(
+    firstModelErrorLine('2026-11-25T04:19:45.5223455Z prose mentioning ERROR: ignored'),
+    '',
+    'mid-line ERROR text must not be mistaken for a CLI error line'
+  )
   assert.equal(firstModelErrorLine(''), '')
   assert.equal(firstModelErrorLine('no errors here'), '')
   assert.equal(firstModelErrorLine('ERROR: {"error":{"message":""}}'), '', 'an empty message must not render blank')

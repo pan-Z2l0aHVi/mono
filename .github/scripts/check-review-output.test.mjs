@@ -156,13 +156,24 @@ function runCli({ output, scope, meta, withScope = true }) {
   assert.equal(emptyDiff.status, 0, 'an empty diff is exempt')
 
   assert.equal(runCli({ output: undefined }).status, 0, 'a missing output file without meta belongs to validate')
+  const modelFailed = runCli({
+    output: undefined,
+    meta: { status: 'error', error_code: 'model_failed', error: 'the review step produced no output file' }
+  })
+  assert.equal(
+    modelFailed.status,
+    1,
+    'model_failed must also fail the review job so --failed reruns the model leg instead of only the gate'
+  )
+  assert.match(modelFailed.stderr, /model_failed/)
+  assert.match(modelFailed.stderr, /rerun --failed/)
   assert.equal(
     runCli({
       output: undefined,
-      meta: { status: 'error', error_code: 'model_failed', error: 'the review step produced no output file' }
+      meta: { status: 'error', error_code: 'config_missing', error: 'CODEX_REVIEW_API_KEY is missing' }
     }).status,
     0,
-    'a missing output file when validate recorded model_failed stays an error rather than unreviewed'
+    'non-model_failed error meta stays untouched by check-review-output'
   )
   const missingOutputUnreviewed = runCli({
     output: undefined,
