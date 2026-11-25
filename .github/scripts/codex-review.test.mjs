@@ -3111,6 +3111,34 @@ exit 2
     'Upstream request failed: [invalid_request_error] This response_format type is unavailable now (request_id: 5cb0fe7f-e014-4679-a5ac-4777152d861b)',
     'the first structured ERROR payload must win over the prose one'
   )
+  // 无结构化 JSON 时回退提取 `Run codex exec` 区间内带 codex CLI 红色 ANSI 的行首纯文本 ERROR
+  // （取自 PR #620 真实日志的 max_output_tokens 截断）；更早步骤或同步骤里工具打印的无色行首 `ERROR:`
+  // 以及行中夹带的 `ERROR:` 都不得抢先匹配。
+  const truncatedLog = [
+    '2026-11-25T04:06:10.0000000Z \u001b[1m\u001b[31mERROR:\u001b[0m earlier step error outside codex exec',
+    '2026-11-25T04:06:56.1878687Z ##[start-action display=Run codex exec;id=review.run_codex]',
+    '2026-11-25T04:10:00.0000000Z ERROR: unrelated tool stdout starting at line start',
+    '2026-11-25T04:19:45.5223455Z ModuleNotFoundError No module named PIL; note ERROR: not a CLI error line',
+    '2026-11-25T04:28:35.2009645Z \u001b[1m\u001b[31mERROR:\u001b[0m\u001b[0m Incomplete response returned, reason: max_output_tokens',
+    '2026-11-25T04:28:35.2184742Z \u001b[1m\u001b[31mERROR:\u001b[0m\u001b[0m Incomplete response returned, reason: max_output_tokens',
+    '2026-11-25T04:28:35.2412125Z ##[end-action id=review.run_codex;outcome=failure;conclusion=failure;duration_ms=1299053]',
+    '2026-11-25T04:28:36.0000000Z \u001b[1m\u001b[31mERROR:\u001b[0m trailing step error after codex exec'
+  ].join('\n')
+  assert.equal(
+    firstModelErrorLine(truncatedLog),
+    'Incomplete response returned, reason: max_output_tokens',
+    'plain-text codex CLI ERROR line must win over earlier steps and uncolored tool output'
+  )
+  assert.equal(
+    firstModelErrorLine('2026-11-25T04:19:45.5223455Z ERROR: uncolored tool output only'),
+    '',
+    'uncolored line-start ERROR output must not be mistaken for a codex CLI error'
+  )
+  assert.equal(
+    firstModelErrorLine('2026-11-25T04:19:45.5223455Z prose mentioning ERROR: ignored'),
+    '',
+    'mid-line ERROR text must not be mistaken for a CLI error line'
+  )
   assert.equal(firstModelErrorLine(''), '')
   assert.equal(firstModelErrorLine('no errors here'), '')
   assert.equal(firstModelErrorLine('ERROR: {"error":{"message":""}}'), '', 'an empty message must not render blank')

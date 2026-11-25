@@ -19,6 +19,16 @@ import { coverageGap, parseReviewFindings } from './codex-review.mjs'
  */
 export function inspectReviewOutput(raw, scope, meta = null) {
   if (meta?.status === 'error') {
+    // 模型步骤自身失败（`model_failed`）时 `run_codex` 带 continue-on-error，不在这里判红会留下
+    // 「review 绿 / gate 红」割裂，导致 `gh run rerun --failed` 只重跑 gate 而不重跑模型。
+    // 结论产物已在前一步上传且仍为 `status=error`，因此不会触发仅针对 `unreviewed` 的自动恢复。
+    if (meta.error_code === 'model_failed') {
+      return {
+        rejected: true,
+        code: 'model_failed',
+        reason: meta.error || 'the review step produced no output file'
+      }
+    }
     return { rejected: false, code: '', reason: '' }
   }
   if (raw === null || raw === undefined) {
@@ -69,6 +79,18 @@ function readJson(filePath) {
   }
 }
 
+function reportRejected(verdict) {
+  if (verdict.code === 'model_failed') {
+    console.error(`Codex review failed (${verdict.code}): ${verdict.reason}`)
+    console.error('The review job fails with the gate so `gh run rerun --failed` reruns the model leg.')
+  } else {
+    console.error(`Codex review returned no usable conclusion (${verdict.code}): ${verdict.reason}`)
+    console.error('The review job fails with the gate so `gh run rerun --failed` reruns the model leg.')
+    console.error('A repeat after rerunning means the prompt or the output contract needs fixing.')
+  }
+  process.exitCode = 1
+}
+
 // 与 codex-review.mjs 同款入口守卫：不依赖 import.meta.main，旧 Node 上也不会静默跳过。
 if (import.meta.url === `file://${process.argv[1]}`) {
   const runnerTemp = process.env.RUNNER_TEMP ?? ''
@@ -80,10 +102,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
   if (!fs.existsSync(outputPath)) {
     const verdict = inspectReviewOutput(null, null, meta)
     if (verdict.rejected) {
-      console.error(`Codex review returned no usable conclusion (${verdict.code}): ${verdict.reason}`)
-      console.error('The review job fails with the gate so `gh run rerun --failed` reruns the model leg.')
-      console.error('A repeat after rerunning means the prompt or the output contract needs fixing.')
-      process.exitCode = 1
+      reportRejected(verdict)
     } else {
       console.log('check-review-output: no model output; validate decides')
     }
@@ -94,10 +113,7 @@ if (import.meta.url === `file://${process.argv[1]}`) {
     const raw = fs.readFileSync(outputPath, 'utf8')
     const verdict = inspectReviewOutput(raw, scope, meta)
     if (verdict.rejected) {
-      console.error(`Codex review returned no usable conclusion (${verdict.code}): ${verdict.reason}`)
-      console.error('The review job fails with the gate so `gh run rerun --failed` reruns the model leg.')
-      console.error('A repeat after rerunning means the prompt or the output contract needs fixing.')
-      process.exitCode = 1
+      reportRejected(verdict)
     } else {
       console.log('check-review-output: conclusion passes the output and coverage checks')
     }
