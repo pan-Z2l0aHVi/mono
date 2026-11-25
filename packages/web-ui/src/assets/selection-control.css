@@ -65,7 +65,7 @@
 /*
  * indicator 底色取控件档。surface-raised 在深色下（#2c2c2e）离页面底色（#242428）只有 8 个
  * 亮度点，未选中时几乎看不出有一个圆/方框；surface-control 才是主题里「控件自己的底」
- * 那一档（中性 button 同档），深色比页面高 22 个亮度点，浅色下也从近白的 #f2f2f7 变成可读的 #e5e5eb。
+ * 那一档（中性 button 同档），深色比页面高 22 个亮度点，浅色下也从近白的 #f2f2f7 变成可读的 #eeeef3。
  */
 :where(.wui-radio-circle, .wui-checkbox-box) {
   isolation: isolate;
@@ -79,7 +79,7 @@
   width: var(--wui-selection-control-size, 18px);
   height: var(--wui-selection-control-size, 18px);
 
-  background-color: var(--wui-color-surface-control, #e5e5eb);
+  background-color: var(--wui-color-surface-control, #eeeef3);
 
   transition: background-color var(--wui-duration-trigger, 160ms) ease;
 }

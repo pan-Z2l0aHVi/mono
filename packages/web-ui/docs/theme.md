@@ -937,17 +937,17 @@ Hover and active background feedback switches immediately with no transition ani
 | `--wui-color-page`                    | Page background                                                    | `#fff`                                                                  | `#242428`                                                                             |
 | `--wui-color-surface`                 | Regular surface                                                    | `#fff`                                                                  | `#2c2c2e`                                                                             |
 | `--wui-color-surface-raised`          | Raised surface                                                     | `#f2f2f7`                                                               | `#2c2c2e`                                                                             |
-| `--wui-color-surface-control`         | Neutral interactive control surface                                | `#e5e5eb`                                                               | `#3a3a3c`                                                                             |
+| `--wui-color-surface-control`         | Neutral interactive control surface                                | `#eeeef3`                                                               | `#3a3a3c`                                                                             |
 | `--wui-color-surface-control-shade`   | Mixing color for neutral control interaction states                | `#1b1b30`                                                               | `#000`                                                                                |
-| `--wui-color-surface-track`           | Slider/Switch track surface                                        | `#e5e5eb`                                                               | `#444446`                                                                             |
+| `--wui-color-surface-track`           | Slider/Switch track surface                                        | `#eeeef3`                                                               | `#444446`                                                                             |
 | `--wui-color-surface-menu`            | Menu and floating panel surface                                    | `rgb(250 250 253 / 0.76)`                                               | `rgb(49 49 53 / 0.74)`                                                                |
 | `--wui-color-surface-glass`           | Liquid glass surface                                               | `rgb(250 250 253 / 0.34)`                                               | `rgb(44 44 46 / 0.42)`                                                                |
 | `--wui-color-surface-glass-hover`     | Full glass hover background                                        | `color-mix(... text 6%, surface-glass)`                                 | `color-mix(... text 6%, surface-glass)`                                               |
 | `--wui-color-surface-glass-active`    | Full glass pressed background                                      | `color-mix(... text 15%, surface-glass)`                                | `color-mix(... text 15%, surface-glass)`                                              |
 | `--wui-color-surface-overlay`         | Translucent overlay surface                                        | `rgb(248 248 252 / 0.92)`                                               | `rgb(32 32 36 / 0.92)`                                                                |
-| `--wui-color-surface-sidebar`         | Sidebar panel surface                                              | `rgb(233 233 239 / 0.82)`                                               | `rgb(44 44 46 / 0.8)`                                                                 |
-| `--wui-color-surface-segmented`       | Segmented concave variant indicator surface (same step as control) | `#e5e5eb`                                                               | `#3a3a3c`                                                                             |
-| `--wui-color-surface-segmented-track` | Segmented convex variant track surface                             | `#e5e5eb`                                                               | `#17171b`                                                                             |
+| `--wui-color-surface-sidebar`         | Sidebar panel surface                                              | `rgb(241 241 246 / 0.82)`                                               | `rgb(44 44 46 / 0.8)`                                                                 |
+| `--wui-color-surface-segmented`       | Segmented concave variant indicator surface (same step as control) | `#eeeef3`                                                               | `#3a3a3c`                                                                             |
+| `--wui-color-surface-segmented-track` | Segmented convex variant track surface                             | `#eeeef3`                                                               | `#17171b`                                                                             |
 | `--wui-color-surface-selected`        | Selected surface (convex variant indicator, same color as page)    | `#fff`                                                                  | `#242428`                                                                             |
 | `--wui-color-text`                    | Primary text                                                       | `#1b1b20`                                                               | `#e9e9ed`                                                                             |
 | `--wui-color-text-secondary`          | Secondary text                                                     | `#6a6a70`                                                               | `#a1a1a6`                                                                             |
@@ -976,11 +976,11 @@ In `.wui-scroll` containers the token applies only on fine-pointer devices; coar
 
 ### Shadow tokens
 
-| Name                   | Description                 | Light default                                                                                                         | Dark default                    |
-| ---------------------- | --------------------------- | --------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
-| `--wui-shadow-overlay` | Modal/Drawer shadow         | `2px 16px 40px rgb(0 0 0 / 0.4)`                                                                                      | `0 18px 48px rgb(0 0 0 / 0.48)` |
-| `--wui-shadow-panel`   | Small floating panel shadow | `0 3px 9px rgb(0 0 0 / 0.27)`                                                                                         | `0 4px 16px rgb(0 0 0 / 0.32)`  |
-| `--wui-shadow-glass`   | Liquid glass base shadow    | `0 0 1px rgb(0 0 0 / 0.015), 0 0 6px rgb(0 0 0 / 0.018), 0 2px 12px rgb(0 0 0 / 0.015), 0 6px 24px rgb(0 0 0 / 0.01)` | `0 8px 24px rgb(0 0 0 / 0.08)`  |
+| Name                   | Description                 | Light default                                                                                                          | Dark default                    |
+| ---------------------- | --------------------------- | ---------------------------------------------------------------------------------------------------------------------- | ------------------------------- |
+| `--wui-shadow-overlay` | Modal/Drawer shadow         | `2px 16px 40px rgb(0 0 0 / 0.4)`                                                                                       | `0 18px 48px rgb(0 0 0 / 0.48)` |
+| `--wui-shadow-panel`   | Small floating panel shadow | `0 3px 9px rgb(0 0 0 / 0.27)`                                                                                          | `0 4px 16px rgb(0 0 0 / 0.32)`  |
+| `--wui-shadow-glass`   | Liquid glass base shadow    | `0 0 1px rgb(0 0 0 / 0.009), 0 0 6px rgb(0 0 0 / 0.011), 0 2px 12px rgb(0 0 0 / 0.009), 0 6px 24px rgb(0 0 0 / 0.006)` | `0 8px 24px rgb(0 0 0 / 0.08)`  |
 
 ### Glass effect notes
 
@@ -993,3 +993,5 @@ Pill controls are the exception: the light and shade gradient needs physical dim
 ### Internal tokens
 
 Variables prefixed with `--wui-internal-*` are not part of the public token API, and callers should not override them.
+
+A few are theme-scoped so handles and indicators can use a lighter lift in light mode without per-component hardcoding: `--wui-internal-switch-thumb-shadow`, `--wui-internal-switch-thumb-shadow-pressed`, `--wui-internal-segmented-indicator-shadow` and `--wui-internal-segmented-indicator-shadow-pressed`.
