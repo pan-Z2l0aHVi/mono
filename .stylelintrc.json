@@ -22,7 +22,11 @@
   },
   "overrides": [
     {
-      "files": ["apps/vue-web-ui-demo/src/assets/global.css", "apps/react-web-ui-demo/src/assets/global.css"],
+      "files": [
+        "apps/vue-web-ui-demo/src/assets/global.css",
+        "apps/react-web-ui-demo/src/assets/global.css",
+        "apps/dev-kit-demo/src/assets/global.css"
+      ],
       "rules": {
         "at-rule-no-unknown": [
           true,

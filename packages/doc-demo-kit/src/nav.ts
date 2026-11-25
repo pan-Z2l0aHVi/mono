@@ -10,8 +10,8 @@ export interface NavItem {
 
 export type NavSectionId = 'general' | 'layout' | 'form' | 'display' | 'feedback'
 
-export interface NavSection {
-  readonly id: NavSectionId
+export interface NavSection<Id extends string = NavSectionId> {
+  readonly id: Id
   readonly items: readonly NavItem[]
 }
 
@@ -86,17 +86,22 @@ export const NAV_SECTIONS: readonly NavSection[] = Object.freeze([
   ])
 ])
 
-const ROUTE_DOCS_MAP = new Map<string, readonly string[]>(
-  NAV_SECTIONS.flatMap(s =>
-    s.items.map(item => [item.path, Object.freeze(item.docs ?? [item.path.split('/').at(-1)!])] as const)
+/** 根据任意导航树构造路由到 ExampleDoc 文档键集合的查询器。 */
+export function createRouteExampleDocs<Id extends string>(
+  sections: readonly NavSection<Id>[],
+  defaultKeyOf: (item: NavItem) => string = item => item.path.split('/').at(-1)!
+): (pathname: string) => readonly string[] {
+  const routeDocsMap = new Map<string, readonly string[]>(
+    sections.flatMap(s => s.items.map(item => [item.path, Object.freeze(item.docs ?? [defaultKeyOf(item)])] as const))
   )
-)
+  return (pathname: string): readonly string[] => {
+    const normalized = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname
+    return routeDocsMap.get(normalized) ?? []
+  }
+}
 
 /** 返回组件文档路由需要预载的 ExampleDoc 组件列表；非组件文档路由返回空数组。 */
-export function routeExampleDocs(pathname: string): readonly string[] {
-  const normalized = pathname.length > 1 ? pathname.replace(/\/$/, '') : pathname
-  return ROUTE_DOCS_MAP.get(normalized) ?? []
-}
+export const routeExampleDocs = createRouteExampleDocs(NAV_SECTIONS)
 
 /** 章节标题的排版类；折叠时宿主自行追加 `sr-only`，只保留给读屏的标题。 */
 export const NAV_SECTION_TITLE_CLASS =

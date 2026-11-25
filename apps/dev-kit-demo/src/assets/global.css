@@ -1,0 +1,117 @@
+/* stylelint-disable custom-property-pattern */
+@import 'tailwindcss';
+@import '@greypan/web-ui/classes.css';
+
+/* Tailwind 的自动源检测止步于当前 workspace；共享类串在 doc-demo-kit 里，要显式登记源目录。 */
+@source '../../../../packages/doc-demo-kit/src';
+
+@custom-variant dark (&:where(web-ui-theme[resolved-appearance='dark'] *));
+@custom-variant mobile (&:where(web-ui-layout[mobile], web-ui-layout[mobile] *));
+
+@theme {
+  --spacing: 4px;
+
+  --font-sans:
+    'Inter', ui-sans-serif, system-ui, -apple-system, blinkmacsystemfont, 'Segoe UI', roboto, 'Helvetica Neue', arial,
+    'Noto Sans', sans-serif, 'Apple Color Emoji', 'Segoe UI Emoji', 'Segoe UI Symbol', 'Noto Color Emoji';
+  --font-serif: 'Merriweather', ui-serif, georgia, cambria, 'Times New Roman', times, serif;
+  --font-mono: 'SF Mono', menlo, consolas, 'Roboto Mono', 'Courier New', courier, monospace;
+
+  --text-xs: 12px;
+  --text-xs--line-height: 16px;
+  --text-sm: 14px;
+  --text-sm--line-height: 20px;
+  --text-base: 16px;
+  --text-base--line-height: 24px;
+  --text-lg: 18px;
+  --text-lg--line-height: 28px;
+  --text-xl: 20px;
+  --text-xl--line-height: 28px;
+  --text-2xl: 24px;
+  --text-2xl--line-height: 32px;
+  --text-3xl: 30px;
+  --text-3xl--line-height: 36px;
+  --text-4xl: 36px;
+  --text-4xl--line-height: 40px;
+
+  --breakpoint-sm: 640px;
+  --breakpoint-md: 768px;
+  --breakpoint-lg: 1024px;
+  --breakpoint-xl: 1280px;
+  --breakpoint-2xl: 1536px;
+}
+
+html,
+body {
+  touch-action: manipulation;
+}
+
+body {
+  background: var(--wui-color-page);
+}
+
+:not(:defined) {
+  display: none;
+}
+
+[data-code] [data-overlayscrollbars-viewport]:focus-visible,
+.demo-nav-link:focus-visible {
+  outline: var(--wui-focus-ring-width, 3px) solid
+    var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
+  outline-offset: -3px;
+}
+
+.demo-quick-link-card:focus-visible,
+.mdm-markdown a:focus-visible {
+  outline: var(--wui-focus-ring-width, 3px) solid
+    var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
+  outline-offset: 2px;
+}
+
+.mdm-markdown a:focus-visible {
+  border-radius: 4px;
+}
+
+.demo-search-popover {
+  --demo-search-radius: 18px;
+  --demo-search-padding: 8px;
+  --wui-radius-menu: calc(var(--demo-search-radius) + var(--demo-search-padding));
+  --wui-popover-padding: 0px;
+}
+
+.demo-search-results {
+  scrollbar-color: var(--wui-scrollbar-handle, rgb(0 0 0 / 0.39)) transparent;
+  scrollbar-width: thin;
+
+  overflow: auto;
+
+  width: 240px;
+  max-width: 80vw;
+  max-height: 320px;
+  padding: var(--demo-search-padding);
+}
+
+.demo-search-link {
+  display: block;
+  padding: 8px 12px;
+  border-radius: var(--demo-search-radius);
+  overflow-wrap: anywhere;
+}
+
+.demo-search-link:focus-visible {
+  outline: var(--wui-focus-ring-width, 3px) solid
+    var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
+  outline-offset: -3px;
+}
+
+.demo-search-empty {
+  --wui-empty-min-height: 0px;
+  --wui-empty-padding: 12px;
+  display: grid;
+  place-items: center;
+  min-height: 120px;
+}
+
+p > a > img {
+  display: inline-block;
+}

@@ -1,4 +1,4 @@
-import { NAV_SECTIONS } from './nav'
+import { NAV_SECTIONS, type NavSection } from './nav'
 
 export interface SearchItem {
   path: string
@@ -18,20 +18,30 @@ export const SHELL_NAV_PAGES: readonly SearchItem[] = Object.freeze([
   { path: '/changelog', zh: '更新日志', en: 'Changelog' }
 ])
 
-const componentItems: SearchItem[] = NAV_SECTIONS.flatMap(section =>
-  section.items.map(item => ({
-    path: item.path,
-    zh: item.label,
-    en: item.label,
-    keywords: item.zhName
-  }))
-)
+/** 将任意导航树展平为搜索索引条目。 */
+export function createNavSearchItems<Id extends string>(sections: readonly NavSection<Id>[]): SearchItem[] {
+  return sections.flatMap(section =>
+    section.items.map(item => ({
+      path: item.path,
+      zh: item.label,
+      en: item.label,
+      keywords: item.zhName
+    }))
+  )
+}
+
+const componentItems: SearchItem[] = createNavSearchItems(NAV_SECTIONS)
 
 /** 搜索导航项目；空查询不产生结果。pages 缺省用壳页 + 组件导航的全集。 */
-export function searchNavigation(query: string, pages: readonly SearchItem[] = SHELL_NAV_PAGES): SearchItem[] {
+export function searchNavigation<Id extends string = never>(
+  query: string,
+  pages: readonly SearchItem[] = SHELL_NAV_PAGES,
+  sections?: readonly NavSection<Id>[]
+): SearchItem[] {
   const needle = query.trim().toLocaleLowerCase()
   if (!needle) return []
-  return [...pages, ...componentItems].filter(item =>
+  const items = sections ? createNavSearchItems(sections) : componentItems
+  return [...pages, ...items].filter(item =>
     [item.zh, item.en, item.keywords].some(value => value?.toLocaleLowerCase().includes(needle))
   )
 }

@@ -229,12 +229,14 @@ async function blockNode(node: MdNode, ctx: ParseContext): Promise<MetaNode | un
     case 'code': {
       const code = node.value ?? ''
       const lang = node.lang ?? ''
+      const meta = node.meta?.trim()
       const codeFile = codeFileOf(code, extensionOf(lang, ctx.file), ctx.hash)
       ctx.codeFiles.set(codeFile.path, codeFile)
       const content = await ctx.highlight(code, lang, ctx.file)
       return {
         label: 'codeblock',
         lang,
+        ...(meta ? { meta } : {}),
         path: codeFile.path,
         content,
         // 只有命中 exec 的语言才带 thunk；其余代码文件照常落盘，只是不会被 import。

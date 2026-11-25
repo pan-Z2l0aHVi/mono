@@ -1,0 +1,471 @@
+msgid ""
+msgstr ""
+"Source-Language: zh-CN\n"
+"Language: en\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=2\n"
+"X-Plurals-Order: one, other\n"
+
+#: src/app/index.vue
+msgid "语言切换失败，请刷新页面后重试"
+msgstr "Failed to switch language. Please refresh the page and try again."
+
+#: src/app/index.vue
+msgid "目标语种加载失败，暂时使用简体中文"
+msgstr "Failed to load the target language. Temporarily using Simplified Chinese."
+
+#: src/app/index.vue
+msgid "关闭横幅"
+msgstr "Dismiss banner"
+
+#: src/app/index.vue
+msgid "js-kit 与 browser-kit 交互文档站"
+msgstr "Interactive docs for js-kit & browser-kit"
+
+#: src/app/index.vue
+msgid "全局动效"
+msgstr "Global motion"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "完整动效"
+msgstr "Full motion"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "减弱动效"
+msgstr "Reduced motion"
+
+#: src/app/index.vue
+#: src/app/index.vue
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "跟随系统"
+msgstr "System"
+
+#: src/app/index.vue
+msgid "全局主题"
+msgstr "Global theme"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "浅色模式"
+msgstr "Light mode"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "深色模式"
+msgstr "Dark mode"
+
+#: src/app/index.vue
+msgid "全局语言"
+msgstr "Global language"
+
+#: src/app/index.vue
+msgid "正在加载语言"
+msgstr "Loading language"
+
+#: src/app/index.vue
+msgid "应用导航"
+msgstr "App navigation"
+
+#: src/app/index.vue
+msgid "主导航"
+msgstr "Main navigation"
+
+#: src/app/index.vue
+msgid "概览"
+msgstr "Overview"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "总览"
+msgstr "Overview"
+
+#: src/app/index.vue
+#: src/app/index.vue
+#: src/pages/home/index.vue
+#: src/pages/home/index.vue
+msgid "快速开始"
+msgstr "Getting Started"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "更新日志"
+msgstr "Changelog"
+
+#: src/app/route-progress-bar.vue
+msgid "页面加载失败，请重试"
+msgstr "Failed to load page. Please try again."
+
+#: src/app/route-progress-bar.vue
+msgid "页面加载进度"
+msgstr "Page loading progress"
+
+#: src/components/codeblock/index.vue
+msgid "已复制"
+msgstr "Copied"
+
+#: src/components/codeblock/index.vue
+msgid "复制失败"
+msgstr "Copy failed"
+
+#: src/components/codeblock/index.vue
+msgid "复制代码"
+msgstr "Copy code"
+
+#: src/components/codeblock/index.vue
+msgid "示例代码语言"
+msgstr "Example language"
+
+#: src/components/codeblock/index.vue
+#: src/components/codeblock/index.vue
+msgid "收起代码"
+msgstr "Hide code"
+
+#: src/components/codeblock/index.vue
+#: src/components/codeblock/index.vue
+msgid "展开代码"
+msgstr "Show code"
+
+#: src/components/example-doc/index.vue
+msgid "示例文档"
+msgstr "Example documentation"
+
+#: src/components/search/index.vue
+#: src/components/search/index.vue
+msgid "搜索"
+msgstr "Search"
+
+#: src/components/search/index.vue
+msgid "搜索页面和模块"
+msgstr "Search pages and modules"
+
+#: src/components/search/index.vue
+msgid "搜索结果"
+msgstr "Search results"
+
+#: src/components/search/index.vue
+msgid "没有匹配结果"
+msgstr "No matching results"
+
+#: src/components/quick-link-card/index.vue
+msgid "查看演示 →"
+msgstr "View demo →"
+
+#: src/pages/[...all]/index.vue
+msgid "你要找的页面不存在"
+msgstr "The page you are looking for does not exist"
+
+#: src/pages/home/index.vue
+msgid "面向现代 TypeScript 与浏览器的零框架依赖工具集：提供可组合插件、URL/定时器/Result 范式与浏览器存储、埋点、环境检测、历史导航等能力。"
+msgstr "Framework-free toolkits for modern TypeScript and browsers: composable plugins, URL/timer/Result utilities, plus browser storage, telemetry tracker, environment detection, and history navigation."
+
+#: src/pages/home/index.vue
+msgid "工具包入口"
+msgstr "Packages"
+
+#: src/pages/home/index.vue
+msgid "通用 JavaScript / TypeScript 工具与可组合插件系统，适用于浏览器、Node.js 与 Worker。"
+msgstr "Universal JavaScript / TypeScript utilities and composable plugin system for browsers, Node.js, and Workers."
+
+#: src/pages/home/index.vue
+#: src/pages/home/index.vue
+msgid "浏览模块"
+msgstr "Browse modules"
+
+#: src/pages/home/index.vue
+msgid "浏览器运行时工具集：带 TTL 的命名空间存储、可组合埋点、环境检测、文件下载、剪贴板与历史导航。"
+msgstr "Browser runtime utilities: namespaced storage with TTL, composable telemetry tracker, environment detection, file helpers, clipboard, and history navigation."
+
+#: src/pages/home/index.vue
+msgid "模块清单"
+msgstr "Module Directory"
+
+#: src/pages/home/index.vue
+msgid "js-kit 模块"
+msgstr "js-kit modules"
+
+#: src/pages/home/index.vue
+msgid "browser-kit 模块"
+msgstr "browser-kit modules"
+
+#: src/demos/browser-kit/copy/CopyDemo.vue
+msgid "待复制文本"
+msgstr "Text to copy"
+
+#: src/demos/browser-kit/copy/CopyDemo.vue
+msgid "已复制到剪贴板"
+msgstr "Copied to clipboard"
+
+#: src/demos/browser-kit/copy/CopyDemo.vue
+msgid "复制文本"
+msgstr "Copy text"
+
+#: src/demos/browser-kit/dom/DomDemo.vue
+msgid "视口宽度"
+msgstr "Viewport width"
+
+#: src/demos/browser-kit/dom/DomDemo.vue
+msgid "视口高度"
+msgstr "Viewport height"
+
+#: src/demos/browser-kit/dom/DomDemo.vue
+msgid "纵向滚动"
+msgstr "Vertical scroll"
+
+#: src/demos/browser-kit/dom/DomDemo.vue
+msgid "横向滚动"
+msgstr "Horizontal scroll"
+
+#: src/demos/browser-kit/dom/DomDemo.vue
+msgid "手动刷新读数"
+msgstr "Refresh metrics"
+
+#: src/demos/browser-kit/file/FileDemo.vue
+msgid "输入的 Base64 字符串无效"
+msgstr "Invalid Base64 string"
+
+#: src/demos/browser-kit/file/FileDemo.vue
+msgid "非图片类型"
+msgstr "Non-image payload"
+
+#: src/demos/browser-kit/file/FileDemo.vue
+msgid "Base64 / Data URL 输入"
+msgstr "Base64 / Data URL input"
+
+#: src/demos/browser-kit/file/FileDemo.vue
+msgid "校验并解析"
+msgstr "Validate & inspect"
+
+#: src/demos/browser-kit/file/FileDemo.vue
+msgid "下载示例文本文件"
+msgstr "Download sample text file"
+
+#: src/demos/browser-kit/history-nav/HistoryNavDemo.vue
+msgid "独立同源 iframe 沙箱运行 defineHistoryNav，不污染当前文档页路由历史。"
+msgstr "Runs defineHistoryNav inside an isolated same-origin iframe so the host doc page history is never affected."
+
+#: src/demos/browser-kit/history-nav/HistoryNavDemo.vue
+msgid "重载沙箱"
+msgstr "Reload sandbox"
+
+#: src/demos/browser-kit/shortcut/EventShortcutDemo.vue
+msgid "解绑 window keydown（off）"
+msgstr "Detach window keydown (off)"
+
+#: src/demos/browser-kit/shortcut/EventShortcutDemo.vue
+msgid "开启 window keydown 监听（on）"
+msgstr "Enable window keydown listener (on)"
+
+#: src/demos/browser-kit/shortcut/EventShortcutDemo.vue
+msgid "监听中：按下任意键查看事件记录"
+msgstr "Listening: press any key to see events"
+
+#: src/demos/browser-kit/shortcut/EventShortcutDemo.vue
+msgid "已暂停：未注册全局监听"
+msgstr "Paused: no global listener attached"
+
+#: src/demos/browser-kit/shortcut/EventShortcutDemo.vue
+msgid "暂无按键事件记录"
+msgstr "No keydown events recorded yet"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "已写入 localStorage"
+msgstr "Saved to localStorage"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "写入失败（存储受限）"
+msgstr "Write failed (storage restricted)"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "键不存在或已过期"
+msgstr "Key not found or expired"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "读取成功"
+msgstr "Read succeeded"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "已删除键"
+msgstr "Key removed"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "已清理命名空间下过期键"
+msgstr "Cleared expired keys in namespace"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "收到跨标签页 storage 更新"
+msgstr "Received cross-tab storage update"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "键名"
+msgstr "Key"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "值"
+msgstr "Value"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "TTL（ms，0 表示不过期）"
+msgstr "TTL (ms, 0 for no expiry)"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "写入"
+msgstr "Set"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "读取"
+msgstr "Get"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "删除"
+msgstr "Remove"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "清理过期键"
+msgstr "Clear expired"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "上报点击事件"
+msgstr "Track click event"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "上报浏览事件"
+msgstr "Track page view"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+#: src/demos/js-kit/plugin-system/BatchEmitterDemo.vue
+msgid "立即 Flush"
+msgstr "Flush now"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "恢复在线（resume）"
+msgstr "Go online (resume)"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "模拟离线（pause）"
+msgstr "Simulate offline (pause)"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "触发示例异常"
+msgstr "Trigger sample error"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "清空日志"
+msgstr "Clear logs"
+
+#. 0: paused ? '已暂停（离线模拟）' \\: '运行中'
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "当前状态：{0}"
+msgstr "Status: {0}"
+
+#. 0: queuedCount
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "待冲刷计数：{0}"
+msgstr "Pending count: {0}"
+
+#. 0: sentLog.length
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "已拦截批次：{0}"
+msgstr "Intercepted batches: {0}"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "暂无上报记录。点击上方按钮触发批量聚合或立即 Flush（全部请求均由内存 transport 拦截，不会发出真实网络请求）。"
+msgstr "No telemetry recorded yet. Click a button above to trigger batching or flush immediately (all payloads are intercepted in memory with no real network requests)."
+
+#: src/demos/js-kit/paradigm/ResultFlowDemo.vue
+msgid "输入数字"
+msgstr "Input number"
+
+#: src/demos/js-kit/plugin-system/AckQueueDemo.vue
+msgid "入队"
+msgstr "Enqueue"
+
+#: src/demos/js-kit/plugin-system/AckQueueDemo.vue
+#: src/demos/js-kit/timer/TimerPlaygroundDemo.vue
+msgid "恢复"
+msgstr "Resume"
+
+#: src/demos/js-kit/plugin-system/AckQueueDemo.vue
+#: src/demos/js-kit/timer/TimerPlaygroundDemo.vue
+msgid "暂停"
+msgstr "Pause"
+
+#: src/demos/js-kit/plugin-system/AckQueueDemo.vue
+msgid "重试 Flush"
+msgstr "Retry flush"
+
+#: src/demos/js-kit/plugin-system/AckQueueDemo.vue
+msgid "模拟消费失败"
+msgstr "Simulate consume failure"
+
+#: src/demos/js-kit/plugin-system/AckQueueDemo.vue
+msgid "暂无消费记录"
+msgstr "No consume logs yet"
+
+#: src/demos/js-kit/plugin-system/BatchEmitterDemo.vue
+msgid "发送事件"
+msgstr "Emit event"
+
+#: src/demos/js-kit/plugin-system/BatchEmitterDemo.vue
+msgid "点击“发送事件”观察批量合并输出"
+msgstr "Click \"Emit event\" to observe batched output"
+
+#: src/demos/js-kit/plugin-system/PluginComposeDemo.vue
+msgid "Logger 插件"
+msgstr "Logger plugin"
+
+#: src/demos/js-kit/plugin-system/PluginComposeDemo.vue
+msgid "Auth 插件"
+msgstr "Auth plugin"
+
+#: src/demos/js-kit/plugin-system/PluginComposeDemo.vue
+msgid "消息内容"
+msgstr "Message"
+
+#: src/demos/js-kit/string/FileExtensionDemo.vue
+msgid "文件名"
+msgstr "Filename"
+
+#: src/demos/js-kit/shortcut/SafeCallDemo.vue
+msgid "正常执行"
+msgstr "Normal run"
+
+#: src/demos/js-kit/shortcut/SafeCallDemo.vue
+msgid "同步抛错"
+msgstr "Sync throw"
+
+#: src/demos/js-kit/shortcut/SafeCallDemo.vue
+msgid "异步 Rejection"
+msgstr "Async rejection"
+
+#: src/demos/js-kit/shortcut/SafeCallDemo.vue
+msgid "点击按钮观察 safeCall 兜底捕获"
+msgstr "Click a button to observe safeCall error handling"
+
+#: src/demos/js-kit/timer/TimerPlaygroundDemo.vue
+msgid "快速输入观察防抖效果"
+msgstr "Type quickly to observe debounce"
+
+#: src/demos/js-kit/timer/TimerPlaygroundDemo.vue
+msgid "防抖测试输入"
+msgstr "Debounce input"
+
+#: src/demos/js-kit/timer/TimerPlaygroundDemo.vue
+msgid "启动"
+msgstr "Start"
+
+#: src/demos/js-kit/timer/TimerPlaygroundDemo.vue
+msgid "停止"
+msgstr "Stop"
+
+#: src/demos/js-kit/url/UrlPlaygroundDemo.vue
+msgid "待解析 URL"
+msgstr "URL to parse"
+
+#: src/demos/js-kit/url/UrlPlaygroundDemo.vue
+msgid "附加 key"
+msgstr "Append key"

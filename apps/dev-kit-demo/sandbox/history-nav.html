@@ -1,0 +1,52 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="UTF-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1.0" />
+    <title>history-nav sandbox</title>
+    <style>
+      #sandbox-root {
+        padding: 12px;
+        font-family: ui-sans-serif, system-ui, sans-serif;
+        font-size: 13px;
+      }
+
+      .toolbar {
+        display: flex;
+        flex-wrap: wrap;
+        gap: 8px;
+        margin-bottom: 10px;
+      }
+
+      #status {
+        margin-bottom: 8px;
+        font-family: ui-monospace, monospace;
+      }
+
+      #log {
+        overflow: auto;
+
+        max-height: 140px;
+        margin: 0;
+        padding: 8px;
+        border: 1px solid #d4d4d8;
+        border-radius: 6px;
+
+        font-size: 12px;
+      }
+    </style>
+  </head>
+  <body>
+    <main id="sandbox-root">
+      <div class="toolbar">
+        <button id="btn-push" type="button">Push Step</button>
+        <button id="btn-replace" type="button">Replace Step</button>
+        <button id="btn-back" type="button">Back</button>
+        <button id="btn-forward" type="button">Forward</button>
+      </div>
+      <div id="status"></div>
+      <pre id="log"></pre>
+    </main>
+    <script type="module" src="./history-nav.ts"></script>
+  </body>
+</html>

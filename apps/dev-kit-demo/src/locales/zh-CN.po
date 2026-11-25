@@ -1,0 +1,472 @@
+msgid ""
+msgstr ""
+"Source-Language: zh-CN\n"
+"Language: zh-CN\n"
+"MIME-Version: 1.0\n"
+"Content-Type: text/plain; charset=utf-8\n"
+"Content-Transfer-Encoding: 8bit\n"
+"Plural-Forms: nplurals=1\n"
+"X-Plurals-Order: other\n"
+
+#: src/app/index.vue
+msgid "语言切换失败，请刷新页面后重试"
+msgstr "语言切换失败，请刷新页面后重试"
+
+#: src/app/index.vue
+msgid "目标语种加载失败，暂时使用简体中文"
+msgstr "目标语种加载失败，暂时使用简体中文"
+
+#: src/app/index.vue
+msgid "关闭横幅"
+msgstr "关闭横幅"
+
+#: src/app/index.vue
+msgid "js-kit 与 browser-kit 交互文档站"
+msgstr "js-kit 与 browser-kit 交互文档站"
+
+#: src/app/index.vue
+msgid "全局动效"
+msgstr "全局动效"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "完整动效"
+msgstr "完整动效"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "减弱动效"
+msgstr "减弱动效"
+
+#: src/app/index.vue
+#: src/app/index.vue
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "跟随系统"
+msgstr "跟随系统"
+
+#: src/app/index.vue
+msgid "全局主题"
+msgstr "全局主题"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "浅色模式"
+msgstr "浅色模式"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "深色模式"
+msgstr "深色模式"
+
+#: src/app/index.vue
+msgid "全局语言"
+msgstr "全局语言"
+
+#: src/app/index.vue
+msgid "正在加载语言"
+msgstr "正在加载语言"
+
+#: src/app/index.vue
+msgid "应用导航"
+msgstr "应用导航"
+
+#: src/app/index.vue
+msgid "主导航"
+msgstr "主导航"
+
+#: src/app/index.vue
+msgid "概览"
+msgstr "概览"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "总览"
+msgstr "总览"
+
+#: src/app/index.vue
+#: src/app/index.vue
+#: src/pages/home/index.vue
+#: src/pages/home/index.vue
+msgid "快速开始"
+msgstr "快速开始"
+
+#: src/app/index.vue
+#: src/app/index.vue
+msgid "更新日志"
+msgstr "更新日志"
+
+#: src/app/route-progress-bar.vue
+msgid "页面加载失败，请重试"
+msgstr "页面加载失败，请重试"
+
+#: src/app/route-progress-bar.vue
+msgid "页面加载进度"
+msgstr "页面加载进度"
+
+#: src/components/codeblock/index.vue
+msgid "已复制"
+msgstr "已复制"
+
+#: src/components/codeblock/index.vue
+msgid "复制失败"
+msgstr "复制失败"
+
+#: src/components/codeblock/index.vue
+msgid "复制代码"
+msgstr "复制代码"
+
+#: src/components/codeblock/index.vue
+msgid "示例代码语言"
+msgstr "示例代码语言"
+
+#: src/components/codeblock/index.vue
+#: src/components/codeblock/index.vue
+msgid "收起代码"
+msgstr "收起代码"
+
+#: src/components/codeblock/index.vue
+#: src/components/codeblock/index.vue
+msgid "展开代码"
+msgstr "展开代码"
+
+#: src/components/example-doc/index.vue
+msgid "示例文档"
+msgstr "示例文档"
+
+#: src/components/search/index.vue
+#: src/components/search/index.vue
+msgid "搜索"
+msgstr "搜索"
+
+#: src/components/search/index.vue
+#: src/components/search/index.vue
+msgid "搜索页面和模块"
+msgstr "搜索页面和模块"
+
+#: src/components/search/index.vue
+msgid "搜索结果"
+msgstr "搜索结果"
+
+#: src/components/search/index.vue
+msgid "没有匹配结果"
+msgstr "没有匹配结果"
+
+#: src/components/quick-link-card/index.vue
+msgid "查看演示 →"
+msgstr "查看演示 →"
+
+#: src/pages/[...all]/index.vue
+msgid "你要找的页面不存在"
+msgstr "你要找的页面不存在"
+
+#: src/pages/home/index.vue
+msgid "面向现代 TypeScript 与浏览器的零框架依赖工具集：提供可组合插件、URL/定时器/Result 范式与浏览器存储、埋点、环境检测、历史导航等能力。"
+msgstr "面向现代 TypeScript 与浏览器的零框架依赖工具集：提供可组合插件、URL/定时器/Result 范式与浏览器存储、埋点、环境检测、历史导航等能力。"
+
+#: src/pages/home/index.vue
+msgid "工具包入口"
+msgstr "工具包入口"
+
+#: src/pages/home/index.vue
+msgid "通用 JavaScript / TypeScript 工具与可组合插件系统，适用于浏览器、Node.js 与 Worker。"
+msgstr "通用 JavaScript / TypeScript 工具与可组合插件系统，适用于浏览器、Node.js 与 Worker。"
+
+#: src/pages/home/index.vue
+#: src/pages/home/index.vue
+msgid "浏览模块"
+msgstr "浏览模块"
+
+#: src/pages/home/index.vue
+msgid "浏览器运行时工具集：带 TTL 的命名空间存储、可组合埋点、环境检测、文件下载、剪贴板与历史导航。"
+msgstr "浏览器运行时工具集：带 TTL 的命名空间存储、可组合埋点、环境检测、文件下载、剪贴板与历史导航。"
+
+#: src/pages/home/index.vue
+msgid "模块清单"
+msgstr "模块清单"
+
+#: src/pages/home/index.vue
+msgid "js-kit 模块"
+msgstr "js-kit 模块"
+
+#: src/pages/home/index.vue
+msgid "browser-kit 模块"
+msgstr "browser-kit 模块"
+
+#: src/demos/browser-kit/copy/CopyDemo.vue
+msgid "待复制文本"
+msgstr "待复制文本"
+
+#: src/demos/browser-kit/copy/CopyDemo.vue
+msgid "已复制到剪贴板"
+msgstr "已复制到剪贴板"
+
+#: src/demos/browser-kit/copy/CopyDemo.vue
+msgid "复制文本"
+msgstr "复制文本"
+
+#: src/demos/browser-kit/dom/DomDemo.vue
+msgid "视口宽度"
+msgstr "视口宽度"
+
+#: src/demos/browser-kit/dom/DomDemo.vue
+msgid "视口高度"
+msgstr "视口高度"
+
+#: src/demos/browser-kit/dom/DomDemo.vue
+msgid "纵向滚动"
+msgstr "纵向滚动"
+
+#: src/demos/browser-kit/dom/DomDemo.vue
+msgid "横向滚动"
+msgstr "横向滚动"
+
+#: src/demos/browser-kit/dom/DomDemo.vue
+msgid "手动刷新读数"
+msgstr "手动刷新读数"
+
+#: src/demos/browser-kit/file/FileDemo.vue
+msgid "输入的 Base64 字符串无效"
+msgstr "输入的 Base64 字符串无效"
+
+#: src/demos/browser-kit/file/FileDemo.vue
+msgid "非图片类型"
+msgstr "非图片类型"
+
+#: src/demos/browser-kit/file/FileDemo.vue
+msgid "Base64 / Data URL 输入"
+msgstr "Base64 / Data URL 输入"
+
+#: src/demos/browser-kit/file/FileDemo.vue
+msgid "校验并解析"
+msgstr "校验并解析"
+
+#: src/demos/browser-kit/file/FileDemo.vue
+msgid "下载示例文本文件"
+msgstr "下载示例文本文件"
+
+#: src/demos/browser-kit/history-nav/HistoryNavDemo.vue
+msgid "独立同源 iframe 沙箱运行 defineHistoryNav，不污染当前文档页路由历史。"
+msgstr "独立同源 iframe 沙箱运行 defineHistoryNav，不污染当前文档页路由历史。"
+
+#: src/demos/browser-kit/history-nav/HistoryNavDemo.vue
+msgid "重载沙箱"
+msgstr "重载沙箱"
+
+#: src/demos/browser-kit/shortcut/EventShortcutDemo.vue
+msgid "解绑 window keydown（off）"
+msgstr "解绑 window keydown（off）"
+
+#: src/demos/browser-kit/shortcut/EventShortcutDemo.vue
+msgid "开启 window keydown 监听（on）"
+msgstr "开启 window keydown 监听（on）"
+
+#: src/demos/browser-kit/shortcut/EventShortcutDemo.vue
+msgid "监听中：按下任意键查看事件记录"
+msgstr "监听中：按下任意键查看事件记录"
+
+#: src/demos/browser-kit/shortcut/EventShortcutDemo.vue
+msgid "已暂停：未注册全局监听"
+msgstr "已暂停：未注册全局监听"
+
+#: src/demos/browser-kit/shortcut/EventShortcutDemo.vue
+msgid "暂无按键事件记录"
+msgstr "暂无按键事件记录"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "已写入 localStorage"
+msgstr "已写入 localStorage"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "写入失败（存储受限）"
+msgstr "写入失败（存储受限）"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "键不存在或已过期"
+msgstr "键不存在或已过期"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "读取成功"
+msgstr "读取成功"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "已删除键"
+msgstr "已删除键"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "已清理命名空间下过期键"
+msgstr "已清理命名空间下过期键"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "收到跨标签页 storage 更新"
+msgstr "收到跨标签页 storage 更新"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "键名"
+msgstr "键名"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "值"
+msgstr "值"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "TTL（ms，0 表示不过期）"
+msgstr "TTL（ms，0 表示不过期）"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "写入"
+msgstr "写入"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "读取"
+msgstr "读取"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "删除"
+msgstr "删除"
+
+#: src/demos/browser-kit/storage/StorageDemo.vue
+msgid "清理过期键"
+msgstr "清理过期键"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "上报点击事件"
+msgstr "上报点击事件"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "上报浏览事件"
+msgstr "上报浏览事件"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+#: src/demos/js-kit/plugin-system/BatchEmitterDemo.vue
+msgid "立即 Flush"
+msgstr "立即 Flush"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "恢复在线（resume）"
+msgstr "恢复在线（resume）"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "模拟离线（pause）"
+msgstr "模拟离线（pause）"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "触发示例异常"
+msgstr "触发示例异常"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "清空日志"
+msgstr "清空日志"
+
+#. 0: paused ? '已暂停（离线模拟）' \\: '运行中'
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "当前状态：{0}"
+msgstr "当前状态：{0}"
+
+#. 0: queuedCount
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "待冲刷计数：{0}"
+msgstr "待冲刷计数：{0}"
+
+#. 0: sentLog.length
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "已拦截批次：{0}"
+msgstr "已拦截批次：{0}"
+
+#: src/demos/browser-kit/tracker/TrackerDemo.vue
+msgid "暂无上报记录。点击上方按钮触发批量聚合或立即 Flush（全部请求均由内存 transport 拦截，不会发出真实网络请求）。"
+msgstr "暂无上报记录。点击上方按钮触发批量聚合或立即 Flush（全部请求均由内存 transport 拦截，不会发出真实网络请求）。"
+
+#: src/demos/js-kit/paradigm/ResultFlowDemo.vue
+msgid "输入数字"
+msgstr "输入数字"
+
+#: src/demos/js-kit/plugin-system/AckQueueDemo.vue
+msgid "入队"
+msgstr "入队"
+
+#: src/demos/js-kit/plugin-system/AckQueueDemo.vue
+#: src/demos/js-kit/timer/TimerPlaygroundDemo.vue
+msgid "恢复"
+msgstr "恢复"
+
+#: src/demos/js-kit/plugin-system/AckQueueDemo.vue
+#: src/demos/js-kit/timer/TimerPlaygroundDemo.vue
+msgid "暂停"
+msgstr "暂停"
+
+#: src/demos/js-kit/plugin-system/AckQueueDemo.vue
+msgid "重试 Flush"
+msgstr "重试 Flush"
+
+#: src/demos/js-kit/plugin-system/AckQueueDemo.vue
+msgid "模拟消费失败"
+msgstr "模拟消费失败"
+
+#: src/demos/js-kit/plugin-system/AckQueueDemo.vue
+msgid "暂无消费记录"
+msgstr "暂无消费记录"
+
+#: src/demos/js-kit/plugin-system/BatchEmitterDemo.vue
+msgid "发送事件"
+msgstr "发送事件"
+
+#: src/demos/js-kit/plugin-system/BatchEmitterDemo.vue
+msgid "点击“发送事件”观察批量合并输出"
+msgstr "点击“发送事件”观察批量合并输出"
+
+#: src/demos/js-kit/plugin-system/PluginComposeDemo.vue
+msgid "Logger 插件"
+msgstr "Logger 插件"
+
+#: src/demos/js-kit/plugin-system/PluginComposeDemo.vue
+msgid "Auth 插件"
+msgstr "Auth 插件"
+
+#: src/demos/js-kit/plugin-system/PluginComposeDemo.vue
+msgid "消息内容"
+msgstr "消息内容"
+
+#: src/demos/js-kit/string/FileExtensionDemo.vue
+msgid "文件名"
+msgstr "文件名"
+
+#: src/demos/js-kit/shortcut/SafeCallDemo.vue
+msgid "正常执行"
+msgstr "正常执行"
+
+#: src/demos/js-kit/shortcut/SafeCallDemo.vue
+msgid "同步抛错"
+msgstr "同步抛错"
+
+#: src/demos/js-kit/shortcut/SafeCallDemo.vue
+msgid "异步 Rejection"
+msgstr "异步 Rejection"
+
+#: src/demos/js-kit/shortcut/SafeCallDemo.vue
+msgid "点击按钮观察 safeCall 兜底捕获"
+msgstr "点击按钮观察 safeCall 兜底捕获"
+
+#: src/demos/js-kit/timer/TimerPlaygroundDemo.vue
+msgid "快速输入观察防抖效果"
+msgstr "快速输入观察防抖效果"
+
+#: src/demos/js-kit/timer/TimerPlaygroundDemo.vue
+msgid "防抖测试输入"
+msgstr "防抖测试输入"
+
+#: src/demos/js-kit/timer/TimerPlaygroundDemo.vue
+msgid "启动"
+msgstr "启动"
+
+#: src/demos/js-kit/timer/TimerPlaygroundDemo.vue
+msgid "停止"
+msgstr "停止"
+
+#: src/demos/js-kit/url/UrlPlaygroundDemo.vue
+msgid "待解析 URL"
+msgstr "待解析 URL"
+
+#: src/demos/js-kit/url/UrlPlaygroundDemo.vue
+msgid "附加 key"
+msgstr "附加 key"
