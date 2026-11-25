@@ -167,14 +167,14 @@ describe('WebUiSegmented 可辨度（浏览器）', () => {
 
   /*
    * 凸变种（raised）的静止 indicator 靠投影与几何读出「浮起」，不靠亮度断层，所以尺子取浅色档：
-   * #e5e5eb track / #fff indicator，比值 1.26。深色档是 #17171b track / #242428 indicator，比值 1.16，
-   * 比浅色还收敛一点——page 之下能开的空间本来就比 page 之上窄。亮度断层一盖过投影，选中块就读成
+   * #eeeef3 track / #fff indicator，与深色档 #17171b track / #242428 indicator 同为约 1.16，
+   * 两档同量级——page 之下能开的空间本来就比 page 之上窄。亮度断层一盖过投影，选中块就读成
    * 一条高亮，而不是一颗浮起的面。
    * 断言拿两档各自量出的比值相比、不写色值字面量：调色板整体重排它仍然成立。
    *
-   * 阈值 light + 0.1 卡在深色阶梯的两档上：indicator 从 page 往上挪一档（surface）是 1.27，仍在带内；
-   * 挪两档（control，也就是「按钮面」方案）是 1.55，直接红。比值只管断层大小、不管符号，
-   * 所以反向的那半（把 track 浮到 page 之上、indicator 压成 page 色，比值 1.09）由下面那条亮度方向
+   * 阈值 light + 0.1 给深色留了一点余量，但浅色 indicator 若挪到 control 面（与 track 同色）断层归零，
+   * 直接红。比值只管断层大小、不管符号，
+   * 所以反向的那半（把 track 浮到 page 之上、indicator 压成 page 色）由下面那条亮度方向
    * 断言兜住——两条合起来才钉住「浮起但不抢戏」。
    */
   it('raised 变体两档下 indicator 相对 track 的亮度差同一量级、且方向朝凸', async () => {
@@ -220,9 +220,9 @@ describe('WebUiSegmented 可辨度（浏览器）', () => {
   })
 
   /*
-   * 凹变种那颗走的是另一条等式：静止 indicator 与同主题的中性可交互控件同面，也就是 `secondary`
-   * button 用的那一档（浅色 #e5e5eb、深色 #3a3a3c）。写法与上一条完全对称，只是参照物从 page 换成
-   * control——两个变体各自钉住一档，谁也不跟着谁漂。
+   * 凹变种那颗走的是另一条等式：静止 indicator 与同主题的 control 面同色（浅色 #eeeef3、深色
+   * #3a3a3c）。`secondary` button 浅色还会从 control 向 shade 压深半档，不在这条等式的覆盖内。
+   * 写法与上一条完全对称，只是参照物从 page 换成 control——两个变体各自钉住一档，谁也不跟着谁漂。
    *
    * 失效模式：只把 control 或 segmented 的颜色挪走，这条就红。两枚 token 在 theme 里是互不引用的
    * 字面量定义，这条等式没有结构耦合兜着，「要不要一起动」只能由这条用例来逼。
