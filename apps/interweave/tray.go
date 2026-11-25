@@ -11,12 +11,19 @@ import (
 // 图标按平台语义分别嵌入：
 //   - macOS 用 template 图（黑+透明），由系统按浅/深色菜单栏自动反色；Wails 只能收一份字节，
 //     因此把 22/44/66 三档源图按 72/144/216 DPI 合成多表示 TIFF，让 NSImage 按屏幕倍率选图。
-//   - Windows 按任务栏底色切换：深色图案配浅色任务栏，浅色图案配深色任务栏。
+//   - Windows 按任务栏底色切换：深色图案配浅色任务栏，浅色图案配深色任务栏；
+//     Linux 用 PNG（Wails 的 Linux 托盘只解码 PNG）。
 //
 // Wails 的 SetIcon 对应系统浅色模式，SetDarkModeIcon 对应系统深色模式。
 //
 //go:embed build/tray/macos/trayTemplate.tiff
 var trayTemplateIcon []byte
+
+// Wails v3.1.0 的 Linux 托盘只走 PNG 解码（systemtray_linux.go: iconToPX → pngToImage），
+// ICO 在那里会解码失败并导致图标缺失，因此 Linux 复用现有 PNG 应用图标。
+//
+//go:embed build/appicon.png
+var trayIconForLinux []byte
 
 //go:embed build/tray/windows/tray-dark.ico
 var trayIconForLightTaskbar []byte
@@ -46,7 +53,10 @@ func trayIconsFor(goos string) (icon, darkIcon, template []byte) {
 	if goos == "darwin" {
 		return nil, nil, trayTemplateIcon
 	}
-	// Windows 与 Linux 都以 ICO 作为普通图标；dark 变体只在 Windows 上有意义。
+	if goos == "linux" {
+		return trayIconForLinux, nil, nil
+	}
+	// Windows 按任务栏底色切换 ICO；dark 变体只对 Windows 有意义。
 	return trayIconForLightTaskbar, trayIconForDarkTaskbar, nil
 }
 

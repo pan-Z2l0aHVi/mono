@@ -81,20 +81,26 @@ func (h *wailsDesktopHost) UnMaximise() {
 }
 
 func (h *wailsDesktopHost) PresentWindow() {
-	h.windows.Present()
-	h.presence.show()
-	h.hiddenToTray.Store(false)
+	// 窗口状态、隐藏标记与 Dock 提交必须在同一条 main queue 转换里，否则关闭 goroutine
+	// 与托盘恢复会交错提交 show/hide，最终窗口可见但 Dock 已隐藏（或相反）。
+	application.InvokeSync(func() {
+		h.windows.Present()
+		h.presence.show()
+		h.hiddenToTray.Store(false)
+	})
 }
 
 // hiddenByTray 仅供设置变更时判断是否需要把藏进托盘的窗口拉回来。
 func (h *wailsDesktopHost) hiddenByTray() bool { return h.hiddenToTray.Load() }
 
 func (h *wailsDesktopHost) HideWindow() {
-	if window := h.currentWindow(); window != nil {
-		window.Hide()
-		h.hiddenToTray.Store(true)
-		h.presence.hide()
-	}
+	application.InvokeSync(func() {
+		if window := h.currentWindow(); window != nil {
+			window.Hide()
+			h.hiddenToTray.Store(true)
+			h.presence.hide()
+		}
+	})
 }
 
 func (h *wailsDesktopHost) QuitApp() { go h.app.Quit() }

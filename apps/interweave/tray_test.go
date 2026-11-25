@@ -32,6 +32,11 @@ func TestTrayIconsForPlatform(t *testing.T) {
 	if len(winTemplate) != 0 || !bytes.Equal(winIcon, trayIconForLightTaskbar) || !bytes.Equal(winDark, trayIconForDarkTaskbar) {
 		t.Fatal("Windows should map dark artwork to light taskbars and light artwork to dark taskbars")
 	}
+
+	linuxIcon, linuxDark, linuxTemplate := trayIconsFor("linux")
+	if len(linuxDark) != 0 || len(linuxTemplate) != 0 || !bytes.Equal(linuxIcon, trayIconForLinux) {
+		t.Fatal("Linux should use a PNG icon only; Wails cannot decode ICO for the Linux tray")
+	}
 }
 
 func TestTrayLightModeCheckbox(t *testing.T) {

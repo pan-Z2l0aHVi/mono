@@ -266,8 +266,10 @@ func run() error {
 	)
 
 	// 轻量模式销毁 WebView 时绕过「最小化到托盘 / 退出」；其余关闭照旧交给 shell。
+	// 用户关闭事件由 Wails 在 goroutine 里派发，设置读取必须与设置变更的补偿逻辑同在 main
+	// queue：否则「读到开启托盘 → 设置关掉并销毁托盘 → 再隐藏窗口」会留下无窗口无入口状态。
 	windows.onClosing = func(event *application.WindowEvent) {
-		desktopShell.HandleWindowClosing(event.Cancel)
+		application.InvokeSync(func() { desktopShell.HandleWindowClosing(event.Cancel) })
 	}
 	windows.addStateListener(func(light bool) {
 		if light {
@@ -281,10 +283,16 @@ func run() error {
 		dockPresence.show()
 	})
 	windows.onCreated = func(window *application.WebviewWindow) {
+		// 轻量模式快速往返时旧窗口的 ready 事件仍可能异步到达；只有当前窗口才有资格
+		// 把缓冲的 Dock/URL 拖放冲刷到前端，否则会在新 WebView 监听前把事件丢掉。
+		desktopShell.MarkWindowUnready()
 		window.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
 			window.EmitEvent(libraryService.FileDropEventName, event.Context().DroppedFiles())
 		})
 		window.OnWindowEvent(events.Common.WindowRuntimeReady, func(_ *application.WindowEvent) {
+			if windows.Window() != window {
+				return
+			}
 			desktopShell.MarkRuntimeReady()
 		})
 		// 原生菜单条与 Windows 顶栏快照都挂在具体窗口上，重建后必须重新安装。
