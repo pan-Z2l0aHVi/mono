@@ -100,8 +100,7 @@ const logoSrc = `${import.meta.env.BASE_URL}kit-transparent.png`
 
       <h1 class="mb-3 text-[32px] font-bold tracking-tight text-(--wui-color-text)">@greypan Dev Kit</h1>
       <p class="mb-7 max-w-2xl text-base leading-relaxed text-(--wui-color-text-secondary) sm:text-lg">
-        面向现代 TypeScript 与浏览器的零框架依赖工具集：提供可组合插件、URL/定时器/Result
-        范式与浏览器存储、埋点、环境检测、历史导航等能力。
+        面向现代 TypeScript 与浏览器的零框架依赖工具集
       </p>
 
       <div class="flex flex-wrap items-center justify-center gap-3">
@@ -119,14 +118,14 @@ const logoSrc = `${import.meta.env.BASE_URL}kit-transparent.png`
       <div
         v-for="feature in features"
         :key="feature.id"
-        class="flex items-center justify-center gap-2 rounded-2xl border border-(--wui-color-border) bg-(--wui-color-surface)/60 px-3 py-2.5 text-sm text-(--wui-color-text-secondary)"
+        class="flex items-center justify-center gap-2 px-2 py-1.5 text-sm text-(--wui-color-text-secondary)"
       >
         <web-ui-icon :icon="feature.icon" class="shrink-0 text-(--wui-color-accent)" :size="16"></web-ui-icon>
         <span class="truncate font-medium text-(--wui-color-text)">{{ feature.label() }}</span>
       </div>
     </div>
 
-    <section class="mb-14 grid w-full gap-5 md:grid-cols-2" aria-label="工具包入口">
+    <section class="mb-16 grid w-full gap-8 md:grid-cols-2" aria-label="工具包入口">
       <article class="wui-glass flex flex-col justify-between gap-5 rounded-3xl p-6 [--wui-glass-corner-radius:24px]">
         <div class="flex flex-col gap-2.5">
           <div class="flex items-center justify-between gap-2">
@@ -189,7 +188,7 @@ const logoSrc = `${import.meta.env.BASE_URL}kit-transparent.png`
             <span class="text-xs text-(--wui-color-text-tertiary)">{{ group.description() }}</span>
           </div>
 
-          <div class="grid grid-cols-1 gap-5 sm:grid-cols-2 lg:grid-cols-4">
+          <div class="grid grid-cols-1 gap-8 sm:grid-cols-2 md:grid-cols-3">
             <QuickLinkCard
               v-for="link in group.links"
               :key="link.path"

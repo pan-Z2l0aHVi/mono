@@ -159,10 +159,6 @@ msgid "你要找的页面不存在"
 msgstr "你要找的页面不存在"
 
 #: src/pages/home/index.vue
-msgid "面向现代 TypeScript 与浏览器的零框架依赖工具集：提供可组合插件、URL/定时器/Result 范式与浏览器存储、埋点、环境检测、历史导航等能力。"
-msgstr "面向现代 TypeScript 与浏览器的零框架依赖工具集：提供可组合插件、URL/定时器/Result 范式与浏览器存储、埋点、环境检测、历史导航等能力。"
-
-#: src/pages/home/index.vue
 msgid "工具包入口"
 msgstr "工具包入口"
 
@@ -562,3 +558,7 @@ msgstr "browser-kit 快速开始"
 #: src/pages/home/index.vue
 msgid "8 个模块"
 msgstr "8 个模块"
+
+#: src/pages/home/index.vue
+msgid "面向现代 TypeScript 与浏览器的零框架依赖工具集"
+msgstr "面向现代 TypeScript 与浏览器的零框架依赖工具集"
