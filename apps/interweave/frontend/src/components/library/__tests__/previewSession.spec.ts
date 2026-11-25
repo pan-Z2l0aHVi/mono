@@ -28,18 +28,18 @@ function fileSource(overrides: Partial<ResourceSourceView> = {}): ResourceSource
   }
 }
 
-function resourceOf(preferred: ResourceSourceView, kind: ResourceKind, id = 'resource-1'): ResourceView {
+function resourceOf(preferred: ResourceSourceView | null, kind: ResourceKind, id = 'resource-1'): ResourceView {
   return {
     id,
     title: '预览目标',
     note: '',
     createdAt: 0,
     updatedAt: 0,
-    sources: [preferred],
+    sources: preferred ? [preferred] : [],
     preferred,
     tags: [],
     tagNames: [],
-    available: preferred.available,
+    available: preferred?.available ?? false,
     kind,
     sizeBytes: 1024
   }
@@ -140,6 +140,241 @@ describe('createPreviewSession', () => {
       expect(session.state.value).toMatchObject({ kind: 'url', status: 'loading' })
     } finally {
       session.dispose()
+    }
+  })
+
+  it('同资源 empty -> empty 切换与本地 file 来源 ReplaceSource 均能触发刷新', async () => {
+    // 1. empty -> empty: source-unavailable -> no-source -> 另一个失效来源
+    const missingA = fileSource({ id: 'missing-a', available: false, mediaUrl: null })
+    const missingB = fileSource({ id: 'missing-b', available: false, mediaUrl: null })
+    const emptyResource = ref<ResourceView | null>(resourceOf(missingA, ResourceKind.ResourceKindDocument))
+    const emptySession = createPreviewSession({ open: () => true, resource: () => emptyResource.value })
+
+    try {
+      expect(emptySession.state.value).toMatchObject({
+        kind: 'empty',
+        reason: 'source-unavailable',
+        canRecover: true,
+        source: missingA
+      })
+
+      emptyResource.value = resourceOf(null, ResourceKind.ResourceKindDocument)
+      await nextTick()
+      expect(emptySession.state.value).toMatchObject({
+        kind: 'empty',
+        reason: 'no-source',
+        canRecover: false,
+        source: null
+      })
+
+      emptyResource.value = resourceOf(missingB, ResourceKind.ResourceKindDocument)
+      await nextTick()
+      expect(emptySession.state.value).toMatchObject({
+        kind: 'empty',
+        reason: 'source-unavailable',
+        canRecover: true,
+        source: missingB
+      })
+    } finally {
+      emptySession.dispose()
+    }
+
+    // 2. 本地 file code 来源 ReplaceSource（保留 source.id 与 mediaUrl，仅改 location）刷新语言与内容
+    let fetchCount = 0
+    const highlightCode = vi.fn<PreviewRendererPort['highlightCode']>(async (_code, lang) => `<pre>${lang}</pre>`)
+    const fetchText = vi.fn<(url: string, signal: AbortSignal) => Promise<PreviewTextResponse>>(async () => {
+      fetchCount += 1
+      return textResponse(fetchCount === 1 ? 'const a = 1' : 'print(1)')
+    })
+    const codeResource = ref<ResourceView | null>(
+      resourceOf(
+        fileSource({ id: 'src-file', location: '/tmp/a.ts', mediaUrl: '/resource-media/src-file' }),
+        ResourceKind.ResourceKindDocument
+      )
+    )
+    const codeSession = createPreviewSession(
+      { open: () => true, resource: () => codeResource.value },
+      { fetchText, renderer: { parseMarkdown: async () => ({ nodes: [] }), highlightCode } }
+    )
+
+    try {
+      await flush()
+      expect(highlightCode).toHaveBeenLastCalledWith('const a = 1', 'ts')
+      expect(codeSession.state.value).toMatchObject({ kind: 'code', status: 'ready', highlightedHtml: '<pre>ts</pre>' })
+
+      codeResource.value = resourceOf(
+        fileSource({ id: 'src-file', location: '/tmp/b.py', mediaUrl: '/resource-media/src-file' }),
+        ResourceKind.ResourceKindDocument
+      )
+      await flush()
+      expect(fetchText).toHaveBeenCalledTimes(2)
+      expect(highlightCode).toHaveBeenLastCalledWith('print(1)', 'python')
+      expect(codeSession.state.value).toMatchObject({
+        kind: 'code',
+        status: 'ready',
+        highlightedHtml: '<pre>python</pre>'
+      })
+    } finally {
+      codeSession.dispose()
+    }
+
+    // 3. 本地 file image 来源 ReplaceSource 仅改 location 时重建 mediaKey 并回到 loading
+    const imageResource = ref<ResourceView | null>(
+      resourceOf(
+        fileSource({ id: 'src-img', location: '/tmp/a.png', mediaUrl: '/resource-media/src-img' }),
+        ResourceKind.ResourceKindImage
+      )
+    )
+    const imageSession = createPreviewSession({ open: () => true, resource: () => imageResource.value })
+    try {
+      expect(imageSession.state.value).toEqual({
+        kind: 'image',
+        mediaKey: 'src-img|/resource-media/src-img|/tmp/a.png',
+        src: '/resource-media/src-img',
+        status: 'loading'
+      })
+      imageSession.onMediaLoaded('src-img|/resource-media/src-img|/tmp/a.png')
+      expect(imageSession.state.value).toMatchObject({ status: 'ready' })
+
+      imageResource.value = resourceOf(
+        fileSource({ id: 'src-img', location: '/tmp/b.png', mediaUrl: '/resource-media/src-img' }),
+        ResourceKind.ResourceKindImage
+      )
+      await nextTick()
+      expect(imageSession.state.value).toEqual({
+        kind: 'image',
+        mediaKey: 'src-img|/resource-media/src-img|/tmp/b.png',
+        src: '/resource-media/src-img',
+        status: 'loading'
+      })
+    } finally {
+      imageSession.dispose()
+    }
+  })
+
+  it('text 模式支持 ready、截断提示以及非 2xx 与网络错误失败态', async () => {
+    const errorSpy = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const resource = ref<ResourceView | null>(
+      resourceOf(fileSource({ id: 'txt-1', location: '/tmp/note.txt' }), ResourceKind.ResourceKindDocument)
+    )
+
+    // 正常 ready
+    const readySession = createPreviewSession(
+      { open: () => true, resource: () => resource.value },
+      { fetchText: async () => textResponse('hello world'), limits: { textByteLimit: 100 } }
+    )
+    try {
+      await flush()
+      expect(readySession.state.value).toEqual({
+        kind: 'text',
+        status: 'ready',
+        text: 'hello world',
+        truncated: false,
+        notice: '部分文件的文字可能无法正常显示。'
+      })
+    } finally {
+      readySession.dispose()
+    }
+
+    // 超限截断
+    const truncatedSession = createPreviewSession(
+      { open: () => true, resource: () => resource.value },
+      { fetchText: async () => textResponse('abcdefghij'), limits: { textByteLimit: 4 } }
+    )
+    try {
+      await flush()
+      expect(truncatedSession.state.value).toEqual({
+        kind: 'text',
+        status: 'ready',
+        text: 'abcd',
+        truncated: true,
+        notice: '文件过大，仅显示开头部分。部分文件的文字可能无法正常显示。'
+      })
+    } finally {
+      truncatedSession.dispose()
+    }
+
+    // 非 2xx
+    const notFoundSession = createPreviewSession(
+      { open: () => true, resource: () => resource.value },
+      { fetchText: async () => textResponse('missing', 404) }
+    )
+    try {
+      await flush()
+      expect(notFoundSession.state.value).toEqual({
+        kind: 'text',
+        status: 'failed',
+        error: '无法读取文件，请检查文件是否还在原处'
+      })
+    } finally {
+      notFoundSession.dispose()
+    }
+
+    // 网络异常
+    const networkErrSession = createPreviewSession(
+      { open: () => true, resource: () => resource.value },
+      { fetchText: async () => Promise.reject(new TypeError('network down')) }
+    )
+    try {
+      await flush()
+      expect(networkErrSession.state.value).toEqual({
+        kind: 'text',
+        status: 'failed',
+        error: '无法读取文件，请检查文件是否还在原处'
+      })
+    } finally {
+      networkErrSession.dispose()
+      errorSpy.mockRestore()
+    }
+  })
+
+  it('覆盖全部 5 种 emptyReason 与 canRecover 判定', async () => {
+    const cases: Array<{
+      resource: ResourceView
+      reason: 'no-source' | 'empty-location' | 'source-unavailable' | 'media-unavailable' | 'unsupported-kind'
+      canRecover: boolean
+    }> = [
+      {
+        resource: resourceOf(null, ResourceKind.ResourceKindDocument),
+        reason: 'no-source',
+        canRecover: false
+      },
+      {
+        resource: resourceOf(fileSource({ type: 'url', location: '', mediaUrl: null }), ResourceKind.ResourceKindWeb),
+        reason: 'empty-location',
+        canRecover: false
+      },
+      {
+        resource: resourceOf(fileSource({ available: false, mediaUrl: null }), ResourceKind.ResourceKindImage),
+        reason: 'source-unavailable',
+        canRecover: true
+      },
+      {
+        resource: resourceOf(fileSource({ available: true, mediaUrl: null }), ResourceKind.ResourceKindImage),
+        reason: 'media-unavailable',
+        canRecover: false
+      },
+      {
+        resource: resourceOf(
+          fileSource({ available: true, location: '/tmp/archive.zip' }),
+          ResourceKind.ResourceKindFile
+        ),
+        reason: 'unsupported-kind',
+        canRecover: false
+      }
+    ]
+
+    for (const item of cases) {
+      const session = createPreviewSession({ open: () => true, resource: () => item.resource })
+      try {
+        expect(session.state.value).toMatchObject({
+          kind: 'empty',
+          reason: item.reason,
+          canRecover: item.canRecover
+        })
+      } finally {
+        session.dispose()
+      }
     }
   })
 
@@ -296,6 +531,71 @@ describe('createPreviewSession', () => {
     }
   })
 
+  it('dispose 中止在途 fetch、丢弃滞后解析/着色并停止 effectScope', async () => {
+    // 1. 中止 fetchText 且停止 scope 响应
+    const capturedSignals: AbortSignal[] = []
+    const fetchText = vi.fn<(url: string, signal: AbortSignal) => Promise<PreviewTextResponse>>((_url, signal) => {
+      capturedSignals.push(signal)
+      return new Promise((_resolve, reject) => {
+        signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
+      })
+    })
+    const resource = ref<ResourceView | null>(
+      resourceOf(fileSource({ id: 'd1', location: '/tmp/a.txt' }), ResourceKind.ResourceKindDocument)
+    )
+    const session1 = createPreviewSession({ open: () => true, resource: () => resource.value }, { fetchText })
+    expect(fetchText).toHaveBeenCalledTimes(1)
+    expect(capturedSignals[0]?.aborted).toBe(false)
+
+    session1.dispose()
+    expect(capturedSignals[0]?.aborted).toBe(true)
+
+    resource.value = resourceOf(
+      fileSource({ id: 'd2', location: '/tmp/b.txt', mediaUrl: '/m/b' }),
+      ResourceKind.ResourceKindDocument,
+      'resource-2'
+    )
+    await nextTick()
+    expect(fetchText).toHaveBeenCalledTimes(1)
+
+    // 2. 丢弃在途 parseMarkdown 与 highlightCode 滞后回写
+    const pendingParse = createDeferred<{ nodes: RawPreviewMarkdownNode[] }>()
+    const pendingHighlight = createDeferred<string>()
+    const mdSession = createPreviewSession(
+      {
+        open: () => true,
+        resource: () => resourceOf(fileSource({ location: '/tmp/a.md' }), ResourceKind.ResourceKindDocument)
+      },
+      {
+        fetchText: async () => textResponse('# hi'),
+        renderer: { parseMarkdown: () => pendingParse.promise, highlightCode: async c => c }
+      }
+    )
+    await flush()
+    expect(mdSession.state.value).toEqual({ kind: 'markdown', status: 'loading' })
+    mdSession.dispose()
+    pendingParse.resolve({ nodes: [{ label: 'h1', content: 'stale' }] })
+    await flush()
+    expect(mdSession.state.value).toEqual({ kind: 'markdown', status: 'loading' })
+
+    const codeSession = createPreviewSession(
+      {
+        open: () => true,
+        resource: () => resourceOf(fileSource({ location: '/tmp/a.ts' }), ResourceKind.ResourceKindDocument)
+      },
+      {
+        fetchText: async () => textResponse('const x = 1'),
+        renderer: { parseMarkdown: async () => ({ nodes: [] }), highlightCode: () => pendingHighlight.promise }
+      }
+    )
+    await flush()
+    expect(codeSession.state.value).toEqual({ kind: 'code', status: 'loading' })
+    codeSession.dispose()
+    pendingHighlight.resolve('<pre>stale</pre>')
+    await flush()
+    expect(codeSession.state.value).toEqual({ kind: 'code', status: 'loading' })
+  })
+
   it('openMarkdownLink 二次白名单校验，拦截危险协议，放行 https/mailto', () => {
     const openExternal = vi.fn<(target: string) => Promise<void>>(async () => {})
     const session = createPreviewSession({ open: () => false, resource: () => null }, { openExternal })
@@ -324,7 +624,7 @@ describe('createPreviewSession', () => {
     try {
       expect(session.state.value).toEqual({
         kind: 'video',
-        mediaKey: 'v1|/m/v1',
+        mediaKey: 'v1|/m/v1|/tmp/v.mp4',
         src: '/m/v1',
         status: 'loading',
         portrait: false
@@ -332,14 +632,14 @@ describe('createPreviewSession', () => {
       session.onVideoMetadata('wrong-key', 100, 200)
       expect(session.state.value).toMatchObject({ portrait: false })
 
-      session.onVideoMetadata('v1|/m/v1', 100, 200)
-      session.onMediaLoaded('v1|/m/v1')
+      session.onVideoMetadata('v1|/m/v1|/tmp/v.mp4', 100, 200)
+      session.onMediaLoaded('v1|/m/v1|/tmp/v.mp4')
       expect(session.state.value).toMatchObject({ status: 'ready', portrait: true })
 
       session.onMediaError('wrong-key')
       expect(session.state.value).toMatchObject({ status: 'ready' })
 
-      session.onMediaError('v1|/m/v1')
+      session.onMediaError('v1|/m/v1|/tmp/v.mp4')
       expect(session.state.value).toMatchObject({ status: 'failed' })
     } finally {
       session.dispose()

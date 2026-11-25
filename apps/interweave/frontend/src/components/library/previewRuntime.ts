@@ -20,7 +20,7 @@ export interface PreviewRendererPort {
   highlightCode(code: string, language: string): Promise<string>
 }
 
-type RuntimeModule = {
+export type RuntimeModule = {
   parseMarkdown: (
     source: string,
     file: string,
@@ -35,9 +35,14 @@ type RuntimeModule = {
 
 let runtime: Promise<RuntimeModule> | null = null
 
-export function loadPreviewRuntime(): Promise<RuntimeModule> {
+const defaultRuntimeLoader = (): Promise<RuntimeModule> =>
+  import('@greypan/md-to-meta/runtime') as Promise<RuntimeModule>
+
+export function loadPreviewRuntime(
+  loader: () => Promise<RuntimeModule> = defaultRuntimeLoader
+): Promise<RuntimeModule> {
   if (!runtime) {
-    runtime = (import('@greypan/md-to-meta/runtime') as Promise<RuntimeModule>).catch(err => {
+    runtime = loader().catch(err => {
       runtime = null
       throw err
     })

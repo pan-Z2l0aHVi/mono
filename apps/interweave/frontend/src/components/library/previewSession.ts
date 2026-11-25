@@ -181,22 +181,32 @@ export function createPreviewSession(
   let generation = 0
   let abortController: AbortController | null = null
 
-  function cancelInFlight() {
+  function cancelInFlight(): number {
     generation += 1
     abortController?.abort()
     abortController = null
+    return generation
   }
 
   const target = scope.run(() => computed(() => resolvePreviewTarget(input.resource())))!
   const effectiveSrc = scope.run(() => computed(() => target.value.mediaUrl ?? target.value.externalTarget ?? ''))!
-  const currentMediaKey = scope.run(() => computed(() => `${target.value.source?.id ?? ''}|${effectiveSrc.value}`))!
+  const currentMediaKey = scope.run(() =>
+    computed(() => {
+      const source = target.value.source
+      const locationPart = source?.type === 'file' ? `|${source.location}` : ''
+      return `${source?.id ?? ''}|${effectiveSrc.value}${locationPart}`
+    })
+  )!
+  const state = scope.run(() => computed(() => currentState.value))!
+  const mode = scope.run(() => computed(() => target.value.mode))!
+  const source = scope.run(() => computed(() => target.value.source))!
 
   async function loadTextPipeline(
     mode: 'text' | 'markdown' | 'code',
     mediaUrl: string,
-    language: string | undefined
+    language: string | undefined,
+    request: number
   ): Promise<void> {
-    const request = ++generation
     const controller = new AbortController()
     abortController = controller
     currentState.value = { kind: mode, status: 'loading' }
@@ -290,9 +300,19 @@ export function createPreviewSession(
 
   scope.run(() => {
     watch(
-      () => [input.open(), input.resource()?.id ?? null, target.value.mode, effectiveSrc.value] as const,
+      () =>
+        [
+          input.open(),
+          input.resource()?.id ?? null,
+          target.value.mode,
+          effectiveSrc.value,
+          target.value.source?.id ?? null,
+          target.value.source?.location ?? '',
+          target.value.emptyReason ?? null,
+          target.value.language ?? ''
+        ] as const,
       ([open]) => {
-        cancelInFlight()
+        const request = cancelInFlight()
         if (!open) {
           currentState.value = { kind: 'closed' }
           return
@@ -351,7 +371,7 @@ export function createPreviewSession(
           (resolved.mode === 'text' || resolved.mode === 'markdown' || resolved.mode === 'code') &&
           resolved.mediaUrl
         ) {
-          void loadTextPipeline(resolved.mode, resolved.mediaUrl, resolved.language)
+          void loadTextPipeline(resolved.mode, resolved.mediaUrl, resolved.language, request)
         }
       },
       { immediate: true }
@@ -394,9 +414,9 @@ export function createPreviewSession(
   }
 
   return {
-    state: computed(() => currentState.value),
-    mode: computed(() => target.value.mode),
-    source: computed(() => target.value.source),
+    state,
+    mode,
+    source,
     onMediaLoaded,
     onMediaError,
     onVideoMetadata,
