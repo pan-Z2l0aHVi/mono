@@ -140,7 +140,7 @@ jobs:
       # 生成物新鲜度在 Build 之前只判不改地校验：Build 里 md-to-meta 插件的 writeArtifacts 会把
       # 失步的 src/generated/** 原地写新（healing），挂在测试档的 checkArtifacts 到那时永远空转。
       - name: Check generated artifacts
-        run: pnpm exec turbo run check-generated --filter=@greypan/react-web-ui-demo --filter=@greypan/vue-web-ui-demo
+        run: pnpm exec turbo run check-generated --filter=@greypan/react-web-ui-demo --filter=@greypan/vue-web-ui-demo --filter=@greypan/dev-kit-demo
 
       # 跨 app 的生成物 parity 同样抢在 Build 前：判据在根任务 //#check-generated-parity，
       # 只用 Node 内置模块，不依赖任何 workspace 产物（门禁 dist 那时还不存在）。
