@@ -1,18 +1,6 @@
 export { createMenuPortalOverlay, type MenuPortalOverlay } from './menu-portal'
-export {
-  findFocusedMenuItem,
-  focusMenuItem,
-  getEnabledMenuItems,
-  getMenuChildren,
-  getMenuItemFromEvent,
-  getMovableMenuSubtrees,
-  hideNestedMenuChildren,
-  MENU_CONTENT_SELECTOR,
-  MENU_ITEM_SELECTOR,
-  moveMenuChildren,
-  type MenuItemFocusOptions
-} from './menu-tree'
-export { createMenuSession } from './session'
+export { getMenuChildren, getMenuItemFromEvent, getMovableMenuSubtrees } from './menu-tree'
+export { createMenuSession, getDeepActiveElement } from './session'
 export type {
   MenuCloseOptions,
   MenuCloseReason,

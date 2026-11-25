@@ -444,7 +444,7 @@ describe('WebUiContextMenu 组件（浏览器）', () => {
     await menu.updateComplete
 
     row.focus()
-    // 键盘打开路径：menu-behavior 从 document.activeElement 取归还目标，此时焦点必在行上。
+    // 键盘打开路径：menu-session 从 document.activeElement 取归还目标，此时焦点必在行上。
     menu.dispatchEvent(new KeyboardEvent('keydown', { key: 'ContextMenu', bubbles: true, composed: true }))
     await menu.updateComplete
     await waitForFrame()

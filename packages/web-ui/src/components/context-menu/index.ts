@@ -242,12 +242,14 @@ export class WebUiContextMenu extends LitElement {
     this._suppressInitialFocusVisible = suppressFocusVisible
     this._centerOnPressPoint = centerOnPressPoint
     if (this._isOpen) {
-      this._menuPositionGeneration.invalidate()
-      this._session.open({
-        isInstant,
-        takeFocus: false,
-        suppressFocusVisible
-      })
+      if (this._session.getRootSurface()) {
+        this._menuPositionGeneration.invalidate()
+        this._session.open({
+          isInstant,
+          takeFocus: false,
+          suppressFocusVisible
+        })
+      }
       return false
     }
     this._isOpen = true
@@ -281,6 +283,8 @@ export class WebUiContextMenu extends LitElement {
     this.close()
   }
 
+  // ADR-0006 §2(b)：context-menu 的根节点锚定在任意视口坐标而非固定 trigger，且以 top-layer scrim <dialog>
+  // 承载模态隔离，因此直接使用 @floating-ui/dom 私有定位而不走 defineOverlay。
   private _positionMenu(panel: HTMLElement) {
     const safeAreaBottom = this._safeAreaBottom()
 

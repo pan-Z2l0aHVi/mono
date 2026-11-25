@@ -44,7 +44,7 @@ interface SubmenuEntry<TSurface extends MenuSurface> {
   handle?: OpenOverlayHandle
 }
 
-function getDeepActiveElement(): HTMLElement | undefined {
+export function getDeepActiveElement(): HTMLElement | undefined {
   let active: Element | null = document.activeElement
   while (active instanceof HTMLElement) {
     const nested = active.shadowRoot?.activeElement
@@ -85,6 +85,7 @@ export function createMenuSession<TSurface extends MenuSurface>(
   let restoreFocusTarget: HTMLElement | undefined
   let refreshScheduled = false
   let pendingRefreshInstant = true
+  let focusGeneration = 0
   const submenus: SubmenuEntry<TSurface>[] = []
   const level0ItemAnchors: MenuItemAnchors = new Map()
   const scrollLock = defineScrollLockLease().make()
@@ -367,15 +368,21 @@ export function createMenuSession<TSurface extends MenuSurface>(
     })
   }
 
-  function focusFirstItem(attempt: number, maxAttempts: number, suppressFocusVisible: boolean) {
-    const firstItem = getEnabledMenuLevelItems(root?.content)[0]
+  function focusFirstItem(
+    attempt: number,
+    maxAttempts: number,
+    suppressFocusVisible: boolean,
+    targetFocusGeneration: number
+  ) {
+    if (focusGeneration !== targetFocusGeneration || !isOpen || !root) return
+    const firstItem = getEnabledMenuLevelItems(root.content)[0]
     if (!firstItem) return
     focusMenuItem(firstItem, { suppressFocusVisible })
     if (attempt + 1 >= maxAttempts) return
-    if (findFocusedMenuItem([root?.panel])) return
+    if (findFocusedMenuItem([root.panel])) return
     requestAnimationFrame(() => {
-      if (!isOpen || !root) return
-      focusFirstItem(attempt + 1, maxAttempts, suppressFocusVisible)
+      if (focusGeneration !== targetFocusGeneration || !isOpen || !root) return
+      focusFirstItem(attempt + 1, maxAttempts, suppressFocusVisible, targetFocusGeneration)
     })
   }
 
@@ -435,6 +442,7 @@ export function createMenuSession<TSurface extends MenuSurface>(
   return {
     open(openOptions: MenuOpenOptions) {
       outsideClickGuard.arm()
+      focusGeneration += 1
       if (isOpen) {
         closeSubmenusFrom(0, true)
         closingSubmenus.restoreAll()
@@ -477,13 +485,14 @@ export function createMenuSession<TSurface extends MenuSurface>(
 
         if (openOptions.takeFocus) {
           const attempts = openOptions.focusRetryAttempts ?? 1
+          const targetFocusGeneration = focusGeneration
           if (openOptions.deferFocusFrame) {
             requestAnimationFrame(() => {
-              if (!isOpen || !root) return
-              focusFirstItem(0, attempts, openOptions.suppressFocusVisible)
+              if (focusGeneration !== targetFocusGeneration || !isOpen || !root) return
+              focusFirstItem(0, attempts, openOptions.suppressFocusVisible, targetFocusGeneration)
             })
           } else {
-            focusFirstItem(0, attempts, openOptions.suppressFocusVisible)
+            focusFirstItem(0, attempts, openOptions.suppressFocusVisible, targetFocusGeneration)
           }
         }
       })
@@ -491,6 +500,7 @@ export function createMenuSession<TSurface extends MenuSurface>(
 
     close(closeOptions?: MenuCloseOptions) {
       isOpen = false
+      focusGeneration += 1
       openedWithContent = false
       syncScrollLock()
       rootHandle?.release()
@@ -561,6 +571,7 @@ export function createMenuSession<TSurface extends MenuSurface>(
       rootHandle = null
       rootHandleIsPlaceholder = false
       isOpen = false
+      focusGeneration += 1
       openedWithContent = false
       refreshScheduled = false
       restoreFocusTarget = undefined
