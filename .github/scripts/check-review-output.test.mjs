@@ -4,8 +4,9 @@ import fs from 'node:fs'
 import os from 'node:os'
 import path from 'node:path'
 
-import { inspectReviewOutput, shouldRejectReviewOutput } from './check-review-output.mjs'
+import { inspectReviewOutput, runCheckReviewOutput, shouldRejectReviewOutput } from './check-review-output.mjs'
 import { coverageGap, parseReviewFindings } from './codex-review.mjs'
+import { createMemoryActionsRuntime } from './lib/actions-runtime.mjs'
 
 const scriptPath = path.join(import.meta.dirname, 'check-review-output.mjs')
 const nonEmptyScope = { empty_diff: false, diff_bytes: 4096, changed_paths: ['packages/web-ui/src/button.ts'] }
@@ -210,6 +211,27 @@ function runCli({ output, scope, meta, withScope = true }) {
     withScope: false
   })
   assert.equal(missingScope.status, 1, 'a missing scope fails closed instead of assuming an empty diff')
+}
+
+// 进程内 ActionsRuntime 注入测试：无需起子进程即可验证 exitCode 与错误日志。
+{
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'check-review-output-mem-'))
+  try {
+    const outputPath = path.join(temp, 'codex-final-message.json')
+    const scopePath = path.join(temp, 'review-scope.json')
+    fs.writeFileSync(outputPath, '{bad json')
+    fs.writeFileSync(scopePath, JSON.stringify({ empty_diff: false, changed_paths: ['a.ts'] }))
+    const runtime = createMemoryActionsRuntime({
+      env: { CODEX_REVIEW_OUTPUT_PATH: outputPath, CODEX_REVIEW_SCOPE_PATH: scopePath }
+    })
+    const verdict = runCheckReviewOutput({ runtime })
+    assert.equal(verdict.rejected, true)
+    assert.equal(verdict.code, 'unusable_output')
+    assert.equal(runtime.getExitCode(), 1)
+    assert.ok(runtime.errors.some(line => line.includes('unusable_output')))
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true })
+  }
 }
 
 console.log('.github/scripts/check-review-output.test.mjs: all assertions passed')

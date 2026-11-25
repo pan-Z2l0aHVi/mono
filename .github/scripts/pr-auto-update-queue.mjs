@@ -2,7 +2,8 @@ import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
 import path from 'node:path'
 
-import { SPAWN_MAX_BUFFER, commandError } from './lib/github.mjs'
+import { createActionsRuntime } from './lib/actions-runtime.mjs'
+import { createGhClient, isHttp422 } from './lib/github.mjs'
 import { CODEX_GATE_JOB_NAME, CODEX_REVIEW_JOB_NAME, REQUIRED_CONTEXT } from './lib/workflow-topology.mjs'
 
 export const DEFAULT_BASE_BRANCH = 'main'
@@ -12,9 +13,7 @@ export const FAILED_CHECK_CONCLUSIONS = Object.freeze(['failure', 'cancelled', '
 const PULLS_PER_PAGE = 100
 const MAX_PULL_PAGES = 10
 
-export function isHttp422(error) {
-  return /\bHTTP\s+422\b|\b422\s+Unprocessable\b/iu.test(error?.message ?? '')
-}
+export { isHttp422 }
 
 /**
  * 同仓安全围栏：只允许未关闭、目标为 main、非 draft、已开启 auto-merge 且 head 与 base 同属当前仓库的 PR。
@@ -195,53 +194,35 @@ export function formatQueueSummary(decision) {
 }
 
 export function createGhQueueAdapter({ repository, spawn = spawnSync, cwd = process.cwd(), env = process.env }) {
-  const gh = args => {
-    const result = spawn('gh', args, { encoding: 'utf8', cwd, env, maxBuffer: SPAWN_MAX_BUFFER })
-    if (result.status !== 0) throw commandError('gh', args, result)
-    return result.stdout ?? ''
-  }
+  const client = createGhClient({ repository, spawn, cwd, env })
 
   return {
-    listOpenPulls: (baseBranch = DEFAULT_BASE_BRANCH) => {
-      const pulls = []
-      for (let page = 1; page <= MAX_PULL_PAGES; page += 1) {
-        const chunk = JSON.parse(
-          gh([
-            'api',
-            `repos/${repository}/pulls?state=open&base=${encodeURIComponent(baseBranch)}&sort=created&direction=asc&per_page=${PULLS_PER_PAGE}&page=${page}`
-          ])
-        )
-        if (!Array.isArray(chunk)) throw new Error('gh api returned a non-array pulls list')
-        pulls.push(...chunk)
-        if (chunk.length < PULLS_PER_PAGE) break
-      }
-      return pulls
-    },
-    pull: number => JSON.parse(gh(['api', `repos/${repository}/pulls/${number}`])),
-    checkRuns: sha =>
-      JSON.parse(gh(['api', `repos/${repository}/commits/${sha}/check-runs?per_page=100`])).check_runs ?? [],
-    updateBranch: (number, expectedHeadSha) => {
-      const stdout = gh([
-        'api',
-        '-X',
-        'PUT',
-        '-f',
-        `expected_head_sha=${expectedHeadSha}`,
-        `repos/${repository}/pulls/${number}/update-branch`
-      ]).trim()
-      return stdout ? JSON.parse(stdout) : {}
-    }
+    listOpenPulls: (baseBranch = DEFAULT_BASE_BRANCH) =>
+      client.paginateJson(`pulls?state=open&base=${encodeURIComponent(baseBranch)}&sort=created&direction=asc`, {
+        perPage: PULLS_PER_PAGE,
+        maxPages: MAX_PULL_PAGES,
+        nonArrayMessage: 'gh api returned a non-array pulls list'
+      }),
+    pull: number => client.getPull(number),
+    checkRuns: sha => client.apiJson(`commits/${sha}/check-runs?per_page=100`)?.check_runs ?? [],
+    updateBranch: (number, expectedHeadSha) =>
+      client.apiJson(`pulls/${number}/update-branch`, {
+        method: 'PUT',
+        fields: { expected_head_sha: expectedHeadSha },
+        allowEmpty: true
+      })
   }
 }
 
 export function runAutoUpdateQueue({
-  repository = process.env.GITHUB_REPOSITORY ?? '',
+  runtime = createActionsRuntime(),
+  repository = runtime.env.GITHUB_REPOSITORY ?? '',
   baseBranch = DEFAULT_BASE_BRANCH,
   adapter,
-  summaryPath = process.env.GITHUB_STEP_SUMMARY ?? ''
+  summaryPath
 } = {}) {
   if (!repository) throw new Error('GITHUB_REPOSITORY is missing')
-  const client = adapter ?? createGhQueueAdapter({ repository })
+  const client = adapter ?? createGhQueueAdapter({ repository, cwd: runtime.cwd, env: runtime.env })
   const listed = client.listOpenPulls(baseBranch)
   const candidates = (Array.isArray(listed) ? listed : []).filter(pr =>
     isEligibleQueuePr(pr, { baseBranch, repository })
@@ -261,7 +242,7 @@ export function runAutoUpdateQueue({
   if (decision.action === 'update') {
     try {
       client.updateBranch(decision.prNumber, decision.expectedHeadSha)
-      console.log(`updated PR #${decision.prNumber} (expected_head_sha=${decision.expectedHeadSha})`)
+      runtime.log(`updated PR #${decision.prNumber} (expected_head_sha=${decision.expectedHeadSha})`)
     } catch (error) {
       if (!isHttp422(error)) throw error
       finalDecision = {
@@ -272,17 +253,26 @@ export function runAutoUpdateQueue({
         eligibleCount: decision.eligibleCount,
         skipped: decision.skipped
       }
-      console.log(`skipped PR #${decision.prNumber} after 422 response: ${error.message}`)
+      runtime.log(`skipped PR #${decision.prNumber} after 422 response: ${error.message}`)
     }
   } else {
-    console.log(
+    runtime.log(
       `queue noop (${decision.reason}${decision.prNumber ? `, PR #${decision.prNumber}` : ''}, eligible=${decision.eligibleCount})`
     )
   }
 
-  if (summaryPath) {
-    fs.mkdirSync(path.dirname(summaryPath), { recursive: true })
-    fs.appendFileSync(summaryPath, formatQueueSummary(finalDecision))
+  const summary = formatQueueSummary(finalDecision)
+  if (summaryPath !== undefined) {
+    if (summaryPath) {
+      fs.mkdirSync(path.dirname(summaryPath), { recursive: true })
+      fs.appendFileSync(summaryPath, summary)
+    }
+  } else {
+    const envSummary = runtime.env.GITHUB_STEP_SUMMARY
+    if (envSummary && envSummary.trim()) {
+      fs.mkdirSync(path.dirname(envSummary), { recursive: true })
+    }
+    runtime.appendSummary(summary)
   }
   return finalDecision
 }
