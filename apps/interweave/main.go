@@ -254,7 +254,8 @@ func run() error {
 	})
 
 	windows := newMainWindowController(app, mainWindowOptions())
-	host := &wailsDesktopHost{app: app, windows: windows, osService: osService, presence: dockPresence}
+	quitApp := func() { dockPresence.quitAfterDrain(app.Quit) }
+	host := &wailsDesktopHost{app: app, windows: windows, osService: osService, presence: dockPresence, quit: quitApp}
 	desktopShell := shell.NewDesktopShell(
 		host,
 		&wailsShellState{settings: settingsService, menu: menuService},
@@ -307,7 +308,7 @@ func run() error {
 	// 避免后台线程持有 trayController.mu 等待主线程而主线程反向等待同一把锁的死锁。
 	trayController := newSystemTrayController(
 		settingsService.MinimizeToTrayOnCloseEnabled,
-		func() trayHandle { return setupSystemTray(app, windows, desktopShell.PresentWindow) },
+		func() trayHandle { return setupSystemTray(app, windows, desktopShell.PresentWindow, quitApp) },
 		func(handle trayHandle) { application.InvokeSync(handle.Destroy) },
 	)
 	trayController.Sync()
@@ -334,7 +335,7 @@ func run() error {
 		}
 		dispatchMenuRole(role, menuRoleActions{
 			showAbout: app.Menu.ShowAbout,
-			quit:      app.Quit,
+			quit:      quitApp,
 			minimise: func() {
 				if window := windows.Window(); window != nil {
 					window.Minimise()

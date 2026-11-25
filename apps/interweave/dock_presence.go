@@ -23,10 +23,11 @@ type serialDispatcher struct {
 	cond   *sync.Cond
 	queue  []func()
 	closed bool
+	done   chan struct{}
 }
 
 func newSerialDispatcher() *serialDispatcher {
-	d := &serialDispatcher{}
+	d := &serialDispatcher{done: make(chan struct{})}
 	d.cond = sync.NewCond(&d.mu)
 	go d.run()
 	return d
@@ -46,6 +47,7 @@ func (d *serialDispatcher) submit(fn func()) {
 }
 
 func (d *serialDispatcher) run() {
+	defer close(d.done)
 	for {
 		d.mu.Lock()
 		for len(d.queue) == 0 && !d.closed {
@@ -63,11 +65,15 @@ func (d *serialDispatcher) run() {
 	}
 }
 
-func (d *serialDispatcher) shutdown() {
+// shutdown 停止接收新任务，并返回 worker 处理完已入队任务的信号。
+// 调用方可以在别的线程上等这个信号做收尾；不能在主线程等——Dock service
+// 的 dispatch_sync 也依赖 main queue，主线程自等会死锁。
+func (d *serialDispatcher) shutdown() <-chan struct{} {
 	d.mu.Lock()
 	d.closed = true
 	d.cond.Broadcast()
 	d.mu.Unlock()
+	return d.done
 }
 
 // platformDockPresence 把「无窗口时隐藏 Dock、恢复窗口时显示 Dock」限制在 macOS。
@@ -92,11 +98,29 @@ func newPlatformDockPresence(goos string, service dockIconService) *platformDock
 	return p
 }
 
-// shutdown 停止后台 worker；应用退出时调用，测试用它回收 goroutine。
-func (p *platformDockPresence) shutdown() {
+// shutdown 停止后台 worker，返回它处理完已入队任务的信号。
+// Wails 的 OnShutdown 在 main thread 执行，这里只发信号不等待；需要确认最后一次
+// Dock 状态已提交时，由非主线程等返回的 channel。
+func (p *platformDockPresence) shutdown() <-chan struct{} {
 	if p != nil && p.dispatcher != nil {
-		p.dispatcher.shutdown()
+		return p.dispatcher.shutdown()
 	}
+	done := make(chan struct{})
+	close(done)
+	return done
+}
+
+// quitAfterDrain 在退出前排空已提交的 Dock 调用，再从后台线程触发退出。
+// 退出触发器会在 Wails 主线程执行，不能在主线程直接等 done：Dock service 的
+// dispatch_sync 也依赖 main queue，自等会死锁。
+func (p *platformDockPresence) quitAfterDrain(quit func()) {
+	done := p.shutdown()
+	go func() {
+		<-done
+		if quit != nil {
+			quit()
+		}
+	}()
 }
 
 func (p *platformDockPresence) apply(call func()) {

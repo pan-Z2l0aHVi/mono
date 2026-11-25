@@ -24,6 +24,8 @@ type wailsDesktopHost struct {
 	app       *application.App
 	windows   *mainWindowController
 	osService *nativeService.OSService
+	// quit 由宿主注入，退出前先排空 Dock 调用；缺省时保持直接退出。
+	quit func()
 	// presence 只在 macOS 上切换 Dock 可见性：隐藏窗口进托盘时隐藏 Dock，
 	// 从托盘/Dock 恢复窗口时再显示，避免只剩菜单栏托盘后无处点击 Dock。
 	presence *platformDockPresence
@@ -103,7 +105,13 @@ func (h *wailsDesktopHost) HideWindow() {
 	})
 }
 
-func (h *wailsDesktopHost) QuitApp() { go h.app.Quit() }
+func (h *wailsDesktopHost) QuitApp() {
+	if h.quit != nil {
+		h.quit()
+		return
+	}
+	go h.app.Quit()
+}
 
 func (h *wailsDesktopHost) ReloadWindow() {
 	if window := h.currentWindow(); window != nil {

@@ -162,10 +162,13 @@ func (c *systemTrayController) Sync() {
 }
 
 // setupSystemTray 创建并配置系统托盘图标、菜单与点击交互。
-// present 由宿主提供，确保从托盘恢复窗口时也同步 Dock 可见性。
-func setupSystemTray(app *application.App, windows *mainWindowController, present func()) trayHandle {
+// present 由宿主提供，确保从托盘恢复窗口时也同步 Dock 可见性；quit 负责排空 Dock 后退出。
+func setupSystemTray(app *application.App, windows *mainWindowController, present func(), quit func()) trayHandle {
 	if present == nil {
 		present = windows.Present
+	}
+	if quit == nil {
+		quit = app.Quit
 	}
 	tray := app.SystemTray.New()
 	applyTrayIcons(tray, runtime.GOOS)
@@ -193,7 +196,7 @@ func setupSystemTray(app *application.App, windows *mainWindowController, presen
 			windows.ToggleLightMode()
 			syncLightModeChecked()
 		},
-		app.Quit,
+		quit,
 	)
 	dispose := windows.addStateListener(func(bool) { syncLightModeChecked() })
 	tray.SetMenu(menu)

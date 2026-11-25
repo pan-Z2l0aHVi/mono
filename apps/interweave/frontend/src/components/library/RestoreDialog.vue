@@ -61,6 +61,7 @@ const session = createRestoreSession(
     discardScan: id => props.discardScan(id),
     lease: props.lease,
     notifyInfo: message => toast.info(message, { position: 'top-center' }),
+    notifyError: message => toast.error(message, { position: 'top-center' }),
     onAddItems: items => emit('addItems', items),
     onSubmit: items => emit('submit', items)
   }
@@ -75,7 +76,6 @@ const {
   stopping,
   scanIncomplete,
   prepared,
-  validationError,
   editingUrlItem,
   urlDraft,
   previews,
@@ -84,10 +84,6 @@ const {
   locked,
   canClose
 } = session
-
-watch(validationError, message => {
-  if (message) toast.error(message, { position: 'top-center' })
-})
 
 const renderedCandidateItem = useLingering(candidateItem)
 watch(
