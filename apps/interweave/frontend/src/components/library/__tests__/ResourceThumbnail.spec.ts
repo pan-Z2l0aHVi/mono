@@ -330,4 +330,53 @@ describe('ResourceThumbnail', () => {
       host.remove()
     }
   })
+
+  it('直链图片 URL 命中缓存且 source.id 变化重置 imageReady 时，不叠加 fallback 图标', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const source = ref<ResourceSourceView>({
+      id: 'url-source-1',
+      type: 'url',
+      location: 'https://example.com/photo.jpg',
+      available: true,
+      isPreferred: true,
+      orderIndex: 0,
+      mediaUrl: null,
+      thumbnailUrl: null,
+      metadata: null
+    })
+    const app = createApp({
+      setup() {
+        return () =>
+          h(ResourceThumbnail, {
+            kind: ResourceKind.ResourceKindImage,
+            source: source.value,
+            mediaUrl: null
+          })
+      }
+    })
+
+    try {
+      app.mount(host)
+      await nextTick()
+
+      const image = host.querySelector<HTMLImageElement>('img')
+      expect(image?.getAttribute('src')).toBe('https://example.com/photo.jpg')
+      Object.defineProperty(image!, 'complete', { configurable: true, value: true })
+      image!.dispatchEvent(new Event('load'))
+      await nextTick()
+      expect(host.querySelector('web-ui-icon')).toBeNull()
+
+      // 更换 source.id 触发 reset（清空 imageReady），但直链 src 不变且 img 已 complete，不再触发 load。
+      source.value = { ...source.value, id: 'url-source-2' }
+      await nextTick()
+      await nextTick()
+
+      expect(host.querySelector('img')).toBe(image)
+      expect(host.querySelector('web-ui-icon')).toBeNull()
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
 })

@@ -71,7 +71,7 @@ const showFallback = computed(() => {
   if (favicon.value && faviconReady.value && !faviconFailed.value) return false
   if (serverThumbActive.value && serverThumbReady.value) return false
   if (!canRenderMedia.value) return true
-  const imageMatchesSource = imageRef.value?.getAttribute('src') === props.mediaUrl
+  const imageMatchesSource = imageRef.value?.getAttribute('src') === displayMediaUrl.value
   // reset 清空 imageReady 后，src 未变且已 complete 的 img 不会再触发 load，需保留此逃生通道避免 fallback 叠加。
   return (
     !thumbnailURL.value &&
