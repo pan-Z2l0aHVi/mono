@@ -70,7 +70,7 @@ export interface SearchSnapshot {
 export interface SearchControllerOptions {
   pages?: readonly SearchItem[]
   onOpenChange: (open: boolean) => void
-  navigateLinks?: (event: KeyboardEvent, input: HTMLElement, links: HTMLAnchorElement[]) => void
+  navigateLinks?: (event: KeyboardEvent, input: HTMLElement, links: readonly HTMLAnchorElement[]) => boolean | void
 }
 
 export interface SearchController {
