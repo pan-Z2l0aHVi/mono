@@ -645,3 +645,98 @@ func TestCreateResourceURLTitleRules(t *testing.T) {
 		t.Errorf("expected explicit initial title to win on first ingest, got %q", explicit.Resource.Title)
 	}
 }
+
+type stubPendingPreviewStore struct {
+	tokens map[string]string
+	seq    int
+}
+
+func (s *stubPendingPreviewStore) Register(path string) (string, string, error) {
+	if s.tokens == nil {
+		s.tokens = make(map[string]string)
+	}
+	s.seq++
+	token := filepath.Base(path) + "-tok"
+	s.tokens[token] = path
+	return token, "/pending/" + token, nil
+}
+
+func (s *stubPendingPreviewStore) Release(token string) bool {
+	if _, ok := s.tokens[token]; !ok {
+		return false
+	}
+	delete(s.tokens, token)
+	return true
+}
+
+func TestPrepareAndReleaseFilePreviewKindGating(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+
+	lib := core.NewLibrary(db, remote.NewFetcher())
+	dir := t.TempDir()
+	files := map[string]string{
+		"image": filepath.Join(dir, "pic.png"),
+		"video": filepath.Join(dir, "clip.mp4"),
+		"text":  filepath.Join(dir, "note.txt"),
+		"audio": filepath.Join(dir, "song.mp3"),
+		"other": filepath.Join(dir, "archive.zip"),
+	}
+	for _, p := range files {
+		if err := os.WriteFile(p, []byte("preview"), 0o600); err != nil {
+			t.Fatalf("write fixture %s: %v", p, err)
+		}
+	}
+
+	// previews == nil 时不授予 token，且 ReleaseFilePreview 返回 false。
+	imgNoStore, err := lib.PrepareFilePreview(files["image"])
+	if err != nil {
+		t.Fatalf("PrepareFilePreview (nil store) error: %v", err)
+	}
+	if imgNoStore.Kind != storage.ResourceKindImage || imgNoStore.Token != "" || imgNoStore.MediaURL != "" {
+		t.Fatalf("expected image without token when previews == nil, got %+v", imgNoStore)
+	}
+	if lib.ReleaseFilePreview("any-token") {
+		t.Fatal("expected ReleaseFilePreview to return false when previews == nil")
+	}
+
+	// 注入 store 后仅 image / video 授予 token，text / audio / other 不授予。
+	store := &stubPendingPreviewStore{}
+	lib.SetPendingPreviews(store)
+
+	img, err := lib.PrepareFilePreview(files["image"])
+	if err != nil {
+		t.Fatalf("PrepareFilePreview image error: %v", err)
+	}
+	if img.Kind != storage.ResourceKindImage || img.Token == "" || img.MediaURL == "" {
+		t.Fatalf("expected image with token & mediaURL, got %+v", img)
+	}
+
+	vid, err := lib.PrepareFilePreview(files["video"])
+	if err != nil {
+		t.Fatalf("PrepareFilePreview video error: %v", err)
+	}
+	if vid.Kind != storage.ResourceKindVideo || vid.Token == "" || vid.MediaURL == "" {
+		t.Fatalf("expected video with token & mediaURL, got %+v", vid)
+	}
+
+	for _, key := range []string{"text", "audio", "other"} {
+		res, err := lib.PrepareFilePreview(files[key])
+		if err != nil {
+			t.Fatalf("PrepareFilePreview %s error: %v", key, err)
+		}
+		if res.Token != "" || res.MediaURL != "" {
+			t.Fatalf("expected %s without preview token, got %+v", key, res)
+		}
+	}
+
+	if lib.ReleaseFilePreview("") {
+		t.Fatal("expected empty token release to return false")
+	}
+	if !lib.ReleaseFilePreview(img.Token) {
+		t.Fatal("expected first ReleaseFilePreview to return true")
+	}
+	if lib.ReleaseFilePreview(img.Token) {
+		t.Fatal("expected duplicate ReleaseFilePreview to return false")
+	}
+}

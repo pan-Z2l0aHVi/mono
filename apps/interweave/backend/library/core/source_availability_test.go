@@ -208,6 +208,9 @@ func TestProbeURLSourceOnOpenKeepsValueWhenInconclusive(t *testing.T) {
 	if res.Resource != nil {
 		t.Fatalf("expected nil Resource on Inconclusive, got %+v", res.Resource)
 	}
+	if res.Source.ID != "source-hanging" || res.Source.Available != before.Available {
+		t.Fatalf("expected Inconclusive to preserve Source snapshot, got %+v (before available=%v)", res.Source, before.Available)
+	}
 	after := readSource(t, db, "source-hanging")
 	if after.Available != before.Available {
 		t.Fatalf("expected availability untouched, %v -> %v", before.Available, after.Available)

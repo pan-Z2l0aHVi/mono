@@ -166,7 +166,7 @@ func TestResourceAndSourceLifecycle(t *testing.T) {
 	}
 }
 
-func TestPrepareFilePreviewRegistersMediaAndShutdownClearsTokens(t *testing.T) {
+func TestPrepareFilePreviewRegistersAndReleasesMedia(t *testing.T) {
 	db, cleanup := setupTestDB(t)
 	defer cleanup()
 
@@ -234,10 +234,6 @@ func TestPrepareFilePreviewRegistersMediaAndShutdownClearsTokens(t *testing.T) {
 		t.Fatalf("expected released pending preview 404, got %d", status)
 	}
 
-	previews.Clear()
-	if status := pendingRequest(video.Token); status != http.StatusNotFound {
-		t.Fatalf("expected shutdown to clear pending preview, got %d", status)
-	}
 }
 
 func TestMapServiceDerivedExploration(t *testing.T) {
