@@ -92,6 +92,9 @@ function runTexts(block) {
     .filter(Boolean)
 }
 
+const EXPECTED_CHECK_IF =
+  "${{ github.event_name != 'push' && github.event_name != 'schedule' && !(github.event_name == 'workflow_dispatch' && inputs.warm_only) && !cancelled() }}"
+
 function assertPolicyStepContract(text) {
   const workflow = parseWorkflow(text)
   const policy = requiredPolicyStep
@@ -101,8 +104,8 @@ function assertPolicyStepContract(text) {
   assert.equal(workflow.stepContinueOnError[policy.name], undefined, 'policy errors must fail the step')
   assert.equal(
     workflow.jobs[policy.job]?.if,
-    "${{ github.event_name != 'push' && !cancelled() }}",
-    'required job must skip cache-only pushes, run after preparation failure, and honor workflow cancellation'
+    EXPECTED_CHECK_IF,
+    'required job must skip cache-only pushes, schedules, and warm-only dispatches while honoring cancellation'
   )
   assert.equal(workflow.jobs[policy.job]?.continueOnError, undefined, 'required job must propagate failures')
   assert.deepEqual(runTexts(namedStep(text, policy.name)), policy.runs)
@@ -247,14 +250,19 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     /group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.head_ref \|\| github\.ref_name \}\}-\$\{\{ github\.event_name \}\}/,
     'cache-only main pushes must not cancel a full workflow_dispatch check'
   )
-  const cachePreparation = workflowJob(ci, 'prepare-wails-apt-cache')
-  assert.deepEqual(ciWorkflow.jobs.check.needs, ['prepare-wails-apt-cache'])
-  assert.equal(ciWorkflow.jobs['prepare-wails-apt-cache'].if, undefined)
-  assert.equal(ciWorkflow.jobs.check.if, "${{ github.event_name != 'push' && !cancelled() }}")
-  assert.match(cachePreparation, /timeout-minutes: 35/)
+  const cacheWarmup = workflowJob(ci, 'warm-ci-caches')
+  assert.deepEqual(ciWorkflow.jobs.check.needs, [])
+  assert.equal(
+    ciWorkflow.jobs['warm-ci-caches'].if,
+    "${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.warm_only) }}"
+  )
+  assert.equal(ciWorkflow.jobs.check.if, EXPECTED_CHECK_IF)
+  assert.match(cacheWarmup, /timeout-minutes: 35/)
+  assert.match(cacheWarmup, /wails: 'true'[\s\S]*go-cache: 'true'/)
+  assert.match(cacheWarmup, /playwright install chromium/)
   assert.match(
-    cachePreparation,
-    /skip-mise: 'true'[\s\S]*skip-install: 'true'[\s\S]*wails: 'true'[\s\S]*wails-download-only: 'true'/
+    cacheWarmup,
+    /apps\/interweave\/frontend\/dist\/\.keep[\s\S]*pnpm --filter @greypan\/interweave exec go vet \.\/\.\.\./
   )
   assert.ok(parsed['ci.yml'].jobs[REQUIRED_CONTEXT], 'the required context must remain the CI job')
   assertChangesetStepContract(ci)
@@ -309,11 +317,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   assert.throws(() =>
     assertPolicyStepContract(mutateOnce(ci, marker, `${marker}        id: repository-policies\n        if: false\n`))
   )
-  assert.throws(() =>
-    assertPolicyStepContract(
-      mutateOnce(ci, "    if: ${{ github.event_name != 'push' && !cancelled() }}\n", '    if: false\n')
-    )
-  )
+  assert.throws(() => assertPolicyStepContract(mutateOnce(ci, `    if: ${EXPECTED_CHECK_IF}\n`, '    if: false\n')))
   assert.throws(() => assertPolicyStepContract(mutateOnce(ci, '  check:\n', '  check:\n    continue-on-error: true\n')))
 
   const directory = fs.mkdtempSync(path.join(os.tmpdir(), 'ci-policy-fail-fast-'))
@@ -340,6 +344,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   assert.deepEqual(parsed['ci.yml'].triggers.map(trigger => trigger.on).sort(compareStrings), [
     'pull_request',
     'push',
+    'schedule',
     'workflow_dispatch'
   ])
   for (const [file, workflow] of Object.entries(parsed)) {
@@ -1437,41 +1442,82 @@ function matrixEntries(text) {
 // Keep the shared cache inputs that reduce repeated package/native work; do not make tests mirror all YAML fields.
 {
   const ci = workflowText['ci.yml']
-  assert.match(ci, /TURBO_CACHE_DIR: \$\{\{ github\.workspace \}\}\/\.turbo/)
-  assert.match(ci, /uses: actions\/cache@v5[\s\S]*?path: \.turbo[\s\S]*?hashFiles\('\.mise\.toml'\)[\s\S]*?github\.sha/)
-  assert.match(ci, /restore-keys: \|\n\s+\$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-turbo-/)
+  const checkJob = workflowJob(ci, 'check')
+  const checkHeader = checkJob.slice(0, checkJob.indexOf('\n    steps:\n'))
+  assert.doesNotMatch(checkHeader, /TURBO_CACHE_DIR|TURBO_TOKEN/)
+  assert.doesNotMatch(ci, /uses: actions\/cache@v5[\s\S]*?path: \.turbo/)
+
+  // Remote Cache 凭据只注入执行 turbo 的步骤，严禁放进 job 级 env，也不得进入发布/部署流。
+  const ciTurboSteps = ['Check generated artifacts', 'Check generated parity', 'Build', 'Test']
+  for (const stepName of ciTurboSteps) {
+    const step = namedStep(checkJob, stepName)
+    assert.match(step, /TURBO_TOKEN: \$\{\{ secrets\.TURBO_TOKEN \}\}/, `${stepName} must inject TURBO_TOKEN`)
+    assert.match(step, /TURBO_TEAM: \$\{\{ vars\.TURBO_TEAM \}\}/, `${stepName} must inject TURBO_TEAM`)
+  }
+  assert.equal(
+    (ci.match(/TURBO_TOKEN:/g) ?? []).length,
+    ciTurboSteps.length,
+    'ci.yml must inject TURBO_TOKEN only in Turbo steps'
+  )
+
+  const wailsVerify = workflowText['wails-verify.yml']
+  const wailsVerifyFrontend = namedStep(wailsVerify, 'Build WebView frontend and dependencies')
+  assert.match(wailsVerifyFrontend, /TURBO_TOKEN: \$\{\{ secrets\.TURBO_TOKEN \}\}/)
+  assert.match(wailsVerifyFrontend, /TURBO_TEAM: \$\{\{ vars\.TURBO_TEAM \}\}/)
+  assert.match(wailsVerifyFrontend, /TURBO_CACHE: local:rw,remote:r/)
+  assert.equal((wailsVerify.match(/TURBO_TOKEN:/g) ?? []).length, 1)
+
+  for (const releaseFile of ['wails-release.yml', 'npm-publish.yml', 'deploy-pages.yml']) {
+    assert.doesNotMatch(
+      workflowText[releaseFile],
+      /TURBO_TOKEN/,
+      `${releaseFile} must not consume unsigned shared Remote Cache`
+    )
+  }
+
+  const interweaveFrontendTurbo = JSON.parse(
+    fs.readFileSync(path.join(repoRoot, 'apps/interweave/frontend/turbo.json'), 'utf8')
+  )
+  assert.ok(
+    interweaveFrontendTurbo.tasks?.build?.env?.includes('RUNNER_OS'),
+    'apps/interweave/frontend/turbo.json build.env must include RUNNER_OS to isolate cross-OS bindings'
+  )
+
   assert.match(workflowText['wails-verify.yml'], /go-cache: 'true'/)
   assert.match(workflowText['wails-release.yml'], /go-cache: 'true'/)
 
   const setup = fs.readFileSync(path.join(repoRoot, '.github/actions/setup-deps/action.yml'), 'utf8')
-  const goCacheStart = setup.indexOf('    - name: Cache Go modules and build artifacts\n')
+  const goModCacheStart = setup.indexOf('    - name: Cache Go modules\n')
+  const goBuildCacheStart = setup.indexOf('    - name: Cache Go build artifacts\n')
   const miseActionStart = setup.indexOf('    - uses: jdx/mise-action@v4\n')
-  assert.ok(goCacheStart > miseActionStart, 'Go cache setup must run after mise installs Go')
+  assert.ok(goModCacheStart > miseActionStart, 'Go module cache setup must run after mise installs Go')
+  assert.ok(goBuildCacheStart > goModCacheStart, 'Go build cache setup must follow Go module cache setup')
   assert.match(setup, / {2}go-cache:\n[\s\S]*?default: 'false'/)
   assert.match(setup, /go env GOMODCACHE/)
   assert.match(setup, /go env GOCACHE/)
   assert.match(setup, /go env GOVERSION/)
-  // 键与前缀同构且不含镜像段：restore-keys 按字面前缀匹配，键多出的段会令前缀永不命中；
-  // 镜像滚动接近天级，含镜像段等于每次滚动后 go vet 全冷。
-  assert.doesNotMatch(setup, /ImageOS|ImageVersion/)
-  assert.match(setup, /key: \$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-go-/)
-  assert.match(setup, /restore-keys: \|\n\s+\$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-go-/)
+  // 键与前缀同构且不含镜像段或 github.sha：restore-keys 按字面前缀匹配，键多出的段会令前缀永不命中；
+  // 镜像滚动接近天级，含镜像段等于每次滚动后 go vet 全冷；含 github.sha 会挤压 10GB 缓存配额。
+  assert.doesNotMatch(setup, /ImageOS|ImageVersion|\$\{\{[^}]*github\.sha/)
+  assert.match(setup, /key: \$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-gomod-/)
+  assert.match(setup, /restore-keys: \|\n\s+\$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-gomod-/)
+  assert.match(setup, /key: \$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-gobuild-/)
+  assert.match(setup, /restore-keys: \|\n\s+\$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-gobuild-/)
   assert.match(setup, /actions\/cache@v5/)
   const aptPlanStart = setup.indexOf('    - name: Resolve Wails Linux package cache key\n')
   const aptCacheStart = setup.indexOf('    - name: Restore Wails Linux package archives\n')
-  const aptDownloadStart = setup.indexOf('    - name: Download Wails Linux package archives\n')
   const aptInstallStart = setup.indexOf('    - name: Install Wails Linux prerequisites\n')
   const aptPermissionsStart = setup.indexOf('    - name: Prepare Wails Linux package archives for caching\n')
   const aptSaveStart = setup.indexOf('    - name: Save Wails Linux package archives\n')
   assert.ok(
     aptPlanStart >= 0 &&
       aptPlanStart < aptCacheStart &&
-      aptCacheStart < aptDownloadStart &&
-      aptDownloadStart < aptInstallStart &&
+      aptCacheStart < aptInstallStart &&
       aptInstallStart < aptPermissionsStart &&
       aptPermissionsStart < aptSaveStart,
-    'Wails apt archives must be restored before download/install, made readable, then saved'
+    'Wails apt archives must be restored before install, made readable, then saved'
   )
+  assert.doesNotMatch(setup, /wails-download-only|wails-apt-download/)
   assert.match(setup, /--print-uris[\s\S]*?libgtk-4-dev libwebkitgtk-6\.0-dev/)
   assert.match(setup, /apt_plan_hash=.*sha256sum/)
   assert.match(setup, /key=\$\{cache_scope\}-\$\{apt_plan_hash\}/)
@@ -1483,13 +1529,8 @@ function matrixEntries(text) {
   assert.match(setup, /uses: jdx\/mise-action@v4\n\s+if: inputs\.skip-mise != 'true'/)
   assert.match(
     setup,
-    /id: wails-apt-download[\s\S]*install --download-only -y --no-install-recommends libgtk-4-dev libwebkitgtk-6\.0-dev/
-  )
-  assert.match(
-    setup,
     /id: wails-apt-install[\s\S]*install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6\.0-dev/
   )
-  assert.match(setup, /steps\.wails-apt-download\.outcome == 'success'/)
   assert.match(setup, /steps\.wails-apt-install\.outcome == 'success'/)
   assert.match(setup, /id: wails-apt-permissions[\s\S]*sudo chown -R "\$\(id -u\):\$\(id -g\)"/)
   assert.match(setup, /steps\.wails-apt-permissions\.outcome == 'success'/)
@@ -1499,8 +1540,8 @@ function matrixEntries(text) {
     'runner.os',
     'runner.arch',
     'outputs.goversion',
-    "hashFiles('apps/interweave/go.sum')",
-    'github.sha'
+    "hashFiles('apps/interweave/go.mod', 'apps/interweave/go.sum')",
+    "hashFiles('apps/interweave/**/*.go')"
   ]) {
     assert.ok(setup.includes(keyPart), `Go cache must remain scoped by ${keyPart}`)
   }

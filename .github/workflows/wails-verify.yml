@@ -86,6 +86,10 @@ jobs:
           go-cache: 'true'
 
       - name: Build WebView frontend and dependencies
+        env:
+          TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
+          TURBO_TEAM: ${{ vars.TURBO_TEAM }}
+          TURBO_CACHE: local:rw,remote:r
         run: pnpm exec turbo build --filter=@greypan/interweave-frontend
 
       - name: Build native artifact
