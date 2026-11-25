@@ -280,6 +280,31 @@ describe('WebUiCollapse 组件（浏览器）', () => {
     expect(overlay.getPropertyValue('--wui-collapse-peek-edge-active'), '展开后伪元素仍持有活动长度').toBe('0px')
   })
 
+  // 展开落稳态后撤掉已无视觉作用的 mask-image 与晕染伪元素，收起时恢复。
+  it('peek 展开落稳态后释放遮罩与晕染伪元素，收起后恢复', async () => {
+    const el = document.createElement('web-ui-collapse')
+    el.peek = '128px'
+    el.innerHTML =
+      '<button class="trigger">Trigger</button><div slot="content"><div style="height: 400px">Content</div></div>'
+    document.body.append(el)
+    await el.updateComplete
+
+    el.open = true
+    await el.updateComplete
+    await pollUntil(() => queryTrack(el).dataset.wuiSettled === 'open', 'peek collapse did not settle open')
+
+    const inner = queryInner(el)
+    expect(getComputedStyle(inner).maskImage).toBe('none')
+    expect(getComputedStyle(inner, '::before').display).toBe('none')
+    expect(getComputedStyle(inner, '::after').display).toBe('none')
+
+    el.open = false
+    await el.updateComplete
+    await pollUntil(() => !queryTrack(el).dataset.wuiPresence, 'peek collapse did not settle closed')
+    expect(getComputedStyle(inner).maskImage).toMatch(/^linear-gradient/)
+    expect(getComputedStyle(inner, '::after').display).not.toBe('none')
+  })
+
   // 水平方向的晕染带在右缘：方向错了模糊就压在错误的一侧。
   it('水平 peek：晕染层的渐变方向是 to right', async () => {
     const el = document.createElement('web-ui-collapse')
