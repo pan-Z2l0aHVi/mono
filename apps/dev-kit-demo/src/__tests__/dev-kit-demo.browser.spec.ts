@@ -1,3 +1,7 @@
+import '@/assets/global.css'
+
+import { setViewport } from '@greypan/doc-demo-kit/testing.viewport'
+import type { WebUiCollapse, WebUiLayout } from '@greypan/web-ui'
 import { createHead } from '@unhead/vue/client'
 import { describe, expect, it } from 'vite-plus/test'
 import { createApp } from 'vue'
@@ -8,6 +12,7 @@ import App from '@/app/index.vue'
 import { loadShellLocale } from '@/i18n/locale'
 
 async function mountAppAt(initialPath: string) {
+  await setViewport(1280, 800)
   await loadShellLocale()
   const host = document.createElement('div')
   document.body.appendChild(host)
@@ -25,6 +30,7 @@ async function mountAppAt(initialPath: string) {
     cleanup: () => {
       app.unmount()
       host.remove()
+      localStorage.clear()
     }
   }
 }
@@ -53,24 +59,53 @@ describe('dev-kit-demo 浏览器端冒烟测试', () => {
     }
   })
 
-  it('侧边栏一级菜单 js-kit 与 browser-kit 支持折叠展开，并在进入子路由时自动展开', async () => {
+  it('侧边栏一级菜单通过 web-ui-collapse 折叠展开、无异常截断，120px 窄宽与收起态均无横向溢出', async () => {
     const { host, router, cleanup } = await mountAppAt('/home')
     try {
-      const jsTrigger = await waitFor(() => host.querySelector<HTMLButtonElement>('[data-nav-group="js-kit"]'))
-      const browserTrigger = await waitFor(() =>
-        host.querySelector<HTMLButtonElement>('[data-nav-group="browser-kit"]')
+      const jsCollapse = await waitFor(() => host.querySelector<WebUiCollapse>('[data-nav-collapse="js-kit"]'))
+      const browserCollapse = await waitFor(() =>
+        host.querySelector<WebUiCollapse>('[data-nav-collapse="browser-kit"]')
       )
+      const jsTrigger = await waitFor(() => host.querySelector<HTMLButtonElement>('[data-nav-group="js-kit"]'))
+      const jsContent = jsCollapse.querySelector<HTMLElement>('[slot="content"]')!
 
-      expect(jsTrigger.getAttribute('aria-expanded')).toBe('true')
-      expect(browserTrigger.getAttribute('aria-expanded')).toBe('true')
+      await jsCollapse.updateComplete
+      await browserCollapse.updateComplete
 
+      expect(jsCollapse.open).toBe(true)
+      expect(browserCollapse.open).toBe(true)
+      await waitFor(() => (jsContent.getBoundingClientRect().height > 0 ? true : null))
+
+      // 点击收起：open 变为 false，动画落稳态后内容高度归 0
       jsTrigger.click()
-      await waitFor(() => (jsTrigger.getAttribute('aria-expanded') === 'false' ? true : null))
+      await waitFor(() => (!jsCollapse.open ? true : null))
+      await waitFor(() => (jsContent.getBoundingClientRect().height === 0 ? true : null))
+      expect(browserCollapse.open).toBe(true)
 
       // 导航至子路由后自动重新展开对应一级菜单并标记激活态
       await router.push('/js-kit/number')
-      await waitFor(() => (jsTrigger.getAttribute('aria-expanded') === 'true' ? true : null))
+      await waitFor(() => (jsCollapse.open ? true : null))
+      await waitFor(() => (jsContent.getBoundingClientRect().height > 0 ? true : null))
       expect(jsTrigger.getAttribute('data-group-active')).toBe('true')
+
+      // 模拟最小侧栏宽度 120px：检查导航区域无横向溢出
+      const layout = host.querySelector<WebUiLayout>('web-ui-layout')!
+      layout.sidebarWidth = '120px'
+      const nav = host.querySelector<HTMLElement>('nav[aria-label="主导航"]')!
+      await waitFor(() => (nav.clientWidth <= 120 ? true : null))
+      expect(nav.scrollWidth).toBeLessThanOrEqual(nav.clientWidth)
+
+      // 模拟侧边栏收起态：一级菜单渲染为带 tooltip 的箭头图标按钮，且无横向溢出
+      layout.sidebarCollapsed = true
+      layout.dispatchEvent(new CustomEvent('sidebar-collapsed-change', { detail: { collapsed: true } }))
+      const collapsedTrigger = await waitFor(() => {
+        const btn = host.querySelector<HTMLButtonElement>('[data-nav-group="js-kit"]')
+        const tip = btn?.closest('web-ui-tooltip') as (HTMLElement & { content?: string }) | null
+        return tip && (tip.content === 'js-kit' || tip.getAttribute('content') === 'js-kit') ? btn : null
+      })
+      expect(collapsedTrigger.getBoundingClientRect().width).toBeLessThanOrEqual(40)
+      await waitFor(() => (nav.clientWidth <= 60 ? true : null))
+      expect(nav.scrollWidth).toBeLessThanOrEqual(nav.clientWidth)
     } finally {
       cleanup()
     }

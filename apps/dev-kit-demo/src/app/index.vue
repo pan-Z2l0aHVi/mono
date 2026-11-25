@@ -226,7 +226,7 @@ onMounted(async () => {
           class="relative z-20 h-full min-h-0 overflow-y-auto p-2 mobile:p-0"
           aria-label="应用导航"
         >
-          <nav class="grid gap-1" aria-label="主导航">
+          <nav class="grid min-w-0 grid-cols-1 gap-1" aria-label="主导航">
             <h2 id="nav-section-overview" :class="[NAV_SECTION_TITLE_CLASS, navCollapsed ? 'sr-only' : '']">概览</h2>
             <SidebarNavLink
               to="/home"
