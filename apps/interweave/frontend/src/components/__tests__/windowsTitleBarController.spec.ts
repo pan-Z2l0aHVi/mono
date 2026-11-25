@@ -100,25 +100,75 @@ describe('WindowsTitleBarController', () => {
     }
   })
 
-  it('dispose 后丢弃在途 getMenu 与 isWindowMaximised 异步回写', async () => {
+  it('isWindowMaximised 在途期间触发 menu:tree-changed 不丢弃状态，并发查询丢弃陈旧响应', async () => {
+    const firstQuery = createDeferred<boolean>()
+    const secondQuery = createDeferred<boolean>()
+    let callCount = 0
+    const isWindowMaximised = vi.fn<() => Promise<boolean>>(() => {
+      callCount += 1
+      return callCount === 1 ? firstQuery.promise : secondQuery.promise
+    })
+    const stub = createFakeRuntime({ isWindowMaximised })
+    const controller = createWindowsTitleBarController({ runtime: stub.runtime, getHeader: () => null })
+
+    controller.start()
+    try {
+      // 菜单快照更新不应干扰在途的 isWindowMaximised 查询。
+      stub.pushMenu([...sampleMenu, { label: '开发', children: [] }])
+
+      // 触发第二次并发最大化状态查询，且后发先至返回 false，随后旧查询才返回 true。
+      window.dispatchEvent(new Event('resize'))
+      expect(isWindowMaximised).toHaveBeenCalledTimes(2)
+
+      secondQuery.resolve(false)
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(controller.isMaximised.value).toBe(false)
+
+      firstQuery.resolve(true)
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(controller.isMaximised.value).toBe(false)
+
+      // 再次单独查询且期间推送菜单变更，仍应正常更新为 true。
+      const thirdQuery = createDeferred<boolean>()
+      isWindowMaximised.mockReturnValueOnce(thirdQuery.promise)
+      window.dispatchEvent(new Event('resize'))
+      stub.pushMenu(sampleMenu)
+      thirdQuery.resolve(true)
+      await Promise.resolve()
+      await Promise.resolve()
+      expect(controller.isMaximised.value).toBe(true)
+    } finally {
+      controller.dispose()
+    }
+  })
+
+  it('dispose 后丢弃在途 getMenu 与 isWindowMaximised 异步回写，且不再发冗余 IPC', async () => {
     const initialMenu = createDeferred<MenuItem[]>()
     const initialMaximised = createDeferred<boolean>()
+    const toggleDeferred = createDeferred<void>()
+    const isWindowMaximised = vi.fn<() => Promise<boolean>>(() => initialMaximised.promise)
     const stub = createFakeRuntime({
       getMenu: () => initialMenu.promise,
-      isWindowMaximised: () => initialMaximised.promise
+      isWindowMaximised,
+      toggleMaximiseWindow: () => toggleDeferred.promise
     })
     const controller = createWindowsTitleBarController({ runtime: stub.runtime, getHeader: () => null })
 
     controller.start()
+    const togglePromise = controller.toggleMaximise()
     controller.dispose()
 
     initialMenu.resolve(sampleMenu)
     initialMaximised.resolve(true)
-    await Promise.resolve()
+    toggleDeferred.resolve()
+    await togglePromise
     await Promise.resolve()
 
     expect(controller.menuItems.value).toEqual([])
     expect(controller.isMaximised.value).toBe(false)
+    expect(isWindowMaximised).toHaveBeenCalledTimes(1)
   })
 
   it('start 幂等，重复调用不会重复注册菜单订阅或键盘监听', async () => {
@@ -138,7 +188,7 @@ describe('WindowsTitleBarController', () => {
     }
   })
 
-  it('穿透 ShadowRoot 捕获页面输入框焦点，且连续切菜单不覆盖原焦点快照', async () => {
+  it('穿透 ShadowRoot 捕获页面输入框焦点，且连续切菜单或聚焦标题栏内 SVG 不覆盖原焦点快照', async () => {
     const stub = createFakeRuntime()
     const header = document.createElement('header')
     header.setAttribute('data-windows-titlebar', '')
@@ -158,6 +208,9 @@ describe('WindowsTitleBarController', () => {
       trigger.focus()
     })
     const trigger = document.createElement('button')
+    const svg = document.createElementNS('http://www.w3.org/2000/svg', 'svg')
+    svg.setAttribute('tabindex', '0')
+    trigger.append(svg)
     dropdown.append(trigger)
     header.append(dropdown)
     document.body.append(header)
@@ -185,9 +238,12 @@ describe('WindowsTitleBarController', () => {
     try {
       controller.captureFocusAndSelection()
 
-      // 焦点移至标题栏内 trigger 后再次 capture，不得覆盖原 Shadow DOM 输入框快照。
+      // 焦点移至标题栏内 trigger 或非 HTML 的 <svg> 后再次 capture，均不得覆盖原焦点快照。
       trigger.focus()
       controller.captureFocusAndSelection()
+      Object.defineProperty(document, 'activeElement', { configurable: true, value: svg })
+      controller.captureFocusAndSelection()
+      delete (document as { activeElement?: Element | null }).activeElement
 
       controller.selectItem({ label: '粘贴', role: 'paste' })
 

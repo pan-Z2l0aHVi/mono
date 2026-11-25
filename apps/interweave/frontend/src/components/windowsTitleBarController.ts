@@ -59,15 +59,16 @@ export function createWindowsTitleBarController(options: {
   let started = false
   let disposed = false
   let stopMenuUpdates: (() => void) | null = null
-  // 单调版本号：若 menu:tree-changed 事件先于初始 getMenu() 响应到达，
-  // 或在途查询晚于 dispose() 返回，丢弃陈旧结果，防止覆盖最新状态或回写已卸载组件。
+  // 单调版本号：菜单快照与最大化状态各用独立通道，避免跨通道互相丢弃更新，
+  // 并在并发查询或 dispose() 后丢弃陈旧响应。
   let menuSnapshotVersion = 0
+  let maximisedVersion = 0
   let savedFocus: SavedFocusSnapshot | null = null
 
   function captureFocusAndSelection() {
     const deepest = deepestActiveElement()
+    if (isInsideTitleBarOrMenu(deepest)) return
     const active = deepest instanceof HTMLElement ? deepest : null
-    if (isInsideTitleBarOrMenu(active)) return
 
     let selectionStart: number | null = null
     let selectionEnd: number | null = null
@@ -117,10 +118,11 @@ export function createWindowsTitleBarController(options: {
   }
 
   async function syncMaximisedState() {
-    const requestVersion = menuSnapshotVersion
+    if (disposed) return
+    const requestVersion = ++maximisedVersion
     try {
       const next = await runtime.isWindowMaximised()
-      if (disposed || menuSnapshotVersion !== requestVersion) return
+      if (disposed || maximisedVersion !== requestVersion) return
       isMaximised.value = next
     } catch {
       // 浏览器预览或窗口尚未就绪时忽略查询失败。
@@ -219,6 +221,7 @@ export function createWindowsTitleBarController(options: {
     disposed = true
     started = false
     menuSnapshotVersion += 1
+    maximisedVersion += 1
     savedFocus = null
     stopMenuUpdates?.()
     stopMenuUpdates = null
