@@ -54,11 +54,25 @@ Turbo artifact cache 保存可恢复的构建产物，包括 `dist` 与声明文
 
 `pnpm run clean` 默认清理当前仓库工作区里的构建产物、`node_modules`、`.turbo/`，以及当前 repo-id 的临时 artifact cache；它忽略外部注入的 `TURBO_CACHE_DIR`，不触及其他仓库的缓存。`--dry-run` 只列出当前目标，不删除文件；[`pnpm-lock.yaml`](../../pnpm-lock.yaml) 仍须显式传 `--locks`。`<workspace>/.turbo/` 是工作区内的本地目录，不是共享 artifact cache；删它不会回收外部缓存，也不等同于清理 `dist/`。
 
-CI 在 [`ci.yml`](../../.github/workflows/ci.yml) 显式把 artifact cache 放进工作区目录，并由 `actions/cache` 保存和恢复；mise 优先保留该 override。其他 GitHub Actions runner 在没有显式值时用工作区下的 `.turbo`，因此 Windows runner 不会调用 POSIX helper。本地与不完整的 CI 环境由 helper 计算 canonical 临时路径。
+CI 在 GitHub Actions 环境下由 [`.mise.toml`](../../.mise.toml) 自动将 `TURBO_CACHE_DIR` 设为工作区下的 `.turbo`（Windows runner 同样不会调用 POSIX helper），用于同一 job 内的本地产物复用；跨 PR 与跨 workflow 的任务产物复用由验证流接入的 Vercel Remote Cache 承担（[`ci.yml`](../../.github/workflows/ci.yml) 的 Turbo 步骤读写、[`wails-verify.yml`](../../.github/workflows/wails-verify.yml) 只读消费；发布与部署流不接入共享 Remote Cache）。本地与不完整的 CI 环境由 helper 计算 canonical 临时路径。
 
 构建或验证前怀疑 `dist` 产物异常（例如被 watch 进程清空 d.ts）时，先裸跑 `pnpm run agent:env-doctor` 体检，再用 `pnpm run agent:env-doctor --fix`（自动 `turbo build --force`）或手动 `turbo build --force` 重建。doctor 按同一公式得到的本地 canonical 路径判断注入；CI workspace override 不会作为它自己的预期值。
 
 Codex 等客户端会话能否写入共享 Turbo cache，取决于客户端的沙箱与权限配置，见 [`environments.md`](./environments.md)。
+
+### 本地接入 Vercel Remote Cache（可选）
+
+[`.gitignore`](../../.gitignore) 已忽略 `.turbo/`，本地通过 `turbo link` 生成的 `.turbo/config.json` 不会误入库。因为 Turbo 哈希只记录 `engines` 范围而不记录真实 `node` 二进制（见下文「mise exec 与命令外壳」），**仅允许在 mise 激活过的 shell（或 `mise exec --`）中启用 Remote Cache**，且默认设为只读远程缓存（`TURBO_CACHE="local:rw,remote:r"`），防止本地异常 `dist` 或非标工具链污染共享缓存。
+
+- 单 worktree：`mise exec -- pnpm exec turbo login && mise exec -- pnpm exec turbo link`。
+- 多 worktree（推荐）：在个人 `~/.zshrc` 中导出环境变量（严禁写入仓库文件或 `.mise.toml`）：
+  ```sh
+  export TURBO_TOKEN="<Vercel PAT>"
+  export TURBO_TEAM="<Vercel Hobby Team Slug>"
+  export TURBO_CACHE="local:rw,remote:r"
+  ```
+- 临时完全禁用远程缓存排障使用 `mise exec -- pnpm exec turbo build --cache=local:rw` 或 `TURBO_CACHE=local:rw`（不要使用已废弃且与 `--cache` 冲突的 `--remote-only` / `TURBO_REMOTE_ONLY`）。
+- 已知边界：[`apps/interweave/frontend/turbo.json`](../../apps/interweave/frontend/turbo.json) 的 `build.env` 包含 `RUNNER_OS` 以隔离跨 OS 绑定产物；本地终端默认无此变量，因此 `@greypan/interweave-frontend:build` 在本地会稳定 miss 云端缓存并走本机绑定生成，其余上游纯 JS 包正常命中。
 
 ### 缓存可信链
 
@@ -80,7 +94,7 @@ Codex 等客户端会话能否写入共享 Turbo cache，取决于客户端的�
 
 [`.mise.toml`](../../.mise.toml) 钉住工具链版本，并在 `[env]` 注入 `TURBO_CACHE_DIR`。这套注入只对 **mise 激活过的 shell** 生效：交互式终端（含终端复用器里的 pane）由 mise 自动激活，agent 的工具宿主、`git hook`、`bash -c` 与外部脚本通常没有。判定要不要加 `mise exec --` 只看一条：**这条命令是否依赖 mise 注入的 env，或 PATH 上被钉住的工具**——经 turbo 的命令两者都依赖，调用 node / pnpm / go 的命令依赖后者；纯粹读写文件、或工具全部由 `node_modules` 提供的命令可以直接跑，拿不准就加。一个例外是 `pnpm run agent:env-doctor`：它存在的意义就是暴露「当前 shell 没激活 mise」，加了前缀会让它用来暴露这件事的两条断言恒报 ok，所以必须裸跑。
 
-一行快速自检，输出非空只说明 env 已被注入（CI 在 [`ci.yml`](../../.github/workflows/ci.yml) 里覆盖过这个变量也会让它非空），所以它只是提示，权威判据是 `pnpm run agent:env-doctor` 的等值断言：
+一行快速自检，输出非空只说明 env 已被注入，所以它只是提示，权威判据是 `pnpm run agent:env-doctor` 的等值断言：
 
 ```sh
 echo "${TURBO_CACHE_DIR:-<unset>}"

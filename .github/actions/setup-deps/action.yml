@@ -6,8 +6,7 @@
 #         skip-mise: 'true'          # 跳过 mise 工具安装
 #         skip-install: 'true'       # 跳过 pnpm install（准备 job 不需要装依赖）
 #         wails: 'true'              # 安装 Wails Linux 系统依赖（libgtk-4-dev, libwebkitgtk-6.0-dev）
-#         wails-download-only: 'true' # 仅下载 Wails Linux 包，用于预热缓存
-#         go-cache: 'true'           # 用平台/Go/模块哈希/SHA 键缓存 Go 模块与编译产物
+#         go-cache: 'true'           # 拆分缓存 Go 模块（gomod）与编译产物（gobuild）
 name: 'Setup Dependencies'
 description: 'Install tools via mise, cache pnpm store, and install dependencies'
 
@@ -26,10 +25,6 @@ inputs:
     default: 'false'
   wails:
     description: 'Install Wails Linux system dependencies (libgtk-4-dev, libwebkitgtk-6.0-dev)'
-    required: false
-    default: 'false'
-  wails-download-only:
-    description: 'Download Wails Linux package archives without installing them'
     required: false
     default: 'false'
   go-cache:
@@ -77,18 +72,8 @@ runs:
         restore-keys: |
           wails-apt-${{ steps.wails-apt-cache.outputs.scope }}-
 
-    - name: Download Wails Linux package archives
-      if: inputs.wails == 'true' && inputs.wails-download-only == 'true' && runner.os == 'Linux'
-      id: wails-apt-download
-      shell: bash
-      run: |
-        sudo apt-get \
-          -o "Dir::Cache::archives=${RUNNER_TEMP}/wails-apt-archives" \
-          -o APT::Keep-Downloaded-Packages=true \
-          install --download-only -y --no-install-recommends libgtk-4-dev libwebkitgtk-6.0-dev
-
     - name: Install Wails Linux prerequisites
-      if: inputs.wails == 'true' && inputs.wails-download-only != 'true' && runner.os == 'Linux'
+      if: inputs.wails == 'true' && runner.os == 'Linux'
       id: wails-apt-install
       shell: bash
       run: |
@@ -100,10 +85,7 @@ runs:
     - name: Prepare Wails Linux package archives for caching
       if: >-
         inputs.wails == 'true' && runner.os == 'Linux' &&
-        (
-          (inputs.wails-download-only == 'true' && steps.wails-apt-download.outcome == 'success') ||
-          (inputs.wails-download-only != 'true' && steps.wails-apt-install.outcome == 'success')
-        )
+        steps.wails-apt-install.outcome == 'success'
       id: wails-apt-permissions
       shell: bash
       run: |
@@ -115,10 +97,7 @@ runs:
         steps.wails-apt-cache.outputs.key != '' &&
         steps.wails-apt-restore.outputs.cache-hit != 'true' &&
         steps.wails-apt-permissions.outcome == 'success' &&
-        (
-          (inputs.wails-download-only == 'true' && steps.wails-apt-download.outcome == 'success') ||
-          (inputs.wails-download-only != 'true' && steps.wails-apt-install.outcome == 'success')
-        )
+        steps.wails-apt-install.outcome == 'success'
       uses: actions/cache/save@v5
       with:
         path: ${{ runner.temp }}/wails-apt-archives
@@ -140,19 +119,27 @@ runs:
         echo "gocache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
         echo "goversion=$(go env GOVERSION)" >> "$GITHUB_OUTPUT"
 
-    - name: Cache Go modules and build artifacts
+    - name: Cache Go modules
       if: inputs.go-cache == 'true'
       uses: actions/cache@v5
       with:
-        path: |
-          ${{ steps.go-cache-paths.outputs.gomodcache }}
-          ${{ steps.go-cache-paths.outputs.gocache }}
-        # 键与前缀共享同一开头结构（restore-keys 是字面前缀匹配，键含额外段会令前缀永不命中），
-        # 且不含镜像版本：runner 镜像接近天级重建，含它会令每次镜像滚动后 go vet 全冷。
-        # Go build cache 内容寻址（cgo 预处理输出参与哈希），跨镜像恢复旧条目只会在输入变化时自然 miss。
-        key: ${{ runner.os }}-${{ runner.arch }}-go-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.sum') }}-${{ github.sha }}
+        path: ${{ steps.go-cache-paths.outputs.gomodcache }}
+        # 按平台/Go 版本/go.mod+go.sum 建键，不含提交 SHA 与镜像版本，避免非 Go 提交挤压 10GB 缓存配额。
+        key: ${{ runner.os }}-${{ runner.arch }}-gomod-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.mod', 'apps/interweave/go.sum') }}
         restore-keys: |
-          ${{ runner.os }}-${{ runner.arch }}-go-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.sum') }}-
+          ${{ runner.os }}-${{ runner.arch }}-gomod-${{ steps.go-cache-paths.outputs.goversion }}-
+
+    - name: Cache Go build artifacts
+      if: inputs.go-cache == 'true'
+      uses: actions/cache@v5
+      with:
+        path: ${{ steps.go-cache-paths.outputs.gocache }}
+        # 主键拆为两段独立 hashFiles，保证与 restore-keys 字面前缀同构；不含镜像版本，避免镜像滚动后 go vet 全冷。
+        # Go build cache 内容寻址（cgo 预处理输出参与哈希），跨镜像恢复旧条目只会在输入变化时自然 miss。
+        key: ${{ runner.os }}-${{ runner.arch }}-gobuild-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.mod', 'apps/interweave/go.sum') }}-${{ hashFiles('apps/interweave/**/*.go') }}
+        restore-keys: |
+          ${{ runner.os }}-${{ runner.arch }}-gobuild-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.mod', 'apps/interweave/go.sum') }}-
+          ${{ runner.os }}-${{ runner.arch }}-gobuild-${{ steps.go-cache-paths.outputs.goversion }}-
 
     - name: Resolve pnpm store path
       if: inputs.skip-install != 'true'
