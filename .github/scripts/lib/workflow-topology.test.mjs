@@ -258,10 +258,17 @@ function assertPullRequestValidationIsReadOnly(workflow) {
   )
   assert.equal(ciWorkflow.jobs.check.if, EXPECTED_CHECK_IF)
   assert.match(cacheWarmup, /timeout-minutes: 35/)
-  assert.match(
-    cacheWarmup,
-    /github\.event_name == 'workflow_dispatch' && inputs\.warm_only && github\.ref != 'refs\/heads\/main'/
-  )
+  const assertWarmOnlyMainGuard = block => {
+    const guardStep = namedStep(block, 'Require main ref for warm_only dispatch')
+    assert.match(
+      guardStep,
+      /if: \$\{\{ github\.event_name == 'workflow_dispatch' && inputs\.warm_only && github\.ref != 'refs\/heads\/main' \}\}/
+    )
+    assert.doesNotMatch(guardStep, /continue-on-error:\s*true/)
+    assert.ok(runTexts(guardStep).includes('exit 1'), 'warm_only main ref guard must exit non-zero')
+  }
+  assertWarmOnlyMainGuard(cacheWarmup)
+  assert.throws(() => assertWarmOnlyMainGuard(cacheWarmup.replace('exit 1', 'true')))
   assert.match(cacheWarmup, /wails: 'true'/)
   assert.match(cacheWarmup, /go-cache: 'true'/)
   assert.doesNotMatch(cacheWarmup, /skip-(mise|install):\s*'true'/)
