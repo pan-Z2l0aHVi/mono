@@ -9,17 +9,21 @@ const props = defineProps<{
   open: boolean
   active?: boolean
   collapsed?: boolean
+  itemClass: string
 }>()
 
 const emit = defineEmits<{
   'update:open': [value: boolean]
 }>()
 
+// 仅在分组收起且包含当前激活子路由时高亮一级菜单，避免与展开后的激活子项同时出现双高亮。
+const isSelected = computed(() => Boolean(props.active && !props.open))
+
 const triggerClass = computed(() => [
-  'flex cursor-pointer items-center rounded-lg text-sm font-medium transition-colors',
-  'hover:bg-[#1b1b30]/4 dark:hover:bg-white/6 focus-visible:outline-2 focus-visible:outline-(--wui-color-accent)',
-  props.active ? 'text-(--wui-color-accent)' : 'text-(--wui-color-text)',
-  props.collapsed ? 'h-9 w-9 justify-center' : 'w-full min-w-0 justify-between gap-2 px-2.5 py-2 text-left'
+  'demo-nav-link text-sm font-medium',
+  props.itemClass,
+  props.collapsed ? 'h-9 w-9 justify-center' : 'w-full min-w-0 justify-between',
+  isSelected.value ? '' : 'hover:bg-[#1b1b30]/4 dark:hover:bg-white/6'
 ])
 
 const arrowClass = computed(() => [
@@ -28,6 +32,9 @@ const arrowClass = computed(() => [
 ])
 
 function onOpenChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
+  // 侧边栏收起态下 trigger 内嵌套了 web-ui-tooltip，tooltip 的 hover 也会冒泡 open-change；
+  // 只采信当前 collapse 自身的事件，确保收起态依旧仅由 click 切换展开/收起。
+  if (event.target !== event.currentTarget) return
   emit('update:open', event.detail.open)
 }
 </script>
@@ -40,6 +47,7 @@ function onOpenChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
         :class="triggerClass"
         :aria-expanded="open"
         :aria-label="label"
+        :data-active="isSelected ? 'true' : undefined"
         :data-nav-group="groupId"
         :data-group-active="active ? 'true' : undefined"
       >
@@ -51,6 +59,7 @@ function onOpenChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
       type="button"
       :class="triggerClass"
       :aria-expanded="open"
+      :data-active="isSelected ? 'true' : undefined"
       :data-nav-group="groupId"
       :data-group-active="active ? 'true' : undefined"
     >
@@ -59,13 +68,7 @@ function onOpenChange(event: WebUiEvent<WebUiCollapse, 'open-change'>) {
     </button>
 
     <div slot="content" :class="collapsed ? 'w-full min-w-0 pt-1 pb-0.5' : 'w-full min-w-0 px-0.5 pt-1 pb-0.5'">
-      <div
-        :class="
-          collapsed
-            ? 'grid min-w-0 grid-cols-1 gap-1'
-            : 'ml-2.5 grid min-w-0 grid-cols-1 gap-0.5 border-l border-(--wui-color-border) pl-2'
-        "
-      >
+      <div :class="collapsed ? 'grid min-w-0 grid-cols-1 gap-1' : 'grid min-w-0 grid-cols-1 gap-0.5 pl-3'">
         <slot />
       </div>
     </div>

@@ -59,7 +59,7 @@ describe('dev-kit-demo 浏览器端冒烟测试', () => {
     }
   })
 
-  it('侧边栏一级菜单通过 web-ui-collapse 折叠展开、无异常截断，120px 窄宽与收起态均无横向溢出', async () => {
+  it('侧边栏一级菜单通过 web-ui-collapse 折叠展开、无参考线，120px 窄宽与收起态均仅由 click 触发且无横向溢出', async () => {
     const { host, router, cleanup } = await mountAppAt('/home')
     try {
       const jsCollapse = await waitFor(() => host.querySelector<WebUiCollapse>('[data-nav-collapse="js-kit"]'))
@@ -72,6 +72,10 @@ describe('dev-kit-demo 浏览器端冒烟测试', () => {
       await jsCollapse.updateComplete
       await browserCollapse.updateComplete
 
+      // 一级菜单沿用圆角胶囊样式，子菜单无左侧参考线
+      expect(jsTrigger.classList.contains('rounded-full')).toBe(true)
+      expect(jsContent.querySelector('.border-l')).toBeNull()
+
       expect(jsCollapse.open).toBe(true)
       expect(browserCollapse.open).toBe(true)
       await waitFor(() => (jsContent.getBoundingClientRect().height > 0 ? true : null))
@@ -82,11 +86,18 @@ describe('dev-kit-demo 浏览器端冒烟测试', () => {
       await waitFor(() => (jsContent.getBoundingClientRect().height === 0 ? true : null))
       expect(browserCollapse.open).toBe(true)
 
-      // 导航至子路由后自动重新展开对应一级菜单并标记激活态
+      // 导航至子路由后自动重新展开对应一级菜单并标记激活态；再收起时一级菜单呈现 selected 灰底
       await router.push('/js-kit/number')
       await waitFor(() => (jsCollapse.open ? true : null))
       await waitFor(() => (jsContent.getBoundingClientRect().height > 0 ? true : null))
       expect(jsTrigger.getAttribute('data-group-active')).toBe('true')
+      expect(jsTrigger.getAttribute('data-active')).toBeNull()
+
+      jsTrigger.click()
+      await waitFor(() => (!jsCollapse.open ? true : null))
+      await waitFor(() => (jsTrigger.getAttribute('data-active') === 'true' ? true : null))
+      jsTrigger.click()
+      await waitFor(() => (jsCollapse.open ? true : null))
 
       // 模拟最小侧栏宽度 120px：检查导航区域无横向溢出
       const layout = host.querySelector<WebUiLayout>('web-ui-layout')!
@@ -95,7 +106,7 @@ describe('dev-kit-demo 浏览器端冒烟测试', () => {
       await waitFor(() => (nav.clientWidth <= 120 ? true : null))
       expect(nav.scrollWidth).toBeLessThanOrEqual(nav.clientWidth)
 
-      // 模拟侧边栏收起态：一级菜单渲染为带 tooltip 的箭头图标按钮，且无横向溢出
+      // 模拟侧边栏收起态：一级菜单渲染为带 tooltip 的圆形箭头按钮，无横向溢出
       layout.sidebarCollapsed = true
       layout.dispatchEvent(new CustomEvent('sidebar-collapsed-change', { detail: { collapsed: true } }))
       const collapsedTrigger = await waitFor(() => {
@@ -103,9 +114,26 @@ describe('dev-kit-demo 浏览器端冒烟测试', () => {
         const tip = btn?.closest('web-ui-tooltip') as (HTMLElement & { content?: string }) | null
         return tip && (tip.content === 'js-kit' || tip.getAttribute('content') === 'js-kit') ? btn : null
       })
+      expect(collapsedTrigger.classList.contains('rounded-full')).toBe(true)
       expect(collapsedTrigger.getBoundingClientRect().width).toBeLessThanOrEqual(40)
       await waitFor(() => (nav.clientWidth <= 60 ? true : null))
       expect(nav.scrollWidth).toBeLessThanOrEqual(nav.clientWidth)
+
+      // 收起态下 tooltip 的 open-change 冒泡不得改变子菜单展开状态，仅 click 可切换
+      const tooltip = collapsedTrigger.closest('web-ui-tooltip')!
+      tooltip.dispatchEvent(new CustomEvent('open-change', { detail: { open: false }, bubbles: true, composed: true }))
+      await new Promise(r => setTimeout(r, 50))
+      expect(jsCollapse.open).toBe(true)
+
+      collapsedTrigger.click()
+      await waitFor(() => (!jsCollapse.open ? true : null))
+
+      tooltip.dispatchEvent(new CustomEvent('open-change', { detail: { open: true }, bubbles: true, composed: true }))
+      await new Promise(r => setTimeout(r, 50))
+      expect(jsCollapse.open).toBe(false)
+
+      collapsedTrigger.click()
+      await waitFor(() => (jsCollapse.open ? true : null))
     } finally {
       cleanup()
     }

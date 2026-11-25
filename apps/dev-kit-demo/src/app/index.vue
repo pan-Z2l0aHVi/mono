@@ -244,6 +244,7 @@ onMounted(async () => {
               label="js-kit"
               :active="isJsKitActive"
               :collapsed="navCollapsed"
+              :item-class="NAV_ITEM_CLASS"
             >
               <SidebarNavLink
                 to="/js-kit/getting-started"
@@ -279,6 +280,7 @@ onMounted(async () => {
               label="browser-kit"
               :active="isBrowserKitActive"
               :collapsed="navCollapsed"
+              :item-class="NAV_ITEM_CLASS"
             >
               <SidebarNavLink
                 to="/browser-kit/getting-started"
