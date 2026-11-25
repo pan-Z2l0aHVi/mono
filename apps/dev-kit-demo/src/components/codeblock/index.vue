@@ -98,11 +98,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
     :data-codeblock="active?.lang || 'text'"
     :data-demo-id="groupInfo.demoId || undefined"
   >
-    <div
-      v-if="demoComponent"
-      class="relative z-20 rounded-[var(--codeblock-radius)] border border-(--wui-color-border) bg-(--wui-color-surface) p-4"
-      data-codeblock-preview
-    >
+    <div v-if="demoComponent" class="relative z-20 px-1 py-4" data-codeblock-preview>
       <component :is="demoComponent" />
     </div>
 

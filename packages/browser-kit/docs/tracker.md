@@ -171,7 +171,7 @@ tracker.stop()
 
 ## Plugin reference
 
-### `defineTracker(options)`
+### Core factory: defineTracker
 
 Core outbox plugin. By default it persists queued items to `localStorage` under `tracker:queue:<persistenceKey>` and delivers each item with `beaconTransport`.
 
@@ -187,7 +187,7 @@ Core outbox plugin. By default it persists queued items to `localStorage` under 
 | `persistenceKey`     | `string`                                  | `options.url`     | Stable `localStorage` key suffix to isolate multiple trackers  |
 | `disablePersistence` | `boolean`                                 | `false`           | Keep the outbox in memory only                                 |
 
-### `defineBatchTrack(options?)`
+### Batching plugin: defineBatchTrack
 
 Aggregates calls to `track(data, batchDelay?)` into arrays and sends them as a single payload after `batchDelay` ms.
 
@@ -200,15 +200,15 @@ Aggregates calls to `track(data, batchDelay?)` into arrays and sends them as a s
 | `defaultBatchDelay` | `number` | `500`   | Wait window in milliseconds before flushing a batch                                 |
 | `maxBatchKB`        | `number` | `64`    | Target payload cap per chunk in KB (matches `sendBeacon` / `keepalive` 64 KB limit) |
 
-### `defineOfflineRestore()`
+### Offline restore plugin: defineOfflineRestore
 
 Listens to `window` `offline` and `online` events. It pauses the outbox immediately if `navigator.onLine` is `false` at startup or when `offline` fires, and calls `resume()` when `online` fires. In SSR environments it becomes a no-op.
 
-### `defineLastWords()`
+### Page exit flush plugin: defineLastWords
 
 Listens to `beforeunload`, `pagehide`, and `document` `visibilitychange` (`hidden`) and triggers a best-effort `flush()` once per hide cycle. When the page becomes visible again, the guard resets so the next hide flushes again.
 
-### `definePageErrors(options?)`
+### Page error plugin: definePageErrors
 
 Captures uncaught `window` `error` events and `unhandledrejection` events and forwards them through `ctx.track()`. It does not intercept resource load failures, `console.error`, or framework-handled errors.
 

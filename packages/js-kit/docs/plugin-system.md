@@ -6,7 +6,7 @@ title: Plugin System
 
 `definePlugin` provides a typed, zero-dependency plugin builder used across `@greypan/js-kit` and `@greypan/browser-kit`. This module also includes three ready-to-use plugins built on top of it: `defineBatchEmitter`, `defineQueue`, and `defineAckQueue`.
 
-## Composing plugins with `definePlugin`
+## Composing plugins
 
 Pass a setup function `(ctx) => exports` to `definePlugin`. Each `.use()` call merges the new plugin's exports onto the accumulated `ctx`, and `.make()` executes the chain once to return the final object.
 
@@ -51,7 +51,7 @@ const app = defineLogger().use(defineAuth()).make()
 console.log(app.authLog('request sent'))
 ```
 
-## Batching calls with `defineBatchEmitter`
+## Batching calls
 
 `defineBatchEmitter` collects items emitted via `batchEmit(item, delay)` and invokes `onFlushed(items)` once the delay window elapses. Call `flush()` to drain buffered items immediately.
 
@@ -89,7 +89,7 @@ emitter.flush()
 console.log(batches)
 ```
 
-## At-least-once delivery with `defineAckQueue`
+## At-least-once delivery queue
 
 `defineAckQueue` consumes items in FIFO order and removes the head item only after `onConsume` resolves. If `onConsume` throws or rejects, the item stays at the head of the queue so a later `resume()` or `flush()` can retry it.
 

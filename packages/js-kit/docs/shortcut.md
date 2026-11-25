@@ -6,7 +6,7 @@ Provides `safeCall` for fire-and-forget synchronous or asynchronous invocations 
 
 ## Examples
 
-### Fire-and-forget execution with `safeCall`
+### Safe fire-and-forget execution
 
 ```ts demo=safe-call
 import { safeCall } from '@greypan/js-kit'

@@ -6,7 +6,7 @@
 
 ## 示例
 
-### 使用 `safeCall` 安全执行同步与异步函数
+### 安全执行同步与异步函数
 
 ```ts demo=safe-call
 import { safeCall } from '@greypan/js-kit'

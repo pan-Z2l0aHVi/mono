@@ -6,7 +6,7 @@ title: Event Shortcut
 
 `on` and `off` are thin, strongly-typed wrappers around `addEventListener` and `removeEventListener` for `Window` and `Document`, inferring the exact event type from `WindowEventMap` and `DocumentEventMap`.
 
-## Typed `window` / `document` listeners
+## Typed global event listeners
 
 Attach listeners with full event type inference and clean them up with `off` (or an `AbortSignal`).
 

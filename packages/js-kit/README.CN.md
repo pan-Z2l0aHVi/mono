@@ -16,12 +16,20 @@
 
 ## 安装
 
-```bash
+```npm
 npm install @greypan/js-kit
-# 或
+```
+
+```pnpm
 pnpm add @greypan/js-kit
-yarn add @greypan/js-kit
+```
+
+```bun
 bun add @greypan/js-kit
+```
+
+```yarn
+yarn add @greypan/js-kit
 ```
 
 ## 快速开始
@@ -47,7 +55,7 @@ const app = defineLogger().use(definePrefix('auth')).make()
 app.log('token refreshed') // [app] auth: token refreshed
 ```
 
-### 用 `Result` 处理异步错误
+### 用 Result 处理异步错误
 
 需要把失败表示为显式返回值、避免分散的 `try/catch` 时，可从 `@greypan/js-kit/rust` 导入 `Result` 工具。`to()` 将任意 `Promise` 包装为 `Promise<Result<T, E>>`，`andThen()` 串联后续步骤并在遇到 `Err` 时短路返回。
 

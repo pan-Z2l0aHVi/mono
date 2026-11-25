@@ -162,7 +162,7 @@ const meta = [
   { label: 'p', content: "<code>no-reveal</code> attribute 存在时同样跳过揭示：appearance 照常提交、不启动 View Transition。它面向宿主的启动期首次外观应用这类「非用户发起」的变更，手动切换不应设置它。该 attribute 以「存在即生效」表达——动态绑定时必须以存在/移除切换（Vue 下 <code>:no-reveal=\"cond ? '' : null\"</code>），绑定 <code>false</code> 会被序列化成 <code>no-reveal=\"false\"</code> 而恒真，导致揭示动画静默永久失效。" },
   { label: 'p', content: "根主题揭示期间会暂时阻止当前文档的新指针、键盘激活和可取消的输入事件；嵌套主题优先限制自身范围，无法归属的文档级事件按整个文档处理。滚轮会结束揭示以恢复滚动。程序化赋值、浏览器快捷键和部分输入法操作不受此保护。" },
   { label: 'p', content: "主题宿主不绘制任何背景。组件库不在宿主页面上画背景，嵌入方对主题子树背后的表面保留完全控制权。" },
-  { label: 'h3', id: 'section-16', content: "<code>motion</code> 属性" },
+  { label: 'h3', id: 'section-16', content: "动效属性（motion）" },
   { label: 'p', content: "用 <code>motion</code> 表达意图。默认 <code>motion=\"system\"</code>：系统未要求减少动态效果时播放揭示，系统要求减少动态效果时不播放。<code>motion=\"full\"</code> 始终播放。<code>motion=\"reduced\"</code> 直接切换，不播放任何动画。" },
   { label: 'h3', id: 'section-17', content: "根节点 page 色同步" },
   { label: 'p', content: "最外层的启用主题会把当前 <code>--wui-color-page</code> 同步到 <code>document.documentElement</code>，让页面画布跟随主题，包括橡皮筋回弹露出的区域。嵌套主题保留自己的作用域，不改写 root 值。" },
@@ -1000,7 +1000,7 @@ const meta = [
   { label: 'p', content: "<code>--wui-glass-brightness</code> 浅色模式为 <code>1.06</code>，深色模式为 <code>1.02</code>。" },
   { label: 'p', content: "<code>--wui-glass-corner-radius</code> 默认值为 <code>32px</code>。非胶囊玻璃表面会用自身的语义圆角覆盖它（<code>--wui-radius-menu</code> / <code>--wui-radius-overlay</code>，抽屉为 <code>--wui-drawer-radius</code>），这样对角描边的光影会跟随 token 覆盖一起变化。" },
   { label: 'p', content: "胶囊控件是例外：光影渐变需要物理尺寸，所以继续使用由控件实际尺寸推导出的有限圆角值。" },
-  { label: 'h3', id: 'section-30', content: "<code>--wui-internal-*</code>" },
+  { label: 'h3', id: 'section-30', content: "内部自定义属性（wui-internal）" },
   { label: 'p', content: "以 <code>--wui-internal-*</code> 为前缀的变量不属于公共 token API，调用方不应覆盖。" }
 ]
 

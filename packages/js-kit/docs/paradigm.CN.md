@@ -6,7 +6,7 @@
 
 ## 示例
 
-### 使用 `ok`、`err`、`to`、`andThen` 与 `unwrap`
+### Result 链式错误处理
 
 ```ts demo=result-flow
 import { andThen, err, isOk, ok, to, unwrap, type Result } from '@greypan/js-kit/rust'

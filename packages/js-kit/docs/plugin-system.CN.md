@@ -6,7 +6,7 @@ title: 插件系统
 
 `definePlugin` 提供零依赖、带类型推导的插件构建器，是 `@greypan/js-kit` 与 `@greypan/browser-kit` 内部共享的组合底座。本模块同时提供基于它构建的三个常用插件：`defineBatchEmitter`、`defineQueue` 和 `defineAckQueue`。
 
-## 使用 `definePlugin` 组合能力
+## 组合插件能力
 
 向 `definePlugin` 传入工厂函数 `(ctx) => exports`。每次调用 `.use()` 会把新插件的返回值合并到累积上下文 `ctx` 上，最后调用 `.make()` 执行整条链并返回最终实例。
 
@@ -51,7 +51,7 @@ const app = defineLogger().use(defineAuth()).make()
 console.log(app.authLog('request sent'))
 ```
 
-## 使用 `defineBatchEmitter` 批量聚合
+## 批量聚合调用
 
 `defineBatchEmitter` 在指定延迟窗口内收集通过 `batchEmit(item, delay)` 写入的条目，到期后一次性调用 `onFlushed(items)`。调用 `flush()` 可立即冲刷当前缓冲。
 
@@ -89,7 +89,7 @@ emitter.flush()
 console.log(batches)
 ```
 
-## 使用 `defineAckQueue` 实现至少一次消费
+## 至少一次消费队列
 
 `defineAckQueue` 按 FIFO 顺序逐条消费，只有在 `onConsume` 成功 resolve 后才移出队头条目。如果 `onConsume` 抛错或 reject，该条目会留在队头，等待下次 `resume()` 或 `flush()` 重试。
 

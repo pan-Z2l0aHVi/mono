@@ -17,11 +17,20 @@ English | [简体中文](./README.CN.md) | [Live demo](https://pan-z2l0ahvi.gith
 
 ## Install
 
-```bash
+```npm
 npm install @greypan/browser-kit
-# pnpm add @greypan/browser-kit
-# yarn add @greypan/browser-kit
-# bun add @greypan/browser-kit
+```
+
+```pnpm
+pnpm add @greypan/browser-kit
+```
+
+```bun
+bun add @greypan/browser-kit
+```
+
+```yarn
+yarn add @greypan/browser-kit
 ```
 
 Import from `@greypan/browser-kit` or directly from a module subpath such as `@greypan/browser-kit/storage`.

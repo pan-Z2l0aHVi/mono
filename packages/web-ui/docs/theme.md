@@ -781,7 +781,7 @@ During a root reveal, new pointer and keyboard activation and cancelable input e
 
 The theme host draws no background. The component library does not paint a background on the host page, and the embedder keeps full control over the surface behind the theme subtree.
 
-### The `motion` attribute
+### The motion attribute
 
 Express the intent with `motion`. The default `motion="system"` plays the reveal unless the system prefers reduced motion. `motion="full"` always plays it. `motion="reduced"` switches without any animation.
 

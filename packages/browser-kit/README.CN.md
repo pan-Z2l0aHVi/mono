@@ -17,11 +17,20 @@
 
 ## 安装
 
-```bash
+```npm
 npm install @greypan/browser-kit
-# pnpm add @greypan/browser-kit
-# yarn add @greypan/browser-kit
-# bun add @greypan/browser-kit
+```
+
+```pnpm
+pnpm add @greypan/browser-kit
+```
+
+```bun
+bun add @greypan/browser-kit
+```
+
+```yarn
+yarn add @greypan/browser-kit
 ```
 
 可从 `@greypan/browser-kit` 统一导入，或按子路径（如 `@greypan/browser-kit/storage`）直接引入单个模块。

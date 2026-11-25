@@ -171,7 +171,7 @@ tracker.stop()
 
 ## 插件详解
 
-### `defineTracker(options)`
+### 核心创建器：defineTracker
 
 核心队列插件。默认把待发送数据持久化到 `localStorage`（键名为 `tracker:queue:<persistenceKey>`），并通过 `beaconTransport` 发送。
 
@@ -187,7 +187,7 @@ tracker.stop()
 | `persistenceKey`     | `string`                                  | `options.url`     | 持久化键后缀，用于隔离同源下的多个 Tracker             |
 | `disablePersistence` | `boolean`                                 | `false`           | 为 `true` 时关闭 `localStorage` 持久化，仅使用内存队列 |
 
-### `defineBatchTrack(options?)`
+### 批量聚合插件：defineBatchTrack
 
 把多次 `track(data, batchDelay?)` 调用按时间窗口聚合为数组后统一发送。
 
@@ -200,15 +200,15 @@ tracker.stop()
 | `defaultBatchDelay` | `number` | `500`  | 默认批量等待窗口（毫秒）                                              |
 | `maxBatchKB`        | `number` | `64`   | 单批体积目标上限（KB，对应 `sendBeacon` / `keepalive` 的 64 KB 限制） |
 
-### `defineOfflineRestore()`
+### 离线恢复插件：defineOfflineRestore
 
 自动监听 `window` 的 `offline` 与 `online` 事件。初始化时若 `navigator.onLine` 为 `false` 或触发 `offline`，立即暂停队列；网络恢复触发 `online` 时自动调用 `resume()`。SSR 环境下自动空转。
 
-### `defineLastWords()`
+### 页面退出冲刷插件：defineLastWords
 
 监听 `beforeunload`、`pagehide` 以及 `document` 的 `visibilitychange`（切到 `hidden` 时），在每个隐藏周期内尽力执行一次 `flush()`。页面重新可见后重置标记，下次离开时会再次触发。
 
-### `definePageErrors(options?)`
+### 页面错误采集插件：definePageErrors
 
 监听 `window` 的 `error` 与 `unhandledrejection` 事件，并复用当前组合后的 `ctx.track()` 上报。不采集静态资源加载失败、`console.error` 或已被框架捕获的错误。
 

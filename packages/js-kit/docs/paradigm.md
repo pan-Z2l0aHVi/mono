@@ -6,7 +6,7 @@ Rust-inspired `Result<T, E>` error handling without throwing exceptions. Availab
 
 ## Examples
 
-### `Result` flow with `ok`, `err`, `to`, `andThen`, and `unwrap`
+### Result chaining and error handling
 
 ```ts demo=result-flow
 import { andThen, err, isOk, ok, to, unwrap, type Result } from '@greypan/js-kit/rust'

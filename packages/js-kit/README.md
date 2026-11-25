@@ -16,12 +16,20 @@ English | [简体中文](./README.CN.md) | [Live demo](https://pan-z2l0ahvi.gith
 
 ## Installation
 
-```bash
+```npm
 npm install @greypan/js-kit
-# or
+```
+
+```pnpm
 pnpm add @greypan/js-kit
-yarn add @greypan/js-kit
+```
+
+```bun
 bun add @greypan/js-kit
+```
+
+```yarn
+yarn add @greypan/js-kit
 ```
 
 ## Quick start
@@ -47,7 +55,7 @@ const app = defineLogger().use(definePrefix('auth')).make()
 app.log('token refreshed') // [app] auth: token refreshed
 ```
 
-### Handling async errors with `Result`
+### Handling async errors with Result
 
 Use `@greypan/js-kit/rust` to represent failures as values instead of scattering `try/catch` blocks. `to()` wraps any `Promise` into a `Promise<Result<T, E>>`, and `andThen()` chains follow-up steps while short-circuiting on `Err`.
 
