@@ -56,9 +56,9 @@ func (s *SourceService) DiscardRecoveryScan(_ context.Context, scanID string) {
 
 // ReplaceScannedFileSource verifies the scan snapshot before replacing the source.
 func (s *SourceService) ReplaceScannedFileSource(ctx context.Context, sourceID, path, snapshot string) (*ResourceDTO, error) {
-	src, err := s.core.ReplaceScannedFileSource(ctx, sourceID, path, snapshot)
+	view, err := s.core.ReplaceScannedFileSource(ctx, sourceID, path, snapshot)
 	if err != nil {
 		return nil, err
 	}
-	return s.resourceDTO(ctx, src.ResourceID)
+	return resourceViewToDTO(view), nil
 }

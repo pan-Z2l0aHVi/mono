@@ -12,6 +12,14 @@ import (
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 )
 
+// URLProbeResult 是打开详情时短预算探测 URL 可用性的返回结果。
+// Outcome == ProbeOutcomeInconclusive 时不落库也不回读完整资源（Resource 为 nil）。
+type URLProbeResult struct {
+	Source   Source
+	Outcome  ProbeOutcome
+	Resource *ResourceView
+}
+
 // BackfillFingerprints 为库内已可用的文件 Source 补齐指纹。构造函数不再隐藏调度：
 // 由装配层（main.go）决定何时在后台启动它。
 func (s *Library) BackfillFingerprints(ctx context.Context) {
@@ -21,69 +29,67 @@ func (s *Library) BackfillFingerprints(ctx context.Context) {
 // AddSource 为既有 Resource 补充备用入口；补充入口不应意外改变用户当前的首选入口，
 // 也不应覆盖用户已维护的资源语义。
 //
-// 三个变更方法共享同一编排：归一化 → 存在性检查 → 探测 → 写入 → 对账监听 → 回读。
+// 三个变更方法共享同一编排：归一化 → 存在性检查 → 探测 → 写入 → 对账监听 → 回读完整资源视图。
 // 存在性检查必须先于探测：URL 探测最多阻塞 10 秒，不能在不存在的目标上白等。
-func (s *Library) AddSource(ctx context.Context, resourceID string, srcType storage.SourceType, input string) (Source, error) {
+func (s *Library) AddSource(ctx context.Context, resourceID string, srcType storage.SourceType, input string) (*ResourceView, error) {
 	location, err := s.ingest.normalizeInput(input, srcType)
 	if err != nil {
-		return Source{}, err
+		return nil, err
 	}
 	// 归属目标的存在性是产品规则，不依赖外键约束兜底。
 	if err := s.requireResource(ctx, resourceID); err != nil {
-		return Source{}, err
+		return nil, err
 	}
 
 	outcome := s.ingest.probe(ctx, location, srcType)
-	result, err := s.ingest.write(ctx, ingestWrite{
+	if _, err := s.ingest.write(ctx, ingestWrite{
 		mode:       ingestAppendSource,
 		resourceID: resourceID,
 		srcType:    srcType,
 		location:   location,
 		probe:      outcome,
-	})
-	if err != nil {
-		return Source{}, fmt.Errorf("failed to add %s source: %w", sourceTypeLabel(srcType), err)
+	}); err != nil {
+		return nil, fmt.Errorf("failed to add %s source: %w", sourceTypeLabel(srcType), err)
 	}
 
 	s.resyncIndex()
-	return s.getSource(ctx, result.sourceID)
+	return s.GetResource(ctx, resourceID)
 }
 
 // ReplaceSource 用新输入找回失效入口，保留其身份、顺位与首选角色；它不是同位置刷新。
 // 类型由存量行派生：行是类型的权威，替换不会把文件入口变成 URL 入口。
-func (s *Library) ReplaceSource(ctx context.Context, sourceID string, input string) (Source, error) {
+func (s *Library) ReplaceSource(ctx context.Context, sourceID string, input string) (*ResourceView, error) {
 	existing, err := s.getSource(ctx, sourceID)
 	if err != nil {
-		return Source{}, err
+		return nil, err
 	}
 	location, err := s.ingest.normalizeInput(input, existing.Type)
 	if err != nil {
-		return Source{}, err
+		return nil, err
 	}
 
 	outcome := s.ingest.probe(ctx, location, existing.Type)
-	_, err = s.ingest.write(ctx, ingestWrite{
+	if _, err := s.ingest.write(ctx, ingestWrite{
 		mode:     ingestReplaceSource,
 		sourceID: sourceID,
 		srcType:  existing.Type,
 		location: location,
 		probe:    outcome,
-	})
-	if err != nil {
-		return Source{}, fmt.Errorf("failed to replace source: %w", err)
+	}); err != nil {
+		return nil, fmt.Errorf("failed to replace source: %w", err)
 	}
 
 	s.resyncIndex()
-	return s.getSource(ctx, sourceID)
+	return s.GetResource(ctx, existing.ResourceID)
 }
 
 // RefreshSource 仅在用户明确请求时重新检查同一位置的可用性与展示信息，不改变 location，
 // 不回写 Resource 标题（AGENTS.md「Resource 标题」）。类型由存量行派生；
 // 文件入口可用时同时记录指纹。
-func (s *Library) RefreshSource(ctx context.Context, sourceID string) (Source, error) {
+func (s *Library) RefreshSource(ctx context.Context, sourceID string) (*ResourceView, error) {
 	src, err := s.getSource(ctx, sourceID)
 	if err != nil {
-		return Source{}, err
+		return nil, err
 	}
 
 	outcome := s.ingest.probe(ctx, src.Location, src.Type)
@@ -92,13 +98,13 @@ func (s *Library) RefreshSource(ctx context.Context, sourceID string) (Source, e
 		sourceID: sourceID,
 		probe:    outcome,
 	}); err != nil {
-		return Source{}, err
+		return nil, err
 	}
 
 	if src.Type == storage.SourceTypeFile && outcome.available {
 		s.ingest.fingerprints.Record(sourceID, src.Location)
 	}
-	return s.getSource(ctx, sourceID)
+	return s.GetResource(ctx, src.ResourceID)
 }
 
 func sourceTypeLabel(srcType storage.SourceType) string {
@@ -109,9 +115,9 @@ func sourceTypeLabel(srcType storage.SourceType) string {
 }
 
 // 首选入口是用户的明确选择，不能出现多个候选。
-func (s *Library) SetPreferredSource(ctx context.Context, resourceID string, sourceID string) error {
+func (s *Library) SetPreferredSource(ctx context.Context, resourceID string, sourceID string) (*ResourceView, error) {
 	now := time.Now().UnixMilli()
-	return s.db.WithTx(ctx, func(tx *sql.Tx) error {
+	err := s.db.WithTx(ctx, func(tx *sql.Tx) error {
 		// 先清除旧选择，维持唯一首选的不变量。
 		if err := s.sources.ClearPreferred(ctx, tx, resourceID, now); err != nil {
 			return err
@@ -122,11 +128,14 @@ func (s *Library) SetPreferredSource(ctx context.Context, resourceID string, sou
 		}
 		return err
 	})
+	if err != nil {
+		return nil, err
+	}
+	return s.GetResource(ctx, resourceID)
 }
 
 // Resource 必须保留至少一个入口；失去首选入口时按既有顺位延续访问路径。
-// 返回被删 Source 归属的 ResourceID，供外观层在变更后装配完整资源视图。
-func (s *Library) RemoveSource(ctx context.Context, sourceID string) (string, error) {
+func (s *Library) RemoveSource(ctx context.Context, sourceID string) (*ResourceView, error) {
 	var resourceID string
 	now := time.Now().UnixMilli()
 	err := s.db.WithTx(ctx, func(tx *sql.Tx) error {
@@ -159,25 +168,25 @@ func (s *Library) RemoveSource(ctx context.Context, sourceID string) (string, er
 		return nil
 	})
 	if err != nil {
-		return "", err
+		return nil, err
 	}
 
 	s.resyncIndex()
-	return resourceID, nil
+	return s.GetResource(ctx, resourceID)
 }
 
 // ProbeURLSourceOnOpen 是打开详情时的短预算重新判定：与纳入/手动刷新的 10 秒预算分开，
 // 前台交互不能等 10 秒。
 //
-// 与手动刷新的差别只在三态：Inconclusive（断网、超时、DNS 失败）不落库，保留原值。
-// 一次断网不该把整片 URL 资源标成失效。
-func (s *Library) ProbeURLSourceOnOpen(ctx context.Context, sourceID string) (Source, ProbeOutcome, error) {
+// 与手动刷新的差别只在三态：Inconclusive（断网、超时、DNS 失败）不落库也不回读完整资源，
+// 保留原值。一次断网不该把整片 URL 资源标成失效。
+func (s *Library) ProbeURLSourceOnOpen(ctx context.Context, sourceID string) (URLProbeResult, error) {
 	src, err := s.sources.Get(ctx, s.db.SqlDB(), sourceID)
 	if err != nil {
-		return Source{}, ProbeOutcomeInconclusive, mapNotFound(err)
+		return URLProbeResult{Outcome: ProbeOutcomeInconclusive}, mapNotFound(err)
 	}
 	if src.Type != storage.SourceTypeURL {
-		return Source{}, ProbeOutcomeInconclusive, ErrOnlyURLSourceRefreshable
+		return URLProbeResult{Outcome: ProbeOutcomeInconclusive}, ErrOnlyURLSourceRefreshable
 	}
 
 	fetchCtx, cancel := context.WithTimeout(ctx, probeBudgetOnOpen)
@@ -185,26 +194,37 @@ func (s *Library) ProbeURLSourceOnOpen(ctx context.Context, sourceID string) (So
 	meta, reachability, _ := s.ingest.fetcher.FetchURL(fetchCtx, src.Location)
 	outcome := probeOutcomeFrom(reachability)
 
-	if outcome != ProbeOutcomeInconclusive {
-		// 探测未取回元数据时保留既有展示信息：打开抽屉不该顺手抹掉已知标题。
-		metadataJSON := src.MetadataJSON
-		if meta != nil {
-			if bytes, err := json.Marshal(meta); err == nil {
-				metadataJSON = string(bytes)
-			}
-		}
-		_, err = s.ingest.write(ctx, ingestWrite{
-			mode:     ingestRefreshSource,
-			sourceID: sourceID,
-			probe:    probeOutcome{available: reachability == remote.ReachabilityAvailable, metadataJSON: metadataJSON},
-		})
-		if err != nil {
-			return Source{}, outcome, err
-		}
+	if outcome == ProbeOutcomeInconclusive {
+		return URLProbeResult{Source: src, Outcome: outcome}, nil
 	}
 
-	updated, err := s.getSource(ctx, sourceID)
-	return updated, outcome, err
+	// 探测未取回元数据时保留既有展示信息：打开抽屉不该顺手抹掉已知标题。
+	metadataJSON := src.MetadataJSON
+	if meta != nil {
+		if bytes, err := json.Marshal(meta); err == nil {
+			metadataJSON = string(bytes)
+		}
+	}
+	if _, err := s.ingest.write(ctx, ingestWrite{
+		mode:     ingestRefreshSource,
+		sourceID: sourceID,
+		probe:    probeOutcome{available: reachability == remote.ReachabilityAvailable, metadataJSON: metadataJSON},
+	}); err != nil {
+		return URLProbeResult{Outcome: outcome}, err
+	}
+
+	view, err := s.GetResource(ctx, src.ResourceID)
+	if err != nil {
+		return URLProbeResult{Outcome: outcome}, err
+	}
+	updated := src
+	for _, candidate := range view.Sources {
+		if candidate.ID == sourceID {
+			updated = candidate
+			break
+		}
+	}
+	return URLProbeResult{Source: updated, Outcome: outcome, Resource: view}, nil
 }
 
 func (s *Library) getSource(ctx context.Context, sourceID string) (Source, error) {

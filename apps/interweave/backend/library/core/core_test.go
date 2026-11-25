@@ -395,10 +395,11 @@ func TestSetResourceTagsReplacesWholeSet(t *testing.T) {
 		t.Fatalf("seed tag timestamp: %v", err)
 	}
 
-	tags, err := tagService.SetResourceTags(ctx, resourceID, []string{"  Tokyo  ", "Photography", "Photography"})
+	updated, err := tagService.SetResourceTags(ctx, resourceID, []string{"  Tokyo  ", "Photography", "Photography"})
 	if err != nil {
 		t.Fatalf("SetResourceTags error: %v", err)
 	}
+	tags := updated.Tags
 	if len(tags) != 2 || tags[0].Name != "Tokyo" || tags[1].Name != "Photography" {
 		t.Fatalf("expected normalized deduped target set [Tokyo Photography], got %+v", tags)
 	}
@@ -414,13 +415,13 @@ func TestSetResourceTagsReplacesWholeSet(t *testing.T) {
 		t.Errorf("expected Travel's tagging to be replaced by Photography, got %+v", reloaded.Tags)
 	}
 
-	// 空集合清空全部归属，返回非 nil 空切片。
-	cleared, err := tagService.SetResourceTags(ctx, resourceID, nil)
+	// 空集合清空全部归属，返回完整视图且 Tags 为空。
+	clearedView, err := tagService.SetResourceTags(ctx, resourceID, nil)
 	if err != nil {
 		t.Fatalf("SetResourceTags (clear) error: %v", err)
 	}
-	if cleared == nil || len(cleared) != 0 {
-		t.Errorf("expected non-nil empty tag set, got %+v", cleared)
+	if clearedView == nil || len(clearedView.Tags) != 0 {
+		t.Errorf("expected empty tag set on returned view, got %+v", clearedView)
 	}
 	empty, err := resService.GetResource(ctx, resourceID)
 	if err != nil {

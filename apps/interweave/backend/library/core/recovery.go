@@ -450,28 +450,28 @@ func (a *scanAggregator) doReport(c *RecoveryCandidate) {
 	a.report(a.progress, c)
 }
 
-func (s *Library) ReplaceScannedFileSource(ctx context.Context, sourceID, path, snapshot string) (Source, error) {
+func (s *Library) ReplaceScannedFileSource(ctx context.Context, sourceID, path, snapshot string) (*ResourceView, error) {
 	raw, err := base64.RawURLEncoding.DecodeString(snapshot)
 	if err != nil {
-		return Source{}, fmt.Errorf("invalid scan snapshot: %w", err)
+		return nil, fmt.Errorf("invalid scan snapshot: %w", err)
 	}
 	var before fileFingerprint
 	if err = json.Unmarshal(raw, &before); err != nil {
-		return Source{}, fmt.Errorf("invalid scan snapshot: %w", err)
+		return nil, fmt.Errorf("invalid scan snapshot: %w", err)
 	}
 	info, err := os.Lstat(path)
 	if err != nil {
-		return Source{}, fmt.Errorf("candidate unavailable: %w", err)
+		return nil, fmt.Errorf("candidate unavailable: %w", err)
 	}
 	if !info.Mode().IsRegular() || !sameFileState(before, fingerprintInfo(path, info)) {
-		return Source{}, errors.New("candidate changed since scan")
+		return nil, errors.New("candidate changed since scan")
 	}
 	src, err := s.getSource(ctx, sourceID)
 	if err != nil {
-		return Source{}, err
+		return nil, err
 	}
 	if src.Type != storage.SourceTypeFile || src.Available {
-		return Source{}, errors.New("source is no longer an unavailable file")
+		return nil, errors.New("source is no longer an unavailable file")
 	}
 	return s.ReplaceSource(ctx, sourceID, path)
 }
