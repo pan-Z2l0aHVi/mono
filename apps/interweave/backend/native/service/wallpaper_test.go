@@ -1,9 +1,10 @@
 package service
 
-// cspell:ignore xfconf
+// cspell:ignore xfconf busctl qdbus gsettings
 
 import (
 	"context"
+	"errors"
 	"io"
 	"net/url"
 	"os"
@@ -11,6 +12,27 @@ import (
 	"strings"
 	"testing"
 )
+
+type fakeCommandRunner struct {
+	runFn    func(ctx context.Context, name string, args ...string) error
+	outputFn func(ctx context.Context, name string, args ...string) ([]byte, error)
+	ran      [][]string
+}
+
+func (f *fakeCommandRunner) Run(ctx context.Context, name string, args ...string) error {
+	f.ran = append(f.ran, append([]string{name}, args...))
+	if f.runFn != nil {
+		return f.runFn(ctx, name, args...)
+	}
+	return nil
+}
+
+func (f *fakeCommandRunner) Output(ctx context.Context, name string, args ...string) ([]byte, error) {
+	if f.outputFn != nil {
+		return f.outputFn(ctx, name, args...)
+	}
+	return nil, errors.New("not configured")
+}
 
 func TestWallpaperPlanFor(t *testing.T) {
 	t.Run("GNOME：picture-uri 必需，dark 尽力而为", func(t *testing.T) {
@@ -26,8 +48,9 @@ func TestWallpaperPlanFor(t *testing.T) {
 		}
 	})
 
-	t.Run("KDE 是备选步，脚本只引用一次 URI", func(t *testing.T) {
-		plan := wallpaperPlanFor("KDE", "file:///tmp/w.png")
+	t.Run("KDE 是备选步，脚本只引用一次 URI 并安全转义单引号与特殊字符", func(t *testing.T) {
+		uri := "file:///home/user/O'Brien \"quote\" \\pic.png"
+		plan := wallpaperPlanFor("KDE", uri)
 		if plan[0].kind != wallpaperStepAlternative || len(plan[0].commands) != 2 {
 			t.Fatalf("expected one alternative step with two commands: %+v", plan[0])
 		}
@@ -37,6 +60,12 @@ func TestWallpaperPlanFor(t *testing.T) {
 		}
 		if !strings.Contains(script, "for (var i = 0;") {
 			t.Fatalf("script loop variable must not shadow: %s", script)
+		}
+		if !strings.Contains(script, `d.writeConfig('Image', "file:///home/user/O'Brien \"quote\" \\pic.png")`) {
+			t.Fatalf("expected double-quoted JSON string literal in KDE script: %s", script)
+		}
+		if strings.Contains(script, "d.writeConfig('Image', '") {
+			t.Fatalf("must not wrap image URI in single quotes: %s", script)
 		}
 	})
 
@@ -52,6 +81,69 @@ func TestWallpaperPlanFor(t *testing.T) {
 	t.Run("未知桌面无计划（调用方不得假成功）", func(t *testing.T) {
 		if plan := wallpaperPlanFor("LXQT", "file:///tmp/w.png"); plan != nil {
 			t.Fatalf("expected nil, got %v", plan)
+		}
+	})
+}
+
+func TestLinuxWallpaperApplier(t *testing.T) {
+	t.Run("GNOME required 成功且 optional 失败仍视为成功", func(t *testing.T) {
+		runner := &fakeCommandRunner{
+			runFn: func(_ context.Context, name string, args ...string) error {
+				if name == "gsettings" && len(args) >= 4 && args[3] == "picture-uri-dark" {
+					return errors.New("no dark schema")
+				}
+				return nil
+			},
+		}
+		applier := newLinuxWallpaperApplier(func(string) string { return "ubuntu:GNOME" }, runner)
+		if err := applier.Apply(context.Background(), "/tmp/w.png"); err != nil {
+			t.Fatalf("expected GNOME apply success, got %v", err)
+		}
+		if len(runner.ran) != 2 {
+			t.Fatalf("expected 2 gsettings calls, got %v", runner.ran)
+		}
+	})
+
+	t.Run("KDE busctl 失败时回落 qdbus", func(t *testing.T) {
+		runner := &fakeCommandRunner{
+			runFn: func(_ context.Context, name string, _ ...string) error {
+				if name == "busctl" {
+					return errors.New("busctl missing")
+				}
+				return nil
+			},
+		}
+		applier := newLinuxWallpaperApplier(func(string) string { return "KDE" }, runner)
+		if err := applier.Apply(context.Background(), "/tmp/O'Brien.png"); err != nil {
+			t.Fatalf("expected KDE fallback to qdbus to succeed, got %v", err)
+		}
+		if len(runner.ran) != 2 || runner.ran[0][0] != "busctl" || runner.ran[1][0] != "qdbus" {
+			t.Fatalf("unexpected KDE command sequence: %v", runner.ran)
+		}
+	})
+
+	t.Run("XFCE 枚举多屏属性并逐条写入", func(t *testing.T) {
+		runner := &fakeCommandRunner{
+			outputFn: func(context.Context, string, ...string) ([]byte, error) {
+				return []byte("" +
+					"/backdrop/screen0/monitor0/workspace0/image-path: /old/a.png\n" +
+					"/backdrop/screen0/monitorDP-1/workspace0/last-image: /old/b.png\n"), nil
+			},
+		}
+		applier := newLinuxWallpaperApplier(func(string) string { return "XFCE" }, runner)
+		if err := applier.Apply(context.Background(), "/tmp/new.png"); err != nil {
+			t.Fatalf("expected XFCE apply success, got %v", err)
+		}
+		if len(runner.ran) != 2 {
+			t.Fatalf("expected 2 xfconf-query writes, got %v", runner.ran)
+		}
+	})
+
+	t.Run("无受支持桌面时返回错误", func(t *testing.T) {
+		runner := &fakeCommandRunner{}
+		applier := newLinuxWallpaperApplier(func(string) string { return "LXQT" }, runner)
+		if err := applier.Apply(context.Background(), "/tmp/w.png"); err == nil {
+			t.Fatalf("expected error for unsupported desktop")
 		}
 	})
 }
@@ -91,49 +183,62 @@ func TestWallpaperCacheName(t *testing.T) {
 	}
 }
 
-func TestSetWallpaperLocalGuards(t *testing.T) {
-	service := NewOSService()
-	if err := service.SetWallpaper(context.Background(), "  ", true); err == nil {
-		t.Fatalf("expected error for empty location")
-	}
-	if err := service.SetWallpaper(context.Background(), "/definitely/missing/file.png", false); err == nil || !strings.Contains(err.Error(), "unreadable") {
-		t.Fatalf("expected unreadable error, got %v", err)
-	}
-}
-
-func TestDownloadWallpaperRequiresFetcher(t *testing.T) {
-	service := NewOSService()
-	if _, err := service.downloadWallpaper(context.Background(), "https://example.com/a.png"); err == nil {
-		t.Fatalf("expected error without stream fetcher")
-	}
-	withDir := NewOSService(WithWallpaperCacheDir(t.TempDir()))
-	if _, err := withDir.downloadWallpaper(context.Background(), "https://example.com/a.png"); err == nil || !strings.Contains(err.Error(), "downloader") {
-		t.Fatalf("expected downloader error, got %v", err)
-	}
-}
-
-func TestDownloadWallpaperCachesAndReuses(t *testing.T) {
-	dir := t.TempDir()
-	calls := 0
-	fetcher := StreamFetcher(func(ctx context.Context, location string) (io.ReadCloser, error) {
-		calls++
-		return io.NopCloser(strings.NewReader("fake image bytes")), nil
+func TestSetWallpaperGuardsAndCaching(t *testing.T) {
+	t.Run("空路径与缺失文件校验", func(t *testing.T) {
+		service := NewOSService(withWallpaperApplier(func(context.Context, string) error {
+			t.Fatalf("applier must not be called on guard failure")
+			return nil
+		}))
+		if err := service.SetWallpaper(context.Background(), "  ", true); err == nil {
+			t.Fatalf("expected error for empty location")
+		}
+		if err := service.SetWallpaper(context.Background(), "/definitely/missing/file.png", false); err == nil || !strings.Contains(err.Error(), "unreadable") {
+			t.Fatalf("expected unreadable error, got %v", err)
+		}
 	})
-	service := NewOSService(WithStreamFetcher(fetcher), WithWallpaperCacheDir(dir))
-	first, err := service.downloadWallpaper(context.Background(), "https://example.com/a.png")
-	if err != nil {
-		t.Fatalf("download failed: %v", err)
-	}
-	second, err := service.downloadWallpaper(context.Background(), "https://example.com/a.png")
-	if err != nil {
-		t.Fatalf("second download failed: %v", err)
-	}
-	if first != second || calls != 1 {
-		t.Fatalf("expected cache hit (calls=%d, %q vs %q)", calls, first, second)
-	}
-	if _, err := os.Stat(filepath.Join(dir, wallpaperCacheName("https://example.com/a.png"))); err != nil {
-		t.Fatalf("cached file missing: %v", err)
-	}
+
+	t.Run("远程壁纸缺少下载器时报错", func(t *testing.T) {
+		service := NewOSService(
+			WithWallpaperCacheDir(t.TempDir()),
+			withWallpaperApplier(func(context.Context, string) error {
+				t.Fatalf("applier must not be called without fetcher")
+				return nil
+			}),
+		)
+		if err := service.SetWallpaper(context.Background(), "https://example.com/a.png", true); err == nil || !strings.Contains(err.Error(), "downloader") {
+			t.Fatalf("expected downloader error, got %v", err)
+		}
+	})
+
+	t.Run("远程壁纸经公开 SetWallpaper 下载、缓存复用并透传给 applier", func(t *testing.T) {
+		dir := t.TempDir()
+		fetchCalls := 0
+		var applied []string
+		fetcher := StreamFetcher(func(context.Context, string) (io.ReadCloser, error) {
+			fetchCalls++
+			return io.NopCloser(strings.NewReader("fake image bytes")), nil
+		})
+		service := NewOSService(
+			WithStreamFetcher(fetcher),
+			WithWallpaperCacheDir(dir),
+			withWallpaperApplier(func(_ context.Context, path string) error {
+				applied = append(applied, path)
+				return nil
+			}),
+		)
+		if err := service.SetWallpaper(context.Background(), "https://example.com/a.png", true); err != nil {
+			t.Fatalf("first SetWallpaper failed: %v", err)
+		}
+		if err := service.SetWallpaper(context.Background(), "https://example.com/a.png", true); err != nil {
+			t.Fatalf("second SetWallpaper failed: %v", err)
+		}
+		if fetchCalls != 1 || len(applied) != 2 || applied[0] != applied[1] {
+			t.Fatalf("expected 1 fetch and 2 identical applies, got fetch=%d applied=%v", fetchCalls, applied)
+		}
+		if _, err := os.Stat(filepath.Join(dir, wallpaperCacheName("https://example.com/a.png"))); err != nil {
+			t.Fatalf("cached file missing: %v", err)
+		}
+	})
 }
 
 func TestFileURIFromPath(t *testing.T) {

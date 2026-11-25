@@ -13,11 +13,15 @@ import (
 type OSService struct {
 	streamFetcher     StreamFetcher
 	wallpaperCacheDir string
+	wallpaperApplier  wallpaperApplier
 }
 
 // 保持原生能力与 Wails 注册边界集中。
 func NewOSService(options ...OSServiceOption) *OSService {
-	service := &OSService{wallpaperCacheDir: defaultWallpaperCacheDir()}
+	service := &OSService{
+		wallpaperCacheDir: defaultWallpaperCacheDir(),
+		wallpaperApplier:  setWallpaperFromFile,
+	}
 	for _, option := range options {
 		option(service)
 	}

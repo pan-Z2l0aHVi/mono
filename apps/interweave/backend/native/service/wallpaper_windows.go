@@ -5,6 +5,7 @@
 package service
 
 import (
+	"context"
 	"fmt"
 	"syscall"
 	"unsafe"
@@ -23,7 +24,10 @@ var (
 )
 
 // setWallpaperFromFile 经 SystemParametersInfoW 设置桌面壁纸（所有屏幕统一）。
-func setWallpaperFromFile(path string) error {
+func setWallpaperFromFile(ctx context.Context, path string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	if path == "" {
 		return fmt.Errorf("wallpaper: path is empty")
 	}

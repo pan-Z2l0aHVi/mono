@@ -17,6 +17,8 @@ import (
 // 不 import remote。实现方负责超时预算（remote.Fetcher 的 10 秒总时限）。
 type StreamFetcher func(ctx context.Context, url string) (io.ReadCloser, error)
 
+type wallpaperApplier func(ctx context.Context, path string) error
+
 type OSServiceOption func(*OSService)
 
 // WithStreamFetcher 注入壁纸下载的流式读取。main.go 装配；nil 时远程壁纸不可用。
@@ -27,6 +29,11 @@ func WithStreamFetcher(fetcher StreamFetcher) OSServiceOption {
 // WithWallpaperCacheDir 指定远程壁纸的缓存目录；main.go 按应用数据目录装配。
 func WithWallpaperCacheDir(dir string) OSServiceOption {
 	return func(s *OSService) { s.wallpaperCacheDir = dir }
+}
+
+// withWallpaperApplier 注入包内壁纸设置 seam，供单测隔离宿主桌面且不进入 Wails bindings。
+func withWallpaperApplier(applier wallpaperApplier) OSServiceOption {
+	return func(s *OSService) { s.wallpaperApplier = applier }
 }
 
 /*
@@ -53,7 +60,11 @@ func (s *OSService) SetWallpaper(ctx context.Context, location string, remote bo
 	} else if info.IsDir() {
 		return fmt.Errorf("wallpaper: source is a directory")
 	}
-	return setWallpaperFromFile(path)
+	applier := s.wallpaperApplier
+	if applier == nil {
+		applier = setWallpaperFromFile
+	}
+	return applier(ctx, path)
 }
 
 // wallpaperExtPattern 收敛缓存文件扩展名：只留字母数字点，防路径拼接意外。

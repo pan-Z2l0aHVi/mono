@@ -30,12 +30,16 @@ static char *set_desktop_wallpaper(const char *path) {
 import "C"
 
 import (
+	"context"
 	"fmt"
 	"unsafe"
 )
 
 // setWallpaperFromFile 经 NSWorkspace 逐屏设置壁纸；填充缩放，所有屏幕同一张。
-func setWallpaperFromFile(path string) error {
+func setWallpaperFromFile(ctx context.Context, path string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
 	// 同 proxy_darwin：输入指针必须释放，路径随资源切换频繁传入。
 	cPath := C.CString(path)
 	defer C.free(unsafe.Pointer(cPath))
