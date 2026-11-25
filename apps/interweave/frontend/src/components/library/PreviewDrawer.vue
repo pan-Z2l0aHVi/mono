@@ -1,16 +1,16 @@
 <script setup lang="ts">
 import type { WebUiDrawer, WebUiEvent } from '@greypan/web-ui'
 import { lucideArrowRight } from '@greypan/web-ui/icons'
-import { computed, onBeforeUnmount, ref, watch } from 'vue'
+import { computed, onBeforeUnmount } from 'vue'
 
 import ConvergeButton from '@/components/ConvergeButton.vue'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { resourceIcon, unavailableResourceIcon } from './presentation'
-import { readTextPreview, resolvePreviewTarget, type PreviewEmptyReason } from './preview'
 import PreviewCode from './PreviewCode.vue'
 import PreviewImage from './PreviewImage.vue'
 import PreviewMarkdown from './PreviewMarkdown.vue'
+import { createPreviewSession } from './previewSession'
 
 const props = defineProps<{
   open: boolean
@@ -22,115 +22,38 @@ const props = defineProps<{
 
 const emit = defineEmits<{ 'update:open': [value: boolean]; recover: [source: ResourceSourceView] }>()
 
-type TextState = 'idle' | 'loading' | 'ready' | 'failed'
-
 const placement = computed(() => (props.mobile ? 'bottom' : 'right'))
-const target = computed(() => resolvePreviewTarget(props.resource))
-const imageFailed = ref(false)
-const videoFailed = ref(false)
-const audioFailed = ref(false)
-const videoPortrait = ref(false)
-const mediaLoading = ref(false)
-const textState = ref<TextState>('idle')
-const textPreview = ref<{ text: string; truncated: boolean } | null>(null)
-const textError = ref('')
-let textRequest = 0
-let textAbort: AbortController | null = null
-
-const emptyCopy: Record<PreviewEmptyReason, { title: string; description: string }> = {
-  'no-source': { title: '没有可预览的入口', description: '这个资源没有可用的来源。' },
-  'empty-location': { title: '链接地址为空', description: '刷新这个链接来源后才能预览。' },
-  'source-unavailable': { title: '文件已失效', description: '原路径已经不存在，找回文件后即可预览。' },
-  'media-unavailable': { title: '暂时无法预览', description: '请稍后重试，或用其他应用打开文件。' },
-  'unsupported-kind': { title: '暂不支持预览', description: '可以在系统默认应用中打开这个文件。' }
-}
-
-const emptyState = computed(() => {
-  const reason = target.value.emptyReason
-  if (target.value.mode !== 'empty' || !reason) return null
-  return emptyCopy[reason]
-})
-
-// 编码不做嗅探，所以乱码提示只对纯文本预览常驻；markdown / 代码按文档渲染，只有截断才提示。
-const textNotice = computed(() => {
-  if (!textPreview.value?.truncated) return target.value.mode === 'text' ? '部分文件的文字可能无法正常显示。' : ''
-  return target.value.mode === 'text'
-    ? '文件过大，仅显示开头部分。部分文件的文字可能无法正常显示。'
-    : '文件过大，仅显示开头部分。'
-})
-
-// 同 URL 再次挂载不会重新触发 load/error，key 让资源切换一定重建媒体元素。
-const mediaKey = computed(() => `${target.value.source?.id ?? ''}|${target.value.mediaUrl ?? ''}`)
-
-function cancelTextRequest() {
-  textRequest++
-  textAbort?.abort()
-  textAbort = null
-}
-
-watch(
-  () => [props.open, props.resource?.id, target.value.mode, target.value.mediaUrl] as const,
-  ([open]) => {
-    imageFailed.value = false
-    videoFailed.value = false
-    audioFailed.value = false
-    videoPortrait.value = false
-    mediaLoading.value = open && ['image', 'video', 'audio', 'url'].includes(target.value.mode)
-    cancelTextRequest()
-    textPreview.value = null
-    textError.value = ''
-    // 关闭时内容区不渲染媒体元素（见模板的 open && resource 守卫），此时不读取文本，
-    // 避免仅因选中资源（行点击 / 编辑标签）就在后台发起一次无人可见的 fetch。
-    if (!open) {
-      textState.value = 'idle'
-      return
-    }
-    textState.value = ['text', 'markdown', 'code'].includes(target.value.mode) ? 'loading' : 'idle'
-    if (['text', 'markdown', 'code'].includes(target.value.mode)) void loadText()
+const session = createPreviewSession(
+  {
+    open: () => props.open,
+    resource: () => props.resource
   },
-  { immediate: true }
+  {
+    openExternal: target => props.openExternal(target)
+  }
+)
+const state = session.state
+const isDocumentMode = computed(
+  () => state.value.kind === 'text' || state.value.kind === 'markdown' || state.value.kind === 'code'
 )
 
-onBeforeUnmount(cancelTextRequest)
-
-async function loadText() {
-  const mediaUrl = target.value.mediaUrl
-  if (!mediaUrl) return
-  const request = ++textRequest
-  const controller = new AbortController()
-  textAbort = controller
-  try {
-    const response = await fetch(mediaUrl, { signal: controller.signal })
-    if (!response.ok) throw new Error(`读取失败（HTTP ${response.status}）`)
-    const preview = await readTextPreview(response)
-    if (request !== textRequest) return
-    textPreview.value = { text: preview.text, truncated: preview.truncated }
-    textState.value = 'ready'
-  } catch (cause) {
-    if (request !== textRequest) return
-    console.error('读取文件预览失败', cause)
-    textError.value = '无法读取文件，请检查文件是否还在原处'
-    textState.value = 'failed'
-  }
-}
+onBeforeUnmount(() => session.dispose())
 
 function handleOpenChange(event: WebUiEvent<WebUiDrawer, 'open-change'>) {
   emit('update:open', event.detail.open)
 }
 
-function handleMediaLoaded(event: Event) {
-  mediaLoading.value = false
+function handleMediaLoaded(mediaKey: string, event: Event) {
+  session.onMediaLoaded(mediaKey)
   const element = event.target
   if (element instanceof HTMLMediaElement && element.paused) {
     void element.play?.().catch(() => {})
   }
 }
 
-function handleMediaError(kind: 'image' | 'video' | 'audio') {
-  if (kind === 'image') imageFailed.value = true
-  else if (kind === 'video') videoFailed.value = true
-  else audioFailed.value = true
-  mediaLoading.value = false
+function handleVideoMetadata(mediaKey: string, event: Event) {
+  const video = event.target as HTMLVideoElement
+  session.onVideoMetadata(mediaKey, video.videoWidth, video.videoHeight)
 }
 </script>
 
@@ -138,7 +61,6 @@ function handleMediaError(kind: 'image' | 'video' | 'audio') {
   <!--
     drag zone 取 32px（drawer 自己的默认值是 20px，见 CHANGELOG：曾从 32px 收窄并留了
     「consumer 可覆回 32px+」的口子）。20px 在 720px 宽的 panel 边缘上太窄，拖拽命中率低。
-
   -->
   <web-ui-drawer
     page-shift
@@ -152,39 +74,35 @@ function handleMediaError(kind: 'image' | 'video' | 'audio') {
     @open-change="handleOpenChange"
   >
     <!--
-      抽屉的 padding 同时用于定位 drag handle，内容向外延伸覆盖该空间，再按抽屉圆角裁切。
-
       open && resource 双重守卫：selectedResource 由行点击即赋值，而 previewOpen 仍是 false，
-      此时 dialog 是 display:none。只按 resource 守卫会让 img/video/iframe 挂在隐藏 dialog 里
-      后台加载（外站、Range 媒体、文本 fetch），视频关闭后还会继续出声；加上 open 让媒体元素
-      随关闭一并卸载。
+      此时 dialog 是 display:none。加上 state.kind !== 'closed' && resource 让媒体元素随关闭一并卸载。
     -->
     <div
-      v-if="open && resource"
+      v-if="state.kind !== 'closed' && resource"
       class="-m-5 w-[calc(100%+40px)] min-h-0 rounded-[var(--wui-drawer-radius,28px)]"
       :class="
-        ['text', 'markdown', 'code'].includes(target.mode)
+        isDocumentMode
           ? 'min-h-full'
           : 'grid h-[calc(100%+40px)] grid-rows-[minmax(0,1fr)] overflow-hidden mobile:h-(--wui-drawer-height)'
       "
     >
-      <div v-if="emptyState" class="min-h-0 overflow-y-auto">
+      <div v-if="state.kind === 'empty'" class="min-h-0 overflow-y-auto">
         <div class="grid min-h-full place-items-center">
-          <web-ui-empty :size="72" :title="emptyState.title" :description="emptyState.description">
+          <web-ui-empty :size="72" :title="state.title" :description="state.description">
             <web-ui-icon
               slot="icon"
               :icon="
-                !resource.available || target.emptyReason === 'source-unavailable'
-                  ? unavailableResourceIcon(resource.kind, target.source)
+                !resource.available || state.reason === 'source-unavailable'
+                  ? unavailableResourceIcon(resource.kind, state.source)
                   : resourceIcon(resource.kind)
               "
               :size="40"
             />
             <ConvergeButton
-              v-if="target.emptyReason === 'source-unavailable' && target.source"
+              v-if="state.canRecover && state.source"
               slot="action"
               variant="primary"
-              @click="emit('recover', target.source)"
+              @click="emit('recover', state.source)"
             >
               <template #suffix>
                 <web-ui-icon :icon="lucideArrowRight" :size="16" />
@@ -195,21 +113,26 @@ function handleMediaError(kind: 'image' | 'video' | 'audio') {
         </div>
       </div>
 
-      <div v-else-if="target.mode === 'image'" class="relative min-h-0 overflow-hidden">
-        <web-ui-empty v-if="imageFailed" :size="72" title="无法显示这张图片" description="文件可能已被移动或删除。">
-          <web-ui-icon slot="icon" :icon="unavailableResourceIcon(resource.kind, target.source)" :size="40" />
+      <div v-else-if="state.kind === 'image'" class="relative min-h-0 overflow-hidden">
+        <web-ui-empty
+          v-if="state.status === 'failed'"
+          :size="72"
+          title="无法显示这张图片"
+          description="文件可能已被移动或删除。"
+        >
+          <web-ui-icon slot="icon" :icon="unavailableResourceIcon(resource.kind, session.source.value)" :size="40" />
         </web-ui-empty>
         <PreviewImage
           v-else
-          :key="mediaKey"
-          :src="target.mediaUrl ?? ''"
+          :key="state.mediaKey"
+          :src="state.src"
           :alt="resource.title"
-          :class="{ invisible: mediaLoading }"
-          @load="mediaLoading = false"
-          @error="handleMediaError('image')"
+          :class="{ invisible: state.status === 'loading' }"
+          @load="session.onMediaLoaded(state.mediaKey)"
+          @error="session.onMediaError(state.mediaKey)"
         />
         <div
-          v-if="mediaLoading"
+          v-if="state.status === 'loading'"
           class="absolute inset-0 grid place-items-center"
           role="status"
           aria-label="正在加载预览"
@@ -218,35 +141,32 @@ function handleMediaError(kind: 'image' | 'video' | 'audio') {
         </div>
       </div>
 
-      <div v-else-if="target.mode === 'video'" class="relative min-h-0 overflow-hidden">
+      <div v-else-if="state.kind === 'video'" class="relative min-h-0 overflow-hidden">
         <div class="relative grid size-full place-items-center overflow-hidden">
           <web-ui-empty
-            v-if="videoFailed"
+            v-if="state.status === 'failed'"
             :size="72"
             title="无法播放这个视频"
             description="文件可能已被移动，或暂时无法显示。"
           >
-            <web-ui-icon slot="icon" :icon="unavailableResourceIcon(resource.kind, target.source)" :size="40" />
+            <web-ui-icon slot="icon" :icon="unavailableResourceIcon(resource.kind, session.source.value)" :size="40" />
           </web-ui-empty>
           <video
             v-else
-            :key="mediaKey"
-            :src="target.mediaUrl ?? undefined"
-            :class="[videoPortrait ? 'h-full w-auto' : 'h-auto w-full', { invisible: mediaLoading }]"
+            :key="state.mediaKey"
+            :src="state.src || undefined"
+            :class="[state.portrait ? 'h-full w-auto' : 'h-auto w-full', { invisible: state.status === 'loading' }]"
             class="absolute top-1/2 left-1/2 max-w-none -translate-x-1/2 -translate-y-1/2 bg-black"
             controls
             autoplay
             playsinline
             preload="auto"
-            @loadedmetadata="
-              videoPortrait =
-                ($event.target as HTMLVideoElement).videoHeight > ($event.target as HTMLVideoElement).videoWidth
-            "
-            @loadeddata="handleMediaLoaded($event)"
-            @error="handleMediaError('video')"
+            @loadedmetadata="handleVideoMetadata(state.mediaKey, $event)"
+            @loadeddata="handleMediaLoaded(state.mediaKey, $event)"
+            @error="session.onMediaError(state.mediaKey)"
           ></video>
           <div
-            v-if="mediaLoading"
+            v-if="state.status === 'loading'"
             class="absolute inset-0 grid place-items-center"
             role="status"
             aria-label="正在加载预览"
@@ -256,14 +176,14 @@ function handleMediaError(kind: 'image' | 'video' | 'audio') {
         </div>
       </div>
 
-      <div v-else-if="target.mode === 'audio'" class="relative grid min-h-0 place-items-center overflow-hidden p-6">
+      <div v-else-if="state.kind === 'audio'" class="relative grid min-h-0 place-items-center overflow-hidden p-6">
         <web-ui-empty
-          v-if="audioFailed"
+          v-if="state.status === 'failed'"
           :size="72"
           title="无法播放这个音频"
           description="文件可能已被移动，或暂时无法显示。"
         >
-          <web-ui-icon slot="icon" :icon="unavailableResourceIcon(resource.kind, target.source)" :size="40" />
+          <web-ui-icon slot="icon" :icon="unavailableResourceIcon(resource.kind, session.source.value)" :size="40" />
         </web-ui-empty>
         <div v-else class="grid w-full max-w-md justify-items-center gap-5">
           <div
@@ -276,19 +196,19 @@ function handleMediaError(kind: 'image' | 'video' | 'audio') {
             {{ resource.title }}
           </p>
           <audio
-            :key="mediaKey"
-            :src="target.mediaUrl ?? undefined"
+            :key="state.mediaKey"
+            :src="state.src || undefined"
             class="w-full"
-            :class="{ invisible: mediaLoading }"
+            :class="{ invisible: state.status === 'loading' }"
             controls
             autoplay
             preload="auto"
-            @loadeddata="handleMediaLoaded($event)"
-            @error="handleMediaError('audio')"
+            @loadeddata="handleMediaLoaded(state.mediaKey, $event)"
+            @error="session.onMediaError(state.mediaKey)"
           ></audio>
         </div>
         <div
-          v-if="mediaLoading"
+          v-if="state.status === 'loading'"
           class="absolute inset-0 grid place-items-center"
           role="status"
           aria-label="正在加载预览"
@@ -297,58 +217,51 @@ function handleMediaError(kind: 'image' | 'video' | 'audio') {
         </div>
       </div>
 
-      <div v-else-if="target.mode === 'text'" class="min-h-full">
+      <div v-else-if="state.kind === 'text' || state.kind === 'markdown' || state.kind === 'code'" class="min-h-full">
         <div
-          v-if="textState === 'loading'"
+          v-if="state.status === 'loading'"
           class="grid min-h-[calc(100vh-40px)] place-items-center mobile:min-h-(--wui-drawer-height)"
           role="status"
           aria-label="正在加载预览"
         >
           <web-ui-spinner :size="28" />
         </div>
-        <web-ui-empty v-else-if="textState === 'failed'" :size="72" title="无法读取这个文件" :description="textError">
-          <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
-        </web-ui-empty>
-        <div v-else-if="textPreview">
-          <p
-            v-if="textNotice"
-            class="m-0 border-b border-black/6 text-xs text-(--wui-color-text-secondary) dark:border-white/8"
-          >
-            {{ textNotice }}
-          </p>
-          <pre class="m-0 font-mono text-xs leading-5 whitespace-pre-wrap wrap-break-word">{{ textPreview.text }}</pre>
-        </div>
-      </div>
-
-      <!--
-        markdown / 代码预览与纯文本同一条读取链（readTextPreview，含 512KB 截断），只是渲染层不同：
-        markdown 按文档结构渲染（样式与 web-ui demo 同源），代码带行号与语法高亮。
-      -->
-      <div v-else-if="target.mode === 'markdown' || target.mode === 'code'" class="min-h-full">
         <div
-          v-if="textState === 'loading'"
-          class="grid min-h-[calc(100vh-40px)] place-items-center mobile:min-h-(--wui-drawer-height)"
-          role="status"
-          aria-label="正在加载预览"
+          v-else-if="state.kind === 'markdown' && state.status === 'failed' && state.fallbackText !== undefined"
+          class="p-4 text-sm text-(--wui-color-text-secondary)"
         >
-          <web-ui-spinner :size="28" />
+          {{ state.error }}
         </div>
-        <web-ui-empty v-else-if="textState === 'failed'" :size="72" title="无法读取这个文件" :description="textError">
+        <web-ui-empty
+          v-else-if="state.status === 'failed'"
+          :size="72"
+          title="无法读取这个文件"
+          :description="state.error"
+        >
           <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
         </web-ui-empty>
-        <template v-else-if="textPreview">
+        <template v-else>
           <p
-            v-if="textNotice"
+            v-if="state.notice"
             class="m-0 border-b border-black/6 text-xs text-(--wui-color-text-secondary) dark:border-white/8"
           >
-            {{ textNotice }}
+            {{ state.notice }}
           </p>
+          <pre
+            v-if="state.kind === 'text'"
+            class="m-0 font-mono text-xs leading-5 whitespace-pre-wrap wrap-break-word"
+            >{{ state.text }}</pre>
           <PreviewMarkdown
-            v-if="target.mode === 'markdown'"
-            :markdown="textPreview.text"
-            :open-external="openExternal"
+            v-else-if="state.kind === 'markdown'"
+            :nodes="state.nodes"
+            :open-link="session.openMarkdownLink"
           />
-          <PreviewCode v-else :code="textPreview.text" :language="target.language" />
+          <PreviewCode
+            v-else
+            :code="state.code"
+            :highlighted-html="state.highlightedHtml"
+            :over-highlight-limit="state.overHighlightLimit"
+          />
         </template>
       </div>
 
@@ -359,19 +272,19 @@ function handleMediaError(kind: 'image' | 'video' | 'audio') {
         本仓无 CSP/frame 限制，被 X-Frame-Options 拦截的站点只能由用户在浏览器里另开地址。
         该取舍经 Manager checkpoint 批准后留档于此。
       -->
-      <div v-else-if="target.mode === 'url'" class="relative size-full">
+      <div v-else-if="state.kind === 'url'" class="relative size-full">
         <iframe
-          :key="mediaKey"
+          :key="state.mediaKey"
           class="size-full border-0 bg-white"
-          :class="{ invisible: mediaLoading }"
-          :src="target.source?.location ?? undefined"
+          :class="{ invisible: state.status === 'loading' }"
+          :src="state.src || undefined"
           :title="`${resource.title} 网页预览`"
           sandbox="allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox"
           referrerpolicy="no-referrer"
-          @load="mediaLoading = false"
+          @load="session.onMediaLoaded(state.mediaKey)"
         ></iframe>
         <div
-          v-if="mediaLoading"
+          v-if="state.status === 'loading'"
           class="absolute inset-0 grid place-items-center"
           role="status"
           aria-label="正在加载预览"
