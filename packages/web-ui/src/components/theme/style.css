@@ -268,8 +268,8 @@
   --wui-internal-segmented-indicator-shadow: 0 1px 3px rgb(0 0 0 / 0.06), 0 1px 2px rgb(0 0 0 / 0.04);
   --wui-internal-segmented-indicator-shadow-pressed: 0 2px 16px rgb(0 0 0 / 0.1);
 
-  /* secondary button 只在浅色比 control 再深半档（94% control + 6% shade 的计算值）；深色维持原面。 */
-  --wui-internal-button-secondary-bg: #e1e1e7;
+  /* secondary button 在浅色朝 control shade 混入 6%；深色把权重降为 0，直接取 control 原面。 */
+  --wui-internal-secondary-shade-weight: 6%;
   --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent);
   --wui-scrollbar-handle: rgb(0 0 0 / 0.39);
   color-scheme: light;
@@ -336,7 +336,7 @@
   --wui-internal-switch-thumb-shadow-pressed: 0 2px 20px rgb(0 0 0 / 0.2);
   --wui-internal-segmented-indicator-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 1px 2px rgb(0 0 0 / 0.08);
   --wui-internal-segmented-indicator-shadow-pressed: 0 2px 20px rgb(0 0 0 / 0.2);
-  --wui-internal-button-secondary-bg: var(--wui-color-surface-control);
+  --wui-internal-secondary-shade-weight: 0%;
   --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%);
   --wui-scrollbar-handle: rgb(255 255 255 / 0.5);
   color-scheme: dark;
@@ -387,7 +387,7 @@
     --wui-internal-switch-thumb-shadow-pressed: 0 2px 20px rgb(0 0 0 / 0.2);
     --wui-internal-segmented-indicator-shadow: 0 1px 3px rgb(0 0 0 / 0.12), 0 1px 2px rgb(0 0 0 / 0.08);
     --wui-internal-segmented-indicator-shadow-pressed: 0 2px 20px rgb(0 0 0 / 0.2);
-    --wui-internal-button-secondary-bg: var(--wui-color-surface-control);
+    --wui-internal-secondary-shade-weight: 0%;
     --wui-color-focus-ring: color-mix(in srgb, var(--wui-color-accent, #0a84ff) 62%, var(--wui-color-text) 38%);
     --wui-scrollbar-handle: rgb(255 255 255 / 0.5);
     color-scheme: dark;
