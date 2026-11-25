@@ -1,9 +1,17 @@
 package service
 
+// cspell:ignore gsettings
+
 import (
+	"context"
+	"errors"
 	"net/http"
 	"net/url"
+	"os/exec"
+	"sync"
+	"sync/atomic"
 	"testing"
+	"time"
 )
 
 func TestParseWindowsProxyServer(t *testing.T) {
@@ -27,15 +35,64 @@ func TestParseWindowsProxyServer(t *testing.T) {
 		}
 	})
 
-	t.Run("绕过清单归一", func(t *testing.T) {
+	t.Run("绕过清单按逗号归一以适配 httpproxy", func(t *testing.T) {
 		config := parseWindowsProxyServer("proxy.local:8080", "<local>;*.example.com;192.168.0.0/16")
 		if !config.BypassLocal {
 			t.Fatalf("expected <local> flag: %+v", config)
 		}
-		if config.NoProxy != ".example.com;192.168.0.0/16" {
+		if config.NoProxy != ".example.com,192.168.0.0/16" {
 			t.Fatalf("unexpected NoProxy %q", config.NoProxy)
 		}
 	})
+}
+
+func TestResolveWindowsProxy(t *testing.T) {
+	reader := func() (windowsProxyRaw, error) {
+		return windowsProxyRaw{
+			Enabled:  1,
+			Server:   "127.0.0.1:7890",
+			Override: "<local>;*.example.com;192.168.0.0/16",
+		}, nil
+	}
+
+	reqProxy, _ := http.NewRequest(http.MethodGet, "https://api.github.com/repos", nil)
+	got, err := resolveWindowsProxy(reqProxy, reader)
+	if err != nil || got == nil || got.String() != "http://127.0.0.1:7890" {
+		t.Fatalf("expected proxy for github.com, got (%v, %v)", got, err)
+	}
+
+	// 多条绕过项（域名后缀与 CIDR）必须各自生效，验证逗号分隔修复。
+	reqSuffix, _ := http.NewRequest(http.MethodGet, "https://sub.example.com/path", nil)
+	if got, err := resolveWindowsProxy(reqSuffix, reader); err != nil || got != nil {
+		t.Fatalf("expected suffix bypass, got (%v, %v)", got, err)
+	}
+	reqCIDR, _ := http.NewRequest(http.MethodGet, "http://192.168.1.42/status", nil)
+	if got, err := resolveWindowsProxy(reqCIDR, reader); err != nil || got != nil {
+		t.Fatalf("expected CIDR bypass, got (%v, %v)", got, err)
+	}
+	reqLocal, _ := http.NewRequest(http.MethodGet, "http://intranet/docs", nil)
+	if got, err := resolveWindowsProxy(reqLocal, reader); err != nil || got != nil {
+		t.Fatalf("expected <local> bare-host bypass, got (%v, %v)", got, err)
+	}
+}
+
+func TestResolveDarwinProxy(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodGet, "https://example.com", nil)
+
+	got, err := resolveDarwinProxy(req, func(string) (string, bool) {
+		return "https|127.0.0.1:8443", true
+	})
+	if err != nil || got == nil || got.String() != "https://127.0.0.1:8443" {
+		t.Fatalf("unexpected darwin proxy: (%v, %v)", got, err)
+	}
+
+	if got, err := resolveDarwinProxy(req, func(string) (string, bool) { return "", false }); err != nil || got != nil {
+		t.Fatalf("expected direct connection, got (%v, %v)", got, err)
+	}
+
+	if _, err := resolveDarwinProxy(req, func(string) (string, bool) { return "malformed", true }); err == nil {
+		t.Fatalf("expected error for malformed darwin result")
+	}
 }
 
 func TestParseGSettingsValue(t *testing.T) {
@@ -75,22 +132,175 @@ func TestDesktopsOf(t *testing.T) {
 	}
 }
 
-// SystemProxy 在系统未给出代理（显式直连 / PAC / 读取失败）时应回落环境变量。开发机常带真实系统
-// 代理（返回非 nil），这种环境下回退不可观测，直接跳过。
-func TestSystemProxyFallsBackToEnvironment(t *testing.T) {
-	t.Setenv("HTTP_PROXY", "")
-	t.Setenv("HTTPS_PROXY", "")
-	t.Setenv("http_proxy", "")
-	t.Setenv("https_proxy", "")
-	request := &http.Request{URL: &url.URL{Scheme: "https", Host: "example.com"}}
-	if system, err := systemProxyFor(request); err != nil || system != nil {
-		t.Skipf("system proxy is configured (%v, %v); fallback not observable", system, err)
-	}
-	u, err := SystemProxy(request)
-	if err != nil {
-		t.Fatalf("SystemProxy returned error: %v", err)
-	}
-	if u != nil {
-		t.Fatalf("expected direct connection, got %v", u)
-	}
+func TestLinuxGSettingsProxy(t *testing.T) {
+	t.Run("遇 exec.ErrNotFound 永久短路，后续不再读取", func(t *testing.T) {
+		now := time.Date(2026, 11, 25, 10, 0, 0, 0, time.UTC)
+		calls := 0
+		proxy := newLinuxGSettingsProxy(
+			func(string) string { return "ubuntu:GNOME" },
+			func(context.Context, string, string) (string, error) {
+				calls++
+				return "", exec.ErrNotFound
+			},
+			func() time.Time { return now },
+			5*time.Second,
+		)
+		req, _ := http.NewRequest(http.MethodGet, "https://example.com", nil)
+		if got, err := proxy.Resolve(req); err != nil || got != nil {
+			t.Fatalf("unexpected first resolve: (%v, %v)", got, err)
+		}
+		now = now.Add(10 * time.Minute)
+		if got, err := proxy.Resolve(req); err != nil || got != nil {
+			t.Fatalf("unexpected second resolve: (%v, %v)", got, err)
+		}
+		if calls != 1 {
+			t.Fatalf("expected single gsettings probe before absent short-circuit, got %d", calls)
+		}
+	})
+
+	t.Run("已取消的请求上下文直接返回，不触发刷新也不毒化缓存", func(t *testing.T) {
+		calls := 0
+		proxy := newLinuxGSettingsProxy(
+			func(string) string { return "GNOME" },
+			func(context.Context, string, string) (string, error) {
+				calls++
+				return "'manual'", nil
+			},
+			time.Now,
+			5*time.Second,
+		)
+		ctx, cancel := context.WithCancel(context.Background())
+		cancel()
+		req, _ := http.NewRequestWithContext(ctx, http.MethodGet, "https://example.com", nil)
+		if _, err := proxy.Resolve(req); !errors.Is(err, context.Canceled) {
+			t.Fatalf("expected context.Canceled, got %v", err)
+		}
+		if calls != 0 {
+			t.Fatalf("canceled request must not invoke gsettings, got %d calls", calls)
+		}
+	})
+
+	t.Run("TTL 缓存命中、过期刷新，且超时不毒化既有有效缓存", func(t *testing.T) {
+		now := time.Date(2026, 11, 25, 10, 0, 0, 0, time.UTC)
+		shouldHang := false
+		values := map[string]string{
+			"org.gnome.system.proxy/mode":       "'manual'",
+			"org.gnome.system.proxy.https/host": "'127.0.0.1'",
+			"org.gnome.system.proxy.https/port": "7890",
+		}
+		var calls atomic.Int32
+		proxy := newLinuxGSettingsProxy(
+			func(string) string { return "GNOME" },
+			func(ctx context.Context, schema, key string) (string, error) {
+				calls.Add(1)
+				if shouldHang {
+					<-ctx.Done()
+					return "", ctx.Err()
+				}
+				return values[schema+"/"+key], nil
+			},
+			func() time.Time { return now },
+			5*time.Second,
+		)
+		proxy.timeout = 40 * time.Millisecond
+
+		req, _ := http.NewRequest(http.MethodGet, "https://example.com", nil)
+		got, err := proxy.Resolve(req)
+		if err != nil || got == nil || got.String() != "http://127.0.0.1:7890" {
+			t.Fatalf("first resolve: (%v, %v)", got, err)
+		}
+		firstCalls := calls.Load()
+
+		// TTL 内命中缓存，不触发新读取。
+		now = now.Add(2 * time.Second)
+		got, err = proxy.Resolve(req)
+		if err != nil || got == nil || got.String() != "http://127.0.0.1:7890" {
+			t.Fatalf("cached resolve: (%v, %v)", got, err)
+		}
+		if calls.Load() != firstCalls {
+			t.Fatalf("expected cache hit without new calls")
+		}
+
+		// TTL 过期且 D-Bus 挂起：在 timeout 内返回错误，且不覆写 p.at/p.entries（下次恢复即可刷新）。
+		now = now.Add(4 * time.Second)
+		shouldHang = true
+		start := time.Now()
+		if _, err := proxy.Resolve(req); !errors.Is(err, context.DeadlineExceeded) {
+			t.Fatalf("expected deadline exceeded on hung gsettings, got %v", err)
+		}
+		if elapsed := time.Since(start); elapsed > 500*time.Millisecond {
+			t.Fatalf("refresh timeout was not bounded: took %v", elapsed)
+		}
+
+		// 紧接着 D-Bus 恢复（未再推进时钟）：不应被上次超时锁死 5 秒，能立即读到新端口。
+		shouldHang = false
+		values["org.gnome.system.proxy.https/port"] = "7891"
+		got, err = proxy.Resolve(req)
+		if err != nil || got == nil || got.String() != "http://127.0.0.1:7891" {
+			t.Fatalf("recovery resolve after transient timeout: (%v, %v)", got, err)
+		}
+	})
+
+	t.Run("并发解析无数据竞争", func(t *testing.T) {
+		proxy := newLinuxGSettingsProxy(
+			func(string) string { return "X-Cinnamon" },
+			func(_ context.Context, schema, key string) (string, error) {
+				switch schema + "/" + key {
+				case "org.gnome.system.proxy/mode":
+					return "'manual'", nil
+				case "org.gnome.system.proxy.https/host":
+					return "'127.0.0.1'", nil
+				case "org.gnome.system.proxy.https/port":
+					return "7890", nil
+				default:
+					return "''", nil
+				}
+			},
+			time.Now,
+			5*time.Second,
+		)
+		var wg sync.WaitGroup
+		for range 12 {
+			wg.Add(1)
+			go func() {
+				defer wg.Done()
+				req, _ := http.NewRequest(http.MethodGet, "https://example.com", nil)
+				got, err := proxy.Resolve(req)
+				if err != nil || got == nil || got.String() != "http://127.0.0.1:7890" {
+					t.Errorf("concurrent resolve: (%v, %v)", got, err)
+				}
+			}()
+		}
+		wg.Wait()
+	})
+}
+
+func TestProxyResolverFallback(t *testing.T) {
+	req, _ := http.NewRequest(http.MethodGet, "https://example.com", nil)
+	envURL, _ := url.Parse("http://env.proxy:8080")
+	sysURL, _ := url.Parse("http://sys.proxy:7890")
+
+	t.Run("系统代理命中时优先返回系统代理", func(t *testing.T) {
+		r := newProxyResolver(
+			func(*http.Request) (*url.URL, error) { return sysURL, nil },
+			func(*http.Request) (*url.URL, error) { return envURL, nil },
+		)
+		got, err := r.Resolve(req)
+		if err != nil || got != sysURL {
+			t.Fatalf("expected system proxy, got (%v, %v)", got, err)
+		}
+	})
+
+	t.Run("系统代理返回 nil 或错误时确定性回落环境变量", func(t *testing.T) {
+		for _, sys := range []systemProxyLookup{
+			func(*http.Request) (*url.URL, error) { return nil, nil },
+			func(*http.Request) (*url.URL, error) { return nil, errors.New("unavailable") },
+		} {
+			r := newProxyResolver(sys, func(*http.Request) (*url.URL, error) { return envURL, nil })
+			got, err := r.Resolve(req)
+			if err != nil || got != envURL {
+				t.Fatalf("expected env fallback, got (%v, %v)", got, err)
+			}
+		}
+	})
 }

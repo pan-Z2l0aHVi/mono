@@ -59,29 +59,25 @@ static char *copy_system_proxy_for_url(const char *urlString) {
 import "C"
 
 import (
-	"fmt"
 	"net/http"
 	"net/url"
-	"strings"
 	"unsafe"
 )
 
-// systemProxyFor 按 macOS 系统设置解析代理；设置不可读或显式直连都返回 (nil, nil)。
-func systemProxyFor(req *http.Request) (*url.URL, error) {
-	if req.URL == nil {
-		return nil, fmt.Errorf("proxy: request has no URL")
+func defaultPlatformProxyLookup() systemProxyLookup {
+	return func(req *http.Request) (*url.URL, error) {
+		return resolveDarwinProxy(req, queryDarwinSystemProxy)
 	}
+}
+
+func queryDarwinSystemProxy(rawURL string) (string, bool) {
 	// C.CString 的输入指针必须释放：代理解析每请求都会走这里，不 free 会持续泄漏。
-	cURL := C.CString(req.URL.String())
+	cURL := C.CString(rawURL)
 	defer C.free(unsafe.Pointer(cURL))
 	cResult := C.copy_system_proxy_for_url(cURL)
 	if cResult == nil {
-		return nil, nil
+		return "", false
 	}
 	defer C.free(unsafe.Pointer(cResult))
-	scheme, host, found := strings.Cut(C.GoString(cResult), "|")
-	if !found || host == "" {
-		return nil, fmt.Errorf("proxy: malformed system proxy result %q", C.GoString(cResult))
-	}
-	return &url.URL{Scheme: scheme, Host: host}, nil
+	return C.GoString(cResult), true
 }

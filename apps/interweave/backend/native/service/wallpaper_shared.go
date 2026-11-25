@@ -29,16 +29,6 @@ type wallpaperStep struct {
 	commands [][]string
 }
 
-// normalizeDesktop 归一桌面分量：X-Cinnamon → CINNAMON，ubuntu 视作 GNOME（其默认桌面）。
-func normalizeDesktop(name string) string {
-	name = strings.ToUpper(strings.TrimSpace(name))
-	name = strings.TrimPrefix(name, "X-")
-	if name == "UBUNTU" {
-		return "GNOME"
-	}
-	return name
-}
-
 // wallpaperPlanFor 返回单个桌面的执行计划；不支持或无步骤返回 nil。
 // imageURI 是 file:// 形式的壁纸地址（gsettings 与 KDE 都收 URI）。
 func wallpaperPlanFor(desktop string, imageURI string) []wallpaperStep {
