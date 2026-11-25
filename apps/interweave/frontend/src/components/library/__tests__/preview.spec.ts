@@ -79,10 +79,10 @@ describe('resolvePreviewTarget', () => {
     ).toMatchObject({ mode: 'audio', mediaUrl: '/resource-media/source-1', externalTarget: '/tmp/a.mp3' })
   })
 
-  it('文本类扩展名走 text，pdf 等二进制文档落到 unsupported 且仍可外跳', () => {
-    const textExtensions = ['md', 'txt', 'csv', 'json', 'jsonl', 'yaml', 'xml', 'tex', 'html']
+  it('文本类扩展名按展示词表分派：纯 text、markdown 渲染、代码着色，pdf 等二进制落到 unsupported 且仍可外跳', () => {
+    const plainExtensions = ['txt', 'csv', 'tsv', 'tex']
     const modes = Object.fromEntries(
-      textExtensions.map(extension => [
+      plainExtensions.map(extension => [
         extension,
         resolvePreviewTarget(
           resource({
@@ -92,7 +92,41 @@ describe('resolvePreviewTarget', () => {
         ).mode
       ])
     )
-    expect(modes).toEqual(Object.fromEntries(textExtensions.map(extension => [extension, 'text'])))
+    expect(modes).toEqual(Object.fromEntries(plainExtensions.map(extension => [extension, 'text'])))
+
+    const markdownExtensions = ['md', 'markdown']
+    const markdownModes = Object.fromEntries(
+      markdownExtensions.map(extension => [
+        extension,
+        resolvePreviewTarget(
+          resource({
+            kind: ResourceKind.ResourceKindDocument,
+            preferred: source({ location: `/tmp/a.${extension}` })
+          })
+        ).mode
+      ])
+    )
+    expect(markdownModes).toEqual(Object.fromEntries(markdownExtensions.map(extension => [extension, 'markdown'])))
+
+    const codeExtensions = ['json', 'jsonl', 'yaml', 'xml', 'html', 'py', 'go']
+    const codeTargets = Object.fromEntries(
+      codeExtensions.map(extension => [
+        extension,
+        resolvePreviewTarget(
+          resource({
+            kind: ResourceKind.ResourceKindDocument,
+            preferred: source({ location: `/tmp/a.${extension}` })
+          })
+        )
+      ])
+    )
+    for (const target of Object.values(codeTargets)) {
+      expect(target.mode).toBe('code')
+      expect(target.language).toBeTruthy()
+    }
+    // 代码模式的语言来自扩展名词表，两处同源。
+    expect(codeTargets.go.language).toBe('go')
+    expect(codeTargets.json.language).toBe('json')
 
     expect(
       resolvePreviewTarget(
@@ -109,7 +143,7 @@ describe('resolvePreviewTarget', () => {
     ).toMatchObject({ mode: 'empty', emptyReason: 'unsupported-kind' })
   })
 
-  it('URL 来源交给 iframe 直连原始地址，不读媒体地址', () => {
+  it('URL 来源交给 iframe 直连原始地址，不读媒体地址；直链图片 URL 则走 image 模式', () => {
     const urlSource = source({ id: 'source-url', type: 'url', location: 'https://example.com/a' })
     const urlResource = resource({
       kind: ResourceKind.ResourceKindWeb,
@@ -121,6 +155,20 @@ describe('resolvePreviewTarget', () => {
       mode: 'url',
       mediaUrl: null,
       externalTarget: 'https://example.com/a'
+    })
+
+    // 直链图片 URL 展示层归为 image：预览用 <img>（媒体地址即原始链接），不用 iframe。
+    const imageSource = source({ id: 'source-image-url', type: 'url', location: 'https://example.com/pic.png' })
+    const imageResource = resource({
+      kind: ResourceKind.ResourceKindImage,
+      preferred: imageSource,
+      sources: [imageSource],
+      available: false
+    })
+    expect(resolvePreviewTarget(imageResource)).toMatchObject({
+      mode: 'image',
+      mediaUrl: 'https://example.com/pic.png',
+      externalTarget: 'https://example.com/pic.png'
     })
   })
 

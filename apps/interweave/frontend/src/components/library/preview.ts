@@ -2,7 +2,7 @@ import type { ResourceKind, ResourceSourceView, ResourceView } from '@/stores/li
 
 import { fileExtension, primarySource } from './presentation'
 
-export type PreviewMode = 'image' | 'video' | 'audio' | 'text' | 'url' | 'empty'
+export type PreviewMode = 'image' | 'video' | 'audio' | 'text' | 'markdown' | 'code' | 'url' | 'empty'
 
 export type PreviewEmptyReason =
   | 'no-source'
@@ -19,30 +19,77 @@ export interface PreviewTarget {
   /** 可交还系统默认应用打开的目标；两者都没有可用入口时为 null。 */
   externalTarget: string | null
   emptyReason: PreviewEmptyReason | null
+  /** mode === 'code' 时的 shiki 语言名；markdown/text 无此字段。 */
+  language?: string
 }
 
 /**
- * 纯文本扩展名清单。刻意只收「以字符为单位阅读」的类型：后端 `document` / `json`
- * kind 里还混着 pdf、docx、epub 等二进制格式，直接按 kind 铺进 `<pre>` 只会得到乱码。
- * 扩展名取自 fileExtension()，统一大写。
+ * Markdown 扩展名清单：预览时按文档渲染而不是按字符展示。
  */
-const TEXT_EXTENSIONS = new Set([
-  'CSV',
-  'GEOJSON',
-  'HTM',
-  'HTML',
-  'JSON',
-  'JSONL',
-  'MD',
-  'MARKDOWN',
-  'NDJSON',
-  'TSV',
-  'TXT',
-  'TEX',
-  'XML',
-  'YAML',
-  'YML'
-])
+const MARKDOWN_EXTENSIONS = new Set(['MD', 'MARKDOWN'])
+
+/**
+ * 代码扩展名 → shiki 语言。只收「值得着色且语言在运行时白名单内」的类型；
+ * 之外的文本扩展名仍走纯文本预览（见 TEXT_EXTENSIONS）。
+ */
+const CODE_LANGUAGE_BY_EXTENSION: Record<string, string> = {
+  BASH: 'bash',
+  C: 'c',
+  CC: 'cpp',
+  CPP: 'cpp',
+  CS: 'csharp',
+  CSS: 'css',
+  CXX: 'cpp',
+  DIFF: 'diff',
+  DOCKERFILE: 'dockerfile',
+  GEOJSON: 'json',
+  GO: 'go',
+  H: 'c',
+  HPP: 'cpp',
+  HTM: 'html',
+  HTML: 'html',
+  INI: 'ini',
+  JAVA: 'java',
+  JS: 'javascript',
+  JSON: 'json',
+  JSONL: 'json',
+  JSX: 'jsx',
+  KT: 'kotlin',
+  LESS: 'less',
+  LUA: 'lua',
+  MJS: 'javascript',
+  NDJSON: 'json',
+  PATCH: 'diff',
+  PHP: 'php',
+  PY: 'python',
+  RB: 'ruby',
+  RS: 'rust',
+  SCSS: 'scss',
+  SH: 'bash',
+  SQL: 'sql',
+  SWIFT: 'swift',
+  TOML: 'toml',
+  TS: 'ts',
+  TSX: 'tsx',
+  VUE: 'vue',
+  XML: 'xml',
+  YAML: 'yaml',
+  YML: 'yaml',
+  ZSH: 'bash'
+}
+
+/** 纯文本扩展名清单（不着色）。刻意只收「以字符为单位阅读」且不在代码词表里的类型：后端
+ * `document` / `json` kind 里还混着 pdf、docx、epub 等二进制格式，直接按 kind 铺进 `<pre>`
+ * 只会得到乱码。扩展名取自 fileExtension()，统一大写。 */
+const TEXT_EXTENSIONS = new Set(['CSV', 'TEX', 'TSV', 'TXT'])
+
+/** 供语言白名单消费：代码模式的语言集合，运行时只对着色这些语言。 */
+export const PREVIEW_LANGUAGES = [...new Set(Object.values(CODE_LANGUAGE_BY_EXTENSION))]
+
+/** code 模式的 shiki 语言名。 */
+export function previewLanguageFor(extension: string): string | undefined {
+  return CODE_LANGUAGE_BY_EXTENSION[extension]
+}
 
 /** 单次文本预览读取的字节上限；超出部分不再下载，drawer 显式标注已截断。 */
 export const TEXT_PREVIEW_BYTE_LIMIT = 512 * 1024
@@ -52,8 +99,9 @@ function filePreviewMode(kind: ResourceKind, extension: string): PreviewMode {
   if (kind === 'video') return 'video'
   if (kind === 'audio') return 'audio'
   // 刻意让 kind==='unknown'（旧客户端或后端未识别的扩展名）也走扩展名判定：
-  // 白名单是按「以字符为单位阅读」的文本类型收敛的，命中即安全展示，
-  // 比 unknown 直接落进空态更符合「文本类尽量能读」的预期。
+  // 词表按「值得渲染/阅读」收敛，命中即安全展示，比 unknown 直接落进空态更符合预期。
+  if (MARKDOWN_EXTENSIONS.has(extension)) return 'markdown'
+  if (CODE_LANGUAGE_BY_EXTENSION[extension]) return 'code'
   if (TEXT_EXTENSIONS.has(extension)) return 'text'
   return 'empty'
 }
@@ -79,6 +127,11 @@ export function resolvePreviewTarget(resource: ResourceView | null): PreviewTarg
     // available 只反映上次抓取元数据是否成功，不代表链接此刻是否可访问，
     // 用它拦截会误伤「上次抓取失败但链接仍可打开」的资源。
     if (!source.location) return emptyTarget(source, 'empty-location')
+    // 直链图片 URL 展示层归为 image：预览用 <img> 而非 iframe——大图在 iframe 里是「一篇文档」，
+    // 尺寸与滚动都不是图片预览的形状；媒体地址就是原始链接本身。
+    if (resource.kind === 'image') {
+      return { mode: 'image', source, mediaUrl: source.location, externalTarget: source.location, emptyReason: null }
+    }
     return { mode: 'url', source, mediaUrl: null, externalTarget: source.location, emptyReason: null }
   }
 
@@ -91,7 +144,14 @@ export function resolvePreviewTarget(resource: ResourceView | null): PreviewTarg
   const mediaUrl = source.mediaUrl
   if (!mediaUrl) return emptyTarget(source, 'media-unavailable', source.location)
 
-  return { mode, source, mediaUrl, externalTarget: source.location, emptyReason: null }
+  return {
+    mode,
+    source,
+    mediaUrl,
+    externalTarget: source.location,
+    emptyReason: null,
+    language: mode === 'code' ? CODE_LANGUAGE_BY_EXTENSION[fileExtension(source.location)] : undefined
+  }
 }
 
 interface TextPreviewStream {

@@ -28,6 +28,7 @@ describe('失效资源预览操作', () => {
         h(PreviewDrawer, {
           open: true,
           mobile: false,
+          openExternal: async () => {},
           resource: {
             id: 'r',
             title: '失效图片',

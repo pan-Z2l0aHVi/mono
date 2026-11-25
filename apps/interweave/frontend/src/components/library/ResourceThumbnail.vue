@@ -45,13 +45,20 @@ let mediaVersion = 0
 // 每个 media 身份只回填一次：行被虚拟列表回收重挂是常态，不设防会反复上传同一帧。
 let thumbnailSavedFor = ''
 
-const canRenderMedia = computed(
-  () =>
-    Boolean(props.mediaUrl) &&
-    props.source?.type === 'file' &&
-    props.source.available &&
-    (props.kind === 'image' || props.kind === 'video')
-)
+const canRenderMedia = computed(() => {
+  if (!displayMediaUrl.value) return false
+  if (props.source?.type === 'url') {
+    // 直链图片 URL：展示层 kind 归 image，缩略图直接渲染原始链接（系统代理由 WebView 负责）。
+    // 探测失败也尝试：available 只反映上次抓取，不代表链接此刻不可达；加载失败走 error 回退。
+    return props.kind === 'image'
+  }
+  return props.source?.type === 'file' && props.source.available && (props.kind === 'image' || props.kind === 'video')
+})
+// URL 图片的 mediaUrl prop 为空（后端 media_url 只服务 file 来源），兜底用原始链接。
+const displayMediaUrl = computed(() => {
+  if (props.mediaUrl) return props.mediaUrl
+  return props.source?.type === 'url' && props.kind === 'image' && props.source.location ? props.source.location : null
+})
 // 失效来源仍可读取已有缩略图缓存；原文件只能在来源可用时读取。
 const serverThumbActive = computed(
   () =>
@@ -286,9 +293,11 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
         v-if="kind === 'image' && !serverThumbActive && canRenderMedia && !mediaFailed"
         :key="`image-${mediaKey}`"
         ref="imageRef"
-        :src="mediaUrl ?? undefined"
+        :src="displayMediaUrl ?? undefined"
         class="size-full object-cover"
         alt=""
+        loading="lazy"
+        decoding="async"
         @load="handleImageLoad"
         @error="handleMediaError"
       />

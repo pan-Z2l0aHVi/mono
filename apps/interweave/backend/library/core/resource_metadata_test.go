@@ -48,6 +48,7 @@ func TestResourceViewMetadataUsesPreferredSource(t *testing.T) {
 			IsPreferred: false,
 		},
 	})
+	// URL 来源只有直链图片才脱离 web（见 resourceKindForURL）：.json 数据链接保持 web，无 size。
 	if kind != storage.ResourceKindWeb || size != nil {
 		t.Fatalf("expected URL source to be web without size, got kind=%q size=%v", kind, size)
 	}
@@ -137,4 +138,57 @@ func TestResourceKindForFileRepresentatives(t *testing.T) {
 			t.Errorf("resourceKindForFile(%q) = %q, want %q", location, got, want)
 		}
 	}
+}
+
+func TestResourceKindForURLDirectImage(t *testing.T) {
+	t.Run("扩展名优先", func(t *testing.T) {
+		source := &Source{Type: storage.SourceTypeURL, Location: "https://w.wallhaven.cc/full/gw/wallhaven-gwvvw7.png?x=1"}
+		if kind := resourceKindForURL(source); kind != storage.ResourceKindImage {
+			t.Fatalf("expected image, got %s", kind)
+		}
+	})
+
+	t.Run("Content-Type 兜底", func(t *testing.T) {
+		source := &Source{
+			Type:         storage.SourceTypeURL,
+			Location:     "https://example.com/blob/1234",
+			MetadataJSON: `{"content_type":"image/png"}`,
+		}
+		if kind := resourceKindForURL(source); kind != storage.ResourceKindImage {
+			t.Fatalf("expected image, got %s", kind)
+		}
+	})
+
+	t.Run("页面链接与数据链接保持 web，Content-Type 兑底只认 image", func(t *testing.T) {
+		source := &Source{
+			Type:         storage.SourceTypeURL,
+			Location:     "https://example.com/gallery",
+			MetadataJSON: `{"content_type":"text/html"}`,
+		}
+		if kind := resourceKindForURL(source); kind != storage.ResourceKindWeb {
+			t.Fatalf("expected web, got %s", kind)
+		}
+		// .json 这类已知扩展名不再是页面/直链资源的决定性证据：页面链接保持 web。
+		dataLink := &Source{Type: storage.SourceTypeURL, Location: "https://example.com/asset.json"}
+		if kind := resourceKindForURL(dataLink); kind != storage.ResourceKindWeb {
+			t.Fatalf("expected web for .json link, got %s", kind)
+		}
+	})
+
+	t.Run("元数据缺失保持 web", func(t *testing.T) {
+		source := &Source{Type: storage.SourceTypeURL, Location: "https://example.com/blob/1234"}
+		if kind := resourceKindForURL(source); kind != storage.ResourceKindWeb {
+			t.Fatalf("expected web, got %s", kind)
+		}
+	})
+
+	t.Run("展示层 kind 跟随首选来源", func(t *testing.T) {
+		kind, _ := resourceViewMetadata([]Source{
+			{Type: storage.SourceTypeFile, Location: "/tmp/note.md"},
+			{Type: storage.SourceTypeURL, Location: "https://example.com/pic.png", IsPreferred: true},
+		})
+		if kind != storage.ResourceKindImage {
+			t.Fatalf("expected image from preferred URL, got %s", kind)
+		}
+	})
 }

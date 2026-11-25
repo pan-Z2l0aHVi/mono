@@ -219,6 +219,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       defaultOpenWith: async () => '',
       showInFileManager: async () => {},
       openExternal: async () => {},
+      setWallpaper: async () => {},
       ...overrides.system
     }
   }

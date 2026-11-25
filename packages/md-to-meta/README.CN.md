@@ -86,6 +86,16 @@ export default meta
 - 类名常量：`MDM_CODE_CLASS`、`MDM_HEADING_CLASS`、`MDM_MARKDOWN_CLASS`、`MDM_MARKDOWN_SECONDARY_CLASS`、`LINE_NUMBER_CLASS`、`LINE_CLASS`
 - 辅助函数：`visibleText(html)` 与 `lineCountOf(html)`
 
+## 浏览器运行时
+
+要在浏览器里解析 markdown 或高亮代码（而不只是读取生成产物），从 `@greypan/md-to-meta/runtime` 导入：
+
+- `parseMarkdown(source, file, options)`：与生成路径同一条解析器；`options.hash` 可注入内容寻址哈希（缺省内置纯 JS 48 位，浏览器可用），`options.highlight` 可注入高亮实现（缺省是生成期实现，失败抛错）。
+- `highlightRuntime(code, lang, options)`：与生成期同一条双主题 + 行号管线，失败策略换成回退纯文本；`options.allowedLangs` 把着色收敛到宿主声明的语言集合。
+- 契约常量与辅助函数（同 `./contract`）。
+
+该子路径的包内模块图不触及 `node:` 内建；主题 CSS 用根入口导出的 `mdmThemePlugin({ darkSelector })` 挂成 `virtual:mdm-theme.css`，构建期落地。
+
 ## 命令行
 
 本包提供 `md-to-meta` 命令用于 CI 无头校验与产物追平：

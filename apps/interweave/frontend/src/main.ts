@@ -1,6 +1,8 @@
 // 必须是第一条导入：在 overlayscrollbars 求值前置空 ScrollTimeline（见模块内说明）。
 import './scroll-timeline-guard'
 import '@/assets/global.css'
+// markdown / 代码预览的主题样式：md-to-meta 的 mdmThemePlugin 虚拟模块，与生成产物同一份 renderCss。
+import 'virtual:mdm-theme.css'
 
 import { VueQueryPlugin } from '@tanstack/vue-query'
 import { createApp } from 'vue'

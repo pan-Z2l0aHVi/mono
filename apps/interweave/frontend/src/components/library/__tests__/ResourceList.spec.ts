@@ -2188,6 +2188,100 @@ describe('ResourceList：缩略图回填参数', () => {
   })
 })
 
+describe('ResourceList：设为桌面壁纸菜单', () => {
+  afterEach(() => {
+    document.body.innerHTML = ''
+  })
+
+  function source(overrides: Partial<ResourceSourceView> = {}): ResourceSourceView {
+    return {
+      id: 's9',
+      type: 'file',
+      location: '/tmp/pic.png',
+      available: true,
+      isPreferred: true,
+      orderIndex: 0,
+      mediaUrl: '/resource-media/s9',
+      thumbnailUrl: null,
+      metadata: null,
+      ...overrides
+    }
+  }
+
+  function missingSource(): ResourceSourceView {
+    return {
+      id: 's8',
+      type: 'file',
+      location: '/tmp/gone.png',
+      available: false,
+      isPreferred: true,
+      orderIndex: 0,
+      mediaUrl: null,
+      thumbnailUrl: null,
+      metadata: null
+    }
+  }
+
+  function labelsOf(host: HTMLElement) {
+    return [...host.querySelectorAll('web-ui-context-menu > .contents > web-ui-dropdown-item')].map(item =>
+      [...item.childNodes]
+        .filter(node => node.nodeType === Node.TEXT_NODE)
+        .map(node => node.textContent ?? '')
+        .join('')
+        .trim()
+    )
+  }
+
+  async function openMenuOn(mounted: Awaited<ReturnType<typeof mountList>>, index: number) {
+    mounted.rows[index]!.dispatchEvent(
+      new MouseEvent('contextmenu', { bubbles: true, cancelable: true, clientX: 4, clientY: 4 })
+    )
+    await nextTick()
+  }
+
+  it('image 资源带可用 file 来源时显示壁纸项，点击向外抛出资源', async () => {
+    const received: ResourceView[] = []
+    const target = resource({ sources: [source()], preferred: source() })
+    const mounted = await mountList([target], [], {}, { onSetWallpaper: (value: ResourceView) => received.push(value) })
+    try {
+      await openMenuOn(mounted, 0)
+      expect(mounted.host.querySelectorAll('web-ui-dropdown-item').length).toBeGreaterThan(0)
+      menuItem(mounted.host, '设为桌面壁纸').click()
+      expect(received).toHaveLength(1)
+      expect(received[0]!.id).toBe(target.id)
+    } finally {
+      mounted.unmount()
+    }
+  })
+
+  it('带 location 的 URL 图片也显示；不可用 file 来源与页面链接（web）不显示', async () => {
+    const urlImage = resource({
+      sources: [source({ type: 'url', location: 'https://example.com/pic.png', available: false })],
+      preferred: source({ type: 'url', location: 'https://example.com/pic.png', available: false })
+    })
+    const brokenImage = resource({ id: 'r2', sources: [missingSource()], preferred: missingSource() })
+    const webPage = resource({
+      id: 'r3',
+      kind: ResourceKind.ResourceKindWeb,
+      sources: [source({ type: 'url', location: 'https://example.com/' })],
+      preferred: source({ type: 'url', location: 'https://example.com/' })
+    })
+    const mounted = await mountList([urlImage, brokenImage, webPage])
+    try {
+      await openMenuOn(mounted, 0)
+      expect(labelsOf(mounted.host)).toContain('设为桌面壁纸')
+
+      await openMenuOn(mounted, 1)
+      expect(labelsOf(mounted.host)).not.toContain('设为桌面壁纸')
+
+      await openMenuOn(mounted, 2)
+      expect(labelsOf(mounted.host)).not.toContain('设为桌面壁纸')
+    } finally {
+      mounted.unmount()
+    }
+  })
+})
+
 /*
  * 回填回调挂在 ResourceThumbnail 的 prop 上，从行的 DOM 树反查它所属的组件实例拿到
  * 生产代码传下去的那个函数——这样测的是 ResourceList 实际交给子组件的签名，而不是另抄一份。

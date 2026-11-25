@@ -10,6 +10,7 @@ import ConfirmDialog from '@/components/library/ConfirmDialog.vue'
 import DetailDrawer from '@/components/library/DetailDrawer.vue'
 import DuplicateConfirmDialog from '@/components/library/DuplicateConfirmDialog.vue'
 import EditTagsDialog from '@/components/library/EditTagsDialog.vue'
+import { primarySource } from '@/components/library/presentation'
 import PreviewDrawer from '@/components/library/PreviewDrawer.vue'
 import { createPreviewLease } from '@/components/library/previewLease'
 import { DRAWER_TITLE_EDITOR_KEY, type NameEditorRef } from '@/components/library/rename'
@@ -295,6 +296,24 @@ async function showInFileManager(source: ResourceSourceView) {
 }
 
 /*
+ * 设为桌面壁纸：与 ResourceList 的菜单门控同一口径——锁定 preferred 来源；file 来源要求可用，
+ * URL 来源先经后端下载到缓存再设置（remote=true）。成功与失败都用 toast 给出可感知的反馈。
+ */
+async function setWallpaperFor(resource: ResourceView) {
+  const source = primarySource(resource)
+  if (!source) return
+  if (source.type !== 'url' && !source.available) return
+  if (source.type === 'url' && !source.location) return
+  try {
+    await runtime.system.setWallpaper(source.location, source.type === 'url')
+    toast.success('已设为桌面壁纸', { position: 'top-center' })
+  } catch (cause) {
+    console.error('设置桌面壁纸失败', cause)
+    toast.warning('无法设置桌面壁纸，请稍后重试', { position: 'top-center' })
+  }
+}
+
+/*
  * 右键「重命名」要把目标行置成激活行。
  *
  * 与另两条入口同一个理由：被操作的那一条就是当前工作对象。名字编辑器还占着焦点、
@@ -554,6 +573,7 @@ onMounted(() => {
         :resolve-default-open-with="resolveDefaultOpenWith"
         @open-default="openResource"
         @show-in-file-manager="showInFileManager"
+        @set-wallpaper="setWallpaperFor"
         @select="selectResource"
         @detail="openResourceDetail"
         @start-rename="renameResourceFromMenu"
@@ -592,6 +612,7 @@ onMounted(() => {
       v-model:open="previewOpen"
       :resource="selectedResource"
       :mobile="mobile"
+      :open-external="openExternal"
       @recover="handleRecoverSource"
     />
   </div>

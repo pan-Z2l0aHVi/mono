@@ -1,6 +1,7 @@
 import { readFileSync } from 'node:fs'
 
 import depsReload from '@greypan/deps-reload/vite'
+import { mdmThemePlugin } from '@greypan/md-to-meta'
 import { testPorts } from '@greypan/monorepo-kit/vite'
 import unpluginWebComponents from '@greypan/unplugin-web-components/vite'
 import { webUiOptimizeDeps } from '@greypan/web-ui/vite'
@@ -35,6 +36,9 @@ export default defineConfig({
     include: [
       ...webUiOptimizeDeps,
       ...externalRuntimeDeps,
+      // shiki 经 @greypan/md-to-meta 传递进来，不在 manifest 里；不显式列出会在冷缓存的
+      // browser test 中途发现它并触发 re-optimize + reload。
+      'shiki',
       // 资源长按的 browser spec 经它拿 CDP 会话派发真实触控（镜像 web-ui 的 realTouchPress）。
       // 冷缓存下同样会在用例中途触发 re-optimize + reload，把 spec 的收集直接打断。
       'vite-plus/test/browser-playwright/context'
@@ -110,6 +114,8 @@ export default defineConfig({
     // 回 loopback 时测试服务器会跟着绑通配地址。分配表与偏移见 docs/agents/build-browser.md「测试端口分配」。
     testPorts({ project: 'interweave-frontend', testName: 'browser' }),
     testPorts({ project: 'interweave-frontend-touch', testName: 'browser-touch' }),
+    // 预览抽屉的 markdown/代码样式：与生成产物同一份 renderCss（构建期落地，不经运行时注入 head）。
+    mdmThemePlugin({ darkSelector: "web-ui-theme[resolved-appearance='dark']" }),
     vueRouter({
       // 首屏实际路由为 /library（由 / 重定向而来）：保持同步不拆 chunk，其余路由按页懒加载。
       importMode: filepath => (/[/\\]pages[/\\]library(?:[/\\]|$)/.test(filepath) ? 'sync' : 'async')

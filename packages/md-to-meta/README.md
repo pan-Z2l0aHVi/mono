@@ -86,6 +86,16 @@ Browser code and tests that only read generated output should import from `@grey
 - Class constants: `MDM_CODE_CLASS`, `MDM_HEADING_CLASS`, `MDM_MARKDOWN_CLASS`, `MDM_MARKDOWN_SECONDARY_CLASS`, `LINE_NUMBER_CLASS`, `LINE_CLASS`
 - Helpers: `visibleText(html)` and `lineCountOf(html)`
 
+## Browser runtime
+
+To parse markdown or highlight code in the browser (not just read generated output), import from `@greypan/md-to-meta/runtime`:
+
+- `parseMarkdown(source, file, options)`: the same parser as the generation path; `options.hash` injects the content-addressing hash (default: a built-in pure-JS 48-bit hash, browser-safe), and `options.highlight` injects the highlighter (default: the generation one, which throws on mismatch).
+- `highlightRuntime(code, lang, options)`: the same dual-theme + line-number pipeline as generation, with the failure strategy switched to falling back to plain text; `options.allowedLangs` constrains highlighting to the host's declared language set.
+- Contract constants and helpers (same as `./contract`).
+
+This subpath's in-package module graph never touches `node:` builtins; for theme CSS, use the root entry's `mdmThemePlugin({ darkSelector })` to serve `virtual:mdm-theme.css`, materialized at build time.
+
 ## CLI
 
 The package exposes a `md-to-meta` binary for headless verification and regeneration in CI:

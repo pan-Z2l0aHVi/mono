@@ -8,12 +8,16 @@ import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { resourceIcon, unavailableResourceIcon } from './presentation'
 import { readTextPreview, resolvePreviewTarget, type PreviewEmptyReason } from './preview'
+import PreviewCode from './PreviewCode.vue'
 import PreviewImage from './PreviewImage.vue'
+import PreviewMarkdown from './PreviewMarkdown.vue'
 
 const props = defineProps<{
   open: boolean
   resource: ResourceView | null
   mobile: boolean
+  /** markdown 链接点击的出口：交系统浏览器打开（WebView 不自行导航）。 */
+  openExternal: (target: string) => Promise<void>
 }>()
 
 const emit = defineEmits<{ 'update:open': [value: boolean]; recover: [source: ResourceSourceView] }>()
@@ -47,12 +51,13 @@ const emptyState = computed(() => {
   return emptyCopy[reason]
 })
 
-// 编码不做嗅探，所以乱码提示对所有文本预览常驻；超限时再补一句截断说明。
-const textNotice = computed(() =>
-  textPreview.value?.truncated
+// 编码不做嗅探，所以乱码提示只对纯文本预览常驻；markdown / 代码按文档渲染，只有截断才提示。
+const textNotice = computed(() => {
+  if (!textPreview.value?.truncated) return target.value.mode === 'text' ? '部分文件的文字可能无法正常显示。' : ''
+  return target.value.mode === 'text'
     ? '文件过大，仅显示开头部分。部分文件的文字可能无法正常显示。'
-    : '部分文件的文字可能无法正常显示。'
-)
+    : '文件过大，仅显示开头部分。'
+})
 
 // 同 URL 再次挂载不会重新触发 load/error，key 让资源切换一定重建媒体元素。
 const mediaKey = computed(() => `${target.value.source?.id ?? ''}|${target.value.mediaUrl ?? ''}`)
@@ -80,8 +85,8 @@ watch(
       textState.value = 'idle'
       return
     }
-    textState.value = target.value.mode === 'text' ? 'loading' : 'idle'
-    if (target.value.mode === 'text') void loadText()
+    textState.value = ['text', 'markdown', 'code'].includes(target.value.mode) ? 'loading' : 'idle'
+    if (['text', 'markdown', 'code'].includes(target.value.mode)) void loadText()
   },
   { immediate: true }
 )
@@ -158,7 +163,7 @@ function handleMediaError(kind: 'image' | 'video' | 'audio') {
       v-if="open && resource"
       class="-m-5 w-[calc(100%+40px)] min-h-0 rounded-[var(--wui-drawer-radius,28px)]"
       :class="
-        target.mode === 'text'
+        ['text', 'markdown', 'code'].includes(target.mode)
           ? 'min-h-full'
           : 'grid h-[calc(100%+40px)] grid-rows-[minmax(0,1fr)] overflow-hidden mobile:h-(--wui-drawer-height)'
       "
@@ -305,11 +310,46 @@ function handleMediaError(kind: 'image' | 'video' | 'audio') {
           <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
         </web-ui-empty>
         <div v-else-if="textPreview">
-          <p class="m-0 border-b border-black/6 text-xs text-(--wui-color-text-secondary) dark:border-white/8">
+          <p
+            v-if="textNotice"
+            class="m-0 border-b border-black/6 text-xs text-(--wui-color-text-secondary) dark:border-white/8"
+          >
             {{ textNotice }}
           </p>
           <pre class="m-0 font-mono text-xs leading-5 whitespace-pre-wrap wrap-break-word">{{ textPreview.text }}</pre>
         </div>
+      </div>
+
+      <!--
+        markdown / 代码预览与纯文本同一条读取链（readTextPreview，含 512KB 截断），只是渲染层不同：
+        markdown 按文档结构渲染（样式与 web-ui demo 同源），代码带行号与语法高亮。
+      -->
+      <div v-else-if="target.mode === 'markdown' || target.mode === 'code'" class="min-h-full">
+        <div
+          v-if="textState === 'loading'"
+          class="grid min-h-[calc(100vh-40px)] place-items-center mobile:min-h-(--wui-drawer-height)"
+          role="status"
+          aria-label="正在加载预览"
+        >
+          <web-ui-spinner :size="28" />
+        </div>
+        <web-ui-empty v-else-if="textState === 'failed'" :size="72" title="无法读取这个文件" :description="textError">
+          <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
+        </web-ui-empty>
+        <template v-else-if="textPreview">
+          <p
+            v-if="textNotice"
+            class="m-0 border-b border-black/6 text-xs text-(--wui-color-text-secondary) dark:border-white/8"
+          >
+            {{ textNotice }}
+          </p>
+          <PreviewMarkdown
+            v-if="target.mode === 'markdown'"
+            :markdown="textPreview.text"
+            :open-external="openExternal"
+          />
+          <PreviewCode v-else :code="textPreview.text" :language="target.language" />
+        </template>
       </div>
 
       <!--

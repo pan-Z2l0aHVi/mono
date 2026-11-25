@@ -5,6 +5,7 @@ import { glob } from 'tinyglobby'
 
 import { fail } from './errors'
 import { parseMarkdown } from './markdown'
+import { sha256Prefix12 } from './node-hash'
 import { renderCss, renderMetaModule, renderMetaTypes } from './render'
 import type { CodeFile, GenerateResult, GeneratedFile, ResolvedOptions } from './types'
 
@@ -62,7 +63,9 @@ export async function generate(options: ResolvedOptions): Promise<GenerateResult
   for (const source of sources) {
     const base = path.basename(source).slice(0, -'.md'.length)
     const { nodes, codeFiles: docCodeFiles } = await parseMarkdown(await readFile(source, 'utf8'), source, {
-      exec: options.exec
+      exec: options.exec,
+      // 产物文件名的唯一口径：生成路径固定 Node sha256，与历史产物逐字节一致。
+      hash: sha256Prefix12
     })
     for (const codeFile of docCodeFiles) if (!codeFiles.has(codeFile.path)) codeFiles.set(codeFile.path, codeFile)
     files.push({ path: path.join(options.output, `${base}.meta.js`), content: renderMetaModule(nodes) })

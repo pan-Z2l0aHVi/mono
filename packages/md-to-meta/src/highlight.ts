@@ -15,7 +15,7 @@ function highlighter(): Promise<Highlighter> {
 }
 
 /** 未注册的语言退回纯文本：引擎不维护语言白名单，也不因为未知语言中断整次生成。 */
-function plain(code: string): string {
+export function plain(code: string): string {
   return `<pre class="shiki ${MDM_CODE_CLASS}"><code>${escapeHtml(code)}</code></pre>`
 }
 
@@ -25,8 +25,29 @@ function escapeHtml(text: string): string {
 
 /**
  * 双主题输出：`defaultColor: false` 让 shiki 把颜色写成 `--shiki-light` / `--shiki-dark` 变量，
- * 由生成的 CSS 按宿主的外观源选用，深浅色切换不需要重新生成。
- * 行号一并由 `TRANSFORMERS` 在生成期写进 HTML，宿主不需要运行时再数一遍行。
+ * 由生成的 CSS 按宿主的外观源选用，深浅色切换不需要重新生成。行号由 `TRANSFORMERS` 写进 HTML。
+ * 生成期与 `./runtime` 共用这一条管线，只分攵失败策略（见 `highlight` 与 `highlightRuntime`）。
+ */
+export function codeToHtmlWithLineNumbers(hl: Highlighter, code: string, highlightLang: string): string {
+  return hl.codeToHtml(code, {
+    lang: highlightLang,
+    themes: THEMES,
+    defaultColor: false,
+    tokenizeTimeLimit: 0,
+    transformers: TRANSFORMERS
+  })
+}
+
+/** 外框（圆角、底色、滚动）归宿主自己的样式管，这里只把类名并到 shiki 的 <pre> 上。 */
+export function framePre(html: string, file: string): string {
+  const framed = html.replace(/^<pre class="([^"]*)"/, `<pre class="$1 ${MDM_CODE_CLASS}"`)
+  if (framed === html) fail(`${file}：shiki 输出的 <pre> 形状变了，类名并不上：${html.slice(0, 80)}`)
+  return framed
+}
+
+/**
+ * 生成期高亮：完整、可重建、自证失败即报错——示例代码块同时是「被执行的那份源码」，
+ * 这条不能松，所以失败策略是 `fail` 而不是降级。浏览器侧的失败策略在 `./runtime`。
  */
 export async function highlight(code: string, lang: string, file: string): Promise<string> {
   if (!lang) return plain(code)
@@ -38,16 +59,7 @@ export async function highlight(code: string, lang: string, file: string): Promi
     return plain(code)
   }
   // 仓库文档的生成结果必须完整、可重建；分词不按机器负载截断着色。
-  const html = hl.codeToHtml(code, {
-    lang: highlightLang,
-    themes: THEMES,
-    defaultColor: false,
-    tokenizeTimeLimit: 0,
-    transformers: TRANSFORMERS
-  })
-  // 外框（圆角、底色、滚动）归宿主自己的样式管，这里只把类名并到 shiki 的 <pre> 上。
-  const framed = html.replace(/^<pre class="([^"]*)"/, `<pre class="$1 ${MDM_CODE_CLASS}"`)
-  if (framed === html) fail(`${file}：shiki 输出的 <pre> 形状变了，类名并不上：${html.slice(0, 80)}`)
+  const framed = framePre(codeToHtmlWithLineNumbers(hl, code, highlightLang), file)
   assertHtmlPreservesSource(code, framed, file)
   return framed
 }
