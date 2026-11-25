@@ -1,6 +1,7 @@
 import appScrollbarsOptions from '@greypan/app-scrollbars'
 import {
   createShellState,
+  findComponentRoute,
   isNavActive,
   NAV_ITEM_CLASS,
   NAV_SECTIONS,
@@ -140,7 +141,12 @@ export function Root() {
   }, [])
 
   const routeTitle = useRouterState({
-    select: s => s.matches.at(-1)?.staticData.title
+    select: s => {
+      const last = s.matches.at(-1)
+      if (last?.staticData.title) return last.staticData.title
+      const slug = (last?.params as { component?: string } | undefined)?.component
+      return slug ? findComponentRoute(slug)?.title : undefined
+    }
   })
 
   const updateThemeAppearance = (event: React.ChangeEvent<WebUiSelect>) => {
