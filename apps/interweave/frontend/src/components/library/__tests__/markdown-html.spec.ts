@@ -42,6 +42,20 @@ describe('sanitizeInlineHtml', () => {
     expect(html).not.toContain('/local/secret.png')
   })
 
+  it('输入自带的 data-md-href 一律剥除：raw HTML 不能绕过 scheme 白名单', () => {
+    const { html, links } = sanitizeInlineHtml(
+      '<a data-md-href="file:///etc/passwd">点我</a><a href="https://example.com/ok" data-md-href="https://example.com/ok">好链</a>'
+    )
+    // 输入自带的受控属性是攻击面：清洗器无条件剥除，只在 href 通过 allowedLinkTarget 后重写。
+    expect(links).toEqual(['https://example.com/ok'])
+    const container = document.createElement('div')
+    container.innerHTML = html
+    const anchors = [...container.querySelectorAll('a')]
+    expect(anchors[0]!.hasAttribute('data-md-href')).toBe(false)
+    expect(anchors[0]!.hasAttribute('data-md-link-dead')).toBe(true)
+    expect(anchors[1]!.getAttribute('data-md-href')).toBe('https://example.com/ok')
+  })
+
   it('白名单外标签降级为文本内容', () => {
     const { html } = sanitizeInlineHtml('<iframe src="https://evil.example"></iframe>text')
     expect(html).not.toContain('<iframe')

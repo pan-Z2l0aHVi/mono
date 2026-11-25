@@ -84,6 +84,24 @@ describe('PreviewMarkdown（浏览器）', () => {
       mounted.unmount()
     }
   })
+
+  it('raw HTML 自带的 data-md-href 不产生可点外链，点击不触发 openExternal', async () => {
+    const openExternal = vi.fn<(target: string) => Promise<void>>(() => Promise.resolve())
+    // 独立的 HTML 块才把原始标签送进 content；行内 raw HTML 会被 remark-rehype 丢掉。
+    const hostile = '前文\n\n<a data-md-href="file:///etc/passwd">\n点我\n</a>\n'
+    const mounted = mount(PreviewMarkdown, { markdown: hostile, openExternal })
+    try {
+      await waitFor(() => !!mounted.host.querySelector('[data-preview-markdown] a'), '链接未渲染')
+      const anchors = [...mounted.host.querySelectorAll('[data-preview-markdown] a')]
+      // raw 属性在清洗期被剥除：没有任何活外链，只剩死链标记。
+      expect(anchors.filter(a => a.hasAttribute('data-md-href'))).toEqual([])
+      anchors[0]!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
+      await nextTick()
+      expect(openExternal).not.toHaveBeenCalled()
+    } finally {
+      mounted.unmount()
+    }
+  })
 })
 
 describe('PreviewCode（浏览器）', () => {
