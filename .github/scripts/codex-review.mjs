@@ -3,6 +3,7 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import { createActionsRuntime, oneLine as oneLineBase, runCli } from './lib/actions-runtime.mjs'
 import {
   DIRECT_ENGINE_NAME,
   DIRECT_ERROR_FILE,
@@ -13,7 +14,7 @@ import {
   runDirectReview,
   sanitizeDirectError
 } from './lib/codex-direct-review.mjs'
-import { SPAWN_MAX_BUFFER, commandError, resolvePullNumber, run } from './lib/github.mjs'
+import { SPAWN_MAX_BUFFER, commandError, createGhClient, isHttp403, resolvePullNumber, run } from './lib/github.mjs'
 import { CODEX_CONFIG_ENV, RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
 const BASE_BRANCH = 'main'
@@ -656,8 +657,7 @@ function codeSpan(value) {
 }
 
 function oneLine(value) {
-  const single = String(value).replace(/\s+/gu, ' ')
-  return single.length > FIELD_LIMIT ? `${single.slice(0, FIELD_LIMIT)}…` : single
+  return oneLineBase(value, FIELD_LIMIT)
 }
 
 function location(finding) {
@@ -960,32 +960,27 @@ export function renderConclusion({
 }
 
 export function createGhReviewAdapter({ repository, spawn = spawnSync, cwd = process.cwd(), env = process.env }) {
-  const gh = args => {
-    const result = spawn('gh', args, { encoding: 'utf8', cwd, env, maxBuffer: SPAWN_MAX_BUFFER })
-    if (result.status !== 0) throw commandError('gh', args, result)
-    return result.stdout ?? ''
-  }
-  const get = endpoint => JSON.parse(gh(['api', endpoint]))
+  const client = createGhClient({ repository, spawn, cwd, env })
 
   return {
-    pull: number => get(`repos/${repository}/pulls/${number}`),
+    pull: number => client.getPull(number),
     // workflow_run 里没有 PR 上下文，只能用 head SHA 反查它属于哪个 PR。
-    pulls: sha => get(`repos/${repository}/commits/${sha}/pulls`),
-    listComments: number => get(`repos/${repository}/issues/${number}/comments?per_page=100`),
-    createComment: (number, body) =>
-      JSON.parse(gh(['api', '-X', 'POST', '-f', `body=${body}`, `repos/${repository}/issues/${number}/comments`])),
+    pulls: sha => client.apiJson(`commits/${sha}/pulls`),
+    listComments: number => client.apiJson(`issues/${number}/comments?per_page=100`),
+    createComment: (number, body) => client.apiJson(`issues/${number}/comments`, { method: 'POST', fields: { body } }),
     updateComment: (commentId, body) =>
-      JSON.parse(gh(['api', '-X', 'PATCH', '-f', `body=${body}`, `repos/${repository}/issues/comments/${commentId}`])),
+      client.apiJson(`issues/comments/${commentId}`, { method: 'PATCH', fields: { body } }),
     runs: headSha =>
-      get(`repos/${repository}/actions/runs?head_sha=${headSha}&event=pull_request&status=completed&per_page=20`)
-        .workflow_runs ?? [],
+      client.apiJson(`actions/runs?head_sha=${headSha}&event=pull_request&status=completed&per_page=20`)
+        ?.workflow_runs ?? [],
     // rerun-failed-jobs 返回 201 且响应体可能为空，不能走 JSON.parse。
-    rerunFailed: runId => gh(['api', '-X', 'POST', `repos/${repository}/actions/runs/${runId}/rerun-failed-jobs`]),
-    artifacts: runId => get(`repos/${repository}/actions/runs/${runId}/artifacts`).artifacts ?? [],
+    rerunFailed: runId =>
+      client.execRaw(['api', '-X', 'POST', `repos/${repository}/actions/runs/${runId}/rerun-failed-jobs`]),
+    artifacts: runId => client.apiJson(`actions/runs/${runId}/artifacts`)?.artifacts ?? [],
     // jobs 只返回最新 attempt 的那一套；结论评论要的模型 job 错误就在这一套里。
-    runJobs: runId => get(`repos/${repository}/actions/runs/${runId}/jobs?per_page=100`).jobs ?? [],
+    runJobs: runId => client.listRunJobs(runId),
     // job 日志含 ANSI 转义序列，不加 --allow-escape-sequences 会被 gh 拒绝（与 codex-autofix.mjs 同一读法）。
-    jobLog: jobId => gh(['api', '--allow-escape-sequences', `repos/${repository}/actions/jobs/${jobId}/logs`])
+    jobLog: jobId => client.getJobLog(jobId)
   }
 }
 
@@ -1910,29 +1905,17 @@ export function reviewTarget({ pull, repository, releaseBranch }) {
   return { ok: true, number: pull.number, headRef: pull.head.ref, headSha: pull.head.sha }
 }
 
-function writeOutputs(values, env = process.env) {
-  const target = env.GITHUB_OUTPUT
-  if (!target) return
-  // step output 不是 Markdown：这里只需要压成一行，转义会污染下游读到的原值。
-  const body = Object.entries(values)
-    .map(([key, value]) => `${key}=${oneLine(value)}`)
-    .join('\n')
-  fs.appendFileSync(target, `${body}\n`)
-}
-
-function appendSummary(lines) {
-  const target = process.env.GITHUB_STEP_SUMMARY
-  if (target) fs.appendFileSync(target, `${lines.join('\n')}\n`)
-}
-
-function requireEnv(names, env = process.env) {
-  return Object.fromEntries(
-    names.map(name => {
-      const value = env[name]
-      if (value === undefined || value === '') throw new Error(`${name} is missing`)
-      return [name, value]
-    })
-  )
+function resolveRuntime(runtime, env) {
+  if (runtime) return runtime
+  if (!env) return createActionsRuntime()
+  const merged = {
+    ...env,
+    GITHUB_OUTPUT: Object.hasOwn(env, 'GITHUB_OUTPUT') ? env.GITHUB_OUTPUT : process.env.GITHUB_OUTPUT,
+    GITHUB_STEP_SUMMARY: Object.hasOwn(env, 'GITHUB_STEP_SUMMARY')
+      ? env.GITHUB_STEP_SUMMARY
+      : process.env.GITHUB_STEP_SUMMARY
+  }
+  return createActionsRuntime({ env: merged })
 }
 
 /**
@@ -2045,7 +2028,7 @@ function readDirectUnusableOutput(env = process.env) {
   }
 }
 
-function logDirectRuntimeSummary(metrics, uncoveredCount) {
+function logDirectRuntimeSummary(metrics, uncoveredCount, runtime = createActionsRuntime()) {
   if (!metrics || !metrics.engine) return
   const parts = [
     `engine=${metrics.engine}`,
@@ -2059,8 +2042,8 @@ function logDirectRuntimeSummary(metrics, uncoveredCount) {
     `direct_truncated=${metrics.direct_truncated_files ?? 0}`
   ]
   if (Number.isInteger(uncoveredCount)) parts.push(`uncovered=${uncoveredCount}`)
-  console.error(`codex-review metrics: ${parts.join(' ')}`)
-  appendSummary([
+  runtime.error(`codex-review metrics: ${parts.join(' ')}`)
+  runtime.appendSummary([
     '## Codex direct review runtime',
     '',
     `- Engine: \`${metrics.engine}\``,
@@ -2072,65 +2055,74 @@ function logDirectRuntimeSummary(metrics, uncoveredCount) {
 }
 
 /** 缺配置是仓库状态故障，不是模型概率性输出：写 error 结论让门变红，且只记变量名不记值。 */
-function commandPreflight() {
-  const env = requireEnv(['RUNNER_TEMP'])
-  const { present, missing, config } = inspectConfig()
-  const configPath = path.join(env.RUNNER_TEMP, CONFIG_FILE)
-  const directory = conclusionDirectory()
+export function commandPreflight({ runtime, env } = {}) {
+  const rt = resolveRuntime(runtime, env)
+  const required = rt.requireEnv(['RUNNER_TEMP'])
+  const { present, missing, config } = inspectConfig(rt.env)
+  const configPath = path.join(required.RUNNER_TEMP, CONFIG_FILE)
+  const directory = conclusionDirectory(rt.env)
   fs.mkdirSync(directory, { recursive: true })
   if (!present) {
     fs.rmSync(configPath, { force: true })
     const reason = `missing repository configuration: ${missing.join(', ')}`
-    writeErrorMeta(directory, identityFromEnv(), 'config_missing', reason, missing)
-    writeOutputs({ configured: 'false', missing: missing.join(','), fingerprint: '' })
-    appendSummary(['## Codex review configuration', '', `- Status: **incomplete** — ${reason}`])
-    console.error(`codex configuration is incomplete: ${missing.join(', ')} (values are never logged)`)
+    writeErrorMeta(directory, identityFromEnv(rt.env), 'config_missing', reason, missing)
+    rt.writeOutputs({ configured: 'false', missing: missing.join(','), fingerprint: '' })
+    rt.appendSummary(['## Codex review configuration', '', `- Status: **incomplete** — ${reason}`])
+    rt.error(`codex configuration is incomplete: ${missing.join(', ')} (values are never logged)`)
     return
   }
   fs.writeFileSync(configPath, `${JSON.stringify(config, null, 2)}\n`)
-  writeOutputs({ configured: 'true', missing: '', fingerprint: config.fingerprint })
-  appendSummary(['## Codex review configuration', '', `- Status: **complete** (fingerprint \`${config.fingerprint}\`)`])
-  console.log(`codex configuration complete (fingerprint ${config.fingerprint}); values are never logged`)
+  rt.writeOutputs({ configured: 'true', missing: '', fingerprint: config.fingerprint })
+  rt.appendSummary([
+    '## Codex review configuration',
+    '',
+    `- Status: **complete** (fingerprint \`${config.fingerprint}\`)`
+  ])
+  rt.log(`codex configuration complete (fingerprint ${config.fingerprint}); values are never logged`)
 }
 
 export function commandPrepare({
-  env = process.env,
+  runtime,
+  env,
   command = run,
   priorHeadSha,
-  repoRoot = process.cwd(),
+  repoRoot,
   repoQueryPath,
   timeoutMs = REPO_QUERY_TIMEOUT_MS,
   spawn = spawnSync
 } = {}) {
-  const required = requireEnv(['CODEX_REVIEW_BASE_SHA', 'CODEX_REVIEW_HEAD_SHA', 'RUNNER_TEMP'], env)
+  const rt = resolveRuntime(runtime, env)
+  const effectiveEnv = rt.env
+  const effectiveRepoRoot = repoRoot ?? rt.cwd
+  const required = rt.requireEnv(['CODEX_REVIEW_BASE_SHA', 'CODEX_REVIEW_HEAD_SHA', 'RUNNER_TEMP'])
   const range = resolveReviewRange({
     baseSha: required.CODEX_REVIEW_BASE_SHA,
     headSha: required.CODEX_REVIEW_HEAD_SHA,
     priorHeadSha,
     command
   })
-  const directory = conclusionDirectory(env)
+  const directory = conclusionDirectory(effectiveEnv)
   fs.mkdirSync(directory, { recursive: true })
   fs.writeFileSync(path.join(required.RUNNER_TEMP, 'pr.diff'), range.diff)
   const routed = selectReviewSkills(range)
   const impactAnalysis = routed.some(skill => skill.name === 'monorepo-change-impact')
     ? runRepoImpactQuery(range, {
-        env,
-        repoRoot,
-        repoQueryPath: repoQueryPath ?? trustedRepoQueryPath(env),
+        env: effectiveEnv,
+        repoRoot: effectiveRepoRoot,
+        repoQueryPath: repoQueryPath ?? trustedRepoQueryPath(effectiveEnv),
         timeoutMs,
         spawn
       })
     : null
-  const preload = buildReviewPreload(range, { impactAnalysis, env })
-  fs.writeFileSync(preloadPath(env), `${preload.markdown}\n`)
-  const promptFile = trustedPromptPath(env)
+  const preload = buildReviewPreload(range, { impactAnalysis, env: effectiveEnv })
+  fs.writeFileSync(preloadPath(effectiveEnv), `${preload.markdown}\n`)
+  const promptFile = trustedPromptPath(effectiveEnv)
   if (fs.existsSync(promptFile)) {
     const currentPrompt = fs.readFileSync(promptFile, 'utf8')
     fs.writeFileSync(promptFile, injectPreloadIntoPrompt(currentPrompt, preload.markdown))
   }
   fs.writeFileSync(
-    scopePath(env),
+    scopePath(effectiveEnv),
     `${JSON.stringify(
       {
         base_sha: range.baseSha,
@@ -2155,21 +2147,18 @@ export function commandPrepare({
       2
     )}\n`
   )
-  writeOutputs(
-    {
-      base_sha: range.baseSha,
-      head_sha: range.headSha,
-      merge_base_sha: range.mergeBaseSha,
-      // 注入 CODEX_REVIEW_START_SHA 供模型按文件执行 git diff：分支合入更新后的 base 时使用合成三方合并树
-      // diffBaseSha，使单文件 git diff 与 pr.diff / changed_paths 的起点一致；review-scope.json 仍记前次 head。
-      review_start_sha: range.diffBaseSha ?? range.startSha ?? range.mergeBaseSha,
-      diff_path: path.join(required.RUNNER_TEMP, 'pr.diff'),
-      diff_bytes: String(Buffer.byteLength(range.diff)),
-      preload_path: preloadPath(env)
-    },
-    env
-  )
-  console.log(
+  rt.writeOutputs({
+    base_sha: range.baseSha,
+    head_sha: range.headSha,
+    merge_base_sha: range.mergeBaseSha,
+    // 注入 CODEX_REVIEW_START_SHA 供模型按文件执行 git diff：分支合入更新后的 base 时使用合成三方合并树
+    // diffBaseSha，使单文件 git diff 与 pr.diff / changed_paths 的起点一致；review-scope.json 仍记前次 head。
+    review_start_sha: range.diffBaseSha ?? range.startSha ?? range.mergeBaseSha,
+    diff_path: path.join(required.RUNNER_TEMP, 'pr.diff'),
+    diff_bytes: String(Buffer.byteLength(range.diff)),
+    preload_path: preloadPath(effectiveEnv)
+  })
+  rt.log(
     `review range ${range.startSha ?? range.mergeBaseSha}..${range.headSha} (${Buffer.byteLength(range.diff)} bytes, preloaded ${preload.preloadedPaths.length}/${range.changedPaths.length} files, routed ${preload.routedSkills.length} skills)`
   )
   return { range, preload, impactAnalysis }
@@ -2204,21 +2193,25 @@ export function validateIncrementalBaseline({ prior, priorScope, expectedHead, e
 }
 
 export function commandPrepareIncremental({
-  env = process.env,
+  runtime,
+  env,
   command = run,
-  repoRoot = process.cwd(),
+  repoRoot,
   repoQueryPath,
   timeoutMs = REPO_QUERY_TIMEOUT_MS,
   spawn = spawnSync
 } = {}) {
-  const required = requireEnv(['CODEX_REVIEW_HEAD_SHA', 'CODEX_REVIEW_BASE_SHA', 'RUNNER_TEMP'], env)
-  const directory = conclusionDirectory(env)
+  const rt = resolveRuntime(runtime, env)
+  const effectiveEnv = rt.env
+  const effectiveRepoRoot = repoRoot ?? rt.cwd
+  const required = rt.requireEnv(['CODEX_REVIEW_HEAD_SHA', 'CODEX_REVIEW_BASE_SHA', 'RUNNER_TEMP'])
+  const directory = conclusionDirectory(effectiveEnv)
   try {
-    const priorHeadSha = env.CODEX_REVIEW_PRIOR_HEAD_SHA
+    const priorHeadSha = effectiveEnv.CODEX_REVIEW_PRIOR_HEAD_SHA
     if (!priorHeadSha) throw new Error('no prior review head')
-    const priorDir = priorConclusionDirectory(env)
+    const priorDir = priorConclusionDirectory(effectiveEnv)
     const prior = readConclusion(priorDir)
-    const config = readConfig(env)
+    const config = readConfig(effectiveEnv)
     const priorScope = JSON.parse(fs.readFileSync(path.join(priorDir, SCOPE_FILE), 'utf8'))
     const isBaseAncestor = (priorBase, currentBase) => {
       try {
@@ -2254,7 +2247,7 @@ export function commandPrepareIncremental({
       fs.writeFileSync(path.join(required.RUNNER_TEMP, 'pr.diff'), '')
       const hasLineage = Array.isArray(prior.meta.review_lineage) && prior.meta.review_lineage.length > 0
       fs.writeFileSync(
-        scopePath(env),
+        scopePath(effectiveEnv),
         `${JSON.stringify(
           {
             base_sha: range.baseSha,
@@ -2275,7 +2268,7 @@ export function commandPrepareIncremental({
           2
         )}\n`
       )
-      const priorRunId = env.CODEX_REVIEW_PRIOR_RUN_ID ?? ''
+      const priorRunId = effectiveEnv.CODEX_REVIEW_PRIOR_RUN_ID ?? ''
       const reusedMeta = {
         head_sha: range.headSha,
         base_sha: range.baseSha,
@@ -2297,98 +2290,101 @@ export function commandPrepareIncremental({
           : {})
       }
       writeConclusion(directory, { findings: prior.findings, meta: reusedMeta })
-      writeOutputs(
-        {
-          base_sha: range.baseSha,
-          head_sha: range.headSha,
-          merge_base_sha: range.mergeBaseSha,
-          review_start_sha: prior.meta.head_sha,
-          diff_path: path.join(required.RUNNER_TEMP, 'pr.diff'),
-          diff_bytes: '0',
-          incremental: 'true',
-          reused: 'true'
-        },
-        env
-      )
-      console.log(
+      rt.writeOutputs({
+        base_sha: range.baseSha,
+        head_sha: range.headSha,
+        merge_base_sha: range.mergeBaseSha,
+        review_start_sha: prior.meta.head_sha,
+        diff_path: path.join(required.RUNNER_TEMP, 'pr.diff'),
+        diff_bytes: '0',
+        incremental: 'true',
+        reused: 'true'
+      })
+      rt.log(
         `reusing prior conclusion (zero incremental diff) from run ${priorRunId || 'unknown'} for ${priorHeadSha}..${range.headSha}`
       )
       return { incremental: true, reused: true, range }
     }
     for (const name of [FINDINGS_FILE, META_FILE]) fs.rmSync(path.join(directory, name), { force: true })
-    commandPrepare({ env, command, priorHeadSha, repoRoot, repoQueryPath, timeoutMs, spawn })
-    writeOutputs({ incremental: 'true', reused: 'false' }, env)
-    console.log(`incremental baseline ${priorHeadSha}`)
+    commandPrepare({ runtime: rt, command, priorHeadSha, repoRoot: effectiveRepoRoot, repoQueryPath, timeoutMs, spawn })
+    rt.writeOutputs({ incremental: 'true', reused: 'false' })
+    rt.log(`incremental baseline ${priorHeadSha}`)
     return { incremental: true, reused: false, range }
   } catch (error) {
     // prepare 原先生成的全量范围仍是安全的回退；重新生成也防止部分写入留下混合状态。
     for (const name of [FINDINGS_FILE, META_FILE]) fs.rmSync(path.join(directory, name), { force: true })
-    commandPrepare({ env, command, repoRoot, repoQueryPath, timeoutMs, spawn })
-    writeOutputs({ incremental: 'false', reused: 'false' }, env)
-    console.log(`using full review: ${error.message}`)
+    commandPrepare({ runtime: rt, command, repoRoot: effectiveRepoRoot, repoQueryPath, timeoutMs, spawn })
+    rt.writeOutputs({ incremental: 'false', reused: 'false' })
+    rt.log(`using full review: ${error.message}`)
     return { incremental: false, reused: false }
   }
 }
 
-function commandResolvePull() {
-  const env = requireEnv(['GITHUB_REPOSITORY', 'CODEX_REVIEW_HEAD_SHA'])
+export function commandResolvePull({ runtime, env, adapter } = {}) {
+  const rt = resolveRuntime(runtime, env)
+  const required = rt.requireEnv(['GITHUB_REPOSITORY', 'CODEX_REVIEW_HEAD_SHA'])
   const pull = findPullForHead({
-    adapter: createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY }),
-    headSha: env.CODEX_REVIEW_HEAD_SHA
+    adapter: adapter ?? createGhReviewAdapter({ repository: required.GITHUB_REPOSITORY, cwd: rt.cwd, env: rt.env }),
+    headSha: required.CODEX_REVIEW_HEAD_SHA
   })
   // pull_state 给写回 workflow 的 checkout/apply 两步用：closed（含合并）时整体 no-op。
-  writeOutputs({ pull_number: String(pull?.number ?? ''), pull_state: String(pull?.state ?? '') })
-  console.log(
+  rt.writeOutputs({ pull_number: String(pull?.number ?? ''), pull_state: String(pull?.state ?? '') })
+  rt.log(
     pull
-      ? `head ${env.CODEX_REVIEW_HEAD_SHA} belongs to pull request #${pull.number} (${pull.state})`
+      ? `head ${required.CODEX_REVIEW_HEAD_SHA} belongs to pull request #${pull.number} (${pull.state})`
       : 'no pull request owns this head'
   )
 }
 
-function commandPriorRun() {
-  const env = requireEnv(['GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'CODEX_REVIEW_HEAD_SHA'])
-  const adapter = createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY })
+export function commandPriorRun({ runtime, env, adapter } = {}) {
+  const rt = resolveRuntime(runtime, env)
+  const required = rt.requireEnv(['GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'CODEX_REVIEW_HEAD_SHA'])
+  const gh = adapter ?? createGhReviewAdapter({ repository: required.GITHUB_REPOSITORY, cwd: rt.cwd, env: rt.env })
   const reuse = findReusableRun({
-    adapter,
-    headSha: env.CODEX_REVIEW_HEAD_SHA,
-    currentRunId: env.GITHUB_RUN_ID
+    adapter: gh,
+    headSha: required.CODEX_REVIEW_HEAD_SHA,
+    currentRunId: required.GITHUB_RUN_ID
   })
   const incremental = reuse
     ? null
     : findPriorReviewRun({
-        adapter,
-        pullNumber: pullNumber(),
-        headSha: env.CODEX_REVIEW_HEAD_SHA,
-        currentRunId: env.GITHUB_RUN_ID
+        adapter: gh,
+        pullNumber: pullNumber({ env: rt.env }),
+        headSha: required.CODEX_REVIEW_HEAD_SHA,
+        currentRunId: required.GITHUB_RUN_ID
       })
-  writeOutputs({ prior_run_id: reuse?.runId ?? incremental?.runId ?? '', prior_head_sha: incremental?.headSha ?? '' })
-  console.log(reuse ? `earlier conclusion available in run ${reuse.runId}` : 'no earlier conclusion for this head')
+  rt.writeOutputs({
+    prior_run_id: reuse?.runId ?? incremental?.runId ?? '',
+    prior_head_sha: incremental?.headSha ?? ''
+  })
+  rt.log(reuse ? `earlier conclusion available in run ${reuse.runId}` : 'no earlier conclusion for this head')
 }
 
 /**
  * 复用要求 head、状态、配置指纹与覆盖清单四者都自洽：配置换了不能沿用旧模型的结论，
  * 缺少覆盖清单的旧契约产物也不能沿用——否则一次没有证据的空结论会借复用这条路回到绿色。
  */
-function commandReuse() {
-  const env = requireEnv(['CODEX_REVIEW_HEAD_SHA'])
+export function commandReuse({ runtime, env } = {}) {
+  const rt = resolveRuntime(runtime, env)
+  const required = rt.requireEnv(['CODEX_REVIEW_HEAD_SHA'])
   // 读上一轮的 artifact，写回本轮的目录；两者的 scope 不能混用。
-  const prior = priorConclusionDirectory()
-  const directory = conclusionDirectory()
-  const config = readConfig()
+  const prior = priorConclusionDirectory(rt.env)
+  const directory = conclusionDirectory(rt.env)
+  const config = readConfig(rt.env)
   let reusable = null
   let failure = ''
   try {
     const conclusion = readConclusion(prior)
     if (!conclusion?.findings) failure = 'no usable conclusion'
-    else if (conclusion.meta.head_sha !== env.CODEX_REVIEW_HEAD_SHA) failure = ''
-    else if (process.env.CODEX_REVIEW_BASE_SHA && conclusion.meta.base_sha !== process.env.CODEX_REVIEW_BASE_SHA)
+    else if (conclusion.meta.head_sha !== required.CODEX_REVIEW_HEAD_SHA) failure = ''
+    else if (rt.env.CODEX_REVIEW_BASE_SHA && conclusion.meta.base_sha !== rt.env.CODEX_REVIEW_BASE_SHA)
       failure = 'the PR base changed'
     else if (!config) failure = 'the configuration snapshot is missing'
     else if (!config.fingerprint) failure = 'the review contract fingerprint is missing'
     else if (conclusion.meta.status === 'error' || conclusion.meta.status === 'unreviewed')
       failure = 'the prior run has no reviewable conclusion'
     else if (conclusion.meta.config_fingerprint !== config.fingerprint) failure = 'the repository configuration changed'
-    else if (reuseCoverageGap(conclusion.findings, readScope()) !== '')
+    else if (reuseCoverageGap(conclusion.findings, readScope(rt.env)) !== '')
       failure = 'the prior conclusion carries no coverage evidence'
     else reusable = conclusion
   } catch (error) {
@@ -2396,48 +2392,52 @@ function commandReuse() {
   }
   if (!reusable) {
     for (const name of [FINDINGS_FILE, META_FILE]) fs.rmSync(path.join(directory, name), { force: true })
-    writeOutputs({ reused: 'false', reason: failure })
-    console.log(failure ? `discarded unusable conclusion: ${failure}` : 'no conclusion to reuse')
+    rt.writeOutputs({ reused: 'false', reason: failure })
+    rt.log(failure ? `discarded unusable conclusion: ${failure}` : 'no conclusion to reuse')
     return
   }
   writeConclusion(directory, {
     findings: reusable.findings,
     meta: {
       ...reusable.meta,
-      reused_from: process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '',
+      reused_from: rt.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '',
       reuse_reason: 'same_head'
     }
   })
-  writeOutputs({ reused: 'true', reason: '' })
-  console.log(`reusing conclusion for ${reusable.meta.head_sha}`)
+  rt.writeOutputs({ reused: 'true', reason: '' })
+  rt.log(`reusing conclusion for ${reusable.meta.head_sha}`)
 }
 
 export async function commandRun({
-  env = process.env,
-  repoRoot = process.cwd(),
+  runtime,
+  env,
+  repoRoot,
   fetchImpl = globalThis.fetch,
   spawn = spawnSync,
   sleepImpl,
   nowImpl,
   limits = {}
 } = {}) {
-  const required = requireEnv(['RUNNER_TEMP'], env)
-  const outputPath = env.CODEX_REVIEW_OUTPUT_PATH ?? path.join(required.RUNNER_TEMP, 'codex-final-message.json')
-  const runtimeFile = directRuntimePath(env)
-  const errorFile = directErrorPath(env)
-  const unusableFile = directUnusablePath(env)
+  const rt = resolveRuntime(runtime, env)
+  const resolvedEnv = rt.env
+  const resolvedRepoRoot = repoRoot ?? rt.cwd
+  const required = rt.requireEnv(['RUNNER_TEMP'])
+  const outputPath = resolvedEnv.CODEX_REVIEW_OUTPUT_PATH ?? path.join(required.RUNNER_TEMP, 'codex-final-message.json')
+  const runtimeFile = directRuntimePath(resolvedEnv)
+  const errorFile = directErrorPath(resolvedEnv)
+  const unusableFile = directUnusablePath(resolvedEnv)
   for (const stale of [outputPath, runtimeFile, errorFile, unusableFile]) {
     fs.rmSync(stale, { force: true })
   }
 
   try {
-    const scope = readScope(env)
-    const diffPath = env.CODEX_REVIEW_DIFF_PATH ?? path.join(required.RUNNER_TEMP, 'pr.diff')
+    const scope = readScope(resolvedEnv)
+    const diffPath = resolvedEnv.CODEX_REVIEW_DIFF_PATH ?? path.join(required.RUNNER_TEMP, 'pr.diff')
     const diff = fs.existsSync(diffPath) ? fs.readFileSync(diffPath, 'utf8') : ''
     const range = {
-      baseSha: scope.base_sha ?? env.CODEX_REVIEW_BASE_SHA ?? '',
-      headSha: scope.head_sha ?? env.CODEX_REVIEW_HEAD_SHA ?? '',
-      mergeBaseSha: scope.merge_base_sha ?? env.CODEX_REVIEW_MERGE_BASE_SHA ?? '',
+      baseSha: scope.base_sha ?? resolvedEnv.CODEX_REVIEW_BASE_SHA ?? '',
+      headSha: scope.head_sha ?? resolvedEnv.CODEX_REVIEW_HEAD_SHA ?? '',
+      mergeBaseSha: scope.merge_base_sha ?? resolvedEnv.CODEX_REVIEW_MERGE_BASE_SHA ?? '',
       ...(scope.review_start_sha ? { startSha: scope.review_start_sha } : {}),
       ...(scope.diff_base_sha ? { diffBaseSha: scope.diff_base_sha } : {}),
       diff,
@@ -2449,9 +2449,12 @@ export async function commandRun({
       if (fs.existsSync(preferred)) return preferred
       return path.resolve(import.meta.dirname, fallbackRelative)
     }
-    const promptFile = resolveAsset(trustedDirectPromptPath(env), '../codex/prompts/review-direct.md')
-    const turn1SchemaFile = resolveAsset(trustedTurn1SchemaPath(env), '../codex/schemas/review-turn1.schema.json')
-    const finalSchemaFile = resolveAsset(trustedFinalSchemaPath(env), '../codex/schemas/review-findings.schema.json')
+    const promptFile = resolveAsset(trustedDirectPromptPath(resolvedEnv), '../codex/prompts/review-direct.md')
+    const turn1SchemaFile = resolveAsset(trustedTurn1SchemaPath(resolvedEnv), '../codex/schemas/review-turn1.schema.json')
+    const finalSchemaFile = resolveAsset(
+      trustedFinalSchemaPath(resolvedEnv),
+      '../codex/schemas/review-findings.schema.json'
+    )
     const promptText = fs.readFileSync(promptFile, 'utf8')
     const turn1Schema = JSON.parse(fs.readFileSync(turn1SchemaFile, 'utf8'))
     const finalSchema = JSON.parse(fs.readFileSync(finalSchemaFile, 'utf8'))
@@ -2459,7 +2462,7 @@ export async function commandRun({
     let priorConclusion = null
     if (scope.incremental) {
       try {
-        priorConclusion = readConclusion(priorConclusionDirectory(env))
+        priorConclusion = readConclusion(priorConclusionDirectory(resolvedEnv))
       } catch {
         priorConclusion = null
       }
@@ -2468,11 +2471,11 @@ export async function commandRun({
     const diffByPath = splitDiffByPath(diff, range.changedPaths)
     const routedSkills = scope.empty_diff ? [] : selectReviewSkills(range, { diffByPath })
     const impactAnalysis = routedSkills.some(skill => skill.name === 'monorepo-change-impact')
-      ? runRepoImpactQuery(range, { env, repoRoot, spawn })
+      ? runRepoImpactQuery(range, { env: resolvedEnv, repoRoot: resolvedRepoRoot, spawn })
       : null
 
     const result = await runDirectReview({
-      env,
+      env: resolvedEnv,
       range,
       scope,
       priorConclusion,
@@ -2481,7 +2484,7 @@ export async function commandRun({
       promptText,
       turn1Schema,
       finalSchema,
-      repoRoot,
+      repoRoot: resolvedRepoRoot,
       trustedRoot: fs.existsSync(trustedRoot) ? trustedRoot : '',
       excludePathspecs: REVIEW_EXCLUDE_PATHSPECS,
       helpers: {
@@ -2489,7 +2492,7 @@ export async function commandRun({
         truncateUtf8ByLines,
         wrapCodeFence,
         formatImpactSummary,
-        readTrustedSkillBody: skillName => readTrustedSkillBody(skillName, { env }),
+        readTrustedSkillBody: skillName => readTrustedSkillBody(skillName, { env: resolvedEnv }),
         normalizeReviewOutput,
         parseReviewFindings,
         coverageGap,
@@ -2504,10 +2507,10 @@ export async function commandRun({
 
     fs.writeFileSync(runtimeFile, `${JSON.stringify(result.runtime, null, 2)}\n`)
     if (result.kind === 'model_failed') {
-      const sanitized = sanitizeDirectError(result.errorMessage, env.CODEX_REVIEW_API_KEY ?? '')
+      const sanitized = sanitizeDirectError(result.errorMessage, resolvedEnv.CODEX_REVIEW_API_KEY ?? '')
       fs.writeFileSync(errorFile, `${sanitized}\n`)
-      console.error(`${DIRECT_ERROR_PREFIX} ${sanitized}`)
-      process.exitCode = 1
+      rt.error(`${DIRECT_ERROR_PREFIX} ${sanitized}`)
+      rt.setExitCode(1)
       return result
     }
 
@@ -2532,28 +2535,28 @@ export async function commandRun({
         )}\n`
       )
     }
-    console.log(
+    rt.log(
       `direct review finished (${result.kind}, calls=${result.runtime.api_calls}, turns=${result.runtime.turns}, duration_ms=${result.runtime.duration_ms})`
     )
     return result
   } catch (failure) {
     let extraSecrets = []
     try {
-      const parsedExtra = JSON.parse(String(env.CODEX_REVIEW_EXTRA_HEADERS ?? '').trim() || '{}')
+      const parsedExtra = JSON.parse(String(resolvedEnv.CODEX_REVIEW_EXTRA_HEADERS ?? '').trim() || '{}')
       if (parsedExtra && typeof parsedExtra === 'object' && !Array.isArray(parsedExtra)) {
         extraSecrets = Object.values(parsedExtra).filter(value => typeof value === 'string')
       }
     } catch {
       extraSecrets = []
     }
-    const sanitized = sanitizeDirectError(failure, env.CODEX_REVIEW_API_KEY ?? '', 500, extraSecrets)
+    const sanitized = sanitizeDirectError(failure, resolvedEnv.CODEX_REVIEW_API_KEY ?? '', 500, extraSecrets)
     try {
       fs.writeFileSync(errorFile, `${sanitized}\n`)
     } catch {
       // errorFile 无法写入时仍继续输出 stderr 兜底诊断行。
     }
-    console.error(`${DIRECT_ERROR_PREFIX} ${sanitized}`)
-    process.exitCode = 1
+    rt.error(`${DIRECT_ERROR_PREFIX} ${sanitized}`)
+    rt.setExitCode(1)
     return {
       ok: false,
       kind: 'model_failed',
@@ -2564,27 +2567,28 @@ export async function commandRun({
   }
 }
 
-function commandValidate() {
-  const env = requireEnv(['CODEX_REVIEW_HEAD_SHA', 'CODEX_REVIEW_BASE_SHA', 'RUNNER_TEMP'])
-  const directory = conclusionDirectory()
+export function commandValidate({ runtime, env } = {}) {
+  const rt = resolveRuntime(runtime, env)
+  const required = rt.requireEnv(['CODEX_REVIEW_HEAD_SHA', 'CODEX_REVIEW_BASE_SHA', 'RUNNER_TEMP'])
+  const directory = conclusionDirectory(rt.env)
   fs.mkdirSync(directory, { recursive: true })
-  const identity = identityFromEnv()
-  const config = readConfig()
+  const identity = identityFromEnv(rt.env)
+  const config = readConfig(rt.env)
   const reusedPath = path.join(directory, FINDINGS_FILE)
-  const directMetrics = readDirectRuntimeMetrics()
-  const directOutputSanitized = readDirectOutputSanitized()
+  const directMetrics = readDirectRuntimeMetrics(rt.env)
+  const directOutputSanitized = readDirectOutputSanitized(rt.env)
 
   if (!config) {
     const metaPath = path.join(directory, META_FILE)
     const existing = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : null
     if (existing?.status === 'error' && existing?.error_code === 'config_missing') {
-      writeOutputs({ blocks: '0', reason: existing.error })
-      console.error(`review is error: ${existing.error}`)
+      rt.writeOutputs({ blocks: '0', reason: existing.error })
+      rt.error(`review is error: ${existing.error}`)
       return
     }
     writeErrorMeta(directory, identity, 'config_missing', 'the Codex configuration preflight did not run')
-    writeOutputs({ blocks: '0', reason: 'configuration missing' })
-    console.error('review is error: configuration preflight did not run')
+    rt.writeOutputs({ blocks: '0', reason: 'configuration missing' })
+    rt.error('review is error: configuration preflight did not run')
     return
   }
 
@@ -2594,21 +2598,21 @@ function commandValidate() {
     const prior = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : {}
     // 兜底：正常路径上 `reuse` 与 `prepare-incremental` 已经挡掉了没有覆盖清单的旧产物，
     // 这里再判一次，免得任何其它写入口把一次没有证据的空结论洗成绿色。
-    const gap = reuseCoverageGap(parsed, readScope())
+    const gap = reuseCoverageGap(parsed, readScope(rt.env))
     if (gap !== '') {
       // findings 留着：结论不可用由 status 表达，把已经看到的 Block 丢掉只会让作者少一条线索。
       writeConclusion(directory, {
         findings: parsed,
         meta: { ...identity, status: 'unreviewed', error_code: 'missing_coverage', error: gap }
       })
-      writeOutputs({ blocks: String(parsed.counts.Block), reason: gap })
-      console.error(`review is unreviewed: ${gap}`)
+      rt.writeOutputs({ blocks: String(parsed.counts.Block), reason: gap })
+      rt.error(`review is unreviewed: ${gap}`)
       return
     }
     const reusedFrom =
       typeof prior.reused_from === 'string' && prior.reused_from !== ''
         ? prior.reused_from
-        : (process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '')
+        : (rt.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '')
     const meta = {
       ...identity,
       status: 'reviewed',
@@ -2627,15 +2631,15 @@ function commandValidate() {
     if (typeof prior.generated_at === 'string' && prior.generated_at !== '') meta.generated_at = prior.generated_at
     else delete meta.generated_at
     writeConclusion(directory, { findings: parsed, meta })
-    writeOutputs({ blocks: String(parsed.counts.Block), reason: 'reused conclusion' })
-    console.log(`reused conclusion: Block ${parsed.counts.Block}`)
+    rt.writeOutputs({ blocks: String(parsed.counts.Block), reason: 'reused conclusion' })
+    rt.log(`reused conclusion: Block ${parsed.counts.Block}`)
     return
   }
 
-  const stepOutcome = (process.env.CODEX_REVIEW_STEP_OUTCOME ?? '').trim()
+  const stepOutcome = (rt.env.CODEX_REVIEW_STEP_OUTCOME ?? '').trim()
   const reviewStepAborted = REVIEW_STEP_ABORTED_OUTCOMES.has(stepOutcome)
-  const outputPath = path.join(env.RUNNER_TEMP, 'codex-final-message.json')
-  const directUnusable = !fs.existsSync(outputPath) ? readDirectUnusableOutput() : null
+  const outputPath = path.join(required.RUNNER_TEMP, 'codex-final-message.json')
+  const directUnusable = !fs.existsSync(outputPath) ? readDirectUnusableOutput(rt.env) : null
   if (directUnusable && !reviewStepAborted) {
     const reason = directUnusable.error || 'direct review output failed contract validation'
     if (directUnusable.error_code === 'missing_coverage' && directUnusable.raw_output) {
@@ -2659,10 +2663,10 @@ function commandValidate() {
             ...partialDirectExtra
           }
         })
-        logDirectRuntimeSummary(directMetrics, partialUncovered)
-        writeOutputs({ blocks: String(partial.counts.Block), reason })
-        console.error(`review is unreviewed: ${reason}`)
-        console.error(
+        logDirectRuntimeSummary(directMetrics, partialUncovered, rt)
+        rt.writeOutputs({ blocks: String(partial.counts.Block), reason })
+        rt.error(`review is unreviewed: ${reason}`)
+        rt.error(
           'Rerun the failed jobs with `gh run rerun --failed`; a repeat means the review output contract needs fixing.'
         )
         return
@@ -2673,12 +2677,11 @@ function commandValidate() {
       path.join(directory, META_FILE),
       `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: directUnusable.error_code, error: reason, ...sanitizedMeta(null, directOutputSanitized), ...directMetrics }, null, 2)}\n`
     )
-    logDirectRuntimeSummary(directMetrics)
-    writeOutputs({ blocks: '0', reason })
-    console.error(`review is unreviewed: ${reason}`)
+    logDirectRuntimeSummary(directMetrics, undefined, rt)
+    rt.writeOutputs({ blocks: '0', reason })
+    rt.error(`review is unreviewed: ${reason}`)
     return
   }
-
   let parsed = null
   let error = ''
   if (!fs.existsSync(outputPath)) {
@@ -2695,30 +2698,30 @@ function commandValidate() {
     fs.rmSync(reusedPath, { force: true })
     // continue-on-error 掩住的是 conclusion，不是 outcome：模型步骤失败、超时取消或因前置故障跳过都是 error，不能伪装成「未审查」。
     if (reviewStepAborted) {
-      const modelError = readDirectEngineError()
+      const modelError = readDirectEngineError(rt.env)
       const abortedReason =
         stepOutcome === 'failure' ? error : `review step ended with outcome=${stepOutcome} (${error})`
       writeErrorMeta(directory, identity, 'model_failed', abortedReason, [], {
         ...directMetrics,
         ...(modelError ? { model_error: modelError } : {})
       })
-      logDirectRuntimeSummary(directMetrics)
-      writeOutputs({ blocks: '0', reason: abortedReason })
-      console.error(`review is error: ${abortedReason}`)
+      logDirectRuntimeSummary(directMetrics, undefined, rt)
+      rt.writeOutputs({ blocks: '0', reason: abortedReason })
+      rt.error(`review is error: ${abortedReason}`)
       return
     }
     fs.writeFileSync(
       path.join(directory, META_FILE),
       `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: 'unusable_output', error, ...directMetrics }, null, 2)}\n`
     )
-    logDirectRuntimeSummary(directMetrics)
-    writeOutputs({ blocks: '0', reason: error })
-    console.error(`review is unreviewed: ${error}`)
+    logDirectRuntimeSummary(directMetrics, undefined, rt)
+    rt.writeOutputs({ blocks: '0', reason: error })
+    rt.error(`review is unreviewed: ${error}`)
     return
   }
 
   // 覆盖清单是结论的一部分，也是空 findings 与「没查就收尾」唯一的区分；判据见 `coverageGap`。
-  const scope = readScope()
+  const scope = readScope(rt.env)
   const gap = coverageGap(parsed, scope)
   const uncoveredCount = Array.isArray(parsed?.coverage?.uncovered) ? parsed.coverage.uncovered.length : 0
   const directRuntimeExtra = directMetrics.engine ? { ...directMetrics, uncovered_count: uncoveredCount } : {}
@@ -2735,10 +2738,10 @@ function commandValidate() {
         ...directRuntimeExtra
       }
     })
-    logDirectRuntimeSummary(directMetrics, uncoveredCount)
-    writeOutputs({ blocks: String(parsed.counts.Block), reason: gap })
-    console.error(`review is unreviewed: ${gap}`)
-    console.error(
+    logDirectRuntimeSummary(directMetrics, uncoveredCount, rt)
+    rt.writeOutputs({ blocks: String(parsed.counts.Block), reason: gap })
+    rt.error(`review is unreviewed: ${gap}`)
+    rt.error(
       'Rerun the failed jobs with `gh run rerun --failed`; a repeat means the review output contract needs fixing.'
     )
     return
@@ -2748,7 +2751,7 @@ function commandValidate() {
   let lineage
   if (scope.incremental) {
     try {
-      const prior = readConclusion(priorConclusionDirectory())
+      const prior = readConclusion(priorConclusionDirectory(rt.env))
       if (!prior?.findings?.coverage || prior.meta.head_sha !== scope.review_start_sha)
         throw new Error('baseline unavailable')
       const raw = fs.readFileSync(outputPath, 'utf8')
@@ -2766,7 +2769,7 @@ function commandValidate() {
       ]
     } catch (failure) {
       try {
-        const prior = readConclusion(priorConclusionDirectory())
+        const prior = readConclusion(priorConclusionDirectory(rt.env))
         if (prior?.findings?.coverage) {
           const unresolved = prior.findings.findings.map((_, index) => ({
             index,
@@ -2791,9 +2794,9 @@ function commandValidate() {
           ...mergedDirectExtra
         }
       })
-      logDirectRuntimeSummary(directMetrics, mergedUncoveredCount)
-      writeOutputs({ blocks: String(parsed.counts.Block), reason: failure.message })
-      console.error(`incremental review is unreviewed: ${failure.message}`)
+      logDirectRuntimeSummary(directMetrics, mergedUncoveredCount, rt)
+      rt.writeOutputs({ blocks: String(parsed.counts.Block), reason: failure.message })
+      rt.error(`incremental review is unreviewed: ${failure.message}`)
       return
     }
   }
@@ -2810,29 +2813,29 @@ function commandValidate() {
       ...(lineage ? { review_lineage: lineage } : {})
     }
   })
-  logDirectRuntimeSummary(directMetrics, finalUncoveredCount)
-  writeOutputs({ blocks: String(parsed.counts.Block), reason: '' })
-  if (parsed.summary === '') console.log('review output carries no summary; the conclusion stands on its findings')
+  logDirectRuntimeSummary(directMetrics, finalUncoveredCount, rt)
+  rt.writeOutputs({ blocks: String(parsed.counts.Block), reason: '' })
+  if (parsed.summary === '') rt.log('review output carries no summary; the conclusion stands on its findings')
   if (parsed.coverage) {
-    console.log(
+    rt.log(
       `review coverage: ${parsed.coverage.inspected.length} inspected, ${parsed.coverage.uncovered.length} uncovered`
     )
   }
-  console.log(
+  rt.log(
     `review conclusion: Block ${parsed.counts.Block}, Should fix ${parsed.counts['Should fix']}, Nit ${parsed.counts.Nit}`
   )
 }
 
-function pullNumber({ allowRefFallback = true } = {}) {
+function pullNumber({ allowRefFallback = true, env = process.env } = {}) {
   return resolvePullNumber({
-    explicit: process.env.CODEX_REVIEW_PULL_NUMBER,
-    ref: process.env.GITHUB_REF,
+    explicit: env.CODEX_REVIEW_PULL_NUMBER,
+    ref: env.GITHUB_REF,
     allowRefFallback
   })
 }
 
-function evaluateGate(adapter, pull = null, { pullNumber: resolvedNumber } = {}) {
-  const directory = conclusionDirectory()
+function evaluateGate(adapter, pull = null, { pullNumber: resolvedNumber, env = process.env } = {}) {
+  const directory = conclusionDirectory(env)
   let conclusion = null
   let readError = ''
   try {
@@ -2840,12 +2843,12 @@ function evaluateGate(adapter, pull = null, { pullNumber: resolvedNumber } = {})
   } catch (error) {
     readError = error.message
   }
-  const number = resolvedNumber ?? pullNumber()
+  const number = resolvedNumber ?? pullNumber({ env })
   if (readError === '') {
     if (!conclusion) {
       if (!number) readError = 'CI did not run for a pull request'
       else {
-        const runConclusion = process.env.CODEX_REVIEW_RUN_CONCLUSION ?? ''
+        const runConclusion = env.CODEX_REVIEW_RUN_CONCLUSION ?? ''
         readError = runConclusion
           ? `the review artifact is missing (CI run ${runConclusion})`
           : 'the review artifact is missing'
@@ -2854,7 +2857,7 @@ function evaluateGate(adapter, pull = null, { pullNumber: resolvedNumber } = {})
       readError = conclusion.meta.error ?? 'the review conclusion carries no findings'
     }
   }
-  let liveHeadSha = process.env.CODEX_REVIEW_LIVE_HEAD_SHA ?? ''
+  let liveHeadSha = env.CODEX_REVIEW_LIVE_HEAD_SHA ?? ''
   if (!liveHeadSha && number) liveHeadSha = requireSha((pull ?? adapter.pull(number)).head.sha, 'live PR head SHA')
   return {
     conclusion,
@@ -2865,16 +2868,17 @@ function evaluateGate(adapter, pull = null, { pullNumber: resolvedNumber } = {})
       findings: conclusion?.findings ?? null,
       liveHeadSha: liveHeadSha || conclusion?.meta?.head_sha || 'unknown',
       error: readError,
-      notApplicable: process.env.CODEX_REVIEW_NOT_APPLICABLE === 'true'
+      notApplicable: env.CODEX_REVIEW_NOT_APPLICABLE === 'true'
     })
   }
 }
 
-function commandGate() {
-  const env = requireEnv(['GITHUB_REPOSITORY'])
-  const adapter = createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY })
-  const { conclusion, liveHeadSha, status } = evaluateGate(adapter)
-  appendSummary([
+export function commandGate({ runtime, env, adapter } = {}) {
+  const rt = resolveRuntime(runtime, env)
+  const required = rt.requireEnv(['GITHUB_REPOSITORY'])
+  const gh = adapter ?? createGhReviewAdapter({ repository: required.GITHUB_REPOSITORY, cwd: rt.cwd, env: rt.env })
+  const { conclusion, liveHeadSha, status } = evaluateGate(gh, null, { env: rt.env })
+  rt.appendSummary([
     '## Codex review gate',
     '',
     `- Status: **${status.status}**`,
@@ -2884,23 +2888,24 @@ function commandGate() {
     `- Block ${status.counts.Block} · Should fix ${status.counts['Should fix']} · Nit ${status.counts.Nit}`,
     ...(status.reason ? [`- Reason: ${richText(status.reason)}`] : [])
   ])
-  console.log(`codex gate: ${status.status} (Block ${status.counts.Block})${status.reason ? `: ${status.reason}` : ''}`)
+  rt.log(`codex gate: ${status.status} (Block ${status.counts.Block})${status.reason ? `: ${status.reason}` : ''}`)
   if (status.blocking) {
     if (status.status === 'error') {
-      console.error(`Codex review failed (${status.code}): ${status.reason}`)
-      console.error('Fix the repository configuration or the model invocation, then rerun CI.')
+      rt.error(`Codex review failed (${status.code}): ${status.reason}`)
+      rt.error('Fix the repository configuration or the model invocation, then rerun CI.')
     } else if (status.status === 'unreviewed') {
-      console.error(`Codex review produced no usable conclusion (${status.code}): ${status.reason}`)
+      rt.error(`Codex review produced no usable conclusion (${status.code}): ${status.reason}`)
       // missing_coverage 与 unusable_output 都会由 check-review-output.mjs 让审查 job 一并判红，
       // 统一提示用 --failed 重跑审查与门禁 job。
-      console.error(
+      rt.error(
         'Rerun the failed jobs with `gh run rerun --failed`; a repeat means the review output contract needs fixing.'
       )
     } else {
-      console.error(`Block findings must be fixed before merge: ${status.counts.Block} at ${liveHeadSha}`)
+      rt.error(`Block findings must be fixed before merge: ${status.counts.Block} at ${liveHeadSha}`)
     }
-    process.exitCode = 1
+    rt.setExitCode(1)
   }
+  return status
 }
 
 // workflow_run 的 token 权限有三处会被降级：job permissions、仓库 Workflow permissions、组织策略。
@@ -2910,9 +2915,7 @@ export function withPermissionDiagnosis(number) {
     try {
       return action()
     } catch (error) {
-      // gh 把 POST 的评论正文也拼进 error.message（`-f body=...`），只认诊断性短语，
-      // 避免正文里出现 "403" 这类字样就把一次普通失败误报成权限故障。
-      if (!/Resource not accessible by integration|\bHTTP\s*403\b|\b403\s+Forbidden\b/iu.test(error.message)) {
+      if (!isHttp403(error)) {
         throw error
       }
       throw new Error(
@@ -2926,10 +2929,10 @@ export function withPermissionDiagnosis(number) {
 
 // 写回 workflow 的绿色必须能读懂：同一个 success，既可能是「发了评论」，也可能是「什么都没发」。
 // 所以每条返回路径都往运行页写一行结果，把「没发」的原因留在 Summary 里而不是只留在日志。
-function appendReportSummary({ number, status, meta, outcome }) {
+function appendReportSummary({ number, status, meta, outcome, runtime }) {
   const counts = status?.counts
-  const autoRetry = resolveAutoRetryState()
-  appendSummary([
+  const autoRetry = resolveAutoRetryState(runtime.env)
+  runtime.appendSummary([
     '## Codex 审查结论写回',
     '',
     `- PR：#${number}`,
@@ -2954,36 +2957,39 @@ function appendReportSummary({ number, status, meta, outcome }) {
  * 所有异常都收敛成 state=failed 并以 0 退出（annotation + Summary 留痕），步骤 output 一定写入，
  * 不依赖「失败步骤的 output 是否被 runner 保留」，结论评论也就不会退回误导性的手动重跑指引。
  */
-export function commandAutoRetry({ env = process.env, adapter } = {}) {
+export function commandAutoRetry({ runtime, env, adapter } = {}) {
+  const rt = resolveRuntime(runtime, env)
+  const effectiveEnv = rt.env
   let runId = ''
   let attempt = 'unknown'
   let reportAttempt = 'unknown'
   let decision = { action: 'skip', state: 'none', reason: 'auto retry did not start' }
   try {
-    const required = requireEnv(['GITHUB_REPOSITORY', 'WORKFLOW_RUN_ID'], env)
+    const required = rt.requireEnv(['GITHUB_REPOSITORY', 'WORKFLOW_RUN_ID'])
     runId = required.WORKFLOW_RUN_ID
-    attempt = String(env.WORKFLOW_RUN_ATTEMPT ?? 'unknown')
-    reportAttempt = String(env.WORKFLOW_REPORT_ATTEMPT ?? 'unknown')
-    const metaPath = path.join(conclusionDirectory(env), META_FILE)
+    attempt = String(effectiveEnv.WORKFLOW_RUN_ATTEMPT ?? 'unknown')
+    reportAttempt = String(effectiveEnv.WORKFLOW_REPORT_ATTEMPT ?? 'unknown')
+    const metaPath = path.join(conclusionDirectory(effectiveEnv), META_FILE)
     const meta = fs.existsSync(metaPath) ? JSON.parse(fs.readFileSync(metaPath, 'utf8')) : null
     decision = autoRetryDecision({
       meta,
-      runAttempt: env.WORKFLOW_RUN_ATTEMPT,
-      runConclusion: env.CODEX_REVIEW_RUN_CONCLUSION,
-      reportAttempt: env.WORKFLOW_REPORT_ATTEMPT
+      runAttempt: effectiveEnv.WORKFLOW_RUN_ATTEMPT,
+      runConclusion: effectiveEnv.CODEX_REVIEW_RUN_CONCLUSION,
+      reportAttempt: effectiveEnv.WORKFLOW_REPORT_ATTEMPT
     })
     if (decision.action === 'rerun') {
-      const client = adapter ?? createGhReviewAdapter({ repository: required.GITHUB_REPOSITORY })
+      const client =
+        adapter ?? createGhReviewAdapter({ repository: required.GITHUB_REPOSITORY, cwd: rt.cwd, env: effectiveEnv })
       client.rerunFailed(runId)
     }
-    console.log(`auto retry for run ${runId}: ${decision.action} (${decision.reason})`)
+    rt.log(`auto retry for run ${runId}: ${decision.action} (${decision.reason})`)
   } catch (error) {
     const message = error instanceof Error ? error.message : String(error)
     decision = { action: 'skip', state: 'failed', reason: `auto retry failed: ${oneLine(message)}` }
-    console.error(`::error title=Codex auto retry failed::${oneLine(message)}`)
+    rt.error(`::error title=Codex auto retry failed::${oneLine(message)}`)
   }
-  writeOutputs({ retried: decision.action === 'rerun' ? 'true' : 'false', state: decision.state })
-  appendSummary([
+  rt.writeOutputs({ retried: decision.action === 'rerun' ? 'true' : 'false', state: decision.state })
+  rt.appendSummary([
     '## Codex 空壳结论自动恢复',
     '',
     `- 触发 run：\`${runId || 'unknown'}\`（CI attempt \`${plainText(attempt)}\` / 写回 run attempt \`${plainText(reportAttempt)}\`）`,
@@ -3029,41 +3035,40 @@ export function conclusionRenderExtras({ adapter, status, meta, existing, autoRe
   }
 }
 
-function commandReport() {
-  const env = requireEnv(['GITHUB_REPOSITORY'])
-  const number = pullNumber({ allowRefFallback: false })
+export function commandReport({ runtime, env, adapter } = {}) {
+  const rt = resolveRuntime(runtime, env)
+  const required = rt.requireEnv(['GITHUB_REPOSITORY'])
+  const number = pullNumber({ allowRefFallback: false, env: rt.env })
   if (!number) throw new Error('CODEX_REVIEW_PULL_NUMBER is missing')
-  const adapter = createGhReviewAdapter({ repository: env.GITHUB_REPOSITORY })
+  const gh = adapter ?? createGhReviewAdapter({ repository: required.GITHUB_REPOSITORY, cwd: rt.cwd, env: rt.env })
   const call = withPermissionDiagnosis(number)
-  const pull = call(() => adapter.pull(number))
-  const target = reviewTarget({ pull, repository: env.GITHUB_REPOSITORY, releaseBranch: RELEASE_BRANCH })
+  const pull = call(() => gh.pull(number))
+  const target = reviewTarget({ pull, repository: required.GITHUB_REPOSITORY, releaseBranch: RELEASE_BRANCH })
   if (!target.ok) {
-    console.log(`conclusion report skipped for #${number}: ${target.reason}`)
-    appendReportSummary({ number, outcome: `未写回：${target.reason}` })
+    rt.log(`conclusion report skipped for #${number}: ${target.reason}`)
+    appendReportSummary({ number, outcome: `未写回：${target.reason}`, runtime: rt })
     return
   }
-  const { conclusion, status } = call(() => evaluateGate(adapter, pull, { pullNumber: number }))
+  const { conclusion, status } = call(() => evaluateGate(gh, pull, { pullNumber: number, env: rt.env }))
   const meta = conclusion?.meta ?? null
-  const autoRetry = resolveAutoRetryState()
-  const existing = call(() => adapter.listComments(number)).find(comment =>
-    (comment.body ?? '').includes(CONCLUSION_MARKER)
-  )
-  const extras = conclusionRenderExtras({ adapter, status, meta, existing, autoRetry })
+  const autoRetry = resolveAutoRetryState(rt.env)
+  const existing = call(() => gh.listComments(number)).find(comment => (comment.body ?? '').includes(CONCLUSION_MARKER))
+  const extras = conclusionRenderExtras({ adapter: gh, status, meta, existing, autoRetry, env: rt.env })
   const body = renderConclusion({ conclusion: status, meta, pullNumber: number, autoRetry, ...extras })
   if (existing?.body === body) {
-    console.log(`conclusion comment ${existing.id} already current`)
-    appendReportSummary({ number, status, meta, outcome: `结论评论 #${existing.id} 已是最新，未改动` })
+    rt.log(`conclusion comment ${existing.id} already current`)
+    appendReportSummary({ number, status, meta, outcome: `结论评论 #${existing.id} 已是最新，未改动`, runtime: rt })
     return
   }
   if (existing) {
-    call(() => adapter.updateComment(existing.id, body))
-    console.log(`updated conclusion comment ${existing.id} (${status.status})`)
-    appendReportSummary({ number, status, meta, outcome: `已更新结论评论 #${existing.id}` })
+    call(() => gh.updateComment(existing.id, body))
+    rt.log(`updated conclusion comment ${existing.id} (${status.status})`)
+    appendReportSummary({ number, status, meta, outcome: `已更新结论评论 #${existing.id}`, runtime: rt })
     return
   }
-  const created = call(() => adapter.createComment(number, body))
-  console.log(`created conclusion comment ${created.id} (${status.status})`)
-  appendReportSummary({ number, status, meta, outcome: `已创建结论评论 #${created.id}` })
+  const created = call(() => gh.createComment(number, body))
+  rt.log(`created conclusion comment ${created.id} (${status.status})`)
+  appendReportSummary({ number, status, meta, outcome: `已创建结论评论 #${created.id}`, runtime: rt })
 }
 
 const commands = {
@@ -3080,18 +3085,11 @@ const commands = {
   report: commandReport
 }
 
-async function main() {
-  const name = process.argv[2]
-  const handler = commands[name]
-  if (!handler) throw new Error(`usage: node codex-review.mjs <${Object.keys(commands).join('|')}>`)
-  await handler()
-}
-
 if (import.meta.url === `file://${process.argv[1]}`) {
   try {
-    await main()
+    await runCli(commands, { scriptName: 'codex-review.mjs' })
   } catch (error) {
-    console.error(error.message)
+    console.error(error instanceof Error ? error.message : String(error))
     process.exitCode = 1
   }
 }
