@@ -11,7 +11,6 @@ import (
 	"os/exec"
 	"strconv"
 	"strings"
-	"sync"
 	"time"
 
 	"golang.org/x/net/http/httpproxy"
@@ -48,10 +47,11 @@ type linuxGSettingsProxy struct {
 	ttl     time.Duration
 	timeout time.Duration
 
-	mu      sync.Mutex
-	at      time.Time
-	absent  bool
-	entries map[string]gsettingsEndpoint
+	sem        chan struct{}
+	onLockWait func() // 仅单测用于确定性观察等锁入口，生产为 nil
+	at         time.Time
+	absent     bool
+	entries    map[string]gsettingsEndpoint
 }
 
 func newLinuxGSettingsProxy(
@@ -69,6 +69,7 @@ func newLinuxGSettingsProxy(
 		now:     now,
 		ttl:     ttl,
 		timeout: gsettingsReadTimeout,
+		sem:     make(chan struct{}, 1),
 		entries: map[string]gsettingsEndpoint{},
 	}
 }
@@ -102,9 +103,32 @@ func (p *linuxGSettingsProxy) Resolve(req *http.Request) (*url.URL, error) {
 	return &url.URL{Scheme: "http", Host: endpoint.host + ":" + endpoint.port}, nil
 }
 
+func (p *linuxGSettingsProxy) lock(ctx context.Context) error {
+	select {
+	case p.sem <- struct{}{}:
+		return nil
+	default:
+	}
+	if p.onLockWait != nil {
+		p.onLockWait()
+	}
+	select {
+	case p.sem <- struct{}{}:
+		return nil
+	case <-ctx.Done():
+		return ctx.Err()
+	}
+}
+
+func (p *linuxGSettingsProxy) unlock() {
+	<-p.sem
+}
+
 func (p *linuxGSettingsProxy) endpointFor(reqCtx context.Context, scheme string) (gsettingsEndpoint, error) {
-	p.mu.Lock()
-	defer p.mu.Unlock()
+	if err := p.lock(reqCtx); err != nil {
+		return gsettingsEndpoint{}, err
+	}
+	defer p.unlock()
 
 	if err := reqCtx.Err(); err != nil {
 		return gsettingsEndpoint{}, err

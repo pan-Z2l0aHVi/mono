@@ -319,6 +319,11 @@ func TestLinuxGSettingsProxy(t *testing.T) {
 		}()
 		<-inRead
 
+		waiting := make(chan struct{})
+		proxy.onLockWait = func() {
+			close(waiting)
+		}
+
 		ctx2, cancel2 := context.WithCancel(context.Background())
 		req2, _ := http.NewRequestWithContext(ctx2, http.MethodGet, "https://example.com", nil)
 		done2 := make(chan error, 1)
@@ -327,15 +332,19 @@ func TestLinuxGSettingsProxy(t *testing.T) {
 			done2 <- err
 		}()
 
-		// 让 req2 阻塞在 p.mu.Lock() 上后取消其上下文，再释放 req1。
-		time.Sleep(20 * time.Millisecond)
+		// 确定性等待 req2 进入等锁态，取消后必须在 req1 释放锁前立即返回 context.Canceled。
+		<-waiting
 		cancel2()
-		close(releaseRead)
-
-		<-done1
-		if err := <-done2; !errors.Is(err, context.Canceled) {
-			t.Fatalf("expected context.Canceled for waiter, got %v", err)
+		select {
+		case err := <-done2:
+			if !errors.Is(err, context.Canceled) {
+				t.Fatalf("expected context.Canceled for waiter, got %v", err)
+			}
+		case <-time.After(time.Second):
+			t.Fatalf("waiter blocked until lock holder finished instead of canceling immediately")
 		}
+		close(releaseRead)
+		<-done1
 		if got := modeReads.Load(); got != 1 {
 			t.Fatalf("canceled waiter must not trigger second refresh, got %d mode reads", got)
 		}
