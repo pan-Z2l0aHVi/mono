@@ -32,6 +32,10 @@ export function createExpandingFieldController(binding: ExpandingFieldBinding): 
     pressedInsideControls = true
   }
 
+  function onControlsPointerCancel() {
+    pressedInsideControls = false
+  }
+
   function onControlsClick() {
     pressedInsideControls = false
     const fieldElement = binding.getField()
@@ -70,8 +74,10 @@ export function createExpandingFieldController(binding: ExpandingFieldBinding): 
   function detachControls() {
     if (!currentControls) return
     currentControls.removeEventListener('pointerdown', onControlsPointerDown)
+    currentControls.removeEventListener('pointercancel', onControlsPointerCancel)
     currentControls.removeEventListener('click', onControlsClick)
     currentControls = null
+    pressedInsideControls = false
   }
 
   function detachField() {
@@ -89,6 +95,7 @@ export function createExpandingFieldController(binding: ExpandingFieldBinding): 
       if (!next) return
       currentControls = next
       currentControls.addEventListener('pointerdown', onControlsPointerDown)
+      currentControls.addEventListener('pointercancel', onControlsPointerCancel)
       currentControls.addEventListener('click', onControlsClick)
     },
 

@@ -93,16 +93,6 @@ export interface ComponentRouteEntry {
   readonly docs: readonly string[]
 }
 
-const COMPONENT_ROUTES_BY_SLUG = new Map<string, ComponentRouteEntry>(
-  NAV_SECTIONS.flatMap(s =>
-    s.items.map(item => {
-      const slug = item.path.split('/').at(-1)!
-      const docs = Object.freeze(item.docs ?? [slug])
-      return [slug, Object.freeze({ slug, path: item.path, title: item.label, docs })] as const
-    })
-  )
-)
-
 function extractComponentSlug(slugOrPath: string): string | null {
   if (!slugOrPath) return null
   if (!slugOrPath.includes('/')) return slugOrPath
@@ -111,6 +101,23 @@ function extractComponentSlug(slugOrPath: string): string | null {
   const slug = rest.endsWith('/') ? rest.slice(0, -1) : rest
   return slug && !slug.includes('/') ? slug : null
 }
+
+const COMPONENT_ROUTES_BY_SLUG = (() => {
+  const map = new Map<string, ComponentRouteEntry>()
+  for (const s of NAV_SECTIONS) {
+    for (const item of s.items) {
+      if (!item.path.startsWith('/components/')) continue
+      const slug = extractComponentSlug(item.path)
+      if (!slug) continue
+      if (map.has(slug)) {
+        throw new Error(`Duplicate component route slug in NAV_SECTIONS: ${slug}`)
+      }
+      const docs = Object.freeze(item.docs ?? [slug])
+      map.set(slug, Object.freeze({ slug, path: item.path, title: item.label, docs }))
+    }
+  }
+  return map
+})()
 
 /** 根据任意导航树构造路由到 ExampleDoc 文档键集合的查询器。 */
 export function createRouteExampleDocs<Id extends string>(

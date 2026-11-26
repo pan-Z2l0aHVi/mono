@@ -105,6 +105,15 @@ export function createSearchController(options: SearchControllerOptions): Search
   let panelOpen = true
   let focusGeneration = 0
   let panelFocusGeneration = 0
+  let pendingPanelRafId: number | null = null
+
+  function cancelPendingPanelFocus() {
+    panelFocusGeneration++
+    if (pendingPanelRafId !== null) {
+      cancelAnimationFrame(pendingPanelRafId)
+      pendingPanelRafId = null
+    }
+  }
 
   let controlsEl: HTMLElement | null = null
   let inputEl: SearchUpdatableElement | null = null
@@ -165,7 +174,7 @@ export function createSearchController(options: SearchControllerOptions): Search
       if (nextOpen === open) return
       open = nextOpen
       focusGeneration++
-      panelFocusGeneration++
+      cancelPendingPanelFocus()
       if (open) focusInputWhenReady()
     },
 
@@ -178,18 +187,18 @@ export function createSearchController(options: SearchControllerOptions): Search
         const nextInput = elements.input ?? null
         const changed = nextInput !== inputEl
         inputEl = nextInput
-        if (changed) panelFocusGeneration++
+        if (changed) cancelPendingPanelFocus()
         expandingField.attachField(inputEl)
         if (changed && open && inputEl) focusInputWhenReady()
       }
       if ('popover' in elements) {
         const nextPopover = elements.popover ?? null
-        if (nextPopover !== popoverEl) panelFocusGeneration++
+        if (nextPopover !== popoverEl) cancelPendingPanelFocus()
         popoverEl = nextPopover
       }
       if ('results' in elements) {
         const nextResults = elements.results ?? null
-        if (nextResults !== resultsEl) panelFocusGeneration++
+        if (nextResults !== resultsEl) cancelPendingPanelFocus()
         resultsEl = nextResults
       }
     },
@@ -203,7 +212,7 @@ export function createSearchController(options: SearchControllerOptions): Search
     },
 
     setQuery(value) {
-      panelFocusGeneration++
+      cancelPendingPanelFocus()
       query = value
       if (value.trim()) displayQuery = value
       panelOpen = true
@@ -218,7 +227,7 @@ export function createSearchController(options: SearchControllerOptions): Search
         if (target?.closest('a[href]')) {
           event.preventDefault()
           event.stopPropagation()
-          panelFocusGeneration++
+          cancelPendingPanelFocus()
           if (panelOpen) {
             panelOpen = false
             emit()
@@ -231,7 +240,8 @@ export function createSearchController(options: SearchControllerOptions): Search
         event.preventDefault()
         panelOpen = true
         emit()
-        const gen = ++panelFocusGeneration
+        cancelPendingPanelFocus()
+        const gen = panelFocusGeneration
         const activeInput = inputEl
         const activePopover = popoverEl
         const activeResults = resultsEl
@@ -242,12 +252,14 @@ export function createSearchController(options: SearchControllerOptions): Search
           inputEl === activeInput &&
           popoverEl === activePopover &&
           resultsEl === activeResults
-        requestAnimationFrame(() => {
+        pendingPanelRafId = requestAnimationFrame(() => {
+          pendingPanelRafId = null
           if (!isCurrent()) return
           const done = activePopover?.updateComplete ?? Promise.resolve()
           void done.then(() => {
             if (!isCurrent()) return
-            requestAnimationFrame(() => {
+            pendingPanelRafId = requestAnimationFrame(() => {
+              pendingPanelRafId = null
               if (!isCurrent()) return
               if (document.activeElement === activeInput) {
                 activeResults?.querySelector<HTMLAnchorElement>('a[href]')?.focus()
@@ -270,7 +282,7 @@ export function createSearchController(options: SearchControllerOptions): Search
 
     dispose() {
       focusGeneration++
-      panelFocusGeneration++
+      cancelPendingPanelFocus()
       expandingField.dispose()
       controlsEl = null
       inputEl = null
