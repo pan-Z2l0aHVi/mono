@@ -1,7 +1,7 @@
 # ADR-0021: Codex 自动 PR 审查门
 
 - **Date**: 2026-11-04
-- **Revised**: 2026-11-23
+- **Revised**: 2026-11-26
 - **Status**: 已接受
 
 ## 背景
@@ -219,3 +219,16 @@ required checks 在 `check` 之外加入 `Codex review gate`，2026-11-23 起按
 - 存量迁移：ruleset 变更生效时已 open 的常规 PR 最后一次 CI run 用旧 ci.yml、无 gate check 上报，需一次新事件；
   version PR 的 run 停在 `action_required`，不批准则保持 Expected 停滞，不计入迁移成功判据。
 - 回滚：从 ruleset 移除 required check 即恢复现状，无需代码回滚（workflow/脚本改动可独立 revert）。
+
+## 2026-11-26 修订：审查引擎切换为直调 API 两段式架构
+
+- **动机**：基于 `openai/codex-action` 的 agentic 审查在多文件 PR 中会陷入几十至数百轮串行 shell 工具调用与多轮上下文压缩（如 PR #620 耗时 54 分钟 / 426 轮 shell / 1.85M tokens，PR #623 超过 80 分钟），成为合并队列的主要瓶颈。
+- **两段式直调架构**：`codex-review` job 的 `Review pull request with Codex` 步骤由 `openai/codex-action` 切换为可信脚本 `node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" run`（底层引擎 `lib/codex-direct-review.mjs`）：
+  - **协议兼容与自定义网关头**：默认调用 OpenAI `/responses` SSE 流式协议，端点以 `/chat/completions` 结尾时自动切至 Chat Completions 流式协议并带至多 3 项不兼容参数降级；支持可选 secret `CODEX_REVIEW_EXTRA_HEADERS`（JSON 对象，支持 `{{run_id}}` / `{{head_sha}}` 占位符、拒绝保留头与 CRLF、错误日志自动脱敏）适配需要会话路由头等的受限网关。
+  - **受控两轮收口**：Turn 1 按 5 级路径风险预打包最多 112 KB（单文件 12 KB）源码 diff 与可信 skill，可直接输出终审结论或发起最多 12 条只读代查（`read_file`、`git_diff`、`git_grep`）；宿主在无 shell 沙箱内本地批量执行（总预算 48 KB、单文件有界分块读、路径与 `.env*` 围栏、测试文件命中包裹 `<untrusted-test-content>`）后进入 Turn 2 物理锁定最终 JSON Schema 收口。
+  - **不可用隔离与跨 runner 诊断**：仅 `reviewed` 写正式输出 `codex-final-message.json`，`unusable_or_missing_coverage` 写独立诊断文件供 `validate` 稳定落 `unreviewed`（杜绝假绿）；调用失败时由同 runner `validate` 将脱敏 `model_error` 写入 `review-meta.json`，写回端优先读取，不再强依赖远程 job 日志解析。
+- **权限、Runner 与超时收紧**：
+  - 移除 `openai/codex-action` 后，不再需要 `drop-sudo` 与 `allow-bot-users` 豁免：写权限隔离由 `ci.yml` 只读 permissions + 同仓围栏 + 无 shell 沙箱共同保证，`codex-review` 解除 `ubuntu-24.04` 绑定迁回 `ubuntu-latest`；仅仍依赖 `openai/codex-action`（`workspace-write` + `drop-sudo`）的 `codex-autofix-plan` 保持固定 `ubuntu-24.04`。
+  - `codex-review` 的 `timeout-minutes` 从 `120` 收紧为 `20`（实测 5–70 文件 PR 在 `effort=high` 下耗时 48s–4m18s，20 分钟兼顾最坏重试余量与防僵死占队）。
+  - 配置指纹纳入 `engine`、`review-direct.md`、`review-turn1.schema.json` 与 `CODEX_REVIEW_EXTRA_HEADERS` 哈希，自动隔离新旧引擎结论复用。
+- **回滚**：PR-1 保留旧 `review.md` 与 `prepare` 路径兼容，单个 `git revert` 切流提交即可立即回退至 `openai/codex-action` + `ubuntu-24.04` + `timeout-minutes: 120`，无需改动后台变量。
