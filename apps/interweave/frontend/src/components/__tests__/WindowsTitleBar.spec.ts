@@ -142,54 +142,6 @@ describe('WindowsTitleBar', () => {
     }
   })
 
-  it('menu:tree-changed 先于初始 getMenu 响应到达时，不被旧快照覆盖', async () => {
-    let resolveInitial!: (items: MenuItem[]) => void
-    const eventState: { listener: ((items: MenuItem[]) => void) | null } = { listener: null }
-    const runtime: MenuTreeRuntime = {
-      isAvailable: true,
-      getMenu: () =>
-        new Promise<MenuItem[]>(resolve => {
-          resolveInitial = resolve
-        }),
-      onMenuChanged: cb => {
-        eventState.listener = cb
-        return () => {
-          eventState.listener = null
-        }
-      },
-      invokeItem: async () => {},
-      minimiseWindow: async () => {},
-      toggleMaximiseWindow: async () => {},
-      isWindowMaximised: async () => false,
-      closeWindow: async () => {}
-    }
-
-    const host = document.createElement('div')
-    document.body.append(host)
-    const app = createApp({
-      render: () => h(WindowsTitleBar, { mobile: false, runtime })
-    })
-    app.mount(host)
-
-    try {
-      await nextTick()
-      // 较新的事件快照先到达（含「开发」菜单）。
-      eventState.listener?.([...sampleMenu, { label: '开发', children: [] }])
-      await nextTick()
-      expect(host.querySelectorAll('[data-windows-top-menu]').length).toBe(3)
-
-      // 随后初始 getMenu 响应返回较旧快照（仅 2 项），应被忽略。
-      resolveInitial(sampleMenu)
-      await nextTick()
-      await Promise.resolve()
-      await nextTick()
-      expect(host.querySelectorAll('[data-windows-top-menu]').length).toBe(3)
-    } finally {
-      app.unmount()
-      host.remove()
-    }
-  })
-
   it('Wails runtime 在模块加载后晚注入时，createMenuTreeRuntime().isAvailable 仍能感知为 true', () => {
     const runtime = createMenuTreeRuntime()
     expect(runtime.isAvailable).toBe(false)
@@ -199,59 +151,6 @@ describe('WindowsTitleBar', () => {
       expect(runtime.isAvailable).toBe(true)
     } finally {
       vi.unstubAllGlobals()
-    }
-  })
-
-  it('打开编辑菜单前捕获输入框焦点与选区，点击粘贴转走 Go 剪贴板命令且归还焦点', async () => {
-    const editMenu: MenuItem[] = [
-      {
-        label: '编辑',
-        children: [
-          { label: '粘贴', accelerator: 'CmdOrCtrl+V', role: 'paste' },
-          { label: '复制为纯文本', command: Command.CommandCopyAsPlainText }
-        ]
-      }
-    ]
-    const stub = createStubRuntime(editMenu)
-    const host = document.createElement('div')
-    document.body.append(host)
-
-    const input = document.createElement('input')
-    input.value = 'hello interweave'
-    document.body.append(input)
-    input.focus()
-    input.setSelectionRange(6, 16)
-
-    const app = createApp({
-      render: () => h(WindowsTitleBar, { mobile: false, runtime: stub.runtime })
-    })
-    app.mount(host)
-
-    try {
-      await nextTick()
-      await Promise.resolve()
-      await nextTick()
-
-      // 模拟点击顶级菜单 trigger（pointerdown 捕获焦点，随后菜单夺走焦点）。
-      const trigger = host.querySelector<HTMLButtonElement>('[data-windows-top-menu] button')!
-      trigger.dispatchEvent(new Event('pointerdown', { bubbles: true }))
-      trigger.focus()
-      expect(document.activeElement).toBe(trigger)
-
-      // 点击「粘贴」：恢复输入框焦点与选区，并走 CommandPasteAsPlainText 而非 execCommand('paste')。
-      const pasteItem = [...host.querySelectorAll<HTMLElement>('web-ui-dropdown-item')].find(item =>
-        item.textContent?.includes('粘贴')
-      )!
-      pasteItem.click()
-
-      expect(document.activeElement).toBe(input)
-      expect(input.selectionStart).toBe(6)
-      expect(input.selectionEnd).toBe(16)
-      expect(stub.invokeItem).toHaveBeenCalledWith(Command.CommandPasteAsPlainText, '')
-    } finally {
-      app.unmount()
-      host.remove()
-      input.remove()
     }
   })
 

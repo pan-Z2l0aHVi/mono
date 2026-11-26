@@ -1,7 +1,8 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 
 import { Command } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu'
-import { computeDisabledCommands, createMenuStateReporter } from '../state'
+import * as MenuService from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu/service'
+import { computeDisabledCommands, createMenuStateReporter, createMenuStateRuntime } from '../state'
 
 const libraryCommands: Command[] = [
   Command.CommandRefreshLibrary,
@@ -64,5 +65,27 @@ describe('上报去重', () => {
     await expect(sync(input)).rejects.toThrow('bridge unavailable')
     await sync(input)
     expect(report).toHaveBeenCalledTimes(2)
+  })
+})
+
+describe('WailsMenuStateRuntime 动态可用性', () => {
+  it('晚注入 window._wails 后 isAvailable 动态转为 true 并触发上报', async () => {
+    const reportSpy = vi.spyOn(MenuService, 'ReportDisabledCommands').mockResolvedValue(undefined)
+    const runtime = createMenuStateRuntime()
+
+    try {
+      expect(runtime.isAvailable).toBe(false)
+      await runtime.reportDisabled([Command.CommandNavigateBack])
+      expect(reportSpy).not.toHaveBeenCalled()
+
+      vi.stubGlobal('window', { _wails: { environment: { OS: 'windows', Arch: 'amd64' } } })
+      expect(runtime.isAvailable).toBe(true)
+
+      await runtime.reportDisabled([Command.CommandNavigateBack])
+      expect(reportSpy).toHaveBeenCalledWith([Command.CommandNavigateBack])
+    } finally {
+      vi.unstubAllGlobals()
+      reportSpy.mockRestore()
+    }
   })
 })
