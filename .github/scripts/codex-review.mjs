@@ -7,6 +7,7 @@ import {
   DIRECT_ERROR_FILE,
   DIRECT_ERROR_PREFIX,
   DIRECT_RUNTIME_FILE,
+  DIRECT_UNUSABLE_FILE,
   pickDirectRuntimeMetrics,
   runDirectReview,
   sanitizeDirectError
@@ -397,22 +398,35 @@ function stripPreloadBlock(promptText) {
 
 function readTrustedAssetHashes(trustedRoot) {
   const promptFile = path.join(trustedRoot, 'codex/prompts/review.md')
+  const directPromptFile = path.join(trustedRoot, 'codex/prompts/review-direct.md')
   const schemaFile = path.join(trustedRoot, 'codex/schemas/review-findings.schema.json')
-  if (!fs.existsSync(promptFile) || !fs.existsSync(schemaFile)) return null
+  const turn1SchemaFile = path.join(trustedRoot, 'codex/schemas/review-turn1.schema.json')
+  if (
+    !fs.existsSync(promptFile) ||
+    !fs.existsSync(directPromptFile) ||
+    !fs.existsSync(schemaFile) ||
+    !fs.existsSync(turn1SchemaFile)
+  ) {
+    return null
+  }
   try {
     // 剥掉 prepare 运行时注入的 PR 预注入区块，让同一模板在 prepare 前后算出同一指纹。
     const promptText = stripPreloadBlock(fs.readFileSync(promptFile, 'utf8'))
+    const directPromptText = fs.readFileSync(directPromptFile, 'utf8')
     const schemaText = fs.readFileSync(schemaFile, 'utf8')
+    const turn1SchemaText = fs.readFileSync(turn1SchemaFile, 'utf8')
     return {
       review_prompt_sha256: createHash('sha256').update(promptText).digest('hex'),
-      review_schema_sha256: createHash('sha256').update(schemaText).digest('hex')
+      review_direct_prompt_sha256: createHash('sha256').update(directPromptText).digest('hex'),
+      review_schema_sha256: createHash('sha256').update(schemaText).digest('hex'),
+      review_turn1_schema_sha256: createHash('sha256').update(turn1SchemaText).digest('hex')
     }
   } catch {
     return null
   }
 }
 
-/** 配置快照只保留非密钥字段；指纹把后台配置、排除清单与可信审查契约绑成复用键的一部分。 */
+/** 配置快照只保留非密钥字段；指纹把后台配置、排除清单、附加请求头模板哈希与可信审查契约绑成复用键的一部分。 */
 export function inspectConfig(env = process.env, { trustedRoot = path.resolve(import.meta.dirname, '..') } = {}) {
   const text = name => (env[name] ?? '').trim()
   const missing = CONFIG_ENV.filter(name => text(name) === '')
@@ -423,12 +437,21 @@ export function inspectConfig(env = process.env, { trustedRoot = path.resolve(im
     version: text('CODEX_VERSION'),
     key_present: text('CODEX_REVIEW_API_KEY') !== ''
   }
-  // 排除清单与可信 prompt/schema 也是审查输入：任意项变更或文件缺失（fail-closed 返回空指纹）
-  // 都不能让旧结论借复用回到绿色。只进 fingerprint，不进 config 快照。
+  // 排除清单、可信 prompt/schema 与附加请求头模板（仅取哈希，绝不落明文到配置快照）也是审查输入：
+  // 任意项变更或契约文件缺失（fail-closed 返回空指纹）都不能让旧结论借复用回到绿色。
+  const extraHeadersRaw = text('CODEX_REVIEW_EXTRA_HEADERS')
+  const extraHeadersSha256 = extraHeadersRaw ? createHash('sha256').update(extraHeadersRaw).digest('hex') : ''
   const assetHashes = readTrustedAssetHashes(trustedRoot)
   const fingerprint = assetHashes
     ? createHash('sha256')
-        .update(JSON.stringify({ ...values, excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS, ...assetHashes }))
+        .update(
+          JSON.stringify({
+            ...values,
+            excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS,
+            extra_headers_sha256: extraHeadersSha256,
+            ...assetHashes
+          })
+        )
         .digest('hex')
         .slice(0, 16)
     : ''
@@ -1073,6 +1096,10 @@ export function directRuntimePath(env = process.env) {
 
 export function directErrorPath(env = process.env) {
   return path.join(env.RUNNER_TEMP ?? '.', DIRECT_ERROR_FILE)
+}
+
+export function directUnusablePath(env = process.env) {
+  return path.join(env.RUNNER_TEMP ?? '.', DIRECT_UNUSABLE_FILE)
 }
 
 export function trustedRepoQueryPath(env = process.env) {
@@ -1970,6 +1997,22 @@ function readDirectEngineError(env = process.env) {
   }
 }
 
+function readDirectUnusableOutput(env = process.env) {
+  const file = directUnusablePath(env)
+  if (!fs.existsSync(file)) return null
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'))
+    if (!parsed || typeof parsed !== 'object' || Array.isArray(parsed)) return null
+    return {
+      error_code: parsed.error_code === 'missing_coverage' ? 'missing_coverage' : 'unusable_output',
+      error: typeof parsed.error === 'string' ? parsed.error : '',
+      raw_output: typeof parsed.raw_output === 'string' ? parsed.raw_output : null
+    }
+  } catch {
+    return null
+  }
+}
+
 function logDirectRuntimeSummary(metrics, uncoveredCount) {
   if (!metrics || !metrics.engine) return
   const parts = [
@@ -2350,7 +2393,8 @@ export async function commandRun({
   const outputPath = env.CODEX_REVIEW_OUTPUT_PATH ?? path.join(required.RUNNER_TEMP, 'codex-final-message.json')
   const runtimeFile = directRuntimePath(env)
   const errorFile = directErrorPath(env)
-  for (const stale of [outputPath, runtimeFile, errorFile]) {
+  const unusableFile = directUnusablePath(env)
+  for (const stale of [outputPath, runtimeFile, errorFile, unusableFile]) {
     fs.rmSync(stale, { force: true })
   }
 
@@ -2434,8 +2478,26 @@ export async function commandRun({
     return result
   }
 
-  if (typeof result.rawOutput === 'string') {
-    fs.writeFileSync(outputPath, `${result.rawOutput}\n`)
+  // 仅当引擎确认通过全部契约（reviewed）时才写入正式输出；unusable_or_missing_coverage 写入独立诊断文件，
+  // 防止 Turn 1 协议失败但正文恰好包含合法 findings/coverage 字段时被 commandValidate 误判为 reviewed（假绿）。
+  if (result.kind === 'reviewed') {
+    if (typeof result.rawOutput === 'string') {
+      fs.writeFileSync(outputPath, `${result.rawOutput}\n`)
+    }
+  } else {
+    fs.rmSync(outputPath, { force: true })
+    fs.writeFileSync(
+      unusableFile,
+      `${JSON.stringify(
+        {
+          error_code: result.errorCode === 'missing_coverage' ? 'missing_coverage' : 'unusable_output',
+          error: result.errorMessage || 'direct review output failed contract validation',
+          raw_output: typeof result.rawOutput === 'string' ? result.rawOutput : null
+        },
+        null,
+        2
+      )}\n`
+    )
   }
   console.log(
     `direct review finished (${result.kind}, calls=${result.runtime.api_calls}, turns=${result.runtime.turns}, duration_ms=${result.runtime.duration_ms})`
@@ -2511,6 +2573,50 @@ function commandValidate() {
   }
 
   const outputPath = path.join(env.RUNNER_TEMP, 'codex-final-message.json')
+  const directUnusable = !fs.existsSync(outputPath) ? readDirectUnusableOutput() : null
+  if (directUnusable && process.env.CODEX_REVIEW_STEP_OUTCOME !== 'failure') {
+    const reason = directUnusable.error || 'direct review output failed contract validation'
+    if (directUnusable.error_code === 'missing_coverage' && directUnusable.raw_output) {
+      let partial = null
+      try {
+        partial = parseReviewFindings(directUnusable.raw_output)
+      } catch {
+        partial = null
+      }
+      if (partial) {
+        const partialUncovered = Array.isArray(partial?.coverage?.uncovered) ? partial.coverage.uncovered.length : 0
+        const partialDirectExtra = directMetrics.engine ? { ...directMetrics, uncovered_count: partialUncovered } : {}
+        writeConclusion(directory, {
+          findings: partial,
+          meta: {
+            ...identity,
+            status: 'unreviewed',
+            error_code: 'missing_coverage',
+            error: reason,
+            ...sanitizedMeta(partial),
+            ...partialDirectExtra
+          }
+        })
+        logDirectRuntimeSummary(directMetrics, partialUncovered)
+        writeOutputs({ blocks: String(partial.counts.Block), reason })
+        console.error(`review is unreviewed: ${reason}`)
+        console.error(
+          'Rerun the failed jobs with `gh run rerun --failed`; a repeat means the review output contract needs fixing.'
+        )
+        return
+      }
+    }
+    fs.rmSync(reusedPath, { force: true })
+    fs.writeFileSync(
+      path.join(directory, META_FILE),
+      `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: directUnusable.error_code, error: reason, ...directMetrics }, null, 2)}\n`
+    )
+    logDirectRuntimeSummary(directMetrics)
+    writeOutputs({ blocks: '0', reason })
+    console.error(`review is unreviewed: ${reason}`)
+    return
+  }
+
   let parsed = null
   let error = ''
   if (!fs.existsSync(outputPath)) {

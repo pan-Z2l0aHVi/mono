@@ -8,7 +8,7 @@
 
 工具与钩子不会自动覆盖的边界：
 
-- **已跟踪面复跑**：`test-scripts`、`check-context`、`check-policy` 只扫 Git 已跟踪文件（`git ls-files`）；新增脚本、测试或文档进入跟踪面（暂存或提交）后须重跑，未跟踪态通过不算数。
+- **已跟踪面复跑**：`test-scripts` 与 `check-context` 的全仓 Markdown 链接扫描依赖 `git ls-files`（只扫已跟踪文件，其余目录遍历策略读工作树）；改动含新增脚本、测试或文档时，暂存或提交使其进入跟踪面后须重跑，未跟踪态通过不算数。
 - **远端基准面校验**：`pre-commit` 不覆盖全量 `check` 也不跑 `check-changeset`；推送前以当前 `origin/main` 与 `HEAD` 本地跑通 `check-changeset`。
 - **稀疏检出先还原**：实施期启用过 [`apps-sparse-checkout`](../../.agents/skills/apps-sparse-checkout/SKILL.md) 时，推送前先 `--restore` 恢复全树再跑全量 `check`。
 - **唯一跳过例外**：仅本机确实缺少某项 CI 专属运行时（如跨平台工具链或无头浏览器）时可跳过该单项，并在交付记录与推送授权中逐项列出未跑项与原因。

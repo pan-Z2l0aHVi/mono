@@ -9,6 +9,7 @@ export const DIRECT_ENGINE_NAME = 'direct-responses-api'
 export const DIRECT_ERROR_PREFIX = 'CODEX_DIRECT_ERROR:'
 export const DIRECT_RUNTIME_FILE = 'codex-review-runtime.json'
 export const DIRECT_ERROR_FILE = 'codex-review-engine-error.txt'
+export const DIRECT_UNUSABLE_FILE = 'codex-review-unusable-output.json'
 
 export const DIRECT_MAX_PATHS = 120
 export const DIRECT_MAX_FILES = 60
@@ -20,6 +21,7 @@ export const CONTEXT_PER_ITEM_BYTES = 12 * 1024
 export const CONTEXT_TOTAL_BYTES = 48 * 1024
 export const CONTEXT_READ_DEFAULT_LINES = 250
 export const CONTEXT_READ_MAX_LINES = 300
+export const CONTEXT_READ_MAX_FILE_BYTES = 2 * 1024 * 1024
 export const CONTEXT_GREP_MAX_MATCHES = 40
 export const CONTEXT_GREP_MAX_PER_FILE = 20
 export const CONTEXT_SUBPROCESS_TIMEOUT_MS = 5_000
@@ -31,6 +33,7 @@ export const DIRECT_PROGRESS_INTERVAL_MS = 10_000
 
 const DEFAULT_GREP_ROOTS = Object.freeze(['packages', 'apps', 'scripts', '.github'])
 const SHA_PATTERN = /^[0-9a-f]{40,64}$/iu
+const SENSITIVE_ENV_PATH_PATTERN = /(?:^|\/)\.env(?:\.[^/]+)?$/iu
 // eslint-disable-next-line no-control-regex
 const ANSI_PATTERN = /\u001b\[[0-9;]*m/gu
 const TRUSTED_VENDORED_WHITELIST = Object.freeze(
@@ -354,7 +357,7 @@ export function resolveSandboxedPath(rawPath, { repoRoot, trustedRoot = '', allo
   if (normalized === '.git' || normalized.startsWith('.git/')) {
     return { ok: false, reason: 'access to .git internals is forbidden' }
   }
-  if (/(?:^|\/)\.env(?:\.[^/]+)?$/iu.test(normalized)) {
+  if (SENSITIVE_ENV_PATH_PATTERN.test(normalized)) {
     return { ok: false, reason: 'access to .env files is forbidden' }
   }
   if (isExcludedGeneratedPath(normalized)) {
@@ -546,7 +549,24 @@ export function buildDirectReviewPacket({
             lines.push(...formatImpact(impactAnalysis))
           }
         } else {
-          lines.push(`- **\`${skill.name}\`**（触发依据：${skill.reason}；命中：${hitList}${hitMore}）：${skill.focus}`)
+          const directFocus = String(skill.focus ?? '').replace(
+            /(?:\$\{?RUNNER_TEMP\}?\/trusted\/)(\.agents\/skills-vendored\/)/gu,
+            '$1'
+          )
+          const mappedPointers = (Array.isArray(skill.pointerFiles) ? skill.pointerFiles : [])
+            .map(item =>
+              String(item ?? '')
+                .trim()
+                .replace(/^\$\{?RUNNER_TEMP\}?\/trusted\//u, '')
+            )
+            .filter(item => TRUSTED_VENDORED_WHITELIST.has(item))
+          const pointerHint =
+            mappedPointers.length > 0
+              ? ` 可经 \`read_file\` 按需读取：${mappedPointers.map(item => `\`${item}\``).join('、')}（宿主自动映射到可信副本）。`
+              : ''
+          lines.push(
+            `- **\`${skill.name}\`**（触发依据：${skill.reason}；命中：${hitList}${hitMore}）：${directFocus}${pointerHint}`
+          )
         }
       }
     }
@@ -665,32 +685,95 @@ export function resolveContextDiffBase(scope) {
   return ''
 }
 
-function executeSingleReadFile(req, { repoRoot, trustedRoot, budgetBytes, truncate }) {
+function readBoundedUtf8Prefix(filePath, maxBytes, targetLineCount) {
+  const chunkSize = Math.min(64 * 1024, Math.max(8192, maxBytes))
+  const fd = fs.openSync(filePath, 'r')
+  const chunks = []
+  let totalRead = 0
+  let newlineCount = 0
+  let reachedEof = false
+  try {
+    while (totalRead < maxBytes) {
+      const toRead = Math.min(chunkSize, maxBytes - totalRead)
+      const buf = Buffer.allocUnsafe(toRead)
+      const bytesRead = fs.readSync(fd, buf, 0, toRead, totalRead)
+      if (bytesRead <= 0) {
+        reachedEof = true
+        break
+      }
+      const slice = bytesRead === toRead ? buf : buf.subarray(0, bytesRead)
+      if (totalRead < 8192) {
+        const sampleEnd = Math.min(bytesRead, 8192 - totalRead)
+        if (slice.subarray(0, sampleEnd).includes(0)) {
+          return { binary: true, text: '', totalRead: totalRead + bytesRead, reachedEof: false }
+        }
+      }
+      chunks.push(slice)
+      totalRead += bytesRead
+      for (let i = 0; i < bytesRead; i += 1) {
+        if (slice[i] === 0x0a) newlineCount += 1
+      }
+      if (targetLineCount > 0 && newlineCount >= targetLineCount) {
+        break
+      }
+    }
+    if (!reachedEof && totalRead === maxBytes) {
+      const probe = Buffer.allocUnsafe(1)
+      if (fs.readSync(fd, probe, 0, 1, totalRead) <= 0) reachedEof = true
+    }
+  } finally {
+    fs.closeSync(fd)
+  }
+  return { binary: false, text: Buffer.concat(chunks, totalRead).toString('utf8'), totalRead, reachedEof }
+}
+
+function executeSingleReadFile(req, { repoRoot, trustedRoot, budgetBytes, maxFileBytes, truncate }) {
   const check = resolveSandboxedPath(req.path, { repoRoot, trustedRoot, allowTrustedVendored: true })
   if (!check.ok) return { ok: false, body: `拒绝读取：${check.reason}`, bytes: 0 }
-  if (!fs.existsSync(check.absolutePath) || !fs.statSync(check.absolutePath).isFile()) {
-    return { ok: false, body: `文件不存在：${check.normalized}`, bytes: 0 }
+  try {
+    if (!fs.existsSync(check.absolutePath)) {
+      return { ok: false, body: `文件不存在：${check.normalized}`, bytes: 0 }
+    }
+    const stat = fs.statSync(check.absolutePath)
+    if (!stat.isFile()) {
+      return { ok: false, body: `文件不存在：${check.normalized}`, bytes: 0 }
+    }
+    const requestedStart = req.start_line > 0 ? req.start_line : 1
+    const requestedEnd = req.end_line >= requestedStart ? req.end_line : requestedStart + CONTEXT_READ_DEFAULT_LINES - 1
+    const cappedEnd = Math.min(requestedEnd, requestedStart + CONTEXT_READ_MAX_LINES - 1)
+    const readCapBytes = Math.max(8192, maxFileBytes ?? CONTEXT_READ_MAX_FILE_BYTES)
+    const readResult = readBoundedUtf8Prefix(check.absolutePath, readCapBytes, cappedEnd + 1)
+    if (readResult.binary) {
+      return { ok: false, body: `二进制文件不予展开：${check.normalized}`, bytes: 0 }
+    }
+    const allLines = readResult.text.split(/\r?\n/u)
+    if (!readResult.reachedEof && requestedStart > allLines.length) {
+      return {
+        ok: false,
+        body: `文件超过读取上限（${stat.size} > ${readCapBytes} bytes），无法定位到 L${requestedStart}：${check.normalized}`,
+        bytes: 0
+      }
+    }
+    const startLine = Math.min(requestedStart, Math.max(1, allLines.length))
+    const endLine = Math.min(allLines.length, cappedEnd)
+    const numbered = []
+    for (let lineNo = startLine; lineNo <= endLine; lineNo += 1) {
+      numbered.push(`L${lineNo}: ${allLines[lineNo - 1]}`)
+    }
+    const slice = truncate(numbered.join('\n'), budgetBytes)
+    const isTestFile = classifyDirectPathRisk(check.normalized).category === 'test'
+    const lineSummary = readResult.reachedEof
+      ? `全文件共 ${allLines.length} 行`
+      : `文件大小 ${stat.size} bytes，仅读取前 ${readResult.totalRead} bytes`
+    const header = `范围：L${startLine}..L${endLine}（${lineSummary}${slice.truncated ? '，内容按字节预算截断' : ''}）`
+    const wrapped = isTestFile
+      ? `<untrusted-test-content path="${check.normalized}">\n${slice.text}\n</untrusted-test-content>`
+      : slice.text
+    return { ok: true, header, body: wrapped, bytes: slice.shownBytes, truncated: slice.truncated }
+  } catch (failure) {
+    const message = failure instanceof Error ? failure.message : String(failure)
+    return { ok: false, body: `读取失败（${check.normalized}）：${message}`, bytes: 0 }
   }
-  const buffer = fs.readFileSync(check.absolutePath)
-  const sample = buffer.subarray(0, Math.min(buffer.length, 8192))
-  if (sample.includes(0)) {
-    return { ok: false, body: `二进制文件不予展开：${check.normalized}`, bytes: 0 }
-  }
-  const allLines = buffer.toString('utf8').split(/\r?\n/u)
-  const startLine = req.start_line > 0 ? Math.min(req.start_line, Math.max(1, allLines.length)) : 1
-  const requestedEnd = req.end_line >= startLine ? req.end_line : startLine + CONTEXT_READ_DEFAULT_LINES - 1
-  const endLine = Math.min(allLines.length, requestedEnd, startLine + CONTEXT_READ_MAX_LINES - 1)
-  const numbered = []
-  for (let lineNo = startLine; lineNo <= endLine; lineNo += 1) {
-    numbered.push(`L${lineNo}: ${allLines[lineNo - 1]}`)
-  }
-  const slice = truncate(numbered.join('\n'), budgetBytes)
-  const isTestFile = classifyDirectPathRisk(check.normalized).category === 'test'
-  const header = `范围：L${startLine}..L${endLine}（全文件共 ${allLines.length} 行${slice.truncated ? '，内容按字节预算截断' : ''}）`
-  const wrapped = isTestFile
-    ? `<untrusted-test-content path="${check.normalized}">\n${slice.text}\n</untrusted-test-content>`
-    : slice.text
-  return { ok: true, header, body: wrapped, bytes: slice.shownBytes, truncated: slice.truncated }
 }
 
 function executeSingleGitDiff(req, { repoRoot, trustedRoot, scope, budgetBytes, spawn, timeoutMs, truncate }) {
@@ -768,6 +851,9 @@ function executeSingleGitGrep(
     '--',
     ...searchTargets,
     ...(Array.isArray(excludePathspecs) ? excludePathspecs : []),
+    ':(exclude,glob).git/**',
+    ':(exclude,glob)**/.env',
+    ':(exclude,glob)**/.env.*',
     ':(exclude,glob).agents/skills/**',
     ':(exclude,glob).agents/skills-vendored/**'
   ]
@@ -791,13 +877,55 @@ function executeSingleGitGrep(
     .split(/\r?\n/u)
     .filter(line => line !== '')
     .filter(line => {
-      const filePart = line.split(':', 1)[0] ?? ''
-      return !filePart.startsWith('.agents/skills/') && !filePart.startsWith('.agents/skills-vendored/')
+      const filePart = (line.split(':', 1)[0] ?? '').replaceAll('\\', '/').replace(/^\.\//u, '')
+      if (filePart === '' || filePart === '.git' || filePart.startsWith('.git/')) return false
+      if (SENSITIVE_ENV_PATH_PATTERN.test(filePart)) return false
+      if (isExcludedGeneratedPath(filePart)) return false
+      if (
+        filePart === '.agents/skills' ||
+        filePart.startsWith('.agents/skills/') ||
+        filePart === '.agents/skills-vendored' ||
+        filePart.startsWith('.agents/skills-vendored/')
+      ) {
+        return false
+      }
+      return true
     })
+  if (matchedLines.length === 0) {
+    return { ok: true, header: `字面量 \`${query}\` 命中 0 条`, body: '（无匹配结果）', bytes: 0 }
+  }
   const limited = matchedLines.slice(0, CONTEXT_GREP_MAX_MATCHES)
+  // 与 read_file / git_diff 保持同一隔离口径：测试文件命中行按路径包裹 <untrusted-test-content>，防夹具提示注入。
+  const formattedBlocks = []
+  let activeTestPath = null
+  let activeTestLines = []
+  const flushTestBlock = () => {
+    if (activeTestPath !== null && activeTestLines.length > 0) {
+      formattedBlocks.push(
+        `<untrusted-test-content path="${activeTestPath}">\n${activeTestLines.join('\n')}\n</untrusted-test-content>`
+      )
+    }
+    activeTestPath = null
+    activeTestLines = []
+  }
+  for (const line of limited) {
+    const filePart = (line.split(':', 1)[0] ?? '').replaceAll('\\', '/').replace(/^\.\//u, '')
+    const isTestFile = classifyDirectPathRisk(filePart).category === 'test'
+    if (isTestFile) {
+      if (activeTestPath !== filePart) {
+        flushTestBlock()
+        activeTestPath = filePart
+      }
+      activeTestLines.push(line)
+    } else {
+      flushTestBlock()
+      formattedBlocks.push(line)
+    }
+  }
+  flushTestBlock()
   const more =
     matchedLines.length > limited.length ? `\n… 另有 ${matchedLines.length - limited.length} 条命中已截断` : ''
-  const slice = truncate(`${limited.join('\n')}${more}`, budgetBytes)
+  const slice = truncate(`${formattedBlocks.join('\n')}${more}`, budgetBytes)
   return {
     ok: true,
     header: `字面量 \`${query}\` 命中 ${matchedLines.length} 条（展示 ${limited.length} 条${slice.truncated ? '，按字节截断' : ''}）`,
@@ -827,6 +955,7 @@ export function executeContextRequests(
   const maxRequests = limits.maxRequests ?? CONTEXT_MAX_REQUESTS
   const perItemBytes = limits.perItemBytes ?? CONTEXT_PER_ITEM_BYTES
   const totalBudgetBytes = limits.totalBytes ?? CONTEXT_TOTAL_BYTES
+  const maxFileBytes = limits.maxReadFileBytes ?? CONTEXT_READ_MAX_FILE_BYTES
   const timeoutMs = limits.timeoutMs ?? CONTEXT_SUBPROCESS_TIMEOUT_MS
   const truncate = helpers.truncateUtf8ByLines ?? defaultTruncateUtf8ByLines
   const wrapFence = helpers.wrapCodeFence ?? defaultWrapCodeFence
@@ -851,7 +980,7 @@ export function executeContextRequests(
     const itemBudget = Math.min(perItemBytes, remainingBytes)
     let outcome
     if (req.type === 'read_file') {
-      outcome = executeSingleReadFile(req, { repoRoot, trustedRoot, budgetBytes: itemBudget, truncate })
+      outcome = executeSingleReadFile(req, { repoRoot, trustedRoot, budgetBytes: itemBudget, maxFileBytes, truncate })
     } else if (req.type === 'git_diff') {
       outcome = executeSingleGitDiff(req, {
         repoRoot,
@@ -1327,7 +1456,8 @@ export async function callResponsesApi({
     omitReasoningEffort: false,
     omitStreamOptions: false
   }
-  const maxCompatAttempts = protocol === 'chat-completions' ? 3 : 1
+  // Chat Completions 兼容降级：1 次初始请求 + 最多 3 个独立开关（json_schema / reasoning_effort / stream_options）各降级 1 次。
+  const maxCompatAttempts = protocol === 'chat-completions' ? 4 : 1
   let response = null
 
   for (let compatAttempt = 0; compatAttempt < maxCompatAttempts; compatAttempt += 1) {
@@ -1697,7 +1827,13 @@ export async function runDirectReview({
           '请修正并严格输出符合 Schema 的纯 JSON（diff 非空且载荷已提供完整 diff 时，coverage.inspected 必须列出你实际审阅过的 changed_paths 原始相对路径）。'
         continue
       }
-      return { fatal: false, passed: false, reason: evaluated.reason, rawOutput: evaluated.rawOutput ?? response.text }
+      return {
+        fatal: false,
+        passed: false,
+        code: evaluated.code ?? 'unusable_output',
+        reason: evaluated.reason,
+        rawOutput: evaluated.rawOutput ?? response.text
+      }
     }
     return { fatal: true, errorMessage: 'direct review exhausted retries unexpectedly' }
   }
@@ -1743,7 +1879,7 @@ export async function runDirectReview({
         return { ok: false, reason: failure instanceof Error ? failure.message : String(failure), rawOutput: json }
       }
       if (!validated.ok) {
-        return { ok: false, reason: validated.reason, rawOutput: json }
+        return { ok: false, code: validated.code ?? 'unusable_output', reason: validated.reason, rawOutput: json }
       }
       return { ok: true, action: 'final', finalText: json }
     }
@@ -1763,6 +1899,7 @@ export async function runDirectReview({
     return {
       ok: false,
       kind: 'unusable_or_missing_coverage',
+      errorCode: turn1Result.code ?? 'unusable_output',
       rawOutput: turn1Result.rawOutput ?? lastRawOutput,
       errorMessage: turn1Result.reason ?? lastContractError,
       runtime: finalizeRuntime(runtime, usage)
@@ -1821,7 +1958,7 @@ export async function runDirectReview({
         return { ok: false, reason: failure instanceof Error ? failure.message : String(failure), rawOutput: rawText }
       }
       if (!validated.ok) {
-        return { ok: false, reason: validated.reason, rawOutput: rawText }
+        return { ok: false, code: validated.code ?? 'unusable_output', reason: validated.reason, rawOutput: rawText }
       }
       return { ok: true, finalText: rawText }
     }
@@ -1841,6 +1978,7 @@ export async function runDirectReview({
     return {
       ok: false,
       kind: 'unusable_or_missing_coverage',
+      errorCode: turn2Result.code ?? 'unusable_output',
       rawOutput: turn2Result.rawOutput ?? lastRawOutput,
       errorMessage: turn2Result.reason ?? lastContractError,
       runtime: finalizeRuntime(runtime, usage)

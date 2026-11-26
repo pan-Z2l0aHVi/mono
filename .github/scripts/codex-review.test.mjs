@@ -35,6 +35,7 @@ import {
   deriveConclusion,
   directErrorPath,
   directRuntimePath,
+  directUnusablePath,
   findPullForHead,
   findPriorReviewRun,
   findReusableRun,
@@ -3822,13 +3823,17 @@ exit 2
   const trustedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-trusted-fingerprint-'))
   try {
     const promptFile = path.join(trustedRoot, 'codex/prompts/review.md')
+    const directPromptFile = path.join(trustedRoot, 'codex/prompts/review-direct.md')
     const schemaFile = path.join(trustedRoot, 'codex/schemas/review-findings.schema.json')
+    const turn1SchemaFile = path.join(trustedRoot, 'codex/schemas/review-turn1.schema.json')
     fs.mkdirSync(path.dirname(promptFile), { recursive: true })
     fs.mkdirSync(path.dirname(schemaFile), { recursive: true })
     const makePrompt = (ruleText, preloadBody = '占位符') =>
       `# Review\n${ruleText}\n${PRELOAD_START_MARKER}\n${preloadBody}\n${PRELOAD_END_MARKER}\n`
     fs.writeFileSync(promptFile, makePrompt('rule-v1'))
+    fs.writeFileSync(directPromptFile, '# Direct Review v1\n')
     fs.writeFileSync(schemaFile, '{"type":"object","v":1}\n')
+    fs.writeFileSync(turn1SchemaFile, '{"type":"object","turn1":1}\n')
 
     const baseInspect = inspectConfig(configuredEnv, { trustedRoot })
     assert.ok(baseInspect.config.fingerprint, 'complete trusted assets must produce a non-empty fingerprint')
@@ -3841,7 +3846,7 @@ exit 2
       'preload block replacement must not alter template fingerprint'
     )
 
-    // 模板正文或 schema 内容变化必须改变指纹并拒绝复用。
+    // 模板正文、direct 模板、schema 或附加请求头模板变化都必须改变指纹并拒绝复用。
     fs.writeFileSync(promptFile, makePrompt('rule-v2'))
     const promptChanged = inspectConfig(configuredEnv, { trustedRoot })
     assert.notEqual(
@@ -3851,6 +3856,14 @@ exit 2
     )
 
     fs.writeFileSync(promptFile, makePrompt('rule-v1'))
+    fs.writeFileSync(directPromptFile, '# Direct Review v2\n')
+    assert.notEqual(
+      inspectConfig(configuredEnv, { trustedRoot }).config.fingerprint,
+      baseInspect.config.fingerprint,
+      'changing review-direct.md must change config.fingerprint'
+    )
+
+    fs.writeFileSync(directPromptFile, '# Direct Review v1\n')
     fs.writeFileSync(schemaFile, '{"type":"object","v":2}\n')
     const schemaChanged = inspectConfig(configuredEnv, { trustedRoot })
     assert.notEqual(
@@ -3859,7 +3872,33 @@ exit 2
       'changing review-findings.schema.json must change config.fingerprint'
     )
 
+    fs.writeFileSync(schemaFile, '{"type":"object","v":1}\n')
+    fs.writeFileSync(turn1SchemaFile, '{"type":"object","turn1":2}\n')
+    assert.notEqual(
+      inspectConfig(configuredEnv, { trustedRoot }).config.fingerprint,
+      baseInspect.config.fingerprint,
+      'changing review-turn1.schema.json must change config.fingerprint'
+    )
+
+    fs.writeFileSync(turn1SchemaFile, '{"type":"object","turn1":1}\n')
+    const headerInspect = inspectConfig(
+      { ...configuredEnv, CODEX_REVIEW_EXTRA_HEADERS: '{"x-opencode-session":"codex-{{run_id}}"}' },
+      { trustedRoot }
+    )
+    assert.notEqual(
+      headerInspect.config.fingerprint,
+      baseInspect.config.fingerprint,
+      'changing CODEX_REVIEW_EXTRA_HEADERS must change config.fingerprint'
+    )
+    assert.ok(
+      !JSON.stringify(headerInspect.config).includes('x-opencode-session'),
+      'CODEX_REVIEW_EXTRA_HEADERS must never be written into config snapshot'
+    )
+
     // 任一可信契约文件缺失时 fail-closed 返回空指纹，即使上一轮也是空指纹也拒绝增量基线复用。
+    fs.rmSync(turn1SchemaFile)
+    assert.equal(inspectConfig(configuredEnv, { trustedRoot }).config.fingerprint, '')
+    fs.writeFileSync(turn1SchemaFile, '{"type":"object","turn1":1}\n')
     fs.rmSync(schemaFile)
     const missingSchema = inspectConfig(configuredEnv, { trustedRoot })
     assert.equal(missingSchema.config.fingerprint, '')
@@ -4464,6 +4503,106 @@ exit 2
       ...failedExtras
     })
     assert.match(renderedFail, /- 模型 job 错误：<code>Responses API HTTP 503: gateway timeout \[REDACTED\]<\/code>/)
+
+    // Block 1 回归：Turn 1 协议失败（缺 action 或 fetch_context 空请求）但正文恰好含合法 findings/coverage 时，
+    // commandRun 绝不写 codex-final-message.json，commandValidate 必须落 unreviewed，不能假绿。
+    for (const badPayload of [
+      {
+        coverage: { inspected: [sampleFile], uncovered: [] },
+        findings: [],
+        summary: 'Missing action field should never become reviewed.'
+      },
+      {
+        action: 'fetch_context',
+        context_requests: [],
+        coverage: { inspected: [sampleFile], uncovered: [] },
+        findings: [],
+        summary: 'Empty context_requests should never become reviewed.'
+      }
+    ]) {
+      fs.rmSync(path.join(conclusionDir, 'review-findings.json'), { force: true })
+      fs.rmSync(path.join(conclusionDir, 'review-meta.json'), { force: true })
+      const badRun = await commandRun({
+        env: runEnv,
+        sleepImpl: async () => {},
+        fetchImpl: async () => ({
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ output_text: JSON.stringify(badPayload) })
+        })
+      })
+      assert.equal(badRun.kind, 'unusable_or_missing_coverage')
+      assert.equal(badRun.errorCode, 'unusable_output')
+      assert.equal(
+        fs.existsSync(path.join(tempRoot, 'codex-final-message.json')),
+        false,
+        'unusable_or_missing_coverage must not write codex-final-message.json'
+      )
+      assert.equal(fs.existsSync(directUnusablePath(runEnv)), true)
+
+      const validateBad = spawnSync(
+        process.execPath,
+        [path.join(import.meta.dirname, 'codex-review.mjs'), 'validate'],
+        {
+          encoding: 'utf8',
+          env: {
+            ...testEnv(),
+            RUNNER_TEMP: tempRoot,
+            CODEX_REVIEW_BASE_SHA: otherSha,
+            CODEX_REVIEW_HEAD_SHA: headSha,
+            CODEX_REVIEW_STEP_OUTCOME: 'success'
+          }
+        }
+      )
+      assert.equal(validateBad.status, 0, validateBad.stderr)
+      const badMeta = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-meta.json'), 'utf8'))
+      assert.equal(badMeta.status, 'unreviewed')
+      assert.equal(badMeta.error_code, 'unusable_output')
+    }
+
+    // missing_coverage 仍通过独立诊断文件保留 missing_coverage 故障码与 findings 线索，不假绿。
+    fs.rmSync(path.join(conclusionDir, 'review-findings.json'), { force: true })
+    fs.rmSync(path.join(conclusionDir, 'review-meta.json'), { force: true })
+    const missingCovRun = await commandRun({
+      env: runEnv,
+      sleepImpl: async () => {},
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            output_text: JSON.stringify({
+              action: 'final',
+              context_requests: [],
+              coverage: { inspected: [], uncovered: [] },
+              prior_resolutions: [],
+              findings: [],
+              summary: 'No inspected paths.'
+            })
+          })
+      })
+    })
+    assert.equal(missingCovRun.kind, 'unusable_or_missing_coverage')
+    assert.equal(missingCovRun.errorCode, 'missing_coverage')
+    assert.equal(fs.existsSync(path.join(tempRoot, 'codex-final-message.json')), false)
+    const validateMissingCov = spawnSync(
+      process.execPath,
+      [path.join(import.meta.dirname, 'codex-review.mjs'), 'validate'],
+      {
+        encoding: 'utf8',
+        env: {
+          ...testEnv(),
+          RUNNER_TEMP: tempRoot,
+          CODEX_REVIEW_BASE_SHA: otherSha,
+          CODEX_REVIEW_HEAD_SHA: headSha,
+          CODEX_REVIEW_STEP_OUTCOME: 'success'
+        }
+      }
+    )
+    assert.equal(validateMissingCov.status, 0, validateMissingCov.stderr)
+    const missingCovMeta = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-meta.json'), 'utf8'))
+    assert.equal(missingCovMeta.status, 'unreviewed')
+    assert.equal(missingCovMeta.error_code, 'missing_coverage')
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true })
   }
