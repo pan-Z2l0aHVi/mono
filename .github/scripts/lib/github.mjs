@@ -11,11 +11,16 @@ export function commandError(command, args, result, maxBuffer = SPAWN_MAX_BUFFER
   if (result.error) {
     const limit = maxBuffer % (1024 * 1024) === 0 ? `${maxBuffer / (1024 * 1024)} MiB` : `${maxBuffer} bytes`
     const hint = result.error.code === 'ENOBUFS' ? ` (stdout exceeded the configured ${limit} buffer)` : ''
-    return new Error(`could not start ${command}: ${result.error.message}${hint}`)
+    const error = new Error(`could not start ${command}: ${result.error.message}${hint}`)
+    error.diagnostic = `${result.error.message ?? ''}${hint}`
+    return error
   }
   const reason = result.signal ? `signal ${result.signal}` : `exit ${result.status}`
   const output = `${result.stderr ?? ''}\n${result.stdout ?? ''}`.trim()
-  return new Error(`${command} ${args.join(' ')} failed (${reason}): ${output || 'no diagnostic output'}`)
+  const error = new Error(`${command} ${args.join(' ')} failed (${reason}): ${output || 'no diagnostic output'}`)
+  error.diagnostic = output
+  error.stderr = result.stderr ?? ''
+  return error
 }
 
 export function run(
@@ -51,18 +56,22 @@ export function resolvePullNumber({ explicit, ref, allowRefFallback = true } = {
   return ref.match(/^refs\/pull\/([1-9]\d*)\/merge$/u)?.[1] ?? ''
 }
 
+function diagnosticText(error) {
+  return typeof error?.diagnostic === 'string' ? error.diagnostic : (error?.message ?? '')
+}
+
 export function isHttp404(error) {
-  return /\bHTTP\s+404\b|\b404\s+Not Found\b/i.test(error?.message ?? '')
+  return /\bHTTP\s+404\b|\b404\s+Not Found\b/i.test(diagnosticText(error))
 }
 
 export function isHttp422(error) {
-  return /\bHTTP\s+422\b|\b422\s+Unprocessable\b/iu.test(error?.message ?? '')
+  return /\bHTTP\s+422\b|\b422\s+Unprocessable\b/iu.test(diagnosticText(error))
 }
 
-// gh 把 POST 的评论正文也拼进 error.message（`-f body=...`），只认诊断性短语，
-// 避免正文里出现 "403" 这类字样就把一次普通失败误报成权限故障。
+// 只检查命令诊断输出（stderr/stdout），不扫描包含 `-f body=...` 请求参数的 error.message，
+// 避免评论正文里出现 "403 Forbidden" / "Resource not accessible by integration" 时把普通失败误判成权限故障。
 export function isHttp403(error) {
-  return /Resource not accessible by integration|\bHTTP\s*403\b|\b403\s+Forbidden\b/iu.test(error?.message ?? '')
+  return /Resource not accessible by integration|\bHTTP\s*403\b|\b403\s+Forbidden\b/iu.test(diagnosticText(error))
 }
 
 export function createGhClient({ repository, spawn = spawnSync, cwd = process.cwd(), env = process.env }) {

@@ -2450,7 +2450,10 @@ export async function commandRun({
       return path.resolve(import.meta.dirname, fallbackRelative)
     }
     const promptFile = resolveAsset(trustedDirectPromptPath(resolvedEnv), '../codex/prompts/review-direct.md')
-    const turn1SchemaFile = resolveAsset(trustedTurn1SchemaPath(resolvedEnv), '../codex/schemas/review-turn1.schema.json')
+    const turn1SchemaFile = resolveAsset(
+      trustedTurn1SchemaPath(resolvedEnv),
+      '../codex/schemas/review-turn1.schema.json'
+    )
     const finalSchemaFile = resolveAsset(
       trustedFinalSchemaPath(resolvedEnv),
       '../codex/schemas/review-findings.schema.json'

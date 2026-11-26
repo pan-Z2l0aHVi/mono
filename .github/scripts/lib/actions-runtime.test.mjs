@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { createActionsRuntime, createMemoryActionsRuntime, oneLine, runCli } from './actions-runtime.mjs'
-import { createGhClient, isHttp403, isHttp404, isHttp422 } from './github.mjs'
+import { commandError, createGhClient, isHttp403, isHttp404, isHttp422 } from './github.mjs'
 
 // 1. oneLine 折叠换行与可选截断
 assert.equal(oneLine('  hello\n\t world  '), 'hello world')
@@ -187,3 +187,26 @@ assert.equal(isHttp403(new Error('gh api -f body=finding mentions error 403 fail
 }
 
 console.log('.github/scripts/lib/actions-runtime.test.mjs: all assertions passed')
+
+// commandError 携带独立 diagnostic 字段：请求参数正文含 403 短语时不得误判为 HTTP 403。
+{
+  const err = commandError(
+    'gh',
+    [
+      'api',
+      '-X',
+      'POST',
+      '-f',
+      'body=403 Forbidden / Resource not accessible by integration',
+      'repos/o/r/issues/1/comments'
+    ],
+    { status: 1, stderr: 'gh: HTTP 500 Internal Server Error', stdout: '' }
+  )
+  assert.equal(isHttp403(err), false, 'body payload mentioning 403 must not trigger isHttp403')
+  const real403 = commandError('gh', ['api', '-X', 'POST', 'repos/o/r/issues/1/comments'], {
+    status: 1,
+    stderr: 'gh: Resource not accessible by integration (HTTP 403)',
+    stdout: ''
+  })
+  assert.equal(isHttp403(real403), true, 'stderr 403 must still be classified as isHttp403')
+}
