@@ -9,18 +9,14 @@ import { type Chain, type KitCtx, type Run, defineRunner } from '../runner/runne
 import { byCodeUnit } from '../shared/order'
 
 import {
-  findMissingAuthorizationPointers,
-  findUnlinkedAgentDocReferences,
-  findUnmarkedReferenceDocs,
-  findUnroutedAgentDocs,
-  isUnqualifiedRelativeTarget,
-  scanVolatilePhrases
-} from './context-invariants'
-import {
   collectMirrorFiles,
   collectWorkspaceFiles,
   extractInlineLinks,
+  extractMarkdownAnchors,
+  ghAnchor,
+  isUnqualifiedRelativeTarget,
   relativePosix as toRelativePosix,
+  stripCodeSegments,
   walkFiles
 } from './corpus'
 import { defineWorkspace, type WorkspaceApi } from './workspace'
@@ -483,32 +479,15 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
             }
 
             // 只校验节级锚点：文件存在性由下方文件存在校验负责；`#fragment` 可能是节锚点（`#title`）或显式锚点（`{#custom}`）。
-            // Markdown 引擎把节标题转成 GitHub 风格 anchor：小写、去标点、空格转 `-`、连续/首尾 `-` 折叠；显式 `{#name}` 优先。
-            const ghAnchor = (text: string): string =>
-              text
-                .toLowerCase()
-                .replace(/[^\p{Alphabetic}\p{N}\s-]/gu, '')
-                .trim()
-                .replace(/\s+/g, '-')
-                .replace(/-+/g, '-')
-                .replace(/^-|-$/g, '')
-            function collectAnchors(file: string): Set<string> {
-              const anchors = new Set<string>()
-              let source = ''
+            function collectAnchors(file: string): ReadonlySet<string> {
               try {
-                source = fs.readFileSync(file, 'utf8')
+                return extractMarkdownAnchors(fs.readFileSync(file, 'utf8'))
               } catch {
-                return anchors
+                return new Set<string>()
               }
-              for (const match of source.matchAll(/^#{1,6}\s+(.*)$/gm)) {
-                const heading = match[1].trim()
-                const explicit = /^(.+?)\s*\{#([^}]+)\}$/.exec(heading)
-                anchors.add(explicit ? explicit[2].trim() : ghAnchor(heading))
-              }
-              return anchors
             }
-            const anchorCache = new Map<string, Set<string>>()
-            function anchoredTargets(file: string): Set<string> {
+            const anchorCache = new Map<string, ReadonlySet<string>>()
+            function anchoredTargets(file: string): ReadonlySet<string> {
               const cached = anchorCache.get(file)
               if (cached !== undefined) return cached
               const anchors = collectAnchors(file)
@@ -655,3 +634,108 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
           })
       }))
     )
+
+// ---------------------------------------------------------------------------
+// Private context-corpus invariant checks (folded from legacy context-invariants.ts)
+// ---------------------------------------------------------------------------
+
+interface CorpusEntry {
+  file: string
+  source: string
+}
+
+// 只收已观测到的漂移短语。泛化的「当前」「目前」会把合法的过程描述一起判红，
+// 而文风 lint 不在门禁职责内（ADR-0013）。
+const VOLATILE_PHRASES: readonly { pattern: RegExp; label: string }[] = Object.freeze([
+  { pattern: /当前规则集/, label: '当前规则集' },
+  { pattern: /当前\s*GitHub\s*ruleset/, label: '当前 GitHub ruleset' },
+  { pattern: /当前唯一\s*required/, label: '当前唯一 required' },
+  { pattern: /当前\s*required/, label: '当前 required' },
+  { pattern: /当前只有/, label: '当前只有' },
+  { pattern: /目前只有/, label: '目前只有' },
+  { pattern: /尚未实现/, label: '尚未实现' },
+  { pattern: /仍未实现/, label: '仍未实现' },
+  { pattern: /仍是[^\n]{0,20}占位/, label: '仍是…占位' }
+])
+
+// 远端写操作只认无歧义的命令形态。散文里的「发布」「合并」可能是领域名词或历史叙述，
+// 按词根匹配会把大部分文档误判成写操作流程。
+const REMOTE_WRITE =
+  /\b(?:git push|gh pr (?:create|merge|comment|review|edit)|npm publish|pnpm publish|git tag|gh release|wails3 package)\b/
+const REFERENCE_MARKER = '<!-- corpus-status: reference -->'
+const REFERENCE_BANNER = '状态：非权威参考'
+
+// 文档名以纯文本或单独的行内 code 出现时不会进入互指图；命令片段和代码块不属于文档引用。
+function findUnlinkedAgentDocReferences(entries: readonly CorpusEntry[]): { file: string; name: string }[] {
+  const names = entries
+    .filter(({ file }) => file.startsWith('docs/agents/'))
+    .map(({ file }) => path.posix.basename(file))
+  const violations: { file: string; name: string }[] = []
+  for (const { file, source } of entries) {
+    if (!file.startsWith('docs/agents/')) continue
+    const withoutLinks = source.replace(/!?\[[^\]\n]*\]\([^\n)]*\)/g, '')
+    const exposed = withoutLinks.replace(/`([^`\n]+)`/g, (whole: string, code: string) =>
+      /^(?:\.\.?\/|docs\/agents\/)?[\w-]+\.md$/.test(code) ? code : whole
+    )
+    const prose = stripCodeSegments(exposed)
+    for (const name of names) {
+      if (name === path.posix.basename(file)) continue
+      const escaped = name.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')
+      if (new RegExp(`(?<![\\w.-])${escaped}(?![\\w.-])`).test(prose)) violations.push({ file, name })
+    }
+  }
+  return violations
+}
+
+function scanVolatilePhrases(entries: readonly CorpusEntry[]): { file: string; phrase: string }[] {
+  const violations: { file: string; phrase: string }[] = []
+  for (const { file, source } of entries) {
+    for (const { pattern, label } of VOLATILE_PHRASES) {
+      if (pattern.test(source)) violations.push({ file, phrase: label })
+    }
+  }
+  return violations
+}
+
+function findUnroutedAgentDocs(agentsSource: string, files: readonly string[], agentDocs: string): string[] {
+  return files
+    .filter(file => file.startsWith(`${agentDocs}/`) && file.endsWith('.md'))
+    .filter(file => !agentsSource.includes(file))
+    .sort()
+}
+
+interface AuthorizationScope {
+  readonly pointer: string
+  readonly owner: string
+  readonly entry: string
+  readonly agentDocs: string
+  readonly rules: string
+}
+
+function findMissingAuthorizationPointers(
+  entries: readonly CorpusEntry[],
+  { pointer, owner, entry, agentDocs, rules }: AuthorizationScope
+): string[] {
+  return (
+    entries
+      .filter(
+        ({ file }) =>
+          file === entry ||
+          file.endsWith(`/${entry}`) ||
+          file.startsWith(`${agentDocs}/`) ||
+          file.startsWith(`${rules}/`)
+      )
+      // owner 文档定义授权机制；要求它指向自己会形成自指。
+      .filter(({ file }) => file !== owner)
+      .filter(({ source }) => REMOTE_WRITE.test(source) && !source.includes(pointer))
+      .map(({ file }) => file)
+      .sort()
+  )
+}
+
+function findUnmarkedReferenceDocs(entries: readonly CorpusEntry[]): string[] {
+  return entries
+    .filter(({ source }) => !source.startsWith(REFERENCE_MARKER) || !source.includes(REFERENCE_BANNER))
+    .map(({ file }) => file)
+    .sort()
+}

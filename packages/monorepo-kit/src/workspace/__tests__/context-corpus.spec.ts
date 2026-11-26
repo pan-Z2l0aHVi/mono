@@ -237,6 +237,46 @@ it('checks direct container workspaces named dist while skipping nested dist art
   assert.match(error, /^md: failed with 1 error\(s\):\n- apps\/dist: workspace needs its own AGENTS\.md/)
 })
 
+it('rejects unlinked agent doc references in bare text and filename-only inline code while allowing links and code commands', async () => {
+  const withAgentContent = (content: string): string => {
+    const root = makeFixture()
+    write(root, 'docs/agents/a.md', `# a\n\n${content}\n`)
+    return root
+  }
+
+  assert.match(
+    await failure(contextCorpus, withAgentContent('参见 workflow.md')),
+    /^md:[\s\S]*docs\/agents\/a\.md: reference to workflow\.md must be a Markdown link/
+  )
+  assert.match(
+    await failure(contextCorpus, withAgentContent('参见 `workflow.md`')),
+    /^md:[\s\S]*docs\/agents\/a\.md: reference to workflow\.md must be a Markdown link/
+  )
+  assert.ok((await run(contextCorpus, withAgentContent('参见 [workflow.md](./workflow.md)'))).ok)
+  assert.ok((await run(contextCorpus, withAgentContent('`cat workflow.md`\n```sh\ncat workflow.md\n```'))).ok)
+})
+
+it('requires both corpus-status marker and non-authoritative banner for referenceDirs documents', async () => {
+  const withReferences = defineContextCorpus({ ...options, referenceDirs: ['docs/research'] })
+  const makeRefFixture = (content: string): string => {
+    const root = makeFixture()
+    write(root, 'docs/research/note.md', content)
+    return root
+  }
+
+  assert.match(
+    await failure(withReferences, makeRefFixture('# 调研\n\n> 状态：非权威参考\n')),
+    /^md:[\s\S]*docs\/research\/note\.md: reference corpus requires the corpus-status marker and the non-authoritative banner/
+  )
+  assert.match(
+    await failure(withReferences, makeRefFixture('<!-- corpus-status: reference -->\n# 调研\n')),
+    /^md:[\s\S]*docs\/research\/note\.md: reference corpus requires the corpus-status marker and the non-authoritative banner/
+  )
+  assert.ok(
+    (await run(withReferences, makeRefFixture('<!-- corpus-status: reference -->\n# 调研\n\n> 状态：非权威参考\n'))).ok
+  )
+})
+
 afterAll(() => {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 })
