@@ -35,7 +35,8 @@
         "apps/react-web-ui-demo/src/generated/**",
         "apps/react-web-ui-demo/src/routes/components/**",
         "apps/vue-web-ui-demo/src/generated/**",
-        "apps/vue-web-ui-demo/src/pages/components/**"
+        "apps/vue-web-ui-demo/src/pages/components/**",
+        "packages/doc-demo-kit/src/nav.ts"
       ],
       "outputs": []
     },

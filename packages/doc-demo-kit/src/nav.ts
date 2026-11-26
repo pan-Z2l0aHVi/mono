@@ -126,14 +126,19 @@ export function createRouteExampleDocs<Id extends string>(
   }
 }
 
-/** 按组件 slug（如 `button`）或路径（`/components/button`、`/components/button/`）查找组件页条目；未登记返回 undefined。 */
+/**
+ * 按组件 slug（如 `button`）或路径（`/components/button`、`/components/button/`）查找组件页条目；
+ * 仅做精确匹配（不做 trim 或大小写归一化），未登记返回 undefined。
+ */
 export function findComponentRoute(slugOrPath: string): ComponentRouteEntry | undefined {
   const slug = extractComponentSlug(slugOrPath)
   return slug ? COMPONENT_ROUTES_BY_SLUG.get(slug) : undefined
 }
 
-/** 返回组件文档路由需要预载的 ExampleDoc 组件列表；非组件文档路由返回空数组。 */
-export const routeExampleDocs = createRouteExampleDocs(NAV_SECTIONS)
+/** 返回组件文档路由需要预载的 ExampleDoc 组件列表；复用 findComponentRoute 保持单一路径解析入口。 */
+export function routeExampleDocs(pathname: string): readonly string[] {
+  return pathname.startsWith('/components/') ? (findComponentRoute(pathname)?.docs ?? []) : []
+}
 
 /** 章节标题的排版类；折叠时宿主自行追加 `sr-only`，只保留给读屏的标题。 */
 export const NAV_SECTION_TITLE_CLASS =

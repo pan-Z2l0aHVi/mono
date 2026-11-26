@@ -2,7 +2,7 @@
 import { createSearchController } from '@greypan/doc-demo-kit'
 import { navigatePopoverLinks, type WebUiEvent, type WebUiInput, type WebUiPopover } from '@greypan/web-ui'
 import { lucideSearch } from '@greypan/web-ui/icons'
-import { onScopeDispose, ref, shallowRef, watch } from 'vue'
+import { onMounted, onScopeDispose, onUpdated, ref, shallowRef, watch } from 'vue'
 import { RouterLink } from 'vue-router'
 
 import { currentLocale } from '@/i18n/locale'
@@ -27,19 +27,19 @@ const unsubscribe = controller.subscribe(() => {
   snapshot.value = controller.getSnapshot()
 })
 
-watch(
-  [() => props.controls, input, popover, results, () => props.open],
-  ([controls, inputEl, popoverEl, resultsEl, open]) => {
-    controller.syncElements({
-      controls: controls ?? null,
-      input: open ? (inputEl ?? null) : null,
-      popover: open ? (popoverEl ?? null) : null,
-      results: open ? (resultsEl ?? null) : null
-    })
-    controller.syncOpen(open)
-  },
-  { flush: 'post', immediate: true }
-)
+function syncController() {
+  controller.syncElements({
+    controls: props.controls ?? null,
+    input: props.open ? (input.value ?? null) : null,
+    popover: props.open ? (popover.value ?? null) : null,
+    results: props.open ? (results.value ?? null) : null
+  })
+  controller.syncOpen(props.open)
+}
+
+onMounted(syncController)
+onUpdated(syncController)
+watch([() => props.controls, () => props.open], syncController, { flush: 'post' })
 
 onScopeDispose(() => {
   unsubscribe()

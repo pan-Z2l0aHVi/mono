@@ -18,7 +18,7 @@ const vuePages = path.join(root, 'apps', 'vue-web-ui-demo', 'src', 'pages', 'com
 // 判据结构的固定计数：两端各一条 load 判据，其余手写单例。meta 的用例数按目录实时推导，
 // 语料增删不改这两个常量；重构判据结构、合并单例时同步更新。
 const LOAD_CASES = 2
-const SINGLETON_CASES = 6
+const SINGLETON_CASES = 7
 
 const only = (a, b) => a.filter(value => !b.includes(value))
 const filesIn = dir => fs.readdirSync(dir).sort()
@@ -128,6 +128,36 @@ test('中英文档集合对齐（CHANGELOG 只存在于英文）', () => {
 test('React 与 Vue 组件页均收敛为单一动态路由', () => {
   assert.deepEqual(filesIn(reactRoutes), ['$component.tsx'], 'React 组件路由目录只能包含 $component.tsx')
   assert.deepEqual(filesIn(vuePages), ['[component].vue'], 'Vue 组件页面目录只能包含 [component].vue')
+  assert.match(
+    read(reactRoutes, '$component.tsx'),
+    /\bfindComponentRoute\b/,
+    'React 动态路由必须调用 findComponentRoute'
+  )
+  assert.match(read(vuePages, '[component].vue'), /\bfindComponentRoute\b/, 'Vue 动态页面必须调用 findComponentRoute')
+})
+
+test('NAV_SECTIONS 声明的组件 slug 唯一且所有 docs 均有对应生成文档', () => {
+  const navSource = fs.readFileSync(path.join(root, 'packages', 'doc-demo-kit', 'src', 'nav.ts'), 'utf8')
+  const entryPattern = /\{\s*path:\s*'\/components\/([a-z0-9-]+)'[^}]*?(?:docs:\s*\[([^\]]+)\])?\s*\}/gu
+  const seenSlugs = new Set()
+  const availableDocs = new Set(
+    metaFilesIn(reactGenerated)
+      .filter(name => !name.endsWith('.CN.meta.js'))
+      .map(name => name.replace('.meta.js', ''))
+  )
+  let count = 0
+  for (const match of navSource.matchAll(entryPattern)) {
+    count += 1
+    const slug = match[1]
+    assert.ok(!seenSlugs.has(slug), `NAV_SECTIONS 存在重复组件 slug：${slug}`)
+    seenSlugs.add(slug)
+    const docs = match[2] ? [...match[2].matchAll(/'([a-z0-9-]+)'/gu)].map(m => m[1]) : [slug]
+    assert.ok(docs.length > 0, `NAV_SECTIONS 条目 ${slug} 的 docs 不能为空`)
+    for (const doc of docs) {
+      assert.ok(availableDocs.has(doc), `NAV_SECTIONS 条目 ${slug} 引用的文档 ${doc} 不存在于生成语料中`)
+    }
+  }
+  assert.ok(count > 0, '未从 nav.ts 解析到任何组件条目：契约校验空转')
 })
 
 // 用例数按目录推导自检：判据结构与这两个常量漂移时，计数口径先红，而不是静默少判。

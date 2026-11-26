@@ -153,11 +153,35 @@ describe('SearchController', () => {
     })
     controller.syncOpen(true)
     resolveSecond()
-    await Promise.resolve()
-    await Promise.resolve()
+    await new Promise<void>(resolve => setTimeout(resolve, 0))
     expect(focusSpy).toHaveBeenCalledTimes(1)
 
+    // 替换 input 或 dispose 后，旧 input 的 updateComplete 再完成也不会抢占焦点。
+    let resolveStale!: () => void
+    input.updateComplete = new Promise<void>(resolve => {
+      resolveStale = resolve
+    })
+    controller.syncOpen(false)
+    controller.syncOpen(true)
+    const nextInput = document.createElement('input')
+    const nextFocusSpy = vi.spyOn(nextInput, 'focus')
+    controller.syncElements({ input: nextInput })
+    resolveStale()
+    await new Promise<void>(resolve => setTimeout(resolve, 0))
+    expect(focusSpy).toHaveBeenCalledTimes(1)
+    expect(nextFocusSpy).toHaveBeenCalledTimes(1)
+
+    let resolveDisposed!: () => void
+    const thirdInput = document.createElement('input') as HTMLInputElement & { updateComplete?: Promise<unknown> }
+    thirdInput.updateComplete = new Promise<void>(resolve => {
+      resolveDisposed = resolve
+    })
+    const thirdFocusSpy = vi.spyOn(thirdInput, 'focus')
+    controller.syncElements({ input: thirdInput })
     controller.dispose()
+    resolveDisposed()
+    await new Promise<void>(resolve => setTimeout(resolve, 0))
+    expect(thirdFocusSpy).not.toHaveBeenCalled()
   })
 
   it('面板收起后在输入框按 ArrowDown，等待 popover.updateComplete 与 rAF 后聚焦首条结果链接', async () => {
@@ -196,9 +220,24 @@ describe('SearchController', () => {
 
     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
     resolvePopover()
-    await Promise.resolve()
+    await new Promise<void>(resolve => setTimeout(resolve, 0))
     await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
     expect(document.activeElement).toBe(firstLink)
+
+    // 竞态回归：ArrowDown 排队期间若发生 setQuery / syncOpen(false) / dispose，旧聚焦链必须失效。
+    controller.handleKeydown(esc)
+    expect(document.activeElement).toBe(input)
+    let resolvePendingPopover!: () => void
+    popover.updateComplete = new Promise<void>(resolve => {
+      resolvePendingPopover = resolve
+    })
+    controller.handleKeydown(arrowDown)
+    controller.syncOpen(false)
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    resolvePendingPopover()
+    await new Promise<void>(resolve => setTimeout(resolve, 0))
+    await new Promise<void>(resolve => requestAnimationFrame(() => resolve()))
+    expect(document.activeElement).toBe(input)
 
     controller.dispose()
   })
