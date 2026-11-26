@@ -28,11 +28,11 @@
           },
           "start_line": {
             "type": "integer",
-            "description": "1-based start line for read_file; set to 0 for git_diff and git_grep."
+            "description": "1-based start line for read_file or git_diff (0 for git_diff starts from line 1); set to 0 for git_grep."
           },
           "end_line": {
             "type": "integer",
-            "description": "1-based inclusive end line for read_file; set to 0 for git_diff and git_grep."
+            "description": "1-based inclusive end line for read_file or git_diff (0 for git_diff reads through the end within the item byte budget); set to 0 for git_grep."
           },
           "query": {
             "type": "string",

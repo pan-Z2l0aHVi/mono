@@ -18,7 +18,8 @@ export const DIRECT_TOTAL_DIFF_BYTES = 112 * 1024
 
 export const CONTEXT_MAX_REQUESTS = 12
 export const CONTEXT_PER_ITEM_BYTES = 12 * 1024
-export const CONTEXT_TOTAL_BYTES = 48 * 1024
+export const CONTEXT_GIT_DIFF_PER_ITEM_BYTES = 36 * 1024
+export const CONTEXT_TOTAL_BYTES = 80 * 1024
 export const CONTEXT_READ_DEFAULT_LINES = 250
 export const CONTEXT_READ_MAX_LINES = 300
 export const CONTEXT_READ_MAX_FILE_BYTES = 2 * 1024 * 1024
@@ -77,7 +78,10 @@ export const DIRECT_RUNTIME_METRIC_KEYS = Object.freeze([
  */
 export function classifyDirectPathRisk(filePath) {
   const normalized = String(filePath).trim().replace(/^\.\//u, '')
-  const isTest = /(?:\.|\/)(?:test|spec)\.[^/]+$/u.test(normalized) || /(?:^|\/)(?:__tests__|e2e)\//u.test(normalized)
+  const isTest =
+    /(?:\.|\/)(?:test|spec)\.[^/]+$/u.test(normalized) ||
+    /(?:^|\/)(?:__tests__|e2e)\//u.test(normalized) ||
+    /_test\.go$/iu.test(normalized)
   const isDocOrStyle = /\.(?:md|mdx|css|txt|svg|png|jpg|jpeg|webp|ico)$/iu.test(normalized)
   if (
     !isTest &&
@@ -157,7 +161,17 @@ export function summarizeDiffStat(rawBlock) {
 }
 
 const RESERVED_HTTP_HEADERS = Object.freeze(
-  new Set(['authorization', 'content-type', 'accept', 'host', 'content-length'])
+  new Set([
+    'authorization',
+    'cookie',
+    'proxy-authorization',
+    'content-type',
+    'accept',
+    'host',
+    'content-length',
+    'transfer-encoding',
+    'connection'
+  ])
 )
 const HTTP_HEADER_NAME_PATTERN = /^[!#$%&'*+\-.^_`|~0-9A-Za-z]+$/u
 
@@ -338,6 +352,28 @@ function resolveRealTargetWithinRoot(absoluteTarget, rootRealPath) {
   return path.join(resolvedAncestor, path.relative(cursor, absoluteTarget))
 }
 
+function validateRelativePathPolicy(relPath) {
+  if (relPath === '' || relPath === '.') {
+    return { ok: false, reason: 'resolved path must point inside the repository' }
+  }
+  if (relPath === '.git' || relPath.startsWith('.git/')) {
+    return { ok: false, reason: 'access to .git internals is forbidden' }
+  }
+  if (SENSITIVE_ENV_PATH_PATTERN.test(relPath)) {
+    return { ok: false, reason: 'access to .env files is forbidden' }
+  }
+  if (isExcludedGeneratedPath(relPath)) {
+    return { ok: false, reason: 'generated artifacts are excluded from review' }
+  }
+  if (relPath === '.agents/skills' || relPath.startsWith('.agents/skills/')) {
+    return { ok: false, reason: 'PR head .agents/skills/ is untrusted; rely on embedded trusted skills' }
+  }
+  if (relPath === '.agents/skills-vendored' || relPath.startsWith('.agents/skills-vendored/')) {
+    return { ok: false, reason: 'PR head .agents/skills-vendored/ is untrusted and unavailable in trusted store' }
+  }
+  return { ok: true }
+}
+
 /**
  * 校验代查原语的仓库相对路径并防逃逸、防生成物、防 PR head `.agents/skills/` 篡改。
  * 若请求的是白名单内的第三方 vendored skill 参考文档，自动映射到 `$RUNNER_TEMP/trusted/` 副本。
@@ -347,25 +383,13 @@ function resolveRealTargetWithinRoot(absoluteTarget, rootRealPath) {
  * @param {string} options.repoRoot 被审仓库根目录。
  * @param {string} [options.trustedRoot] staged 可信基目录（如 `$RUNNER_TEMP/trusted`）。
  * @param {boolean} [options.allowTrustedVendored=false] 是否允许映射到可信 vendored 参考白名单。
- * @returns {{ok: true, normalized: string, absolutePath: string, fromTrusted: boolean}|{ok: false, reason: string}}
+ * @returns {{ok: true, normalized: string, resolvedRelative: string, absolutePath: string, fromTrusted: boolean}|{ok: false, reason: string}}
  */
 export function resolveSandboxedPath(rawPath, { repoRoot, trustedRoot = '', allowTrustedVendored = false } = {}) {
   const parsed = normalizeRelativeInput(rawPath)
   if (!parsed.ok) return parsed
   const { normalized } = parsed
 
-  if (normalized === '.git' || normalized.startsWith('.git/')) {
-    return { ok: false, reason: 'access to .git internals is forbidden' }
-  }
-  if (SENSITIVE_ENV_PATH_PATTERN.test(normalized)) {
-    return { ok: false, reason: 'access to .env files is forbidden' }
-  }
-  if (isExcludedGeneratedPath(normalized)) {
-    return { ok: false, reason: 'generated artifacts are excluded from review' }
-  }
-  if (normalized === '.agents/skills' || normalized.startsWith('.agents/skills/')) {
-    return { ok: false, reason: 'PR head .agents/skills/ is untrusted; rely on embedded trusted skills' }
-  }
   if (normalized === '.agents/skills-vendored' || normalized.startsWith('.agents/skills-vendored/')) {
     if (allowTrustedVendored && trustedRoot && TRUSTED_VENDORED_WHITELIST.has(normalized)) {
       const trustedBaseReal = fs.existsSync(trustedRoot) ? fs.realpathSync(trustedRoot) : ''
@@ -373,12 +397,15 @@ export function resolveSandboxedPath(rawPath, { repoRoot, trustedRoot = '', allo
       if (mapped && fs.existsSync(mapped)) {
         const mappedReal = fs.realpathSync(mapped)
         if (isWithinDirectory(mappedReal, trustedBaseReal)) {
-          return { ok: true, normalized, absolutePath: mappedReal, fromTrusted: true }
+          return { ok: true, normalized, resolvedRelative: normalized, absolutePath: mappedReal, fromTrusted: true }
         }
       }
     }
     return { ok: false, reason: 'PR head .agents/skills-vendored/ is untrusted and unavailable in trusted store' }
   }
+
+  const preCheck = validateRelativePathPolicy(normalized)
+  if (!preCheck.ok) return preCheck
 
   const rootRealPath = fs.realpathSync(repoRoot)
   const candidate = path.resolve(rootRealPath, normalized)
@@ -386,7 +413,15 @@ export function resolveSandboxedPath(rawPath, { repoRoot, trustedRoot = '', allo
   if (!resolved) {
     return { ok: false, reason: 'resolved path escapes repository root' }
   }
-  return { ok: true, normalized, absolutePath: resolved, fromTrusted: false }
+  const resolvedRelative = path.relative(rootRealPath, resolved).replaceAll(path.sep, '/')
+  if (resolvedRelative === '' || resolvedRelative === '.') {
+    return { ok: false, reason: 'resolved path must point inside the repository' }
+  }
+  // 复核符号链接展开后的真实相对路径，禁止借仓内 symlink 绕过黑名单或二次重定向到 trusted store。
+  const postCheck = validateRelativePathPolicy(resolvedRelative)
+  if (!postCheck.ok) return postCheck
+
+  return { ok: true, normalized, resolvedRelative, absolutePath: resolved, fromTrusted: false }
 }
 
 function defaultTruncateUtf8ByLines(text, maxBytes) {
@@ -492,7 +527,9 @@ export function buildDirectReviewPacket({
       const budget = Math.min(perFileBytes, remainingBudget)
       const slice = truncate(rawBlock, budget)
       if (slice.shownBytes === 0) break
-      preloaded.push({ ...entry, ...slice })
+      const totalLines = rawBlock.split(/\r?\n/u).length
+      const shownLines = slice.text === '' ? 0 : slice.text.split(/\r?\n/u).length
+      preloaded.push({ ...entry, ...slice, shownLines, totalLines })
       preloadedPaths.push(entry.path)
       if (slice.truncated) truncatedPaths.push(entry.path)
       remainingBudget -= slice.shownBytes
@@ -593,7 +630,7 @@ export function buildDirectReviewPacket({
       lines.push('', '## 高优先级源码 diff 载荷', '')
       for (const item of preloaded) {
         const tag = item.truncated
-          ? `已截断：显示前 ${item.shownBytes}/${item.totalBytes} bytes`
+          ? `已截断：显示 L1–L${item.shownLines} / 共 ${item.totalLines} 行（${item.shownBytes}/${item.totalBytes} bytes）`
           : `完整 diff：${item.totalBytes} bytes`
         lines.push(
           `### \`${item.path}\`（\`${item.tier}/${item.category}\`，${tag}）`,
@@ -761,7 +798,9 @@ function executeSingleReadFile(req, { repoRoot, trustedRoot, budgetBytes, maxFil
       numbered.push(`L${lineNo}: ${allLines[lineNo - 1]}`)
     }
     const slice = truncate(numbered.join('\n'), budgetBytes)
-    const isTestFile = classifyDirectPathRisk(check.normalized).category === 'test'
+    const isTestFile =
+      classifyDirectPathRisk(check.normalized).category === 'test' ||
+      classifyDirectPathRisk(check.resolvedRelative).category === 'test'
     const lineSummary = readResult.reachedEof
       ? `全文件共 ${allLines.length} 行`
       : `文件大小 ${stat.size} bytes，仅读取前 ${readResult.totalRead} bytes`
@@ -779,6 +818,25 @@ function executeSingleReadFile(req, { repoRoot, trustedRoot, budgetBytes, maxFil
 function executeSingleGitDiff(req, { repoRoot, trustedRoot, scope, budgetBytes, spawn, timeoutMs, truncate }) {
   const check = resolveSandboxedPath(req.path, { repoRoot, trustedRoot, allowTrustedVendored: false })
   if (!check.ok) return { ok: false, body: `拒绝 diff：${check.reason}`, bytes: 0 }
+  const reqStart = req.start_line ?? 0
+  const reqEnd = req.end_line ?? 0
+  if (!Number.isInteger(reqStart) || !Number.isInteger(reqEnd) || reqStart < 0 || reqEnd < 0) {
+    return { ok: false, body: `拒绝 diff：非法的行号区间 start_line=${reqStart}, end_line=${reqEnd}`, bytes: 0 }
+  }
+  if (reqStart === 0 && reqEnd > 0) {
+    return {
+      ok: false,
+      body: `拒绝 diff：指定 end_line=${reqEnd} 时必须提供大于 0 的 start_line`,
+      bytes: 0
+    }
+  }
+  if (reqEnd > 0 && reqStart > reqEnd) {
+    return {
+      ok: false,
+      body: `拒绝 diff：起始行 start_line=${reqStart} 大于结束行 end_line=${reqEnd}`,
+      bytes: 0
+    }
+  }
   const changedPaths = Array.isArray(scope?.changed_paths) ? scope.changed_paths : []
   if (!changedPaths.includes(check.normalized)) {
     return { ok: false, body: `路径不在本次 changed_paths 范围内：${check.normalized}`, bytes: 0 }
@@ -811,9 +869,33 @@ function executeSingleGitDiff(req, { repoRoot, trustedRoot, scope, budgetBytes, 
       bytes: 0
     }
   }
-  const slice = truncate(rawDiff, budgetBytes)
-  const isTestFile = classifyDirectPathRisk(check.normalized).category === 'test'
-  const header = `基线 ${diffBase.slice(0, 10)}..${headSha.slice(0, 10)}（${slice.truncated ? `截断：${slice.shownBytes}/${slice.totalBytes} bytes` : `完整：${slice.totalBytes} bytes`}）`
+  const diffLines = rawDiff.replace(/\r?\n$/u, '').split(/\r?\n/u)
+  const totalLines = diffLines.length
+  if (reqStart > totalLines) {
+    return {
+      ok: false,
+      body: `拒绝 diff：start_line=${reqStart} 超出总行数（共 ${totalLines} 行）`,
+      bytes: 0
+    }
+  }
+  const fromLine = reqStart > 0 ? reqStart : 1
+  const requestedToLine = reqEnd > 0 ? Math.min(reqEnd, totalLines) : totalLines
+  const slicedText = diffLines.slice(fromLine - 1, requestedToLine).join('\n')
+  const slice = truncate(slicedText, budgetBytes)
+  const shownLineCount = slice.text === '' ? 0 : slice.text.split(/\r?\n/u).length
+  const actualToLine = shownLineCount > 0 ? fromLine + shownLineCount - 1 : fromLine
+  const isComplete = fromLine === 1 && actualToLine === totalLines && !slice.truncated
+  const isTestFile =
+    classifyDirectPathRisk(check.normalized).category === 'test' ||
+    classifyDirectPathRisk(check.resolvedRelative).category === 'test'
+  const lineRangeTag = `L${fromLine}–L${actualToLine} / 共 ${totalLines} 行`
+  const header = `基线 ${diffBase.slice(0, 10)}..${headSha.slice(0, 10)}（${lineRangeTag}，${
+    slice.truncated
+      ? `截断：${slice.shownBytes}/${slice.totalBytes} bytes`
+      : isComplete
+        ? `完整：${slice.totalBytes} bytes`
+        : `切片：${slice.totalBytes} bytes`
+  }）`
   const wrapped = isTestFile
     ? `<untrusted-test-content path="${check.normalized}">\n${slice.text}\n</untrusted-test-content>`
     : slice.text
@@ -841,6 +923,8 @@ function executeSingleGitGrep(
     if (searchTargets.length === 0) searchTargets = ['.']
   }
   const args = [
+    '-c',
+    'core.quotepath=false',
     'grep',
     '-n',
     '-I',
@@ -878,18 +962,7 @@ function executeSingleGitGrep(
     .filter(line => line !== '')
     .filter(line => {
       const filePart = (line.split(':', 1)[0] ?? '').replaceAll('\\', '/').replace(/^\.\//u, '')
-      if (filePart === '' || filePart === '.git' || filePart.startsWith('.git/')) return false
-      if (SENSITIVE_ENV_PATH_PATTERN.test(filePart)) return false
-      if (isExcludedGeneratedPath(filePart)) return false
-      if (
-        filePart === '.agents/skills' ||
-        filePart.startsWith('.agents/skills/') ||
-        filePart === '.agents/skills-vendored' ||
-        filePart.startsWith('.agents/skills-vendored/')
-      ) {
-        return false
-      }
-      return true
+      return validateRelativePathPolicy(filePart).ok
     })
   if (matchedLines.length === 0) {
     return { ok: true, header: `字面量 \`${query}\` 命中 0 条`, body: '（无匹配结果）', bytes: 0 }
@@ -954,6 +1027,9 @@ export function executeContextRequests(
 ) {
   const maxRequests = limits.maxRequests ?? CONTEXT_MAX_REQUESTS
   const perItemBytes = limits.perItemBytes ?? CONTEXT_PER_ITEM_BYTES
+  const gitDiffPerItemBytes =
+    limits.gitDiffPerItemBytes ??
+    (limits.perItemBytes !== undefined ? limits.perItemBytes : CONTEXT_GIT_DIFF_PER_ITEM_BYTES)
   const totalBudgetBytes = limits.totalBytes ?? CONTEXT_TOTAL_BYTES
   const maxFileBytes = limits.maxReadFileBytes ?? CONTEXT_READ_MAX_FILE_BYTES
   const timeoutMs = limits.timeoutMs ?? CONTEXT_SUBPROCESS_TIMEOUT_MS
@@ -968,16 +1044,20 @@ export function executeContextRequests(
   let totalBytes = 0
   const results = []
   const lines = ['## Turn 1 补充上下文代查结果', '']
+  const totalBudgetLabel = Number.isInteger(totalBudgetBytes / 1024)
+    ? `${totalBudgetBytes / 1024} KB`
+    : `${totalBudgetBytes} bytes`
 
   for (let index = 0; index < toRun.length; index += 1) {
     const req = toRun[index]
     const label = `#${index + 1} \`${req.type}\` ${req.path ? `\`${req.path}\`` : '(default roots)'}${req.query ? ` query=\`${req.query}\`` : ''}`
     if (remainingBytes <= 0) {
       results.push({ index, type: req.type, path: req.path, ok: false, skipped: true })
-      lines.push(`### ${label}`, '', '已达到 48 KB 总回填字节上限，本条跳过。', '')
+      lines.push(`### ${label}`, '', `已达到 ${totalBudgetLabel} 总回填字节上限，本条跳过。`, '')
       continue
     }
-    const itemBudget = Math.min(perItemBytes, remainingBytes)
+    const typeCap = req.type === 'git_diff' ? gitDiffPerItemBytes : perItemBytes
+    const itemBudget = Math.min(typeCap, remainingBytes)
     let outcome
     if (req.type === 'read_file') {
       outcome = executeSingleReadFile(req, { repoRoot, trustedRoot, budgetBytes: itemBudget, maxFileBytes, truncate })
@@ -1122,6 +1202,23 @@ function accumulateUsage(total, delta) {
   }
 }
 
+const RETRYABLE_API_ERROR_PATTERN = /server_error|rate_limit|timeout|overloaded|unavailable|5\d\d|429/iu
+
+function extractApiErrorInfo(errValue, fallbackText = '') {
+  if (typeof errValue === 'string' && errValue.trim() !== '') {
+    return { message: errValue.trim(), code: '' }
+  }
+  if (errValue && typeof errValue === 'object') {
+    const message =
+      typeof errValue.message === 'string' && errValue.message.trim() !== ''
+        ? errValue.message.trim()
+        : fallbackText || JSON.stringify(errValue)
+    const code = String(errValue.code ?? errValue.type ?? '')
+    return { message, code }
+  }
+  return { message: fallbackText || String(errValue ?? ''), code: '' }
+}
+
 function createSseResponseConsumer({ apiKey, extraSecrets = [], onProgress }) {
   let outputDeltas = ''
   let doneFallbackText = ''
@@ -1163,6 +1260,16 @@ function createSseResponseConsumer({ apiKey, extraSecrets = [], onProgress }) {
       }
     }
 
+    const type = typeof event?.type === 'string' ? event.type : eventName
+    // 先检查错误帧，避免同时带 choices: [] 与 error 的兼容网关 chunk 在 choices 分支早退吞错。
+    if (type === 'response.failed' || type === 'error' || event?.error) {
+      const errObj = event?.response?.error ?? event?.error ?? event
+      const { message, code } = extractApiErrorInfo(errObj, payload)
+      failedMessage = sanitizeDirectError(message, apiKey, 360, extraSecrets)
+      failedRetryable = RETRYABLE_API_ERROR_PATTERN.test(`${code} ${message}`)
+      return
+    }
+
     // Chat Completions SSE chunk（带 choices 数组）
     if (Array.isArray(event?.choices)) {
       const choice = event.choices[0]
@@ -1186,11 +1293,16 @@ function createSseResponseConsumer({ apiKey, extraSecrets = [], onProgress }) {
       }
       if (choice?.finish_reason === 'length') {
         incompleteReason = 'max_output_tokens'
+      } else if (choice?.finish_reason === 'error') {
+        failedMessage = 'model stream terminated with finish_reason=error'
+        failedRetryable = true
+      } else if (choice?.finish_reason === 'content_filter') {
+        failedMessage = 'model output blocked by content_filter'
+        failedRetryable = false
       }
       return
     }
 
-    const type = typeof event?.type === 'string' ? event.type : eventName
     if (type === 'response.output_text.delta' && typeof event.delta === 'string') {
       outputDeltas += event.delta
       outputChars += event.delta.length
@@ -1218,14 +1330,6 @@ function createSseResponseConsumer({ apiKey, extraSecrets = [], onProgress }) {
     if (type === 'response.incomplete') {
       const resp = event?.response ?? event
       incompleteReason = resp?.incomplete_details?.reason || 'unknown'
-      return
-    }
-    if (type === 'response.failed' || type === 'error' || event?.error) {
-      const errObj = event?.response?.error ?? event?.error ?? event
-      const msg = typeof errObj?.message === 'string' && errObj.message.trim() !== '' ? errObj.message : payload
-      const code = String(errObj?.code ?? errObj?.type ?? '')
-      failedMessage = sanitizeDirectError(msg, apiKey, 360, extraSecrets)
-      failedRetryable = /server_error|rate_limit|timeout|overloaded|unavailable|5\d\d|429/iu.test(`${code} ${msg}`)
     }
   }
 
@@ -1255,11 +1359,10 @@ function createSseResponseConsumer({ apiKey, extraSecrets = [], onProgress }) {
         error.retryable = true
         throw error
       }
-      if (completedResponse?.error?.message) {
-        const error = new Error(
-          `Responses API error: ${sanitizeDirectError(completedResponse.error.message, apiKey, 360, extraSecrets)}`
-        )
-        error.retryable = false
+      if (completedResponse?.error) {
+        const { message, code } = extractApiErrorInfo(completedResponse.error)
+        const error = new Error(`Responses API error: ${sanitizeDirectError(message, apiKey, 360, extraSecrets)}`)
+        error.retryable = RETRYABLE_API_ERROR_PATTERN.test(`${code} ${message}`)
         throw error
       }
       const text = extractResponseText(completedResponse) || outputDeltas || doneFallbackText
@@ -1339,12 +1442,22 @@ function buildChatCompletionsBody({
   omitStreamOptions = false
 }) {
   const schemaReminder = `\n\n## 输出 JSON Schema（必须严格满足全部必填字段与类型，仅输出纯 JSON）\n${JSON.stringify(schema)}`
-  const messages = (Array.isArray(input) ? input : []).map((msg, index) => {
+  const rawMessages = (Array.isArray(input) ? input : []).map((msg, index) => {
     const role = msg.role === 'developer' ? 'system' : msg.role
     const content =
       index === 0 && role === 'system' ? `${String(msg.content ?? '')}${schemaReminder}` : String(msg.content ?? '')
     return { role, content }
   })
+  // 兜底规整：严格交替的兼容网关拒绝相邻同为 user 的消息，统一以双换行合并。
+  const messages = []
+  for (const msg of rawMessages) {
+    const previous = messages.at(-1)
+    if (previous && previous.role === 'user' && msg.role === 'user') {
+      previous.content = `${previous.content}\n\n${msg.content}`
+    } else {
+      messages.push({ ...msg })
+    }
+  }
   const body = {
     model: String(model).trim(),
     messages,
@@ -1562,15 +1675,26 @@ export async function callResponsesApi({
     throw error
   }
 
-  if (data?.error?.message) {
-    const error = new Error(
-      `Responses API error: ${sanitizeDirectError(data.error.message, apiKey, 360, extraSecrets)}`
-    )
+  if (data?.error) {
+    const { message, code } = extractApiErrorInfo(data.error, rawBody)
+    const error = new Error(`Responses API error: ${sanitizeDirectError(message, apiKey, 360, extraSecrets)}`)
+    error.retryable = RETRYABLE_API_ERROR_PATTERN.test(`${code} ${message}`)
+    throw error
+  }
+
+  const finishReason = data?.choices?.[0]?.finish_reason
+  if (finishReason === 'error') {
+    const error = new Error('Responses API terminated with finish_reason=error')
+    error.retryable = true
+    throw error
+  }
+  if (finishReason === 'content_filter') {
+    const error = new Error('Responses API output blocked by content_filter')
     error.retryable = false
     throw error
   }
 
-  if (data?.status === 'incomplete' || data?.choices?.[0]?.finish_reason === 'length') {
+  if (data?.status === 'incomplete' || finishReason === 'length') {
     const reason = data?.status === 'incomplete' ? data?.incomplete_details?.reason || 'unknown' : 'max_output_tokens'
     const error = new Error(
       `Incomplete response returned, reason: ${sanitizeDirectError(reason, apiKey, 120, extraSecrets)}`
@@ -1625,9 +1749,52 @@ function extractFinalEnvelopeText(turn1Object, sanitizedSteps) {
     findings: turn1Object.findings,
     summary: turn1Object.summary
   }
-  // 仅当原答复没有外层包装时直接返回纯净 JSON；保留结构字段供下游 validate 校验。
+  const steps = Array.isArray(sanitizedSteps)
+    ? [
+        ...new Set(
+          sanitizedSteps.filter(step => typeof step === 'string' && step.trim() !== '').map(step => step.trim())
+        )
+      ]
+    : []
   const json = JSON.stringify(finalPayload)
-  return { json, hadWrapper: sanitizedSteps.length > 0 }
+  return { json, hadWrapper: steps.length > 0, sanitizedSteps: steps }
+}
+
+function serializeTurn1FetchContext(requests, maxBytes = 4096) {
+  const normalizedRequests = (Array.isArray(requests) ? requests : []).map(req => ({
+    type: req.type,
+    path: req.path,
+    start_line: req.start_line,
+    end_line: req.end_line,
+    query: req.query,
+    reason: req.reason
+  }))
+  const makeEnvelope = list =>
+    JSON.stringify({
+      action: 'fetch_context',
+      context_requests: list,
+      coverage: { inspected: [], uncovered: [] },
+      prior_resolutions: [],
+      findings: [],
+      summary: ''
+    })
+  let serialized = makeEnvelope(normalizedRequests)
+  if (Buffer.byteLength(serialized, 'utf8') <= maxBytes) return serialized
+
+  const trimmedReasons = normalizedRequests.map(req => ({
+    ...req,
+    reason: req.reason.length > 80 ? `${req.reason.slice(0, 80)}…` : req.reason
+  }))
+  serialized = makeEnvelope(trimmedReasons)
+  if (Buffer.byteLength(serialized, 'utf8') <= maxBytes) return serialized
+
+  const kept = []
+  for (const item of trimmedReasons) {
+    const candidate = makeEnvelope([...kept, item])
+    if (Buffer.byteLength(candidate, 'utf8') > maxBytes) break
+    kept.push(item)
+  }
+  return makeEnvelope(kept)
 }
 
 /**
@@ -1755,8 +1922,20 @@ export async function runDirectReview({
   const invokeWithCorrection = async ({ turnLabel, baseMessages, schemaName, schema, evaluator }) => {
     let attempts = 0
     let correctionNote = ''
+    let attemptRawOutput = ''
     while (attempts <= retryLimit) {
-      const messages = correctionNote ? [...baseMessages, { role: 'user', content: correctionNote }] : baseMessages
+      const assistantHistory = attemptRawOutput
+        ? defaultTruncateUtf8ByLines(attemptRawOutput, 4096).text
+        : '(truncated or empty response)'
+      const messages = correctionNote
+        ? [
+            ...baseMessages,
+            { role: 'assistant', content: assistantHistory || '(truncated or empty response)' },
+            { role: 'user', content: correctionNote }
+          ]
+        : baseMessages
+      // 每次发起请求前清零本轮局部输出，杜绝上一轮或 Turn 1 输出跨轮污染。
+      attemptRawOutput = ''
       const callStartedAt = nowImpl()
       let lastProgressAt = callStartedAt
       runtime.api_calls += 1
@@ -1817,6 +1996,7 @@ export async function runDirectReview({
         return { fatal: false, passed: true, ...evaluated }
       }
 
+      attemptRawOutput = response.text
       lastContractError = evaluated.reason
       if (attempts < retryLimit) {
         attempts += 1
@@ -1832,7 +2012,10 @@ export async function runDirectReview({
         passed: false,
         code: evaluated.code ?? 'unusable_output',
         reason: evaluated.reason,
-        rawOutput: evaluated.rawOutput ?? response.text
+        rawOutput: evaluated.rawOutput ?? response.text,
+        ...(Array.isArray(evaluated.sanitizedSteps) && evaluated.sanitizedSteps.length > 0
+          ? { sanitizedSteps: evaluated.sanitizedSteps }
+          : {})
       }
     }
     return { fatal: true, errorMessage: 'direct review exhausted retries unexpectedly' }
@@ -1871,17 +2054,28 @@ export async function runDirectReview({
         }
         return { ok: true, action: 'fetch_context', requests: value.context_requests }
       }
-      const { json } = extractFinalEnvelopeText(value, sanitized)
+      const { json, sanitizedSteps } = extractFinalEnvelopeText(value, sanitized)
       let validated
       try {
         validated = validateFinalPayload(json, { scope, priorConclusion, helpers })
       } catch (failure) {
-        return { ok: false, reason: failure instanceof Error ? failure.message : String(failure), rawOutput: json }
+        return {
+          ok: false,
+          reason: failure instanceof Error ? failure.message : String(failure),
+          rawOutput: json,
+          sanitizedSteps
+        }
       }
       if (!validated.ok) {
-        return { ok: false, code: validated.code ?? 'unusable_output', reason: validated.reason, rawOutput: json }
+        return {
+          ok: false,
+          code: validated.code ?? 'unusable_output',
+          reason: validated.reason,
+          rawOutput: json,
+          sanitizedSteps
+        }
       }
-      return { ok: true, action: 'final', finalText: json }
+      return { ok: true, action: 'final', finalText: json, sanitizedSteps }
     }
   })
 
@@ -1895,6 +2089,11 @@ export async function runDirectReview({
     }
   }
 
+  const turn1SanitizedExtra =
+    Array.isArray(turn1Result.sanitizedSteps) && turn1Result.sanitizedSteps.length > 0
+      ? { output_sanitized: turn1Result.sanitizedSteps }
+      : {}
+
   if (!turn1Result.passed) {
     return {
       ok: false,
@@ -1902,7 +2101,7 @@ export async function runDirectReview({
       errorCode: turn1Result.code ?? 'unusable_output',
       rawOutput: turn1Result.rawOutput ?? lastRawOutput,
       errorMessage: turn1Result.reason ?? lastContractError,
-      runtime: finalizeRuntime(runtime, usage)
+      runtime: { ...finalizeRuntime(runtime, usage), ...turn1SanitizedExtra }
     }
   }
 
@@ -1912,7 +2111,7 @@ export async function runDirectReview({
       kind: 'reviewed',
       rawOutput: turn1Result.finalText,
       errorMessage: '',
-      runtime: finalizeRuntime(runtime, usage)
+      runtime: { ...finalizeRuntime(runtime, usage), ...turn1SanitizedExtra }
     }
   }
 
@@ -1937,6 +2136,7 @@ export async function runDirectReview({
   const turn2Messages = [
     { role: 'developer', content: promptText },
     { role: 'user', content: packet.markdown },
+    { role: 'assistant', content: serializeTurn1FetchContext(turn1Result.requests) },
     {
       role: 'user',
       content:
