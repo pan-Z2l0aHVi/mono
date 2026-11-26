@@ -3086,7 +3086,7 @@ exit 2
   // error 的四种故障码各有各的下一步，一刀切文案会把「改后台」推给只想重跑的读者。
   const guidance = code =>
     renderOf(metaOf({ status: 'error', ...(code ? { error_code: code } : {}), error: 'the review failed' }))
-  assert.match(guidance('model_failed'), /先看 `Codex review` job 里 `Run codex exec` 的日志/)
+  assert.match(guidance('model_failed'), /先看 `Codex review` job 里 `Review pull request with Codex` 的日志/)
   assert.match(guidance('model_failed'), /重跑整条 run/)
   assert.ok(
     !/检查 GitHub 后台的 secrets\/variables/.test(guidance('model_failed')),
@@ -4603,6 +4603,140 @@ exit 2
     const missingCovMeta = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-meta.json'), 'utf8'))
     assert.equal(missingCovMeta.status, 'unreviewed')
     assert.equal(missingCovMeta.error_code, 'missing_coverage')
+
+    // 1.2 classifyPathRisk 与 selectReviewSkills 必须识别 Go *_test.go
+    assert.equal(classifyPathRisk('apps/interweave/service_test.go').category, 'test')
+    const goTestSkills = selectReviewSkills({
+      diff: 'diff --git a/apps/interweave/service_test.go b/apps/interweave/service_test.go\n--- a/apps/interweave/service_test.go\n+++ b/apps/interweave/service_test.go\n@@ -1 +1 @@\n+func TestX() {}\n',
+      changedPaths: ['apps/interweave/service_test.go']
+    })
+    assert.ok(goTestSkills.some(skill => skill.name === 'test-authoring'))
+
+    // 2.2 firstModelErrorLine 在无 Run codex exec 区间时，即便日志前后出现无关 ERROR: {...} 也优先取 CODEX_DIRECT_ERROR:
+    assert.equal(
+      firstModelErrorLine(
+        [
+          '2026-11-26T01:02:01.000Z ERROR: {"error":{"message":"unrelated earlier json error"}}',
+          '2026-11-26T01:02:02.000Z CODEX_DIRECT_ERROR: direct engine real failure',
+          '2026-11-26T01:02:03.000Z ERROR: {"error":{"message":"unrelated later json error"}}'
+        ].join('\n')
+      ),
+      'direct engine real failure'
+    )
+
+    // 2.1 commandValidate 对 cancelled 与 skipped 必须落 status=error, error_code=model_failed 且不触发 auto-retry
+    for (const abortedOutcome of ['cancelled', 'skipped']) {
+      fs.rmSync(path.join(tempRoot, 'codex-final-message.json'), { force: true })
+      fs.rmSync(directUnusablePath(runEnv), { force: true })
+      fs.rmSync(path.join(conclusionDir, 'review-findings.json'), { force: true })
+      fs.rmSync(path.join(conclusionDir, 'review-meta.json'), { force: true })
+      const validateAborted = spawnSync(
+        process.execPath,
+        [path.join(import.meta.dirname, 'codex-review.mjs'), 'validate'],
+        {
+          encoding: 'utf8',
+          env: {
+            ...testEnv(),
+            RUNNER_TEMP: tempRoot,
+            CODEX_REVIEW_BASE_SHA: otherSha,
+            CODEX_REVIEW_HEAD_SHA: headSha,
+            CODEX_REVIEW_STEP_OUTCOME: abortedOutcome
+          }
+        }
+      )
+      assert.equal(validateAborted.status, 0, validateAborted.stderr)
+      const abortedMeta = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-meta.json'), 'utf8'))
+      assert.equal(abortedMeta.status, 'error')
+      assert.equal(abortedMeta.error_code, 'model_failed')
+      assert.match(abortedMeta.error, new RegExp(`outcome=${abortedOutcome}`))
+      assert.equal(
+        autoRetryDecision({
+          meta: abortedMeta,
+          runAttempt: '1',
+          runConclusion: 'failure',
+          reportAttempt: '1'
+        }).action,
+        'skip'
+      )
+    }
+
+    // 3.4 Turn 1 带包装层直接收口：commandRun -> commandValidate -> review-meta.json -> renderConclusion 全链路保留 output_sanitized
+    fs.rmSync(path.join(conclusionDir, 'review-findings.json'), { force: true })
+    fs.rmSync(path.join(conclusionDir, 'review-meta.json'), { force: true })
+    const sanitizedRun = await commandRun({
+      env: runEnv,
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            output_text: `<think>brief check</think>\n${JSON.stringify({
+              action: 'final',
+              context_requests: [],
+              coverage: { inspected: [sampleFile], uncovered: [] },
+              prior_resolutions: [],
+              findings: [],
+              summary: 'Wrapped Turn 1 clean review.'
+            })}`
+          })
+      })
+    })
+    assert.equal(sanitizedRun.kind, 'reviewed')
+    assert.deepEqual(sanitizedRun.runtime.output_sanitized, ['reasoning-block'])
+    const validateSanitized = spawnSync(
+      process.execPath,
+      [path.join(import.meta.dirname, 'codex-review.mjs'), 'validate'],
+      {
+        encoding: 'utf8',
+        env: {
+          ...testEnv(),
+          RUNNER_TEMP: tempRoot,
+          CODEX_REVIEW_BASE_SHA: otherSha,
+          CODEX_REVIEW_HEAD_SHA: headSha,
+          CODEX_REVIEW_STEP_OUTCOME: 'success'
+        }
+      }
+    )
+    assert.equal(validateSanitized.status, 0, validateSanitized.stderr)
+    const sanitizedResultMeta = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-meta.json'), 'utf8'))
+    assert.equal(sanitizedResultMeta.status, 'reviewed')
+    assert.deepEqual(sanitizedResultMeta.output_sanitized, ['reasoning-block'])
+    const renderedSanitized = renderConclusion({
+      conclusion: deriveConclusion({
+        meta: sanitizedResultMeta,
+        findings: parseReviewFindings(fs.readFileSync(path.join(conclusionDir, 'review-findings.json'), 'utf8')),
+        liveHeadSha: headSha
+      }),
+      meta: sanitizedResultMeta,
+      pullNumber: 99
+    })
+    assert.match(renderedSanitized, /输出清洗：模型答复外层带 推理标签块/)
+
+    // 2.2 commandRun 前置准备异常（如损坏 review-scope.json）：外层捕获、脱敏写 errorFile 并打印 CODEX_DIRECT_ERROR:
+    const brokenTemp = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-direct-broken-'))
+    try {
+      const brokenDir = path.join(brokenTemp, 'codex-review')
+      fs.mkdirSync(brokenDir, { recursive: true })
+      fs.writeFileSync(path.join(brokenDir, 'review-scope.json'), '{not-valid-json')
+      const brokenRun = spawnSync(process.execPath, [path.join(import.meta.dirname, 'codex-review.mjs'), 'run'], {
+        encoding: 'utf8',
+        env: {
+          ...testEnv(),
+          RUNNER_TEMP: brokenTemp,
+          CODEX_REVIEW_API_KEY: 'sk-topsecret-broken-key',
+          CODEX_RESPONSES_ENDPOINT: 'https://api.example/v1',
+          CODEX_REVIEW_MODEL: 'gpt-test'
+        }
+      })
+      assert.equal(brokenRun.status, 1)
+      assert.match(brokenRun.stderr, /CODEX_DIRECT_ERROR:/)
+      assert.ok(!brokenRun.stderr.includes('sk-topsecret-broken-key'))
+      const persistedErr = fs.readFileSync(path.join(brokenTemp, 'codex-review-engine-error.txt'), 'utf8').trim()
+      assert.ok(persistedErr.length > 0)
+      assert.ok(!persistedErr.includes('sk-topsecret-broken-key'))
+    } finally {
+      fs.rmSync(brokenTemp, { recursive: true, force: true })
+    }
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true })
   }
