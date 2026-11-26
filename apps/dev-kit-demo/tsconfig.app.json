@@ -1,0 +1,11 @@
+{
+  "extends": "@greypan/tsconfig/vue.json",
+  "compilerOptions": {
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.app.tsbuildinfo",
+    "paths": {
+      "@/*": ["./src/*"]
+    }
+  },
+  "exclude": ["src/**/__tests__/*", "src/generated/**/codeblock/**/*"],
+  "include": ["env.d.ts", "auto-imports.d.ts", "typed-router.d.ts", "src/**/*", "src/**/*.vue"]
+}

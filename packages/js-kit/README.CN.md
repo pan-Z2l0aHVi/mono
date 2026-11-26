@@ -6,216 +6,114 @@
 [![CI](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml/badge.svg)](https://github.com/pan-Z2l0aHVi/mono/actions/workflows/ci.yml)
 [![License: MIT](https://img.shields.io/npm/l/@greypan/js-kit)](https://www.npmjs.com/package/@greypan/js-kit)
 
-> JavaScript 工具函数与可组合插件，可用于浏览器、Node.js 和 Worker。
+> 零框架依赖的 JavaScript/TypeScript 工具库与可组合插件构建器，适用于浏览器、Node.js 与 Worker。
 
-[English](./README.md) | 简体中文
+[English](./README.md) | 简体中文 | [在线演示](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/js-kit/getting-started)
+
+- **零框架依赖**：不含 DOM 或 UI 框架绑定，可在浏览器、Node.js（`>=20.11.0`）和 Worker 中运行。
+- **ESM-only 与 Tree-shakable**：原生 ES Module 输出，声明 `"sideEffects": false`，支持按子路径导入单个模块。
+- **严格 TypeScript 类型**：覆盖插件链组合、`Result` 范式与纯编译期类型工具的完整类型推导。
 
 ## 安装
 
-```bash
-# npm
+```npm
 npm install @greypan/js-kit
+```
 
-# pnpm
+```pnpm
 pnpm add @greypan/js-kit
+```
 
-# yarn
-yarn add @greypan/js-kit
-
-# bun
+```bun
 bun add @greypan/js-kit
+```
+
+```yarn
+yarn add @greypan/js-kit
 ```
 
 ## 快速开始
 
+### 组合插件
+
+`definePlugin` 返回一个惰性构建器。通过 `.use()` 逐层叠加能力——每个插件通过 `ctx` 访问前序插件的输出，也可覆写同名方法——最后调用 `.make()` 生成实例。
+
 ```ts
-import { definePlugin } from '@greypan/js-kit'
+import { definePlugin } from '@greypan/js-kit/plugin-system'
 
-const defineLogger = () => definePlugin(() => ({ log: (message: string) => console.log(message) }))
-const defineAuth = () => definePlugin(() => ({ token: 'xxx' }))
+const defineLogger = () =>
+  definePlugin(() => ({
+    log: (message: string) => console.log(`[app] ${message}`)
+  }))
 
-const app = defineLogger().use(defineAuth()).make()
+const definePrefix = (prefix: string) =>
+  definePlugin((ctx: { log: (message: string) => void }) => ({
+    log: (message: string) => ctx.log(`${prefix}: ${message}`)
+  }))
 
-app.log('hello')
-console.log(app.token)
+const app = defineLogger().use(definePrefix('auth')).make()
+app.log('token refreshed') // [app] auth: token refreshed
 ```
 
-## 提供什么
+### 用 Result 处理异步错误
 
-- 用 `definePlugin`、`.use()` 和 `.make()` 组合插件。
-- 解析和构建带查询参数与 hash 的 URL。
-- 文件大小、数值范围和文件扩展名等数字与字符串工具。
-- 防抖函数与可控定时器。
-- 用于 fire-and-forget 任务的 `safeCall` 包装器。
-- 不依赖异常的错误处理 Result 值。
-- 共享 TypeScript 工具类型。
-
-## 插件
-
-### `definePlugin(setup)`
-
-创建插件。用 `.use()` 组合其他插件，再用 `.make()` 创建实例。
+需要把失败表示为显式返回值、避免分散的 `try/catch` 时，可从 `@greypan/js-kit/rust` 导入 `Result` 工具。`to()` 将任意 `Promise` 包装为 `Promise<Result<T, E>>`，`andThen()` 串联后续步骤并在遇到 `Err` 时短路返回。
 
 ```ts
-import { definePlugin } from '@greypan/js-kit'
+import { andThen, err, ok, to } from '@greypan/js-kit/rust'
 
-const defineConfig = () => definePlugin(() => ({ apiUrl: 'https://api.example.com' }))
-const config = defineConfig().make()
-
-console.log(config.apiUrl)
-```
-
-| 参数    | 类型            | 说明                           |
-| ------- | --------------- | ------------------------------ |
-| `setup` | `(ctx: D) => C` | 接收共享上下文并返回插件 API。 |
-
-### `defineBatchEmitter<S>(options?)`
-
-收集事件，并在延迟后以一批发送。
-
-```ts
-import { defineBatchEmitter } from '@greypan/js-kit'
-
-const batch = defineBatchEmitter<{ id: number }>({
-  onFlushed: items => console.log('Flushed', items.length, 'items')
+const fetched = await to(Promise.resolve('{"port": 8080}'))
+const port = await andThen(fetched, raw => {
+  const data = JSON.parse(raw) as { port?: number }
+  return typeof data.port === 'number' ? ok(data.port) : err(new Error('Missing port'))
 })
 
-const ctx = batch.make()
-await ctx.batchEmit({ id: 1 })
-await ctx.batchEmit({ id: 2 })
+if (port.ok) {
+  console.log('Listening on', port.value) // Listening on 8080
+} else {
+  console.error(port.error)
+}
 ```
 
-`batchEmit(data, delay = 0)` 以本次发送的批次 resolve。`delay` 为 `0` 或负数时立即发送 `[data]`，正数时按延迟聚合事件。`flush()` 立即发送当前队列。
+## 子路径导入
 
-| 参数                | 类型                                    | 默认值 | 说明             |
-| ------------------- | --------------------------------------- | ------ | ---------------- |
-| `options.onFlushed` | `(items: S[]) => void \| Promise<void>` | -      | 每批发送时调用。 |
-
-### `defineQueue<T>(options)`
-
-用于 fire-and-forget 任务的队列。调用 `onConsume` 后立即移除条目，不等待返回的 Promise。
-
-### `defineAckQueue<T>(options)`
-
-等待消费者完成的队列。`onConsume` 返回的 Promise resolve 后才移除条目。reject 只影响当前条目，`resume()` 或 `flush()` 可以重试失败条目。
-
-两种队列都提供 `enqueue()`、`pause()`、`resume()` 和异步 `flush()`，并支持 `initialItems`、同步快照回调 `onPersist` 与 `onConsumeError`。
-
-完整参数表、持久化行为，以及在消费者内调用 `flush()` 的限制见 [`src/plugin-system/README.CN.md`](./src/plugin-system/README.CN.md)。
-
-## URL
-
-### `parseUrl(url?)`
-
-把 URL 字符串解析为 `base`、`query` 和 `hash`。支持相对 URL 与协议相对 URL。
-
-| 参数  | 类型     | 默认值 | 说明         |
-| ----- | -------- | ------ | ------------ |
-| `url` | `string` | `''`   | 待解析的 URL |
-
-### `stringifyUrl(opts, omitNil?)`
-
-用 `base`、`query` 和 `hash` 构建 URL 字符串。
-
-| 参数      | 类型                 | 默认值 | 说明                              |
-| --------- | -------------------- | ------ | --------------------------------- |
-| `opts`    | `Partial<URLObject>` | -      | URL 组件：`base`、`query`、`hash` |
-| `omitNil` | `boolean`            | `true` | 是否移除查询参数中的空值。        |
-
-示例与边界行为见 [`src/url/README.CN.md`](./src/url/README.CN.md)。
-
-## 数字与字符串
-
-### `clamp(val, min, max)`
-
-把数字限制在范围内。`min` 大于 `max` 时会自动交换。
-
-### `formatFileSize(bytes, decimals?)`
-
-把字节数格式化为可读字符串，例如 `'1.23 KB'`。
-
-| 参数       | 类型     | 默认值 | 说明     |
-| ---------- | -------- | ------ | -------- |
-| `bytes`    | `number` | -      | 字节数   |
-| `decimals` | `number` | `2`    | 小数位数 |
-
-### `getFileExtension(filename)`
-
-返回文件名的扩展名。输入为空或没有扩展名时抛错。
-
-## 定时器
-
-### `defineControllableInterval(options)`
-
-创建可暂停和恢复的定时器。实例提供 `start`、`pause`、`resume`、`stop` 和 `tick`。
-
-| 方法          | 说明                                                |
-| ------------- | --------------------------------------------------- |
-| `start()`     | 启动定时器。已暂停的定时器应使用 `resume()`。       |
-| `pause()`     | 暂停并保留当前周期的剩余时间。                      |
-| `resume()`    | 从剩余时间继续，不重新开始整个周期。                |
-| `stop()`      | 取消定时器并重置状态。                              |
-| `tick(delay)` | 在 `delay` 毫秒后额外执行一次回调，不改变暂停状态。 |
+可以直接从根入口 `@greypan/js-kit` 导入全部能力，或按子路径按需引入以缩小打包体积：
 
 ```ts
-const timer = defineControllableInterval({ callback: () => console.log('tick'), interval: 1000 }).make()
-timer.start()
+// 根入口：全部模块 + `rust` 命名空间
+import { definePlugin, parseUrl, rust } from '@greypan/js-kit'
+// 顶层 `Result` 工具函数，无需 `rust.` 前缀
+import { andThen, err, ok, to } from '@greypan/js-kit/rust'
+import { debounce, defineControllableInterval } from '@greypan/js-kit/timer'
+// 按模块子路径导入
+import { parseUrl, stringifyUrl } from '@greypan/js-kit/url'
 ```
 
-### `debounce(func, options?)`
+全部模块目录（`plugin-system`、`url`、`number`、`string`、`timer`、`paradigm`、`shortcut`、`utility-types`）均可通过 `@greypan/js-kit/<module>` 导入。
 
-防抖函数。返回 `call`、`cancel`、`flush`、`isPending` 和 `cachedValue`。
+## 模块总览
 
-| 参数      | 类型                                                                                  | 默认值 | 说明       |
-| --------- | ------------------------------------------------------------------------------------- | ------ | ---------- |
-| `func`    | `Function`                                                                            | -      | 待防抖函数 |
-| `options` | `{ timing?: 'trailing' \| 'leading' \| 'both'; waitMs?: number; maxWaitMs?: number }` | -      | 防抖参数   |
+| 模块                                          | 子路径                          | 解决什么问题                                        | 核心导出                                                                                                                         |
+| --------------------------------------------- | ------------------------------- | --------------------------------------------------- | -------------------------------------------------------------------------------------------------------------------------------- |
+| [`plugin-system`](./docs/plugin-system.CN.md) | `@greypan/js-kit/plugin-system` | 可组合插件构建器、批量发射器、待消费队列与确认队列  | `definePlugin`、`defineBatchEmitter`、`defineQueue`、`defineAckQueue`、`Plugin`、`PluginMade`、`QueueOptions`、`QueueController` |
+| [`paradigm`](./docs/paradigm.CN.md)           | `@greypan/js-kit/paradigm`      | Rust 风格 `Result<T, E>` 错误处理（另提供 `/rust`） | `rust`（`ok`、`err`、`isOk`、`isErr`、`to`、`andThen`、`unwrap`、`Ok`、`Err`、`Result`）                                         |
+| [`url`](./docs/url.CN.md)                     | `@greypan/js-kit/url`           | 解析与序列化完整 URL、站内相对路径及协议相对地址    | `parseUrl`、`stringifyUrl`                                                                                                       |
+| [`timer`](./docs/timer.CN.md)                 | `@greypan/js-kit/timer`         | 带取消/冲刷控制的防抖器与可暂停定时器插件           | `debounce`、`defineControllableInterval`                                                                                         |
+| [`shortcut`](./docs/shortcut.CN.md)           | `@greypan/js-kit/shortcut`      | 吞掉同步异常与异步 rejection 的兜底调用             | `safeCall`、`SafeCallOptions`                                                                                                    |
+| [`number`](./docs/number.CN.md)               | `@greypan/js-kit/number`        | 数值区间钳制与可读文件大小格式化                    | `clamp`、`formatFileSize`                                                                                                        |
+| [`string`](./docs/string.CN.md)               | `@greypan/js-kit/string`        | 带边界校验的小写文件扩展名提取                      | `getFileExtension`                                                                                                               |
+| [`utility-types`](./docs/utility-types.CN.md) | `@greypan/js-kit/utility-types` | 零运行时开销的 TypeScript 工具类型                  | `DeepPartial`、`DeepRequired`、`ValueOf`、`ArrayItem`、`ArgumentType`、`Equal`、`ClassPropertyTypes`                             |
 
-`maxWaitMs` 不能小于 `waitMs`。`leading` 模式不接受 `maxWaitMs`。
+## 关键行为说明
 
-## 错误处理
+- **队列与批量发射**：`defineBatchEmitter` 在 `batchingDelay` 窗口内合并高频调用并提供 `flush()` 立即冲刷。`defineQueue` 交付即视为完成；`defineAckQueue` 仅在 `onConsume` 成功 fulfill 后移除条目，单条失败保留为失败状态且不阻塞后续条目，显式调用 `resume()` 或 `flush()` 时重试。两种队列均支持同步 `onPersist` 持久化快照（先持久化再提交内存状态）。
+- **相对路径 URL**：`parseUrl` 与 `stringifyUrl` 支持完整 URL、站内相对路径（`/api/items?page=1`）和协议相对地址（`//cdn.example.com/a.js`），不会因缺少 origin 抛错。`stringifyUrl` 默认忽略 `null`/`undefined` 参数（`omitNil = true`）。
+- **定时器**：`debounce(fn, options)` 返回控制对象（`{ call, cancel, flush, isPending, cachedValue }`），支持 `waitMs`、`maxWaitMs` 和 `timing`（`'trailing' | 'leading' | 'both'`）。`defineControllableInterval` 返回插件，`.make()` 实例化后提供 `start()`、`pause()`、`resume()`、`stop()` 和 `tick(delay)`，并在暂停期间保留剩余时间。
+- **兜底调用**：`safeCall(fn, { onError })` 同时捕获同步抛出与异步 rejection，并会吸收 `onError` 自身抛出的异常，适合清理钩子和事件监听器。
+- **纯编译期类型**：从 `@greypan/js-kit/utility-types` 导入不会产生任何运行时 JavaScript 代码。
 
-### `safeCall(fn, options?)`
+> 面向浏览器的存储、埋点上报、环境检测、DOM、文件、剪贴板和历史导航工具位于 [`@greypan/browser-kit`](../browser-kit/README.CN.md)。
 
-调用函数时不在调用点处理错误。同步异常和 Promise rejection 默认被忽略。传入 `onError` 可以接收它们。
+## License
 
-| 参数      | 类型                                 | 默认值 | 说明         |
-| --------- | ------------------------------------ | ------ | ------------ |
-| `fn`      | `() => unknown`                      | -      | 待调用的函数 |
-| `options` | `{ onError?: (e: unknown) => void }` | -      | 可选错误出口 |
-
-### `rust`
-
-不用异常的 Result 工具。
-
-| 方法                    | 说明                                                |
-| ----------------------- | --------------------------------------------------- |
-| `ok(value)`             | 创建成功结果。                                      |
-| `err(error)`            | 创建错误结果。                                      |
-| `isOk(result)`          | 判断是否为成功结果。                                |
-| `isErr(result)`         | 判断是否为错误结果。                                |
-| `to(promise)`           | 把 Promise 转为 `Ok`，或把 rejection 捕获为 `Err`。 |
-| `andThen(result, next)` | 接上下一步：`Ok` 交给 `next` 执行，`Err` 原样返回。 |
-| `unwrap(result)`        | 返回成功值或错误载荷，不会抛错。                    |
-
-```ts
-import { rust } from '@greypan/js-kit/rust'
-// 也可以从 '@greypan/js-kit' 导入
-
-const result = await rust.to(fetch('/api/user'))
-if (rust.isOk(result)) console.log(result.value)
-else console.error(rust.unwrap(result))
-```
-
-## 类型工具
-
-| 类型                    | 说明                           |
-| ----------------------- | ------------------------------ |
-| `ValueOf<T>`            | 对象所有值类型的联合。         |
-| `ArrayItem<T>`          | 数组元素类型。                 |
-| `ArgumentType<T>`       | 函数参数类型的联合。           |
-| `DeepPartial<T>`        | 递归可选。                     |
-| `DeepRequired<T>`       | 递归必选。                     |
-| `ClassPropertyTypes<T>` | 类属性类型。                   |
-| `Equal<X, Y>`           | 类型相等性检查。               |
-| `PluginMade<T>`         | 插件工厂或插件实例化后的类型。 |
+MIT

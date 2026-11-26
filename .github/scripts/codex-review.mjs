@@ -1270,7 +1270,7 @@ const GESTURE_SPRING_DIFF_PATTERN =
   /\b(?:onPointer(?:Down|Move|Up|Cancel)|pointer(?:down|move|up|cancel)|setPointerCapture|releasePointerCapture|damping(?:Ratio)?|stiffness|velocity|onDrag(?:Start|Move|End|Over|Enter|Leave)?|useDrag|useGesture|useSpring|drag|swipe|gesture|inertia|momentum|overshoot|rubberband|spring)\b/iu
 const DOC_EXTENSION_PATTERN = /\.(?:md|mdx|txt)$/iu
 const FRONTEND_SOURCE_PATTERN =
-  /^(?:packages\/web-ui|apps\/(?:react-web-ui-demo|vue-web-ui-demo|interweave\/frontend))\/.*\.(?:[cm]?[jt]sx?|vue|css|scss|less|html)$/iu
+  /^(?:packages\/web-ui|apps\/(?:react-web-ui-demo|vue-web-ui-demo|dev-kit-demo|interweave\/frontend))\/.*\.(?:[cm]?[jt]sx?|vue|css|scss|less|html)$/iu
 const TEST_HELPER_PATTERN =
   /(?:^|\/)(?:vitest|playwright)\.config\.[^/]+$|^packages\/test-kit\/|(?:^|\/)(?:test-utils|test-helpers)\//u
 const PUBLIC_BOUNDARY_PATTERN =

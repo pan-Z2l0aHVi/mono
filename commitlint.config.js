@@ -82,6 +82,7 @@ export default {
       'interweave',
       'react-web-ui-demo',
       'vue-web-ui-demo',
+      'dev-kit-demo',
       'app-scrollbars',
       'browser-kit',
       'deps-reload',

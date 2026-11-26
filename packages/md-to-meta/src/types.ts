@@ -37,6 +37,8 @@ export interface MetaNode {
   alt?: string
   /** `codeblock` 的围栏语言名；无语言时为空串。 */
   lang?: string
+  /** `codeblock` 的围栏元信息（如 `demo=parse-url`）；无元信息时省略。 */
+  meta?: string
   /** `codeblock` 的代码文件相对路径，只用于显示与报错定位。 */
   path?: string
   /**

@@ -345,7 +345,7 @@ The component sets `font-variant-numeric: tabular-nums` on its own `:host`. Chro
 
 Inside `text-align: justify` text flow the spacing gap is not treated as a justification opportunity: measured in Chromium, the line does stretch under `text-align-last: justify` while the component's own width and every group's width stay byte for byte unchanged.
 
-### Known behavior: gaps made of `margin`
+### Known behavior: gaps made of margin
 
 If you would rather not split the characters, the gap can fall back to `margin-inline-start` on each group's first element. The tradeoff is that selection highlight breaks at every group boundary with a hole exactly as wide as the gap. In Chromium, an 8px gap leaves exactly three 8px holes for four groups. This follows from the layout, not from a bug. The blank that `margin` creates sits outside both text fragments and belongs to neither. `::selection` can only use properties that do not affect layout, so it cannot fill that space. The component does not take this route.
 

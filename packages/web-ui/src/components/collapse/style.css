@@ -21,6 +21,7 @@
  */
 .wui-collapse-track {
   display: grid;
+  grid-template-columns: minmax(0, 1fr);
   grid-template-rows: 0fr;
   transition: grid-template-rows var(--wui-duration-collapse-enter, 200ms)
     var(--wui-ease-enter, cubic-bezier(0.23, 1, 0.32, 1));
@@ -88,6 +89,7 @@
  */
 .wui-collapse-inner {
   overflow: hidden;
+  min-width: 0;
   min-height: 0;
 
   /*
@@ -219,6 +221,20 @@
     black calc(100% - var(--wui-collapse-peek-edge-active, 0px) * 0.35),
     transparent 100%
   );
+}
+
+/*
+ * peek 展开落稳态后，--wui-collapse-peek-edge-active 已归零，视觉上本就完全透明；
+ * 显式撤掉 mask-image 与晕染伪元素，避免展开内容上长期残留无用的遮罩与 backdrop-filter 合成层。
+ * 收起动画启动时 _beginCollapse() 会先移除 data-wui-settled 并同步回流，渐隐淡入不受影响。
+ */
+.wui-collapse-track[data-wui-peek][data-wui-settled] .wui-collapse-inner {
+  mask-image: none;
+}
+
+.wui-collapse-track[data-wui-peek][data-wui-settled] .wui-collapse-inner.wui-glow::before,
+.wui-collapse-track[data-wui-peek][data-wui-settled] .wui-collapse-inner.wui-glow::after {
+  display: none;
 }
 
 /*

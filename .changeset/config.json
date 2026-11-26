@@ -15,6 +15,7 @@
     "@greypan/react-web-ui-demo",
     "@greypan/vue-web-ui-demo",
     "@greypan/interweave-frontend",
-    "@greypan/route-progress"
+    "@greypan/route-progress",
+    "@greypan/dev-kit-demo"
   ]
 }

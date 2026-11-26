@@ -194,9 +194,13 @@ export interface CodeblockInputs {
   variants?: readonly CodeblockVariant[]
 }
 
-export interface CodeblockControllerOptions extends CodeblockInputs {
-  /** 本站框架：既是 flavor 的初始兜底，也决定预览跑哪份围栏。 */
-  nativeFlavor: Flavor
+export interface CodeblockControllerOptions<F extends string = Flavor> extends CodeblockInputs {
+  /** 本站默认 flavor：既是 flavor 的初始兜底，也决定预览跑哪份围栏。 */
+  nativeFlavor: F
+  /** 可选自定义 flavor 列表；缺省回退 web-ui 的 `FLAVORS`（react/vue）。 */
+  flavors?: readonly F[]
+  /** 可选自定义围栏语言到 flavor 的映射；缺省回退 `flavorOf`。 */
+  flavorOf?: (lang: string | undefined) => F | null
   /** 取代码面板元素；滚动复位与复制取文都经由它（jsdom / 静态渲染可返回 null）。 */
   getPanel: () => HTMLElement | null
 }
@@ -237,8 +241,12 @@ export interface CodeblockController {
  * 代码卡状态机：激活节点回退链、flavor / 展开状态、两者的滚动复位不变量与复制反馈接线
  * 都在这一份实现里，两个 demo 的 codeblock 组件只剩渲染与事件接线。
  */
-export function createCodeblockController(options: CodeblockControllerOptions): CodeblockController {
+export function createCodeblockController<F extends string = Flavor>(
+  options: CodeblockControllerOptions<F>
+): CodeblockController {
   const { nativeFlavor, getPanel } = options
+  const allowedFlavors: readonly string[] = options.flavors ?? FLAVORS
+  const resolveFlavor: (lang: string | undefined) => string | null = options.flavorOf ?? flavorOf
   let nodes = options.nodes
   let variants = options.variants
 
@@ -263,13 +271,13 @@ export function createCodeblockController(options: CodeblockControllerOptions): 
   }
 
   function isKnownFlavor(value: string): boolean {
-    return variants ? variants.some(item => item.value === value) : FLAVORS.includes(value as Flavor)
+    return variants ? variants.some(item => item.value === value) : allowedFlavors.includes(value)
   }
 
   function refresh() {
     const active =
       variants?.find(item => item.value === flavor)?.node ??
-      nodes.find(node => flavorOf(node.lang) === flavor) ??
+      nodes.find(node => resolveFlavor(node.lang) === flavor) ??
       nodes[0] ??
       null
     const next: CodeblockSnapshot = {
@@ -277,7 +285,7 @@ export function createCodeblockController(options: CodeblockControllerOptions): 
       expanded,
       active,
       collapsible: isCodeCollapsible(active?.content ?? ''),
-      preview: nodes.find(node => node.load && flavorOf(node.lang) === nativeFlavor) ?? null,
+      preview: nodes.find(node => node.load && resolveFlavor(node.lang) === nativeFlavor) ?? null,
       copy: copyFeedback.getSnapshot()
     }
     // 渲染期 setInputs 会随宿主重渲染反复重算，而父组件每次都传入新数组（不能比引用）。
@@ -323,7 +331,9 @@ export function createCodeblockController(options: CodeblockControllerOptions): 
       refresh()
     },
     selectFlavor(value) {
-      const next = variants ? variants.find(item => item.value === value)?.value : FLAVORS.find(item => item === value)
+      const next = variants
+        ? variants.find(item => item.value === value)?.value
+        : allowedFlavors.find(item => item === value)
       if (!next || next === flavor) return
       flavor = next
       publish()

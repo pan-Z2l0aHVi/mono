@@ -1,0 +1,37 @@
+{
+  "$schema": "https://turbo.build/schema.json",
+  "extends": ["//"],
+  "tasks": {
+    "build": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "!**/*.spec.ts",
+        "!**/*.spec.mjs",
+        "!**/*.test.ts",
+        "!**/*.test.mjs",
+        "!**/__tests__/**",
+        "$TURBO_ROOT$/packages/js-kit/docs/**",
+        "$TURBO_ROOT$/packages/js-kit/CHANGELOG.md",
+        "$TURBO_ROOT$/packages/js-kit/README*.md",
+        "$TURBO_ROOT$/packages/browser-kit/docs/**",
+        "$TURBO_ROOT$/packages/browser-kit/CHANGELOG.md",
+        "$TURBO_ROOT$/packages/browser-kit/README*.md"
+      ]
+    },
+    "test": {
+      "inputs": [
+        "$TURBO_DEFAULT$",
+        "!**/*.md",
+        "$TURBO_ROOT$/packages/js-kit/docs/**",
+        "$TURBO_ROOT$/packages/js-kit/CHANGELOG.md",
+        "$TURBO_ROOT$/packages/js-kit/README*.md",
+        "$TURBO_ROOT$/packages/browser-kit/docs/**",
+        "$TURBO_ROOT$/packages/browser-kit/CHANGELOG.md",
+        "$TURBO_ROOT$/packages/browser-kit/README*.md",
+        "$TURBO_ROOT$/packages/monorepo-kit/src/exec/shell-i18n-catalog.ts",
+        "$TURBO_ROOT$/packages/monorepo-kit/src/exec/exec.ts"
+      ]
+    }
+  }
+}

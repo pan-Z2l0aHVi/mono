@@ -1,0 +1,9 @@
+{
+  "extends": "@greypan/tsconfig/dom.json",
+  "compilerOptions": {
+    "noEmit": true,
+    "moduleDetection": "force",
+    "types": ["node"]
+  },
+  "include": ["src/generated/js-kit/codeblock/*.ts", "src/generated/browser-kit/codeblock/*.ts"]
+}
