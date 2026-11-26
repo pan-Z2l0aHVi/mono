@@ -253,3 +253,53 @@ func TestFileURIFromPath(t *testing.T) {
 		t.Fatalf("URI must parse: %v", err)
 	}
 }
+
+func TestKdeWallpaperScriptPreservesHTMLCharsAndEscapesJSLineSeparators(t *testing.T) {
+	uri := "file:///tmp/a<b>&c\u2028d\u2029e'\"\\f\ng"
+	script := kdeWallpaperScript(uri)
+	if strings.Contains(script, `\u003c`) || strings.Contains(script, `\u003e`) || strings.Contains(script, `\u0026`) {
+		t.Fatalf("must not HTML-escape <, >, &: %s", script)
+	}
+	if !strings.Contains(script, `"file:///tmp/a<b>&c\u2028d\u2029e'\"\\f\ng"`) {
+		t.Fatalf("unexpected JS string encoding: %s", script)
+	}
+}
+
+func TestLinuxWallpaperApplierCancelsAlternativeAndFailsPartialXfce(t *testing.T) {
+	t.Run("KDE 备选命令在上下文取消后不再启动后续命令", func(t *testing.T) {
+		ctx, cancel := context.WithCancel(context.Background())
+		runner := &fakeCommandRunner{
+			runFn: func(_ context.Context, _ string, _ ...string) error {
+				cancel()
+				return context.Canceled
+			},
+		}
+		applier := newLinuxWallpaperApplier(func(string) string { return "KDE" }, runner)
+		if err := applier.Apply(ctx, "/tmp/a.png"); err == nil {
+			t.Fatalf("expected error on canceled KDE apply")
+		}
+		if len(runner.ran) != 1 || runner.ran[0][0] != "busctl" {
+			t.Fatalf("expected only busctl to be invoked before cancel, got %v", runner.ran)
+		}
+	})
+
+	t.Run("XFCE 多显示器部分写入失败时返回错误", func(t *testing.T) {
+		runner := &fakeCommandRunner{
+			outputFn: func(_ context.Context, _ string, _ ...string) ([]byte, error) {
+				return []byte("/backdrop/screen0/monitor0/image-path /old1\n/backdrop/screen0/monitor1/image-path /old2\n"), nil
+			},
+			runFn: func(_ context.Context, _ string, args ...string) error {
+				for _, arg := range args {
+					if strings.Contains(arg, "monitor1") {
+						return errors.New("write monitor1 failed")
+					}
+				}
+				return nil
+			},
+		}
+		applier := newLinuxWallpaperApplier(func(string) string { return "XFCE" }, runner)
+		if err := applier.Apply(context.Background(), "/tmp/a.png"); err == nil {
+			t.Fatalf("expected error when one XFCE monitor fails to update")
+		}
+	})
+}

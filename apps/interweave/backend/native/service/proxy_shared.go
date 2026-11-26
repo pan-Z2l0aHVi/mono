@@ -119,7 +119,7 @@ func (p *linuxGSettingsProxy) endpointFor(reqCtx context.Context, scheme string)
 		return gsettingsEndpoint{}, nil
 	}
 
-	refreshCtx, cancel := context.WithTimeout(context.Background(), p.timeout)
+	refreshCtx, cancel := context.WithTimeout(reqCtx, p.timeout)
 	defer cancel()
 
 	rawMode, err := p.read(refreshCtx, "org.gnome.system.proxy", "mode")

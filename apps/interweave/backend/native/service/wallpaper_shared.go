@@ -3,7 +3,6 @@ package service
 
 import (
 	"context"
-	"encoding/json"
 	"fmt"
 	"net/url"
 	"strings"
@@ -84,6 +83,9 @@ func (a *linuxWallpaperApplier) runWallpaperPlan(ctx context.Context, plan []wal
 		case wallpaperStepAlternative:
 			alternativeOk := false
 			for _, command := range step.commands {
+				if ctx.Err() != nil {
+					return false
+				}
 				if err := a.runner.Run(ctx, command[0], command[1:]...); err == nil {
 					alternativeOk = true
 					break
@@ -101,8 +103,8 @@ func (a *linuxWallpaperApplier) runWallpaperPlan(ctx context.Context, plan []wal
 	return true
 }
 
-// setXfceWallpaper 枚举全部 image-path 属性并逐条尝试写本地路径；只要有一条成功即成功，
-// 全部失败才报错（XFCE 每个显示器/工作区各有一条属性，只写第一条会留下其余屏幕未换）。
+// setXfceWallpaper 枚举全部 image-path 属性并逐条写本地路径；任一条写入失败即报错，
+// 避免多显示器场景下部分屏幕未更新却静默返回成功。
 func (a *linuxWallpaperApplier) setXfceWallpaper(ctx context.Context, path string) error {
 	if a.runner == nil {
 		return fmt.Errorf("wallpaper: command runner is not configured")
@@ -115,17 +117,17 @@ func (a *linuxWallpaperApplier) setXfceWallpaper(ctx context.Context, path strin
 	if len(props) == 0 {
 		return fmt.Errorf("wallpaper: no xfce image-path property found")
 	}
-	anyOk := false
+	var firstErr error
 	for _, prop := range props {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
 		command := xfceSetCommandFor(prop, path)
-		if err := a.runner.Run(ctx, command[0], command[1:]...); err == nil {
-			anyOk = true
+		if err := a.runner.Run(ctx, command[0], command[1:]...); err != nil && firstErr == nil {
+			firstErr = fmt.Errorf("wallpaper: xfconf-query write %s failed: %w", prop, err)
 		}
 	}
-	if !anyOk {
-		return fmt.Errorf("wallpaper: xfconf-query write failed")
-	}
-	return nil
+	return firstErr
 }
 
 // wallpaperPlanFor 返回单个桌面的执行计划；不支持或无步骤返回 nil。
@@ -158,11 +160,43 @@ func wallpaperPlanFor(desktop string, imageURI string) []wallpaperStep {
 	}
 }
 
+// jsStringLiteral 生成专用于 JavaScript 的双引号字符串字面量：
+// 显式转义引号、反斜杠、控制字符及 U+2028/U+2029，不做 encoding/json 的 HTML 字符转义（<, >, &）。
+func jsStringLiteral(value string) string {
+	var b strings.Builder
+	b.Grow(len(value) + 2)
+	b.WriteByte('"')
+	for _, r := range value {
+		switch r {
+		case '\\':
+			b.WriteString(`\\`)
+		case '"':
+			b.WriteString(`\"`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		case '\t':
+			b.WriteString(`\t`)
+		case '\u2028':
+			b.WriteString(`\u2028`)
+		case '\u2029':
+			b.WriteString(`\u2029`)
+		default:
+			if r < 0x20 {
+				fmt.Fprintf(&b, `\x%02x`, r)
+			} else {
+				b.WriteRune(r)
+			}
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
+}
+
 // kdeWallpaperScript 是 PlasmaShell evaluateScript 的脚本体：逐桌面写 Image 配置。
-// 使用 json.Marshal 生成标准双引号 JS 字符串字面量，防止单引号、反斜杠或 U+2028/U+2029 破坏脚本或注入。
 func kdeWallpaperScript(imageURI string) string {
-	encoded, _ := json.Marshal(imageURI)
-	return "var allDesktops = desktops();for (var i = 0; i < allDesktops.length; i++) {var d = allDesktops[i];d.wallpaperPlugin = 'org.kde.image';d.currentConfigGroup = ['Wallpaper','org.kde.image','General'];d.writeConfig('Image', " + string(encoded) + ")}"
+	return "var allDesktops = desktops();for (var i = 0; i < allDesktops.length; i++) {var d = allDesktops[i];d.wallpaperPlugin = 'org.kde.image';d.currentConfigGroup = ['Wallpaper','org.kde.image','General'];d.writeConfig('Image', " + jsStringLiteral(imageURI) + ")}"
 }
 
 // xfceSetCommandFor 构造一条 image-path 属性的写入命令；style 不动，保留用户现有缩放设置。
