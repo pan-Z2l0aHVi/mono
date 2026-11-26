@@ -49,11 +49,33 @@ describe('dev-kit-demo 浏览器端冒烟测试', () => {
   it('首页展示 js-kit 与 browser-kit 入口及全部 16 个模块卡片', async () => {
     const { host, cleanup } = await mountAppAt('/home')
     try {
-      await waitFor(() => (host.textContent?.includes('plugin-system') ? true : null))
-      expect(host.textContent).toContain('@greypan/js-kit')
-      expect(host.textContent).toContain('@greypan/browser-kit')
-      expect(host.textContent).toContain('utility-types')
-      expect(host.textContent).toContain('history-nav')
+      const moduleSection = await waitFor(() => host.querySelector<HTMLElement>('section[aria-label="模块清单"]'))
+      const expectedPaths = [
+        '/js-kit/plugin-system',
+        '/js-kit/url',
+        '/js-kit/number',
+        '/js-kit/string',
+        '/js-kit/timer',
+        '/js-kit/paradigm',
+        '/js-kit/shortcut',
+        '/js-kit/utility-types',
+        '/browser-kit/storage',
+        '/browser-kit/tracker',
+        '/browser-kit/env',
+        '/browser-kit/dom',
+        '/browser-kit/file',
+        '/browser-kit/copy',
+        '/browser-kit/history-nav',
+        '/browser-kit/shortcut'
+      ]
+      const cards = Array.from(moduleSection.querySelectorAll<HTMLAnchorElement>('a.demo-quick-link-card'))
+      expect(moduleSection.textContent).toContain('@greypan/js-kit')
+      expect(moduleSection.textContent).toContain('@greypan/browser-kit')
+      expect(cards).toHaveLength(expectedPaths.length)
+      const cardPaths = cards.map(card => new URL(card.href, window.location.origin).pathname)
+      for (const expectedPath of expectedPaths) {
+        expect(cardPaths).toContain(expectedPath)
+      }
     } finally {
       cleanup()
     }

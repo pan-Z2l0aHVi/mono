@@ -77,32 +77,28 @@ onBeforeUnmount(() => {
 <template>
   <div class="flex flex-col gap-3 text-sm">
     <div class="flex flex-wrap items-center gap-2">
-      <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" @click="trackEvent('button_click')">
-        上报点击事件
-      </button>
-      <button type="button" class="ui-btn ui-btn-outline ui-btn-sm" @click="trackEvent('page_view')">
-        上报浏览事件
-      </button>
-      <button type="button" class="ui-btn ui-btn-outline ui-btn-sm" @click="flushNow">立即 Flush</button>
-      <button type="button" class="ui-btn ui-btn-outline ui-btn-sm" @click="toggleOffline">
+      <web-ui-button variant="primary" size="32" @click="trackEvent('button_click')">上报点击事件</web-ui-button>
+      <web-ui-button variant="secondary" size="32" @click="trackEvent('page_view')">上报浏览事件</web-ui-button>
+      <web-ui-button variant="secondary" size="32" @click="flushNow">立即 Flush</web-ui-button>
+      <web-ui-button variant="secondary" size="32" @click="toggleOffline">
         {{ paused ? '恢复在线（resume）' : '模拟离线（pause）' }}
-      </button>
-      <button type="button" class="ui-btn ui-btn-outline ui-btn-sm" @click="triggerSampleError">触发示例异常</button>
-      <button type="button" class="ui-btn ui-btn-ghost ui-btn-sm" @click="clearLogs">清空日志</button>
+      </web-ui-button>
+      <web-ui-button variant="secondary" size="32" @click="triggerSampleError">触发示例异常</web-ui-button>
+      <web-ui-button variant="ghost" size="32" @click="clearLogs">清空日志</web-ui-button>
     </div>
 
-    <div class="flex flex-wrap gap-4 text-xs text-muted-foreground">
+    <div class="flex flex-wrap gap-4 text-xs text-(--wui-color-text-secondary)">
       <span>当前状态：{{ paused ? '已暂停（离线模拟）' : '运行中' }}</span>
       <span>待冲刷计数：{{ queuedCount }}</span>
       <span>已拦截批次：{{ sentLog.length }}</span>
     </div>
 
-    <div class="max-h-48 overflow-auto rounded-md bg-muted/50 p-2 font-mono text-xs">
-      <div v-if="sentLog.length === 0" class="text-muted-foreground">
+    <div class="max-h-48 overflow-auto rounded-md bg-(--wui-color-page) p-2 font-mono text-xs">
+      <div v-if="sentLog.length === 0" class="text-(--wui-color-text-secondary)">
         暂无上报记录。点击上方按钮触发批量聚合或立即 Flush（全部请求均由内存 transport 拦截，不会发出真实网络请求）。
       </div>
-      <div v-for="entry in sentLog" :key="entry.id" class="border-b border-border/50 py-1 last:border-b-0">
-        <span class="text-muted-foreground">#{{ entry.id }} [{{ entry.at }}]</span>
+      <div v-for="entry in sentLog" :key="entry.id" class="border-b border-(--wui-color-border) py-1 last:border-b-0">
+        <span class="text-(--wui-color-text-secondary)">#{{ entry.id }} [{{ entry.at }}]</span>
         {{ JSON.stringify(entry.payload) }}
       </div>
     </div>

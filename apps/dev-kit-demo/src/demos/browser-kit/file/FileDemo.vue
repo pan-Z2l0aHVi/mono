@@ -57,19 +57,21 @@ void runInspection()
 <template>
   <div class="flex flex-col gap-3 text-sm">
     <label class="flex flex-col gap-1">
-      <span class="text-xs text-muted-foreground">Base64 / Data URL 输入</span>
-      <textarea v-model="base64Input" rows="2" class="ui-input font-mono text-xs" />
+      <span class="text-xs text-(--wui-color-text-secondary)">Base64 / Data URL 输入</span>
+      <textarea
+        v-model="base64Input"
+        rows="2"
+        class="w-full rounded border border-(--wui-color-border) bg-(--wui-color-surface) px-3 py-1.5 font-mono text-xs"
+      />
     </label>
 
     <div class="flex flex-wrap items-center gap-2">
-      <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" @click="runInspection">校验并解析</button>
-      <button type="button" class="ui-btn ui-btn-outline ui-btn-sm" @click="handleDownloadSample">
-        下载示例文本文件
-      </button>
-      <span class="font-mono text-xs text-muted-foreground">isValidBase64: {{ base64Valid }}</span>
+      <web-ui-button variant="primary" size="32" @click="runInspection">校验并解析</web-ui-button>
+      <web-ui-button variant="secondary" size="32" @click="handleDownloadSample">下载示例文本文件</web-ui-button>
+      <span class="font-mono text-xs text-(--wui-color-text-secondary)">isValidBase64: {{ base64Valid }}</span>
     </div>
 
-    <pre v-if="inspectResult" class="overflow-auto rounded-md bg-muted/50 p-2 font-mono text-xs">{{
+    <pre v-if="inspectResult" class="overflow-auto rounded-md bg-(--wui-color-page) p-2 font-mono text-xs">{{
       inspectResult
     }}</pre>
   </div>

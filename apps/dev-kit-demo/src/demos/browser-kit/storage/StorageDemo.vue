@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import { defineLocal } from '@greypan/browser-kit'
-import { computed, onBeforeUnmount, ref } from 'vue'
+import { computed, ref, watchEffect } from 'vue'
 
 const store = defineLocal('dev-kit-demo-storage')
 
@@ -41,48 +41,64 @@ function handleSweep() {
   refresh()
 }
 
-const unwatch = store.watch<string>(keyInput.value, next => {
-  lastRead.value = next
-  statusMsg.value = '收到跨标签页 storage 更新'
+// 键名变更时自动解绑旧键的跨标签页监听并重新订阅当前键，避免串值。
+watchEffect(onCleanup => {
+  const activeKey = keyInput.value
+  refresh()
+  if (!activeKey) return
+  const unwatch = store.watch<string>(activeKey, next => {
+    lastRead.value = next
+    hasKey.value = store.has(activeKey)
+    statusMsg.value = '收到跨标签页 storage 更新'
+  })
+  onCleanup(() => {
+    unwatch()
+  })
 })
 
 const displayValue = computed(() => (lastRead.value === null ? 'null' : JSON.stringify(lastRead.value)))
-
-onBeforeUnmount(() => {
-  unwatch()
-})
-
-refresh()
 </script>
 
 <template>
   <div class="flex flex-col gap-3 text-sm">
     <div class="grid gap-2 sm:grid-cols-3">
       <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted-foreground">键名</span>
-        <input v-model="keyInput" class="ui-input" />
+        <span class="text-xs text-(--wui-color-text-secondary)">键名</span>
+        <input
+          v-model="keyInput"
+          class="w-full rounded border border-(--wui-color-border) bg-(--wui-color-surface) px-2.5 py-1.5 text-xs"
+        />
       </label>
       <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted-foreground">值</span>
-        <input v-model="valueInput" class="ui-input" />
+        <span class="text-xs text-(--wui-color-text-secondary)">值</span>
+        <input
+          v-model="valueInput"
+          class="w-full rounded border border-(--wui-color-border) bg-(--wui-color-surface) px-2.5 py-1.5 text-xs"
+        />
       </label>
       <label class="flex flex-col gap-1">
-        <span class="text-xs text-muted-foreground">TTL（ms，0 表示不过期）</span>
-        <input v-model.number="ttlMs" type="number" min="0" step="1000" class="ui-input" />
+        <span class="text-xs text-(--wui-color-text-secondary)">TTL（ms，0 表示不过期）</span>
+        <input
+          v-model.number="ttlMs"
+          type="number"
+          min="0"
+          step="1000"
+          class="w-full rounded border border-(--wui-color-border) bg-(--wui-color-surface) px-2.5 py-1.5 text-xs"
+        />
       </label>
     </div>
 
     <div class="flex flex-wrap gap-2">
-      <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" @click="handleSave">写入</button>
-      <button type="button" class="ui-btn ui-btn-outline ui-btn-sm" @click="handleRead">读取</button>
-      <button type="button" class="ui-btn ui-btn-outline ui-btn-sm" @click="handleRemove">删除</button>
-      <button type="button" class="ui-btn ui-btn-outline ui-btn-sm" @click="handleSweep">清理过期键</button>
+      <web-ui-button variant="primary" size="32" @click="handleSave">写入</web-ui-button>
+      <web-ui-button variant="secondary" size="32" @click="handleRead">读取</web-ui-button>
+      <web-ui-button variant="secondary" size="32" @click="handleRemove">删除</web-ui-button>
+      <web-ui-button variant="secondary" size="32" @click="handleSweep">清理过期键</web-ui-button>
     </div>
 
-    <div class="rounded-md bg-muted/50 px-3 py-2 font-mono text-xs">
+    <div class="rounded-md bg-(--wui-color-page) px-3 py-2 font-mono text-xs">
       <div>has("{{ keyInput }}"): {{ hasKey }}</div>
       <div>get("{{ keyInput }}"): {{ displayValue }}</div>
-      <div v-if="statusMsg" class="mt-1 text-muted-foreground">{{ statusMsg }}</div>
+      <div v-if="statusMsg" class="mt-1 text-(--wui-color-text-secondary)">{{ statusMsg }}</div>
     </div>
   </div>
 </template>

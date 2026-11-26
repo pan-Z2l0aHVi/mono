@@ -7,20 +7,31 @@ const extraKey = ref('page')
 const extraVal = ref('2')
 const omitNil = ref(true)
 
-const parsed = computed(() => parseUrl(rawUrl.value))
-const rebuilt = computed(() =>
-  stringifyUrl(
+const parseState = computed(() => {
+  try {
+    return { ok: true as const, value: parseUrl(rawUrl.value) }
+  } catch (error) {
+    return {
+      ok: false as const,
+      message: error instanceof Error ? error.message : String(error)
+    }
+  }
+})
+
+const rebuilt = computed(() => {
+  if (!parseState.value.ok) return ''
+  return stringifyUrl(
     {
-      base: parsed.value.base,
+      base: parseState.value.value.base,
       query: {
-        ...parsed.value.query,
+        ...parseState.value.value.query,
         ...(extraKey.value ? { [extraKey.value]: extraVal.value || undefined } : {})
       },
-      hash: parsed.value.hash
+      hash: parseState.value.value.hash
     },
     omitNil.value
   )
-)
+})
 </script>
 
 <template>
@@ -50,9 +61,18 @@ const rebuilt = computed(() =>
       </label>
       <label class="flex items-center gap-1"><input v-model="omitNil" type="checkbox" /> omitNil</label>
     </div>
-    <pre class="overflow-x-auto rounded bg-(--wui-color-page) p-2 font-mono text-xs">{{
-      JSON.stringify(parsed, null, 2)
-    }}</pre>
-    <div class="font-mono text-xs break-all">stringifyUrl: {{ rebuilt }}</div>
+    <template v-if="parseState.ok">
+      <pre class="overflow-x-auto rounded bg-(--wui-color-page) p-2 font-mono text-xs">{{
+        JSON.stringify(parseState.value, null, 2)
+      }}</pre>
+      <div class="font-mono text-xs break-all">stringifyUrl: {{ rebuilt }}</div>
+    </template>
+    <div
+      v-else
+      role="alert"
+      class="rounded border border-red-500/40 bg-red-500/10 px-3 py-2 font-mono text-xs text-red-600 dark:text-red-400"
+    >
+      {{ parseState.message }}
+    </div>
   </div>
 </template>

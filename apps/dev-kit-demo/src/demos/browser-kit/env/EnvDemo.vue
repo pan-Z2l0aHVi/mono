@@ -27,10 +27,14 @@ const entries = [
     <div
       v-for="item in entries"
       :key="item.key"
-      class="flex items-center justify-between rounded-md border border-border/60 px-2.5 py-1.5 font-mono"
+      class="flex items-center justify-between rounded-md border border-(--wui-color-border) px-2.5 py-1.5 font-mono"
     >
       <span>{{ item.key }}</span>
-      <span :class="item.value ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-muted-foreground'">
+      <span
+        :class="
+          item.value ? 'text-emerald-600 dark:text-emerald-400 font-semibold' : 'text-(--wui-color-text-secondary)'
+        "
+      >
         {{ item.value }}
       </span>
     </div>

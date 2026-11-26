@@ -30,16 +30,16 @@ onBeforeUnmount(() => {
 <template>
   <div class="flex flex-col gap-3 text-sm">
     <div class="flex flex-wrap items-center gap-2">
-      <button type="button" class="ui-btn ui-btn-primary ui-btn-sm" @click="toggleListener">
+      <web-ui-button variant="primary" size="32" @click="toggleListener">
         {{ listening ? '解绑 window keydown（off）' : '开启 window keydown 监听（on）' }}
-      </button>
-      <span class="text-xs text-muted-foreground">
+      </web-ui-button>
+      <span class="text-xs text-(--wui-color-text-secondary)">
         {{ listening ? '监听中：按下任意键查看事件记录' : '已暂停：未注册全局监听' }}
       </span>
     </div>
 
-    <div class="min-h-20 rounded-md bg-muted/50 p-2 font-mono text-xs">
-      <div v-if="events.length === 0" class="text-muted-foreground">暂无按键事件记录</div>
+    <div class="min-h-20 rounded-md bg-(--wui-color-page) p-2 font-mono text-xs">
+      <div v-if="events.length === 0" class="text-(--wui-color-text-secondary)">暂无按键事件记录</div>
       <div v-for="(line, index) in events" :key="index">{{ line }}</div>
     </div>
   </div>
