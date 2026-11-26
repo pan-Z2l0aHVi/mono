@@ -28,6 +28,7 @@
     "agent:update-skills": "node scripts/maintenance/update-skills.mjs",
     "dev:react-web-ui-demo": "turbo run dev --filter=@greypan/react-web-ui-demo... --concurrency=20",
     "dev:vue-web-ui-demo": "turbo run dev --filter=@greypan/vue-web-ui-demo... --concurrency=20",
+    "dev:dev-kit-demo": "turbo run dev --filter=@greypan/dev-kit-demo... --concurrency=20",
     "dev:interweave": "turbo run dev --filter=@greypan/interweave --filter=\"@greypan/interweave-frontend^...\""
   },
   "devDependencies": {

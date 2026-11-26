@@ -17,7 +17,7 @@ jobs:
     runs-on: ubuntu-latest
     timeout-minutes: 10
     env:
-      DEMO_APPS: react-web-ui-demo vue-web-ui-demo
+      DEMO_APPS: react-web-ui-demo vue-web-ui-demo dev-kit-demo
     environment:
       name: github-pages
       url: ${{ steps.deployment.outputs.page_url }}

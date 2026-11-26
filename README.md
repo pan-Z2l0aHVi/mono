@@ -40,11 +40,12 @@ These packages stay inside the repository. Add them to a workspace app with the 
 
 These apps are not published to npm. They are integration surfaces and shippable end-user software: the two web demos deploy to GitHub Pages, and Interweave ships installers through GitHub Releases.
 
-| App                                              | Stack                                                            |
-| ------------------------------------------------ | ---------------------------------------------------------------- |
-| [`react-web-ui-demo`](./apps/react-web-ui-demo/) | React 19, TanStack Router, TanStack Query, Tailwind CSS          |
-| [`vue-web-ui-demo`](./apps/vue-web-ui-demo/)     | Vue 3, Vue Router, Pinia, TanStack Query, Tailwind CSS           |
-| [`interweave`](./apps/interweave/)               | Wails 3 desktop app with a Go backend and a Vue WebView frontend |
+| App                                              | Stack                                                                       |
+| ------------------------------------------------ | --------------------------------------------------------------------------- |
+| [`react-web-ui-demo`](./apps/react-web-ui-demo/) | React 19, TanStack Router, TanStack Query, Tailwind CSS                     |
+| [`vue-web-ui-demo`](./apps/vue-web-ui-demo/)     | Vue 3, Vue Router, Pinia, TanStack Query, Tailwind CSS                      |
+| [`dev-kit-demo`](./apps/dev-kit-demo/)           | Vue 3, Vue Router, Tailwind CSS (`@greypan/js-kit`, `@greypan/browser-kit`) |
+| [`interweave`](./apps/interweave/)               | Wails 3 desktop app with a Go backend and a Vue WebView frontend            |
 
 ## Development
 

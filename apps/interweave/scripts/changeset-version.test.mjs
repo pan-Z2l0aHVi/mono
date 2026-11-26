@@ -24,29 +24,34 @@ writeShim(
   'git',
   '#!/bin/sh\nprintf \'git %s\\n\' "$*" >> "$CALLS"\ncase "$*" in\n' +
     '  *packages/web-ui/CHANGELOG.md*) exit ${GIT_CHANGELOG_STATUS:-0} ;;\n' +
+    '  *packages/js-kit/CHANGELOG.md*) exit ${GIT_DEV_KIT_CHANGELOG_STATUS:-0} ;;\n' +
     '  *) exit ${GIT_DIFF_STATUS:-0} ;;\n' +
     'esac\n'
 )
 
 const changed = ['pnpm exec changeset version', 'git diff --quiet -- apps/interweave/package.json']
-const checked = [...changed, 'git diff --quiet -- packages/web-ui/CHANGELOG.md']
-const synced = [...changed, 'pnpm --filter @greypan/interweave run sync:version', checked[2]]
-const regenerated = [
-  ...checked,
-  // 求值宿主 vite.config.ts 前要补齐 workspace 包的 dist；只建 demo 的依赖闭包，不建 demo 自身。
-  // 换行续行在真实执行时会被 shell 合并，shim 记录的是展开后的完整参数。
+const webUiCheck = 'git diff --quiet -- packages/web-ui/CHANGELOG.md'
+const devKitCheck = 'git diff --quiet -- packages/js-kit/CHANGELOG.md packages/browser-kit/CHANGELOG.md'
+const checked = [...changed, webUiCheck, devKitCheck]
+const synced = [...changed, 'pnpm --filter @greypan/interweave run sync:version', webUiCheck, devKitCheck]
+const webUiRegenerate = [
   'pnpm exec turbo run build --filter=@greypan/react-web-ui-demo^... --filter=@greypan/vue-web-ui-demo^...',
   'node scripts/generate/regenerate-md-to-meta-artifacts.mjs apps/react-web-ui-demo apps/vue-web-ui-demo'
 ]
+const devKitRegenerate = [
+  'pnpm exec turbo run build --filter=@greypan/dev-kit-demo^...',
+  'node scripts/generate/regenerate-md-to-meta-artifacts.mjs apps/dev-kit-demo'
+]
 
-function run(diffStatus, changelogStatus = '0') {
+function run(diffStatus, changelogStatus = '0', devKitChangelogStatus = '0') {
   return execFileSync('sh', [script], {
     env: {
       ...process.env,
       PATH: `${shim}${path.delimiter}${process.env.PATH ?? ''}`,
       CALLS: calls,
       GIT_DIFF_STATUS: diffStatus,
-      GIT_CHANGELOG_STATUS: changelogStatus
+      GIT_CHANGELOG_STATUS: changelogStatus,
+      GIT_DEV_KIT_CHANGELOG_STATUS: devKitChangelogStatus
     },
     encoding: 'utf8',
     stdio: 'pipe'
@@ -57,9 +62,9 @@ function callsText() {
   return fs.readFileSync(calls, 'utf8').trim().split('\n')
 }
 
-function runExpectingFailure(diffStatus, changelogStatus = '0') {
+function runExpectingFailure(diffStatus, changelogStatus = '0', devKitChangelogStatus = '0') {
   try {
-    run(diffStatus, changelogStatus)
+    run(diffStatus, changelogStatus, devKitChangelogStatus)
   } catch (error) {
     return error
   }
@@ -68,33 +73,58 @@ function runExpectingFailure(diffStatus, changelogStatus = '0') {
 
 try {
   run('0')
-  assert.deepEqual(callsText(), checked, 'unchanged app and changelog must not regenerate or sync')
+  assert.deepEqual(callsText(), checked, 'unchanged app and changelogs must not regenerate or sync')
 
   fs.rmSync(calls)
   run('1')
   assert.deepEqual(callsText(), synced, 'a changed app version must run sync:version only')
 
   fs.rmSync(calls)
-  run('1', '1')
-  assert.deepEqual(callsText(), [...synced, ...regenerated.slice(3)], 'both changes must sync and regenerate')
-
-  fs.rmSync(calls)
-  run('0', '1')
+  run('1', '1', '0')
   assert.deepEqual(
     callsText(),
-    regenerated,
-    'a changed changelog without an app version bump must still regenerate demo artifacts'
+    [...changed, 'pnpm --filter @greypan/interweave run sync:version', webUiCheck, ...webUiRegenerate, devKitCheck],
+    'app version + web-ui changelog must sync and regenerate web-ui demos'
+  )
+
+  fs.rmSync(calls)
+  run('0', '1', '0')
+  assert.deepEqual(
+    callsText(),
+    [...changed, webUiCheck, ...webUiRegenerate, devKitCheck],
+    'a changed web-ui changelog without an app version bump must still regenerate web-ui demo artifacts'
+  )
+
+  fs.rmSync(calls)
+  run('0', '0', '1')
+  assert.deepEqual(
+    callsText(),
+    [...changed, webUiCheck, devKitCheck, ...devKitRegenerate],
+    'a changed js-kit or browser-kit changelog must regenerate dev-kit-demo artifacts'
   )
 
   fs.rmSync(calls)
   const appFailure = runExpectingFailure('3')
   assert.equal(appFailure.status, 3)
-  assert.deepEqual(callsText(), changed, 'an unexpected app git status must abort before the changelog check')
+  assert.deepEqual(callsText(), changed, 'an unexpected app git status must abort before the changelog checks')
 
   fs.rmSync(calls)
-  const changelogFailure = runExpectingFailure('0', '3')
+  const changelogFailure = runExpectingFailure('0', '3', '0')
   assert.equal(changelogFailure.status, 3)
-  assert.deepEqual(callsText(), checked, 'an unexpected changelog git status must abort the release version step')
+  assert.deepEqual(
+    callsText(),
+    [...changed, webUiCheck],
+    'an unexpected web-ui changelog git status must abort the release version step'
+  )
+
+  fs.rmSync(calls)
+  const devKitFailure = runExpectingFailure('0', '0', '3')
+  assert.equal(devKitFailure.status, 3)
+  assert.deepEqual(
+    callsText(),
+    checked,
+    'an unexpected dev-kit changelog git status must abort the release version step'
+  )
 } finally {
   fs.rmSync(fixture, { recursive: true, force: true })
 }

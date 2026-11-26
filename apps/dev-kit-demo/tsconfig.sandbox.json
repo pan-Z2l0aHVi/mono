@@ -1,0 +1,9 @@
+{
+  "extends": "@greypan/tsconfig/dom.json",
+  "compilerOptions": {
+    "composite": true,
+    "noEmit": true,
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.sandbox.tsbuildinfo"
+  },
+  "include": ["sandbox/**/*.ts"]
+}

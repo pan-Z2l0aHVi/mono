@@ -1,0 +1,14 @@
+{
+  "extends": "./tsconfig.app.json",
+  "exclude": [],
+  // `src/main.ts` 不是测试，但 `RouteMeta.title` 的模块增强声明写在它里面；测试程序导入
+  // 外壳组件（`useHead({ title: () => route.meta.title })`）时需要这条增强，
+  // 不带上入口模块就会把它读成 unknown。`auto-imports.d.ts` 同理：页面组件里的 `ref`
+  // 一类是 unplugin-auto-import 生成的全局，那份声明在 app 根目录、不在 `src/` 下，
+  // 测试程序导入页面组件时会集体报 Cannot find name。
+  "include": ["src/**/__tests__/*", "src/main.ts", "auto-imports.d.ts", "test-helper.ts", "env.d.ts"],
+  "compilerOptions": {
+    "types": ["node", "jsdom", "vite/client"],
+    "tsBuildInfoFile": "./node_modules/.tmp/tsconfig.vitest.tsbuildinfo"
+  }
+}

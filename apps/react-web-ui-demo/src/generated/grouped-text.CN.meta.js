@@ -120,7 +120,7 @@ const meta = [
   { label: 'p', content: "组件在自己的 <code>:host</code> 上写 <code>font-variant-numeric: tabular-nums</code>：Chromium 默认就等宽，WebKit 不是，同一串 <code>0123456789</code> 在 24px 系统字体下 <code>1</code> 比 <code>6</code> 窄约 4px。不写这一条，同一份页面在两个引擎上的组间对齐就不一致。" },
   { label: 'p', content: "<code>white-space: nowrap</code> 同样写在 <code>:host</code> 上：窄容器里整串溢出而不是折行。间隙走字距本来就不引入断行机会，但占位元素、<code>::after</code> 与 <code>display: inline-block</code> 会，见下面两节。" },
   { label: 'p', content: "放进 <code>text-align: justify</code> 的文本流时，字距间隙不会被当作调整点：Chromium 实测同一行在 <code>text-align-last: justify</code> 下确实被拉宽，而组件自身宽度和每一组的宽度逐字节不变。" },
-  { label: 'h3', id: 'section-18', content: "已知行为：用 <code>margin</code> 撑间隙" },
+  { label: 'h3', id: 'section-18', content: "已知行为：用 margin 撑间隙" },
   { label: 'p', content: "不想拆字符时，组间间隙可以退到每组首元素的 <code>margin-inline-start</code>。代价是选区高亮会在每处组边界断开一条与间隙等宽的洞——Chromium 实测 8px 间隙正好留下 3 条 8px 的洞（4 组）。这是形状决定的，不是缺陷：<code>margin</code> 撑出的空白落在两个文本片段之外，谁都不属于，而 <code>::selection</code> 只能用不影响布局的属性，补不掉。组件本身不走这条路。" },
   { label: 'h3', id: 'section-19', content: "不能改成这些形状" },
   {
