@@ -255,7 +255,7 @@ func TestLinuxGSettingsProxy(t *testing.T) {
 			func(string) string { return "GNOME" },
 			func(_ context.Context, schema, key string) (string, error) {
 				if failHTTPHost && schema == "org.gnome.system.proxy.http" && key == "host" {
-					return "", errors.New("dbus transient error")
+					return "", errors.New("gsettings transient error")
 				}
 				return values[schema+"/"+key], nil
 			},
@@ -303,7 +303,7 @@ func TestLinuxGSettingsProxy(t *testing.T) {
 						close(inRead)
 						<-releaseRead
 					}
-					return "", errors.New("dbus unavailable")
+					return "", errors.New("gsettings unavailable")
 				}
 				return "", nil
 			},
