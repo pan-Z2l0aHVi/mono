@@ -92,7 +92,7 @@ func (p *linuxGSettingsProxy) Resolve(req *http.Request) (*url.URL, error) {
 	if !supported {
 		return nil, nil
 	}
-	endpoint, err := p.endpointFor(req.URL.Scheme)
+	endpoint, err := p.endpointFor(req.Context(), req.URL.Scheme)
 	if err != nil {
 		return nil, err
 	}
@@ -102,10 +102,13 @@ func (p *linuxGSettingsProxy) Resolve(req *http.Request) (*url.URL, error) {
 	return &url.URL{Scheme: "http", Host: endpoint.host + ":" + endpoint.port}, nil
 }
 
-func (p *linuxGSettingsProxy) endpointFor(scheme string) (gsettingsEndpoint, error) {
+func (p *linuxGSettingsProxy) endpointFor(reqCtx context.Context, scheme string) (gsettingsEndpoint, error) {
 	p.mu.Lock()
 	defer p.mu.Unlock()
 
+	if err := reqCtx.Err(); err != nil {
+		return gsettingsEndpoint{}, err
+	}
 	if p.absent {
 		return gsettingsEndpoint{}, nil
 	}
@@ -141,10 +144,7 @@ func (p *linuxGSettingsProxy) endpointFor(scheme string) (gsettingsEndpoint, err
 				p.absent = true
 				return gsettingsEndpoint{}, nil
 			}
-			if refreshCtx.Err() != nil {
-				return gsettingsEndpoint{}, hostErr
-			}
-			continue
+			return gsettingsEndpoint{}, hostErr
 		}
 		rawPort, portErr := p.read(refreshCtx, "org.gnome.system.proxy."+name, "port")
 		if portErr != nil {
@@ -152,10 +152,7 @@ func (p *linuxGSettingsProxy) endpointFor(scheme string) (gsettingsEndpoint, err
 				p.absent = true
 				return gsettingsEndpoint{}, nil
 			}
-			if refreshCtx.Err() != nil {
-				return gsettingsEndpoint{}, portErr
-			}
-			continue
+			return gsettingsEndpoint{}, portErr
 		}
 		host := parseGSettingsValue(rawHost)
 		port := parseGSettingsValue(rawPort)

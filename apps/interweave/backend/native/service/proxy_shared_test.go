@@ -241,6 +241,106 @@ func TestLinuxGSettingsProxy(t *testing.T) {
 		}
 	})
 
+	t.Run("单键瞬时读取失败时保留既有缓存且不刷新 TTL", func(t *testing.T) {
+		now := time.Date(2026, 11, 25, 11, 0, 0, 0, time.UTC)
+		failHTTPHost := false
+		values := map[string]string{
+			"org.gnome.system.proxy/mode":       "'manual'",
+			"org.gnome.system.proxy.http/host":  "'127.0.0.1'",
+			"org.gnome.system.proxy.http/port":  "7890",
+			"org.gnome.system.proxy.https/host": "'127.0.0.1'",
+			"org.gnome.system.proxy.https/port": "7891",
+		}
+		proxy := newLinuxGSettingsProxy(
+			func(string) string { return "GNOME" },
+			func(_ context.Context, schema, key string) (string, error) {
+				if failHTTPHost && schema == "org.gnome.system.proxy.http" && key == "host" {
+					return "", errors.New("dbus transient error")
+				}
+				return values[schema+"/"+key], nil
+			},
+			func() time.Time { return now },
+			5*time.Second,
+		)
+
+		req, _ := http.NewRequest(http.MethodGet, "http://example.com", nil)
+		got, err := proxy.Resolve(req)
+		if err != nil || got == nil || got.String() != "http://127.0.0.1:7890" {
+			t.Fatalf("initial resolve: (%v, %v)", got, err)
+		}
+
+		// TTL 过期后，http/host 发生瞬时错误：返回错误且不提交不完整的 next，p.entries 与 p.at 保持不变。
+		now = now.Add(6 * time.Second)
+		failHTTPHost = true
+		if _, err := proxy.Resolve(req); err == nil {
+			t.Fatalf("expected error on transient http/host failure")
+		}
+		if proxy.entries["http"] != (gsettingsEndpoint{host: "127.0.0.1", port: "7890"}) {
+			t.Fatalf("existing cache entry was clobbered: %+v", proxy.entries)
+		}
+		if !proxy.at.Equal(time.Date(2026, 11, 25, 11, 0, 0, 0, time.UTC)) {
+			t.Fatalf("cache timestamp should not advance on partial failure: %v", proxy.at)
+		}
+
+		// 错误恢复后不推进时钟即可立即刷新拿到最新配置。
+		failHTTPHost = false
+		values["org.gnome.system.proxy.http/port"] = "7899"
+		got, err = proxy.Resolve(req)
+		if err != nil || got == nil || got.String() != "http://127.0.0.1:7899" {
+			t.Fatalf("recovery resolve after single-key failure: (%v, %v)", got, err)
+		}
+	})
+
+	t.Run("等锁期间请求取消后直接返回，不触发额外刷新", func(t *testing.T) {
+		inRead := make(chan struct{})
+		releaseRead := make(chan struct{})
+		var modeReads atomic.Int32
+		proxy := newLinuxGSettingsProxy(
+			func(string) string { return "GNOME" },
+			func(_ context.Context, schema, key string) (string, error) {
+				if schema == "org.gnome.system.proxy" && key == "mode" {
+					if modeReads.Add(1) == 1 {
+						close(inRead)
+						<-releaseRead
+					}
+					return "", errors.New("dbus unavailable")
+				}
+				return "", nil
+			},
+			time.Now,
+			5*time.Second,
+		)
+
+		req1, _ := http.NewRequest(http.MethodGet, "https://example.com", nil)
+		done1 := make(chan error, 1)
+		go func() {
+			_, err := proxy.Resolve(req1)
+			done1 <- err
+		}()
+		<-inRead
+
+		ctx2, cancel2 := context.WithCancel(context.Background())
+		req2, _ := http.NewRequestWithContext(ctx2, http.MethodGet, "https://example.com", nil)
+		done2 := make(chan error, 1)
+		go func() {
+			_, err := proxy.Resolve(req2)
+			done2 <- err
+		}()
+
+		// 让 req2 阻塞在 p.mu.Lock() 上后取消其上下文，再释放 req1。
+		time.Sleep(20 * time.Millisecond)
+		cancel2()
+		close(releaseRead)
+
+		<-done1
+		if err := <-done2; !errors.Is(err, context.Canceled) {
+			t.Fatalf("expected context.Canceled for waiter, got %v", err)
+		}
+		if got := modeReads.Load(); got != 1 {
+			t.Fatalf("canceled waiter must not trigger second refresh, got %d mode reads", got)
+		}
+	})
+
 	t.Run("并发解析无数据竞争", func(t *testing.T) {
 		proxy := newLinuxGSettingsProxy(
 			func(string) string { return "X-Cinnamon" },
