@@ -132,6 +132,10 @@ export function createGhClient({ repository, spawn = spawnSync, cwd = process.cw
   return { execRaw, apiJson, paginateJson, getPull, listRunJobs, getJobLog }
 }
 
+/**
+ * 发布脚本专用 GitHub API 包装（`create-npm-github-releases.mjs` / `publish-wails-release.mjs`）。
+ * 保持既有 404 容错契约：`api`、`resolveTag`、`getRelease` 统一经由 `allow404: true` 在 HTTP 404 时返回 `null`。
+ */
 export function createGitHubApi({ repository, spawn = spawnSync, cwd = process.cwd(), env = process.env }) {
   const client = createGhClient({ repository, spawn, cwd, env })
   const api = endpoint => client.apiJson(endpoint, { allow404: true })

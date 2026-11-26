@@ -225,6 +225,8 @@ console.log('.github/scripts/lib/actions-runtime.test.mjs: all assertions passed
     spawn: () => ({ status: 1, stdout: '', stderr: 'gh: Not Found (HTTP 404)' })
   })
   assert.equal(api404.api('releases/tags/v0.0.0'), null)
+  assert.equal(api404.resolveTag('v0.0.0'), null)
+  assert.equal(api404.getRelease('v0.0.0'), null)
 
   const api500 = createGitHubApi({
     repository: 'owner/mono',
