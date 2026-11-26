@@ -28,10 +28,14 @@ import {
   commandAutoRetry,
   commandPrepare,
   commandPrepareIncremental,
+  commandRun,
   conclusionRenderExtras,
   conclusionVerdict,
   createGhReviewAdapter,
   deriveConclusion,
+  directErrorPath,
+  directRuntimePath,
+  directUnusablePath,
   findPullForHead,
   findPriorReviewRun,
   findReusableRun,
@@ -3819,13 +3823,17 @@ exit 2
   const trustedRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-trusted-fingerprint-'))
   try {
     const promptFile = path.join(trustedRoot, 'codex/prompts/review.md')
+    const directPromptFile = path.join(trustedRoot, 'codex/prompts/review-direct.md')
     const schemaFile = path.join(trustedRoot, 'codex/schemas/review-findings.schema.json')
+    const turn1SchemaFile = path.join(trustedRoot, 'codex/schemas/review-turn1.schema.json')
     fs.mkdirSync(path.dirname(promptFile), { recursive: true })
     fs.mkdirSync(path.dirname(schemaFile), { recursive: true })
     const makePrompt = (ruleText, preloadBody = '占位符') =>
       `# Review\n${ruleText}\n${PRELOAD_START_MARKER}\n${preloadBody}\n${PRELOAD_END_MARKER}\n`
     fs.writeFileSync(promptFile, makePrompt('rule-v1'))
+    fs.writeFileSync(directPromptFile, '# Direct Review v1\n')
     fs.writeFileSync(schemaFile, '{"type":"object","v":1}\n')
+    fs.writeFileSync(turn1SchemaFile, '{"type":"object","turn1":1}\n')
 
     const baseInspect = inspectConfig(configuredEnv, { trustedRoot })
     assert.ok(baseInspect.config.fingerprint, 'complete trusted assets must produce a non-empty fingerprint')
@@ -3838,7 +3846,7 @@ exit 2
       'preload block replacement must not alter template fingerprint'
     )
 
-    // 模板正文或 schema 内容变化必须改变指纹并拒绝复用。
+    // 模板正文、direct 模板、schema 或附加请求头模板变化都必须改变指纹并拒绝复用。
     fs.writeFileSync(promptFile, makePrompt('rule-v2'))
     const promptChanged = inspectConfig(configuredEnv, { trustedRoot })
     assert.notEqual(
@@ -3848,6 +3856,14 @@ exit 2
     )
 
     fs.writeFileSync(promptFile, makePrompt('rule-v1'))
+    fs.writeFileSync(directPromptFile, '# Direct Review v2\n')
+    assert.notEqual(
+      inspectConfig(configuredEnv, { trustedRoot }).config.fingerprint,
+      baseInspect.config.fingerprint,
+      'changing review-direct.md must change config.fingerprint'
+    )
+
+    fs.writeFileSync(directPromptFile, '# Direct Review v1\n')
     fs.writeFileSync(schemaFile, '{"type":"object","v":2}\n')
     const schemaChanged = inspectConfig(configuredEnv, { trustedRoot })
     assert.notEqual(
@@ -3856,7 +3872,33 @@ exit 2
       'changing review-findings.schema.json must change config.fingerprint'
     )
 
+    fs.writeFileSync(schemaFile, '{"type":"object","v":1}\n')
+    fs.writeFileSync(turn1SchemaFile, '{"type":"object","turn1":2}\n')
+    assert.notEqual(
+      inspectConfig(configuredEnv, { trustedRoot }).config.fingerprint,
+      baseInspect.config.fingerprint,
+      'changing review-turn1.schema.json must change config.fingerprint'
+    )
+
+    fs.writeFileSync(turn1SchemaFile, '{"type":"object","turn1":1}\n')
+    const headerInspect = inspectConfig(
+      { ...configuredEnv, CODEX_REVIEW_EXTRA_HEADERS: '{"x-opencode-session":"codex-{{run_id}}"}' },
+      { trustedRoot }
+    )
+    assert.notEqual(
+      headerInspect.config.fingerprint,
+      baseInspect.config.fingerprint,
+      'changing CODEX_REVIEW_EXTRA_HEADERS must change config.fingerprint'
+    )
+    assert.ok(
+      !JSON.stringify(headerInspect.config).includes('x-opencode-session'),
+      'CODEX_REVIEW_EXTRA_HEADERS must never be written into config snapshot'
+    )
+
     // 任一可信契约文件缺失时 fail-closed 返回空指纹，即使上一轮也是空指纹也拒绝增量基线复用。
+    fs.rmSync(turn1SchemaFile)
+    assert.equal(inspectConfig(configuredEnv, { trustedRoot }).config.fingerprint, '')
+    fs.writeFileSync(turn1SchemaFile, '{"type":"object","turn1":1}\n')
     fs.rmSync(schemaFile)
     const missingSchema = inspectConfig(configuredEnv, { trustedRoot })
     assert.equal(missingSchema.config.fingerprint, '')
@@ -4208,6 +4250,360 @@ exit 2
     assert.equal(notReviewed.outcome.reused, false)
   } finally {
     fs.rmSync(repoDir, { recursive: true, force: true })
+    fs.rmSync(tempRoot, { recursive: true, force: true })
+  }
+}
+
+{
+  // 直调 Responses API 跨 runner 诊断闭环、commandRun + validate 指标落盘与复用透传集成校验。
+  // 1. firstModelErrorLine 在无 Run codex exec 区间时兼容匹配 CODEX_DIRECT_ERROR: 兜底前缀。
+  assert.equal(
+    firstModelErrorLine('2026-11-26T01:02:03.000Z CODEX_DIRECT_ERROR: Responses API HTTP 502: Bad Gateway'),
+    'Responses API HTTP 502: Bad Gateway'
+  )
+  assert.equal(
+    firstModelErrorLine(
+      [
+        '2026-11-26T01:02:03.000Z CODEX_DIRECT_ERROR: outside codex exec',
+        '2026-11-26T01:02:04.000Z ##[start-action display=Run codex exec;id=review.run_codex]',
+        '2026-11-26T01:02:05.000Z ERROR: {"error":{"message":"inside codex exec"}}'
+      ].join('\n')
+    ),
+    'inside codex exec',
+    'Run codex exec structured errors must still take precedence when present'
+  )
+
+  // 2. conclusionRenderExtras 在 model_failed 时优先读 artifact 中持久化的 meta.model_error，避免跨 runner 断链与多余日志查询。
+  let logCalls = 0
+  const spyAdapter = {
+    runJobs: () => {
+      logCalls += 1
+      return [{ id: 1, name: 'Codex review' }]
+    },
+    jobLog: () => {
+      logCalls += 1
+      return '2026-11-26T01:02:03.000Z CODEX_DIRECT_ERROR: from job log fallback'
+    }
+  }
+  const directFailedMeta = metaOf({
+    status: 'error',
+    error_code: 'model_failed',
+    error: 'the review step produced no output file',
+    model_error: 'Responses API HTTP 503: service unavailable'
+  })
+  const directFailedStatus = deriveConclusion({
+    meta: directFailedMeta,
+    findings: null,
+    liveHeadSha: headSha,
+    error: ''
+  })
+  const extrasFromMeta = conclusionRenderExtras({
+    adapter: spyAdapter,
+    status: directFailedStatus,
+    meta: directFailedMeta,
+    existing: undefined,
+    autoRetry: 'none',
+    env: { WORKFLOW_RUN_ID: '12345' }
+  })
+  assert.equal(extrasFromMeta.modelError, 'Responses API HTTP 503: service unavailable')
+  assert.equal(logCalls, 0, 'persisted meta.model_error must bypass job log lookup')
+
+  const fallbackMeta = metaOf({
+    status: 'error',
+    error_code: 'model_failed',
+    error: 'the review step produced no output file'
+  })
+  const extrasFromLog = conclusionRenderExtras({
+    adapter: spyAdapter,
+    status: deriveConclusion({ meta: fallbackMeta, findings: null, liveHeadSha: headSha, error: '' }),
+    meta: fallbackMeta,
+    existing: undefined,
+    autoRetry: 'none',
+    env: { WORKFLOW_RUN_ID: '12345' }
+  })
+  assert.equal(extrasFromLog.modelError, 'from job log fallback')
+  assert.equal(logCalls, 2)
+
+  // 3. commandRun + validate 端到端集成（正常 reviewed、model_failed 诊断落盘、复用透传）
+  const tempRoot = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-direct-validate-'))
+  try {
+    const conclusionDir = path.join(tempRoot, 'codex-review')
+    fs.mkdirSync(conclusionDir, { recursive: true })
+    const summaryFile = path.join(tempRoot, 'summary.md')
+    fs.writeFileSync(summaryFile, '')
+    fs.writeFileSync(
+      path.join(tempRoot, CONFIG_FILE),
+      JSON.stringify({
+        endpoint: 'https://gateway.example/v1',
+        model: 'deepseek-v4.1-flash',
+        effort: 'high',
+        version: '0.169.0',
+        key_present: true,
+        fingerprint: 'fp-direct-test'
+      })
+    )
+    const sampleFile = 'packages/web-ui/src/button.ts'
+    const sampleDiff = [
+      `diff --git a/${sampleFile} b/${sampleFile}`,
+      `--- a/${sampleFile}`,
+      `+++ b/${sampleFile}`,
+      '@@ -1 +1 @@',
+      '-export const a = 1',
+      '+export const a = 2',
+      ''
+    ].join('\n')
+    fs.writeFileSync(path.join(tempRoot, 'pr.diff'), sampleDiff)
+    fs.writeFileSync(
+      path.join(conclusionDir, 'review-scope.json'),
+      JSON.stringify({
+        base_sha: otherSha,
+        head_sha: headSha,
+        merge_base_sha: otherSha,
+        diff_bytes: Buffer.byteLength(sampleDiff),
+        empty_diff: false,
+        changed_paths: [sampleFile],
+        preloaded_paths: [sampleFile],
+        preload_bytes: 512,
+        excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS
+      })
+    )
+
+    const runEnv = {
+      RUNNER_TEMP: tempRoot,
+      CODEX_REVIEW_BASE_SHA: otherSha,
+      CODEX_REVIEW_HEAD_SHA: headSha,
+      CODEX_REVIEW_API_KEY: 'sk-direct-secret-999',
+      CODEX_RESPONSES_ENDPOINT: 'https://gateway.example/v1',
+      CODEX_REVIEW_MODEL: 'deepseek-v4.1-flash',
+      CODEX_REVIEW_EFFORT: 'high'
+    }
+
+    const okRun = await commandRun({
+      env: runEnv,
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            output_text: JSON.stringify({
+              action: 'final',
+              context_requests: [],
+              coverage: { inspected: [sampleFile], uncovered: ['docs/note.md low priority'] },
+              prior_resolutions: [],
+              findings: [],
+              summary: 'Direct review clean.'
+            }),
+            usage: { input_tokens: 900, output_tokens: 150, total_tokens: 1050 }
+          })
+      })
+    })
+    assert.equal(okRun.ok, true)
+    assert.equal(fs.existsSync(directRuntimePath(runEnv)), true)
+
+    const validateOk = spawnSync(process.execPath, [path.join(import.meta.dirname, 'codex-review.mjs'), 'validate'], {
+      encoding: 'utf8',
+      env: {
+        ...testEnv(),
+        RUNNER_TEMP: tempRoot,
+        CODEX_REVIEW_BASE_SHA: otherSha,
+        CODEX_REVIEW_HEAD_SHA: headSha,
+        GITHUB_STEP_SUMMARY: summaryFile
+      }
+    })
+    assert.equal(validateOk.status, 0, validateOk.stderr)
+    assert.match(validateOk.stderr, /codex-review metrics: engine=direct-responses-api calls=1 turns=1/)
+    const reviewedMeta = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-meta.json'), 'utf8'))
+    assert.equal(reviewedMeta.status, 'reviewed')
+    assert.equal(reviewedMeta.engine, 'direct-responses-api')
+    assert.equal(reviewedMeta.api_calls, 1)
+    assert.equal(reviewedMeta.turns, 1)
+    assert.equal(reviewedMeta.total_tokens, 1050)
+    assert.equal(reviewedMeta.direct_preloaded_files, 1)
+    assert.ok(reviewedMeta.direct_preload_bytes > 0)
+    assert.equal(reviewedMeta.direct_truncated_files, 0)
+    assert.equal(reviewedMeta.uncovered_count, 1)
+    assert.match(fs.readFileSync(summaryFile, 'utf8'), /Codex direct review runtime/)
+
+    // 复用分支透传直调指标（reusedPath 存在时）
+    const validateReused = spawnSync(
+      process.execPath,
+      [path.join(import.meta.dirname, 'codex-review.mjs'), 'validate'],
+      {
+        encoding: 'utf8',
+        env: {
+          ...testEnv(),
+          RUNNER_TEMP: tempRoot,
+          CODEX_REVIEW_BASE_SHA: otherSha,
+          CODEX_REVIEW_HEAD_SHA: headSha,
+          CODEX_REVIEW_PRIOR_RUN_ID: '777'
+        }
+      }
+    )
+    assert.equal(validateReused.status, 0, validateReused.stderr)
+    const reusedMeta = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-meta.json'), 'utf8'))
+    assert.equal(reusedMeta.reused_from, '777')
+    assert.equal(reusedMeta.engine, 'direct-responses-api')
+    assert.equal(reusedMeta.total_tokens, 1050)
+    assert.equal(reusedMeta.direct_preloaded_files, 1)
+
+    // model_failed 路径：commandRun 落盘脱敏错误 -> validate 写入 meta.model_error -> 评论正确渲染
+    fs.rmSync(path.join(conclusionDir, 'review-findings.json'), { force: true })
+    fs.rmSync(path.join(conclusionDir, 'review-meta.json'), { force: true })
+    const savedExitCode = process.exitCode
+    const failRun = await commandRun({
+      env: runEnv,
+      sleepImpl: async () => {},
+      fetchImpl: async () => ({
+        ok: false,
+        status: 503,
+        text: async () => JSON.stringify({ error: { message: 'gateway timeout sk-direct-secret-999' } })
+      })
+    })
+    assert.equal(failRun.kind, 'model_failed')
+    assert.equal(process.exitCode, 1)
+    process.exitCode = savedExitCode
+    assert.equal(fs.existsSync(directErrorPath(runEnv)), true)
+    assert.ok(!fs.readFileSync(directErrorPath(runEnv), 'utf8').includes('sk-direct-secret-999'))
+
+    const validateFailed = spawnSync(
+      process.execPath,
+      [path.join(import.meta.dirname, 'codex-review.mjs'), 'validate'],
+      {
+        encoding: 'utf8',
+        env: {
+          ...testEnv(),
+          RUNNER_TEMP: tempRoot,
+          CODEX_REVIEW_BASE_SHA: otherSha,
+          CODEX_REVIEW_HEAD_SHA: headSha,
+          CODEX_REVIEW_STEP_OUTCOME: 'failure'
+        }
+      }
+    )
+    assert.equal(validateFailed.status, 0, validateFailed.stderr)
+    const failedMeta = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-meta.json'), 'utf8'))
+    assert.equal(failedMeta.status, 'error')
+    assert.equal(failedMeta.error_code, 'model_failed')
+    assert.match(failedMeta.model_error, /Responses API HTTP 503: gateway timeout \[REDACTED\]/)
+    assert.equal(failedMeta.api_calls, 2)
+    assert.equal(failedMeta.retry_count, 1)
+
+    const failedStatus = deriveConclusion({ meta: failedMeta, findings: null, liveHeadSha: headSha, error: '' })
+    const failedExtras = conclusionRenderExtras({
+      adapter: spyAdapter,
+      status: failedStatus,
+      meta: failedMeta,
+      existing: undefined,
+      autoRetry: 'none',
+      env: {}
+    })
+    const renderedFail = renderConclusion({
+      conclusion: failedStatus,
+      meta: failedMeta,
+      pullNumber: 99,
+      ...failedExtras
+    })
+    assert.match(renderedFail, /- 模型 job 错误：<code>Responses API HTTP 503: gateway timeout \[REDACTED\]<\/code>/)
+
+    // Block 1 回归：Turn 1 协议失败（缺 action 或 fetch_context 空请求）但正文恰好含合法 findings/coverage 时，
+    // commandRun 绝不写 codex-final-message.json，commandValidate 必须落 unreviewed，不能假绿。
+    for (const badPayload of [
+      {
+        coverage: { inspected: [sampleFile], uncovered: [] },
+        findings: [],
+        summary: 'Missing action field should never become reviewed.'
+      },
+      {
+        action: 'fetch_context',
+        context_requests: [],
+        coverage: { inspected: [sampleFile], uncovered: [] },
+        findings: [],
+        summary: 'Empty context_requests should never become reviewed.'
+      }
+    ]) {
+      fs.rmSync(path.join(conclusionDir, 'review-findings.json'), { force: true })
+      fs.rmSync(path.join(conclusionDir, 'review-meta.json'), { force: true })
+      const badRun = await commandRun({
+        env: runEnv,
+        sleepImpl: async () => {},
+        fetchImpl: async () => ({
+          ok: true,
+          status: 200,
+          text: async () => JSON.stringify({ output_text: JSON.stringify(badPayload) })
+        })
+      })
+      assert.equal(badRun.kind, 'unusable_or_missing_coverage')
+      assert.equal(badRun.errorCode, 'unusable_output')
+      assert.equal(
+        fs.existsSync(path.join(tempRoot, 'codex-final-message.json')),
+        false,
+        'unusable_or_missing_coverage must not write codex-final-message.json'
+      )
+      assert.equal(fs.existsSync(directUnusablePath(runEnv)), true)
+
+      const validateBad = spawnSync(
+        process.execPath,
+        [path.join(import.meta.dirname, 'codex-review.mjs'), 'validate'],
+        {
+          encoding: 'utf8',
+          env: {
+            ...testEnv(),
+            RUNNER_TEMP: tempRoot,
+            CODEX_REVIEW_BASE_SHA: otherSha,
+            CODEX_REVIEW_HEAD_SHA: headSha,
+            CODEX_REVIEW_STEP_OUTCOME: 'success'
+          }
+        }
+      )
+      assert.equal(validateBad.status, 0, validateBad.stderr)
+      const badMeta = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-meta.json'), 'utf8'))
+      assert.equal(badMeta.status, 'unreviewed')
+      assert.equal(badMeta.error_code, 'unusable_output')
+    }
+
+    // missing_coverage 仍通过独立诊断文件保留 missing_coverage 故障码与 findings 线索，不假绿。
+    fs.rmSync(path.join(conclusionDir, 'review-findings.json'), { force: true })
+    fs.rmSync(path.join(conclusionDir, 'review-meta.json'), { force: true })
+    const missingCovRun = await commandRun({
+      env: runEnv,
+      sleepImpl: async () => {},
+      fetchImpl: async () => ({
+        ok: true,
+        status: 200,
+        text: async () =>
+          JSON.stringify({
+            output_text: JSON.stringify({
+              action: 'final',
+              context_requests: [],
+              coverage: { inspected: [], uncovered: [] },
+              prior_resolutions: [],
+              findings: [],
+              summary: 'No inspected paths.'
+            })
+          })
+      })
+    })
+    assert.equal(missingCovRun.kind, 'unusable_or_missing_coverage')
+    assert.equal(missingCovRun.errorCode, 'missing_coverage')
+    assert.equal(fs.existsSync(path.join(tempRoot, 'codex-final-message.json')), false)
+    const validateMissingCov = spawnSync(
+      process.execPath,
+      [path.join(import.meta.dirname, 'codex-review.mjs'), 'validate'],
+      {
+        encoding: 'utf8',
+        env: {
+          ...testEnv(),
+          RUNNER_TEMP: tempRoot,
+          CODEX_REVIEW_BASE_SHA: otherSha,
+          CODEX_REVIEW_HEAD_SHA: headSha,
+          CODEX_REVIEW_STEP_OUTCOME: 'success'
+        }
+      }
+    )
+    assert.equal(validateMissingCov.status, 0, validateMissingCov.stderr)
+    const missingCovMeta = JSON.parse(fs.readFileSync(path.join(conclusionDir, 'review-meta.json'), 'utf8'))
+    assert.equal(missingCovMeta.status, 'unreviewed')
+    assert.equal(missingCovMeta.error_code, 'missing_coverage')
+  } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true })
   }
 }
