@@ -30,10 +30,13 @@ runs:
         git cat-file -e "$source_ref^{commit}"
         for tracked in \
           .github/codex/prompts/review.md \
+          .github/codex/prompts/review-direct.md \
           .github/codex/prompts/autofix.md \
           .github/codex/schemas/review-findings.schema.json \
+          .github/codex/schemas/review-turn1.schema.json \
           .github/scripts/codex-review.mjs \
           .github/scripts/codex-autofix.mjs \
+          .github/scripts/lib/codex-direct-review.mjs \
           .github/scripts/lib/github.mjs \
           .github/scripts/lib/workflow-topology.mjs \
           .claude/settings.json \

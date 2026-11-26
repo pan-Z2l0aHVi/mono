@@ -3,6 +3,14 @@ import { createHash } from 'node:crypto'
 import fs from 'node:fs'
 import path from 'node:path'
 
+import {
+  DIRECT_ERROR_FILE,
+  DIRECT_ERROR_PREFIX,
+  DIRECT_RUNTIME_FILE,
+  pickDirectRuntimeMetrics,
+  runDirectReview,
+  sanitizeDirectError
+} from './lib/codex-direct-review.mjs'
 import { SPAWN_MAX_BUFFER, commandError, resolvePullNumber, run } from './lib/github.mjs'
 import { CODEX_CONFIG_ENV, RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
@@ -701,6 +709,7 @@ const CODEX_PLAIN_ERROR_LINE =
   // eslint-disable-next-line no-control-regex
   /^(?:\d{4}-\d{2}-\d{2}T\S+\s+)?(?:\u001b\[[0-9;]*m)*\u001b\[(?:[0-9;]*;)?31mERROR:\u001b\[0m/u
 const PLAIN_MODEL_ERROR_LINE = /^(?:\d{4}-\d{2}-\d{2}T\S+\s+)?ERROR:\s*(.+)$/u
+const DIRECT_ENGINE_ERROR_LINE = new RegExp(`^(?:\\d{4}-\\d{2}-\\d{2}T\\S+\\s+)?${DIRECT_ERROR_PREFIX}\\s*(.+)$`, 'u')
 
 function sliceCodexExecLog(log) {
   const start = log.indexOf(RUN_CODEX_START_MARKER)
@@ -711,16 +720,22 @@ function sliceCodexExecLog(log) {
 }
 
 /**
- * 从 codex-action 的 job 日志里取第一条模型错误。
- * 若传入整份 job 日志，先截取 `Run codex exec` 区间以排除其它步骤干扰；
- * 提取时优先取第一条结构化 JSON 的 `error.message`，若区间内没有结构化错误，
- * 再回退取第一条带 codex CLI 红色 ANSI 标记的行首纯文本 `ERROR:`（如 `Incomplete response returned, reason: max_output_tokens`）。
+ * 从审查 job 日志里取第一条模型错误。
+ * 若日志含 `Run codex exec` 区间，先截取该区间优先取结构化 JSON 的 `error.message`，
+ * 无结构化 JSON 时再回退取带 codex CLI 红色 ANSI 标记的行首纯文本 `ERROR:`；
+ * 若日志不含 `Run codex exec` 区间（直调引擎路径），同时兼容匹配 `CODEX_DIRECT_ERROR:` 前缀行作为未及落盘时的兜底通道。
  */
 export function firstModelErrorLine(log) {
   if (typeof log !== 'string' || log === '') return ''
+  const hasCodexExecSection = log.includes(RUN_CODEX_START_MARKER)
   let plainFallback = ''
+  let directFallback = ''
   for (const rawLine of sliceCodexExecLog(log).split('\n')) {
     const line = rawLine.replace(ANSI_PATTERN, '')
+    if (!hasCodexExecSection && directFallback === '') {
+      const directMatch = DIRECT_ENGINE_ERROR_LINE.exec(line.trim())
+      if (directMatch?.[1]?.trim()) directFallback = oneLine(directMatch[1].trim())
+    }
     const index = line.indexOf('ERROR:')
     if (index === -1) continue
     const payload = line.slice(index + 'ERROR:'.length).trim()
@@ -740,7 +755,7 @@ export function firstModelErrorLine(log) {
       if (plain !== '') plainFallback = oneLine(plain)
     }
   }
-  return plainFallback
+  return plainFallback || directFallback
 }
 
 /** 尽力取模型 job 日志里的错误：拿不到 job、日志读失败或没有结构化错误都只降级，不能让诊断辅助判红写回 job。 */
@@ -1030,6 +1045,34 @@ export function preloadPath(env = process.env) {
 
 export function trustedPromptPath(env = process.env) {
   return env.CODEX_REVIEW_PROMPT_PATH ?? path.join(env.RUNNER_TEMP ?? '.', 'trusted/codex/prompts/review.md')
+}
+
+export function trustedDirectPromptPath(env = process.env) {
+  return (
+    env.CODEX_REVIEW_DIRECT_PROMPT_PATH ?? path.join(env.RUNNER_TEMP ?? '.', 'trusted/codex/prompts/review-direct.md')
+  )
+}
+
+export function trustedTurn1SchemaPath(env = process.env) {
+  return (
+    env.CODEX_REVIEW_TURN1_SCHEMA_PATH ??
+    path.join(env.RUNNER_TEMP ?? '.', 'trusted/codex/schemas/review-turn1.schema.json')
+  )
+}
+
+export function trustedFinalSchemaPath(env = process.env) {
+  return (
+    env.CODEX_REVIEW_FINAL_SCHEMA_PATH ??
+    path.join(env.RUNNER_TEMP ?? '.', 'trusted/codex/schemas/review-findings.schema.json')
+  )
+}
+
+export function directRuntimePath(env = process.env) {
+  return path.join(env.RUNNER_TEMP ?? '.', DIRECT_RUNTIME_FILE)
+}
+
+export function directErrorPath(env = process.env) {
+  return path.join(env.RUNNER_TEMP ?? '.', DIRECT_ERROR_FILE)
 }
 
 export function trustedRepoQueryPath(env = process.env) {
@@ -1898,12 +1941,59 @@ function identityFromEnv(env = process.env) {
   }
 }
 
-function writeErrorMeta(directory, identity, errorCode, reason, missing = []) {
+function writeErrorMeta(directory, identity, errorCode, reason, missing = [], extra = {}) {
   fs.rmSync(path.join(directory, FINDINGS_FILE), { force: true })
   fs.writeFileSync(
     path.join(directory, META_FILE),
-    `${JSON.stringify({ ...identity, status: 'error', error_code: errorCode, error: reason, missing }, null, 2)}\n`
+    `${JSON.stringify({ ...identity, status: 'error', error_code: errorCode, error: reason, missing, ...extra }, null, 2)}\n`
   )
+}
+
+function readDirectRuntimeMetrics(env = process.env) {
+  const file = directRuntimePath(env)
+  if (!fs.existsSync(file)) return {}
+  try {
+    return pickDirectRuntimeMetrics(JSON.parse(fs.readFileSync(file, 'utf8')))
+  } catch {
+    return {}
+  }
+}
+
+function readDirectEngineError(env = process.env) {
+  const file = directErrorPath(env)
+  if (!fs.existsSync(file)) return ''
+  try {
+    const raw = fs.readFileSync(file, 'utf8').trim()
+    return raw ? sanitizeDirectError(raw, env.CODEX_REVIEW_API_KEY ?? '') : ''
+  } catch {
+    return ''
+  }
+}
+
+function logDirectRuntimeSummary(metrics, uncoveredCount) {
+  if (!metrics || !metrics.engine) return
+  const parts = [
+    `engine=${metrics.engine}`,
+    `calls=${metrics.api_calls ?? 0}`,
+    `turns=${metrics.turns ?? 0}`,
+    `ctx=${metrics.context_requests ?? 0}`,
+    `retries=${metrics.retry_count ?? 0}`,
+    `duration_ms=${metrics.duration_ms ?? 0}`,
+    `tokens=${metrics.total_tokens ?? 'n/a'}`,
+    `direct_preloaded=${metrics.direct_preloaded_files ?? 0}`,
+    `direct_truncated=${metrics.direct_truncated_files ?? 0}`
+  ]
+  if (Number.isInteger(uncoveredCount)) parts.push(`uncovered=${uncoveredCount}`)
+  console.error(`codex-review metrics: ${parts.join(' ')}`)
+  appendSummary([
+    '## Codex direct review runtime',
+    '',
+    `- Engine: \`${metrics.engine}\``,
+    `- API calls: \`${metrics.api_calls ?? 0}\` (turns \`${metrics.turns ?? 0}\`, context lookups \`${metrics.context_requests ?? 0}\`, retries \`${metrics.retry_count ?? 0}\`)`,
+    `- Duration: \`${metrics.duration_ms ?? 0} ms\``,
+    `- Tokens: input \`${metrics.input_tokens ?? 'n/a'}\` · output \`${metrics.output_tokens ?? 'n/a'}\` · total \`${metrics.total_tokens ?? 'n/a'}\``,
+    `- Direct packet: \`${metrics.direct_preloaded_files ?? 0}\` files (\`${metrics.direct_preload_bytes ?? 0}\` bytes, truncated \`${metrics.direct_truncated_files ?? 0}\`)${Number.isInteger(uncoveredCount) ? ` · uncovered \`${uncoveredCount}\`` : ''}`
+  ])
 }
 
 /** 缺配置是仓库状态故障，不是模型概率性输出：写 error 结论让门变红，且只记变量名不记值。 */
@@ -2122,6 +2212,7 @@ export function commandPrepareIncremental({
         reused_from: priorRunId,
         reuse_reason: 'zero_incremental_diff',
         review_start_sha: prior.meta.head_sha,
+        ...pickDirectRuntimeMetrics(prior.meta),
         ...(hasLineage ? { review_lineage: prior.meta.review_lineage } : {}),
         ...(Array.isArray(prior.meta.output_sanitized) && prior.meta.output_sanitized.length > 0
           ? { output_sanitized: prior.meta.output_sanitized }
@@ -2246,6 +2337,112 @@ function commandReuse() {
   console.log(`reusing conclusion for ${reusable.meta.head_sha}`)
 }
 
+export async function commandRun({
+  env = process.env,
+  repoRoot = process.cwd(),
+  fetchImpl = globalThis.fetch,
+  spawn = spawnSync,
+  sleepImpl,
+  nowImpl,
+  limits = {}
+} = {}) {
+  const required = requireEnv(['RUNNER_TEMP'], env)
+  const outputPath = env.CODEX_REVIEW_OUTPUT_PATH ?? path.join(required.RUNNER_TEMP, 'codex-final-message.json')
+  const runtimeFile = directRuntimePath(env)
+  const errorFile = directErrorPath(env)
+  for (const stale of [outputPath, runtimeFile, errorFile]) {
+    fs.rmSync(stale, { force: true })
+  }
+
+  const scope = readScope(env)
+  const diffPath = env.CODEX_REVIEW_DIFF_PATH ?? path.join(required.RUNNER_TEMP, 'pr.diff')
+  const diff = fs.existsSync(diffPath) ? fs.readFileSync(diffPath, 'utf8') : ''
+  const range = {
+    baseSha: scope.base_sha ?? env.CODEX_REVIEW_BASE_SHA ?? '',
+    headSha: scope.head_sha ?? env.CODEX_REVIEW_HEAD_SHA ?? '',
+    mergeBaseSha: scope.merge_base_sha ?? env.CODEX_REVIEW_MERGE_BASE_SHA ?? '',
+    ...(scope.review_start_sha ? { startSha: scope.review_start_sha } : {}),
+    ...(scope.diff_base_sha ? { diffBaseSha: scope.diff_base_sha } : {}),
+    diff,
+    changedPaths: Array.isArray(scope.changed_paths) ? scope.changed_paths : []
+  }
+
+  const trustedRoot = path.join(required.RUNNER_TEMP, 'trusted')
+  const resolveAsset = (preferred, fallbackRelative) => {
+    if (fs.existsSync(preferred)) return preferred
+    return path.resolve(import.meta.dirname, fallbackRelative)
+  }
+  const promptFile = resolveAsset(trustedDirectPromptPath(env), '../codex/prompts/review-direct.md')
+  const turn1SchemaFile = resolveAsset(trustedTurn1SchemaPath(env), '../codex/schemas/review-turn1.schema.json')
+  const finalSchemaFile = resolveAsset(trustedFinalSchemaPath(env), '../codex/schemas/review-findings.schema.json')
+  const promptText = fs.readFileSync(promptFile, 'utf8')
+  const turn1Schema = JSON.parse(fs.readFileSync(turn1SchemaFile, 'utf8'))
+  const finalSchema = JSON.parse(fs.readFileSync(finalSchemaFile, 'utf8'))
+
+  let priorConclusion = null
+  if (scope.incremental) {
+    try {
+      priorConclusion = readConclusion(priorConclusionDirectory(env))
+    } catch {
+      priorConclusion = null
+    }
+  }
+
+  const diffByPath = splitDiffByPath(diff, range.changedPaths)
+  const routedSkills = scope.empty_diff ? [] : selectReviewSkills(range, { diffByPath })
+  const impactAnalysis = routedSkills.some(skill => skill.name === 'monorepo-change-impact')
+    ? runRepoImpactQuery(range, { env, repoRoot, spawn })
+    : null
+
+  const result = await runDirectReview({
+    env,
+    range,
+    scope,
+    priorConclusion,
+    routedSkills,
+    impactAnalysis,
+    promptText,
+    turn1Schema,
+    finalSchema,
+    repoRoot,
+    trustedRoot: fs.existsSync(trustedRoot) ? trustedRoot : '',
+    excludePathspecs: REVIEW_EXCLUDE_PATHSPECS,
+    helpers: {
+      splitDiffByPath,
+      truncateUtf8ByLines,
+      wrapCodeFence,
+      formatImpactSummary,
+      readTrustedSkillBody: skillName => readTrustedSkillBody(skillName, { env }),
+      normalizeReviewOutput,
+      parseReviewFindings,
+      coverageGap,
+      inheritReviewHistory
+    },
+    fetchImpl,
+    spawn,
+    ...(sleepImpl ? { sleepImpl } : {}),
+    ...(nowImpl ? { nowImpl } : {}),
+    limits
+  })
+
+  fs.writeFileSync(runtimeFile, `${JSON.stringify(result.runtime, null, 2)}\n`)
+  if (result.kind === 'model_failed') {
+    const sanitized = sanitizeDirectError(result.errorMessage, env.CODEX_REVIEW_API_KEY ?? '')
+    fs.writeFileSync(errorFile, `${sanitized}\n`)
+    console.error(`${DIRECT_ERROR_PREFIX} ${sanitized}`)
+    process.exitCode = 1
+    return result
+  }
+
+  if (typeof result.rawOutput === 'string') {
+    fs.writeFileSync(outputPath, `${result.rawOutput}\n`)
+  }
+  console.log(
+    `direct review finished (${result.kind}, calls=${result.runtime.api_calls}, turns=${result.runtime.turns}, duration_ms=${result.runtime.duration_ms})`
+  )
+  return result
+}
+
 function commandValidate() {
   const env = requireEnv(['CODEX_REVIEW_HEAD_SHA', 'CODEX_REVIEW_BASE_SHA', 'RUNNER_TEMP'])
   const directory = conclusionDirectory()
@@ -2253,6 +2450,7 @@ function commandValidate() {
   const identity = identityFromEnv()
   const config = readConfig()
   const reusedPath = path.join(directory, FINDINGS_FILE)
+  const directMetrics = readDirectRuntimeMetrics()
 
   if (!config) {
     const metaPath = path.join(directory, META_FILE)
@@ -2289,7 +2487,12 @@ function commandValidate() {
       typeof prior.reused_from === 'string' && prior.reused_from !== ''
         ? prior.reused_from
         : (process.env.CODEX_REVIEW_PRIOR_RUN_ID ?? '')
-    const meta = { ...identity, status: 'reviewed', reused_from: reusedFrom }
+    const meta = {
+      ...identity,
+      status: 'reviewed',
+      reused_from: reusedFrom,
+      ...pickDirectRuntimeMetrics(prior)
+    }
     if (typeof prior.reuse_reason === 'string' && prior.reuse_reason !== '') meta.reuse_reason = prior.reuse_reason
     if (Array.isArray(prior.review_lineage) && prior.review_lineage.length > 0) {
       meta.review_lineage = prior.review_lineage
@@ -2324,15 +2527,21 @@ function commandValidate() {
     fs.rmSync(reusedPath, { force: true })
     // continue-on-error 掩住的是 conclusion，不是 outcome：模型 job 崩了就是故障，不能伪装成「未审查」。
     if (process.env.CODEX_REVIEW_STEP_OUTCOME === 'failure') {
-      writeErrorMeta(directory, identity, 'model_failed', error)
+      const modelError = readDirectEngineError()
+      writeErrorMeta(directory, identity, 'model_failed', error, [], {
+        ...directMetrics,
+        ...(modelError ? { model_error: modelError } : {})
+      })
+      logDirectRuntimeSummary(directMetrics)
       writeOutputs({ blocks: '0', reason: error })
       console.error(`review is error: ${error}`)
       return
     }
     fs.writeFileSync(
       path.join(directory, META_FILE),
-      `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: 'unusable_output', error }, null, 2)}\n`
+      `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: 'unusable_output', error, ...directMetrics }, null, 2)}\n`
     )
+    logDirectRuntimeSummary(directMetrics)
     writeOutputs({ blocks: '0', reason: error })
     console.error(`review is unreviewed: ${error}`)
     return
@@ -2341,6 +2550,8 @@ function commandValidate() {
   // 覆盖清单是结论的一部分，也是空 findings 与「没查就收尾」唯一的区分；判据见 `coverageGap`。
   const scope = readScope()
   const gap = coverageGap(parsed, scope)
+  const uncoveredCount = Array.isArray(parsed?.coverage?.uncovered) ? parsed.coverage.uncovered.length : 0
+  const directRuntimeExtra = directMetrics.engine ? { ...directMetrics, uncovered_count: uncoveredCount } : {}
   if (gap !== '') {
     // findings 留着：结论不可用由 status 表达，把已经看到的 Block 丢掉只会让作者少一条线索。
     writeConclusion(directory, {
@@ -2350,9 +2561,11 @@ function commandValidate() {
         status: 'unreviewed',
         error_code: 'missing_coverage',
         error: gap,
-        ...sanitizedMeta(parsed)
+        ...sanitizedMeta(parsed),
+        ...directRuntimeExtra
       }
     })
+    logDirectRuntimeSummary(directMetrics, uncoveredCount)
     writeOutputs({ blocks: String(parsed.counts.Block), reason: gap })
     console.error(`review is unreviewed: ${gap}`)
     console.error(
@@ -2395,6 +2608,8 @@ function commandValidate() {
       } catch {
         // 没有可读取的历史结论时仍判未审查，不能把缺失数据视作已解决。
       }
+      const mergedUncoveredCount = Array.isArray(parsed?.coverage?.uncovered) ? parsed.coverage.uncovered.length : 0
+      const mergedDirectExtra = directMetrics.engine ? { ...directMetrics, uncovered_count: mergedUncoveredCount } : {}
       writeConclusion(directory, {
         findings: parsed,
         meta: {
@@ -2402,14 +2617,18 @@ function commandValidate() {
           status: 'unreviewed',
           error_code: 'unusable_output',
           error: failure.message,
-          ...sanitizedMeta(parsed)
+          ...sanitizedMeta(parsed),
+          ...mergedDirectExtra
         }
       })
+      logDirectRuntimeSummary(directMetrics, mergedUncoveredCount)
       writeOutputs({ blocks: String(parsed.counts.Block), reason: failure.message })
       console.error(`incremental review is unreviewed: ${failure.message}`)
       return
     }
   }
+  const finalUncoveredCount = Array.isArray(parsed?.coverage?.uncovered) ? parsed.coverage.uncovered.length : 0
+  const finalDirectExtra = directMetrics.engine ? { ...directMetrics, uncovered_count: finalUncoveredCount } : {}
   writeConclusion(directory, {
     findings: parsed,
     meta: {
@@ -2417,9 +2636,11 @@ function commandValidate() {
       status: 'reviewed',
       reused_from: '',
       ...sanitizedMeta(parsed),
+      ...finalDirectExtra,
       ...(lineage ? { review_lineage: lineage } : {})
     }
   })
+  logDirectRuntimeSummary(directMetrics, finalUncoveredCount)
   writeOutputs({ blocks: String(parsed.counts.Block), reason: '' })
   if (parsed.summary === '') console.log('review output carries no summary; the conclusion stands on its findings')
   if (parsed.coverage) {
@@ -2620,10 +2841,12 @@ export function commandAutoRetry({ env = process.env, adapter } = {}) {
  * @returns {{modelError: string, trajectory: string[]}} renderConclusion 的两个可选入参
  */
 export function conclusionRenderExtras({ adapter, status, meta, existing, autoRetry, env = process.env }) {
-  const modelError =
-    status.status === 'error' && status.code === 'model_failed'
-      ? readModelLegError(adapter, env.WORKFLOW_RUN_ID ?? '')
-      : ''
+  let modelError = ''
+  if (status.status === 'error' && status.code === 'model_failed') {
+    const persisted =
+      typeof meta?.model_error === 'string' ? oneLine(meta.model_error.replace(ANSI_PATTERN, '')).trim() : ''
+    modelError = persisted || readModelLegError(adapter, env.WORKFLOW_RUN_ID ?? '')
+  }
   return {
     modelError,
     trajectory: trajectoryEntries({
@@ -2676,6 +2899,7 @@ function commandReport() {
 const commands = {
   preflight: commandPreflight,
   prepare: commandPrepare,
+  run: commandRun,
   'prior-run': commandPriorRun,
   'prepare-incremental': commandPrepareIncremental,
   'resolve-pull': commandResolvePull,
@@ -2686,16 +2910,16 @@ const commands = {
   report: commandReport
 }
 
-function main() {
+async function main() {
   const name = process.argv[2]
   const handler = commands[name]
   if (!handler) throw new Error(`usage: node codex-review.mjs <${Object.keys(commands).join('|')}>`)
-  handler()
+  await handler()
 }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
   try {
-    main()
+    await main()
   } catch (error) {
     console.error(error.message)
     process.exitCode = 1
