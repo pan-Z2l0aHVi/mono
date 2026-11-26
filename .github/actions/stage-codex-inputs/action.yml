@@ -38,6 +38,7 @@ runs:
           .github/scripts/codex-autofix.mjs \
           .github/scripts/lib/codex-direct-review.mjs \
           .github/scripts/lib/github.mjs \
+          .github/scripts/lib/actions-runtime.mjs \
           .github/scripts/lib/workflow-topology.mjs \
           .claude/settings.json \
           skills/monorepo-change-impact/repo-query.mjs \

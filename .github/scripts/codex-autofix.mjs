@@ -1,10 +1,10 @@
 import { spawnSync } from 'node:child_process'
 import fs from 'node:fs'
-import os from 'node:os'
 import path from 'node:path'
 
 import { readConfig, reviewTarget } from './codex-review.mjs'
-import { SPAWN_MAX_BUFFER, commandError, resolvePullNumber, run } from './lib/github.mjs'
+import { createActionsRuntime, oneLine, runCli } from './lib/actions-runtime.mjs'
+import { createGhClient, resolvePullNumber, run } from './lib/github.mjs'
 import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
 export const MAX_AUTOFIX_COMMITS = 3
@@ -160,29 +160,19 @@ export function validatePatchFile({ patchPath, guarded, allowNewChangeset = fals
 }
 
 export function createGhAutofixAdapter({ repository, spawn = spawnSync, cwd = process.cwd(), env = process.env }) {
-  const gh = args => {
-    const result = spawn('gh', args, { encoding: 'utf8', cwd, env, maxBuffer: SPAWN_MAX_BUFFER })
-    if (result.status !== 0) throw commandError('gh', args, result)
-    return result.stdout ?? ''
-  }
+  const client = createGhClient({ repository, spawn, cwd, env })
 
   return {
-    pull: number => JSON.parse(gh(['api', `repos/${repository}/pulls/${number}`])),
-    pullCommits: number => {
-      const commits = []
-      const maxPages = Math.ceil(PULL_COMMITS_API_CAP / PULL_COMMITS_PER_PAGE)
-      for (let page = 1; page <= maxPages; page += 1) {
-        const chunk = JSON.parse(
-          gh(['api', `repos/${repository}/pulls/${number}/commits?per_page=${PULL_COMMITS_PER_PAGE}&page=${page}`])
-        )
-        if (!Array.isArray(chunk)) throw new Error(`gh api returned a non-array commit page for PR #${number}`)
-        commits.push(...chunk)
-        if (chunk.length < PULL_COMMITS_PER_PAGE) break
-      }
-      return { commits }
-    },
-    jobs: runId => JSON.parse(gh(['api', `repos/${repository}/actions/runs/${runId}/jobs?per_page=100`])).jobs ?? [],
-    jobLog: jobId => gh(['api', '--allow-escape-sequences', `repos/${repository}/actions/jobs/${jobId}/logs`])
+    pull: number => client.getPull(number),
+    pullCommits: number => ({
+      commits: client.paginateJson(`pulls/${number}/commits`, {
+        perPage: PULL_COMMITS_PER_PAGE,
+        maxPages: Math.ceil(PULL_COMMITS_API_CAP / PULL_COMMITS_PER_PAGE),
+        nonArrayMessage: `gh api returned a non-array commit page for PR #${number}`
+      })
+    }),
+    jobs: runId => client.listRunJobs(runId),
+    jobLog: jobId => client.getJobLog(jobId)
   }
 }
 
@@ -273,25 +263,13 @@ export function assertPushAllowed({
   return live
 }
 
-function oneLine(value) {
-  return String(value ?? '')
-    .replace(/\s+/gu, ' ')
-    .trim()
-}
-
 /**
  * 当 `process.env.GITHUB_STEP_SUMMARY` 非空时追加 Markdown 内容（按当前系统换行符规范化）。
  *
  * @param {string} markdown 要追加的 Markdown 内容
  */
-export function appendStepSummary(markdown) {
-  const target = process.env.GITHUB_STEP_SUMMARY
-  if (!target || !target.trim()) return
-  const normalized = String(markdown ?? '')
-    .trimEnd()
-    .replace(/\r?\n/gu, os.EOL)
-  if (!normalized) return
-  fs.appendFileSync(target, `${normalized}${os.EOL}`)
+export function appendStepSummary(markdown, runtime = createActionsRuntime()) {
+  runtime.appendSummary(markdown)
 }
 
 /**
@@ -323,27 +301,16 @@ export function readAutofixMessage(runnerTemp) {
   return `${head}\n\n…（模型输出超过 ${AUTOFIX_MESSAGE_LIMIT} 字符已截断，共 ${trimmed.length} 字符）`
 }
 
-function publishCaptureSkipped({ failedSteps, rejectReason, runnerTemp }) {
+function publishCaptureSkipped({ failedSteps, rejectReason, runnerTemp, runtime }) {
   const autofixMessage = readAutofixMessage(runnerTemp)
-  appendStepSummary(
-    [
-      '## Codex Autofix 未产出补丁',
-      '',
-      `- 失败步骤：${failedSteps ? `\`${oneLine(failedSteps)}\`` : '无'}`,
-      `- 拒绝原因：${oneLine(rejectReason)}`,
-      ...(autofixMessage ? ['', '### 模型诊断结论', '', autofixMessage] : [])
-    ].join('\n')
-  )
-  console.log(`::notice title=Codex autofix skipped::${oneLine(rejectReason)}`)
-}
-
-function writeOutputs(values) {
-  const target = process.env.GITHUB_OUTPUT
-  if (!target) return
-  const body = Object.entries(values)
-    .map(([key, value]) => `${key}=${String(value).replace(/\s+/gu, ' ')}`)
-    .join('\n')
-  fs.appendFileSync(target, `${body}\n`)
+  runtime.appendSummary([
+    '## Codex Autofix 未产出补丁',
+    '',
+    `- 失败步骤：${failedSteps ? `\`${oneLine(failedSteps)}\`` : '无'}`,
+    `- 拒绝原因：${oneLine(rejectReason)}`,
+    ...(autofixMessage ? ['', '### 模型诊断结论', '', autofixMessage] : [])
+  ])
+  runtime.annotate('notice', 'Codex autofix skipped', rejectReason)
 }
 
 /**
@@ -351,64 +318,53 @@ function writeOutputs(values) {
  * mergedAt，那一刻没有可修的对象。绿色收尾并把原因写进 step summary，与 report 路径的
  * commandReport 同一语义。资格配置不匹配（base 不是 main、fork、版本分支）**不**走这里——它们是故障，保持红色。
  */
-function skipApply(reason) {
-  appendStepSummary(
-    [
-      '## Codex autofix 未应用',
-      '',
-      `- apply 不推送：${oneLine(reason)}`,
-      '- 写回 run 由「CI completed」触发，可能晚于合并完成；autofix 只服务仍 open 的 PR，本次无事可做。'
-    ].join('\n')
-  )
-  console.log(`::notice title=Codex autofix skipped::${oneLine(reason)}`)
-  console.log(`skipping autofix apply: ${reason}`)
+function skipApply(reason, runtime) {
+  runtime.appendSummary([
+    '## Codex autofix 未应用',
+    '',
+    `- apply 不推送：${oneLine(reason)}`,
+    '- 写回 run 由「CI completed」触发，可能晚于合并完成；autofix 只服务仍 open 的 PR，本次无事可做。'
+  ])
+  runtime.annotate('notice', 'Codex autofix skipped', reason)
+  runtime.log(`skipping autofix apply: ${reason}`)
 }
 
-function requireEnv(names) {
-  return Object.fromEntries(
-    names.map(name => {
-      const value = process.env[name]
-      if (value === undefined || value === '') throw new Error(`${name} is missing`)
-      return [name, value]
-    })
-  )
-}
-
-function guardedMatcher() {
-  const root = process.env.GITHUB_WORKSPACE ?? process.cwd()
+function guardedMatcher(runtime) {
+  const root = runtime.env.GITHUB_WORKSPACE ?? runtime.cwd
   return createGuardedMatcher({
     repositoryFile: fs.readFileSync(
-      process.env.CODEX_TRUSTED_SETTINGS ?? path.join(root, '.claude', 'settings.json'),
+      runtime.env.CODEX_TRUSTED_SETTINGS ?? path.join(root, '.claude', 'settings.json'),
       'utf8'
     )
   })
 }
 
-function pullNumber({ allowRefFallback = true } = {}) {
+function pullNumber(runtime, { allowRefFallback = true } = {}) {
   return resolvePullNumber({
-    explicit: process.env.CODEX_AUTOFIX_PULL_NUMBER,
-    ref: process.env.GITHUB_REF,
+    explicit: runtime.env.CODEX_AUTOFIX_PULL_NUMBER,
+    ref: runtime.env.GITHUB_REF,
     allowRefFallback
   })
 }
 
-function commandPrepare() {
-  console.log(
+export function commandPrepare({ runtime = createActionsRuntime(), adapter } = {}) {
+  runtime.log(
     `codex-autofix: prepare (limit=${MAX_AUTOFIX_COMMITS}, cap=${PULL_COMMITS_API_CAP}, trailer=${AUTOFIX_TRAILER})`
   )
-  const env = requireEnv(['GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'RUNNER_TEMP'])
-  const adapter = createGhAutofixAdapter({ repository: env.GITHUB_REPOSITORY })
-  const number = pullNumber({ allowRefFallback: true })
+  const env = runtime.requireEnv(['GITHUB_REPOSITORY', 'GITHUB_RUN_ID', 'RUNNER_TEMP'])
+  const gh =
+    adapter ?? createGhAutofixAdapter({ repository: env.GITHUB_REPOSITORY, cwd: runtime.cwd, env: runtime.env })
+  const number = pullNumber(runtime, { allowRefFallback: true })
   if (number) {
     // 先读 commits，再取新的 PR 对象。total 与 live head 来自同一个分页之后时点，
     // 分页期间漏读的新提交会表现为 commits.length < total，按无法验证处理。
-    const { commits } = adapter.pullCommits(number)
-    const pull = adapter.pull(number)
+    const { commits } = gh.pullCommits(number)
+    const pull = gh.pull(number)
     const { limitReached, unverified, unverifiedDetail } = autofixCommitState(commits, pull)
     if (limitReached)
-      console.log(`pull request #${number} already has ${MAX_AUTOFIX_COMMITS} autofix commits; limit reached`)
+      runtime.log(`pull request #${number} already has ${MAX_AUTOFIX_COMMITS} autofix commits; limit reached`)
     if (unverified)
-      console.log(`pull request #${number} cannot verify autofix count (${unverifiedDetail}); skipping autofix`)
+      runtime.log(`pull request #${number} cannot verify autofix count (${unverifiedDetail}); skipping autofix`)
     if (limitReached || unverified) {
       const reasons = []
       const notices = []
@@ -420,125 +376,128 @@ function commandPrepare() {
         reasons.push(`无法验证 PR #${number} 的自动修提交计数（${unverifiedDetail}）`)
         notices.push(`cannot verify autofix commit count for PR #${number} (${unverifiedDetail})`)
       }
-      appendStepSummary(
-        [
-          '## Codex Autofix 已跳过',
-          '',
-          `- PR：#${number}`,
-          ...reasons.map(reason => `- 原因：${reason}`),
-          '- 处理：本次不触发模型自动修，请人工排查失败检查。'
-        ].join('\n')
-      )
-      console.log(`::notice title=Codex autofix skipped::${oneLine(notices.join('; '))}`)
-      writeOutputs({ has_log: 'false', failed_steps: '', log_path: '' })
+      runtime.appendSummary([
+        '## Codex Autofix 已跳过',
+        '',
+        `- PR：#${number}`,
+        ...reasons.map(reason => `- 原因：${reason}`),
+        '- 处理：本次不触发模型自动修，请人工排查失败检查。'
+      ])
+      runtime.annotate('notice', 'Codex autofix skipped', notices.join('; '))
+      runtime.writeOutputs({ has_log: 'false', failed_steps: '', log_path: '' })
       return
     }
   }
-  const failure = failedJobSteps(adapter.jobs(env.GITHUB_RUN_ID), REQUIRED_JOB)
+  const failure = failedJobSteps(gh.jobs(env.GITHUB_RUN_ID), REQUIRED_JOB)
   if (!failure || failure.steps.length === 0) {
-    writeOutputs({ has_log: 'false', failed_steps: '', log_path: '' })
-    console.log(`no failed step in the ${REQUIRED_JOB} job`)
-    appendStepSummary(
-      [
-        '## Codex Autofix 已跳过',
-        '',
-        ...(number ? [`- PR：#${number}`] : []),
-        `- 原因：\`${REQUIRED_JOB}\` job 未发现失败步骤（run \`${oneLine(env.GITHUB_RUN_ID)}\`）。`,
-        '- 处理：本次无需自动修，跳过模型调用。'
-      ].join('\n')
-    )
-    console.log(
-      `::notice title=Codex autofix skipped::no failed step in the ${REQUIRED_JOB} job (run ${oneLine(env.GITHUB_RUN_ID)})`
+    runtime.writeOutputs({ has_log: 'false', failed_steps: '', log_path: '' })
+    runtime.log(`no failed step in the ${REQUIRED_JOB} job`)
+    runtime.appendSummary([
+      '## Codex Autofix 已跳过',
+      '',
+      ...(number ? [`- PR：#${number}`] : []),
+      `- 原因：\`${REQUIRED_JOB}\` job 未发现失败步骤（run \`${oneLine(env.GITHUB_RUN_ID)}\`）。`,
+      '- 处理：本次无需自动修，跳过模型调用。'
+    ])
+    runtime.annotate(
+      'notice',
+      'Codex autofix skipped',
+      `no failed step in the ${REQUIRED_JOB} job (run ${oneLine(env.GITHUB_RUN_ID)})`
     )
     return
   }
-  const log = tailLog(adapter.jobLog(failure.jobId))
+  const log = tailLog(gh.jobLog(failure.jobId))
   const logPath = path.join(env.RUNNER_TEMP, 'ci-failure.log')
   fs.writeFileSync(logPath, `Failed steps: ${failure.steps.join(', ')}\n\n${log}`)
-  writeOutputs({ has_log: 'true', failed_steps: failure.steps.join(', '), log_path: logPath })
-  console.log(`captured ${Buffer.byteLength(log)} bytes of CI log for: ${failure.steps.join(', ')}`)
+  runtime.writeOutputs({ has_log: 'true', failed_steps: failure.steps.join(', '), log_path: logPath })
+  runtime.log(`captured ${Buffer.byteLength(log)} bytes of CI log for: ${failure.steps.join(', ')}`)
 }
 
-function commandCapture() {
-  const env = requireEnv(['CODEX_AUTOFIX_HEAD_SHA', 'RUNNER_TEMP'])
-  const failedSteps = String(process.env.CODEX_AUTOFIX_FAILED_STEPS ?? '').trim()
+export function commandCapture({ runtime = createActionsRuntime(), command = run, guarded } = {}) {
+  const env = runtime.requireEnv(['CODEX_AUTOFIX_HEAD_SHA', 'RUNNER_TEMP'])
+  const failedSteps = String(runtime.env.CODEX_AUTOFIX_FAILED_STEPS ?? '').trim()
   // 模型 job 没跑成时工作区仍可能有零散改动；没有预检快照就不产出 patch，避免特权 job 推一份来路不明的 diff。
-  if (!readConfig()) {
+  if (!readConfig(runtime.env)) {
     const rejectReason = 'the Codex configuration preflight did not run'
-    writeOutputs({
+    runtime.writeOutputs({
       has_patch: 'false',
       reject_reason: rejectReason,
       changed_files: '',
       patch_path: ''
     })
-    console.log('no configuration snapshot; no autofix patch is published')
-    publishCaptureSkipped({ failedSteps, rejectReason, runnerTemp: env.RUNNER_TEMP })
+    runtime.log('no configuration snapshot; no autofix patch is published')
+    publishCaptureSkipped({ failedSteps, rejectReason, runnerTemp: env.RUNNER_TEMP, runtime })
     return
   }
   const patchPath = path.join(env.RUNNER_TEMP, 'autofix.patch')
   const result = capturePatch({
     headSha: env.CODEX_AUTOFIX_HEAD_SHA,
     patchPath,
-    guarded: guardedMatcher(),
-    allowNewChangeset: failedStepAllowsChangeset(failedSteps)
+    guarded: guarded ?? guardedMatcher(runtime),
+    allowNewChangeset: failedStepAllowsChangeset(failedSteps),
+    command
   })
-  writeOutputs({
+  runtime.writeOutputs({
     has_patch: result.reject ? 'false' : 'true',
     reject_reason: result.reject,
     changed_files: result.files.join(','),
     patch_path: result.reject ? '' : result.patchPath
   })
   if (result.reject) {
-    console.log(`autofix patch discarded: ${result.reject}`)
-    publishCaptureSkipped({ failedSteps, rejectReason: result.reject, runnerTemp: env.RUNNER_TEMP })
+    runtime.log(`autofix patch discarded: ${result.reject}`)
+    publishCaptureSkipped({ failedSteps, rejectReason: result.reject, runnerTemp: env.RUNNER_TEMP, runtime })
     return
   }
-  console.log(`autofix patch covers ${result.files.length} files (${result.bytes} bytes)`)
+  runtime.log(`autofix patch covers ${result.files.length} files (${result.bytes} bytes)`)
   const autofixMessage = readAutofixMessage(env.RUNNER_TEMP)
-  appendStepSummary(
-    [
-      '## Codex Autofix 已生成补丁',
-      '',
-      ...(failedSteps ? [`- 失败步骤：\`${oneLine(failedSteps)}\``] : []),
-      `- 补丁大小：${result.bytes} bytes`,
-      `- 改动文件（${result.files.length} 个）：`,
-      ...result.files.map(file => `  - \`${file}\``),
-      ...(autofixMessage ? ['', '### 模型诊断摘要', '', autofixMessage] : [])
-    ].join('\n')
-  )
+  runtime.appendSummary([
+    '## Codex Autofix 已生成补丁',
+    '',
+    ...(failedSteps ? [`- 失败步骤：\`${oneLine(failedSteps)}\``] : []),
+    `- 补丁大小：${result.bytes} bytes`,
+    `- 改动文件（${result.files.length} 个）：`,
+    ...result.files.map(file => `  - \`${file}\``),
+    ...(autofixMessage ? ['', '### 模型诊断摘要', '', autofixMessage] : [])
+  ])
 }
 
-function commandApply() {
-  const env = requireEnv(['GITHUB_REPOSITORY', 'CODEX_AUTOFIX_HEAD_SHA', 'CODEX_AUTOFIX_HEAD_REF', 'RUNNER_TEMP'])
+export function commandApply({ runtime = createActionsRuntime(), adapter, command = run, guarded } = {}) {
+  const env = runtime.requireEnv([
+    'GITHUB_REPOSITORY',
+    'CODEX_AUTOFIX_HEAD_SHA',
+    'CODEX_AUTOFIX_HEAD_REF',
+    'RUNNER_TEMP'
+  ])
   const patchPath = path.join(env.RUNNER_TEMP, 'autofix.patch')
   // 没有 patch 就无事可做：这比「PR 资格不足」更常见，先判它，别让 job 红在一条无关的拒绝上。
   if (!fs.existsSync(patchPath)) {
-    console.log('no autofix patch artifact; nothing to apply')
-    appendStepSummary(
-      [
-        '## Codex Autofix 无补丁可应用',
-        '',
-        `- 目标分支：\`${oneLine(env.CODEX_AUTOFIX_HEAD_REF)}\``,
-        '- 原因：未找到 `autofix.patch` 产物（上游 CI run 未产出补丁或已跳过自动修）。',
-        '- 结果：本次跳过应用与推送；请查看上游 CI run 的 Step Summary 了解详情。'
-      ].join('\n')
-    )
-    console.log(
-      `::notice title=Codex autofix apply skipped::no autofix patch artifact for ${oneLine(env.CODEX_AUTOFIX_HEAD_REF)}`
+    runtime.log('no autofix patch artifact; nothing to apply')
+    runtime.appendSummary([
+      '## Codex Autofix 无补丁可应用',
+      '',
+      `- 目标分支：\`${oneLine(env.CODEX_AUTOFIX_HEAD_REF)}\``,
+      '- 原因：未找到 `autofix.patch` 产物（上游 CI run 未产出补丁或已跳过自动修）。',
+      '- 结果：本次跳过应用与推送；请查看上游 CI run 的 Step Summary 了解详情。'
+    ])
+    runtime.annotate(
+      'notice',
+      'Codex autofix apply skipped',
+      `no autofix patch artifact for ${env.CODEX_AUTOFIX_HEAD_REF}`
     )
     return
   }
-  const number = pullNumber({ allowRefFallback: false })
+  const number = pullNumber(runtime, { allowRefFallback: false })
   if (!number) throw new Error('CODEX_AUTOFIX_PULL_NUMBER is missing')
-  const adapter = createGhAutofixAdapter({ repository: env.GITHUB_REPOSITORY })
-  const { commits } = adapter.pullCommits(number)
-  const pull = adapter.pull(number)
+  const gh =
+    adapter ?? createGhAutofixAdapter({ repository: env.GITHUB_REPOSITORY, cwd: runtime.cwd, env: runtime.env })
+  const { commits } = gh.pullCommits(number)
+  const pull = gh.pull(number)
   const target = reviewTarget({ pull, repository: env.GITHUB_REPOSITORY, releaseBranch: RELEASE_BRANCH })
   if (!target.ok) {
     // 只有明确的 closed 是预期出口：写回 run 可能晚于合并完成。base 不是 main、fork、版本分支，
     // 以及缺失/异常的 state，都属于不确定性——不确定就不许绿，一律保持红色。
     if (pull?.state === 'closed') {
-      skipApply(target.reason)
+      skipApply(target.reason, runtime)
       return
     }
     throw new Error(`refusing to push: ${target.reason}`)
@@ -550,21 +509,25 @@ function commandApply() {
     commits,
     autofixUnverified: unverified,
     autofixCountDetail: unverifiedDetail,
-    checkoutSha: run('git', ['rev-parse', 'HEAD']).trim()
+    checkoutSha: command('git', ['rev-parse', 'HEAD']).trim()
   })
 
   // capture 只在 `Check changesets` 失败时放行新增 changeset；apply 只认这个已收窄的例外，
   // 其它新增文件仍由 inspectPatch 拒绝。
-  const { reject, files } = validatePatchFile({ patchPath, guarded: guardedMatcher(), allowNewChangeset: true })
+  const { reject, files } = validatePatchFile({
+    patchPath,
+    guarded: guarded ?? guardedMatcher(runtime),
+    allowNewChangeset: true
+  })
   if (reject) throw new Error(`patch rejected: ${reject}`)
-  run('git', ['apply', '--whitespace=nowarn', patchPath])
-  run('git', ['add', '--', ...files])
+  command('git', ['apply', '--whitespace=nowarn', patchPath])
+  command('git', ['add', '--', ...files])
   const message = autofixCommitMessage(files)
-  run('git', ['-c', 'user.name=codex', '-c', 'user.email=codex@openai.com', 'commit', '-m', message])
+  command('git', ['-c', 'user.name=codex', '-c', 'user.email=codex@openai.com', 'commit', '-m', message])
   try {
     // --force-with-lease 锚定远端 ref 必须停在 run head：分支已被合并删除或被人前移时 git 直接拒绝
     // （裸 refspec 会把已删分支当新建分支推成功，catch 里的复查永远不会触发）。
-    run('git', [
+    command('git', [
       'push',
       `--force-with-lease=refs/heads/${env.CODEX_AUTOFIX_HEAD_REF}:${env.CODEX_AUTOFIX_HEAD_SHA}`,
       'origin',
@@ -576,7 +539,7 @@ function commandApply() {
     let latestTarget
     let latestPull
     try {
-      latestPull = adapter.pull(number)
+      latestPull = gh.pull(number)
       latestTarget = reviewTarget({
         pull: latestPull,
         repository: env.GITHUB_REPOSITORY,
@@ -584,42 +547,38 @@ function commandApply() {
       })
     } catch (recheckError) {
       // 复查自身的 API 故障不能盖掉原始 push 错误：保留原因后按原样抛出。
-      console.error(`push failed and the PR re-check also failed: ${recheckError.message}`)
+      runtime.error(`push failed and the PR re-check also failed: ${recheckError.message}`)
       throw error
     }
     if (latestPull?.state === 'closed') {
-      skipApply(`the pull request closed before the push landed: ${latestTarget.reason}`)
+      skipApply(`the pull request closed before the push landed: ${latestTarget.reason}`, runtime)
       return
     }
     throw error
   }
-  console.log(`pushed autofix for ${files.length} files to ${env.CODEX_AUTOFIX_HEAD_REF}`)
-  appendStepSummary(
-    [
-      '## Codex Autofix 已推送补丁',
-      '',
-      `- PR：#${number}`,
-      `- 目标分支：\`${oneLine(env.CODEX_AUTOFIX_HEAD_REF)}\``,
-      `- 基线提交：\`${oneLine(env.CODEX_AUTOFIX_HEAD_SHA)}\``,
-      `- 改动文件（${files.length} 个）：`,
-      ...files.map(file => `  - \`${file}\``)
-    ].join('\n')
-  )
+  runtime.log(`pushed autofix for ${files.length} files to ${env.CODEX_AUTOFIX_HEAD_REF}`)
+  runtime.appendSummary([
+    '## Codex Autofix 已推送补丁',
+    '',
+    `- PR：#${number}`,
+    `- 目标分支：\`${oneLine(env.CODEX_AUTOFIX_HEAD_REF)}\``,
+    `- 基线提交：\`${oneLine(env.CODEX_AUTOFIX_HEAD_SHA)}\``,
+    `- 改动文件（${files.length} 个）：`,
+    ...files.map(file => `  - \`${file}\``)
+  ])
 }
 
 const commands = { prepare: commandPrepare, capture: commandCapture, apply: commandApply }
 
 if (import.meta.url === `file://${process.argv[1]}`) {
-  const name = process.argv[2]
-  const handler = commands[name]
-  if (!handler) {
+  if (!commands[process.argv[2]]) {
     console.error(`usage: node codex-autofix.mjs <${Object.keys(commands).join('|')}>`)
     process.exit(2)
   }
   try {
-    handler()
+    runCli(commands, { scriptName: 'codex-autofix.mjs' })
   } catch (error) {
-    console.error(error.message)
+    console.error(error instanceof Error ? error.message : String(error))
     process.exitCode = 1
   }
 }

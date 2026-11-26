@@ -2,6 +2,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import { coverageGap, parseReviewFindings } from './codex-review.mjs'
+import { createActionsRuntime } from './lib/actions-runtime.mjs'
 
 /**
  * 无可用结论：diff 非空而模型交出没有覆盖证据的空壳（`missing_coverage`），或模型未产出可用结论
@@ -79,43 +80,50 @@ function readJson(filePath) {
   }
 }
 
-function reportRejected(verdict) {
-  if (verdict.code === 'model_failed') {
-    console.error(`Codex review failed (${verdict.code}): ${verdict.reason}`)
-    console.error('The review job fails with the gate so `gh run rerun --failed` reruns the model leg.')
-  } else {
-    console.error(`Codex review returned no usable conclusion (${verdict.code}): ${verdict.reason}`)
-    console.error('The review job fails with the gate so `gh run rerun --failed` reruns the model leg.')
-    console.error('A repeat after rerunning means the prompt or the output contract needs fixing.')
-  }
-  process.exitCode = 1
-}
-
-// 与 codex-review.mjs 同款入口守卫：不依赖 import.meta.main，旧 Node 上也不会静默跳过。
-if (import.meta.url === `file://${process.argv[1]}`) {
-  const runnerTemp = process.env.RUNNER_TEMP ?? ''
-  const outputPath = process.env.CODEX_REVIEW_OUTPUT_PATH ?? path.join(runnerTemp, 'codex-final-message.json')
-  const scopePath = process.env.CODEX_REVIEW_SCOPE_PATH ?? path.join(runnerTemp, 'codex-review', 'review-scope.json')
-  const metaPath = process.env.CODEX_REVIEW_META_PATH ?? path.join(path.dirname(scopePath), 'review-meta.json')
+export function runCheckReviewOutput({ runtime = createActionsRuntime() } = {}) {
+  const runnerTemp = runtime.env.RUNNER_TEMP ?? ''
+  const outputPath = runtime.env.CODEX_REVIEW_OUTPUT_PATH ?? path.join(runnerTemp, 'codex-final-message.json')
+  const scopePath = runtime.env.CODEX_REVIEW_SCOPE_PATH ?? path.join(runnerTemp, 'codex-review', 'review-scope.json')
+  const metaPath = runtime.env.CODEX_REVIEW_META_PATH ?? path.join(path.dirname(scopePath), 'review-meta.json')
   const meta = fs.existsSync(metaPath) ? readJson(metaPath) : null
+
+  const reportRejected = verdict => {
+    if (verdict.code === 'model_failed') {
+      runtime.error(`Codex review failed (${verdict.code}): ${verdict.reason}`)
+      runtime.error('The review job fails with the gate so `gh run rerun --failed` reruns the model leg.')
+    } else {
+      runtime.error(`Codex review returned no usable conclusion (${verdict.code}): ${verdict.reason}`)
+      runtime.error('The review job fails with the gate so `gh run rerun --failed` reruns the model leg.')
+      runtime.error('A repeat after rerunning means the prompt or the output contract needs fixing.')
+    }
+    runtime.setExitCode(1)
+  }
 
   if (!fs.existsSync(outputPath)) {
     const verdict = inspectReviewOutput(null, null, meta)
     if (verdict.rejected) {
       reportRejected(verdict)
     } else {
-      console.log('check-review-output: no model output; validate decides')
+      runtime.log('check-review-output: no model output; validate decides')
     }
-  } else {
-    const scope = fs.existsSync(scopePath) ? readJson(scopePath) : null
-    if (scope === null)
-      console.error(`check-review-output: scope unavailable at ${scopePath}; assuming a non-empty diff`)
-    const raw = fs.readFileSync(outputPath, 'utf8')
-    const verdict = inspectReviewOutput(raw, scope, meta)
-    if (verdict.rejected) {
-      reportRejected(verdict)
-    } else {
-      console.log('check-review-output: conclusion passes the output and coverage checks')
-    }
+    return verdict
   }
+
+  const scope = fs.existsSync(scopePath) ? readJson(scopePath) : null
+  if (scope === null) {
+    runtime.error(`check-review-output: scope unavailable at ${scopePath}; assuming a non-empty diff`)
+  }
+  const raw = fs.readFileSync(outputPath, 'utf8')
+  const verdict = inspectReviewOutput(raw, scope, meta)
+  if (verdict.rejected) {
+    reportRejected(verdict)
+  } else {
+    runtime.log('check-review-output: conclusion passes the output and coverage checks')
+  }
+  return verdict
+}
+
+// 与 codex-review.mjs 同款入口守卫：不依赖 import.meta.main，旧 Node 上也不会静默跳过。
+if (import.meta.url === `file://${process.argv[1]}`) {
+  runCheckReviewOutput()
 }

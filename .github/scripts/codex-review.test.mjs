@@ -26,8 +26,13 @@ import {
   buildReviewPreload,
   classifyPathRisk,
   commandAutoRetry,
+  commandGate,
+  commandPreflight,
   commandPrepare,
   commandPrepareIncremental,
+  commandPriorRun,
+  commandReport,
+  commandResolvePull,
   commandRun,
   conclusionRenderExtras,
   conclusionVerdict,
@@ -67,6 +72,7 @@ import {
   withPermissionDiagnosis,
   wrapCodeFence
 } from './codex-review.mjs'
+import { createMemoryActionsRuntime } from './lib/actions-runtime.mjs'
 import { SPAWN_MAX_BUFFER, commandError, run } from './lib/github.mjs'
 import { RELEASE_BRANCH } from './lib/workflow-topology.mjs'
 
@@ -4739,6 +4745,71 @@ exit 2
     }
   } finally {
     fs.rmSync(tempRoot, { recursive: true, force: true })
+  }
+}
+
+// 进程内 ActionsRuntime 注入测试：直接验证 commandPreflight / commandResolvePull / commandPriorRun / commandGate / commandReport。
+{
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-review-mem-'))
+  try {
+    const preflightRt = createMemoryActionsRuntime({ env: { RUNNER_TEMP: temp } })
+    commandPreflight({ runtime: preflightRt })
+    assert.equal(preflightRt.outputs.configured, 'false')
+    assert.ok(preflightRt.summaries.some(text => text.includes('incomplete')))
+
+    const resolveRt = createMemoryActionsRuntime({
+      env: { GITHUB_REPOSITORY: 'owner/mono', CODEX_REVIEW_HEAD_SHA: 'b'.repeat(40) }
+    })
+    commandResolvePull({
+      runtime: resolveRt,
+      adapter: { pulls: () => [{ number: 55, state: 'open', base: { ref: 'main' }, head: { sha: 'b'.repeat(40) } }] }
+    })
+    assert.equal(resolveRt.outputs.pull_number, '55')
+    assert.equal(resolveRt.outputs.pull_state, 'open')
+
+    const priorRt = createMemoryActionsRuntime({
+      env: { GITHUB_REPOSITORY: 'owner/mono', GITHUB_RUN_ID: '200', CODEX_REVIEW_HEAD_SHA: 'b'.repeat(40) }
+    })
+    commandPriorRun({
+      runtime: priorRt,
+      adapter: { runs: () => [], pull: () => ({}), artifacts: () => [] }
+    })
+    assert.equal(priorRt.outputs.prior_run_id, '')
+
+    const gateRt = createMemoryActionsRuntime({
+      env: {
+        GITHUB_REPOSITORY: 'owner/mono',
+        RUNNER_TEMP: temp,
+        CODEX_REVIEW_PULL_NUMBER: '55',
+        CODEX_REVIEW_LIVE_HEAD_SHA: 'b'.repeat(40)
+      }
+    })
+    const gateStatus = commandGate({ runtime: gateRt, adapter: {} })
+    assert.equal(gateStatus.blocking, true)
+    assert.equal(gateRt.getExitCode(), 1)
+    assert.ok(gateRt.summaries.some(text => text.includes('Codex review gate')))
+
+    const reportRt = createMemoryActionsRuntime({
+      env: {
+        GITHUB_REPOSITORY: 'owner/mono',
+        RUNNER_TEMP: temp,
+        CODEX_REVIEW_PULL_NUMBER: '55'
+      }
+    })
+    commandReport({
+      runtime: reportRt,
+      adapter: {
+        pull: () => ({
+          number: 55,
+          state: 'closed',
+          base: { ref: 'main' },
+          head: { ref: 'feat/x', sha: 'b'.repeat(40), repo: { full_name: 'owner/mono' } }
+        })
+      }
+    })
+    assert.ok(reportRt.summaries.some(text => text.includes('未写回')))
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true })
   }
 }
 
