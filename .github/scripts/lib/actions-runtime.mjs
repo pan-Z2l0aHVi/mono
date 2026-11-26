@@ -25,9 +25,23 @@ function normalizeSummary(content) {
   return raw.trimEnd().replace(/\r?\n/gu, os.EOL)
 }
 
+const ALLOWED_ANNOTATION_LEVELS = new Set(['debug', 'notice', 'warning', 'error'])
+
+function escapeCommandData(value) {
+  return String(value ?? '')
+    .replace(/%/gu, '%25')
+    .replace(/\r/gu, '%0D')
+    .replace(/\n/gu, '%0A')
+}
+
+function escapeCommandProperty(value) {
+  return escapeCommandData(value).replace(/:/gu, '%3A').replace(/,/gu, '%2C')
+}
+
 function formatAnnotation(level, title, message) {
-  const heading = title ? ` title=${oneLine(title)}` : ''
-  return `::${level}${heading}::${oneLine(message)}`
+  const safeLevel = ALLOWED_ANNOTATION_LEVELS.has(level) ? level : 'notice'
+  const heading = title ? ` title=${escapeCommandProperty(oneLine(title))}` : ''
+  return `::${safeLevel}${heading}::${escapeCommandData(oneLine(message))}`
 }
 
 /**

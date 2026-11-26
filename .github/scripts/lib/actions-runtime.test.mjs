@@ -4,7 +4,7 @@ import os from 'node:os'
 import path from 'node:path'
 
 import { createActionsRuntime, createMemoryActionsRuntime, oneLine, runCli } from './actions-runtime.mjs'
-import { commandError, createGhClient, isHttp403, isHttp404, isHttp422 } from './github.mjs'
+import { commandError, createGhClient, createGitHubApi, isHttp403, isHttp404, isHttp422 } from './github.mjs'
 
 // 1. oneLine 折叠换行与可选截断
 assert.equal(oneLine('  hello\n\t world  '), 'hello world')
@@ -209,4 +209,26 @@ console.log('.github/scripts/lib/actions-runtime.test.mjs: all assertions passed
     stdout: ''
   })
   assert.equal(isHttp403(real403), true, 'stderr 403 must still be classified as isHttp403')
+}
+
+// formatAnnotation 必须按 GitHub Actions workflow command 协议转义 %、CR、LF 以及 title 中的 : 和 ,。
+{
+  const rt = createMemoryActionsRuntime()
+  rt.annotate('warning', 'PR: 100%, done\nnext', '100% failed\r\n::error::injected')
+  assert.equal(rt.annotations[0].line, '::warning title=PR%3A 100%25%2C done next::100%25 failed ::error::injected')
+}
+
+// createGitHubApi 保持既有 404 返回 null 的容错语义，非 404 错误仍抛错。
+{
+  const api404 = createGitHubApi({
+    repository: 'owner/mono',
+    spawn: () => ({ status: 1, stdout: '', stderr: 'gh: Not Found (HTTP 404)' })
+  })
+  assert.equal(api404.api('releases/tags/v0.0.0'), null)
+
+  const api500 = createGitHubApi({
+    repository: 'owner/mono',
+    spawn: () => ({ status: 1, stdout: '', stderr: 'gh: Internal Server Error (HTTP 500)' })
+  })
+  assert.throws(() => api500.api('releases/tags/v0.0.0'), /HTTP 500/)
 }
