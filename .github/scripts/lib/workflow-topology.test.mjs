@@ -844,10 +844,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.ok(!reviewStep.includes('openai/codex-action'), 'codex-review must use the direct API engine')
     assert.match(autofixStep, /sandbox: 'workspace-write'/)
     assert.ok(!/openai-api-key: \$\{\{ vars\./.test(ci), 'the api key must never come from a public variable')
-    assert.ok(
-      !/CODEX_REVIEW_(?:API_KEY|EXTRA_HEADERS): \$\{\{ vars\./.test(ci),
-      'review secrets must never come from public variables'
-    )
+    assert.ok(!/CODEX_REVIEW_API_KEY: \$\{\{ vars\./.test(ci), 'review API key must never come from a public variable')
 
     // openai/codex-action#188 仅影响仍使用 codex-action 的 codex-autofix-plan（固定 24.04 + drop-sudo）；
     // codex-review 已切换为无 shell 直调引擎，恢复使用 ubuntu-latest 且不含 drop-sudo。
@@ -929,12 +926,22 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.equal(
       codexDirectEnvViolations(
         reviewStep.replace(
-          'CODEX_REVIEW_EXTRA_HEADERS: ${{ secrets.CODEX_REVIEW_EXTRA_HEADERS }}',
-          'CODEX_REVIEW_EXTRA_HEADERS: ${{ vars.CODEX_REVIEW_EXTRA_HEADERS }}'
+          'CODEX_REVIEW_API_KEY: ${{ secrets.CODEX_REVIEW_API_KEY }}',
+          'CODEX_REVIEW_API_KEY: ${{ vars.CODEX_REVIEW_API_KEY }}'
         )
       ).length,
       1,
-      'passing CODEX_REVIEW_EXTRA_HEADERS from vars instead of secrets must be reported'
+      'passing CODEX_REVIEW_API_KEY from vars instead of secrets must be reported'
+    )
+    assert.equal(
+      codexDirectEnvViolations(
+        reviewStep.replace(
+          'CODEX_REVIEW_EXTRA_HEADERS: ${{ vars.CODEX_REVIEW_EXTRA_HEADERS }}',
+          'CODEX_REVIEW_EXTRA_HEADERS: \'{"x-custom":"hardcoded"}\''
+        )
+      ).length,
+      1,
+      'a hardcoded CODEX_REVIEW_EXTRA_HEADERS literal must be reported'
     )
     assert.deepEqual(
       codexDirectEnvViolations(reviewStep.replace('CODEX_REVIEW_EFFORT: ${{ vars.CODEX_REVIEW_EFFORT }}', '')),
@@ -967,8 +974,8 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       }
       if (jobId === 'codex-review') {
         assert.ok(
-          preflight.includes('CODEX_REVIEW_EXTRA_HEADERS: ${{ secrets.CODEX_REVIEW_EXTRA_HEADERS }}'),
-          'codex-review preflight must receive optional CODEX_REVIEW_EXTRA_HEADERS for config fingerprint'
+          preflight.includes('CODEX_REVIEW_EXTRA_HEADERS: ${{ vars.CODEX_REVIEW_EXTRA_HEADERS }}'),
+          'codex-review preflight must receive optional CODEX_REVIEW_EXTRA_HEADERS from GitHub variables for config fingerprint'
         )
       }
     }

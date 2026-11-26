@@ -224,7 +224,7 @@ required checks 在 `check` 之外加入 `Codex review gate`，2026-11-23 起按
 
 - **动机**：基于 `openai/codex-action` 的 agentic 审查在多文件 PR 中会陷入几十至数百轮串行 shell 工具调用与多轮上下文压缩（如 PR #620 耗时 54 分钟 / 426 轮 shell / 1.85M tokens，PR #623 超过 80 分钟），成为合并队列的主要瓶颈。
 - **两段式直调架构**：`codex-review` job 的 `Review pull request with Codex` 步骤由 `openai/codex-action` 切换为可信脚本 `node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" run`（底层引擎 `lib/codex-direct-review.mjs`）：
-  - **协议兼容与自定义网关头**：默认调用 OpenAI `/responses` SSE 流式协议，端点以 `/chat/completions` 结尾时自动切至 Chat Completions 流式协议并带至多 3 项不兼容参数降级；支持可选 secret `CODEX_REVIEW_EXTRA_HEADERS`（JSON 对象，支持 `{{run_id}}` / `{{head_sha}}` 占位符、拒绝保留头与 CRLF、错误日志自动脱敏）适配需要会话路由头等的受限网关。
+  - **协议兼容与自定义网关头**：默认调用 OpenAI `/responses` SSE 流式协议，端点以 `/chat/completions` 结尾时自动切至 Chat Completions 流式协议并带至多 3 项不兼容参数降级；支持可选变量 `vars.CODEX_REVIEW_EXTRA_HEADERS`（JSON 对象，支持 `{{run_id}}` / `{{head_sha}}` 占位符、拒绝 `Authorization`/`Cookie` 等保留头与 CRLF、错误日志自动脱敏）适配需要会话路由头等的受限网关。
   - **受控两轮收口**：Turn 1 按 5 级路径风险预打包最多 112 KB（单文件 12 KB）源码 diff 与可信 skill，可直接输出终审结论或发起最多 12 条只读代查（`read_file`、`git_diff`、`git_grep`）；宿主在无 shell 沙箱内本地批量执行（总预算 48 KB、单文件有界分块读、路径与 `.env*` 围栏、测试文件命中包裹 `<untrusted-test-content>`）后进入 Turn 2 物理锁定最终 JSON Schema 收口。
   - **不可用隔离与跨 runner 诊断**：仅 `reviewed` 写正式输出 `codex-final-message.json`，`unusable_or_missing_coverage` 写独立诊断文件供 `validate` 稳定落 `unreviewed`（杜绝假绿）；调用失败时由同 runner `validate` 将脱敏 `model_error` 写入 `review-meta.json`，写回端优先读取，不再强依赖远程 job 日志解析。
 - **权限、Runner 与超时收紧**：

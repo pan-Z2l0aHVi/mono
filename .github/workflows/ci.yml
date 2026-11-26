@@ -290,7 +290,8 @@ jobs:
 
       # 密钥只在 preflight 与直调步骤的 step 级 env 出现，绝不下放 job 级 env。
       # 四项配置与 codex 版本全部由 GitHub 后台提供，CI 定义里不留任何默认值或兜底表达式；
-      # 可选 CODEX_REVIEW_EXTRA_HEADERS 仅以哈希参与指纹（不落明文到配置快照），留给受限网关自定义请求头。
+      # 可选变量 vars.CODEX_REVIEW_EXTRA_HEADERS 仅用于非密钥网关路由头（引擎拒绝 Authorization/Cookie 等敏感头），
+      # 且仅以哈希参与指纹、不落明文到配置快照。
       - name: Validate Codex configuration
         id: config
         env:
@@ -299,7 +300,7 @@ jobs:
           CODEX_REVIEW_MODEL: ${{ vars.CODEX_REVIEW_MODEL }}
           CODEX_REVIEW_EFFORT: ${{ vars.CODEX_REVIEW_EFFORT }}
           CODEX_VERSION: ${{ vars.CODEX_VERSION }}
-          CODEX_REVIEW_EXTRA_HEADERS: ${{ secrets.CODEX_REVIEW_EXTRA_HEADERS }}
+          CODEX_REVIEW_EXTRA_HEADERS: ${{ vars.CODEX_REVIEW_EXTRA_HEADERS }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" preflight
 
       - name: Find reusable conclusion
@@ -351,7 +352,7 @@ jobs:
           CODEX_RESPONSES_ENDPOINT: ${{ vars.CODEX_RESPONSES_ENDPOINT }}
           CODEX_REVIEW_MODEL: ${{ vars.CODEX_REVIEW_MODEL }}
           CODEX_REVIEW_EFFORT: ${{ vars.CODEX_REVIEW_EFFORT }}
-          CODEX_REVIEW_EXTRA_HEADERS: ${{ secrets.CODEX_REVIEW_EXTRA_HEADERS }}
+          CODEX_REVIEW_EXTRA_HEADERS: ${{ vars.CODEX_REVIEW_EXTRA_HEADERS }}
           CODEX_REVIEW_MERGE_BASE_SHA: ${{ steps.prepare.outputs.merge_base_sha }}
           CODEX_REVIEW_START_SHA: ${{ steps.incremental.outputs.review_start_sha }}
           CODEX_REVIEW_PRIOR_DIR: ${{ runner.temp }}/codex-review-prior
