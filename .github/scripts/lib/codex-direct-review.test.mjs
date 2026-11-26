@@ -1239,4 +1239,4 @@ const jsonResponse = (payload, status = 200) => ({
   assert.ok(chatLogs.some(line => line.includes('protocol=chat-completions')))
 }
 
-console.log('codex-direct-review tests passed')
+console.log('.github/scripts/lib/codex-direct-review.test.mjs: all assertions passed')
