@@ -51,9 +51,10 @@ vi.mock('@/services/library', () => ({
 }))
 
 const toastWarning = vi.hoisted(() => vi.fn<(message: string, options: { position: string }) => void>())
+const toastError = vi.hoisted(() => vi.fn<(message: string, options: { position: string }) => void>())
 
 vi.mock('@greypan/web-ui', () => ({
-  toast: { warning: toastWarning },
+  toast: { warning: toastWarning, error: toastError },
   imagePreview: () => {
     throw new Error('图片预览由 AddDialog 组件用例覆盖')
   }
@@ -598,6 +599,7 @@ describe('LibraryPage：可用性感知接线', () => {
 describe('LibraryPage：确认弹窗退场', () => {
   beforeEach(() => {
     setActivePinia(createPinia())
+    toastError.mockClear()
     route.value = { path: '/library' }
     runtimeStub.droppedFilesListener = null
     runtimeStub.availabilityListener = null
@@ -660,7 +662,7 @@ describe('LibraryPage：确认弹窗退场', () => {
     }
   })
 
-  it('确认失败时弹窗保持打开、错误可见且可再次点击确认', async () => {
+  it('确认失败时弹窗保持打开、错误由 toast 呈现且可再次点击确认', async () => {
     const remove = vi
       .fn<LibraryRuntime['resources']['remove']>()
       .mockRejectedValueOnce(new Error('资源正在被使用'))
@@ -677,7 +679,7 @@ describe('LibraryPage：确认弹窗退场', () => {
       await flush()
 
       expect(dialog.open).toBe(true)
-      expect(dialog.querySelector('[role="alert"]')?.textContent).toContain('资源正在被使用')
+      expect(toastError).toHaveBeenCalledWith('资源正在被使用', { position: 'top-center' })
       expect(useLibraryStore().resources).toHaveLength(1)
 
       button(dialog, '删除').click()
@@ -701,6 +703,7 @@ describe('LibraryPage：确认弹窗退场', () => {
 describe('LibraryPage：粘贴链接', () => {
   beforeEach(() => {
     toastWarning.mockClear()
+    toastError.mockClear()
     setActivePinia(createPinia())
     route.value = { path: '/library' }
     runtimeStub.droppedFilesListener = null
@@ -839,7 +842,7 @@ describe('LibraryPage：粘贴链接', () => {
     }
   })
 
-  it('提交失败时 AddDialog 保持打开、队列按 remaining 回卷', async () => {
+  it('提交失败时 AddDialog 保持打开、错误由 toast 呈现', async () => {
     const createResource = vi.fn<LibraryRuntime['resources']['create']>(async () => {
       throw new Error('磁盘已满')
     })
@@ -855,8 +858,8 @@ describe('LibraryPage：粘贴链接', () => {
       await flush()
 
       expect(dialogOpen(dialog)).toBe(true)
-      // takeOperationError 优先透出 cause 的 message，fallback 文案只兜无消息错误。
-      expect(mounted.host.textContent).toContain('磁盘已满')
+      // userMessage 优先透出 cause 的 message，fallback 文案只兜无消息错误。
+      expect(toastError).toHaveBeenCalledWith('磁盘已满', { position: 'top-center' })
     } finally {
       await mounted.close()
     }

@@ -34,6 +34,7 @@ import { useLibraryRuntime } from '@/composables/useLibraryRuntime'
 import { useLibrarySelection } from '@/composables/useLibrarySelection'
 import { pendingWindowFileDrops, pendingWindowURLDrops } from '@/composables/windowFileDrop'
 import type { LibraryQueueItem } from '@/services/library'
+import { userMessage } from '@/services/library/userMessage'
 import { useLibraryStore } from '@/stores/library'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
@@ -41,14 +42,23 @@ import { createLibraryWorkflow } from './libraryWorkflow'
 
 const router = useRouter()
 const store = useLibraryStore()
+
+// 同一个失败可能先被 runtime 上报、再由工作流 catch 看见；按 cause 去重，只弹一次 toast。
+// Error 对象用 WeakSet，不延长异常对象的生命周期。
+const reportedErrors = new WeakSet<object>()
+function reportError(cause: unknown, fallback: string) {
+  if (cause && (typeof cause === 'object' || typeof cause === 'function')) {
+    if (reportedErrors.has(cause as object)) return
+    reportedErrors.add(cause as object)
+  }
+  toast.error(userMessage(cause, fallback), { position: 'top-center' })
+}
+
 const {
   runtime,
   isLoading,
   pendingResourceIds,
   replacingSourceIds,
-  error: runtimeError,
-  clearError: clearRuntimeError,
-  consumeError: consumeRuntimeError,
   loadResources,
   addResource,
   renameResource,
@@ -60,7 +70,7 @@ const {
   openExternal,
   saveSourceThumbnail,
   probeURLSourceOnOpen
-} = useLibraryRuntime()
+} = useLibraryRuntime(undefined, reportError)
 
 // 页面级 overlay（详情/预览 drawer、各类 dialog）跟着壳的移动端判定走，不自己写断点。
 const mobile = useLayoutMobile()
@@ -101,22 +111,19 @@ const workflow = createLibraryWorkflow({
     const updated = await runtime.sources.replaceScannedFile(sourceId, path, snapshot)
     store.upsertResource(updated)
   },
-  consumeError: consumeRuntimeError,
+  reportError,
   notifyWarning: message => toast.warning(message, { position: 'top-center' })
 })
 
 const {
   addOpen,
-  addError,
   confirmBusy,
   confirmOpen,
   confirmRequest,
-  confirmError,
   confirmButtonLabel,
   restoreOpen,
   restoreQueue,
   restoreBusy,
-  restoreError,
   failedRestoreIds,
   activeRestoreItemId
 } = workflow
@@ -162,7 +169,7 @@ const stopMenuActions = [
   onMenuAction(MENU_IMPORT_FROM_LINK_EVENT, openAddLinkDialog),
   onMenuAction(MENU_REFRESH_EVENT, () => {
     void loadResources().catch(() => {
-      // 错误由 runtimeError 呈现，列表保持当前内容。
+      // 错误由 reportError 呈现，列表保持当前内容。
     })
   }),
   onMenuAction(MENU_TOGGLE_FILTER_BAR_EVENT, () => {
@@ -416,7 +423,7 @@ async function handleRename(resourceId: string, title: string) {
   try {
     await renameResource(resourceId, title)
   } catch {
-    // 错误由 runtimeError 呈现，详情 drawer 保持当前 Resource。
+    // 错误由 reportError 呈现，详情 drawer 保持当前 Resource。
   }
 }
 
@@ -434,7 +441,7 @@ async function handleResourceNoteChange(resource: ResourceView, note: string, ed
   try {
     await updateResourceNote(resource.id, note)
   } catch {
-    // 错误由 runtimeError 呈现。store 未更新，重新渲染不会把 input 拉回旧值，
+    // 错误由 reportError 呈现。store 未更新，重新渲染不会把 input 拉回旧值，
     // 这里显式写回，否则失焦后文本停在未落库的状态上。
     // drawer 可能已经切到或关掉了：editor 为空说明字段已卸载，或它已经属于别的资源，
     // 这两种情况写回都会落到不该落的 input 上。
@@ -459,7 +466,7 @@ async function handleSaveTags(resourceId: string, tagNames: string[]) {
     await saveTags(resourceId, tagNames)
     tagsOpen.value = false
   } catch {
-    // 错误由 runtimeError 呈现；弹窗保持打开，草稿已在本地更新，用户可继续修改后再次保存。
+    // 错误由 reportError 呈现；弹窗保持打开，草稿已在本地更新，用户可继续修改后再次保存。
   }
 }
 
@@ -476,7 +483,7 @@ function handleBatchRestore() {
 
 onMounted(() => {
   void loadResources().catch(() => {
-    // 初次加载错误由 runtimeError 呈现，并保留重试入口。
+    // 初次加载错误由 reportError 呈现，并保留重试入口。
   })
 })
 </script>
@@ -549,15 +556,6 @@ onMounted(() => {
       class="flex flex-col flex-1 min-w-0 px-8 mobile:px-3 pb-[max(64px,env(safe-area-inset-bottom))] pt-2"
       @contextmenu.capture.prevent
     >
-      <div
-        v-if="runtimeError"
-        class="mb-3 flex min-h-10 items-center justify-between gap-3 rounded-lg bg-red-50 px-3 py-2 text-sm text-red-700 dark:bg-red-400/12 dark:text-red-200"
-        role="alert"
-      >
-        <span class="min-w-0 wrap-break-word">{{ runtimeError }}</span>
-        <web-ui-button size="28" variant="ghost" @click="clearRuntimeError()">关闭</web-ui-button>
-      </div>
-
       <ResourceList
         ref="resourceListRef"
         :resources="visibleResources"
@@ -622,7 +620,6 @@ onMounted(() => {
     :open="addOpen"
     :queue="queue"
     :busy="submitting"
-    :error="addError"
     :mobile="mobile"
     :tag-colors="store.tagColors"
     :previews="previewEntries"
@@ -655,7 +652,6 @@ onMounted(() => {
     :all-tag-names="allTagNames"
     :tag-colors="store.tagColors"
     :busy="pendingResourceIds.includes(activeTagTarget?.id ?? '')"
-    :error="runtimeError"
     @save="handleSaveTags"
   />
 
@@ -663,7 +659,6 @@ onMounted(() => {
     :open="restoreOpen"
     :queue="restoreQueue"
     :busy="restoreBusy"
-    :error="restoreError"
     :mobile="mobile"
     :active-item-id="activeRestoreItemId"
     :all-unavailable-files="
@@ -694,7 +689,6 @@ onMounted(() => {
     :danger="confirmRequest?.danger ?? false"
     :busy="confirmBusy"
     :busy-cancel-label="confirmRequest?.busyCancelLabel"
-    :error="confirmError"
     :compact="confirmRequest?.compact ?? false"
     @confirm="workflow.runConfirmedAction()"
     @cancel="workflow.cancelConfirmDialog()"

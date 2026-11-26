@@ -15,13 +15,22 @@ import type { PreviewLeaseEntry } from '../previewLease'
 
 import { stubLayout } from './virtualLayout'
 
+const toastError = vi.hoisted(() => vi.fn<(message: string, options: { position: string }) => string>())
+const readClipboardText = vi.hoisted(() => vi.fn<() => Promise<string>>())
+
 vi.mock('@greypan/web-ui', async importOriginal => {
   const actual = await importOriginal<typeof WebUiModule>()
   return {
     ...actual,
+    toast: { ...actual.toast, error: toastError },
     imagePreview: vi.fn<(options: WebUiModule.ImagePreviewOptions) => WebUiModule.ImagePreviewHandle>()
   }
 })
+
+// 浏览器预览不再由产品 mock runtime 提供剪贴板；组件用例只替换这条系统能力。
+vi.mock('@/services/library', () => ({
+  createLibraryRuntime: () => ({ isAvailable: true, system: { readClipboardText } })
+}))
 
 const openPreview = vi.mocked(imagePreview)
 
@@ -82,7 +91,6 @@ function mountDialog(
         open: open.value,
         queue,
         busy: options.busy ?? false,
-        error: '',
         mobile: options.mobile ?? false,
         tagColors: options.tagColors ?? {},
         previews: previewsFor(queue),
@@ -137,6 +145,8 @@ describe('AddDialog', () => {
 
   beforeEach(() => {
     openPreview.mockReset()
+    toastError.mockClear()
+    readClipboardText.mockReset()
     restoreLayout = stubLayout()
   })
 
@@ -199,7 +209,7 @@ describe('AddDialog', () => {
       )!
       confirm.click()
       await nextTick()
-      expect(mounted.host.textContent).toContain('请输入有效的网页链接')
+      expect(toastError).toHaveBeenCalledWith('请输入有效的网页链接', { position: 'top-center' })
       expect(addUrl).not.toHaveBeenCalled()
       input.value = 'https://example.com/new'
       input.dispatchEvent(new Event('input', { bubbles: true }))
@@ -223,12 +233,9 @@ describe('AddDialog', () => {
   })
 
   it('粘贴链接按钮读取最新剪切板文本并填入输入框', async () => {
-    const descriptor = Object.getOwnPropertyDescriptor(navigator, 'clipboard')
-    const readText = vi
-      .fn<() => Promise<string>>()
+    readClipboardText
       .mockResolvedValueOnce('https://example.com/first')
       .mockResolvedValueOnce('https://example.com/latest')
-    Object.defineProperty(navigator, 'clipboard', { configurable: true, value: { readText } })
     const mounted = mountDialog([])
     try {
       button(mounted.host, '导入链接').click()
@@ -238,11 +245,9 @@ describe('AddDialog', () => {
       await vi.waitFor(() => expect(input.value).toBe('https://example.com/first'))
       button(mounted.host, '粘贴链接').click()
       await vi.waitFor(() => expect(input.value).toBe('https://example.com/latest'))
-      expect(readText).toHaveBeenCalledTimes(2)
+      expect(readClipboardText).toHaveBeenCalledTimes(2)
     } finally {
       mounted.close()
-      if (descriptor) Object.defineProperty(navigator, 'clipboard', descriptor)
-      else Reflect.deleteProperty(navigator, 'clipboard')
     }
   })
 

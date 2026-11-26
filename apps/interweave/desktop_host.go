@@ -5,6 +5,7 @@ package main
 import (
 	"context"
 	"runtime"
+	"sync/atomic"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 
@@ -18,41 +19,137 @@ import (
 
 // wailsDesktopHost 是 internal/shell.DesktopHost 在 Wails 宿主的极简适配器：
 // 只做窗口动作、事件发射与原生菜单物化转发，不包含状态与业务编排。
+// 窗口经 mainWindowController 间接取得：轻量模式下 WebView 被销毁，所有窗口动作都要无操作。
 type wailsDesktopHost struct {
 	app       *application.App
-	window    *application.WebviewWindow
+	windows   *mainWindowController
 	osService *nativeService.OSService
+	// quit 由宿主注入，退出前先排空 Dock 调用；缺省时保持直接退出。
+	quit func()
+	// presence 只在 macOS 上切换 Dock 可见性：隐藏窗口进托盘时隐藏 Dock，
+	// 从托盘/Dock 恢复窗口时再显示，避免只剩菜单栏托盘后无处点击 Dock。
+	presence *platformDockPresence
+	// hiddenToTray 标记窗口是「关闭时最小化到托盘」藏起来的，不是用户主动最小化。
+	// 关闭该设置时只有这类窗口需要主动恢复，否则没有窗口、托盘和 Dock 三个入口。
+	hiddenToTray atomic.Bool
 }
 
 var _ shell.DesktopHost = (*wailsDesktopHost)(nil)
 
-func (h *wailsDesktopHost) Size() (int, int)   { return h.window.Size() }
-func (h *wailsDesktopHost) SetSize(w, ht int)  { h.window.SetSize(w, ht) }
-func (h *wailsDesktopHost) IsFullscreen() bool { return h.window.IsFullscreen() }
-func (h *wailsDesktopHost) UnFullscreen()      { h.window.UnFullscreen() }
-func (h *wailsDesktopHost) IsMaximised() bool  { return h.window.IsMaximised() }
-func (h *wailsDesktopHost) UnMaximise()        { h.window.UnMaximise() }
+func (h *wailsDesktopHost) currentWindow() *application.WebviewWindow {
+	if h.windows == nil {
+		return nil
+	}
+	return h.windows.Window()
+}
 
-func (h *wailsDesktopHost) PresentWindow()  { presentMainWindow(h.window) }
-func (h *wailsDesktopHost) HideWindow()     { h.window.Hide() }
-func (h *wailsDesktopHost) QuitApp()        { go h.app.Quit() }
-func (h *wailsDesktopHost) ReloadWindow()   { h.window.Reload() }
-func (h *wailsDesktopHost) OpenDevTools()   { h.window.OpenDevTools() }
-func (h *wailsDesktopHost) ToggleMaximise() { h.window.ToggleMaximise() }
+func (h *wailsDesktopHost) Size() (int, int) {
+	if window := h.currentWindow(); window != nil {
+		return window.Size()
+	}
+	return 0, 0
+}
 
-func (h *wailsDesktopHost) EmitMenuCommand(command menucontract.Command) {
-	h.window.EmitEvent(menucontract.CommandEventName, menucontract.MenuCommand{
-		Command: command,
-		Payload: map[string]string{},
+func (h *wailsDesktopHost) SetSize(w, ht int) {
+	if window := h.currentWindow(); window != nil {
+		window.SetSize(w, ht)
+	}
+}
+
+func (h *wailsDesktopHost) IsFullscreen() bool {
+	if window := h.currentWindow(); window != nil {
+		return window.IsFullscreen()
+	}
+	return false
+}
+
+func (h *wailsDesktopHost) UnFullscreen() {
+	if window := h.currentWindow(); window != nil {
+		window.UnFullscreen()
+	}
+}
+
+func (h *wailsDesktopHost) IsMaximised() bool {
+	if window := h.currentWindow(); window != nil {
+		return window.IsMaximised()
+	}
+	return false
+}
+
+func (h *wailsDesktopHost) UnMaximise() {
+	if window := h.currentWindow(); window != nil {
+		window.UnMaximise()
+	}
+}
+
+func (h *wailsDesktopHost) PresentWindow() {
+	// 窗口状态、隐藏标记与 Dock 提交必须在同一条 main queue 转换里，否则关闭 goroutine
+	// 与托盘恢复会交错提交 show/hide，最终窗口可见但 Dock 已隐藏（或相反）。
+	application.InvokeSync(func() {
+		h.windows.Present()
+		h.presence.show()
+		h.hiddenToTray.Store(false)
 	})
 }
 
+// hiddenByTray 仅供设置变更时判断是否需要把藏进托盘的窗口拉回来。
+func (h *wailsDesktopHost) hiddenByTray() bool { return h.hiddenToTray.Load() }
+
+func (h *wailsDesktopHost) HideWindow() {
+	application.InvokeSync(func() {
+		if window := h.currentWindow(); window != nil {
+			window.Hide()
+			h.hiddenToTray.Store(true)
+			h.presence.hide()
+		}
+	})
+}
+
+func (h *wailsDesktopHost) QuitApp() {
+	if h.quit != nil {
+		h.quit()
+		return
+	}
+	go h.app.Quit()
+}
+
+func (h *wailsDesktopHost) ReloadWindow() {
+	if window := h.currentWindow(); window != nil {
+		window.Reload()
+	}
+}
+
+func (h *wailsDesktopHost) OpenDevTools() {
+	if window := h.currentWindow(); window != nil {
+		window.OpenDevTools()
+	}
+}
+
+func (h *wailsDesktopHost) ToggleMaximise() {
+	if window := h.currentWindow(); window != nil {
+		window.ToggleMaximise()
+	}
+}
+
+func (h *wailsDesktopHost) EmitMenuCommand(command menucontract.Command) {
+	if window := h.currentWindow(); window != nil {
+		window.EmitEvent(menucontract.CommandEventName, menucontract.MenuCommand{
+			Command: command,
+			Payload: map[string]string{},
+		})
+	}
+}
+
 func (h *wailsDesktopHost) EmitFiles(paths []string) {
-	h.window.EmitEvent(libraryService.FileDropEventName, paths)
+	if window := h.currentWindow(); window != nil {
+		window.EmitEvent(libraryService.FileDropEventName, paths)
+	}
 }
 
 func (h *wailsDesktopHost) EmitURLs(urls []string) {
-	h.window.EmitEvent(libraryService.URLDropEventName, urls)
+	if window := h.currentWindow(); window != nil {
+		window.EmitEvent(libraryService.URLDropEventName, urls)
+	}
 }
 
 func (h *wailsDesktopHost) OpenExternal(ctx context.Context, targetURL string) error {
@@ -67,13 +164,18 @@ func (h *wailsDesktopHost) InstallMenu(state shell.MenuState, sink func(menucont
 		DeveloperOptions: state.DeveloperOptions,
 		Disabled:         state.IsDisabled,
 	}
+	window := h.currentWindow()
 	if runtime.GOOS == "windows" {
-		h.window.EmitEvent(menucontract.TreeChangedEventName, nativeMenu.Snapshot(nativeState, runtime.GOOS))
+		if window != nil {
+			window.EmitEvent(menucontract.TreeChangedEventName, nativeMenu.Snapshot(nativeState, runtime.GOOS))
+		}
 		return
 	}
 	tree := nativeMenu.Build(nativeState, sink)
 	h.app.Menu.Set(tree.Menu)
-	h.window.SetMenu(tree.Menu)
+	if window != nil {
+		window.SetMenu(tree.Menu)
+	}
 }
 
 // wailsShellState 把 settings.Service 与 menu.Service 适配成纯 Go 的 shell.StateSource。

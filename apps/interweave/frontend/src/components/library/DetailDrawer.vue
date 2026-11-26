@@ -130,7 +130,7 @@ watch(
     const note = pendingNote.value
     pendingNote.value = null
     if (note === previous.note) return
-    // 字段已随 patch 卸载，没有可写回的编辑器；失败由 runtimeError 呈现。
+    // 字段已随 patch 卸载，没有可写回的编辑器；失败由页面 toast 呈现。
     emit('noteChange', previous, note, null)
   },
   { flush: 'pre' }

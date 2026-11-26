@@ -27,7 +27,6 @@ import type { ResourceSourceView, TagColor } from '@/stores/library'
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 import { queueItemTitle } from './addQueue'
-import ErrorBanner from './ErrorBanner.vue'
 import { doubleArrowRight, linkPlus } from './icons'
 import type { PreviewLeaseEntry } from './previewLease'
 import type { NameEditorRef } from './rename'
@@ -45,7 +44,6 @@ const props = defineProps<{
   open: boolean
   queue: LibraryQueueItem[]
   busy: boolean
-  error: string
   mobile: boolean
   /**
    * 标签名 → 持久化颜色。队列里的标签还没落库，本身没有颜色可言，
@@ -277,8 +275,6 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
     @closed="emit('closed')"
   >
     <span slot="header">导入资源</span>
-
-    <ErrorBanner :message="error" />
 
     <!--
       内层不自己算高度：`--wui-dialog-max-height` 的语义是「内容区高度」（不是「整卡高度」，

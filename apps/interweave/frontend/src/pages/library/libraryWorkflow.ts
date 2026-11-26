@@ -36,7 +36,7 @@ export interface ConfirmRequest {
 
 /**
  * 资源库工作流状态机的窄端口：仅声明导入展开、文件/剪贴板读取、资源落库/替换、
- * 错误消费与提示回调，不直接绑定 Wails 运行时或 Pinia store。
+ * 错误上报与提示回调，不直接绑定 Wails 运行时或 Pinia store。
  */
 export interface LibraryWorkflowPorts {
   addQueue: Pick<
@@ -57,22 +57,19 @@ export interface LibraryWorkflowPorts {
   addResource(item: LibraryQueueItem): Promise<unknown>
   replaceSource(sourceId: string, input: string): Promise<unknown>
   replaceScannedFileSource(sourceId: string, inputPath: string, snapshot: string): Promise<unknown>
-  consumeError(cause: unknown, fallback: string): string
+  reportError(cause: unknown, fallback: string): void
   notifyWarning(message: string): void
 }
 
 export interface LibraryWorkflow {
   addOpen: Ref<boolean>
-  addError: Ref<string>
   confirmBusy: Ref<boolean>
   confirmOpen: Ref<boolean>
   confirmRequest: Ref<ConfirmRequest | null>
-  confirmError: Ref<string>
   confirmButtonLabel: ComputedRef<string>
   restoreOpen: Ref<boolean>
   restoreQueue: Ref<LibraryRestoreQueueItem[]>
   restoreBusy: Ref<boolean>
-  restoreError: Ref<string>
   failedRestoreIds: Ref<string[]>
   activeRestoreItemId: Ref<string | null>
   openConfirmDialog(request: ConfirmRequest): void
@@ -103,17 +100,12 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
   const { addQueue } = ports
 
   const addOpen = ref(false)
-  const addError = ref('')
-
   const confirmBusy = ref(false)
   const confirmOpen = ref(false)
   const confirmRequest = ref<ConfirmRequest | null>(null)
-  const confirmError = ref('')
-
   const restoreOpen = ref(false)
   const restoreQueue = ref<LibraryRestoreQueueItem[]>([])
   const restoreBusy = ref(false)
-  const restoreError = ref('')
   const failedRestoreIds = ref<string[]>([])
   const activeRestoreItemId = ref<string | null>(null)
 
@@ -125,7 +117,6 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
       pendingConfirmRequests.push(request)
       return
     }
-    confirmError.value = ''
     confirmRequest.value = request
     confirmOpen.value = true
   }
@@ -138,7 +129,6 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
     confirmOpen.value = false
     const next = pendingConfirmRequests.shift()
     if (!next) return
-    confirmError.value = ''
     confirmRequest.value = next
     confirmOpen.value = true
   }
@@ -146,13 +136,12 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
   async function runConfirmedAction() {
     const request = confirmRequest.value
     if (!request || confirmBusy.value) return
-    confirmError.value = ''
     confirmBusy.value = true
     try {
       await request.action()
       closeConfirmDialog()
     } catch (cause) {
-      confirmError.value = ports.consumeError(cause, '操作失败，请稍后重试')
+      ports.reportError(cause, '操作失败，请稍后重试')
     } finally {
       confirmBusy.value = false
     }
@@ -182,7 +171,6 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
   })
 
   function openAddDialog() {
-    addError.value = ''
     addOpen.value = true
   }
 
@@ -193,7 +181,6 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
 
   function handleAddDialogClosed() {
     if (addOpen.value) return
-    addError.value = ''
     void addQueue.close()
   }
 
@@ -257,18 +244,16 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
 
   function handleWindowFileDrops(batches: string[][]) {
     if (!batches.length) return
-    addError.value = ''
     addOpen.value = true
     for (const entries of batches) {
       enqueueImportEntries(entries).catch(cause => {
-        addError.value = ports.consumeError(cause, '读取文件失败')
+        ports.reportError(cause, '读取文件失败')
       })
     }
   }
 
   function handleWindowURLDrops(batches: string[][]) {
     if (!batches.length) return
-    addError.value = ''
     addOpen.value = true
     for (const urls of batches) {
       for (const url of urls) requestAddURL(url)
@@ -283,7 +268,6 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
    */
   async function pasteFilePaths(clipboardText?: string) {
     try {
-      addError.value = ''
       const paths = await ports.getClipboardFilePaths()
       if (!addOpen.value) return
       if (paths.length) {
@@ -305,31 +289,28 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
 
   async function pickFiles() {
     try {
-      addError.value = ''
       const entries = await ports.chooseFilePaths()
       if (!entries.length || !addOpen.value) return
       await enqueueImportEntries(entries)
     } catch (cause) {
-      addError.value = ports.consumeError(cause, '选择文件失败')
+      ports.reportError(cause, '选择文件失败')
     }
   }
 
   async function submitQueue() {
-    addError.value = ''
     try {
       const completed = await addQueue.submit(async item => {
         await ports.addResource(item)
       })
       if (completed) addOpen.value = false
     } catch (cause) {
-      addError.value = ports.consumeError(cause, '导入资源失败，请稍后重试')
+      ports.reportError(cause, '导入资源失败，请稍后重试')
     }
   }
 
   function openRestoreDialog(items: LibraryRestoreQueueItem[]) {
     if (!items.length || restoreBusy.value) return
     restoreQueue.value = items
-    restoreError.value = ''
     failedRestoreIds.value = []
     activeRestoreItemId.value = null
     restoreOpen.value = true
@@ -346,7 +327,6 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
   async function submitRestoreQueue(items: LibraryRestoreQueueItem[]) {
     if (!items.length || restoreBusy.value) return
     restoreBusy.value = true
-    restoreError.value = ''
     activeRestoreItemId.value = null
     try {
       const result = await restoreLibraryQueue(items, {
@@ -361,10 +341,7 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
       restoreQueue.value = restoreQueue.value.filter(item => !completedIds.has(item.id))
       if (result.failures.length) {
         failedRestoreIds.value = result.failures.map(failure => failure.item.id)
-        restoreError.value = ports.consumeError(
-          result.failures[0].cause,
-          `有 ${result.failures.length} 项找回失败，请重试`
-        )
+        ports.reportError(result.failures[0].cause, `有 ${result.failures.length} 项找回失败，请重试`)
         return
       }
       if (!restoreQueue.value.length) setRestoreOpen(false)
@@ -376,16 +353,13 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
 
   return {
     addOpen,
-    addError,
     confirmBusy,
     confirmOpen,
     confirmRequest,
-    confirmError,
     confirmButtonLabel,
     restoreOpen,
     restoreQueue,
     restoreBusy,
-    restoreError,
     failedRestoreIds,
     activeRestoreItemId,
     openConfirmDialog,

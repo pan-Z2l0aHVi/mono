@@ -36,6 +36,13 @@ func NewDockDropDispatcher(sink DockDropSink) *DockDropDispatcher {
 	return &DockDropDispatcher{sink: sink}
 }
 
+// ResetReady 在 WebView 重建时把就绪状态退回缓冲态，避免新窗口尚未加载完就收到拖放事件。
+func (d *DockDropDispatcher) ResetReady() {
+	d.mu.Lock()
+	d.ready = false
+	d.mu.Unlock()
+}
+
 // MarkReady 标记前端就绪并一次性冲刷缓冲的拖放项。
 func (d *DockDropDispatcher) MarkReady() {
 	d.mu.Lock()

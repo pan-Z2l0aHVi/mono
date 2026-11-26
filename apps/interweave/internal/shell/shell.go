@@ -187,6 +187,20 @@ func (s *DesktopShell) MarkRuntimeReady() {
 	s.dockDrop.MarkReady()
 }
 
+// MarkWindowUnready 在轻量模式销毁 WebView 后退回缓冲态，等新窗口就绪再派发拖放事件。
+func (s *DesktopShell) MarkWindowUnready() {
+	s.dockDrop.ResetReady()
+}
+
+// ReinstallMenu 在新窗口创建后强制重装一次菜单：SyncMenu 的状态比对会认为菜单没变而跳过，
+// 但原生菜单条与 Windows 顶栏快照都挂在具体窗口上。
+func (s *DesktopShell) ReinstallMenu() {
+	s.menuInstallMu.Lock()
+	s.menuInstalled = false
+	s.menuInstallMu.Unlock()
+	s.SyncMenu()
+}
+
 // HandleOpenedFiles 处理经 Dock/系统打开传入的文件路径列表。
 func (s *DesktopShell) HandleOpenedFiles(paths []string) {
 	s.dockDrop.HandleOpenedFiles(paths)

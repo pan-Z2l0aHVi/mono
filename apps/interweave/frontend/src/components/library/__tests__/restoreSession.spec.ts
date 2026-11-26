@@ -302,6 +302,46 @@ describe('restoreSession', () => {
     }
   })
 
+  it('连续相同的选择失败每次都上报，不依赖错误文本变化触发 toast', async () => {
+    const open = ref(true)
+    const { lease } = createTestLease()
+    const notifyError = vi.fn<(message: string) => void>()
+    const chooseDirectory = vi
+      .fn<() => Promise<string | null>>()
+      .mockRejectedValueOnce(new Error('picker unavailable'))
+      .mockRejectedValueOnce(new Error('picker unavailable'))
+    const session = createRestoreSession(
+      {
+        open: () => open.value,
+        queue: () => [fileItem('f1')],
+        busy: () => false,
+        allUnavailableFiles: () => [],
+        failedIds: () => []
+      },
+      {
+        chooseFilePath: async () => null,
+        chooseDirectory,
+        startScan: async () => 'scan-1',
+        pollScan: async () => doneUpdate(),
+        cancelScan: async () => undefined,
+        discardScan: async () => undefined,
+        lease,
+        notifyError
+      }
+    )
+
+    try {
+      await session.chooseScanDirectory()
+      await session.chooseScanDirectory()
+      expect(notifyError).toHaveBeenCalledTimes(2)
+      expect(notifyError).toHaveBeenNthCalledWith(1, '选择文件夹失败，请重试')
+      expect(notifyError).toHaveBeenNthCalledWith(2, '选择文件夹失败，请重试')
+    } finally {
+      session.dispose()
+      lease.dispose()
+    }
+  })
+
   it('formatMatchReason 覆盖已知与未知匹配原因', () => {
     expect(formatMatchReason('identity')).toBe('可能是原文件')
     expect(formatMatchReason('hash')).toBe('内容一致')

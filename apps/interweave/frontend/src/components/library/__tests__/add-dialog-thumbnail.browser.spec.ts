@@ -77,7 +77,6 @@ function mountDialog(queue: LibraryQueueItem[]) {
         open: true,
         queue,
         busy: false,
-        error: '',
         mobile: false,
         tagColors: {},
         previews: previewsFor(queue),
@@ -161,7 +160,6 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
             }
           ],
           busy: false,
-          error: '',
           mobile: false,
           activeItemId: null,
           allUnavailableFiles: [],
@@ -302,8 +300,7 @@ describe('AddDialog 队列缩略图（真实浏览器）', () => {
     document.body.append(host)
     hosts.push(host)
     const app = createApp({
-      render: () =>
-        h(EditTagsDialog, { open: true, target: queueItem(), allTagNames: [], tagColors: {}, busy: false, error: '' })
+      render: () => h(EditTagsDialog, { open: true, target: queueItem(), allTagNames: [], tagColors: {}, busy: false })
     })
     apps.push(app)
     app.mount(host)

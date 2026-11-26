@@ -19,7 +19,7 @@ import {
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryRuntime } from '../../services/library'
 import { useLibraryStore, type ResourceSourceView } from '../../stores/library'
-import { useLibraryRuntime } from '../useLibraryRuntime'
+import { useLibraryRuntime, type LibraryErrorReporter } from '../useLibraryRuntime'
 
 function createResource(overrides: Partial<ResourceDTO> = {}): ResourceDTO {
   const source: SourceDTO = {
@@ -127,6 +127,11 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
   }
 }
 
+function useTestController(runtime: LibraryRuntime) {
+  const reportError = vi.fn<LibraryErrorReporter>()
+  return Object.assign(useLibraryRuntime(runtime, reportError), { reportError })
+}
+
 function sourceView(overrides: Partial<ResourceSourceView> = {}): ResourceSourceView {
   return {
     id: 'source-inline',
@@ -149,7 +154,7 @@ describe('useLibraryRuntime', () => {
 
   it('Wails 可用时加载内联 DTO', async () => {
     const list = vi.fn<LibraryRuntime['resources']['list']>(async () => [createResource()])
-    const controller = useLibraryRuntime(createRuntime({ resources: { list } }))
+    const controller = useTestController(createRuntime({ resources: { list } }))
 
     await controller.loadResources()
 
@@ -165,12 +170,12 @@ describe('useLibraryRuntime', () => {
     const store = useLibraryStore()
     store.setResources([createResource()])
     const list = vi.fn<LibraryRuntime['resources']['list']>(async () => [createResource()])
-    const controller = useLibraryRuntime(createRuntime({ isAvailable: false, resources: { list } }))
+    const controller = useTestController(createRuntime({ isAvailable: false, resources: { list } }))
 
     await controller.loadResources()
 
     expect(store.resources).toEqual([])
-    expect(controller.error.value).toBe('')
+    expect(controller.reportError).not.toHaveBeenCalled()
     expect(controller.isLoading.value).toBe(false)
     expect(list).not.toHaveBeenCalled()
   })
@@ -187,7 +192,7 @@ describe('useLibraryRuntime', () => {
     const saveThumbnail = vi.fn<LibraryRuntime['media']['saveThumbnail']>(async () => {
       await gate
     })
-    const controller = useLibraryRuntime(createRuntime({ media: { saveThumbnail } }))
+    const controller = useTestController(createRuntime({ media: { saveThumbnail } }))
 
     const first = controller.saveSourceThumbnail(THUMBNAIL_URL, CAPTURE_URL)
     const second = controller.saveSourceThumbnail(THUMBNAIL_URL, CAPTURE_URL)
@@ -202,14 +207,14 @@ describe('useLibraryRuntime', () => {
     expect(saveThumbnail).toHaveBeenCalledTimes(2)
   })
 
-  it('缩略图回填失败被吞掉并释放去重槽，不污染 controller.error', async () => {
+  it('缩略图回填失败被吞掉并释放去重槽，不触发错误上报', async () => {
     const saveThumbnail = vi.fn<LibraryRuntime['media']['saveThumbnail']>(async () => {
       throw new Error('network down')
     })
-    const controller = useLibraryRuntime(createRuntime({ media: { saveThumbnail } }))
+    const controller = useTestController(createRuntime({ media: { saveThumbnail } }))
 
     await expect(controller.saveSourceThumbnail(THUMBNAIL_URL, CAPTURE_URL)).resolves.toBeUndefined()
-    expect(controller.error.value).toBe('')
+    expect(controller.reportError).not.toHaveBeenCalled()
 
     await controller.saveSourceThumbnail(THUMBNAIL_URL, CAPTURE_URL)
     expect(saveThumbnail).toHaveBeenCalledTimes(2)
@@ -219,7 +224,7 @@ describe('useLibraryRuntime', () => {
     const created = createResource({ id: 'created', title: 'Created from inline data' })
     const create = vi.fn<LibraryRuntime['resources']['create']>(async () => created)
     const remove = vi.fn<LibraryRuntime['resources']['remove']>(async () => {})
-    const controller = useLibraryRuntime(createRuntime({ resources: { create, remove } }))
+    const controller = useTestController(createRuntime({ resources: { create, remove } }))
 
     await controller.addResource({
       id: 'queue-item',
@@ -254,7 +259,7 @@ describe('useLibraryRuntime', () => {
       ]
     })
     const create = vi.fn<LibraryRuntime['resources']['create']>(async () => tagged)
-    const controller = useLibraryRuntime(createRuntime({ resources: { create } }))
+    const controller = useTestController(createRuntime({ resources: { create } }))
 
     await controller.addResource({
       id: 'queue-tagged',
@@ -283,7 +288,7 @@ describe('useLibraryRuntime', () => {
     })
     const setTags = vi.fn<LibraryRuntime['resources']['setTags']>(async () => tagged)
     const get = vi.fn<LibraryRuntime['resources']['get']>()
-    const controller = useLibraryRuntime(createRuntime({ resources: { setTags, get } }))
+    const controller = useTestController(createRuntime({ resources: { setTags, get } }))
     useLibraryStore().setResources([createResource()])
 
     const saved = await controller.saveTags('resource-inline', ['  Design ', 'Travel'])
@@ -302,7 +307,7 @@ describe('useLibraryRuntime', () => {
       resource: revived,
       outcome: SourceProbeOutcome.SourceProbeOutcomeAvailable
     }))
-    const controller = useLibraryRuntime(createRuntime({ resources: { get }, sources: { probeOnOpen } }))
+    const controller = useTestController(createRuntime({ resources: { get }, sources: { probeOnOpen } }))
     useLibraryStore().setResources([createResource()])
 
     await controller.probeURLSourceOnOpen(sourceView())
@@ -310,12 +315,12 @@ describe('useLibraryRuntime', () => {
     expect(probeOnOpen).toHaveBeenCalledExactlyOnceWith('source-inline')
     expect(get).not.toHaveBeenCalled()
     expect(useLibraryStore().resources[0]?.sizeBytes).toBe(256)
-    expect(controller.error.value).toBe('')
+    expect(controller.reportError).not.toHaveBeenCalled()
   })
 
   it('probeURLSourceOnOpen：已可用、file source 与空首选都不触发探测', async () => {
     const probeOnOpen = vi.fn<LibraryRuntime['sources']['probeOnOpen']>()
-    const controller = useLibraryRuntime(createRuntime({ sources: { probeOnOpen } }))
+    const controller = useTestController(createRuntime({ sources: { probeOnOpen } }))
     const base = sourceView({ available: true, location: 'https://example.com/live' })
 
     await controller.probeURLSourceOnOpen(base)
@@ -325,12 +330,12 @@ describe('useLibraryRuntime', () => {
     expect(probeOnOpen).not.toHaveBeenCalled()
   })
 
-  it('probeURLSourceOnOpen：inconclusive 不改 store，只把后端文案呈上 error', async () => {
+  it('probeURLSourceOnOpen：inconclusive 不改 store，只把后端文案上报 toast', async () => {
     const probeOnOpen = vi.fn<LibraryRuntime['sources']['probeOnOpen']>(async () => ({
       outcome: SourceProbeOutcome.SourceProbeOutcomeInconclusive,
       message: '暂时无法检测该链接，请检查网络后重试'
     }))
-    const controller = useLibraryRuntime(createRuntime({ sources: { probeOnOpen } }))
+    const controller = useTestController(createRuntime({ sources: { probeOnOpen } }))
     const store = useLibraryStore()
     store.setResources([createResource()])
     const before = JSON.stringify(store.resources)
@@ -338,11 +343,14 @@ describe('useLibraryRuntime', () => {
     await controller.probeURLSourceOnOpen(sourceView())
 
     expect(JSON.stringify(store.resources)).toBe(before)
-    expect(controller.error.value).toBe('暂时无法检测该链接，请检查网络后重试')
+    expect(controller.reportError).toHaveBeenCalledWith(
+      '暂时无法检测该链接，请检查网络后重试',
+      '暂时无法检测该链接，请检查网络后重试'
+    )
   })
 
-  it('probeURLSourceOnOpen：探测抛错只呈 error，不打断调用方', async () => {
-    const controller = useLibraryRuntime(
+  it('probeURLSourceOnOpen：探测抛错只上报 toast，不打断调用方', async () => {
+    const controller = useTestController(
       createRuntime({
         sources: {
           probeOnOpen: async () => {
@@ -353,11 +361,14 @@ describe('useLibraryRuntime', () => {
     )
 
     await expect(controller.probeURLSourceOnOpen(sourceView())).resolves.toBeUndefined()
-    expect(controller.error.value).toBe('探测失败')
+    expect(controller.reportError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: '探测失败' }),
+      '操作失败，请稍后重试'
+    )
   })
 
   it('defaultOpenWith：后端报无关联时回落空串，不把拒绝抛给调用方', async () => {
-    const controller = useLibraryRuntime(
+    const controller = useTestController(
       createRuntime({
         system: {
           defaultOpenWith: async () => {
@@ -368,7 +379,7 @@ describe('useLibraryRuntime', () => {
     )
 
     await expect(controller.defaultOpenWith('/tmp/report.pdf')).resolves.toBe('')
-    expect(controller.error.value).toBe('')
+    expect(controller.reportError).not.toHaveBeenCalled()
   })
 
   /*
@@ -378,7 +389,7 @@ describe('useLibraryRuntime', () => {
   it('renameResource 快乐路径：store 用返回的最新 DTO 回流，在途簿记闭合', async () => {
     const renamed = createResource({ id: 'resource-inline', title: 'Renamed' })
     const updateTitle = vi.fn<LibraryRuntime['resources']['updateTitle']>(async () => renamed)
-    const controller = useLibraryRuntime(createRuntime({ resources: { updateTitle } }))
+    const controller = useTestController(createRuntime({ resources: { updateTitle } }))
     useLibraryStore().setResources([createResource()])
 
     let pendingDuringCall: readonly string[] = []
@@ -397,13 +408,13 @@ describe('useLibraryRuntime', () => {
     expect(pendingDuringCall).toEqual(['resource-inline'])
     expect(useLibraryStore().resources[0]?.title).toBe('Renamed')
     expect(controller.pendingResourceIds.value, '完成后簿记清空').toEqual([])
-    expect(controller.error.value).toBe('')
+    expect(controller.reportError).not.toHaveBeenCalled()
   })
 
   it('updateResourceNote 快乐路径：备注回流 store', async () => {
     const noted = createResource({ id: 'resource-inline', note: '新的备注' })
     const updateNote = vi.fn<LibraryRuntime['resources']['updateNote']>(async () => noted)
-    const controller = useLibraryRuntime(createRuntime({ resources: { updateNote } }))
+    const controller = useTestController(createRuntime({ resources: { updateNote } }))
     useLibraryStore().setResources([createResource()])
 
     await controller.updateResourceNote('resource-inline', '新的备注')
@@ -413,11 +424,11 @@ describe('useLibraryRuntime', () => {
     expect(controller.pendingResourceIds.value).toEqual([])
   })
 
-  it('addResource 失败：error 呈上、拒绝继续抛、簿记清空且 store 不变', async () => {
+  it('addResource 失败：错误上报 toast、拒绝继续抛、簿记清空且 store 不变', async () => {
     const create = vi.fn<LibraryRuntime['resources']['create']>(async () => {
       throw new Error('后端已存在同名资源')
     })
-    const controller = useLibraryRuntime(createRuntime({ resources: { create } }))
+    const controller = useTestController(createRuntime({ resources: { create } }))
 
     await expect(
       controller.addResource({
@@ -432,24 +443,30 @@ describe('useLibraryRuntime', () => {
       })
     ).rejects.toThrow('后端已存在同名资源')
 
-    expect(controller.error.value).toBe('后端已存在同名资源')
+    expect(controller.reportError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: '后端已存在同名资源' }),
+      '操作失败，请稍后重试'
+    )
     expect(controller.pendingResourceIds.value, '失败后簿记清空').toEqual([])
     expect(useLibraryStore().resources).toEqual([])
   })
 
-  it('loadResources 拒绝：error 呈上、isLoading 收敛、拒绝继续抛', async () => {
+  it('loadResources 拒绝：错误上报 toast、isLoading 收敛、拒绝继续抛', async () => {
     const list = vi.fn<LibraryRuntime['resources']['list']>(async () => {
       throw new Error('列表读取失败')
     })
-    const controller = useLibraryRuntime(createRuntime({ resources: { list } }))
+    const controller = useTestController(createRuntime({ resources: { list } }))
 
     await expect(controller.loadResources()).rejects.toThrow('列表读取失败')
-    expect(controller.error.value).toBe('列表读取失败')
+    expect(controller.reportError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: '列表读取失败' }),
+      '操作失败，请稍后重试'
+    )
     expect(controller.isLoading.value).toBe(false)
   })
 
-  it('openExternal 失败：error 呈上且拒绝继续抛', async () => {
-    const controller = useLibraryRuntime(
+  it('openExternal 失败：错误上报 toast 且拒绝继续抛', async () => {
+    const controller = useTestController(
       createRuntime({
         system: {
           openExternal: async () => {
@@ -460,7 +477,10 @@ describe('useLibraryRuntime', () => {
     )
 
     await expect(controller.openExternal('https://example.com')).rejects.toThrow('无法打开外部链接')
-    expect(controller.error.value).toBe('无法打开外部链接')
+    expect(controller.reportError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: '无法打开外部链接' }),
+      '操作失败，请稍后重试'
+    )
   })
 
   it('refreshSource / replaceSource 的在途簿记：进行中带 id，结束（含失败）后清空', async () => {
@@ -481,7 +501,7 @@ describe('useLibraryRuntime', () => {
     const replaceSource = vi.fn<LibraryRuntime['sources']['replaceSource']>(async () => {
       throw new Error('替换入口失败')
     })
-    const controller = useLibraryRuntime(createRuntime({ sources: { refreshSource, replaceSource } }))
+    const controller = useTestController(createRuntime({ sources: { refreshSource, replaceSource } }))
 
     const refreshing = controller.refreshSource({ id: 'source-1' })
     await refreshStarted
@@ -489,20 +509,23 @@ describe('useLibraryRuntime', () => {
     releaseRefresh()
     await refreshing
     expect(controller.refreshingSourceIds.value, '刷新完成后簿记清空').toEqual([])
-    expect(controller.error.value).toBe('')
+    expect(controller.reportError).not.toHaveBeenCalled()
 
     await expect(controller.replaceSource('source-2', 'https://new.example.com')).rejects.toThrow('替换入口失败')
-    expect(controller.error.value).toBe('替换入口失败')
+    expect(controller.reportError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: '替换入口失败' }),
+      '操作失败，请稍后重试'
+    )
     expect(controller.replacingSourceIds.value, '替换失败后簿记同样清空').toEqual([])
   })
 
-  it('deleteResources 部分失败回滚：已删除的成员落库，失败者保留并呈 error', async () => {
+  it('deleteResources 部分失败回滚：已删除的成员落库，失败者保留并上报 toast', async () => {
     const remove = vi.fn<LibraryRuntime['resources']['remove']>()
     remove.mockImplementationOnce(async () => {})
     remove.mockImplementationOnce(async () => {
       throw new Error('第二条删除失败')
     })
-    const controller = useLibraryRuntime(createRuntime({ resources: { remove } }))
+    const controller = useTestController(createRuntime({ resources: { remove } }))
     useLibraryStore().setResources([
       createResource({ id: 'r-1' }),
       createResource({ id: 'r-2' }),
@@ -513,7 +536,10 @@ describe('useLibraryRuntime', () => {
 
     // 已成功删除的 r-1 从 store 摘掉（部分落库），未删除的 r-2 / r-3 保留。
     expect(useLibraryStore().resources.map(resource => resource.id)).toEqual(['r-2', 'r-3'])
-    expect(controller.error.value).toBe('第二条删除失败')
+    expect(controller.reportError).toHaveBeenCalledWith(
+      expect.objectContaining({ message: '第二条删除失败' }),
+      '操作失败，请稍后重试'
+    )
     expect(controller.pendingResourceIds.value, '簿记清空').toEqual([])
   })
 })

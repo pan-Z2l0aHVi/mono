@@ -31,9 +31,7 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
   const addResource = vi.fn<LibraryWorkflowPorts['addResource']>(async () => undefined)
   const replaceSource = vi.fn<LibraryWorkflowPorts['replaceSource']>(async () => undefined)
   const replaceScannedFileSource = vi.fn<LibraryWorkflowPorts['replaceScannedFileSource']>(async () => undefined)
-  const consumeError = vi.fn<LibraryWorkflowPorts['consumeError']>((cause, fallback) =>
-    cause instanceof Error && cause.message ? cause.message : fallback
-  )
+  const reportError = vi.fn<LibraryWorkflowPorts['reportError']>()
   const notifyWarning = vi.fn<LibraryWorkflowPorts['notifyWarning']>()
 
   const ports: LibraryWorkflowPorts = {
@@ -54,7 +52,7 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
     addResource,
     replaceSource,
     replaceScannedFileSource,
-    consumeError,
+    reportError,
     notifyWarning,
     ...overrides
   }
@@ -76,7 +74,7 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
     addResource,
     replaceSource,
     replaceScannedFileSource,
-    consumeError,
+    reportError,
     notifyWarning
   }
 }
@@ -100,7 +98,7 @@ function restoreItem(id: string, kind: 'file' | 'url' = 'file', scanSnapshot?: s
 }
 
 describe('libraryWorkflow', () => {
-  it('确认队列严格串行排队，重复关闭幂等，失败时通过 consumeError 消费错误并保持打开', async () => {
+  it('确认队列严格串行排队，重复关闭幂等，失败时上报 toast 并保持打开', async () => {
     const ctx = createFakePorts()
     const workflow = createLibraryWorkflow(ctx.ports)
     const order: string[] = []
@@ -128,17 +126,16 @@ describe('libraryWorkflow', () => {
     expect(workflow.confirmOpen.value).toBe(true)
     expect(workflow.confirmRequest.value?.title).toBe('第一项')
 
-    // 失败后保持打开并展示错误，不消费队列中的第二项
+    // 失败后保持打开并上报错误，不消费队列中的第二项
     await workflow.runConfirmedAction()
     expect(workflow.confirmOpen.value).toBe(true)
-    expect(workflow.confirmError.value).toBe('boom-1')
+    expect(ctx.reportError).toHaveBeenCalledWith(expect.any(Error), '操作失败，请稍后重试')
     expect(workflow.confirmRequest.value?.title).toBe('第一项')
 
     // 取消第一项后自动串接第二项
     workflow.cancelConfirmDialog()
     expect(workflow.confirmOpen.value).toBe(true)
     expect(workflow.confirmRequest.value?.title).toBe('第二项')
-    expect(workflow.confirmError.value).toBe('')
 
     await workflow.runConfirmedAction()
     expect(workflow.confirmOpen.value).toBe(false)
@@ -251,7 +248,7 @@ describe('libraryWorkflow', () => {
     expect(workflow.restoreOpen.value).toBe(true)
     expect(workflow.restoreQueue.value.map(i => i.id)).toEqual(['bad'])
     expect(workflow.failedRestoreIds.value).toEqual(['bad'])
-    expect(workflow.restoreError.value).toBe('snapshot mismatch')
+    expect(ctx.reportError).toHaveBeenCalledWith(expect.any(Error), '有 1 项找回失败，请重试')
 
     // 重试剩余项成功 -> 清空队列并关闭弹窗
     ctx.replaceScannedFileSource.mockResolvedValueOnce(undefined)

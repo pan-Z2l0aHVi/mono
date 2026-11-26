@@ -12,7 +12,6 @@ import { onBeforeUnmount, watch } from 'vue'
 
 import { useLingering } from '@/composables/useLingering'
 
-import ErrorBanner from './ErrorBanner.vue'
 import { doubleArrowRight } from './icons'
 import { formatSize } from './presentation'
 import type { PreviewLease } from './previewLease'
@@ -26,7 +25,6 @@ const props = defineProps<{
   open: boolean
   queue: LibraryRestoreQueueItem[]
   busy: boolean
-  error: string
   mobile: boolean
   activeItemId: string | null
   allUnavailableFiles: LibraryRestoreQueueItem[]
@@ -63,6 +61,7 @@ const session = createRestoreSession(
     discardScan: id => props.discardScan(id),
     lease: props.lease,
     notifyInfo: message => toast.info(message, { position: 'top-center' }),
+    notifyError: message => toast.error(message, { position: 'top-center' }),
     onAddItems: items => emit('addItems', items),
     onSubmit: items => emit('submit', items)
   }
@@ -77,7 +76,6 @@ const {
   stopping,
   scanIncomplete,
   prepared,
-  validationError,
   editingUrlItem,
   urlDraft,
   previews,
@@ -121,7 +119,6 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   >
     <span slot="header">找回资源</span>
     <div class="flex h-(--wui-dialog-max-height) min-h-0 flex-col">
-      <ErrorBanner :message="validationError || error" />
       <div
         class="grid min-h-0 flex-1"
         :class="

@@ -78,7 +78,7 @@ _Avoid_: 文件树、画布编辑器、关系连线器、资源容器
 
 - 添加资源的 preview token 时序（先 `waitForPreview` 等预览就绪、再创建、再释放预览、最后关闭）由资源库添加队列的 controller 拥有，页面只经 `submit` 提交整个队列，不得自组提交循环。token 的发放、驱逐对账与释放由页面持有的 preview lease 统一记账，添加队列与找回弹窗共用同一本 lease。
 - 文件选择等可取消操作应明确取消语义。class-mode bindings 已将顶层 Wails slice 返回值规范化为非 nullable 数组，前端应消费生成类型而不重复添加 `?? []`。仅 DTO 中仍为可选或 nullable 的字段按其生成类型处理，且不得手改生成 bindings。
-- 文本剪贴板读取走 `runtime.system.readClipboardText`；WebView 的 `navigator.clipboard` 只在浏览器预览适配器里作为回退使用，leaf 组件不直接 import `@wailsio/runtime`。
+- 文本剪贴板读写都走 `runtime.system`（`readClipboardText` / `writeClipboardText`，底层由 Go 实现），不再有浏览器预览适配器的 `navigator.clipboard` 回退；WebView 侧只处理选区与插入点，leaf 组件不直接 import `@wailsio/runtime`。
 - 工具条里展开式字段（搜索框、筛选字段等）的开关策略（按在「字段上下文」容器里不收起、簇内点击后把焦点交还字段、被弹层接管焦点时让位）由 `frontend/src/composables/` 里专用的展开式字段 composable 拥有。页面的 header 需要同样行为时，把字段与容器 ref 交给它；判据只用 ref 与 `document.activeElement`，不要在组件里按 `closest('web-ui-…')` 枚举组件类型——header 里的控件会随页面变化。
 
 - 平台、flags 与 bindings 都要在 runtime core 注入之后才读：Go 侧在 `WebViewDidFinishNavigation` 之后才注入 `window._wails`，早于它的 setup 调用读到的是空值。启动序在挂载前等待 runtime 就绪（判据与事件名都只有 runtime 服务一份），所以壳里可以一次性取平台；不要改成「先渲染再补」的响应式重读。

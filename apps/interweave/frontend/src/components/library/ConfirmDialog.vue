@@ -1,7 +1,6 @@
 <script setup lang="ts">
 import type { WebUiDialog, WebUiEvent } from '@greypan/web-ui'
 
-import ErrorBanner from './ErrorBanner.vue'
 import { monoDigitsClass, splitNumericSegments } from './presentation'
 
 const props = defineProps<{
@@ -11,7 +10,6 @@ const props = defineProps<{
   confirmLabel: string
   busy: boolean
   danger: boolean
-  error: string
   compact: boolean
   /**
    * 声明后，busy 期间取消按钮不再禁用，而是换成这个文案（如「停止」）：
@@ -46,7 +44,6 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     @closed="emit('closed')"
   >
     <div slot="header">{{ title }}</div>
-    <ErrorBanner :message="error" />
     <p class="m-0 text-[14px] leading-6 text-[#5b5b66] dark:text-(--wui-color-text-secondary)">
       <template v-for="(segment, index) in splitNumericSegments(message)" :key="index">
         <span v-if="segment.numeric" :class="monoDigitsClass">{{ segment.text }}</span>
