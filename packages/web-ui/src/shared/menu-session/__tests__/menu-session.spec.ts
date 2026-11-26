@@ -466,4 +466,60 @@ describe('MenuSession', () => {
 
     session.disconnect()
   })
+
+  it('根菜单退场未完成前再次 open()，恢复可见态、Escape 仲裁与动态内容同步且不被旧退场回调清理', async () => {
+    const host = document.createElement('div')
+    const itemA = createMenuItem('Alpha')
+    host.append(itemA)
+    document.body.append(host)
+
+    let rootSurface: MenuSurface | undefined
+    const onRequestClose = vi.fn<(reason: MenuCloseReason) => void>()
+    const session = trackSession<MenuSurface>({
+      host,
+      markerText: 'test-marker',
+      hiddenSlot: 'test-hidden',
+      isScrollLockDisabled: () => true,
+      onRequestClose,
+      closeOnLeafClick: true,
+      hideHostChildren: true,
+      observeHost: true,
+      surface: {
+        createRoot: () => {
+          rootSurface = createFakeSurface('reopen-root')
+          return rootSurface
+        },
+        createSubmenu: () => createFakeSurface('reopen-sub'),
+        positionRoot: () => {},
+        positionSubmenu: () => {},
+        disposeSurface: surface => {
+          surface.panel.remove()
+        }
+      }
+    })
+
+    session.open({ isInstant: true, takeFocus: false, suppressFocusVisible: true })
+    await flushFrames(2)
+    expect(rootSurface).toBeDefined()
+    expect(rootSurface!.panel.isConnected).toBe(true)
+
+    // 触发非瞬时关闭，随即在退场动画完成前再次 open()。
+    session.close({ isInstant: false })
+    session.open({ isInstant: true, takeFocus: false, suppressFocusVisible: true })
+    await flushFrames(3)
+
+    // 面板必须仍在 DOM 中且保留菜单项，未被旧 closeRootAfterPresence 清理。
+    expect(rootSurface!.panel.isConnected).toBe(true)
+    expect(rootSurface!.content.contains(itemA)).toBe(true)
+
+    // 动态追加的菜单项仍能通过恢复的内容观察器同步进根面板。
+    const itemB = createMenuItem('Beta')
+    host.append(itemB)
+    await flushFrames(2)
+    expect(rootSurface!.content.contains(itemB)).toBe(true)
+
+    // Escape 仲裁仍有效。
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    expect(onRequestClose).toHaveBeenCalledWith('escape')
+  })
 })

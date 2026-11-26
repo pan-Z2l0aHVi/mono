@@ -85,6 +85,7 @@ export function createMenuSession<TSurface extends MenuSurface>(
   let restoreFocusTarget: HTMLElement | undefined
   let refreshScheduled = false
   let pendingRefreshInstant = true
+  let pendingEnsureVisible = false
   let focusGeneration = 0
   const submenus: SubmenuEntry<TSurface>[] = []
   const level0ItemAnchors: MenuItemAnchors = new Map()
@@ -354,15 +355,20 @@ export function createMenuSession<TSurface extends MenuSurface>(
     }
   }
 
-  function scheduleRefresh(isInstant = true) {
+  function scheduleRefresh(isInstant = true, refreshOptions?: { ensureVisible?: boolean }) {
     pendingRefreshInstant = isInstant
+    if (refreshOptions?.ensureVisible) pendingEnsureVisible = true
     if (refreshScheduled || !isOpen) return
     refreshScheduled = true
     requestAnimationFrame(() => {
       refreshScheduled = false
+      pendingEnsureVisible = false
+      const ensureVisible = pendingEnsureVisible
+      pendingEnsureVisible = false
       if (!isOpen || !root) return
       reconcileContent()
       surfaceAdapter.positionRoot(root, { isInstant: pendingRefreshInstant })
+      if (ensureVisible) showOverlayPresence(root.panel, { isInstant: pendingRefreshInstant })
       hoverBinder.bind()
       checkCloseWhenEmptied()
     })
@@ -443,10 +449,15 @@ export function createMenuSession<TSurface extends MenuSurface>(
     open(openOptions: MenuOpenOptions) {
       outsideClickGuard.arm()
       focusGeneration += 1
-      if (isOpen) {
+      if (isOpen && root) {
         closeSubmenusFrom(0, true)
         closingSubmenus.restoreAll()
-        scheduleRefresh(openOptions.isInstant)
+        syncScrollLock()
+        if (!rootHandle || rootHandleIsPlaceholder) {
+          claimRoot(root.panel)
+        }
+        rebindContentObservers()
+        scheduleRefresh(openOptions.isInstant, { ensureVisible: true })
         return
       }
 
