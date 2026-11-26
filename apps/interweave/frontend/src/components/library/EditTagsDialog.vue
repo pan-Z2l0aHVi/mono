@@ -6,7 +6,6 @@ import { computed, ref, watch } from 'vue'
 import type { LibraryQueueItem } from '@/services/library'
 import type { ResourceView, TagColor } from '@/stores/library'
 
-import ErrorBanner from './ErrorBanner.vue'
 import ResourceTag from './ResourceTag.vue'
 
 const props = defineProps<{
@@ -19,7 +18,6 @@ const props = defineProps<{
    */
   tagColors: Record<string, TagColor>
   busy: boolean
-  error: string
 }>()
 
 const emit = defineEmits<{
@@ -98,8 +96,6 @@ function removeTag(tag: string) {
     @open-change="handleOpenChange"
   >
     <span slot="header">标签</span>
-
-    <ErrorBanner :message="error" />
 
     <div class="grid gap-4">
       <div class="grid gap-1.5">

@@ -4,6 +4,8 @@ import (
 	"path/filepath"
 	"testing"
 
+	"github.com/wailsapp/wails/v3/pkg/application"
+
 	menucontract "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu"
 )
 
@@ -84,6 +86,9 @@ func TestMacOptionsAllowMinimizeToTrayWithoutTerminating(t *testing.T) {
 	if opts.ApplicationShouldTerminateAfterLastWindowClosed {
 		t.Fatal("expected Mac.ApplicationShouldTerminateAfterLastWindowClosed to be false so window.Hide() does not terminate the app on macOS")
 	}
+	if opts.ActivationPolicy != application.ActivationPolicyRegular {
+		t.Fatalf("expected Mac.ActivationPolicy to start as Regular, got %v", opts.ActivationPolicy)
+	}
 }
 
 func TestWindowsOptionsAnchorWebView2ToTaggedDataDir(t *testing.T) {
@@ -97,5 +102,14 @@ func TestWindowsOptionsAnchorWebView2ToTaggedDataDir(t *testing.T) {
 	opts := windowsOptions(dir)
 	if got, want := opts.WebviewUserDataPath, filepath.Join(dir, "webview"); got != want {
 		t.Fatalf("expected WebView2 user data at %q, got %q", want, got)
+	}
+	if !opts.DisableQuitOnLastWindowClosed {
+		t.Fatal("expected Windows app to survive WebView destruction in light mode")
+	}
+}
+
+func TestLinuxOptionsKeepAppAliveInLightMode(t *testing.T) {
+	if !linuxOptions().DisableQuitOnLastWindowClosed {
+		t.Fatal("expected Linux app to survive WebView destruction in light mode")
 	}
 }

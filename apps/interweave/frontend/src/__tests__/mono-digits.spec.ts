@@ -12,7 +12,6 @@ import { stubLayout } from '../components/library/__tests__/virtualLayout'
 import AddDialog from '../components/library/AddDialog.vue'
 import ConfirmDialog from '../components/library/ConfirmDialog.vue'
 import DetailDrawer from '../components/library/DetailDrawer.vue'
-import ErrorBanner from '../components/library/ErrorBanner.vue'
 import { monoDigitsClass, splitNumericSegments } from '../components/library/presentation'
 import { createPreviewLease } from '../components/library/previewLease'
 import ResourceRow from '../components/library/ResourceRow.vue'
@@ -191,7 +190,6 @@ describe('全局等宽数字字体（mono-digits）', () => {
         open: true,
         queue,
         busy: true,
-        error: '',
         mobile: false,
         tagColors: {},
         previews: {},
@@ -240,7 +238,6 @@ describe('全局等宽数字字体（mono-digits）', () => {
           open: true,
           queue: [item],
           busy: false,
-          error: '',
           mobile: false,
           activeItemId: null,
           allUnavailableFiles: [item],
@@ -315,7 +312,7 @@ describe('全局等宽数字字体（mono-digits）', () => {
     }
   })
 
-  it('ConfirmDialog 与 ErrorBanner：动态文案中的数字片段使用等宽数字', async () => {
+  it('ConfirmDialog：动态文案中的数字片段使用等宽数字', async () => {
     const confirmHost = mountComponent(() =>
       h(ConfirmDialog, {
         open: true,
@@ -324,17 +321,10 @@ describe('全局等宽数字字体（mono-digits）', () => {
         confirmLabel: '删除 12 项',
         busy: false,
         danger: true,
-        error: '',
         compact: false
-      })
-    )
-    const errorHost = mountComponent(() =>
-      h(ErrorBanner, {
-        message: '第 3 / 5 步失败，错误码 404'
       })
     )
     await nextTick()
     expect(monoDigitTexts(confirmHost)).toEqual(expect.arrayContaining(['12']))
-    expect(monoDigitTexts(errorHost)).toEqual(expect.arrayContaining(['3 / 5', '404']))
   })
 })

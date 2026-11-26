@@ -1,10 +1,123 @@
 package main
 
-import "testing"
+import (
+	"bytes"
+	"testing"
 
-func TestTrayIconEmbedded(t *testing.T) {
-	if len(trayIcon) == 0 {
-		t.Fatal("expected embedded tray icon bytes to be non-empty")
+	"github.com/wailsapp/wails/v3/pkg/application"
+)
+
+func TestTrayIconsEmbedded(t *testing.T) {
+	for name, icon := range map[string][]byte{
+		"macOS template":        trayTemplateIcon,
+		"Windows light taskbar": trayIconForLightTaskbar,
+		"Windows dark taskbar":  trayIconForDarkTaskbar,
+	} {
+		if len(icon) == 0 {
+			t.Fatalf("expected embedded %s tray icon bytes to be non-empty", name)
+		}
+	}
+}
+
+func TestTrayIconsForPlatform(t *testing.T) {
+	macIcon, macDark, macTemplate := trayIconsFor("darwin")
+	if len(macTemplate) == 0 || len(macIcon) != 0 || len(macDark) != 0 {
+		t.Fatal("macOS should use a template icon only")
+	}
+	if !bytes.Equal(macTemplate, trayTemplateIcon) {
+		t.Fatal("macOS template icon must come from the supplied asset")
+	}
+
+	winIcon, winDark, winTemplate := trayIconsFor("windows")
+	if len(winTemplate) != 0 || !bytes.Equal(winIcon, trayIconForLightTaskbar) || !bytes.Equal(winDark, trayIconForDarkTaskbar) {
+		t.Fatal("Windows should map dark artwork to light taskbars and light artwork to dark taskbars")
+	}
+
+	linuxIcon, linuxDark, linuxTemplate := trayIconsFor("linux")
+	if len(linuxDark) != 0 || len(linuxTemplate) != 0 || !bytes.Equal(linuxIcon, trayIconForLinux) {
+		t.Fatal("Linux should use a PNG icon only; Wails cannot decode ICO for the Linux tray")
+	}
+}
+
+func TestTrayLightModeCheckbox(t *testing.T) {
+	menu, item := buildTrayMenu(false, nil, nil, nil)
+	if item == nil || !item.IsCheckbox() {
+		t.Fatal("light mode must be a checkbox menu item")
+	}
+	if got := item.Label(); got != trayMenuLightMode {
+		t.Fatalf("expected fixed label %q, got %q", trayMenuLightMode, got)
+	}
+	if item.Checked() {
+		t.Fatal("light mode must start unchecked in normal mode")
+	}
+
+	item.SetChecked(true)
+	menu.Update()
+	if !item.Checked() {
+		t.Fatal("expected light mode checkbox to reflect the authoritative state")
+	}
+
+	_, checkedItem := buildTrayMenu(true, nil, nil, nil)
+	if !checkedItem.Checked() {
+		t.Fatal("light mode must start checked when already in light mode")
+	}
+}
+
+func TestMainWindowControllerStateListenerDispose(t *testing.T) {
+	controller := &mainWindowController{}
+	calls := 0
+	dispose := controller.addStateListener(func(bool) { calls++ })
+
+	controller.setLightMode(true)
+	if calls != 1 {
+		t.Fatalf("expected state listener to be called once, got %d", calls)
+	}
+
+	// 托盘随设置销毁时必须注销监听，重建后不能叠加旧菜单的刷新回调。
+	dispose()
+	controller.setLightMode(false)
+	if calls != 1 {
+		t.Fatalf("expected disposed state listener not to be called, got %d extra calls", calls-1)
+	}
+}
+
+// TestMainWindowCloseHookReleasesWebView 钉住轻量模式销毁 WebView 的关键分支：
+// 主动销毁的关闭事件不能被取消，Wails 默认监听器才会 close 原生窗口并释放 WKWebView；
+// 用户关闭仍交给 shell（最小化到托盘时取消，走 Hide 保留 WebView）。
+func TestMainWindowCloseHookReleasesWebView(t *testing.T) {
+	controller := &mainWindowController{}
+	shellCloses := 0
+	controller.onClosing = func(event *application.WindowEvent) {
+		shellCloses++
+		event.Cancel()
+	}
+
+	intent := &windowCloseIntent{}
+	hook := controller.closeHook(intent)
+
+	userClose := application.NewWindowEvent()
+	hook(userClose)
+	if shellCloses != 1 || !userClose.IsCancelled() {
+		t.Fatalf("user close must be delegated to shell and cancellable, shellCloses=%d cancelled=%v", shellCloses, userClose.IsCancelled())
+	}
+
+	// 轻量模式：意图置位后关闭事件既不进 shell，也不取消，交给 Wails 默认监听器销毁窗口。
+	intent.destroyRequested.Store(true)
+	lightClose := application.NewWindowEvent()
+	hook(lightClose)
+	if shellCloses != 1 || lightClose.IsCancelled() {
+		t.Fatalf("light-mode destroy must bypass shell without cancelling, shellCloses=%d cancelled=%v", shellCloses, lightClose.IsCancelled())
+	}
+	if intent.destroyRequested.Load() {
+		t.Fatal("destroy intent must be consumed exactly once")
+	}
+
+	// 新窗口的关闭不受旧窗口意图影响。
+	nextIntent := &windowCloseIntent{}
+	nextClose := application.NewWindowEvent()
+	controller.closeHook(nextIntent)(nextClose)
+	if shellCloses != 2 || !nextClose.IsCancelled() {
+		t.Fatalf("new window close must still go through shell, shellCloses=%d cancelled=%v", shellCloses, nextClose.IsCancelled())
 	}
 }
 

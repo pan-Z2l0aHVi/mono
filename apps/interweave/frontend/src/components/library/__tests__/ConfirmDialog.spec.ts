@@ -25,7 +25,6 @@ function mountDialog(overrides: Record<string, unknown> = {}) {
         confirmLabel: '导入 21 个文件',
         busy: false,
         danger: false,
-        error: '',
         compact: false,
         ...overrides,
         onCancel: () => {

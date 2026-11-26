@@ -1,35 +1,28 @@
 import { computed, ref } from 'vue'
 
 import { createLibraryRuntime, type LibraryQueueItem, type LibraryRuntime } from '@/services/library'
-import { userMessage } from '@/services/library/userMessage'
 import { useLibraryStore, type ResourceSourceView } from '@/stores/library'
 
 import { SourceProbeOutcome } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import { SourceType } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
-function errorMessage(error: unknown) {
-  return userMessage(error, '操作失败，请稍后重试')
-}
+/** 页面提供的统一错误出口：composable 只保留领域状态，呈现交给 toast。 */
+export type LibraryErrorReporter = (cause: unknown, fallback: string) => void
 
-export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
+const DEFAULT_ERROR_FALLBACK = '操作失败，请稍后重试'
+
+export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?: LibraryErrorReporter) {
   const store = useLibraryStore()
   const runtime = injectedRuntime ?? createLibraryRuntime()
   const isLoading = ref(false)
   const pendingResourceIds = ref<string[]>([])
   const refreshingSourceIds = ref<string[]>([])
   const replacingSourceIds = ref<string[]>([])
-  const error = ref('')
-  const readonlyError = computed(() => error.value)
 
-  function clearError() {
-    error.value = ''
+  function report(cause: unknown, fallback = DEFAULT_ERROR_FALLBACK) {
+    reportError?.(cause, fallback)
   }
 
-  function consumeError(cause: unknown, fallback: string) {
-    const message = userMessage(cause, error.value || fallback)
-    error.value = ''
-    return message
-  }
   const isBusy = computed(
     () =>
       isLoading.value ||
@@ -47,17 +40,15 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
 
   async function loadResources() {
     if (!runtime.isAvailable) {
-      error.value = ''
       store.setResources([])
       return
     }
 
     isLoading.value = true
-    error.value = ''
     try {
       store.setResources(await runtime.resources.list())
     } catch (cause) {
-      error.value = errorMessage(cause)
+      report(cause)
       throw cause
     } finally {
       isLoading.value = false
@@ -66,7 +57,6 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
 
   async function addResource(item: LibraryQueueItem) {
     setPending(item.id, true)
-    error.value = ''
     try {
       // 标题、入口与初始标签一次交给后端：归一化、探测与事务建齐都在 core 内完成。
       const saved = await runtime.resources.create({
@@ -78,7 +68,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
       store.upsertResource(saved)
       return saved
     } catch (cause) {
-      error.value = errorMessage(cause)
+      report(cause)
       throw cause
     } finally {
       setPending(item.id, false)
@@ -87,13 +77,12 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
 
   async function renameResource(resourceId: string, newTitle: string) {
     setPending(resourceId, true)
-    error.value = ''
     try {
       const updated = await runtime.resources.updateTitle(resourceId, newTitle)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
-      error.value = errorMessage(cause)
+      report(cause)
       throw cause
     } finally {
       setPending(resourceId, false)
@@ -102,13 +91,12 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
 
   async function updateResourceNote(resourceId: string, note: string) {
     setPending(resourceId, true)
-    error.value = ''
     try {
       const updated = await runtime.resources.updateNote(resourceId, note)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
-      error.value = errorMessage(cause)
+      report(cause)
       throw cause
     } finally {
       setPending(resourceId, false)
@@ -116,7 +104,6 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
   }
 
   async function deleteResources(resourceIds: string[]) {
-    error.value = ''
     const deletedIds: string[] = []
     resourceIds.forEach(id => setPending(id, true))
     try {
@@ -128,7 +115,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
       return deletedIds
     } catch (cause) {
       store.removeResources(deletedIds)
-      error.value = errorMessage(cause)
+      report(cause)
       throw cause
     } finally {
       resourceIds.forEach(id => setPending(id, false))
@@ -137,7 +124,6 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
 
   async function saveTags(resourceId: string, nextTagNames: string[]) {
     setPending(resourceId, true)
-    error.value = ''
     try {
       // 替换式集合语义：名称原样提交，归一化与差集增删由后端在单事务内完成；
       // 变更后的完整 Resource 视图直接回流，不必再往返读取一次。
@@ -145,7 +131,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
       store.upsertResource(updated)
       return updated
     } catch (cause) {
-      error.value = errorMessage(cause)
+      report(cause)
       throw cause
     } finally {
       setPending(resourceId, false)
@@ -155,13 +141,12 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
   async function refreshSource(source: Pick<ResourceSourceView, 'id'>) {
     const sourceId = source.id
     refreshingSourceIds.value = [...new Set([...refreshingSourceIds.value, sourceId])]
-    error.value = ''
     try {
       const updated = await runtime.sources.refreshSource(sourceId)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
-      error.value = errorMessage(cause)
+      report(cause)
       throw cause
     } finally {
       refreshingSourceIds.value = refreshingSourceIds.value.filter(id => id !== sourceId)
@@ -170,13 +155,12 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
 
   async function replaceSource(sourceId: string, input: string) {
     replacingSourceIds.value = [...new Set([...replacingSourceIds.value, sourceId])]
-    error.value = ''
     try {
       const updated = await runtime.sources.replaceSource(sourceId, input)
       store.upsertResource(updated)
       return updated
     } catch (cause) {
-      error.value = errorMessage(cause)
+      report(cause)
       throw cause
     } finally {
       replacingSourceIds.value = replacingSourceIds.value.filter(id => id !== sourceId)
@@ -194,11 +178,10 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
   }
 
   async function openExternal(target: string) {
-    error.value = ''
     try {
       await runtime.system.openExternal(target)
     } catch (cause) {
-      error.value = errorMessage(cause)
+      report(cause)
       throw cause
     }
   }
@@ -219,12 +202,12 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     try {
       const result = await runtime.sources.probeOnOpen(preferred.id)
       if (result.outcome === SourceProbeOutcome.SourceProbeOutcomeInconclusive) {
-        error.value = result.message || '暂时无法检测该链接'
+        report(result.message, '暂时无法检测该链接，请检查网络后重试')
         return
       }
       if (result.resource) store.upsertResource(result.resource)
     } catch (cause) {
-      error.value = errorMessage(cause)
+      report(cause)
     }
   }
 
@@ -256,9 +239,6 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime) {
     pendingResourceIds,
     refreshingSourceIds,
     replacingSourceIds,
-    error: readonlyError,
-    clearError,
-    consumeError,
     loadResources,
     addResource,
     renameResource,

@@ -11,6 +11,7 @@ import (
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
+	"github.com/wailsapp/wails/v3/pkg/services/dock"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library"
 	coreLibrary "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
@@ -117,15 +118,23 @@ func webviewUserDataDir(dir string) string {
 func macOptions() application.MacOptions {
 	return application.MacOptions{
 		ApplicationShouldTerminateAfterLastWindowClosed: false,
+		// 启动时显式 Regular；隐藏到托盘后由 dock service 切到 Accessory，恢复时切回。
+		ActivationPolicy: application.ActivationPolicyRegular,
 	}
 }
 
 // windowsOptions 把传给 application.New 的 Windows 配置锚定到数据目录，
-// 供测试断言 WebView2 用户数据确实来自当前 build tag 对应的目录。
+// 并禁止最后一个窗口销毁时自动退出——轻量模式只销毁 WebView，后端与托盘必须存活。
 func windowsOptions(dir string) application.WindowsOptions {
 	return application.WindowsOptions{
-		WebviewUserDataPath: webviewUserDataDir(dir),
+		DisableQuitOnLastWindowClosed: true,
+		WebviewUserDataPath:           webviewUserDataDir(dir),
 	}
+}
+
+// linuxOptions 同样禁止最后一个窗口销毁时自动退出，保证轻量模式只保留后端服务。
+func linuxOptions() application.LinuxOptions {
+	return application.LinuxOptions{DisableQuitOnLastWindowClosed: true}
 }
 
 type menuRoleActions struct {
@@ -211,44 +220,44 @@ func run() error {
 		nativeService.WithStreamFetcher(fetcher.GetStream),
 		nativeService.WithWallpaperCacheDir(filepath.Join(dir, "cache", "wallpapers")),
 	)
+	// macOS 上把 Dock 图标可见性与托盘状态绑定；其他平台这两个调用是 no-op。
+	dockService := dock.New()
+	dockPresence := newPlatformDockPresence(runtime.GOOS, dockService)
 
 	// 仅暴露产品与受控原生能力，避免基础设施绕过后端边界。
+	services := []application.Service{
+		application.NewService(resourceService),
+		application.NewService(sourceService),
+		application.NewService(tagService),
+		application.NewService(mapService),
+		application.NewService(osService),
+		application.NewService(settingsService),
+		application.NewService(menuService),
+	}
+	// Dock service 只在 macOS 注册：Windows 的 ServiceStartup 会初始化 COM TaskbarList3，
+	// 失败即中止应用，而图标显隐在 Windows/Linux 都是 no-op。
+	if runtime.GOOS == "darwin" {
+		services = append(services, application.NewService(dockService))
+	}
 	app := application.New(application.Options{
 		Name: "Interweave",
 		// 原生关于面板没有版本字段，版本拼进 Description。
 		Description: appDescription(version),
-		Services: []application.Service{
-			application.NewService(resourceService),
-			application.NewService(sourceService),
-			application.NewService(tagService),
-			application.NewService(mapService),
-			application.NewService(osService),
-			application.NewService(settingsService),
-			application.NewService(menuService),
-		},
+		Services:    services,
 		Assets: application.AssetOptions{
 			Handler:    application.AssetFileServerFS(assets),
 			Middleware: rt.MediaHandler().Middleware,
 		},
 		Mac:     macOptions(),
 		Windows: windowsOptions(dir),
+		Linux:   linuxOptions(),
 	})
 
-	window := app.Window.NewWithOptions(mainWindowOptions())
-	// Wails v3.1.0 中 SystemTray.New/SetIcon/SetTooltip/SetMenu 内部均已走 runOrDeferToAppRun
-	// 或 InvokeSync 跨线程安全执行；唯独 SystemTray.Destroy() 直接调 impl.destroy() 未包装
-	// InvokeSync，因此销毁路径显式经 application.InvokeSync 切回主线程。
-	// 运行期由 OnChange 经 application.InvokeAsync 派发到主线程串行执行 Sync，
-	// 避免后台线程持有 trayController.mu 等待主线程而主线程反向等待同一把锁的死锁。
-	trayController := newSystemTrayController(
-		settingsService.MinimizeToTrayOnCloseEnabled,
-		func() trayHandle { return setupSystemTray(app, window) },
-		func(handle trayHandle) { application.InvokeSync(handle.Destroy) },
-	)
-	trayController.Sync()
-
+	windows := newMainWindowController(app, mainWindowOptions())
+	quitApp := func() { dockPresence.quitAfterDrain(app.Quit) }
+	host := &wailsDesktopHost{app: app, windows: windows, osService: osService, presence: dockPresence, quit: quitApp}
 	desktopShell := shell.NewDesktopShell(
-		&wailsDesktopHost{app: app, window: window, osService: osService},
+		host,
 		&wailsShellState{settings: settingsService, menu: menuService},
 		shell.Config{
 			MinSize:      shell.WindowSize{Width: minWindowWidth, Height: minWindowHeight},
@@ -257,16 +266,60 @@ func run() error {
 		},
 	)
 
-	window.RegisterHook(events.Common.WindowClosing, func(event *application.WindowEvent) {
-		desktopShell.HandleWindowClosing(event.Cancel)
+	// 轻量模式销毁 WebView 时绕过「最小化到托盘 / 退出」；其余关闭照旧交给 shell。
+	// 用户关闭事件由 Wails 在 goroutine 里派发，设置读取必须与设置变更的补偿逻辑同在 main
+	// queue：否则「读到开启托盘 → 设置关掉并销毁托盘 → 再隐藏窗口」会留下无窗口无入口状态。
+	windows.onClosing = func(event *application.WindowEvent) {
+		application.InvokeSync(func() { desktopShell.HandleWindowClosing(event.Cancel) })
+	}
+	windows.addStateListener(func(light bool) {
+		if light {
+			// 轻量模式同样没有窗口：缓冲无窗口期间到达的 Dock/URL 事件，并隐藏 Dock 图标，
+			// 只保留菜单栏托盘作为恢复入口。此时不算「藏进托盘」，关掉托盘不会靠这里恢复。
+			host.hiddenToTray.Store(false)
+			desktopShell.MarkWindowUnready()
+			dockPresence.hide()
+			return
+		}
+		dockPresence.show()
 	})
+	windows.onCreated = func(window *application.WebviewWindow) {
+		// 轻量模式快速往返时旧窗口的 ready 事件仍可能异步到达；只有当前窗口才有资格
+		// 把缓冲的 Dock/URL 拖放冲刷到前端，否则会在新 WebView 监听前把事件丢掉。
+		desktopShell.MarkWindowUnready()
+		window.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
+			window.EmitEvent(libraryService.FileDropEventName, event.Context().DroppedFiles())
+		})
+		window.OnWindowEvent(events.Common.WindowRuntimeReady, func(_ *application.WindowEvent) {
+			if windows.Window() != window {
+				return
+			}
+			desktopShell.MarkRuntimeReady()
+		})
+		// 原生菜单条与 Windows 顶栏快照都挂在具体窗口上，重建后必须重新安装。
+		desktopShell.ReinstallMenu()
+	}
+	windows.Create()
+
+	// Wails v3.1.0 中 SystemTray.New/SetIcon/SetTooltip/SetMenu 内部均已走 runOrDeferToAppRun
+	// 或 InvokeSync 跨线程安全执行；唯独 SystemTray.Destroy() 直接调 impl.destroy() 未包装
+	// InvokeSync，因此销毁路径显式经 application.InvokeSync 切回主线程。
+	// 运行期由 OnChange 经 application.InvokeAsync 派发到主线程串行执行 Sync，
+	// 避免后台线程持有 trayController.mu 等待主线程而主线程反向等待同一把锁的死锁。
+	trayController := newSystemTrayController(
+		settingsService.MinimizeToTrayOnCloseEnabled,
+		func() trayHandle { return setupSystemTray(app, windows, desktopShell.PresentWindow, quitApp) },
+		func(handle trayHandle) { application.InvokeSync(handle.Destroy) },
+	)
+	trayController.Sync()
+
 	app.Event.OnApplicationEvent(events.Mac.ApplicationShouldHandleReopen, func(_ *application.ApplicationEvent) {
 		desktopShell.PresentWindow()
 	})
 	// pending 预览的 LRU 驱逐只发生在后端，前端无从感知；被淘汰的 token 必须显式推给
 	// 窗口，否则预览 404 与「文件消失」在前端不可区分。
 	rt.SetPreviewEvictHandler(func(token string) {
-		window.EmitEvent(libraryService.PreviewRevokedEventName, []string{token})
+		emitToCurrentWindow(windows, libraryService.PreviewRevokedEventName, []string{token})
 	})
 
 	menuService.SetTreeProvider(func() []menucontract.MenuItem {
@@ -281,10 +334,18 @@ func run() error {
 			return
 		}
 		dispatchMenuRole(role, menuRoleActions{
-			showAbout:   app.Menu.ShowAbout,
-			quit:        app.Quit,
-			minimise:    func() { window.Minimise() },
-			closeWindow: window.Close,
+			showAbout: app.Menu.ShowAbout,
+			quit:      quitApp,
+			minimise: func() {
+				if window := windows.Window(); window != nil {
+					window.Minimise()
+				}
+			},
+			closeWindow: func() {
+				if window := windows.Window(); window != nil {
+					window.Close()
+				}
+			},
 		})
 	})
 
@@ -293,19 +354,23 @@ func run() error {
 	// 才重建原生菜单（或向 Windows 一体化顶栏推送新快照），避免无关设置变更误触发与并发乱序落盘。
 	settingsService.OnChange(func(settings.Settings) {
 		desktopShell.SyncMenu()
-		application.InvokeAsync(trayController.Sync)
+		application.InvokeAsync(func() {
+			trayController.Sync()
+			// 无窗口状态都靠托盘恢复；用户关掉托盘开关时不能再留一个无入口的空壳。
+			if !settingsService.MinimizeToTrayOnCloseEnabled() {
+				if windows.IsLightMode() {
+					windows.LeaveLightMode()
+				} else if host.hiddenByTray() {
+					desktopShell.PresentWindow()
+				}
+			}
+		})
 	})
 	menuService.SetChangeHandler(func() { desktopShell.SyncMenu() })
 	settingsService.SetEmitter(func(snapshot settings.Snapshot) {
-		window.EmitEvent(settings.SettingsChangedEventName, snapshot)
+		emitToCurrentWindow(windows, settings.SettingsChangedEventName, snapshot)
 	})
 
-	window.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
-		window.EmitEvent(libraryService.FileDropEventName, event.Context().DroppedFiles())
-	})
-	window.OnWindowEvent(events.Common.WindowRuntimeReady, func(_ *application.WindowEvent) {
-		desktopShell.MarkRuntimeReady()
-	})
 	app.Event.OnApplicationEvent(events.Common.ApplicationOpenedWithFile, func(event *application.ApplicationEvent) {
 		files := event.Context().OpenedFiles()
 		if len(files) == 0 {
@@ -313,22 +378,34 @@ func run() error {
 				files = []string{filename}
 			}
 		}
+		if len(files) > 0 && windows.IsLightMode() {
+			// 轻量模式下先重建窗口，让 dock 事件有接收方；runtime 就绪后再冲刷缓冲。
+			desktopShell.PresentWindow()
+		}
 		desktopShell.HandleOpenedFiles(files)
 	})
 	app.Event.OnApplicationEvent(events.Common.ApplicationLaunchedWithUrl, func(event *application.ApplicationEvent) {
+		if windows.IsLightMode() {
+			desktopShell.PresentWindow()
+		}
 		desktopShell.HandleLaunchedURL(event.Context().URL())
 	})
 
 	// 资源库后台管线不注册为 Wails Service（ADR-0008 §2 的暴露面 allowlist）：
-	// window 已就绪，先接上事件出口再 Start，由 OnShutdown + defer rt.Close() 双兜底排空。
+	// 事件出口按当前窗口解析，轻量模式重建后无需重新装配；由 OnShutdown + defer rt.Close() 双兜底排空。
 	rt.SetAvailabilityEmitter(func(change coreLibrary.AvailabilityChange) {
-		window.EmitEvent(libraryService.SourceAvailabilityEventName, libraryService.NewSourceAvailabilityEventDTO(change))
+		emitToCurrentWindow(
+			windows,
+			libraryService.SourceAvailabilityEventName,
+			libraryService.NewSourceAvailabilityEventDTO(change),
+		)
 	})
 	rt.Start(context.Background())
 	app.OnShutdown(func() {
 		if err := rt.Close(); err != nil {
 			log.Printf("interweave: close library runtime failed: %v", err)
 		}
+		dockPresence.shutdown()
 	})
 
 	return app.Run()

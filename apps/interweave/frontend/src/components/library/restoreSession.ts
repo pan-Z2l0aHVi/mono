@@ -30,6 +30,7 @@ export interface RestorePorts {
   discardScan(id: string): Promise<void>
   lease: PreviewLease
   notifyInfo?: (message: string) => void
+  notifyError?: (message: string) => void
   onAddItems?: (items: LibraryRestoreQueueItem[]) => void
   onSubmit?: (items: LibraryRestoreQueueItem[]) => void
   timers?: RecoveryScanTimers
@@ -54,7 +55,6 @@ export interface RestoreSession {
   scanIncomplete: Ref<boolean>
   prepared: Ref<Record<string, string>>
   picking: Ref<string | null>
-  validationError: Ref<string>
   editingUrlItem: Ref<LibraryRestoreQueueItem | null>
   urlDraft: Ref<string>
   previews: ComputedRef<Readonly<Record<string, PreviewLeaseEntry | undefined>>>
@@ -96,7 +96,6 @@ export function createRestoreSession(input: RestoreSessionInput, ports: RestoreP
   const drafts = ref<Record<string, string>>({})
   const prepared = ref<Record<string, string>>({})
   const picking = ref<string | null>(null)
-  const validationError = ref('')
   const editingUrlItem = ref<LibraryRestoreQueueItem | null>(null)
   const urlDraft = ref('')
 
@@ -155,12 +154,12 @@ export function createRestoreSession(input: RestoreSessionInput, ports: RestoreP
         for (const candidate of update.candidates) mergeCandidate(candidate)
       },
       onDone: update => {
-        if (update.error) validationError.value = userMessage(update.error, '扫描失败，请重试')
+        if (update.error) ports.notifyError?.(userMessage(update.error, '扫描失败，请重试'))
       },
       onError: (stage, cause) => {
-        if (stage === 'start') validationError.value = userMessage(cause, '启动扫描失败，请重试')
-        else if (stage === 'poll') validationError.value = userMessage(cause, '扫描失败，请重试')
-        else validationError.value = userMessage(cause, '停止扫描失败，请重试')
+        if (stage === 'start') ports.notifyError?.(userMessage(cause, '启动扫描失败，请重试'))
+        else if (stage === 'poll') ports.notifyError?.(userMessage(cause, '扫描失败，请重试'))
+        else ports.notifyError?.(userMessage(cause, '停止扫描失败，请重试'))
       }
     }
   )
@@ -218,7 +217,6 @@ export function createRestoreSession(input: RestoreSessionInput, ports: RestoreP
           drafts.value = {}
           prepared.value = {}
           picking.value = null
-          validationError.value = ''
         }
       },
       { immediate: true }
@@ -226,7 +224,6 @@ export function createRestoreSession(input: RestoreSessionInput, ports: RestoreP
   })
 
   async function beginScan(directory: string) {
-    validationError.value = ''
     const items = [...input.queue()]
     for (const item of input.allUnavailableFiles()) {
       if (!items.some(existing => existing.id === item.id)) items.push(item)
@@ -261,7 +258,7 @@ export function createRestoreSession(input: RestoreSessionInput, ports: RestoreP
       const directory = await ports.chooseDirectory()
       if (directory && input.open() && request === generation) void beginScan(directory)
     } catch (cause) {
-      if (request === generation) validationError.value = userMessage(cause, '选择文件夹失败，请重试')
+      if (request === generation) ports.notifyError?.(userMessage(cause, '选择文件夹失败，请重试'))
     } finally {
       if (request === generation) picking.value = null
     }
@@ -285,7 +282,6 @@ export function createRestoreSession(input: RestoreSessionInput, ports: RestoreP
 
   async function prepare(item: LibraryRestoreQueueItem) {
     if (locked.value) return
-    validationError.value = ''
     if (item.kind === 'url') {
       urlDraft.value = drafts.value[item.id] ?? ''
       editingUrlItem.value = item
@@ -302,7 +298,7 @@ export function createRestoreSession(input: RestoreSessionInput, ports: RestoreP
         prepareThumbnail(item.id, path, request)
       }
     } catch (cause) {
-      if (request === generation) validationError.value = userMessage(cause, '选择文件失败，请重试')
+      if (request === generation) ports.notifyError?.(userMessage(cause, '选择文件失败，请重试'))
     } finally {
       if (request === generation) picking.value = null
     }
@@ -380,7 +376,6 @@ export function createRestoreSession(input: RestoreSessionInput, ports: RestoreP
     scanIncomplete,
     prepared,
     picking,
-    validationError,
     editingUrlItem,
     urlDraft,
     previews,
