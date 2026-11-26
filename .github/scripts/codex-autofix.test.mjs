@@ -27,8 +27,12 @@ import {
   isChangesetAddition,
   readAutofixMessage,
   tailLog,
-  validatePatchFile
+  validatePatchFile,
+  commandApply,
+  commandCapture,
+  commandPrepare
 } from './codex-autofix.mjs'
+import { createMemoryActionsRuntime } from './lib/actions-runtime.mjs'
 import { resolvePullNumber } from './lib/github.mjs'
 
 const headSha = 'a'.repeat(40)
@@ -1462,6 +1466,58 @@ for (const file of [
     assert.doesNotMatch(validCaptured.result.stdout, /^::notice title=Codex autofix skipped::/m)
   } finally {
     fs.rmSync(directory, { recursive: true, force: true })
+  }
+}
+
+// 进程内 ActionsRuntime 注入测试：直接验证 commandPrepare / commandCapture / commandApply 状态转移与输出。
+{
+  const temp = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-autofix-mem-'))
+  try {
+    const prepRuntime = createMemoryActionsRuntime({
+      env: {
+        GITHUB_REPOSITORY: 'owner/mono',
+        GITHUB_RUN_ID: '777',
+        RUNNER_TEMP: temp,
+        CODEX_AUTOFIX_PULL_NUMBER: '12'
+      }
+    })
+    commandPrepare({
+      runtime: prepRuntime,
+      adapter: {
+        pullCommits: () => ({ commits: [{ commit: { message: 'feat: x' } }] }),
+        pull: () => ({ number: 12, commits: 1 }),
+        jobs: () => [{ id: 88, name: 'check', steps: [{ name: 'Check code', conclusion: 'failure' }] }],
+        jobLog: () => 'lint failed on line 10'
+      }
+    })
+    assert.equal(prepRuntime.outputs.has_log, 'true')
+    assert.equal(prepRuntime.outputs.failed_steps, 'Check code')
+    assert.ok(fs.existsSync(prepRuntime.outputs.log_path))
+
+    const capRuntime = createMemoryActionsRuntime({
+      env: {
+        CODEX_AUTOFIX_HEAD_SHA: 'a'.repeat(40),
+        RUNNER_TEMP: temp
+      }
+    })
+    commandCapture({ runtime: capRuntime })
+    assert.equal(capRuntime.outputs.has_patch, 'false')
+    assert.equal(capRuntime.outputs.reject_reason, 'the Codex configuration preflight did not run')
+    assert.equal(capRuntime.annotations.length, 1)
+
+    const applyRuntime = createMemoryActionsRuntime({
+      env: {
+        GITHUB_REPOSITORY: 'owner/mono',
+        CODEX_AUTOFIX_HEAD_SHA: 'a'.repeat(40),
+        CODEX_AUTOFIX_HEAD_REF: 'feat/test',
+        RUNNER_TEMP: temp
+      }
+    })
+    commandApply({ runtime: applyRuntime })
+    assert.ok(applyRuntime.summaries.some(text => text.includes('无补丁可应用')))
+    assert.equal(applyRuntime.annotations.length, 1)
+  } finally {
+    fs.rmSync(temp, { recursive: true, force: true })
   }
 }
 
