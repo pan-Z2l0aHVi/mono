@@ -20,8 +20,8 @@ export interface ExampleDocsContractOptions {
   docsDir: string
   /** 本 app 的生成物目录；落盘代码文件按 `block.path` 相对它寻址。 */
   generatedDir: string
-  /** 本端执行的语言围栏（只有它带 `load`）：react 端 `tsx`，vue 端 `vue`。 */
-  execLanguage: string
+  /** 本端执行的语言围栏（只有它带 `load`）：react 端 `tsx`，vue 端 `vue`；传 `null` 断言所有围栏均不带 `load`。 */
+  execLanguage: string | null
 }
 
 /** 中文是源语种（`.CN.md`），英文译文的文件名没有语种后缀。 */
@@ -113,8 +113,12 @@ export function runExampleDocsContractTests(options: ExampleDocsContractOptions)
           const blocks = codeblocksOf(await loadMeta(locale.label, component))
           blocks.forEach((block, index) => {
             const fence = fences[index]!
-            const exec = execLanguage === fence.lang
-            expect(Boolean(block.load), `${name}/${index}/${fence.lang}：只有 ${execLanguage} 围栏带 load`).toBe(exec)
+            const exec = execLanguage !== null && execLanguage === fence.lang
+            const reason =
+              execLanguage === null
+                ? `${name}/${index}/${fence.lang}：不应带 load`
+                : `${name}/${index}/${fence.lang}：只有 ${execLanguage} 围栏带 load`
+            expect(Boolean(block.load), reason).toBe(exec)
             expect(block.path, `${name}/${index}：meta 没记住代码文件路径`).toBeTruthy()
 
             const file = path.resolve(generatedDir, block.path!)

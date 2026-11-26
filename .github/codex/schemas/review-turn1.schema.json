@@ -1,0 +1,121 @@
+{
+  "type": "object",
+  "description": "Turn 1 response for the two-phase direct Codex PR review: either finalize the review immediately or request a single batch of read-only context lookups.",
+  "additionalProperties": false,
+  "required": ["action", "context_requests", "coverage", "prior_resolutions", "findings", "summary"],
+  "properties": {
+    "action": {
+      "type": "string",
+      "enum": ["final", "fetch_context"],
+      "description": "Use final when the pre-packed diff and context are sufficient to conclude. Use fetch_context only when you need additional read-only files, truncated diffs, or literal grep lookups before finalizing in Turn 2."
+    },
+    "context_requests": {
+      "type": "array",
+      "description": "When action is fetch_context, list up to 12 read-only lookup requests. When action is final, return an empty array.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["type", "path", "start_line", "end_line", "query", "reason"],
+        "properties": {
+          "type": {
+            "type": "string",
+            "enum": ["read_file", "git_diff", "git_grep"],
+            "description": "Read-only lookup primitive executed by the trusted script without a shell."
+          },
+          "path": {
+            "type": "string",
+            "description": "Repository-relative path for read_file or git_diff, or optional directory/file scope for git_grep (empty string searches default source roots)."
+          },
+          "start_line": {
+            "type": "integer",
+            "description": "1-based start line for read_file; set to 0 for git_diff and git_grep."
+          },
+          "end_line": {
+            "type": "integer",
+            "description": "1-based inclusive end line for read_file; set to 0 for git_diff and git_grep."
+          },
+          "query": {
+            "type": "string",
+            "description": "Fixed literal search text for git_grep; set to empty string for read_file and git_diff."
+          },
+          "reason": {
+            "type": "string",
+            "description": "Short reason explaining why this lookup is needed to verify a concrete risk."
+          }
+        }
+      }
+    },
+    "coverage": {
+      "type": "object",
+      "description": "When action is final, what the review actually covered. When action is fetch_context, return empty arrays.",
+      "additionalProperties": false,
+      "required": ["inspected", "uncovered"],
+      "properties": {
+        "inspected": {
+          "type": "array",
+          "description": "Repository-relative paths whose complete diff or content you actually reviewed; do not add truncated or unread paths.",
+          "items": {
+            "type": "string"
+          }
+        },
+        "uncovered": {
+          "type": "array",
+          "description": "Changed areas you could not judge, each written as path or path:line followed by the reason.",
+          "items": {
+            "type": "string"
+          }
+        }
+      }
+    },
+    "prior_resolutions": {
+      "type": "array",
+      "description": "When action is final on an incremental review, one entry per prior finding indexed from 0; otherwise an empty array.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["index", "resolved", "evidence"],
+        "properties": {
+          "index": { "type": "integer" },
+          "resolved": { "type": "boolean" },
+          "evidence": { "type": "string" }
+        }
+      }
+    },
+    "findings": {
+      "type": "array",
+      "description": "When action is final, every review finding ordered by severity; when action is fetch_context, return an empty array.",
+      "items": {
+        "type": "object",
+        "additionalProperties": false,
+        "required": ["severity", "file", "line", "problem", "suggestion"],
+        "properties": {
+          "severity": {
+            "type": "string",
+            "enum": ["Block", "Should fix", "Nit"],
+            "description": "Severity level defined by the repository review rubric."
+          },
+          "file": {
+            "type": "string",
+            "description": "Repository-relative path the finding points at, or an empty string when it concerns the whole change."
+          },
+          "line": {
+            "type": "integer",
+            "description": "Line number in the file as it exists in the reviewed head snapshot, or 0 when the finding is not tied to one line."
+          },
+          "problem": {
+            "type": "string",
+            "description": "The concrete defect or risk, stated as observable behaviour rather than preference."
+          },
+          "suggestion": {
+            "type": "string",
+            "description": "The smallest change that removes the problem."
+          }
+        }
+      }
+    },
+    "summary": {
+      "type": "string",
+      "description": "When action is final, one or two sentences stating what the change does and the overall conclusion; when action is fetch_context, return an empty string."
+    }
+  }
+}

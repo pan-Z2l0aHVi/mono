@@ -25,6 +25,7 @@ function serializeNode(node: MetaNode, indent: string): string {
   if (node.src !== undefined) fields.push(`src: ${JSON.stringify(node.src)}`)
   if (node.alt !== undefined) fields.push(`alt: ${JSON.stringify(node.alt)}`)
   if (node.lang !== undefined) fields.push(`lang: ${JSON.stringify(node.lang)}`)
+  if (node.meta !== undefined) fields.push(`meta: ${JSON.stringify(node.meta)}`)
   if (node.path !== undefined) fields.push(`path: '${node.path}'`)
   // 字面 specifier 才能被 Rollup 静态分析并按 chunk 切分；路径只来自引擎自己算出的相对路径。
   if (node.load !== undefined && node.path !== undefined) fields.push(`load: () => import('${node.path}')`)

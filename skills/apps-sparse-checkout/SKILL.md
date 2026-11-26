@@ -51,7 +51,7 @@ mise exec -- node <skill-dir>/sparse-checkout.mjs --restore [--json]
 1. **跨被隐藏应用的全局检索用 `git grep <pattern> HEAD`**（未提交暂存内容用 `git grep --cached`）；读取被隐藏应用的文件用 `git show HEAD:<path>`。`rg` 与文件 Glob 只看磁盘上已检出的文件。
 2. **提交前检查与全仓门禁分工**：
    - `check-pre-commit` 允许在稀疏工作树上运行（`packages/` 永远全量保留，`web-ui-docs-inputs` 等包级门禁正常校验）。
-   - 全仓门禁（`test-scripts`、`check-context`、`check-policy`）前置 `full-checkout` 检查，会在稀疏状态下拒绝执行并提示恢复命令；请先 `--restore`，或在交付记录中明记缺口交由 PR CI 复检。
+   - 全仓门禁（`test-scripts`、`check-context`、`check-policy`）前置 `full-checkout` 检查，会在稀疏状态下拒绝执行并提示恢复命令；需跑全仓门禁或推送前请先 `--restore`（见 [`verification.md`](../../docs/agents/verification.md#推送前本地全量-check-门)）。
    - 跨包公共契约变更的影响面查询见 [`monorepo-change-impact`](../monorepo-change-impact/SKILL.md)。
 3. **不要在稀疏树运行不带 `--frozen-lockfile` 的 `pnpm install`**：变更 `pnpm-workspace.yaml`、增删依赖或更新 `pnpm-lock.yaml` 前必须先 `--restore`。
 4. **合并、rebase 或切换分支前先 `--restore`**：`--restore` 会自动补齐 `pnpm install --frozen-lockfile`；若后续需要消费曾被隐藏应用的构建产物，再按需执行 `mise exec -- pnpm run build`。

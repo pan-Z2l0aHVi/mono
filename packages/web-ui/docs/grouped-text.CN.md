@@ -339,7 +339,7 @@ VoiceOver 与 TalkBack 会不会逐组停顿、按位读还是按数读，没有
 
 放进 `text-align: justify` 的文本流时，字距间隙不会被当作调整点：Chromium 实测同一行在 `text-align-last: justify` 下确实被拉宽，而组件自身宽度和每一组的宽度逐字节不变。
 
-### 已知行为：用 `margin` 撑间隙
+### 已知行为：用 margin 撑间隙
 
 不想拆字符时，组间间隙可以退到每组首元素的 `margin-inline-start`。代价是选区高亮会在每处组边界断开一条与间隙等宽的洞——Chromium 实测 8px 间隙正好留下 3 条 8px 的洞（4 组）。这是形状决定的，不是缺陷：`margin` 撑出的空白落在两个文本片段之外，谁都不属于，而 `::selection` 只能用不影响布局的属性，补不掉。组件本身不走这条路。
 

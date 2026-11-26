@@ -1,0 +1,54 @@
+{
+  "name": "@greypan/dev-kit-demo",
+  "version": "1.0.0",
+  "private": true,
+  "type": "module",
+  "scripts": {
+    "build": "vue-tsc --build && vp build --mode build && tsc -p tsconfig.examples.json --noEmit",
+    "dev": "vp dev",
+    "preview": "vp preview",
+    "test": "vp test run",
+    "check-generated": "node ../../scripts/checks/check-md-to-meta-artifacts.mjs ."
+  },
+  "dependencies": {
+    "@greypan/app-scrollbars": "workspace:*",
+    "@greypan/browser-kit": "workspace:*",
+    "@greypan/doc-demo-kit": "workspace:*",
+    "@greypan/js-kit": "workspace:*",
+    "@greypan/route-progress": "workspace:*",
+    "@greypan/web-ui": "workspace:*",
+    "@unhead/vue": "catalog:",
+    "lit": "catalog:",
+    "overlayscrollbars": "catalog:",
+    "overlayscrollbars-vue": "catalog:",
+    "vue": "catalog:",
+    "vue-router": "catalog:",
+    "wuchale": "catalog:"
+  },
+  "devDependencies": {
+    "@greypan/deps-reload": "workspace:*",
+    "@greypan/md-to-meta": "workspace:*",
+    "@greypan/monorepo-kit": "workspace:*",
+    "@greypan/tsconfig": "workspace:*",
+    "@greypan/unplugin-web-components": "workspace:*",
+    "@greypan/wuchale-vue": "workspace:*",
+    "@tailwindcss/vite": "catalog:",
+    "@vitejs/plugin-legacy": "catalog:",
+    "@vitejs/plugin-vue": "catalog:",
+    "@vue/test-utils": "catalog:",
+    "tailwindcss": "catalog:",
+    "typescript": "catalog:",
+    "unplugin-auto-import": "catalog:",
+    "vite": "catalog:",
+    "vite-plus": "catalog:",
+    "vue-tsc": "catalog:"
+  },
+  "browserslist": [
+    "Chrome >=111",
+    "Edge >=111",
+    "Safari >=16.4",
+    "iOS >=16.4",
+    "Firefox >=128",
+    "not dead"
+  ]
+}

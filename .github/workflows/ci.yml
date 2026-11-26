@@ -173,7 +173,7 @@ jobs:
         env:
           TURBO_TOKEN: ${{ secrets.TURBO_TOKEN }}
           TURBO_TEAM: ${{ vars.TURBO_TEAM }}
-        run: pnpm exec turbo run check-generated --filter=@greypan/react-web-ui-demo --filter=@greypan/vue-web-ui-demo
+        run: pnpm exec turbo run check-generated --filter=@greypan/react-web-ui-demo --filter=@greypan/vue-web-ui-demo --filter=@greypan/dev-kit-demo
 
       # 跨 app 的生成物 parity 同样抢在 Build 前：判据在根任务 //#check-generated-parity，
       # 只用 Node 内置模块，不依赖任何 workspace 产物（门禁 dist 那时还不存在）。
