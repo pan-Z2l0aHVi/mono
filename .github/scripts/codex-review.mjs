@@ -753,14 +753,17 @@ function sliceCodexExecLog(log) {
 export function firstModelErrorLine(log) {
   if (typeof log !== 'string' || log === '') return ''
   const hasCodexExecSection = log.includes(RUN_CODEX_START_MARKER)
-  let plainFallback = ''
-  let directFallback = ''
-  for (const rawLine of sliceCodexExecLog(log).split('\n')) {
-    const line = rawLine.replace(ANSI_PATTERN, '')
-    if (!hasCodexExecSection && directFallback === '') {
+  const lines = sliceCodexExecLog(log).split('\n')
+  if (!hasCodexExecSection) {
+    for (const rawLine of lines) {
+      const line = rawLine.replace(ANSI_PATTERN, '')
       const directMatch = DIRECT_ENGINE_ERROR_LINE.exec(line.trim())
-      if (directMatch?.[1]?.trim()) directFallback = oneLine(directMatch[1].trim())
+      if (directMatch?.[1]?.trim()) return oneLine(directMatch[1].trim())
     }
+  }
+  let plainFallback = ''
+  for (const rawLine of lines) {
+    const line = rawLine.replace(ANSI_PATTERN, '')
     const index = line.indexOf('ERROR:')
     if (index === -1) continue
     const payload = line.slice(index + 'ERROR:'.length).trim()
@@ -780,7 +783,7 @@ export function firstModelErrorLine(log) {
       if (plain !== '') plainFallback = oneLine(plain)
     }
   }
-  return plainFallback || directFallback
+  return plainFallback
 }
 
 /** 尽力取模型 job 日志里的错误：拿不到 job、日志读失败或没有结构化错误都只降级，不能让诊断辅助判红写回 job。 */
@@ -800,7 +803,7 @@ export function readModelLegError(adapter, runId) {
  */
 function errorGuidance(code) {
   if (code === 'model_failed') {
-    return '本次审查没有跑成：模型 job 自己没跑完。先看 `Codex review` job 里 `Run codex exec` 的日志——网关 5xx、输出截断或瞬时错误可直接重跑失败 job（`gh run rerun --failed`）或重跑整条 run，只有日志指向配置或模型侧拒绝才改 GitHub 后台。'
+    return '本次审查没有跑成：模型 job 自己没跑完。先看 `Codex review` job 里 `Review pull request with Codex` 的日志——网关 5xx、输出截断或瞬时错误可直接重跑失败 job（`gh run rerun --failed`）或重跑整条 run，只有日志指向配置或模型侧拒绝才改 GitHub 后台。'
   }
   if (code === 'config_missing') {
     return '本次审查没有跑成：检查 GitHub 后台的 secrets/variables 与 CI 日志，配置齐全后重跑。'
@@ -1127,7 +1130,10 @@ export function trustedSkillPath(skillName, env = process.env) {
  */
 export function classifyPathRisk(filePath) {
   const normalized = String(filePath).trim().replace(/^\.\//u, '')
-  const isTest = /(?:\.|\/)(?:test|spec)\.[^/]+$/u.test(normalized) || /(?:^|\/)(?:__tests__|e2e)\//u.test(normalized)
+  const isTest =
+    /(?:\.|\/)(?:test|spec)\.[^/]+$/u.test(normalized) ||
+    /(?:^|\/)(?:__tests__|e2e)\//u.test(normalized) ||
+    /_test\.go$/iu.test(normalized)
   const isDocOrStyle = /\.(?:md|mdx|css|txt|svg|png|jpg|jpeg|webp|ico)$/iu.test(normalized)
   if (
     !isTest &&
@@ -1933,8 +1939,14 @@ function requireEnv(names, env = process.env) {
  * 清洗过包装层就把步骤写进结论 meta：结论本身不变，但「模型答复原样不是 JSON」这件事
  * 必须和原始答复一样留在产物里，供评论与 artifact 审计。
  */
-function sanitizedMeta(parsed) {
-  return Array.isArray(parsed?.sanitized) && parsed.sanitized.length > 0 ? { output_sanitized: parsed.sanitized } : {}
+function sanitizedMeta(parsed, fallbackSteps = []) {
+  if (Array.isArray(parsed?.sanitized) && parsed.sanitized.length > 0) {
+    return { output_sanitized: parsed.sanitized }
+  }
+  if (Array.isArray(fallbackSteps) && fallbackSteps.length > 0) {
+    return { output_sanitized: fallbackSteps }
+  }
+  return {}
 }
 
 function writeConclusion(directory, { findings, meta }) {
@@ -1978,6 +1990,8 @@ function writeErrorMeta(directory, identity, errorCode, reason, missing = [], ex
   )
 }
 
+const REVIEW_STEP_ABORTED_OUTCOMES = new Set(['failure', 'cancelled', 'skipped'])
+
 function readDirectRuntimeMetrics(env = process.env) {
   const file = directRuntimePath(env)
   if (!fs.existsSync(file)) return {}
@@ -1985,6 +1999,22 @@ function readDirectRuntimeMetrics(env = process.env) {
     return pickDirectRuntimeMetrics(JSON.parse(fs.readFileSync(file, 'utf8')))
   } catch {
     return {}
+  }
+}
+
+function readDirectOutputSanitized(env = process.env) {
+  const file = directRuntimePath(env)
+  if (!fs.existsSync(file)) return []
+  try {
+    const parsed = JSON.parse(fs.readFileSync(file, 'utf8'))
+    if (!Array.isArray(parsed?.output_sanitized)) return []
+    return [
+      ...new Set(
+        parsed.output_sanitized.filter(step => typeof step === 'string' && step.trim() !== '').map(step => step.trim())
+      )
+    ]
+  } catch {
+    return []
   }
 }
 
@@ -2400,111 +2430,138 @@ export async function commandRun({
     fs.rmSync(stale, { force: true })
   }
 
-  const scope = readScope(env)
-  const diffPath = env.CODEX_REVIEW_DIFF_PATH ?? path.join(required.RUNNER_TEMP, 'pr.diff')
-  const diff = fs.existsSync(diffPath) ? fs.readFileSync(diffPath, 'utf8') : ''
-  const range = {
-    baseSha: scope.base_sha ?? env.CODEX_REVIEW_BASE_SHA ?? '',
-    headSha: scope.head_sha ?? env.CODEX_REVIEW_HEAD_SHA ?? '',
-    mergeBaseSha: scope.merge_base_sha ?? env.CODEX_REVIEW_MERGE_BASE_SHA ?? '',
-    ...(scope.review_start_sha ? { startSha: scope.review_start_sha } : {}),
-    ...(scope.diff_base_sha ? { diffBaseSha: scope.diff_base_sha } : {}),
-    diff,
-    changedPaths: Array.isArray(scope.changed_paths) ? scope.changed_paths : []
-  }
-
-  const trustedRoot = path.join(required.RUNNER_TEMP, 'trusted')
-  const resolveAsset = (preferred, fallbackRelative) => {
-    if (fs.existsSync(preferred)) return preferred
-    return path.resolve(import.meta.dirname, fallbackRelative)
-  }
-  const promptFile = resolveAsset(trustedDirectPromptPath(env), '../codex/prompts/review-direct.md')
-  const turn1SchemaFile = resolveAsset(trustedTurn1SchemaPath(env), '../codex/schemas/review-turn1.schema.json')
-  const finalSchemaFile = resolveAsset(trustedFinalSchemaPath(env), '../codex/schemas/review-findings.schema.json')
-  const promptText = fs.readFileSync(promptFile, 'utf8')
-  const turn1Schema = JSON.parse(fs.readFileSync(turn1SchemaFile, 'utf8'))
-  const finalSchema = JSON.parse(fs.readFileSync(finalSchemaFile, 'utf8'))
-
-  let priorConclusion = null
-  if (scope.incremental) {
-    try {
-      priorConclusion = readConclusion(priorConclusionDirectory(env))
-    } catch {
-      priorConclusion = null
+  try {
+    const scope = readScope(env)
+    const diffPath = env.CODEX_REVIEW_DIFF_PATH ?? path.join(required.RUNNER_TEMP, 'pr.diff')
+    const diff = fs.existsSync(diffPath) ? fs.readFileSync(diffPath, 'utf8') : ''
+    const range = {
+      baseSha: scope.base_sha ?? env.CODEX_REVIEW_BASE_SHA ?? '',
+      headSha: scope.head_sha ?? env.CODEX_REVIEW_HEAD_SHA ?? '',
+      mergeBaseSha: scope.merge_base_sha ?? env.CODEX_REVIEW_MERGE_BASE_SHA ?? '',
+      ...(scope.review_start_sha ? { startSha: scope.review_start_sha } : {}),
+      ...(scope.diff_base_sha ? { diffBaseSha: scope.diff_base_sha } : {}),
+      diff,
+      changedPaths: Array.isArray(scope.changed_paths) ? scope.changed_paths : []
     }
-  }
 
-  const diffByPath = splitDiffByPath(diff, range.changedPaths)
-  const routedSkills = scope.empty_diff ? [] : selectReviewSkills(range, { diffByPath })
-  const impactAnalysis = routedSkills.some(skill => skill.name === 'monorepo-change-impact')
-    ? runRepoImpactQuery(range, { env, repoRoot, spawn })
-    : null
+    const trustedRoot = path.join(required.RUNNER_TEMP, 'trusted')
+    const resolveAsset = (preferred, fallbackRelative) => {
+      if (fs.existsSync(preferred)) return preferred
+      return path.resolve(import.meta.dirname, fallbackRelative)
+    }
+    const promptFile = resolveAsset(trustedDirectPromptPath(env), '../codex/prompts/review-direct.md')
+    const turn1SchemaFile = resolveAsset(trustedTurn1SchemaPath(env), '../codex/schemas/review-turn1.schema.json')
+    const finalSchemaFile = resolveAsset(trustedFinalSchemaPath(env), '../codex/schemas/review-findings.schema.json')
+    const promptText = fs.readFileSync(promptFile, 'utf8')
+    const turn1Schema = JSON.parse(fs.readFileSync(turn1SchemaFile, 'utf8'))
+    const finalSchema = JSON.parse(fs.readFileSync(finalSchemaFile, 'utf8'))
 
-  const result = await runDirectReview({
-    env,
-    range,
-    scope,
-    priorConclusion,
-    routedSkills,
-    impactAnalysis,
-    promptText,
-    turn1Schema,
-    finalSchema,
-    repoRoot,
-    trustedRoot: fs.existsSync(trustedRoot) ? trustedRoot : '',
-    excludePathspecs: REVIEW_EXCLUDE_PATHSPECS,
-    helpers: {
-      splitDiffByPath,
-      truncateUtf8ByLines,
-      wrapCodeFence,
-      formatImpactSummary,
-      readTrustedSkillBody: skillName => readTrustedSkillBody(skillName, { env }),
-      normalizeReviewOutput,
-      parseReviewFindings,
-      coverageGap,
-      inheritReviewHistory
-    },
-    fetchImpl,
-    spawn,
-    ...(sleepImpl ? { sleepImpl } : {}),
-    ...(nowImpl ? { nowImpl } : {}),
-    limits
-  })
+    let priorConclusion = null
+    if (scope.incremental) {
+      try {
+        priorConclusion = readConclusion(priorConclusionDirectory(env))
+      } catch {
+        priorConclusion = null
+      }
+    }
 
-  fs.writeFileSync(runtimeFile, `${JSON.stringify(result.runtime, null, 2)}\n`)
-  if (result.kind === 'model_failed') {
-    const sanitized = sanitizeDirectError(result.errorMessage, env.CODEX_REVIEW_API_KEY ?? '')
-    fs.writeFileSync(errorFile, `${sanitized}\n`)
+    const diffByPath = splitDiffByPath(diff, range.changedPaths)
+    const routedSkills = scope.empty_diff ? [] : selectReviewSkills(range, { diffByPath })
+    const impactAnalysis = routedSkills.some(skill => skill.name === 'monorepo-change-impact')
+      ? runRepoImpactQuery(range, { env, repoRoot, spawn })
+      : null
+
+    const result = await runDirectReview({
+      env,
+      range,
+      scope,
+      priorConclusion,
+      routedSkills,
+      impactAnalysis,
+      promptText,
+      turn1Schema,
+      finalSchema,
+      repoRoot,
+      trustedRoot: fs.existsSync(trustedRoot) ? trustedRoot : '',
+      excludePathspecs: REVIEW_EXCLUDE_PATHSPECS,
+      helpers: {
+        splitDiffByPath,
+        truncateUtf8ByLines,
+        wrapCodeFence,
+        formatImpactSummary,
+        readTrustedSkillBody: skillName => readTrustedSkillBody(skillName, { env }),
+        normalizeReviewOutput,
+        parseReviewFindings,
+        coverageGap,
+        inheritReviewHistory
+      },
+      fetchImpl,
+      spawn,
+      ...(sleepImpl ? { sleepImpl } : {}),
+      ...(nowImpl ? { nowImpl } : {}),
+      limits
+    })
+
+    fs.writeFileSync(runtimeFile, `${JSON.stringify(result.runtime, null, 2)}\n`)
+    if (result.kind === 'model_failed') {
+      const sanitized = sanitizeDirectError(result.errorMessage, env.CODEX_REVIEW_API_KEY ?? '')
+      fs.writeFileSync(errorFile, `${sanitized}\n`)
+      console.error(`${DIRECT_ERROR_PREFIX} ${sanitized}`)
+      process.exitCode = 1
+      return result
+    }
+
+    // 仅当引擎确认通过全部契约（reviewed）时才写入正式输出；unusable_or_missing_coverage 写入独立诊断文件，
+    // 防止 Turn 1 协议失败但正文恰好包含合法 findings/coverage 字段时被 commandValidate 误判为 reviewed（假绿）。
+    if (result.kind === 'reviewed') {
+      if (typeof result.rawOutput === 'string') {
+        fs.writeFileSync(outputPath, `${result.rawOutput}\n`)
+      }
+    } else {
+      fs.rmSync(outputPath, { force: true })
+      fs.writeFileSync(
+        unusableFile,
+        `${JSON.stringify(
+          {
+            error_code: result.errorCode === 'missing_coverage' ? 'missing_coverage' : 'unusable_output',
+            error: result.errorMessage || 'direct review output failed contract validation',
+            raw_output: typeof result.rawOutput === 'string' ? result.rawOutput : null
+          },
+          null,
+          2
+        )}\n`
+      )
+    }
+    console.log(
+      `direct review finished (${result.kind}, calls=${result.runtime.api_calls}, turns=${result.runtime.turns}, duration_ms=${result.runtime.duration_ms})`
+    )
+    return result
+  } catch (failure) {
+    let extraSecrets = []
+    try {
+      const parsedExtra = JSON.parse(String(env.CODEX_REVIEW_EXTRA_HEADERS ?? '').trim() || '{}')
+      if (parsedExtra && typeof parsedExtra === 'object' && !Array.isArray(parsedExtra)) {
+        extraSecrets = Object.values(parsedExtra).filter(value => typeof value === 'string')
+      }
+    } catch {
+      extraSecrets = []
+    }
+    const sanitized = sanitizeDirectError(failure, env.CODEX_REVIEW_API_KEY ?? '', 500, extraSecrets)
+    try {
+      fs.writeFileSync(errorFile, `${sanitized}\n`)
+    } catch {
+      // errorFile 无法写入时仍继续输出 stderr 兜底诊断行。
+    }
     console.error(`${DIRECT_ERROR_PREFIX} ${sanitized}`)
     process.exitCode = 1
-    return result
-  }
-
-  // 仅当引擎确认通过全部契约（reviewed）时才写入正式输出；unusable_or_missing_coverage 写入独立诊断文件，
-  // 防止 Turn 1 协议失败但正文恰好包含合法 findings/coverage 字段时被 commandValidate 误判为 reviewed（假绿）。
-  if (result.kind === 'reviewed') {
-    if (typeof result.rawOutput === 'string') {
-      fs.writeFileSync(outputPath, `${result.rawOutput}\n`)
+    return {
+      ok: false,
+      kind: 'model_failed',
+      rawOutput: null,
+      errorMessage: sanitized,
+      runtime: { engine: DIRECT_ENGINE_NAME }
     }
-  } else {
-    fs.rmSync(outputPath, { force: true })
-    fs.writeFileSync(
-      unusableFile,
-      `${JSON.stringify(
-        {
-          error_code: result.errorCode === 'missing_coverage' ? 'missing_coverage' : 'unusable_output',
-          error: result.errorMessage || 'direct review output failed contract validation',
-          raw_output: typeof result.rawOutput === 'string' ? result.rawOutput : null
-        },
-        null,
-        2
-      )}\n`
-    )
   }
-  console.log(
-    `direct review finished (${result.kind}, calls=${result.runtime.api_calls}, turns=${result.runtime.turns}, duration_ms=${result.runtime.duration_ms})`
-  )
-  return result
 }
 
 function commandValidate() {
@@ -2515,6 +2572,7 @@ function commandValidate() {
   const config = readConfig()
   const reusedPath = path.join(directory, FINDINGS_FILE)
   const directMetrics = readDirectRuntimeMetrics()
+  const directOutputSanitized = readDirectOutputSanitized()
 
   if (!config) {
     const metaPath = path.join(directory, META_FILE)
@@ -2574,9 +2632,11 @@ function commandValidate() {
     return
   }
 
+  const stepOutcome = (process.env.CODEX_REVIEW_STEP_OUTCOME ?? '').trim()
+  const reviewStepAborted = REVIEW_STEP_ABORTED_OUTCOMES.has(stepOutcome)
   const outputPath = path.join(env.RUNNER_TEMP, 'codex-final-message.json')
   const directUnusable = !fs.existsSync(outputPath) ? readDirectUnusableOutput() : null
-  if (directUnusable && process.env.CODEX_REVIEW_STEP_OUTCOME !== 'failure') {
+  if (directUnusable && !reviewStepAborted) {
     const reason = directUnusable.error || 'direct review output failed contract validation'
     if (directUnusable.error_code === 'missing_coverage' && directUnusable.raw_output) {
       let partial = null
@@ -2595,7 +2655,7 @@ function commandValidate() {
             status: 'unreviewed',
             error_code: 'missing_coverage',
             error: reason,
-            ...sanitizedMeta(partial),
+            ...sanitizedMeta(partial, directOutputSanitized),
             ...partialDirectExtra
           }
         })
@@ -2611,7 +2671,7 @@ function commandValidate() {
     fs.rmSync(reusedPath, { force: true })
     fs.writeFileSync(
       path.join(directory, META_FILE),
-      `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: directUnusable.error_code, error: reason, ...directMetrics }, null, 2)}\n`
+      `${JSON.stringify({ ...identity, status: 'unreviewed', error_code: directUnusable.error_code, error: reason, ...sanitizedMeta(null, directOutputSanitized), ...directMetrics }, null, 2)}\n`
     )
     logDirectRuntimeSummary(directMetrics)
     writeOutputs({ blocks: '0', reason })
@@ -2633,16 +2693,18 @@ function commandValidate() {
 
   if (!parsed) {
     fs.rmSync(reusedPath, { force: true })
-    // continue-on-error 掩住的是 conclusion，不是 outcome：模型 job 崩了就是故障，不能伪装成「未审查」。
-    if (process.env.CODEX_REVIEW_STEP_OUTCOME === 'failure') {
+    // continue-on-error 掩住的是 conclusion，不是 outcome：模型步骤失败、超时取消或因前置故障跳过都是 error，不能伪装成「未审查」。
+    if (reviewStepAborted) {
       const modelError = readDirectEngineError()
-      writeErrorMeta(directory, identity, 'model_failed', error, [], {
+      const abortedReason =
+        stepOutcome === 'failure' ? error : `review step ended with outcome=${stepOutcome} (${error})`
+      writeErrorMeta(directory, identity, 'model_failed', abortedReason, [], {
         ...directMetrics,
         ...(modelError ? { model_error: modelError } : {})
       })
       logDirectRuntimeSummary(directMetrics)
-      writeOutputs({ blocks: '0', reason: error })
-      console.error(`review is error: ${error}`)
+      writeOutputs({ blocks: '0', reason: abortedReason })
+      console.error(`review is error: ${abortedReason}`)
       return
     }
     fs.writeFileSync(
@@ -2669,7 +2731,7 @@ function commandValidate() {
         status: 'unreviewed',
         error_code: 'missing_coverage',
         error: gap,
-        ...sanitizedMeta(parsed),
+        ...sanitizedMeta(parsed, directOutputSanitized),
         ...directRuntimeExtra
       }
     })
@@ -2725,7 +2787,7 @@ function commandValidate() {
           status: 'unreviewed',
           error_code: 'unusable_output',
           error: failure.message,
-          ...sanitizedMeta(parsed),
+          ...sanitizedMeta(parsed, directOutputSanitized),
           ...mergedDirectExtra
         }
       })
@@ -2743,7 +2805,7 @@ function commandValidate() {
       ...identity,
       status: 'reviewed',
       reused_from: '',
-      ...sanitizedMeta(parsed),
+      ...sanitizedMeta(parsed, directOutputSanitized),
       ...finalDirectExtra,
       ...(lineage ? { review_lineage: lineage } : {})
     }

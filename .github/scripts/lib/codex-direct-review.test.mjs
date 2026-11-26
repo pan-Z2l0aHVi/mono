@@ -14,6 +14,7 @@ import {
 } from '../codex-review.mjs'
 
 import {
+  CONTEXT_GIT_DIFF_PER_ITEM_BYTES,
   CONTEXT_MAX_REQUESTS,
   CONTEXT_PER_ITEM_BYTES,
   CONTEXT_TOTAL_BYTES,
@@ -83,7 +84,8 @@ const jsonResponse = (payload, status = 200) => ({
   assert.equal(DIRECT_TOTAL_DIFF_BYTES, 112 * 1024)
   assert.equal(CONTEXT_MAX_REQUESTS, 12)
   assert.equal(CONTEXT_PER_ITEM_BYTES, 12 * 1024)
-  assert.equal(CONTEXT_TOTAL_BYTES, 48 * 1024)
+  assert.equal(CONTEXT_GIT_DIFF_PER_ITEM_BYTES, 36 * 1024)
+  assert.equal(CONTEXT_TOTAL_BYTES, 80 * 1024)
 
   /** @type {Array<[string, { rank: number, tier: string, category: string }]>} */
   const cases = [
@@ -91,6 +93,7 @@ const jsonResponse = (payload, status = 200) => ({
     ['packages/web-ui/src/index.ts', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
     ['packages/web-ui/src/button.ts', { rank: 1, tier: 'high', category: 'package-source' }],
     ['apps/interweave/main.go', { rank: 2, tier: 'high', category: 'app-source' }],
+    ['apps/interweave/main_test.go', { rank: 4, tier: 'medium', category: 'test' }],
     ['apps/interweave/frontend/src/App.tsx', { rank: 2, tier: 'high', category: 'app-source' }],
     ['apps/react-web-ui-demo/src/pages/Home.tsx', { rank: 3, tier: 'medium', category: 'demo-source' }],
     ['apps/vue-web-ui-demo/src/App.vue', { rank: 3, tier: 'medium', category: 'demo-source' }],
@@ -273,7 +276,7 @@ const jsonResponse = (payload, status = 200) => ({
           stderr: ''
         }
       }
-      if (args[0] === 'grep') {
+      if (args.includes('grep')) {
         return {
           status: 0,
           stdout: 'packages/web-ui/src/button.ts:1:line1\n.agents/skills/x/SKILL.md:1:should_filter\n',
@@ -359,7 +362,12 @@ const jsonResponse = (payload, status = 200) => ({
 
     const diffCall = spawnCalls.find(([, args]) => args[0] === 'diff')
     assert.deepEqual(diffCall[1], ['diff', '--no-color', diffBaseSha, headSha, '--', 'packages/web-ui/src/button.ts'])
-    const grepCall = spawnCalls.find(([, args]) => args[0] === 'grep')
+    const grepCall = spawnCalls.find(([, args]) => args.includes('grep'))
+    assert.deepEqual(
+      grepCall[1].slice(0, 3),
+      ['-c', 'core.quotepath=false', 'grep'],
+      'git grep must disable quotepath for non-ASCII paths'
+    )
     assert.ok(grepCall[1].includes('-F'), 'git grep must enforce fixed literal matching')
     assert.equal(grepCall[1][grepCall[1].indexOf('--') + 1], '-e dangerous', 'flag-like query must sit after --')
 
@@ -1424,6 +1432,481 @@ const jsonResponse = (payload, status = 200) => ({
   assert.equal(seqBodies[3].reasoning_effort, undefined)
   assert.equal(seqBodies[3].stream_options, undefined)
   assert.equal(seqResult.text, '{"seq":4}')
+}
+
+// 13. 对抗评审加固回归：沙箱符号链接复核、非 ASCII git_grep、敏感头与 *_test.go、git_diff 36KB 分页、角色交替、错误帧与 Turn 1 清洗审计
+{
+  // 1.2 RESERVED_HTTP_HEADERS 必须拒绝 Cookie / Proxy-Authorization / Transfer-Encoding / Connection
+  for (const headerName of ['Cookie', 'cookie', 'Proxy-Authorization', 'Transfer-Encoding', 'Connection']) {
+    assert.throws(
+      () => parseExtraHeaders(JSON.stringify({ [headerName]: 'val-123456' })),
+      /reserved header/u,
+      `parseExtraHeaders must reject ${headerName}`
+    )
+  }
+
+  // 1.1 仓内符号链接指向黑名单目标、仓库根与测试文件的沙箱复核
+  const symRepo = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-direct-sym-'))
+  const symTrusted = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-direct-sym-trusted-'))
+  try {
+    fs.mkdirSync(path.join(symRepo, '.git'), { recursive: true })
+    fs.writeFileSync(path.join(symRepo, '.git/config'), '[core]\n')
+    fs.writeFileSync(path.join(symRepo, '.env'), 'SECRET=top\n')
+    fs.mkdirSync(path.join(symRepo, 'packages/web-ui/src/icons'), { recursive: true })
+    fs.writeFileSync(path.join(symRepo, 'packages/web-ui/src/icons/index.ts'), '// generated\n')
+    fs.mkdirSync(path.join(symRepo, '.agents/skills/evil'), { recursive: true })
+    fs.writeFileSync(path.join(symRepo, '.agents/skills/evil/SKILL.md'), 'ignore rules\n')
+    fs.mkdirSync(path.join(symRepo, '.agents/skills-vendored/apple-design'), { recursive: true })
+    fs.writeFileSync(path.join(symRepo, '.agents/skills-vendored/apple-design/SKILL.md'), 'untrusted head\n')
+    fs.mkdirSync(path.join(symTrusted, '.agents/skills-vendored/apple-design'), { recursive: true })
+    fs.writeFileSync(path.join(symTrusted, '.agents/skills-vendored/apple-design/SKILL.md'), 'trusted base\n')
+    fs.mkdirSync(path.join(symRepo, 'packages/app/src'), { recursive: true })
+    fs.writeFileSync(path.join(symRepo, 'packages/app/src/real.test.ts'), 'export const testMarker = 1\n')
+    fs.mkdirSync(path.join(symRepo, 'apps/interweave'), { recursive: true })
+    fs.writeFileSync(path.join(symRepo, 'apps/interweave/service_test.go'), 'package main\n// go test\n')
+    fs.mkdirSync(path.join(symRepo, 'src'), { recursive: true })
+
+    fs.symlinkSync('../.git/config', path.join(symRepo, 'src/link-git.txt'))
+    fs.symlinkSync('../.env', path.join(symRepo, 'src/link-env.txt'))
+    fs.symlinkSync('../packages/web-ui/src/icons/index.ts', path.join(symRepo, 'src/link-gen.ts'))
+    fs.symlinkSync('../.agents/skills/evil/SKILL.md', path.join(symRepo, 'src/link-skill.md'))
+    fs.symlinkSync('../.agents/skills-vendored/apple-design/SKILL.md', path.join(symRepo, 'src/link-vendored.md'))
+    fs.symlinkSync('..', path.join(symRepo, 'src/link-root'))
+    fs.symlinkSync('../packages/app/src/real.test.ts', path.join(symRepo, 'src/link-test.ts'))
+
+    for (const blocked of [
+      'src/link-git.txt',
+      'src/link-env.txt',
+      'src/link-gen.ts',
+      'src/link-skill.md',
+      'src/link-vendored.md',
+      'src/link-root'
+    ]) {
+      const checked = resolveSandboxedPath(blocked, {
+        repoRoot: symRepo,
+        trustedRoot: symTrusted,
+        allowTrustedVendored: true
+      })
+      assert.equal(checked.ok, false, `symlink ${blocked} must be blocked after realpath resolution`)
+    }
+
+    const trustedDirect = resolveSandboxedPath('.agents/skills-vendored/apple-design/SKILL.md', {
+      repoRoot: symRepo,
+      trustedRoot: symTrusted,
+      allowTrustedVendored: true
+    })
+    assert.equal(trustedDirect.ok, true)
+    assert.equal(trustedDirect.fromTrusted, true)
+    assert.equal(trustedDirect.resolvedRelative, '.agents/skills-vendored/apple-design/SKILL.md')
+
+    // 指向测试文件的普通路径符号链接与 Go *_test.go 文件在 read_file 时必须包裹 <untrusted-test-content>
+    const readWrapped = executeContextRequests(
+      [
+        { type: 'read_file', path: 'src/link-test.ts', start_line: 1, end_line: 10, query: '', reason: 'symlink test' },
+        {
+          type: 'read_file',
+          path: 'apps/interweave/service_test.go',
+          start_line: 1,
+          end_line: 10,
+          query: '',
+          reason: 'go test'
+        }
+      ],
+      { repoRoot: symRepo, trustedRoot: symTrusted }
+    )
+    assert.equal(readWrapped.results[0].ok, true)
+    assert.equal(readWrapped.results[1].ok, true)
+    assert.ok(readWrapped.markdown.includes('<untrusted-test-content path="src/link-test.ts">'))
+    assert.ok(readWrapped.markdown.includes('<untrusted-test-content path="apps/interweave/service_test.go">'))
+  } finally {
+    fs.rmSync(symRepo, { recursive: true, force: true })
+    fs.rmSync(symTrusted, { recursive: true, force: true })
+  }
+
+  // 1.1 & 3.1 真实 Git 仓库验证：非 ASCII 路径 git_grep 隔离、36 KB git_diff、行号锚点与 start_line/end_line 全边界
+  const gitHardeningRepo = fs.mkdtempSync(path.join(os.tmpdir(), 'codex-direct-hardening-git-'))
+  try {
+    const git = (...args) => {
+      const res = spawnSync('git', args, { cwd: gitHardeningRepo, encoding: 'utf8' })
+      if (res.status !== 0) throw new Error(res.stderr || res.stdout)
+      return res.stdout
+    }
+    const commit = msg =>
+      git(
+        '-c',
+        'commit.gpgsign=false',
+        '-c',
+        'core.hooksPath=/dev/null',
+        '-c',
+        'user.name=Test',
+        '-c',
+        'user.email=test@example.test',
+        'commit',
+        '-q',
+        '-m',
+        msg
+      )
+
+    git('init', '-q')
+    fs.mkdirSync(path.join(gitHardeningRepo, 'packages/core/src'), { recursive: true })
+    fs.writeFileSync(path.join(gitHardeningRepo, 'packages/core/src/large.ts'), 'export const v = 0\n')
+    git('add', '.')
+    commit('base')
+    const baseCommit = git('rev-parse', 'HEAD').trim()
+
+    // 构造约 20 KB diff（> 12 KB Turn 1 单文件上限，但 < 36 KB git_diff 单条上限）
+    const manyLines = Array.from(
+      { length: 260 },
+      (_, idx) => `export const line_${String(idx + 1).padStart(3, '0')} = "${'x'.repeat(55)}"`
+    ).join('\n')
+    fs.writeFileSync(path.join(gitHardeningRepo, 'packages/core/src/large.ts'), `${manyLines}\n`)
+
+    // 构造非 ASCII 路径测试文件、敏感文件与生成物，验证 -c core.quotepath=false 生效
+    fs.mkdirSync(path.join(gitHardeningRepo, '__tests__'), { recursive: true })
+    fs.writeFileSync(path.join(gitHardeningRepo, '__tests__/中文用例.ts'), 'export const NON_ASCII_NEEDLE = 1\n')
+    fs.mkdirSync(path.join(gitHardeningRepo, 'apps/interweave'), { recursive: true })
+    fs.writeFileSync(path.join(gitHardeningRepo, 'apps/interweave/中文_test.go'), 'package main\n// NON_ASCII_NEEDLE\n')
+    fs.mkdirSync(path.join(gitHardeningRepo, '.agents/skills/中文技能'), { recursive: true })
+    fs.writeFileSync(path.join(gitHardeningRepo, '.agents/skills/中文技能/SKILL.md'), 'NON_ASCII_NEEDLE\n')
+    fs.mkdirSync(path.join(gitHardeningRepo, '中文目录'), { recursive: true })
+    fs.writeFileSync(path.join(gitHardeningRepo, '中文目录/routeTree.gen.ts'), 'export const x = "NON_ASCII_NEEDLE"\n')
+    fs.writeFileSync(path.join(gitHardeningRepo, '中文目录/.env'), 'KEY=NON_ASCII_NEEDLE\n')
+    fs.writeFileSync(path.join(gitHardeningRepo, 'packages/core/src/safe.ts'), 'export const ok = "NON_ASCII_NEEDLE"\n')
+
+    git('add', '.')
+    commit('head')
+    const headCommit = git('rev-parse', 'HEAD').trim()
+
+    // 1.1 非 ASCII git_grep 必须输出未转义路径并正确隔离测试文件、过滤敏感/生成/skill 路径
+    const nonAsciiGrep = executeContextRequests(
+      [
+        { type: 'git_grep', path: '__tests__', query: 'NON_ASCII_NEEDLE', start_line: 0, end_line: 0, reason: 't1' },
+        {
+          type: 'git_grep',
+          path: 'apps/interweave',
+          query: 'NON_ASCII_NEEDLE',
+          start_line: 0,
+          end_line: 0,
+          reason: 't2'
+        },
+        { type: 'git_grep', path: '中文目录', query: 'NON_ASCII_NEEDLE', start_line: 0, end_line: 0, reason: 't3' }
+      ],
+      { repoRoot: gitHardeningRepo, excludePathspecs: REVIEW_EXCLUDE_PATHSPECS }
+    )
+    assert.ok(nonAsciiGrep.markdown.includes('<untrusted-test-content path="__tests__/中文用例.ts">'))
+    assert.ok(nonAsciiGrep.markdown.includes('<untrusted-test-content path="apps/interweave/中文_test.go">'))
+    assert.ok(!nonAsciiGrep.markdown.includes('routeTree.gen.ts'))
+    assert.ok(!nonAsciiGrep.markdown.includes('.env'))
+    assert.ok(!nonAsciiGrep.markdown.includes('SKILL.md'))
+
+    // 3.1 Turn 1 预打包 > 12 KB 文件时必须附带 L1–L<shown> / 共 <total> 行 锚点，且跳过 Go *_test.go
+    const fullLargeDiff = git('diff', '--no-color', baseCommit, headCommit, '--', 'packages/core/src/large.ts')
+    const goTestDiff = git('diff', '--no-color', baseCommit, headCommit, '--', 'apps/interweave/中文_test.go')
+    const largePacket = buildDirectReviewPacket({
+      range: {
+        baseSha: baseCommit,
+        headSha: headCommit,
+        diff: `${fullLargeDiff}\n${goTestDiff}`,
+        changedPaths: ['packages/core/src/large.ts', 'apps/interweave/中文_test.go']
+      },
+      scope: { empty_diff: false, changed_paths: ['packages/core/src/large.ts', 'apps/interweave/中文_test.go'] },
+      helpers: sharedHelpers
+    })
+    assert.deepEqual(largePacket.preloadedPaths, ['packages/core/src/large.ts'])
+    assert.deepEqual(largePacket.truncatedPaths, ['packages/core/src/large.ts'])
+    assert.match(largePacket.markdown, /已截断：显示 L1–L\d+ \/ 共 \d+ 行（\d+\/\d+ bytes）/)
+
+    const diffScope = {
+      diff_base_sha: baseCommit,
+      head_sha: headCommit,
+      changed_paths: ['packages/core/src/large.ts']
+    }
+    const totalDiffLines = fullLargeDiff.replace(/\r?\n$/u, '').split(/\r?\n/u).length
+
+    // 3.1 20 KB diff 经默认 36 KB git_diff 单条预算可一次性完整返回，并附总行数
+    const fullFetch = executeContextRequests(
+      [{ type: 'git_diff', path: 'packages/core/src/large.ts', start_line: 0, end_line: 0, query: '', reason: 'full' }],
+      { repoRoot: gitHardeningRepo, scope: diffScope }
+    )
+    assert.equal(fullFetch.results[0].ok, true)
+    assert.ok(fullFetch.totalBytes > 12 * 1024 && fullFetch.totalBytes < 36 * 1024)
+    assert.ok(fullFetch.markdown.includes(`L1–L${totalDiffLines} / 共 ${totalDiffLines} 行，完整：`))
+    assert.ok(fullFetch.markdown.includes('line_260'))
+
+    // 3.1 start_line/end_line 切片与非法边界全覆盖
+    const pagedFetch = executeContextRequests(
+      [
+        {
+          type: 'git_diff',
+          path: 'packages/core/src/large.ts',
+          start_line: 200,
+          end_line: 0,
+          query: '',
+          reason: 'tail from 200'
+        },
+        {
+          type: 'git_diff',
+          path: 'packages/core/src/large.ts',
+          start_line: 10,
+          end_line: 15,
+          query: '',
+          reason: 'closed slice'
+        },
+        {
+          type: 'git_diff',
+          path: 'packages/core/src/large.ts',
+          start_line: 20,
+          end_line: 10,
+          query: '',
+          reason: 'reversed'
+        },
+        {
+          type: 'git_diff',
+          path: 'packages/core/src/large.ts',
+          start_line: 0,
+          end_line: 10,
+          query: '',
+          reason: 'zero start with end'
+        },
+        {
+          type: 'git_diff',
+          path: 'packages/core/src/large.ts',
+          start_line: -1,
+          end_line: 0,
+          query: '',
+          reason: 'negative'
+        },
+        {
+          type: 'git_diff',
+          path: 'packages/core/src/large.ts',
+          start_line: totalDiffLines + 10,
+          end_line: 0,
+          query: '',
+          reason: 'out of range'
+        }
+      ],
+      { repoRoot: gitHardeningRepo, scope: diffScope }
+    )
+    assert.equal(pagedFetch.results[0].ok, true)
+    assert.ok(pagedFetch.markdown.includes(`L200–L${totalDiffLines} / 共 ${totalDiffLines} 行，切片：`))
+    assert.equal(pagedFetch.results[1].ok, true)
+    assert.ok(pagedFetch.markdown.includes(`L10–L15 / 共 ${totalDiffLines} 行，切片：`))
+    assert.equal(pagedFetch.results[2].ok, false)
+    assert.equal(pagedFetch.results[3].ok, false)
+    assert.equal(pagedFetch.results[4].ok, false)
+    assert.equal(pagedFetch.results[5].ok, false)
+    assert.ok(pagedFetch.markdown.includes(`共 ${totalDiffLines} 行`))
+
+    // 总预算耗尽提示应按实际 totalBytes 动态输出（不再硬编码 48 KB）
+    const exhaustedBudget = executeContextRequests(
+      [
+        { type: 'git_diff', path: 'packages/core/src/large.ts', start_line: 0, end_line: 0, query: '', reason: 'a' },
+        { type: 'git_diff', path: 'packages/core/src/large.ts', start_line: 0, end_line: 0, query: '', reason: 'b' },
+        { type: 'git_diff', path: 'packages/core/src/large.ts', start_line: 0, end_line: 0, query: '', reason: 'c' }
+      ],
+      { repoRoot: gitHardeningRepo, scope: diffScope, limits: { totalBytes: 2 * 1024 } }
+    )
+    assert.equal(exhaustedBudget.results.at(-1).skipped, true)
+    assert.ok(exhaustedBudget.markdown.includes('已达到 2 KB 总回填字节上限'))
+  } finally {
+    fs.rmSync(gitHardeningRepo, { recursive: true, force: true })
+  }
+
+  // 3.2 Turn 2 规范 assistant 回填、invokeWithCorrection 防跨 Turn 污染，以及 Chat Completions 相邻 user 合并
+  const recordedPayloads = []
+  const hugeReason = 'r'.repeat(600)
+  const turn1HugeRequests = Array.from({ length: 10 }, (_, idx) => ({
+    type: 'read_file',
+    path: `packages/pkg/src/file-${idx}.ts`,
+    start_line: 1,
+    end_line: 20,
+    query: '',
+    reason: hugeReason
+  }))
+  const roleAltResult = await runDirectReview({
+    env: {
+      CODEX_REVIEW_API_KEY: 'sk-alt-key',
+      CODEX_RESPONSES_ENDPOINT: 'https://strict.example/v1/chat/completions',
+      CODEX_REVIEW_MODEL: 'strict-model'
+    },
+    range: {
+      baseSha,
+      headSha,
+      diff: makeDiff('packages/pkg/src/a.ts', ['+export const a = 1']),
+      changedPaths: ['packages/pkg/src/a.ts']
+    },
+    scope: { empty_diff: false, changed_paths: ['packages/pkg/src/a.ts'] },
+    promptText: 'system rubric',
+    turn1Schema,
+    finalSchema,
+    helpers: sharedHelpers,
+    sleepImpl: async () => {},
+    log: () => {},
+    fetchImpl: async (_url, init) => {
+      const parsedBody = JSON.parse(String(init.body))
+      recordedPayloads.push(parsedBody)
+      if (recordedPayloads.length === 1) {
+        return jsonResponse({
+          choices: [
+            {
+              message: {
+                content: `<think>internal chain</think>\n${JSON.stringify({
+                  action: 'fetch_context',
+                  context_requests: turn1HugeRequests,
+                  coverage: { inspected: [], uncovered: [] },
+                  prior_resolutions: [],
+                  findings: [],
+                  summary: ''
+                })}`
+              },
+              finish_reason: 'stop'
+            }
+          ]
+        })
+      }
+      if (recordedPayloads.length === 2) {
+        // Turn 2 首次请求触发 length 截断，重试时绝不能把 Turn 1 的 fetch_context JSON 塞成 Turn 2 的 assistant 历史
+        return jsonResponse({
+          choices: [{ message: { content: '{"summary":"partial' }, finish_reason: 'length' }]
+        })
+      }
+      return jsonResponse({
+        choices: [
+          {
+            message: {
+              content: JSON.stringify({
+                summary: 'Reviewed after retry.',
+                coverage: { inspected: ['packages/pkg/src/a.ts'], uncovered: [] },
+                prior_resolutions: [],
+                findings: []
+              })
+            },
+            finish_reason: 'stop'
+          }
+        ]
+      })
+    }
+  })
+  assert.equal(roleAltResult.kind, 'reviewed')
+  assert.equal(recordedPayloads.length, 3)
+  // Turn 2 首次请求严格交替 [system, user, assistant, user]，且 assistant 为 <= 4096 字节的合法 JSON（不含 <think>）
+  assert.deepEqual(
+    recordedPayloads[1].messages.map(m => m.role),
+    ['system', 'user', 'assistant', 'user']
+  )
+  const turn1AssistantContent = recordedPayloads[1].messages[2].content
+  assert.ok(!turn1AssistantContent.includes('<think>'))
+  assert.ok(Buffer.byteLength(turn1AssistantContent, 'utf8') <= 4096)
+  assert.equal(JSON.parse(turn1AssistantContent).action, 'fetch_context')
+  // Turn 2 截断重试严格交替 [system, user, assistant, user, assistant, user]，且第 2 条 assistant 不是 Turn 1 JSON
+  assert.deepEqual(
+    recordedPayloads[2].messages.map(m => m.role),
+    ['system', 'user', 'assistant', 'user', 'assistant', 'user']
+  )
+  assert.equal(recordedPayloads[2].messages[4].content, '(truncated or empty response)')
+
+  // buildChatCompletionsBody 对直接传入的相邻 user 消息兜底合并
+  let mergedBody = null
+  await callResponsesApi({
+    endpoint: 'https://strict.example/v1/chat/completions',
+    apiKey: 'sk-merge-key',
+    model: 'strict-model',
+    input: [
+      { role: 'developer', content: 'sys' },
+      { role: 'user', content: 'first part' },
+      { role: 'user', content: 'second part' }
+    ],
+    schemaName: 'merge_test',
+    schema: finalSchema,
+    stream: false,
+    fetchImpl: async (_url, init) => {
+      mergedBody = JSON.parse(String(init.body))
+      return jsonResponse({ choices: [{ message: { content: '{}' }, finish_reason: 'stop' }] })
+    }
+  })
+  assert.deepEqual(
+    mergedBody.messages.map(m => m.role),
+    ['system', 'user']
+  )
+  assert.equal(mergedBody.messages[1].content, 'first part\n\nsecond part')
+
+  // 3.3 SSE 与非流式错误帧、字符串错误体及 finish_reason: error / content_filter 重试语义
+  assert.throws(
+    () =>
+      parseResponsesSsePayload(
+        'data: {"choices":[],"error":{"code":"server_error","message":"upstream overloaded"}}\n\ndata: [DONE]\n\n'
+      ),
+    err => /upstream overloaded/.test(err.message) && err.retryable === true
+  )
+  assert.throws(
+    () => parseResponsesSsePayload('data: {"choices":[],"error":"plain gateway error"}\n\ndata: [DONE]\n\n'),
+    err => /plain gateway error/.test(err.message) && err.retryable === false
+  )
+  assert.throws(
+    () => parseResponsesSsePayload('data: {"choices":[{"delta":{},"finish_reason":"error"}]}\n\ndata: [DONE]\n\n'),
+    err => /finish_reason=error/.test(err.message) && err.retryable === true
+  )
+  assert.throws(
+    () =>
+      parseResponsesSsePayload('data: {"choices":[{"delta":{},"finish_reason":"content_filter"}]}\n\ndata: [DONE]\n\n'),
+    err => /content_filter/.test(err.message) && err.retryable === false
+  )
+
+  for (const [payload, pattern, expectedRetryable] of [
+    [{ error: 'string error body' }, /string error body/, false],
+    [{ error: { code: 'server_error' } }, /server_error/, true],
+    [{ choices: [{ message: { content: 'partial' }, finish_reason: 'error' }] }, /finish_reason=error/, true],
+    [{ choices: [{ message: { content: '' }, finish_reason: 'content_filter' }] }, /content_filter/, false]
+  ]) {
+    await assert.rejects(
+      () =>
+        callResponsesApi({
+          endpoint: 'https://strict.example/v1/chat/completions',
+          apiKey: 'sk-err-key',
+          model: 'strict-model',
+          input: [{ role: 'user', content: 'hi' }],
+          schemaName: 'err_test',
+          schema: finalSchema,
+          stream: false,
+          fetchImpl: async () => jsonResponse(payload)
+        }),
+      err => pattern.test(err.message) && err.retryable === expectedRetryable
+    )
+  }
+
+  // 3.4 Turn 1 带推理块/围栏直接收口时，runtime 必须保留 output_sanitized: string[]
+  const turn1WrappedResult = await runDirectReview({
+    env: {
+      CODEX_REVIEW_API_KEY: 'sk-san-key',
+      CODEX_RESPONSES_ENDPOINT: 'https://api.example/v1',
+      CODEX_REVIEW_MODEL: 'gpt-test'
+    },
+    range: {
+      baseSha,
+      headSha,
+      diff: makeDiff('packages/pkg/src/b.ts', ['+export const b = 2']),
+      changedPaths: ['packages/pkg/src/b.ts']
+    },
+    scope: { empty_diff: false, changed_paths: ['packages/pkg/src/b.ts'] },
+    promptText: 'system rubric',
+    turn1Schema,
+    finalSchema,
+    helpers: sharedHelpers,
+    log: () => {},
+    fetchImpl: async () =>
+      jsonResponse({
+        output_text: `<thought>check</thought>\n\`\`\`json\n${JSON.stringify({
+          action: 'final',
+          context_requests: [],
+          coverage: { inspected: ['packages/pkg/src/b.ts'], uncovered: [] },
+          prior_resolutions: [],
+          findings: [],
+          summary: 'Clean change.'
+        })}\n\`\`\``
+      })
+  })
+  assert.equal(turn1WrappedResult.kind, 'reviewed')
+  assert.deepEqual(turn1WrappedResult.runtime.output_sanitized, ['reasoning-block', 'code-fence'])
 }
 
 console.log('.github/scripts/lib/codex-direct-review.test.mjs: all assertions passed')
