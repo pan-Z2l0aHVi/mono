@@ -254,15 +254,11 @@ jobs:
     # 审查 job 保留版本分支排除；codex-gate 的判据自 2026-11-23 起分道（见其 if 注释）。
     if: ${{ !cancelled() && needs.check.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' }}
     # 模型步骤自己带 continue-on-error；job 级不再吞掉预检、落结论与上传的失败。
-    # 首次落地时 base 的可信脚本还没有 preflight 子命令，这一步的红叉是唯一能暴露 bootstrap 的信号。
-    # 固定在 24.04：ubuntu-26.04 的 sudo-rs + uutils `test -w` 让 codex-action 的 drop-sudo
-    # socket ACL 校验误判（openai/codex-action#188，修复 PR #191 未合并），模型 job 会在 exec 前退出。
-    # 恢复条件见 docs/adr/0021-codex-review-gate.md「权限拆分与安全不变量」；改标签会被拓扑断言挡下。
-    runs-on: ubuntu-24.04
-    # 120 分钟只兜「大 PR」的尾巴：常规 PR 5–25 分钟，137 文件/4.3k 行的 PR 在 60 分钟处用了
-    # 满额仍未收口（读掉 62/90 个仍存在的源码文件），见 docs/adr/0021-codex-review-gate.md「时间与成本」；
-    # 上限按旧契约的最坏情况留，新契约允许证据足够时提前交卷，见同 ADR「收口纪律」。
-    timeout-minutes: 120
+    # 审查 job 已切换为 Node 直调 API 两段式引擎（无 openai/codex-action / drop-sudo），
+    # 不受 openai/codex-action#188 影响，恢复使用 ubuntu-latest；仅 codex-autofix-plan 仍固定 24.04。
+    runs-on: ubuntu-latest
+    # 直调两段式引擎实测常规与 60+ 文件大 PR 均在 1–4 分钟内完成；20 分钟兜住最坏重试路径并防网络僵死占队。
+    timeout-minutes: 20
     permissions:
       contents: read
       pull-requests: read
@@ -292,8 +288,10 @@ jobs:
         id: prepare
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" prepare
 
-      # 密钥只在 preflight 这一步落到 env：job 级 env 会把密钥带进模型进程，ADR 的代理隔离就不成立。
-      # 四项配置与 codex 版本全部由 GitHub 后台提供，CI 定义里不留任何默认值或兜底表达式。
+      # 密钥只在 preflight 与直调步骤的 step 级 env 出现，绝不下放 job 级 env。
+      # 四项配置与 codex 版本全部由 GitHub 后台提供，CI 定义里不留任何默认值或兜底表达式；
+      # 可选变量 vars.CODEX_REVIEW_EXTRA_HEADERS 仅用于非密钥网关路由头（引擎拒绝 Authorization/Cookie 等敏感头），
+      # 且仅以哈希参与指纹、不落明文到配置快照。
       - name: Validate Codex configuration
         id: config
         env:
@@ -302,6 +300,7 @@ jobs:
           CODEX_REVIEW_MODEL: ${{ vars.CODEX_REVIEW_MODEL }}
           CODEX_REVIEW_EFFORT: ${{ vars.CODEX_REVIEW_EFFORT }}
           CODEX_VERSION: ${{ vars.CODEX_VERSION }}
+          CODEX_REVIEW_EXTRA_HEADERS: ${{ vars.CODEX_REVIEW_EXTRA_HEADERS }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" preflight
 
       - name: Find reusable conclusion
@@ -348,31 +347,18 @@ jobs:
         if: steps.config.outputs.configured == 'true' && steps.reuse.outputs.reused != 'true' && steps.incremental.outputs.reused != 'true'
         # continue-on-error 只让 validate 有机会落结论；outcome 仍是 failure，由 validate 判成 error 并让 gate 变红。
         continue-on-error: true
-        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13
         env:
+          CODEX_REVIEW_API_KEY: ${{ secrets.CODEX_REVIEW_API_KEY }}
+          CODEX_RESPONSES_ENDPOINT: ${{ vars.CODEX_RESPONSES_ENDPOINT }}
+          CODEX_REVIEW_MODEL: ${{ vars.CODEX_REVIEW_MODEL }}
+          CODEX_REVIEW_EFFORT: ${{ vars.CODEX_REVIEW_EFFORT }}
+          CODEX_REVIEW_EXTRA_HEADERS: ${{ vars.CODEX_REVIEW_EXTRA_HEADERS }}
           CODEX_REVIEW_MERGE_BASE_SHA: ${{ steps.prepare.outputs.merge_base_sha }}
           CODEX_REVIEW_START_SHA: ${{ steps.incremental.outputs.review_start_sha }}
           CODEX_REVIEW_PRIOR_DIR: ${{ runner.temp }}/codex-review-prior
-          # prompt 把 diff 路径交给模型；runner 上下文只能在 step 级 env 出现，job 级会让整个文件 invalid。
           CODEX_REVIEW_DIFF_PATH: ${{ runner.temp }}/pr.diff
-        with:
-          openai-api-key: ${{ secrets.CODEX_REVIEW_API_KEY }}
-          responses-api-endpoint: ${{ vars.CODEX_RESPONSES_ENDPOINT }}
-          codex-version: ${{ vars.CODEX_VERSION }}
-          # 用 legacy sandbox 而不是 permission-profile：本仓 .codex/config.toml 在 project 层写死
-          # sandbox_mode = "danger-full-access"，--sandbox 覆盖的是同一个键，default_permissions 不是。
-          sandbox: 'read-only'
-          safety-strategy: 'drop-sudo'
-          model: ${{ vars.CODEX_REVIEW_MODEL }}
-          effort: ${{ vars.CODEX_REVIEW_EFFORT }}
-          prompt-file: ${{ runner.temp }}/trusted/codex/prompts/review.md
-          output-schema-file: ${{ runner.temp }}/trusted/codex/schemas/review-findings.schema.json
-          output-file: ${{ runner.temp }}/codex-final-message.json
-          # pr-auto-update-queue 以 greypan-merge-bot[bot] 身份 push 分支，该 App 不是仓库
-          # 协作者，collaborators API 查得 'none'，action 的写权限校验会拒绝其触发的 run
-          # （review 报 model_failed：无输出文件）。allow-bot-users 为此类 bot 设计的显式
-          # 豁免入口：仅列受信 bot，不支持 *。
-          allow-bot-users: greypan-merge-bot
+          CODEX_REVIEW_OUTPUT_PATH: ${{ runner.temp }}/codex-final-message.json
+        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" run
 
       - name: Record review conclusion
         if: always()

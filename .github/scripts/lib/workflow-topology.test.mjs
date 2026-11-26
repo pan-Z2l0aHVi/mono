@@ -14,18 +14,19 @@ import {
   PRELOAD_START_MARKER,
   autoRetryDecision,
   priorConclusionDirectory,
-  resolveAutoRetryState,
-  trustedPromptPath
+  resolveAutoRetryState
 } from '../codex-review.mjs'
 
 import {
   CODEX_CONFIG_ENV,
   CODEX_CONFIG_INPUTS,
+  CODEX_DIRECT_REVIEW_ENV,
   CODEX_GATE_JOB_NAME,
   CODEX_REVIEW_JOB_NAME,
   RELEASE_BRANCH,
   REQUIRED_CONTEXT,
   codexConfigInputViolations,
+  codexDirectEnvViolations,
   crossRunArtifactViolations,
   ghTokenStepViolations,
   jobEnvContextViolations,
@@ -601,8 +602,16 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     const report = parsed['codex-review-report.yml']
     const actionRef = 'openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675'
 
-    assert.equal(ci.split(actionRef).length - 1, 2, 'both model legs must run inside the read-only CI workflow')
+    assert.equal(
+      ci.split(actionRef).length - 1,
+      1,
+      'only codex-autofix-plan may invoke openai/codex-action inside the read-only CI workflow'
+    )
     assert.ok(!reportText.includes('openai/codex-action'), 'the privileged workflow must never run the model')
+    assert.ok(
+      !/codex-review\.mjs["']?\s+run\b/.test(reportText),
+      'the privileged workflow must never invoke the direct review engine'
+    )
 
     assert.deepEqual(report.permissions, { contents: 'read' })
     assert.deepEqual(report.jobs['report-conclusion'].permissions, {
@@ -827,34 +836,44 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       }
     }
 
-    // 本仓 .codex/config.toml 在 project 层写死 sandbox_mode = "danger-full-access"。
-    // --sandbox 覆盖的是同一个键，权限档走的是另一个键：只准用 --sandbox，
-    // 所以下面这两条 sandbox 断言本身就是那道门的判据，少一条就换成了不受覆盖的档位。
+    // codex-review 已切为无 shell 直调 API 两段式引擎（codex-review.mjs run）；
+    // codex-autofix-plan 仍走 openai/codex-action，继续锁死 workspace-write + drop-sudo + ubuntu-24.04。
     const reviewStep = namedStep(ci, 'Review pull request with Codex')
     const autofixStep = namedStep(ci, 'Propose autofix patch with Codex')
-    assert.match(reviewStep, /sandbox: 'read-only'/)
+    assert.match(reviewStep, /node "\$RUNNER_TEMP\/trusted\/scripts\/codex-review\.mjs" run/)
+    assert.ok(!reviewStep.includes('openai/codex-action'), 'codex-review must use the direct API engine')
     assert.match(autofixStep, /sandbox: 'workspace-write'/)
     assert.ok(!/openai-api-key: \$\{\{ vars\./.test(ci), 'the api key must never come from a public variable')
+    assert.ok(!/CODEX_REVIEW_API_KEY: \$\{\{ vars\./.test(ci), 'review API key must never come from a public variable')
 
-    // openai/codex-action#188：ubuntu-26.04 的 sudo-rs 忽略 -E、uutils `test -w` 只看 mode bits，
-    // drop-sudo 的 socket ACL 校验因此误判并在 Run codex exec 前退出。v1.13 及 main 上都没有修复，
-    // 两条模型 job 固定 24.04 并保留 drop-sudo；恢复条件见 ADR-0021「权限拆分与安全不变量」。
+    // openai/codex-action#188 仅影响仍使用 codex-action 的 codex-autofix-plan（固定 24.04 + drop-sudo）；
+    // codex-review 已切换为无 shell 直调引擎，恢复使用 ubuntu-latest 且不含 drop-sudo。
     const CODEX_RUNNER = 'ubuntu-24.04'
-    const modelLegs = ['codex-review', 'codex-autofix-plan']
     function assertCodexRunnerPin(text) {
-      for (const jobId of modelLegs) {
-        const block = workflowJob(text, jobId)
-        assert.equal(
-          /^ {4}runs-on: (.+)$/m.exec(block)?.[1],
-          CODEX_RUNNER,
-          `${jobId} must pin ${CODEX_RUNNER} while openai/codex-action#188 is unfixed`
-        )
-        assert.match(block, /safety-strategy: 'drop-sudo'/, `${jobId} must keep the drop-sudo safety strategy`)
-      }
+      const autofixBlock = workflowJob(text, 'codex-autofix-plan')
+      assert.equal(
+        /^ {4}runs-on: (.+)$/m.exec(autofixBlock)?.[1],
+        CODEX_RUNNER,
+        `codex-autofix-plan must pin ${CODEX_RUNNER} while openai/codex-action#188 is unfixed`
+      )
+      assert.match(autofixBlock, /safety-strategy: 'drop-sudo'/, 'codex-autofix-plan must keep drop-sudo')
+
+      const reviewBlock = workflowJob(text, 'codex-review')
+      const reviewCodeOnly = reviewBlock
+        .split('\n')
+        .filter(line => !/^\s*#/.test(line))
+        .join('\n')
+      assert.equal(
+        /^ {4}runs-on: (.+)$/m.exec(reviewCodeOnly)?.[1],
+        'ubuntu-latest',
+        'codex-review direct API engine must run on ubuntu-latest'
+      )
+      assert.ok(!reviewCodeOnly.includes('openai/codex-action'), 'codex-review must not invoke openai/codex-action')
+      assert.ok(!reviewCodeOnly.includes('drop-sudo'), 'codex-review direct engine does not depend on drop-sudo')
     }
     assertCodexRunnerPin(ci)
-    for (const jobId of modelLegs) {
-      const block = workflowJob(ci, jobId)
+    {
+      const block = workflowJob(ci, 'codex-autofix-plan')
       const start = ci.indexOf(block)
       const unpinned =
         ci.slice(0, start) +
@@ -862,11 +881,23 @@ function assertPullRequestValidationIsReadOnly(workflow) {
         ci.slice(start + block.length)
       assert.throws(
         () => assertCodexRunnerPin(unpinned),
-        `moving ${jobId} back to ubuntu-latest must fail the runner pin`
+        'moving codex-autofix-plan back to ubuntu-latest must fail the runner pin'
+      )
+    }
+    {
+      const block = workflowJob(ci, 'codex-review')
+      const start = ci.indexOf(block)
+      const repinned =
+        ci.slice(0, start) +
+        block.replace('runs-on: ubuntu-latest', `runs-on: ${CODEX_RUNNER}`) +
+        ci.slice(start + block.length)
+      assert.throws(
+        () => assertCodexRunnerPin(repinned),
+        'pinning codex-review back to ubuntu-24.04 must fail the runner assertion'
       )
     }
 
-    // 端点、模型、强度、密钥与 codex 版本只准从 GitHub 后台来；字面量与 || 兜底会让后台配置永远不生效。
+    // 端点、模型、强度、密钥、附加请求头与 codex 版本只准从 GitHub 后台来；字面量与 || 兜底会让后台配置永远不生效。
     assert.deepEqual([...CONFIG_ENV], [...CODEX_CONFIG_ENV], 'preflight and topology checks must share one config list')
     assert.deepEqual(codexConfigInputViolations(ci), [])
     assert.equal(
@@ -877,12 +908,49 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     const withoutEffort = ci.split('effort: ${{ vars.CODEX_REVIEW_EFFORT }}').join('')
     assert.deepEqual(
       codexConfigInputViolations(withoutEffort),
-      [{ input: 'effort', found: 'missing', expected: 'declared in both model legs' }],
+      [{ input: 'effort', found: 'missing', expected: 'declared in codex-autofix-plan' }],
       'a missing config input must be reported'
     )
     for (const input of Object.keys(CODEX_CONFIG_INPUTS)) {
       const hits = ci.split('\n').filter(line => new RegExp(`^\\s+${input}:`).test(line))
-      assert.equal(hits.length, 2, `${input} must be wired in both model legs`)
+      assert.equal(hits.length, 1, `${input} must be wired in codex-autofix-plan`)
+    }
+    assert.deepEqual(codexDirectEnvViolations(reviewStep), [])
+    assert.equal(
+      codexDirectEnvViolations(
+        reviewStep.replace('CODEX_REVIEW_MODEL: ${{ vars.CODEX_REVIEW_MODEL }}', "CODEX_REVIEW_MODEL: 'hardcoded'")
+      ).length,
+      1,
+      'a hardcoded direct review model must be reported'
+    )
+    assert.equal(
+      codexDirectEnvViolations(
+        reviewStep.replace(
+          'CODEX_REVIEW_API_KEY: ${{ secrets.CODEX_REVIEW_API_KEY }}',
+          'CODEX_REVIEW_API_KEY: ${{ vars.CODEX_REVIEW_API_KEY }}'
+        )
+      ).length,
+      1,
+      'passing CODEX_REVIEW_API_KEY from vars instead of secrets must be reported'
+    )
+    assert.equal(
+      codexDirectEnvViolations(
+        reviewStep.replace(
+          'CODEX_REVIEW_EXTRA_HEADERS: ${{ vars.CODEX_REVIEW_EXTRA_HEADERS }}',
+          'CODEX_REVIEW_EXTRA_HEADERS: \'{"x-custom":"hardcoded"}\''
+        )
+      ).length,
+      1,
+      'a hardcoded CODEX_REVIEW_EXTRA_HEADERS literal must be reported'
+    )
+    assert.deepEqual(
+      codexDirectEnvViolations(reviewStep.replace('CODEX_REVIEW_EFFORT: ${{ vars.CODEX_REVIEW_EFFORT }}', '')),
+      [{ key: 'CODEX_REVIEW_EFFORT', found: 'missing', expected: 'declared in codex-review step env' }],
+      'a missing direct review env key must be reported'
+    )
+    for (const key of Object.keys(CODEX_DIRECT_REVIEW_ENV)) {
+      const hits = reviewStep.split('\n').filter(line => new RegExp(`^\\s+${key}:`).test(line))
+      assert.equal(hits.length, 1, `${key} must be wired once in codex-review step env`)
     }
     for (const jobId of ['codex-review', 'codex-autofix-plan']) {
       const block = workflowJob(ci, jobId)
@@ -894,14 +962,20 @@ function assertPullRequestValidationIsReadOnly(workflow) {
         `${jobId} must not carry config fallbacks`
       )
       assert.ok(
-        !/^ {6}CODEX_REVIEW_API_KEY:/m.test(block),
-        `${jobId} must not expose the API key through job-level env`
+        !/^ {6}CODEX_REVIEW_(?:API_KEY|EXTRA_HEADERS):/m.test(block),
+        `${jobId} must not expose secrets through job-level env`
       )
       const preflight = namedStep(block, 'Validate Codex configuration')
       for (const name of CODEX_CONFIG_ENV) {
         assert.ok(
           preflight.includes(`${name}: \${{ ${name === 'CODEX_REVIEW_API_KEY' ? 'secrets' : 'vars'}.${name} }}`),
           `${jobId} preflight must receive ${name} from the GitHub backend`
+        )
+      }
+      if (jobId === 'codex-review') {
+        assert.ok(
+          preflight.includes('CODEX_REVIEW_EXTRA_HEADERS: ${{ vars.CODEX_REVIEW_EXTRA_HEADERS }}'),
+          'codex-review preflight must receive optional CODEX_REVIEW_EXTRA_HEADERS from GitHub variables for config fingerprint'
         )
       }
     }
@@ -1069,9 +1143,8 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.equal(parsed['ci.yml'].stepContinueOnError['Apply review gate'], undefined)
     assert.equal(parsed['ci.yml'].steps['Apply review gate'], undefined, 'the gate step must run unconditionally')
     assert.equal(parsed['ci.yml'].stepContinueOnError['Record review conclusion'], undefined)
-    // 审查 job 的上限只兜大 PR 的尾巴：137 文件/4.3k 行的 PR 在 60 分钟处用满额仍未收口。
-    // 自动修保持 60，它只在 check 失败时跑，且产物是一次小 patch。
-    assert.match(workflowJob(ci, 'codex-review'), /timeout-minutes: 120/)
+    // 直调两段式审查常规与大 PR 实测 1–4 分钟，20 分钟兜住最坏重试并防僵死；自动修保持 60 分钟。
+    assert.match(workflowJob(ci, 'codex-review'), /timeout-minutes: 20/)
     assert.match(workflowJob(ci, 'codex-autofix-plan'), /timeout-minutes: 60/)
     assert.match(workflowJob(ci, 'codex-gate'), /timeout-minutes: 10/, 'the gate does no model work and stays short')
     assert.match(workflowJob(ci, 'codex-review'), /uses: \.\/\.github\/actions\/stage-codex-inputs/)
@@ -1157,10 +1230,21 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       namedStep(reviewJobText, 'Prepare review range'),
       /node "\$RUNNER_TEMP\/trusted\/scripts\/codex-review\.mjs" prepare/
     )
-    const expectedTrustedPrompt = trustedPromptPath({ RUNNER_TEMP: '${{ runner.temp }}' })
+    // 直调引擎的可信 prompt / turn1 schema 必须存在并由 stage-codex-inputs 固定到 PR base。
+    const stageActionText = fs.readFileSync(
+      path.join(repoRoot, '.github/actions/stage-codex-inputs/action.yml'),
+      'utf8'
+    )
     assert.ok(
-      reviewStep.includes(`prompt-file: ${expectedTrustedPrompt}`),
-      `Review pull request with Codex must read ${expectedTrustedPrompt}`
+      stageActionText.includes('.github/codex/prompts/review-direct.md') &&
+        stageActionText.includes('.github/codex/schemas/review-turn1.schema.json') &&
+        stageActionText.includes('.github/scripts/lib/codex-direct-review.mjs'),
+      'stage-codex-inputs must pin direct review prompt, turn1 schema, and engine library'
+    )
+    assert.ok(
+      fs.existsSync(path.join(repoRoot, '.github/codex/prompts/review-direct.md')) &&
+        fs.existsSync(path.join(repoRoot, '.github/codex/schemas/review-turn1.schema.json')),
+      'direct review prompt and turn1 schema must exist in repository'
     )
     const reviewPromptText = fs.readFileSync(path.join(repoRoot, '.github/codex/prompts/review.md'), 'utf8')
     assert.ok(

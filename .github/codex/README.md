@@ -35,7 +35,7 @@ grep -n "AUTO_RETRY_ERROR_CODES\|coverage\|attempt" .github/scripts/codex-review
 
 - `same_head`：同一 head 且配置指纹一致、旧结论为 `reviewed` 且带完整 `coverage` 时直接复用。
 - `zero_incremental_diff`：同步 `main` 后三方合并无冲突且滤除生成物后净增量为 0 时，原样继承前次结论（含 `Block` 判定）并在评论中区分标注，不重复调用模型；安全性依赖 Merge 平面 `check` 在新合并树上全量重跑。
-- 配置指纹同时绑定可信基目录下的 `codex/prompts/review.md` 模板与 `codex/schemas/review-findings.schema.json` 哈希，任一缺失则 fail-closed 拒绝复用；语义边界与设计取舍见 [`review.md`](../../docs/agents/review.md#审查范围与生成物) 与 [ADR-0021](../../docs/adr/0021-codex-review-gate.md)。
+- 配置指纹同时绑定运行引擎、可信基目录下的 `review.md` / `review-direct.md` / `review-findings.schema.json` / `review-turn1.schema.json` 以及可选 `CODEX_REVIEW_EXTRA_HEADERS` 模板哈希，任一契约文件缺失则 fail-closed 拒绝复用；语义边界与设计取舍见 [`review.md`](../../docs/agents/review.md#审查范围与生成物) 与 [ADR-0021](../../docs/adr/0021-codex-review-gate.md)。
 
 ## 单仓 PR 自动推进队列（`pr-auto-update-queue`）
 
@@ -57,8 +57,8 @@ grep -n "AUTO_RETRY_ERROR_CODES\|coverage\|attempt" .github/scripts/codex-review
 
 改动相关文件时，必须同时核对下面三条，它们与脚本和测试一起构成同步断言：
 
-1. 两条模型 job 固定 `ubuntu-24.04`，与其它 Linux job 的 `ubuntu-latest` 不同；迁移要等上游修复 `drop-sudo` 兼容后统一进行，不能单边改一个 workflow。
-2. `.github/codex/prompts/review.md` 的判据分三段内嵌：审查维度、三档定义、无发现与覆盖要求；改动 `review.md` 的对应判据时同 PR 对齐。
+1. `codex-review` 已切换为无 shell 直调 API 引擎并在 `ubuntu-latest` 运行；仅仍使用 `openai/codex-action` 的 `codex-autofix-plan` 固定 `ubuntu-24.04`，迁移需等上游修复 `drop-sudo` 兼容后同步更新拓扑断言。
+2. `.github/codex/prompts/review-direct.md`（直调审查）与 `.github/codex/prompts/review.md` 均内嵌 `docs/agents/review.md` 的核心判据（审查维度、三档定义、无发现与覆盖要求）；改动对应判据时同 PR 对齐。
 3. 自动修豁免清单里「`Check changesets` 失败时新增顶层 `.changeset/*.md`」的例外必须保留；删掉它会让该类失败对自动修结构性无效。
 
 本手册只做导航，新增判据改 `review.md` 与脚本，不新增门禁。

@@ -6,12 +6,22 @@ export const CODEX_REVIEW_JOB_NAME = 'Codex review'
 export const CODEX_GATE_JOB_NAME = 'Codex review gate'
 
 // 模型参数只能来自 GitHub 后台。CI 定义里的字面量或 `||` 兜底会让后台配置永远不生效。
+// `CODEX_CONFIG_INPUTS` 约束仍使用 openai/codex-action 的 `codex-autofix-plan`（with:）；
+// `CODEX_DIRECT_REVIEW_ENV` 约束已切换为直调引擎的 `codex-review`（step 级 env:）。
 export const CODEX_CONFIG_INPUTS = Object.freeze({
   'openai-api-key': 'secrets.CODEX_REVIEW_API_KEY',
   'responses-api-endpoint': 'vars.CODEX_RESPONSES_ENDPOINT',
   'codex-version': 'vars.CODEX_VERSION',
   model: 'vars.CODEX_REVIEW_MODEL',
   effort: 'vars.CODEX_REVIEW_EFFORT'
+})
+
+export const CODEX_DIRECT_REVIEW_ENV = Object.freeze({
+  CODEX_REVIEW_API_KEY: 'secrets.CODEX_REVIEW_API_KEY',
+  CODEX_RESPONSES_ENDPOINT: 'vars.CODEX_RESPONSES_ENDPOINT',
+  CODEX_REVIEW_MODEL: 'vars.CODEX_REVIEW_MODEL',
+  CODEX_REVIEW_EFFORT: 'vars.CODEX_REVIEW_EFFORT',
+  CODEX_REVIEW_EXTRA_HEADERS: 'vars.CODEX_REVIEW_EXTRA_HEADERS'
 })
 
 export const CODEX_CONFIG_ENV = Object.freeze([
@@ -177,7 +187,7 @@ export function parseWorkflow(text) {
   return parsed
 }
 
-/** 逐行核对 Codex 模型输入的唯一来源；缺一行、写成字面量或加兜底都算违约。 */
+/** 逐行核对 codex-action 模型输入的唯一来源（codex-autofix-plan）；缺一行、写成字面量或加兜底都算违约。 */
 export function codexConfigInputViolations(text) {
   const violations = []
   const seen = new Set()
@@ -191,7 +201,26 @@ export function codexConfigInputViolations(text) {
     }
   }
   for (const input of Object.keys(CODEX_CONFIG_INPUTS)) {
-    if (!seen.has(input)) violations.push({ input, found: 'missing', expected: 'declared in both model legs' })
+    if (!seen.has(input)) violations.push({ input, found: 'missing', expected: 'declared in codex-autofix-plan' })
+  }
+  return violations
+}
+
+/** 逐行核对直调审查步骤（step 级 env）的模型配置唯一来源；缺一行、写成字面量、加兜底或把密钥放进 vars 都算违约。 */
+export function codexDirectEnvViolations(stepText) {
+  const violations = []
+  const seen = new Set()
+  for (const line of stepText.split(/\r?\n/)) {
+    for (const [key, source] of Object.entries(CODEX_DIRECT_REVIEW_ENV)) {
+      const match = line.match(new RegExp(`^\\s+${key}:\\s*(.*)$`))
+      if (!match) continue
+      seen.add(key)
+      const expected = '${{ ' + source + ' }}'
+      if (match[1].trim() !== expected) violations.push({ key, found: match[1].trim(), expected })
+    }
+  }
+  for (const key of Object.keys(CODEX_DIRECT_REVIEW_ENV)) {
+    if (!seen.has(key)) violations.push({ key, found: 'missing', expected: 'declared in codex-review step env' })
   }
   return violations
 }

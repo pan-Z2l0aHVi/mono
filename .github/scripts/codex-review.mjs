@@ -4,6 +4,7 @@ import fs from 'node:fs'
 import path from 'node:path'
 
 import {
+  DIRECT_ENGINE_NAME,
   DIRECT_ERROR_FILE,
   DIRECT_ERROR_PREFIX,
   DIRECT_RUNTIME_FILE,
@@ -446,6 +447,7 @@ export function inspectConfig(env = process.env, { trustedRoot = path.resolve(im
     ? createHash('sha256')
         .update(
           JSON.stringify({
+            engine: DIRECT_ENGINE_NAME,
             ...values,
             excluded_pathspecs: REVIEW_EXCLUDE_PATHSPECS,
             extra_headers_sha256: extraHeadersSha256,
