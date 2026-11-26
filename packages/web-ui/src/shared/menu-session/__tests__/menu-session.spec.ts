@@ -36,7 +36,25 @@ async function flushFrames(count = 2) {
   }
 }
 
+const activeSessions = new Set<{ disconnect(): void }>()
+
+function trackSession<S extends MenuSurface>(
+  options: Parameters<typeof createMenuSession<S>>[0]
+): ReturnType<typeof createMenuSession<S>> {
+  const session = createMenuSession<S>(options)
+  activeSessions.add(session)
+  return session
+}
+
 afterEach(() => {
+  for (const session of activeSessions) {
+    try {
+      session.disconnect()
+    } catch {
+      // 忽略测试中已手动断开或 DOM 已被移除导致的二次清理异常
+    }
+  }
+  activeSessions.clear()
   vi.useRealTimers()
   document.body.replaceChildren()
 })
@@ -51,7 +69,7 @@ describe('MenuSession', () => {
 
     const onRequestClose = vi.fn<(reason: MenuCloseReason) => void>()
     const callOrder: string[] = []
-    const session = createMenuSession<MenuSurface>({
+    const session = trackSession<MenuSurface>({
       host,
       markerText: 'test-marker',
       hiddenSlot: 'test-hidden',
@@ -108,7 +126,7 @@ describe('MenuSession', () => {
     document.body.append(host)
 
     const onRequestClose = vi.fn<(reason: MenuCloseReason) => void>()
-    const session = createMenuSession<MenuSurface>({
+    const session = trackSession<MenuSurface>({
       host,
       markerText: 'test-marker',
       hiddenSlot: 'test-hidden',
@@ -147,7 +165,7 @@ describe('MenuSession', () => {
     document.body.append(host)
 
     const onRequestClose = vi.fn<(reason: MenuCloseReason) => void>()
-    const session = createMenuSession<MenuSurface>({
+    const session = trackSession<MenuSurface>({
       host,
       markerText: 'test-marker',
       hiddenSlot: 'test-hidden',
@@ -193,7 +211,7 @@ describe('MenuSession', () => {
     host.append(subParent, leaf)
     document.body.append(host)
 
-    const session = createMenuSession<MenuSurface>({
+    const session = trackSession<MenuSurface>({
       host,
       markerText: 'test-marker',
       hiddenSlot: 'test-hidden',
@@ -250,7 +268,7 @@ describe('MenuSession', () => {
     document.body.append(host)
 
     let createdSubmenus = 0
-    const session = createMenuSession<MenuSurface>({
+    const session = trackSession<MenuSurface>({
       host,
       markerText: 'test-marker',
       hiddenSlot: 'test-hidden',
@@ -307,7 +325,7 @@ describe('MenuSession', () => {
     host.append(itemA, vueAnchor, itemB)
     document.body.append(host)
 
-    const session = createMenuSession<MenuSurface>({
+    const session = trackSession<MenuSurface>({
       host,
       markerText: 'test-marker',
       hiddenSlot: 'test-hidden',
@@ -353,7 +371,7 @@ describe('MenuSession', () => {
     document.body.append(host)
 
     const disposedPanels: string[] = []
-    const session = createMenuSession<MenuSurface>({
+    const session = trackSession<MenuSurface>({
       host,
       markerText: 'test-marker',
       hiddenSlot: 'test-hidden',
@@ -398,7 +416,7 @@ describe('MenuSession', () => {
     document.body.append(host)
 
     let scrollLockDisabled = true
-    const session = createMenuSession<MenuSurface>({
+    const session = trackSession<MenuSurface>({
       host,
       markerText: 'test-marker',
       hiddenSlot: 'test-hidden',
