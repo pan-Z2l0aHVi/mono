@@ -1,18 +1,16 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick } from 'vue'
 
+import type { ResourceSourceView, ResourceView } from '@/stores/library'
+
+import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import PreviewCode from '../PreviewCode.vue'
 import PreviewMarkdown from '../PreviewMarkdown.vue'
+import { createPreviewSession, type PreviewTextResponse } from '../previewSession'
 
 /*
- * markdown / 代码预览渲染管线的浏览器冒烟：真实加载 @greypan/md-to-meta/runtime（shiki wasm、
- * markdown 解析）在 Chromium 里出结果。jsdom 里 wasm 分词器跑不起来，这条管线只能在这档验证。
- *
- * 铺垫的判据与 demo 一致：主题类（.mdm-heading / .mdm-code）来自 vite 的 mdmThemePlugin
- * 虚拟模块（main.ts 引入，浏览器测试同享）；清洗与拦截是 interweave 自己的信任边界。
- *
- * 与同目录其他 browser spec 一致用 createApp 裸挂：@vue/test-utils 不在本包 browser 档的
- * optimizeDeps 清单里，这里引它会在用例中途触发 re-optimize + reload。
+ * markdown / 代码预览渲染管线的浏览器冒烟：经真实 createPreviewSession +
+ * createDefaultPreviewRenderer（@greypan/md-to-meta/runtime、shiki wasm）在 Chromium 里出结果。
  */
 
 async function waitFor(condition: () => boolean, message: string) {
@@ -24,15 +22,98 @@ async function waitFor(condition: () => boolean, message: string) {
   throw new Error(message)
 }
 
-function mount(component: Parameters<typeof h>[0], props: Record<string, unknown>) {
+function resourceForFile(location: string): ResourceView {
+  const preferred: ResourceSourceView = {
+    id: 'source-1',
+    type: 'file',
+    location,
+    available: true,
+    isPreferred: true,
+    orderIndex: 0,
+    mediaUrl: '/resource-media/source-1',
+    thumbnailUrl: null,
+    metadata: null
+  }
+  return {
+    id: 'resource-1',
+    title: '预览目标',
+    note: '',
+    createdAt: 0,
+    updatedAt: 0,
+    sources: [preferred],
+    preferred,
+    tags: [],
+    tagNames: [],
+    available: true,
+    kind: ResourceKind.ResourceKindDocument,
+    sizeBytes: 1024
+  }
+}
+
+function textResponse(content: string): PreviewTextResponse {
+  const bytes = new TextEncoder().encode(content)
+  return {
+    ok: true,
+    status: 200,
+    body: null,
+    arrayBuffer: async () => bytes.buffer.slice(bytes.byteOffset, bytes.byteOffset + bytes.byteLength)
+  }
+}
+
+function mountMarkdownSession(markdown: string, openExternal: (target: string) => Promise<void>) {
   const host = document.createElement('div')
   document.body.append(host)
-  const app = createApp({ render: () => h(component, props) })
+  const session = createPreviewSession(
+    { open: () => true, resource: () => resourceForFile('/tmp/doc.md') },
+    { fetchText: async () => textResponse(markdown), openExternal }
+  )
+  const app = createApp({
+    setup() {
+      return () =>
+        session.state.value.kind === 'markdown' && session.state.value.status === 'ready'
+          ? h(PreviewMarkdown, {
+              nodes: session.state.value.nodes,
+              openLink: session.openMarkdownLink
+            })
+          : null
+    }
+  })
   app.mount(host)
   return {
     host,
     unmount: () => {
       app.unmount()
+      session.dispose()
+      host.remove()
+    }
+  }
+}
+
+function mountCodeSession(code: string, location = '/tmp/sample.ts') {
+  const host = document.createElement('div')
+  document.body.append(host)
+  const session = createPreviewSession(
+    { open: () => true, resource: () => resourceForFile(location) },
+    { fetchText: async () => textResponse(code) }
+  )
+  const app = createApp({
+    setup() {
+      return () =>
+        session.state.value.kind === 'code' && session.state.value.status === 'ready'
+          ? h(PreviewCode, {
+              code: session.state.value.code,
+              highlightedHtml: session.state.value.highlightedHtml,
+              overHighlightLimit: session.state.value.overHighlightLimit
+            })
+          : null
+    }
+  })
+  app.mount(host)
+  return {
+    host,
+    unmount: () => {
+      app.unmount()
+      session.dispose()
       host.remove()
     }
   }
@@ -56,7 +137,7 @@ const SAMPLE = [
 describe('PreviewMarkdown（浏览器）', () => {
   it('按文档渲染标题、列表、着色代码与行内样式，链接改写并拦截，危险/相对目标判死', async () => {
     const openExternal = vi.fn<(target: string) => Promise<void>>(() => Promise.resolve())
-    const mounted = mount(PreviewMarkdown, { markdown: SAMPLE, openExternal })
+    const mounted = mountMarkdownSession(SAMPLE, openExternal)
     try {
       await waitFor(() => {
         const root = mounted.host.querySelector('[data-preview-markdown]')
@@ -87,13 +168,11 @@ describe('PreviewMarkdown（浏览器）', () => {
 
   it('raw HTML 自带的 data-md-href 不产生可点外链，点击不触发 openExternal', async () => {
     const openExternal = vi.fn<(target: string) => Promise<void>>(() => Promise.resolve())
-    // 独立的 HTML 块才把原始标签送进 content；行内 raw HTML 会被 remark-rehype 丢掉。
     const hostile = '前文\n\n<a data-md-href="file:///etc/passwd">\n点我\n</a>\n'
-    const mounted = mount(PreviewMarkdown, { markdown: hostile, openExternal })
+    const mounted = mountMarkdownSession(hostile, openExternal)
     try {
       await waitFor(() => !!mounted.host.querySelector('[data-preview-markdown] a'), '链接未渲染')
       const anchors = [...mounted.host.querySelectorAll('[data-preview-markdown] a')]
-      // raw 属性在清洗期被剥除：没有任何活外链，只剩死链标记。
       expect(anchors.filter(a => a.hasAttribute('data-md-href'))).toEqual([])
       anchors[0]!.dispatchEvent(new MouseEvent('click', { bubbles: true, cancelable: true }))
       await nextTick()
@@ -106,7 +185,7 @@ describe('PreviewMarkdown（浏览器）', () => {
 
 describe('PreviewCode（浏览器）', () => {
   it('白名单语言经 shiki 着色输出双主题与行号', async () => {
-    const mounted = mount(PreviewCode, { code: 'const answer = 42;\n', language: 'ts' })
+    const mounted = mountCodeSession('const answer = 42;\n', '/tmp/sample.ts')
     try {
       await waitFor(() => {
         const code = mounted.host.querySelector('[data-code]')
@@ -122,7 +201,7 @@ describe('PreviewCode（浏览器）', () => {
 
   it('超过输入上限退回纯文本并提示，不进着色器', async () => {
     const big = Array.from({ length: 5200 }, (_, index) => `const value${index} = ${index};`).join('\n')
-    const mounted = mount(PreviewCode, { code: big, language: 'ts' })
+    const mounted = mountCodeSession(big, '/tmp/big.ts')
     try {
       await waitFor(() => mounted.host.textContent?.includes('文件过大') ?? false, '未出现纯文本提示')
       expect(mounted.host.querySelector('[data-code]')).toBeNull()

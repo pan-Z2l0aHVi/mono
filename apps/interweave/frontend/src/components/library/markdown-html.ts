@@ -34,48 +34,57 @@ const ALLOWED_TAGS: Record<string, readonly string[]> = {
 /** 允许的外链 scheme；相对地址会按应用 origin 解析（可能打到本地媒体端点），一律丢弃。 */
 const ALLOWED_LINK_SCHEMES = ['http:', 'https:', 'mailto:']
 
+/** 允许的图片 scheme；图片只放行 http(s)，拒绝 mailto: 及相对地址。 */
+const ALLOWED_IMAGE_SCHEMES = ['http:', 'https:']
+
 /** 受控外链的 scheme 前缀：预览层在捕获阶段拦 `data-md-link` 的点击交系统浏览器。 */
 export const SANITIZED_LINK_ATTRIBUTE = 'data-md-href'
 
 export interface SanitizeResult {
   html: string
-  /** 清洗后的外链目标（已过滤 scheme）；供预览层拦截点击时回查。 */
-  links: string[]
 }
 
 /** 清洗一段 markdown 行内 HTML：返回可直接 v-html 的字符串。 */
 export function sanitizeInlineHtml(html: string): SanitizeResult {
-  const links: string[] = []
   const parser = new DOMParser()
   const document = parser.parseFromString(`<body>${html}</body>`, 'text/html')
   const root = document.body
 
   // 只处理 root 的子树：root 本身是清洗器的装载壳，不参与白名单判定。
   // 快照再迭代：pruneElement 会替换/删除元素，活集合上边走边改会跳节点。
-  for (const child of Array.from(root.children)) pruneElement(child, links)
+  for (const child of Array.from(root.children)) pruneElement(child)
 
   // 序列化时剥掉外壳：只回内容本身。
   const container = document.createElement('div')
   while (root.firstChild) container.appendChild(root.firstChild)
-  return { html: container.innerHTML, links }
+  return { html: container.innerHTML }
 }
 
-/** 判断一个 href/src 是否放行；放行时返回原值，否则返回 null。 */
-export function allowedLinkTarget(value: string): string | null {
+function allowedTarget(value: string, schemes: readonly string[]): string | null {
   const trimmed = value.trim()
   if (trimmed === '') return null
   try {
     const parsed = new URL(trimmed, 'https://interweave.invalid')
     // 解析后仍是相对地址（origin 落在占位 origin 且没有 scheme）→ 丢弃。
     if (parsed.origin === 'https://interweave.invalid' && !/^[a-z][a-z0-9+.-]*:/i.test(trimmed)) return null
-    return ALLOWED_LINK_SCHEMES.includes(parsed.protocol) ? trimmed : null
+    return schemes.includes(parsed.protocol) ? trimmed : null
   } catch {
     return null
   }
 }
 
-function pruneElement(node: Element, links: string[]): void {
-  for (const child of Array.from(node.children)) pruneElement(child, links)
+/** 判断一个链接 href 是否放行（http/https/mailto）；放行时返回原值，否则返回 null。 */
+export function allowedLinkTarget(value: string): string | null {
+  return allowedTarget(value, ALLOWED_LINK_SCHEMES)
+}
+
+/** 判断一个图片 src 是否放行（仅 http/https）；放行时返回原值，否则返回 null。 */
+export function allowedImageTarget(value: string): string | null {
+  return allowedTarget(value, ALLOWED_IMAGE_SCHEMES)
+}
+
+function pruneElement(node: Element): void {
+  for (const child of Array.from(node.children)) pruneElement(child)
 
   const tag = node.tagName.toLowerCase()
   const allowedAttributes = ALLOWED_TAGS[tag]
@@ -100,15 +109,14 @@ function pruneElement(node: Element, links: string[]): void {
       node.setAttribute('data-md-link-dead', '')
     } else {
       node.setAttribute(SANITIZED_LINK_ATTRIBUTE, target)
-      links.push(target)
     }
     return
   }
   if (tag === 'img') {
-    // 行内图片：只放行 http(s) 绝对地址；相对地址会按应用 origin 解析（可能打到本地媒体端点），丢弃。
+    // 行内图片：只放行 http(s) 绝对地址；mailto: 与相对地址一律丢弃。
     node.removeAttribute('srcset')
     const src = node.getAttribute('src')
-    if (src === null || allowedLinkTarget(src) === null) {
+    if (src === null || allowedImageTarget(src) === null) {
       node.replaceWith(...node.childNodes)
     } else {
       node.setAttribute('loading', 'lazy')

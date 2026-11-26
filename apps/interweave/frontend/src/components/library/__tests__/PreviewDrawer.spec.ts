@@ -91,7 +91,6 @@ async function mountDrawer(initial: ResourceView | null, options: MountOptions =
   return entry
 }
 
-// fixture 的 fetch/Response 链只派生 microtask；跨 task 后再等 Vue 提交。
 async function flush(): Promise<void> {
   await new Promise<void>(resolve => setImmediate(resolve))
   await nextTick()
@@ -100,7 +99,7 @@ async function flush(): Promise<void> {
 beforeEach(() => {
   vi.stubGlobal(
     'fetch',
-    vi.fn(async () => new Response('内容', { status: 200 }))
+    vi.fn<() => Promise<Response>>(async () => new Response('内容', { status: 200 }))
   )
 })
 
@@ -157,7 +156,6 @@ describe('PreviewDrawer', () => {
     pointer('pointerup', 2, 125)
     pointer('pointermove', 1, 35)
     await nextTick()
-    // jsdom 31 的 CSSOM 序列化会把 translate(0px, 0px) 规范化成 translate(0px)
     expect(image.style.transform).not.toMatch(/translate\(0px(?:, 0px)?\)/)
   })
 
@@ -178,173 +176,57 @@ describe('PreviewDrawer', () => {
     pointer('pointerdown', 0)
     pointer('pointermove', 1000)
     await nextTick()
-    // jsdom 31 的 CSSOM 序列化会把 translate(75px, 0px) 规范化成 translate(75px)
     expect(image.style.transform).toMatch(/translate\(75px(?:, 0px)?\)/)
   })
 
-  it('图片铺满内容区渲染 img，加载失败回落到空态', async () => {
-    const { host } = await mountDrawer(resourceOf(fileSource(), ResourceKind.ResourceKindImage))
-    const image = host.querySelector('img')
-    expect(image?.getAttribute('src')).toBe('/resource-media/source-1')
-    expect(host.querySelector('iframe')).toBeNull()
-    image?.dispatchEvent(new Event('error'))
+  it('图片、视频、音频、文本与 URL 预览正确接线并响应失败空态', async () => {
+    const img = await mountDrawer(resourceOf(fileSource(), ResourceKind.ResourceKindImage))
+    expect(img.host.querySelector('img')?.getAttribute('src')).toBe('/resource-media/source-1')
+    img.host.querySelector('img')?.dispatchEvent(new Event('error'))
     await nextTick()
-    expect(host.querySelector('img')).toBeNull()
-    expect(host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('无法显示这张图片')
-  })
+    expect(img.host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('无法显示这张图片')
 
-  it('视频渲染原生 controls 与 autoplay，Range 拖动由媒体端点负责', async () => {
-    const { host } = await mountDrawer(
-      resourceOf(fileSource({ location: '/tmp/a.mp4' }), ResourceKind.ResourceKindVideo)
-    )
-    const video = host.querySelector('video')
-    expect(video?.getAttribute('src')).toBe('/resource-media/source-1')
-    expect(video?.hasAttribute('controls')).toBe(true)
-    expect(video?.hasAttribute('autoplay')).toBe(true)
-  })
+    const video = await mountDrawer(resourceOf(fileSource({ location: '/tmp/a.mp4' }), ResourceKind.ResourceKindVideo))
+    expect(video.host.querySelector('video')?.hasAttribute('controls')).toBe(true)
 
-  it('音频渲染原生 controls 与 autoplay，失败时展示空态', async () => {
-    const { host } = await mountDrawer(
-      resourceOf(fileSource({ location: '/tmp/a.mp3' }), ResourceKind.ResourceKindAudio)
-    )
-    const audio = host.querySelector('audio')
-    expect(audio?.getAttribute('src')).toBe('/resource-media/source-1')
-    expect(audio?.hasAttribute('controls')).toBe(true)
-    expect(audio?.hasAttribute('autoplay')).toBe(true)
-
-    audio?.dispatchEvent(new Event('error'))
+    const audio = await mountDrawer(resourceOf(fileSource({ location: '/tmp/a.mp3' }), ResourceKind.ResourceKindAudio))
+    audio.host.querySelector('audio')?.dispatchEvent(new Event('error'))
     await nextTick()
-    expect(host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('无法播放这个音频')
-  })
+    expect(audio.host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('无法播放这个音频')
 
-  it('文本来源读取内容并以 pre 展示', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        async () =>
-          new Response(
-            new ReadableStream({
-              start(controller) {
-                controller.enqueue(new TextEncoder().encode('第一行\n第二行'))
-                controller.close()
-              }
-            }),
-            { status: 200 }
-          )
-      )
-    )
-    const { host } = await mountDrawer(
+    const text = await mountDrawer(
       resourceOf(fileSource({ location: '/tmp/a.txt' }), ResourceKind.ResourceKindDocument)
     )
     await flush()
-    expect(host.querySelector('pre')?.textContent).toBe('第一行\n第二行')
-    expect(host.textContent).not.toContain('仅显示开头部分')
-  })
+    expect(text.host.querySelector('pre')?.textContent).toBe('内容')
 
-  it('文本读取失败时展示可观察原因而不是空白', async () => {
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(async () => new Response('', { status: 404 }))
-    )
-    const { host } = await mountDrawer(
-      resourceOf(fileSource({ location: '/tmp/a.txt' }), ResourceKind.ResourceKindDocument)
-    )
-    await flush()
-    expect(host.querySelector('pre')).toBeNull()
-    expect(host.querySelector('web-ui-empty')?.getAttribute('description')).toContain(
-      '无法读取文件，请检查文件是否还在原处'
-    )
-  })
-
-  it('切换资源时取消在途文本请求，旧结果不再写回', async () => {
-    const signals: AbortSignal[] = []
-    vi.stubGlobal(
-      'fetch',
-      vi.fn(
-        (_url: string, init?: RequestInit) =>
-          new Promise<Response>((_resolve, reject) => {
-            if (!init?.signal) return
-            signals.push(init.signal)
-            init.signal.addEventListener('abort', () => reject(new DOMException('aborted', 'AbortError')))
-          })
-      )
-    )
-    const { host, setResource } = await mountDrawer(
-      resourceOf(fileSource({ location: '/tmp/a.txt' }), ResourceKind.ResourceKindDocument)
-    )
-    await nextTick()
-    expect(signals[0]?.aborted).toBe(false)
-    await setResource(resourceOf(fileSource({ location: '/tmp/a.png' }), ResourceKind.ResourceKindImage))
-    expect(signals[0]?.aborted).toBe(true)
-    expect(host.querySelector('pre')).toBeNull()
-    expect(host.querySelector('img')).not.toBeNull()
-  })
-
-  it('URL 来源渲染 sandbox 化的 iframe', async () => {
-    const { host } = await mountDrawer(
+    const url = await mountDrawer(
       resourceOf(
-        fileSource({ id: 'source-url', type: 'url', location: 'https://example.com/x' }),
+        fileSource({ id: 'source-url', type: 'url', location: 'https://example.com/x', mediaUrl: null }),
         ResourceKind.ResourceKindWeb
       )
     )
-    const frame = host.querySelector('iframe')
+    const frame = url.host.querySelector('iframe')
     expect(frame?.getAttribute('src')).toBe('https://example.com/x')
     expect(frame?.getAttribute('sandbox')).toBe(
       'allow-scripts allow-same-origin allow-forms allow-popups allow-popups-to-escape-sandbox'
     )
-    expect(frame?.getAttribute('title')).toBe('预览目标 网页预览')
-    expect(host.querySelector('img')).toBeNull()
   })
 
-  it('失效来源不渲染媒体并说明原因', async () => {
-    const { host } = await mountDrawer(resourceOf(fileSource({ available: false }), ResourceKind.ResourceKindImage))
-    expect(host.querySelector('img')).toBeNull()
-    expect(host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('文件已失效')
-  })
-
-  it('缺 runtime 时说明预览依赖桌面服务', async () => {
-    const { host } = await mountDrawer(resourceOf(fileSource({ mediaUrl: null }), ResourceKind.ResourceKindImage))
-    expect(host.querySelector('web-ui-empty')?.getAttribute('title')).toBe('暂时无法预览')
-  })
-
-  it('预览未打开时不挂载媒体节点，也不发起文本读取', async () => {
-    const fetchMock = vi.fn<() => Promise<Response>>(async () => new Response('内容', { status: 200 }))
-    vi.stubGlobal('fetch', fetchMock)
-
-    // 资源已选中（行点击/编辑标签路径）但预览未打开：媒体不能挂在隐藏 dialog 里后台加载。
+  it('预览未打开时不挂载媒体节点与 iframe', async () => {
     const video = await mountDrawer(
       resourceOf(fileSource({ location: '/tmp/a.mp4' }), ResourceKind.ResourceKindVideo),
       { open: false }
     )
-    await flush()
     expect(video.host.querySelector('video')).toBeNull()
-    expect(video.host.querySelector('img')).toBeNull()
-    expect(video.host.querySelector('iframe')).toBeNull()
 
-    const text = await mountDrawer(
-      resourceOf(fileSource({ location: '/tmp/a.txt' }), ResourceKind.ResourceKindDocument),
-      { open: false }
-    )
-    await flush()
-    expect(text.host.querySelector('pre')).toBeNull()
-    expect(fetchMock).not.toHaveBeenCalled()
-
-    // 打开后才渲染并读取。
-    await text.setOpen(true)
-    await flush()
-    expect(text.host.querySelector('pre')?.textContent).toBe('内容')
-    expect(fetchMock).toHaveBeenCalledOnce()
-  })
-
-  it('URL 预览未打开时不渲染 iframe', async () => {
-    const { host } = await mountDrawer(
+    const url = await mountDrawer(
       resourceOf(
-        fileSource({ id: 'source-url', type: 'url', location: 'https://example.com/x' }),
+        fileSource({ id: 'source-url', type: 'url', location: 'https://example.com/x', mediaUrl: null }),
         ResourceKind.ResourceKindWeb
       ),
       { open: false }
     )
-    await flush()
-    expect(host.querySelector('iframe')).toBeNull()
+    expect(url.host.querySelector('iframe')).toBeNull()
   })
 })

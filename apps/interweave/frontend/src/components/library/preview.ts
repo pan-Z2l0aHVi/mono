@@ -86,11 +86,6 @@ const TEXT_EXTENSIONS = new Set(['CSV', 'TEX', 'TSV', 'TXT'])
 /** 供语言白名单消费：代码模式的语言集合，运行时只对着色这些语言。 */
 export const PREVIEW_LANGUAGES = [...new Set(Object.values(CODE_LANGUAGE_BY_EXTENSION))]
 
-/** code 模式的 shiki 语言名。 */
-export function previewLanguageFor(extension: string): string | undefined {
-  return CODE_LANGUAGE_BY_EXTENSION[extension]
-}
-
 /** 单次文本预览读取的字节上限；超出部分不再下载，drawer 显式标注已截断。 */
 export const TEXT_PREVIEW_BYTE_LIMIT = 512 * 1024
 

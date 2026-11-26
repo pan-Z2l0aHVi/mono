@@ -1,77 +1,32 @@
 <script setup lang="ts">
-import { computed, ref, watch } from 'vue'
-
-import { highlightForPreview } from './previewRuntime'
-
 /*
- * 代码预览：shiki 双主题高亮 + 行号（md-to-meta runtime，与 demo 同一条管线、同一份样式）。
- *
- * 输入上限是展示层规则：超过 128KB 或 5000 行的文本不再进入分词器（浏览器主线程对半兆文本
- * 无限时分会冻结 UI），退回纯文本展示并提示。这份上限独立于抽屉的 512KB 文本读取上限。
+ * 代码纯展示视图：字节/行数阈值判定与 shiki 异步着色由 previewSession 统一完成。
+ * highlightedHtml 为 null 时按纯文本 <pre> 展示，绝不留白。
  */
-const HIGHLIGHT_INPUT_BYTE_LIMIT = 128 * 1024
-const HIGHLIGHT_INPUT_LINE_LIMIT = 5000
-
-const props = defineProps<{
+defineProps<{
   code: string
-  language?: string
+  highlightedHtml: string | null
+  overHighlightLimit: boolean
 }>()
-
-const overLimit = computed(
-  () =>
-    new TextEncoder().encode(props.code).byteLength > HIGHLIGHT_INPUT_BYTE_LIMIT ||
-    props.code.split('\n').length > HIGHLIGHT_INPUT_LINE_LIMIT
-)
-
-const html = ref('')
-const plain = ref(true)
-// 请求身份：快速切换文件时，旧文本的着色可能晚于新文本完成，没有 token 会把旧结果写进新预览；
-// 着色失败（动态 chunk 加载失败等）退回纯文本而不是留白。
-let requestToken = 0
-
-watch(
-  () => [props.code, props.language] as const,
-  ([code, language], previous) => {
-    if (previous && previous[0] === code && previous[1] === language) return
-    const request = ++requestToken
-    html.value = ''
-    if (!language || overLimit.value) {
-      // 白名单外或超大输入：不进着色器，直接按纯文本展示。
-      plain.value = true
-      return
-    }
-    plain.value = false
-    highlightForPreview(code, language)
-      .then(rendered => {
-        if (request !== requestToken) return
-        html.value = rendered
-      })
-      .catch(() => {
-        if (request !== requestToken) return
-        plain.value = true
-      })
-  },
-  { immediate: true }
-)
-
-// v-html 的内容是 highlightRuntime 的产物：shiki 输出里代码文本逐字转义，结构由我们自己的
-// framePre 生成，不经过任何用户可控的 HTML 路径。
 </script>
 
 <template>
   <div class="min-h-full">
     <p
-      v-if="overLimit"
+      v-if="overHighlightLimit"
       class="m-0 border-b border-black/6 bg-(--wui-color-surface) px-4 py-2 text-xs text-(--wui-color-text-secondary) dark:border-white/8"
     >
       文件过大，按纯文本显示开头部分，不着色。
     </p>
-    <pre v-if="plain" class="m-0 overflow-x-auto p-4 pt-3 font-mono text-xs leading-6 whitespace-pre">{{ code }}</pre>
+    <pre
+      v-if="highlightedHtml === null"
+      class="m-0 overflow-x-auto p-4 pt-3 font-mono text-xs leading-6 whitespace-pre"
+      >{{ code }}</pre>
     <div
       v-else
       class="contain-inline-size overflow-x-auto p-4 pt-3 font-mono text-xs leading-6"
       data-code
-      v-html="html"
+      v-html="highlightedHtml"
     ></div>
   </div>
 </template>

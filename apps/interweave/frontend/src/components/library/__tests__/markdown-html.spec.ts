@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { allowedLinkTarget, SANITIZED_LINK_ATTRIBUTE, sanitizeInlineHtml } from '../markdown-html'
+import { allowedImageTarget, allowedLinkTarget, SANITIZED_LINK_ATTRIBUTE, sanitizeInlineHtml } from '../markdown-html'
 
 describe('sanitizeInlineHtml', () => {
   it('剔除 script 与事件属性，保留白名单标签的样式语义', () => {
@@ -12,42 +12,45 @@ describe('sanitizeInlineHtml', () => {
   })
 
   it('https 链接改写为受控属性，点击不再交给 WebView 导航', () => {
-    const { html, links } = sanitizeInlineHtml('<a href="https://example.com/a">link</a>')
+    const { html } = sanitizeInlineHtml('<a href="https://example.com/a">link</a>')
     const anchor = document.createElement('div')
     anchor.innerHTML = html
     const element = anchor.querySelector('a')!
     // href 已剥掉：WebView 不会因点击导航；目标改写到受控属性，由预览层拦截后交系统浏览器。
     expect(element.hasAttribute('href')).toBe(false)
     expect(element.getAttribute(SANITIZED_LINK_ATTRIBUTE)).toBe('https://example.com/a')
-    expect(links).toEqual(['https://example.com/a'])
   })
 
-  it('javascript: 与相对地址链接都判死', () => {
-    const { html, links } = sanitizeInlineHtml(
+  it('javascript: 与相对地址链接都判死，mailto 链接保留为受控属性', () => {
+    const { html } = sanitizeInlineHtml(
       '<a href="javascript:alert(1)">bad</a><a href="/relative">rel</a><a href="mailto:a@b.c">mail</a>'
     )
-    expect(links).toEqual(['mailto:a@b.c'])
-    expect(html).toContain('data-md-link-dead')
+    const container = document.createElement('div')
+    container.innerHTML = html
+    const anchors = [...container.querySelectorAll('a')]
+    expect(anchors[0]!.hasAttribute('data-md-link-dead')).toBe(true)
+    expect(anchors[1]!.hasAttribute('data-md-link-dead')).toBe(true)
+    expect(anchors[2]!.getAttribute(SANITIZED_LINK_ATTRIBUTE)).toBe('mailto:a@b.c')
     expect(html).not.toContain('javascript')
     // 相对地址会按应用 origin 解析（可能打到本地媒体端点），同样不放行。
     expect(html).not.toContain('href="/relative"')
   })
 
-  it('行内图片只放行 http(s) 绝对地址，相对 src 被剔除', () => {
+  it('行内图片只放行 http(s) 绝对地址，mailto 与相对 src 被剔除', () => {
     const { html } = sanitizeInlineHtml(
-      '<img src="https://example.com/pic.png" alt="a"><img src="/local/secret.png" alt="b">'
+      '<img src="https://example.com/pic.png" alt="a"><img src="/local/secret.png" alt="b"><img src="mailto:a@b.c" alt="c">'
     )
     expect(html).toContain('src="https://example.com/pic.png"')
     expect(html).toContain('loading="lazy"')
     expect(html).not.toContain('/local/secret.png')
+    expect(html).not.toContain('mailto:a@b.c')
   })
 
   it('输入自带的 data-md-href 一律剥除：raw HTML 不能绕过 scheme 白名单', () => {
-    const { html, links } = sanitizeInlineHtml(
+    const { html } = sanitizeInlineHtml(
       '<a data-md-href="file:///etc/passwd">点我</a><a href="https://example.com/ok" data-md-href="https://example.com/ok">好链</a>'
     )
     // 输入自带的受控属性是攻击面：清洗器无条件剥除，只在 href 通过 allowedLinkTarget 后重写。
-    expect(links).toEqual(['https://example.com/ok'])
     const container = document.createElement('div')
     container.innerHTML = html
     const anchors = [...container.querySelectorAll('a')]
@@ -83,4 +86,20 @@ describe('allowedLinkTarget', () => {
   ])('拒绝 %j', input => {
     expect(allowedLinkTarget(input)).toBeNull()
   })
+})
+
+describe('allowedImageTarget', () => {
+  it.each([
+    ['https://example.com/a.png', 'https://example.com/a.png'],
+    ['http://example.com/a.png', 'http://example.com/a.png']
+  ])('放行 %j', (input, expected) => {
+    expect(allowedImageTarget(input)).toBe(expected)
+  })
+
+  it.each([['mailto:a@b.c'], ['/relative'], ['javascript:alert(1)'], ['data:image/png;base64,xx']])(
+    '拒绝 %j',
+    input => {
+      expect(allowedImageTarget(input)).toBeNull()
+    }
+  )
 })
