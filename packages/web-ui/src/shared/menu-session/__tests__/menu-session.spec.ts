@@ -565,4 +565,58 @@ describe('MenuSession', () => {
 
     expect(childFocusSpy).not.toHaveBeenCalled()
   })
+
+  it('无 root 时 close() 同步收尾不留异步竞态，且 disconnect 后复用同 root 不被旧 close 清理', async () => {
+    const host = document.createElement('div')
+    const item = createMenuItem('Solo')
+    host.append(item)
+    document.body.append(host)
+
+    let allowCreateRoot = false
+    const sharedSurface = createFakeSurface('reused-root')
+    const disposeSpy = vi.fn<(surface: MenuSurface) => void>()
+    const session = trackSession<MenuSurface>({
+      host,
+      markerText: 'test-marker',
+      hiddenSlot: 'test-hidden',
+      isScrollLockDisabled: () => true,
+      onRequestClose: () => {},
+      closeOnLeafClick: false,
+      surface: {
+        createRoot: () => {
+          if (!allowCreateRoot) return undefined
+          if (!sharedSurface.panel.isConnected) document.body.append(sharedSurface.panel)
+          return sharedSurface
+        },
+        createSubmenu: () => createFakeSurface('reused-sub'),
+        positionRoot: () => {},
+        positionSubmenu: () => {},
+        disposeSurface: surface => {
+          disposeSpy(surface)
+          surface.panel.remove()
+        }
+      }
+    })
+
+    // 首次 createRoot 返回 undefined 时紧跟 close() 与重开，不得有异步 close 竞态清理新会话。
+    session.connect()
+    session.open({ isInstant: true, takeFocus: false, suppressFocusVisible: true })
+    session.close({ isInstant: true })
+    session.close({ isInstant: true })
+    allowCreateRoot = true
+    session.open({ isInstant: true, takeFocus: false, suppressFocusVisible: true })
+    await flushFrames(3)
+    expect(session.getRootSurface()).toBe(sharedSurface)
+    expect(disposeSpy).not.toHaveBeenCalled()
+
+    // 关闭退场期间 disconnect() 再重连复用同一个 root，旧退场 promise 必须因 lifecycleGeneration 失效。
+    session.close({ isInstant: false })
+    session.disconnect()
+    disposeSpy.mockClear()
+    session.connect()
+    session.open({ isInstant: true, takeFocus: false, suppressFocusVisible: true })
+    await flushFrames(4)
+    expect(session.getRootSurface()).toBe(sharedSurface)
+    expect(disposeSpy).not.toHaveBeenCalled()
+  })
 })

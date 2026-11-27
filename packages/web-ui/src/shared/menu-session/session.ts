@@ -86,6 +86,7 @@ export function createMenuSession<TSurface extends MenuSurface>(
   let refreshScheduled = false
   let pendingRefreshInstant = true
   let pendingEnsureVisible = false
+  let lifecycleGeneration = 0
   let focusGeneration = 0
   let submenuFocusGeneration = 0
   let pendingSubmenuFocusRafId: number | null = null
@@ -442,14 +443,15 @@ export function createMenuSession<TSurface extends MenuSurface>(
     rebindContentObservers()
   }
 
-  async function closeRootAfterPresence(closeOptions?: MenuCloseOptions) {
+  async function closeRootAfterPresence(closeGeneration: number, closeOptions?: MenuCloseOptions) {
     const currentRoot = root
+    if (!currentRoot) return
     const instant = closeOptions?.isInstant ?? (closeWhenEmptied ? !hasContent() : false)
-    if (currentRoot && !(await hideOverlayPresence(currentRoot.panel, { isInstant: instant }))) return
-    if (isOpen || !host.isConnected || root !== currentRoot) return
+    if (!(await hideOverlayPresence(currentRoot.panel, { isInstant: instant }))) return
+    if (closeGeneration !== lifecycleGeneration || isOpen || !host.isConnected || root !== currentRoot) return
 
     const shouldRestoreFocus = Boolean(manageFocusRestore && !closeOptions?.skipFocusRestore && hasFocusWithin())
-    if (currentRoot) beforeRootCleanup?.(currentRoot)
+    beforeRootCleanup?.(currentRoot)
     cleanupClosedMenu()
     if (shouldRestoreFocus) (closeOptions?.restoreFocusTo ?? restoreFocusTarget)?.focus()
     restoreFocusTarget = undefined
@@ -474,6 +476,7 @@ export function createMenuSession<TSurface extends MenuSurface>(
   return {
     open(openOptions: MenuOpenOptions) {
       outsideClickGuard.arm()
+      lifecycleGeneration += 1
       focusGeneration += 1
       cancelPendingSubmenuFocus()
       if (isOpen && root) {
@@ -537,6 +540,12 @@ export function createMenuSession<TSurface extends MenuSurface>(
     },
 
     close(closeOptions?: MenuCloseOptions) {
+      const hasActiveState =
+        isOpen || Boolean(root) || Boolean(rootHandle) || submenus.length > 0 || closingSubmenus.closing().length > 0
+      if (!hasActiveState) return
+
+      lifecycleGeneration += 1
+      const closeGeneration = lifecycleGeneration
       isOpen = false
       focusGeneration += 1
       cancelPendingSubmenuFocus()
@@ -548,7 +557,14 @@ export function createMenuSession<TSurface extends MenuSurface>(
       overlay.invalidate()
       refreshScheduled = false
       rebindContentObservers()
-      void closeRootAfterPresence(closeOptions)
+      if (!root) {
+        const shouldRestoreFocus = Boolean(manageFocusRestore && !closeOptions?.skipFocusRestore && hasFocusWithin())
+        cleanupClosedMenu()
+        if (shouldRestoreFocus) (closeOptions?.restoreFocusTo ?? restoreFocusTarget)?.focus()
+        restoreFocusTarget = undefined
+        return
+      }
+      void closeRootAfterPresence(closeGeneration, closeOptions)
     },
 
     claimPlaceholder() {
@@ -609,6 +625,7 @@ export function createMenuSession<TSurface extends MenuSurface>(
       rootHandle?.release()
       rootHandle = null
       rootHandleIsPlaceholder = false
+      lifecycleGeneration += 1
       isOpen = false
       focusGeneration += 1
       cancelPendingSubmenuFocus()
