@@ -21,10 +21,6 @@ msgid "关闭横幅"
 msgstr "Dismiss banner"
 
 #: src/app/index.vue
-msgid "js-kit 与 browser-kit 交互文档站"
-msgstr "Interactive docs for js-kit & browser-kit"
-
-#: src/app/index.vue
 msgid "全局动效"
 msgstr "Global motion"
 
@@ -586,3 +582,7 @@ msgstr "Automatically inject Web Components imports by tag in Vue, React (JSX/TS
 #: src/pages/home/index.vue
 msgid "2 篇文档"
 msgstr "2 docs"
+
+#: src/app/index.vue
+msgid "开发工具库与构建插件文档站"
+msgstr "Developer Toolkits & Build Plugins Documentation"

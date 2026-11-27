@@ -21,10 +21,6 @@ msgid "关闭横幅"
 msgstr "关闭横幅"
 
 #: src/app/index.vue
-msgid "js-kit 与 browser-kit 交互文档站"
-msgstr "js-kit 与 browser-kit 交互文档站"
-
-#: src/app/index.vue
 msgid "全局动效"
 msgstr "全局动效"
 
@@ -586,3 +582,7 @@ msgstr "在 Vue、React（JSX/TSX）与 Vite HTML 入口中按标签自动注入
 #: src/pages/home/index.vue
 msgid "2 篇文档"
 msgstr "2 篇文档"
+
+#: src/app/index.vue
+msgid "开发工具库与构建插件文档站"
+msgstr "开发工具库与构建插件文档站"
