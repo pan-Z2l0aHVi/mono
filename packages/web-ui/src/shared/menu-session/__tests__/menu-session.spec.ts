@@ -522,4 +522,47 @@ describe('MenuSession', () => {
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
     expect(onRequestClose).toHaveBeenCalledWith('escape')
   })
+
+  it('ArrowRight 展开子菜单后若快速关闭重开，旧双帧聚焦回调失效且不抢占新子菜单焦点', async () => {
+    const host = document.createElement('div')
+    const parentItem = createMenuItem('More', { submenu: true, focusable: true })
+    const childItem = createMenuItem('Sub Leaf', { focusable: true })
+    parentItem.append(childItem)
+    host.append(parentItem)
+    document.body.append(host)
+
+    const childFocusSpy = vi.spyOn(childItem as HTMLElement & { focusItem: () => void }, 'focusItem')
+    const session = trackSession<MenuSurface>({
+      host,
+      markerText: 'test-marker',
+      hiddenSlot: 'test-hidden',
+      isScrollLockDisabled: () => true,
+      onRequestClose: () => {},
+      closeOnLeafClick: true,
+      hideHostChildren: true,
+      surface: {
+        createRoot: () => createFakeSurface('arrow-root'),
+        createSubmenu: () => createFakeSurface('arrow-sub'),
+        positionRoot: () => {},
+        positionSubmenu: () => {},
+        disposeSurface: surface => {
+          surface.panel.remove()
+        }
+      }
+    })
+
+    session.open({ isInstant: true, takeFocus: true, suppressFocusVisible: false })
+    await flushFrames(2)
+
+    const arrowRight = new KeyboardEvent('keydown', { key: 'ArrowRight', bubbles: true, cancelable: true })
+    Object.defineProperty(arrowRight, 'composedPath', { value: () => [parentItem] })
+    session.handleKeydown(arrowRight)
+
+    // 在 ArrowRight 排队的双 rAF 执行前立即关闭并重开菜单，旧子菜单聚焦链必须被取消。
+    session.close({ isInstant: true })
+    session.open({ isInstant: true, takeFocus: false, suppressFocusVisible: true })
+    await flushFrames(4)
+
+    expect(childFocusSpy).not.toHaveBeenCalled()
+  })
 })

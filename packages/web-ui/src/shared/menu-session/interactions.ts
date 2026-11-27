@@ -107,6 +107,7 @@ export interface MenuKeyboardDelegate {
   getEnabledItems(level: number): HTMLElement[]
   isSubmenuItem(item: HTMLElement): boolean
   openSubmenuInstant(item: HTMLElement): void
+  scheduleSubmenuFocus(parentItem: HTMLElement, nextLevel: number): void
   closeToParent(level: number): HTMLElement | undefined
   closeDeepestOrAll(): void
 }
@@ -137,7 +138,7 @@ export function handleMenuKeyboard(delegate: MenuKeyboardDelegate, e: KeyboardEv
     case 'ArrowRight':
       if (focused?.hasAttribute('submenu')) {
         delegate.openSubmenuInstant(focused)
-        requestAnimationFrame(() => requestAnimationFrame(() => focusMenuItem(delegate.getEnabledItems(level + 1)[0])))
+        delegate.scheduleSubmenuFocus(focused, level + 1)
       }
       break
     case 'ArrowLeft':

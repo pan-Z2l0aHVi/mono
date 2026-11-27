@@ -87,6 +87,16 @@ export function createMenuSession<TSurface extends MenuSurface>(
   let pendingRefreshInstant = true
   let pendingEnsureVisible = false
   let focusGeneration = 0
+  let submenuFocusGeneration = 0
+  let pendingSubmenuFocusRafId: number | null = null
+
+  function cancelPendingSubmenuFocus() {
+    submenuFocusGeneration += 1
+    if (pendingSubmenuFocusRafId !== null) {
+      cancelAnimationFrame(pendingSubmenuFocusRafId)
+      pendingSubmenuFocusRafId = null
+    }
+  }
   const submenus: SubmenuEntry<TSurface>[] = []
   const level0ItemAnchors: MenuItemAnchors = new Map()
   const scrollLock = defineScrollLockLease().make()
@@ -133,6 +143,21 @@ export function createMenuSession<TSurface extends MenuSurface>(
     getEnabledItems: level => getEnabledMenuLevelItems(getLevelSurface(level)?.content),
     isSubmenuItem: item => item.hasAttribute('submenu'),
     openSubmenuInstant: item => openSubmenu(item, true),
+    scheduleSubmenuFocus: (parentItem, nextLevel) => {
+      cancelPendingSubmenuFocus()
+      const gen = submenuFocusGeneration
+      const isCurrent = () =>
+        gen === submenuFocusGeneration && isOpen && submenus[nextLevel - 1]?.parentItem === parentItem
+      pendingSubmenuFocusRafId = requestAnimationFrame(() => {
+        pendingSubmenuFocusRafId = null
+        if (!isCurrent()) return
+        pendingSubmenuFocusRafId = requestAnimationFrame(() => {
+          pendingSubmenuFocusRafId = null
+          if (!isCurrent()) return
+          focusMenuItem(getEnabledMenuLevelItems(getLevelSurface(nextLevel)?.content)[0])
+        })
+      })
+    },
     closeToParent: level => {
       const parent = submenus[level - 1]?.parentItem
       closeSubmenusFrom(level - 1, false)
@@ -291,6 +316,7 @@ export function createMenuSession<TSurface extends MenuSurface>(
   }
 
   function closeSubmenusFrom(indexFrom: number, isInstant: boolean) {
+    cancelPendingSubmenuFocus()
     for (let index = submenus.length - 1; index >= indexFrom; index--) {
       const entry = submenus[index]
       entry.parentItem.removeAttribute('active')
@@ -449,6 +475,7 @@ export function createMenuSession<TSurface extends MenuSurface>(
     open(openOptions: MenuOpenOptions) {
       outsideClickGuard.arm()
       focusGeneration += 1
+      cancelPendingSubmenuFocus()
       if (isOpen && root) {
         closeSubmenusFrom(0, true)
         closingSubmenus.restoreAll()
@@ -512,6 +539,7 @@ export function createMenuSession<TSurface extends MenuSurface>(
     close(closeOptions?: MenuCloseOptions) {
       isOpen = false
       focusGeneration += 1
+      cancelPendingSubmenuFocus()
       openedWithContent = false
       syncScrollLock()
       rootHandle?.release()
@@ -583,6 +611,7 @@ export function createMenuSession<TSurface extends MenuSurface>(
       rootHandleIsPlaceholder = false
       isOpen = false
       focusGeneration += 1
+      cancelPendingSubmenuFocus()
       openedWithContent = false
       refreshScheduled = false
       restoreFocusTarget = undefined
