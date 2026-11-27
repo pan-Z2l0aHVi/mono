@@ -101,6 +101,7 @@ describe('WindowsTitleBarController', () => {
   })
 
   it('isWindowMaximised 在途期间触发 menu:tree-changed 不丢弃状态，并发查询丢弃陈旧响应', async () => {
+    vi.useFakeTimers()
     const firstQuery = createDeferred<boolean>()
     const secondQuery = createDeferred<boolean>()
     let callCount = 0
@@ -116,8 +117,12 @@ describe('WindowsTitleBarController', () => {
       // 菜单快照更新不应干扰在途的 isWindowMaximised 查询。
       stub.pushMenu([...sampleMenu, { label: '开发', children: [] }])
 
-      // 触发第二次并发最大化状态查询，且后发先至返回 false，随后旧查询才返回 true。
+      // 高频连续 resize 应防抖合并为一次 IPC，且后发先至返回 false 时丢弃旧查询。
       window.dispatchEvent(new Event('resize'))
+      window.dispatchEvent(new Event('resize'))
+      window.dispatchEvent(new Event('resize'))
+      expect(isWindowMaximised).toHaveBeenCalledTimes(1)
+      vi.advanceTimersByTime(120)
       expect(isWindowMaximised).toHaveBeenCalledTimes(2)
 
       secondQuery.resolve(false)
@@ -134,6 +139,7 @@ describe('WindowsTitleBarController', () => {
       const thirdQuery = createDeferred<boolean>()
       isWindowMaximised.mockReturnValueOnce(thirdQuery.promise)
       window.dispatchEvent(new Event('resize'))
+      vi.advanceTimersByTime(120)
       stub.pushMenu(sampleMenu)
       thirdQuery.resolve(true)
       await Promise.resolve()
@@ -141,6 +147,7 @@ describe('WindowsTitleBarController', () => {
       expect(controller.isMaximised.value).toBe(true)
     } finally {
       controller.dispose()
+      vi.useRealTimers()
     }
   })
 

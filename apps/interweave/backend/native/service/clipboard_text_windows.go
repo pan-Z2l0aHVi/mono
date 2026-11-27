@@ -101,13 +101,14 @@ func utf16PointerToString(handle uintptr, pointer uintptr) (string, error) {
 		return "", fmt.Errorf("measure Windows clipboard text: %w", sizeErr)
 	}
 	units := size / unsafe.Sizeof(uint16(0))
-	buffer := make([]uint16, 0, units)
-	for index := uintptr(0); index < units; index++ {
-		unit := *(*uint16)(unsafe.Pointer(pointer + index*unsafe.Sizeof(uint16(0))))
-		if unit == 0 {
-			break
-		}
-		buffer = append(buffer, unit)
+	// pointer 来自 Win32 GlobalLock 锁定的原生堆内存，不归 Go GC 管理；
+	// 用 unsafe.Slice 按 GlobalSize 定上界单次视图读取，避免循环内做 uintptr 指针算术。
+	raw := unsafe.Slice((*uint16)(unsafe.Pointer(pointer)), units)
+	n := 0
+	for n < len(raw) && raw[n] != 0 {
+		n++
 	}
+	buffer := make([]uint16, n)
+	copy(buffer, raw[:n])
 	return string(decodeUTF16Buffer(buffer)), nil
 }

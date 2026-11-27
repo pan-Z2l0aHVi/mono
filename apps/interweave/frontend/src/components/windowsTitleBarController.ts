@@ -59,6 +59,7 @@ export function createWindowsTitleBarController(options: {
   let started = false
   let disposed = false
   let stopMenuUpdates: (() => void) | null = null
+  let resizeTimer: ReturnType<typeof setTimeout> | null = null
   // 单调版本号：菜单快照与最大化状态各用独立通道，避免跨通道互相丢弃更新，
   // 并在并发查询或 dispose() 后丢弃陈旧响应。
   let menuSnapshotVersion = 0
@@ -172,7 +173,11 @@ export function createWindowsTitleBarController(options: {
   }
 
   function handleResize() {
-    void syncMaximisedState()
+    if (resizeTimer !== null) clearTimeout(resizeTimer)
+    resizeTimer = setTimeout(() => {
+      resizeTimer = null
+      void syncMaximisedState()
+    }, 120)
   }
 
   function handleKeydown(event: KeyboardEvent) {
@@ -223,6 +228,10 @@ export function createWindowsTitleBarController(options: {
     menuSnapshotVersion += 1
     maximisedVersion += 1
     savedFocus = null
+    if (resizeTimer !== null) {
+      clearTimeout(resizeTimer)
+      resizeTimer = null
+    }
     stopMenuUpdates?.()
     stopMenuUpdates = null
     window.removeEventListener('resize', handleResize)
