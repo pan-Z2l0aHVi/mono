@@ -1,7 +1,7 @@
 # ADR-0010: 仓库指令保持编排无关（Harness-agnostic）
 
 - **Date**: 2026-10-03
-- **Revised**: 2026-11-21，仓库指令面移除对外部编排层的预设，保持编排无关（harness-agnostic）。
+- **Revised**: 2026-11-21，仓库指令面移除对外部编排层的预设，保持编排无关（harness-agnostic）；2026-11-27，随 [ADR-0026](./0026-lean-agent-context-for-frontier-models.md) 退役 `task-ledger` skill，仅保留 worktree 隔离与验证不变量。
 - **Status**: 已接受
 
 ## 背景

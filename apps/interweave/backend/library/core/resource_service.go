@@ -73,7 +73,7 @@ func (s *Library) FindResourceLocationMatches(
 		return []ResourceLocationMatch{}, nil
 	}
 
-	// 同一 Resource 可能在同一位置登记多条 Source（CONTEXT.md「重复 Source」），
+	// 同一 Resource 可能在同一位置登记多条 Source（apps/interweave/AGENTS.md「重复 Source」），
 	// 提示按 Resource 去重：用户看到的是「已有哪几个资源」，不是「有几条记录」。
 	resourceIDs := make([]string, 0, len(sources))
 	seen := make(map[string]bool, len(sources))

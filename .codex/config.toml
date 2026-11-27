@@ -20,7 +20,7 @@
 # auto_review（该 flag 的真正价值），去掉 workspace-write。
 #
 # 这是对官方推荐（可信仓库用 workspace-write + on-request，全访问仅限受控
-# 容器）的一次主动偏离，不是回到默认。判定依据与代价见 docs/agents/environments.md。
+# 容器）的一次主动偏离，不是回到默认。判定依据与代价见 docs/agents/environment.md。
 sandbox_mode = "danger-full-access"
 approval_policy = "on-request"
 approvals_reviewer = "auto_review"

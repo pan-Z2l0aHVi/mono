@@ -1,42 +1,20 @@
-# 发布流程
+# 发布与 Changesets 边界
 
-本文件规定仓库侧的 changeset 与发布验证。PR review、required CI 和用户 merge 授权见 [`review.md`](./review.md) 与 [`workflow.md`](./workflow.md)。task 级别按实际改动影响判定，不因进入 release 流程而变化；分级与按需台账见 `task-ledger` skill。
+合并与发布均须按 [`workflow.md`](./workflow.md#授权边界与-pr-自动跟进) 取得用户授权；CI 门控接线见 [`ci.md`](./ci.md)。
 
 ## Changesets
 
-Changesets 同时管理 npm 包、私有 app 与桌面端 release 驱动版本。按改动位置选择声明：
+- **声明范围**：公共 npm 包、参与版本管理的私有包、以及桌面端宿主应用（`@greypan/interweave`）有行为变更时声明对应 `patch`/`minor`/`major`；仅 docs/test/chore/根路径或独立 demo 改动写空壳 changeset（正文仅两行 `---`）。
+- **严禁声明 `ignore` 表内的包**：见 [`.changeset/config.json`](../../.changeset/config.json)，被忽略的声明不会 bump 版本也不会被版本 PR 删除。`private: true` 只关闭 npm 发布，不等于退出 Changesets 版本管理。
+- **英文描述与终态同步**：Changeset 描述必须用英文（直接进入面向用户的 CHANGELOG），交付前须核对与最终实现一致。
+- **门禁边界**：PR CI 运行 `pnpm run check-changeset --base <sha> --head <sha>`；main 已有文件、删除文件或未提交文件均不构成声明。
 
-- 公共 npm 包：声明行为有变化的包与 `patch`、`minor` 或 `major`。
-- 私有但参与版本管理的包：需要版本变化时声明；不进入 npm 发布。
-- 桌面端应用：声明其版本驱动 release；被 ignore 的 frontend 或 demo 包永不声明。
-- 只有 docs / test / chore 或根路径改动：写空壳 changeset。
+## 多语言 README
 
-不要声明 [`.changeset/config.json`](../../.changeset/config.json) 的 `ignore` 表；被忽略的声明不会 bump 版本，也不会被版本 PR 删除。`private: true` 只关闭 npm 发布，不等于退出 Changesets 版本管理。Changeset 描述使用英文，因为它会进入面向 npm 用户的 CHANGELOG，而 CHANGELOG 是发布后唯一长期留存的用户说明；私有包的 CHANGELOG 留在仓库里，同样适用。描述还必须与**最终**实现一致：中途改了键名、路径或行为，交付前回去改 changeset。写错的内容不会有人回头核对，却会误导下一个读 CHANGELOG 的人，而自己那份 README 当时可能已经改对了。空壳 changeset 只含两行 `---`；退役公开包时另用不声明包的正文点名。
+公开 npm 包必须同时维护 `README.md` 与 `README.CN.md` 并互相链接；私有包/应用只要存在译文也须双向互链（由 `readme-locales` 门禁守护）。
 
-PR CI 对 PR base/head 执行 changeset gate，判据是 `pnpm run check-changeset --base <sha> --head <sha>`，内含 `changeset status` 与自定义内容检查；main 已有的 changeset、删除的文件、staged 或未提交文件都不构成声明。版本分支由 workflow 豁免；本地 pre-commit 政策检查不运行该检查。
+## npm 与 Wails 发布边界
 
-## 包页与多语言 README
-
-发布到 npm 的包必须同时有 `README.md` 与 `README.CN.md`，两份互相链接：包页的英文与中文读者各占一半，缺一份或只有单向链接都会让另一侧没有入口。私有包与应用不要求译文，但只要译文存在，它与主版就必须互相链接。链接可以写相对路径，也可以写 GitHub 文件页的绝对地址；`readme-locales` 检查在 `check-policy` 与 `check-pre-commit` 里守护这条规则。
-
-## 步骤
-
-1. 若本次任务启用了 `task-ledger`，确认 Task Packet（见 `task-ledger` skill）描述实际交付内容；需要本地仓库政策检查时按 [`commit.md`](./commit.md) 运行只读政策检查，pre-commit 会在提交时执行同一组。
-2. 按 [`verification.md`](./verification.md) 选择并实际运行相关测试、构建、契约与必要的浏览器验证。
-3. 创建 PR 后确认 required `check` 覆盖当前 base/head 且 `changeset-required` 通过，再按 [`review.md`](./review.md) 核对 PR 上的 review 结论。默认就是 CI 自动审查那条绑定 head 的评论；`check` 绿不等于 review 完成，两者要各自覆盖当前 head。
-4. merge 需用户明确授权，机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。合并后如需复检 main CI，手动触发；有版本变更时，再验证 changesets 版本 PR、合并与 npm / Wails 发布链。
-5. 若本次任务启用了 `task-ledger`，按该 skill 更新本地台账；`close` 不代替 CI、review 或发布证据。
-
-PR CI 的机械性修复由对应 task owner 处理；逻辑、测试和契约问题由原 owner 修复。每次新提交都在新 head 上重新取一次 review 结论。
-
-未经用户授权不执行发布，取得授权的机制见 [`workflow.md`](./workflow.md#怎么取得这个授权)。不得直接运行 `npm publish`；首次发布用 `pnpm publish-new-pack <package-name>`（传 `packages/` 下的目录名）。Git 检查的绕过禁令见 [`commit.md`](./commit.md)。CI 侧的门控接线见 [`build-ci.md`](./build-ci.md)。
-
-## npm 发布重跑与 release notes
-
-`prepare` 从 merge commit 检测本次版本化的公共包，把包名、版本与目录作为 job 输出传给后续 job，后续 job 只依赖这些输出。`publish` 成功即视为版本已发布，`release-notes` 不查询 npm registry、不等待其可见性——npm publish 受理与 registry 落库是异步的，传播延迟不阻塞发布链；npm 侧未实际落库时，Release 正文中的 npm 链接可能指向未收录的版本，这是对齐 changesets/action、release-please 等主流信任式发布而接受的取舍。release-notes 直接为候选包创建 GitHub Release：已存在且指向当前 merge SHA 的 published release 直接跳过并记录；指向其它 SHA 或仍为 draft 时失败。新建 release 后重新读取并核对 draft 状态与 tag 指向。重跑按当前 merge commit 重新检测候选包，因此重复执行是幂等的，但不能据此推算历史上是否发布过。workflow 按仓库串行，后一次运行排队而非取消前一次。
-
-## Wails desktop release 恢复
-
-native build 前 `prepare` 只读检查 release 与 tag：release 已存在时直接失败并拒绝修改；release 不存在时，tag 不存在，或 tag 为 annotated 且指向当前 merge SHA，才继续构建。`publish` 组装两平台产物与 checksums，缺 tag 时创建 annotated tag，再以 `--verify-tag` 创建 release，随后核对 draft 状态、tag 类型与 SHA、资产集合、大小，以及 GitHub 提供的 digest 与本次构建产物一致。
-
-桌面端发布只创建正式 release：`build` 重跑会覆盖同名 artifact；`publish` 在 release 已创建后失败时，重跑会因「已存在 release」被拒绝，需人工核对 tag、release 与资产状态后决定处置，不做自动清理重建。
+- **禁止直接 `npm publish`**：首次发布新包必须用 `pnpm publish-new-pack <package-dir-name>`；后续发布统一走版本 PR 与 [`npm-publish.yml`](../../.github/workflows/npm-publish.yml)。
+- **npm release-notes 取舍**：`publish` 成功即创建 GitHub Release，不轮询 npm registry 可见性；重跑按当前 merge commit 幂等跳过已存在且同 SHA 的 published release，指向其它 SHA 或 draft 时失败。
+- **Wails desktop release 不可自动重建**：native build 前只读核对 release 不存在且 tag 为空或指向当前 merge SHA；`publish` 阶段若 release 已创建后失败，重跑会被拒绝，须人工核对 tag、release 与资产后处置。

@@ -1,7 +1,7 @@
 # ADR-0012: PR review 结论与人工审查的增量复审
 
 - **Date**: 2026-10-18
-- **Revised**: 2026-11-07
+- **Revised**: 2026-11-07；2026-11-27，随 [ADR-0026](./0026-lean-agent-context-for-frontier-models.md) 退役 `task-ledger` 并补充 PR 自动跟进、核实修复推送与误判评论闭环。
 - **Status**: 已接受
 
 ## 背景

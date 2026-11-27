@@ -27,7 +27,7 @@
 **（2026-11-23 修订）policy 入口按延迟与诊断诉求分层。** 保持 `packages/monorepo-kit/src/runner/` 链协议零改动，`scripts/policies/shared-policies.mjs` 抽取两处共用的 6 条政策：
 
 - `check-pre-commit` 保持单条 `.use()` 短路链（6 条共享政策 + 末尾 `stagedClean` + `defineCatch()`），遇首错即快停，最小化本地提交延迟；
-- `check-policy` 先将 `fullCheckout` 置首位单独运行（稀疏工作区失败即停，避免假绿），随后遍历 `[...sharedPolicies, ...policyOnlyPolicies]` 逐项独立构造 `defineRunner().use(policy).use(defineCatch()).make(ctx).run()`，并用 `try/catch` 包裹 `.make(ctx)` 将同步装配异常记为 `throw: <msg>` 加入错误列表而不中断后续收集；默认全量收集全部失败并以 `\n` 拼成一个 `Err` 交由 `runCheck` 输出（传 `--fail-fast` 可切回首错即停），单轮 CI 即可暴露所有政策违规。入口的参数解析与聚合调度逻辑由 `scripts/checks/check-policy.test.mjs` 覆盖，入口测试边界见 `script-policy.md`。
+- `check-policy` 先将 `fullCheckout` 置首位单独运行（稀疏工作区失败即停，避免假绿），随后遍历 `[...sharedPolicies, ...policyOnlyPolicies]` 逐项独立构造 `defineRunner().use(policy).use(defineCatch()).make(ctx).run()`，并用 `try/catch` 包裹 `.make(ctx)` 将同步装配异常记为 `throw: <msg>` 加入错误列表而不中断后续收集；默认全量收集全部失败并以 `\n` 拼成一个 `Err` 交由 `runCheck` 输出（传 `--fail-fast` 可切回首错即停），单轮 CI 即可暴露所有政策违规。入口的参数解析与聚合调度逻辑由 `scripts/checks/check-policy.test.mjs` 覆盖，入口测试边界见 `scripts-and-commands.md`。
 
 **root/env 由触发层注入。** `.make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })`；插件与能力目录一律不产出 root，workspace root 的解析在 `shared/` 有唯一实现。
 

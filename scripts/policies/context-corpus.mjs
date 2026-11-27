@@ -4,13 +4,10 @@ import { repoRoot } from './repo-root.mjs'
 
 /**
  * 本仓的 context 语料事实：语料根、skill 出处、workspace 目录、软链对应表与 commit scope 来源。
- * 判据在包的 `check-context` 里，取舍见 ADR-0013，扫描面见 `docs/agents/agent-context.md`。
+ * 判据在包的 `check-context` 里，取舍见 ADR-0013 与 ADR-0026。
  *
- * 根目录不放客户端适配文件。实测 Claude Code 2.1.283 已原生发现 AGENTS.md，但只要根目录存在 CLAUDE.md，
- * 它的原生发现就整条不生效：默认的 claude-md-or-agents-md 只在项目没有 CLAUDE.md 时才读 AGENTS.md，
- * 显式声明 claude-md-and-agents-md 也救不回来（两种模式下包级 AGENTS.md 都不再按需注入）。根入口因此只保留
- * AGENTS.md，Claude Code 与 Codex 读同一份层级文件。这道断言拦住的是「放回一行 @AGENTS.md shim」——它看起来
- * 是零副作用的兼容保险，实际会让全部包级指令静默退回到靠模型自觉 Read。
+ * 根目录不放 CLAUDE.md：Claude Code 2.1.283+ 原生发现 AGENTS.md，一旦根存在 CLAUDE.md
+ * 会静默关闭包级 AGENTS.md 按需注入。根入口只保留 AGENTS.md，Claude Code 与 Codex 读同一份层级文件。
  */
 export const contextSymlinks = [
   { path: '.claude/rules', target: '../.agents/rules' },
@@ -20,7 +17,7 @@ export const contextSymlinks = [
 export const contextCorpus = defineContextCorpus({
   entry: 'AGENTS.md',
   entryMarkers: ['docs/agents/workflow.md'],
-  rootDocuments: ['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'ARCHITECTURE.md', 'CONTRIBUTING.md'],
+  rootDocuments: ['AGENTS.md', 'CLAUDE.md', 'ARCHITECTURE.md', 'CONTRIBUTING.md'],
   forbiddenRootFiles: [
     {
       path: 'CLAUDE.md',
@@ -40,9 +37,7 @@ export const contextCorpus = defineContextCorpus({
   },
   workspaces: readPnpmWorkspaceDirectories(repoRoot),
   requireWorkspaceEntry: false,
-  // 哪些容器目录放应用是语义划分，`pnpm-workspace.yaml` 里没有这一层，只能手写。
   applicationDirs: ['apps'],
-  // 时点性研究与方案草稿不入库（见 .gitignore），只剩设计资产需要非权威标记。
   referenceDirs: ['docs/design'],
   requiredScripts: ['check-context', 'check-pack', 'test-scripts'],
   clientPermissions: '.claude/settings.local.json',
@@ -54,5 +49,5 @@ export const contextCorpus = defineContextCorpus({
     pick: config => config?.prompt?.scopes ?? []
   },
   symlinks: contextSymlinks,
-  authorization: { pointer: 'workflow.md#怎么取得这个授权', owner: 'docs/agents/workflow.md' }
+  authorization: { pointer: 'workflow.md#授权边界与-pr-自动跟进', owner: 'docs/agents/workflow.md' }
 })

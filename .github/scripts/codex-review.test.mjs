@@ -2782,8 +2782,11 @@ exit 2
   const riskCases = [
     ['.github/workflows/ci.yml', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
     ['.github/scripts/codex-review.mjs', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
-    ['.agents/skills/task-ledger/ledger.mjs', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
-    ['skills/task-ledger/ledger.mjs', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
+    [
+      '.agents/skills/apps-sparse-checkout/sparse-checkout.mjs',
+      { rank: 0, tier: 'high', category: 'contract-or-infra' }
+    ],
+    ['skills/apps-sparse-checkout/sparse-checkout.mjs', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
     ['package.json', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
     ['packages/web-ui/package.json', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
     ['packages/web-ui/src/index.ts', { rank: 0, tier: 'high', category: 'contract-or-infra' }],
@@ -2793,8 +2796,8 @@ exit 2
     ['packages/web-ui/src/button.test.ts', { rank: 2, tier: 'medium', category: 'test' }],
     ['docs/adr/0021-codex-review-gate.md', { rank: 2, tier: 'medium', category: 'policy-or-adr' }],
     ['docs/agents/review.md', { rank: 2, tier: 'medium', category: 'policy-or-adr' }],
-    ['.agents/rules/code-style.md', { rank: 2, tier: 'medium', category: 'policy-or-adr' }],
-    ['skills/task-ledger/SKILL.md', { rank: 2, tier: 'medium', category: 'policy-or-adr' }],
+    ['.agents/rules/ui-style.md', { rank: 2, tier: 'medium', category: 'policy-or-adr' }],
+    ['skills/apps-sparse-checkout/SKILL.md', { rank: 2, tier: 'medium', category: 'policy-or-adr' }],
     ['AGENTS.md', { rank: 2, tier: 'medium', category: 'policy-or-adr' }],
     ['.changeset/codex-review-preload-b1.md', { rank: 3, tier: 'low', category: 'other' }],
     ['packages/web-ui/src/button.css', { rank: 3, tier: 'low', category: 'other' }],
@@ -3407,7 +3410,7 @@ exit 2
   // Skills 分流契约：prompt 必须禁用实施流程型 skills、允许命中路由的审校类 skills，
   // 并且明确覆写所有 skill 自带的输出格式；stage-codex-inputs 必须 stage repo-query 与自撰审校 SKILL.md。
   const prompt = fs.readFileSync(path.join(import.meta.dirname, '../codex/prompts/review.md'), 'utf8')
-  for (const forbidden of ['task-ledger', 'request-authorization', 'apps-sparse-checkout']) {
+  for (const forbidden of ['apps-sparse-checkout']) {
     assert.ok(prompt.includes(forbidden), `review prompt must explicitly forbid workflow skill ${forbidden}`)
   }
   assert.match(prompt, /\$RUNNER_TEMP\/trusted\/skills\//)

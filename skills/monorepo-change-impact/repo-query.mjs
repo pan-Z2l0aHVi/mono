@@ -604,7 +604,7 @@ const selfAuthoredSkillPaths = fs.existsSync(skillsRoot)
   : []
 const hasContextChange = normalizedPaths.some(
   file =>
-    ['AGENTS.md', 'CLAUDE.md', 'CONTEXT.md', 'package.json', 'pnpm-workspace.yaml', 'turbo.json'].includes(file) ||
+    ['AGENTS.md', 'CLAUDE.md', 'ARCHITECTURE.md', 'package.json', 'pnpm-workspace.yaml', 'turbo.json'].includes(file) ||
     file.startsWith('.agents/') ||
     file.startsWith('.claude/') ||
     file.startsWith('docs/agents/') ||
@@ -672,11 +672,10 @@ const hasWailsPublicApiChange = normalizedPaths.some(
 const context = new Set()
 if (normalizedPaths.length > 0) addContext(context, 'AGENTS.md')
 for (const workspace of directlyChanged) addContext(context, `${workspace.root}/AGENTS.md`)
-if (hasCodeChange) addContext(context, '.agents/rules/code-style.md')
+if (hasCodeChange) addContext(context, '.agents/rules/ui-style.md')
 if (hasContextChange) {
-  addContext(context, 'docs/agents/agent-context.md')
-  addContext(context, 'CONTEXT.md')
-  addContext(context, 'docs/adr/0004-progressive-agent-context-architecture.md')
+  addContext(context, 'docs/adr/0026-lean-agent-context-for-frontier-models.md')
+  addContext(context, 'ARCHITECTURE.md')
 }
 if (
   hasPackageContractChange ||
@@ -687,12 +686,11 @@ if (
 )
   addContext(context, 'docs/agents/build.md')
 if (hasPackageContractChange || hasBrowserRuntimeChange) {
-  addContext(context, '.agents/rules/testing.md')
   addContext(context, 'docs/agents/verification.md')
 }
 if (hasBrowserRuntimeChange) {
-  addContext(context, 'docs/agents/runtime-verification.md')
-  if (normalizedPaths.some(file => file.startsWith('packages/web-ui/'))) addContext(context, 'docs/agents/web-ui.md')
+  addContext(context, 'docs/agents/verification.md')
+  if (normalizedPaths.some(file => file.startsWith('packages/web-ui/'))) addContext(context, 'packages/web-ui/AGENTS.md')
 }
 
 const verification = []

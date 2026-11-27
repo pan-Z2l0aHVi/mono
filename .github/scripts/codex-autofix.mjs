@@ -33,7 +33,7 @@ const EXTRA_GUARDED = [
   { label: '依赖清单与供应链配置', matcher: /(^|\/)vendor\//u },
   {
     label: 'agent 指令体系与 ADR',
-    matcher: /(^|\/)(AGENTS\.md|CLAUDE\.md|CONTEXT\.md|ARCHITECTURE\.md|docs\/agents\/|docs\/adr\/|\.agents\/)/u
+    matcher: /(^|\/)(AGENTS\.md|CLAUDE\.md|ARCHITECTURE\.md|docs\/agents\/|docs\/adr\/|\.agents\/)/u
   },
   { label: 'Codex 自身配置', matcher: /(^|\/)\.codex\//u },
   { label: '客户端权限配置', matcher: /(^|\/)\.claude\//u },
