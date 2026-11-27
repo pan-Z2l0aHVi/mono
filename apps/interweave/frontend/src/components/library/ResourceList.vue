@@ -1,6 +1,7 @@
 <script setup lang="ts">
 import type { WebUiContextMenu, WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
 import {
+  lucideCopy,
   lucideExternalLink,
   lucideImage,
   lucideInfo,
@@ -52,6 +53,8 @@ const emit = defineEmits<{
   /** 用系统默认应用打开该资源；由父级经由 runtime 交给操作系统。 */
   openDefault: [resource: ResourceView]
   showInFileManager: [source: ResourceSourceView]
+  /** 把资源复制到系统剪贴板（本地文件复制文件对象，链接复制 URL）。 */
+  copy: [resource: ResourceView]
   /** 设为桌面壁纸；由父级经 runtime 交后端（URL 先下载缓存）。 */
   setWallpaper: [resource: ResourceView]
   /** 键盘导航/context menu 请求激活某一行：由父级把 activeResourceId 置为该行资源的 id。 */
@@ -515,6 +518,11 @@ function handleShowInFileManager(resource: ResourceView | null) {
   closeContextMenu()
 }
 
+function handleCopy(resource: ResourceView | null) {
+  if (resource) emit('copy', resource)
+  closeContextMenu()
+}
+
 /*
  * 壁纸入口的可用形态：kind 为 image 且首选来源可信。锁定 preferred（而不是 sources.find 第一个
  * 可用项）：一键原子替换后首选图片可能不在首位，菜单按 preferred 判定，点击才不会给错来源。
@@ -762,6 +770,10 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
           <web-ui-icon slot="prefix" :icon="fileManagerIcon()" :size="14" />
           {{ fileManagerLabel() }}
         </web-ui-dropdown-item>
+      </web-ui-dropdown-item>
+      <web-ui-dropdown-item v-if="contextResource?.available" @click="handleCopy(contextResource)">
+        <web-ui-icon slot="prefix" :icon="lucideCopy" :size="14" />
+        拷贝
       </web-ui-dropdown-item>
       <web-ui-dropdown-item
         v-if="wallpaperCapableResource(contextResource)"

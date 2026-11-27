@@ -65,6 +65,14 @@ export function ShowInFileManager(filePath: string): $CancellablePromise<void> {
 }
 
 /**
+ * WriteClipboardFilePath 将单个本地文件或目录写入系统剪贴板（文件对象而非纯文本路径），
+ * 便于在系统文件管理器或外部应用中直接粘贴该资源。
+ */
+export function WriteClipboardFilePath(filePath: string): $CancellablePromise<void> {
+    return $Call.ByID(1236356108, filePath);
+}
+
+/**
  * WriteClipboardText 用纯文本覆盖剪贴板。空串是 no-op，不报错：调用方在此之前已判定
  * 没有内容可写（「复制为纯文本」在选区为空时就不该走这里），这里再清一次剪贴板是纯粹的
  * 破坏性副作用。

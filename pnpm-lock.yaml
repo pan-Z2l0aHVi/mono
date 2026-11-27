@@ -248,6 +248,9 @@ catalogs:
     '@iconify-json/tabler':
       specifier: ^1.2.43
       version: 1.2.43
+    '@iconify-json/wordpress':
+      specifier: ^1.2.32
+      version: 1.2.32
     '@iconify/types':
       specifier: ^2.0.0
       version: 2.0.0
@@ -1266,6 +1269,9 @@ importers:
       '@iconify-json/tabler':
         specifier: 'catalog:'
         version: 1.2.43
+      '@iconify-json/wordpress':
+        specifier: 'catalog:'
+        version: 1.2.32
       '@types/react':
         specifier: 'catalog:'
         version: 19.3.0
@@ -2364,6 +2370,9 @@ packages:
 
   '@iconify-json/tabler@1.2.43':
     resolution: {integrity: sha512-EKhyOj6nASi25ZjuRpEhPL1fwiKVtg/e/VX6v6X3FPKpjG9og26ypW8ItnWYSTn6fdNuQe3VPeyuThWlP6QuWw==}
+
+  '@iconify-json/wordpress@1.2.32':
+    resolution: {integrity: sha512-o+JSp9LuDR+GtXp1JtuJ1H1f5dnCXj1lOZsdlmuopr6JhZkCkzOfmYAnduQkHjgItU3Qe65b17fq6s/MNaYvpQ==}
 
   '@iconify/types@2.0.0':
     resolution: {integrity: sha512-+wluvCrRhXrhyOmRDJ3q8mux9JkKy5SJ/v8ol2tu4FVjyYvtEzkc/3pK15ET6RKg4b4w4BmTk1+gsCUhf21Ykg==}
@@ -7747,6 +7756,10 @@ snapshots:
       '@iconify/types': 2.0.0
 
   '@iconify-json/tabler@1.2.43':
+    dependencies:
+      '@iconify/types': 2.0.0
+
+  '@iconify-json/wordpress@1.2.32':
     dependencies:
       '@iconify/types': 2.0.0
 
