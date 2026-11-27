@@ -367,7 +367,7 @@ jobs:
         # 表现为随机的等待预算耗尽。只在 CI 收敛任务并发，本地 `pnpm run test` 保持默认。
         run: pnpm exec turbo test --concurrency=2
 
-  # Codex 审查 job 全部只读：模型在这里跑，写回（评论、推 patch）只在 codex-review-report.yml 发生。
+  # Codex 审查 job 全部只读：模型在这里跑，写回（评论）只在 codex-review-report.yml 发生。
   # 两条 job 分开是因为 ci.yml 的 permissions 不变量要求 PR 验证不持有任何写权限。
   codex-review:
     name: Codex review
@@ -375,8 +375,7 @@ jobs:
     # 审查 job 保留版本分支排除；codex-gate 的判据自 2026-11-23 起分道（见其 if 注释）。
     if: ${{ !cancelled() && needs.check.result == 'success' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' }}
     # 模型步骤自己带 continue-on-error；job 级不再吞掉预检、落结论与上传的失败。
-    # 审查 job 已切换为 Node 直调 API 两段式引擎（无 openai/codex-action / drop-sudo），
-    # 不受 openai/codex-action#188 影响，恢复使用 ubuntu-latest；仅 codex-autofix-plan 仍固定 24.04。
+    # 审查 job 使用 Node 直调 API 两段式引擎（无外部 CLI action / drop-sudo），直接运行在 ubuntu-latest。
     runs-on: ubuntu-latest
     # 直调两段式引擎实测常规与 60+ 文件大 PR 均在 1–4 分钟内完成；20 分钟兜住最坏重试路径并防网络僵死占队。
     timeout-minutes: 20
@@ -564,94 +563,3 @@ jobs:
           # 就连 fork 也拿到绿 gate——skipped 的 required check 会被 GitHub 计为通过，那正是 fail-open。
           CODEX_REVIEW_NOT_APPLICABLE: ${{ needs.codex-review.result == 'skipped' && github.event.pull_request.head.repo.full_name == github.repository && (github.head_ref == 'changeset-release/main' || needs.check.result != 'success') }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" gate
-
-  codex-autofix-plan:
-    name: Codex autofix plan
-    needs: check
-    # job 级 if 不含状态检查函数时 GitHub 会隐式附加 success()，而本 job 恰恰要在 check 失败时跑：
-    # needs.check.result == 'failure' 会在依赖失败时被直接短路成 skipped，字面条件根本不求值。
-    # !cancelled() 既绕过隐式 success()，又不会在 run 被取消时白白启动模型 job；与 codex-review 同款前缀。
-    if: ${{ !cancelled() && needs.check.result == 'failure' && github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository && github.head_ref != 'changeset-release/main' && vars.CODEX_AUTOFIX_ENABLED == 'true' }}
-    continue-on-error: true
-    # 与审查 job 同一镜像约束：autofix 用 workspace-write + drop-sudo，同样会撞上 #188。
-    runs-on: ubuntu-24.04
-    timeout-minutes: 60
-    permissions:
-      contents: read
-      pull-requests: read
-      actions: read
-    env:
-      CODEX_REVIEW_BASE_SHA: ${{ github.event.pull_request.base.sha }}
-      CODEX_REVIEW_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-      CODEX_AUTOFIX_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
-
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          ref: ${{ github.event.pull_request.head.sha }}
-          fetch-depth: 0
-          persist-credentials: false
-
-      - uses: ./.github/actions/setup-deps
-        with:
-          mise-install: 'node'
-          skip-install: 'true'
-
-      - uses: ./.github/actions/stage-codex-inputs
-        with:
-          base-sha: ${{ github.event.pull_request.base.sha }}
-
-      - name: Prepare review range
-        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" prepare
-
-      - name: Validate Codex configuration
-        id: config
-        env:
-          CODEX_REVIEW_API_KEY: ${{ secrets.CODEX_REVIEW_API_KEY }}
-          CODEX_RESPONSES_ENDPOINT: ${{ vars.CODEX_RESPONSES_ENDPOINT }}
-          CODEX_REVIEW_MODEL: ${{ vars.CODEX_REVIEW_MODEL }}
-          CODEX_REVIEW_EFFORT: ${{ vars.CODEX_REVIEW_EFFORT }}
-          CODEX_VERSION: ${{ vars.CODEX_VERSION }}
-        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" preflight
-
-      - name: Capture failing CI log
-        id: failure
-        env:
-          GH_TOKEN: ${{ github.token }}
-        run: node "$RUNNER_TEMP/trusted/scripts/codex-autofix.mjs" prepare
-
-      - name: Propose autofix patch with Codex
-        if: steps.config.outputs.configured == 'true' && steps.failure.outputs.has_log == 'true'
-        continue-on-error: true
-        uses: openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675 # v1.13
-        env:
-          # autofix prompt 的两个输入路径，同样只能在 step 级引用 runner 上下文。
-          CODEX_AUTOFIX_LOG_PATH: ${{ runner.temp }}/ci-failure.log
-          CODEX_REVIEW_DIFF_PATH: ${{ runner.temp }}/pr.diff
-        with:
-          openai-api-key: ${{ secrets.CODEX_REVIEW_API_KEY }}
-          responses-api-endpoint: ${{ vars.CODEX_RESPONSES_ENDPOINT }}
-          codex-version: ${{ vars.CODEX_VERSION }}
-          sandbox: 'workspace-write'
-          safety-strategy: 'drop-sudo'
-          model: ${{ vars.CODEX_REVIEW_MODEL }}
-          effort: ${{ vars.CODEX_REVIEW_EFFORT }}
-          prompt-file: ${{ runner.temp }}/trusted/codex/prompts/autofix.md
-          output-file: ${{ runner.temp }}/codex-autofix-message.txt
-
-      - name: Capture autofix patch
-        if: always()
-        id: patch
-        # deny list 从 base 落地的副本读；runner 上下文只能在 step 级 env 用，job 级会让整个文件 invalid。
-        env:
-          CODEX_TRUSTED_SETTINGS: ${{ runner.temp }}/trusted/.claude/settings.json
-          # 只有 `Check changesets` 失败时才放行新增 `.changeset/*.md`；其余失败仍只许改已入库文件。
-          CODEX_AUTOFIX_FAILED_STEPS: ${{ steps.failure.outputs.failed_steps }}
-        run: node "$RUNNER_TEMP/trusted/scripts/codex-autofix.mjs" capture
-
-      - name: Upload autofix patch
-        if: steps.patch.outputs.has_patch == 'true'
-        uses: actions/upload-artifact@v6
-        with:
-          name: codex-autofix-patch
-          path: ${{ runner.temp }}/autofix.patch

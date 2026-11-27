@@ -19,13 +19,11 @@ import {
 
 import {
   CODEX_CONFIG_ENV,
-  CODEX_CONFIG_INPUTS,
   CODEX_DIRECT_REVIEW_ENV,
   CODEX_GATE_JOB_NAME,
   CODEX_REVIEW_JOB_NAME,
   RELEASE_BRANCH,
   REQUIRED_CONTEXT,
-  codexConfigInputViolations,
   codexDirectEnvViolations,
   crossRunArtifactViolations,
   ghTokenStepViolations,
@@ -544,11 +542,6 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     [],
     'a step that only reads the local worktree needs no credentials'
   )
-  assert.deepEqual(
-    ghTokenStepViolations(codexStep({ script: 'codex-autofix.mjs', command: 'capture', token: false })),
-    [],
-    'reading the model output file needs no credentials'
-  )
   for (const [file, text] of Object.entries(workflowText)) {
     for (const { job, step, commands } of ghTokenStepViolations(text)) {
       assert.fail(`${file}:${job} step ${step} calls gh (${commands}) without GH_TOKEN`)
@@ -594,7 +587,7 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     const text = workflowText[file]
     const hits = text.split(tokenLine).length - 1
     assert.ok(hits > 0, `${file} must carry at least one cross-run download token`)
-    // 逐个删除，确保写回 job 的两处下载（结论与 autofix patch）都被断言覆盖，而不是只测到第一处。
+    // 逐个删除，确保每个跨 run 下载点都被断言覆盖。
     for (let index = 0; index < hits; index++) {
       let seen = 0
       const mutated = text.replaceAll(tokenLine, () => (seen++ === index ? '' : tokenLine))
@@ -662,35 +655,37 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     )
   }
 
-  // Codex 审查门：模型只在 ci.yml 的只读 job 里跑，评论与推送都在 codex-review-report.yml。
+  // Codex 审查门：模型只在 ci.yml 的只读 job 里跑，评论写回与单次空壳自动重跑在 codex-review-report.yml；
+  // autofix 链路已下线，全仓不再调用 openai/codex-action，写回 workflow 不再持有 contents: write。
   {
     const ci = workflowText['ci.yml']
     const reportText = workflowText['codex-review-report.yml']
     const report = parsed['codex-review-report.yml']
-    const actionRef = 'openai/codex-action@bdf19a4a223ec2549a3e2274a0cf61556bc07675'
 
-    assert.equal(
-      ci.split(actionRef).length - 1,
-      1,
-      'only codex-autofix-plan may invoke openai/codex-action inside the read-only CI workflow'
-    )
+    assert.ok(!ci.includes('openai/codex-action'), 'ci.yml must not invoke openai/codex-action')
     assert.ok(!reportText.includes('openai/codex-action'), 'the privileged workflow must never run the model')
     assert.ok(
       !/codex-review\.mjs["']?\s+run\b/.test(reportText),
       'the privileged workflow must never invoke the direct review engine'
     )
+    assert.ok(!ci.includes('codex-autofix'), 'ci.yml must not retain codex-autofix jobs or scripts')
+    assert.ok(!reportText.includes('codex-autofix'), 'codex-review-report.yml must not retain codex-autofix jobs')
+    assert.ok(
+      !ci.includes('CODEX_AUTOFIX_ENABLED') && !reportText.includes('CODEX_AUTOFIX_ENABLED'),
+      'removed autofix toggle must not remain in workflows'
+    )
+    assert.ok(
+      !ci.includes('CODEX_AUTOFIX_PUSH_TOKEN') && !reportText.includes('CODEX_AUTOFIX_PUSH_TOKEN'),
+      'removed autofix push token must not remain in workflows'
+    )
 
     assert.deepEqual(report.permissions, { contents: 'read' })
+    assert.deepEqual(Object.keys(report.jobs), ['report-conclusion'])
     assert.deepEqual(report.jobs['report-conclusion'].permissions, {
       contents: 'read',
       issues: 'write',
       'pull-requests': 'write',
       actions: 'write'
-    })
-    assert.deepEqual(report.jobs['codex-autofix-apply'].permissions, {
-      contents: 'write',
-      'pull-requests': 'read',
-      actions: 'read'
     })
 
     // 空壳结论自动恢复：写回 job 唯一的动作类写权限只用于触发一次 --failed 重跑，模型仍不在这条 job 里。
@@ -801,14 +796,13 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     const eligibilityGuard =
       "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main' && github.event.pull_request.head.repo.full_name == github.repository" +
       ` && github.head_ref != '${RELEASE_BRANCH}'`
-    // 2026-11-23 起判据分道：review 与 autofix-plan 保留 fork 与版本分支排除；gate 升为 required
+    // 2026-11-23 起判据分道：review 保留 fork 与版本分支排除；gate 升为 required
     // check 后不再排除任何 PR——GitHub 会为被 if 跳过的 job 上报 skipped check run，而 required 把
     // skipped 计为通过，gate 的任何排除都是 fail-open（fork 由收窄后的 not_applicable 出口判红）。
     const gateEligibilityGuard = "github.event_name == 'pull_request' && github.event.pull_request.base.ref == 'main'"
     const eligibilityGuards = {
       'codex-review': eligibilityGuard,
-      'codex-gate': gateEligibilityGuard,
-      'codex-autofix-plan': eligibilityGuard
+      'codex-gate': gateEligibilityGuard
     }
     const eligibleJobs = Object.keys(eligibilityGuards)
 
@@ -876,20 +870,13 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     // gate 的判据不含这两个排除（也不以 ` && ` 结尾），所以它的片段按自己的形状给：
     // 用带尾随 ` && ` 的片段去变异 gate 只会让锚点失配，测不到任何东西。
     // 片段必须按每个 job 的实际形状给：review 的 head_ref 是末尾子句（无尾随 ` && `），
-    // autofix-plan 的 head_ref 后面还跟着 CODEX_AUTOFIX_ENABLED，gate 的 base.ref 是末尾子句。
-    // 逐字抄同一个形状会让锚点失配，变异空转。
+    // gate 的 base.ref 是末尾子句。逐字抄同一个形状会让锚点失配，变异空转。
     const fragmentsByJob = {
       'codex-review': [
         "github.event_name == 'pull_request' && ",
         "github.event.pull_request.base.ref == 'main' && ",
         'github.event.pull_request.head.repo.full_name == github.repository && ',
         `github.head_ref != '${RELEASE_BRANCH}'`
-      ],
-      'codex-autofix-plan': [
-        "github.event_name == 'pull_request' && ",
-        "github.event.pull_request.base.ref == 'main' && ",
-        'github.event.pull_request.head.repo.full_name == github.repository && ',
-        `github.head_ref != '${RELEASE_BRANCH}' && `
       ],
       'codex-gate': ["github.event_name == 'pull_request' && ", "github.event.pull_request.base.ref == 'main'"]
     }
@@ -903,28 +890,14 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       }
     }
 
-    // codex-review 已切为无 shell 直调 API 两段式引擎（codex-review.mjs run）；
-    // codex-autofix-plan 仍走 openai/codex-action，继续锁死 workspace-write + drop-sudo + ubuntu-24.04。
+    // codex-review 使用无 shell 直调 API 两段式引擎（codex-review.mjs run），运行在 ubuntu-latest 且不含 drop-sudo。
     const reviewStep = namedStep(ci, 'Review pull request with Codex')
-    const autofixStep = namedStep(ci, 'Propose autofix patch with Codex')
     assert.match(reviewStep, /node "\$RUNNER_TEMP\/trusted\/scripts\/codex-review\.mjs" run/)
     assert.ok(!reviewStep.includes('openai/codex-action'), 'codex-review must use the direct API engine')
-    assert.match(autofixStep, /sandbox: 'workspace-write'/)
-    assert.ok(!/openai-api-key: \$\{\{ vars\./.test(ci), 'the api key must never come from a public variable')
     assert.ok(!/CODEX_REVIEW_API_KEY: \$\{\{ vars\./.test(ci), 'review API key must never come from a public variable')
 
-    // openai/codex-action#188 仅影响仍使用 codex-action 的 codex-autofix-plan（固定 24.04 + drop-sudo）；
-    // codex-review 已切换为无 shell 直调引擎，恢复使用 ubuntu-latest 且不含 drop-sudo。
-    const CODEX_RUNNER = 'ubuntu-24.04'
-    function assertCodexRunnerPin(text) {
-      const autofixBlock = workflowJob(text, 'codex-autofix-plan')
-      assert.equal(
-        /^ {4}runs-on: (.+)$/m.exec(autofixBlock)?.[1],
-        CODEX_RUNNER,
-        `codex-autofix-plan must pin ${CODEX_RUNNER} while openai/codex-action#188 is unfixed`
-      )
-      assert.match(autofixBlock, /safety-strategy: 'drop-sudo'/, 'codex-autofix-plan must keep drop-sudo')
-
+    const LEGACY_CODEX_RUNNER = 'ubuntu-24.04'
+    function assertCodexReviewRunner(text) {
       const reviewBlock = workflowJob(text, 'codex-review')
       const reviewCodeOnly = reviewBlock
         .split('\n')
@@ -938,50 +911,22 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       assert.ok(!reviewCodeOnly.includes('openai/codex-action'), 'codex-review must not invoke openai/codex-action')
       assert.ok(!reviewCodeOnly.includes('drop-sudo'), 'codex-review direct engine does not depend on drop-sudo')
     }
-    assertCodexRunnerPin(ci)
-    {
-      const block = workflowJob(ci, 'codex-autofix-plan')
-      const start = ci.indexOf(block)
-      const unpinned =
-        ci.slice(0, start) +
-        block.replace(`runs-on: ${CODEX_RUNNER}`, 'runs-on: ubuntu-latest') +
-        ci.slice(start + block.length)
-      assert.throws(
-        () => assertCodexRunnerPin(unpinned),
-        'moving codex-autofix-plan back to ubuntu-latest must fail the runner pin'
-      )
-    }
+    assertCodexReviewRunner(ci)
     {
       const block = workflowJob(ci, 'codex-review')
       const start = ci.indexOf(block)
       const repinned =
         ci.slice(0, start) +
-        block.replace('runs-on: ubuntu-latest', `runs-on: ${CODEX_RUNNER}`) +
+        block.replace('runs-on: ubuntu-latest', `runs-on: ${LEGACY_CODEX_RUNNER}`) +
         ci.slice(start + block.length)
       assert.throws(
-        () => assertCodexRunnerPin(repinned),
+        () => assertCodexReviewRunner(repinned),
         'pinning codex-review back to ubuntu-24.04 must fail the runner assertion'
       )
     }
 
     // 端点、模型、强度、密钥、附加请求头与 codex 版本只准从 GitHub 后台来；字面量与 || 兜底会让后台配置永远不生效。
     assert.deepEqual([...CONFIG_ENV], [...CODEX_CONFIG_ENV], 'preflight and topology checks must share one config list')
-    assert.deepEqual(codexConfigInputViolations(ci), [])
-    assert.equal(
-      codexConfigInputViolations(ci.replace('model: ${{ vars.CODEX_REVIEW_MODEL }}', "model: 'some-model'")).length,
-      1,
-      'a hardcoded model must be reported'
-    )
-    const withoutEffort = ci.split('effort: ${{ vars.CODEX_REVIEW_EFFORT }}').join('')
-    assert.deepEqual(
-      codexConfigInputViolations(withoutEffort),
-      [{ input: 'effort', found: 'missing', expected: 'declared in codex-autofix-plan' }],
-      'a missing config input must be reported'
-    )
-    for (const input of Object.keys(CODEX_CONFIG_INPUTS)) {
-      const hits = ci.split('\n').filter(line => new RegExp(`^\\s+${input}:`).test(line))
-      assert.equal(hits.length, 1, `${input} must be wired in codex-autofix-plan`)
-    }
     assert.deepEqual(codexDirectEnvViolations(reviewStep), [])
     assert.equal(
       codexDirectEnvViolations(
@@ -1019,32 +964,30 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       const hits = reviewStep.split('\n').filter(line => new RegExp(`^\\s+${key}:`).test(line))
       assert.equal(hits.length, 1, `${key} must be wired once in codex-review step env`)
     }
-    for (const jobId of ['codex-review', 'codex-autofix-plan']) {
-      const block = workflowJob(ci, jobId)
+    {
+      const block = workflowJob(ci, 'codex-review')
         .split('\n')
         .filter(line => !/^\s*#/.test(line))
         .join('\n')
       assert.ok(
         !/\|\||claude-|effort: 'high'|codex-version: '\d/.test(block),
-        `${jobId} must not carry config fallbacks`
+        'codex-review must not carry config fallbacks'
       )
       assert.ok(
         !/^ {6}CODEX_REVIEW_(?:API_KEY|EXTRA_HEADERS):/m.test(block),
-        `${jobId} must not expose secrets through job-level env`
+        'codex-review must not expose secrets through job-level env'
       )
       const preflight = namedStep(block, 'Validate Codex configuration')
       for (const name of CODEX_CONFIG_ENV) {
         assert.ok(
           preflight.includes(`${name}: \${{ ${name === 'CODEX_REVIEW_API_KEY' ? 'secrets' : 'vars'}.${name} }}`),
-          `${jobId} preflight must receive ${name} from the GitHub backend`
+          `codex-review preflight must receive ${name} from the GitHub backend`
         )
       }
-      if (jobId === 'codex-review') {
-        assert.ok(
-          preflight.includes('CODEX_REVIEW_EXTRA_HEADERS: ${{ vars.CODEX_REVIEW_EXTRA_HEADERS }}'),
-          'codex-review preflight must receive optional CODEX_REVIEW_EXTRA_HEADERS from GitHub variables for config fingerprint'
-        )
-      }
+      assert.ok(
+        preflight.includes('CODEX_REVIEW_EXTRA_HEADERS: ${{ vars.CODEX_REVIEW_EXTRA_HEADERS }}'),
+        'codex-review preflight must receive optional CODEX_REVIEW_EXTRA_HEADERS from GitHub variables for config fingerprint'
+      )
     }
     assert.match(reviewStep, /id: review/)
     assert.match(reviewStep, /steps\.config\.outputs\.configured == 'true'/)
@@ -1088,11 +1031,6 @@ function assertPullRequestValidationIsReadOnly(workflow) {
         'a pinned not-applicable value must be rejected by the assertion itself'
       )
     }
-    assert.match(parsed['ci.yml'].jobs['codex-autofix-plan'].if, /vars\.CODEX_AUTOFIX_ENABLED == 'true'/)
-    assert.match(
-      parsed['codex-review-report.yml'].jobs['codex-autofix-apply'].if,
-      /vars\.CODEX_AUTOFIX_ENABLED == 'true'/
-    )
 
     // 写 job：403 的定位信息、收敛条件与 smoke 步骤都得在定义里，不能只靠运行时报错。
     assert.match(
@@ -1124,8 +1062,8 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       /the conclusion step must not depend/,
       'a probe-gated conclusion step must be rejected by the assertion itself'
     )
-    for (const jobId of ['report-conclusion', 'codex-autofix-apply']) {
-      const guard = parsed['codex-review-report.yml'].jobs[jobId].if
+    {
+      const guard = parsed['codex-review-report.yml'].jobs['report-conclusion'].if
       assert.match(guard, /workflow_run\.conclusion != 'cancelled'/)
       assert.match(guard, /head_branch != 'changeset-release\/main'/)
     }
@@ -1185,23 +1123,11 @@ function assertPullRequestValidationIsReadOnly(workflow) {
       )
     }
 
-    for (const [file, workflow] of Object.entries(parsed)) {
-      for (const jobId of Object.keys(workflow.jobs)) {
-        const block = workflowJob(workflowText[file], jobId)
-        if (!/codex-autofix\.mjs (capture|apply)/.test(runTexts(block))) continue
-        assert.ok(
-          block.includes('CODEX_TRUSTED_SETTINGS: ${{ runner.temp }}/trusted/.claude/settings.json'),
-          `${file}:${jobId} must read the deny list from the staged copy, not the reviewed tree`
-        )
-      }
-    }
-
     assert.equal(
       parsed['ci.yml'].jobs['codex-review'].continueOnError,
       undefined,
       'the review job must expose preflight and conclusion-write failures; only the model step may mask its own crash'
     )
-    assert.equal(parsed['ci.yml'].jobs['codex-autofix-plan'].continueOnError, 'true')
     assert.equal(
       parsed['ci.yml'].jobs['codex-gate'].continueOnError,
       undefined,
@@ -1210,33 +1136,13 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.equal(parsed['ci.yml'].stepContinueOnError['Apply review gate'], undefined)
     assert.equal(parsed['ci.yml'].steps['Apply review gate'], undefined, 'the gate step must run unconditionally')
     assert.equal(parsed['ci.yml'].stepContinueOnError['Record review conclusion'], undefined)
-    // 直调两段式审查常规与大 PR 实测 1–4 分钟，20 分钟兜住最坏重试并防僵死；自动修保持 60 分钟。
+    // 直调两段式审查常规与大 PR 实测 1–4 分钟，20 分钟兜住最坏重试并防僵死。
     assert.match(workflowJob(ci, 'codex-review'), /timeout-minutes: 20/)
-    assert.match(workflowJob(ci, 'codex-autofix-plan'), /timeout-minutes: 60/)
     assert.match(workflowJob(ci, 'codex-gate'), /timeout-minutes: 10/, 'the gate does no model work and stays short')
     assert.match(workflowJob(ci, 'codex-review'), /uses: \.\/\.github\/actions\/stage-codex-inputs/)
     assert.ok(
       !/persist-credentials: 'true'|git push/.test(workflowJob(ci, 'codex-review')),
       'the review leg must stay write-free'
-    )
-    const autofixJobText = workflowJob(reportText, 'codex-autofix-apply')
-    assert.match(autofixJobText, /timeout-minutes: 10/)
-    const autofixCheckoutMatch = autofixJobText.match(/- uses: actions\/checkout@v7\n([\s\S]*?)(?=\n\s+- |\n*$)/)
-    assert.ok(autofixCheckoutMatch, 'codex-autofix-apply must run actions/checkout@v7')
-    const autofixCheckoutStep = autofixCheckoutMatch[0]
-    assert.match(
-      autofixCheckoutStep,
-      /^\s+token:\s*\$\{\{\s*secrets\.CODEX_AUTOFIX_PUSH_TOKEN\s*\|\|\s*github\.token\s*\}\}$/m,
-      'codex-autofix-apply checkout step must use CODEX_AUTOFIX_PUSH_TOKEN with github.token fallback'
-    )
-    assert.ok(
-      !/^\s+persist-credentials:\s*'?false'?/m.test(autofixCheckoutStep),
-      'codex-autofix-apply checkout step must keep persisted credentials enabled for autofix push'
-    )
-    assert.ok(
-      !ci.includes('CODEX_AUTOFIX_PUSH_TOKEN') &&
-        !workflowJob(reportText, 'report-conclusion').includes('CODEX_AUTOFIX_PUSH_TOKEN'),
-      'read-only CI and report-conclusion jobs must never reference CODEX_AUTOFIX_PUSH_TOKEN'
     )
 
     // 空壳结论必须让审查 job 一起变红：否则 --failed 只重跑 gate，拿同一份空 artifact 再红一次。
@@ -1914,8 +1820,8 @@ for (const file of ['wails-verify.yml', 'wails-release.yml']) {
   )
 }
 
-// 静态 import 闭包校验：codex-review.mjs 与 codex-autofix.mjs 在 $RUNNER_TEMP/trusted/scripts 下执行，
-// 它们传递引用的全部本地 ./lib/*.mjs（以及其它相对脚本模块）必须全部登记在 stage-codex-inputs/action.yml 中，
+// 静态 import 闭包校验：codex-review.mjs 在 $RUNNER_TEMP/trusted/scripts 下执行，
+// 它传递引用的全部本地 ./lib/*.mjs（以及其它相对脚本模块）必须全部登记在 stage-codex-inputs/action.yml 中，
 // 防止新增共享 helper 后在 PR 门禁中出现 ERR_MODULE_NOT_FOUND。
 {
   const actionYml = fs.readFileSync(path.join(repoRoot, '.github/actions/stage-codex-inputs/action.yml'), 'utf8')
@@ -1973,7 +1879,7 @@ for (const file of ['wails-verify.yml', 'wails-release.yml']) {
     return visited
   }
 
-  for (const entry of ['.github/scripts/codex-review.mjs', '.github/scripts/codex-autofix.mjs']) {
+  for (const entry of ['.github/scripts/codex-review.mjs']) {
     for (const dep of collectRelativeImports(entry)) {
       assert.ok(
         trackedSet.has(dep),
