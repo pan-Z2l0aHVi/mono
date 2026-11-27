@@ -45,7 +45,7 @@ func TestClipboardFilePathRoundTrip(t *testing.T) {
 		t.Cleanup(func() { _ = service.WriteClipboardText(context.Background(), originalText) })
 	}
 
-	file := filepath.Join(t.TempDir(), "sample file.txt")
+	file := filepath.Join(t.TempDir(), " sample file .txt ")
 	if err := os.WriteFile(file, []byte("hello"), 0o600); err != nil {
 		t.Fatalf("write fixture: %v", err)
 	}

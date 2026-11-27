@@ -1575,6 +1575,60 @@ describe('LibraryPage：拷贝资源与滚动位置记忆', () => {
     }
   })
 
+  it('拷贝资源写入剪贴板失败时提示警告且不提示成功', async () => {
+    const writeClipboardFilePath = vi.fn<(path: string) => Promise<void>>(async () => {
+      throw new Error('clipboard denied')
+    })
+    const writeClipboardText = vi.fn<(text: string) => Promise<void>>(async () => {
+      throw new Error('clipboard denied')
+    })
+    const consoleError = vi.spyOn(console, 'error').mockImplementation(() => {})
+    const fileRes = resource({
+      id: 'res-file-fail',
+      title: '本地文件',
+      kind: ResourceKind.ResourceKindImage,
+      sources: [
+        source({
+          id: 'src-file-fail',
+          resource_id: 'res-file-fail',
+          type: SourceType.SourceTypeFile,
+          location: '/tmp/fail.png',
+          available: true
+        })
+      ]
+    })
+    const urlRes = resource({
+      id: 'res-url-fail',
+      title: '网页链接',
+      kind: ResourceKind.ResourceKindWeb,
+      sources: [
+        source({
+          id: 'src-url-fail',
+          resource_id: 'res-url-fail',
+          type: SourceType.SourceTypeURL,
+          location: 'https://example.com/fail',
+          available: true
+        })
+      ]
+    })
+    runtimeStub.current = createRuntime({
+      resources: { list: async () => [fileRes, urlRes] },
+      system: { writeClipboardFilePath, writeClipboardText }
+    })
+
+    const mounted = await mountPage()
+    try {
+      await openContextMenuAction(mounted.host, 'res-file-fail', '拷贝')
+      await openContextMenuAction(mounted.host, 'res-url-fail', '拷贝')
+      expect(toastWarning).toHaveBeenCalledTimes(2)
+      expect(toastWarning).toHaveBeenCalledWith('无法复制到剪贴板，请稍后重试', { position: 'top-center' })
+      expect(toastSuccess).not.toHaveBeenCalled()
+    } finally {
+      consoleError.mockRestore()
+      await mounted.close()
+    }
+  })
+
   it('离开资源库页面时记住滚动位置，切回页面后自动恢复', async () => {
     const items = Array.from({ length: 40 }, (_, index) =>
       resource({
