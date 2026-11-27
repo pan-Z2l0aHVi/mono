@@ -56,14 +56,13 @@ func (s *Library) AddTagToResource(ctx context.Context, resourceID string, input
 // SetResourceTags 以替换式集合语义重设单个 Resource 的标签：提交的名称集合归一化后
 // 就是该 Resource 的完整标签集合，集合外的既有归属被解除，缺失的被补插。
 // 名称先整体校验再写库，任一非法即整体失败，不留下半应用的集合。
-func (s *Library) SetResourceTags(ctx context.Context, resourceID string, names []string) ([]Tag, error) {
+func (s *Library) SetResourceTags(ctx context.Context, resourceID string, names []string) (*ResourceView, error) {
 	stdNames, err := normalizeTagNames(names)
 	if err != nil {
 		return nil, err
 	}
 
 	now := time.Now().UnixMilli()
-	var target []Tag
 	err = s.db.WithTx(ctx, func(tx *sql.Tx) error {
 		// 不为不存在的资源制造悬挂归属。
 		exists, err := s.resources.Exists(ctx, tx, resourceID)
@@ -74,14 +73,12 @@ func (s *Library) SetResourceTags(ctx context.Context, resourceID string, names 
 			return ErrResourceNotFound
 		}
 
-		target = make([]Tag, 0, len(stdNames))
 		keepIDs := make([]string, 0, len(stdNames))
 		for index, stdName := range stdNames {
 			tag, err := resolveOrCreateTag(ctx, tx, s.tags, stdName, now)
 			if err != nil {
 				return err
 			}
-			target = append(target, tag)
 			keepIDs = append(keepIDs, tag.ID)
 
 			// 同一 Resource 对同一标签只能保留一份归属；Insert 的 OR IGNORE 让补插幂等，
@@ -101,7 +98,7 @@ func (s *Library) SetResourceTags(ctx context.Context, resourceID string, names 
 	if err != nil {
 		return nil, err
 	}
-	return target, nil
+	return s.GetResource(ctx, resourceID)
 }
 
 // normalizeTagNames 归一化一批标签名并去重；任一名称非法即整体失败，保持调用方的事务性预期。

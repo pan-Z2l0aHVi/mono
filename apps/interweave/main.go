@@ -212,7 +212,7 @@ func run() error {
 	}()
 
 	coreLib := rt.Core()
-	resourceService := libraryService.NewResourceService(coreLib, rt.PendingPreviews())
+	resourceService := libraryService.NewResourceService(coreLib)
 	sourceService := libraryService.NewSourceService(coreLib)
 	tagService := libraryService.NewTagService(coreLib)
 	mapService := libraryService.NewMapService(coreLib)

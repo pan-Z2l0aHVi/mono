@@ -31,13 +31,9 @@ func (s *TagService) RemoveTagFromResource(ctx context.Context, resourceID strin
 	return s.core.RemoveTagFromResource(ctx, resourceID, tagID)
 }
 
-// SetResourceTags 以替换式集合语义重设单个 Resource 的标签集合；规则由 core 承载。
-// 回传变更后的完整 Resource 视图，前端不必再往返读取一次。
+// SetResourceTags 以替换式集合语义重设单个 Resource 的标签集合；规则与完整视图回读由 core 承载。
 func (s *TagService) SetResourceTags(ctx context.Context, resourceID string, tagNames []string) (*ResourceDTO, error) {
-	if _, err := s.core.SetResourceTags(ctx, resourceID, tagNames); err != nil {
-		return nil, err
-	}
-	view, err := s.core.GetResource(ctx, resourceID)
+	view, err := s.core.SetResourceTags(ctx, resourceID, tagNames)
 	if err != nil {
 		return nil, err
 	}

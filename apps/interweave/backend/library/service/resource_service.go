@@ -4,38 +4,30 @@ import (
 	"context"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
-	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/media"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 )
 
-// 作为 Wails 外观呈现 Resource 能力，产品规则由 core 承载。
+// 作为 Wails 外观呈现 Resource 能力，产品规则与预览授权由 core 承载。
 type ResourceService struct {
-	core     *core.Library
-	previews *media.PendingPreviewRegistry
+	core *core.Library
 }
 
 // 保持外观与产品规则解耦。
-func NewResourceService(c *core.Library, previews *media.PendingPreviewRegistry) *ResourceService {
-	return &ResourceService{core: c, previews: previews}
+func NewResourceService(c *core.Library) *ResourceService {
+	return &ResourceService{core: c}
 }
 
-// 准备待添加文件的展示分类；只有图片与视频获得短期媒体读取授权。
+// 准备待添加文件的展示分类与短期媒体读取授权（由 core 决定授权类型）。
 func (s *ResourceService) PrepareFilePreview(_ context.Context, inputPath string) (*FilePreviewDTO, error) {
 	prepared, err := s.core.PrepareFilePreview(inputPath)
 	if err != nil {
 		return nil, err
 	}
-	preview := &FilePreviewDTO{Kind: prepared.Kind}
-	if prepared.Kind != storage.ResourceKindImage && prepared.Kind != storage.ResourceKindVideo {
-		return preview, nil
-	}
-	token, err := s.previews.Register(prepared.Location)
-	if err != nil {
-		return nil, err
-	}
-	preview.Token = token
-	preview.MediaURL = media.PendingMediaURL(token)
-	return preview, nil
+	return &FilePreviewDTO{
+		Kind:     prepared.Kind,
+		Token:    prepared.Token,
+		MediaURL: prepared.MediaURL,
+	}, nil
 }
 
 // ExpandImportPaths 把用户选中的一批文件与文件夹展开为可纳入的文件位置清单。
@@ -52,7 +44,7 @@ func (s *ResourceService) ExpandImportPaths(ctx context.Context, paths []string)
 // ReleaseFilePreview 撤销不再需要的 pending media 授权。
 func (s *ResourceService) ReleaseFilePreview(_ context.Context, token string) {
 	if token != "" {
-		s.previews.Release(token)
+		s.core.ReleaseFilePreview(token)
 	}
 }
 
@@ -73,12 +65,6 @@ func (s *ResourceService) FindResourceLocationMatches(
 			Location:   match.Location,
 		}
 	}), nil
-}
-
-// ServiceShutdown 在应用退出时撤销全部 pending media 授权。
-func (s *ResourceService) ServiceShutdown() error {
-	s.previews.Clear()
-	return nil
 }
 
 // CreateResource 是纳入新 Resource 的唯一入口：归一化、探测、Resource + 首选 Source

@@ -24,9 +24,12 @@ func TestRuntimeStartAndCloseIdempotent(t *testing.T) {
 	if err := os.WriteFile(file, []byte("png"), 0o600); err != nil {
 		t.Fatalf("write preview fixture: %v", err)
 	}
-	token, err := rt.PendingPreviews().Register(file)
+	prepared, err := rt.Core().PrepareFilePreview(file)
 	if err != nil {
-		t.Fatalf("register pending preview: %v", err)
+		t.Fatalf("PrepareFilePreview error: %v", err)
+	}
+	if prepared.Token == "" || prepared.MediaURL == "" {
+		t.Fatalf("expected image preview token and media URL, got %+v", prepared)
 	}
 
 	rt.Start(context.Background())
@@ -39,8 +42,10 @@ func TestRuntimeStartAndCloseIdempotent(t *testing.T) {
 		t.Fatalf("second Close error: %v", err)
 	}
 
-	if _, exists := rt.PendingPreviews().Get(token); exists {
-		t.Fatal("expected PendingPreviews to be cleared on Runtime.Close")
+	rec := httptest.NewRecorder()
+	rt.MediaHandler().ServeHTTP(rec, httptest.NewRequest(http.MethodGet, prepared.MediaURL, nil))
+	if rec.Code != http.StatusNotFound {
+		t.Fatalf("expected pending preview to be cleared on Runtime.Close (404), got %d", rec.Code)
 	}
 
 	// Close 之后调用 Start 必须是安全空操作。
@@ -136,8 +141,8 @@ func TestRuntimeCloseShutsDownRecoveryScans(t *testing.T) {
 	if err := rt.Close(); err != nil {
 		t.Fatalf("Close error: %v", err)
 	}
-	if _, err := rt.Core().RecoveryScans().Start([]string{"s1"}, t.TempDir()); err == nil {
-		t.Fatal("expected RecoveryScans().Start to fail after Runtime.Close")
+	if _, err := rt.Core().StartRecoveryScan([]string{"s1"}, t.TempDir()); err == nil {
+		t.Fatal("expected StartRecoveryScan to fail after Runtime.Close")
 	}
 }
 

@@ -198,12 +198,18 @@ func TestProbeURLSourceOnOpenKeepsValueWhenInconclusive(t *testing.T) {
 	before := readSource(t, db, "source-hanging")
 	svc := NewLibrary(db, remote.NewFetcher())
 
-	_, outcome, err := svc.ProbeURLSourceOnOpen(context.Background(), "source-hanging")
+	res, err := svc.ProbeURLSourceOnOpen(context.Background(), "source-hanging")
 	if err != nil {
 		t.Fatalf("ProbeURLSourceOnOpen error: %v", err)
 	}
-	if outcome != ProbeOutcomeInconclusive {
-		t.Fatalf("expected ProbeOutcomeInconclusive, got %q", outcome)
+	if res.Outcome != ProbeOutcomeInconclusive {
+		t.Fatalf("expected ProbeOutcomeInconclusive, got %q", res.Outcome)
+	}
+	if res.Resource != nil {
+		t.Fatalf("expected nil Resource on Inconclusive, got %+v", res.Resource)
+	}
+	if res.Source.ID != "source-hanging" || res.Source.Available != before.Available {
+		t.Fatalf("expected Inconclusive to preserve Source snapshot, got %+v (before available=%v)", res.Source, before.Available)
 	}
 	after := readSource(t, db, "source-hanging")
 	if after.Available != before.Available {
@@ -228,15 +234,15 @@ func TestProbeURLSourceOnOpenPersistsRejection(t *testing.T) {
 	seedSource(t, db, "source-dead", storage.SourceTypeURL, location, true, true, "")
 	svc := NewLibrary(db, remote.NewFetcher())
 
-	src, outcome, err := svc.ProbeURLSourceOnOpen(context.Background(), "source-dead")
+	res, err := svc.ProbeURLSourceOnOpen(context.Background(), "source-dead")
 	if err != nil {
 		t.Fatalf("ProbeURLSourceOnOpen error: %v", err)
 	}
-	if outcome != ProbeOutcomeUnavailable {
-		t.Fatalf("expected ProbeOutcomeUnavailable, got %q", outcome)
+	if res.Outcome != ProbeOutcomeUnavailable {
+		t.Fatalf("expected ProbeOutcomeUnavailable, got %q", res.Outcome)
 	}
-	if src.Available {
-		t.Fatal("expected returned source to be unavailable")
+	if res.Source.Available || res.Resource == nil {
+		t.Fatalf("expected unavailable source and assembled resource, got %+v", res)
 	}
 	if stored := readSource(t, db, "source-dead"); stored.Available {
 		t.Fatal("expected availability persisted as false")
@@ -258,7 +264,7 @@ func TestProbeURLSourceOnOpenKeepsMetadataWhenFetchFails(t *testing.T) {
 	seedSource(t, db, "source-broken", storage.SourceTypeURL, location, true, true, metadata)
 	svc := NewLibrary(db, remote.NewFetcher())
 
-	if _, _, err := svc.ProbeURLSourceOnOpen(context.Background(), "source-broken"); err != nil {
+	if _, err := svc.ProbeURLSourceOnOpen(context.Background(), "source-broken"); err != nil {
 		t.Fatalf("ProbeURLSourceOnOpen error: %v", err)
 	}
 	if stored := readSource(t, db, "source-broken"); stored.MetadataJSON != metadata {
@@ -273,7 +279,7 @@ func TestProbeURLSourceOnOpenRejectsFileSource(t *testing.T) {
 	seedSource(t, db, "source-file", storage.SourceTypeFile, present, true, true, "")
 	svc := NewLibrary(db, remote.NewFetcher())
 
-	if _, _, err := svc.ProbeURLSourceOnOpen(context.Background(), "source-file"); !errors.Is(err, ErrOnlyURLSourceRefreshable) {
+	if _, err := svc.ProbeURLSourceOnOpen(context.Background(), "source-file"); !errors.Is(err, ErrOnlyURLSourceRefreshable) {
 		t.Fatalf("expected ErrOnlyURLSourceRefreshable, got %v", err)
 	}
 }
@@ -295,25 +301,36 @@ func TestSourceMutationsResyncIndex(t *testing.T) {
 	writeFixture(t, spare)
 	seedResource(t, db, "resource-anchor")
 
-	fileSrc, err := sourceSvc.AddSource(ctx, "resource-anchor", storage.SourceTypeFile, primary)
+	findSourceID := func(v *ResourceView, location string) string {
+		for _, s := range v.Sources {
+			if s.Location == location {
+				return s.ID
+			}
+		}
+		t.Fatalf("source with location %q not found in %+v", location, v.Sources)
+		return ""
+	}
+	afterFile, err := sourceSvc.AddSource(ctx, "resource-anchor", storage.SourceTypeFile, primary)
 	if err != nil {
 		t.Fatalf("AddSource error: %v", err)
 	}
-	urlSrc, err := sourceSvc.AddSource(ctx, "resource-anchor", storage.SourceTypeURL, "https://example.com/a")
+	fileSrcID := findSourceID(afterFile, primary)
+	afterURL, err := sourceSvc.AddSource(ctx, "resource-anchor", storage.SourceTypeURL, "https://example.com/a")
 	if err != nil {
 		t.Fatalf("AddSource error: %v", err)
 	}
-	if _, err := sourceSvc.ReplaceSource(ctx, fileSrc.ID, spare); err != nil {
+	urlSrcID := findSourceID(afterURL, "https://example.com/a")
+	if _, err := sourceSvc.ReplaceSource(ctx, fileSrcID, spare); err != nil {
 		t.Fatalf("ReplaceSource error: %v", err)
 	}
-	if _, err := sourceSvc.ReplaceSource(ctx, urlSrc.ID, "https://example.com/b"); err != nil {
+	if _, err := sourceSvc.ReplaceSource(ctx, urlSrcID, "https://example.com/b"); err != nil {
 		t.Fatalf("ReplaceSource error: %v", err)
 	}
 	view, err := resourceSvc.CreateResource(ctx, CreateResourceInput{Kind: storage.SourceTypeFile, Location: primary})
 	if err != nil {
 		t.Fatalf("CreateResource error: %v", err)
 	}
-	if _, err := sourceSvc.RemoveSource(ctx, fileSrc.ID); err != nil {
+	if _, err := sourceSvc.RemoveSource(ctx, fileSrcID); err != nil {
 		t.Fatalf("RemoveSource error: %v", err)
 	}
 	if err := resourceSvc.DeleteResource(ctx, view.Resource.ID); err != nil {

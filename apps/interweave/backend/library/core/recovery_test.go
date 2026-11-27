@@ -440,3 +440,47 @@ func TestRecoveryCancelDuringHashingReturnsContextError(t *testing.T) {
 		t.Fatal("cancelled before any callback")
 	}
 }
+
+func TestShutdownRecoveryScansCancelsInFlightAndRejectsSubsequentStart(t *testing.T) {
+	root := t.TempDir()
+	db, err := storage.Open(filepath.Join(root, "library.db"))
+	if err != nil {
+		t.Fatal(err)
+	}
+	defer db.Close()
+
+	_, err = db.SqlDB().Exec(`INSERT INTO resources VALUES ('r','t','',0,0);
+ INSERT INTO sources VALUES ('s1','r','file','/lost/big.bin',0,1,0,'',0,0)`)
+	if err != nil {
+		t.Fatal(err)
+	}
+	folder := filepath.Join(root, "scan")
+	if err = os.Mkdir(folder, 0o700); err != nil {
+		t.Fatal(err)
+	}
+	bigPath := filepath.Join(folder, "big.bin")
+	bigContent := bytes.Repeat([]byte{0x5A}, 4<<20)
+	if err = os.WriteFile(bigPath, bigContent, 0o600); err != nil {
+		t.Fatal(err)
+	}
+	_, err = db.SqlDB().Exec(`INSERT INTO source_fingerprints VALUES ('s1','/lost/big.bin',?,0,'',0,'deadbeef')`,
+		len(bigContent))
+	if err != nil {
+		t.Fatal(err)
+	}
+
+	svc := NewLibrary(db, remote.NewFetcher())
+	scanID, err := svc.StartRecoveryScan([]string{"s1"}, folder)
+	if err != nil {
+		t.Fatalf("StartRecoveryScan error: %v", err)
+	}
+	if scanID == "" {
+		t.Fatal("expected non-empty scanID")
+	}
+
+	svc.ShutdownRecoveryScans()
+
+	if _, err := svc.StartRecoveryScan([]string{"s1"}, folder); err == nil {
+		t.Fatal("expected StartRecoveryScan after ShutdownRecoveryScans to fail")
+	}
+}

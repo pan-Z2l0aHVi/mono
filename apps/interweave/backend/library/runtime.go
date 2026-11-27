@@ -15,6 +15,22 @@ import (
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 )
 
+type pendingPreviewAdapter struct {
+	registry *media.PendingPreviewRegistry
+}
+
+func (a pendingPreviewAdapter) Register(location string) (string, string, error) {
+	token, err := a.registry.Register(location)
+	if err != nil {
+		return "", "", err
+	}
+	return token, media.PendingMediaURL(token), nil
+}
+
+func (a pendingPreviewAdapter) Release(token string) bool {
+	return a.registry.Release(token)
+}
+
 // RuntimeOptions 描述构建 library.Runtime 所需的路径与可选依赖。
 type RuntimeOptions struct {
 	// DataDir 为应用数据目录；未显式指定 DBPath / ThumbnailDir 时自动派生其下的
@@ -33,7 +49,7 @@ type RuntimeOptions struct {
 // 持有 DB、core 服务、PendingPreviewRegistry、AvailabilityGate、Watcher 与 media.Handler。
 //
 // 关停排空序固定为：
-// watcher → media/thumbs（含 PendingPreviewRegistry 清空）→ RecoveryScanRunner.Shutdown() → db.Close()。
+// watcher → media/thumbs（含 PendingPreviewRegistry 清空）→ core.ShutdownRecoveryScans() → db.Close()。
 // ScheduleBackground 及其排空仍留在 storage.DB.Close() 内部，不外迁。
 type Runtime struct {
 	db       *storage.DB
@@ -80,6 +96,7 @@ func NewRuntime(opts RuntimeOptions) (*Runtime, error) {
 
 	coreLib := core.NewLibrary(db, fetcher)
 	previews := media.NewPendingPreviewRegistry()
+	coreLib.SetPendingPreviews(pendingPreviewAdapter{registry: previews})
 
 	// gate 恒存在：可用性写入口不依赖 fsnotify 是否可用，监听不可用时媒体 404 兜底照常
 	// 落库，只降级目录监听方向。事件出口要等 window 就绪才能确定，gate 未接线时只落库
@@ -122,9 +139,6 @@ func NewRuntime(opts RuntimeOptions) (*Runtime, error) {
 // Core 返回核心资源库领域服务，供 Wails 外观层装配。
 func (r *Runtime) Core() *core.Library { return r.core }
 
-// PendingPreviews 返回统一持有的 pending 媒体预览注册表。
-func (r *Runtime) PendingPreviews() *media.PendingPreviewRegistry { return r.previews }
-
 // MediaHandler 返回挂接在 AssetServer 上的媒体路由处理器。
 func (r *Runtime) MediaHandler() *media.Handler { return r.media }
 
@@ -166,7 +180,7 @@ func (r *Runtime) Start(ctx context.Context) {
 }
 
 // Close 幂等且有序地排空并释放资源库全部后台协程与数据库连接：
-// watcher → media/thumbs（含 PendingPreviewRegistry 清空）→ RecoveryScanRunner.Shutdown() → db.Close()。
+// watcher → media/thumbs（含 PendingPreviewRegistry 清空）→ core.ShutdownRecoveryScans() → db.Close()。
 func (r *Runtime) Close() error {
 	r.closeOnce.Do(func() {
 		r.stateMu.Lock()
@@ -184,7 +198,7 @@ func (r *Runtime) Close() error {
 		r.previews.Clear()
 
 		// 3. 取消并等待在途找回扫描退出。
-		r.core.RecoveryScans().Shutdown()
+		r.core.ShutdownRecoveryScans()
 
 		// 4. 最后关闭数据库（其内部同步取消并排空 ScheduleBackground 后台任务）。
 		r.closeErr = r.db.Close()
