@@ -49,16 +49,14 @@ grep -n "AUTO_RETRY_ERROR_CODES\|coverage\|attempt" .github/scripts/codex-review
 ## 文件级指针
 
 - 判据、状态、恢复：`grep -n "AUTO_RETRY_ERROR_CODES\|coverage\|attempt" .github/scripts/codex-review.mjs`
-- 自动修：`grep -n "autofix" .github/scripts/codex-autofix.mjs`
 - 并发：`grep -n "concurrency" .github/workflows/codex-review-report.yml`
 - 写回：`.github/workflows/codex-review-report.yml`
 
 ## 维护约定
 
-改动相关文件时，必须同时核对下面三条，它们与脚本和测试一起构成同步断言：
+改动相关文件时，必须同时核对下面两条，它们与脚本和测试一起构成同步断言：
 
-1. `codex-review` 已切换为无 shell 直调 API 引擎并在 `ubuntu-latest` 运行；仅仍使用 `openai/codex-action` 的 `codex-autofix-plan` 固定 `ubuntu-24.04`，迁移需等上游修复 `drop-sudo` 兼容后同步更新拓扑断言。
+1. `codex-review` 使用无 shell 直调 API 引擎并在 `ubuntu-latest` 运行，全仓不再调用 `openai/codex-action` 或固定 `ubuntu-24.04`。
 2. `.github/codex/prompts/review-direct.md`（直调审查）与 `.github/codex/prompts/review.md` 均内嵌 `docs/agents/review.md` 的核心判据（审查维度、三档定义、无发现与覆盖要求）；改动对应判据时同 PR 对齐。
-3. 自动修豁免清单里「`Check changesets` 失败时新增顶层 `.changeset/*.md`」的例外必须保留；删掉它会让该类失败对自动修结构性无效。
 
 本手册只做导航，新增判据改 `review.md` 与脚本，不新增门禁。

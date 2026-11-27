@@ -1,5 +1,5 @@
 // Shared GitHub CLI plumbing for the workflow-owned scripts.
-// The release, queue and Codex review/autofix paths differ in endpoints and flags,
+// The release, queue and Codex review paths differ in endpoints and flags,
 // but they must treat API failures, HTTP status codes, pagination and annotated tag chains identically.
 import { spawnSync } from 'node:child_process'
 

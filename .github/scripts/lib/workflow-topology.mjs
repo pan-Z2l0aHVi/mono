@@ -6,16 +6,7 @@ export const CODEX_REVIEW_JOB_NAME = 'Codex review'
 export const CODEX_GATE_JOB_NAME = 'Codex review gate'
 
 // 模型参数只能来自 GitHub 后台。CI 定义里的字面量或 `||` 兜底会让后台配置永远不生效。
-// `CODEX_CONFIG_INPUTS` 约束仍使用 openai/codex-action 的 `codex-autofix-plan`（with:）；
-// `CODEX_DIRECT_REVIEW_ENV` 约束已切换为直调引擎的 `codex-review`（step 级 env:）。
-export const CODEX_CONFIG_INPUTS = Object.freeze({
-  'openai-api-key': 'secrets.CODEX_REVIEW_API_KEY',
-  'responses-api-endpoint': 'vars.CODEX_RESPONSES_ENDPOINT',
-  'codex-version': 'vars.CODEX_VERSION',
-  model: 'vars.CODEX_REVIEW_MODEL',
-  effort: 'vars.CODEX_REVIEW_EFFORT'
-})
-
+// `CODEX_DIRECT_REVIEW_ENV` 约束直调审查引擎 `codex-review`（step 级 env:）。
 export const CODEX_DIRECT_REVIEW_ENV = Object.freeze({
   CODEX_REVIEW_API_KEY: 'secrets.CODEX_REVIEW_API_KEY',
   CODEX_RESPONSES_ENDPOINT: 'vars.CODEX_RESPONSES_ENDPOINT',
@@ -187,25 +178,6 @@ export function parseWorkflow(text) {
   return parsed
 }
 
-/** 逐行核对 codex-action 模型输入的唯一来源（codex-autofix-plan）；缺一行、写成字面量或加兜底都算违约。 */
-export function codexConfigInputViolations(text) {
-  const violations = []
-  const seen = new Set()
-  for (const line of text.split(/\r?\n/)) {
-    for (const [input, source] of Object.entries(CODEX_CONFIG_INPUTS)) {
-      const match = line.match(new RegExp(`^\\s+${input}:\\s*(.*)$`))
-      if (!match) continue
-      seen.add(input)
-      const expected = '${{ ' + source + ' }}'
-      if (match[1].trim() !== expected) violations.push({ input, found: match[1].trim(), expected })
-    }
-  }
-  for (const input of Object.keys(CODEX_CONFIG_INPUTS)) {
-    if (!seen.has(input)) violations.push({ input, found: 'missing', expected: 'declared in codex-autofix-plan' })
-  }
-  return violations
-}
-
 /** 逐行核对直调审查步骤（step 级 env）的模型配置唯一来源；缺一行、写成字面量、加兜底或把密钥放进 vars 都算违约。 */
 export function codexDirectEnvViolations(stepText) {
   const violations = []
@@ -338,10 +310,9 @@ export function localActionBootstrapViolations(text) {
   return violations
 }
 
-// 需要向 GitHub 开口才要凭据，所以表里记的是命令而不是脚本：prepare 与 capture 只读本地文件。
+// 需要向 GitHub 开口才要凭据，所以表里记的是命令而不是脚本：prepare 只读本地文件。
 const ghCommands = {
-  'codex-review.mjs': ['prior-run', 'gate', 'resolve-pull', 'report'],
-  'codex-autofix.mjs': ['prepare', 'apply']
+  'codex-review.mjs': ['prior-run', 'gate', 'resolve-pull', 'report']
 }
 
 // gh 只认 GH_TOKEN，runner 不会替普通步骤注入 GITHUB_TOKEN：缺凭据不是「跳过这一步」，

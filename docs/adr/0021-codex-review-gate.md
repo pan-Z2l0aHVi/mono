@@ -232,3 +232,8 @@ required checks 在 `check` 之外加入 `Codex review gate`，2026-11-23 起按
   - `codex-review` 的 `timeout-minutes` 从 `120` 收紧为 `20`（实测 5–70 文件 PR 在 `effort=high` 下耗时 48s–4m18s，20 分钟兼顾最坏重试余量与防僵死占队）。
   - 配置指纹纳入 `engine`、`review-direct.md`、`review-turn1.schema.json` 与 `CODEX_REVIEW_EXTRA_HEADERS` 哈希，自动隔离新旧引擎结论复用。
 - **回滚**：PR-1 保留旧 `review.md` 与 `prepare` 路径兼容，单个 `git revert` 切流提交即可立即回退至 `openai/codex-action` + `ubuntu-24.04` + `timeout-minutes: 120`，无需改动后台变量。
+
+## 2026-11-27 修订：下线 Codex autofix 链路
+
+- **背景**：PR 审查切至两段式直调引擎后，`codex-autofix-plan` 成为全仓唯一仍依赖 `openai/codex-action` + `ubuntu-24.04` 的无上限工具循环 job。实测在 `deepseek-flash` + `effort=high` 下，简单 changeset 失败耗时 13m、测试失败空转 52m 无产出，且云端沙箱无法运行构建/测试/生成器；自动推送提交与本地独立 worktree + 本地全量 `check` 的开发工作流形成分支分叉与重复 CI/Wails 触发。
+- **决策**：彻底移除 `codex-autofix-plan`、`codex-autofix-apply`、`.github/scripts/codex-autofix.mjs`、`.github/codex/prompts/autofix.md` 及其测试与写回权限；`codex-review-report.yml` 仅保留 `report-conclusion`（`contents: read`），全仓不再持有针对 PR 分支的 `contents: write` 自动推写回路径，也不再调用 `openai/codex-action`。
