@@ -80,6 +80,7 @@
     "@iconify-json/radix-icons": "catalog:",
     "@iconify-json/si": "catalog:",
     "@iconify-json/tabler": "catalog:",
+    "@iconify-json/wordpress": "catalog:",
     "@types/react": "catalog:",
     "@types/react-dom": "catalog:",
     "lit": "catalog:",

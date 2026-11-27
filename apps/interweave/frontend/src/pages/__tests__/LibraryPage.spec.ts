@@ -49,11 +49,12 @@ vi.mock('@/services/library', () => ({
   }
 }))
 
+const toastSuccess = vi.hoisted(() => vi.fn<(message: string, options: { position: string }) => void>())
 const toastWarning = vi.hoisted(() => vi.fn<(message: string, options: { position: string }) => void>())
 const toastError = vi.hoisted(() => vi.fn<(message: string, options: { position: string }) => void>())
 
 vi.mock('@greypan/web-ui', () => ({
-  toast: { warning: toastWarning, error: toastError },
+  toast: { success: toastSuccess, warning: toastWarning, error: toastError },
   imagePreview: () => {
     throw new Error('图片预览由 AddDialog 组件用例覆盖')
   }
@@ -214,6 +215,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       chooseFilePaths: async () => [],
       chooseFilePath: async () => null,
       getClipboardFilePaths: async () => [],
+      writeClipboardFilePath: async () => {},
       readClipboardText: async () => '',
       writeClipboardText: async () => {},
       defaultOpenWith: async () => '',
@@ -233,14 +235,19 @@ const router = {
   forward: vi.fn<() => void>()
 }
 
+const routeLeaveGuards: Array<() => void> = []
+
 vi.mock('vue-router', () => ({
   useRoute: () => route.value,
-  useRouter: () => router
+  useRouter: () => router,
+  onBeforeRouteLeave: (guard: () => void) => {
+    routeLeaveGuards.push(guard)
+  }
 }))
 
 const mountedPages = new Set<() => void>()
 
-async function mountPage(mark: (stage: string) => void = () => {}) {
+async function mountPage(mark: (stage: string) => void = () => {}, piniaInstance = createPinia()) {
   // 页面里的资源列表是虚拟滚动的，jsdom 没有布局时它算不出窗口、一行都不渲染。见
   // components/library/__tests__/virtualLayout。
   const restoreLayout = stubLayout()
@@ -270,7 +277,7 @@ async function mountPage(mark: (stage: string) => void = () => {}) {
   }
   mountedPages.add(close)
   try {
-    app.use(createPinia())
+    app.use(piniaInstance)
     mark('mount:start')
     app.mount(host)
     mark('mount:end')
@@ -1491,6 +1498,111 @@ describe('LibraryPage：重命名后的激活行', () => {
       expect(renamed.getAttribute('tabindex'), '被改名的一行应成为当前行').toBe('0')
     } finally {
       await mounted.close()
+    }
+  })
+})
+
+describe('LibraryPage：拷贝资源与滚动位置记忆', () => {
+  beforeEach(() => {
+    setActivePinia(createPinia())
+    route.value = { path: '/library' }
+    routeLeaveGuards.length = 0
+    toastSuccess.mockReset()
+    toastWarning.mockReset()
+    toastError.mockReset()
+  })
+
+  afterEach(() => {
+    runtimeStub.current = null
+  })
+
+  it('右键菜单与详情抽屉的「拷贝」分别复制本地文件或网页链接到剪贴板', async () => {
+    const writeClipboardFilePath = vi.fn<(path: string) => Promise<void>>(async () => {})
+    const writeClipboardText = vi.fn<(text: string) => Promise<void>>(async () => {})
+    const fileRes = resource({
+      id: 'res-file',
+      title: '本地图片',
+      kind: ResourceKind.ResourceKindImage,
+      sources: [
+        source({
+          id: 'src-file',
+          resource_id: 'res-file',
+          type: SourceType.SourceTypeFile,
+          location: '/tmp/demo.png',
+          available: true
+        })
+      ]
+    })
+    const urlRes = resource({
+      id: 'res-url',
+      title: '参考文档',
+      kind: ResourceKind.ResourceKindWeb,
+      sources: [
+        source({
+          id: 'src-url',
+          resource_id: 'res-url',
+          type: SourceType.SourceTypeURL,
+          location: 'https://example.com/docs',
+          available: true
+        })
+      ]
+    })
+    runtimeStub.current = createRuntime({
+      resources: { list: async () => [fileRes, urlRes] },
+      system: { writeClipboardFilePath, writeClipboardText }
+    })
+
+    const mounted = await mountPage()
+    try {
+      await openContextMenuAction(mounted.host, 'res-file', '拷贝')
+      expect(writeClipboardFilePath).toHaveBeenCalledWith('/tmp/demo.png')
+      expect(toastSuccess).toHaveBeenCalledWith('已复制到剪贴板', { position: 'top-center' })
+
+      await openContextMenuAction(mounted.host, 'res-url', '拷贝')
+      expect(writeClipboardText).toHaveBeenCalledWith('https://example.com/docs')
+
+      await openContextMenuAction(mounted.host, 'res-file', '详情')
+      await nextTick()
+      const copyButton = [...mounted.host.querySelectorAll<HTMLButtonElement>('.detail-quick button')].find(
+        el => el.textContent?.trim() === '拷贝'
+      )
+      expect(copyButton).toBeDefined()
+      copyButton!.click()
+      await nextTick()
+      expect(writeClipboardFilePath).toHaveBeenCalledTimes(2)
+    } finally {
+      await mounted.close()
+    }
+  })
+
+  it('离开资源库页面时记住滚动位置，切回页面后自动恢复', async () => {
+    const items = Array.from({ length: 40 }, (_, index) =>
+      resource({
+        id: `res-${index}`,
+        title: `资源 ${index}`,
+        sources: [source({ id: `src-${index}`, resource_id: `res-${index}`, available: true })]
+      })
+    )
+    runtimeStub.current = createRuntime({
+      resources: { list: async () => items }
+    })
+
+    const sharedPinia = createPinia()
+    const first = await mountPage(undefined, sharedPinia)
+    try {
+      window.scrollTo({ top: 360 })
+      expect(window.scrollY).toBe(360)
+      routeLeaveGuards.at(-1)?.()
+      expect(useLibraryStore(sharedPinia).scrollY).toBe(360)
+    } finally {
+      await first.close()
+    }
+
+    const second = await mountPage(undefined, sharedPinia)
+    try {
+      await vi.waitFor(() => expect(window.scrollY).toBe(360))
+    } finally {
+      await second.close()
     }
   })
 })

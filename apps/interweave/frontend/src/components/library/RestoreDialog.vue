@@ -3,9 +3,9 @@ import { toast, type WebUiDialog, type WebUiEvent, type WebUiSwitch } from '@gre
 import {
   akarIconsCircleCheck,
   emojioneMonotoneStopButton,
-  iconParkSolidRadarTwo,
   lucideChevronRight,
-  lucideFile
+  lucideFile,
+  wordpressDashboard
 } from '@greypan/web-ui/icons'
 import { Virtualizer } from 'virtua/vue'
 import { onBeforeUnmount, watch } from 'vue'
@@ -206,18 +206,18 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
       <div
         v-if="scanning || scanProgress || scanIncomplete"
         role="status"
-        class="mt-4 shrink-0 items-center gap-4 rounded-[18px] bg-[#eceef4] p-3 dark:bg-white/6"
-        :class="[mobile ? 'block' : 'flex', { 'motion-reduced': !scanning }]"
+        class="scan-status relative mt-4 shrink-0 items-center gap-4 overflow-hidden rounded-[18px] bg-[#eceef4] p-3 dark:bg-white/6"
+        :class="[mobile ? 'block' : 'flex', { 'scan-status-active': scanning, 'motion-reduced': !scanning }]"
       >
         <div class="flex min-w-0 flex-1 items-center gap-2">
           <web-ui-spinner v-if="scanning" :size="16" class="shrink-0" />
           <div class="min-w-0 flex-1">
-            <div class="scan-shimmer font-semibold text-(--wui-color-text)">
+            <div class="font-semibold text-(--wui-color-text)">
               {{ scanning ? '正在扫描文件' : scanIncomplete ? '扫描未完成' : '扫描完成' }}
             </div>
             <div
               v-if="scanning && scanProgress?.currentDirectory"
-              class="scan-shimmer truncate text-xs text-(--wui-color-text-secondary)"
+              class="truncate text-xs text-(--wui-color-text-secondary)"
               :title="scanProgress.currentDirectory"
             >
               正在检查 {{ scanProgress.currentDirectory }}
@@ -228,20 +228,20 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
           class="scan-stats flex shrink-0 gap-4 text-xs text-(--wui-color-text-secondary)"
           :class="{ 'mt-2': mobile }"
         >
-          <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
+          <span class="grid gap-0.5 whitespace-nowrap"
             ><strong class="font-mono text-sm tabular-nums text-(--wui-color-text)">{{
               (scanProgress?.checked ?? 0).toLocaleString()
             }}</strong
             >已检查</span
           >
-          <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
+          <span class="grid gap-0.5 whitespace-nowrap"
             ><strong class="font-mono text-sm tabular-nums text-(--wui-color-text)">{{
               scanProgress?.skipped ?? 0
             }}</strong
             >已跳过</span
           >
-          <span class="scan-shimmer grid gap-0.5 whitespace-nowrap"
-            ><strong class="scan-shimmer font-mono text-sm tabular-nums text-(--wui-color-accent)">{{
+          <span class="grid gap-0.5 whitespace-nowrap"
+            ><strong class="font-mono text-sm tabular-nums text-(--wui-color-accent)">{{
               Object.values(candidates).filter(items => items.length).length
             }}</strong
             >已找到</span
@@ -257,7 +257,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
       :disabled="locked"
       @click="session.openScanChoice()"
     >
-      <web-ui-icon slot="prefix" :icon="iconParkSolidRadarTwo" :size="16" />一键扫描
+      <web-ui-icon slot="prefix" :icon="wordpressDashboard" :size="20" />一键扫描
     </web-ui-button>
     <web-ui-button
       v-if="scanning"
@@ -370,44 +370,44 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   min-width: 76px;
 }
 
-.scan-shimmer {
-  background: linear-gradient(
-    90deg,
-    currentColor 0%,
-    currentColor 25%,
-    color-mix(in srgb, currentcolor 25%, #fff) 50%,
-    currentColor 75%,
-    currentColor 100%
-  );
-  background-position: 100% 0;
-  background-clip: text;
-  background-size: 250% 100%;
+.scan-status-active::after {
+  pointer-events: none;
+  content: '';
 
-  animation: scan-shimmer 1.8s linear infinite;
+  position: absolute;
+  inset: 0;
 
-  -webkit-text-fill-color: transparent;
+  border-radius: inherit;
+
+  background: linear-gradient(105deg, transparent 25%, rgb(255 255 255 / 0.55) 50%, transparent 75%);
+
+  animation: scan-shimmer 1.1s linear infinite;
+}
+
+:global(.dark) .scan-status-active::after {
+  background: linear-gradient(105deg, transparent 25%, rgb(255 255 255 / 0.14) 50%, transparent 75%);
 }
 
 @keyframes scan-shimmer {
+  from {
+    transform: translateX(-100%);
+  }
+
   to {
-    background-position: -66.67% 0;
+    transform: translateX(100%);
   }
 }
 
-.motion-reduced .scan-shimmer,
-:global(web-ui-theme[motion='reduced']) .scan-shimmer {
-  background: none;
+.motion-reduced.scan-status-active::after,
+:global(web-ui-theme[motion='reduced']) .scan-status-active::after {
+  display: none;
   animation: none;
-
-  -webkit-text-fill-color: currentcolor;
 }
 
 @media (prefers-reduced-motion: reduce) {
-  .scan-shimmer {
-    background: none;
+  .scan-status-active::after {
+    display: none;
     animation: none;
-
-    -webkit-text-fill-color: currentcolor;
   }
 }
 </style>

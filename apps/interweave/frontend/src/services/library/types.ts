@@ -86,6 +86,8 @@ export interface LibrarySystemCapabilities {
   chooseFilePath(): Promise<string | null>
   chooseDirectory(): Promise<string | null>
   getClipboardFilePaths(): Promise<string[]>
+  /** 将本地文件或目录以文件对象写入剪贴板，便于在系统文件管理器等处粘贴。 */
+  writeClipboardFilePath(path: string): Promise<void>
   /** 纯文本读取走 Go：WebView 里的 navigator.clipboard 受安全上下文与权限约束。 */
   readClipboardText(): Promise<string>
   /** 纯文本写入；失败必须抛出，界面据此提示而不是假装复制成功。 */

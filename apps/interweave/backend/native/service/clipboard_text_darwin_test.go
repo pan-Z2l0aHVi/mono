@@ -4,6 +4,8 @@ package service
 
 import (
 	"context"
+	"os"
+	"path/filepath"
 	"testing"
 )
 
@@ -31,5 +33,35 @@ func TestClipboardTextRoundTrip(t *testing.T) {
 	}
 	if actual != value {
 		t.Fatalf("expected %q, got %q", value, actual)
+	}
+}
+
+func TestClipboardFilePathRoundTrip(t *testing.T) {
+	ctx := context.Background()
+	service := NewOSService()
+
+	originalText, _ := service.ReadClipboardText(ctx)
+	if originalText != "" {
+		t.Cleanup(func() { _ = service.WriteClipboardText(context.Background(), originalText) })
+	}
+
+	file := filepath.Join(t.TempDir(), "sample file.txt")
+	if err := os.WriteFile(file, []byte("hello"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	resolved, err := filepath.EvalSymlinks(file)
+	if err != nil {
+		resolved = file
+	}
+
+	if err := service.WriteClipboardFilePath(ctx, resolved); err != nil {
+		t.Fatalf("write clipboard file path: %v", err)
+	}
+	paths, err := service.GetClipboardFilePaths(ctx)
+	if err != nil {
+		t.Fatalf("read clipboard file paths back: %v", err)
+	}
+	if len(paths) != 1 || paths[0] != resolved {
+		t.Fatalf("expected [%q], got %v", resolved, paths)
 	}
 }

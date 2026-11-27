@@ -126,6 +126,22 @@ describe('DetailDrawer', () => {
     }
   })
 
+  it('可用资源在操作区展示拷贝按钮，点击发出 copy', async () => {
+    const resource = resourceView({ available: true })
+    const copy = vi.fn<(target: ResourceView) => void>()
+    const mounted = mountDrawer(resource, { onCopy: copy })
+
+    try {
+      await nextTick()
+      const trigger = [...mounted.host.querySelectorAll('button')].find(el => el.textContent?.trim() === '拷贝')
+      expect(trigger).toBeDefined()
+      trigger!.click()
+      expect(copy).toHaveBeenCalledExactlyOnceWith(resource)
+    } finally {
+      mounted.close()
+    }
+  })
+
   it('重命名 button 点击进入重命名流程', async () => {
     const resource = resourceView()
     const startRename = vi.fn<(target: ResourceView) => void>()

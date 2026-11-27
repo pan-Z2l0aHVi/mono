@@ -159,6 +159,9 @@ class WailsLibraryRuntime implements LibraryRuntime {
       return selected ?? null
     },
     getClipboardFilePaths: () => OSService.GetClipboardFilePaths(),
+    writeClipboardFilePath: async (path: string) => {
+      await OSService.WriteClipboardFilePath(path)
+    },
     readClipboardText: () => OSService.ReadClipboardText(),
     writeClipboardText: async (text: string) => {
       await OSService.WriteClipboardText(text)

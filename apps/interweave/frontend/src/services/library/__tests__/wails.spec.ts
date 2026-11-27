@@ -42,6 +42,7 @@ const { dialogsOpenFile, eventsOn, resourceService, sourceService, tagService, o
     tagService: { SetResourceTags: vi.fn<(...args: unknown[]) => Promise<unknown>>() },
     osService: {
       GetClipboardFilePaths: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
+      WriteClipboardFilePath: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
       ReadClipboardText: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
       WriteClipboardText: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
       DefaultOpenWith: vi.fn<(...args: unknown[]) => Promise<unknown>>(),
@@ -246,16 +247,19 @@ describe('null-DTO 守卫', () => {
 })
 
 describe('桌面剪贴板传输路径（D1）', () => {
-  it('三个剪贴板调用透传到 OSService', async () => {
+  it('剪贴板调用透传到 OSService', async () => {
     const rt = runtime()
     osService.GetClipboardFilePaths.mockResolvedValueOnce(['/clip.txt'])
+    osService.WriteClipboardFilePath.mockResolvedValueOnce(undefined)
     osService.ReadClipboardText.mockResolvedValueOnce('clip-text')
     osService.WriteClipboardText.mockResolvedValueOnce(undefined)
 
     await expect(rt.system.getClipboardFilePaths()).resolves.toEqual(['/clip.txt'])
+    await expect(rt.system.writeClipboardFilePath('/clip.png')).resolves.toBeUndefined()
     await expect(rt.system.readClipboardText()).resolves.toBe('clip-text')
     await expect(rt.system.writeClipboardText('text')).resolves.toBeUndefined()
     expect(osService.GetClipboardFilePaths).toHaveBeenCalledTimes(1)
+    expect(osService.WriteClipboardFilePath).toHaveBeenCalledWith('/clip.png')
     expect(osService.ReadClipboardText).toHaveBeenCalledTimes(1)
     expect(osService.WriteClipboardText).toHaveBeenCalledWith('text')
   })

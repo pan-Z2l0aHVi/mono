@@ -53,6 +53,7 @@ const emit = defineEmits<{
   recover: [source: ResourceSourceView]
   openDefault: [resource: ResourceView]
   showInFileManager: [source: ResourceSourceView]
+  copy: [resource: ResourceView]
 }>()
 const placement = computed(() => (props.mobile ? 'bottom' : 'right'))
 const renderedResource = useLingering(() => props.resource)
@@ -215,7 +216,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
             </web-ui-button>
           </div>
         </div>
-        <div class="detail-quick mb-3 grid grid-cols-2 gap-2.5">
+        <div class="detail-quick mb-3 grid grid-cols-3 gap-2.5">
           <template v-if="renderedResource.available">
             <button
               type="button"
@@ -249,6 +250,13 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
                 <web-ui-icon slot="prefix" :icon="fileManagerIcon()" :size="14" />{{ fileManagerLabel() }}
               </web-ui-dropdown-item>
             </web-ui-dropdown>
+            <button
+              type="button"
+              class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-[#007aff] [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))]"
+              @click="emit('copy', renderedResource)"
+            >
+              <web-ui-icon :icon="lucideCopy" :size="18" />拷贝
+            </button>
           </template>
           <button
             v-else

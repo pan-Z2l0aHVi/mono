@@ -116,6 +116,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       chooseFilePaths: async () => [],
       chooseFilePath: async () => null,
       getClipboardFilePaths: async () => [],
+      writeClipboardFilePath: async () => {},
       readClipboardText: async () => '',
       writeClipboardText: async () => {},
       defaultOpenWith: async () => '',

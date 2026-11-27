@@ -176,6 +176,7 @@ interface LibraryState {
   filterTag: string
   sort: SortOption
   sortDirection: SortDirection
+  scrollY: number
 }
 
 export const useLibraryStore = defineStore('library', {
@@ -187,7 +188,8 @@ export const useLibraryStore = defineStore('library', {
     filterAvailability: 'all',
     filterTag: '',
     sort: 'createdAt',
-    sortDirection: 'desc'
+    sortDirection: 'desc',
+    scrollY: 0
   }),
   getters: {
     allTagNames(state): string[] {
