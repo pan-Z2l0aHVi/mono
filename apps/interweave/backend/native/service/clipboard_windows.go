@@ -58,6 +58,67 @@ func readClipboardFilePaths(ctx context.Context) ([]string, error) {
 	return paths, nil
 }
 
+type dropFilesHeader struct {
+	pFiles uint32
+	ptX    int32
+	ptY    int32
+	fNC    uint32
+	fWide  uint32
+}
+
+func writeClipboardFilePath(ctx context.Context, filePath string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	encoded, err := syscall.UTF16FromString(filePath)
+	if err != nil {
+		return fmt.Errorf("encode Windows clipboard file path: %w", err)
+	}
+	// CF_HDROP 路径列表以双 NUL 结尾（UTF16FromString 已带单个 NUL，再补一个）。
+	encoded = append(encoded, 0)
+
+	headerSize := unsafe.Sizeof(dropFilesHeader{})
+	dataBytes := uintptr(len(encoded)) * unsafe.Sizeof(encoded[0])
+	totalSize := headerSize + dataBytes
+
+	runtime.LockOSThread()
+	defer runtime.UnlockOSThread()
+
+	if err := openWindowsClipboard(ctx); err != nil {
+		return fmt.Errorf("open Windows clipboard: %w", err)
+	}
+	defer procCloseClipboard.Call()
+
+	if cleared, _, clearErr := procEmptyClipboard.Call(); cleared == 0 {
+		return fmt.Errorf("empty Windows clipboard: %w", clearErr)
+	}
+
+	handle, _, allocErr := procGlobalAlloc.Call(globalMemMoveable, totalSize)
+	if handle == 0 {
+		return fmt.Errorf("allocate Windows clipboard file drop: %w", allocErr)
+	}
+	pointer, _, _ := procGlobalLock.Call(handle)
+	if pointer == 0 {
+		procGlobalFree.Call(handle)
+		return fmt.Errorf("lock Windows clipboard file drop")
+	}
+
+	header := (*dropFilesHeader)(unsafe.Pointer(pointer))
+	*header = dropFilesHeader{
+		pFiles: uint32(headerSize),
+		fWide:  1,
+	}
+	dest := unsafe.Slice((*uint16)(unsafe.Pointer(pointer+headerSize)), len(encoded))
+	copy(dest, encoded)
+	procGlobalUnlock.Call(handle)
+
+	if stored, _, storeErr := procSetClipboardData.Call(clipboardFileDrop, handle); stored == 0 {
+		procGlobalFree.Call(handle)
+		return fmt.Errorf("store Windows clipboard file drop: %w", storeErr)
+	}
+	return nil
+}
+
 func openWindowsClipboard(ctx context.Context) error {
 	var lastErr error
 	for attempt := 0; attempt < 4; attempt++ {

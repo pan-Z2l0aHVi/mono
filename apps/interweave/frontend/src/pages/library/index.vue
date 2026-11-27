@@ -12,7 +12,7 @@ import {
   watch,
   type ComponentPublicInstance
 } from 'vue'
-import { useRouter } from 'vue-router'
+import { onBeforeRouteLeave, useRouter } from 'vue-router'
 
 import AddDialog from '@/components/library/AddDialog.vue'
 import { createLibraryAddQueue } from '@/components/library/addQueue'
@@ -52,23 +52,39 @@ import { createLibraryWorkflow } from './libraryWorkflow'
 const router = useRouter()
 const store = useLibraryStore()
 
-// KeepAlive 缓存期间记住整页滚动位置：仅在页面处于激活态时记录 window.scrollY，
-// 切走后停记（避免目标短页把 scrollY 归零时覆盖记录），再次激活后恢复。
+// 记住整页滚动位置：仅在页面处于激活态时记录 window.scrollY，
+// 离开前锁定位置（早于 KeepAlive 摘除 DOM 导致短页把 scrollY 归零），再次激活或重挂后恢复。
 let isLibraryActive = true
-let savedLibraryScrollY = 0
 let restoreScrollFrame = 0
 
 function recordLibraryScroll() {
   if (!isLibraryActive) return
-  savedLibraryScrollY = window.scrollY
+  store.scrollY = window.scrollY
 }
 
-onMounted(() => {
-  window.addEventListener('scroll', recordLibraryScroll, { passive: true })
+function scheduleRestoreLibraryScroll() {
+  const targetY = store.scrollY
+  if (targetY <= 0) return
+  void nextTick(() => {
+    if (!isLibraryActive) return
+    window.scrollTo({ top: targetY, behavior: 'instant' })
+    // 虚拟列表挂载首帧后总高可能经 ResizeObserver 调整，下一帧再核对一次避免被夹短。
+    restoreScrollFrame = requestAnimationFrame(() => {
+      restoreScrollFrame = 0
+      if (!isLibraryActive) return
+      if (Math.abs(window.scrollY - targetY) > 1) {
+        window.scrollTo({ top: targetY, behavior: 'instant' })
+      }
+    })
+  })
+}
+
+onBeforeRouteLeave(() => {
+  if (isLibraryActive) store.scrollY = window.scrollY
+  isLibraryActive = false
 })
 
 onDeactivated(() => {
-  savedLibraryScrollY = window.scrollY
   isLibraryActive = false
   if (restoreScrollFrame) {
     cancelAnimationFrame(restoreScrollFrame)
@@ -78,15 +94,7 @@ onDeactivated(() => {
 
 onActivated(() => {
   isLibraryActive = true
-  const targetY = savedLibraryScrollY
-  if (targetY <= 0) return
-  void nextTick(() => {
-    restoreScrollFrame = requestAnimationFrame(() => {
-      restoreScrollFrame = 0
-      if (!isLibraryActive) return
-      window.scrollTo({ top: targetY, behavior: 'instant' })
-    })
-  })
+  scheduleRestoreLibraryScroll()
 })
 
 onScopeDispose(() => {
@@ -352,6 +360,29 @@ async function showInFileManager(source: ResourceSourceView) {
 }
 
 /*
+ * 拷贝资源到系统剪贴板：本地文件写入文件对象（可在文件管理器或外部应用直接粘贴），
+ * 网页链接写入 URL 文本。优先使用首选来源，首选失效时回退到第一个可用来源。
+ */
+async function copyResource(resource: ResourceView) {
+  const source = resource.preferred?.available
+    ? resource.preferred
+    : (resource.sources.find(item => item.available) ?? primarySource(resource))
+  if (!source || !source.location) return
+  if (source.type === 'file' && !source.available) return
+  try {
+    if (source.type === 'file') {
+      await runtime.system.writeClipboardFilePath(source.location)
+    } else {
+      await runtime.system.writeClipboardText(source.location)
+    }
+    toast.success('已复制到剪贴板', { position: 'top-center' })
+  } catch (cause) {
+    console.error('复制资源到剪贴板失败', cause)
+    toast.warning('无法复制到剪贴板，请稍后重试', { position: 'top-center' })
+  }
+}
+
+/*
  * 设为桌面壁纸：与 ResourceList 的菜单门控同一口径——锁定 preferred 来源；file 来源要求可用，
  * URL 来源先经后端下载到缓存再设置（remote=true）。成功与失败都用 toast 给出可感知的反馈。
  */
@@ -531,9 +562,15 @@ function handleBatchRestore() {
 }
 
 onMounted(() => {
-  void loadResources().catch(() => {
-    // 初次加载错误由 reportError 呈现，并保留重试入口。
-  })
+  isLibraryActive = true
+  window.addEventListener('scroll', recordLibraryScroll, { passive: true })
+  void loadResources()
+    .catch(() => {
+      // 初次加载错误由 reportError 呈现，并保留重试入口。
+    })
+    .finally(() => {
+      scheduleRestoreLibraryScroll()
+    })
 })
 </script>
 
@@ -620,6 +657,7 @@ onMounted(() => {
         :resolve-default-open-with="resolveDefaultOpenWith"
         @open-default="openResource"
         @show-in-file-manager="showInFileManager"
+        @copy="copyResource"
         @set-wallpaper="setWallpaperFor"
         @select="selectResource"
         @detail="openResourceDetail"
@@ -646,6 +684,7 @@ onMounted(() => {
       @update:open="setDetailOpen"
       @open-default="openResource"
       @show-in-file-manager="showInFileManager"
+      @copy="copyResource"
       @start-rename="startResourceRename($event, 'drawer')"
       @rename-change="handleResourceNameChange"
       @cancel-rename="stopResourceRename"
