@@ -8,7 +8,7 @@
 
 > Reload the page when a dependency's build output changes.
 
-English | [简体中文](./README.CN.md)
+English | [简体中文](./README.CN.md) | [Live demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/deps-reload/getting-started)
 
 ## Install
 
@@ -91,3 +91,9 @@ Create the plugin.
 | `path`       | `string`   | -                 | Local package root for a monorepo or npm link. |
 | `outputDir`  | `string`   | `'dist'`          | Build output directory relative to `path`.     |
 | `extensions` | `string[]` | `['.js', '.css']` | File extensions to watch.                      |
+
+## Documentation
+
+- [Vite](./docs/vite.md) — Vite dev server setup, module graph invalidation, and debounce behavior
+- [Webpack](./docs/webpack.md) — Webpack `contextDependencies` and Dev Server configuration
+- [API](./docs/api.md) — Full `Dep` reference, normalization rules, and multi-package examples

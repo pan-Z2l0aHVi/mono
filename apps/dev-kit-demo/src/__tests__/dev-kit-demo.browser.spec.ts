@@ -46,9 +46,20 @@ async function waitFor<T>(fn: () => T | null | undefined, timeout = 5000): Promi
 }
 
 describe('dev-kit-demo 浏览器端冒烟测试', () => {
-  it('首页展示 js-kit 与 browser-kit 入口及全部 16 个模块卡片', async () => {
+  it('首页展示工具库与构建插件入口卡片（无 Hero 快捷按钮）及全部 16 个模块卡片', async () => {
     const { host, cleanup } = await mountAppAt('/home')
     try {
+      const header = await waitFor(() => host.querySelector<HTMLElement>('header'))
+      expect(header.querySelectorAll('web-ui-button')).toHaveLength(0)
+
+      const entrySection = await waitFor(() => host.querySelector<HTMLElement>('section[aria-label="工具包入口"]'))
+      expect(entrySection.textContent).toContain('工具库')
+      expect(entrySection.textContent).toContain('构建插件')
+      expect(entrySection.textContent).toContain('@greypan/js-kit')
+      expect(entrySection.textContent).toContain('@greypan/browser-kit')
+      expect(entrySection.textContent).toContain('@greypan/deps-reload')
+      expect(entrySection.textContent).toContain('@greypan/unplugin-web-components')
+
       const moduleSection = await waitFor(() => host.querySelector<HTMLElement>('section[aria-label="模块清单"]'))
       const expectedPaths = [
         '/js-kit/plugin-system',
@@ -88,11 +99,19 @@ describe('dev-kit-demo 浏览器端冒烟测试', () => {
       const browserCollapse = await waitFor(() =>
         host.querySelector<WebUiCollapse>('[data-nav-collapse="browser-kit"]')
       )
+      const depsReloadCollapse = await waitFor(() =>
+        host.querySelector<WebUiCollapse>('[data-nav-collapse="deps-reload"]')
+      )
+      const unpluginCollapse = await waitFor(() =>
+        host.querySelector<WebUiCollapse>('[data-nav-collapse="unplugin-web-components"]')
+      )
       const jsTrigger = await waitFor(() => host.querySelector<HTMLButtonElement>('[data-nav-group="js-kit"]'))
       const jsContent = jsCollapse.querySelector<HTMLElement>('[slot="content"]')!
 
       await jsCollapse.updateComplete
       await browserCollapse.updateComplete
+      await depsReloadCollapse.updateComplete
+      await unpluginCollapse.updateComplete
 
       // 一级菜单沿用圆角胶囊样式，子菜单无左侧参考线
       expect(jsTrigger.classList.contains('rounded-full')).toBe(true)
@@ -100,6 +119,8 @@ describe('dev-kit-demo 浏览器端冒烟测试', () => {
 
       expect(jsCollapse.open).toBe(true)
       expect(browserCollapse.open).toBe(true)
+      expect(depsReloadCollapse.open).toBe(true)
+      expect(unpluginCollapse.open).toBe(true)
       await waitFor(() => (jsContent.getBoundingClientRect().height > 0 ? true : null))
 
       // 点击收起：open 变为 false，动画落稳态后内容高度归 0
@@ -179,6 +200,26 @@ describe('dev-kit-demo 浏览器端冒烟测试', () => {
       const utilDoc = await waitFor(() => host.querySelector('[data-example-doc="js-kit/utility-types"]'))
       const utilBlock = await waitFor(() => utilDoc.querySelector('[data-codeblock="ts"]'))
       expect(utilBlock.querySelectorAll('web-ui-segmented-trigger').length).toBe(0)
+    } finally {
+      cleanup()
+    }
+  })
+
+  it('构建插件文档路由可正常渲染且未知插件子路径展示 404', async () => {
+    const { host, router, cleanup } = await mountAppAt('/deps-reload/vite')
+    try {
+      const depsDoc = await waitFor(() => host.querySelector('[data-example-doc="deps-reload/vite"]'))
+      expect(depsDoc.textContent).toContain('Vite')
+
+      await router.push('/unplugin-web-components/html-injection')
+      const unpluginDoc = await waitFor(() =>
+        host.querySelector('[data-example-doc="unplugin-web-components/html-injection"]')
+      )
+      expect(unpluginDoc.textContent).toContain('HTML')
+
+      await router.push('/deps-reload/not-a-real-doc')
+      await waitFor(() => (host.textContent?.includes('404') ? true : null))
+      expect(host.textContent).toContain('404')
     } finally {
       cleanup()
     }

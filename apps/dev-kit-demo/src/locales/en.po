@@ -82,6 +82,10 @@ msgstr "Overview"
 
 #: src/app/index.vue
 #: src/app/index.vue
+#: src/app/index.vue
+#: src/app/index.vue
+#: src/pages/home/index.vue
+#: src/pages/home/index.vue
 #: src/pages/home/index.vue
 #: src/pages/home/index.vue
 msgid "快速开始"
@@ -89,6 +93,10 @@ msgstr "Getting Started"
 
 #: src/app/index.vue
 #: src/app/index.vue
+#: src/app/index.vue
+#: src/app/index.vue
+#: src/pages/home/index.vue
+#: src/pages/home/index.vue
 #: src/pages/home/index.vue
 #: src/pages/home/index.vue
 msgid "更新日志"
@@ -459,6 +467,7 @@ msgid "附加 key"
 msgstr "Append key"
 
 #: src/app/index.vue
+#: src/pages/home/index.vue
 msgid "工具库"
 msgstr "Utils library"
 
@@ -547,14 +556,6 @@ msgid "事件监听便捷绑定与解绑工具"
 msgstr "Ergonomic event listener attach and detach helpers"
 
 #: src/pages/home/index.vue
-msgid "js-kit 快速开始"
-msgstr "js-kit Quick Start"
-
-#: src/pages/home/index.vue
-msgid "browser-kit 快速开始"
-msgstr "browser-kit Quick Start"
-
-#: src/pages/home/index.vue
 #: src/pages/home/index.vue
 msgid "8 个模块"
 msgstr "8 modules"
@@ -562,3 +563,26 @@ msgstr "8 modules"
 #: src/pages/home/index.vue
 msgid "面向现代 TypeScript 与浏览器的零框架依赖工具集"
 msgstr "Framework-free toolkits for modern TypeScript and browsers"
+
+#: src/app/index.vue
+#: src/pages/home/index.vue
+msgid "构建插件"
+msgstr "Build Plugins"
+
+#: src/pages/home/index.vue
+#: src/pages/home/index.vue
+msgid "3 篇文档"
+msgstr "3 docs"
+
+#: src/pages/home/index.vue
+msgid "本地依赖构建产物变化时自动刷新页面，支持 Vite 与 Webpack，始终消费真实 dist 产物。"
+msgstr "Reload the page when local dependency build outputs change, supporting Vite and Webpack while always consuming real dist artifacts."
+
+#: src/pages/home/index.vue
+#: src/pages/home/index.vue
+msgid "浏览文档"
+msgstr "Browse Docs"
+
+#: src/pages/home/index.vue
+msgid "在 Vue、React（JSX/TSX）与 Vite HTML 入口中按标签自动注入 Web Components 导入。"
+msgstr "Automatically inject Web Components imports by tag in Vue, React (JSX/TSX), and Vite HTML entries."

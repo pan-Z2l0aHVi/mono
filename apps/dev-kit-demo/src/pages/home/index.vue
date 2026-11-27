@@ -8,7 +8,6 @@
 
 <script setup lang="ts">
 import {
-  lucideArrowRight,
   lucideBoxes,
   lucideCode,
   lucideGlobe,
@@ -99,19 +98,9 @@ const logoSrc = `${import.meta.env.BASE_URL}kit-transparent.png`
       </div>
 
       <h1 class="mb-3 text-[32px] font-bold tracking-tight text-(--wui-color-text)">@greypan Dev Kit</h1>
-      <p class="mb-7 max-w-2xl text-base leading-relaxed text-(--wui-color-text-secondary) sm:text-lg">
+      <p class="max-w-2xl text-base leading-relaxed text-(--wui-color-text-secondary) sm:text-lg">
         面向现代 TypeScript 与浏览器的零框架依赖工具集
       </p>
-
-      <div class="flex flex-wrap items-center justify-center gap-3">
-        <web-ui-button variant="primary" @click="go('/js-kit/getting-started')">
-          js-kit 快速开始
-          <web-ui-icon slot="suffix" :icon="lucideArrowRight" :size="15"></web-ui-icon>
-        </web-ui-button>
-        <web-ui-button variant="secondary" @click="go('/browser-kit/getting-started')">
-          browser-kit 快速开始
-        </web-ui-button>
-      </div>
     </header>
 
     <div class="mb-12 grid w-full grid-cols-2 gap-x-6 gap-y-3 sm:grid-cols-4">
@@ -125,52 +114,122 @@ const logoSrc = `${import.meta.env.BASE_URL}kit-transparent.png`
       </div>
     </div>
 
-    <section class="mb-16 grid w-full gap-8 md:grid-cols-2" aria-label="工具包入口">
-      <article class="wui-glass flex flex-col justify-between gap-5 rounded-3xl p-6 [--wui-glass-corner-radius:24px]">
-        <div class="flex flex-col gap-2.5">
-          <div class="flex items-center justify-between gap-2">
-            <h2 class="text-xl font-semibold text-(--wui-color-text)">@greypan/js-kit</h2>
-            <span
-              class="inline-flex items-center gap-1 rounded-full bg-(--wui-color-surface-control) px-2.5 py-0.5 text-xs text-(--wui-color-text-secondary)"
-            >
-              <web-ui-icon :icon="lucidePackage" :size="12"></web-ui-icon>
-              8 个模块
-            </span>
-          </div>
-          <p class="text-sm leading-relaxed text-(--wui-color-text-secondary)">
-            通用 JavaScript / TypeScript 工具与可组合插件系统，适用于浏览器、Node.js 与 Worker。
-          </p>
-        </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <web-ui-button variant="primary" size="32" @click="go('/js-kit/getting-started')">快速开始</web-ui-button>
-          <web-ui-button variant="secondary" size="32" @click="go('/js-kit/plugin-system')">浏览模块</web-ui-button>
-          <web-ui-button variant="ghost" size="32" @click="go('/js-kit/changelog')">更新日志</web-ui-button>
-        </div>
-      </article>
+    <section class="mb-16 flex w-full flex-col gap-10" aria-label="工具包入口">
+      <div class="flex flex-col gap-4">
+        <h2 class="text-sm font-semibold tracking-wider text-(--wui-color-text-secondary)">工具库</h2>
+        <div class="grid w-full gap-8 md:grid-cols-2">
+          <article
+            class="wui-glass flex flex-col justify-between gap-5 rounded-3xl p-6 [--wui-glass-corner-radius:24px]"
+          >
+            <div class="flex flex-col gap-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="text-xl font-semibold text-(--wui-color-text)">@greypan/js-kit</h3>
+                <span
+                  class="inline-flex items-center gap-1 rounded-full bg-(--wui-color-surface-control) px-2.5 py-0.5 text-xs text-(--wui-color-text-secondary)"
+                >
+                  <web-ui-icon :icon="lucidePackage" :size="12"></web-ui-icon>
+                  8 个模块
+                </span>
+              </div>
+              <p class="text-sm leading-relaxed text-(--wui-color-text-secondary)">
+                通用 JavaScript / TypeScript 工具与可组合插件系统，适用于浏览器、Node.js 与 Worker。
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <web-ui-button variant="primary" size="32" @click="go('/js-kit/getting-started')">快速开始</web-ui-button>
+              <web-ui-button variant="secondary" size="32" @click="go('/js-kit/plugin-system')">浏览模块</web-ui-button>
+              <web-ui-button variant="ghost" size="32" @click="go('/js-kit/changelog')">更新日志</web-ui-button>
+            </div>
+          </article>
 
-      <article class="wui-glass flex flex-col justify-between gap-5 rounded-3xl p-6 [--wui-glass-corner-radius:24px]">
-        <div class="flex flex-col gap-2.5">
-          <div class="flex items-center justify-between gap-2">
-            <h2 class="text-xl font-semibold text-(--wui-color-text)">@greypan/browser-kit</h2>
-            <span
-              class="inline-flex items-center gap-1 rounded-full bg-(--wui-color-surface-control) px-2.5 py-0.5 text-xs text-(--wui-color-text-secondary)"
-            >
-              <web-ui-icon :icon="lucideGlobe" :size="12"></web-ui-icon>
-              8 个模块
-            </span>
-          </div>
-          <p class="text-sm leading-relaxed text-(--wui-color-text-secondary)">
-            浏览器运行时工具集：带 TTL 的命名空间存储、可组合埋点、环境检测、文件下载、剪贴板与历史导航。
-          </p>
+          <article
+            class="wui-glass flex flex-col justify-between gap-5 rounded-3xl p-6 [--wui-glass-corner-radius:24px]"
+          >
+            <div class="flex flex-col gap-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="text-xl font-semibold text-(--wui-color-text)">@greypan/browser-kit</h3>
+                <span
+                  class="inline-flex items-center gap-1 rounded-full bg-(--wui-color-surface-control) px-2.5 py-0.5 text-xs text-(--wui-color-text-secondary)"
+                >
+                  <web-ui-icon :icon="lucideGlobe" :size="12"></web-ui-icon>
+                  8 个模块
+                </span>
+              </div>
+              <p class="text-sm leading-relaxed text-(--wui-color-text-secondary)">
+                浏览器运行时工具集：带 TTL 的命名空间存储、可组合埋点、环境检测、文件下载、剪贴板与历史导航。
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <web-ui-button variant="primary" size="32" @click="go('/browser-kit/getting-started')">
+                快速开始
+              </web-ui-button>
+              <web-ui-button variant="secondary" size="32" @click="go('/browser-kit/storage')">浏览模块</web-ui-button>
+              <web-ui-button variant="ghost" size="32" @click="go('/browser-kit/changelog')">更新日志</web-ui-button>
+            </div>
+          </article>
         </div>
-        <div class="flex flex-wrap items-center gap-2">
-          <web-ui-button variant="primary" size="32" @click="go('/browser-kit/getting-started')">
-            快速开始
-          </web-ui-button>
-          <web-ui-button variant="secondary" size="32" @click="go('/browser-kit/storage')">浏览模块</web-ui-button>
-          <web-ui-button variant="ghost" size="32" @click="go('/browser-kit/changelog')">更新日志</web-ui-button>
+      </div>
+
+      <div class="flex flex-col gap-4">
+        <h2 class="text-sm font-semibold tracking-wider text-(--wui-color-text-secondary)">构建插件</h2>
+        <div class="grid w-full gap-8 md:grid-cols-2">
+          <article
+            class="wui-glass flex flex-col justify-between gap-5 rounded-3xl p-6 [--wui-glass-corner-radius:24px]"
+          >
+            <div class="flex flex-col gap-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="text-xl font-semibold text-(--wui-color-text)">@greypan/deps-reload</h3>
+                <span
+                  class="inline-flex items-center gap-1 rounded-full bg-(--wui-color-surface-control) px-2.5 py-0.5 text-xs text-(--wui-color-text-secondary)"
+                >
+                  <web-ui-icon :icon="lucideCode" :size="12"></web-ui-icon>
+                  3 篇文档
+                </span>
+              </div>
+              <p class="text-sm leading-relaxed text-(--wui-color-text-secondary)">
+                本地依赖构建产物变化时自动刷新页面，支持 Vite 与 Webpack，始终消费真实 dist 产物。
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <web-ui-button variant="primary" size="32" @click="go('/deps-reload/getting-started')">
+                快速开始
+              </web-ui-button>
+              <web-ui-button variant="secondary" size="32" @click="go('/deps-reload/vite')">浏览文档</web-ui-button>
+              <web-ui-button variant="ghost" size="32" @click="go('/deps-reload/changelog')">更新日志</web-ui-button>
+            </div>
+          </article>
+
+          <article
+            class="wui-glass flex flex-col justify-between gap-5 rounded-3xl p-6 [--wui-glass-corner-radius:24px]"
+          >
+            <div class="flex flex-col gap-2.5">
+              <div class="flex items-center justify-between gap-2">
+                <h3 class="text-xl font-semibold text-(--wui-color-text)">@greypan/unplugin-web-components</h3>
+                <span
+                  class="inline-flex items-center gap-1 rounded-full bg-(--wui-color-surface-control) px-2.5 py-0.5 text-xs text-(--wui-color-text-secondary)"
+                >
+                  <web-ui-icon :icon="lucideBoxes" :size="12"></web-ui-icon>
+                  3 篇文档
+                </span>
+              </div>
+              <p class="text-sm leading-relaxed text-(--wui-color-text-secondary)">
+                在 Vue、React（JSX/TSX）与 Vite HTML 入口中按标签自动注入 Web Components 导入。
+              </p>
+            </div>
+            <div class="flex flex-wrap items-center gap-2">
+              <web-ui-button variant="primary" size="32" @click="go('/unplugin-web-components/getting-started')">
+                快速开始
+              </web-ui-button>
+              <web-ui-button variant="secondary" size="32" @click="go('/unplugin-web-components/module-transforms')">
+                浏览文档
+              </web-ui-button>
+              <web-ui-button variant="ghost" size="32" @click="go('/unplugin-web-components/changelog')">
+                更新日志
+              </web-ui-button>
+            </div>
+          </article>
         </div>
-      </article>
+      </div>
     </section>
 
     <section class="w-full" aria-label="模块清单">

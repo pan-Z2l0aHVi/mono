@@ -8,7 +8,7 @@
 
 > 在标签出现时自动导入 Web Components 的 Vite/Webpack 插件。
 
-[English](./README.md) | 简体中文
+[English](./README.md) | 简体中文 | [在线演示](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/unplugin-web-components/getting-started)
 
 ## 安装
 
@@ -110,3 +110,9 @@ HTML 注入规则：
 | `/webpack` | Vue（`.vue`）、React（`.tsx`/`.jsx`） | -                              |
 
 只发布 `/vite` 和 `/webpack` 子路径。HTML 注入仅限 Vite。Webpack 适配器只转换模块源码，不注入 HTML。
+
+## 文档导航
+
+- [模块转换](./docs/module-transforms.CN.md) — Vue SFC 与 React JSX/TSX 转换、指令序言保留与导入模式
+- [HTML 注入](./docs/html-injection.CN.md) — Vite `transformIndexHtml` 注入规则、忽略区域与边界说明
+- [API](./docs/api.CN.md) — 完整选项参考与 Vite/Webpack 配置示例

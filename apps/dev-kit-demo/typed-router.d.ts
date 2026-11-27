@@ -59,6 +59,27 @@ declare module 'vue-router/auto-routes' {
       Record<never, never>,
       | never
     >,
+    '/deps-reload/[module]': RouteRecordInfo<
+      '/deps-reload/[module]',
+      '/deps-reload/:module',
+      { module: ParamValue<true> },
+      { module: ParamValue<false> },
+      | never
+    >,
+    '/deps-reload/changelog': RouteRecordInfo<
+      '/deps-reload/changelog',
+      '/deps-reload/changelog',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/deps-reload/getting-started': RouteRecordInfo<
+      '/deps-reload/getting-started',
+      '/deps-reload/getting-started',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
     '/home/': RouteRecordInfo<
       '/home/',
       '/home',
@@ -83,6 +104,27 @@ declare module 'vue-router/auto-routes' {
     '/js-kit/getting-started': RouteRecordInfo<
       '/js-kit/getting-started',
       '/js-kit/getting-started',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/unplugin-web-components/[module]': RouteRecordInfo<
+      '/unplugin-web-components/[module]',
+      '/unplugin-web-components/:module',
+      { module: ParamValue<true> },
+      { module: ParamValue<false> },
+      | never
+    >,
+    '/unplugin-web-components/changelog': RouteRecordInfo<
+      '/unplugin-web-components/changelog',
+      '/unplugin-web-components/changelog',
+      Record<never, never>,
+      Record<never, never>,
+      | never
+    >,
+    '/unplugin-web-components/getting-started': RouteRecordInfo<
+      '/unplugin-web-components/getting-started',
+      '/unplugin-web-components/getting-started',
       Record<never, never>,
       Record<never, never>,
       | never
@@ -132,6 +174,30 @@ declare module 'vue-router/auto-routes' {
       pathParamNames:
         | never
     }
+    'src/pages/deps-reload/[module].vue': {
+      routes:
+        | '/deps-reload/[module]'
+      views:
+        | never
+      pathParamNames:
+        | 'module'
+    }
+    'src/pages/deps-reload/changelog.vue': {
+      routes:
+        | '/deps-reload/changelog'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/deps-reload/getting-started.vue': {
+      routes:
+        | '/deps-reload/getting-started'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
     'src/pages/home/index.vue': {
       routes:
         | '/home/'
@@ -159,6 +225,30 @@ declare module 'vue-router/auto-routes' {
     'src/pages/js-kit/getting-started.vue': {
       routes:
         | '/js-kit/getting-started'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/unplugin-web-components/[module].vue': {
+      routes:
+        | '/unplugin-web-components/[module]'
+      views:
+        | never
+      pathParamNames:
+        | 'module'
+    }
+    'src/pages/unplugin-web-components/changelog.vue': {
+      routes:
+        | '/unplugin-web-components/changelog'
+      views:
+        | never
+      pathParamNames:
+        | never
+    }
+    'src/pages/unplugin-web-components/getting-started.vue': {
+      routes:
+        | '/unplugin-web-components/getting-started'
       views:
         | never
       pathParamNames:

@@ -8,7 +8,7 @@
 
 > 依赖构建产物变化时刷新页面。
 
-[English](./README.md) | 简体中文
+[English](./README.md) | 简体中文 | [在线演示](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/deps-reload/getting-started)
 
 ## 安装
 
@@ -91,3 +91,9 @@ Webpack 插件会把每个输出目录加入 watch dependencies。要通过 Webp
 | `path`       | `string`   | -                 | 本地包根目录，用于 monorepo 或 npm link。 |
 | `outputDir`  | `string`   | `'dist'`          | 相对 `path` 的构建输出目录。              |
 | `extensions` | `string[]` | `['.js', '.css']` | 待监听的文件扩展名。                      |
+
+## 文档导航
+
+- [Vite](./docs/vite.CN.md) — Vite 开发服务接入、模块图失效与防抖刷新机制
+- [Webpack](./docs/webpack.CN.md) — Webpack `contextDependencies` 与 Dev Server 配置
+- [API](./docs/api.CN.md) — `Dep` 完整选项参考、归一化规则与多包示例

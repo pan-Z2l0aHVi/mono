@@ -3,13 +3,20 @@ import type { Router, RouteLocationRaw } from 'vue-router'
 import { ensureExampleDocs } from '@/i18n/locale'
 import { routeDevKitDocs } from '@/nav'
 
+const STATIC_ROUTE_DOCS: Record<string, readonly string[]> = {
+  '/js-kit/getting-started': ['js-kit/README'],
+  '/js-kit/changelog': ['js-kit/CHANGELOG'],
+  '/browser-kit/getting-started': ['browser-kit/README'],
+  '/browser-kit/changelog': ['browser-kit/CHANGELOG'],
+  '/deps-reload/getting-started': ['deps-reload/README'],
+  '/deps-reload/changelog': ['deps-reload/CHANGELOG'],
+  '/unplugin-web-components/getting-started': ['unplugin-web-components/README'],
+  '/unplugin-web-components/changelog': ['unplugin-web-components/CHANGELOG']
+}
+
 function docsForPath(path: string): readonly string[] {
   const normalized = path.length > 1 ? path.replace(/\/$/, '') : path
-  if (normalized === '/js-kit/getting-started') return ['js-kit/README']
-  if (normalized === '/browser-kit/getting-started') return ['browser-kit/README']
-  if (normalized === '/js-kit/changelog') return ['js-kit/CHANGELOG']
-  if (normalized === '/browser-kit/changelog') return ['browser-kit/CHANGELOG']
-  return routeDevKitDocs(normalized)
+  return STATIC_ROUTE_DOCS[normalized] ?? routeDevKitDocs(normalized)
 }
 
 export function ensureRouteData(path: string) {

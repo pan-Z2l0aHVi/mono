@@ -8,7 +8,7 @@
 
 > Vite and Webpack plugin that imports web components when their tags appear.
 
-English | [简体中文](./README.CN.md)
+English | [简体中文](./README.CN.md) | [Live demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/unplugin-web-components/getting-started)
 
 ## Install
 
@@ -110,3 +110,9 @@ HTML injection rules:
 | `/webpack` | Vue (`.vue`), React (`.tsx`/`.jsx`) | -                              |
 
 Only `/vite` and `/webpack` subpath exports are published. HTML injection is Vite-only. The Webpack adapter transforms module sources and does not inject into HTML.
+
+## Documentation
+
+- [Module Transforms](./docs/module-transforms.md) — Vue SFC and React JSX/TSX transforms, directive prologues, and import modes
+- [HTML Injection](./docs/html-injection.md) — Vite `transformIndexHtml` rules, ignored regions, and boundaries
+- [API](./docs/api.md) — Full options reference and Vite/Webpack configuration examples

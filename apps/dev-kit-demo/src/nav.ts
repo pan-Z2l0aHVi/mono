@@ -1,9 +1,14 @@
 import { createRouteExampleDocs, type NavItem, type NavSection, type SearchItem } from '@greypan/doc-demo-kit'
 
-export type DevKitPkg = 'js-kit' | 'browser-kit'
+export type DevKitPkg = 'js-kit' | 'browser-kit' | 'deps-reload' | 'unplugin-web-components'
 
 export const DEV_KIT_SHELL_PAGES: readonly SearchItem[] = Object.freeze([
-  { path: '/home', zh: '总览', en: 'Overview', keywords: 'home js-kit browser-kit' },
+  {
+    path: '/home',
+    zh: '总览',
+    en: 'Overview',
+    keywords: 'home js-kit browser-kit deps-reload unplugin-web-components'
+  },
   { path: '/js-kit/getting-started', zh: 'js-kit 快速开始', en: 'js-kit Getting Started', keywords: 'js-kit install' },
   { path: '/js-kit/changelog', zh: 'js-kit 更新日志', en: 'js-kit Changelog', keywords: 'js-kit release' },
   {
@@ -17,6 +22,30 @@ export const DEV_KIT_SHELL_PAGES: readonly SearchItem[] = Object.freeze([
     zh: 'browser-kit 更新日志',
     en: 'browser-kit Changelog',
     keywords: 'browser-kit release'
+  },
+  {
+    path: '/deps-reload/getting-started',
+    zh: 'deps-reload 快速开始',
+    en: 'deps-reload Getting Started',
+    keywords: 'deps-reload plugin vite webpack install'
+  },
+  {
+    path: '/deps-reload/changelog',
+    zh: 'deps-reload 更新日志',
+    en: 'deps-reload Changelog',
+    keywords: 'deps-reload release'
+  },
+  {
+    path: '/unplugin-web-components/getting-started',
+    zh: 'unplugin-web-components 快速开始',
+    en: 'unplugin-web-components Getting Started',
+    keywords: 'unplugin-web-components plugin vite webpack install'
+  },
+  {
+    path: '/unplugin-web-components/changelog',
+    zh: 'unplugin-web-components 更新日志',
+    en: 'unplugin-web-components Changelog',
+    keywords: 'unplugin-web-components release'
   }
 ])
 
@@ -49,16 +78,56 @@ export const BROWSER_KIT_NAV_SECTION: NavSection<'browser-kit'> = makeSection('b
   { path: '/browser-kit/shortcut', label: 'shortcut', zhName: '事件监听 on off window document' }
 ]) as NavSection<'browser-kit'>
 
+export const DEPS_RELOAD_NAV_SECTION: NavSection<'deps-reload'> = makeSection('deps-reload', [
+  { path: '/deps-reload/vite', label: 'vite', zhName: 'deps-reload Vite 插件 依赖产物 刷新 hotUpdate' },
+  { path: '/deps-reload/webpack', label: 'webpack', zhName: 'deps-reload Webpack 插件 contextDependencies liveReload' },
+  { path: '/deps-reload/api', label: 'api', zhName: 'deps-reload API 配置项 Dep outputDir extensions' }
+]) as NavSection<'deps-reload'>
+
+export const UNPLUGIN_WEB_COMPONENTS_NAV_SECTION: NavSection<'unplugin-web-components'> = makeSection(
+  'unplugin-web-components',
+  [
+    {
+      path: '/unplugin-web-components/module-transforms',
+      label: 'module-transforms',
+      zhName: 'unplugin-web-components 模块转换 Vue React JSX TSX 自动导入'
+    },
+    {
+      path: '/unplugin-web-components/html-injection',
+      label: 'html-injection',
+      zhName: 'unplugin-web-components HTML 注入 transformIndexHtml Vite'
+    },
+    {
+      path: '/unplugin-web-components/api',
+      label: 'api',
+      zhName: 'unplugin-web-components API 选项 tagPrefix packageName sideEffects withStyle'
+    }
+  ]
+) as NavSection<'unplugin-web-components'>
+
 export const DEV_KIT_NAV_SECTIONS: readonly NavSection<DevKitPkg>[] = Object.freeze([
   JS_KIT_NAV_SECTION,
-  BROWSER_KIT_NAV_SECTION
+  BROWSER_KIT_NAV_SECTION,
+  DEPS_RELOAD_NAV_SECTION,
+  UNPLUGIN_WEB_COMPONENTS_NAV_SECTION
 ])
 
 export const JS_KIT_MODULES = new Set(JS_KIT_NAV_SECTION.items.map(item => item.path.split('/').at(-1)!))
 export const BROWSER_KIT_MODULES = new Set(BROWSER_KIT_NAV_SECTION.items.map(item => item.path.split('/').at(-1)!))
+export const DEPS_RELOAD_MODULES = new Set(DEPS_RELOAD_NAV_SECTION.items.map(item => item.path.split('/').at(-1)!))
+export const UNPLUGIN_WEB_COMPONENTS_MODULES = new Set(
+  UNPLUGIN_WEB_COMPONENTS_NAV_SECTION.items.map(item => item.path.split('/').at(-1)!)
+)
+
+const PACKAGE_MODULES: Record<DevKitPkg, ReadonlySet<string>> = {
+  'js-kit': JS_KIT_MODULES,
+  'browser-kit': BROWSER_KIT_MODULES,
+  'deps-reload': DEPS_RELOAD_MODULES,
+  'unplugin-web-components': UNPLUGIN_WEB_COMPONENTS_MODULES
+}
 
 export function isValidModule(pkg: DevKitPkg, slug: string): boolean {
-  return pkg === 'js-kit' ? JS_KIT_MODULES.has(slug) : BROWSER_KIT_MODULES.has(slug)
+  return PACKAGE_MODULES[pkg].has(slug)
 }
 
 /** 带包命名空间的文档键解析（如 `/js-kit/shortcut` -> `['js-kit/shortcut']`）。 */

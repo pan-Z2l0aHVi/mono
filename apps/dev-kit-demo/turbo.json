@@ -16,7 +16,13 @@
         "$TURBO_ROOT$/packages/js-kit/README*.md",
         "$TURBO_ROOT$/packages/browser-kit/docs/**",
         "$TURBO_ROOT$/packages/browser-kit/CHANGELOG.md",
-        "$TURBO_ROOT$/packages/browser-kit/README*.md"
+        "$TURBO_ROOT$/packages/browser-kit/README*.md",
+        "$TURBO_ROOT$/packages/deps-reload/docs/**",
+        "$TURBO_ROOT$/packages/deps-reload/CHANGELOG.md",
+        "$TURBO_ROOT$/packages/deps-reload/README*.md",
+        "$TURBO_ROOT$/packages/unplugin-web-components/docs/**",
+        "$TURBO_ROOT$/packages/unplugin-web-components/CHANGELOG.md",
+        "$TURBO_ROOT$/packages/unplugin-web-components/README*.md"
       ]
     },
     "test": {
@@ -29,6 +35,12 @@
         "$TURBO_ROOT$/packages/browser-kit/docs/**",
         "$TURBO_ROOT$/packages/browser-kit/CHANGELOG.md",
         "$TURBO_ROOT$/packages/browser-kit/README*.md",
+        "$TURBO_ROOT$/packages/deps-reload/docs/**",
+        "$TURBO_ROOT$/packages/deps-reload/CHANGELOG.md",
+        "$TURBO_ROOT$/packages/deps-reload/README*.md",
+        "$TURBO_ROOT$/packages/unplugin-web-components/docs/**",
+        "$TURBO_ROOT$/packages/unplugin-web-components/CHANGELOG.md",
+        "$TURBO_ROOT$/packages/unplugin-web-components/README*.md",
         "$TURBO_ROOT$/packages/monorepo-kit/src/exec/shell-i18n-catalog.ts",
         "$TURBO_ROOT$/packages/monorepo-kit/src/exec/exec.ts"
       ]
