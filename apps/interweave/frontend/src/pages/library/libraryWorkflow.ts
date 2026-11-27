@@ -88,7 +88,6 @@ export interface LibraryWorkflow {
   submitQueue(): Promise<void>
   openRestoreDialog(items: LibraryRestoreQueueItem[]): void
   setRestoreOpen(open: boolean): void
-  setRestoreQueue(items: LibraryRestoreQueueItem[]): void
   submitRestoreQueue(items: LibraryRestoreQueueItem[]): Promise<void>
 }
 
@@ -320,10 +319,6 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
     restoreOpen.value = open
   }
 
-  function setRestoreQueue(items: LibraryRestoreQueueItem[]) {
-    restoreQueue.value = items
-  }
-
   async function submitRestoreQueue(items: LibraryRestoreQueueItem[]) {
     if (!items.length || restoreBusy.value) return
     restoreBusy.value = true
@@ -378,7 +373,6 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
     submitQueue,
     openRestoreDialog,
     setRestoreOpen,
-    setRestoreQueue,
     submitRestoreQueue
   }
 }

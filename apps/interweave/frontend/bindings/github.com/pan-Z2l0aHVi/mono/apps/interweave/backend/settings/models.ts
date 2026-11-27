@@ -63,7 +63,6 @@ export class SettingsPatch {
     "appearance": Appearance | null;
     "accent": string | null;
     "reducedMotion": boolean | null;
-    "developerOptions": boolean | null;
     "minimizeToTrayOnClose": boolean | null;
     "zoom": number | null;
 
@@ -77,9 +76,6 @@ export class SettingsPatch {
         }
         if (!("reducedMotion" in $$source)) {
             this["reducedMotion"] = null;
-        }
-        if (!("developerOptions" in $$source)) {
-            this["developerOptions"] = null;
         }
         if (!("minimizeToTrayOnClose" in $$source)) {
             this["minimizeToTrayOnClose"] = null;
@@ -108,7 +104,6 @@ export class Snapshot {
     "appearance": Appearance;
     "accent": string;
     "reducedMotion": boolean;
-    "developerOptions": boolean;
     "minimizeToTrayOnClose": boolean;
 
     /**
@@ -140,9 +135,6 @@ export class Snapshot {
         if (!("reducedMotion" in $$source)) {
             this["reducedMotion"] = false;
         }
-        if (!("developerOptions" in $$source)) {
-            this["developerOptions"] = false;
-        }
         if (!("minimizeToTrayOnClose" in $$source)) {
             this["minimizeToTrayOnClose"] = false;
         }
@@ -169,22 +161,22 @@ export class Snapshot {
      * Creates a new Snapshot instance from a string or object.
      */
     static createFrom($$source: any = {}): Snapshot {
-        const $$createField6_0 = $$createType0;
-        const $$createField7_0 = $$createType2;
-        const $$createField8_0 = $$createType3;
-        const $$createField9_0 = $$createType5;
+        const $$createField5_0 = $$createType0;
+        const $$createField6_0 = $$createType2;
+        const $$createField7_0 = $$createType3;
+        const $$createField8_0 = $$createType5;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("warnings" in $$parsedSource) {
-            $$parsedSource["warnings"] = $$createField6_0($$parsedSource["warnings"]);
+            $$parsedSource["warnings"] = $$createField5_0($$parsedSource["warnings"]);
         }
         if ("presets" in $$parsedSource) {
-            $$parsedSource["presets"] = $$createField7_0($$parsedSource["presets"]);
+            $$parsedSource["presets"] = $$createField6_0($$parsedSource["presets"]);
         }
         if ("appearances" in $$parsedSource) {
-            $$parsedSource["appearances"] = $$createField8_0($$parsedSource["appearances"]);
+            $$parsedSource["appearances"] = $$createField7_0($$parsedSource["appearances"]);
         }
         if ("zoomPresets" in $$parsedSource) {
-            $$parsedSource["zoomPresets"] = $$createField9_0($$parsedSource["zoomPresets"]);
+            $$parsedSource["zoomPresets"] = $$createField8_0($$parsedSource["zoomPresets"]);
         }
         return new Snapshot($$parsedSource as Partial<Snapshot>);
     }

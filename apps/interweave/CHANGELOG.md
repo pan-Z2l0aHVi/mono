@@ -1,5 +1,42 @@
 # @greypan/interweave
 
+## 0.4.0
+
+### Minor Changes
+
+- 19a13ab: Add a tray light mode that destroys the WebView while keeping backend services and the tray running, with platform-specific tray icons and a right-click menu for restoring the main window, toggling light mode, and quitting.
+  
+  Make tray and window transitions deterministic by serializing close, hide, and restore operations on the Wails main queue. Recover a window hidden to the tray when the setting is disabled, keep Dock visibility in sync on macOS, and use a PNG tray icon on Linux.
+  
+  Use the Wails runtime as the only library data source and report operation failures through toasts instead of inline error banners.
+- f33e21a: Add desktop wallpaper, system-proxy-aware URL fetching, direct image URL classification, and markdown/code preview.
+  
+  The resource context menu gains "set as desktop wallpaper" for image resources: file sources are set from their original path (macOS via NSWorkspace per screen, Windows via SystemParametersInfoW, Linux via GNOME/Cinnamon/MATE/KDE/XFCE desktop dispatch); URL sources are streamed through `backend/remote` into an app cache directory first. Go outbound HTTP now follows the OS proxy settings (macOS CFNetwork per-URL resolution, Windows WinINET static proxy with per-protocol and bypass parsing, Linux gsettings for GNOME-family desktops), so imports no longer stall for the full probe budget when a system proxy is required for reachability. URL metadata records the response content type, and the display-layer kind classifies direct image URLs (extension first, content-type fallback) as `image`, driving thumbnails (`<img>` against the original link), the preview drawer (image mode instead of an iframe), and the wallpaper entry.
+  
+  The preview drawer renders markdown (same parser and `.mdm-*` styling as the web-ui demos via `@greypan/md-to-meta/runtime` and a build-time theme plugin) and code files with line numbers and syntax highlighting (shiki, whitelisted languages, inputs above 128 KB / 5000 lines fall back to plain text). All markdown inline content is treated as untrusted and rebuilt through an allowlist sanitizer; links open in the system browser instead of navigating the WebView; relative targets are dropped.
+
+### Patch Changes
+
+- 092fe6d: Hide the `prefix` slot while `<web-ui-button>` is `loading` so the spinner replaces the leading icon instead of rendering both side by side.
+  
+  Polish Interweave restore and bulk-import dialogs: display cached source thumbnails (with icon fallback) in the pending restore list, swap "Found" and "Skipped" scan stats, double the spacing above the scan status card, and shorten the bulk-import confirmation title to "批量导入".
+- c747215: Extract desktop shell orchestration into pure-Go `internal/shell`, normalize and serialize native menu installation, and prevent non-menu settings changes from rebuilding the native menu.
+- 5e96cd2: Fix media 404 close race and unify library runtime startup and ordered shutdown.
+- 8872f58: Consolidate `backend/library` shutdown in `Runtime.Close()`, move pending file preview authorization behind a narrow `core.PendingPreviewStore` seam, and unify core mutation methods to return assembled `*ResourceView` / `URLProbeResult` without redundant service-layer read-after-write queries.
+- cff3653: Fix macOS quit behavior on window close: `ApplicationShouldTerminateAfterLastWindowClosed` is now disabled so that minimize-to-tray keeps working, and closing the window with minimize-to-tray turned off now quits the app explicitly. The system tray icon is now created only while minimize-to-tray on close is enabled and removed immediately when disabled.
+- b391fd5: Start the macOS sidebar navigation below the traffic lights while expanded, and reserve a 40px top gap only while the sidebar is collapsed.
+- d4d2604: Consolidate OS proxy and Linux wallpaper orchestration behind internal seams and fix Linux `gsettings` timeout/absent caching, `proxy_other.go` missing import, Windows `NoProxy` comma delimiter, and KDE wallpaper script escaping.
+- e0d3ec4: Unify preview drawer async loading, sanitization, and highlighting in `previewSession`, fixing rejected runtime promise caching, `<img src="mailto:">` escape, and `url` preview refresh on location replacement.
+- 52e6842: Fix cached direct-link image thumbnails overlaying the fallback icon when `source.id` changes without firing a new `load` event.
+- 4e519b2: Virtualize the pending import queue in the Add dialog and the pending and ready lists in the Restore dialog, so large batches mount only the rows inside the viewport. Rows that are being renamed stay mounted while scrolled out of view.
+- 22821d7: On Windows, Interweave now uses a frameless integrated title bar that renders the top menu in the frontend instead of the native Win32 menu bar. The menu snapshot is pushed through the `menu:tree-changed` event and invoked through the menu service, while macOS and Linux keep the native application menu. `web-ui-layout` adds `--wui-layout-sticky-top` so sticky sidebar and header offset cleanly below custom title bars.
+- dcc55d4: Evaluate `WailsMenuStateRuntime.isAvailable` dynamically to avoid static freeze before runtime injection, and extract `WindowsTitleBarController` with unmount race protection.
+- a050c3c: Preload route example docs and cache resolved demo modules before navigation commits so route demos can mount synchronously. Soften the light-mode `--wui-shadow-glass` token so `.wui-glass` surfaces cast a subtler outer shadow. Render Interweave dialog list tooltips through a portal so adjacent rows no longer clip or occlude them.
+- 5f4a9b4: Strengthen primary `<web-ui-button>` hover and active contrast, enable bidirectional overflow scrolling in `<web-ui-drawer>`, and tighten the `<web-ui-layout>` sidebar toggle top margin.
+  
+  Polish Interweave desktop UX: remove developer options and move WebView reload to the View > Refresh menu (Cmd+R on macOS, F5 on Windows), fix macOS tray menu auto-dismissal and minimum window size constraints, refine Settings copy with an MCP info tooltip, improve recovery scan candidate selection and optional extra-file matching, restrict DetailDrawer dragging to mobile, space relative time labels, align list Enter with preview selection, and enable KeepAlive with scroll restoration on the Library page.
+- @greypan/interweave-frontend@0.0.0
+
 ## 0.3.0
 
 ### Minor Changes

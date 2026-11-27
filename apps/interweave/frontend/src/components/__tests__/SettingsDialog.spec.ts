@@ -2,7 +2,7 @@
 
 import '@greypan/web-ui'
 
-import type { WebUiDialog, WebUiRadio, WebUiSegmented, WebUiSlider, WebUiSwitch } from '@greypan/web-ui'
+import type { WebUiDialog, WebUiRadio, WebUiSegmented, WebUiSlider, WebUiSwitch, WebUiTooltip } from '@greypan/web-ui'
 import { createPinia, setActivePinia } from 'pinia'
 import { beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, ref } from 'vue'
@@ -150,7 +150,7 @@ describe('SettingsDialog', () => {
     }
   })
 
-  it('默认落在通用分区，MCP switch 是 disabled 的占位', async () => {
+  it('默认落在通用分区，启用 MCP 服务 switch 是 disabled 的占位并附带说明 tooltip', async () => {
     const mounted = mountDialog(() => {})
 
     try {
@@ -160,12 +160,18 @@ describe('SettingsDialog', () => {
       expect(general.value).toBe('general')
       expect(triggerValues(general)).toEqual(['general', 'appearance', 'library'])
 
-      const toggle = mounted.host.querySelector('web-ui-switch')
+      const toggle = mounted.host.querySelector<WebUiSwitch>('web-ui-switch[aria-label="启用 MCP 服务（即将推出）"]')
       expect(toggle).toBeTruthy()
       expect(toggle?.disabled).toBe(true)
+      expect(mounted.host.textContent).toContain('启用 MCP 服务')
       expect(mounted.host.textContent).toContain('即将推出')
+      expect(mounted.host.textContent).not.toContain('开发者选项')
       // disabled 的 switch 不该带着 checked 一起出现，那会读成「已开启但不可用」。
       expect(toggle?.checked).toBe(false)
+
+      const tooltip = mounted.host.querySelector<WebUiTooltip>('web-ui-tooltip')
+      expect(tooltip?.content).toBe('允许外部 AI 客户端通过本地 MCP 协议连接本 APP。仅建议在受信任的环境开启')
+      expect(buttonByLabel(mounted.host, '启用 MCP 服务说明')).toBeTruthy()
     } finally {
       mounted.close()
     }
@@ -195,7 +201,7 @@ describe('SettingsDialog', () => {
 
   // 持久化归 Go：这里只验证「change 到达后调了 store 的方法」，落盘与重启保持由
   // backend/settings 的 Go 测试覆盖。
-  it('减少动画开关经 change 回写到 store', async () => {
+  it('削弱动画效果开关经 change 回写到 store', async () => {
     const mounted = mountDialog(() => {})
     const settings = useSettingsStore()
     const setReducedMotion = vi.spyOn(settings, 'setReducedMotion').mockResolvedValue()
@@ -204,30 +210,12 @@ describe('SettingsDialog', () => {
       await nextTick()
       selectTrigger(segmentedByLabel(mounted.host, '设置分区'), 'appearance')
       await nextTick()
-      const toggle = mounted.host.querySelector<WebUiSwitch>('web-ui-switch[aria-label="减少动画效果"]')
-      if (!toggle) throw new Error('减少动画开关未渲染')
+      const toggle = mounted.host.querySelector<WebUiSwitch>('web-ui-switch[aria-label="削弱动画效果"]')
+      if (!toggle) throw new Error('削弱动画效果开关未渲染')
       expect(toggle.checked).toBe(false)
       toggle.checked = true
       toggle.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
       expect(setReducedMotion).toHaveBeenCalledWith(true)
-    } finally {
-      mounted.close()
-    }
-  })
-
-  it('开发者选项开关经 change 回写到 store', async () => {
-    const mounted = mountDialog(() => {})
-    const settings = useSettingsStore()
-    const setDeveloperOptions = vi.spyOn(settings, 'setDeveloperOptions').mockResolvedValue()
-
-    try {
-      await nextTick()
-      const toggle = mounted.host.querySelector<WebUiSwitch>('web-ui-switch[aria-label="开发者选项"]')
-      if (!toggle) throw new Error('开发者选项开关未渲染')
-      expect(toggle.checked).toBe(false)
-      toggle.checked = true
-      toggle.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
-      expect(setDeveloperOptions).toHaveBeenCalledWith(true)
     } finally {
       mounted.close()
     }
@@ -321,7 +309,7 @@ describe('SettingsDialog', () => {
       expect(slider.marks).toBe(true)
 
       const text = mounted.host.textContent ?? ''
-      for (const label of ['全面', '标准', '舒适', '关怀']) expect(text).toContain(label)
+      for (const label of ['高效', '标准', '舒适', '关怀']) expect(text).toContain(label)
       expect(text).not.toContain('90%')
 
       slider.value = 110

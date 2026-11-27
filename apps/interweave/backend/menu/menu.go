@@ -44,7 +44,6 @@ const (
 	CommandAddResource         Command = "add-resource"
 	CommandImportFromClipboard Command = "import-from-clipboard"
 	CommandImportFromLink      Command = "import-from-link"
-	CommandRefreshLibrary      Command = "refresh-library"
 	CommandToggleSidebar       Command = "toggle-sidebar"
 	CommandToggleFilterBar     Command = "toggle-filter-bar"
 	CommandFocusSearch         Command = "focus-search"
@@ -54,12 +53,11 @@ const (
 	CommandCheckForUpdates     Command = "check-for-updates"
 	CommandOpenDocumentation   Command = "open-documentation"
 	CommandReloadWindow        Command = "reload-window"
-	CommandOpenDevTools        Command = "open-devtools"
 	CommandCopyAsPlainText     Command = "copy-as-plain-text"
 	CommandPasteAsPlainText    Command = "paste-as-plain-text"
 	// CommandMaximiseWindow 只在 Windows 的「窗口 › 最大化」出现：Wails 的 Zoom role
 	// 在 Win32 侧是空实现（windowsWebviewWindow.zoom 直接 Noop），窗口最大化要走
-	// Maximise。与 reload-window、open-devtools 一样由 Go 直接执行，不经前端。
+	// Maximise。与 reload-window 一样由 Go 直接执行，不经前端。
 	CommandMaximiseWindow Command = "maximise-window"
 
 	// CommandToggleWindowMode 在两端「窗口」菜单首位出现，用于切换最小窗口尺寸与恢复原尺寸。
@@ -91,7 +89,6 @@ func IsCommand(value string) bool {
 	case CommandAddResource,
 		CommandImportFromClipboard,
 		CommandImportFromLink,
-		CommandRefreshLibrary,
 		CommandToggleSidebar,
 		CommandToggleFilterBar,
 		CommandFocusSearch,
@@ -101,7 +98,6 @@ func IsCommand(value string) bool {
 		CommandCheckForUpdates,
 		CommandOpenDocumentation,
 		CommandReloadWindow,
-		CommandOpenDevTools,
 		CommandCopyAsPlainText,
 		CommandPasteAsPlainText,
 		CommandMaximiseWindow,

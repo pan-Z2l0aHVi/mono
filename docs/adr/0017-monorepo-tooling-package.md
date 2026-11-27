@@ -18,7 +18,7 @@
 
 包的 `exports` 是一小撮数得清的 specifier，没有按目录粒度的通配子路径，所有消费点经包名引用；没有自由子路径，就没有「子路径拼错」与「新增分区忘了加通配」两类错误。入口只有 `.`（Node 脚本）与 `./vite`（Vite 求值期适配）两个，形状由 [ADR-0022](./0022-monorepo-kit-plugin-chain.md) 收窄；内部平铺导出，判据是导出名是否冲突。
 
-`scripts/lib/` 收缩成「Node 启动之前要跑的东西」：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值的 bootstrap helper；同一能力只留一份实现，准入判据见 `script-policy.md`。
+`scripts/lib/` 收缩成「Node 启动之前要跑的东西」：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值的 bootstrap helper；同一能力只留一份实现，准入判据见 `scripts-and-commands.md`。
 
 依赖边写进根 `package.json` 与消费 workspace 的 `devDependencies`（`workspace:*`）：`pnpm why @greypan/monorepo-kit` 是「谁在消费」的唯一答案。包 `private: true` 不进发布面；它不加入 `.changeset/config.json` 的 `ignore`——门禁行为变更值得留记录，代价是改检查逻辑要写一条带包名的 changeset。
 

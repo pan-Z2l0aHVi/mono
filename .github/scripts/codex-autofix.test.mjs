@@ -350,7 +350,7 @@ for (const file of [
   'AGENTS.md',
   'docs/agents/review.md',
   'docs/adr/0021-codex-review-gate.md',
-  '.agents/skills/task-ledger/SKILL.md',
+  '.agents/skills/apps-sparse-checkout/SKILL.md',
   '.codex/config.toml',
   '.claude/settings.json',
   '.env.local',

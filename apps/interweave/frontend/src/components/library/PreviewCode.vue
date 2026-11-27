@@ -11,22 +11,16 @@ defineProps<{
 </script>
 
 <template>
-  <div class="min-h-full">
+  <div class="min-h-full w-max min-w-full">
     <p
       v-if="overHighlightLimit"
-      class="m-0 border-b border-black/6 bg-(--wui-color-surface) px-4 py-2 text-xs text-(--wui-color-text-secondary) dark:border-white/8"
+      class="sticky left-0 m-0 border-b border-black/6 bg-(--wui-color-surface) px-4 py-2 text-xs text-(--wui-color-text-secondary) dark:border-white/8"
     >
       文件过大，按纯文本显示开头部分，不着色。
     </p>
-    <pre
-      v-if="highlightedHtml === null"
-      class="m-0 overflow-x-auto p-4 pt-3 font-mono text-xs leading-6 whitespace-pre"
-      >{{ code }}</pre>
-    <div
-      v-else
-      class="contain-inline-size overflow-x-auto p-4 pt-3 font-mono text-xs leading-6"
-      data-code
-      v-html="highlightedHtml"
-    ></div>
+    <pre v-if="highlightedHtml === null" class="m-0 p-4 pt-3 font-mono text-xs leading-6 whitespace-pre">{{
+      code
+    }}</pre>
+    <div v-else class="p-4 pt-3 font-mono text-xs leading-6" data-code v-html="highlightedHtml"></div>
   </div>
 </template>

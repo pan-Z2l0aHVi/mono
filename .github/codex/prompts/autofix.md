@@ -6,7 +6,7 @@
 
 - 一次性 runner，`workspace` 权限档：可以改工作区文件，不能写 `.git`，不能访问网络。
 - 不安装依赖、不运行构建或测试、不执行任何 Git 写操作。沙箱里没有网络，`pnpm install`、`turbo build`、`codex` 之外的工具链都不可用。
-- 本仓 `AGENTS.md` 与 `docs/agents/*.md` 里的建账、授权、提交与合并条款由人和 CI 执行，你不执行它们。
+- 本仓 `AGENTS.md` 与 `docs/agents/*.md` 里的授权、提交、PR 跟进与合并条款由人和 CI 执行，你不执行它们。
 - 只读的 `git` 与文件读取是你的调查手段。
 
 ## 输入
@@ -22,7 +22,7 @@ patch 只能**修改已入库文件的内容**，唯一例外是失败步骤含 
 - 新增文件——`Check changesets` 失败时新增的 `.changeset/*.md` 除外；新增其它路径、把 changeset 放到子目录、非普通文件模式都仍然整份拒绝。删除文件、重命名或移动文件、二进制改动一律拒绝。
 - 触碰 `.github/**`（CI 与 workflow 定义）、`package.json`、`pnpm-lock.yaml`、`pnpm-workspace.yaml`、`skills-lock.json`、`.npmrc`、`.mise.toml`、`go.mod`、`go.sum`、`go.work`、`go.work.sum`、`vendor/**`（依赖与供应链）。
 - 触碰生成物：`docs/agents/generated-artifacts.md` 的清单，以及 `.claude/settings.json` 里 `permissions.deny` 登记的 `Edit(...)` 路径。生成物只能由 generator 重写，而你在沙箱里跑不了 generator——失败根因在生成物失步时，**不要改产物**，交回给人。
-- 触碰 `AGENTS.md`、`CLAUDE.md`、`CONTEXT.md`、`ARCHITECTURE.md`、`docs/agents/**`、`docs/adr/**`、`.agents/**`（agent 指令体系与架构决策）。
+- 触碰 `AGENTS.md`、`CLAUDE.md`、`ARCHITECTURE.md`、`docs/agents/**`、`docs/adr/**`、`.agents/**`（agent 指令体系与架构决策）。
 - 触碰 `.codex/**`、`.claude/**`、任何 `.env*`、`**/__screenshots__/**`、`**/.vitest-attachments/**`（Codex 与客户端配置、凭证、测试证据）。
 
 ## 怎么修

@@ -119,12 +119,6 @@ func (h *wailsDesktopHost) ReloadWindow() {
 	}
 }
 
-func (h *wailsDesktopHost) OpenDevTools() {
-	if window := h.currentWindow(); window != nil {
-		window.OpenDevTools()
-	}
-}
-
 func (h *wailsDesktopHost) ToggleMaximise() {
 	if window := h.currentWindow(); window != nil {
 		window.ToggleMaximise()
@@ -161,8 +155,7 @@ func (h *wailsDesktopHost) OpenExternal(ctx context.Context, targetURL string) e
 // - macOS / Linux 挂原生应用菜单（macOS 上 window.SetMenu 是 no-op，app.Menu.Set 才是生效点）。
 func (h *wailsDesktopHost) InstallMenu(state shell.MenuState, sink func(menucontract.Command)) {
 	nativeState := nativeMenu.State{
-		DeveloperOptions: state.DeveloperOptions,
-		Disabled:         state.IsDisabled,
+		Disabled: state.IsDisabled,
 	}
 	window := h.currentWindow()
 	if runtime.GOOS == "windows" {
@@ -185,10 +178,6 @@ type wailsShellState struct {
 }
 
 var _ shell.StateSource = (*wailsShellState)(nil)
-
-func (s *wailsShellState) DeveloperOptionsEnabled() bool {
-	return s.settings.DeveloperOptionsEnabled()
-}
 
 func (s *wailsShellState) MinimizeToTrayOnCloseEnabled() bool {
 	return s.settings.MinimizeToTrayOnCloseEnabled()

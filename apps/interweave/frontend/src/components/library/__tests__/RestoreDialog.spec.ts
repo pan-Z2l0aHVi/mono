@@ -66,7 +66,6 @@ describe('RestoreDialog', () => {
       .mockResolvedValueOnce(null)
       .mockResolvedValueOnce('/new/file')
     const submit = vi.fn<(items: LibraryRestoreQueueItem[]) => void>()
-    const addItems = vi.fn<(items: LibraryRestoreQueueItem[]) => void>()
     const releaseFilePreview = vi.fn<(token: string) => Promise<void>>(async () => undefined)
     const prepareFilePreview = vi.fn<
       (path: string) => Promise<{ kind: ResourceKind; token?: string; media_url?: string }>
@@ -100,8 +99,7 @@ describe('RestoreDialog', () => {
           cancelScan: async () => undefined,
           discardScan: async () => undefined,
           lease: createLease(prepareFilePreview, releaseFilePreview),
-          onSubmit: submit,
-          onAddItems: addItems
+          onSubmit: submit
         })
     })
     app.mount(host)
@@ -112,20 +110,17 @@ describe('RestoreDialog', () => {
       scan.click()
       await nextTick()
       expect(host.textContent).toContain('扫描范围')
-      expect(addItems).not.toHaveBeenCalled()
       const scanDialog = host.querySelectorAll('web-ui-dialog')[1]
       ;[...scanDialog.querySelectorAll<HTMLElement>('web-ui-button')]
         .find(button => button.textContent?.trim() === '取消')!
         .click()
       await nextTick()
-      expect(addItems).not.toHaveBeenCalled()
       scan.click()
       await nextTick()
       ;[...scanDialog.querySelectorAll<HTMLElement>('web-ui-button')]
         .find(button => button.textContent?.trim() === '扫描选定文件夹')!
         .click()
       await nextTick()
-      expect(addItems).not.toHaveBeenCalled()
       expect(host.querySelector('[role="alert"]')).toBeNull()
       const find = (label: string) => host.querySelector<HTMLElement>(`web-ui-button[aria-label="${label}"]`)
       find('手动选择 文件')!.click()
@@ -177,7 +172,7 @@ describe('RestoreDialog', () => {
       host.remove()
     }
   })
-  it('扫描增量候选发生冲突时要求选择，停止后仍接收末批结果', async () => {
+  it('扫描增量多候选仍保留在已找到并可切换，停止后仍接收末批结果且不污染待找回', async () => {
     const host = document.createElement('div')
     document.body.append(host)
     const candidate = (path: string) => ({
@@ -189,7 +184,6 @@ describe('RestoreDialog', () => {
       snapshot: path
     })
     const startScan = vi.fn<(ids: string[], directory: string) => Promise<string>>(async () => 'scan')
-    const addItems = vi.fn<(items: LibraryRestoreQueueItem[]) => void>()
     const notification = vi.spyOn(toast, 'info').mockReturnValue('scan-toast')
     const cancelScan = vi.fn<(id: string) => Promise<void>>(async () => undefined)
     let finish!: (value: {
@@ -239,8 +233,7 @@ describe('RestoreDialog', () => {
             async () => ({ kind: ResourceKind.ResourceKindImage }),
             async () => undefined
           ),
-          onSubmit: submit,
-          onAddItems: addItems
+          onSubmit: submit
         })
     })
     app.mount(host)
@@ -249,11 +242,9 @@ describe('RestoreDialog', () => {
         [...host.querySelectorAll<HTMLElement>('button, web-ui-button')].find(el => el.textContent?.trim() === text)!
       button('一键扫描').click()
       await nextTick()
-      expect(addItems).not.toHaveBeenCalled()
+      expect(host.textContent).toContain('同时查找其他 1 条失效文件')
       button('扫描全盘').click()
-      expect(addItems).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ sourceId: 'other' })]))
       expect(startScan).toHaveBeenCalledWith(['file', 'other'], '')
-      expect(notification).toHaveBeenCalledWith('已找到 2 条失效资源', { position: 'top-center' })
       await vi.waitFor(() => expect(host.querySelector('[aria-label="撤回 文件"]')).not.toBeNull())
       await vi.waitFor(() => expect(pollScan).toHaveBeenCalledTimes(2))
       expect(host.textContent).not.toContain('一键扫描')
@@ -271,14 +262,23 @@ describe('RestoreDialog', () => {
         cancelled: true,
         error: ''
       })
-      await vi.waitFor(() => expect(host.textContent).toContain('找到 2 个候选'))
+      await vi.waitFor(() => expect(host.textContent).toContain('共 2 个候选'))
       expect(host.textContent).toContain('扫描未完成')
-      button('找到 2 个候选，选择文件').click()
+      // 多候选依然留在右侧「已找到」列表（存在撤回按钮，且可以直接切换候选）
+      expect(host.querySelector('[aria-label="撤回 文件"]')).not.toBeNull()
+      expect(button('共 2 个候选，切换文件')).toBeDefined()
+      // 撤回回「待找回」后仍保留候选选择入口，可直接从已扫出的候选中重新选取
+      host.querySelector<HTMLElement>('[aria-label="撤回 文件"]')!.click()
+      await nextTick()
+      expect(host.querySelector('[aria-label="手动选择 文件"]')).not.toBeNull()
+      button('共 2 个候选，选择文件').click()
       await nextTick()
       expect(host.textContent).toContain('文件名一致')
       const choice = [...host.querySelectorAll<HTMLButtonElement>('button')].find(el => el.textContent?.includes('/b'))!
       choice.click()
       await nextTick()
+      expect(host.querySelector('[aria-label="撤回 文件"]')).not.toBeNull()
+      expect(button('共 2 个候选，切换文件')).toBeDefined()
       button('确认找回').click()
       expect(submit).toHaveBeenCalledWith([expect.objectContaining({ replacementLocation: '/b', scanSnapshot: '/b' })])
     } finally {

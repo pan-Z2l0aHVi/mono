@@ -19,7 +19,6 @@ type SettingsPatch struct {
 	Appearance            *Appearance `json:"appearance"`
 	Accent                *string     `json:"accent"`
 	ReducedMotion         *bool       `json:"reducedMotion"`
-	DeveloperOptions      *bool       `json:"developerOptions"`
 	MinimizeToTrayOnClose *bool       `json:"minimizeToTrayOnClose"`
 	Zoom                  *int        `json:"zoom"`
 }
@@ -30,7 +29,6 @@ type Snapshot struct {
 	Appearance            Appearance `json:"appearance"`
 	Accent                string     `json:"accent"`
 	ReducedMotion         bool       `json:"reducedMotion"`
-	DeveloperOptions      bool       `json:"developerOptions"`
 	MinimizeToTrayOnClose bool       `json:"minimizeToTrayOnClose"`
 	// Zoom 是界面缩放百分比，取值来自 ZoomPresets。
 	Zoom int `json:"zoom"`
@@ -117,9 +115,6 @@ func (s *Service) UpdateSettings(ctx context.Context, patch SettingsPatch) (Snap
 		if patch.ReducedMotion != nil {
 			current.ReducedMotion = *patch.ReducedMotion
 		}
-		if patch.DeveloperOptions != nil {
-			current.DeveloperOptions = *patch.DeveloperOptions
-		}
 		if patch.MinimizeToTrayOnClose != nil {
 			current.MinimizeToTrayOnClose = *patch.MinimizeToTrayOnClose
 		}
@@ -161,7 +156,7 @@ func (s *Service) update(apply func(Settings) Settings) (Snapshot, error) {
 		listeners = append(listeners, listener)
 	}
 	emit := s.emit
-	// 监听器与事件出口必须在锁外调用：它们会回读设置（菜单重建要读开发者选项），
+	// 监听器与事件出口必须在锁外调用：它们会回读设置（如托盘同步读 MinimizeToTrayOnCloseEnabled），
 	// 持锁调用就是自死锁。状态此时已提交，回读到的必然是这一次的新值。
 	s.mu.Unlock()
 
@@ -172,15 +167,6 @@ func (s *Service) update(apply func(Settings) Settings) (Snapshot, error) {
 		emit(snapshot)
 	}
 	return snapshot, nil
-}
-
-// DeveloperOptionsEnabled 供菜单构建器读取，避免它拿到整份设置的写权限。
-//
-//wails:ignore
-func (s *Service) DeveloperOptionsEnabled() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.settings.DeveloperOptions
 }
 
 // MinimizeToTrayOnCloseEnabled 供窗口关闭钩子读取，避免它拿到整份设置的写权限。
@@ -233,7 +219,6 @@ func (s *Service) snapshotLocked(consumeWarnings bool) Snapshot {
 		Appearance:            s.settings.Appearance,
 		Accent:                s.settings.Accent,
 		ReducedMotion:         s.settings.ReducedMotion,
-		DeveloperOptions:      s.settings.DeveloperOptions,
 		MinimizeToTrayOnClose: s.settings.MinimizeToTrayOnClose,
 		Zoom:                  s.settings.Zoom,
 		Warnings:              warnings,

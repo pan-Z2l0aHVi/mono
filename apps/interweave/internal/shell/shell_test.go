@@ -25,7 +25,6 @@ type fakeDesktopHost struct {
 	hidden       int
 	quits        int
 	reloaded     int
-	devTools     int
 	toggledMax   int
 	emittedCmds  []menucontract.Command
 	files        [][]string
@@ -98,12 +97,6 @@ func (f *fakeDesktopHost) ReloadWindow() {
 	f.reloaded++
 }
 
-func (f *fakeDesktopHost) OpenDevTools() {
-	f.mu.Lock()
-	defer f.mu.Unlock()
-	f.devTools++
-}
-
 func (f *fakeDesktopHost) ToggleMaximise() {
 	f.mu.Lock()
 	defer f.mu.Unlock()
@@ -152,19 +145,12 @@ func (f *fakeDesktopHost) installedSnapshots() []MenuState {
 }
 
 type fakeStateSource struct {
-	mu               sync.Mutex
-	developerOptions bool
-	minimizeToTray   bool
-	disabled         []menucontract.Command
-	zoomInCalls      int
-	zoomOutCalls     int
-	zoomResetCalls   int
-}
-
-func (s *fakeStateSource) DeveloperOptionsEnabled() bool {
-	s.mu.Lock()
-	defer s.mu.Unlock()
-	return s.developerOptions
+	mu             sync.Mutex
+	minimizeToTray bool
+	disabled       []menucontract.Command
+	zoomInCalls    int
+	zoomOutCalls   int
+	zoomResetCalls int
 }
 
 func (s *fakeStateSource) MinimizeToTrayOnCloseEnabled() bool {
@@ -203,9 +189,8 @@ func (s *fakeStateSource) ZoomReset(context.Context) error {
 func TestSyncMenuSkipsUnrelatedSettingsChangesAndMapOrderJitter(t *testing.T) {
 	host := &fakeDesktopHost{width: 1280, height: 800}
 	state := &fakeStateSource{
-		developerOptions: false,
-		minimizeToTray:   false,
-		disabled:         []menucontract.Command{menucontract.CommandNavigateForward, menucontract.CommandNavigateBack},
+		minimizeToTray: false,
+		disabled:       []menucontract.Command{menucontract.CommandNavigateForward, menucontract.CommandNavigateBack},
 	}
 	sh := NewDesktopShell(host, state, Config{
 		MinSize:      WindowSize{Width: 400, Height: 600},
@@ -245,12 +230,12 @@ func TestSyncMenuSkipsUnrelatedSettingsChangesAndMapOrderJitter(t *testing.T) {
 		t.Fatal("expected SyncMenu to skip rebuild on reordered/duplicate disabled commands")
 	}
 
-	// 3. DeveloperOptions 变化必须触发重建。
+	// 3. DisabledCommands 变化必须触发重建。
 	state.mu.Lock()
-	state.developerOptions = true
+	state.disabled = []menucontract.Command{menucontract.CommandNavigateBack}
 	state.mu.Unlock()
 	if !sh.SyncMenu() {
-		t.Fatal("expected SyncMenu to rebuild when DeveloperOptions changes")
+		t.Fatal("expected SyncMenu to rebuild when DisabledCommands changes")
 	}
 	if got := len(host.installedSnapshots()); got != 2 {
 		t.Fatalf("expected 2 total menu installs, got %d", got)
@@ -266,7 +251,7 @@ func TestSyncMenuConcurrentUpdatesNeverOverwriteNewerStateWithStale(t *testing.T
 
 	host := &fakeDesktopHost{
 		onInstall: func(state MenuState) {
-			if !state.DeveloperOptions {
+			if len(state.DisabledCommands) == 0 {
 				enteredOnce.Do(func() {
 					close(firstEntered)
 					<-releaseFirst
@@ -274,7 +259,7 @@ func TestSyncMenuConcurrentUpdatesNeverOverwriteNewerStateWithStale(t *testing.T
 			}
 		},
 	}
-	state := &fakeStateSource{developerOptions: false}
+	state := &fakeStateSource{}
 	sh := NewDesktopShell(host, state, Config{})
 
 	var wg sync.WaitGroup
@@ -288,7 +273,6 @@ func TestSyncMenuConcurrentUpdatesNeverOverwriteNewerStateWithStale(t *testing.T
 
 	// 在 S1 安装阻塞期间，状态推进为 S2 并并发发起多个 SyncMenu。
 	state.mu.Lock()
-	state.developerOptions = true
 	state.disabled = []menucontract.Command{menucontract.CommandNavigateBack}
 	state.mu.Unlock()
 
@@ -308,7 +292,7 @@ func TestSyncMenuConcurrentUpdatesNeverOverwriteNewerStateWithStale(t *testing.T
 		t.Fatalf("expected at least 2 installs (S1 then S2), got %d", len(snaps))
 	}
 	last := snaps[len(snaps)-1]
-	wantFinal := NormalizeMenuState(true, []menucontract.Command{menucontract.CommandNavigateBack})
+	wantFinal := NormalizeMenuState([]menucontract.Command{menucontract.CommandNavigateBack})
 	if !last.Equal(wantFinal) {
 		t.Fatalf("expected final installed menu state %+v, got %+v", wantFinal, last)
 	}
@@ -347,7 +331,6 @@ func TestDesktopShellMenuCommandDispatch(t *testing.T) {
 	})
 
 	sh.HandleMenuCommand(menucontract.CommandReloadWindow)
-	sh.HandleMenuCommand(menucontract.CommandOpenDevTools)
 	sh.HandleMenuCommand(menucontract.CommandMaximiseWindow)
 	sh.HandleMenuCommand(menucontract.CommandToggleWindowMode)
 	sh.HandleMenuCommand(menucontract.CommandZoomIn)
@@ -356,8 +339,8 @@ func TestDesktopShellMenuCommandDispatch(t *testing.T) {
 	sh.HandleMenuCommand(menucontract.CommandCheckForUpdates)
 	sh.HandleMenuCommand(menucontract.CommandNavigateBack)
 
-	if host.reloaded != 1 || host.devTools != 1 || host.toggledMax != 1 {
-		t.Fatalf("unexpected window action counts: reload=%d devtools=%d max=%d", host.reloaded, host.devTools, host.toggledMax)
+	if host.reloaded != 1 || host.toggledMax != 1 {
+		t.Fatalf("unexpected window action counts: reload=%d max=%d", host.reloaded, host.toggledMax)
 	}
 	if host.width != 400 || host.height != 600 {
 		t.Fatalf("expected ToggleWindowMode to shrink to 400x600, got %dx%d", host.width, host.height)

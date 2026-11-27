@@ -124,7 +124,7 @@ type ZoomPreset struct {
 
 // zoomPresets 是缩放档位白名单。菜单与设置面板都只认这四个值，不放开任意百分比。
 var zoomPresets = []ZoomPreset{
-	{Value: 90, Label: "全面"},
+	{Value: 90, Label: "高效"},
 	{Value: 100, Label: "标准"},
 	{Value: 110, Label: "舒适"},
 	{Value: 120, Label: "关怀"},
@@ -188,7 +188,6 @@ type Settings struct {
 	Appearance            Appearance `json:"appearance"`
 	Accent                string     `json:"accent"`
 	ReducedMotion         bool       `json:"reducedMotion"`
-	DeveloperOptions      bool       `json:"developerOptions"`
 	MinimizeToTrayOnClose bool       `json:"minimizeToTrayOnClose"`
 	// Zoom 是界面缩放的百分比，只能取 zoomPresets 里的值。
 	Zoom int `json:"zoom"`
