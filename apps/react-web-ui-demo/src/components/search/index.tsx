@@ -2,7 +2,7 @@ import { createSearchController } from '@greypan/doc-demo-kit'
 import { navigatePopoverLinks, type WebUiInput, type WebUiPopover } from '@greypan/web-ui'
 import { lucideSearch } from '@greypan/web-ui/icons'
 import { Link } from '@tanstack/react-router'
-import { useEffect, useRef, useState, useSyncExternalStore, type RefObject } from 'react'
+import { useCallback, useEffect, useState, useSyncExternalStore, type RefObject } from 'react'
 
 import { useLocale } from '@/i18n/locale'
 
@@ -17,9 +17,6 @@ export function Search({
   controls: RefObject<HTMLElement | null>
 }) {
   const { locale } = useLocale()
-  const results = useRef<HTMLDivElement>(null)
-  const popover = useRef<WebUiPopover>(null)
-  const input = useRef<WebUiInput>(null)
 
   const [controller] = useState(() =>
     createSearchController({
@@ -30,17 +27,33 @@ export function Search({
 
   const snapshot = useSyncExternalStore(controller.subscribe, controller.getSnapshot, controller.getSnapshot)
 
+  const setPopoverRef = useCallback(
+    (node: WebUiPopover | null) => {
+      controller.syncElements({ popover: node })
+    },
+    [controller]
+  )
+
+  const setInputRef = useCallback(
+    (node: WebUiInput | null) => {
+      controller.syncElements({ input: node })
+    },
+    [controller]
+  )
+
+  const setResultsRef = useCallback(
+    (node: HTMLDivElement | null) => {
+      controller.syncElements({ results: node })
+    },
+    [controller]
+  )
+
   useEffect(() => {
     controller.setOnOpenChange(onOpenChange)
   }, [controller, onOpenChange])
 
   useEffect(() => {
-    controller.syncElements({
-      controls: controls.current,
-      input: open ? input.current : null,
-      popover: open ? popover.current : null,
-      results: open ? results.current : null
-    })
+    controller.syncElements({ controls: controls.current })
     controller.syncOpen(open)
   }, [controller, controls, open])
 
@@ -56,7 +69,7 @@ export function Search({
         </web-ui-tooltip>
       ) : (
         <web-ui-popover
-          ref={popover}
+          ref={setPopoverRef}
           trigger="none"
           placement="bottom-end"
           open={snapshot.popoverOpen}
@@ -64,7 +77,7 @@ export function Search({
         >
           <web-ui-input
             slot="trigger"
-            ref={input}
+            ref={setInputRef}
             value={snapshot.query}
             clearable
             autocomplete="off"
@@ -75,7 +88,7 @@ export function Search({
           >
             <web-ui-icon slot="prefix" icon={lucideSearch} />
           </web-ui-input>
-          <div ref={results} className="demo-search-results" aria-label="搜索结果" aria-live="polite">
+          <div ref={setResultsRef} className="demo-search-results" aria-label="搜索结果" aria-live="polite">
             {snapshot.matches.length ? (
               snapshot.matches.map(item => (
                 <Link
