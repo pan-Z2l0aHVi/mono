@@ -31,8 +31,7 @@ export function RemoveTagFromResource(resourceID: string, tagID: string): $Cance
 }
 
 /**
- * SetResourceTags 以替换式集合语义重设单个 Resource 的标签集合；规则由 core 承载。
- * 回传变更后的完整 Resource 视图，前端不必再往返读取一次。
+ * SetResourceTags 以替换式集合语义重设单个 Resource 的标签集合；规则与完整视图回读由 core 承载。
  */
 export function SetResourceTags(resourceID: string, tagNames: string[]): $CancellablePromise<$models.ResourceDTO | null> {
     return $Call.ByID(230069075, resourceID, tagNames).then(($result: any) => {
