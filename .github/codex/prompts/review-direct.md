@@ -33,7 +33,7 @@
    - 当载荷中提供的完整 diff 与上下文已足以完成高风险面审查并定档时，直接返回 `action: "final"`、`context_requests: []`，并填写完整的 `coverage`、`prior_resolutions`、`findings`、`summary`。
 2. **仅在必要时请求一次批量代查（`action: "fetch_context"`）**：
    - 当你需要核查跨文件调用方、类型定义、被截断的高风险 diff 或关键测试文件（防假绿）时，一次性在 `context_requests` 中列出最多 **12 条**精确只读查询，由可信脚本批量取回后在 Turn 2 终审。
-   - 可用原语（`type`）：
+   - 可用原语（`type`，每条请求均含 `reason` 字符串说明查询目的）：
      - `read_file`：读取工作树指定文件行区间（`path` 为仓库相对路径，`start_line` / `end_line` 为 1-based 行号，单次最多 300 行，`query` 固定填 `""`）。
      - `git_diff`：拉取 `changed_paths` 中被截断或未预载文件的 diff（`path` 须位于 `changed_paths`，单条预算 36 KB，支持 `start_line: 0, end_line: 0` 从第 1 行读取，或用 1-based diff 行号按截断锚点续读切片，`query: ""`）。
      - `git_grep`：按**固定字面量**（非正则）跨文件搜索符号或调用点（`query` 为字面量文本，`path` 可为限定目录/文件或 `""` 表示默认源码根目录，`start_line: 0`，`end_line: 0`）。
