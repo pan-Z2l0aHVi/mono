@@ -12,7 +12,7 @@
 
 Web workspace 使用 Vite Plus（`vp`）作为构建、开发、测试、lint 和格式化的统一入口。库包使用 `vp pack` 生成 JavaScript 与声明文件，应用使用 `vp build`。Go 代码继续使用 Go 工具链。
 
-库包的 workspace 依赖保持 external，使消费者加载各自的依赖实例，开发时也能观察依赖包的变化。构建模式与声明文件配置以各包配置和 `build-packaging.md` 为准，构建期 CSS 见 `build-browser.md`。
+库包的 workspace 依赖保持 external，使消费者加载各自的依赖实例，开发时也能观察依赖包的变化。构建模式、声明文件配置与构建期 CSS 约定以各包配置和 `docs/agents/build.md` 为准。
 
 （2026-11-22 修订）本地开发环境仅面向 POSIX（macOS / Linux），并通过 [`.mise.toml`](../../.mise.toml) 以 `mise` 统一管理 Node、pnpm、Go 与 Wails CLI 等多语言工具链及共享缓存环境；仓库维护脚本、POSIX 软链布局与命令行包装约定（见 `environment.md`）均以 POSIX 为前提。CI 仍保留 Windows 平台的 Wails 应用打包产物（见 `ci.md`）。
 

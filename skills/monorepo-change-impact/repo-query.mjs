@@ -648,6 +648,13 @@ const hasBuildArtifactChange =
       )
   )
 const hasCodeChange = normalizedPaths.some(file => /\.(?:[cm]?js|[jt]sx?|vue|css|html|json)$/.test(file))
+const hasUiStyleChange = normalizedPaths.some(file => /\.(?:css|vue|[jt]sx)$/.test(file))
+const hasDocsStyleChange = normalizedPaths.some(
+  file =>
+    file.endsWith('.md') ||
+    file.startsWith('packages/web-ui/') ||
+    /^apps\/[^/]+-web-ui-demo\//.test(file)
+)
 // host policy：浏览器运行时与生成物路径。
 const hasBrowserRuntimeChange = normalizedPaths.some(
   file =>
@@ -672,7 +679,8 @@ const hasWailsPublicApiChange = normalizedPaths.some(
 const context = new Set()
 if (normalizedPaths.length > 0) addContext(context, 'AGENTS.md')
 for (const workspace of directlyChanged) addContext(context, `${workspace.root}/AGENTS.md`)
-if (hasCodeChange) addContext(context, '.agents/rules/ui-style.md')
+if (hasUiStyleChange) addContext(context, '.agents/rules/ui-style.md')
+if (hasDocsStyleChange) addContext(context, '.agents/rules/docs-style.md')
 if (hasContextChange) {
   addContext(context, 'docs/adr/0026-lean-agent-context-for-frontier-models.md')
   addContext(context, 'ARCHITECTURE.md')
@@ -687,10 +695,6 @@ if (
   addContext(context, 'docs/agents/build.md')
 if (hasPackageContractChange || hasBrowserRuntimeChange) {
   addContext(context, 'docs/agents/verification.md')
-}
-if (hasBrowserRuntimeChange) {
-  addContext(context, 'docs/agents/verification.md')
-  if (normalizedPaths.some(file => file.startsWith('packages/web-ui/'))) addContext(context, 'packages/web-ui/AGENTS.md')
 }
 
 const verification = []

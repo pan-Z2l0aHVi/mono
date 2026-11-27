@@ -10,8 +10,7 @@
 
 ## 脚本分层与运行时选择
 
-- **根 `scripts/` 执行面**：`checks/`（门禁与脚本测试薄入口）、`policies/`（本仓路径/包名策略事实）、`workflow/`（提交与发布辅助）、`maintenance/`（清理、环境体检与 skills 维护）、`lib/`（仅放 Node 启动前由 `.mise.toml` 求值的 bootstrap helper）。门禁原子能力全部住在 [`packages/monorepo-kit`](../../packages/monorepo-kit)（详见其 [`AGENTS.md`](../../packages/monorepo-kit/AGENTS.md)）。
-- **全仓稀疏守卫**：`check-policy`、`check-context`、`test-scripts` 前置 `full-checkout` 检查，稀疏态下拒绝执行；`check-pre-commit` 允许稀疏树运行。
+- **分层边界**：根 `scripts/lib/` 仅放 Node 启动前由 `.mise.toml` 求值的 bootstrap helper；门禁原子能力全部住在 [`packages/monorepo-kit`](../../packages/monorepo-kit)（详见其 [`AGENTS.md`](../../packages/monorepo-kit/AGENTS.md)）。全仓检查脚本在稀疏检出态会拒绝执行，`check-pre-commit` 允许稀疏树运行。
 - **POSIX `sh` vs Node ESM**：系统探测与外部 CLI 串联优先 `sh`；结构化解析（JSON/YAML/Markdown）、代码生成、状态机或复用 `@greypan/monorepo-kit` 用 Node ESM。**禁止在 `sh` 里拼 `node -e` / heredoc JS，也禁止在 Node 里用 `sh -c` 完成可由 argv 表达的调用**（测试夹具除外）。
 - **准入与授权**：仅在稳定高频复用且现有命令/配置无法表达时新增永久脚本；变更根脚本暴露的共享命令按 [`workflow.md`](./workflow.md#授权边界与-pr-自动跟进) 取得授权。
 

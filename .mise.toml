@@ -14,8 +14,7 @@ TURBO_CACHE_DIR = "{% if env.GITHUB_ACTIONS == 'true' and env.TURBO_CACHE_DIR %}
 # ~/Library/Caches/go-build，Linux 为 ~/.cache/go-build），另一平台路径作为回退，
 # 两者都不可写才回落到 $TMPDIR/greypan/go-build。不能无条件先试 macOS 路径：Linux 上
 # mkdir 也会成功，会选错目录并创建 ~/Library。
-# 探测实现与测试在 scripts/lib/go-cache-dir.sh；语义与降级行为见 docs/agents/environment.md
-# 「Go 缓存探测与共享」，客户端权限边界见 docs/agents/environment.md。
+# 探测实现与测试在 scripts/lib/go-cache-dir.sh；缓存与客户端权限边界见 docs/agents/environment.md。
 # CI 无 HERDR_ENV 时模板渲染为空，Go 使用平台默认路径，ci.yml 的 actions/cache 读取
 # `go env GOCACHE` 不受影响。
 # Tera 要求：探测 exec 必须 exit 0 且只输出一行；HERDR_ENV 在场而 TMPDIR 为空时条件判假，

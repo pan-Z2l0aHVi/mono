@@ -2,6 +2,7 @@
 paths:
   - '**/*.md'
   - 'packages/web-ui/**'
+  - 'apps/*-web-ui-demo/**'
 ---
 
 # 文档与术语约束

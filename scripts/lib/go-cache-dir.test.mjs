@@ -6,7 +6,7 @@ import path from 'node:path'
 
 // GOCACHE 探测是 .mise.toml 的 bootstrap 例外，只在渲染时执行；这里用假的 uname 与
 // 隔离的 HOME/TMPDIR 钉住平台优先顺序、单行输出、exit 0 以及探测文件清理。
-// 语义见 docs/agents/environment.md「Go 缓存探测与共享」。
+// 语义见 docs/agents/environment.md「mise exec、缓存与排障」。
 const repoRoot = path.resolve(import.meta.dirname, '../..')
 const helper = path.join(repoRoot, 'scripts', 'lib', 'go-cache-dir.sh')
 const sandbox = fs.mkdtempSync(path.join(os.tmpdir(), 'greypan-go-cache-dir-'))

@@ -104,7 +104,7 @@ export default defineConfig({
   plugins: [
     // browser project 的端口段由 testPorts() 写进上面那个 project 的 `test.api`，host 与
     // strictPort 一起给出：本应用顶层 `server.host` 是 `true`，不显式钉回 loopback 时测试服务器
-    // 会跟着绑通配地址。分配表与偏移见 docs/agents/build.md「测试端口分配」。
+    // 会跟着绑通配地址。分配表与偏移见 docs/agents/build.md「浏览器测试端口与本地 HTTPS」。
     testPorts({ project: 'vue-web-ui-demo', testName: 'browser' }),
     wuchale({ configPath: fileURLToPath(new URL('./wuchale.config.js', import.meta.url)) }),
     // 文档：markdown 是唯一来源，dev 与 build 都由这个插件生成 `src/generated/**`。

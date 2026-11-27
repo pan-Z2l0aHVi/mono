@@ -8,9 +8,8 @@
 ## mise exec、缓存与排障
 
 - **何时包 `mise exec --`**：在未激活 mise 的 shell（agent 工具宿主、git hook、`bash -c`）中，凡依赖 mise 注入 env（`TURBO_CACHE_DIR`）或被钉工具（node/pnpm/go/wails3）的命令都须加 `mise exec --`。**唯一例外是 `pnpm run agent:env-doctor` 必须裸跑**，否则会掩盖“当前 shell 未激活 mise”的告警。
-- **共享缓存**：`TURBO_CACHE_DIR` 由 [`scripts/lib/turbo-cache-dir.sh`](../../scripts/lib/turbo-cache-dir.sh) 按 Git common directory 派生，主仓与 linked worktree 共享；`GOCACHE` 在 `HERDR_ENV=1` 时由 [`scripts/lib/go-cache-dir.sh`](../../scripts/lib/go-cache-dir.sh) 探测（Tera 要求永远 exit 0、单行输出）。怀疑 `dist` 损坏先裸跑 `pnpm run agent:env-doctor`，修复用 `pnpm run agent:env-doctor --fix`。`pnpm run clean` 清理构建产物与本仓临时缓存，删 `pnpm-lock.yaml` 须显式传 `--locks`。
+- **共享缓存与排障**：`scripts/lib/go-cache-dir.sh` 由 `.mise.toml` Tera 模板求值，必须永远 exit 0 且单行输出。怀疑 `dist` 损坏先裸跑 `pnpm run agent:env-doctor`，修复用 `pnpm run agent:env-doctor --fix`；`pnpm run clean` 清理构建产物与临时缓存，删 `pnpm-lock.yaml` 须显式传 `--locks`。
 - **本地可选 Vercel Remote Cache**：因 Turbo hash 不记录真实 node 二进制，**仅允许在 mise 激活环境启用**，且默认设为只读远程缓存（`TURBO_CACHE="local:rw,remote:r"`），凭据放在个人 `~/.zshrc`，严禁写入仓库文件。本地缺少 `RUNNER_OS` 时 `@greypan/interweave-frontend:build` 稳定 miss 云端缓存属预期行为。
-- **缓存可信门禁**：`turbo-cache-invariant` 要求 `test.dependsOn` 含 `^build`、`build.outputs` 含 `dist/**` 且 `test.inputs` 不显式正模式纳入 `dist`；`turbo-input-paths` 校验 `$TURBO_ROOT$` 正模式路径真实存在。
 
 ## 本地 HTTPS 证书
 
@@ -29,4 +28,4 @@ mkcert -cert-file ~/.config/greypan/dev-certs/localhost.pem -key-file ~/.config/
 
 - 变更依赖或 pnpm 策略须按 [`workflow.md`](./workflow.md#授权边界与-pr-自动跟进) 取得用户授权。
 - **放置位置**：共享工具链/构建插件/测试基建放根 `devDependencies`；框架专属测试与类型工具放所属包 `devDependencies`；运行时依赖放所属包 `dependencies`；消费者提供的依赖同时放 `peerDependencies` 与 `devDependencies`（可选 peer 标 `peerDependenciesMeta.optional: true`）。
-- **版本与配置**：统一用 `catalog:` 管理版本（`catalogMode: prefer`）；跨发布流依赖（如 Wails Go 与 npm runtime）锁定到经验证的同一版本；pnpm 依赖管理策略（`overrides`、`peerDependencyRules`、`allowBuilds`、`engineStrict`）写在 [`pnpm-workspace.yaml`](../../pnpm-workspace.yaml)，`.npmrc` 只放 auth 与 registry，应用级 `.npmrc` 无效。
+- **版本与配置**：统一用 `catalog:` 管理版本；跨发布流依赖（如 Wails Go 与 npm runtime）锁定到经验证的同一版本；pnpm 依赖策略统一写在 [`pnpm-workspace.yaml`](../../pnpm-workspace.yaml)，`.npmrc` 只放 auth 与 registry，应用级 `.npmrc` 无效。

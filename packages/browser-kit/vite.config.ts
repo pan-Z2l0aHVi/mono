@@ -37,7 +37,7 @@ export default defineConfig({
   },
   // 浏览器 spec 与 dev server 都走这里的 Vite 插件；构建见 `pack`。
   // testPorts() 通过零配置确定性哈希把本包的测试端口段写进下面的 `test.api`，
-  // host 与 strictPort 由它一起给出；分槽与偏移的理由见 docs/agents/build.md 的「测试端口分配」。
+  // host 与 strictPort 由它一起给出；分槽与偏移的理由见 docs/agents/build.md 的「浏览器测试端口与本地 HTTPS」。
   plugins: [mswServiceWorker(), testPorts({ project: 'browser-kit' })],
   pack: {
     entry: {

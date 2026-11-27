@@ -202,7 +202,8 @@ assert.ok(
 )
 assert.ok(webUiPlan.context.includes('AGENTS.md'))
 assert.ok(webUiPlan.context.includes('packages/web-ui/AGENTS.md'))
-assert.ok(webUiPlan.context.includes('packages/web-ui/AGENTS.md'))
+assert.ok(webUiPlan.context.includes('.agents/rules/docs-style.md'))
+assert.equal(webUiPlan.context.includes('.agents/rules/ui-style.md'), false)
 assert.deepEqual(webUiPlan.focusedTests['@greypan/web-ui'], ['src/components/select/__tests__'])
 assert.ok(
   webUiPlan.verification.some(
@@ -216,6 +217,8 @@ assert.match(run('verify', 'packages/web-ui/src/components/select/index.ts'), /e
 const contextPlan = JSON.parse(run('verify', '--json', 'docs/agents/workflow.md'))
 assert.equal(contextPlan.risk.context, true)
 assert.ok(contextPlan.context.includes('docs/adr/0026-lean-agent-context-for-frontier-models.md'))
+assert.ok(contextPlan.context.includes('.agents/rules/docs-style.md'))
+assert.equal(contextPlan.context.includes('.agents/rules/ui-style.md'), false)
 assert.ok(contextPlan.verification.some(item => item.command === 'pnpm run check-context'))
 
 const typePlan = JSON.parse(run('verify', '--json', 'packages/web-ui/src/types/react.ts'))
@@ -227,6 +230,7 @@ assert.equal(
 )
 
 const toolPlan = JSON.parse(run('verify', '--json', script))
+assert.equal(toolPlan.context.includes('.agents/rules/ui-style.md'), false)
 assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run test-scripts'))
 
 const sparsePlan = JSON.parse(run('verify', '--json', 'skills/apps-sparse-checkout/sparse-checkout.mjs'))

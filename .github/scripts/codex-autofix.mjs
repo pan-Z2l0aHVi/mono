@@ -57,7 +57,7 @@ export function globToRegExp(glob) {
 
 /**
  * 入库生成物的权威名单是 `.claude/settings.json` 的 `permissions.deny`，见
- * docs/agents/generated-artifacts.md「机器拦截的覆盖面」。这里读同一份名单而不是抄第二份：
+ * docs/agents/generated-artifacts.md「审查范围与编辑拦截的分工」。这里读同一份名单而不是抄第二份：
  * 新增 generator 时 patch 判定跟着变，两边不会各自漂移。
  */
 export function generatedGuarded({ repositoryFile, parse = JSON.parse }) {

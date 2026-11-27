@@ -12,9 +12,9 @@
 
 - 独立任务 worktree 内的只读调查、以及非破坏性本地构建、测试、lint、类型检查与源码修复闭环。
 - 清理系统临时目录内容，以及回收归属已确认由本任务启动的浏览器进程与本地 dev server。
-- **PR 自动跟进闭环**：PR 创建后，agent 应主动持续跟进 GitHub Actions workflow 状态与 PR 审查结果（如 `Codex review gate` 与评论）；一旦审查发现产出，对每条问题进行核实与分析：
-  - **核实属实**：在当前 PR 分支修复、本地复验通过后直接提交并常规推送（非 force-push），继续跟进新一轮 workflow 与审查直至收敛；
-  - **误判或无需修改**：在 PR 中直接补充 comment 说明核实依据、代码位置或规范出处，并标明不修改理由。
+- **PR 自动跟进闭环**：PR 创建后，agent 应主动持续跟进 GitHub Actions workflow 状态与 PR 审查结果（如 `Codex review gate` 与评论）；一旦 CI workflow 失败或审查发现产出，逐条核实与分析：
+  - **核实属实（CI 失败、或 `Block` / `Should fix` 审查问题）**：在当前 PR 分支根因修复、本地复验通过后直接提交并常规推送（非 force-push），继续跟进新一轮 workflow 与审查直至收敛；若修复触及下方「需逐次用户明确授权」的高风险边界（如变更依赖、CI workflow、调大 timeout 等），仍须先暂停取得用户明确授权；
+  - **误判或无需修改**：在 PR 中直接补充 comment 说明核实依据、代码位置或规范出处，并标明不修改理由（若误判项属 `Block` 级导致 required gate 保持红灯，补充 comment 后停止自动循环并上报证据交用户决断）。
   - 该闭环仍受 [`review.md`](./review.md) 的三轮复审封顶与确定性验证先行纪律约束。
 
 ### 需逐次用户明确授权
@@ -22,7 +22,7 @@
 以下外部或不可逆高风险操作执行前必须取得用户明确同意（说明操作内容、影响范围与风险，等待用户确认；无回复不等于同意）：
 
 - 首次创建 PR、合并 PR（squash 锁定已审 head，不用 `--admin` 或无条件 `--auto`）、修改 PR 标题/base 等元数据。
-- 改写已推送分支历史（`force-push` / `rebase` 已推分支）或改变远端分支/tag 状态。
+- 改写已推送分支历史（`force-push` / `rebase` 已推分支）、删除远端分支或变更 tag（PR 自动跟进闭环内的常规追加推送除外）。
 - 发布或对外交付（npm / Wails release）。
 - 变更依赖与供应链配置（`package.json` 依赖、`pnpm-workspace.yaml` 策略、`.npmrc`、`.mise.toml`）或 CI workflow 定义。
 - 读写凭证/密钥、修改共享客户端权限配置，或不可逆删除非临时数据。
