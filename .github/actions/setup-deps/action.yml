@@ -7,6 +7,7 @@
 #         skip-install: 'true'       # 跳过 pnpm install（准备 job 不需要装依赖）
 #         wails: 'true'              # 安装 Wails Linux 系统依赖（libgtk-4-dev, libwebkitgtk-6.0-dev）
 #         go-cache: 'true'           # 拆分缓存 Go 模块（gomod）与编译产物（gobuild）
+#         cache-save: 'true'         # 允许写入缓存（默认 'false' 只读恢复，仅 main 基线预热 job 开启）
 name: 'Setup Dependencies'
 description: 'Install tools via mise, cache pnpm store, and install dependencies'
 
@@ -29,6 +30,10 @@ inputs:
     default: 'false'
   go-cache:
     description: 'Restore and save Go module/build caches after mise installs Go'
+    required: false
+    default: 'false'
+  cache-save:
+    description: 'Allow saving caches (default false: read-only restore; only main baseline warm jobs enable)'
     required: false
     default: 'false'
 
@@ -85,6 +90,7 @@ runs:
     - name: Prepare Wails Linux package archives for caching
       if: >-
         inputs.wails == 'true' && runner.os == 'Linux' &&
+        inputs.cache-save == 'true' &&
         steps.wails-apt-install.outcome == 'success'
       id: wails-apt-permissions
       shell: bash
@@ -94,6 +100,7 @@ runs:
     - name: Save Wails Linux package archives
       if: >-
         inputs.wails == 'true' && runner.os == 'Linux' &&
+        inputs.cache-save == 'true' &&
         steps.wails-apt-cache.outputs.key != '' &&
         steps.wails-apt-restore.outputs.cache-hit != 'true' &&
         steps.wails-apt-permissions.outcome == 'success' &&
@@ -108,53 +115,108 @@ runs:
       with:
         install: 'true'
         install_args: ${{ inputs.mise-install }}
+        cache_save: ${{ inputs.cache-save }}
 
     - name: Resolve Go cache paths
       if: inputs.go-cache == 'true'
       id: go-cache-paths
       shell: bash
+      env:
+        GO_MOD_HASH: ${{ hashFiles('apps/interweave/go.mod', 'apps/interweave/go.sum') }}
+        TASKFILE_HASH: ${{ hashFiles('apps/interweave/build/**/Taskfile.yml') }}
       run: |
         set -euo pipefail
-        echo "gomodcache=$(go env GOMODCACHE)" >> "$GITHUB_OUTPUT"
-        echo "gocache=$(go env GOCACHE)" >> "$GITHUB_OUTPUT"
-        echo "goversion=$(go env GOVERSION)" >> "$GITHUB_OUTPUT"
+        gomodcache="$(go env GOMODCACHE)"
+        gocache="$(go env GOCACHE)"
+        goversion="$(go env GOVERSION)"
+        # 纯 POSIX 纪元周槽位：规避日历年+ISO 周跨年错位与 BSD/GNU date 差异；限制同一键前缀的周期性增长，旧条目由 GitHub 7 天 TTL 驱逐。
+        week_slot="w$(( $(date -u +%s) / 604800 ))"
+        {
+          echo "gomodcache=${gomodcache}"
+          echo "gocache=${gocache}"
+          echo "goversion=${goversion}"
+          echo "gomod_key=${RUNNER_OS}-${RUNNER_ARCH}-gomod-${goversion}-${GO_MOD_HASH}"
+          echo "gomod_restore_prefix=${RUNNER_OS}-${RUNNER_ARCH}-gomod-${goversion}-"
+          echo "gobuild_key=${RUNNER_OS}-${RUNNER_ARCH}-gobuild-${goversion}-${GO_MOD_HASH}-${TASKFILE_HASH}-${week_slot}"
+          echo "gobuild_restore_taskfile=${RUNNER_OS}-${RUNNER_ARCH}-gobuild-${goversion}-${GO_MOD_HASH}-${TASKFILE_HASH}-"
+          echo "gobuild_restore_mod=${RUNNER_OS}-${RUNNER_ARCH}-gobuild-${goversion}-${GO_MOD_HASH}-"
+          echo "gobuild_restore_go=${RUNNER_OS}-${RUNNER_ARCH}-gobuild-${goversion}-"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Cache Go modules
-      if: inputs.go-cache == 'true'
+      if: inputs.go-cache == 'true' && inputs.cache-save == 'true'
       uses: actions/cache@v5
       with:
         path: ${{ steps.go-cache-paths.outputs.gomodcache }}
         # 按平台/Go 版本/go.mod+go.sum 建键，不含提交 SHA 与镜像版本，避免非 Go 提交挤压 10GB 缓存配额。
-        key: ${{ runner.os }}-${{ runner.arch }}-gomod-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.mod', 'apps/interweave/go.sum') }}
+        key: ${{ steps.go-cache-paths.outputs.gomod_key }}
         restore-keys: |
-          ${{ runner.os }}-${{ runner.arch }}-gomod-${{ steps.go-cache-paths.outputs.goversion }}-
+          ${{ steps.go-cache-paths.outputs.gomod_restore_prefix }}
+
+    - name: Restore Go modules
+      if: inputs.go-cache == 'true' && inputs.cache-save != 'true'
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ steps.go-cache-paths.outputs.gomodcache }}
+        key: ${{ steps.go-cache-paths.outputs.gomod_key }}
+        restore-keys: |
+          ${{ steps.go-cache-paths.outputs.gomod_restore_prefix }}
 
     - name: Cache Go build artifacts
-      if: inputs.go-cache == 'true'
+      if: inputs.go-cache == 'true' && inputs.cache-save == 'true'
       uses: actions/cache@v5
       with:
         path: ${{ steps.go-cache-paths.outputs.gocache }}
-        # 主键拆为两段独立 hashFiles，保证与 restore-keys 字面前缀同构；不含镜像版本，避免镜像滚动后 go vet 全冷。
+        # 按平台/Go 版本/go.mod+go.sum/Taskfile/纪元周槽位建键，不再按 **/*.go 滚存；
         # Go build cache 内容寻址（cgo 预处理输出参与哈希），跨镜像恢复旧条目只会在输入变化时自然 miss。
-        key: ${{ runner.os }}-${{ runner.arch }}-gobuild-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.mod', 'apps/interweave/go.sum') }}-${{ hashFiles('apps/interweave/**/*.go') }}
+        key: ${{ steps.go-cache-paths.outputs.gobuild_key }}
         restore-keys: |
-          ${{ runner.os }}-${{ runner.arch }}-gobuild-${{ steps.go-cache-paths.outputs.goversion }}-${{ hashFiles('apps/interweave/go.mod', 'apps/interweave/go.sum') }}-
-          ${{ runner.os }}-${{ runner.arch }}-gobuild-${{ steps.go-cache-paths.outputs.goversion }}-
+          ${{ steps.go-cache-paths.outputs.gobuild_restore_taskfile }}
+          ${{ steps.go-cache-paths.outputs.gobuild_restore_mod }}
+          ${{ steps.go-cache-paths.outputs.gobuild_restore_go }}
+
+    - name: Restore Go build artifacts
+      if: inputs.go-cache == 'true' && inputs.cache-save != 'true'
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ steps.go-cache-paths.outputs.gocache }}
+        key: ${{ steps.go-cache-paths.outputs.gobuild_key }}
+        restore-keys: |
+          ${{ steps.go-cache-paths.outputs.gobuild_restore_taskfile }}
+          ${{ steps.go-cache-paths.outputs.gobuild_restore_mod }}
+          ${{ steps.go-cache-paths.outputs.gobuild_restore_go }}
 
     - name: Resolve pnpm store path
       if: inputs.skip-install != 'true'
       id: pnpm-store
       shell: bash
-      run: echo "path=$(pnpm store path)" >> "$GITHUB_OUTPUT"
+      env:
+        PNPM_LOCK_HASH: ${{ hashFiles('pnpm-lock.yaml') }}
+      run: |
+        set -euo pipefail
+        {
+          echo "path=$(pnpm store path)"
+          echo "pnpm_key=${RUNNER_OS}-pnpm-${PNPM_LOCK_HASH}"
+          echo "pnpm_restore_prefix=${RUNNER_OS}-pnpm-"
+        } >> "$GITHUB_OUTPUT"
 
     - name: Cache pnpm store
-      if: inputs.skip-install != 'true'
+      if: inputs.skip-install != 'true' && inputs.cache-save == 'true'
       uses: actions/cache@v5
       with:
         path: ${{ steps.pnpm-store.outputs.path }}
-        key: ${{ runner.os }}-pnpm-${{ hashFiles('pnpm-lock.yaml') }}
+        key: ${{ steps.pnpm-store.outputs.pnpm_key }}
         restore-keys: |
-          ${{ runner.os }}-pnpm-
+          ${{ steps.pnpm-store.outputs.pnpm_restore_prefix }}
+
+    - name: Restore pnpm store
+      if: inputs.skip-install != 'true' && inputs.cache-save != 'true'
+      uses: actions/cache/restore@v5
+      with:
+        path: ${{ steps.pnpm-store.outputs.path }}
+        key: ${{ steps.pnpm-store.outputs.pnpm_key }}
+        restore-keys: |
+          ${{ steps.pnpm-store.outputs.pnpm_restore_prefix }}
 
     - name: Install dependencies
       if: inputs.skip-install != 'true'
