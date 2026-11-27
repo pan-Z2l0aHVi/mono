@@ -51,48 +51,69 @@ func (a *linuxWallpaperApplier) Apply(ctx context.Context, path string) error {
 		xdg = a.getenv("XDG_CURRENT_DESKTOP")
 	}
 	desktops := desktopsOf(xdg)
+	if len(desktops) == 0 {
+		return fmt.Errorf("wallpaper: no desktop environment detected (XDG_CURRENT_DESKTOP is empty)")
+	}
 	imageURI := fileURIFromPath(path)
+	var lastErr error
 	for _, desktop := range desktops {
 		if normalizeDesktop(desktop) == "XFCE" {
-			if err := a.setXfceWallpaper(ctx, path); err == nil {
+			err := a.setXfceWallpaper(ctx, path)
+			if err == nil {
 				return nil
 			}
+			lastErr = err
 			continue
 		}
-		if a.runWallpaperPlan(ctx, wallpaperPlanFor(desktop, imageURI)) {
+		plan := wallpaperPlanFor(desktop, imageURI)
+		if len(plan) == 0 {
+			continue
+		}
+		err := a.runWallpaperPlan(ctx, plan)
+		if err == nil {
 			return nil
 		}
+		lastErr = err
 	}
-	return fmt.Errorf("wallpaper: setting failed for desktop %q", strings.Join(desktops, ","))
+	if lastErr != nil {
+		return fmt.Errorf("wallpaper: setting failed for desktop %q: %w", strings.Join(desktops, ","), lastErr)
+	}
+	return fmt.Errorf("wallpaper: unsupported desktop %q", strings.Join(desktops, ","))
 }
 
 // runWallpaperPlan 执行一份计划：required 全部成功且 alternatives 有成功项（无 alternatives 视为满足）
-// 才算成功；optional 尽力而为。空计划返回 false。
-func (a *linuxWallpaperApplier) runWallpaperPlan(ctx context.Context, plan []wallpaperStep) bool {
-	if len(plan) == 0 || a.runner == nil {
-		return false
+// 才算成功；optional 尽力而为。失败时返回具体命令错误以便调用方保留错误链。
+func (a *linuxWallpaperApplier) runWallpaperPlan(ctx context.Context, plan []wallpaperStep) error {
+	if len(plan) == 0 {
+		return fmt.Errorf("wallpaper: empty wallpaper plan")
+	}
+	if a.runner == nil {
+		return fmt.Errorf("wallpaper: command runner is not configured")
 	}
 	for _, step := range plan {
 		switch step.kind {
 		case wallpaperStepRequired:
 			for _, command := range step.commands {
 				if err := a.runner.Run(ctx, command[0], command[1:]...); err != nil {
-					return false
+					return fmt.Errorf("wallpaper: %s failed: %w", command[0], err)
 				}
 			}
 		case wallpaperStepAlternative:
 			alternativeOk := false
+			var stepErr error
 			for _, command := range step.commands {
-				if ctx.Err() != nil {
-					return false
+				if err := ctx.Err(); err != nil {
+					return err
 				}
-				if err := a.runner.Run(ctx, command[0], command[1:]...); err == nil {
+				err := a.runner.Run(ctx, command[0], command[1:]...)
+				if err == nil {
 					alternativeOk = true
 					break
 				}
+				stepErr = fmt.Errorf("wallpaper: %s failed: %w", command[0], err)
 			}
 			if !alternativeOk {
-				return false
+				return stepErr
 			}
 		case wallpaperStepOptional:
 			for _, command := range step.commands {
@@ -100,7 +121,7 @@ func (a *linuxWallpaperApplier) runWallpaperPlan(ctx context.Context, plan []wal
 			}
 		}
 	}
-	return true
+	return nil
 }
 
 // setXfceWallpaper 枚举全部 image-path 属性并逐条写本地路径；任一条写入失败即报错，

@@ -142,8 +142,8 @@ func TestLinuxWallpaperApplier(t *testing.T) {
 	t.Run("无受支持桌面时返回错误", func(t *testing.T) {
 		runner := &fakeCommandRunner{}
 		applier := newLinuxWallpaperApplier(func(string) string { return "LXQT" }, runner)
-		if err := applier.Apply(context.Background(), "/tmp/w.png"); err == nil {
-			t.Fatalf("expected error for unsupported desktop")
+		if err := applier.Apply(context.Background(), "/tmp/w.png"); err == nil || !strings.Contains(err.Error(), "unsupported desktop") {
+			t.Fatalf("expected unsupported desktop error, got %v", err)
 		}
 	})
 }
@@ -283,7 +283,8 @@ func TestLinuxWallpaperApplierCancelsAlternativeAndFailsPartialXfce(t *testing.T
 		}
 	})
 
-	t.Run("XFCE 多显示器部分写入失败时返回错误", func(t *testing.T) {
+	t.Run("XFCE 多显示器部分写入失败时尝试全部显示器并保留错误链", func(t *testing.T) {
+		monitor1Err := errors.New("write monitor1 failed")
 		runner := &fakeCommandRunner{
 			outputFn: func(_ context.Context, _ string, _ ...string) ([]byte, error) {
 				return []byte("/backdrop/screen0/monitor0/image-path /old1\n/backdrop/screen0/monitor1/image-path /old2\n"), nil
@@ -291,15 +292,37 @@ func TestLinuxWallpaperApplierCancelsAlternativeAndFailsPartialXfce(t *testing.T
 			runFn: func(_ context.Context, _ string, args ...string) error {
 				for _, arg := range args {
 					if strings.Contains(arg, "monitor1") {
-						return errors.New("write monitor1 failed")
+						return monitor1Err
 					}
 				}
 				return nil
 			},
 		}
 		applier := newLinuxWallpaperApplier(func(string) string { return "XFCE" }, runner)
-		if err := applier.Apply(context.Background(), "/tmp/a.png"); err == nil {
+		err := applier.Apply(context.Background(), "/tmp/a.png")
+		if err == nil {
 			t.Fatalf("expected error when one XFCE monitor fails to update")
+		}
+		if !errors.Is(err, monitor1Err) || !strings.Contains(err.Error(), "monitor1") {
+			t.Fatalf("expected wrapped monitor1 error, got %v", err)
+		}
+		if len(runner.ran) != 2 {
+			t.Fatalf("expected both monitors to be attempted, got %d commands: %v", len(runner.ran), runner.ran)
+		}
+	})
+
+	t.Run("空桌面环境与命令失败返回明确错误链", func(t *testing.T) {
+		emptyApplier := newLinuxWallpaperApplier(func(string) string { return "" }, &fakeCommandRunner{})
+		if err := emptyApplier.Apply(context.Background(), "/tmp/a.png"); err == nil || !strings.Contains(err.Error(), "no desktop environment detected") {
+			t.Fatalf("expected undetected desktop error, got %v", err)
+		}
+
+		cmdErr := errors.New("gsettings schema missing")
+		gnomeApplier := newLinuxWallpaperApplier(func(string) string { return "GNOME" }, &fakeCommandRunner{
+			runFn: func(_ context.Context, _ string, _ ...string) error { return cmdErr },
+		})
+		if err := gnomeApplier.Apply(context.Background(), "/tmp/a.png"); !errors.Is(err, cmdErr) {
+			t.Fatalf("expected wrapped gsettings error, got %v", err)
 		}
 	})
 }
