@@ -1,5 +1,26 @@
 # @greypan/web-ui
 
+## 14.3.0
+
+### Minor Changes
+
+- 22821d7: On Windows, Interweave now uses a frameless integrated title bar that renders the top menu in the frontend instead of the native Win32 menu bar. The menu snapshot is pushed through the `menu:tree-changed` event and invoked through the menu service, while macOS and Linux keep the native application menu. `web-ui-layout` adds `--wui-layout-sticky-top` so sticky sidebar and header offset cleanly below custom title bars.
+
+### Patch Changes
+
+- 66e6c29: Add configurable code-fence flavors with built-in TS/JS pairs for the dev-kit documentation site, propagate fence metadata through generated meta so hosts can bind demos with `demo=<id>`, and release `web-ui-collapse` peek masks and glow pseudo-elements after an expansion settles open.
+- 092fe6d: Hide the `prefix` slot while `<web-ui-button>` is `loading` so the spinner replaces the leading icon instead of rendering both side by side.
+  
+  Polish Interweave restore and bulk-import dialogs: display cached source thumbnails (with icon fallback) in the pending restore list, swap "Found" and "Skipped" scan stats, double the spacing above the scan status card, and shorten the bulk-import confirmation title to "批量导入".
+- a050c3c: Preload route example docs and cache resolved demo modules before navigation commits so route demos can mount synchronously. Soften the light-mode `--wui-shadow-glass` token so `.wui-glass` surfaces cast a subtler outer shadow. Render Interweave dialog list tooltips through a portal so adjacent rows no longer clip or occlude them.
+- 5f4a9b4: Strengthen primary `<web-ui-button>` hover and active contrast, enable bidirectional overflow scrolling in `<web-ui-drawer>`, and tighten the `<web-ui-layout>` sidebar toggle top margin.
+  
+  Polish Interweave desktop UX: remove developer options and move WebView reload to the View > Refresh menu (Cmd+R on macOS, F5 on Windows), fix macOS tray menu auto-dismissal and minimum window size constraints, refine Settings copy with an MCP info tooltip, improve recovery scan candidate selection and optional extra-file matching, restrict DetailDrawer dragging to mobile, space relative time labels, align list Enter with preview selection, and enable KeepAlive with scroll restoration on the Library page.
+- 7df0afc: Lighten the light-mode neutral surface tokens (control, track, segmented and sidebar), soften the light-mode glass outer shadow and the switch/segmented handle shadows, and darken the secondary button background half a step so it stays distinct on the near-white dialog surface. Dark mode is unchanged.
+- 2dabb72: Extract shared `MenuSession` deep module under `shared/menu-session/` and migrate `WebUiContextMenu` onto it, unifying multi-level submenu lifecycle, portal reconciliation, scroll lock, overlay arbitration, and keyboard/hover interactions.
+- af56165: Migrate `WebUiDropdown` onto `shared/menu-session/` and remove the superseded `shared/menu-behavior/` and `shared/menu-portal/` modules.
+- @greypan/browser-kit@3.1.2
+
 ## 14.2.0
 
 ### Minor Changes
