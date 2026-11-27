@@ -145,14 +145,14 @@ describe('restoreSession', () => {
     }
   })
 
-  it('扫描单候选自动命中、多候选冲突回退待选，且手动选择后不再被后续扫描覆盖', async () => {
+  it('扫描单候选与多候选均自动进入已找到（按优先级预选最佳项），手动选择后不再被后续扫描覆盖，且顺带找到的项不污染待找回', async () => {
     const open = ref(true)
     const queue = ref<LibraryRestoreQueueItem[]>([fileItem('f1')])
-    const allUnavailableFiles = ref<LibraryRestoreQueueItem[]>([fileItem('f2')])
-    const { lease, releaseFilePreview } = createTestLease()
+    const allUnavailableFiles = ref<LibraryRestoreQueueItem[]>([fileItem('f2'), fileItem('f3')])
+    const { lease } = createTestLease()
     const onAddItems = vi.fn<(items: LibraryRestoreQueueItem[]) => void>()
-    const notifyInfo = vi.fn<(message: string) => void>()
     const onSubmit = vi.fn<(items: LibraryRestoreQueueItem[]) => void>()
+    const startScan = vi.fn<(ids: string[], directory: string) => Promise<string>>(async () => 'scan-1')
 
     const scheduled: (() => void)[] = []
     const timers: NonNullable<RestorePorts['timers']> = {
@@ -165,8 +165,14 @@ describe('restoreSession', () => {
 
     const pollScan = vi
       .fn<() => Promise<RecoveryScanUpdate>>()
-      .mockResolvedValueOnce(doneUpdate({ done: false, checked: 1, candidates: [candidate('f1', '/a.png', ['hash'])] }))
-      .mockResolvedValueOnce(doneUpdate({ done: false, checked: 2, candidates: [candidate('f1', '/b.png', ['name'])] }))
+      .mockResolvedValueOnce(
+        doneUpdate({
+          done: false,
+          checked: 1,
+          candidates: [candidate('f1', '/a.png', ['name']), candidate('f2', '/extra-f2.png', ['hash'])]
+        })
+      )
+      .mockResolvedValueOnce(doneUpdate({ done: false, checked: 2, candidates: [candidate('f1', '/b.png', ['hash'])] }))
       .mockResolvedValueOnce(
         doneUpdate({ done: true, checked: 3, candidates: [candidate('f1', '/c.png', ['identity'])] })
       )
@@ -182,48 +188,108 @@ describe('restoreSession', () => {
       {
         chooseFilePath: async () => null,
         chooseDirectory: async () => null,
-        startScan: async () => 'scan-1',
+        startScan,
         pollScan,
         cancelScan: async () => undefined,
         discardScan: async () => undefined,
         lease,
         timers,
-        notifyInfo,
         onAddItems,
         onSubmit
       }
     )
 
     try {
+      expect(session.includeOtherUnavailable.value).toBe(true)
+      expect(session.otherUnavailableFiles.value.map(i => i.id)).toEqual(['f2', 'f3'])
+
       session.scanAllDisks()
       await vi.waitFor(() => expect(pollScan).toHaveBeenCalledTimes(1))
-      expect(onAddItems).toHaveBeenCalledWith(expect.arrayContaining([expect.objectContaining({ id: 'f2' })]))
-      expect(notifyInfo).toHaveBeenCalledWith('已找到 2 条失效资源')
+      // 不再往待找回队列塞入其他失效资源
+      expect(onAddItems).not.toHaveBeenCalled()
+      expect(startScan).toHaveBeenCalledWith(['f1', 'f2', 'f3'], '')
+      // 未命中的 f3 不污染待找回，命中的 f2 直接进入已找到
+      expect(session.pendingItems.value).toEqual([])
+      expect(session.readyItems.value.map(i => i.id)).toEqual(['f1', 'f2'])
       expect(session.prepared.value.f1).toBe('/a.png')
-      expect(session.matchReasonsFor('f1')).toEqual(['内容一致'])
+      expect(session.matchReasonsFor('f1')).toEqual(['文件名一致'])
       await vi.waitFor(() => expect(session.previewSource('f1')?.mediaUrl).toBe('/media/a.png'))
 
-      // 第二批出现冲突候选：清空自动命中并撤销预览，等待用户手动裁决
+      // 第二批出现更高优先级候选（hash > name）：继续留在已找到并自动切换到 /b.png
       scheduled.shift()!()
       await vi.waitFor(() => expect(pollScan).toHaveBeenCalledTimes(2))
-      expect(session.prepared.value.f1).toBeUndefined()
-      expect(session.candidates.value.f1).toHaveLength(2)
-      await vi.waitFor(() => expect(releaseFilePreview).toHaveBeenCalledWith('token:/a.png'))
-
-      // 用户手动选择 /b.png 后，即使第三批再扫到 /c.png 也不覆盖手动决定
-      session.chooseCandidate(session.candidates.value.f1[1])
+      expect(session.pendingItems.value).toEqual([])
       expect(session.prepared.value.f1).toBe('/b.png')
-      expect(session.matchReasonsFor('f1')).toEqual(['文件名一致'])
+      expect(session.matchReasonsFor('f1')).toEqual(['内容一致'])
+      expect(session.candidates.value.f1).toHaveLength(2)
+
+      // 顺带找到的 f2 被撤回时直接移出弹窗，不退回左侧待找回
+      session.cancelPrepare(session.readyItems.value.find(i => i.id === 'f2')!)
+      expect(session.pendingItems.value).toEqual([])
+      expect(session.readyItems.value.map(i => i.id)).toEqual(['f1'])
+
+      // 用户手动选择 /a.png 后，即使第三批扫到更高优先级的 /c.png（identity）也不覆盖手动决定
+      session.chooseCandidate(session.candidates.value.f1[0])
+      expect(session.prepared.value.f1).toBe('/a.png')
 
       scheduled.shift()!()
       await vi.waitFor(() => expect(session.scanning.value).toBe(false))
-      expect(session.prepared.value.f1).toBe('/b.png')
+      expect(session.prepared.value.f1).toBe('/a.png')
       expect(session.candidates.value.f1).toHaveLength(3)
 
       session.submit()
       expect(onSubmit).toHaveBeenCalledWith([
-        expect.objectContaining({ id: 'f1', replacementLocation: '/b.png', scanSnapshot: 'snap:/b.png' })
+        expect.objectContaining({ id: 'f1', replacementLocation: '/a.png', scanSnapshot: 'snap:/a.png' })
       ])
+    } finally {
+      session.dispose()
+      lease.dispose()
+    }
+  })
+
+  it('关闭「同时查找其他失效文件」时仅扫描当前队列，且撤回后重新扫描可再次自动归入已找到', async () => {
+    const open = ref(true)
+    const queue = ref<LibraryRestoreQueueItem[]>([fileItem('f1')])
+    const allUnavailableFiles = ref<LibraryRestoreQueueItem[]>([fileItem('f2')])
+    const { lease } = createTestLease()
+    const startScan = vi.fn<(ids: string[], directory: string) => Promise<string>>(async () => 'scan-1')
+    const pollScan = vi
+      .fn<() => Promise<RecoveryScanUpdate>>()
+      .mockResolvedValue(doneUpdate({ done: true, checked: 1, candidates: [candidate('f1', '/a.png', ['hash'])] }))
+
+    const session = createRestoreSession(
+      {
+        open: () => open.value,
+        queue: () => queue.value,
+        busy: () => false,
+        allUnavailableFiles: () => allUnavailableFiles.value,
+        failedIds: () => []
+      },
+      {
+        chooseFilePath: async () => null,
+        chooseDirectory: async () => null,
+        startScan,
+        pollScan,
+        cancelScan: async () => undefined,
+        discardScan: async () => undefined,
+        lease
+      }
+    )
+
+    try {
+      session.includeOtherUnavailable.value = false
+      session.scanAllDisks()
+      await vi.waitFor(() => expect(session.scanning.value).toBe(false))
+      expect(startScan).toHaveBeenCalledWith(['f1'], '')
+      expect(session.readyItems.value.map(i => i.id)).toEqual(['f1'])
+
+      // 撤回后回到待找回，再次一键扫描应重新归入已找到
+      session.cancelPrepare(queue.value[0])
+      expect(session.pendingItems.value.map(i => i.id)).toEqual(['f1'])
+      expect(session.readyItems.value).toEqual([])
+
+      session.scanAllDisks()
+      await vi.waitFor(() => expect(session.readyItems.value.map(i => i.id)).toEqual(['f1']))
     } finally {
       session.dispose()
       lease.dispose()

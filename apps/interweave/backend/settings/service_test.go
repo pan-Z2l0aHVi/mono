@@ -64,13 +64,13 @@ func TestUpdateSettingsPersistsAndPushes(t *testing.T) {
 	service.OnChange(func(next Settings) { notified = append(notified, next) })
 
 	snapshot, err := service.UpdateSettings(context.Background(), SettingsPatch{
-		Appearance:       ptr(AppearanceDark),
-		DeveloperOptions: ptr(true),
+		Appearance:    ptr(AppearanceDark),
+		ReducedMotion: ptr(true),
 	})
 	if err != nil {
 		t.Fatalf("update: %v", err)
 	}
-	if snapshot.Appearance != AppearanceDark || !snapshot.DeveloperOptions {
+	if snapshot.Appearance != AppearanceDark || !snapshot.ReducedMotion {
 		t.Fatalf("unexpected snapshot: %#v", snapshot)
 	}
 	if len(pushed) != 1 || pushed[0].Appearance != AppearanceDark {
@@ -81,7 +81,7 @@ func TestUpdateSettingsPersistsAndPushes(t *testing.T) {
 	}
 
 	loaded, _ := store.Load()
-	if loaded.Appearance != AppearanceDark || !loaded.DeveloperOptions {
+	if loaded.Appearance != AppearanceDark || !loaded.ReducedMotion {
 		t.Fatalf("expected the change to be persisted, got %#v", loaded)
 	}
 }
@@ -197,20 +197,6 @@ func TestZoomStepsClampAtPresetBounds(t *testing.T) {
 	}
 }
 
-func TestDeveloperOptionsEnabledReflectsState(t *testing.T) {
-	service, _ := newTestService(t)
-
-	if service.DeveloperOptionsEnabled() {
-		t.Fatal("expected developer options to start disabled")
-	}
-	if _, err := service.UpdateSettings(context.Background(), SettingsPatch{DeveloperOptions: ptr(true)}); err != nil {
-		t.Fatalf("update: %v", err)
-	}
-	if !service.DeveloperOptionsEnabled() {
-		t.Fatal("expected developer options to be enabled")
-	}
-}
-
 func TestMinimizeToTrayOnCloseReflectsAndPersistsState(t *testing.T) {
 	service, store := newTestService(t)
 
@@ -255,21 +241,20 @@ func TestOnChangeUnsubscribe(t *testing.T) {
 }
 
 /*
- * 菜单重建监听器会在回调里回读设置（要拿开发者选项）；回读若撞上 UpdateSettings 持有的锁，
+ * 托盘同步监听器会在回调里回读设置（如 MinimizeToTrayOnCloseEnabled）；回读若撞上 UpdateSettings 持有的锁，
  * 就是一次自死锁。这条用例把那次回读做进去，并在有限时间内完成——
  * 没有超时机制时它表现为整个测试卡死，因此这里是「跑不完」而不是「断言失败」。
  */
 func TestChangeListenerCanReadSettingsBack(t *testing.T) {
 	service, _ := newTestService(t)
-	// 生产路径的菜单重建就是在这里回读。
 	service.OnChange(func(settings Settings) {
-		_ = service.DeveloperOptionsEnabled()
+		_ = service.MinimizeToTrayOnCloseEnabled()
 	})
 
 	done := make(chan struct{})
 	go func() {
 		defer close(done)
-		if _, err := service.UpdateSettings(context.Background(), SettingsPatch{DeveloperOptions: ptr(true)}); err != nil {
+		if _, err := service.UpdateSettings(context.Background(), SettingsPatch{MinimizeToTrayOnClose: ptr(true)}); err != nil {
 			t.Errorf("update: %v", err)
 		}
 	}()

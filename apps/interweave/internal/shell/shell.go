@@ -14,29 +14,26 @@ import (
 // MenuState 是原生菜单物化的不可变值快照。
 // DisabledCommands 始终按字典序去重排序，消除 map 迭代无序导致的误判抖动。
 type MenuState struct {
-	DeveloperOptions bool
 	DisabledCommands []menucontract.Command
 }
 
 // NormalizeMenuState 构造规范化后的不可变 MenuState 快照。
-func NormalizeMenuState(developerOptions bool, disabled []menucontract.Command) MenuState {
+func NormalizeMenuState(disabled []menucontract.Command) MenuState {
 	if len(disabled) == 0 {
-		return MenuState{DeveloperOptions: developerOptions}
+		return MenuState{}
 	}
 	sorted := make([]menucontract.Command, len(disabled))
 	copy(sorted, disabled)
 	slices.Sort(sorted)
 	sorted = slices.Compact(sorted)
 	return MenuState{
-		DeveloperOptions: developerOptions,
 		DisabledCommands: sorted,
 	}
 }
 
 // Equal 判断两份规范化后的菜单快照是否完全等价。
 func (s MenuState) Equal(other MenuState) bool {
-	return s.DeveloperOptions == other.DeveloperOptions &&
-		slices.Equal(s.DisabledCommands, other.DisabledCommands)
+	return slices.Equal(s.DisabledCommands, other.DisabledCommands)
 }
 
 // IsDisabled 判断指定命令是否在快照的禁用集合中。
@@ -55,7 +52,6 @@ type DesktopHost interface {
 	HideWindow()
 	QuitApp()
 	ReloadWindow()
-	OpenDevTools()
 	ToggleMaximise()
 	EmitMenuCommand(command menucontract.Command)
 	OpenExternal(ctx context.Context, targetURL string) error
@@ -65,7 +61,6 @@ type DesktopHost interface {
 // StateSource 是桌面壳读取设置与菜单可用性快照的纯 Go 窄接缝，
 // 避免 internal/shell 间接依赖 Wails CGO 包。
 type StateSource interface {
-	DeveloperOptionsEnabled() bool
 	MinimizeToTrayOnCloseEnabled() bool
 	DisabledCommands() []menucontract.Command
 	ZoomIn(ctx context.Context) error
@@ -115,10 +110,7 @@ func (s *DesktopShell) SyncMenu() bool {
 	s.menuInstallMu.Lock()
 	defer s.menuInstallMu.Unlock()
 
-	next := NormalizeMenuState(
-		s.state.DeveloperOptionsEnabled(),
-		s.state.DisabledCommands(),
-	)
+	next := NormalizeMenuState(s.state.DisabledCommands())
 	if s.menuInstalled && s.lastMenuState.Equal(next) {
 		return false
 	}
@@ -134,8 +126,6 @@ func (s *DesktopShell) HandleMenuCommand(command menucontract.Command) {
 	switch command {
 	case menucontract.CommandReloadWindow:
 		s.host.ReloadWindow()
-	case menucontract.CommandOpenDevTools:
-		s.host.OpenDevTools()
 	case menucontract.CommandMaximiseWindow:
 		s.host.ToggleMaximise()
 	case menucontract.CommandToggleWindowMode:

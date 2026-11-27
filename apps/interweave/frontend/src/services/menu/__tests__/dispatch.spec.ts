@@ -10,7 +10,6 @@ function handlers(): SpiedHandlers {
     addResource: vi.fn<() => void>(noop),
     importFromClipboard: vi.fn<() => void>(noop),
     importFromLink: vi.fn<() => void>(noop),
-    refreshLibrary: vi.fn<() => void>(noop),
     toggleSidebar: vi.fn<() => void>(noop),
     toggleFilterBar: vi.fn<() => void>(noop),
     focusSearch: vi.fn<() => void>(noop),
@@ -29,7 +28,6 @@ describe('menu command dispatch', () => {
       ['add-resource', 'addResource'],
       ['import-from-clipboard', 'importFromClipboard'],
       ['import-from-link', 'importFromLink'],
-      ['refresh-library', 'refreshLibrary'],
       ['toggle-sidebar', 'toggleSidebar'],
       ['toggle-filter-bar', 'toggleFilterBar'],
       ['focus-search', 'focusSearch'],
@@ -51,13 +49,12 @@ describe('menu command dispatch', () => {
     }
   })
 
-  // reload-window、open-devtools、maximise-window、toggle-window-mode 与 check-for-updates 由 Go 侧直接执行。
+  // reload-window、maximise-window、toggle-window-mode 与 check-for-updates 由 Go 侧直接执行。
   // 前端认了它们反而会多出一条无人接管的命令。
   it('不认由 Go 侧直接执行的命令', () => {
     const target = handlers()
     for (const command of [
       'reload-window',
-      'open-devtools',
       'maximise-window',
       'toggle-window-mode',
       'check-for-updates',
@@ -73,7 +70,7 @@ describe('menu command dispatch', () => {
   // 旧命令名不再合法：留着它们会让两侧契约静默漂移。
   it('不认已删除的旧命令名', () => {
     const target = handlers()
-    for (const command of ['paste-files', 'refresh-availability']) {
+    for (const command of ['paste-files', 'refresh-availability', 'refresh-library', 'open-devtools']) {
       expect(dispatchMenuCommand({ command }, target)).toBe(false)
     }
     for (const spy of Object.values(target)) expect(spy).not.toHaveBeenCalled()

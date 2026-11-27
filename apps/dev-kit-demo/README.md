@@ -2,7 +2,7 @@
 
 这是 `@greypan/js-kit` 与 `@greypan/browser-kit` 的文档与交互示例站。
 
-![Dev Kit Demo 预览](./docs/preview.png)
+![Dev Kit Demo 预览](./docs/preview.jpg)
 
 **在线演示：** [Dev Kit Demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo)
 

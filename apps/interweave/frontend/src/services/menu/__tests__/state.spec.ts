@@ -4,18 +4,14 @@ import { Command } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/
 import * as MenuService from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/menu/service'
 import { computeDisabledCommands, createMenuStateReporter, createMenuStateRuntime } from '../state'
 
-const libraryCommands: Command[] = [
-  Command.CommandRefreshLibrary,
-  Command.CommandToggleFilterBar,
-  Command.CommandFocusSearch
-]
+const libraryCommands: Command[] = [Command.CommandToggleFilterBar, Command.CommandFocusSearch]
 
 describe('菜单可用性', () => {
   it('在资源库页且两端历史都可走时不置灰任何项', () => {
     expect(computeDisabledCommands({ path: '/library', canGoBack: true, canGoForward: true })).toEqual([])
   })
 
-  it('离开资源库页后把三条页面命令全部置灰', () => {
+  it('离开资源库页后把两条页面命令全部置灰', () => {
     const disabled = computeDisabledCommands({ path: '/tags', canGoBack: true, canGoForward: true })
     expect(disabled).toEqual(libraryCommands)
   })

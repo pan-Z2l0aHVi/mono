@@ -48,12 +48,12 @@ const emit = defineEmits<{ prepare: []; cancelPrepare: []; chooseCandidates: [] 
         >匹配依据：{{ matchReasons.join('、') }}</span
       >
       <button
-        v-if="pending && candidateCount > 1"
+        v-if="!pending && candidateCount > 1"
         type="button"
         class="w-fit rounded-sm text-xs text-(--wui-color-accent) underline"
         @click="emit('chooseCandidates')"
       >
-        找到 <span class="font-mono tabular-nums">{{ candidateCount }}</span> 个候选，选择文件
+        共 <span class="font-mono tabular-nums">{{ candidateCount }}</span> 个候选，切换文件
       </button>
       <span v-if="active" class="text-xs text-(--wui-color-text-secondary)">处理中</span>
     </div>

@@ -128,8 +128,9 @@ export function matchWindowsAccelerator(event: KeyboardEvent, item: MenuItem): b
   const expectCtrl = modifiers.has('cmdorctrl') || modifiers.has('ctrl')
   const expectShift = modifiers.has('shift')
   const expectAlt = modifiers.has('optionoralt') || modifiers.has('alt')
+  const isFunctionKey = /^f([1-9]|1[0-2])$/.test(keyToken)
 
-  if (!expectCtrl) return false
+  if (!expectCtrl && !isFunctionKey) return false
   if (event.ctrlKey !== expectCtrl || event.altKey !== expectAlt || event.metaKey) return false
 
   const pressed = event.key.toLowerCase()

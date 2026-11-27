@@ -1562,16 +1562,16 @@ describe('ResourceList：键盘导航与预览入口', () => {
     }
   })
 
-  it('Enter 打开详情', async () => {
+  it('Enter 与 Space / 点击一致，走 select 不再额外打开详情', async () => {
+    const select = vi.fn<RowHandler>()
     const detail = vi.fn<RowHandler>()
-    const preview = vi.fn<RowHandler>()
-    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onDetail: detail, onPreview: preview })
+    const mounted = await mountList([resource({ id: 'r1' })], [], {}, { onSelect: select, onDetail: detail })
 
     try {
       const event = keydown(mounted.rows[0]!, { key: 'Enter' })
 
-      expect(detail).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'r1' }))
-      expect(preview).not.toHaveBeenCalled()
+      expect(select).toHaveBeenCalledExactlyOnceWith(expect.objectContaining({ id: 'r1' }))
+      expect(detail).not.toHaveBeenCalled()
       expect(event.defaultPrevented).toBe(true)
     } finally {
       mounted.unmount()

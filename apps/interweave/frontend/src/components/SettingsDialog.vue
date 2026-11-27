@@ -1,5 +1,6 @@
 <script setup lang="ts">
 import type { WebUiDialog, WebUiEvent, WebUiSegmented, WebUiSlider, WebUiSwitch } from '@greypan/web-ui'
+import { lucideInfo } from '@greypan/web-ui/icons'
 import { storeToRefs } from 'pinia'
 import { computed, ref, watch } from 'vue'
 
@@ -15,8 +16,7 @@ const emit = defineEmits<{
 }>()
 
 const settings = useSettingsStore()
-const { appearance, accent, reducedMotion, developerOptions, minimizeToTrayOnClose, presets, zoom, zoomPresets } =
-  storeToRefs(settings)
+const { appearance, accent, reducedMotion, minimizeToTrayOnClose, presets, zoom, zoomPresets } = storeToRefs(settings)
 const settingsRowClass = 'flex min-w-0 items-center justify-between gap-4 py-2'
 
 type SettingsTab = 'general' | 'appearance' | 'library'
@@ -74,10 +74,6 @@ function handleAppearanceChange(event: WebUiEvent<WebUiSegmented, 'change'>) {
 
 function handleReducedMotionChange(event: Event) {
   void settings.setReducedMotion((event.currentTarget as WebUiSwitch).checked)
-}
-
-function handleDeveloperOptionsChange(event: Event) {
-  void settings.setDeveloperOptions((event.currentTarget as WebUiSwitch).checked)
 }
 
 function handleMinimizeToTrayOnCloseChange(event: Event) {
@@ -140,19 +136,23 @@ function handleZoomChange(event: WebUiEvent<WebUiSlider, 'change'>) {
 
     <div class="flex min-h-(--wui-dialog-max-height) flex-col">
       <!--
-        通用：「连接智能助手」switch 是纯静态占位。disabled 而非隐藏，是为了让「这一栏存在但还没做」在
+        通用：「启用 MCP 服务」switch 是纯静态占位。disabled 而非隐藏，是为了让「这一栏存在但还没做」在
         界面上可见；文案承担解释，控件本身不假装可用。
-
-        开发者选项不是占位：它决定「开发」菜单出不出现，也就是重新载入与开发者控制台两项，
-        由 Go 侧持有该设置并据此重建菜单。
       -->
       <div v-if="activeTab === 'general'" class="flex flex-col">
         <div :class="settingsRowClass">
           <div class="flex min-w-0 flex-col gap-0.5">
-            <span class="text-sm text-(--wui-color-text)">连接智能助手</span>
+            <div class="flex items-center gap-1">
+              <span class="text-sm text-(--wui-color-text)">启用 MCP 服务</span>
+              <web-ui-tooltip portal content="允许外部 AI 客户端通过本地 MCP 协议连接本 APP。仅建议在受信任的环境开启">
+                <web-ui-button icon variant="ghost" size="22" aria-label="启用 MCP 服务说明">
+                  <web-ui-icon :icon="lucideInfo" :size="14" />
+                </web-ui-button>
+              </web-ui-tooltip>
+            </div>
             <span :class="metadataLabelClass">即将推出</span>
           </div>
-          <web-ui-switch disabled aria-label="连接智能助手（即将推出）" />
+          <web-ui-switch disabled aria-label="启用 MCP 服务（即将推出）" />
         </div>
         <div :class="settingsRowClass">
           <span class="text-sm text-(--wui-color-text)">关闭时最小化到托盘</span>
@@ -161,10 +161,6 @@ function handleZoomChange(event: WebUiEvent<WebUiSlider, 'change'>) {
             aria-label="关闭时最小化到托盘"
             @change="handleMinimizeToTrayOnCloseChange"
           />
-        </div>
-        <div :class="settingsRowClass">
-          <span class="text-sm text-(--wui-color-text)">开发者选项</span>
-          <web-ui-switch :checked="developerOptions" aria-label="开发者选项" @change="handleDeveloperOptionsChange" />
         </div>
       </div>
 
@@ -244,8 +240,8 @@ function handleZoomChange(event: WebUiEvent<WebUiSlider, 'change'>) {
         </div>
 
         <div :class="settingsRowClass">
-          <span class="text-sm text-(--wui-color-text)">减少动画效果</span>
-          <web-ui-switch :checked="reducedMotion" aria-label="减少动画效果" @change="handleReducedMotionChange" />
+          <span class="text-sm text-(--wui-color-text)">削弱动画效果</span>
+          <web-ui-switch :checked="reducedMotion" aria-label="削弱动画效果" @change="handleReducedMotionChange" />
         </div>
       </div>
 
