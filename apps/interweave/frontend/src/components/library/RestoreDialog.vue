@@ -398,15 +398,19 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   }
 }
 
-.motion-reduced.scan-status-active::after,
+.motion-reduced.scan-status-active::after {
+  content: none;
+  animation: none;
+}
+
 :global(web-ui-theme[motion='reduced']) .scan-status-active::after {
-  display: none;
+  content: none;
   animation: none;
 }
 
 @media (prefers-reduced-motion: reduce) {
   .scan-status-active::after {
-    display: none;
+    content: none;
     animation: none;
   }
 }
