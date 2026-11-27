@@ -90,6 +90,7 @@ func appMenu(mac bool) Node {
 	if !mac {
 		return submenu("Interweave",
 			roleNode(application.About, "关于 Interweave", ""),
+			commandNode("检查更新", "", menucontract.CommandCheckForUpdates),
 			separator(),
 			commandNode("设置…", "CmdOrCtrl+,", menucontract.CommandOpenSettings),
 			separator(),

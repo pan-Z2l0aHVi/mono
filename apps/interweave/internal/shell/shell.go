@@ -75,20 +75,22 @@ type StateSource interface {
 
 // Config 描述桌面壳的窗口尺寸边界与外部发布页地址。
 type Config struct {
-	MinSize      WindowSize
-	FallbackSize WindowSize
-	ReleasesURL  string
+	MinSize         WindowSize
+	FallbackSize    WindowSize
+	ReleasesURL     string
+	CheckForUpdates func()
 }
 
 // DesktopShell 收敛 Interweave 桌面壳编排逻辑：
 // 窗口关闭最小化到托盘、窗口模式往返切换、冷启动 Dock/URL 拖放缓冲、
 // 菜单命令分发以及串行去重的原生菜单同步安装。
 type DesktopShell struct {
-	host        DesktopHost
-	state       StateSource
-	releasesURL string
-	windowMode  *WindowModeToggler
-	dockDrop    *DockDropDispatcher
+	host            DesktopHost
+	state           StateSource
+	releasesURL     string
+	checkForUpdates func()
+	windowMode      *WindowModeToggler
+	dockDrop        *DockDropDispatcher
 
 	// menuInstallMu 串行化原生菜单快照回读、比对与物化，防止并发变更时出现
 	// S2 → S1 乱序覆盖。该锁位于外层，只单向调用 state 的只读快照方法，不与
@@ -101,11 +103,12 @@ type DesktopShell struct {
 // NewDesktopShell 创建桌面壳控制器。
 func NewDesktopShell(host DesktopHost, state StateSource, cfg Config) *DesktopShell {
 	return &DesktopShell{
-		host:        host,
-		state:       state,
-		releasesURL: cfg.ReleasesURL,
-		windowMode:  NewWindowModeToggler(cfg.MinSize, cfg.FallbackSize),
-		dockDrop:    NewDockDropDispatcher(host),
+		host:            host,
+		state:           state,
+		releasesURL:     cfg.ReleasesURL,
+		checkForUpdates: cfg.CheckForUpdates,
+		windowMode:      NewWindowModeToggler(cfg.MinSize, cfg.FallbackSize),
+		dockDrop:        NewDockDropDispatcher(host),
 	}
 }
 
@@ -147,6 +150,10 @@ func (s *DesktopShell) HandleMenuCommand(command menucontract.Command) {
 	case menucontract.CommandZoomReset:
 		s.applyZoom(s.state.ZoomReset)
 	case menucontract.CommandCheckForUpdates:
+		if s.checkForUpdates != nil {
+			s.checkForUpdates()
+			return
+		}
 		if err := s.host.OpenExternal(context.Background(), s.releasesURL); err != nil {
 			log.Printf("interweave: failed to open the releases page: %v", err)
 		}

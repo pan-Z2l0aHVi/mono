@@ -70,7 +70,7 @@ func TestDescribeInterweaveMenu(t *testing.T) {
 		"关于 Interweave", "检查更新", "服务", "设置…", "隐藏 Interweave", "隐藏其他", "全部显示", "退出 Interweave",
 	})
 	assertOrder(t, labelsOf(Describe("windows"), "Interweave"), []string{
-		"关于 Interweave", "设置…", "退出 Interweave",
+		"关于 Interweave", "检查更新", "设置…", "退出 Interweave",
 	})
 }
 
@@ -118,6 +118,9 @@ func TestDescribePlatformSpecificItems(t *testing.T) {
 
 	if !contains(labelsOf(mac, "Interweave"), "检查更新") {
 		t.Fatal("expected Check for Updates in the macOS app menu")
+	}
+	if !contains(labelsOf(win, "Interweave"), "检查更新") {
+		t.Fatal("expected Check for Updates in the Windows app menu")
 	}
 	for _, hidden := range []string{"隐藏 Interweave", "隐藏其他", "全部显示"} {
 		if contains(labelsOf(win, "Interweave"), hidden) {

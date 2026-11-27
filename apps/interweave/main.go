@@ -21,6 +21,7 @@ import (
 	nativeService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/settings"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/updater"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/internal/shell"
 )
 
@@ -32,8 +33,7 @@ var assets embed.FS
 // documentationURL 是 Help 菜单打开的文档地址。
 const documentationURL = "https://github.com/pan-Z2l0aHVi/mono/tree/main/apps/interweave"
 
-// releasesURL 是 App 菜单「检查更新」打开的发布页。不做 Wails updater 接入：
-// 这一项只负责把用户带到能看到版本与变更的地方。
+// releasesURL 是更新失败或手动查看发布说明时打开的 GitHub Releases 兜底地址。
 const releasesURL = "https://github.com/pan-Z2l0aHVi/mono/releases"
 
 const (
@@ -173,6 +173,10 @@ func dispatchMenuRole(role string, actions menuRoleActions) bool {
 }
 
 func main() {
+	// 在初始化 Wails 应用与单实例锁之前优先分流更新器的内部自举/守望子命令。
+	if handled, code := updater.HandleSubcommand(os.Args); handled {
+		os.Exit(code)
+	}
 	if err := run(); err != nil {
 		log.Fatal(err)
 	}
@@ -256,13 +260,38 @@ func run() error {
 	windows := newMainWindowController(app, mainWindowOptions())
 	quitApp := func() { dockPresence.quitAfterDrain(app.Quit) }
 	host := &wailsDesktopHost{app: app, windows: windows, osService: osService, presence: dockPresence, quit: quitApp}
+
+	updaterCacheDir, err := updater.DefaultCacheDir()
+	if err != nil {
+		log.Printf("interweave: resolve updater cache dir failed: %v", err)
+		updaterCacheDir = filepath.Join(dir, "cache", "updater")
+	}
+	updaterCtrl := updater.NewController(updater.ControllerConfig{
+		CurrentVersion: version,
+		IsProduction:   isProductionBuild,
+		ReleasesURL:    releasesURL,
+		CacheDir:       updaterCacheDir,
+		Fetcher: updater.NewReleaseClient(updater.ReleaseClientOptions{
+			GOOS:     runtime.GOOS,
+			GOARCH:   runtime.GOARCH,
+			CacheDir: updaterCacheDir,
+			Proxy:    nativeService.SystemProxy,
+		}),
+		UI:           updater.NewPlatformUI(),
+		Installer:    updater.NewPlatformInstaller(),
+		OpenExternal: osService.OpenExternal,
+		QuitApp:      quitApp,
+	})
+	go updaterCtrl.CleanupStaleCache()
+
 	desktopShell := shell.NewDesktopShell(
 		host,
 		&wailsShellState{settings: settingsService, menu: menuService},
 		shell.Config{
-			MinSize:      shell.WindowSize{Width: minWindowWidth, Height: minWindowHeight},
-			FallbackSize: shell.WindowSize{Width: defaultWindowWidth, Height: defaultWindowHeight},
-			ReleasesURL:  releasesURL,
+			MinSize:         shell.WindowSize{Width: minWindowWidth, Height: minWindowHeight},
+			FallbackSize:    shell.WindowSize{Width: defaultWindowWidth, Height: defaultWindowHeight},
+			ReleasesURL:     releasesURL,
+			CheckForUpdates: updaterCtrl.TriggerCheck,
 		},
 	)
 
@@ -402,6 +431,7 @@ func run() error {
 	})
 	rt.Start(context.Background())
 	app.OnShutdown(func() {
+		updaterCtrl.Shutdown()
 		if err := rt.Close(); err != nil {
 			log.Printf("interweave: close library runtime failed: %v", err)
 		}
