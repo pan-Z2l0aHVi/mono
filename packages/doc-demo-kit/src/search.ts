@@ -59,6 +59,7 @@ export interface SearchElements {
 }
 
 export interface SearchSnapshot {
+  readonly open: boolean
   readonly query: string
   readonly displayQuery: string
   readonly panelOpen: boolean
@@ -131,11 +132,12 @@ export function createSearchController(options: SearchControllerOptions): Search
   function computeSnapshot(): SearchSnapshot {
     const hasQuery = query.trim().length > 0
     return Object.freeze({
+      open,
       query,
       displayQuery,
       panelOpen,
       hasQuery,
-      popoverOpen: panelOpen && hasQuery,
+      popoverOpen: open && panelOpen && hasQuery,
       matches: Object.freeze(searchNavigation(displayQuery, pages))
     })
   }
@@ -175,6 +177,7 @@ export function createSearchController(options: SearchControllerOptions): Search
       open = nextOpen
       focusGeneration++
       cancelPendingPanelFocus()
+      emit()
       if (open) focusInputWhenReady()
     },
 
@@ -187,7 +190,10 @@ export function createSearchController(options: SearchControllerOptions): Search
         const nextInput = elements.input ?? null
         const changed = nextInput !== inputEl
         inputEl = nextInput
-        if (changed) cancelPendingPanelFocus()
+        if (changed) {
+          focusGeneration++
+          cancelPendingPanelFocus()
+        }
         expandingField.attachField(inputEl)
         if (changed && open && inputEl) focusInputWhenReady()
       }
@@ -281,6 +287,7 @@ export function createSearchController(options: SearchControllerOptions): Search
     },
 
     dispose() {
+      open = false
       focusGeneration++
       cancelPendingPanelFocus()
       expandingField.dispose()
@@ -289,6 +296,7 @@ export function createSearchController(options: SearchControllerOptions): Search
       popoverEl = null
       resultsEl = null
       listeners.clear()
+      snapshot = computeSnapshot()
     }
   }
 }

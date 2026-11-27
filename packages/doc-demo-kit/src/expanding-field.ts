@@ -23,20 +23,56 @@ export interface ExpandingFieldController {
  */
 export function createExpandingFieldController(binding: ExpandingFieldBinding): ExpandingFieldController {
   let pressedInsideControls = false
+  let listeningWindowPointer = false
   let currentControls: HTMLElement | null = null
   let currentField: HTMLElement | null = null
+
+  function detachWindowPointerListeners() {
+    if (!listeningWindowPointer) return
+    window.removeEventListener('pointerup', onWindowPointerUp, true)
+    window.removeEventListener('pointercancel', onWindowPointerCancel, true)
+    listeningWindowPointer = false
+  }
+
+  function attachWindowPointerListeners() {
+    if (listeningWindowPointer) return
+    window.addEventListener('pointerup', onWindowPointerUp, true)
+    window.addEventListener('pointercancel', onWindowPointerCancel, true)
+    listeningWindowPointer = true
+  }
+
+  function onWindowPointerUp(event: Event) {
+    detachWindowPointerListeners()
+    if (!pressedInsideControls) return
+    const releasedInsideControls = event.target instanceof Node && Boolean(currentControls?.contains(event.target))
+    if (!releasedInsideControls) {
+      pressedInsideControls = false
+      return
+    }
+    queueMicrotask(() => {
+      pressedInsideControls = false
+    })
+  }
+
+  function onWindowPointerCancel() {
+    detachWindowPointerListeners()
+    pressedInsideControls = false
+  }
 
   function onControlsPointerDown(event: Event) {
     const fieldElement = binding.getField()
     if (fieldElement && event.target instanceof Node && fieldElement.contains(event.target)) return
     pressedInsideControls = true
+    attachWindowPointerListeners()
   }
 
   function onControlsPointerCancel() {
+    detachWindowPointerListeners()
     pressedInsideControls = false
   }
 
   function onControlsClick() {
+    detachWindowPointerListeners()
     pressedInsideControls = false
     const fieldElement = binding.getField()
     const controlsElement = binding.getControls()
@@ -72,6 +108,7 @@ export function createExpandingFieldController(binding: ExpandingFieldBinding): 
   }
 
   function detachControls() {
+    detachWindowPointerListeners()
     if (!currentControls) return
     currentControls.removeEventListener('pointerdown', onControlsPointerDown)
     currentControls.removeEventListener('pointercancel', onControlsPointerCancel)

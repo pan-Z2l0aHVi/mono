@@ -58,6 +58,7 @@ describe('SearchController', () => {
     controller.syncOpen(true)
 
     controller.setQuery('button')
+    expect(controller.getSnapshot().open).toBe(true)
     expect(controller.getSnapshot().hasQuery).toBe(true)
     expect(controller.getSnapshot().popoverOpen).toBe(true)
     expect(controller.getSnapshot().matches.some(item => item.path === '/components/button')).toBe(true)
@@ -111,6 +112,58 @@ describe('SearchController', () => {
     controller.dispose()
   })
 
+  it('controls 内按下后拖到外部释放（无 click）会清理标记，后续 focusout 正常关闭', () => {
+    const controls = document.createElement('div')
+    const input = document.createElement('input')
+    const siblingBtn = document.createElement('button')
+    const outsideBtn = document.createElement('button')
+    controls.append(input, siblingBtn)
+    document.body.append(controls, outsideBtn)
+
+    const onOpenChange = vi.fn<(open: boolean) => void>()
+    const controller = createSearchController({ onOpenChange })
+    controller.syncElements({ controls, input })
+    controller.syncOpen(true)
+
+    siblingBtn.dispatchEvent(new Event('pointerdown', { bubbles: true }))
+    outsideBtn.dispatchEvent(new Event('pointerup', { bubbles: true }))
+
+    input.dispatchEvent(new FocusEvent('focusout', { relatedTarget: outsideBtn }))
+    expect(onOpenChange).toHaveBeenCalledWith(false)
+
+    controller.dispose()
+  })
+
+  it('syncOpen 切换状态时同步更新快照并通知订阅者，dispose 重置 open 为 false', () => {
+    const listener = vi.fn<() => void>()
+    const controller = createSearchController({ onOpenChange: () => {} })
+    const unsubscribe = controller.subscribe(listener)
+
+    controller.setQuery('button')
+    expect(controller.getSnapshot().open).toBe(false)
+    expect(controller.getSnapshot().popoverOpen).toBe(false)
+
+    listener.mockClear()
+    controller.syncOpen(true)
+    expect(listener).toHaveBeenCalledTimes(1)
+    expect(controller.getSnapshot().open).toBe(true)
+    expect(controller.getSnapshot().popoverOpen).toBe(true)
+
+    controller.syncOpen(true)
+    expect(listener).toHaveBeenCalledTimes(1)
+
+    controller.syncOpen(false)
+    expect(listener).toHaveBeenCalledTimes(2)
+    expect(controller.getSnapshot().open).toBe(false)
+    expect(controller.getSnapshot().popoverOpen).toBe(false)
+
+    controller.syncOpen(true)
+    controller.dispose()
+    expect(controller.getSnapshot().open).toBe(false)
+    expect(controller.getSnapshot().popoverOpen).toBe(false)
+    unsubscribe()
+  })
+
   it('handleResultClick 仅在普通左键点击时关闭，修饰键不关闭', () => {
     const onOpenChange = vi.fn<(open: boolean) => void>()
     const controller = createSearchController({ onOpenChange })
@@ -125,7 +178,7 @@ describe('SearchController', () => {
     controller.dispose()
   })
 
-  it('syncOpen(true) 等待 input.updateComplete 后聚焦，提前关闭则被 focusGeneration 取消 (#589)', async () => {
+  it('syncOpen(true) 等待 input.updateComplete 后聚焦，提前关闭或卸载 input 则被 focusGeneration 取消 (#589)', async () => {
     let resolveUpdate!: () => void
     const input = document.createElement('input') as HTMLInputElement & { updateComplete?: Promise<unknown> }
     input.updateComplete = new Promise<void>(resolve => {
@@ -156,13 +209,24 @@ describe('SearchController', () => {
     await new Promise<void>(resolve => setTimeout(resolve, 0))
     expect(focusSpy).toHaveBeenCalledTimes(1)
 
+    // syncElements({ input: null }) 立即作废在途 focus，即便同元素未再次打开前不会误聚焦。
+    let resolveDetached!: () => void
+    input.updateComplete = new Promise<void>(resolve => {
+      resolveDetached = resolve
+    })
+    controller.syncOpen(false)
+    controller.syncOpen(true)
+    controller.syncElements({ input: null })
+    resolveDetached()
+    await new Promise<void>(resolve => setTimeout(resolve, 0))
+    expect(focusSpy).toHaveBeenCalledTimes(1)
+
     // 替换 input 或 dispose 后，旧 input 的 updateComplete 再完成也不会抢占焦点。
     let resolveStale!: () => void
     input.updateComplete = new Promise<void>(resolve => {
       resolveStale = resolve
     })
-    controller.syncOpen(false)
-    controller.syncOpen(true)
+    controller.syncElements({ input })
     const nextInput = document.createElement('input')
     const nextFocusSpy = vi.spyOn(nextInput, 'focus')
     controller.syncElements({ input: nextInput })
