@@ -18,7 +18,9 @@
 
 ## Demo 开发
 
-各 demo 与 Interweave 的开发命令以根 [`package.json`](../../package.json) 的 `dev:` namespace 为准。根目录 aliases 通过 Turbo `dev` task 构建上游工作区包，并启动每个包的持久 `dev` 进程。
+各 demo 与 Interweave 的开发命令以根 [`package.json`](../../package.json) 的 `dev:` namespace 为准。根目录 aliases 通过 Turbo `dev` task 构建上游工作区包，并启动每个包的持久 `dev` 进程。根 `dev:*` 命令在命令行显式携带 `--concurrency`（具体取值以根 [`package.json`](../../package.json) 为准），不要通过提高 [`turbo.json`](../../turbo.json) 顶层 `concurrency` 解决持久任务并发上限，避免同时放大 `build` 与 `test` 的并发。
+
+只有需要前端运行时热重载并已接入对应应用 `depsReload` 的上游工作区包（`packages/*`）才定义 `dev` 脚本；纯测试基建与纯构建期 Vite 插件不设 `dev`（Vite 进程内重启仍受 Node ESM 模块缓存约束，无法热加载已导入的插件产物；混合包的构建期入口改动同理，均需重启宿主由 Turbo `^build` 自动重编）。
 
 不要改用 `turbo watch`：包级 Vite 与 tsdown 监听器已经会重建源文件变更，`turbo watch` 还会监控 Git 控制文件，编辑器或 agent 工具更新工作树时可能重启全部 dev 进程。修改包图、lockfile 或 Turbo 配置后需重启开发命令；普通源文件变更由包级监听器继续处理。
 

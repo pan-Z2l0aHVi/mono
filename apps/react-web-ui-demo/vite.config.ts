@@ -144,6 +144,11 @@ export default defineConfig({
         extensions: ['.mjs']
       },
       {
+        name: '@greypan/md-to-meta',
+        path: '../../packages/md-to-meta',
+        extensions: ['.mjs']
+      },
+      {
         name: '@greypan/route-progress',
         path: '../../packages/route-progress',
         extensions: ['.mjs']
