@@ -156,7 +156,7 @@ onMounted(async () => {
           >
             <web-ui-icon class="text-(--wui-color-on-accent)" :icon="lucideX"></web-ui-icon>
           </web-ui-button>
-          <span class="col-start-2 text-center">js-kit 与 browser-kit 交互文档站</span>
+          <span class="col-start-2 text-center">欢迎来到 GreyPan 工具文档与交互示例站</span>
         </div>
 
         <div

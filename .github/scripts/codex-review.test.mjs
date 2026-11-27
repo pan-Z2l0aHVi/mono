@@ -3407,7 +3407,7 @@ exit 2
   // Skills 分流契约：prompt 必须禁用实施流程型 skills、允许命中路由的审校类 skills，
   // 并且明确覆写所有 skill 自带的输出格式；stage-codex-inputs 必须 stage repo-query 与自撰审校 SKILL.md。
   const prompt = fs.readFileSync(path.join(import.meta.dirname, '../codex/prompts/review.md'), 'utf8')
-  for (const forbidden of ['task-ledger', 'request-authorization', 'apps-sparse-checkout', 'wizard']) {
+  for (const forbidden of ['task-ledger', 'request-authorization', 'apps-sparse-checkout']) {
     assert.ok(prompt.includes(forbidden), `review prompt must explicitly forbid workflow skill ${forbidden}`)
   }
   assert.match(prompt, /\$RUNNER_TEMP\/trusted\/skills\//)
