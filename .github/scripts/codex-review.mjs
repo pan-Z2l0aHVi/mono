@@ -1892,11 +1892,15 @@ export function priorConclusionDirectory(env = process.env) {
 }
 
 /**
- * 只有「同源仓库、base 是 main、非版本分支、仍开着」的 PR 才接受结论回写与自动修：
+ * 只有「同源仓库、base 是 main、非版本分支、仍开着」的 PR 才接受自动修；
+ * 结论评论写回（`allowMerged: true`）额外放行已合并的 PR，避免 auto-merge 竞态下最终结论漏写回。
  * fork PR 拿不到仓库 secret，也没有可信的作者身份；版本分支的 PR 由发布流程自己负责。
  */
-export function reviewTarget({ pull, repository, releaseBranch }) {
-  if (pull?.state !== 'open') return { ok: false, reason: `the pull request is ${pull?.state ?? 'unknown'}` }
+export function reviewTarget({ pull, repository, releaseBranch, allowMerged = false }) {
+  const isMerged = Boolean(pull?.merged_at || pull?.merged === true)
+  if (pull?.state !== 'open' && !(allowMerged && pull?.state === 'closed' && isMerged)) {
+    return { ok: false, reason: `the pull request is ${pull?.state ?? 'unknown'}` }
+  }
   if (pull?.base?.ref !== BASE_BRANCH)
     return { ok: false, reason: `the PR base is ${pull?.base?.ref ?? 'unknown'}, not ${BASE_BRANCH}` }
   if (pull?.head?.repo?.full_name !== repository) return { ok: false, reason: 'the PR head lives in a fork' }
@@ -3046,7 +3050,12 @@ export function commandReport({ runtime, env, adapter } = {}) {
   const gh = adapter ?? createGhReviewAdapter({ repository: required.GITHUB_REPOSITORY, cwd: rt.cwd, env: rt.env })
   const call = withPermissionDiagnosis(number)
   const pull = call(() => gh.pull(number))
-  const target = reviewTarget({ pull, repository: required.GITHUB_REPOSITORY, releaseBranch: RELEASE_BRANCH })
+  const target = reviewTarget({
+    pull,
+    repository: required.GITHUB_REPOSITORY,
+    releaseBranch: RELEASE_BRANCH,
+    allowMerged: true
+  })
   if (!target.ok) {
     rt.log(`conclusion report skipped for #${number}: ${target.reason}`)
     appendReportSummary({ number, outcome: `未写回：${target.reason}`, runtime: rt })
@@ -3054,6 +3063,13 @@ export function commandReport({ runtime, env, adapter } = {}) {
   }
   const { conclusion, status } = call(() => evaluateGate(gh, pull, { pullNumber: number, env: rt.env }))
   const meta = conclusion?.meta ?? null
+  // 已合并的 PR 只放行与最终合入 head_sha 精确匹配的结论写回，防止较早结束的旧 run 覆盖已合入评论。
+  if (pull.state === 'closed' && (meta?.head_sha ?? '') !== target.headSha) {
+    const reason = 'the merged pull request head does not match this conclusion'
+    rt.log(`conclusion report skipped for #${number}: ${reason}`)
+    appendReportSummary({ number, status, meta, outcome: `未写回：${reason}`, runtime: rt })
+    return
+  }
   const autoRetry = resolveAutoRetryState(rt.env)
   const existing = call(() => gh.listComments(number)).find(comment => (comment.body ?? '').includes(CONCLUSION_MARKER))
   const extras = conclusionRenderExtras({ adapter: gh, status, meta, existing, autoRetry, env: rt.env })

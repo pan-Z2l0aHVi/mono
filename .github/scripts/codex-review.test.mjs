@@ -1538,6 +1538,47 @@ esac
 
   assert.deepEqual(target(pullOf()), { ok: true, number: 54, headRef: 'feature/x', headSha })
   assert.match(target(pullOf({ state: 'closed' })).reason, /is closed/)
+  assert.match(target(pullOf({ state: 'closed', merged_at: '2026-11-27T07:30:56Z' })).reason, /is closed/)
+  assert.deepEqual(
+    reviewTarget({
+      pull: pullOf({ state: 'closed', merged_at: '2026-11-27T07:30:56Z' }),
+      repository: 'owner/repo',
+      releaseBranch: RELEASE_BRANCH,
+      allowMerged: true
+    }),
+    { ok: true, number: 54, headRef: 'feature/x', headSha }
+  )
+  assert.deepEqual(
+    reviewTarget({
+      pull: pullOf({ state: 'closed', merged: true }),
+      repository: 'owner/repo',
+      releaseBranch: RELEASE_BRANCH,
+      allowMerged: true
+    }),
+    { ok: true, number: 54, headRef: 'feature/x', headSha }
+  )
+  assert.match(
+    reviewTarget({
+      pull: pullOf({ state: 'closed' }),
+      repository: 'owner/repo',
+      releaseBranch: RELEASE_BRANCH,
+      allowMerged: true
+    }).reason,
+    /is closed/
+  )
+  assert.match(
+    reviewTarget({
+      pull: pullOf({
+        state: 'closed',
+        merged: true,
+        head: { ref: 'feature/x', sha: headSha, repo: { full_name: 'someone/else' } }
+      }),
+      repository: 'owner/repo',
+      releaseBranch: RELEASE_BRANCH,
+      allowMerged: true
+    }).reason,
+    /fork/
+  )
   assert.match(target(pullOf({ base: { ref: 'topic' } })).reason, /not main/)
   assert.match(
     target(pullOf({ head: { ref: 'feature/x', sha: headSha, repo: { full_name: 'someone/else' } } })).reason,
@@ -4808,6 +4849,77 @@ exit 2
       }
     })
     assert.ok(reportRt.summaries.some(text => text.includes('未写回')))
+
+    // 已合并 PR 且结论 head_sha 与最终合入 head 一致时，允许完成最后一次评论更新（修复 auto-merge 竞态漏写回）。
+    const mergedHeadSha = 'c'.repeat(40)
+    const mergedDir = path.join(temp, 'codex-review-merged')
+    fs.mkdirSync(mergedDir, { recursive: true })
+    writeFixtures(
+      mergedDir,
+      { summary: 'All good.', coverage: { inspected: ['a.js'], uncovered: [] }, findings: [] },
+      metaOf({ head_sha: mergedHeadSha, status: 'reviewed' })
+    )
+    const updatedComments = []
+    const mergedReportRt = createMemoryActionsRuntime({
+      env: {
+        GITHUB_REPOSITORY: 'owner/mono',
+        RUNNER_TEMP: temp,
+        CODEX_REVIEW_PULL_NUMBER: '56',
+        CODEX_REVIEW_CONCLUSION_DIR: mergedDir
+      }
+    })
+    commandReport({
+      runtime: mergedReportRt,
+      adapter: {
+        pull: () => ({
+          number: 56,
+          state: 'closed',
+          merged: true,
+          merged_at: '2026-11-27T07:30:56Z',
+          base: { ref: 'main' },
+          head: { ref: 'feat/merged', sha: mergedHeadSha, repo: { full_name: 'owner/mono' } }
+        }),
+        listComments: () => [
+          {
+            id: 9001,
+            body: `<!-- codex-review-conclusion sha=${mergedHeadSha} status=unreviewed blocks=0 -->\nold`
+          }
+        ],
+        updateComment: (id, body) => updatedComments.push({ id, body }),
+        createComment: () => assert.fail('should update existing comment, not create a new one')
+      }
+    })
+    assert.equal(updatedComments.length, 1)
+    assert.equal(updatedComments[0].id, 9001)
+    assert.match(updatedComments[0].body, /status=reviewed/)
+    assert.ok(mergedReportRt.summaries.some(text => text.includes('已更新结论评论 #9001')))
+
+    // 已合并 PR 若收到较早 commit 的过期结论，必须跳过写回，不得覆盖最终结论评论。
+    const staleMergedReportRt = createMemoryActionsRuntime({
+      env: {
+        GITHUB_REPOSITORY: 'owner/mono',
+        RUNNER_TEMP: temp,
+        CODEX_REVIEW_PULL_NUMBER: '57',
+        CODEX_REVIEW_CONCLUSION_DIR: mergedDir
+      }
+    })
+    commandReport({
+      runtime: staleMergedReportRt,
+      adapter: {
+        pull: () => ({
+          number: 57,
+          state: 'closed',
+          merged: true,
+          merged_at: '2026-11-27T07:30:56Z',
+          base: { ref: 'main' },
+          head: { ref: 'feat/merged', sha: 'd'.repeat(40), repo: { full_name: 'owner/mono' } }
+        }),
+        listComments: () => assert.fail('stale merged conclusion must skip before listing comments'),
+        updateComment: () => assert.fail('stale merged conclusion must not update comment'),
+        createComment: () => assert.fail('stale merged conclusion must not create comment')
+      }
+    })
+    assert.ok(staleMergedReportRt.summaries.some(text => text.includes('未写回')))
   } finally {
     fs.rmSync(temp, { recursive: true, force: true })
   }
