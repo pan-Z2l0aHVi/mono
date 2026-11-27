@@ -129,7 +129,7 @@ runs:
         gomodcache="$(go env GOMODCACHE)"
         gocache="$(go env GOCACHE)"
         goversion="$(go env GOVERSION)"
-        # 纯 POSIX 纪元周槽位：规避日历年+ISO 周跨年错位与 BSD/GNU date 差异；7 天 TTL 内每平台最多并存 2 份。
+        # 纯 POSIX 纪元周槽位：规避日历年+ISO 周跨年错位与 BSD/GNU date 差异；限制同一键前缀的周期性增长，旧条目由 GitHub 7 天 TTL 驱逐。
         week_slot="w$(( $(date -u +%s) / 604800 ))"
         {
           echo "gomodcache=${gomodcache}"

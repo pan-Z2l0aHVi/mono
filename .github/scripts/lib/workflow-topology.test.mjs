@@ -1774,7 +1774,7 @@ function matrixEntries(text) {
   assert.doesNotMatch(setup, /if: always\(\)[^\n]*wails-apt/)
   assert.match(setup, /uses: actions\/cache\/restore@v5[\s\S]*uses: actions\/cache\/save@v5/)
 
-  // check job 只读恢复 cspell 与 Playwright 缓存，且 cspell 包含带 cspell.json 哈希的第一级前缀。
+  // check job 只读恢复 cspell 与 Playwright 缓存；cspell 仅恢复同 cspell.json 哈希前缀，词典变更时不跨哈希复用旧缓存。
   const checkCspellRestore = namedStep(checkJob, 'Restore cspell results')
   assert.match(checkCspellRestore, /uses: actions\/cache\/restore@v5/)
   assert.match(
@@ -1783,7 +1783,7 @@ function matrixEntries(text) {
   )
   assert.match(
     checkCspellRestore,
-    /restore-keys: \|\n\s+\$\{\{ runner\.os \}\}-cspell-\$\{\{ hashFiles\('cspell\.json'\) \}\}-\n\s+\$\{\{ runner\.os \}\}-cspell-/
+    /restore-keys: \|\n\s+\$\{\{ runner\.os \}\}-cspell-\$\{\{ hashFiles\('cspell\.json'\) \}\}-\s*$/
   )
   const checkPlaywrightRestore = namedStep(checkJob, 'Restore Playwright browsers')
   assert.match(checkPlaywrightRestore, /uses: actions\/cache\/restore@v5/)
@@ -1794,24 +1794,69 @@ function matrixEntries(text) {
 
   // 全仓单写者不变量：所有 workflow 中仅 ci.yml 的三个 main 基线预热 job 允许写 GitHub Actions 缓存。
   const allowedCacheWriters = new Set(['ci.yml:prepare-warm', 'ci.yml:warm-ci-caches', 'ci.yml:warm-wails-caches'])
-  for (const [file, text] of Object.entries(workflowText)) {
-    for (const jobId of Object.keys(parsed[file].jobs)) {
-      const block = workflowJob(text, jobId)
-      const key = `${file}:${jobId}`
-      const hasCacheSave = /cache-save:\s*['"]?true['"]?/.test(block)
-      const hasCacheWriteAction = /uses:\s*actions\/cache(?:\/save)?@v\d+/.test(block)
-      if (allowedCacheWriters.has(key)) {
-        assert.ok(hasCacheSave, `${key} is a designated main cache writer and must pass cache-save: 'true'`)
-      } else {
-        assert.equal(hasCacheSave, false, `${key} must stay read-only and must not set cache-save: 'true'`)
-        assert.equal(
-          hasCacheWriteAction,
-          false,
-          `${key} must not use write-capable actions/cache or actions/cache/save`
+  const assertSingleCacheWriterInvariant = (workflows, parsedMap) => {
+    for (const [file, text] of Object.entries(workflows)) {
+      for (const jobId of Object.keys(parsedMap[file].jobs)) {
+        const block = workflowJob(text, jobId)
+        const key = `${file}:${jobId}`
+        const cacheSaveValues = [...block.matchAll(/cache-save:\s*(.+)/g)].map(match =>
+          match[1].trim().replace(/^['"]|['"]$/g, '')
         )
+        const hasNonFalseCacheSave = cacheSaveValues.some(value => value !== 'false')
+        const hasCacheWriteAction = /uses:\s*['"]?actions\/cache(?:\/save)?@/.test(block)
+        if (allowedCacheWriters.has(key)) {
+          assert.ok(
+            cacheSaveValues.includes('true'),
+            `${key} is a designated main cache writer and must pass cache-save: 'true'`
+          )
+        } else {
+          assert.equal(
+            hasNonFalseCacheSave,
+            false,
+            `${key} must stay read-only and must not set cache-save to anything other than false`
+          )
+          assert.equal(
+            hasCacheWriteAction,
+            false,
+            `${key} must not use write-capable actions/cache or actions/cache/save`
+          )
+        }
       }
     }
   }
+  assertSingleCacheWriterInvariant(workflowText, parsed)
+  // 负向自检：非预热 job 使用表达式 cache-save 或 SHA 固定 actions/cache/save 都必须被拦下。
+  const checkSetupAnchor =
+    "      - uses: ./.github/actions/setup-deps\n        with:\n          wails: 'true'\n          go-cache: 'true'\n\n      # interweave-frontend"
+  assert.equal(
+    workflowText['ci.yml'].split(checkSetupAnchor).length - 1,
+    1,
+    'check setup-deps mutation anchor must be unique'
+  )
+  assert.throws(() =>
+    assertSingleCacheWriterInvariant(
+      {
+        ...workflowText,
+        'ci.yml': workflowText['ci.yml'].replace(
+          checkSetupAnchor,
+          "      - uses: ./.github/actions/setup-deps\n        with:\n          wails: 'true'\n          go-cache: 'true'\n          cache-save: ${{ github.ref == 'refs/heads/main' }}\n\n      # interweave-frontend"
+        )
+      },
+      parsed
+    )
+  )
+  assert.throws(() =>
+    assertSingleCacheWriterInvariant(
+      {
+        ...workflowText,
+        'ci.yml': workflowText['ci.yml'].replace(
+          'uses: actions/cache/restore@v5',
+          'uses: actions/cache/save@0000000000000000000000000000000000000000'
+        )
+      },
+      parsed
+    )
+  )
 }
 
 // macOS 原生构建的 runner 决定产物的 Mach-O LC_BUILD_VERSION.sdk：macOS 26+ 对 sdk major < 16 的

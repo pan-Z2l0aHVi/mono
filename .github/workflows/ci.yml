@@ -144,7 +144,6 @@ jobs:
           key: ${{ runner.os }}-cspell-${{ hashFiles('cspell.json') }}-${{ github.run_id }}
           restore-keys: |
             ${{ runner.os }}-cspell-${{ hashFiles('cspell.json') }}-
-            ${{ runner.os }}-cspell-
 
       - name: Warm cspell cache
         run: pnpm run check-cspell
@@ -173,27 +172,30 @@ jobs:
           go-cache: 'true'
           cache-save: 'true'
 
-      # 预热 GOMODCACHE 与与 darwin/windows Taskfile.yml 参数一致的生产 GOCACHE；
-      # 仅用临时点文件占位并通过 trap 清理，避免改动工作区或保留二进制。
+      # 预热 GOMODCACHE 与 darwin/windows Taskfile.yml 参数一致的生产 GOCACHE；
+      # 仅用临时点文件占位并通过 trap 在仓库根目录清理，避免 cd 后误删失败或残留二进制。
       - name: Warm Go module and build caches
         shell: bash
         run: |
           set -euo pipefail
-          trap 'rm -rf apps/interweave/frontend/dist "$RUNNER_TEMP/interweave-warm" "$RUNNER_TEMP/interweave-warm.exe"' EXIT
-          mkdir -p apps/interweave/frontend/dist
-          touch apps/interweave/frontend/dist/.keep
+          repo_root="$(pwd)"
+          trap 'rm -rf "$repo_root/apps/interweave/frontend/dist" "$RUNNER_TEMP/interweave-warm" "$RUNNER_TEMP/interweave-warm.exe"' EXIT
+          mkdir -p "$repo_root/apps/interweave/frontend/dist"
+          touch "$repo_root/apps/interweave/frontend/dist/.keep"
           pnpm --filter @greypan/interweave exec go vet ./...
-          cd apps/interweave
-          if [ "$RUNNER_OS" = 'macOS' ]; then
-            GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 \
-              CGO_CFLAGS='-mmacosx-version-min=12.0' \
-              CGO_LDFLAGS='-mmacosx-version-min=12.0' \
-              MACOSX_DEPLOYMENT_TARGET='12.0' \
-              go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o "$RUNNER_TEMP/interweave-warm" .
-          elif [ "$RUNNER_OS" = 'Windows' ]; then
-            GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
-              go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui" -o "$RUNNER_TEMP/interweave-warm.exe" .
-          fi
+          (
+            cd "$repo_root/apps/interweave"
+            if [ "$RUNNER_OS" = 'macOS' ]; then
+              GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 \
+                CGO_CFLAGS='-mmacosx-version-min=12.0' \
+                CGO_LDFLAGS='-mmacosx-version-min=12.0' \
+                MACOSX_DEPLOYMENT_TARGET='12.0' \
+                go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o "$RUNNER_TEMP/interweave-warm" .
+            elif [ "$RUNNER_OS" = 'Windows' ]; then
+              GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
+                go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui" -o "$RUNNER_TEMP/interweave-warm.exe" .
+            fi
+          )
 
   check:
     runs-on: ubuntu-latest
@@ -329,7 +331,7 @@ jobs:
       - name: Check published package contracts
         run: pnpm run check-pack
 
-      # cspell 结果缓存由 main 基线预热任务写入；PR 与 check 仅只读恢复，优先命中同 cspell.json 哈希基线。
+      # cspell 结果缓存由 main 基线预热任务写入；PR 与 check 仅只读恢复同 cspell.json 哈希基线，词典变更时强制全量重检。
       - name: Restore cspell results
         uses: actions/cache/restore@v5
         with:
@@ -337,7 +339,6 @@ jobs:
           key: ${{ runner.os }}-cspell-${{ hashFiles('cspell.json') }}-${{ github.sha }}
           restore-keys: |
             ${{ runner.os }}-cspell-${{ hashFiles('cspell.json') }}-
-            ${{ runner.os }}-cspell-
 
       - name: Format + Lint + Type-check + Go vet
         run: pnpm run check-code
