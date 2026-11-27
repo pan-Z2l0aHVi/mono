@@ -1,7 +1,13 @@
-import { routeExampleDocs } from '@greypan/doc-demo-kit'
+import { findComponentRoute, routeExampleDocs } from '@greypan/doc-demo-kit'
 import { createRouteProgressStarter } from '@greypan/route-progress'
 import { QueryClient } from '@tanstack/react-query'
-import { createMemoryHistory, createRootRouteWithContext, createRoute, createRouter } from '@tanstack/react-router'
+import {
+  createMemoryHistory,
+  createRootRouteWithContext,
+  createRoute,
+  createRouter,
+  notFound
+} from '@tanstack/react-router'
 import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 
 import { changelogSummaryQuery, parseFakeFetchOptions } from '@/queries/changelog'
@@ -41,7 +47,12 @@ function setup(ensureDocs: (docs: readonly string[]) => Promise<void> = async ()
   })
   const buttonRoute = createRoute({
     getParentRoute: () => rootRoute,
-    path: '/components/button',
+    path: '/components/$component',
+    beforeLoad: ({ params }) => {
+      const entry = findComponentRoute(params.component)
+      if (!entry) throw notFound()
+      return { entry }
+    },
     component: () => null
   })
   const changelogRoute = createRoute({
@@ -177,7 +188,7 @@ describe('react router progress & guards', () => {
     await router.load()
     await vi.advanceTimersByTimeAsync(500)
 
-    const pending = router.navigate({ to: '/components/button' })
+    const pending = router.navigate({ to: '/components/$component', params: { component: 'button' } })
     await vi.advanceTimersByTimeAsync(260)
     expect(ensureDocs).toHaveBeenCalledWith(['button', 'button-group'])
     expect(router.state.resolvedLocation?.pathname).toBe('/home')
@@ -192,16 +203,30 @@ describe('react router progress & guards', () => {
     ensureDocs.mockRejectedValueOnce(new Error('doc chunk error'))
     await router.navigate({ to: '/home' })
     await vi.advanceTimersByTimeAsync(500)
-    await router.navigate({ to: '/components/button' })
+    await router.navigate({ to: '/components/$component', params: { component: 'button' } })
     expect(router.state.location.pathname).toBe('/home')
     expect(router.state.resolvedLocation?.pathname).toBe('/home')
     expect(progress.getSnapshot().visible).toBe(false)
     expect(failures).toHaveLength(1)
 
     ensureDocs.mockRejectedValueOnce(new Error('preload doc error'))
-    await router.preloadRoute({ to: '/components/button' }).catch(() => {})
+    await router.preloadRoute({ to: '/components/$component', params: { component: 'button' } }).catch(() => {})
     expect(failures).toHaveLength(1)
     expect(progress.getSnapshot().visible).toBe(false)
+
+    cleanup()
+  })
+
+  it('未知组件 slug 进入 notFound 且不触发文档预载', async () => {
+    const ensureDocs = vi.fn<(docs: readonly string[]) => Promise<void>>(async () => {})
+    const { router, failures, cleanup } = setup(ensureDocs)
+    await router.load()
+    await vi.advanceTimersByTimeAsync(500)
+
+    await router.navigate({ to: '/components/$component', params: { component: 'non-existent' } })
+    expect(ensureDocs).not.toHaveBeenCalled()
+    expect(failures).toEqual([])
+    expect(router.state.matches.some(match => match.status === 'notFound')).toBe(true)
 
     cleanup()
   })

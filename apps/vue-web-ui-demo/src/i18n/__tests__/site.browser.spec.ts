@@ -10,7 +10,7 @@ import { nextTick } from 'vue'
 import { createMemoryHistory, createRouter } from 'vue-router'
 
 import AppShell from '@/app/index.vue'
-import ButtonPage from '@/pages/components/button.vue'
+import ComponentPage from '@/pages/components/[component].vue'
 import Home from '@/pages/home/index.vue'
 
 import { loadMeta } from '../examples'
@@ -21,7 +21,7 @@ async function mountShell(path: string) {
     history: createMemoryHistory(),
     routes: [
       { path: '/home', component: Home },
-      { path: '/components/button', component: ButtonPage },
+      { path: '/components/:component', name: '/components/[component]', component: ComponentPage },
       { path: '/:pathMatch(.*)*', component: Home }
     ]
   })

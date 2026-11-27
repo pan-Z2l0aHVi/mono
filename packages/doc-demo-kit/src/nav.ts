@@ -86,6 +86,39 @@ export const NAV_SECTIONS: readonly NavSection[] = Object.freeze([
   ])
 ])
 
+export interface ComponentRouteEntry {
+  readonly slug: string
+  readonly path: string
+  readonly title: string
+  readonly docs: readonly string[]
+}
+
+function extractComponentSlug(slugOrPath: string): string | null {
+  if (!slugOrPath) return null
+  if (!slugOrPath.includes('/')) return slugOrPath
+  if (!slugOrPath.startsWith('/components/')) return null
+  const rest = slugOrPath.slice('/components/'.length)
+  const slug = rest.endsWith('/') ? rest.slice(0, -1) : rest
+  return slug && !slug.includes('/') ? slug : null
+}
+
+const COMPONENT_ROUTES_BY_SLUG = (() => {
+  const map = new Map<string, ComponentRouteEntry>()
+  for (const s of NAV_SECTIONS) {
+    for (const item of s.items) {
+      if (!item.path.startsWith('/components/')) continue
+      const slug = extractComponentSlug(item.path)
+      if (!slug) continue
+      if (map.has(slug)) {
+        throw new Error(`Duplicate component route slug in NAV_SECTIONS: ${slug}`)
+      }
+      const docs = Object.freeze(item.docs ?? [slug])
+      map.set(slug, Object.freeze({ slug, path: item.path, title: item.label, docs }))
+    }
+  }
+  return map
+})()
+
 /** 根据任意导航树构造路由到 ExampleDoc 文档键集合的查询器。 */
 export function createRouteExampleDocs<Id extends string>(
   sections: readonly NavSection<Id>[],
@@ -100,8 +133,19 @@ export function createRouteExampleDocs<Id extends string>(
   }
 }
 
-/** 返回组件文档路由需要预载的 ExampleDoc 组件列表；非组件文档路由返回空数组。 */
-export const routeExampleDocs = createRouteExampleDocs(NAV_SECTIONS)
+/**
+ * 按组件 slug（如 `button`）或路径（`/components/button`、`/components/button/`）查找组件页条目；
+ * 仅做精确匹配（不做 trim 或大小写归一化），未登记返回 undefined。
+ */
+export function findComponentRoute(slugOrPath: string): ComponentRouteEntry | undefined {
+  const slug = extractComponentSlug(slugOrPath)
+  return slug ? COMPONENT_ROUTES_BY_SLUG.get(slug) : undefined
+}
+
+/** 返回组件文档路由需要预载的 ExampleDoc 组件列表；复用 findComponentRoute 保持单一路径解析入口。 */
+export function routeExampleDocs(pathname: string): readonly string[] {
+  return pathname.startsWith('/components/') ? (findComponentRoute(pathname)?.docs ?? []) : []
+}
 
 /** 章节标题的排版类；折叠时宿主自行追加 `sr-only`，只保留给读屏的标题。 */
 export const NAV_SECTION_TITLE_CLASS =

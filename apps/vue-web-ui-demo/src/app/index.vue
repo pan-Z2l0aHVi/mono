@@ -2,6 +2,7 @@
 import appScrollbarsOptions from '@greypan/app-scrollbars'
 import {
   createShellState,
+  findComponentRoute,
   isNavActive,
   NAV_ITEM_CLASS,
   NAV_SECTIONS,
@@ -105,7 +106,14 @@ const shellLayout = ref<WebUiLayout | null>(null)
 const route = useRoute()
 const router = useRouter()
 
-useHead({ title: () => route.meta.title })
+useHead({
+  title: () => {
+    if (route.meta.title) return route.meta.title
+    const slug =
+      'component' in route.params && typeof route.params.component === 'string' ? route.params.component : undefined
+    return slug ? findComponentRoute(slug)?.title : undefined
+  }
+})
 const navSidebar = ref<OverlayScrollbarsComponentRef>()
 
 // 整页 scrollbar 接管的是 document 的滚动元素，不是某个 DOM 容器，所以没有可渲染的宿主元素，

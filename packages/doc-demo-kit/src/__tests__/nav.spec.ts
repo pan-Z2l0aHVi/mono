@@ -1,6 +1,6 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { isNavActive, NAV_SECTIONS, routeExampleDocs } from '../nav'
+import { findComponentRoute, isNavActive, NAV_SECTIONS, routeExampleDocs } from '../nav'
 
 const COMPONENT_PATHS = [
   '/components/button',
@@ -75,6 +75,28 @@ describe('导航数据', () => {
     expect(routeExampleDocs('/components/input')).toEqual(['input'])
     expect(routeExampleDocs('/home')).toEqual([])
     expect(routeExampleDocs('/changelog')).toEqual([])
+  })
+
+  it('findComponentRoute 按 slug 返回组件页标题与文档列表，未知 slug 返回 undefined', () => {
+    expect(findComponentRoute('button')).toEqual({
+      slug: 'button',
+      path: '/components/button',
+      title: 'Button',
+      docs: ['button', 'button-group']
+    })
+    expect(findComponentRoute('input')).toEqual({
+      slug: 'input',
+      path: '/components/input',
+      title: 'Input',
+      docs: ['input']
+    })
+    expect(findComponentRoute('/components/button')).toEqual(findComponentRoute('button'))
+    expect(findComponentRoute('/components/button/')).toEqual(findComponentRoute('button'))
+    expect(findComponentRoute('/components/button//')).toBeUndefined()
+    expect(findComponentRoute('/components/button/extra')).toBeUndefined()
+    expect(findComponentRoute('/home')).toBeUndefined()
+    expect(findComponentRoute('')).toBeUndefined()
+    expect(findComponentRoute('non-existent')).toBeUndefined()
   })
 })
 
