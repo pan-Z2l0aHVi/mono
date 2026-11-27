@@ -1907,6 +1907,12 @@ const jsonResponse = (payload, status = 200) => ({
   })
   assert.equal(turn1WrappedResult.kind, 'reviewed')
   assert.deepEqual(turn1WrappedResult.runtime.output_sanitized, ['reasoning-block', 'code-fence'])
+
+  // 3.5 review-direct.md 必须明确空壳 changeset 核查先读 .changeset/config.json 与宿主包边界
+  assert.match(directPrompt, /\.changeset\/config\.json/)
+  assert.match(directPrompt, /docs\/agents\/release\.md/)
+  assert.match(directPrompt, /ignore/)
+  assert.match(directPrompt, /@greypan\/interweave-frontend[\s\S]*@greypan\/interweave/)
 }
 
 console.log('.github/scripts/lib/codex-direct-review.test.mjs: all assertions passed')
