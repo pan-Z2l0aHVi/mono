@@ -645,16 +645,18 @@ describe('MenuSession', () => {
     })
 
     session.connect()
+    const outsideClick = new MouseEvent('click', { bubbles: true, composed: true })
+    document.body.dispatchEvent(outsideClick)
+    expect(session.isEventInside(outsideClick, { respectOpenArm: true })).toBe(false)
+
+    // 在调用 open() 之前，claimPlaceholder() 自身就应独立建立同帧外部点击防护与占位句柄。
     session.claimPlaceholder()
+    expect(session.isEventInside(outsideClick, { respectOpenArm: true })).toBe(true)
+
     session.open({ isInstant: true, takeFocus: false, suppressFocusVisible: true })
 
     // 首帧尚未完成，root 尚未建立。
     expect(session.getRootSurface()).toBeUndefined()
-
-    // 同帧 respectOpenArm 应将外部点击视作内部事件放行。
-    const outsideClick = new MouseEvent('click', { bubbles: true, composed: true })
-    document.body.dispatchEvent(outsideClick)
-    expect(session.isEventInside(outsideClick, { respectOpenArm: true })).toBe(true)
 
     // 占位句柄在首帧完成前即应承接 Escape 仲裁。
     document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
