@@ -1,7 +1,17 @@
 <script setup lang="ts">
 import { toast, type WebUiEditableText, type WebUiEvent, type WebUiTextarea } from '@greypan/web-ui'
 import { useElementSize } from '@vueuse/core'
-import { computed, nextTick, onMounted, onScopeDispose, ref, watch, type ComponentPublicInstance } from 'vue'
+import {
+  computed,
+  nextTick,
+  onActivated,
+  onDeactivated,
+  onMounted,
+  onScopeDispose,
+  ref,
+  watch,
+  type ComponentPublicInstance
+} from 'vue'
 import { useRouter } from 'vue-router'
 
 import AddDialog from '@/components/library/AddDialog.vue'
@@ -23,7 +33,6 @@ import {
   MENU_FOCUS_SEARCH_EVENT,
   MENU_IMPORT_FROM_CLIPBOARD_EVENT,
   MENU_IMPORT_FROM_LINK_EVENT,
-  MENU_REFRESH_EVENT,
   MENU_TOGGLE_FILTER_BAR_EVENT,
   onMenuAction
 } from '@/composables/menuActions'
@@ -42,6 +51,51 @@ import { createLibraryWorkflow } from './libraryWorkflow'
 
 const router = useRouter()
 const store = useLibraryStore()
+
+// KeepAlive 缓存期间记住整页滚动位置：仅在页面处于激活态时记录 window.scrollY，
+// 切走后停记（避免目标短页把 scrollY 归零时覆盖记录），再次激活后恢复。
+let isLibraryActive = true
+let savedLibraryScrollY = 0
+let restoreScrollFrame = 0
+
+function recordLibraryScroll() {
+  if (!isLibraryActive) return
+  savedLibraryScrollY = window.scrollY
+}
+
+onMounted(() => {
+  window.addEventListener('scroll', recordLibraryScroll, { passive: true })
+})
+
+onDeactivated(() => {
+  savedLibraryScrollY = window.scrollY
+  isLibraryActive = false
+  if (restoreScrollFrame) {
+    cancelAnimationFrame(restoreScrollFrame)
+    restoreScrollFrame = 0
+  }
+})
+
+onActivated(() => {
+  isLibraryActive = true
+  const targetY = savedLibraryScrollY
+  if (targetY <= 0) return
+  void nextTick(() => {
+    restoreScrollFrame = requestAnimationFrame(() => {
+      restoreScrollFrame = 0
+      if (!isLibraryActive) return
+      window.scrollTo({ top: targetY, behavior: 'instant' })
+    })
+  })
+})
+
+onScopeDispose(() => {
+  window.removeEventListener('scroll', recordLibraryScroll)
+  if (restoreScrollFrame) {
+    cancelAnimationFrame(restoreScrollFrame)
+    restoreScrollFrame = 0
+  }
+})
 
 // 同一个失败可能先被 runtime 上报、再由工作流 catch 看见；按 cause 去重，只弹一次 toast。
 // Error 对象用 WeakSet，不延长异常对象的生命周期。
@@ -167,11 +221,6 @@ const stopMenuActions = [
     void workflow.pasteFilePaths()
   }),
   onMenuAction(MENU_IMPORT_FROM_LINK_EVENT, openAddLinkDialog),
-  onMenuAction(MENU_REFRESH_EVENT, () => {
-    void loadResources().catch(() => {
-      // 错误由 reportError 呈现，列表保持当前内容。
-    })
-  }),
   onMenuAction(MENU_TOGGLE_FILTER_BAR_EVENT, () => {
     // 「切换」名副其实：开着就收起。单向展开会让菜单项在筛选栏已开时看起来毫无反应。
     filterOpen.value = !filterOpen.value
@@ -677,7 +726,6 @@ onMounted(() => {
     :discard-scan="runtime.sources.discardRecoveryScan"
     :lease="previewLease"
     @update:open="workflow.setRestoreOpen($event)"
-    @add-items="workflow.setRestoreQueue($event)"
     @submit="workflow.submitRestoreQueue($event)"
   />
 
@@ -697,3 +745,11 @@ onMounted(() => {
 
   <web-ui-back-top />
 </template>
+
+<route lang="json">
+{
+  "meta": {
+    "keepAlive": true
+  }
+}
+</route>

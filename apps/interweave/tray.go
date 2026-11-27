@@ -201,6 +201,9 @@ func setupSystemTray(app *application.App, windows *mainWindowController, presen
 	dispose := windows.addStateListener(func(bool) { syncLightModeChecked() })
 	tray.SetMenu(menu)
 	tray.OnClick(present)
-	tray.OnRightClick(tray.OpenMenu)
+	// 不显式注册 OnRightClick(tray.OpenMenu)：Wails v3.1.0 在 rightClickHandler == nil 时，
+	// macOS 会通过 systrayPreClick 在 mouse-down 前直接挂载 NSMenu 进入原生菜单追踪，
+	// 避免 OpenMenu 异步合成点击与 rightMouseUp 竞态导致菜单频繁自动关闭；
+	// Windows 侧在 rightClickHandler == nil 时同样自动注册右键打开菜单的默认回调。
 	return &managedSystemTray{tray: tray, dispose: dispose}
 }

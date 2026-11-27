@@ -15,7 +15,6 @@ export interface MenuCommandHandlers {
   addResource(): void
   importFromClipboard(): void
   importFromLink(): void
-  refreshLibrary(): void
   toggleSidebar(): void
   toggleFilterBar(): void
   focusSearch(): void
@@ -32,7 +31,6 @@ const HANDLER_BY_COMMAND: Record<string, keyof MenuCommandHandlers> = {
   [Command.CommandAddResource]: 'addResource',
   [Command.CommandImportFromClipboard]: 'importFromClipboard',
   [Command.CommandImportFromLink]: 'importFromLink',
-  [Command.CommandRefreshLibrary]: 'refreshLibrary',
   [Command.CommandToggleSidebar]: 'toggleSidebar',
   [Command.CommandToggleFilterBar]: 'toggleFilterBar',
   [Command.CommandFocusSearch]: 'focusSearch',
@@ -48,7 +46,7 @@ const HANDLER_BY_COMMAND: Record<string, keyof MenuCommandHandlers> = {
  * 判断事件载荷是否是已知菜单命令。
  *
  * 推送不可信：一行坏数据不该打断界面，所以畸形载荷一律忽略而不是抛出。
- * reload-window、open-devtools、maximise-window、toggle-window-mode 与 check-for-updates 由 Go 侧直接执行，
+ * reload-window、maximise-window、toggle-window-mode 与 check-for-updates 由 Go 侧直接执行，
  * 不经前端，因此这里也不认它们。
  */
 export function isMenuCommand(value: unknown): value is { command: Command } {

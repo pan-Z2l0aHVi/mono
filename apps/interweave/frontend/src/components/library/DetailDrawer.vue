@@ -162,7 +162,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
     :open="open"
     :placement="placement"
     aria-dialog-label="资源详情"
-    draggable
+    :draggable="mobile || undefined"
     fullable
     controlled
     class="[--wui-drawer-width:360px] mobile:[--wui-drawer-height:85vh] mobile:[--wui-drawer-inset:0px]"

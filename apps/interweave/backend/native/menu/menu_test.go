@@ -58,7 +58,6 @@ func contains(labels []string, want string) bool {
 }
 
 // 两端的第一层结构一致：首个是 Interweave 菜单，其余按功能排列。
-// 开发者菜单不在这里——它由设置控制，是 TreeNodes 的事。
 func TestDescribeTopLevelMenus(t *testing.T) {
 	assertOrder(t, topLabels(Describe("darwin")), []string{"Interweave", "文件", "编辑", "显示", "窗口", "帮助"})
 	assertOrder(t, topLabels(Describe("windows")), []string{"Interweave", "文件", "编辑", "显示", "窗口", "帮助"})
@@ -162,7 +161,7 @@ func TestDescribeAccelerators(t *testing.T) {
 		"导入来自…":         "",
 		"剪切板":           "CmdOrCtrl+Shift+V",
 		"链接":            "",
-		"刷新":            "",
+		"刷新":            "CmdOrCtrl+R",
 		"切换侧边栏":         "CmdOrCtrl+B",
 		"切换筛选栏":         "",
 		"搜索":            "",
@@ -185,58 +184,35 @@ func TestDescribeAccelerators(t *testing.T) {
 	}
 }
 
-// 刷新不与开发菜单的「重新载入」共享键位：两者语义不同。
-func TestDescribeKeepsReloadAcceleratorOffTheViewMenu(t *testing.T) {
-	if node, ok := findNode(Describe("darwin"), "刷新"); ok && node.Accelerator != "" {
-		t.Fatalf("expected Refresh to carry no accelerator, got %q", node.Accelerator)
+// 「显示 › 刷新」通过 CommandReloadWindow 重载 WebView：macOS 绑定 CmdOrCtrl+R，Windows 绑定 F5；不再提供独立的「开发」菜单。
+func TestViewMenuRefreshReloadsWebView(t *testing.T) {
+	macNode, ok := findNode(Describe("darwin"), "刷新")
+	if !ok {
+		t.Fatal("expected Refresh in the macOS view menu")
 	}
-	if node, ok := findNode(TreeNodes(State{DeveloperOptions: true}), "重新载入"); !ok || node.Accelerator != "CmdOrCtrl+R" {
-		t.Fatalf("expected Reload to own CmdOrCtrl+R, got %q (found=%v)", node.Accelerator, ok)
+	if macNode.Command != menucontract.CommandReloadWindow || macNode.Accelerator != "CmdOrCtrl+R" {
+		t.Fatalf("expected macOS Refresh to run reload-window with CmdOrCtrl+R, got %+v", macNode)
+	}
+	winNode, ok := findNode(Describe("windows"), "刷新")
+	if !ok {
+		t.Fatal("expected Refresh in the Windows view menu")
+	}
+	if winNode.Command != menucontract.CommandReloadWindow || winNode.Accelerator != "F5" {
+		t.Fatalf("expected Windows Refresh to run reload-window with F5, got %+v", winNode)
+	}
+	if anyLabel(TreeNodes(State{}), "开发") {
+		t.Fatal("expected the developer menu to be removed")
 	}
 }
 
-// 显示菜单与开发菜单不能挂 Wails 的 Reload role 或 OpenDevTools role：
-// 前者会和「重新载入」抢 chord，后者在 production tag 下编译成空实现。
+// 菜单不能挂 Wails 的 Reload role 或 OpenDevTools role：
+// 它们在 production tag 下编译成空实现。
 func TestDescribeLeavesBuildTagRolesOut(t *testing.T) {
 	for _, goos := range []string{"darwin", "windows"} {
-		for _, node := range describeAll(Describe(goos), TreeNodes(State{DeveloperOptions: true})) {
+		for _, node := range Describe(goos) {
 			if node.Role == application.Reload || node.Role == application.ForceReload || node.Role == application.OpenDevTools {
 				t.Fatalf("%s: unexpected %d role on %q", goos, node.Role, node.Label)
 			}
-		}
-	}
-}
-
-func describeAll(trees ...[]Node) []Node {
-	var all []Node
-	for _, tree := range trees {
-		all = append(all, tree...)
-	}
-	return all
-}
-
-// 开发者菜单是独立顶层菜单，只在开发者选项打开时出现。
-func TestDeveloperMenuShape(t *testing.T) {
-	closed := TreeNodes(State{})
-	if anyLabel(closed, "开发") {
-		t.Fatal("expected the developer menu to be absent while the option is off")
-	}
-
-	open := TreeNodes(State{DeveloperOptions: true})
-	if got := topLabels(open); got[len(got)-1] != "开发" {
-		t.Fatalf("expected the developer menu last, got %v", got)
-	}
-	// 其他菜单的形状不受影响：开发者菜单追加在末尾，不往别的菜单里插。
-	assertOrder(t, topLabels(open)[:len(topLabels(closed))], topLabels(closed))
-	assertOrder(t, labelsOf(open, "开发"), []string{"重新载入", "开发者控制台"})
-
-	want := map[string]menucontract.Command{
-		"重新载入":   menucontract.CommandReloadWindow,
-		"开发者控制台": menucontract.CommandOpenDevTools,
-	}
-	for _, node := range open[len(open)-1].Children {
-		if want[node.Label] != node.Command {
-			t.Fatalf("%q reports %q, expected %q", node.Label, node.Command, want[node.Label])
 		}
 	}
 }
@@ -258,7 +234,7 @@ func TestBusinessLabelsAreUnique(t *testing.T) {
 				walk(node.Children)
 			}
 		}
-		walk(TreeNodes(State{DeveloperOptions: true}))
+		walk(TreeNodesFor(State{}, goos))
 	}
 }
 
@@ -279,7 +255,6 @@ func TestAcceleratorsAreUnique(t *testing.T) {
 			}
 		}
 		walk(Describe(goos))
-		walk(developerMenu().Children)
 	}
 }
 
@@ -302,13 +277,11 @@ func TestEveryCommandIsKnownToTheContract(t *testing.T) {
 	for _, goos := range []string{"darwin", "windows"} {
 		walk(Describe(goos))
 	}
-	walk(TreeNodes(State{DeveloperOptions: true}))
 
 	for _, want := range []menucontract.Command{
 		menucontract.CommandAddResource,
 		menucontract.CommandImportFromClipboard,
 		menucontract.CommandImportFromLink,
-		menucontract.CommandRefreshLibrary,
 		menucontract.CommandToggleSidebar,
 		menucontract.CommandToggleFilterBar,
 		menucontract.CommandFocusSearch,
@@ -318,7 +291,6 @@ func TestEveryCommandIsKnownToTheContract(t *testing.T) {
 		menucontract.CommandCheckForUpdates,
 		menucontract.CommandOpenDocumentation,
 		menucontract.CommandReloadWindow,
-		menucontract.CommandOpenDevTools,
 		menucontract.CommandCopyAsPlainText,
 		menucontract.CommandPasteAsPlainText,
 		menucontract.CommandMaximiseWindow,
@@ -410,16 +382,15 @@ func TestBuildReportsTheClickedCommand(t *testing.T) {
 
 func TestSnapshotBuildsWindowsMenuTreeWithDisabledAndRoles(t *testing.T) {
 	items := Snapshot(State{
-		DeveloperOptions: true,
 		Disabled: func(command menucontract.Command) bool {
 			return command == menucontract.CommandNavigateBack
 		},
 	}, "windows")
 
-	if len(items) != 7 {
-		t.Fatalf("expected 7 top-level menus on Windows with developer options, got %d", len(items))
+	if len(items) != 6 {
+		t.Fatalf("expected 6 top-level menus on Windows, got %d", len(items))
 	}
-	if items[0].Label != "Interweave" || items[len(items)-1].Label != "开发" {
+	if items[0].Label != "Interweave" || items[len(items)-1].Label != "帮助" {
 		t.Fatalf("unexpected top-level menu boundaries: first=%q last=%q", items[0].Label, items[len(items)-1].Label)
 	}
 

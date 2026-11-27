@@ -186,7 +186,6 @@ func run() error {
 		return fmt.Errorf("failed to prepare application data location: %w", err)
 	}
 
-	// 设置要在建菜单之前读到：开发者选项决定菜单里出不出现那两项。
 	settingsStore, err := settings.NewStore(filepath.Join(dir, "settings.json"))
 	if err != nil {
 		return fmt.Errorf("failed to prepare settings location: %w", err)
@@ -290,10 +289,21 @@ func run() error {
 		window.OnWindowEvent(events.Common.WindowFilesDropped, func(event *application.WindowEvent) {
 			window.EmitEvent(libraryService.FileDropEventName, event.Context().DroppedFiles())
 		})
+		window.OnWindowEvent(events.Common.WindowShow, func(_ *application.WindowEvent) {
+			window.SetMinSize(minWindowWidth, minWindowHeight)
+		})
+		if runtime.GOOS == "darwin" {
+			// Wails v3.1.0 进入全屏前会把 NSWindow minSize 清零，退出全屏后未恢复；
+			// 在退出全屏时显式补回最小窗口尺寸限制。
+			window.OnWindowEvent(events.Mac.WindowDidExitFullScreen, func(_ *application.WindowEvent) {
+				window.SetMinSize(minWindowWidth, minWindowHeight)
+			})
+		}
 		window.OnWindowEvent(events.Common.WindowRuntimeReady, func(_ *application.WindowEvent) {
 			if windows.Window() != window {
 				return
 			}
+			window.SetMinSize(minWindowWidth, minWindowHeight)
 			desktopShell.MarkRuntimeReady()
 		})
 		// 原生菜单条与 Windows 顶栏快照都挂在具体窗口上，重建后必须重新安装。
@@ -324,8 +334,7 @@ func run() error {
 
 	menuService.SetTreeProvider(func() []menucontract.MenuItem {
 		return nativeMenu.Snapshot(nativeMenu.State{
-			DeveloperOptions: settingsService.DeveloperOptionsEnabled(),
-			Disabled:         menuService.IsDisabled,
+			Disabled: menuService.IsDisabled,
 		}, runtime.GOOS)
 	})
 	menuService.SetInvokeHandler(func(command menucontract.Command, role string) {
@@ -350,10 +359,7 @@ func run() error {
 	})
 
 	desktopShell.SyncMenu()
-	// SyncMenu 在独立串行安装锁内回读最新规范化快照并比对：仅在菜单相关字段真实变化时
-	// 才重建原生菜单（或向 Windows 一体化顶栏推送新快照），避免无关设置变更误触发与并发乱序落盘。
 	settingsService.OnChange(func(settings.Settings) {
-		desktopShell.SyncMenu()
 		application.InvokeAsync(func() {
 			trayController.Sync()
 			// 无窗口状态都靠托盘恢复；用户关掉托盘开关时不能再留一个无入口的空壳。

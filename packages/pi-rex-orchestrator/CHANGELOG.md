@@ -1,5 +1,12 @@
 # @greypan/pi-rex-orchestrator
 
+## 0.2.1
+
+### Patch Changes
+
+- b888e2b: Move fail-closed MERGE_HEAD/HEAD probes and findMainRepo to git-inspector, consolidate Rex response parsers in rex-events, and route all spawn/resume commands through withAntiRecursionPrefix.
+- a508486: Extract `WorkerLifecycle` from `orchestrator.ts` to unify worker spawn, follow-up delivery, inspection, and pause orchestration.
+
 ## 0.2.0
 
 ### Minor Changes

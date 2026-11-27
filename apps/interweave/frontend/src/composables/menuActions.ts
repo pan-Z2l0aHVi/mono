@@ -10,7 +10,6 @@
 export const MENU_ADD_RESOURCE_EVENT = 'interweave:menu-add-resource'
 export const MENU_IMPORT_FROM_CLIPBOARD_EVENT = 'interweave:menu-import-from-clipboard'
 export const MENU_IMPORT_FROM_LINK_EVENT = 'interweave:menu-import-from-link'
-export const MENU_REFRESH_EVENT = 'interweave:menu-refresh-library'
 export const MENU_TOGGLE_FILTER_BAR_EVENT = 'interweave:menu-toggle-filter-bar'
 export const MENU_FOCUS_SEARCH_EVENT = 'interweave:menu-focus-search'
 

@@ -262,8 +262,8 @@ describe('全局等宽数字字体（mono-digits）', () => {
       const rowHost = mountComponent(() =>
         h(RestoreRow, {
           item,
-          pending: true,
-          location: item.location,
+          pending: false,
+          location: '/new/a-1.png',
           source: null,
           locked: false,
           active: false,
@@ -283,7 +283,7 @@ describe('全局等宽数字字体（mono-digits）', () => {
       await nextTick()
       button('扫描全盘').click()
 
-      await vi.waitFor(() => expect(dialogHost.textContent).toContain('找到 2 个候选'))
+      await vi.waitFor(() => expect(dialogHost.textContent).toContain('共 2 个候选'))
       const statNumbers = [...dialogHost.querySelectorAll<HTMLElement>('.scan-stats strong')]
       expect(statNumbers).toHaveLength(3)
       for (const stat of statNumbers) {
@@ -292,7 +292,7 @@ describe('全局等宽数字字体（mono-digits）', () => {
       }
       expect(statNumbers.map(node => node.textContent?.trim())).toEqual(['12', '3', '1'])
 
-      const candidateTrigger = button('找到 2 个候选，选择文件')
+      const candidateTrigger = button('共 2 个候选，切换文件')
       expect(candidateTrigger.querySelector('.font-mono.tabular-nums')?.textContent?.trim()).toBe('2')
       candidateTrigger.click()
       await nextTick()

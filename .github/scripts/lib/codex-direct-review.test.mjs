@@ -771,9 +771,44 @@ const jsonResponse = (payload, status = 200) => ({
   ])
 
   assert.equal(parseTurn1Output(JSON.stringify({ action: 'final', context_requests: [] })).value.action, 'final')
+  assert.deepEqual(parseTurn1Output(JSON.stringify({ action: 'final' })).value.context_requests, [])
+  // 非严格 Schema 网关（如 deepseek-flash）省略可选占位字段时自动归一化，但非预期类型必须点名具体字段报错。
+  assert.deepEqual(
+    parseTurn1Output(
+      JSON.stringify({
+        action: 'fetch_context',
+        context_requests: [
+          { type: 'read_file', path: 'src/a.ts', start_line: 1, end_line: 50 },
+          { type: 'git_grep', query: 'reviewTarget', reason: null }
+        ]
+      })
+    ).value.context_requests,
+    [
+      { type: 'read_file', path: 'src/a.ts', query: '', reason: '', start_line: 1, end_line: 50 },
+      { type: 'git_grep', path: '', query: 'reviewTarget', reason: '', start_line: 0, end_line: 0 }
+    ]
+  )
+  assert.throws(
+    () =>
+      parseTurn1Output(
+        JSON.stringify({ action: 'fetch_context', context_requests: [{ type: 'read_file', path: 123 }] })
+      ),
+    /context_requests\[0\]\.path must be a string/
+  )
+  assert.throws(
+    () =>
+      parseTurn1Output(
+        JSON.stringify({
+          action: 'fetch_context',
+          context_requests: [{ type: 'read_file', path: 'a.ts', start_line: '1' }]
+        })
+      ),
+    /context_requests\[0\]\.start_line must be an integer/
+  )
   assert.ok(!directPrompt.includes('$test-authoring'))
   assert.ok(!directPrompt.includes('$monorepo-change-impact'))
   assert.match(directPrompt, /start_line.*0/)
+  assert.match(directPrompt, /`reason`/)
   assert.match(directPrompt, /coverage\.inspected/)
 
   const stageAction = fs.readFileSync(path.join(repoRootDir, '.github/actions/stage-codex-inputs/action.yml'), 'utf8')

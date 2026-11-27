@@ -18,7 +18,6 @@ import { stubLayout } from '../../components/library/__tests__/virtualLayout'
 import {
   MENU_FOCUS_SEARCH_EVENT,
   MENU_IMPORT_FROM_LINK_EVENT,
-  MENU_REFRESH_EVENT,
   MENU_TOGGLE_FILTER_BAR_EVENT
 } from '../../composables/menuActions'
 import { queueWindowFileDrop, queueWindowURLDrop } from '../../composables/windowFileDrop'
@@ -1400,20 +1399,6 @@ describe('LibraryPage：菜单动作', () => {
       dispatchMenu(MENU_FOCUS_SEARCH_EVENT)
       await flushMenu()
       expect(searchButton()).toBeNull()
-    } finally {
-      await mounted.close()
-    }
-  })
-
-  it('「刷新」重新读库', async () => {
-    const list = vi.fn<LibraryRuntime['resources']['list']>(async () => [])
-    runtimeStub.current = createRuntime({ resources: { list } })
-    const mounted = await mountPage()
-    list.mockClear()
-    try {
-      dispatchMenu(MENU_REFRESH_EVENT)
-      await flushMenu()
-      expect(list).toHaveBeenCalledTimes(1)
     } finally {
       await mounted.close()
     }

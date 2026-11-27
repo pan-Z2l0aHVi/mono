@@ -191,6 +191,41 @@ describe('WebUiButton 组件（浏览器）', () => {
     expect(contrastRatio(styles.color, styles.backgroundColor)).toBeGreaterThanOrEqual(3)
   })
 
+  it.each(['light', 'dark'] as const)('%s primary 的 hover 与 active 背景依次明显压暗', async appearance => {
+    const theme = document.createElement('web-ui-theme')
+    theme.setAttribute('appearance', appearance)
+    theme.setAttribute('motion', 'reduced')
+    theme.style.padding = '64px'
+    const button = document.createElement('web-ui-button') as WebUiButton
+    button.variant = 'primary'
+    button.textContent = 'Primary'
+    const outside = document.createElement('div')
+    outside.id = 'pointer-outside'
+    outside.textContent = 'Outside'
+    outside.style.cssText = 'width: 100px; height: 40px; margin-top: 48px'
+    theme.append(button, outside)
+    document.body.append(theme)
+    await Promise.all([waitForUpdate(theme), waitForUpdate(button)])
+
+    const inner = button.shadowRoot!.querySelector('button')!
+    const readBg = () => normalizedRgb(getComputedStyle(inner).backgroundColor)
+
+    await userEvent.hover(outside)
+    const restingBg = readBg()
+    await userEvent.hover(button)
+    const hoverBg = readBg()
+    await userEvent.pointer([{ target: button, keys: '[MouseLeft>]' }])
+    const activeBg = readBg()
+    await userEvent.pointer([{ target: outside, keys: '[/MouseLeft]' }])
+
+    expect(hoverBg).not.toBe(restingBg)
+    expect(activeBg).not.toBe(hoverBg)
+    expect(luminance(hoverBg)).toBeLessThan(luminance(restingBg))
+    expect(luminance(activeBg)).toBeLessThan(luminance(hoverBg))
+    expect(contrastRatio(restingBg, hoverBg)).toBeGreaterThanOrEqual(1.2)
+    expect(contrastRatio(hoverBg, activeBg)).toBeGreaterThanOrEqual(1.2)
+  })
+
   /** color-mix 输出 color(srgb …)，token 直读输出 rgb(…)：归一到 rgb(…) 再比。 */
   function normalizedRgb(color: string): string {
     const channels = color

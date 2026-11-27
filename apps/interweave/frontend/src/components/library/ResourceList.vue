@@ -279,20 +279,12 @@ function enterList(event: KeyboardEvent) {
 }
 
 function handleRowKeydown(event: KeyboardEvent, row: HTMLElement) {
-  if (event.key === 'Enter') {
-    if (event.repeat) return
+  if (event.key === 'Enter' || event.key === ' ') {
+    if (event.repeat || (event.key === ' ' && event.shiftKey)) return
     const resource = resourceForRow(row)
     if (!resource) return
     event.preventDefault()
-    emit('detail', resource)
-    return
-  }
-  if (event.key === ' ') {
-    if (event.shiftKey || event.repeat) return
-    const resource = resourceForRow(row)
-    if (!resource) return
-    event.preventDefault()
-    // 空格：把焦点所在这一行写成当前行（activeResourceId），保留 select 语义
+    // Enter / Space：与点击一致，把焦点所在行设为当前行并走 select（弹出预览 drawer）
     const index = indexOfRow(row)
     if (index >= 0) void navigator.navigateToIndex(index)
     emit('select', resource)

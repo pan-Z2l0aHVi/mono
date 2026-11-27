@@ -81,6 +81,23 @@ function button(host: HTMLElement, label: string) {
 }
 
 describe('DetailDrawer', () => {
+  it('仅移动端开启 draggable，桌面端禁用拖拽', async () => {
+    const desktop = mountDrawer(resourceView())
+    const mobile = mountDrawer(resourceView(), { mobile: true })
+    try {
+      await nextTick()
+      const desktopDrawer = desktop.host.querySelector('web-ui-drawer') as
+        | (HTMLElement & { draggable?: boolean })
+        | null
+      const mobileDrawer = mobile.host.querySelector('web-ui-drawer') as (HTMLElement & { draggable?: boolean }) | null
+      expect(desktopDrawer?.draggable).toBe(false)
+      expect(mobileDrawer?.draggable).toBe(true)
+    } finally {
+      desktop.close()
+      mobile.close()
+    }
+  })
+
   it('失效资源展示每个来源并提供找回入口', async () => {
     const source = {
       id: 'source-1',

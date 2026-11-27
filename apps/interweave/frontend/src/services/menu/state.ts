@@ -31,11 +31,7 @@ export function createMenuStateRuntime(): MenuStateRuntime {
 }
 
 /** 资源库页独有的命令：离开资源库页后它们没有可作用的对象。 */
-const LIBRARY_COMMANDS: readonly Command[] = [
-  Command.CommandRefreshLibrary,
-  Command.CommandToggleFilterBar,
-  Command.CommandFocusSearch
-]
+const LIBRARY_COMMANDS: readonly Command[] = [Command.CommandToggleFilterBar, Command.CommandFocusSearch]
 
 export interface MenuAvailabilityInput {
   /** 当前路由的 path；资源库页是 `/library`。 */

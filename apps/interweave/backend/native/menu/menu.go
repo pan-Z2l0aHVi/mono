@@ -59,14 +59,12 @@ func submenu(label string, children ...Node) Node {
 
 // Describe 按平台给出完整菜单树。它不碰 Wails 的全局状态，是菜单形状的唯一来源：
 // Build 只是把它物化，测试直接断言它的结构。
-//
-// 开发者菜单不在默认树里：它由 TreeNodes 按设置追加成独立顶层菜单。
 func Describe(goos string) []Node {
 	mac := isMacOS(goos)
 
-	nodes := make([]Node, 0, 7)
+	nodes := make([]Node, 0, 6)
 	nodes = append(nodes, appMenu(mac))
-	nodes = append(nodes, fileMenu(), editMenu(), viewMenu())
+	nodes = append(nodes, fileMenu(), editMenu(), viewMenu(mac))
 	nodes = append(nodes, windowMenu(mac))
 	nodes = append(nodes, helpMenu())
 	return nodes
@@ -149,10 +147,15 @@ func editMenu() Node {
 	)
 }
 
-func viewMenu() Node {
+func viewMenu(mac bool) Node {
+	refreshAccelerator := "F5"
+	if mac {
+		refreshAccelerator = "CmdOrCtrl+R"
+	}
 	return submenu("显示",
-		// 刷新不挂快捷键：CmdOrCtrl+R 留给开发菜单的「重新载入」，二者语义不同。
-		commandNode("刷新", "", menucontract.CommandRefreshLibrary),
+		// 刷新直接由 Go 重载 WebView：Wails 的 Reload role 在 production tag 下是空实现，
+		// 因此显式走自定义命令 CommandReloadWindow。macOS 用 Cmd+R，Windows 用约定俗成的 F5。
+		commandNode("刷新", refreshAccelerator, menucontract.CommandReloadWindow),
 		separator(),
 		// 缩放三项改的是 Go 拥有的缩放档位（设置里的固定四档），前端拿到快照后把档位落到
 		// 窗口上。Wails 的 ZoomIn / ZoomOut / ResetZoom role 在 macOS 没有 selector、Win32
@@ -169,17 +172,6 @@ func viewMenu() Node {
 		separator(),
 		commandNode("后退", "", menucontract.CommandNavigateBack),
 		commandNode("前进", "", menucontract.CommandNavigateForward),
-	)
-}
-
-// developerMenu 是开发者选项打开时追加的独立顶层菜单。
-//
-// 两项都必须显式挂回调：Wails 的 Reload/OpenDevTools role 在 production tag 下会被
-// 编译成空实现，而本应用要求它们由设置开关控制，而不是由构建 tag 控制。
-func developerMenu() Node {
-	return submenu("开发",
-		commandNode("重新载入", "CmdOrCtrl+R", menucontract.CommandReloadWindow),
-		commandNode("开发者控制台", "", menucontract.CommandOpenDevTools),
 	)
 }
 
@@ -222,11 +214,9 @@ func helpMenu() Node {
 // 菜单树本身不关心事件用什么通道送出去。
 type CommandSink func(menucontract.Command)
 
-// State 是菜单的呈现状态，由构建时决定：开发者选项控制「开发」菜单在不在，
-// 禁用集合控制哪些命令条目置灰。
+// State 是菜单的呈现状态，由构建时决定：禁用集合控制哪些命令条目置灰。
 type State struct {
-	DeveloperOptions bool
-	Disabled         func(menucontract.Command) bool
+	Disabled func(menucontract.Command) bool
 }
 
 // Tree 是物化结果：Wails 菜单本体加上各业务条目的点击入口。
@@ -274,22 +264,15 @@ func Build(state State, sink CommandSink) Tree {
 	return tree
 }
 
-// TreeNodes 是 Build 实际物化的节点序列：默认树加上可选的开发者菜单。
+// TreeNodes 是 Build 实际物化的节点序列。
 // 它是 Build 的唯一输入，测试因此可以断言「实际构建的形状」而不必启动 Wails 应用。
 func TreeNodes(state State) []Node {
 	return TreeNodesFor(state, "")
 }
 
 // TreeNodesFor 按指定平台构造完整节点序列，便于跨平台快照与单元测试。
-func TreeNodesFor(state State, goos string) []Node {
-	nodes := Describe(goos)
-	if !state.DeveloperOptions {
-		return nodes
-	}
-	// 「开发」是独立顶层菜单，追加在末尾，不影响其他菜单的形状。
-	cloned := make([]Node, len(nodes), len(nodes)+1)
-	copy(cloned, nodes)
-	return append(cloned, developerMenu())
+func TreeNodesFor(_ State, goos string) []Node {
+	return Describe(goos)
 }
 
 // Snapshot 把当前平台菜单树与禁用态转换成可序列化的跨端 DTO，供 Windows 一体化顶栏渲染。

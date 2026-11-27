@@ -93,7 +93,7 @@ aside {
      */
     --wui-button-width: var(--wui-layout-sidebar-toggle-width, 36px);
 
-    margin: var(--wui-space-2, 8px);
+    margin: 2px var(--wui-space-2, 8px) var(--wui-space-2, 8px);
   }
 
   &.collapsed {

@@ -60,7 +60,7 @@ func (s *Service) SetInvokeHandler(handler func(command Command, role string)) {
 	s.invokeHandler = handler
 }
 
-// GetMenu 返回当前菜单树快照（含开发者菜单开关与禁用态），供 Windows 一体化顶栏渲染。
+// GetMenu 返回当前菜单树快照（含禁用态），供 Windows 一体化顶栏渲染。
 func (s *Service) GetMenu(ctx context.Context) []MenuItem {
 	if err := ctx.Err(); err != nil {
 		return []MenuItem{}

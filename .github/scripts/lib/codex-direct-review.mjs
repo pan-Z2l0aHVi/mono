@@ -687,6 +687,9 @@ export function parseTurn1Output(raw, { normalizeReviewOutput } = {}) {
   if (value.action !== 'final' && value.action !== 'fetch_context') {
     throw new Error(`Turn 1 output has invalid action: ${String(value.action)}`)
   }
+  if (value.action === 'final' && (value.context_requests === undefined || value.context_requests === null)) {
+    value.context_requests = []
+  }
   if (!Array.isArray(value.context_requests)) {
     throw new Error('Turn 1 output context_requests must be an array')
   }
@@ -698,11 +701,19 @@ export function parseTurn1Output(raw, { normalizeReviewOutput } = {}) {
     if (!['read_file', 'git_diff', 'git_grep'].includes(req.type)) {
       throw new Error(`context_requests[${index}].type is invalid: ${String(req.type)}`)
     }
-    if (typeof req.path !== 'string' || typeof req.query !== 'string' || typeof req.reason !== 'string') {
-      throw new Error(`context_requests[${index}] string fields are invalid`)
+    for (const field of ['path', 'query', 'reason']) {
+      if (req[field] === undefined || req[field] === null) {
+        req[field] = ''
+      } else if (typeof req[field] !== 'string') {
+        throw new Error(`context_requests[${index}].${field} must be a string`)
+      }
     }
-    if (!Number.isInteger(req.start_line) || !Number.isInteger(req.end_line)) {
-      throw new Error(`context_requests[${index}] line bounds must be integers`)
+    for (const field of ['start_line', 'end_line']) {
+      if (req[field] === undefined || req[field] === null) {
+        req[field] = 0
+      } else if (!Number.isInteger(req[field])) {
+        throw new Error(`context_requests[${index}].${field} must be an integer`)
+      }
     }
   }
   return { value, sanitized }

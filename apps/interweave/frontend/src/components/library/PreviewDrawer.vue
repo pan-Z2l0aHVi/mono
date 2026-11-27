@@ -70,7 +70,7 @@ function handleVideoMetadata(mediaKey: string, event: Event) {
     draggable
     fullable
     controlled
-    class="mobile:[--wui-drawer-height:80vh] mobile:[--wui-drawer-inset:0px] mobile:[--wui-drawer-radius:28px_28px_0_0] [--wui-drawer-width:max(60vw,320px)] [--wui-drawer-content-padding:20px] [--wui-empty-padding:0px] [--wui-drawer-drag-zone-size:32px]"
+    class="mobile:[--wui-drawer-height:80vh] mobile:[--wui-drawer-inset:0px] mobile:[--wui-drawer-radius:28px_28px_0_0] [--wui-drawer-width:max(60vw,320px)] [--wui-drawer-content-padding:0px] [--wui-empty-padding:0px] [--wui-drawer-drag-zone-size:32px]"
     @open-change="handleOpenChange"
   >
     <!--
@@ -79,11 +79,11 @@ function handleVideoMetadata(mediaKey: string, event: Event) {
     -->
     <div
       v-if="state.kind !== 'closed' && resource"
-      class="-m-5 w-[calc(100%+40px)] min-h-0 rounded-[var(--wui-drawer-radius,28px)]"
+      class="min-h-0 rounded-[var(--wui-drawer-radius,28px)]"
       :class="
         isDocumentMode
-          ? 'min-h-full'
-          : 'grid h-[calc(100%+40px)] grid-rows-[minmax(0,1fr)] overflow-hidden mobile:h-(--wui-drawer-height)'
+          ? 'min-h-full w-full'
+          : 'grid h-full w-full grid-rows-[minmax(0,1fr)] overflow-hidden mobile:h-(--wui-drawer-height)'
       "
     >
       <div v-if="state.kind === 'empty'" class="min-h-0 overflow-y-auto">
