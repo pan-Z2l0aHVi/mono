@@ -1400,7 +1400,7 @@ for (const [label, value] of [
   })
   assert.equal(winner?.number, 12, 'the pull request most recently touching this head wins')
   assert.equal(winner?.state, 'open')
-  // open 候选优先：closed PR 更晚更新也不能遮住仍 open 的 PR（否则 open PR 的 autofix 被静默跳过）。
+  // open 候选优先：closed PR 更晚更新也不能遮住仍 open 的 PR。
   assert.equal(
     findPullForHead({
       adapter: adapter([pullOf(20, headSha, '2026-05-01', 'closed'), pullOf(21, headSha, '2026-02-01', 'open')]),

@@ -9,7 +9,7 @@ CI 的 `check` 之后运行 `Codex review gate`，按三档输出发现并写回
 - **结论绑定 head**：`reviewed` 仅覆盖对应 head SHA；head 变更后旧结论过期，`stale`、`unreviewed`、`error`、`not_applicable` 均不代表已审。`reviewed` + `Block > 0`（评论状态 `blocked`）、`error`、`unreviewed` 均判红。
 - **结论即 review**：存在可审源码改动、生成物已核对、`coverage.uncovered` 为空、reviewed SHA 等于当前 head、`Block == 0` 且 required `check` 绿时，PR review 完成，无需人工逐行重看。
 - **`coverage.uncovered` 补位**：`coverage.inspected` 只记实际读过的路径；`coverage.uncovered` 非空时结论有效且门不变红，但「结论即 review」不成立，列出的未覆盖位置**必须由人工逐项复核**。
-- **无有效自动结论时**：出现 `error`、`unreviewed`、`stale`、`not_applicable`、fork PR 或未配 push token 的 autofix 新 head 时，须按本文做独立人工审查。
+- **无有效自动结论时**：出现 `error`、`unreviewed`、`stale`、`not_applicable` 或 fork PR 时，须按本文做独立人工审查。
 
 ## 审查范围与生成物
 

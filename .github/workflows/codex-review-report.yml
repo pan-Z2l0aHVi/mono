@@ -1,6 +1,6 @@
 name: Codex Review Report
 
-# 写回 workflow：ci.yml 的只读不变量不允许任何写操作，所以评论与 autofix 推送住在这里。
+# 写回 workflow：ci.yml 的只读不变量不允许任何写操作，所以审查结论评论与单次空壳自动重跑住在这里。
 # 模型一次都不跑在本文件里；它只在 ci.yml 的 contents: read job 里执行。
 # 本 workflow 不改判审查结论，只把 CI 已产出的结论写到 PR 上。
 # workflow_run 只在默认分支上存在的这个文件里生效，因此本段的版本由 main 决定。
@@ -157,94 +157,3 @@ jobs:
           CODEX_REVIEW_CONCLUSION_DIR: ${{ runner.temp }}/codex-review
           GH_TOKEN: ${{ github.token }}
         run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" report
-
-  codex-autofix-apply:
-    name: Apply Codex autofix
-    if: ${{ github.event.workflow_run.event == 'pull_request' && github.event.workflow_run.head_repository.full_name == github.repository && github.event.workflow_run.conclusion != 'cancelled' && github.event.workflow_run.head_branch != 'changeset-release/main' && vars.CODEX_AUTOFIX_ENABLED == 'true' }}
-    runs-on: ubuntu-latest
-    timeout-minutes: 10
-    # 只有这一步能写 Git：patch 由只读 job 生成，这里只做校验、提交与推送。
-    permissions:
-      contents: write
-      pull-requests: read
-      actions: read
-    concurrency:
-      # 同一分支上的 patch 只能有一个在推：第二个 job 会在 assertPushAllowed 处被 head 漂移拒绝，
-      # 排队比让它红掉更好读。
-      group: codex-autofix-${{ github.event.workflow_run.head_branch }}
-      cancel-in-progress: false
-
-    steps:
-      - uses: actions/checkout@v7
-        with:
-          # 配有 CODEX_AUTOFIX_PUSH_TOKEN 时用专用 PAT 推送 autofix，使后续 CI 以用户身份触发并放行审查；
-          # 未配置时回退默认 github.token，不阻断主链路。
-          token: ${{ secrets.CODEX_AUTOFIX_PUSH_TOKEN || github.token }}
-
-      - uses: ./.github/actions/setup-deps
-        with:
-          mise-install: 'node'
-          skip-install: 'true'
-
-      - uses: ./.github/actions/stage-codex-inputs
-
-      - name: Resolve pull request
-        id: pull
-        env:
-          CODEX_REVIEW_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          # runner 不会替步骤注入 GITHUB_TOKEN，gh 只认 GH_TOKEN。
-          GH_TOKEN: ${{ github.token }}
-        run: node "$RUNNER_TEMP/trusted/scripts/codex-review.mjs" resolve-pull
-
-      - name: Check out the pull request head
-        # 只有明确的 closed 才在这里整体跳过（含合并后的写回）：没有可修的对象。
-        # state 缺失或异常（unknown）不跳过，交给脚本的 reviewTarget 判红——不确定就不许绿。
-        if: steps.pull.outputs.pull_number != '' && steps.pull.outputs.pull_state != 'closed'
-        env:
-          PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
-        # fetch 走 refs/pull/<n>/head：合并删分支后该 ref 仍持久存在，比按分支名 fetch 少一类 404。
-        # 这条 ref 指向的是**当前 live PR head**，不是生成 patch 的那个 run head；两者是否一致由
-        # assertPushAllowed 判定——不一致（run head 已漂移）时它拒绝推送，工作树停在 live head 上并不构成错误。
-        run: |
-          set -euo pipefail
-          git fetch --no-tags origin "refs/pull/$PULL_NUMBER/head"
-          git checkout --detach FETCH_HEAD
-
-      - name: Explain the skipped autofix
-        # checkout 与 apply 只在 pull_state=closed 时整体跳过（脚本侧的同一出口因此不会执行）：
-        # 绿色收尾可以，但运行页上必须能读到「为什么没推送」。unknown 不在此列——它走脚本判红。
-        if: always() && steps.pull.outcome == 'success' && steps.pull.outputs.pull_number != '' && steps.pull.outputs.pull_state == 'closed'
-        env:
-          PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
-          PULL_STATE: ${{ steps.pull.outputs.pull_state }}
-        run: |
-          set -euo pipefail
-          {
-            echo '## Codex autofix 未应用'
-            echo ''
-            echo "- PR #$PULL_NUMBER 当前状态为 \`$PULL_STATE\`，不再接受自动修推送，本次 checkout 与 apply 都已跳过。"
-            echo '- 写回 run 由「CI completed」触发，可能晚于合并完成；这不是故障。'
-          } >> "$GITHUB_STEP_SUMMARY"
-          echo "::notice title=Codex autofix skipped::pull request #$PULL_NUMBER is closed, not open"
-
-      - name: Download autofix patch
-        # 大多数 run 没有 patch：下载失败就是「无事可做」，由 apply 自己按文件缺失跳过。
-        continue-on-error: true
-        uses: actions/download-artifact@v7
-        with:
-          name: codex-autofix-patch
-          github-token: ${{ github.token }}
-          run-id: ${{ github.event.workflow_run.id }}
-          repository: ${{ github.repository }}
-          path: ${{ runner.temp }}
-
-      - name: Apply and push autofix
-        # 与 checkout 同一判据：只有明确的 closed 才跳过（脚本侧 reviewTarget 对 unknown 判红兜底）。
-        if: steps.pull.outputs.pull_number != '' && steps.pull.outputs.pull_state != 'closed'
-        env:
-          CODEX_AUTOFIX_PULL_NUMBER: ${{ steps.pull.outputs.pull_number }}
-          CODEX_AUTOFIX_HEAD_SHA: ${{ github.event.workflow_run.head_sha }}
-          CODEX_AUTOFIX_HEAD_REF: ${{ github.event.workflow_run.head_branch }}
-          CODEX_TRUSTED_SETTINGS: ${{ runner.temp }}/trusted/.claude/settings.json
-          GH_TOKEN: ${{ github.token }}
-        run: node "$RUNNER_TEMP/trusted/scripts/codex-autofix.mjs" apply

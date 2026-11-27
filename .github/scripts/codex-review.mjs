@@ -979,7 +979,7 @@ export function createGhReviewAdapter({ repository, spawn = spawnSync, cwd = pro
     artifacts: runId => client.apiJson(`actions/runs/${runId}/artifacts`)?.artifacts ?? [],
     // jobs 只返回最新 attempt 的那一套；结论评论要的模型 job 错误就在这一套里。
     runJobs: runId => client.listRunJobs(runId),
-    // job 日志含 ANSI 转义序列，不加 --allow-escape-sequences 会被 gh 拒绝（与 codex-autofix.mjs 同一读法）。
+    // job 日志含 ANSI 转义序列，不加 --allow-escape-sequences 会被 gh 拒绝。
     jobLog: jobId => client.getJobLog(jobId)
   }
 }
@@ -1037,7 +1037,7 @@ export function findPriorReviewRun({ adapter, pullNumber, headSha, currentRunId 
 
 /**
  * 同一个 head SHA 可能挂在多个 PR 上（关掉又重开）；取最近更新的那一个，返回完整 PR。
- * open 候选优先：更晚更新的 closed PR 不能遮住仍 open 的 PR，否则它的 autofix 会被静默跳过。
+ * open 候选优先：更晚更新的 closed PR 不能遮住仍 open 的 PR。
  * 不过滤 state：合并后的写回 run 仍要解析到 closed PR（回退路径），open 与否由 workflow 层按 pull_state 跳过。
  */
 export function findPullForHead({ adapter, headSha }) {
