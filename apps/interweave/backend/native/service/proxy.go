@@ -7,6 +7,32 @@ import (
 	"net/url"
 )
 
+type systemProxyLookup func(req *http.Request) (*url.URL, error)
+type envProxyLookup func(req *http.Request) (*url.URL, error)
+
+type proxyResolver struct {
+	system systemProxyLookup
+	env    envProxyLookup
+}
+
+func newProxyResolver(system systemProxyLookup, env envProxyLookup) *proxyResolver {
+	return &proxyResolver{system: system, env: env}
+}
+
+func (r *proxyResolver) Resolve(req *http.Request) (*url.URL, error) {
+	if r.system != nil {
+		if u, err := r.system(req); err == nil && u != nil {
+			return u, nil
+		}
+	}
+	if r.env == nil {
+		return nil, nil
+	}
+	return r.env(req)
+}
+
+var defaultProxyResolver = newProxyResolver(defaultPlatformProxyLookup(), http.ProxyFromEnvironment)
+
 /*
  * SystemProxy 把平台的系统代理设置解析成 http.Transport.Proxy 的形状，供装配处
  * （main.go）注入 remote.Fetcher。读取 OS 设置的能力属于 native（见 interweave AGENTS.md），
@@ -22,11 +48,5 @@ import (
  * 代理解析失败不该让业务请求失败。PAC 自动配置脚本不计算（产品取舍），对应场景回落环境变量。
  */
 func SystemProxy(req *http.Request) (*url.URL, error) {
-	if u, err := systemProxyFor(req); err == nil {
-		if u != nil {
-			return u, nil
-		}
-		return http.ProxyFromEnvironment(req)
-	}
-	return http.ProxyFromEnvironment(req)
+	return defaultProxyResolver.Resolve(req)
 }

@@ -2,10 +2,15 @@
 
 package service
 
-import "net/http"
+import (
+	"net/http"
+	"net/url"
+)
 
-// systemProxyFor：其余平台没有系统代理读取实现，一律 (nil, nil)，
+// defaultPlatformProxyLookup：其余平台没有系统代理读取实现，一律 (nil, nil)，
 // 由 SystemProxy 回落 ProxyFromEnvironment。
-func systemProxyFor(req *http.Request) (*url.URL, error) {
-	return nil, nil
+func defaultPlatformProxyLookup() systemProxyLookup {
+	return func(*http.Request) (*url.URL, error) {
+		return nil, nil
+	}
 }

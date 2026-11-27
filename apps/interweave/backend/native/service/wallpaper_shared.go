@@ -2,13 +2,15 @@
 package service
 
 import (
+	"context"
+	"fmt"
 	"net/url"
 	"strings"
 )
 
 /*
- * Linux 壁纸命令构造，纯函数、平台无关：`wallpaper_linux.go` 是唯一生产调用方，
- * 单测在 darwin 上也能跑（命令形状与执行分离）。
+ * Linux 壁纸命令构造与执行编排，平台无关：`wallpaper_linux.go` 是唯一生产调用方，
+ * 单测在全平台都能跑（命令执行通过 commandRunner seam 注入）。
  *
  * 计划分三档语义：
  *   - required：全部必须成功（GNOME 的 picture-uri）；
@@ -29,14 +31,124 @@ type wallpaperStep struct {
 	commands [][]string
 }
 
-// normalizeDesktop 归一桌面分量：X-Cinnamon → CINNAMON，ubuntu 视作 GNOME（其默认桌面）。
-func normalizeDesktop(name string) string {
-	name = strings.ToUpper(strings.TrimSpace(name))
-	name = strings.TrimPrefix(name, "X-")
-	if name == "UBUNTU" {
-		return "GNOME"
+type commandRunner interface {
+	Run(ctx context.Context, name string, args ...string) error
+	Output(ctx context.Context, name string, args ...string) ([]byte, error)
+}
+
+type linuxWallpaperApplier struct {
+	getenv func(string) string
+	runner commandRunner
+}
+
+func newLinuxWallpaperApplier(getenv func(string) string, runner commandRunner) *linuxWallpaperApplier {
+	return &linuxWallpaperApplier{getenv: getenv, runner: runner}
+}
+
+func (a *linuxWallpaperApplier) Apply(ctx context.Context, path string) error {
+	var xdg string
+	if a.getenv != nil {
+		xdg = a.getenv("XDG_CURRENT_DESKTOP")
 	}
-	return name
+	desktops := desktopsOf(xdg)
+	if len(desktops) == 0 {
+		return fmt.Errorf("wallpaper: no desktop environment detected (XDG_CURRENT_DESKTOP is empty)")
+	}
+	imageURI := fileURIFromPath(path)
+	var lastErr error
+	for _, desktop := range desktops {
+		if normalizeDesktop(desktop) == "XFCE" {
+			err := a.setXfceWallpaper(ctx, path)
+			if err == nil {
+				return nil
+			}
+			lastErr = err
+			continue
+		}
+		plan := wallpaperPlanFor(desktop, imageURI)
+		if len(plan) == 0 {
+			continue
+		}
+		err := a.runWallpaperPlan(ctx, plan)
+		if err == nil {
+			return nil
+		}
+		lastErr = err
+	}
+	if lastErr != nil {
+		return fmt.Errorf("wallpaper: setting failed for desktop %q: %w", strings.Join(desktops, ","), lastErr)
+	}
+	return fmt.Errorf("wallpaper: unsupported desktop %q", strings.Join(desktops, ","))
+}
+
+// runWallpaperPlan 执行一份计划：required 全部成功且 alternatives 有成功项（无 alternatives 视为满足）
+// 才算成功；optional 尽力而为。失败时返回具体命令错误以便调用方保留错误链。
+func (a *linuxWallpaperApplier) runWallpaperPlan(ctx context.Context, plan []wallpaperStep) error {
+	if len(plan) == 0 {
+		return fmt.Errorf("wallpaper: empty wallpaper plan")
+	}
+	if a.runner == nil {
+		return fmt.Errorf("wallpaper: command runner is not configured")
+	}
+	for _, step := range plan {
+		switch step.kind {
+		case wallpaperStepRequired:
+			for _, command := range step.commands {
+				if err := a.runner.Run(ctx, command[0], command[1:]...); err != nil {
+					return fmt.Errorf("wallpaper: %s failed: %w", command[0], err)
+				}
+			}
+		case wallpaperStepAlternative:
+			alternativeOk := false
+			var stepErr error
+			for _, command := range step.commands {
+				if err := ctx.Err(); err != nil {
+					return err
+				}
+				err := a.runner.Run(ctx, command[0], command[1:]...)
+				if err == nil {
+					alternativeOk = true
+					break
+				}
+				stepErr = fmt.Errorf("wallpaper: %s failed: %w", command[0], err)
+			}
+			if !alternativeOk {
+				return stepErr
+			}
+		case wallpaperStepOptional:
+			for _, command := range step.commands {
+				_ = a.runner.Run(ctx, command[0], command[1:]...)
+			}
+		}
+	}
+	return nil
+}
+
+// setXfceWallpaper 枚举全部 image-path 属性并逐条写本地路径；任一条写入失败即报错，
+// 避免多显示器场景下部分屏幕未更新却静默返回成功。
+func (a *linuxWallpaperApplier) setXfceWallpaper(ctx context.Context, path string) error {
+	if a.runner == nil {
+		return fmt.Errorf("wallpaper: command runner is not configured")
+	}
+	list, err := a.runner.Output(ctx, "xfconf-query", "-c", "xfce4-desktop", "-l", "-v")
+	if err != nil {
+		return fmt.Errorf("wallpaper: xfconf-query list failed: %w", err)
+	}
+	props := xfceWallpaperProps(string(list))
+	if len(props) == 0 {
+		return fmt.Errorf("wallpaper: no xfce image-path property found")
+	}
+	var firstErr error
+	for _, prop := range props {
+		if err := ctx.Err(); err != nil {
+			return err
+		}
+		command := xfceSetCommandFor(prop, path)
+		if err := a.runner.Run(ctx, command[0], command[1:]...); err != nil && firstErr == nil {
+			firstErr = fmt.Errorf("wallpaper: xfconf-query write %s failed: %w", prop, err)
+		}
+	}
+	return firstErr
 }
 
 // wallpaperPlanFor 返回单个桌面的执行计划；不支持或无步骤返回 nil。
@@ -69,9 +181,43 @@ func wallpaperPlanFor(desktop string, imageURI string) []wallpaperStep {
 	}
 }
 
+// jsStringLiteral 生成专用于 JavaScript 的双引号字符串字面量：
+// 显式转义引号、反斜杠、控制字符及 U+2028/U+2029，不做 encoding/json 的 HTML 字符转义（<, >, &）。
+func jsStringLiteral(value string) string {
+	var b strings.Builder
+	b.Grow(len(value) + 2)
+	b.WriteByte('"')
+	for _, r := range value {
+		switch r {
+		case '\\':
+			b.WriteString(`\\`)
+		case '"':
+			b.WriteString(`\"`)
+		case '\n':
+			b.WriteString(`\n`)
+		case '\r':
+			b.WriteString(`\r`)
+		case '\t':
+			b.WriteString(`\t`)
+		case '\u2028':
+			b.WriteString(`\u2028`)
+		case '\u2029':
+			b.WriteString(`\u2029`)
+		default:
+			if r < 0x20 {
+				fmt.Fprintf(&b, `\x%02x`, r)
+			} else {
+				b.WriteRune(r)
+			}
+		}
+	}
+	b.WriteByte('"')
+	return b.String()
+}
+
 // kdeWallpaperScript 是 PlasmaShell evaluateScript 的脚本体：逐桌面写 Image 配置。
 func kdeWallpaperScript(imageURI string) string {
-	return "var allDesktops = desktops();for (var i = 0; i < allDesktops.length; i++) {var d = allDesktops[i];d.wallpaperPlugin = 'org.kde.image';d.currentConfigGroup = ['Wallpaper','org.kde.image','General'];d.writeConfig('Image', '" + imageURI + "')}"
+	return "var allDesktops = desktops();for (var i = 0; i < allDesktops.length; i++) {var d = allDesktops[i];d.wallpaperPlugin = 'org.kde.image';d.currentConfigGroup = ['Wallpaper','org.kde.image','General'];d.writeConfig('Image', " + jsStringLiteral(imageURI) + ")}"
 }
 
 // xfceSetCommandFor 构造一条 image-path 属性的写入命令；style 不动，保留用户现有缩放设置。
