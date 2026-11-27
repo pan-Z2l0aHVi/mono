@@ -568,6 +568,7 @@ export function createMenuSession<TSurface extends MenuSurface>(
     },
 
     claimPlaceholder() {
+      outsideClickGuard.arm()
       claimRoot(root?.panel ?? host)
     },
 

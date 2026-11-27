@@ -1,42 +1,21 @@
 import type { Placement } from '@floating-ui/dom'
 import { html, LitElement, unsafeCSS } from 'lit'
-import { customElement, property, state } from 'lit/decorators.js'
+import { customElement, property } from 'lit/decorators.js'
 
 import {
-  createClosingSubmenuStack,
-  createMenuHoverBinder,
-  createMenuOutsideClickGuard,
-  getEnabledMenuLevelItems,
-  getFocusedMenuItemFromPanels,
-  handleMenuKeyboard,
-  type MenuHoverDelegate,
-  type MenuKeyboardDelegate
-} from '@/shared/menu-behavior'
-import { createMenuPortalOverlay } from '@/shared/menu-portal/menu-portal'
-import {
-  captureFrameworkAnchors,
-  focusMenuItem,
-  getMenuChildren,
+  createMenuPortalOverlay,
+  createMenuSession,
+  getDeepActiveElement,
   getMenuItemFromEvent,
-  getMovableMenuSubtrees,
-  hideNestedMenuChildren,
-  moveMenuChildren,
-  orderManagedMenuItems,
-  reconcileManagedMenuItems,
-  restoreFrameworkAnchors,
-  returnManagedMenuItemsToSlot,
-  type MenuItemAnchors
-} from '@/shared/menu-portal/menu-tree'
+  type MenuSurface
+} from '@/shared/menu-session'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
-import { defineOpenOverlay, type OpenOverlayHandle } from '@/shared/overlay/open-overlay'
 import { defineOverlay, type OverlayApi } from '@/shared/overlay/overlay'
 import { FLOATING_PLACEMENTS } from '@/shared/overlay/placement-props'
-import { hideOverlayPresence, showOverlayPresence } from '@/shared/overlay/presence'
 import { defineTriggerController } from '@/shared/overlay/trigger-controller'
 import { defineOverlayDelayProps } from '@/shared/overlay/trigger-delay-props'
 import { hasTriggerGesture, isTriggerNone, normalizeTriggerSet } from '@/shared/overlay/trigger-props'
-import { defineScrollLockLease } from '@/shared/scroll-lock/scroll-lock'
 
 import style from './style.css?inline'
 
@@ -44,7 +23,6 @@ export type { Placement }
 
 const SLOT_PREFIX = 'web-ui-menu-level-'
 const DEFAULT_TRIGGERS = ['click'] as const
-// 一级 menu item 的模板位 marker（机制与 context-menu 共用，见 menu-tree 的托管项锚说明）。
 const MENU_ITEM_MARKER = 'wui-dropdown-menu-item'
 
 function getComposedParent(node: Node): Node | null {
@@ -72,12 +50,9 @@ function hasNativeModalAncestor(node: Node): boolean {
 
 let dropdownIdCounter = 0
 
-interface MenuOverlay {
+interface DropdownMenuSurface extends MenuSurface {
   api: OverlayApi
-  overlay: HTMLElement
-  content: HTMLElement
-  /** 该层为 submenu 时的会话 handle；根层 handle 由组件单独持有（见 `_handle`）。 */
-  handle?: OpenOverlayHandle
+  unbindKeepAlive: () => void
 }
 
 type PointerInteraction = {
@@ -99,8 +74,6 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
     this._triggerController.applyDeclarativeOpen(Boolean(v))
   }
   private _openValue = false
-  /** 本次打开会话是否见过内容；程序式空开不得被后续渲染立即关掉。 */
-  private _openedWithContent = false
   @property({ type: Boolean, reflect: true }) disabled = false
   @property({ type: Boolean, reflect: true, attribute: 'match-width' }) matchWidth = false
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
@@ -136,24 +109,35 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
     this._offset = normalizeNumber(v, 0, 100, 4)
   }
 
-  @state() private _activePath: number[] = []
+  private readonly _surfaces = new Set<DropdownMenuSurface>()
+  private _takeFocusOnOpen = true
+  private _pendingNotify: boolean | undefined
+  private _skipFocusRestoreOnClose = false
+  private _pointerInteraction?: PointerInteraction
+  private _pendingFocusOutCheck?: () => void
+  private _focusOutGeneration = 0
+  private _pendingTabNavigation?: {
+    event: KeyboardEvent
+    focusedItem: HTMLElement
+    previousFocus?: HTMLElement
+    focusTrigger: boolean
+  }
+  private _shouldOpenInstantly = true
+  private _suppressInitialFocusVisible = true
 
-  private readonly _overlays = new Map<number, MenuOverlay>()
-  /** 实例作用域的帧事务入口。 */
-  private readonly _overlay = defineOpenOverlay().make({
-    requestClose: () => this._keyboardDelegate.closeDeepestOrAll(),
-    isConnected: () => this.isConnected
-  })
-  private readonly _scrollLock = defineScrollLockLease().make()
-  // 手势路由、开合状态机与程序式入口在共享接线里；open 的 reactive 存储仍由本组件持有。
-  // outside-click 与 focus-out 收起由 menu 自己的守卫按 panel 树判定，不走共享监听。
   private readonly _triggerController = defineTriggerController({
     host: this,
     getTrigger: () => this.trigger,
     canOpen: () => !this.disabled,
     getOpen: () => this._openValue,
     hoverOpensInstantly: () => false,
-    getPanelHandle: () => this._handle,
+    getPanelHandle: () =>
+      this._openValue
+        ? {
+            containsEvent: event => this._session.isEventInside(event, { includeHost: false }),
+            hasFocusWithin: () => this._session.hasFocusWithin()
+          }
+        : null,
     outsideClick: false,
     focusOut: false,
     requestOpen: meta =>
@@ -166,112 +150,96 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
       }),
     requestClose: meta => this._closeAll(meta.notify)
   })
-  /** 本帧新开的面板是否把焦点落到首项；hover 打开不得抢焦点。 */
-  private _takeFocusOnOpen = true
-  private _pendingNotify: boolean | undefined
-  private readonly _panelKeepAlive = new Map<MenuOverlay, () => void>()
-  /**
-   * 当前 Escape 候选的会话 handle（level 0）。panel 要等一帧才建好，而 Escape 可能在这之前
-   * 到达：先以宿主为 panel claim 一次，panel 就绪后 release 旧会话、再以真实 panel 重新 claim。
-   * submenu 的 handle 存在各自 `MenuOverlay.handle` 上（经 adopt 进本 handle 子树）。
-   */
-  private _handle: OpenOverlayHandle | null = null
-  // 行为层（hover / outside-click / 键盘 / submenu 收尾）由 shared/menu-behavior 驱动
-  private readonly _outsideClickGuard = createMenuOutsideClickGuard(
-    this,
-    // 根 handle 的 contains 递归覆盖全部已 adopt 的子层，一次查询替代逐层判定。
-    node => this._handle?.contains(node) ?? false
-  )
-  private readonly _closingSubmenus = createClosingSubmenuStack<MenuOverlay>({
-    getPanel: container => container.overlay,
-    restoreItems: (container, parentItem) => moveMenuChildren(container.content, parentItem),
-    dispose: container => {
-      this._unbindPanelKeepAlive(container)
-      container.handle?.release()
-      container.overlay.remove()
-      container.api.dispose()
+
+  private readonly _session = createMenuSession<DropdownMenuSurface>({
+    host: this,
+    markerText: MENU_ITEM_MARKER,
+    hiddenSlot: `${SLOT_PREFIX}-hidden`,
+    createRootTiming: 'frame',
+    observeHost: true,
+    closeOnLeafClick: false,
+    closeWhenEmptied: true,
+    manageFocusRestore: true,
+    resetTabStopsOnCleanup: true,
+    isScrollLockDisabled: () => this.noScrollLock,
+    getArbitration: () => this._triggerController.arbitration(),
+    onRequestClose: () => {
+      this._closeAll(true)
+    },
+    onRootSurfaceChange: () => {
+      this._syncTriggerAria()
+    },
+    surface: {
+      createRoot: () => {
+        const anchor = this._queryTriggerAnchor()
+        if (!anchor) return undefined
+        const { panel, content } = createMenuPortalOverlay('dropdown-overlay', this)
+        panel.setAttribute('role', 'menu')
+        panel.id = `wui-dropdown-menu-${++dropdownIdCounter}`
+        panel.dataset.level = '0'
+        const api = defineOverlay().make({
+          anchor,
+          overlay: panel,
+          placement: this.placement,
+          offset: this.offset,
+          minAnchorWidth: true,
+          matchWidth: this.matchWidth,
+          strategy: 'fixed'
+        })
+        const surface: DropdownMenuSurface = {
+          panel,
+          content,
+          api,
+          unbindKeepAlive: this._triggerController.bindPanelKeepAlive(panel)
+        }
+        this._surfaces.add(surface)
+        return surface
+      },
+      createSubmenu: ({ level, parentItem }) => {
+        const anchor = parentItem.shadowRoot?.querySelector<HTMLElement>('.item-inner') ?? parentItem
+        const { panel, content } = createMenuPortalOverlay('dropdown-overlay', this)
+        panel.setAttribute('role', 'menu')
+        panel.dataset.level = String(level)
+        const api = defineOverlay().make({
+          anchor,
+          overlay: panel,
+          placement: 'right-start',
+          offset: 0,
+          minAnchorWidth: true,
+          matchWidth: false,
+          strategy: 'fixed'
+        })
+        const surface: DropdownMenuSurface = {
+          panel,
+          content,
+          api,
+          unbindKeepAlive: this._triggerController.bindPanelKeepAlive(panel)
+        }
+        this._surfaces.add(surface)
+        return surface
+      },
+      positionRoot: surface => {
+        surface.api.open()
+      },
+      positionSubmenu: surface => {
+        surface.api.open()
+      },
+      disposeSurface: surface => {
+        this._surfaces.delete(surface)
+        surface.unbindKeepAlive()
+        surface.panel.remove()
+        surface.api.dispose()
+      }
     }
-  })
-  private readonly _hoverDelegate: MenuHoverDelegate = {
-    getOpenDepth: () => this._activePath.length,
-    getLevelItems: level => this._getLevelItems(level),
-    getActiveItem: level => this._getLevelItems(level)[this._activePath[level]],
-    isSubmenuItem: item => item.hasAttribute('submenu'),
-    openSubmenu: item => {
-      const level = this._getFocusedLevel(item)
-      if (level === undefined) return
-      const itemIndex = this._getLevelItems(level).indexOf(item)
-      if (itemIndex >= 0) this._toggleSubmenu(level, itemIndex)
-    },
-    closeFrom: level => this._closeSubmenuFrom(level + 1)
-  }
-  private readonly _hoverBinder = createMenuHoverBinder(this._hoverDelegate, 'web-ui-dropdown-item')
-  private readonly _keyboardDelegate: MenuKeyboardDelegate = {
-    getFocusedItem: event =>
-      getFocusedMenuItemFromPanels(
-        event,
-        [...this._overlays.values()].map(({ overlay }) => overlay),
-        'web-ui-dropdown-item'
-      ),
-    getLevelOf: item => this._getFocusedLevel(item),
-    getEnabledItems: level => getEnabledMenuLevelItems(this._overlays.get(level)?.content),
-    isSubmenuItem: item => item.hasAttribute('submenu'),
-    openSubmenuInstant: item => {
-      const level = this._getFocusedLevel(item)
-      if (level === undefined) return
-      const itemIndex = this._getLevelItems(level).indexOf(item)
-      if (itemIndex >= 0) this._toggleSubmenu(level, itemIndex, true)
-    },
-    closeToParent: level => {
-      const parentItem = this._getLevelItems(level - 1)[this._activePath[level - 1]]
-      this._closeSubmenuFrom(level)
-      return parentItem
-    },
-    closeDeepestOrAll: () => {
-      if (this._activePath.length > 0) this._closeSubmenuFrom(this._activePath.length)
-      else this._closeAll(true)
-    }
-  }
-  private _restoreFocusTarget?: HTMLElement
-  private _skipFocusRestoreOnClose = false
-  private _pointerInteraction?: PointerInteraction
-  private _pendingFocusOutCheck?: () => void
-  private _pendingTabNavigation?: {
-    event: KeyboardEvent
-    focusedItem: HTMLElement
-    previousFocus?: HTMLElement
-    focusTrigger: boolean
-  }
-  private _shouldOpenInstantly = true
-  /**
-   * 本次打开是否抑制首项的 `:focus-visible` accent 视觉（口径与 context-menu 一致）。
-   *
-   * 默认 `true`（抑制），只有键盘激活触发的打开才置 `false`：首项的焦点是组件程序化
-   * 落的，而各引擎对「程序化 focus 是否算 focus-visible」判定不同 —— Chromium 走启发式
-   * 通常不匹配，WKWebView 则会匹配（用户在 Interweave 桌面 app 实测到蓝底白字），
-   * 于是同一段代码只在 WebKit 侧暴露出缺陷。取默认抑制而非默认保留，是因为冷启动的
-   * `open` 属性路径拿不到任何手势模态信息，抑制是唯一确定安全的一侧；误伤键盘用户的
-   * 代价有界：`handleMenuKeyboard` 首次方向键即以无参 `focusMenuItem` 重新落焦，
-   * `menu-tree` 的 `toggleAttribute` 无条件清掉本属性，accent 当场回来。
-   */
-  private _suppressInitialFocusVisible = true
-  private _menuSyncScheduled = false
-  private readonly _level0ItemAnchors: MenuItemAnchors = new Map()
-  // 打开期实时渲染：框架（Vue/React 条件渲染）可能在 menu 打开期间持续插入 menu item。
-  // 观察宿主子树（新增项可能被框架 wrapper 包裹）与各层级 panel content 的子树
-  // （打开中的 submenu 父项已被迁入 content，其新增子项只在这里可见），下一帧统一
-  // 把新子树迁入对应层级 panel；panel 尺寸变化由 defineOverlay 的 autoUpdate 跟进重定位。
-  private readonly _menuContentObserver = new MutationObserver(() => {
-    if (this.open) this._scheduleMenuSync()
   })
 
   get isOpen(): boolean {
-    return this.open || this._activePath.length > 0
+    return this.open
   }
 
   override connectedCallback() {
     super.connectedCallback()
-    this._overlay.resume()
+    this._session.connect()
     this._triggerController.connect()
     this.addEventListener('keydown', this._onKeydown)
     window.addEventListener('keydown', this._onTabKeydown)
@@ -281,20 +249,10 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
     document.addEventListener('click', this._onClickOutside)
     document.addEventListener('focusin', this._onFocusIn, true)
     document.addEventListener('focusout', this._onFocusOut, true)
-    this._menuContentObserver.observe(this, { childList: true, subtree: true })
-    /*
-     * 重挂载对账：`disconnectedCallback` 会拆掉 panel、把 menu item 迁回宿主，但 `open` 是公开
-     * prop，不因卸载而改写。Lit 在 detach 期间不记 `changedProperties`，重连后 `updated()`
-     * 不再命中 `changed.has('open')`，panel 于是永久缺席：宿主仍反射 `open` 与
-     * `aria-expanded`，Escape 和 outside click 却无层可关。首连时 `open` 在
-     * `changedProperties` 里、由 `updated()` 负责，`hasUpdated` 就是用来只认重连的。
-     */
     if (this.open && this.hasUpdated) this._syncOpenOverlay(this._isFocusOrphaned())
   }
 
   override firstUpdated() {
-    // trigger slot 内容增删不触发宿主响应式更新：显式请求一轮渲染，
-    // 由 updated() 的 ARIA 回写覆盖晚到的 trigger 元素。
     this.shadowRoot
       ?.querySelector<HTMLSlotElement>('slot[name="trigger"]')
       ?.addEventListener('slotchange', () => this.requestUpdate())
@@ -302,10 +260,10 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
 
   override disconnectedCallback() {
     super.disconnectedCallback()
-    this._menuContentObserver.disconnect()
     this._triggerController.disconnect()
     this._pointerInteraction = undefined
     this._pendingFocusOutCheck = undefined
+    this._focusOutGeneration++
     this._pendingTabNavigation = undefined
     this.removeEventListener('keydown', this._onKeydown)
     window.removeEventListener('keydown', this._onTabKeydown)
@@ -315,16 +273,10 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
     document.removeEventListener('click', this._onClickOutside)
     document.removeEventListener('focusin', this._onFocusIn, true)
     document.removeEventListener('focusout', this._onFocusOut, true)
-    this._outsideClickGuard.dispose()
-    this._hoverBinder.dispose()
-    // 停止帧调度；登记由 _cleanupClosedMenu → _disposeAll 撤销。
-    this._overlay.suspend()
-    this._scrollLock.release()
-    this._cleanupClosedMenu()
+    this._session.disconnect()
   }
 
   protected override updated(changed: Map<string, unknown>) {
-    // ARIA 回写不依赖 open 分支，任何渲染后都保持与宿主状态同步。
     this._syncTriggerAria()
 
     if (changed.has('open')) {
@@ -332,23 +284,11 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
         this._skipFocusRestoreOnClose = false
         this._syncOpenOverlay(true)
       } else {
-        this._overlay.invalidate()
-        this._syncScrollLock()
-        /*
-         * 复位打开模态：`open` 真正翻回 false 才是「上一次打开会话结束」的唯一信号，
-         * 下一会话若不经 `_openMenu()`（宿主直接翻 `open` 属性）就从默认口径重新起算，
-         * 不会把上一次键盘打开留下的 `false` 带进这次鼠标驱动的声明式打开。
-         * 刻意不复位在 `disconnectedCallback`／`_cleanupClosedMenu`：重挂载对账（:188）
-         * 期间 `open` 始终为 true，那次重取焦点属于同一会话，应保留原模态。
-         */
+        this._focusOutGeneration++
         this._suppressInitialFocusVisible = true
-        /*
-         * release ⟺ 关闭：「已登记」就等于「参与仲裁」，不依赖 host.isOpen()
-         * 兜底过滤，所以必须在这里撤销，不能等到退场动画结束。
-         */
-        this._handle?.release()
-        this._handle = null
-        void this._closeRootAfterPresence()
+        const skipFocusRestore = this._skipFocusRestoreOnClose
+        this._skipFocusRestoreOnClose = false
+        this._session.close({ skipFocusRestore })
       }
       const notify = this._pendingNotify
       this._pendingNotify = undefined
@@ -356,64 +296,34 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
     }
     if (changed.has('trigger')) {
       this._triggerController.syncTriggerChange()
-      this._handle?.setArbitration(this._triggerController.arbitration())
+      this._session.syncHostState()
     }
-    if (changed.has('noScrollLock')) this._syncScrollLock()
+    if (changed.has('noScrollLock')) this._session.syncHostState()
     if (changed.has('placement') || changed.has('offset') || changed.has('matchWidth')) {
-      this._overlays.get(0)?.api.update({
+      this._session.getRootSurface()?.api.update({
         placement: this.placement,
         offset: this.offset,
         matchWidth: this.matchWidth
       })
     }
-    this._hoverBinder.bind()
-    this._syncOpenWithContent()
   }
 
-  /**
-   * 焦点是否已无归属：被 detach 打掉的焦点会落回 `body`，用户主动点到别处时不会。
-   * 重挂载对账只在前者才把焦点夺回 menu，否则等于从消费者手里抢焦点。
-   */
   private _isFocusOrphaned(): boolean {
     const active = document.activeElement
     return active === null || active === document.body || active === document.documentElement
   }
 
-  /** Resolve the actual focus node through open shadow roots. */
-  private _getDeepActiveElement(): HTMLElement | undefined {
-    let active: Element | null = document.activeElement
-    while (active instanceof HTMLElement) {
-      const nested = active.shadowRoot?.activeElement
-      if (!(nested instanceof HTMLElement)) return active
-      active = nested
-    }
-    return undefined
-  }
-
-  /**
-   * 打开态的唯一对账入口：panel、滚动锁、outside click、hover 与 menu 焦点都从这里收敛，
-   * `updated()` 的打开分支与重连对账共用它，两条路径必须落到同一个状态。
-   */
   private _syncOpenOverlay(takeFocus: boolean) {
     const focusFirst = takeFocus && this._takeFocusOnOpen
+    const isInstant = this._shouldOpenInstantly
+    const suppressFocusVisible = this._suppressInitialFocusVisible
     this._takeFocusOnOpen = true
-    this._restoreFocusTarget ??= this._getDeepActiveElement()
-    this._outsideClickGuard.arm()
-    this._syncScrollLock()
-    this._hideAllSubmenuChildren()
-    this._overlay.invalidate()
-    this._overlay.scheduleFrame(() => {
-      this._ensureOverlay(0, this._shouldOpenInstantly)
-      this._shouldOpenInstantly = true
-      if (focusFirst) {
-        focusMenuItem(getEnabledMenuLevelItems(this._overlays.get(0)?.content)[0], {
-          suppressFocusVisible: this._suppressInitialFocusVisible
-        })
-      }
-      // panel id 在 overlay 构建后才有：回写 aria-controls 指向。
-      this._syncTriggerAria()
+    this._shouldOpenInstantly = true
+    this._session.open({
+      isInstant,
+      takeFocus: focusFirst,
+      suppressFocusVisible
     })
-    this._bindHoversAfterUpdate()
   }
 
   /** 命令式打开：派发 `open-change`。`none` 下同样可用。 */
@@ -438,16 +348,13 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
     automatic: boolean
   }) {
     if (this.disabled || this._openValue) return
-    const hasContent = this._hasOverlayContent()
+    const hasContent = this._session.hasContent()
     if (options.automatic && !hasContent) return
-    this._openedWithContent = hasContent
-    this._outsideClickGuard.arm()
     this._shouldOpenInstantly = options.isInstant
     this._suppressInitialFocusVisible = options.suppressFocusVisible
     this._takeFocusOnOpen = options.takeFocus
-    // panel 要等一帧才建好，而 Escape 可能在这之前到达：先用宿主当 panel claim 一次；
-    // panel 就绪后 _buildOverlay 会 release 这个占位会话，再以真实 panel 重新 claim。
-    this._claimRoot(this._overlays.get(0)?.overlay ?? this)
+    // panel 要等一帧才建好，而 Escape 可能在这之前到达：先用宿主占位 claim。
+    this._session.claimPlaceholder()
     this._applyOpen(options.notify)
   }
 
@@ -470,357 +377,6 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
     this._applyClose(notify)
   }
 
-  private _closeAllSubmenus() {
-    this._closeSubmenuFrom(1, true)
-    this._closingSubmenus.restoreAll()
-    this._syncActiveAttrs()
-  }
-
-  private _cleanupClosedMenu() {
-    this._closeAllSubmenus()
-    this._returnLevel0Items()
-    this._resetMenuTabStops()
-    this._disposeAll()
-    this._syncTriggerAria()
-  }
-
-  private _resetMenuTabStops() {
-    this.querySelectorAll<HTMLElement>('web-ui-dropdown-item').forEach(item => {
-      const control = item.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
-      if (control) control.tabIndex = item.hasAttribute('disabled') ? -1 : 0
-    })
-  }
-
-  private async _closeRootAfterPresence() {
-    const overlay = this._overlays.get(0)?.overlay
-    if (overlay && !(await hideOverlayPresence(overlay, { isInstant: !this._hasOverlayContent() }))) return
-    if (this.open || !this.isConnected) return
-
-    // submenu panels 与 root panel 是兄弟节点；整张 menu 收尾会移除所有仍持有焦点的层级。
-    const shouldRestoreFocus = [...this._overlays.values(), ...this._closingSubmenus.closing()].some(menuOverlay =>
-      menuOverlay.overlay.matches(':focus-within')
-    )
-    this._cleanupClosedMenu()
-    if (shouldRestoreFocus && !this._skipFocusRestoreOnClose) this._restoreFocusTarget?.focus()
-    this._skipFocusRestoreOnClose = false
-    this._restoreFocusTarget = undefined
-  }
-
-  private _hideAllSubmenuChildren() {
-    hideNestedMenuChildren(this, `${SLOT_PREFIX}-hidden`)
-  }
-
-  private _toggleSubmenu(level: number, itemIndex: number, isInstant = false) {
-    if (this._activePath[level] === itemIndex) {
-      return
-    }
-
-    this._closeSubmenuFrom(level + 1)
-
-    this._activePath = [...this._activePath.slice(0, level), itemIndex]
-    this._syncActiveAttrs()
-
-    const item = this._getLevelItems(level)[itemIndex]
-    if (item?.hasAttribute('submenu')) {
-      this._overlay.scheduleFrame(() => {
-        if (!this.open || this._activePath[level] !== itemIndex) return
-        const restored = this._ensureOverlay(level + 1, isInstant, item)
-        if (!restored) this._populateOverlay(level + 1, item)
-      })
-    }
-
-    this._bindHoversAfterUpdate()
-  }
-
-  private _closeSubmenuFrom(level: number, isInstant = false) {
-    for (let lv = this._activePath.length; lv >= level; lv--) {
-      const overlay = this._overlays.get(lv)
-      const parentItem = this._getLevelItems(lv - 1)[this._activePath[lv - 1]]
-      if (!overlay) continue
-
-      if (!parentItem || isInstant) {
-        this._depopulateOverlay(lv, parentItem)
-        this._disposeOverlay(lv)
-      } else {
-        this._overlays.delete(lv)
-        this._closingSubmenus.closeAsync(parentItem, overlay)
-      }
-    }
-    const nextActivePath = this._activePath.slice(0, level - 1)
-    if (nextActivePath.length !== this._activePath.length) {
-      this._activePath = nextActivePath
-    }
-    this._syncActiveAttrs()
-  }
-
-  private _syncActiveAttrs() {
-    this.querySelectorAll('web-ui-dropdown-item').forEach(item => {
-      item.removeAttribute('active')
-    })
-    this._overlays.forEach((_, level) => {
-      this._getLevelItems(level).forEach(item => item.removeAttribute('active'))
-    })
-    this._activePath.forEach((itemIndex, level) => {
-      const item = this._getLevelItems(level)[itemIndex]
-      if (item?.matches('web-ui-dropdown-item')) {
-        item.setAttribute('active', '')
-      }
-    })
-  }
-
-  private _getLevelItems(level: number): HTMLElement[] {
-    const content = this._overlays.get(level)?.content
-    return content ? getMenuChildren(content) : []
-  }
-
-  private _populateLevel0() {
-    const content = this._overlays.get(0)?.content
-    if (!content) return
-    // 初次打开即建立 marker 锚：宿主此后始终持有模板序骨架，打开期框架插入与
-    // 关闭归还都以它为基准（机制与 context-menu 共用，见 menu-tree）。
-    reconcileManagedMenuItems(this, content, this._level0ItemAnchors, MENU_ITEM_MARKER)
-    orderManagedMenuItems(this, content, this._level0ItemAnchors, MENU_ITEM_MARKER)
-  }
-
-  private _scheduleMenuSync() {
-    if (this._menuSyncScheduled) return
-    this._menuSyncScheduled = true
-    requestAnimationFrame(() => {
-      this._menuSyncScheduled = false
-      if (!this.open) return
-      this._syncOpenMenuContent()
-    })
-  }
-
-  // 打开期的统一内容同步：把打开期间框架新增的 menu 子树迁入对应层级 panel。
-  // 一级项走 marker 锚 reconcile（保序 + 关闭按模板位归还）；panel 尺寸变化由
-  // defineOverlay 的 autoUpdate 跟进重定位。
-  private _syncOpenMenuContent() {
-    const level0Content = this._overlays.get(0)?.content
-    // 迁移前隐藏宿主中新项的嵌套子项（hidden slot 属性随元素一起迁移）。
-    this._hideAllSubmenuChildren()
-    if (level0Content) {
-      reconcileManagedMenuItems(this, level0Content, this._level0ItemAnchors, MENU_ITEM_MARKER)
-      // 新迁入项的嵌套子项未打 hidden slot，会经 dropdown-item 默认 slot 渲染进
-      // 父项 label 叠到 menu 上；panel 项在 panel 内渲染，宿主查询够不到，须对 content 补隐藏。
-      hideNestedMenuChildren(level0Content, `${SLOT_PREFIX}-hidden`)
-      // 框架注释锚点复位独立于元素重排：锚点漂移不收敛会破坏后续翻转的插入点（同 context-menu）。
-      const frameworkAnchors = captureFrameworkAnchors(level0Content, MENU_ITEM_MARKER)
-      orderManagedMenuItems(this, level0Content, this._level0ItemAnchors, MENU_ITEM_MARKER)
-      restoreFrameworkAnchors(level0Content, frameworkAnchors)
-    }
-    for (const [level, overlay] of this._overlays) {
-      if (level === 0) continue
-      const parentItem = this._getLevelItems(level - 1)[this._activePath[level - 1]]
-      if (parentItem) moveMenuChildren(parentItem, overlay.content)
-      hideNestedMenuChildren(overlay.content, `${SLOT_PREFIX}-hidden`)
-    }
-    this._hoverBinder.bind()
-    this._syncOpenWithContent()
-  }
-
-  /** 一级菜单内容决定根层是否还有可展示的东西；子层内容挂在根项内部，不单独计数。 */
-  private _hasOverlayContent(): boolean {
-    const root = this._overlays.get(0)?.content ?? this
-    return getMovableMenuSubtrees(root).some(subtree => !subtree.hasAttribute('hidden'))
-  }
-
-  private _syncOpenWithContent() {
-    if (!this._openValue) {
-      this._openedWithContent = false
-      return
-    }
-    if (this._hasOverlayContent()) {
-      this._openedWithContent = true
-      return
-    }
-    // 打开时就没有内容（程序式空开）保持原状；只有内容从有到无才收起。
-    if (this._openedWithContent) this._closeAll(true)
-  }
-
-  private _returnLevel0Items() {
-    const content = this._overlays.get(0)?.content
-    if (content) returnManagedMenuItemsToSlot(this, content, this._level0ItemAnchors)
-  }
-
-  private _populateOverlay(level: number, submenuItem: HTMLElement) {
-    const content = this._overlays.get(level)?.content
-    if (content) moveMenuChildren(submenuItem, content)
-  }
-
-  private _depopulateOverlay(level: number, parentItem?: HTMLElement) {
-    const content = this._overlays.get(level)?.content
-    if (!content) return
-    const targetLevel = level - 1
-    const submenuItem = parentItem ?? this._getLevelItems(targetLevel)[this._activePath[targetLevel]]
-    if (submenuItem) moveMenuChildren(content, submenuItem)
-  }
-
-  /*
-   * 登记与「panel 是否本帧新建」解耦，与 context-menu 的根层修复同构。
-   *
-   * 退场被打断时（`_closeRootAfterPresence` 在 `hideOverlayPresence` 返回 false 后提前
-   * return）panel 仍在 DOM 里，而关闭分支已经把 handle 撤了。此时重开走的是 `_ensureOverlay`
-   * 的两条复用分支，它们不会重跑 `_buildOverlay`——claim/adopt 若只挂在 `_buildOverlay` 上，
-   * 于是出现「panel 可见 + `open === true` 却没有任何登记」：Escape 关不掉它（仲裁看不到它），
-   * 守卫里 `contains` 恒 false，点 panel 内部反被当成外部点击关掉整张 menu。
-   *
-   * `open` 属性路径（`updated()` 里 scheduleFrame 到 `_ensureOverlay(0)`）与 `show()`
-   * 都落在复用分支上，因此**所有**根 claim 都必须走这里 —— 只在 `_ensureOverlay` 里补 claim
-   * 是不够的：`show()` 会先把 handle 建好，使那次补 claim 变成 no-op，子层照样被漏掉。
-   *
-   * 新 claim 即新会话，旧会话连同其全部 adopt 子树一起作废，因此**仍在场的**子层必须
-   * 在这里统一重挂。来源有两个：`_overlays` 里登记的层级，以及本轮已退场、被移出
-   * `_overlays` 却仍在 DOM 里的收尾栈 panel —— 只看前者会漏掉后者（见下）。
-   */
-  private _claimRoot(panel: HTMLElement): OpenOverlayHandle {
-    this._handle?.release()
-    this._handle = this._overlay.claim(panel, { arbitration: this._triggerController.arbitration() })
-    for (const [level, sub] of this._overlays) {
-      if (level === 0) continue
-      sub.handle = this._handle.adopt(sub.overlay)
-    }
-    /*
-     * 收尾栈里的 submenu panel 同样「可见但已脱离快照」：`_closeSubmenuFrom` 只把它们移出
-     * `_overlays`，层仍挂在旧 handle 下、panel 仍在 DOM 里退场。不重挂的话它们会被判成 panel 外，
-     * 点它内部就关掉整张 menu —— `composition.contains` 走登记树、且退场期间不注销，
-     * 所以收尾栈里的层必须重挂。
-     * 新 handle 要写回容器：收尾结束时 adapter.dispose 释放的是 `container.handle`。
-     */
-    for (const container of this._closingSubmenus.closing()) {
-      container.handle = this._handle.adopt(container.overlay)
-    }
-    return this._handle
-  }
-
-  /** handle 缺失时补登记；panel 还没建好时以宿主代填，与 `_openMenu` 的占位会话同一口径。 */
-  private _ensureRootHandle(): OpenOverlayHandle {
-    return this._handle ?? this._claimRoot(this._overlays.get(0)?.overlay ?? this)
-  }
-
-  private _ensureOverlay(level: number, isInstant = false, submenuItem?: HTMLElement): boolean {
-    const closingOverlay = submenuItem ? this._closingSubmenus.take(submenuItem) : undefined
-    if (closingOverlay) {
-      // 从 closing 栈取回的 panel：登记已在关闭时撤销，这里必须重新挂回根 handle 子树。
-      closingOverlay.handle = this._ensureRootHandle().adopt(closingOverlay.overlay)
-      this._overlays.set(level, closingOverlay)
-      closingOverlay.api.open()
-      showOverlayPresence(closingOverlay.overlay, { isInstant })
-      return true
-    }
-    const existing = this._overlays.get(level)
-    if (existing) {
-      this._ensureRootHandle()
-      existing.api.open()
-      showOverlayPresence(existing.overlay, { isInstant })
-      return false
-    }
-    this._buildOverlay(level, isInstant)
-    return false
-  }
-
-  private _buildOverlay(level: number, isInstant = false) {
-    const { panel: overlay, content } = createMenuPortalOverlay('dropdown-overlay', this)
-    overlay.setAttribute('role', 'menu')
-    // 根层级 panel 带 id：trigger 的 aria-controls 指向它（Q9a）。
-    if (level === 0) overlay.id = `wui-dropdown-menu-${++dropdownIdCounter}`
-    overlay.dataset.level = String(level)
-    overlay.addEventListener('click', this._onMenuClick)
-    overlay.addEventListener('keydown', this._onKeydown)
-
-    const anchor = level === 0 ? this._queryTriggerAnchor() : this._getSubmenuTriggerAnchor(level - 1)
-
-    if (anchor) {
-      const ctrl = defineOverlay().make({
-        anchor,
-        overlay,
-        placement: level === 0 ? this.placement : 'right-start',
-        offset: level === 0 ? this.offset : 0,
-        // menu 至少与 trigger/父项同宽，内容可更宽（floor 来自 --wui-overlay-min-width）
-        minAnchorWidth: true,
-        matchWidth: level === 0 ? this.matchWidth : false,
-        strategy: 'fixed'
-      })
-      if (level === 0) {
-        // panel 就绪：释放「以宿主代填」的占位会话，换成真实 panel。
-        this._claimRoot(overlay)
-        const container: MenuOverlay = { api: ctrl, overlay, content }
-        this._overlays.set(level, container)
-        this._bindPanelKeepAlive(container)
-        this._populateLevel0()
-      } else {
-        /*
-         * 子层进根 handle 子树，默认不是独立候选 —— 「在树里但不是这一层」由此表达；
-         * 用 `_ensureRootHandle()` 而不是 `_handle?.`：
-         * 后者在 handle 意外缺失时会静默跳过 adopt，留下一棵无人认领的子树。
-         */
-        const handle = this._ensureRootHandle().adopt(overlay)
-        const container: MenuOverlay = { api: ctrl, overlay, content, handle }
-        this._overlays.set(level, container)
-        this._bindPanelKeepAlive(container)
-      }
-      // submenu 父项在 panel content 内，其新增子项只有观察 content 子树才能看到
-      this._menuContentObserver.observe(content, { childList: true, subtree: true })
-      ctrl.open()
-      showOverlayPresence(overlay, { isInstant })
-    }
-  }
-
-  private _bindPanelKeepAlive(container: MenuOverlay) {
-    this._panelKeepAlive.get(container)?.()
-    this._panelKeepAlive.set(container, this._triggerController.bindPanelKeepAlive(container.overlay))
-  }
-
-  private _unbindPanelKeepAlive(container: MenuOverlay) {
-    this._panelKeepAlive.get(container)?.()
-    this._panelKeepAlive.delete(container)
-  }
-
-  private _disposeOverlay(level: number) {
-    const overlay = this._overlays.get(level)
-    if (overlay) this._unbindPanelKeepAlive(overlay)
-    if (level === 0) {
-      // 根 handle 撤销会递归撤销全部已 adopt 的子层。
-      this._handle?.release()
-      this._handle = null
-    }
-    // 子层 handle 随所属 MenuOverlay 释放；已被根层递归撤销时幂等无操作。
-    overlay?.handle?.release()
-    overlay?.overlay.removeEventListener('click', this._onMenuClick)
-    overlay?.overlay.removeEventListener('keydown', this._onKeydown)
-    overlay?.overlay.remove()
-    overlay?.api.dispose()
-    this._overlays.delete(level)
-    this._rebindMenuContentObservers()
-  }
-
-  // jsdom 的 MutationObserver 不实现 unobserve；统一 disconnect 后重绑剩余目标。
-  private _rebindMenuContentObservers() {
-    this._menuContentObserver.disconnect()
-    this._menuContentObserver.observe(this, { childList: true, subtree: true })
-    for (const overlay of this._overlays.values()) {
-      this._menuContentObserver.observe(overlay.content, { childList: true, subtree: true })
-    }
-  }
-
-  private _disposeAll() {
-    /*
-     * 先无条件撤销根 handle。`_openMenu` 会先用宿主当 panel claim 一次占位会话（真实 panel 要等
-     * 一帧才建好），若这段时间内宿主被卸载、`_buildOverlay` 没机会跑，`_overlays` 仍是空的
-     * —— 只遍历 `_overlays` 就会漏掉它：该层永久留在模块注册表里强引用整个组件，且宿主
-     * 重挂载后 `panel.isConnected` 又为真，占位层重新成为候选、吞掉 Escape。
-     */
-    this._handle?.release()
-    this._handle = null
-    for (const level of this._overlays.keys()) {
-      this._disposeOverlay(level)
-    }
-  }
-
-  private _syncScrollLock(isOpen = this.open) {
-    this._scrollLock.sync(isOpen && !this.noScrollLock)
-  }
-
   private _queryTriggerAnchor(): HTMLElement | null {
     const slot = this.shadowRoot?.querySelector<HTMLSlotElement>('slot[name="trigger"]')
     const el = slot?.assignedElements()[0]
@@ -831,7 +387,7 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
     const trigger = this._queryTriggerAnchor()
     if (!trigger) return
     trigger.focus()
-    const active = this._getDeepActiveElement()
+    const active = getDeepActiveElement()
     if (active && isComposedDescendant(active, trigger)) return
 
     const control = trigger.shadowRoot?.querySelector<HTMLElement>(
@@ -840,54 +396,32 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
     control?.focus()
   }
 
-  /*
-   * trigger 语义回写（Q9a）：slot 进来的元素是真正的可聚焦交互元素，
-   * aria-haspopup / aria-expanded / aria-controls 必须设在它身上；
-   * 组件没有 trigger 包装 div，ARIA 没有别处可挂。
-   */
   private _syncTriggerAria() {
     const trigger = this._queryTriggerAnchor()
     if (!trigger) return
     trigger.setAttribute('aria-haspopup', 'menu')
     trigger.setAttribute('aria-expanded', String(this.open))
-    const rootOverlay = this._overlays.get(0)?.overlay
+    const rootOverlay = this._session.getRootSurface()?.panel
     if (rootOverlay?.id) trigger.setAttribute('aria-controls', rootOverlay.id)
     else trigger.removeAttribute('aria-controls')
   }
 
-  private _getSubmenuTriggerAnchor(level: number): HTMLElement | null {
-    const idx = this._activePath[level]
-    if (idx === undefined) return null
-    const items = this._getLevelItems(level)
-    const item = items[idx]
-    if (!item) return null
-    return item.shadowRoot?.querySelector('.item-inner') ?? item
-  }
-
-  /*
-   * `detail === 0` ⇔ 键盘激活（Enter/Space 触发的 click），`detail > 0` ⇔ 指针点击。
-   * 共享状态机把同一个信号作为 `instant` 传回：它既决定是否免入场过渡，也决定首项要不要
-   * 留 `:focus-visible`（见 `_suppressInitialFocusVisible`）。
-   */
   private _onClickOutside = (e: MouseEvent) => {
     if (this._pointerInteraction) {
       this._pointerInteraction.completed = true
-      this._pointerInteraction.clickInsideMenu = this._outsideClickGuard.isInside(e)
+      this._pointerInteraction.clickInsideMenu = this._session.isEventInside(e)
       this._pointerInteraction = undefined
       this._resumePendingFocusOutCheck()
     }
     if (!hasTriggerGesture(this.trigger, 'click')) return
-    if (!this.isOpen || this._outsideClickGuard.isArmed()) return
-    if (this._outsideClickGuard.isInside(e)) return
+    if (!this.isOpen || this._session.isEventInside(e, { respectOpenArm: true })) return
     this._closeAll(true)
   }
 
   private _onPointerDown = (event: PointerEvent) => {
-    const startedInsideMenu = Boolean(this.open && this._handle?.containsEvent(event))
+    const startedInsideMenu = Boolean(this.open && this._session.isEventInside(event, { includeHost: false }))
     this._pointerInteraction = {
       startedInsideMenu,
-      // Trigger 的默认焦点动作也可能先于 click 让菜单项失焦；等 pointerup 后再检查，
-      // 让同一次 trigger click 先执行开合切换，避免按住 trigger 时抢先关、松开后又重开。
       startedWithinDropdown: Boolean(this.open && (startedInsideMenu || event.composedPath().includes(this))),
       completed: false
     }
@@ -897,7 +431,7 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
     const interaction = this._pointerInteraction
     if (!interaction) return
     interaction.completed = true
-    interaction.clickInsideMenu = Boolean(this._handle?.containsEvent(event))
+    interaction.clickInsideMenu = Boolean(this._session.isEventInside(event, { includeHost: false }))
     this._pointerInteraction = undefined
     this._resumePendingFocusOutCheck()
   }
@@ -919,50 +453,44 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
 
   private _onFocusOut = (event: FocusEvent) => {
     if (!hasTriggerGesture(this.trigger, 'focus')) return
-    const handle = this._handle
-    if (!this.open || !handle?.containsEvent(event)) return
+    if (!this.open || !this._session.isEventInside(event, { includeHost: false })) return
     const pointerInteraction = this._pointerInteraction
     const source = event.composedPath()[0]
-    // Lit 更新条目时可能替换焦点控件并从已脱离的节点派发 focusout。
     if (source instanceof Node && !source.isConnected) return
     const next = event.relatedTarget
-    if (
-      next instanceof Node &&
-      [...this._overlays.values()].some(({ overlay }) => isComposedDescendant(next, overlay))
-    ) {
+    if (next instanceof Node && [...this._surfaces].some(({ panel }) => isComposedDescendant(next, panel))) {
       return
     }
     const movedToKnownOutsideTarget = next instanceof Node
     if (movedToKnownOutsideTarget) this._skipFocusRestoreOnClose = true
 
+    const generation = this._focusOutGeneration
     const checkFocus = () => {
-      if (!this.open || this._handle !== handle || !hasTriggerGesture(this.trigger, 'focus')) return
+      if (!this.open || this._focusOutGeneration !== generation || !hasTriggerGesture(this.trigger, 'focus')) return
       if (this._pendingTabNavigation) {
-        this._pendingFocusOutCheck = () => this._overlay.scheduleFrame(checkFocus)
+        this._pendingFocusOutCheck = () => requestAnimationFrame(checkFocus)
         return
       }
       if (pointerInteraction?.startedWithinDropdown) {
         if (!pointerInteraction.completed) {
-          // pointerdown 可能先让 menu item 失焦；等同一手势的 pointerup/click 确认是否点在 menu 内。
-          this._pendingFocusOutCheck = () => this._overlay.scheduleFrame(checkFocus)
+          this._pendingFocusOutCheck = () => requestAnimationFrame(checkFocus)
           return
         }
         if (pointerInteraction.clickInsideMenu) return
       }
-      if (handle.hasFocusWithin()) {
+      if (this._session.hasFocusWithin()) {
         if (movedToKnownOutsideTarget) this._skipFocusRestoreOnClose = false
         return
       }
       this._skipFocusRestoreOnClose = true
       this._closeAll(true)
     }
-    this._overlay.scheduleFrame(checkFocus)
+    requestAnimationFrame(checkFocus)
   }
 
   private _onFocusIn = (event: FocusEvent) => {
-    const handle = this._handle
-    if (!this.open || !handle) return
-    if (!handle.containsEvent(event)) {
+    if (!this.open || !this._session.getRootSurface()) return
+    if (!this._session.isEventInside(event, { includeHost: false })) {
       if (this._pendingTabNavigation) return
       if (this._pointerInteraction?.startedWithinDropdown && !this._pointerInteraction.completed) return
       if (!hasTriggerGesture(this.trigger, 'focus')) return
@@ -978,7 +506,7 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
   }
 
   private _setMenuTabStop(focusedItem?: HTMLElement) {
-    for (const { content } of this._overlays.values()) {
+    for (const { content } of this._surfaces) {
       content.querySelectorAll<HTMLElement>('web-ui-dropdown-item').forEach(item => {
         const control = item.shadowRoot?.querySelector<HTMLElement>('[role="menuitem"]')
         if (control) control.tabIndex = item === focusedItem && !item.hasAttribute('disabled') ? 0 : -1
@@ -986,76 +514,49 @@ export class WebUiDropdown extends defineOverlayDelayProps(LitElement) {
     }
   }
 
-  private _onMenuClick = (e: MouseEvent) => {
-    const item = getMenuItemFromEvent(e)
-    if (!item || item.hasAttribute('disabled') || !item.hasAttribute('submenu')) return
-
-    const level = this._getFocusedLevel(item)
-    if (level === undefined) return
-    const itemIndex = this._getLevelItems(level).indexOf(item)
-    if (itemIndex >= 0) this._toggleSubmenu(level, itemIndex, e.detail === 0)
-  }
-
   private _onKeydown = (e: KeyboardEvent) => {
-    if (!this.open) return
-
-    if (e.key === 'Tab') return
-    if (this.disabled) return
-
-    // overlay 上键盘事件 target 是 menu item 而非组件自身，不能限定 e.target === this，
-    // 否则鼠标打开、焦点在 menu item 时 Escape 无法关闭
-    handleMenuKeyboard(this._keyboardDelegate, e)
+    if (!this.open || e.key === 'Tab' || this.disabled) return
+    this._session.handleKeydown(e)
   }
 
   private _onTabKeydown = (e: KeyboardEvent) => {
     if (e.key !== 'Tab' || !this.open || e.defaultPrevented) return
     const focusedItem = getMenuItemFromEvent(e)
-    if (!focusedItem || this._getFocusedLevel(focusedItem) === undefined) return
+    if (!focusedItem || ![...this._surfaces].some(({ panel }) => panel.contains(focusedItem))) return
 
-    const isInsideNativeModal = [...this._overlays.values()].some(({ overlay }) => hasNativeModalAncestor(overlay))
+    const isInsideNativeModal = [...this._surfaces].some(({ panel }) => hasNativeModalAncestor(panel))
     const navigation = {
       event: e,
       focusedItem,
       previousFocus:
         focusedItem.shadowRoot?.activeElement instanceof HTMLElement
           ? focusedItem.shadowRoot.activeElement
-          : this._getDeepActiveElement(),
+          : getDeepActiveElement(),
       focusTrigger: !isInsideNativeModal || !e.shiftKey
     }
     this._pendingTabNavigation = navigation
     this._setMenuTabStop()
     if (navigation.focusTrigger) this._focusTriggerForTab()
 
-    // 等当前键盘事件及默认动作结束，再读取包括后注册 window listener 在内的最终取消状态。
     setTimeout(() => {
       if (this._pendingTabNavigation !== navigation) return
       this._pendingTabNavigation = undefined
 
       if (e.defaultPrevented) {
         this._setMenuTabStop(focusedItem)
-        if (navigation.previousFocus?.isConnected && this._getDeepActiveElement() !== navigation.previousFocus) {
+        if (navigation.previousFocus?.isConnected && getDeepActiveElement() !== navigation.previousFocus) {
           navigation.previousFocus.focus()
         }
         return
       }
 
-      if (!isTriggerNone(this.trigger) && (navigation.focusTrigger || !this._handle?.hasFocusWithin())) {
+      if (!isTriggerNone(this.trigger) && (navigation.focusTrigger || !this._session.hasFocusWithin())) {
         this._skipFocusRestoreOnClose = true
         this._closeAll(true)
       } else {
         this._setMenuTabStop(focusedItem)
       }
     }, 0)
-  }
-
-  private _getFocusedLevel(item?: HTMLElement): number | undefined {
-    if (!item) return undefined
-    const overlay = [...this._overlays.entries()].find(([, value]) => value.overlay.contains(item))
-    return overlay?.[0]
-  }
-
-  private _bindHoversAfterUpdate() {
-    requestAnimationFrame(() => this._hoverBinder.bind())
   }
 
   override render() {

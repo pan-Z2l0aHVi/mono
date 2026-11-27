@@ -619,4 +619,49 @@ describe('MenuSession', () => {
     expect(session.getRootSurface()).toBe(sharedSurface)
     expect(disposeSpy).not.toHaveBeenCalled()
   })
+
+  it('claimPlaceholder 在 root 尚未建立前即承接 Escape 仲裁与同帧外部点击保护', () => {
+    const host = document.createElement('div')
+    const item = createMenuItem('Alpha')
+    host.append(item)
+    document.body.append(host)
+
+    const onRequestClose = vi.fn<(reason: MenuCloseReason) => void>()
+    const session = trackSession<MenuSurface>({
+      host,
+      markerText: 'test-marker',
+      hiddenSlot: 'test-hidden',
+      isScrollLockDisabled: () => true,
+      onRequestClose,
+      closeOnLeafClick: false,
+      createRootTiming: 'frame',
+      surface: {
+        createRoot: () => createFakeSurface('root'),
+        createSubmenu: ({ level }) => createFakeSurface(`sub-${level}`),
+        positionRoot: () => {},
+        positionSubmenu: () => {},
+        disposeSurface: surface => surface.panel.remove()
+      }
+    })
+
+    session.connect()
+    const outsideClick = new MouseEvent('click', { bubbles: true, composed: true })
+    document.body.dispatchEvent(outsideClick)
+    expect(session.isEventInside(outsideClick, { respectOpenArm: true })).toBe(false)
+
+    // 在调用 open() 之前，claimPlaceholder() 自身就应独立建立同帧外部点击防护与占位句柄。
+    session.claimPlaceholder()
+    expect(session.isEventInside(outsideClick, { respectOpenArm: true })).toBe(true)
+
+    session.open({ isInstant: true, takeFocus: false, suppressFocusVisible: true })
+
+    // 首帧尚未完成，root 尚未建立。
+    expect(session.getRootSurface()).toBeUndefined()
+
+    // 占位句柄在首帧完成前即应承接 Escape 仲裁。
+    document.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape', bubbles: true, cancelable: true }))
+    expect(onRequestClose).toHaveBeenCalledWith('escape')
+
+    session.disconnect()
+  })
 })
