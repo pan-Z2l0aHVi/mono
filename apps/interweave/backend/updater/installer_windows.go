@@ -121,14 +121,50 @@ func (w *windowsInstaller) InstallAndRelaunch(ctx context.Context, req InstallRe
 	}
 	exePath = filepath.Clean(exePath)
 	oldPID := os.Getpid()
-	eventName := fmt.Sprintf("Local\\InterweaveUpdateDone-%d-%d", oldPID, time.Now().UnixNano())
+	nonce := time.Now().UnixNano()
+	doneEventName := fmt.Sprintf("Local\\InterweaveUpdateDone-%d-%d", oldPID, nonce)
+	readyEventName := fmt.Sprintf("Local\\InterweaveWatchdogReady-%d-%d", oldPID, nonce)
 
-	doneEventHandle, err := createNamedEvent(eventName)
+	doneEventHandle, err := createNamedEvent(doneEventName)
 	if err != nil {
 		return fmt.Errorf("create update sync event: %w", err)
 	}
-	// 由 watchdog 继续持有同名事件句柄，这里在启动 helper + watchdog 后再关闭。
 	defer windows.CloseHandle(doneEventHandle)
+
+	readyEventHandle, err := createNamedEvent(readyEventName)
+	if err != nil {
+		return fmt.Errorf("create watchdog ready event: %w", err)
+	}
+	defer windows.CloseHandle(readyEventHandle)
+
+	// 先启动普通用户态（Medium IL）watchdog 并等待其打开 doneEvent 后通过 readyEvent 握手确认，
+	// 确保在父进程关闭句柄或退出前，doneEvent 内核对象始终由 watchdog 持有，不会过早销毁。
+	watchdogArgs := []string{
+		SubcommandWatchdogRelaunch,
+		"--old-pid=" + strconv.Itoa(oldPID),
+		"--target=" + exePath,
+		"--sha256=" + req.ExpectedSHA256,
+		"--done-event=" + doneEventName,
+		"--ready-event=" + readyEventName,
+	}
+	wdCmd := exec.Command(exePath, watchdogArgs...)
+	wdCmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS}
+	if err := wdCmd.Start(); err != nil {
+		return fmt.Errorf("start relaunch watchdog: %w", err)
+	}
+
+	// 若后续任一步骤（握手超时、用户取消 UAC、启动 helper 失败）出错，立即终止 watchdog，避免残留孤儿进程。
+	keepWatchdog := false
+	defer func() {
+		if !keepWatchdog && wdCmd.Process != nil {
+			_ = wdCmd.Process.Kill()
+		}
+	}()
+
+	readyRes, readyErr := windows.WaitForSingleObject(readyEventHandle, 5_000)
+	if readyErr != nil || readyRes != windows.WAIT_OBJECT_0 {
+		return fmt.Errorf("wait relaunch watchdog ready: res=%d err=%v", readyRes, readyErr)
+	}
 
 	applyArgs := []string{
 		SubcommandApplyUpdate,
@@ -137,7 +173,7 @@ func (w *windowsInstaller) InstallAndRelaunch(ctx context.Context, req InstallRe
 		"--target=" + exePath,
 		"--sha256=" + req.ExpectedSHA256,
 		"--version=" + req.TargetVersion.String(),
-		"--done-event=" + eventName,
+		"--done-event=" + doneEventName,
 	}
 
 	// 需提权时，改由已安装在受保护目录的当前旧版 exe 自举执行 --apply-update（消除用户态缓存提权自校验 TOCTOU）。
@@ -157,18 +193,7 @@ func (w *windowsInstaller) InstallAndRelaunch(ctx context.Context, req InstallRe
 		}
 	}
 
-	// UAC 授权通过后再启动独立普通用户态（Medium IL）watchdog，等 done-event 信号后直接 CreateProcess 拉起新版。
-	watchdogArgs := []string{
-		SubcommandWatchdogRelaunch,
-		"--old-pid=" + strconv.Itoa(oldPID),
-		"--target=" + exePath,
-		"--done-event=" + eventName,
-	}
-	wdCmd := exec.Command(exePath, watchdogArgs...)
-	wdCmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS}
-	if err := wdCmd.Start(); err != nil {
-		return fmt.Errorf("start relaunch watchdog: %w", err)
-	}
+	keepWatchdog = true
 
 	// 通知主进程优雅退出（关闭 SQLite 与 Wails OnShutdown），解除对旧 exe 的占用。
 	if req.OnReadyToQuit != nil {
@@ -221,30 +246,47 @@ func runApplyUpdate(args ApplyUpdateArgs) error {
 
 	// 6. 通知普通用户态 watchdog 替换成功。
 	if args.DoneEvent != "" {
-		_ = signalNamedEvent(args.DoneEvent)
+		if err := signalNamedEvent(args.DoneEvent); err != nil {
+			return fmt.Errorf("signal update completion event: %w", err)
+		}
 	}
 	return nil
 }
 
 func runWatchdogRelaunch(args WatchdogRelaunchArgs) error {
-	if args.DoneEvent != "" {
-		h, err := openNamedEvent(args.DoneEvent)
-		if err != nil {
-			// 事件可能尚未打开或已创建；回退等待旧 PID 退出。
-			_ = waitProcessExit(args.OldPID, 30*time.Second)
-		} else {
-			defer windows.CloseHandle(h)
-			res, err := windows.WaitForSingleObject(h, 45_000)
-			if err != nil || res != windows.WAIT_OBJECT_0 {
-				return fmt.Errorf("wait update completion event failed: res=%d err=%v", res, err)
-			}
-		}
-	} else {
-		_ = waitProcessExit(args.OldPID, 30*time.Second)
+	if strings.TrimSpace(args.DoneEvent) == "" {
+		return errors.New("missing required --done-event")
+	}
+	if strings.TrimSpace(args.ExpectedHash) == "" {
+		return errors.New("missing required --sha256")
 	}
 
-	// 在普通用户态 Medium IL 下直接启动新版本 Interweave.exe。
-	cmd := exec.Command(filepath.Clean(args.TargetPath))
+	h, err := openNamedEvent(args.DoneEvent)
+	if err != nil {
+		return fmt.Errorf("open update completion event: %w", err)
+	}
+	defer windows.CloseHandle(h)
+
+	// 打开 doneEvent 后立即通知父进程已接管句柄，父进程随后才触发 UAC 与退出。
+	if strings.TrimSpace(args.ReadyEvent) != "" {
+		if err := signalNamedEvent(args.ReadyEvent); err != nil {
+			return fmt.Errorf("signal watchdog ready event: %w", err)
+		}
+	}
+
+	// 等待 apply-update 替换完成信号（预留 UAC 人工确认与替换时间，超时或失败绝不盲目拉起旧版本）。
+	res, err := windows.WaitForSingleObject(h, 120_000)
+	if err != nil || res != windows.WAIT_OBJECT_0 {
+		return fmt.Errorf("wait update completion event failed: res=%d err=%v", res, err)
+	}
+
+	// 仅在目标路径已验证为预期新版本 SHA-256 后，才在普通用户态 Medium IL 拉起新版本。
+	targetPath := filepath.Clean(args.TargetPath)
+	if err := VerifyFileSHA256(targetPath, args.ExpectedHash); err != nil {
+		return fmt.Errorf("verify updated executable before relaunch: %w", err)
+	}
+
+	cmd := exec.Command(targetPath)
 	cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP}
 	return cmd.Start()
 }

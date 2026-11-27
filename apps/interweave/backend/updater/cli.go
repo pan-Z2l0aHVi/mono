@@ -31,11 +31,13 @@ type ApplyUpdateArgs struct {
 
 // WatchdogRelaunchArgs 描述 --watchdog-relaunch 子命令的严格命令行参数。
 type WatchdogRelaunchArgs struct {
-	OldPID     int
-	HelperPID  int
-	TargetPath string
-	DoneEvent  string
-	DoneFile   string
+	OldPID       int
+	HelperPID    int
+	TargetPath   string
+	ExpectedHash string
+	DoneEvent    string
+	ReadyEvent   string
+	DoneFile     string
 }
 
 // HandleSubcommand 在 main() 最顶部检查 os.Args[1] 是否为更新器内部子命令。
@@ -106,13 +108,19 @@ func parseWatchdogRelaunchArgs(raw []string) (WatchdogRelaunchArgs, error) {
 	fs.IntVar(&a.OldPID, "old-pid", 0, "old app pid")
 	fs.IntVar(&a.HelperPID, "helper-pid", 0, "apply-update helper pid")
 	fs.StringVar(&a.TargetPath, "target", "", "target app/exe path to relaunch")
+	fs.StringVar(&a.ExpectedHash, "sha256", "", "expected sha256 hex digest of updated target")
 	fs.StringVar(&a.DoneEvent, "done-event", "", "windows named event")
+	fs.StringVar(&a.ReadyEvent, "ready-event", "", "windows named event signaled once watchdog holds done-event")
 	fs.StringVar(&a.DoneFile, "done-file", "", "unix completion status file")
 	if err := fs.Parse(raw); err != nil {
 		return WatchdogRelaunchArgs{}, err
 	}
 	if strings.TrimSpace(a.TargetPath) == "" {
 		return WatchdogRelaunchArgs{}, fmt.Errorf("missing required --target")
+	}
+	a.ExpectedHash = strings.ToLower(strings.TrimSpace(a.ExpectedHash))
+	if a.ExpectedHash != "" && len(a.ExpectedHash) != 64 {
+		return WatchdogRelaunchArgs{}, fmt.Errorf("invalid --sha256 digest")
 	}
 	return a, nil
 }

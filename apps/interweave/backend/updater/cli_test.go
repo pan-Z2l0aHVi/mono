@@ -30,6 +30,30 @@ func TestParseApplyUpdateArgs(t *testing.T) {
 	}
 }
 
+func TestParseWatchdogRelaunchArgs(t *testing.T) {
+	hash := strings.Repeat("b", 64)
+	got, err := parseWatchdogRelaunchArgs([]string{
+		"--old-pid=4321",
+		"--target=C:\\Program Files\\Interweave\\Interweave.exe",
+		"--sha256=" + strings.ToUpper(hash),
+		"--done-event=Local\\Done",
+		"--ready-event=Local\\Ready",
+	})
+	if err != nil {
+		t.Fatalf("unexpected error: %v", err)
+	}
+	if got.OldPID != 4321 || got.ExpectedHash != hash || got.DoneEvent != `Local\Done` || got.ReadyEvent != `Local\Ready` {
+		t.Fatalf("unexpected parsed watchdog args: %+v", got)
+	}
+
+	if _, err := parseWatchdogRelaunchArgs([]string{"--old-pid=4321"}); err == nil {
+		t.Fatal("expected error when --target is missing")
+	}
+	if _, err := parseWatchdogRelaunchArgs([]string{"--target=foo.exe", "--sha256=invalid"}); err == nil {
+		t.Fatal("expected error for invalid --sha256")
+	}
+}
+
 func TestHandleSubcommandPassthrough(t *testing.T) {
 	handled, code := HandleSubcommand([]string{"interweave"})
 	if handled || code != 0 {
