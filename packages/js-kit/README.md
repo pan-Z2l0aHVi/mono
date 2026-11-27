@@ -8,7 +8,9 @@
 
 > Framework-free JavaScript/TypeScript utilities and a composable plugin builder for browsers, Node.js, and workers.
 
-English | [简体中文](./README.CN.md) | [Live demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/js-kit/getting-started)
+English | [简体中文](./README.CN.md)
+
+**Online Docs:** [Dev Kit Demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/js-kit/getting-started)
 
 - **Zero framework dependencies**: Runtime-agnostic code with no DOM or UI framework bindings; works in browsers, Node.js (`>=20.11.0`), and workers.
 - **ESM-only & tree-shakable**: Published as native ES modules with `"sideEffects": false` and per-module subpath exports.

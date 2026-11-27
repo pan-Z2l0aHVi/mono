@@ -8,7 +8,9 @@
 
 > Reload the page when a dependency's build output changes.
 
-English | [简体中文](./README.CN.md) | [Live demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/deps-reload/getting-started)
+English | [简体中文](./README.CN.md)
+
+**Online Docs:** [Dev Kit Demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/deps-reload/getting-started)
 
 ## Install
 
@@ -26,7 +28,9 @@ yarn add @greypan/deps-reload
 bun add @greypan/deps-reload
 ```
 
-## Vite
+## Quick start
+
+### Vite
 
 ```ts
 // vite.config.ts
@@ -45,11 +49,9 @@ export default defineConfig({
 })
 ```
 
-When files in `packages/web-ui/dist` change, the browser reloads the page.
+When files in `packages/web-ui/dist` change, the browser reloads the page. The plugin watches compiled build output rather than aliasing to source files, so your app keeps consuming the real package build.
 
-This plugin watches build output. It does not alias the dependency to source files, so the app keeps consuming the package build.
-
-## Webpack
+### Webpack
 
 ```ts
 // webpack.config.ts
@@ -71,29 +73,33 @@ export default {
 }
 ```
 
-The Webpack plugin adds each output directory to the watch dependencies. To get a full reload with Webpack Dev Server, enable live reload and disable HMR.
+The Webpack plugin adds each output directory to `compilation.contextDependencies`. To trigger a full reload with Webpack Dev Server, enable `liveReload` and disable `hot`.
 
 ## API
 
 ### `depsReload(deps)`
 
-Create the plugin.
+Available via `@greypan/deps-reload/vite` and `@greypan/deps-reload/webpack` (default export).
 
-| Parameter | Type    | Description           |
-| --------- | ------- | --------------------- |
-| `deps`    | `Dep[]` | Dependencies to watch |
+| Parameter | Type    | Description                           |
+| --------- | ------- | ------------------------------------- |
+| `deps`    | `Dep[]` | Local or linked dependencies to watch |
 
 ### `Dep`
 
-| Property     | Type       | Default           | Description                                    |
-| ------------ | ---------- | ----------------- | ---------------------------------------------- |
-| `name`       | `string`   | -                 | Package name, used for the node_modules path.  |
-| `path`       | `string`   | -                 | Local package root for a monorepo or npm link. |
-| `outputDir`  | `string`   | `'dist'`          | Build output directory relative to `path`.     |
-| `extensions` | `string[]` | `['.js', '.css']` | File extensions to watch.                      |
+| Property     | Type       | Default           | Description                                                                   |
+| ------------ | ---------- | ----------------- | ----------------------------------------------------------------------------- |
+| `name`       | `string`   | -                 | Package name. Resolves `node_modules/<name>` when `path` is omitted.          |
+| `path`       | `string`   | -                 | Local package root directory for a monorepo or `npm link`.                    |
+| `outputDir`  | `string`   | `'dist'`          | Build output directory relative to the package root.                          |
+| `extensions` | `string[]` | `['.js', '.css']` | File extensions watched in Vite (normalized to lowercase with a leading `.`). |
+
+Matching notes:
+
+- Path matching in Vite is separator- and case-insensitive; `.map` source maps are always ignored.
+- Rapid file writes during a single rebuild are debounced (`300ms`, max wait `3000ms`) into one full reload.
 
 ## Documentation
 
-- [Vite](./docs/vite.md) — Vite dev server setup, module graph invalidation, and debounce behavior
-- [Webpack](./docs/webpack.md) — Webpack `contextDependencies` and Dev Server configuration
-- [API](./docs/api.md) — Full `Dep` reference, normalization rules, and multi-package examples
+- [Vite](./docs/vite.md) — Module graph invalidation, debounce behavior, and monorepo `fs.allow`
+- [Webpack](./docs/webpack.md) — `contextDependencies`, Dev Server settings, and Vite differences

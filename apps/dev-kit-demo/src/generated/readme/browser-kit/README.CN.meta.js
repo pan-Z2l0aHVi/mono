@@ -11,7 +11,8 @@ const meta = [
     { label: 'p', content: "零框架依赖的浏览器工具库，提供命名空间存储、可组合埋点上报、环境检测、DOM 指标、文件处理、剪贴板、DOM 事件封装与同文档历史导航跟踪。" }
     ]
   },
-  { label: 'p', content: "<a href=\"./README.md\">English</a> | 简体中文 | <a href=\"https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/browser-kit/getting-started\">在线演示</a>" },
+  { label: 'p', content: "<a href=\"./README.md\">English</a> | 简体中文" },
+  { label: 'p', content: "<strong>在线文档：</strong> <a href=\"https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/browser-kit/getting-started\">Dev Kit Demo</a>" },
   {
     label: 'ul',
     children: [

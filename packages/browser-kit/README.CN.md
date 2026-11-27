@@ -8,7 +8,9 @@
 
 > 零框架依赖的浏览器工具库，提供命名空间存储、可组合埋点上报、环境检测、DOM 指标、文件处理、剪贴板、DOM 事件封装与同文档历史导航跟踪。
 
-[English](./README.md) | 简体中文 | [在线演示](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/browser-kit/getting-started)
+[English](./README.md) | 简体中文
+
+**在线文档：** [Dev Kit Demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/browser-kit/getting-started)
 
 - **适用运行时**：现代浏览器（`Chrome >= 111`、`Edge >= 111`、`Safari / iOS >= 16.4`、`Firefox >= 128`）。
 - **零框架依赖**：不绑定 React、Vue 或 Angular 运行时。

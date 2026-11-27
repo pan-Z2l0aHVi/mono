@@ -570,11 +570,6 @@ msgid "构建插件"
 msgstr "Build Plugins"
 
 #: src/pages/home/index.vue
-#: src/pages/home/index.vue
-msgid "3 篇文档"
-msgstr "3 docs"
-
-#: src/pages/home/index.vue
 msgid "本地依赖构建产物变化时自动刷新页面，支持 Vite 与 Webpack，始终消费真实 dist 产物。"
 msgstr "Reload the page when local dependency build outputs change, supporting Vite and Webpack while always consuming real dist artifacts."
 
@@ -586,3 +581,8 @@ msgstr "Browse Docs"
 #: src/pages/home/index.vue
 msgid "在 Vue、React（JSX/TSX）与 Vite HTML 入口中按标签自动注入 Web Components 导入。"
 msgstr "Automatically inject Web Components imports by tag in Vue, React (JSX/TSX), and Vite HTML entries."
+
+#: src/pages/home/index.vue
+#: src/pages/home/index.vue
+msgid "2 篇文档"
+msgstr "2 docs"

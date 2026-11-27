@@ -183,7 +183,7 @@ const logoSrc = `${import.meta.env.BASE_URL}kit-transparent.png`
                   class="inline-flex items-center gap-1 rounded-full bg-(--wui-color-surface-control) px-2.5 py-0.5 text-xs text-(--wui-color-text-secondary)"
                 >
                   <web-ui-icon :icon="lucideCode" :size="12"></web-ui-icon>
-                  3 篇文档
+                  2 篇文档
                 </span>
               </div>
               <p class="text-sm leading-relaxed text-(--wui-color-text-secondary)">
@@ -209,7 +209,7 @@ const logoSrc = `${import.meta.env.BASE_URL}kit-transparent.png`
                   class="inline-flex items-center gap-1 rounded-full bg-(--wui-color-surface-control) px-2.5 py-0.5 text-xs text-(--wui-color-text-secondary)"
                 >
                   <web-ui-icon :icon="lucideBoxes" :size="12"></web-ui-icon>
-                  3 篇文档
+                  2 篇文档
                 </span>
               </div>
               <p class="text-sm leading-relaxed text-(--wui-color-text-secondary)">

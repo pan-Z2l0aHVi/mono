@@ -196,7 +196,7 @@ function Codeblock({ nodes, preview, variants, switchLabel }: CodeblockProps) {
                 ))}
               </web-ui-segmented>
             ) : (
-              <span className="px-1 font-mono text-[11px] leading-none tracking-wide text-(--wui-color-text-secondary) uppercase">
+              <span className="pl-3 pr-1 font-mono text-[11px] leading-none tracking-wide text-(--wui-color-text-secondary) uppercase">
                 {active.lang || 'text'}
               </span>
             )}

@@ -27,7 +27,7 @@ export const DEV_KIT_SHELL_PAGES: readonly SearchItem[] = Object.freeze([
     path: '/deps-reload/getting-started',
     zh: 'deps-reload 快速开始',
     en: 'deps-reload Getting Started',
-    keywords: 'deps-reload plugin vite webpack install'
+    keywords: 'deps-reload plugin vite webpack install api options Dep outputDir extensions'
   },
   {
     path: '/deps-reload/changelog',
@@ -39,7 +39,8 @@ export const DEV_KIT_SHELL_PAGES: readonly SearchItem[] = Object.freeze([
     path: '/unplugin-web-components/getting-started',
     zh: 'unplugin-web-components 快速开始',
     en: 'unplugin-web-components Getting Started',
-    keywords: 'unplugin-web-components plugin vite webpack install'
+    keywords:
+      'unplugin-web-components plugin vite webpack install api options tagPrefix packageName sideEffects withStyle'
   },
   {
     path: '/unplugin-web-components/changelog',
@@ -80,8 +81,7 @@ export const BROWSER_KIT_NAV_SECTION: NavSection<'browser-kit'> = makeSection('b
 
 export const DEPS_RELOAD_NAV_SECTION: NavSection<'deps-reload'> = makeSection('deps-reload', [
   { path: '/deps-reload/vite', label: 'vite', zhName: 'deps-reload Vite 插件 依赖产物 刷新 hotUpdate' },
-  { path: '/deps-reload/webpack', label: 'webpack', zhName: 'deps-reload Webpack 插件 contextDependencies liveReload' },
-  { path: '/deps-reload/api', label: 'api', zhName: 'deps-reload API 配置项 Dep outputDir extensions' }
+  { path: '/deps-reload/webpack', label: 'webpack', zhName: 'deps-reload Webpack 插件 contextDependencies liveReload' }
 ]) as NavSection<'deps-reload'>
 
 export const UNPLUGIN_WEB_COMPONENTS_NAV_SECTION: NavSection<'unplugin-web-components'> = makeSection(
@@ -96,11 +96,6 @@ export const UNPLUGIN_WEB_COMPONENTS_NAV_SECTION: NavSection<'unplugin-web-compo
       path: '/unplugin-web-components/html-injection',
       label: 'html-injection',
       zhName: 'unplugin-web-components HTML 注入 transformIndexHtml Vite'
-    },
-    {
-      path: '/unplugin-web-components/api',
-      label: 'api',
-      zhName: 'unplugin-web-components API 选项 tagPrefix packageName sideEffects withStyle'
     }
   ]
 ) as NavSection<'unplugin-web-components'>
