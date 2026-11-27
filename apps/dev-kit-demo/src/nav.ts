@@ -127,14 +127,3 @@ export function isValidModule(pkg: DevKitPkg, slug: string): boolean {
 
 /** 带包命名空间的文档键解析（如 `/js-kit/shortcut` -> `['js-kit/shortcut']`）。 */
 export const routeDevKitDocs = createRouteExampleDocs(DEV_KIT_NAV_SECTIONS, item => item.path.replace(/^\//, ''))
-
-/** 非叶子的一级路由（如 `/js-kit`）自动重定向至首个子路由，避免直接访问落入 404。 */
-export const DEV_KIT_INDEX_REDIRECTS = Object.freeze([
-  Object.freeze({ path: '/', redirect: '/home' }),
-  ...DEV_KIT_NAV_SECTIONS.map(section =>
-    Object.freeze({
-      path: `/${section.id}`,
-      redirect: `/${section.id}/getting-started`
-    })
-  )
-])

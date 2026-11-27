@@ -10,7 +10,6 @@ import { routes } from 'vue-router/auto-routes'
 
 import App from '@/app/index.vue'
 import { loadShellLocale } from '@/i18n/locale'
-import { DEV_KIT_INDEX_REDIRECTS } from '@/nav'
 
 async function mountAppAt(initialPath: string) {
   await setViewport(1280, 800)
@@ -19,7 +18,7 @@ async function mountAppAt(initialPath: string) {
   document.body.appendChild(host)
   const router = createRouter({
     history: createMemoryHistory(),
-    routes: [...DEV_KIT_INDEX_REDIRECTS, ...routes]
+    routes
   })
   await router.push(initialPath)
   await router.isReady()
@@ -230,6 +229,9 @@ describe('dev-kit-demo 浏览器端冒烟测试', () => {
     const { host, router, cleanup } = await mountAppAt('/deps-reload')
     try {
       expect(router.currentRoute.value.path).toBe('/deps-reload/getting-started')
+      await router.push('/')
+      expect(router.currentRoute.value.path).toBe('/home')
+      await router.push('/deps-reload')
       await waitFor(() => host.querySelector('[data-example-doc="deps-reload/README"]'))
 
       for (const pkg of ['js-kit', 'browser-kit', 'unplugin-web-components']) {

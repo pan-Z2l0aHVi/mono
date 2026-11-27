@@ -10,7 +10,6 @@ import { handleHotUpdate, routes } from 'vue-router/auto-routes'
 import BootError from '@/app/boot-error.vue'
 import App from '@/app/index.vue'
 import { bootstrapLocale, bootDegraded, loadShellLocale } from '@/i18n/locale'
-import { DEV_KIT_INDEX_REDIRECTS } from '@/nav'
 import { installRouteGuards } from '@/router/guards'
 import { routeProgress } from '@/router/progress'
 
@@ -24,7 +23,7 @@ if (import.meta.env.PROD) {
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [...DEV_KIT_INDEX_REDIRECTS, ...routes],
+  routes,
   scrollBehavior(_to, _from, savedPosition) {
     if (savedPosition) return savedPosition
     return { top: 0 }
