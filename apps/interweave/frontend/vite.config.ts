@@ -141,6 +141,7 @@ export default defineConfig({
     depsReload([
       // 包入口是 .mjs，默认的 .js 过滤匹配不到它
       { name: '@greypan/app-scrollbars', path: '../../../packages/app-scrollbars', extensions: ['.mjs', '.css'] },
+      { name: '@greypan/md-to-meta', path: '../../../packages/md-to-meta', extensions: ['.mjs'] },
       { name: '@greypan/route-progress', path: '../../../packages/route-progress', extensions: ['.mjs'] },
       { name: '@greypan/web-ui', path: '../../../packages/web-ui' },
       { name: '@greypan/js-kit', path: '../../../packages/js-kit' },
