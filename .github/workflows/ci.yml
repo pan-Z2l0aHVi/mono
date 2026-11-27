@@ -182,9 +182,9 @@ jobs:
           trap 'rm -rf "$repo_root/apps/interweave/frontend/dist" "$RUNNER_TEMP/interweave-warm" "$RUNNER_TEMP/interweave-warm.exe"' EXIT
           mkdir -p "$repo_root/apps/interweave/frontend/dist"
           touch "$repo_root/apps/interweave/frontend/dist/.keep"
-          pnpm --filter @greypan/interweave exec go vet ./...
           (
             cd "$repo_root/apps/interweave"
+            go mod download
             if [ "$RUNNER_OS" = 'macOS' ]; then
               GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 \
                 CGO_CFLAGS='-mmacosx-version-min=12.0' \
