@@ -11,7 +11,8 @@ const meta = [
     { label: 'p', content: "零框架依赖的 JavaScript/TypeScript 工具库与可组合插件构建器，适用于浏览器、Node.js 与 Worker。" }
     ]
   },
-  { label: 'p', content: "<a href=\"./README.md\">English</a> | 简体中文 | <a href=\"https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/js-kit/getting-started\">在线演示</a>" },
+  { label: 'p', content: "<a href=\"./README.md\">English</a> | 简体中文" },
+  { label: 'p', content: "<strong>在线文档：</strong> <a href=\"https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/js-kit/getting-started\">Dev Kit Demo</a>" },
   {
     label: 'ul',
     children: [

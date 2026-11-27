@@ -8,7 +8,9 @@
 
 > 零框架依赖的 JavaScript/TypeScript 工具库与可组合插件构建器，适用于浏览器、Node.js 与 Worker。
 
-[English](./README.md) | 简体中文 | [在线演示](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/js-kit/getting-started)
+[English](./README.md) | 简体中文
+
+**在线文档：** [Dev Kit Demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/js-kit/getting-started)
 
 - **零框架依赖**：不含 DOM 或 UI 框架绑定，可在浏览器、Node.js（`>=20.11.0`）和 Worker 中运行。
 - **ESM-only 与 Tree-shakable**：原生 ES Module 输出，声明 `"sideEffects": false`，支持按子路径导入单个模块。

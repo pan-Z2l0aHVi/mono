@@ -11,7 +11,8 @@ const meta = [
     { label: 'p', content: "Framework-free browser utilities for namespaced storage, composable telemetry tracking, environment detection, DOM metrics, file handling, clipboard, DOM events, and same-document history navigation." }
     ]
   },
-  { label: 'p', content: "English | <a href=\"./README.CN.md\">简体中文</a> | <a href=\"https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/browser-kit/getting-started\">Live demo</a>" },
+  { label: 'p', content: "English | <a href=\"./README.CN.md\">简体中文</a>" },
+  { label: 'p', content: "<strong>Online Docs:</strong> <a href=\"https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/browser-kit/getting-started\">Dev Kit Demo</a>" },
   {
     label: 'ul',
     children: [

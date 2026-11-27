@@ -10,11 +10,15 @@ import type { MetaNode } from '@greypan/md-to-meta'
 
 export { prepareExamples, type MetaDocs }
 
-const docModules = import.meta.glob<{ default: MetaNode[] }>('../generated/{js-kit,browser-kit}/*.meta.js')
-const changelogModules = import.meta.glob<{ default: MetaNode[] }>(
-  '../generated/changelog/{js-kit,browser-kit}/*.meta.js'
+const docModules = import.meta.glob<{ default: MetaNode[] }>(
+  '../generated/{js-kit,browser-kit,deps-reload,unplugin-web-components}/*.meta.js'
 )
-const readmeModules = import.meta.glob<{ default: MetaNode[] }>('../generated/readme/{js-kit,browser-kit}/*.meta.js')
+const changelogModules = import.meta.glob<{ default: MetaNode[] }>(
+  '../generated/changelog/{js-kit,browser-kit,deps-reload,unplugin-web-components}/*.meta.js'
+)
+const readmeModules = import.meta.glob<{ default: MetaNode[] }>(
+  '../generated/readme/{js-kit,browser-kit,deps-reload,unplugin-web-components}/*.meta.js'
+)
 
 const allModules = {
   ...docModules,
@@ -24,12 +28,16 @@ const allModules = {
 
 const README_BASE: Record<string, string> = {
   'js-kit': 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit/docs',
-  'browser-kit': 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/docs'
+  'browser-kit': 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit/docs',
+  'deps-reload': 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/deps-reload/docs',
+  'unplugin-web-components': 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/unplugin-web-components/docs'
 }
 
 const PKG_ROOT_BASE: Record<string, string> = {
   'js-kit': 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/js-kit',
-  'browser-kit': 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit'
+  'browser-kit': 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/browser-kit',
+  'deps-reload': 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/deps-reload',
+  'unplugin-web-components': 'https://github.com/pan-Z2l0aHVi/mono/blob/main/packages/unplugin-web-components'
 }
 
 /**
