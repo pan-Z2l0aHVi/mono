@@ -38,11 +38,12 @@ func TestParseWatchdogRelaunchArgs(t *testing.T) {
 		"--sha256=" + strings.ToUpper(hash),
 		"--done-event=Local\\Done",
 		"--ready-event=Local\\Ready",
+		"--start-event=Local\\Start",
 	})
 	if err != nil {
 		t.Fatalf("unexpected error: %v", err)
 	}
-	if got.OldPID != 4321 || got.ExpectedHash != hash || got.DoneEvent != `Local\Done` || got.ReadyEvent != `Local\Ready` {
+	if got.OldPID != 4321 || got.ExpectedHash != hash || got.DoneEvent != `Local\Done` || got.ReadyEvent != `Local\Ready` || got.StartEvent != `Local\Start` {
 		t.Fatalf("unexpected parsed watchdog args: %+v", got)
 	}
 

@@ -124,6 +124,7 @@ func (w *windowsInstaller) InstallAndRelaunch(ctx context.Context, req InstallRe
 	nonce := time.Now().UnixNano()
 	doneEventName := fmt.Sprintf("Local\\InterweaveUpdateDone-%d-%d", oldPID, nonce)
 	readyEventName := fmt.Sprintf("Local\\InterweaveWatchdogReady-%d-%d", oldPID, nonce)
+	startEventName := fmt.Sprintf("Local\\InterweaveUpdateStart-%d-%d", oldPID, nonce)
 
 	doneEventHandle, err := createNamedEvent(doneEventName)
 	if err != nil {
@@ -137,6 +138,44 @@ func (w *windowsInstaller) InstallAndRelaunch(ctx context.Context, req InstallRe
 	}
 	defer windows.CloseHandle(readyEventHandle)
 
+	startEventHandle, err := createNamedEvent(startEventName)
+	if err != nil {
+		return fmt.Errorf("create update start event: %w", err)
+	}
+	defer windows.CloseHandle(startEventHandle)
+
+	// 先启动普通用户态（Medium IL）watchdog 并等待其打开 doneEvent/startEvent 后通过 readyEvent 握手确认：
+	// 1. watchdog 握手失败时尚未弹出 UAC 也未启动 helper，零孤儿 helper 风险；
+	// 2. watchdog 收到 startEvent 后才开始 120s 的 doneEvent 倒计时，与 UAC 人工确认时间彻底解耦；
+	// 3. 在父进程关闭句柄或退出前，doneEvent 内核对象始终由 watchdog 持有，不会过早销毁。
+	watchdogArgs := []string{
+		SubcommandWatchdogRelaunch,
+		"--old-pid=" + strconv.Itoa(oldPID),
+		"--target=" + exePath,
+		"--sha256=" + req.ExpectedSHA256,
+		"--done-event=" + doneEventName,
+		"--ready-event=" + readyEventName,
+		"--start-event=" + startEventName,
+	}
+	wdCmd := exec.Command(exePath, watchdogArgs...)
+	wdCmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS}
+	if err := wdCmd.Start(); err != nil {
+		return fmt.Errorf("start relaunch watchdog: %w", err)
+	}
+
+	// 若后续任一步骤（握手超时、用户取消 UAC、启动 helper 失败）出错，立即终止 watchdog，避免残留孤儿进程。
+	keepWatchdog := false
+	defer func() {
+		if !keepWatchdog && wdCmd.Process != nil {
+			_ = wdCmd.Process.Kill()
+		}
+	}()
+
+	readyRes, readyErr := windows.WaitForSingleObject(readyEventHandle, 5_000)
+	if readyErr != nil || readyRes != windows.WAIT_OBJECT_0 {
+		return fmt.Errorf("wait relaunch watchdog ready: res=%d err=%v", readyRes, readyErr)
+	}
+
 	applyArgs := []string{
 		SubcommandApplyUpdate,
 		"--pid=" + strconv.Itoa(oldPID),
@@ -148,10 +187,6 @@ func (w *windowsInstaller) InstallAndRelaunch(ctx context.Context, req InstallRe
 	}
 
 	// 需提权时，改由已安装在受保护目录的当前旧版 exe 自举执行 --apply-update（消除用户态缓存提权自校验 TOCTOU）。
-	// 先完成 UAC 提权并启动 helper，再启动 watchdog：
-	// 1. 避免 watchdog 的 120s 等待预算与 UAC 人工确认时间重叠；
-	// 2. helper 启动后会阻塞在 waitProcessExit(oldPID, 25s)，此时父进程仍存活并持有 doneEventHandle，
-	//    确保 watchdog 打开 doneEvent 时内核对象始终存在，且用户取消 UAC 时无需启动/清理 watchdog。
 	if req.NeedsElevation {
 		hProc, err := shellExecuteElevated(exePath, buildWindowsArgLine(applyArgs))
 		if err != nil {
@@ -168,33 +203,9 @@ func (w *windowsInstaller) InstallAndRelaunch(ctx context.Context, req InstallRe
 		}
 	}
 
-	// 启动普通用户态（Medium IL）watchdog 并等待其打开 doneEvent 后通过 readyEvent 握手确认，
-	// 确保在父进程关闭句柄或退出前，doneEvent 内核对象始终由 watchdog 持有，不会过早销毁。
-	watchdogArgs := []string{
-		SubcommandWatchdogRelaunch,
-		"--old-pid=" + strconv.Itoa(oldPID),
-		"--target=" + exePath,
-		"--sha256=" + req.ExpectedSHA256,
-		"--done-event=" + doneEventName,
-		"--ready-event=" + readyEventName,
-	}
-	wdCmd := exec.Command(exePath, watchdogArgs...)
-	wdCmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS}
-	if err := wdCmd.Start(); err != nil {
-		return fmt.Errorf("start relaunch watchdog: %w", err)
-	}
-
-	// 若握手超时或失败，立即终止 watchdog 且不退出主进程（helper 将在 waitProcessExit 超时后安全退出）。
-	keepWatchdog := false
-	defer func() {
-		if !keepWatchdog && wdCmd.Process != nil {
-			_ = wdCmd.Process.Kill()
-		}
-	}()
-
-	readyRes, readyErr := windows.WaitForSingleObject(readyEventHandle, 5_000)
-	if readyErr != nil || readyRes != windows.WAIT_OBJECT_0 {
-		return fmt.Errorf("wait relaunch watchdog ready: res=%d err=%v", readyRes, readyErr)
+	// helper 已启动（UAC 已通过），通知 watchdog 开始等待 doneEvent 的 120s 替换预算。
+	if err := windows.SetEvent(startEventHandle); err != nil {
+		return fmt.Errorf("signal watchdog start event: %w", err)
 	}
 
 	keepWatchdog = true
@@ -271,14 +282,49 @@ func runWatchdogRelaunch(args WatchdogRelaunchArgs) error {
 	}
 	defer windows.CloseHandle(h)
 
-	// 打开 doneEvent 后立即通知父进程已接管句柄，父进程随后才优雅退出。
+	var startHandle windows.Handle
+	var parentProc windows.Handle
+	if strings.TrimSpace(args.StartEvent) != "" {
+		startHandle, err = openNamedEvent(args.StartEvent)
+		if err != nil {
+			return fmt.Errorf("open update start event: %w", err)
+		}
+		defer windows.CloseHandle(startHandle)
+
+		if args.OldPID > 0 {
+			parentProc, err = windows.OpenProcess(windows.SYNCHRONIZE, false, uint32(args.OldPID))
+			if err != nil {
+				return fmt.Errorf("open parent process %d: %w", args.OldPID, err)
+			}
+			defer windows.CloseHandle(parentProc)
+		}
+	}
+
+	// 打开 doneEvent/startEvent 后立即通知父进程已接管句柄，父进程随后才触发 UAC 与启动 helper。
 	if strings.TrimSpace(args.ReadyEvent) != "" {
 		if err := signalNamedEvent(args.ReadyEvent); err != nil {
 			return fmt.Errorf("signal watchdog ready event: %w", err)
 		}
 	}
 
-	// 等待 apply-update 替换完成信号（此时 UAC 已通过且 helper 已启动，120s 仅覆盖旧进程退出与文件替换，超时或失败绝不盲目拉起旧版本）。
+	// 阶段 1：等待父进程完成 UAC 提权并启动 helper（不计入 120s 替换超时）；
+	// 同时监控父进程句柄，若父进程在发出 startEvent 前异常退出则立即结束，避免残留孤儿 watchdog。
+	// startHandle 排在首位，确保父进程置位 startEvent 后瞬间退出时仍优先按 WAIT_OBJECT_0 放行。
+	if startHandle != 0 {
+		if parentProc != 0 {
+			waitRes, waitErr := windows.WaitForMultipleObjects([]windows.Handle{startHandle, parentProc}, false, windows.INFINITE)
+			if waitErr != nil || waitRes != windows.WAIT_OBJECT_0 {
+				return fmt.Errorf("wait update start event aborted: res=%d err=%v", waitRes, waitErr)
+			}
+		} else {
+			waitRes, waitErr := windows.WaitForSingleObject(startHandle, windows.INFINITE)
+			if waitErr != nil || waitRes != windows.WAIT_OBJECT_0 {
+				return fmt.Errorf("wait update start event failed: res=%d err=%v", waitRes, waitErr)
+			}
+		}
+	}
+
+	// 阶段 2：等待 apply-update 替换完成信号（此时 UAC 已通过且 helper 已启动，120s 仅覆盖旧进程退出与文件替换，超时或失败绝不盲目拉起旧版本）。
 	res, err := windows.WaitForSingleObject(h, 120_000)
 	if err != nil || res != windows.WAIT_OBJECT_0 {
 		return fmt.Errorf("wait update completion event failed: res=%d err=%v", res, err)

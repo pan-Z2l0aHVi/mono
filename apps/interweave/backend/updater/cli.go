@@ -37,6 +37,7 @@ type WatchdogRelaunchArgs struct {
 	ExpectedHash string
 	DoneEvent    string
 	ReadyEvent   string
+	StartEvent   string
 	DoneFile     string
 }
 
@@ -111,6 +112,7 @@ func parseWatchdogRelaunchArgs(raw []string) (WatchdogRelaunchArgs, error) {
 	fs.StringVar(&a.ExpectedHash, "sha256", "", "expected sha256 hex digest of updated target")
 	fs.StringVar(&a.DoneEvent, "done-event", "", "windows named event")
 	fs.StringVar(&a.ReadyEvent, "ready-event", "", "windows named event signaled once watchdog holds done-event")
+	fs.StringVar(&a.StartEvent, "start-event", "", "windows named event signaled after helper starts to begin completion wait")
 	fs.StringVar(&a.DoneFile, "done-file", "", "unix completion status file")
 	if err := fs.Parse(raw); err != nil {
 		return WatchdogRelaunchArgs{}, err
