@@ -8,7 +8,9 @@
 
 > Framework-free browser utilities for namespaced storage, composable telemetry tracking, environment detection, DOM metrics, file handling, clipboard, DOM events, and same-document history navigation.
 
-English | [简体中文](./README.CN.md) | [Live demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/browser-kit/getting-started)
+English | [简体中文](./README.CN.md)
+
+**Online Docs:** [Dev Kit Demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/browser-kit/getting-started)
 
 - **Target runtime**: Modern browsers (`Chrome >= 111`, `Edge >= 111`, `Safari / iOS >= 16.4`, `Firefox >= 128`).
 - **Zero framework lock-in**: No React, Vue, or Angular runtime dependency.

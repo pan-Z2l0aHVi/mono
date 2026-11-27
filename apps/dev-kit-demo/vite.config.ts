@@ -35,6 +35,18 @@ export const mdToMetaAdditionalOptions: MdToMetaOptions[] = [
     darkSelector: DARK_SELECTOR
   },
   {
+    input: '../../packages/deps-reload/docs/*.md',
+    output: 'src/generated/deps-reload',
+    exec: [],
+    darkSelector: DARK_SELECTOR
+  },
+  {
+    input: '../../packages/unplugin-web-components/docs/*.md',
+    output: 'src/generated/unplugin-web-components',
+    exec: [],
+    darkSelector: DARK_SELECTOR
+  },
+  {
     input: '../../packages/js-kit/CHANGELOG.md',
     output: 'src/generated/changelog/js-kit',
     exec: [],
@@ -47,6 +59,18 @@ export const mdToMetaAdditionalOptions: MdToMetaOptions[] = [
     darkSelector: DARK_SELECTOR
   },
   {
+    input: '../../packages/deps-reload/CHANGELOG.md',
+    output: 'src/generated/changelog/deps-reload',
+    exec: [],
+    darkSelector: DARK_SELECTOR
+  },
+  {
+    input: '../../packages/unplugin-web-components/CHANGELOG.md',
+    output: 'src/generated/changelog/unplugin-web-components',
+    exec: [],
+    darkSelector: DARK_SELECTOR
+  },
+  {
     input: '../../packages/js-kit/README*.md',
     output: 'src/generated/readme/js-kit',
     exec: [],
@@ -55,6 +79,18 @@ export const mdToMetaAdditionalOptions: MdToMetaOptions[] = [
   {
     input: '../../packages/browser-kit/README*.md',
     output: 'src/generated/readme/browser-kit',
+    exec: [],
+    darkSelector: DARK_SELECTOR
+  },
+  {
+    input: '../../packages/deps-reload/README*.md',
+    output: 'src/generated/readme/deps-reload',
+    exec: [],
+    darkSelector: DARK_SELECTOR
+  },
+  {
+    input: '../../packages/unplugin-web-components/README*.md',
+    output: 'src/generated/readme/unplugin-web-components',
     exec: [],
     darkSelector: DARK_SELECTOR
   }

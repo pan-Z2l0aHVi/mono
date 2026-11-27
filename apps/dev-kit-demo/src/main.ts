@@ -23,13 +23,7 @@ if (import.meta.env.PROD) {
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    {
-      path: '/',
-      redirect: '/home'
-    },
-    ...routes
-  ],
+  routes,
   scrollBehavior(_to, _from, savedPosition) {
     if (savedPosition) return savedPosition
     return { top: 0 }

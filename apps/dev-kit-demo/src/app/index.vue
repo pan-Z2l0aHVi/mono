@@ -24,7 +24,12 @@ import { useRoute, useRouter } from 'vue-router'
 
 import Search from '@/components/search/index.vue'
 import { bootDegraded, currentLocale, loadDemoLocale, localePending } from '@/i18n/locale'
-import { BROWSER_KIT_NAV_SECTION, JS_KIT_NAV_SECTION } from '@/nav'
+import {
+  BROWSER_KIT_NAV_SECTION,
+  DEPS_RELOAD_NAV_SECTION,
+  JS_KIT_NAV_SECTION,
+  UNPLUGIN_WEB_COMPONENTS_NAV_SECTION
+} from '@/nav'
 import { useMobile } from '@/state/mobile'
 
 import RouteProgressBar from './route-progress-bar.vue'
@@ -88,15 +93,21 @@ const router = useRouter()
 
 const jsKitOpen = ref(true)
 const browserKitOpen = ref(true)
+const depsReloadOpen = ref(true)
+const unpluginWebComponentsOpen = ref(true)
 
 const isJsKitActive = computed(() => route.path.startsWith('/js-kit/'))
 const isBrowserKitActive = computed(() => route.path.startsWith('/browser-kit/'))
+const isDepsReloadActive = computed(() => route.path.startsWith('/deps-reload/'))
+const isUnpluginWebComponentsActive = computed(() => route.path.startsWith('/unplugin-web-components/'))
 
 watch(
   () => route.path,
   path => {
     if (path.startsWith('/js-kit/')) jsKitOpen.value = true
     if (path.startsWith('/browser-kit/')) browserKitOpen.value = true
+    if (path.startsWith('/deps-reload/')) depsReloadOpen.value = true
+    if (path.startsWith('/unplugin-web-components/')) unpluginWebComponentsOpen.value = true
   },
   { immediate: true }
 )
@@ -156,7 +167,7 @@ onMounted(async () => {
           >
             <web-ui-icon class="text-(--wui-color-on-accent)" :icon="lucideX"></web-ui-icon>
           </web-ui-button>
-          <span class="col-start-2 text-center">欢迎来到 GreyPan 工具文档与交互示例站</span>
+          <span class="col-start-2 text-center">开发工具库与构建插件文档站</span>
         </div>
 
         <div
@@ -301,6 +312,83 @@ onMounted(async () => {
                 />
                 <SidebarNavLink
                   v-for="item in BROWSER_KIT_NAV_SECTION.items"
+                  :key="item.path"
+                  :to="item.path"
+                  :label="item.label"
+                  :active="isNavActive(route.path, item.path)"
+                  :collapsed="navCollapsed"
+                  :item-class="NAV_ITEM_CLASS"
+                  @navigate="closeSidebar"
+                />
+              </SidebarNavGroup>
+            </div>
+
+            <div role="group" aria-labelledby="nav-section-plugins" class="grid min-w-0 grid-cols-1 gap-1">
+              <h2 id="nav-section-plugins" :class="[NAV_SECTION_TITLE_CLASS, navCollapsed ? 'sr-only' : '']">
+                构建插件
+              </h2>
+              <SidebarNavGroup
+                v-model:open="depsReloadOpen"
+                group-id="deps-reload"
+                label="deps-reload"
+                :active="isDepsReloadActive"
+                :collapsed="navCollapsed"
+                :item-class="NAV_ITEM_CLASS"
+              >
+                <SidebarNavLink
+                  to="/deps-reload/getting-started"
+                  label="快速开始"
+                  :active="isNavActive(route.path, '/deps-reload/getting-started')"
+                  :collapsed="navCollapsed"
+                  :item-class="NAV_ITEM_CLASS"
+                  @navigate="closeSidebar"
+                />
+                <SidebarNavLink
+                  to="/deps-reload/changelog"
+                  label="更新日志"
+                  :active="isNavActive(route.path, '/deps-reload/changelog')"
+                  :collapsed="navCollapsed"
+                  :item-class="NAV_ITEM_CLASS"
+                  @navigate="closeSidebar"
+                />
+                <SidebarNavLink
+                  v-for="item in DEPS_RELOAD_NAV_SECTION.items"
+                  :key="item.path"
+                  :to="item.path"
+                  :label="item.label"
+                  :active="isNavActive(route.path, item.path)"
+                  :collapsed="navCollapsed"
+                  :item-class="NAV_ITEM_CLASS"
+                  @navigate="closeSidebar"
+                />
+              </SidebarNavGroup>
+
+              <SidebarNavGroup
+                v-model:open="unpluginWebComponentsOpen"
+                group-id="unplugin-web-components"
+                label="unplugin-web-components"
+                :active="isUnpluginWebComponentsActive"
+                :collapsed="navCollapsed"
+                :item-class="NAV_ITEM_CLASS"
+              >
+                <SidebarNavLink
+                  to="/unplugin-web-components/getting-started"
+                  label="快速开始"
+                  :active="isNavActive(route.path, '/unplugin-web-components/getting-started')"
+                  :collapsed="navCollapsed"
+                  :item-class="NAV_ITEM_CLASS"
+                  @navigate="closeSidebar"
+                />
+                <SidebarNavLink
+                  to="/unplugin-web-components/changelog"
+                  label="更新日志"
+                  :active="isNavActive(route.path, '/unplugin-web-components/changelog')"
+                  :collapsed="navCollapsed"
+                  :item-class="NAV_ITEM_CLASS"
+                  @navigate="closeSidebar"
+                />
+                <SidebarNavLink
+                  v-for="item in UNPLUGIN_WEB_COMPONENTS_NAV_SECTION.items"
                   :key="item.path"
                   :to="item.path"
                   :label="item.label"

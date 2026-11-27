@@ -146,7 +146,7 @@ const copyAnnouncement = () => (copied.value === 'idle' ? '' : copyLabel())
 
           <span
             v-else
-            class="px-1 font-mono text-[11px] leading-none tracking-wide text-(--wui-color-text-secondary) uppercase"
+            class="pl-3 pr-1 font-mono text-[11px] leading-none tracking-wide text-(--wui-color-text-secondary) uppercase"
           >
             {{ active?.lang || 'text' }}
           </span>
