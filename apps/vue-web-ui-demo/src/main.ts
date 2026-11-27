@@ -29,13 +29,7 @@ if (import.meta.env.PROD) {
 
 const router = createRouter({
   history: createWebHistory(import.meta.env.BASE_URL),
-  routes: [
-    {
-      path: '/',
-      redirect: '/home'
-    },
-    ...routes
-  ],
+  routes,
   // 与 react demo 的 scrollRestoration: true 对齐：前进后退还原本页位置，其余进入新页面都从顶部开始。
   scrollBehavior(_to, _from, savedPosition) {
     if (savedPosition) return savedPosition

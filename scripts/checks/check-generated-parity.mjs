@@ -123,11 +123,19 @@ test('中英文档集合对齐（CHANGELOG 只存在于英文）', () => {
   assert.deepEqual(only(zhNames, enNames), [], `英文缺译文：${only(zhNames, enNames).join(', ')}`)
 })
 
-// 规则一：两端组件页均收敛为单一动态路由（$component.tsx / [component].vue），
+// 规则一：两端组件页均收敛为单一动态路由（$component.tsx / [component].vue）与目录索引重定向（index.tsx / index.vue），
 // 由 @greypan/doc-demo-kit 的 NAV_SECTIONS / findComponentRoute 作为唯一真相源驱动。
 test('React 与 Vue 组件页均收敛为单一动态路由', () => {
-  assert.deepEqual(filesIn(reactRoutes), ['$component.tsx'], 'React 组件路由目录只能包含 $component.tsx')
-  assert.deepEqual(filesIn(vuePages), ['[component].vue'], 'Vue 组件页面目录只能包含 [component].vue')
+  assert.deepEqual(
+    filesIn(reactRoutes),
+    ['$component.tsx', 'index.tsx'],
+    'React 组件路由目录只能包含 $component.tsx 与 index.tsx'
+  )
+  assert.deepEqual(
+    filesIn(vuePages),
+    ['[component].vue', 'index.vue'],
+    'Vue 组件页面目录只能包含 [component].vue 与 index.vue'
+  )
   assert.match(
     read(reactRoutes, '$component.tsx'),
     /\bfindComponentRoute\b/,

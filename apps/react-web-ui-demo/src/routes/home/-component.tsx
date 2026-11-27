@@ -133,12 +133,12 @@ function Home() {
 
   return (
     <div className="max-w-4xl mx-auto px-6 py-12 flex flex-col items-center text-center">
-      <div className="relative group mb-8">
-        <div className="absolute -inset-1.5 rounded-[36px] bg-linear-to-tr from-(--wui-color-accent) to-(--wui-color-accent) opacity-40 blur-xl transition-all duration-[calc(var(--wui-duration-focus,200ms)*2.5)] group-hover:opacity-75"></div>
+      <div className="group relative mb-7">
+        <div className="absolute -inset-1.5 rounded-[36px] bg-linear-to-tr from-[#d96bd9] via-[#9076f5] to-[#4e7ef5] opacity-35 blur-xl transition-all duration-[calc(var(--wui-duration-focus,200ms)*2.5)] group-hover:opacity-65"></div>
         <img
           src={`${import.meta.env.BASE_URL}bo-transparent.png`}
           alt={LOGO_ALT}
-          className="relative h-28 w-28 rounded-[28px] sm:h-36 sm:w-36 sm:rounded-[32px] shadow-2xl border border-(--wui-color-border) object-cover bg-(--wui-color-surface) transition-transform duration-[calc(var(--wui-duration-focus,200ms)*1.5)] group-hover:scale-105"
+          className="relative h-28 w-28 rounded-[28px] border border-(--wui-color-border) bg-(--wui-color-surface) object-contain p-3.5 shadow-xl transition-transform duration-[calc(var(--wui-duration-focus,200ms)*1.5)] group-hover:scale-105 sm:h-36 sm:w-36 sm:rounded-[32px] sm:p-4"
         />
       </div>
 

@@ -12,6 +12,7 @@ import { Route as rootRouteImport } from './routes/__root'
 import { Route as IndexRouteImport } from './routes/index'
 import { Route as ChangelogRouteImport } from './routes/changelog'
 import { Route as GettingStartedRouteImport } from './routes/getting-started'
+import { Route as ComponentsIndexRouteImport } from './routes/components/index'
 import { Route as ComponentsComponentRouteImport } from './routes/components/$component'
 import { Route as HomeIndexRouteImport } from './routes/home/index'
 
@@ -30,6 +31,11 @@ const GettingStartedRoute = GettingStartedRouteImport.update({
   path: '/getting-started',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ComponentsIndexRoute = ComponentsIndexRouteImport.update({
+  id: '/components/',
+  path: '/components/',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const ComponentsComponentRoute = ComponentsComponentRouteImport.update({
   id: '/components/$component',
   path: '/components/$component',
@@ -46,6 +52,7 @@ export interface FileRoutesByFullPath {
   '/changelog': typeof ChangelogRoute
   '/getting-started': typeof GettingStartedRoute
   '/components/$component': typeof ComponentsComponentRoute
+  '/components/': typeof ComponentsIndexRoute
   '/home/': typeof HomeIndexRoute
 }
 export interface FileRoutesByTo {
@@ -53,6 +60,7 @@ export interface FileRoutesByTo {
   '/changelog': typeof ChangelogRoute
   '/getting-started': typeof GettingStartedRoute
   '/components/$component': typeof ComponentsComponentRoute
+  '/components': typeof ComponentsIndexRoute
   '/home': typeof HomeIndexRoute
 }
 export interface FileRoutesById {
@@ -61,6 +69,7 @@ export interface FileRoutesById {
   '/changelog': typeof ChangelogRoute
   '/getting-started': typeof GettingStartedRoute
   '/components/$component': typeof ComponentsComponentRoute
+  '/components/': typeof ComponentsIndexRoute
   '/home/': typeof HomeIndexRoute
 }
 export interface FileRouteTypes {
@@ -70,16 +79,23 @@ export interface FileRouteTypes {
     | '/changelog'
     | '/getting-started'
     | '/components/$component'
+    | '/components/'
     | '/home/'
   fileRoutesByTo: FileRoutesByTo
   to:
-    '/' | '/changelog' | '/getting-started' | '/components/$component' | '/home'
+    | '/'
+    | '/changelog'
+    | '/getting-started'
+    | '/components/$component'
+    | '/components'
+    | '/home'
   id:
     | '__root__'
     | '/'
     | '/changelog'
     | '/getting-started'
     | '/components/$component'
+    | '/components/'
     | '/home/'
   fileRoutesById: FileRoutesById
 }
@@ -88,6 +104,7 @@ export interface RootRouteChildren {
   ChangelogRoute: typeof ChangelogRoute
   GettingStartedRoute: typeof GettingStartedRoute
   ComponentsComponentRoute: typeof ComponentsComponentRoute
+  ComponentsIndexRoute: typeof ComponentsIndexRoute
   HomeIndexRoute: typeof HomeIndexRoute
 }
 
@@ -114,6 +131,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof GettingStartedRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/components/': {
+      id: '/components/'
+      path: '/components'
+      fullPath: '/components/'
+      preLoaderRoute: typeof ComponentsIndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/components/$component': {
       id: '/components/$component'
       path: '/components/$component'
@@ -136,6 +160,7 @@ const rootRouteChildren: RootRouteChildren = {
   ChangelogRoute: ChangelogRoute,
   GettingStartedRoute: GettingStartedRoute,
   ComponentsComponentRoute: ComponentsComponentRoute,
+  ComponentsIndexRoute: ComponentsIndexRoute,
   HomeIndexRoute: HomeIndexRoute,
 }
 export const routeTree = rootRouteImport

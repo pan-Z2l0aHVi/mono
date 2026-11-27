@@ -113,14 +113,14 @@ const logoSrc = `${import.meta.env.BASE_URL}bo-transparent.png`
 
 <template>
   <div class="max-w-4xl mx-auto px-6 py-12 flex flex-col items-center text-center">
-    <div class="relative group mb-8">
+    <div class="group relative mb-7">
       <div
-        class="absolute -inset-1.5 rounded-[36px] bg-linear-to-tr from-(--wui-color-accent) to-(--wui-color-accent) opacity-40 blur-xl transition-all duration-[calc(var(--wui-duration-focus,200ms)*2.5)] group-hover:opacity-75"
+        class="absolute -inset-1.5 rounded-[36px] bg-linear-to-tr from-[#d96bd9] via-[#9076f5] to-[#4e7ef5] opacity-35 blur-xl transition-all duration-[calc(var(--wui-duration-focus,200ms)*2.5)] group-hover:opacity-65"
       ></div>
       <img
         :src="logoSrc"
         alt="Bo Logo"
-        class="relative h-28 w-28 rounded-[28px] sm:h-36 sm:w-36 sm:rounded-[32px] shadow-2xl border border-(--wui-color-border) object-cover bg-(--wui-color-surface) transition-transform duration-[calc(var(--wui-duration-focus,200ms)*1.5)] group-hover:scale-105"
+        class="relative h-28 w-28 rounded-[28px] border border-(--wui-color-border) bg-(--wui-color-surface) object-contain p-3.5 shadow-xl transition-transform duration-[calc(var(--wui-duration-focus,200ms)*1.5)] group-hover:scale-105 sm:h-36 sm:w-36 sm:rounded-[32px] sm:p-4"
       />
     </div>
 

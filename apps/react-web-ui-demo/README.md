@@ -2,6 +2,8 @@
 
 这是 `@greypan/web-ui` 的 React 集成和预览应用。它展示组件在真实 React 应用中的用法，并提供可交互预览。
 
+**在线演示：** [React Web UI Demo](https://pan-z2l0ahvi.github.io/mono/react-web-ui-demo)
+
 公共属性、slot、事件和类型以 [`packages/web-ui`](../../packages/web-ui) 的源码、README 和测试为准，demo 行为不替代公共契约。
 
 ## 运行
