@@ -354,6 +354,18 @@ func TestDesktopShellMenuCommandDispatch(t *testing.T) {
 	if !reflect.DeepEqual(host.emittedCmds, []menucontract.Command{menucontract.CommandNavigateBack}) {
 		t.Fatalf("expected frontend command forwarded, got %v", host.emittedCmds)
 	}
+
+	checked := 0
+	shWithUpdater := NewDesktopShell(host, state, Config{
+		MinSize:         WindowSize{Width: 400, Height: 600},
+		FallbackSize:    WindowSize{Width: 1280, Height: 800},
+		ReleasesURL:     "https://example.com/releases",
+		CheckForUpdates: func() { checked++ },
+	})
+	shWithUpdater.HandleMenuCommand(menucontract.CommandCheckForUpdates)
+	if checked != 1 {
+		t.Fatalf("expected CheckForUpdates callback called once, got %d", checked)
+	}
 }
 
 func TestWindowModeTogglerBehavior(t *testing.T) {

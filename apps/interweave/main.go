@@ -4,10 +4,12 @@ import (
 	"context"
 	"embed"
 	"fmt"
+	"io"
 	"log"
 	"os"
 	"path/filepath"
 	"runtime"
+	"sync/atomic"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
 	"github.com/wailsapp/wails/v3/pkg/events"
@@ -21,6 +23,7 @@ import (
 	nativeService "github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/remote"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/settings"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/updater"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/internal/shell"
 )
 
@@ -32,8 +35,7 @@ var assets embed.FS
 // documentationURL 是 Help 菜单打开的文档地址。
 const documentationURL = "https://github.com/pan-Z2l0aHVi/mono/tree/main/apps/interweave"
 
-// releasesURL 是 App 菜单「检查更新」打开的发布页。不做 Wails updater 接入：
-// 这一项只负责把用户带到能看到版本与变更的地方。
+// releasesURL 是更新失败或手动查看发布说明时打开的 GitHub Releases 兜底地址。
 const releasesURL = "https://github.com/pan-Z2l0aHVi/mono/releases"
 
 const (
@@ -132,6 +134,34 @@ func windowsOptions(dir string) application.WindowsOptions {
 	}
 }
 
+// singleInstanceUniqueID 按 dev/prod 隔离单实例锁 ID，防止开发版与正式版互锁，
+// 同时阻止 Windows 双击或托盘态重开时起多个进程争抢同一 WebviewUserDataPath 导致闪退。
+func singleInstanceUniqueID() string {
+	return "com.greypan." + appDataDirName
+}
+
+const maxLogFileBytes = 2 << 20 // 2 MiB
+
+// setupFileLogging 把运行与崩溃日志落盘到数据目录（interweave.log），
+// 解决 Windows -H windowsgui 无控制台时 WebView2 或启动异常无声闪退的问题。
+func setupFileLogging(dir string) func() {
+	logPath := filepath.Join(dir, "interweave.log")
+	if info, err := os.Stat(logPath); err == nil && info.Size() > maxLogFileBytes {
+		_ = os.Remove(logPath + ".old")
+		_ = os.Rename(logPath, logPath+".old")
+	}
+	f, err := os.OpenFile(logPath, os.O_CREATE|os.O_WRONLY|os.O_APPEND, 0o644)
+	if err != nil {
+		return func() {}
+	}
+	if isProductionBuild && runtime.GOOS == "windows" {
+		log.SetOutput(f)
+	} else {
+		log.SetOutput(io.MultiWriter(os.Stderr, f))
+	}
+	return func() { _ = f.Close() }
+}
+
 // linuxOptions 同样禁止最后一个窗口销毁时自动退出，保证轻量模式只保留后端服务。
 func linuxOptions() application.LinuxOptions {
 	return application.LinuxOptions{DisableQuitOnLastWindowClosed: true}
@@ -173,6 +203,10 @@ func dispatchMenuRole(role string, actions menuRoleActions) bool {
 }
 
 func main() {
+	// 在初始化 Wails 应用与单实例锁之前优先分流更新器的内部自举/守望子命令。
+	if handled, code := updater.HandleSubcommand(os.Args); handled {
+		os.Exit(code)
+	}
 	if err := run(); err != nil {
 		log.Fatal(err)
 	}
@@ -185,6 +219,8 @@ func run() error {
 	if err != nil {
 		return fmt.Errorf("failed to prepare application data location: %w", err)
 	}
+	closeLog := setupFileLogging(dir)
+	defer closeLog()
 
 	settingsStore, err := settings.NewStore(filepath.Join(dir, "settings.json"))
 	if err != nil {
@@ -238,6 +274,7 @@ func run() error {
 	if runtime.GOOS == "darwin" {
 		services = append(services, application.NewService(dockService))
 	}
+	var onSecondInstance atomic.Pointer[func()]
 	app := application.New(application.Options{
 		Name: "Interweave",
 		// 原生关于面板没有版本字段，版本拼进 Description。
@@ -247,6 +284,17 @@ func run() error {
 			Handler:    application.AssetFileServerFS(assets),
 			Middleware: rt.MediaHandler().Middleware,
 		},
+		SingleInstance: &application.SingleInstanceOptions{
+			UniqueID: singleInstanceUniqueID(),
+			OnSecondInstanceLaunch: func(application.SecondInstanceData) {
+				if fn := onSecondInstance.Load(); fn != nil && *fn != nil {
+					(*fn)()
+				}
+			},
+		},
+		ErrorHandler: func(err error) {
+			log.Printf("interweave: wails error: %v", err)
+		},
 		Mac:     macOptions(),
 		Windows: windowsOptions(dir),
 		Linux:   linuxOptions(),
@@ -255,15 +303,42 @@ func run() error {
 	windows := newMainWindowController(app, mainWindowOptions())
 	quitApp := func() { dockPresence.quitAfterDrain(app.Quit) }
 	host := &wailsDesktopHost{app: app, windows: windows, osService: osService, presence: dockPresence, quit: quitApp}
+
+	updaterCacheDir, err := updater.DefaultCacheDir()
+	if err != nil {
+		log.Printf("interweave: resolve updater cache dir failed: %v", err)
+		updaterCacheDir = filepath.Join(dir, "cache", "updater")
+	}
+	updaterCtrl := updater.NewController(updater.ControllerConfig{
+		CurrentVersion: version,
+		IsProduction:   isProductionBuild,
+		ReleasesURL:    releasesURL,
+		CacheDir:       updaterCacheDir,
+		Fetcher: updater.NewReleaseClient(updater.ReleaseClientOptions{
+			GOOS:     runtime.GOOS,
+			GOARCH:   runtime.GOARCH,
+			CacheDir: updaterCacheDir,
+			Proxy:    nativeService.SystemProxy,
+		}),
+		UI:           updater.NewPlatformUI(),
+		Installer:    updater.NewPlatformInstaller(),
+		OpenExternal: osService.OpenExternal,
+		QuitApp:      quitApp,
+	})
+	go updaterCtrl.CleanupStaleCache()
+
 	desktopShell := shell.NewDesktopShell(
 		host,
 		&wailsShellState{settings: settingsService, menu: menuService},
 		shell.Config{
-			MinSize:      shell.WindowSize{Width: minWindowWidth, Height: minWindowHeight},
-			FallbackSize: shell.WindowSize{Width: defaultWindowWidth, Height: defaultWindowHeight},
-			ReleasesURL:  releasesURL,
+			MinSize:         shell.WindowSize{Width: minWindowWidth, Height: minWindowHeight},
+			FallbackSize:    shell.WindowSize{Width: defaultWindowWidth, Height: defaultWindowHeight},
+			ReleasesURL:     releasesURL,
+			CheckForUpdates: updaterCtrl.TriggerCheck,
 		},
 	)
+	presentExisting := desktopShell.PresentWindow
+	onSecondInstance.Store(&presentExisting)
 
 	// 轻量模式销毁 WebView 时绕过「最小化到托盘 / 退出」；其余关闭照旧交给 shell。
 	// 用户关闭事件由 Wails 在 goroutine 里派发，设置读取必须与设置变更的补偿逻辑同在 main
@@ -406,8 +481,10 @@ func run() error {
 			libraryService.NewSourceAvailabilityEventDTO(change),
 		)
 	})
-	rt.Start(context.Background())
+	// 异步启动目录对账与 fsnotify 监听，避免 Windows NTFS 初始全量扫描阻塞主窗口启动与首帧。
+	go rt.Start(context.Background())
 	app.OnShutdown(func() {
+		updaterCtrl.Shutdown()
 		if err := rt.Close(); err != nil {
 			log.Printf("interweave: close library runtime failed: %v", err)
 		}
