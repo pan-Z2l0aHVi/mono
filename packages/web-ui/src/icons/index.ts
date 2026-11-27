@@ -111,4 +111,5 @@ export { default as icBaselinePhonelink } from './generated/ic-baseline-phonelin
 export { default as icRoundMenuOpen } from './generated/ic-round-menu-open'
 export { default as lucideHouse } from './generated/lucide-house'
 export { default as lucideShoppingCart } from './generated/lucide-shopping-cart'
+export { default as wordpressDashboard } from './generated/wordpress-dashboard'
 export { iconGallery } from './generated/gallery'

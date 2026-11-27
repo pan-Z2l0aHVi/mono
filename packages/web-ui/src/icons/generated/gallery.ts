@@ -113,6 +113,7 @@ import tablerClockPlus from './tabler-clock-plus'
 import tablerMovieOff from './tabler-movie-off'
 import tablerSortAscendingLetters from './tabler-sort-ascending-letters'
 import tablerTagPlus from './tabler-tag-plus'
+import wordpressDashboard from './wordpress-dashboard'
 
 export const iconGallery: Record<string, IconifyIcon> = {
   akarIconsPlay,
@@ -226,5 +227,6 @@ export const iconGallery: Record<string, IconifyIcon> = {
   icBaselinePhonelink,
   icRoundMenuOpen,
   lucideHouse,
-  lucideShoppingCart
+  lucideShoppingCart,
+  wordpressDashboard
 }

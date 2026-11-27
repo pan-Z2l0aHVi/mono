@@ -93,3 +93,27 @@ func TestClipboardTextHonoursCancellation(t *testing.T) {
 		t.Fatal("expected a cancelled write to fail")
 	}
 }
+
+func TestWriteClipboardFilePathValidatesInput(t *testing.T) {
+	service := NewOSService()
+
+	if err := service.WriteClipboardFilePath(context.Background(), "   "); err == nil {
+		t.Fatal("expected blank file path to fail")
+	}
+	if err := service.WriteClipboardFilePath(context.Background(), filepath.Join(t.TempDir(), "missing.txt")); err == nil {
+		t.Fatal("expected missing file path to fail")
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	cancel()
+	if err := service.WriteClipboardFilePath(ctx, t.TempDir()); err == nil {
+		t.Fatal("expected cancelled context to fail")
+	}
+}
+
+func TestFormatClipboardFileURI(t *testing.T) {
+	actual := formatClipboardFileURI("/tmp/one file.txt")
+	if actual != "file:///tmp/one%20file.txt\r\n" {
+		t.Fatalf("unexpected formatted file URI: %q", actual)
+	}
+}

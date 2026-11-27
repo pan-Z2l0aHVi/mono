@@ -7,3 +7,7 @@ import "context"
 func readClipboardFilePaths(context.Context) ([]string, error) {
 	return nil, unsupportedClipboardError()
 }
+
+func writeClipboardFilePath(context.Context, string) error {
+	return unsupportedClipboardError()
+}

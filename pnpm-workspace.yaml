@@ -122,6 +122,7 @@ catalog:
   '@iconify-json/carbon': ^1.2.30
   '@iconify-json/codicon': ^1.2.77
   '@iconify-json/hugeicons': ^1.2.35
+  '@iconify-json/wordpress': ^1.2.32
 
 catalogMode: prefer
 

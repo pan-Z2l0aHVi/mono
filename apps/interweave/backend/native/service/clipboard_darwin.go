@@ -33,6 +33,22 @@ static char *copy_clipboard_file_paths(void) {
 	}
 }
 
+static bool write_clipboard_file_path(const char *path) {
+	@autoreleasepool {
+		NSString *nsPath = [NSString stringWithUTF8String:path];
+		if (nsPath == nil) {
+			return false;
+		}
+		NSURL *fileURL = [NSURL fileURLWithPath:nsPath];
+		if (fileURL == nil) {
+			return false;
+		}
+		NSPasteboard *pasteboard = [NSPasteboard generalPasteboard];
+		[pasteboard clearContents];
+		return [pasteboard writeObjects:@[ fileURL ]];
+	}
+}
+
 static void free_clipboard_string(char *value) {
 	free(value);
 }
@@ -43,6 +59,7 @@ import (
 	"context"
 	"encoding/json"
 	"fmt"
+	"unsafe"
 )
 
 func readClipboardFilePaths(context.Context) ([]string, error) {
@@ -57,4 +74,13 @@ func readClipboardFilePaths(context.Context) ([]string, error) {
 		return nil, fmt.Errorf("decode macOS clipboard file paths: %w", err)
 	}
 	return paths, nil
+}
+
+func writeClipboardFilePath(_ context.Context, filePath string) error {
+	cPath := C.CString(filePath)
+	defer C.free(unsafe.Pointer(cPath))
+	if !C.write_clipboard_file_path(cPath) {
+		return fmt.Errorf("write macOS clipboard file path: NSPasteboard rejected file URL")
+	}
+	return nil
 }

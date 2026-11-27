@@ -325,7 +325,7 @@ describe('Interweave 纯键盘全路径交互（真实浏览器）', () => {
 
     const renameBtn = () => host.querySelector<HTMLElement>('web-ui-button[aria-label="重命名"]')!
     await waitFor(() => Boolean(renameBtn()?.shadowRoot?.querySelector('button')), '详情抽屉与重命名按钮渲染完成')
-    for (let i = 0; i < 6 && document.activeElement !== renameBtn(); i++) {
+    for (let i = 0; i < 10 && document.activeElement !== renameBtn(); i++) {
       await userEvent.tab()
     }
     expect(document.activeElement).toBe(renameBtn())

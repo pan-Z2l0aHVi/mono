@@ -27,20 +27,49 @@ func (s *OSService) GetClipboardFilePaths(ctx context.Context) ([]string, error)
 	return normalizeClipboardFilePaths(paths), nil
 }
 
+// WriteClipboardFilePath 将单个本地文件或目录写入系统剪贴板（文件对象而非纯文本路径），
+// 便于在系统文件管理器或外部应用中直接粘贴该资源。
+func (s *OSService) WriteClipboardFilePath(ctx context.Context, filePath string) error {
+	if err := ctx.Err(); err != nil {
+		return err
+	}
+	if strings.TrimSpace(filePath) == "" {
+		return fmt.Errorf("file path cannot be empty")
+	}
+	info, err := os.Stat(filePath)
+	if err != nil {
+		return fmt.Errorf("stat clipboard file: %w", err)
+	}
+	if !(info.Mode().IsRegular() || info.IsDir()) {
+		return fmt.Errorf("clipboard file must be a regular file or directory")
+	}
+	absolutePath, err := filepath.Abs(filePath)
+	if err != nil {
+		return fmt.Errorf("resolve clipboard file path: %w", err)
+	}
+	return writeClipboardFilePath(ctx, filepath.Clean(absolutePath))
+}
+
+func formatClipboardFileURI(filePath string) string {
+	return (&url.URL{
+		Scheme: "file",
+		Path:   filepath.ToSlash(filePath),
+	}).String() + "\r\n"
+}
+
 func normalizeClipboardFilePaths(paths []string) []string {
 	result := make([]string, 0, len(paths))
 	seen := make(map[string]struct{}, len(paths))
 	for _, path := range paths {
-		cleanPath := strings.TrimSpace(path)
-		if cleanPath == "" {
+		if strings.TrimSpace(path) == "" {
 			continue
 		}
 		// 普通文件与目录都保留：Finder 里复制文件夹是常见入口，展开收敛在导入链。
-		info, err := os.Stat(cleanPath)
+		info, err := os.Stat(path)
 		if err != nil || !(info.Mode().IsRegular() || info.IsDir()) {
 			continue
 		}
-		absolutePath, err := filepath.Abs(cleanPath)
+		absolutePath, err := filepath.Abs(path)
 		if err != nil {
 			continue
 		}
