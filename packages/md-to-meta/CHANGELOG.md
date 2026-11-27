@@ -2,6 +2,15 @@
 
 > 0.2.1 及更早的记录属于本包的前身 `@greypan/md-to-comp`，编号与内容按当时的接口解释。
 
+## 0.2.0
+
+### Minor Changes
+
+- 66e6c29: Add configurable code-fence flavors with built-in TS/JS pairs for the dev-kit documentation site, propagate fence metadata through generated meta so hosts can bind demos with `demo=<id>`, and release `web-ui-collapse` peek masks and glow pseudo-elements after an expansion settles open.
+- f33e21a: Add a browser runtime subpath `./runtime` and a theme plugin for runtime consumers, and make the parser's content hash and highlighter injectable.
+  
+  `parseMarkdown` gains optional `hash` (content-addressing for code files; generation keeps pinning Node sha256, default is now a pure-JS 48-bit hash so browser callers never touch `node:crypto`) and `highlight` options (generation default unchanged, still throws on mismatch). The new `highlightRuntime` shares the generation dual-theme + line-number pipeline but falls back to plain text on any mismatch, unknown language, or language outside the caller's `allowedLangs`. `mdmThemePlugin({ darkSelector })` serves `virtual:mdm-theme.css` from the same `renderCss` that generation writes, so runtime consumers get identical `.mdm-*` styling at build time without hand-written CSS or runtime `document.head` injection. A module-graph test pins that `./runtime` never reaches `node:` builtins; generated artifacts are byte-identical.
+
 ## 0.1.0
 
 ### Minor Changes

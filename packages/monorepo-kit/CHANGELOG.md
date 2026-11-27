@@ -1,5 +1,12 @@
 # @greypan/monorepo-kit
 
+## 0.2.1
+
+### Patch Changes
+
+- a83c4ad: Extract shared markdown corpus collection and code-block-aware link parsing into internal `workspace/corpus.ts` for `context-corpus` and `no-mutual-links`.
+- 1695e95: Sink Markdown syntax and anchor primitives into `workspace/corpus.ts`, fold private corpus invariant checks into `context-corpus.ts`, and remove `context-invariants.ts`.
+
 ## 0.2.0
 
 ### Minor Changes

@@ -1,5 +1,21 @@
 # @greypan/doc-demo-kit
 
+## 0.2.0
+
+### Minor Changes
+
+- 66e6c29: Add configurable code-fence flavors with built-in TS/JS pairs for the dev-kit documentation site, propagate fence metadata through generated meta so hosts can bind demos with `demo=<id>`, and release `web-ui-collapse` peek masks and glow pseudo-elements after an expansion settles open.
+
+### Patch Changes
+
+- fca2c6f: Export `findComponentRoute` and `ComponentRouteEntry` from `nav.ts` to drive dynamic component routes in the React and Vue demos.
+- fca2c6f: Add `createSearchController` (backed by an internal `expanding-field` controller) to unify demo search state, keyboard navigation, and focus/outside-click behavior across React and Vue demos.
+- a050c3c: Preload route example docs and cache resolved demo modules before navigation commits so route demos can mount synchronously. Soften the light-mode `--wui-shadow-glass` token so `.wui-glass` surfaces cast a subtler outer shadow. Render Interweave dialog list tooltips through a portal so adjacent rows no longer clip or occlude them.
+- Updated dependencies [66e6c29]
+- Updated dependencies [f33e21a]
+  - @greypan/md-to-meta@0.2.0
+  - @greypan/browser-kit@3.1.2
+
 ## 0.1.3
 
 ### Patch Changes
