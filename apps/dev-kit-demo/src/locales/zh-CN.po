@@ -21,10 +21,6 @@ msgid "关闭横幅"
 msgstr "关闭横幅"
 
 #: src/app/index.vue
-msgid "js-kit 与 browser-kit 交互文档站"
-msgstr "js-kit 与 browser-kit 交互文档站"
-
-#: src/app/index.vue
 msgid "全局动效"
 msgstr "全局动效"
 
@@ -562,3 +558,7 @@ msgstr "8 个模块"
 #: src/pages/home/index.vue
 msgid "面向现代 TypeScript 与浏览器的零框架依赖工具集"
 msgstr "面向现代 TypeScript 与浏览器的零框架依赖工具集"
+
+#: src/app/index.vue
+msgid "欢迎来到 GreyPan 工具文档与交互示例站"
+msgstr "欢迎来到 GreyPan 工具文档与交互示例站"

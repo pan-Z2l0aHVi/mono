@@ -21,10 +21,6 @@ msgid "关闭横幅"
 msgstr "Dismiss banner"
 
 #: src/app/index.vue
-msgid "js-kit 与 browser-kit 交互文档站"
-msgstr "Interactive docs for js-kit & browser-kit"
-
-#: src/app/index.vue
 msgid "全局动效"
 msgstr "Global motion"
 
@@ -562,3 +558,7 @@ msgstr "8 modules"
 #: src/pages/home/index.vue
 msgid "面向现代 TypeScript 与浏览器的零框架依赖工具集"
 msgstr "Framework-free toolkits for modern TypeScript and browsers"
+
+#: src/app/index.vue
+msgid "欢迎来到 GreyPan 工具文档与交互示例站"
+msgstr "Welcome to the GreyPan tools documentation and interactive demos."

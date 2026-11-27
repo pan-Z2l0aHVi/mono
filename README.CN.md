@@ -12,13 +12,13 @@
 
 ## 发布到 npm 的包
 
-| 包名                                                                                  | 提供什么                                                        |
-| ------------------------------------------------------------------------------------- | --------------------------------------------------------------- |
-| [`@greypan/js-kit`](./packages/js-kit/README.CN.md)                                   | JavaScript 工具函数与可组合插件，不依赖 DOM。                   |
-| [`@greypan/browser-kit`](./packages/browser-kit/README.CN.md)                         | 浏览器存储、埋点、环境检测、文件、剪贴板与历史记录工具。        |
-| [`@greypan/web-ui`](./packages/web-ui/README.CN.md)                                   | 基于 Lit 的 Web Components、主题 token、图标与 React/Vue 类型。 |
-| [`@greypan/unplugin-web-components`](./packages/unplugin-web-components/README.CN.md) | 在标签出现时自动导入 Web Components 的 Vite/Webpack 插件。      |
-| [`@greypan/deps-reload`](./packages/deps-reload/README.CN.md)                         | 依赖构建产物变化时刷新页面的 Vite/Webpack 插件。                |
+| 包名                                                                                  | 提供什么                                                        | 在线文档                                                                                                                                |
+| ------------------------------------------------------------------------------------- | --------------------------------------------------------------- | --------------------------------------------------------------------------------------------------------------------------------------- |
+| [`@greypan/js-kit`](./packages/js-kit/README.CN.md)                                   | JavaScript 工具函数与可组合插件，不依赖 DOM。                   | [文档与示例](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/js-kit/getting-started)                                                   |
+| [`@greypan/browser-kit`](./packages/browser-kit/README.CN.md)                         | 浏览器存储、埋点、环境检测、文件、剪贴板与历史记录工具。        | [文档与示例](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo/browser-kit/getting-started)                                              |
+| [`@greypan/web-ui`](./packages/web-ui/README.CN.md)                                   | 基于 Lit 的 Web Components、主题 token、图标与 React/Vue 类型。 | [Vue demo](https://pan-z2l0ahvi.github.io/mono/vue-web-ui-demo/) · [React demo](https://pan-z2l0ahvi.github.io/mono/react-web-ui-demo/) |
+| [`@greypan/unplugin-web-components`](./packages/unplugin-web-components/README.CN.md) | 在标签出现时自动导入 Web Components 的 Vite/Webpack 插件。      | —                                                                                                                                       |
+| [`@greypan/deps-reload`](./packages/deps-reload/README.CN.md)                         | 依赖构建产物变化时刷新页面的 Vite/Webpack 插件。                | —                                                                                                                                       |
 
 ## Workspace 内部包
 
