@@ -11,7 +11,6 @@ func TestCommandValues(t *testing.T) {
 		{CommandAddResource, "add-resource"},
 		{CommandImportFromClipboard, "import-from-clipboard"},
 		{CommandImportFromLink, "import-from-link"},
-		{CommandRefreshLibrary, "refresh-library"},
 		{CommandToggleSidebar, "toggle-sidebar"},
 		{CommandToggleFilterBar, "toggle-filter-bar"},
 		{CommandFocusSearch, "focus-search"},
@@ -21,7 +20,6 @@ func TestCommandValues(t *testing.T) {
 		{CommandCheckForUpdates, "check-for-updates"},
 		{CommandOpenDocumentation, "open-documentation"},
 		{CommandReloadWindow, "reload-window"},
-		{CommandOpenDevTools, "open-devtools"},
 		{CommandCopyAsPlainText, "copy-as-plain-text"},
 		{CommandPasteAsPlainText, "paste-as-plain-text"},
 		{CommandMaximiseWindow, "maximise-window"},
@@ -51,7 +49,7 @@ func TestIsCommand(t *testing.T) {
 		t.Fatal("expected a known command to be accepted")
 	}
 	// 旧命令名不再合法：前端若还认得它，说明两侧契约漂移了。
-	for _, retired := range []string{"paste-files", "refresh-availability", "unknown-command", ""} {
+	for _, retired := range []string{"paste-files", "refresh-availability", "refresh-library", "open-devtools", "unknown-command", ""} {
 		if IsCommand(retired) {
 			t.Fatalf("expected %q to be rejected", retired)
 		}

@@ -10,7 +10,6 @@ function snapshot(overrides: Partial<Snapshot> = {}): Snapshot {
     appearance: 'system',
     accent: '#0071e3',
     reducedMotion: false,
-    developerOptions: false,
     minimizeToTrayOnClose: false,
     zoom: 100,
     warnings: [],
@@ -20,7 +19,7 @@ function snapshot(overrides: Partial<Snapshot> = {}): Snapshot {
     ],
     appearances: ['light', 'dark', 'system'],
     zoomPresets: [
-      { value: 90, label: '全面' },
+      { value: 90, label: '高效' },
       { value: 100, label: '标准' },
       { value: 110, label: '舒适' },
       { value: 120, label: '关怀' }
@@ -75,7 +74,6 @@ describe('settings store', () => {
     await store.setAppearance('dark', runtime)
     await store.setAccent('#ffbe00', runtime)
     await store.setReducedMotion(true, runtime)
-    await store.setDeveloperOptions(true, runtime)
     await store.setMinimizeToTrayOnClose(true, runtime)
     await store.setZoom(110, runtime)
 
@@ -83,7 +81,6 @@ describe('settings store', () => {
       { appearance: 'dark' },
       { accent: '#ffbe00' },
       { reducedMotion: true },
-      { developerOptions: true },
       { minimizeToTrayOnClose: true },
       { zoom: 110 }
     ])
@@ -92,9 +89,9 @@ describe('settings store', () => {
   it('事件推送的快照整体覆盖本地缓存', () => {
     const store = useSettingsStore()
 
-    store.applySnapshot(snapshot({ developerOptions: true, minimizeToTrayOnClose: true }))
+    store.applySnapshot(snapshot({ reducedMotion: true, minimizeToTrayOnClose: true }))
 
-    expect(store.developerOptions).toBe(true)
+    expect(store.reducedMotion).toBe(true)
     expect(store.minimizeToTrayOnClose).toBe(true)
     expect(store.loaded).toBe(true)
   })

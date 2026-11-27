@@ -17,7 +17,6 @@ export enum Command {
     CommandAddResource = "add-resource",
     CommandImportFromClipboard = "import-from-clipboard",
     CommandImportFromLink = "import-from-link",
-    CommandRefreshLibrary = "refresh-library",
     CommandToggleSidebar = "toggle-sidebar",
     CommandToggleFilterBar = "toggle-filter-bar",
     CommandFocusSearch = "focus-search",
@@ -27,14 +26,13 @@ export enum Command {
     CommandCheckForUpdates = "check-for-updates",
     CommandOpenDocumentation = "open-documentation",
     CommandReloadWindow = "reload-window",
-    CommandOpenDevTools = "open-devtools",
     CommandCopyAsPlainText = "copy-as-plain-text",
     CommandPasteAsPlainText = "paste-as-plain-text",
 
     /**
      * CommandMaximiseWindow 只在 Windows 的「窗口 › 最大化」出现：Wails 的 Zoom role
      * 在 Win32 侧是空实现（windowsWebviewWindow.zoom 直接 Noop），窗口最大化要走
-     * Maximise。与 reload-window、open-devtools 一样由 Go 直接执行，不经前端。
+     * Maximise。与 reload-window 一样由 Go 直接执行，不经前端。
      */
     CommandMaximiseWindow = "maximise-window",
 

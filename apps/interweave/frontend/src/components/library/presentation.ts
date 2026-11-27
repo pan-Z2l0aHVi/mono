@@ -241,7 +241,7 @@ export function formatDate(timestamp: number): string {
   if (sameDay(now) || sameDay(yesterday)) {
     const hour = date.getHours()
     const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${sameDay(now) ? '今天' : '昨天'}${hour < 12 ? '上午' : '下午'}${hour % 12 || 12}:${minutes}`
+    return `${sameDay(now) ? '今天' : '昨天'}${hour < 12 ? '上午' : '下午'} ${hour % 12 || 12}:${minutes}`
   }
   return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
 }

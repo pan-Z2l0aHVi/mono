@@ -14,7 +14,6 @@ import {
   MENU_FOCUS_SEARCH_EVENT,
   MENU_IMPORT_FROM_CLIPBOARD_EVENT,
   MENU_IMPORT_FROM_LINK_EVENT,
-  MENU_REFRESH_EVENT,
   MENU_TOGGLE_FILTER_BAR_EVENT
 } from '@/composables/menuActions'
 import { hasEditableFocus, insertTextAtFocus, readSelectionText } from '@/composables/plainTextClipboard'
@@ -116,9 +115,6 @@ const stopMenuCommands = onMenuCommand({
   },
   importFromLink() {
     void openLibraryThen(() => dispatchMenuAction(MENU_IMPORT_FROM_LINK_EVENT))
-  },
-  refreshLibrary() {
-    void openLibraryThen(() => dispatchMenuAction(MENU_REFRESH_EVENT))
   },
   toggleSidebar,
   toggleFilterBar() {

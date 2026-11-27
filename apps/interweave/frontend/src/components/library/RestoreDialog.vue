@@ -1,5 +1,5 @@
 <script setup lang="ts">
-import { toast, type WebUiDialog, type WebUiEvent } from '@greypan/web-ui'
+import { toast, type WebUiDialog, type WebUiEvent, type WebUiSwitch } from '@greypan/web-ui'
 import {
   akarIconsCircleCheck,
   emojioneMonotoneStopButton,
@@ -41,7 +41,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
   submit: [items: LibraryRestoreQueueItem[]]
-  addItems: [items: LibraryRestoreQueueItem[]]
 }>()
 
 const session = createRestoreSession(
@@ -62,13 +61,14 @@ const session = createRestoreSession(
     lease: props.lease,
     notifyInfo: message => toast.info(message, { position: 'top-center' }),
     notifyError: message => toast.error(message, { position: 'top-center' }),
-    onAddItems: items => emit('addItems', items),
     onSubmit: items => emit('submit', items)
   }
 )
 
 const {
   scanChoiceOpen,
+  includeOtherUnavailable,
+  otherUnavailableFiles,
   candidateItem,
   candidates,
   scanProgress,
@@ -292,7 +292,17 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   </web-ui-dialog>
   <web-ui-dialog :open="scanChoiceOpen" controlled no-backdrop-close @open-change="scanChoiceOpen = $event.detail.open">
     <span slot="header">扫描范围</span>
-    <p>选择要查找的位置，包含其中所有子文件夹</p>
+    <p class="m-0">选择要查找的位置，包含其中所有子文件夹</p>
+    <div v-if="otherUnavailableFiles.length" class="mt-4 flex items-center justify-between gap-3">
+      <span class="text-sm text-(--wui-color-text)"
+        >同时查找其他 <span class="font-mono tabular-nums">{{ otherUnavailableFiles.length }}</span> 条失效文件</span
+      >
+      <web-ui-switch
+        :checked="includeOtherUnavailable"
+        aria-label="同时查找其他失效文件"
+        @change="includeOtherUnavailable = ($event.currentTarget as WebUiSwitch).checked"
+      />
+    </div>
     <web-ui-button slot="footer" full variant="primary" @click="session.chooseScanDirectory()"
       >扫描选定文件夹</web-ui-button
     >
@@ -321,7 +331,14 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
             ><web-ui-icon :icon="lucideFile" :size="18"
           /></span>
           <span class="min-w-0 flex-1">
-            <strong class="block truncate text-sm">{{ candidate.path.split('/').pop() || candidate.path }}</strong>
+            <strong class="flex items-center gap-1.5 text-sm">
+              <span class="truncate">{{ candidate.path.split('/').pop() || candidate.path }}</span>
+              <span
+                v-if="prepared[renderedCandidateItem.id] === candidate.path"
+                class="shrink-0 rounded-full bg-[color-mix(in_srgb,var(--wui-color-accent)_14%,transparent)] px-1.5 py-0.5 text-[11px] font-medium text-(--wui-color-accent)"
+                >当前</span
+              >
+            </strong>
             <span class="block wrap-anywhere text-xs text-(--wui-color-text-secondary)">{{ candidate.path }}</span>
             <span class="block text-xs text-(--wui-color-text-secondary)"
               ><span class="font-mono tabular-nums">{{ formatSize(candidate.size) }}</span> ·

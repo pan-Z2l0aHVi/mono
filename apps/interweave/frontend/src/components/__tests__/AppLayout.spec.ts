@@ -620,7 +620,6 @@ describe('AppLayout：菜单命令', () => {
     await flushUntil(() => reportDisabled.mock.calls.length > 0, '切页后没有更新菜单可用性')
 
     expect(reportDisabled).toHaveBeenLastCalledWith([
-      'refresh-library',
       'toggle-filter-bar',
       'focus-search',
       'navigate-back',

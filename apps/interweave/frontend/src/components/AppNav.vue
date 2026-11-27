@@ -46,7 +46,7 @@ function prefetchNav(path: string) {
 <template>
   <div
     class="relative z-20 flex h-full flex-col"
-    :class="[mobile ? 'p-0' : 'p-2', { 'pt-10': trafficLightInset }]"
+    :class="[mobile ? 'p-0' : 'px-2 pt-2 pb-1.5', { 'pt-10': trafficLightInset }]"
     :data-traffic-light-inset="trafficLightInset ? 'true' : undefined"
     aria-label="应用导航"
   >

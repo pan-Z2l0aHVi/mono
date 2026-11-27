@@ -43,7 +43,6 @@ export const useSettingsStore = defineStore('settings', {
     appearance: state => state.snapshot.appearance,
     accent: state => state.snapshot.accent,
     reducedMotion: state => state.snapshot.reducedMotion,
-    developerOptions: state => state.snapshot.developerOptions,
     minimizeToTrayOnClose: state => state.snapshot.minimizeToTrayOnClose,
     presets: state => state.snapshot.presets,
     zoom: state => state.snapshot.zoom,
@@ -86,9 +85,6 @@ export const useSettingsStore = defineStore('settings', {
     },
     async setReducedMotion(reduced: boolean, runtime?: SettingsRuntime) {
       await this.patch({ reducedMotion: reduced }, runtime)
-    },
-    async setDeveloperOptions(enabled: boolean, runtime?: SettingsRuntime) {
-      await this.patch({ developerOptions: enabled }, runtime)
     },
     async setMinimizeToTrayOnClose(enabled: boolean, runtime?: SettingsRuntime) {
       await this.patch({ minimizeToTrayOnClose: enabled }, runtime)

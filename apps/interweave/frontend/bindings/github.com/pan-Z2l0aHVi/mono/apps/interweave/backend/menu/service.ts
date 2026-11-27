@@ -18,7 +18,7 @@ import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Cr
 import * as $models from "./models.js";
 
 /**
- * GetMenu 返回当前菜单树快照（含开发者菜单开关与禁用态），供 Windows 一体化顶栏渲染。
+ * GetMenu 返回当前菜单树快照（含禁用态），供 Windows 一体化顶栏渲染。
  */
 export function GetMenu(): $CancellablePromise<$models.MenuItem[]> {
     return $Call.ByID(714686459).then(($result: any) => {

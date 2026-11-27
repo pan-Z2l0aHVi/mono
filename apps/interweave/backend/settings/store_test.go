@@ -36,7 +36,6 @@ func TestSaveThenLoadRoundTrips(t *testing.T) {
 		Appearance:            AppearanceDark,
 		Accent:                "#f54096",
 		ReducedMotion:         true,
-		DeveloperOptions:      true,
 		MinimizeToTrayOnClose: true,
 		Zoom:                  110,
 	}
