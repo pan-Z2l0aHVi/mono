@@ -150,7 +150,6 @@ describe('restoreSession', () => {
     const queue = ref<LibraryRestoreQueueItem[]>([fileItem('f1')])
     const allUnavailableFiles = ref<LibraryRestoreQueueItem[]>([fileItem('f2'), fileItem('f3')])
     const { lease } = createTestLease()
-    const onAddItems = vi.fn<(items: LibraryRestoreQueueItem[]) => void>()
     const onSubmit = vi.fn<(items: LibraryRestoreQueueItem[]) => void>()
     const startScan = vi.fn<(ids: string[], directory: string) => Promise<string>>(async () => 'scan-1')
 
@@ -194,7 +193,6 @@ describe('restoreSession', () => {
         discardScan: async () => undefined,
         lease,
         timers,
-        onAddItems,
         onSubmit
       }
     )
@@ -205,8 +203,6 @@ describe('restoreSession', () => {
 
       session.scanAllDisks()
       await vi.waitFor(() => expect(pollScan).toHaveBeenCalledTimes(1))
-      // 不再往待找回队列塞入其他失效资源
-      expect(onAddItems).not.toHaveBeenCalled()
       expect(startScan).toHaveBeenCalledWith(['f1', 'f2', 'f3'], '')
       // 未命中的 f3 不污染待找回，命中的 f2 直接进入已找到
       expect(session.pendingItems.value).toEqual([])

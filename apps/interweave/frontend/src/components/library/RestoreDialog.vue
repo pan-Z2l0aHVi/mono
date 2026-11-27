@@ -41,7 +41,6 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
   submit: [items: LibraryRestoreQueueItem[]]
-  addItems: [items: LibraryRestoreQueueItem[]]
 }>()
 
 const session = createRestoreSession(
@@ -62,7 +61,6 @@ const session = createRestoreSession(
     lease: props.lease,
     notifyInfo: message => toast.info(message, { position: 'top-center' }),
     notifyError: message => toast.error(message, { position: 'top-center' }),
-    onAddItems: items => emit('addItems', items),
     onSubmit: items => emit('submit', items)
   }
 )

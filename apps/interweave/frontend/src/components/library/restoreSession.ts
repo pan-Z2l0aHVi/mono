@@ -53,7 +53,6 @@ export interface RestorePorts {
   lease: PreviewLease
   notifyInfo?: (message: string) => void
   notifyError?: (message: string) => void
-  onAddItems?: (items: LibraryRestoreQueueItem[]) => void
   onSubmit?: (items: LibraryRestoreQueueItem[]) => void
   timers?: RecoveryScanTimers
 }

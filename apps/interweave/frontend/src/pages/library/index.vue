@@ -726,7 +726,6 @@ onMounted(() => {
     :discard-scan="runtime.sources.discardRecoveryScan"
     :lease="previewLease"
     @update:open="workflow.setRestoreOpen($event)"
-    @add-items="workflow.setRestoreQueue($event)"
     @submit="workflow.submitRestoreQueue($event)"
   />
 
