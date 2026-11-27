@@ -137,7 +137,38 @@ func (w *windowsInstaller) InstallAndRelaunch(ctx context.Context, req InstallRe
 	}
 	defer windows.CloseHandle(readyEventHandle)
 
-	// 先启动普通用户态（Medium IL）watchdog 并等待其打开 doneEvent 后通过 readyEvent 握手确认，
+	applyArgs := []string{
+		SubcommandApplyUpdate,
+		"--pid=" + strconv.Itoa(oldPID),
+		"--source=" + req.StagedFilePath,
+		"--target=" + exePath,
+		"--sha256=" + req.ExpectedSHA256,
+		"--version=" + req.TargetVersion.String(),
+		"--done-event=" + doneEventName,
+	}
+
+	// 需提权时，改由已安装在受保护目录的当前旧版 exe 自举执行 --apply-update（消除用户态缓存提权自校验 TOCTOU）。
+	// 先完成 UAC 提权并启动 helper，再启动 watchdog：
+	// 1. 避免 watchdog 的 120s 等待预算与 UAC 人工确认时间重叠；
+	// 2. helper 启动后会阻塞在 waitProcessExit(oldPID, 25s)，此时父进程仍存活并持有 doneEventHandle，
+	//    确保 watchdog 打开 doneEvent 时内核对象始终存在，且用户取消 UAC 时无需启动/清理 watchdog。
+	if req.NeedsElevation {
+		hProc, err := shellExecuteElevated(exePath, buildWindowsArgLine(applyArgs))
+		if err != nil {
+			return err
+		}
+		if hProc != 0 {
+			_ = windows.CloseHandle(hProc)
+		}
+	} else {
+		cmd := exec.Command(exePath, applyArgs...)
+		cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS}
+		if err := cmd.Start(); err != nil {
+			return fmt.Errorf("start update helper: %w", err)
+		}
+	}
+
+	// 启动普通用户态（Medium IL）watchdog 并等待其打开 doneEvent 后通过 readyEvent 握手确认，
 	// 确保在父进程关闭句柄或退出前，doneEvent 内核对象始终由 watchdog 持有，不会过早销毁。
 	watchdogArgs := []string{
 		SubcommandWatchdogRelaunch,
@@ -153,7 +184,7 @@ func (w *windowsInstaller) InstallAndRelaunch(ctx context.Context, req InstallRe
 		return fmt.Errorf("start relaunch watchdog: %w", err)
 	}
 
-	// 若后续任一步骤（握手超时、用户取消 UAC、启动 helper 失败）出错，立即终止 watchdog，避免残留孤儿进程。
+	// 若握手超时或失败，立即终止 watchdog 且不退出主进程（helper 将在 waitProcessExit 超时后安全退出）。
 	keepWatchdog := false
 	defer func() {
 		if !keepWatchdog && wdCmd.Process != nil {
@@ -164,33 +195,6 @@ func (w *windowsInstaller) InstallAndRelaunch(ctx context.Context, req InstallRe
 	readyRes, readyErr := windows.WaitForSingleObject(readyEventHandle, 5_000)
 	if readyErr != nil || readyRes != windows.WAIT_OBJECT_0 {
 		return fmt.Errorf("wait relaunch watchdog ready: res=%d err=%v", readyRes, readyErr)
-	}
-
-	applyArgs := []string{
-		SubcommandApplyUpdate,
-		"--pid=" + strconv.Itoa(oldPID),
-		"--source=" + req.StagedFilePath,
-		"--target=" + exePath,
-		"--sha256=" + req.ExpectedSHA256,
-		"--version=" + req.TargetVersion.String(),
-		"--done-event=" + doneEventName,
-	}
-
-	// 需提权时，改由已安装在受保护目录的当前旧版 exe 自举执行 --apply-update（消除用户态缓存提权自校验 TOCTOU）。
-	if req.NeedsElevation {
-		hProc, err := shellExecuteElevated(exePath, buildWindowsArgLine(applyArgs))
-		if err != nil {
-			return err
-		}
-		if hProc != 0 {
-			_ = windows.CloseHandle(hProc)
-		}
-	} else {
-		cmd := exec.Command(exePath, applyArgs...)
-		cmd.SysProcAttr = &syscall.SysProcAttr{CreationFlags: windows.CREATE_NEW_PROCESS_GROUP | windows.DETACHED_PROCESS}
-		if err := cmd.Start(); err != nil {
-			return fmt.Errorf("start update helper: %w", err)
-		}
 	}
 
 	keepWatchdog = true
@@ -267,14 +271,14 @@ func runWatchdogRelaunch(args WatchdogRelaunchArgs) error {
 	}
 	defer windows.CloseHandle(h)
 
-	// 打开 doneEvent 后立即通知父进程已接管句柄，父进程随后才触发 UAC 与退出。
+	// 打开 doneEvent 后立即通知父进程已接管句柄，父进程随后才优雅退出。
 	if strings.TrimSpace(args.ReadyEvent) != "" {
 		if err := signalNamedEvent(args.ReadyEvent); err != nil {
 			return fmt.Errorf("signal watchdog ready event: %w", err)
 		}
 	}
 
-	// 等待 apply-update 替换完成信号（预留 UAC 人工确认与替换时间，超时或失败绝不盲目拉起旧版本）。
+	// 等待 apply-update 替换完成信号（此时 UAC 已通过且 helper 已启动，120s 仅覆盖旧进程退出与文件替换，超时或失败绝不盲目拉起旧版本）。
 	res, err := windows.WaitForSingleObject(h, 120_000)
 	if err != nil || res != windows.WAIT_OBJECT_0 {
 		return fmt.Errorf("wait update completion event failed: res=%d err=%v", res, err)
