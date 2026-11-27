@@ -2,6 +2,10 @@
 
 这是 `@greypan/js-kit` 与 `@greypan/browser-kit` 的文档与交互示例站。
 
+![Dev Kit Demo 预览](./docs/preview.png)
+
+**在线演示：** [Dev Kit Demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo)
+
 公共 API 与类型以 [`packages/js-kit`](../../packages/js-kit) 和 [`packages/browser-kit`](../../packages/browser-kit) 的源码、文档和测试为准，demo 行为不替代公共契约。
 
 ## 运行
