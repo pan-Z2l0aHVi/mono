@@ -251,14 +251,25 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     /group: \$\{\{ github\.workflow \}\}-\$\{\{ github\.head_ref \|\| github\.ref_name \}\}-\$\{\{ github\.event_name \}\}/,
     'cache-only main pushes must not cancel a full workflow_dispatch check'
   )
-  const cacheWarmup = workflowJob(ci, 'warm-ci-caches')
-  assert.deepEqual(ciWorkflow.jobs.check.needs, [])
-  assert.equal(
-    ciWorkflow.jobs['warm-ci-caches'].if,
-    "${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.warm_only) }}"
+  assert.match(
+    ci,
+    /cancel-in-progress: \$\{\{ github\.event_name == 'pull_request' \}\}/,
+    'ci.yml must only cancel in-progress runs on pull_request so main cache warmups are not aborted'
   )
+  const expectedWarmIf =
+    "${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.warm_only) }}"
+  const prepareWarm = workflowJob(ci, 'prepare-warm')
+  const cacheWarmup = workflowJob(ci, 'warm-ci-caches')
+  const wailsWarmup = workflowJob(ci, 'warm-wails-caches')
+  assert.deepEqual(ciWorkflow.jobs.check.needs, [])
+  assert.equal(ciWorkflow.jobs['prepare-warm'].if, expectedWarmIf)
+  assert.equal(ciWorkflow.jobs['warm-ci-caches'].if, expectedWarmIf)
+  assert.deepEqual(ciWorkflow.jobs['warm-wails-caches'].needs, ['prepare-warm'])
+  assert.equal(ciWorkflow.jobs['warm-wails-caches'].if, "${{ needs.prepare-warm.outputs.run_wails == 'true' }}")
   assert.equal(ciWorkflow.jobs.check.if, EXPECTED_CHECK_IF)
+  assert.match(prepareWarm, /timeout-minutes: 5/)
   assert.match(cacheWarmup, /timeout-minutes: 35/)
+  assert.match(wailsWarmup, /timeout-minutes: 25/)
   const assertWarmOnlyMainGuard = block => {
     const guardStep = namedStep(block, 'Require main ref for warm_only dispatch')
     assert.match(
@@ -268,16 +279,71 @@ function assertPullRequestValidationIsReadOnly(workflow) {
     assert.doesNotMatch(guardStep, /continue-on-error:\s*true/)
     assert.ok(runTexts(guardStep).includes('exit 1'), 'warm_only main ref guard must exit non-zero')
   }
+  assertWarmOnlyMainGuard(prepareWarm)
   assertWarmOnlyMainGuard(cacheWarmup)
   assert.throws(() => assertWarmOnlyMainGuard(cacheWarmup.replace('exit 1', 'true')))
+  assert.match(prepareWarm, /mise-install: 'node'/)
+  assert.match(prepareWarm, /skip-install: 'true'/)
+  assert.match(prepareWarm, /cache-save: 'true'/)
+  const pushPathsBlock = ci.match(/ {2}push:\n[\s\S]*? {4}paths:\n((?: {6}- '[^']+'\n)+)/)?.[1] ?? ''
+  const pushPaths = [...pushPathsBlock.matchAll(/ {6}- '([^']+)'/g)].map(match => match[1])
+  assert.ok(!pushPaths.includes('apps/interweave/**/*.go'), 'ci.yml push.paths must not trigger on every Go file edit')
+  for (const requiredPushPath of [
+    '.mise.toml',
+    'pnpm-lock.yaml',
+    'cspell.json',
+    'apps/interweave/go.mod',
+    'apps/interweave/go.sum',
+    'apps/interweave/build/**',
+    '.github/actions/setup-deps/action.yml',
+    '.github/workflows/ci.yml',
+    '.github/workflows/wails-verify.yml'
+  ]) {
+    assert.ok(pushPaths.includes(requiredPushPath), `ci.yml push.paths must include ${requiredPushPath}`)
+  }
+  const scopeStep = namedStep(prepareWarm, 'Determine Wails warmup scope')
+  for (const wailsPath of [
+    '.mise.toml',
+    'pnpm-lock.yaml',
+    'apps/interweave/go.mod',
+    'apps/interweave/go.sum',
+    'apps/interweave/build/',
+    '.github/actions/setup-deps/action.yml',
+    '.github/workflows/wails-verify.yml'
+  ]) {
+    const escaped = wailsPath.replaceAll('.', '\\.')
+    assert.ok(scopeStep.includes(escaped), `prepare-warm Wails scope must include ${wailsPath}`)
+    const matchingPushPath = wailsPath.endsWith('/') ? `${wailsPath}**` : wailsPath
+    assert.ok(pushPaths.includes(matchingPushPath), `prepare-warm Wails path ${wailsPath} must be in ci.yml push.paths`)
+  }
   assert.match(cacheWarmup, /wails: 'true'/)
   assert.match(cacheWarmup, /go-cache: 'true'/)
+  assert.match(cacheWarmup, /cache-save: 'true'/)
   assert.doesNotMatch(cacheWarmup, /skip-(mise|install):\s*'true'/)
+  assert.match(cacheWarmup, /node -p "require\('\.\/node_modules\/playwright\/package\.json'\)\.version"/)
+  assert.match(
+    namedStep(cacheWarmup, 'Cache Playwright browsers'),
+    /key: \$\{\{ runner\.os \}\}-playwright-\$\{\{ steps\.playwright-version\.outputs\.version \}\}/
+  )
   assert.match(cacheWarmup, /playwright install chromium/)
   assert.match(
     cacheWarmup,
     /apps\/interweave\/frontend\/dist\/\.keep[\s\S]*pnpm --filter @greypan\/interweave exec go vet \.\/\.\.\./
   )
+  const warmCspellCache = namedStep(cacheWarmup, 'Cache cspell results')
+  assert.match(warmCspellCache, /uses: actions\/cache@v5/)
+  assert.match(
+    warmCspellCache,
+    /key: \$\{\{ runner\.os \}\}-cspell-\$\{\{ hashFiles\('cspell\.json'\) \}\}-\$\{\{ github\.run_id \}\}/
+  )
+  assert.deepEqual(runTexts(namedStep(cacheWarmup, 'Warm cspell cache')), ['pnpm run check-cspell'])
+  assert.match(wailsWarmup, /runner: macos-26/)
+  assert.match(wailsWarmup, /runner: windows-latest/)
+  assert.match(wailsWarmup, /go-cache: 'true'/)
+  assert.match(wailsWarmup, /cache-save: 'true'/)
+  assert.match(wailsWarmup, /pnpm --filter @greypan\/interweave exec go vet \.\/\.\.\./)
+  assert.match(wailsWarmup, /go build -tags production -trimpath -buildvcs=false -ldflags="-w -s"/)
+  assert.match(wailsWarmup, /go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui"/)
   assert.ok(parsed['ci.yml'].jobs[REQUIRED_CONTEXT], 'the required context must remain the CI job')
   assertChangesetStepContract(ci)
   assertPrTitleStepContract(ci)
@@ -1585,22 +1651,87 @@ function matrixEntries(text) {
 
   const setup = fs.readFileSync(path.join(repoRoot, '.github/actions/setup-deps/action.yml'), 'utf8')
   const goModCacheStart = setup.indexOf('    - name: Cache Go modules\n')
+  const goModRestoreStart = setup.indexOf('    - name: Restore Go modules\n')
   const goBuildCacheStart = setup.indexOf('    - name: Cache Go build artifacts\n')
+  const goBuildRestoreStart = setup.indexOf('    - name: Restore Go build artifacts\n')
   const miseActionStart = setup.indexOf('    - uses: jdx/mise-action@v4\n')
   assert.ok(goModCacheStart > miseActionStart, 'Go module cache setup must run after mise installs Go')
-  assert.ok(goBuildCacheStart > goModCacheStart, 'Go build cache setup must follow Go module cache setup')
+  assert.ok(goModRestoreStart > goModCacheStart, 'Go module restore step must follow save step')
+  assert.ok(goBuildCacheStart > goModRestoreStart, 'Go build cache setup must follow Go module cache setup')
+  assert.ok(goBuildRestoreStart > goBuildCacheStart, 'Go build restore step must follow save step')
   assert.match(setup, / {2}go-cache:\n[\s\S]*?default: 'false'/)
+  assert.match(setup, / {2}cache-save:\n[\s\S]*?default: 'false'/)
   assert.match(setup, /go env GOMODCACHE/)
   assert.match(setup, /go env GOCACHE/)
   assert.match(setup, /go env GOVERSION/)
-  // 键与前缀同构且不含镜像段或 github.sha：restore-keys 按字面前缀匹配，键多出的段会令前缀永不命中；
-  // 镜像滚动接近天级，含镜像段等于每次滚动后 go vet 全冷；含 github.sha 会挤压 10GB 缓存配额。
-  assert.doesNotMatch(setup, /ImageOS|ImageVersion|\$\{\{[^}]*github\.sha/)
-  assert.match(setup, /key: \$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-gomod-/)
-  assert.match(setup, /restore-keys: \|\n\s+\$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-gomod-/)
-  assert.match(setup, /key: \$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-gobuild-/)
-  assert.match(setup, /restore-keys: \|\n\s+\$\{\{ runner\.os \}\}-\$\{\{ runner\.arch \}\}-gobuild-/)
-  assert.match(setup, /actions\/cache@v5/)
+  // 键与前缀同构且不含镜像段、github.sha 或 **/*.go：避免每次改 Go 文件滚存 170MB 挤压 10GB 缓存配额。
+  assert.doesNotMatch(setup, /ImageOS|ImageVersion|\$\{\{[^}]*github\.sha|apps\/interweave\/\*\*\/\*\.go|%Y-W%V/)
+  assert.match(setup, /GO_MOD_HASH: \$\{\{ hashFiles\('apps\/interweave\/go\.mod', 'apps\/interweave\/go\.sum'\) \}\}/)
+  assert.match(setup, /TASKFILE_HASH: \$\{\{ hashFiles\('apps\/interweave\/build\/\*\*\/Taskfile\.yml'\) \}\}/)
+  assert.match(setup, /week_slot="w\$\(\( \$\(date -u \+%s\) \/ 604800 \)\)"/)
+  assert.match(setup, /gomod_key=\$\{RUNNER_OS\}-\$\{RUNNER_ARCH\}-gomod-\$\{goversion\}-\$\{GO_MOD_HASH\}/)
+  assert.match(setup, /gomod_restore_prefix=\$\{RUNNER_OS\}-\$\{RUNNER_ARCH\}-gomod-\$\{goversion\}-/)
+  assert.match(
+    setup,
+    /gobuild_key=\$\{RUNNER_OS\}-\$\{RUNNER_ARCH\}-gobuild-\$\{goversion\}-\$\{GO_MOD_HASH\}-\$\{TASKFILE_HASH\}-\$\{week_slot\}/
+  )
+  assert.match(
+    setup,
+    /gobuild_restore_taskfile=\$\{RUNNER_OS\}-\$\{RUNNER_ARCH\}-gobuild-\$\{goversion\}-\$\{GO_MOD_HASH\}-\$\{TASKFILE_HASH\}-/
+  )
+  assert.match(
+    setup,
+    /gobuild_restore_mod=\$\{RUNNER_OS\}-\$\{RUNNER_ARCH\}-gobuild-\$\{goversion\}-\$\{GO_MOD_HASH\}-/
+  )
+  assert.match(setup, /gobuild_restore_go=\$\{RUNNER_OS\}-\$\{RUNNER_ARCH\}-gobuild-\$\{goversion\}-/)
+  assert.match(setup, /pnpm_key=\$\{RUNNER_OS\}-pnpm-\$\{PNPM_LOCK_HASH\}/)
+  assert.match(setup, /pnpm_restore_prefix=\$\{RUNNER_OS\}-pnpm-/)
+  assert.match(
+    setup,
+    /uses: jdx\/mise-action@v4\n\s+if: inputs\.skip-mise != 'true'[\s\S]*?cache_save: \$\{\{ inputs\.cache-save \}\}/
+  )
+  // 读写双步骤共用同一组 outputs，且严格由 inputs.cache-save 互斥分流。
+  for (const { saveName, restoreName, keyOut, restoreOuts } of [
+    {
+      saveName: 'Cache Go modules',
+      restoreName: 'Restore Go modules',
+      keyOut: 'steps.go-cache-paths.outputs.gomod_key',
+      restoreOuts: ['steps.go-cache-paths.outputs.gomod_restore_prefix']
+    },
+    {
+      saveName: 'Cache Go build artifacts',
+      restoreName: 'Restore Go build artifacts',
+      keyOut: 'steps.go-cache-paths.outputs.gobuild_key',
+      restoreOuts: [
+        'steps.go-cache-paths.outputs.gobuild_restore_taskfile',
+        'steps.go-cache-paths.outputs.gobuild_restore_mod',
+        'steps.go-cache-paths.outputs.gobuild_restore_go'
+      ]
+    },
+    {
+      saveName: 'Cache pnpm store',
+      restoreName: 'Restore pnpm store',
+      keyOut: 'steps.pnpm-store.outputs.pnpm_key',
+      restoreOuts: ['steps.pnpm-store.outputs.pnpm_restore_prefix']
+    }
+  ]) {
+    const saveStart = setup.indexOf(`    - name: ${saveName}\n`)
+    const restoreStart = setup.indexOf(`    - name: ${restoreName}\n`)
+    assert.ok(saveStart >= 0 && restoreStart > saveStart, `${saveName} / ${restoreName} pair must exist in setup-deps`)
+    const saveBlock = setup.slice(saveStart, restoreStart)
+    const nextStepIdx = setup.indexOf('\n    - ', restoreStart + 1)
+    const restoreBlock = nextStepIdx === -1 ? setup.slice(restoreStart) : setup.slice(restoreStart, nextStepIdx)
+    assert.match(saveBlock, /inputs\.cache-save == 'true'/, `${saveName} must require cache-save == 'true'`)
+    assert.match(saveBlock, /uses: actions\/cache@v5/, `${saveName} must use actions/cache@v5`)
+    assert.match(restoreBlock, /inputs\.cache-save != 'true'/, `${restoreName} must run when cache-save != 'true'`)
+    assert.match(restoreBlock, /uses: actions\/cache\/restore@v5/, `${restoreName} must use actions/cache/restore@v5`)
+    assert.ok(saveBlock.includes(`key: \${{ ${keyOut} }}`), `${saveName} must use ${keyOut}`)
+    assert.ok(restoreBlock.includes(`key: \${{ ${keyOut} }}`), `${restoreName} must use ${keyOut}`)
+    for (const restoreOut of restoreOuts) {
+      assert.ok(saveBlock.includes(`\${{ ${restoreOut} }}`), `${saveName} must include restore key ${restoreOut}`)
+      assert.ok(restoreBlock.includes(`\${{ ${restoreOut} }}`), `${restoreName} must include restore key ${restoreOut}`)
+    }
+  }
   const aptPlanStart = setup.indexOf('    - name: Resolve Wails Linux package cache key\n')
   const aptCacheStart = setup.indexOf('    - name: Restore Wails Linux package archives\n')
   const aptInstallStart = setup.indexOf('    - name: Install Wails Linux prerequisites\n')
@@ -1614,6 +1745,16 @@ function matrixEntries(text) {
       aptPermissionsStart < aptSaveStart,
     'Wails apt archives must be restored before install, made readable, then saved'
   )
+  assert.match(
+    setup.slice(aptPermissionsStart, aptSaveStart),
+    /inputs\.cache-save == 'true'/,
+    'Wails apt permission prep must be gated on cache-save'
+  )
+  assert.match(
+    setup.slice(aptSaveStart, miseActionStart),
+    /inputs\.cache-save == 'true'/,
+    'Wails apt save step must be gated on cache-save'
+  )
   assert.doesNotMatch(setup, /wails-download-only|wails-apt-download/)
   assert.match(setup, /--print-uris[\s\S]*?libgtk-4-dev libwebkitgtk-6\.0-dev/)
   assert.match(setup, /apt_plan_hash=.*sha256sum/)
@@ -1623,7 +1764,6 @@ function matrixEntries(text) {
   assert.match(setup, /restore-keys: \|\n\s+wails-apt-\$\{\{ steps\.wails-apt-cache\.outputs\.scope \}\}-/)
   assert.match(setup, /APT::Keep-Downloaded-Packages=true/)
   assert.match(setup, / {2}skip-mise:\n[\s\S]*?default: 'false'/)
-  assert.match(setup, /uses: jdx\/mise-action@v4\n\s+if: inputs\.skip-mise != 'true'/)
   assert.match(
     setup,
     /id: wails-apt-install[\s\S]*install -y --no-install-recommends libgtk-4-dev libwebkitgtk-6\.0-dev/
@@ -1633,14 +1773,44 @@ function matrixEntries(text) {
   assert.match(setup, /steps\.wails-apt-permissions\.outcome == 'success'/)
   assert.doesNotMatch(setup, /if: always\(\)[^\n]*wails-apt/)
   assert.match(setup, /uses: actions\/cache\/restore@v5[\s\S]*uses: actions\/cache\/save@v5/)
-  for (const keyPart of [
-    'runner.os',
-    'runner.arch',
-    'outputs.goversion',
-    "hashFiles('apps/interweave/go.mod', 'apps/interweave/go.sum')",
-    "hashFiles('apps/interweave/**/*.go')"
-  ]) {
-    assert.ok(setup.includes(keyPart), `Go cache must remain scoped by ${keyPart}`)
+
+  // check job 只读恢复 cspell 与 Playwright 缓存，且 cspell 包含带 cspell.json 哈希的第一级前缀。
+  const checkCspellRestore = namedStep(checkJob, 'Restore cspell results')
+  assert.match(checkCspellRestore, /uses: actions\/cache\/restore@v5/)
+  assert.match(
+    checkCspellRestore,
+    /key: \$\{\{ runner\.os \}\}-cspell-\$\{\{ hashFiles\('cspell\.json'\) \}\}-\$\{\{ github\.sha \}\}/
+  )
+  assert.match(
+    checkCspellRestore,
+    /restore-keys: \|\n\s+\$\{\{ runner\.os \}\}-cspell-\$\{\{ hashFiles\('cspell\.json'\) \}\}-\n\s+\$\{\{ runner\.os \}\}-cspell-/
+  )
+  const checkPlaywrightRestore = namedStep(checkJob, 'Restore Playwright browsers')
+  assert.match(checkPlaywrightRestore, /uses: actions\/cache\/restore@v5/)
+  assert.match(
+    checkPlaywrightRestore,
+    /key: \$\{\{ runner\.os \}\}-playwright-\$\{\{ steps\.playwright-version\.outputs\.version \}\}/
+  )
+
+  // 全仓单写者不变量：所有 workflow 中仅 ci.yml 的三个 main 基线预热 job 允许写 GitHub Actions 缓存。
+  const allowedCacheWriters = new Set(['ci.yml:prepare-warm', 'ci.yml:warm-ci-caches', 'ci.yml:warm-wails-caches'])
+  for (const [file, text] of Object.entries(workflowText)) {
+    for (const jobId of Object.keys(parsed[file].jobs)) {
+      const block = workflowJob(text, jobId)
+      const key = `${file}:${jobId}`
+      const hasCacheSave = /cache-save:\s*['"]?true['"]?/.test(block)
+      const hasCacheWriteAction = /uses:\s*actions\/cache(?:\/save)?@v\d+/.test(block)
+      if (allowedCacheWriters.has(key)) {
+        assert.ok(hasCacheSave, `${key} is a designated main cache writer and must pass cache-save: 'true'`)
+      } else {
+        assert.equal(hasCacheSave, false, `${key} must stay read-only and must not set cache-save: 'true'`)
+        assert.equal(
+          hasCacheWriteAction,
+          false,
+          `${key} must not use write-capable actions/cache or actions/cache/save`
+        )
+      }
+    }
   }
 }
 
@@ -1652,6 +1822,11 @@ function matrixEntries(text) {
 const staleRunnerPattern = /^ {0,20}(?:runner|runs-on): macos-1[345]/mu
 assert.match('    runs-on: macos-15\n', staleRunnerPattern)
 assert.doesNotMatch('    # runner: macos-15\n', staleRunnerPattern)
+assert.doesNotMatch(
+  workflowJob(workflowText['ci.yml'], 'warm-wails-caches'),
+  staleRunnerPattern,
+  'ci.yml warm-wails-caches must not target a runner whose default SDK is < 16'
+)
 for (const file of ['wails-verify.yml', 'wails-release.yml']) {
   assert.match(
     workflowText[file],

@@ -1,6 +1,6 @@
 name: CI
 
-# main push（环境/依赖/Go 路径变动）、每 4 天 schedule 与 workflow_dispatch(warm_only=true) 预热默认分支基线缓存；
+# main push（环境/依赖/词典/Wails 构建配置路径变动）、每 4 天 schedule 与 workflow_dispatch(warm_only=true) 预热默认分支三端基线缓存；
 # pull_request 直接进入 check 验证 GitHub 生成的合并对象，标题更新也触发检查。
 # strict 只要求 PR 分支跟上 base；squash 会创建新提交，不能据此断言合并提交与先前测试对象完全相同。
 # trunk 全量复检走 workflow_dispatch（默认 warm_only=false）。
@@ -13,11 +13,13 @@ on:
     paths:
       - '.mise.toml'
       - 'pnpm-lock.yaml'
+      - 'cspell.json'
       - 'apps/interweave/go.mod'
       - 'apps/interweave/go.sum'
-      - 'apps/interweave/**/*.go'
+      - 'apps/interweave/build/**'
       - '.github/actions/setup-deps/action.yml'
       - '.github/workflows/ci.yml'
+      - '.github/workflows/wails-verify.yml'
   schedule:
     - cron: '0 4 */4 * *'
   workflow_dispatch:
@@ -33,9 +35,58 @@ permissions:
 
 concurrency:
   group: ${{ github.workflow }}-${{ github.head_ref || github.ref_name }}-${{ github.event_name }}
-  cancel-in-progress: true
+  cancel-in-progress: ${{ github.event_name == 'pull_request' }}
 
 jobs:
+  prepare-warm:
+    name: Prepare cache warmup
+    runs-on: ubuntu-latest
+    if: ${{ github.event_name == 'push' || github.event_name == 'schedule' || (github.event_name == 'workflow_dispatch' && inputs.warm_only) }}
+    timeout-minutes: 5
+    outputs:
+      run_wails: ${{ steps.scope.outputs.run_wails }}
+
+    steps:
+      - name: Require main ref for warm_only dispatch
+        if: ${{ github.event_name == 'workflow_dispatch' && inputs.warm_only && github.ref != 'refs/heads/main' }}
+        shell: bash
+        run: |
+          echo "warm_only dispatch must run on refs/heads/main (got ${GITHUB_REF})" >&2
+          exit 1
+
+      - uses: actions/checkout@v7
+        with:
+          fetch-depth: 0
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          mise-install: 'node'
+          skip-install: 'true'
+          cache-save: 'true'
+
+      - name: Determine Wails warmup scope
+        id: scope
+        shell: bash
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          BEFORE_SHA: ${{ github.event.before }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" != 'push' ]; then
+            echo "run_wails=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          if [ -z "$BEFORE_SHA" ] || [[ "$BEFORE_SHA" =~ ^0+$ ]] || ! git cat-file -e "${BEFORE_SHA}^{commit}" 2>/dev/null; then
+            echo "run_wails=true" >> "$GITHUB_OUTPUT"
+            exit 0
+          fi
+          changed="$(git diff --name-only "$BEFORE_SHA" "$GITHUB_SHA")"
+          if printf '%s\n' "$changed" | grep -Eq '^((\.mise\.toml|pnpm-lock\.yaml|apps/interweave/go\.mod|apps/interweave/go\.sum|\.github/actions/setup-deps/action\.yml|\.github/workflows/wails-verify\.yml)$|apps/interweave/build/)'; then
+            echo "run_wails=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "run_wails=false" >> "$GITHUB_OUTPUT"
+          fi
+
   warm-ci-caches:
     name: Warm CI baseline caches
     runs-on: ubuntu-latest
@@ -57,12 +108,18 @@ jobs:
         with:
           wails: 'true'
           go-cache: 'true'
+          cache-save: 'true'
+
+      - name: Resolve Playwright version
+        id: playwright-version
+        shell: bash
+        run: echo "version=$(node -p "require('./node_modules/playwright/package.json').version")" >> "$GITHUB_OUTPUT"
 
       - name: Cache Playwright browsers
         uses: actions/cache@v5
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
           restore-keys: |
             ${{ runner.os }}-playwright-
 
@@ -79,6 +136,64 @@ jobs:
           mkdir -p apps/interweave/frontend/dist
           touch apps/interweave/frontend/dist/.keep
           pnpm --filter @greypan/interweave exec go vet ./...
+
+      - name: Cache cspell results
+        uses: actions/cache@v5
+        with:
+          path: .cspellcache
+          key: ${{ runner.os }}-cspell-${{ hashFiles('cspell.json') }}-${{ github.run_id }}
+          restore-keys: |
+            ${{ runner.os }}-cspell-${{ hashFiles('cspell.json') }}-
+            ${{ runner.os }}-cspell-
+
+      - name: Warm cspell cache
+        run: pnpm run check-cspell
+
+  warm-wails-caches:
+    name: Warm Wails baseline caches (${{ matrix.target }})
+    needs: [prepare-warm]
+    if: ${{ needs.prepare-warm.outputs.run_wails == 'true' }}
+    strategy:
+      fail-fast: false
+      matrix:
+        include:
+          - target: macOS
+            runner: macos-26
+          - target: Windows
+            runner: windows-latest
+    runs-on: ${{ matrix.runner }}
+    # 实测最慢冷启 5m29s（macOS）/ 3m51s（Windows），留 4.5× 裕度兜住工具链冷装。
+    timeout-minutes: 25
+
+    steps:
+      - uses: actions/checkout@v7
+
+      - uses: ./.github/actions/setup-deps
+        with:
+          go-cache: 'true'
+          cache-save: 'true'
+
+      # 预热 GOMODCACHE 与与 darwin/windows Taskfile.yml 参数一致的生产 GOCACHE；
+      # 仅用临时点文件占位并通过 trap 清理，避免改动工作区或保留二进制。
+      - name: Warm Go module and build caches
+        shell: bash
+        run: |
+          set -euo pipefail
+          trap 'rm -rf apps/interweave/frontend/dist "$RUNNER_TEMP/interweave-warm" "$RUNNER_TEMP/interweave-warm.exe"' EXIT
+          mkdir -p apps/interweave/frontend/dist
+          touch apps/interweave/frontend/dist/.keep
+          pnpm --filter @greypan/interweave exec go vet ./...
+          cd apps/interweave
+          if [ "$RUNNER_OS" = 'macOS' ]; then
+            GOOS=darwin GOARCH=arm64 CGO_ENABLED=1 \
+              CGO_CFLAGS='-mmacosx-version-min=12.0' \
+              CGO_LDFLAGS='-mmacosx-version-min=12.0' \
+              MACOSX_DEPLOYMENT_TARGET='12.0' \
+              go build -tags production -trimpath -buildvcs=false -ldflags="-w -s" -o "$RUNNER_TEMP/interweave-warm" .
+          elif [ "$RUNNER_OS" = 'Windows' ]; then
+            GOOS=windows GOARCH=amd64 CGO_ENABLED=0 \
+              go build -tags production -trimpath -buildvcs=false -ldflags="-w -s -H windowsgui" -o "$RUNNER_TEMP/interweave-warm.exe" .
+          fi
 
   check:
     runs-on: ubuntu-latest
@@ -214,24 +329,29 @@ jobs:
       - name: Check published package contracts
         run: pnpm run check-pack
 
-      # cspell 结果缓存按内容键判失效，同 SHA 精确命中、旧 SHA 前缀回退；PR 重复 run 复用，
-      # 缓存隔离模型下新 PR 首跑自建。
-      - name: Cache cspell results
-        uses: actions/cache@v5
+      # cspell 结果缓存由 main 基线预热任务写入；PR 与 check 仅只读恢复，优先命中同 cspell.json 哈希基线。
+      - name: Restore cspell results
+        uses: actions/cache/restore@v5
         with:
           path: .cspellcache
-          key: ${{ runner.os }}-cspell-${{ github.sha }}
+          key: ${{ runner.os }}-cspell-${{ hashFiles('cspell.json') }}-${{ github.sha }}
           restore-keys: |
+            ${{ runner.os }}-cspell-${{ hashFiles('cspell.json') }}-
             ${{ runner.os }}-cspell-
 
       - name: Format + Lint + Type-check + Go vet
         run: pnpm run check-code
 
-      - name: Cache Playwright browsers
-        uses: actions/cache@v5
+      - name: Resolve Playwright version
+        id: playwright-version
+        shell: bash
+        run: echo "version=$(node -p "require('./node_modules/playwright/package.json').version")" >> "$GITHUB_OUTPUT"
+
+      - name: Restore Playwright browsers
+        uses: actions/cache/restore@v5
         with:
           path: ~/.cache/ms-playwright
-          key: ${{ runner.os }}-playwright-${{ hashFiles('pnpm-lock.yaml') }}
+          key: ${{ runner.os }}-playwright-${{ steps.playwright-version.outputs.version }}
           restore-keys: |
             ${{ runner.os }}-playwright-
 
