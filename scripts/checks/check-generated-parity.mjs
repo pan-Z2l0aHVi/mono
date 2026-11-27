@@ -21,7 +21,6 @@ const LOAD_CASES = 2
 const SINGLETON_CASES = 7
 
 const only = (a, b) => a.filter(value => !b.includes(value))
-const sameSet = (a, b) => a.length === b.length && a.every(value => b.includes(value))
 const filesIn = dir => fs.readdirSync(dir).sort()
 const metaFilesIn = dir => filesIn(dir).filter(name => name.endsWith('.meta.js'))
 const read = (dir, name) => fs.readFileSync(path.join(dir, name), 'utf8')
@@ -124,30 +123,41 @@ test('中英文档集合对齐（CHANGELOG 只存在于英文）', () => {
   assert.deepEqual(only(zhNames, enNames), [], `英文缺译文：${only(zhNames, enNames).join(', ')}`)
 })
 
-// 规则一：路由名集合 == 页面名集合：两端不许各自漂移。子组件不单开页面
-// （radio-group 挂在 radio 页，dropdown-item 同时挂在 dropdown 与 context-menu 两页），
-// 一一对应就成了一条与意图相反的门槛，改判集合相等。
-test('React 路由名集合 == Vue 页面名集合', () => {
-  const reactNames = fs
-    .readdirSync(reactRoutes)
-    .filter(file => file.endsWith('.tsx'))
-    .map(file => file.slice(0, -4))
-    .sort()
-  const vueNames = fs
-    .readdirSync(vuePages)
-    .filter(file => file.endsWith('.vue'))
-    .map(file => file.slice(0, -4))
-    .sort()
-  assert.ok(
-    sameSet(reactNames, vueNames),
-    `React 路由与 Vue 页面不同步；仅路由有：${only(reactNames, vueNames).join('、')}；仅页面有：${only(vueNames, reactNames).join('、')}`
+// 规则一：两端组件页均收敛为单一动态路由（$component.tsx / [component].vue），
+// 由 @greypan/doc-demo-kit 的 NAV_SECTIONS / findComponentRoute 作为唯一真相源驱动。
+test('React 与 Vue 组件页均收敛为单一动态路由', () => {
+  assert.deepEqual(filesIn(reactRoutes), ['$component.tsx'], 'React 组件路由目录只能包含 $component.tsx')
+  assert.deepEqual(filesIn(vuePages), ['[component].vue'], 'Vue 组件页面目录只能包含 [component].vue')
+  assert.match(
+    read(reactRoutes, '$component.tsx'),
+    /\bfindComponentRoute\b/,
+    'React 动态路由必须调用 findComponentRoute'
   )
-  assert.ok(reactNames.length > 0, '两侧页面都为空：对齐判据空转')
+  assert.match(read(vuePages, '[component].vue'), /\bfindComponentRoute\b/, 'Vue 动态页面必须调用 findComponentRoute')
 })
 
-test('sameSet 判据本身能识别差异', () => {
-  assert.ok(!sameSet(['a', 'b'], ['a', 'c']))
-  assert.ok(sameSet(['a', 'b'], ['b', 'a']))
+test('NAV_SECTIONS 声明的组件 slug 唯一且所有 docs 均有对应生成文档', () => {
+  const navSource = fs.readFileSync(path.join(root, 'packages', 'doc-demo-kit', 'src', 'nav.ts'), 'utf8')
+  const entryPattern = /\{\s*path:\s*'\/components\/([a-z0-9-]+)'[^}]*?(?:docs:\s*\[([^\]]+)\])?\s*\}/gu
+  const seenSlugs = new Set()
+  const availableDocs = new Set(
+    metaFilesIn(reactGenerated)
+      .filter(name => !name.endsWith('.CN.meta.js'))
+      .map(name => name.replace('.meta.js', ''))
+  )
+  let count = 0
+  for (const match of navSource.matchAll(entryPattern)) {
+    count += 1
+    const slug = match[1]
+    assert.ok(!seenSlugs.has(slug), `NAV_SECTIONS 存在重复组件 slug：${slug}`)
+    seenSlugs.add(slug)
+    const docs = match[2] ? [...match[2].matchAll(/'([a-z0-9-]+)'/gu)].map(m => m[1]) : [slug]
+    assert.ok(docs.length > 0, `NAV_SECTIONS 条目 ${slug} 的 docs 不能为空`)
+    for (const doc of docs) {
+      assert.ok(availableDocs.has(doc), `NAV_SECTIONS 条目 ${slug} 引用的文档 ${doc} 不存在于生成语料中`)
+    }
+  }
+  assert.ok(count > 0, '未从 nav.ts 解析到任何组件条目：契约校验空转')
 })
 
 // 用例数按目录推导自检：判据结构与这两个常量漂移时，计数口径先红，而不是静默少判。
