@@ -21,12 +21,11 @@ const workspaceDocs = readPnpmWorkspaceDirectories(repoRoot).map(directory => ({
   shallow: ['README.md']
 }))
 
-/** 指令面语料与链接方向的仓库事实，扫描面见 `docs/agents/agent-context.md`「语料门禁」。 */
+/** 指令面语料与链接方向的仓库事实，取舍见 ADR-0013 与 ADR-0026。 */
 export const noMutualLinks = defineNoMutualLinks({
   roots: [
     'AGENTS.md',
     'CLAUDE.md',
-    'CONTEXT.md',
     'ARCHITECTURE.md',
     'CONTRIBUTING.md',
     'docs/agents',

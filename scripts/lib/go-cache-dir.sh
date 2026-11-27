@@ -1,6 +1,6 @@
 #!/bin/sh
 # 供 .mise.toml 的 [env] 模板在 Node 可用前调用：选择跨 worktree 共享的 Go 构建缓存目录。
-# Tera 要求该命令永远 exit 0 且只输出一行；降级顺序与测试要求见 docs/agents/worktree.md。
+# Tera 要求该命令永远 exit 0 且只输出一行；降级顺序与测试要求见 docs/agents/environment.md。
 set -u
 
 home=${HOME:-/nonexistent}

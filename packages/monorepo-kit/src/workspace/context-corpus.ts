@@ -24,7 +24,7 @@ import { defineWorkspace, type WorkspaceApi } from './workspace'
 const { andThen, err, ok } = rust
 
 // 指令文档语料的结构不变量。判据都在这里，语料根、workspace 目录、skill 出处、软链对应表与
-// commit scope 来源是消费仓库的事实，经 options 传入；组合点见 `docs/agents/agent-context.md`
+// commit scope 来源是消费仓库的事实，经 options 传入；组合点见 `ADR-0013 / ADR-0026`
 // 「语料门禁」，取舍见 ADR-0013。
 export interface SkillsSurface {
   /** 上游件的锁定清单，JSON 里 `skills` 对象的键 */
@@ -146,7 +146,7 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
             if (!exists(options.entry)) addError(`missing required context file: ${options.entry}`)
 
             // 入口的章节标题与叙述措辞不再是契约。入口断言只保留必经链接；
-            // 具体命令由 task-ledger skill 与 CLI 承担。
+            // 具体边界见 ADR-0026。
             // 结构不变量锚点（<!-- invariant:... -->）是惰性注释，保留供人工检索，没有机器校验。
             if (exists(options.entry)) {
               const entry = read(options.entry)
@@ -545,7 +545,7 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
                   addError(`${relative(file)}: broken local anchor ${target}`)
               }
             }
-            // ADR 的发现性钉在「必须有入站链接」上，而不是「CONTEXT.md 必须逐条索引」：
+            // ADR 的发现性钉在「必须有入站链接」上，而不是「docs/adr/README.md 必须逐条索引」：
             // 后者把索引文档的体积变成契约，阻止精简这份文档。
             for (const file of [...adrDocuments].sort(byCodeUnit)) {
               if (!inboundTargets.has(file)) addError(`${relative(file)}: no inbound link from the instruction surface`)
@@ -570,7 +570,7 @@ export const defineContextCorpus = (options: ContextCorpusOptions): Chain =>
             //   - flag 插入形态不覆盖：`pnpm run --silent <cmd>` 这类中间插 flag 的写法匹配不到，本仓当前扫描面内无此形态。
             //   - `pnpm run <name>` 形态未来若文档引用包级 script（如 `pnpm run dev`）会误报；当前扫描面内无此形态，
             //     所以没有为它加白名单——真出现时按「包级引用应写成 `pnpm --filter <pkg> <script>`」修正文档，而不是放宽检查。
-            // 约定见 docs/agents/commands.md。
+            // 约定见 docs/agents/scripts-and-commands.md。
             //
             // 范围就是上面的 markdownFiles，也就是「指令面」。两个说明避免把覆盖范围读错：
             //   - ADR 在覆盖范围内：ADR 是承载现行基础设施指引的活文档，命令名陈旧就是陈旧，照判。

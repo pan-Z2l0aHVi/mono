@@ -80,7 +80,7 @@ export function createNpmReleaseAdapter({
   return { findRelease, resolveTag, createRelease }
 }
 
-// publish job 成功即视为版本已发布；刻意不做 npm registry 回查与重试，取舍见 docs/agents/release.md「npm 发布重跑与 release notes」。
+// publish job 成功即视为版本已发布；刻意不做 npm registry 回查与重试，取舍见 docs/agents/release.md「npm 与 Wails 发布边界」。
 export async function createReleasesForPackages({
   packages,
   root = process.cwd(),

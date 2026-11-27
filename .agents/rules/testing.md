@@ -1,5 +1,0 @@
-# 测试约束
-
-新增、修改测试或异步 helper，以及 flaky 调查和测试精简时，测试编写纪律以 [`.agents/skills/test-authoring/SKILL.md`](../skills/test-authoring/SKILL.md) 为准；验证流程、层级与最小验证选择以 [`docs/agents/verification.md`](../../docs/agents/verification.md) 为准，浏览器取证以 [`docs/agents/runtime-verification.md`](../../docs/agents/runtime-verification.md) 为准。本文件只列权威文档没有的硬约束。
-
-- 验证与构建必须包含受影响包的上游依赖产物；`^build` 规则见 [`build.md`](../../docs/agents/build.md#各包命令)。

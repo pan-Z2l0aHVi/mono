@@ -27,7 +27,7 @@
 **（2026-11-23 修订）policy 入口按延迟与诊断诉求分层。** 保持 `packages/monorepo-kit/src/runner/` 链协议零改动，`scripts/policies/shared-policies.mjs` 抽取两处共用的 6 条政策：
 
 - `check-pre-commit` 保持单条 `.use()` 短路链（6 条共享政策 + 末尾 `stagedClean` + `defineCatch()`），遇首错即快停，最小化本地提交延迟；
-- `check-policy` 先将 `fullCheckout` 置首位单独运行（稀疏工作区失败即停，避免假绿），随后遍历 `[...sharedPolicies, ...policyOnlyPolicies]` 逐项独立构造 `defineRunner().use(policy).use(defineCatch()).make(ctx).run()`，并用 `try/catch` 包裹 `.make(ctx)` 将同步装配异常记为 `throw: <msg>` 加入错误列表而不中断后续收集；默认全量收集全部失败并以 `\n` 拼成一个 `Err` 交由 `runCheck` 输出（传 `--fail-fast` 可切回首错即停），单轮 CI 即可暴露所有政策违规。入口的参数解析与聚合调度逻辑由 `scripts/checks/check-policy.test.mjs` 覆盖，入口测试边界见 `script-policy.md`。
+- `check-policy` 先将 `fullCheckout` 置首位单独运行（稀疏工作区失败即停，避免假绿），随后遍历 `[...sharedPolicies, ...policyOnlyPolicies]` 逐项独立构造 `defineRunner().use(policy).use(defineCatch()).make(ctx).run()`，并用 `try/catch` 包裹 `.make(ctx)` 将同步装配异常记为 `throw: <msg>` 加入错误列表而不中断后续收集；默认全量收集全部失败并以 `\n` 拼成一个 `Err` 交由 `runCheck` 输出（传 `--fail-fast` 可切回首错即停），单轮 CI 即可暴露所有政策违规。入口的参数解析与聚合调度逻辑由 `scripts/checks/check-policy.test.mjs` 覆盖，入口测试边界见 `scripts-and-commands.md`。
 
 **root/env 由触发层注入。** `.make({ root: getWorkspaceRoot(import.meta.dirname), env: process.env })`；插件与能力目录一律不产出 root，workspace root 的解析在 `shared/` 有唯一实现。
 
@@ -35,7 +35,7 @@
 
 **分区与目录形状**：`src/` 下一个能力一个目录，`plugin/` 这一层删除；每个能力目录自带 `index.ts` 作为对外面，`src/index.ts` 只把各面并起来；`shared/` 不成体系，由根入口直接指向具体模块。包内跨目录引用一律指到具体文件（`../exec/exec`），不借目录入口——经入口互相 import 会让两个目录成环。`runner/` 只剩协议本身；Vite 求值期适配收在 `src/vite/`，走 `./vite` 子路径。[ADR-0017](./0017-monorepo-tooling-package.md) 的「包只有一个入口」据此收窄为「一个 Node 入口加一个 Vite 适配入口」。
 
-**端口分配是零配置 Vite 插件，不进 js-kit 判定链。** 端口号真正被消费的地方是 `vite.config.ts` 求值期；D12 修订退役根 `monorepo.json` 与 `test-port-call-sites` 门禁，链上删除 `port:` 域前缀。`src/vite/ports.ts` 导出 `testPorts(...)` → 一个零配置 Vite 插件：基于 `project`（linked worktree 下零子进程探测 `.git` 文件并合并 `realpathSync(root)`）的 SHA-256 确定性哈希分槽到 `23410..49140`（2,574 个 10 端口宽槽位，严格避开 macOS 默认临时端口段 `49152..65535`，Linux 默认 `32768..60999` 重叠段由段内重试承接），并在 `config` 钩里保留写入 `host: '127.0.0.1'` 与 `strictPort: false`，这两个键从此只有一个出处；配置解析多遍时只在看得见 `test.projects` 的那一遍按 `testName` 写入。用法与偏移见 `build-browser.md`「测试端口分配」。
+**端口分配是零配置 Vite 插件，不进 js-kit 判定链。** 端口号真正被消费的地方是 `vite.config.ts` 求值期；D12 修订退役根 `monorepo.json` 与 `test-port-call-sites` 门禁，链上删除 `port:` 域前缀。`src/vite/ports.ts` 导出 `testPorts(...)` → 一个零配置 Vite 插件：基于 `project`（linked worktree 下零子进程探测 `.git` 文件并合并 `realpathSync(root)`）的 SHA-256 确定性哈希分槽到 `23410..49140`（2,574 个 10 端口宽槽位，严格避开 macOS 默认临时端口段 `49152..65535`，Linux 默认 `32768..60999` 重叠段由段内重试承接），并在 `config` 钩里保留写入 `host: '127.0.0.1'` 与 `strictPort: false`，这两个键从此只有一个出处；配置解析多遍时只在看得见 `test.projects` 的那一遍按 `testName` 写入。用法与偏移见 `docs/agents/build.md`「浏览器测试端口与本地 HTTPS」。
 
 **不做域聚合插件。** 曾考虑用 `defineMdCheck(o)` 把三个 md 判定收成一个，但它们在两条链里的组合各不相同，聚合只多一层参数化却没有消费者。
 

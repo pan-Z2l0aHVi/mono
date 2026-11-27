@@ -12,7 +12,7 @@ const { andThen, err, ok } = rust
 // namespace 表达「谁拥有它」，取值是闭集，由消费仓库传入；无 namespace 同样是合法形状：
 // `build`、`test` 这类基础命令与门禁入口 `check-*` 都属于这一类。形状一旦放宽，命令面会
 // 重新膨胀而不惊动任何人，所以这里逐个钉住被拒类别，而不是只断言当前 manifest 恰好合法。
-// 本检查只读 package.json，不执行任何脚本。归属与命名理由以 docs/agents/commands.md 为权威。
+// 本检查只读 package.json，不执行任何脚本。归属与命名理由以 docs/agents/scripts-and-commands.md 为权威。
 export interface CommandConventionsOptions {
   /** 允许出现在 `{namespace}:{do}-{something}` 里的 namespace 闭集 */
   readonly namespaces: readonly string[]

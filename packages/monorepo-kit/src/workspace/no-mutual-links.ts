@@ -19,7 +19,7 @@ const { andThen, err, ok } = rust
 
 // 指令面链接守卫：只解析行内 Markdown `[label](target)` 链接，引用式 `[label][id]` 不纳入既定判据。
 // 扫描面与方向规则都是消费仓库的事实，经 options 传入；判据本身见
-// docs/agents/agent-context.md「语料门禁」。
+// ADR-0013 / ADR-0026「语料门禁」。
 export interface NoMutualLinksOptions {
   /** 语料根：文件按原样入列，目录递归收 `.md`；不存在的根跳过 */
   readonly roots: readonly string[]

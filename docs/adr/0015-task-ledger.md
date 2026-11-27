@@ -2,7 +2,7 @@
 
 - **Date**: 2026-10-19
 - **Revised**: 2026-11-22，修订为按需启用、默认状态目录迁至 `$XDG_CACHE_HOME`/`~/.cache/agent-task-ledger/`、补 `prune` 回收与稀疏检出解耦。
-- **Status**: 已接受
+- **Status**: 已退役（2026-11-27，随 [ADR-0026](./0026-lean-agent-context-for-frontier-models.md) 从本仓移除 `task-ledger` skill）
 
 ## 背景
 

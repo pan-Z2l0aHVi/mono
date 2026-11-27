@@ -1,21 +1,11 @@
 # md-to-meta
 
-通用 markdown 结构化引擎：一份 markdown → 一份 meta 模块（`<basename>.meta.js` / `.meta.d.ts`）、每个围栏一份代码文件（`codeblock/<hash>.<ext>`）、一份 `theme.css`，外挂一个驱动生成的 Vite 插件，另带 headless CLI（`md-to-meta check|write <app-dir>`，CI 校验与版本 PR 追平的入口；options 仍只读宿主 `vite.config.ts` 的 `mdToMetaOptions`）。包内不出现任何宿主名字、路径或业务契约；取舍与理由见 [ADR-0019](../../docs/adr/0019-md-to-meta.md)。
+通用 markdown 结构化引擎（meta 模块 + 逐围栏 code 文件 + `theme.css` + Vite 插件 + headless CLI），设计取舍见 [ADR-0019](../../docs/adr/0019-md-to-meta.md)。
 
-- 词表：一篇文档的产物是 **meta**（节点数组），节点用 **label**（HTML 标签名）区分形状，唯一例外是 **codeblock**（围栏）。围栏落成的文件是 **code 文件**；**exec** 是「哪些围栏语言额外带 `load`」的配置，与落盘无关；**theme** 是每份 output 一份、挂在 `.mdm-*` 前缀下的主题 CSS。四个词各指一样东西。
-- meta 是结构投影，不是业务模型。行内内容（加粗、链接、行内代码）在解析期渲染成 HTML 字符串放进 `content`，`children` 只承载结构嵌套（列表、表格、引用块）；宿主按 label 决定怎么渲染，引擎不知道该节点来自哪一节。`img` 是唯一带结构化字段（`src` / `alt`）的标签，段落的唯一子节点是图片时提成它。
-- 块级 label 是 HTML 标签名：`h1`–`h6`、`p`、`ul`、`ol`、`li`、`blockquote`、`hr`、`table`、`tr`、`th`、`td`、`img`，唯一例外是 `codeblock`。标题 `id` 一律 `section-<n>`，n 为文档内标题顺序（1 起）。
-- 去业务契约：不解析 frontmatter、locale、flavor、示例小节与 API 表。表格不在 CommonMark 内，由引擎按原文行自行识别与还原，识别规则与边界以 [`src/`](./src/) 的解析实现和测试为准，本文不复制。
-- **所有围栏都落盘**，不设语言白名单。扩展名 = 围栏语言名（`tsx` → `.tsx`、`bash` → `.bash`），无语言 → `.txt`；语言名来自文档作者，不能带路径分隔符或空白，否则产物会写到 `codeblock/` 之外。代码文件按内容 hash 寻址：同一段围栏跨文档、同文档重复出现都共享一个文件，改一块只换一个文件名。寻址哈希由 `ParseOptions.hash` 注入：生成路径固定 Node sha256 前 12 位（产物文件名的唯一口径，见 `./node-hash`），缺省则是内置的纯 JS 48 位哈希——浏览器消费方不经 Node 模块图也能解析，两者的名字互不相同、也不需要相同，运行时文件不落盘。
-- **exec 只控制 `load`**：命中 `exec` 的围栏在 meta 里多一个 `load: () => import('./codeblock/<hash>.<ext>')`，其余照常落盘、只是不会被 import。序列化时写的是字面 specifier，Rollup 才能静态分析并按需切 chunk；禁止运行时变量 `import(path)`。`path` 只用于显示与报错定位，宿主不靠它 import。
-- 代码文件内容逐字节来自围栏：`trimEnd()` 后补一个行尾换行（mdast 的 code 值不含行尾换行），落盘文件因此可直接编译。同一份源码在两处必须一致：markdown 围栏与页面 `<pre>` 的可见文本。高亮实现对最终 HTML 有一条往返自证（先摘行号槽、再剥标记、解实体，必须逐字等于输入）。这条「摘行号槽、取可见文本」的口径就是包入口导出的 `visibleText`；宿主复制代码读的是 DOM 文本，等价做法是按 `LINE_NUMBER_CLASS` 摘掉行号槽节点再取 `textContent`。数行数用导出的 `lineCountOf(html)`（按 shiki 每行的 `<span class="line">` 数，见 `LINE_CLASS`），不要各自手写数行正则。
-- 主题契约是「八字」：类名前缀 `.mdm-*`（`mdm-markdown`、`mdm-heading`、`mdm-code`），每份 output 一份 `theme.css`，宿主 import 它。这些类名与行号类名统一定义在 [`src/contract.ts`](./src/contract.ts) 并从包入口导出（`MDM_*_CLASS`、`LINE_NUMBER_CLASS`、`LINE_CLASS`），CSS 模板与高亮都读它，宿主按常量对齐、不抄字符串。高亮把浅色与深色两套颜色都写进同一份 HTML，取哪一边由 `theme.css` 按宿主配置的 `darkSelector` 判，所以切外观不必重新生成。正文字号 token 是 `--mdm-font-size`，缺省值以 CSS 为准，宿主可覆盖。深色选择器是宿主 DOM 的概念，配置里传，包内不给默认值；深色块里的选择器权重更高，浅色侧想跨外观生效的属性必须在深色块里同值再写一遍。
-- 行号是生成期的事，栏宽、右对齐与取色在 `theme.css` 的渲染里；类名只由 `contract.ts` 的 `LINE_NUMBER_CLASS` 给出，高亮、`visibleText` 的豁免与排版读同一个常量。
-- 高亮管线只有一条（`./highlight`：双主题变量 + 行号 transformer + `.mdm-code` 并类 + 自证），生成期与运行时只分攱失败策略：生成期（`highlight`）自证失败即 `fail`——示例代码块同时是被执行的源码；运行时（`./runtime` 的 `highlightRuntime`）任何失配/未知语言/白名单外语言都回退纯文本。`ParseOptions.highlight` 可注入，运行时消费方用它把默认的生成期实现换成 `highlightRuntime`。
-- 浏览器入口是 `./runtime`：`parseMarkdown`（hash/highlight 可注入）+ `highlightRuntime` + 契约常量。它的包内模块图不得触及 `node:` 内建——生成路径的 Node 依赖（crypto、fs、vite）全部收在 `./generate`/`./vite`/`./node-hash` 一侧，由 `runtime-graph` 测试钉住。主题 CSS 也对运行时消费方开放：`mdmThemePlugin({ darkSelector })` 把与生成产物同源的 `renderCss` 挂成 `virtual:mdm-theme.css`，构建期落地，不经运行时注入 `document.head`。
-- 单 output：多入口（`input` 支持字面路径与 glob）、单出口。同一 output 内按解析后绝对路径去重，产物按 md 文件名平铺；`<basename>` = 文件名去掉 `.md`（`button.CN.md` → `button.CN`，不做 locale 解释）。重名直接报错并带两个源文件路径，由调用方改名或收窄 input，引擎不猜。`input` 按 glob 匹配，只接受 `.md`，匹配到其他扩展名视为配置错误并列出。
-- output 归生成器独占的部分只有它写得出来的东西：目录根下的 `theme.css` 与 `*.meta.js` / `*.meta.d.ts`，以及 `codeblock/` 里的全部文件；每轮按产出集合清扫。宿主自己的其它文件不在清扫面里。
-- 落盘必须走 `writeIfChanged`：无条件覆写会改掉当前构建的输入哈希、从此拿不到缓存命中，dev 下还会让宿主 watcher 绕回生成形成死循环。
-- 测试期只判不改：插件工厂实例化时把 `VITEST` 解析成显式 `mode: 'check' | 'write'` 一次，启动与 watcher 触发的重建共用同一个 mode、走同一个写入器——判据只贴在其中一条上，另一条就会在测试期改写工作区。配置就地写在宿主的 `vite.config.ts` 里，不另立配置文件，也不让 spec 去 import 整个 vite config（整文件求值会把插件工厂一并跑一遍）。
-- meta 模块必须 lint-clean：禁止匿名 default export，所以模块写成 `const meta = […]` + `export default meta`。code 文件逐字节来自围栏，不参与 lint 与 format——自动改写会破坏它与页面 `<pre>` 的一致性。
-- watch：input 命中的 markdown 即使不在 app root 的默认 watch 面里也要纳入，add / change / unlink 都重新生成，按批合并写入；去抖值与实现细节以源码为准。
+- **严守去业务契约**：包内不出现任何宿主名字、路径或业务概念（不解析 frontmatter、locale、flavor、示例小节或 API 表）；`<basename>` 仅去 `.md` 后缀，重名直接报错不猜测。
+- **全围栏落盘与 `exec` 分离**：所有围栏都按内容 hash 落盘到 `codeblock/<hash>.<ext>`（拒绝含路径分隔符或空白的语言名）；`exec` 只控制是否在 meta 里注入静态字面 `load: () => import(...)`（禁止动态变量 `import(path)` 以保 Rollup 切 chunk）。
+- **逐字节一致与高亮自证**：落盘代码为围栏 `trimEnd() + '\n'`，不参与 lint/format；生成期高亮自证（剥行号槽与标签后逐字等于输入）失败即 `fail`，运行时 `./runtime` 的 `highlightRuntime` 失配则回退纯文本。类名常量统一从 [`src/contract.ts`](./src/contract.ts) 导出，不抄字符串。
+- **浏览器入口零 Node 依赖**：`./runtime` 模块图不得触及 `node:` 内建（由 `runtime-graph` 测试钉住）；Node 依赖全部留在 `./generate`、`./vite`、`./node-hash`。
+- **防构建死循环与测试只读**：落盘必须经 `writeIfChanged`（无条件覆写会破坏 Turbo 缓存并在 dev 触发 watcher 死循环）；插件实例化时将 `VITEST` 解析为固定 `mode: 'check' | 'write'`，测试期只判不改；不要让 spec import 整个宿主 `vite.config.ts`。
+- **meta 模块 lint-clean**：禁止匿名 default export（写 `const meta = [...]` + `export default meta`）。
+- **深色选择器权重**：`darkSelector` 由宿主传入，深色块选择器权重更高，浅色侧需跨外观生效的属性须在深色块同值声明。

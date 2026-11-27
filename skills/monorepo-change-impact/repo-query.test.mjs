@@ -202,7 +202,8 @@ assert.ok(
 )
 assert.ok(webUiPlan.context.includes('AGENTS.md'))
 assert.ok(webUiPlan.context.includes('packages/web-ui/AGENTS.md'))
-assert.ok(webUiPlan.context.includes('docs/agents/web-ui.md'))
+assert.ok(webUiPlan.context.includes('.agents/rules/docs-style.md'))
+assert.equal(webUiPlan.context.includes('.agents/rules/ui-style.md'), false)
 assert.deepEqual(webUiPlan.focusedTests['@greypan/web-ui'], ['src/components/select/__tests__'])
 assert.ok(
   webUiPlan.verification.some(
@@ -213,9 +214,11 @@ assert.ok(webUiPlan.verification.some(item => item.command === 'pnpm run check-p
 assert.ok(webUiPlan.verification.some(item => item.command === 'agent-browser 真实浏览器验证'))
 assert.match(run('verify', 'packages/web-ui/src/components/select/index.ts'), /evidence:/)
 
-const contextPlan = JSON.parse(run('verify', '--json', 'docs/agents/agent-context.md'))
+const contextPlan = JSON.parse(run('verify', '--json', 'docs/agents/workflow.md'))
 assert.equal(contextPlan.risk.context, true)
-assert.ok(contextPlan.context.includes('docs/adr/0004-progressive-agent-context-architecture.md'))
+assert.ok(contextPlan.context.includes('docs/adr/0026-lean-agent-context-for-frontier-models.md'))
+assert.ok(contextPlan.context.includes('.agents/rules/docs-style.md'))
+assert.equal(contextPlan.context.includes('.agents/rules/ui-style.md'), false)
 assert.ok(contextPlan.verification.some(item => item.command === 'pnpm run check-context'))
 
 const typePlan = JSON.parse(run('verify', '--json', 'packages/web-ui/src/types/react.ts'))
@@ -227,17 +230,18 @@ assert.equal(
 )
 
 const toolPlan = JSON.parse(run('verify', '--json', script))
+assert.equal(toolPlan.context.includes('.agents/rules/ui-style.md'), false)
 assert.ok(toolPlan.verification.some(item => item.command === 'pnpm run test-scripts'))
 
-const taskLedgerPlan = JSON.parse(run('verify', '--json', 'skills/task-ledger/ledger.mjs'))
-assert.ok(taskLedgerPlan.context.includes('docs/agents/agent-context.md'))
-assert.ok(taskLedgerPlan.verification.some(item => item.command === 'pnpm run test-scripts'))
+const sparsePlan = JSON.parse(run('verify', '--json', 'skills/apps-sparse-checkout/sparse-checkout.mjs'))
+assert.ok(sparsePlan.context.includes('docs/adr/0026-lean-agent-context-for-frontier-models.md'))
+assert.ok(sparsePlan.verification.some(item => item.command === 'pnpm run test-scripts'))
 
 // 仓自撰 skill 的 context 风险判定必须覆盖全部 skill 目录；test-authoring 曾因漏登记而只得到
 // check-code 建议，context 与配套工具测试都不跑。
 const testAuthoringPlan = JSON.parse(run('verify', '--json', 'skills/test-authoring/SKILL.md'))
 assert.equal(testAuthoringPlan.risk.context, true)
-assert.ok(testAuthoringPlan.context.includes('docs/agents/agent-context.md'))
+assert.ok(testAuthoringPlan.context.includes('docs/adr/0026-lean-agent-context-for-frontier-models.md'))
 assert.ok(testAuthoringPlan.verification.some(item => item.command === 'pnpm run check-context'))
 assert.ok(testAuthoringPlan.verification.some(item => item.command === 'pnpm run test-scripts'))
 

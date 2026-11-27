@@ -22,7 +22,7 @@
 
 能从配置派生的常量不抄第二份：hook 名单从 `.vite-hooks/` 现读，workspace 容器目录从 `pnpm-workspace.yaml` 的 `dir/**` 派生；策略实例经 `scripts/policies/repo-root.mjs` 定位仓库根，不按目录深度写 `../..`。
 
-构建形态是 TypeScript + `vp pack`：产物与 `exports` 一一对应，`dist/` 被 gitignore。门禁与配置消费产物，因此「跑在上一次产物上」是这条链路的失效模式，由 `check-pre-commit` 的前置 build 与 CI 的显式构建消除；细节见 `script-policy.md` 与本包 `AGENTS.md`。包内测试是 `src/**/__tests__/*.spec.ts`，由 `vp test run` 执行并参与类型检查，测试 import 源码、不依赖 build。
+构建形态是 TypeScript + `vp pack`：产物与 `exports` 一一对应，`dist/` 被 gitignore。门禁与配置消费产物，因此「跑在上一次产物上」是这条链路的失效模式，由 `check-pre-commit` 的前置 build 与 CI 的显式构建消除；细节见 `docs/agents/scripts-and-commands.md` 与本包 `AGENTS.md`。包内测试是 `src/**/__tests__/*.spec.ts`，由 `vp test run` 执行并参与类型检查，测试 import 源码、不依赖 build。
 
 ## 后果
 

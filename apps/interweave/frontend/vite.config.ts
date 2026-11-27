@@ -111,7 +111,7 @@ export default defineConfig({
   plugins: [
     // browser project 的端口段由 testPorts() 写进上面那个 project 的 `test.api`，host 与
     // strictPort 一起给出：本包顶层 `server.host` 是 `true`（Wails dev server 要它），不显式钉
-    // 回 loopback 时测试服务器会跟着绑通配地址。分配表与偏移见 docs/agents/build-browser.md「测试端口分配」。
+    // 回 loopback 时测试服务器会跟着绑通配地址。分配表与偏移见 docs/agents/build.md「浏览器测试端口与本地 HTTPS」。
     testPorts({ project: 'interweave-frontend', testName: 'browser' }),
     testPorts({ project: 'interweave-frontend-touch', testName: 'browser-touch' }),
     // 预览抽屉的 markdown/代码样式：与生成产物同一份 renderCss（构建期落地，不经运行时注入 head）。
