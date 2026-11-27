@@ -1,7 +1,7 @@
 # ADR-0010: 仓库指令保持编排无关（Harness-agnostic）
 
 - **Date**: 2026-10-03
-- **Revised**: 2026-11-21，仓库指令面移除对外部编排层的预设，保持编排无关（harness-agnostic）。
+- **Revised**: 2026-11-21，仓库指令面移除对外部编排层的预设，保持编排无关（harness-agnostic）；2026-11-27，随 [ADR-0026](./0026-lean-agent-context-for-frontier-models.md) 退役 `task-ledger` skill，仅保留 worktree 隔离与验证不变量。
 - **Status**: 已接受
 
 ## 背景
@@ -10,7 +10,7 @@
 
 ## 决策
 
-仓库指令保持编排无关（harness-agnostic）。仓库只定义代码质量、task 归属、worktree 隔离、验证、review 与交付的不变量，不绑定任何编排层或会话拓扑。task 分级依据改动的影响；现行判据由 task-ledger skill 维护。
+仓库指令保持编排无关（harness-agnostic）。仓库只定义代码质量、task 归属、worktree 隔离、验证、review 与交付的不变量，不绑定任何编排层或会话拓扑。task 分级依据改动的影响（原 `task-ledger` skill 已随 [ADR-0026](./0026-lean-agent-context-for-frontier-models.md) 退役）。
 
 一个可变 task 对应一个实施 worktree 和 owner。review 与验收要求由仓库 review 流程定义，不限定执行体形态。
 

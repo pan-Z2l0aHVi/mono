@@ -1,46 +1,39 @@
 # Mono Agent Entry
 
-本文件是所有 agent 的入口，说明项目身份、不可绕过的边界和任务路由。实现以源码、`package.json`、配置和测试为准；文档只解释意图，替代不了验证。
-
-## 变更准入与登记
-
-按改动影响自行分级（见 [`.agents/skills/task-ledger/SKILL.md`](.agents/skills/task-ledger/SKILL.md)）；只读调查与单会话局部改动免建账，跨会话、跨 Harness 或多 worktree 接力时按需启用该 skill 记录本地台账与恢复起点。PR review 纪律见 [`docs/agents/review.md`](docs/agents/review.md)，方案到合并的总流程与授权见 [`docs/agents/workflow.md`](docs/agents/workflow.md)。
-
-可变任务按 [worktree](docs/agents/worktree.md#新-worktree-的准备) 完成准备后，默认保持全树检出（配合窄口径根 [`.ignore`](.ignore)、路径前缀检索与 `turbo --filter` 收窄视野与构建范围）；仅在确需物理隔离兄弟应用（`apps/*`）时，按 [worktree](docs/agents/worktree.md#按需隔离兄弟应用) 调用 [apps-sparse-checkout](.agents/skills/apps-sparse-checkout/SKILL.md) 按需隔离 `apps/*`（`packages/` 与根级目录始终全量保留）。
-
-## 项目身份
-
-这是一个 pnpm + Turborepo monorepo：发布 `@greypan/*` 工具包和 Lit Web Components（`@greypan/web-ui`），并维护 React、Vue 与私有集成应用作为真实集成表面。
+pnpm + Turborepo monorepo：发布 `@greypan/*` 工具包与 Lit Web Components（`@greypan/web-ui`），维护 React/Vue 文档站与桌面集成应用（Interweave）。实现以源码、`package.json`、配置和测试为准；文档只补代码读不出的硬边界。
 
 ## 不可绕过的仓库边界
 
-- 不得改写 `.npmrc` 或 `.mise.toml` 的 registry/mirror，或任何 Git 配置；唯一例外是由 `apps-sparse-checkout` 执行 sparse checkout 时管理所必需的 worktree 配置与 Git 的 worktree-config 开关，不得借此更改其他 Git 配置。
-- **禁止手写或修改生成物**：不得手写新建、手工编辑生成文件，也不得用复制、补丁、格式化或 lint 自动改写绕过；唯一允许的写入是跑对应 generator 产生 diff。清单、路径与重新生成入口见 [`docs/agents/generated-artifacts.md`](docs/agents/generated-artifacts.md)，判定方法见该文「[怎么判断一个文件是不是生成的](docs/agents/generated-artifacts.md#怎么判断一个文件是不是生成的)」。正确性由 generator 重建证明，不由审查结论证明。
-- `**/__screenshots__/` 与 `**/.vitest-attachments/` 是测试证据，不是源码产物。除非任务明确要求更新已验证的视觉基线，否则不创建、不编辑、不提交。
-- `AGENTS.md`（含包级）、`docs/adr/`、`docs/agents/`、`.agents/rules/` 和仓库自撰 skill 的文档用中文。`skills-lock.json` 登记的第三方 skill 与 `.agents/skills-vendored/` 保持上游原文，和仓库规则冲突时以仓库规则为准。技术术语、命令、路径和包名保留英文。
-- 一个可变 task 对应一个实施 worktree 与 owner。不在共享工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。
-- 预授权操作与需逐次授权的操作见 [`docs/agents/workflow.md`](docs/agents/workflow.md#预授权操作)。
-- 在未激活 mise 的 shell 中，经 turbo 或调用被钉工具的命令必须经 mise 包装；例外、自检方式与判据见 [`docs/agents/worktree.md`](docs/agents/worktree.md#mise-exec-与命令外壳)。
+- **禁止手写或手改入库生成物**：只允许运行对应 generator 产生 diff；清单与重生入口见 [`generated-artifacts.md`](docs/agents/generated-artifacts.md)。
+- **禁止改动工具链与敏感配置**：不得读写 `.env*`/凭证，不得改写 `.npmrc`、`.mise.toml` 的 registry/mirror 或任何 Git 配置（`apps-sparse-checkout` 管理 worktree sparse config 除外）。
+- **任务 worktree 隔离**：一个可变任务对应一个独立 worktree；不得在共享主工作区执行 `git switch`、`git checkout`、`git stash`、`git reset` 或 `git clean`。
+- **测试证据不入库**：`**/__screenshots__/` 与 `**/.vitest-attachments/` 非源码产物，除非任务明确要求更新视觉基线，否则不创建、不提交。
+- **指令文档语言**：根与包级 `AGENTS.md`、`docs/adr/`、`docs/agents/`、`.agents/rules/` 与自撰 skill 用中文；技术术语、命令、路径与包名保留英文。第三方 `.agents/skills-vendored/` 保持上游原文，冲突时以本仓为准。
+- **工具链外壳**：未激活 mise 的 shell 中，执行 turbo 或调用被钉工具（node/pnpm/go/wails3）须用 `mise exec --` 包装；`pnpm run agent:env-doctor` 例外须裸跑。
+
+## 自主执行与授权边界
+
+独立任务 worktree 内的只读调查、以及非破坏性本地构建、测试、lint、类型检查与源码修复闭环无生产副作用，可直接自主推进并修复至验证通过，无需每步请示；**禁止为让失败检查变绿而擅自调大任何 timeout 或重试上限**。
+
+外部/不可逆高风险操作（首次创建 PR、合并 PR、force-push、发布、改依赖或 CI workflow、不可逆删除）的授权边界，以及**PR 创建后的自动跟进、核实、修复推送与误判回复闭环**见 [`workflow.md`](docs/agents/workflow.md#授权边界与-pr-自动跟进)。
+
+## 核心工程原则
+
+- **Plugin over inheritance**：共享状态与行为通过 [`packages/js-kit/src/plugin-system/`](packages/js-kit/src/plugin-system/) 函数组合实现，不以 class 继承层级承载。
+- **Acyclic workspace graph**：工作区依赖保持有向无环，`@greypan/js-kit` 是运行时基础包。
 
 ## 按任务加载
 
 <!-- prettier-ignore -->
-| 任务或变更 | 先读 |
+| 任务场景 | 先读 |
 | --- | --- |
-| 生成物：清单、重新生成、Build 前校验 | [generated-artifacts](docs/agents/generated-artifacts.md)、[build-generated](docs/agents/build-generated.md) |
-| 构建、根命令、打包与浏览器目标 | [build](docs/agents/build.md)、[build-packaging](docs/agents/build-packaging.md)、[build-browser](docs/agents/build-browser.md)、[commands](docs/agents/commands.md) |
-| 跨包、公共契约、影响面 | [monorepo-change-impact](.agents/skills/monorepo-change-impact/SKILL.md)、[build](docs/agents/build.md) |
-| 脚本准入、根配置、依赖 | [script-policy](docs/agents/script-policy.md)、[dependencies](docs/agents/dependencies.md) |
-| 发布、环境、CI 门控 | [release](docs/agents/release.md)、[environments](docs/agents/environments.md)、[build-ci](docs/agents/build-ci.md) |
-| 验证、运行时冒烟 | [verification](docs/agents/verification.md)、[runtime-verification](docs/agents/runtime-verification.md) |
-| UI 视觉与组件 | [ui-design](docs/agents/ui-design.md)、[web-ui](docs/agents/web-ui.md) |
-| 浏览器资源与格式 | [browser-resources](docs/agents/browser-resources.md)、[lint-format](docs/agents/lint-format.md) |
-| PR review、工作流 | [review](docs/agents/review.md)、[workflow](docs/agents/workflow.md) |
-| worktree、提交 | [worktree](docs/agents/worktree.md)、[commit](docs/agents/commit.md) |
-| 新增或修改 agent 文档/指令 | [writing-agent-docs](docs/agents/writing-agent-docs.md)、[agent-context](docs/agents/agent-context.md) |
+| 构建、打包、demo dev、lint 盲区、CI 缓存与门控 | [build.md](docs/agents/build.md)、[ci.md](docs/agents/ci.md) |
+| 入库生成物清单、重新生成与审查滤除 | [generated-artifacts.md](docs/agents/generated-artifacts.md) |
+| 本地验证、全量 check 门、浏览器/原生冒烟与资源回收 | [verification.md](docs/agents/verification.md)、[test-authoring](.agents/skills/test-authoring/SKILL.md) |
+| 跨包公共契约与影响面分析 | [monorepo-change-impact](.agents/skills/monorepo-change-impact/SKILL.md) |
+| 工作流、授权边界、提交规范、PR 自动跟进与审查、发布 | [workflow.md](docs/agents/workflow.md)、[review.md](docs/agents/review.md)、[release.md](docs/agents/release.md) |
+| Worktree 初始化、mise/缓存、依赖放置与脚本/根命令规范 | [environment.md](docs/agents/environment.md)、[scripts-and-commands.md](docs/agents/scripts-and-commands.md) |
 
-短约束：[code-style](.agents/rules/code-style.md)、[terminology](.agents/rules/terminology.md)、[commands](.agents/rules/commands.md)、[commit](.agents/rules/commit.md)、[testing](.agents/rules/testing.md)、[agent-context](.agents/rules/agent-context.md)。
+作用域规则（Claude Code 按 `paths:` 自动注入，Codex 按需读取）：[ui-style.md](.agents/rules/ui-style.md)、[docs-style.md](.agents/rules/docs-style.md)。
 
-测试用例：[test-authoring](.agents/skills/test-authoring/SKILL.md)。
-
-架构与术语：[CONTEXT.md](CONTEXT.md)、[ARCHITECTURE.md](ARCHITECTURE.md)；应用/包领域词汇看对应 `AGENTS.md`，ADR 索引在 `CONTEXT.md`。
+架构地图与 ADR：[ARCHITECTURE.md](ARCHITECTURE.md)、[docs/adr/README.md](docs/adr/README.md)；按需物理隔离 `apps/*` 见 [apps-sparse-checkout](.agents/skills/apps-sparse-checkout/SKILL.md)。

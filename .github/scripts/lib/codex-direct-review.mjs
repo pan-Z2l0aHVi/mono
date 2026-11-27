@@ -106,7 +106,7 @@ export function classifyDirectPathRisk(filePath) {
     isTest ||
     /^(?:docs\/(?:adr|agents)|\.agents|skills)\//u.test(normalized) ||
     /(?:^|\/)AGENTS\.md$/u.test(normalized) ||
-    /^(?:CONTEXT|ARCHITECTURE)\.md$/u.test(normalized)
+    /^ARCHITECTURE\.md$/u.test(normalized)
   ) {
     return { rank: 4, tier: 'medium', category: isTest ? 'test' : 'policy-or-adr' }
   }

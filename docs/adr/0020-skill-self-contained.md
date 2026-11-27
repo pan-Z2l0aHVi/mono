@@ -30,3 +30,5 @@ task-ledger 自带的 `parseArgs` / `compareText` / `normalizeScopePath` 同理�
 - **保双实现 + parity 测试**：既不破坏自包含又拦住静默分歧；因当前分歧未造成真实 bug，fixture 成本先不付，留作后果里写明的升级路径。
 
 > **注记（2026-11-22）**：原 `turbo-sparse-scope` 已按 [ADR-0025](./0025-apps-sparse-checkout.md) 更名重构为极简 App-only 的 `apps-sparse-checkout`（`skills/apps-sparse-checkout/sparse-checkout.mjs`），废除了 `pnpm-workspace.yaml` 容器推导与 `turbo` 依赖图计算；上文保留原名以记录当时的历史背景，自撰 skill 运行时自包含原则继续适用。
+
+> **注记（2026-11-27）**：`task-ledger` 已随 [ADR-0026](./0026-lean-agent-context-for-frontier-models.md) 退役移除；自撰 skill 运行时自包含原则继续适用于现存自撰 skills（`monorepo-change-impact`、`apps-sparse-checkout`、`test-authoring`）。

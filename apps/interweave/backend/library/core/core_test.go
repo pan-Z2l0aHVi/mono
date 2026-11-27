@@ -189,7 +189,7 @@ func TestFindResourceLocationMatchesNormalizesBeforeComparing(t *testing.T) {
 		t.Error("expected a normalize error for a schemeless URL, got nil")
 	}
 
-	// 同一 Resource 在同一位置登记多条 Source（CONTEXT.md「重复 Source」）时按 Resource 去重。
+	// 同一 Resource 在同一位置登记多条 Source（apps/interweave/AGENTS.md「重复 Source」）时按 Resource 去重。
 	if _, err := srcService.AddSource(ctx, view.Resource.ID, storage.SourceTypeFile, path); err != nil {
 		t.Fatalf("AddSource error: %v", err)
 	}

@@ -29,3 +29,5 @@
 
 - **彻底删除稀疏检出能力**：当前应用数量较少、全树完全可控，直接删除可进一步减少脚本维护面；但随着未来应用数量增长，保留一个零图依赖、不碰 `packages/` 的极简 App-only opt-in 隔离出口成本极低，避免日后从零重建。
 - **保留 `turbo-sparse-scope` 并改为双向闭包（`...target...`）**：改动基础共享包时会拉回几乎全部下游消费者与全部应用，实际等价于全树却额外引入 cone 计算、状态切换与恢复开销，故不采用。
+
+> **注记（2026-11-27）**：随 [ADR-0026](./0026-lean-agent-context-for-frontier-models.md) 重构，`apps-sparse-checkout` 设为 `disable-model-invocation: true`（仅用户显式调用），原 `worktree.md` / `script-policy.md` 已合并为 `environment.md` / `scripts-and-commands.md`，`task-ledger` 已退役。

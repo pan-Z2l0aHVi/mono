@@ -1,7 +1,7 @@
 # ADR-0004: 渐进式 Agent Context 架构
 
 - **Date**: 2026-08-09
-- **Status**: 已接受
+- **Status**: 已由 [ADR-0026](./0026-lean-agent-context-for-frontier-models.md) 演进取代（2026-11-27）
 - **Revised**: 2026-10-30，ADR 范围限定为技术选型、架构设计和工程化决策；文件引用统一使用链接，通过职责划分避免互指；2026-11-22，固化跨 Harness 适配边界（禁根 `CLAUDE.md` 与 `.claude/{rules,skills}` POSIX 相对软链）；2026-11-23，取消「每包必有 `AGENTS.md`」强制门禁，子包入口改为按真实信息增量按需建档。
 
 ## 背景
@@ -10,7 +10,7 @@
 
 ## 决策
 
-按任务逐层加载 context：根 [`AGENTS.md`](../../AGENTS.md) 提供项目身份、仓库边界和任务路由；[`ARCHITECTURE.md`](../../ARCHITECTURE.md) 提供仓库地图；[`CONTEXT.md`](../../CONTEXT.md) 提供跨包原则与 ADR 索引；任务指南、包级 `AGENTS.md`、rules 和 skills 按影响范围加载。ADR、README、配置、源码和测试提供按需证据，当前行为以实现和验证为准。
+按任务逐层加载 context：根 [`AGENTS.md`](../../AGENTS.md) 提供项目身份、仓库边界和任务路由；[`ARCHITECTURE.md`](../../ARCHITECTURE.md) 提供仓库地图；`CONTEXT.md`（已按 ADR-0026 移除，ADR 索引迁至 [`docs/adr/README.md`](./README.md)）原提供跨包原则与 ADR 索引；任务指南、包级 `AGENTS.md`、rules 和 skills 按影响范围加载。ADR、README、配置、源码和测试提供按需证据，当前行为以实现和验证为准。
 
 每个主题只设一个权威来源，其余文档负责导航。跨应用的 UI 视觉原则由独立 task-specific 文档承载，并由根入口统一路由；应用与组件的局部入口只提供领域导航，不重复处方。新增 instruction 前先判断类型、测试、lint 或脚本能否更可靠地表达约束。ADR 只记录技术选型、架构设计和工程化决策及其取舍；具体实现细节由源码、测试或对应文档承载。
 

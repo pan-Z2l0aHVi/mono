@@ -1,6 +1,6 @@
 /**
  * message 必须英文这条约束的唯一事实来源就在这里：commitlint 自带规则只管结构——type、scope、
- * 长度、大小写——管不到语言，而 `docs/agents/commit.md` 明说 commitlint 的规则以本文件为准、
+ * 长度、大小写——管不到语言，而 `docs/agents/workflow.md` 明说 commitlint 的规则以本文件为准、
  * 不在正文复述，所以这条本地规则同时承担「机检」和「规定」两个角色。
  *
  * 放在这里而不是 `scripts/checks/` 或 `packages/monorepo-kit/src/`：pre-commit 与 required check job 的 policy checks

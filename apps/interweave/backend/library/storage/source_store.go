@@ -90,7 +90,7 @@ func (SourceStore) ListFileSources(ctx context.Context, q Queryer) ([]SourceMode
 	return collectRows(rows, scanSource)
 }
 
-// 按位置与类型反查 Source。重复 Source 不做去重（CONTEXT.md「重复 Source」）：
+// 按位置与类型反查 Source。重复 Source 不做去重（apps/interweave/AGENTS.md「重复 Source」）：
 // 同一位置天然返回全部对应记录，调用方按各自需要决定是否折叠。
 func (SourceStore) ListSourcesByLocations(ctx context.Context, q Queryer, srcType SourceType, locations []string) ([]SourceModel, error) {
 	if len(locations) == 0 {

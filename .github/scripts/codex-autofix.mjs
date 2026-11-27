@@ -33,7 +33,7 @@ const EXTRA_GUARDED = [
   { label: '依赖清单与供应链配置', matcher: /(^|\/)vendor\//u },
   {
     label: 'agent 指令体系与 ADR',
-    matcher: /(^|\/)(AGENTS\.md|CLAUDE\.md|CONTEXT\.md|ARCHITECTURE\.md|docs\/agents\/|docs\/adr\/|\.agents\/)/u
+    matcher: /(^|\/)(AGENTS\.md|CLAUDE\.md|ARCHITECTURE\.md|docs\/agents\/|docs\/adr\/|\.agents\/)/u
   },
   { label: 'Codex 自身配置', matcher: /(^|\/)\.codex\//u },
   { label: '客户端权限配置', matcher: /(^|\/)\.claude\//u },
@@ -57,7 +57,7 @@ export function globToRegExp(glob) {
 
 /**
  * 入库生成物的权威名单是 `.claude/settings.json` 的 `permissions.deny`，见
- * docs/agents/generated-artifacts.md「机器拦截的覆盖面」。这里读同一份名单而不是抄第二份：
+ * docs/agents/generated-artifacts.md「审查范围与编辑拦截的分工」。这里读同一份名单而不是抄第二份：
  * 新增 generator 时 patch 判定跟着变，两边不会各自漂移。
  */
 export function generatedGuarded({ repositoryFile, parse = JSON.parse }) {

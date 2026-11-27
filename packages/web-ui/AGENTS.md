@@ -1,53 +1,29 @@
 # web-ui
 
-修改组件、主题 token、overlay、表单行为或框架类型封装前，先确认受影响的契约面。只改局部 UI 时不必读完整组件语义。ADR 路由与权威来源索引见 [`docs/agents/web-ui.md`](../../docs/agents/web-ui.md)。
+修改组件公共契约、事件、overlay、token 或框架类型前，按需查阅对应 ADR：
 
-- [`src/components/theme/style.css`](./src/components/theme/style.css) 是 token 值的权威来源。复用共享 overlay 生命周期和 semantic token，不要把组件样式注入 `document.head`。
-- 不承担框架运行时 wrapper 与全局应用样式。
-- 共享状态和行为使用 `defineXxx(...).make(...)` 的 `definePlugin` factory。Lit、Shadow DOM、属性绑定和框架事件类型沿用既有模式。
-- 受管组合的成员追踪、下行广播与上行写回统一走 `GroupController`。`select` 与 `autocomplete` 的 option 成员走 [`src/shared/option-portal`](./src/shared/option-portal/)。
-- combobox 的键盘交互按轴分工：开合骨架（guard、派发顺序、scroll-lock 配对、portal 按帧编排的挂载与卸载——先等一帧再挂上、过渡结束前不摘）由一个内部层拥有，游标语义（activeIndex、环绕导航、Home/End、初始锚点、指针接管、typeahead）由另一个内部层拥有，组件只保留键位映射（keydown switch）、ARIA 输出与成员管理；两组件的语义差异经 hooks 注入，不要把游标状态机抄回组件。
-- 触屏长按开出 menu 后，宿主一侧补发的 click 由 `context-menu` 自己在宿主子树 capture 阶段吸收；宿主不做（也不该做）行激活抑制——「这一手开出了 menu」「手势何时结束」的事实只有组件知道。
-- theme 的 View Transition 引擎（origin 追踪、flight token、输入压制状态机、盒钉扎与清理时序）由 [`src/shared/theme/transition`](./src/shared/theme/transition.ts) 拥有；组件只保留是否动画的判定、reduced-motion 检查与 appearance property 管线。
-- slot-trigger 组件（popover/dropdown/collapse）的 ARIA 状态（如 `aria-expanded`）不挂在 trigger 包装结构上，按 [ADR-0005](../../docs/adr/0005-web-ui-components.md) 回写。
-- 框架动态绑定布尔属性必须用 camelCase Property；组件内不加 attribute 字符串解析兜底，保持原生 HTML 布尔存在语义。
+- Lit / Shadow DOM、公共契约、事件模型、框架类型与 icon 系统：[ADR-0005](../../docs/adr/0005-web-ui-components.md)
+- Overlay 定位/portal/焦点/滚动锁、design token 与 `@lit/context` 组合：[ADR-0006](../../docs/adr/0006-web-ui-composition.md)
+- Layout 受控 `mobile` 契约：[ADR-0023](../../docs/adr/0023-layout-controlled-mobile.md)
+- 内置无障碍文案英文回退与 `aria` 前缀：[ADR-0016](../../docs/adr/0016-accessible-names.md)
 
-## 组件组合词汇
+## 硬边界与共享原语
 
-**语义色源 token（semantic hue token）**:
-表示 accent、success、warning、danger、info 等模式适配后的基础含义色；它不是某个组件的 button 背景或 hover/active 状态色。
-_Avoid_: primary 背景、variant 背景、状态色
+- [`src/components/theme/style.css`](./src/components/theme/style.css) 是 token 权威源；不把组件样式注入 `document.head`，不承担框架运行时 wrapper 或全局应用样式。
+- 组件内部滚动容器使用 `.wui-scroll` 契约（随组件样式 adopted 进 shadow，不进 `exports`，读 `--wui-scrollbar-handle`），本包不引入第三方 scrollbar 库。
+- 共享状态与行为使用 `defineXxx(...).make(...)` 的 `definePlugin` factory；受管子元素组合走 `GroupController`（禁用/展示态经 `@lit/context` 只下行广播，选中态由根直写上行）；带 portal 的 `select`/`autocomplete` option 走 [`src/shared/option-portal/`](./src/shared/option-portal/)。
+- combobox 开合骨架与游标状态机分离在内部层，语义差异经 hooks 注入，不把游标状态机抄回组件；触屏长按开 `context-menu` 后的 click 抑制由组件自己在宿主 capture 阶段吸收；theme 的 View Transition 引擎归 [`src/shared/theme/transition.ts`](./src/shared/theme/transition.ts)。
+- slot-trigger 组件（popover/dropdown/collapse）的 ARIA 状态（如 `aria-expanded`）回写到 trigger slot 首个 assigned element，不挂在包装结构上。
+- 框架动态绑定布尔属性走 camelCase Property；组件内不加 attribute 字符串解析兜底，保持原生 HTML 布尔存在语义。
 
-**Variant 状态色（variant state color）**:
-组件基于自身 variant surface 或语义色源派生的 hover/active 展示色；filled/neutral 状态向黑色加深，tonal variant 可保留自己的语义色状态比例。
-_Avoid_: 直接改写语义色源 token、用主题文本作为按压加深锚点
+## 核心词汇
 
-**覆盖层 slot 组合（overlay slot composition）**:
-trigger 经命名 slot 提供、内容/panel 由组件托管的组合模式；panel 常脱离文档流（portal）。组件把 trigger 状态 ARIA（aria-expanded 等）回写到 trigger slot 的首个 assigned element，交互语义由 slot 内的可交互元素原生提供。
-_Avoid_: trigger/content 拆分为独立公开元素（React 式三元素）、在 trigger 包装结构上承载 ARIA
+- **semantic hue token**：模式适配后的基础语义色源（accent/success/warning/danger/info），不是具体组件背景或 hover/active 状态色。
+- **variant state color**：基于组件 variant surface 或语义色源派生的 hover/active 展示色，不直接改写语义色源 token。
+- **open overlay**：overlay 开启态与 Escape 仲裁的唯一拥有者；组件用 `claim(panel)` 声明会话 handle、`release()` 随退场动画幂等撤销（`close()` 先切为可见但暂缓仲裁，不提前撤销），不可用 `isOpen()` 回调询问或各组件自持 Escape 监听。
 
-**开启态 overlay（open overlay）**:
-「哪一层 overlay 正开着」的唯一拥有者，也是 Escape 归属的唯一仲裁者。组件用 `claim(panel)` 声明一次开启并取得会话 handle，`release()` 幂等撤销；开启状态是声明而非询问，仲裁只读声明状态，不回调组件查 `isOpen()`。会话作用域（一次开启）与实例作用域（跨开合与断连的帧事务）分离；「暂时不可关闭」经 `setInert(boolean)` 表达，与静态策略共用同一通道；撤销跟随退场动画。`close()` 先把会话切到「可见但暂缓仲裁」（仍是候选，但只在没有别的开启层时兜底接住 Escape），动画播完或被重新 `open()` 以新会话取代才撤销。登记表另有惰性兜底回收：panel 与宿主同时失联的层在遍历入口被摘掉（claim 路径的回收跑在建层之前，「先 claim 再挂载」的新层不会被误判成死层），漏 `release()` 不会再永久拖住注册表与 document 监听。
-_Avoid_: 各组件自持 Escape 监听、以 panel 元素而非 handle 为身份、第三个仲裁枚举值、把帧事务压进会话 handle、撤销提前到退场动画之前（panel 还在场上却已不在登记表里）
+## 示例文档与公共契约同步
 
-**受管子元素组合（managed child composition）**:
-子项是公开 custom element 的组合模式。成员追踪与点击归因由 GroupController 直驱，禁用/展示态经 @lit/context 下行广播（只下行），选中态由根直写子项（上行）；子项被移出组后恢复独立控件语义。带 portal 的 option 组合走 `option-portal`，不属于这一模式。
-_Avoid_: 用 context 承载成员追踪或上行写回、在子项上用公开属性表达组状态
-
-## 示例文档
-
-示例文档（[`docs/*.md`](./docs/)）的 source of truth 只有那一份 markdown：有哪些示例、每个示例的代码、`## API` 下的每张表（字段的名称 / 类型 / 默认值 / 说明）与每段散文（行为说明这类）都手写在里面，组件源码不参与生成。中文是源语种，文件名是 `<name>.CN.md`；英文译文是默认后缀的 `<name>.md`，与 README 的命名方向一致。文件名就是文档身份，不再有 frontmatter。换来的是组件内部怎么重构都不会让文档隐形变更；代价是组件改了 API 时那张表要人手动跟着改，机器不提醒——表里的属性名与源码声明的一致性没有机器核对，只剩人工 review。
-
-- 生成器接线、写盘时机与 Build 前校验见 [`build-generated.md`](../../docs/agents/build-generated.md)，引擎契约见 [`@greypan/md-to-meta`](../md-to-meta/AGENTS.md)。示例小节、API 表、语种这些业务契约在 demo 应用侧实现，不在引擎里。
-- 语料住在被发布的包里，而 `web-ui` 读语料的任务只有 `test`；`test.inputs` 的名单与校验见 [`build-generated.md`](../../docs/agents/build-generated.md)。动 `docs/` 的布局或往包根加 md 时要同步那份名单。
-- 同一份源码在三处必须一致：markdown 围栏、消费方 demo 的 `src/generated/**/codeblock/` 落盘文件、页面 `<pre>` 的可见文本。落盘文件比围栏多一个行尾换行，除此之外三处逐字相同。改任何一段转义、高亮或落盘路径，都要让这三处一起继续成立。
-- 围栏语言就是落盘扩展名：React 写 `tsx`、Vue 写 `vue`。引擎不维护语言白名单，所有围栏都落盘，只有命中宿主 `exec` 的语言才在 meta 里带 `load`。
-- 示例标题按文档语种编写：中文文档使用中文，英文文档使用英文，组件名与专业术语保留原文。标题是普通节点，锚点按文档顺序生成为 `section-<n>`，不派生产物文件名。
-- `docs/*.md` 的散文只陈述当前行为、契约与设计意图，不写迁移说明或旧 API 对照：属性改名或移除时改写对应段落，不留「以前叫什么」的历史；兼容性承诺按当前契约写。
-
-## 公共契约变更入口
-
-涉及属性、slot、event、form、导出、框架类型、token 或组件可见行为时，按 [monorepo-change-impact](../../.agents/skills/monorepo-change-impact/SKILL.md) 与 [`docs/agents/web-ui.md`](../../docs/agents/web-ui.md) 确定实际影响面，除 [`src/components/`](./src/components/) 与 [`src/types/`](./src/types/) 外同步：
-
-- 包 README（[`README.md`](./README.md) 与 [`README.CN.md`](./README.CN.md)）：组件章节维护在 `docs/*.md`，README 只留索引表
-- 示例与 API 文档（[`docs/*.md`](./docs/)）及受影响框架 demo 的 type fixtures
+- 示例文档（[`docs/*.md`](./docs/)，中文源 `<name>.CN.md`、英文 `<name>.md`，无 frontmatter）是示例、代码与 `## API` 表的唯一 source of truth，组件源码不参与自动生成——**修改组件 API 必须手工同步对应 markdown**，并同步包根 `README.md`/`README.CN.md` 索引表与受影响 demo 的 type fixtures（跨包影响面查 [monorepo-change-impact](../../.agents/skills/monorepo-change-impact/SKILL.md)）。
+- 同一份示例源码在 markdown 围栏、demo `src/generated/**/codeblock/` 落盘文件（仅多一个行尾换行）与页面 `<pre>` 三处必须逐字一致；围栏语言即扩展名（React `tsx`、Vue `vue`）。
+- 改动 `docs/` 布局或包根 `.md` 时同步 `turbo.json` 的 `test.inputs`（见 [`docs/agents/build.md`](../../docs/agents/build.md)）。

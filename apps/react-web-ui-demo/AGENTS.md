@@ -1,11 +1,8 @@
 # react-web-ui-demo
 
-- 这是 `web-ui` 的 React 集成和预览表面；demo 行为不能替代公共组件契约。
-- 修改集成或交互后，在真实浏览器验证 React 表面。
-- 新增或修改 `src/routes/**` 时，以该目录和 `vite.config.ts` 为 source of truth；不得手动编辑 `src/routeTree.gen.ts`。生成入口与证据见 [`docs/agents/generated-artifacts.md`](../../docs/agents/generated-artifacts.md)。
-- 插件顺序是硬边界：`unpluginWebComponents` 必须排在 `react()` 之前，否则靠源码文本匹配的自定义元素导入注入不生效。插件表、选项与顺序以 `vite.config.ts` 为准，行为由组件 root 测试守护。
-- 示例代码与 API 表由 `packages/web-ui/docs/*.md` 生成到 `src/generated/`：不得手改；改完 markdown 由 `vite.config.ts` 挂的 `mdToMeta` 在 dev 与 build 重新生成。API 表字段手写在语料里，组件源码不参与生成——改了组件属性要人一起改表，没有脚本提醒。本端 `exec: ['tsx']`，只有 `.tsx` 围栏落成可执行文件；围栏字节、落盘文件与页面 `<pre>` 必须一致。产物命名、布局与清单见 [`docs/agents/generated-artifacts.md`](../../docs/agents/generated-artifacts.md)。
-- 界面文案（壳）用 wuchale：源码只写中文，`src/locales/<locale>.po` 是入库译文源；catalog 与 loader 由 Vite 插件重编译且已 gitignore，不手改。增删壳文案在应用目录跑 `pnpm exec wuchale --clean`，dev/build 只编译不抽取。语种与首帧策略见 [`docs/agents/build-generated.md`](../../docs/agents/build-generated.md)。
-- shell 状态（主题 / 动效 / 侧栏 collapsed / open / 宽度的持久化、校验、`*-change` 事件过滤与 mobile 派生）由 `@greypan/doc-demo-kit` 的 `createShellState` 拥有，`Root` 只做快照绑定与渲染；不得自建并行的持久化或事件过滤逻辑，断点判定例外（`useMobile` 留在 app，ADR-0023）。
-- 路由层：非首屏页面懒加载（`vite.config.ts` 的 `tanstackRouter` 通过 `codeSplittingOptions.splitBehavior` 只让 `/home/` 返回空分组保持同步，首屏是 `/` 重定向到的 `/home`）；跳转延迟到目标 chunk 与 loader 数据都就绪后才提交，路由器设 `defaultPendingMs: Infinity` 关闭默认 1s 的 pending 视图切换，侧边栏 `active` 绑定 `resolvedLocation` 防止等待期提前跳变。进度状态机在 `@greypan/route-progress`（默认 250ms 延迟启动、300ms 最短停留、220ms 100% 冲刺保底、先快后慢渐近线缓动），由 `src/router/guards.ts` 的 `installRouterProgress` 订阅 `onBeforeLoad` / `onResolved` 统一收口 `<Link>`、`navigate` 与 popstate；顶部条 `RouteProgressBar` 挂在 `RouterProvider` 外层，轨道用主题默认的不透明 `--wui-color-surface-track`，指示条走 `web-ui-progress` 的 `translate3d` GPU 合成层动画。
-- 路由数据预取走 router `context.queryClient.ensureQueryData({ ...opts, revalidateIfStale: true })`（真 SWR：首次冷缓存阻塞跳转，已有缓存哪怕过期也 0ms 秒切并在后台静默 revalidate，状态保持统一归 Query 缓存，不引入第三方 React KeepAlive 库），loader 失败通过 `handleRouteLoadFailure` 回退到已渲染位置（留在当前页）并触发 `toast.error`；意图预取由路由器 `defaultPreload: 'intent'` 与 `defaultPreloadStaleTime: 0` 驱动，不触发顶部进度。页面级不用 `<Suspense>`；局部 loading / 骨架屏统一走 `useDelayedLoading`（复用 `@greypan/route-progress` 的 `createDelayedVisibility`，<250ms 不显示任何 spinner 或骨架文案），页面内次要区块可用 `useSuspenseQuery` + 局部 `<Suspense>`（见 `src/components/changelog/index.tsx` 与 `src/queries/changelog.ts`，支持 `?delay=<ms>`、`?fail=1`）。
+- `web-ui` 的 React 集成预览站；demo 行为不替代公共组件契约，改动集成或交互后须在真实浏览器验证。
+- **插件顺序硬边界**：`unpluginWebComponents` 必须排在 `react()` 之前，否则自定义元素导入注入失效。
+- **生成物禁手改**：`src/routeTree.gen.ts` 与 `src/generated/**` 由 Vite 插件自动生成（见 [`generated-artifacts.md`](../../docs/agents/generated-artifacts.md)）；本端 `exec: ['tsx']`，改组件 API 须同步修改 `packages/web-ui/docs/*.md`。
+- **壳文案（wuchale）**：源码只写中文，`src/locales/*.po` 为入库译文源；增删壳文案后在本目录跑 `pnpm exec wuchale --clean`（dev/build 只编译不抽取，见 [`build.md`](../../docs/agents/build.md)）。
+- **Shell 状态归属**：主题/动效/侧栏状态由 `@greypan/doc-demo-kit` 的 `createShellState` 拥有，`Root` 不自建并行持久化或事件过滤（断点判定 `useMobile` 留本 app，见 [ADR-0023](../../docs/adr/0023-layout-controlled-mobile.md)）。
+- **路由与加载**：仅 `/home/` 同步加载，其余路由懒加载并由 `ensureQueryData({ revalidateIfStale: true })` 做真 SWR（不引入第三方 KeepAlive）；页面级不用 `<Suspense>`，局部 loading 统一走 `useDelayedLoading`。

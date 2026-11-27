@@ -1,7 +1,7 @@
 # ADR-0013: Context 语料权威与漂移检查
 
 - **Date**: 2026-10-19
-- **Status**: 已接受（2026-11-08 修订：只读报表与语料指纹已随 ADR-0022 一并删除，相关句子改为历史口径；2026-11-22 修订：固化跨 Harness 适配边界门禁与入口精简标记；2026-11-23 修订：取消每包必有 `AGENTS.md` 强制门禁，已有子包入口继续受检）
+- **Status**: 已接受（2026-11-08 修订：只读报表与语料指纹已随 ADR-0022 一并删除，相关句子改为历史口径；2026-11-22 修订：固化跨 Harness 适配边界门禁与入口精简标记；2026-11-23 修订：取消每包必有 `AGENTS.md` 强制门禁，已有子包入口继续受检；2026-11-27 修订：随 [ADR-0026](./0026-lean-agent-context-for-frontier-models.md) 移除 `CONTEXT.md`，更新远端写授权指针至 `workflow.md#授权边界与-pr-自动跟进`，并由 `ADR-0026` 承载四条二元删留判据）
 
 ## 背景
 
@@ -13,7 +13,7 @@ Instruction 可能被客户端按层加载，也可能被检索系统按片段�
 
 `check-context` 检查路由、链接、授权指针、非权威标记和可客观判定的漂移。全仓已跟踪 Markdown 纳入链接检查，指令面另检查路由、授权指针与非权威标记。文档体量不设字符数门槛，也不以文风扫描代替语义 review。（引入时曾附「只读体量报表」，已随 ADR-0022 删除，不再是本决策的一部分。）
 
-（2026-11-22 修订）语料门禁与本地体检共享同一套跨 Harness 适配事实：根目录禁止出现 `CLAUDE.md`（防止静默关闭包级 `AGENTS.md` 按需注入），`.claude/rules` 与 `.claude/skills` 须维持合法的 POSIX 相对软链，且 `.agents/skills/*` 须为目标可达且含 `SKILL.md` 的有效软链；入口必经标记仅钉核心流程文档，不把按需启用的本地台账 skill 设为强制准入标记。具体检查口径以 `agent-context.md` 与 `worktree.md` 的对应脚本为准。
+（2026-11-22 修订）语料门禁与本地体检共享同一套跨 Harness 适配事实：根目录禁止出现 `CLAUDE.md`（防止静默关闭包级 `AGENTS.md` 按需注入），`.claude/rules` 与 `.claude/skills` 须维持合法的 POSIX 相对软链，且 `.agents/skills/*` 须为目标可达且含 `SKILL.md` 的有效软链；入口必经标记仅钉核心流程文档，不把按需启用的本地台账 skill 设为强制准入标记。具体检查口径以 [ADR-0026](./0026-lean-agent-context-for-frontier-models.md)、`docs/agents/environment.md` 与检查实现为准。
 
 （2026-11-23 修订）`ContextCorpusOptions` 新增可选开关 `requireWorkspaceEntry`（默认 `true` 保持通用插件向后兼容，本仓策略配置显式传入 `false`），取消「每包必有 `AGENTS.md`」强制门禁：子包入口按真实信息增量按需建档，门禁不再要求无增量包维护空壳 `AGENTS.md`；仓库内已存在的子包 `AGENTS.md` 继续纳入 `check-context` 的断链、节锚点、授权指针、外部快照短语与根命令存在性校验。
 
@@ -21,4 +21,4 @@ Instruction 可能被客户端按层加载，也可能被检索系统按片段�
 
 - 权威归属和失效内容需要人工维护；机器检查只覆盖可判定的属性。
 - （2026-11-08 起失效）曾以「语料指纹」反映内容集合及变化；该判据与观测出口已随 ADR-0022 删除，不再证明任何外部索引状态。
-- 规则细节以 agent-context.md 和检查实现为准。
+- 规则细节以 [ADR-0026](./0026-lean-agent-context-for-frontier-models.md) 和检查实现为准。
