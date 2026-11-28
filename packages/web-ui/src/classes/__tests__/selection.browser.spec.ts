@@ -42,11 +42,22 @@ describe('classes/selection.css', () => {
     }
   })
 
-  it('user-select 与 -webkit-touch-callout 成对声明', () => {
-    expect(selectionCSS).toContain('user-select: none')
-    expect(selectionCSS).toContain('-webkit-touch-callout: none')
-    expect(selectionCSS).toContain('user-select: text')
-    expect(selectionCSS).toContain('-webkit-touch-callout: default')
+  it('user-select 与 -webkit-touch-callout 成对声明且归属各自规则', () => {
+    const declarationsFor = (selector: string) => {
+      const block = selectionCSS.match(
+        new RegExp(`${selector.replace(/[.*+?^${}()|[\]\\]/g, '\\$&')}\\s*\\{([^}]*)\\}`)
+      )
+      if (!block) throw new Error(`missing rule ${selector}`)
+      return block[1] ?? ''
+    }
+
+    const noSelect = declarationsFor(':where(.wui-no-select)')
+    expect(noSelect).toMatch(/user-select:\s*none/)
+    expect(noSelect).toMatch(/-webkit-touch-callout:\s*none/)
+
+    const selectable = declarationsFor(':where(.wui-selectable)')
+    expect(selectable).toMatch(/user-select:\s*text/)
+    expect(selectable).toMatch(/-webkit-touch-callout:\s*default/)
   })
 
   it('工具类特异性为 0：先声明的单类消费方规则也能覆盖', () => {
