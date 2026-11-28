@@ -634,7 +634,8 @@ function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEdita
     -->
     <div
       ref="rowsRef"
-      class="w-full h-full rounded-[14px] select-none [-webkit-touch-callout:none]"
+      class="w-full h-full rounded-[14px]"
+      :class="selectionMode ? 'select-none cursor-default [-webkit-touch-callout:none]' : ''"
       tabindex="0"
       role="list"
       :aria-busy="loading"

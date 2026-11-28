@@ -46,6 +46,9 @@
   --os-handle-bg: var(--wui-scrollbar-handle, rgb(0 0 0 / 0.39));
   --os-handle-bg-hover: var(--app-scrollbar-handle-hover, rgb(0 0 0 / 0.51));
   --os-handle-bg-active: var(--app-scrollbar-handle-active, rgb(0 0 0 / 0.63));
+
+  /* 滚动条 handle 是拖拽面，不是可选中文本：按下拖动不该在页面上留下选区。 */
+  user-select: none;
   box-sizing: border-box;
 }
 
