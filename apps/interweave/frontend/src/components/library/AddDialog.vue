@@ -80,6 +80,19 @@ const dragActive = ref(false)
 const addUrlOpen = ref(false)
 const editingItemId = ref<string | null>(null)
 const queueScrollRef = ref<HTMLElement | undefined>(undefined)
+// 弹窗级视频捕获作用域：关闭、开始提交或组件卸载时统一中断未完成的封面解码。
+const captureScopeController = ref(new AbortController())
+
+function abortCaptureScope() {
+  if (!captureScopeController.value.signal.aborted) {
+    captureScopeController.value.abort()
+  }
+}
+
+function resetCaptureScope() {
+  abortCaptureScope()
+  captureScopeController.value = new AbortController()
+}
 const nameEditors = new Map<string, WebUiEditableText>()
 const renameButtons = new Map<string, HTMLElement>()
 let pendingImagePreview: ImagePreviewHandle | null = null
@@ -117,10 +130,20 @@ watch(
     if (!open) {
       addUrlOpen.value = false
       closePendingImagePreview()
+      abortCaptureScope()
       return
     }
     dragActive.value = false
     editingItemId.value = null
+    if (!props.busy) resetCaptureScope()
+  }
+)
+
+watch(
+  () => props.busy,
+  busy => {
+    if (busy) abortCaptureScope()
+    else if (props.open) resetCaptureScope()
   }
 )
 
@@ -160,10 +183,15 @@ onMounted(() => {
 onScopeDispose(() => {
   window.removeEventListener('paste', handlePaste)
   closePendingImagePreview()
+  abortCaptureScope()
 })
 
 function itemMediaUrl(item: LibraryQueueItem): string | null {
   return props.previews[item.id]?.mediaUrl ?? null
+}
+
+function itemPreviewToken(item: LibraryQueueItem): string | null {
+  return props.previews[item.id]?.token ?? item.previewToken ?? null
 }
 
 function isImagePreviewItem(item: LibraryQueueItem) {
@@ -449,6 +477,8 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                     :kind="item.resourceKind"
                     :source="queueSource(item)"
                     :media-url="itemMediaUrl(item)"
+                    :pending-token="itemPreviewToken(item)"
+                    :capture-scope="captureScopeController.signal"
                   />
                 </button>
                 <ResourceThumbnail
@@ -457,6 +487,8 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                   :kind="item.resourceKind"
                   :source="queueSource(item)"
                   :media-url="itemMediaUrl(item)"
+                  :pending-token="itemPreviewToken(item)"
+                  :capture-scope="captureScopeController.signal"
                 />
                 <span class="grid min-w-0 flex-[1_1_auto] gap-1">
                   <div class="flex min-w-0 items-center gap-2">

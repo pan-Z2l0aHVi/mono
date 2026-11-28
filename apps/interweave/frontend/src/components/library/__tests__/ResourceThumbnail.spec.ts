@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, ref } from 'vue'
 
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { ResourceSourceView } from '../../../stores/library'
 import ResourceThumbnail from '../ResourceThumbnail.vue'
+import { videoThumbnailCoordinator } from '../videoThumbnailQueue'
 
 function fileSource(location = '/tmp/image.jpg'): ResourceSourceView {
   return {
@@ -159,9 +160,20 @@ describe('ResourceThumbnail', () => {
    * src 属性被卸下后 Vue 不会因 mediaUrl 未变而写回，随后的 load() 只能报错——表现即
    * 「编辑名称后列表图片消失」。
    */
-  it('source 对象更换但 kind/id/mediaUrl 都没变时，不重置视频缩略图', async () => {
+  afterEach(() => {
+    vi.restoreAllMocks()
+    videoThumbnailCoordinator.reset()
+  })
+
+  it('source 对象更换但 kind/id/mediaUrl 都没变时，不重置视频缩略图且 DOM 零内联 video', async () => {
     const host = document.createElement('div')
     document.body.append(host)
+    const captureSpy = vi
+      .spyOn(videoThumbnailCoordinator, 'capture')
+      .mockResolvedValue(new Blob(['jpeg'], { type: 'image/jpeg' }))
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-frame-1')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+
     const source = ref(fileSource('/tmp/movie.mp4'))
     const mediaUrl = '/pending-resource-media/token-1'
     const app = createApp({
@@ -170,7 +182,8 @@ describe('ResourceThumbnail', () => {
           h(ResourceThumbnail, {
             kind: ResourceKind.ResourceKindVideo,
             source: source.value,
-            mediaUrl
+            mediaUrl,
+            dwellMs: 0
           })
       }
     })
@@ -178,27 +191,36 @@ describe('ResourceThumbnail', () => {
     try {
       app.mount(host)
       await nextTick()
+      await Promise.resolve()
+      await nextTick()
 
-      const video = host.querySelector('video')
-      expect(video).not.toBeNull()
-      expect(video?.getAttribute('src')).toBe(mediaUrl)
+      expect(host.querySelector('video'), '列表项 DOM 中不应再挂载内联 <video>').toBeNull()
+      expect(captureSpy).toHaveBeenCalledTimes(1)
+      expect(host.querySelector('img')?.getAttribute('src')).toBe('blob:mock-frame-1')
 
       // 仅换对象身份，字段全部不变（AddDialog 的 queueSource 每次渲染都新建对象）。
       source.value = { ...source.value }
       await nextTick()
       await nextTick()
 
-      expect(host.querySelector('video')).toBe(video)
-      expect(video?.getAttribute('src'), 'src 不应被移除').toBe(mediaUrl)
+      expect(captureSpy, '仅对象身份变化不得重复触发视频捕获').toHaveBeenCalledTimes(1)
+      expect(createObjectURL).toHaveBeenCalledTimes(1)
+      expect(host.querySelector('img')?.getAttribute('src')).toBe('blob:mock-frame-1')
     } finally {
       app.unmount()
       host.remove()
     }
   })
 
-  it('source location 变化时重建媒体元素，避免继续展示替换前的文件', async () => {
+  it('source location 变化时重新入队捕获，避免继续展示替换前的文件', async () => {
     const host = document.createElement('div')
     document.body.append(host)
+    const captureSpy = vi
+      .spyOn(videoThumbnailCoordinator, 'capture')
+      .mockResolvedValue(new Blob(['jpeg'], { type: 'image/jpeg' }))
+    vi.spyOn(URL, 'createObjectURL').mockReturnValueOnce('blob:mock-first').mockReturnValueOnce('blob:mock-second')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+
     const source = ref(fileSource('/tmp/first.mp4'))
     const mediaUrl = '/resource-media/source-1'
     const app = createApp({
@@ -207,7 +229,8 @@ describe('ResourceThumbnail', () => {
           h(ResourceThumbnail, {
             kind: ResourceKind.ResourceKindVideo,
             source: source.value,
-            mediaUrl
+            mediaUrl,
+            dwellMs: 0
           })
       }
     })
@@ -215,17 +238,21 @@ describe('ResourceThumbnail', () => {
     try {
       app.mount(host)
       await nextTick()
+      await Promise.resolve()
+      await nextTick()
 
-      const video = host.querySelector('video')
-      expect(video?.getAttribute('src')).toBe(mediaUrl)
+      expect(captureSpy).toHaveBeenCalledTimes(1)
+      expect(captureSpy.mock.calls[0]![0].location).toBe('/tmp/first.mp4')
+      expect(host.querySelector('img')?.getAttribute('src')).toBe('blob:mock-first')
 
       source.value = { ...source.value, location: '/tmp/second.mp4' }
       await nextTick()
+      await Promise.resolve()
       await nextTick()
 
-      const replaced = host.querySelector('video')
-      expect(replaced, 'location 变化应重建 video').not.toBe(video)
-      expect(replaced?.getAttribute('src')).toBe(mediaUrl)
+      expect(captureSpy, 'location 变化应触发新一轮捕获').toHaveBeenCalledTimes(2)
+      expect(captureSpy.mock.calls[1]![0].location).toBe('/tmp/second.mp4')
+      expect(host.querySelector('img')?.getAttribute('src')).toBe('blob:mock-second')
     } finally {
       app.unmount()
       host.remove()

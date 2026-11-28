@@ -9,6 +9,7 @@ import {
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 import type { PreviewLease } from './previewLease'
+import { videoThumbnailCoordinator } from './videoThumbnailQueue'
 
 type PreviewRuntime = Pick<LibraryRuntime, 'isAvailable' | 'resources'>
 
@@ -313,6 +314,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     const index = queue.value.indexOf(item)
     if (index >= 0) queue.value.splice(index, 1)
     queueById.delete(itemId)
+    if (item.previewToken) videoThumbnailCoordinator.clearPendingBlobs([item.previewToken])
     await lease.revoke(itemId)
   }
 
@@ -323,8 +325,10 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     cancelActiveSubmit?.()
     await chain
     const itemIds = queue.value.map(item => item.id)
+    const previewTokens = queue.value.map(item => item.previewToken).filter((token): token is string => Boolean(token))
     queue.value = []
     queueById.clear()
+    if (previewTokens.length) videoThumbnailCoordinator.clearPendingBlobs(previewTokens)
     // lease 与找回弹窗共用，这里只撤销本队列的 key，不整体清空。
     await Promise.allSettled(itemIds.map(itemId => lease.revoke(itemId)))
   }
@@ -403,11 +407,15 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
         }
         setItemStatus(item.id, 'importing')
         await waitForPreview(item.id)
+        const token = item.previewToken
         try {
           await create(item)
           settleItem(item, { ok: true })
         } catch (cause) {
           settleItem(item, { ok: false, error: cause instanceof Error ? cause.message : String(cause) })
+        } finally {
+          // 未被 handoffPendingThumbnail 认领的缓存（例如失败项）一并清理。
+          if (token) videoThumbnailCoordinator.clearPendingBlobs([token])
         }
       }
       if (batchTask) await batchTask.done

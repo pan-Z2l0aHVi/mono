@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 
+import { videoThumbnailCoordinator, type ThumbnailPayload } from '@/components/library/videoThumbnailQueue'
 import { createLibraryRuntime, type LibraryQueueItem, type LibraryRuntime } from '@/services/library'
 import { useLibraryStore, type ResourceSourceView } from '@/stores/library'
 
@@ -66,6 +67,16 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
         title: item.title,
         tags: item.tags
       })
+      // 在 upsertResource 触发主列表挂载前同步交接弹窗已捕获的视频封面，避免主列表二次解码。
+      const preferred = saved.sources.find(source => source.is_preferred) ?? saved.sources[0]
+      if (item.previewToken && preferred) {
+        videoThumbnailCoordinator.handoffPendingThumbnail(
+          item.previewToken,
+          preferred.id,
+          preferred.thumbnail_url,
+          (url, blob) => runtime.media.saveThumbnail(url, blob)
+        )
+      }
       store.upsertResource(saved)
       return saved
     } catch (cause) {
@@ -226,11 +237,18 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
    */
   const thumbnailSaves = new Map<string, Promise<void>>()
 
-  function saveSourceThumbnail(thumbnailUrl: string, dataUrl: string) {
+  function saveSourceThumbnail(thumbnailUrl: string, payload: ThumbnailPayload) {
+    const sourceIdMatch = /\/resource-thumbnail\/([^/?#]+)/.exec(thumbnailUrl)
+    const sourceId = sourceIdMatch ? decodeURIComponent(sourceIdMatch[1]!) : undefined
+    if (sourceId && payload instanceof Blob) {
+      return videoThumbnailCoordinator.uploadThumbnail(sourceId, thumbnailUrl, payload, (url, blob) =>
+        runtime.media.saveThumbnail(url, blob)
+      )
+    }
     const inFlight = thumbnailSaves.get(thumbnailUrl)
     if (inFlight) return inFlight
     const save = (async () => {
-      const blob = await (await fetch(dataUrl)).blob()
+      const blob = payload instanceof Blob ? payload : await (await fetch(payload)).blob()
       await runtime.media.saveThumbnail(thumbnailUrl, blob)
     })()
       .catch(() => {})

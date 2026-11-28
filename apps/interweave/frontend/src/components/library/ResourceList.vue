@@ -23,6 +23,7 @@ import type { NameEditorRef } from './rename'
 import { createResourceContextMenu } from './resourceContextMenu'
 import ResourceRow from './ResourceRow.vue'
 import { SweepScrollController } from './sweepScroll'
+import type { ThumbnailPayload } from './videoThumbnailQueue'
 
 const props = defineProps<{
   resources: ResourceView[]
@@ -35,7 +36,7 @@ const props = defineProps<{
   runtimeAvailable: boolean
   emptyDescription: string
   /** 缩略图回填；未提供时行内捕获后不回填。地址取自 Source 上的 thumbnailUrl。 */
-  saveThumbnailFor?: (thumbnailUrl: string, dataUrl: string) => void
+  saveThumbnailFor?: (thumbnailUrl: string, payload: ThumbnailPayload) => void
   resolveDefaultOpenWith: (resource: ResourceView) => Promise<string>
 }>()
 
@@ -576,12 +577,12 @@ function editorRefFor(id: string) {
   return props.editorRef(id)
 }
 
-/** 行级回填回调：把捕获的 dataURL 绑定到该行首选 Source 的缩略图地址上。 */
+/** 行级回填回调：把捕获结果绑定到该行首选 Source 的缩略图地址上。 */
 function thumbnailSaver(resource: ResourceView) {
   const save = props.saveThumbnailFor
   const thumbnailUrl = resource.preferred?.thumbnailUrl
   if (!save || !thumbnailUrl) return null
-  return (dataUrl: string) => save(thumbnailUrl, dataUrl)
+  return (payload: ThumbnailPayload) => save(thumbnailUrl, payload)
 }
 
 function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>) {

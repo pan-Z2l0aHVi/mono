@@ -1,7 +1,6 @@
 // 视频帧候选与黑帧回退的编排行为：候选表怎么被消费、黑帧怎么触发回退、非黑帧怎么落缩略图。
-// 像素与解码只在真实浏览器成立（jsdom 的 getContext 返回 null），但真实视频编码的帧内容与
-// 时长不可控，所以媒体属性与画布像素按用例脚本给定、事件链路（loadedmetadata / seeked）逐个
-// 真实派发——被测的是 ResourceThumbnail 的回退编排，不是解码器本身。
+// ResourceThumbnail 本身不挂载内联 <video> / <canvas>，而是委托全局离屏 videoThumbnailCoordinator；
+// 本测试在真实 Chromium 环境下接管离屏 <video> 与采样画布像素，验证整条端到端链路。
 import '@greypan/web-ui'
 
 import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
@@ -10,7 +9,8 @@ import { createApp, h, nextTick } from 'vue'
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { ResourceSourceView } from '../../../stores/library'
 import ResourceThumbnail from '../ResourceThumbnail.vue'
-import { videoFrameRatio } from '../thumbnail'
+import { SAMPLE_CANVAS_EDGE, videoFrameRatio } from '../thumbnail'
+import { videoThumbnailCoordinator, type ThumbnailPayload } from '../videoThumbnailQueue'
 
 function fileSource(): ResourceSourceView {
   return {
@@ -28,34 +28,102 @@ function fileSource(): ResourceSourceView {
 
 const hosts: HTMLElement[] = []
 const apps: { unmount: () => void }[] = []
-let originalLoad: typeof HTMLMediaElement.prototype.load | undefined
+let restoreCreateElement: (() => void) | null = null
 
 afterEach(() => {
   for (const app of apps.splice(0)) app.unmount()
   for (const host of hosts.splice(0)) host.remove()
-  if (originalLoad) {
-    HTMLMediaElement.prototype.load = originalLoad
-    originalLoad = undefined
-  }
+  videoThumbnailCoordinator.reset()
+  restoreCreateElement?.()
+  restoreCreateElement = null
 })
 
-/** 黑帧按 isBlackFrame 的口径必须判黑；非黑帧给足亮度。 */
 const BLACK_PIXEL = new Uint8ClampedArray([0, 0, 0, 255])
 const WHITE_PIXEL = new Uint8ClampedArray([200, 200, 200, 255])
 
 interface Walk {
+  video: HTMLVideoElement
   seeks: number[]
 }
 
+async function waitFor(condition: () => boolean, label: string, maxFrames = 120): Promise<void> {
+  for (let i = 0; i < maxFrames; i++) {
+    if (condition()) return
+    await new Promise(resolve => requestAnimationFrame(() => resolve(null)))
+  }
+  throw new Error(`条件在 ${maxFrames} 帧内未成立：${label}`)
+}
+
 /**
- * 挂载一个 video 缩略图并接管媒体属性与画布像素：
- * - `load` 换成 noop：src 不真的拉流，loadedmetadata / seeked 由用例手动派发；
- * - duration / videoWidth / videoHeight / currentTime 在实例上覆写；
- * - `getImageData` 第 `blackFrames` 次读取前回黑像素、之后回白像素。
+ * 拦截全局协调器创建的离屏 <video> 与 32×32 采样画布：
+ * - ResourceThumbnail DOM 中不得存在内联 <video> 或 <canvas>；
+ * - 离屏 <video> 的 duration/videoWidth/videoHeight/currentTime 由用例可控；
+ * - 32×32 采样画布前 blackFrames 次返回黑像素，之后返回白像素；
+ * - 320px 输出画布走真实 Chromium toBlob('image/jpeg')。
  */
-async function mountVideoWalk(blackFrames: number, saveThumbnail: (dataUrl: string) => void): Promise<Walk> {
-  originalLoad = HTMLMediaElement.prototype.load
-  HTMLMediaElement.prototype.load = () => {}
+async function mountVideoWalk(blackFrames: number, saveThumbnail: (payload: ThumbnailPayload) => void): Promise<Walk> {
+  videoThumbnailCoordinator.reset()
+
+  const originalCreateElement = document.createElement.bind(document)
+  let offscreenVideo: HTMLVideoElement | null = null
+  const seeks: number[] = []
+  let sampleReads = 0
+
+  const spy = vi.spyOn(document, 'createElement').mockImplementation(((
+    tagName: string,
+    options?: ElementCreationOptions
+  ) => {
+    const el = originalCreateElement(tagName, options)
+    if (tagName.toLowerCase() === 'video' && !offscreenVideo) {
+      offscreenVideo = el as HTMLVideoElement
+      offscreenVideo.load = () => {}
+      offscreenVideo.pause = () => {}
+      Object.defineProperty(offscreenVideo, 'duration', { configurable: true, value: 8 })
+      Object.defineProperty(offscreenVideo, 'videoWidth', { configurable: true, value: 640 })
+      Object.defineProperty(offscreenVideo, 'videoHeight', { configurable: true, value: 360 })
+      Object.defineProperty(offscreenVideo, 'readyState', {
+        configurable: true,
+        value: HTMLMediaElement.HAVE_CURRENT_DATA
+      })
+      let currentTime = 0
+      Object.defineProperty(offscreenVideo, 'currentTime', {
+        configurable: true,
+        get: () => currentTime,
+        set: value => {
+          currentTime = value
+          seeks.push(value)
+        }
+      })
+    } else if (tagName.toLowerCase() === 'canvas') {
+      const canvas = el as HTMLCanvasElement
+      const originalGetContext = canvas.getContext.bind(canvas)
+      canvas.getContext = ((contextId: string, ctxOptions?: CanvasRenderingContext2DSettings) => {
+        const ctx = originalGetContext(contextId, ctxOptions) as CanvasRenderingContext2D | null
+        if (contextId !== '2d' || !ctx) return ctx
+        if (ctxOptions?.willReadFrequently) {
+          return {
+            clearRect: () => {},
+            drawImage: () => {},
+            getImageData: (_x: number, _y: number, w: number, h: number) => {
+              if (w !== SAMPLE_CANVAS_EDGE || h !== SAMPLE_CANVAS_EDGE) {
+                throw new Error(`expected ${SAMPLE_CANVAS_EDGE}x${SAMPLE_CANVAS_EDGE} sample canvas, got ${w}x${h}`)
+              }
+              return { data: sampleReads++ < blackFrames ? BLACK_PIXEL : WHITE_PIXEL }
+            }
+          } as unknown as CanvasRenderingContext2D
+        }
+        // 输出画布保留真实 toBlob，仅将 drawImage(mockVideo) 替换为填充矩形，避免无真实视频流时 drawImage 抛错。
+        ctx.drawImage = (() => {
+          ctx.fillStyle = '#c8c8c8'
+          ctx.fillRect(0, 0, canvas.width, canvas.height)
+        }) as unknown as CanvasRenderingContext2D['drawImage']
+        return ctx
+      }) as typeof canvas.getContext
+    }
+    return el
+  }) as typeof document.createElement)
+
+  restoreCreateElement = () => spy.mockRestore()
 
   const host = document.createElement('div')
   document.body.append(host)
@@ -67,7 +135,8 @@ async function mountVideoWalk(blackFrames: number, saveThumbnail: (dataUrl: stri
           kind: ResourceKind.ResourceKindVideo,
           source: fileSource(),
           mediaUrl: '/resource-media/thumbnail-frame-walk',
-          saveThumbnail
+          saveThumbnail,
+          dwellMs: 0
         })
     }
   })
@@ -75,64 +144,43 @@ async function mountVideoWalk(blackFrames: number, saveThumbnail: (dataUrl: stri
   app.mount(host)
   await nextTick()
 
-  const video = host.querySelector('video')!
-  Object.defineProperty(video, 'duration', { configurable: true, value: 8 })
-  Object.defineProperty(video, 'videoWidth', { configurable: true, value: 640 })
-  Object.defineProperty(video, 'videoHeight', { configurable: true, value: 360 })
-  Object.defineProperty(video, 'readyState', { configurable: true, value: HTMLMediaElement.HAVE_CURRENT_DATA })
-  let currentTime = 0
-  const seeks: number[] = []
-  Object.defineProperty(video, 'currentTime', {
-    configurable: true,
-    get: () => currentTime,
-    set: value => {
-      currentTime = value
-      seeks.push(value)
-    }
-  })
+  expect(host.querySelector('video'), '列表项 DOM 内不得挂载内联 <video>').toBeNull()
+  expect(host.querySelector('canvas'), '列表项 DOM 内不得挂载内联 <canvas>').toBeNull()
+  expect(offscreenVideo, '应由离屏队列创建单一 <video>').not.toBeNull()
 
-  const canvas = host.querySelector('canvas')!
-  let reads = 0
-  canvas.getContext = (() => ({
-    drawImage: () => {},
-    getImageData: () => ({
-      data: reads++ < blackFrames ? BLACK_PIXEL : WHITE_PIXEL
-    })
-  })) as unknown as typeof canvas.getContext
-
-  video.dispatchEvent(new Event('loadedmetadata'))
+  offscreenVideo!.dispatchEvent(new Event('loadedmetadata'))
   await nextTick()
-  return { seeks }
+  return { video: offscreenVideo!, seeks }
 }
 
 describe('ResourceThumbnail 视频帧候选与黑帧回退（真实浏览器）', () => {
   it('首选候选落在 25% 处；黑帧逐个回退，捕获到非黑帧才落缩略图', async () => {
-    const saveThumbnail = vi.fn<(dataUrl: string) => void>()
-    const { seeks } = await mountVideoWalk(3, saveThumbnail)
+    const saveThumbnail = vi.fn<(payload: ThumbnailPayload) => void>()
+    const { video, seeks } = await mountVideoWalk(3, saveThumbnail)
 
-    // 首选候选的接线由行为承接（原 thumbnail.spec 的 ratio 字面量钉死改派生关系）：
-    // 第一次 seek 就是 duration × videoFrameRatio。
     expect(seeks[0]).toBe(8 * videoFrameRatio)
     expect(seeks.length, '首选帧捕获前只应 seek 一次').toBe(1)
 
-    // 逐步喂 seeked：前 3 次读黑 → 回退，第 4 次读到非黑 → 落图并回填一次。
-    for (let i = 0; i < 32 && saveThumbnail.mock.calls.length === 0; i += 1) {
-      document.querySelector('video')!.dispatchEvent(new Event('seeked'))
+    for (let i = 0; i < 10 && saveThumbnail.mock.calls.length === 0; i += 1) {
+      video.dispatchEvent(new Event('seeked'))
       await nextTick()
+      await new Promise(resolve => setTimeout(resolve, 10))
     }
 
+    await waitFor(() => saveThumbnail.mock.calls.length > 0, '捕获结果已回填')
     expect(saveThumbnail).toHaveBeenCalledTimes(1)
-    expect(saveThumbnail).toHaveBeenCalledWith(expect.stringMatching(/^data:image\/jpeg;/))
+    expect(saveThumbnail).toHaveBeenCalledWith(expect.any(Blob))
+    expect((saveThumbnail.mock.calls[0]![0] as Blob).type).toBe('image/jpeg')
     expect(seeks.length, '黑帧之后必须继续 seek 后续候选').toBeGreaterThan(1)
-    expect(hosts[0]!.querySelector('img[src^="data:image/jpeg"]'), '捕获结果应渲染为缩略图').not.toBeNull()
+    expect(hosts[0]!.querySelector('img[src^="blob:"]'), '捕获结果应以 objectURL 渲染为缩略图').not.toBeNull()
   })
 
   it('首选帧非黑时直接落图，不再回退', async () => {
-    const saveThumbnail = vi.fn<(dataUrl: string) => void>()
-    const { seeks } = await mountVideoWalk(0, saveThumbnail)
+    const saveThumbnail = vi.fn<(payload: ThumbnailPayload) => void>()
+    const { video, seeks } = await mountVideoWalk(0, saveThumbnail)
 
-    document.querySelector('video')!.dispatchEvent(new Event('seeked'))
-    await nextTick()
+    video.dispatchEvent(new Event('seeked'))
+    await waitFor(() => saveThumbnail.mock.calls.length > 0, '首帧捕获完成')
 
     expect(saveThumbnail).toHaveBeenCalledTimes(1)
     expect(seeks.length, '首选帧非黑：不应有多余的回退 seek').toBe(1)

@@ -16,6 +16,7 @@ import {
 import type { NameEditorRef } from './rename'
 import ResourceTag from './ResourceTag.vue'
 import ResourceThumbnail from './ResourceThumbnail.vue'
+import type { ThumbnailPayload } from './videoThumbnailQueue'
 
 const props = defineProps<{
   resource: ResourceView
@@ -30,7 +31,7 @@ const props = defineProps<{
   /** 服务端缩略图地址；缺省时回退原图/视频捕获（测试与浏览器预览）。 */
   thumbnailUrl?: string | null
   /** 捕获成功后的回填回调；缺省表示本表面不回填。 */
-  saveThumbnail?: ((dataUrl: string) => void) | null
+  saveThumbnail?: ((payload: ThumbnailPayload) => void) | null
   active: boolean
   checked: boolean
   checkedAbove: boolean
