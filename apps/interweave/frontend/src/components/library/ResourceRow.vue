@@ -181,7 +181,7 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
           :ref="editorRef"
           :value="resource.title"
           :class="resourceNameClass"
-          class="caret-(--wui-color-accent,#08f) select-text"
+          class="caret-(--wui-color-accent,#08f) select-text [-webkit-touch-callout:default]"
           :aria-label="`修改 ${resource.title} 的标题`"
           @click.stop
           @change="handleNameChange"

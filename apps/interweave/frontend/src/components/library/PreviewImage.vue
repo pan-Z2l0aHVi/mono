@@ -116,7 +116,7 @@ function loaded(event: Event) {
       :src="src"
       :alt="alt"
       draggable="false"
-      class="absolute top-1/2 left-1/2 max-w-none"
+      class="absolute top-1/2 left-1/2 max-w-none [-webkit-user-drag:none]"
       :class="portrait ? 'h-full w-auto' : 'h-auto w-full'"
       :style="{ transform }"
       @load="loaded"

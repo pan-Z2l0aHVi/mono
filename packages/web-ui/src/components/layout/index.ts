@@ -9,6 +9,7 @@ import { styleMap } from 'lit/directives/style-map.js'
 
 import glass from '@/classes/glass.css?inline'
 import glow from '@/classes/glow.css?inline'
+import selection from '@/classes/selection.css?inline'
 import { icRoundMenuOpen, radixIconsPanelLeftMinimized } from '@/icons'
 import { attachDragGesture, clamp, type DragGestureHandle } from '@/shared/gesture'
 import { resolveBuiltinLabelSet } from '@/shared/locale/builtin-labels'
@@ -39,7 +40,7 @@ export interface LayoutAriaLabels {
 
 @customElement('web-ui-layout')
 export class WebUiLayout extends LitElement {
-  static override styles = [unsafeCSS(glass), unsafeCSS(glow), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(glow), unsafeCSS(selection), unsafeCSS(style)]
 
   /**
    * 关闭整块 sidebar：桌面端不渲染 aside 与 collapse Toggle，移动端不渲染 header Toggle 与 Drawer。
@@ -416,7 +417,7 @@ export class WebUiLayout extends LitElement {
               this.sidebarResizable && !this.sidebarCollapsed
                 ? html`
                     <div
-                      class="sidebar-resize-handle"
+                      class="sidebar-resize-handle wui-no-select"
                       role="separator"
                       tabindex="0"
                       aria-orientation="vertical"

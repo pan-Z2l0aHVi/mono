@@ -154,7 +154,7 @@ const filterLabelClass = 'flex items-center gap-1.5 text-[#8a8a94] dark:text-(--
     <div
       class="relative isolate flex gap-4 items-center px-8 py-3 mobile:px-3 mobile:pl-[calc(var(--wui-layout-mobile-toggle-left,8px)+44px)]"
     >
-      <div data-window-drag aria-hidden="true" class="absolute inset-0 -z-10" />
+      <div data-window-drag aria-hidden="true" class="absolute inset-0 -z-10 select-none" />
 
       <web-ui-button-group aria-label="页面导航" class="mobile:hidden">
         <web-ui-button icon variant="glass" aria-label="后退" :disabled="!canGoBack" @click="emit('back')">
