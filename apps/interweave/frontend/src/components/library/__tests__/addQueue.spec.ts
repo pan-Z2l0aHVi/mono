@@ -1,5 +1,5 @@
 import { describe, expect, it, vi } from 'vite-plus/test'
-import { effect } from 'vue'
+import { effect, ref } from 'vue'
 
 import { ResourceLocationMatchDTO } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import {
@@ -8,7 +8,7 @@ import {
 } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryQueueItem, LibraryRuntime } from '../../../services/library'
 import { createLibraryAddQueue, queueItemTitle } from '../addQueue'
-import { createPreviewLease } from '../previewLease'
+import { createPreviewLease, type PreviewLease } from '../previewLease'
 
 // 队列只需要 isAvailable 与 resources 簇；其余能力给最小实现即可。
 function createRuntime(
@@ -101,8 +101,8 @@ function createRuntime(
 }
 
 /** 队列与 lease 是一对：生产里由页面创建 lease 后传入，测试按同一装配方式构造。 */
-function createQueue(runtime: LibraryRuntime) {
-  return createLibraryAddQueue(runtime, createPreviewLease(runtime))
+function createQueue(runtime: LibraryRuntime, lease: PreviewLease = createPreviewLease(runtime)) {
+  return createLibraryAddQueue(runtime, lease)
 }
 
 function deferred<T>() {
@@ -698,11 +698,15 @@ describe('library add queue batch submit', () => {
     const cancel = vi.fn<() => void>()
     const submitted = queue.submit(
       async () => {},
-      () => {
+      (items, settle) => {
         started()
         return {
           done: new Promise<void>(resolve => {
-            release = resolve
+            release = () => {
+              // 停止后后端把未开始的项按 cancelled 结算，而不是当失败。
+              settle(items[0]!.id, { ok: false, cancelled: true })
+              resolve()
+            }
           }),
           cancel
         }
@@ -714,6 +718,31 @@ describe('library add queue batch submit', () => {
     release()
     expect(await submitted).toBe(false)
     expect(queue.failureCount.value).toBe(0)
+    // 已取消的项也算处理完成，进度不会停在中间值。
+    expect(queue.progress.value).toEqual({ done: 1, total: 1 })
+  })
+
+  it('预览等待异常时取消批次，未结算项复位为失败而不是卡在导入中', async () => {
+    const runtime = createRuntime()
+    const failingLease: PreviewLease = {
+      entries: ref({}),
+      prepare: async () => null,
+      revoke: async () => {},
+      clear: async () => {},
+      awaitSettled: async () => {
+        throw new Error('preview failed')
+      },
+      dispose: () => {}
+    }
+    const queue = createQueue(runtime, failingLease)
+    await queue.enqueueFileLocations(['/tmp/a.png'])
+
+    await expect(queue.submit(async () => {})).rejects.toThrow('preview failed')
+
+    expect(queue.submitting.value).toBe(false)
+    expect(queue.queue.value).toHaveLength(1)
+    expect(queue.queue.value[0]?.status).toBe('failed')
+    expect(queue.queue.value[0]?.error).toBe('preview failed')
   })
 })
 

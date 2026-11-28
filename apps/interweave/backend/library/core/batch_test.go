@@ -83,3 +83,44 @@ func TestCreateResourceBatchCancelSkipsPending(t *testing.T) {
 		}
 	}
 }
+
+func TestCreateResourceBatchCancelAfterPartialCompletion(t *testing.T) {
+	db, cleanup := setupTestDB(t)
+	defer cleanup()
+	lib := core.NewLibrary(db, remote.NewFetcher())
+
+	const total = 4
+	inputs := make([]core.CreateResourceInput, 0, total)
+	for range total {
+		inputs = append(inputs, core.CreateResourceInput{
+			Kind:     storage.SourceTypeFile,
+			Location: tempFile(t, "partial-*.txt"),
+		})
+	}
+
+	ctx, cancel := context.WithCancel(context.Background())
+	defer cancel()
+	// 单 worker + 首项结算即取消：已完成的项保留结果，后续项按 ctx 错误结算。
+	var once sync.Once
+	results := lib.CreateResourceBatch(ctx, inputs, 1, func(core.CreateResourceBatchResult) {
+		once.Do(cancel)
+	})
+
+	created, canceled := 0, 0
+	for _, result := range results {
+		switch {
+		case result.Err == nil && result.View != nil:
+			created++
+		case errors.Is(result.Err, context.Canceled):
+			canceled++
+		default:
+			t.Errorf("unexpected result: view=%v err=%v", result.View != nil, result.Err)
+		}
+	}
+	if created == 0 || canceled == 0 {
+		t.Fatalf("expected partial completion before cancel, got created=%d canceled=%d", created, canceled)
+	}
+	if created+canceled != total {
+		t.Fatalf("expected every item to settle, got %d/%d", created+canceled, total)
+	}
+}

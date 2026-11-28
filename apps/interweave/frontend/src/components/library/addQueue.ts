@@ -409,19 +409,31 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
       }
       if (batchTask) await batchTask.done
       await Promise.all(settlements)
+      // 成功项已在结算时移出；剩下的就是失败项（或已随 close() 清空的队列）。
+      queue.value = queue.value.filter(item => remaining.has(item.id))
+      rebuildQueueIndex()
+      if (!remaining.size) {
+        cancelActiveSubmit = null
+        await close()
+        return true
+      }
+      return false
+    } catch (cause) {
+      // 预览等待等外部端口的异常不走单条结算：若只向上抛，已标 importing 的行会卡住，
+      // 在途批次也继续跑。这里统一收尾——取消批次、等已排队的结算落定，再把未结算项
+      // 复位成失败（保留在队列里可重试），最后原样抛给调用方展示。
+      cancelled = true
+      batchTask?.cancel()
+      await Promise.allSettled(settlements)
+      const message = cause instanceof Error ? cause.message : '导入失败'
+      for (const item of items) {
+        if (remaining.has(item.id)) setItemStatus(item.id, 'failed', message)
+      }
+      throw cause
     } finally {
       cancelActiveSubmit = null
       submitting.value = false
     }
-
-    // 成功项已在结算时移出；剩下的就是失败项（或已随 close() 清空的队列）。
-    queue.value = queue.value.filter(item => remaining.has(item.id))
-    rebuildQueueIndex()
-    if (!remaining.size) {
-      await close()
-      return true
-    }
-    return false
   }
 
   return {

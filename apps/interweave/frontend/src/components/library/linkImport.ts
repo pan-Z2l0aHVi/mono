@@ -146,9 +146,11 @@ export function normalizeImportURL(raw: string): string | null {
 /** 按出现顺序扫描纯文本里的链接；已在候选里的重复项不重复返回。 */
 export function scanTextLinks(text: string): string[] {
   const found: string[] = []
+  const seen = new Set<string>()
   for (const match of text.matchAll(CANDIDATE_PATTERN)) {
     const candidate = match[0]
-    if (looksLikeFileName(candidate)) continue
+    if (looksLikeFileName(candidate) || seen.has(candidate)) continue
+    seen.add(candidate)
     found.push(candidate)
   }
   return found
