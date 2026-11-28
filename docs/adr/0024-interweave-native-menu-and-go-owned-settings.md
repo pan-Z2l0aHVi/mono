@@ -8,6 +8,7 @@
 - **修订（2026-11-20 第四轮）**: 正文「`interweave/` 子目录」仅指 production 构建；development 构建的数据目录是 `interweave-dev/`（由 Go `production` build tag 决定，`library.db`、缩略图与 `settings.json` 同构）。配套：macOS `interweave.dev.app` 的构建产物 `CFBundleIdentifier` 改写为 `com.greypan.interweave.dev`，Windows `WebviewUserDataPath` 显式指向数据目录下的 `webview/`，使 dev 与正式版的本地持久化完全隔离。
 - **修订（2026-11-24 第五轮）**: Windows 端因 Win32 原生标题栏与原生 `HMENU` 无法合并同行，改为启用 `Frameless: true` + `Windows.NonClientRegionSupport: true` 并关闭 `UseApplicationMenu`，由前端 `WindowsTitleBar` 渲染一体化顶栏（左侧平铺菜单、移动端断点收进汉堡按钮、中间拖动区、右侧 Fluent 窗口三键）；macOS 与 Linux 保持原生菜单不变。菜单形状、快捷键与禁用态仍全部由 Go 侧 `backend/native/menu` 拥有，`backend/menu` 扩展 `GetMenu` / `InvokeMenuItem` 与 `menu:tree-changed` 事件供 Windows 顶栏消费。
 - **修订（2026-11-28 第六轮）**: 明确区分「Go 拥有的应用设置（`settings.json`）」与「纯前端视图布局记忆」：Go 侧不消费的纯前端布局状态（侧边栏桌面折叠态、侧边栏宽度、资源库筛选排序面板展开态）由前端独立 Pinia store `useLayoutStore` 经 `@greypan/browser-kit/storage`（`localStorage`，命名空间 `interweave:layout`）同步持久化，保持 dev/prod 隔离与首帧零闪烁，避免前端布局常数耦合进 Go Service 与 bindings。
+- **修订（2026-11-28 第七轮）**: Windows 在保留 Frameless 自绘顶栏的前提下启用 `Windows.WebView2CompositionHosting`，仅为最大化键声明 `--wails-non-client-region: maximize`，以获得 Win11 悬停最大化键的 Snap Layouts 面板；菜单渲染与拖动契约不变。composition hosting 仍是上游实验特性，`INTERWEAVE_DISABLE_WINDOWS_SNAP=1`（或 `true` / `yes`）可整层回退到普通 frameless 窗口。
 
 ## 背景
 
@@ -56,6 +57,15 @@ AppKit 的 `Find` role 只设 `performTextFinderAction:`、没有 find-panel act
 
 Go 侧在 `WebViewDidFinishNavigation` 之后才注入 `window._wails`，早于它的 setup 读到的是空值。首次渲染挡在注入之后，不采用「先渲染再补」：平台、flags 与 bindings 都是注入之后才可信的进程事实。缩放与拖动区的落地口径见 [apps/interweave/AGENTS.md](../../apps/interweave/AGENTS.md)。
 
+### 6. Snap Layouts 只标最大化键，不改变菜单与拖动归属
+
+Win11 的悬停分屏面板由 DWM 在收到 `WM_NCHITTEST → HTMAXBUTTON` 时触发。Wails v3.1.0 提供两条前提：`Windows.NonClientRegionSupport`（WebView2 的 `app-region` 命中）与 `Windows.WebView2CompositionHosting`（把前端标记的非客户区矩形路由成 `HTMINBUTTON` / `HTMAXBUTTON` / `HTCLOSE`）。仅开前者不会让自绘按钮获得 Snap Layouts，因此 Windows 必须同时开启 composition hosting。
+
+- 前端只给最大化键声明 `--wails-non-client-region: maximize`；最小化与关闭没有 hover 面板，继续走普通 client 命中。
+- 窗口拖动继续由 `--wails-draggable` 发起（Wails 在 mousedown 后 `PostMessage(WM_NCLBUTTONDOWN, HTCAPTION)`），拖动底**不**标 `caption`：再叠一层原生 caption 命中会让同一次按下同时进入原生移动循环与 JS 拖动。
+- 非客户区按钮点击由 Wails 转回 WebView，`@click="toggleMaximise"` 仍是唯一 toggle 入口；双击最大化键等价于两次 toggle，与原生「双击标题栏」的终态一致。
+- 上游 v3.1.0 的 composition hosting 仍标注为实验特性，且存在已知问题（原生文件拖放失效的上游 PR #6566 尚未合并）。Interweave 开着 `EnableFileDrop`，因此必须真机验证；真机确认回归时用 `INTERWEAVE_DISABLE_WINDOWS_SNAP` 关闭整层能力，而不是在生产里带着坏的文件拖放。
+
 ## 后果
 
 - `backend/` 出现 `settings/` 一级模块，ADR-0008 §2 的 allowlist 由「`library/` 与 `native/`」扩为「`library/`、`native/` 与 `settings/`」；`backend/menu/` 只放契约与可用性 Service，其 allowlist 见 ADR-0008 §2。
@@ -66,6 +76,16 @@ Go 侧在 `WebViewDidFinishNavigation` 之后才注入 `window._wails`，早于�
 - 菜单文案全中文，与工具栏一致；系统 role 的默认英文会被覆盖，后续新增菜单项需要同时维护中文 label。升级 Wails 时 role 的 selector 语义仍由上游提供，只核对没有被上游改名的 selector。
 - 缩放依赖前端存活：前端未加载时点菜单只改设置，加载后的首次快照会补上。
 - Windows 菜单只有 `Describe("windows")` 的结构断言：菜单栏渲染、accelerator 分发与 `window.SetMenu` 重建都没有实机证据。
+- Snap Layouts 同样只有静态配置与结构断言（按钮声明、composition hosting 开关、回退开关）。hover 面板是否出现、点击是否双触发、原生文件拖放/透明/IME 是否回归，必须在 Windows 真机上按下节清单确认后才能移除「未验收」标记。
+
+### Windows 真机验收清单（Snap Layouts）
+
+- 最大化键 hover 出现 Win11 分屏面板，且面板不被自绘顶栏遮挡。
+- 单击最大化/还原只切换一次；双击终态与原生标题栏一致。
+- 顶栏拖动、双击最大化、四边/四角 resize 正常；多显示器与不同 DPI 迁移正常。
+- 文件与文件夹拖入仍进入导入队列（重点回归 composition hosting 的上游 #6566）。
+- 窗口圆角/阴影、透明/穿透行为无回归；输入法候选窗定位正常。
+- 失败处置：设置 `INTERWEAVE_DISABLE_WINDOWS_SNAP=1` 重启，确认回到可用的 frameless 行为。
 
 ## 备选方案
 
