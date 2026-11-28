@@ -117,4 +117,21 @@ describe('WebUiTextarea autosize 高度跟随值变化', () => {
 
     expect(getComputedStyle(nativeTextarea(el)).resize).toBe('vertical')
   })
+
+  it('挂载在隐藏容器内时不写死 0px 高度，容器显隐后保持自然行高', async () => {
+    const wrapper = document.createElement('div')
+    wrapper.style.display = 'none'
+    document.body.appendChild(wrapper)
+    const el = document.createElement('web-ui-textarea')
+    el.setAttribute('rows', '2')
+    el.setAttribute('autosize', '')
+    el.setAttribute('placeholder', '暂无备注')
+    wrapper.appendChild(el)
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    wrapper.style.display = 'block'
+    await new Promise(resolve => requestAnimationFrame(resolve))
+    const native = el.shadowRoot?.querySelector('textarea')
+    expect(native?.getBoundingClientRect().height ?? 0).toBeGreaterThan(20)
+    wrapper.remove()
+  })
 })

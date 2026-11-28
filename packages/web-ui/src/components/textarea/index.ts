@@ -162,9 +162,12 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
   private _autosize() {
     if (!this._textarea || !this.autosize) return
     this._textarea.style.height = 'auto'
-    // height:auto 时 rows 已驱动自然高，scrollHeight 恒 ≥ rows 行高，无需额外 floor；
-    // 上限由 CSS max-height（maxHeight 属性）钳制，这里只负责随内容增高，默认无限
-    this._textarea.style.height = `${this._textarea.scrollHeight}px`
+    // 隐藏容器（如未打开的 dialog/drawer）内 scrollHeight 为 0：保留 height:auto，
+    // 避免写死 0px 导致容器展开后文本框塌陷、placeholder 不可见。
+    const scrollHeight = this._textarea.scrollHeight
+    if (scrollHeight > 0) {
+      this._textarea.style.height = `${scrollHeight}px`
+    }
   }
 
   private handleInput(e: Event) {
