@@ -13,8 +13,7 @@ import {
   MENU_ADD_RESOURCE_EVENT,
   MENU_FOCUS_SEARCH_EVENT,
   MENU_IMPORT_FROM_CLIPBOARD_EVENT,
-  MENU_IMPORT_FROM_LINK_EVENT,
-  MENU_TOGGLE_FILTER_BAR_EVENT
+  MENU_IMPORT_FROM_LINK_EVENT
 } from '@/composables/menuActions'
 import { hasEditableFocus, insertTextAtFocus, readSelectionText } from '@/composables/plainTextClipboard'
 import { canGoBack, canGoForward } from '@/composables/useHistoryNav'
@@ -23,9 +22,11 @@ import { queueWindowFileDrop, queueWindowURLDrop } from '@/composables/windowFil
 import { createLibraryRuntime } from '@/services/library'
 import { onMenuCommand } from '@/services/menu'
 import { createMenuStateReporter, createMenuStateRuntime } from '@/services/menu/state'
+import { SIDEBAR_MAX_WIDTH, SIDEBAR_MIN_WIDTH, useLayoutStore } from '@/stores/layout'
 import { useSettingsStore } from '@/stores/settings'
 
 const router = useRouter()
+const layout = useLayoutStore()
 const settings = useSettingsStore()
 const libraryRuntime = createLibraryRuntime()
 const stopWindowFileDrop = libraryRuntime.events.onFilesDropped(paths => {
@@ -43,10 +44,12 @@ onScopeDispose(() => {
   stopWindowURLDrop()
 })
 
-const sidebarCollapsed = ref(false)
+const sidebarCollapsed = computed(() => layout.sidebarCollapsed)
 const sidebarOpen = ref(false)
 const settingsOpen = ref(false)
-const desktopSidebarWidth = ref('240px')
+const desktopSidebarWidth = computed(() => layout.sidebarWidthCss)
+const sidebarMinWidthCss = `${SIDEBAR_MIN_WIDTH}px`
+const sidebarMaxWidthCss = `${SIDEBAR_MAX_WIDTH}px`
 
 /* 首次渲染已等过 runtime core 注入（见 main.ts 的启动序），这里读到的平台就是终值。 */
 const isMac = System.IsMac()
@@ -76,7 +79,7 @@ const macCollapsedSidebarGap = computed(() => isMac && sidebarCollapsed.value &&
 const macExpandedTrafficLightInset = computed(() => isMac && !navCollapsed.value)
 
 function updateSidebarCollapsed(event: WebUiEvent<WebUiLayout, 'sidebar-collapsed-change'>) {
-  sidebarCollapsed.value = event.detail.collapsed
+  layout.setSidebarCollapsed(event.detail.collapsed)
 }
 
 function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>) {
@@ -84,7 +87,7 @@ function updateSidebarOpen(event: WebUiEvent<WebUiLayout, 'sidebar-open-change'>
 }
 
 function updateSidebarWidth(event: WebUiEvent<WebUiLayout, 'sidebar-width-change'>) {
-  desktopSidebarWidth.value = event.detail.width
+  layout.setSidebarWidth(event.detail.width)
 }
 
 function closeSidebar() {
@@ -98,7 +101,7 @@ function closeSidebar() {
  */
 function toggleSidebar() {
   if (mobile.value) sidebarOpen.value = !sidebarOpen.value
-  else sidebarCollapsed.value = !sidebarCollapsed.value
+  else layout.toggleSidebarCollapsed()
 }
 
 /*
@@ -118,7 +121,7 @@ const stopMenuCommands = onMenuCommand({
   },
   toggleSidebar,
   toggleFilterBar() {
-    void openLibraryThen(() => dispatchMenuAction(MENU_TOGGLE_FILTER_BAR_EVENT))
+    void openLibraryThen(() => layout.toggleLibraryFilterOpen())
   },
   focusSearch() {
     void openLibraryThen(() => dispatchMenuAction(MENU_FOCUS_SEARCH_EVENT))
@@ -212,8 +215,8 @@ onScopeDispose(
 /**
  * 切到资源库页再执行页面域动作。
  *
- * 已经是资源库页时同一帧就执行；否则等路由落定。这里用事件而不是共享 store，
- * 是为了让页面只暴露「我准备好接收这类动作了」，壳层不必知道页面内部如何实现。
+ * 已经是资源库页时同一帧就执行；否则等路由落定。筛选栏展开态归 `useLayoutStore`
+ * 直接命令，其余页面域动作仍走事件派发，避免壳层感知页面内部对话框或搜索栏实现。
  */
 async function openLibraryThen(run: () => void) {
   if (router.currentRoute.value.path !== '/library') await router.push('/library')
@@ -270,8 +273,8 @@ watch(
     header-glow
     sidebar-collapsible
     sidebarResizable
-    sidebarMinWidth="160px"
-    sidebarMaxWidth="320px"
+    :sidebarMinWidth="sidebarMinWidthCss"
+    :sidebarMaxWidth="sidebarMaxWidthCss"
     mobile-header-full-width
     collapsedWidth="60px"
     class="overflow-x-clip text-[#22212a] bg-white dark:text-(--wui-color-text) dark:bg-(--wui-color-page) mobile:[--wui-layout-mobile-toggle-top:12px] mobile:[--wui-layout-sidebar-content-padding:8px_20px_8px_8px] mobile:[--wui-layout-sidebar-radius:calc(18px_+_8px)]"

@@ -15,13 +15,10 @@ import {
   SourceType
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import { stubLayout } from '../../components/library/__tests__/virtualLayout'
-import {
-  MENU_FOCUS_SEARCH_EVENT,
-  MENU_IMPORT_FROM_LINK_EVENT,
-  MENU_TOGGLE_FILTER_BAR_EVENT
-} from '../../composables/menuActions'
+import { MENU_FOCUS_SEARCH_EVENT, MENU_IMPORT_FROM_LINK_EVENT } from '../../composables/menuActions'
 import { queueWindowFileDrop, queueWindowURLDrop } from '../../composables/windowFileDrop'
 import type { LibraryRuntime, SourceAvailabilityEventDTO } from '../../services/library'
+import { useLayoutStore } from '../../stores/layout'
 import { useLibraryStore } from '../../stores/library'
 import LibraryPage from '../library/index.vue'
 
@@ -405,6 +402,7 @@ async function flush() {
 
 describe('LibraryPage：可用性感知接线', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
     route.value = { path: '/library' }
     runtimeStub.droppedFilesListener = null
@@ -604,6 +602,7 @@ describe('LibraryPage：可用性感知接线', () => {
  */
 describe('LibraryPage：确认弹窗退场', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
     toastError.mockClear()
     route.value = { path: '/library' }
@@ -710,6 +709,7 @@ describe('LibraryPage：粘贴链接', () => {
   beforeEach(() => {
     toastWarning.mockClear()
     toastError.mockClear()
+    localStorage.clear()
     setActivePinia(createPinia())
     route.value = { path: '/library' }
     runtimeStub.droppedFilesListener = null
@@ -878,6 +878,7 @@ describe('LibraryPage：粘贴链接', () => {
  */
 describe('LibraryPage：统一导入入口', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
     route.value = { path: '/library' }
     runtimeStub.droppedFilesListener = null
@@ -1337,6 +1338,7 @@ function deferred<T>() {
 describe('LibraryPage：菜单动作', () => {
   beforeEach(() => {
     toastWarning.mockClear()
+    localStorage.clear()
     setActivePinia(createPinia())
     route.value = { path: '/library' }
     runtimeStub.droppedFilesListener = null
@@ -1383,8 +1385,9 @@ describe('LibraryPage：菜单动作', () => {
     }
   })
 
-  it('「切换筛选栏」「搜索」翻开对应面板', async () => {
+  it('「切换筛选栏」「搜索」翻开对应面板并持久化筛选栏展开态', async () => {
     const mounted = await mountPage()
+    const layout = useLayoutStore()
     // 筛选面板是 Toolbar 里的 collapse；搜索框展开时「搜索」按钮本身会消失，用它当判据。
     const filterCollapseOpen = () => {
       const attribute = mounted.host.querySelector('web-ui-collapse')?.getAttribute('open')
@@ -1393,12 +1396,12 @@ describe('LibraryPage：菜单动作', () => {
     const searchButton = () => mounted.host.querySelector('web-ui-button[aria-label="搜索"]')
     try {
       expect(filterCollapseOpen()).toBe(false)
-      dispatchMenu(MENU_TOGGLE_FILTER_BAR_EVENT)
+      layout.toggleLibraryFilterOpen()
       await flushMenu()
       expect(filterCollapseOpen()).toBe(true)
 
-      // 「切换」是双向的：再点一次要收起。单向展开会让已展开时看起来毫无反应。
-      dispatchMenu(MENU_TOGGLE_FILTER_BAR_EVENT)
+      // 「切换」是双向的：再调一次要收起。单向展开会让已展开时看起来毫无反应。
+      layout.toggleLibraryFilterOpen()
       await flushMenu()
       expect(filterCollapseOpen()).toBe(false)
 
@@ -1414,6 +1417,7 @@ describe('LibraryPage：菜单动作', () => {
 
 describe('LibraryPage：备注失败回写', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
     route.value = { path: '/library' }
     runtimeStub.availabilityListener = null
@@ -1471,6 +1475,7 @@ describe('LibraryPage：备注失败回写', () => {
 
 describe('LibraryPage：重命名后的激活行', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
     route.value = { path: '/library' }
     runtimeStub.current = createRuntime()
@@ -1504,6 +1509,7 @@ describe('LibraryPage：重命名后的激活行', () => {
 
 describe('LibraryPage：拷贝资源与滚动位置记忆', () => {
   beforeEach(() => {
+    localStorage.clear()
     setActivePinia(createPinia())
     route.value = { path: '/library' }
     routeLeaveGuards.length = 0
