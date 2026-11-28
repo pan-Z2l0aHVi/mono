@@ -1,8 +1,10 @@
 import type { RecoveryScanUpdate } from '@/components/library/restore'
 
 import type {
+  CreateResourceBatchResultDTO,
   CreateResourceInputDTO,
   FilePreviewDTO,
+  ResourceBatchProgressDTO,
   ResourceDTO,
   ResourceLocationMatchDTO,
   SourceAvailabilityEventDTO,
@@ -12,6 +14,7 @@ import type {
   ResourceKind,
   SourceType
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import type { ClipboardContentDTO } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service'
 
 /**
  * 可用性翻转的推送载荷。类型直接取生成绑定，事件名与字段名因此只有 Go 一份源。
@@ -21,6 +24,12 @@ import type {
  * source 派生，带上它可以让前端不必为刷新一个数字再往返一次。
  */
 export type { SourceAvailabilityEventDTO }
+
+/** 批量纳入的逐项结果与逐项进度；类型取生成绑定，前后端契约只有 Go 一份源。 */
+export type { CreateResourceBatchResultDTO, ResourceBatchProgressDTO }
+
+/** 剪贴板一次读取的完整内容（纯文本 + 可选 HTML 与来源地址）。 */
+export type { ClipboardContentDTO }
 
 /** 一次批量导入展开的结果：文件清单 + 实际递归展开的顶层文件夹数。 */
 export interface ImportExpansion {
@@ -34,6 +43,13 @@ export interface LibraryResourceCapabilities {
   get(resourceId: string): Promise<ResourceDTO>
   /** 归一化、可用性探测与初始标签由后端单事务建齐。 */
   create(input: CreateResourceInputDTO): Promise<ResourceDTO>
+  /**
+   * 批量纳入：并发探测与写入由后端承载，逐项结果按输入下标对齐；单条失败不阻断其余项。
+   * 进度经 events.onResourceBatchProgress 推送，取消用 cancelBatch。
+   */
+  createMany(batchId: string, inputs: CreateResourceInputDTO[]): Promise<CreateResourceBatchResultDTO[]>
+  /** 请求停止后续项；已在途的项按各自结果结算。 */
+  cancelBatch(batchId: string): Promise<void>
   updateTitle(resourceId: string, newTitle: string): Promise<ResourceDTO>
   updateNote(resourceId: string, note: string): Promise<ResourceDTO>
   remove(resourceId: string): Promise<void>
@@ -78,6 +94,8 @@ export interface LibraryEventCapabilities {
   onSourceAvailability(listener: (event: SourceAvailabilityEventDTO) => void): () => void
   /** 后端 LRU 淘汰的 pending 预览 token；持有方据此卸载预览而不是把 404 当成文件消失。 */
   onPreviewRevoked(listener: (tokens: string[]) => void): () => void
+  /** 批量纳入的逐项结算进度；batch_id 用于把事件对齐到当前批次。 */
+  onResourceBatchProgress(listener: (event: ResourceBatchProgressDTO) => void): () => void
 }
 
 /** 与操作系统交互：文件选择、文本剪贴板、默认应用与外链。 */
@@ -90,6 +108,11 @@ export interface LibrarySystemCapabilities {
   writeClipboardFilePath(path: string): Promise<void>
   /** 纯文本读取走 Go：WebView 里的 navigator.clipboard 受安全上下文与权限约束。 */
   readClipboardText(): Promise<string>
+  /**
+   * 一次读取纯文本与 HTML：HTML 是多链接提取的增强（锚点与相对链接解析），
+   * 缺失时调用方仍可全文扫描 text。
+   */
+  readClipboardContent(): Promise<ClipboardContentDTO>
   /** 纯文本写入；失败必须抛出，界面据此提示而不是假装复制成功。 */
   writeClipboardText(text: string): Promise<void>
   defaultOpenWith(target: string): Promise<string>
@@ -134,6 +157,18 @@ export function isPreviewRevokedEvent(value: unknown): value is string[] {
   return Array.isArray(value) && value.every(token => typeof token === 'string' && token.length > 0)
 }
 
+/** 批量进度载荷守卫：字段缺失或类型不对的推送静默忽略，不让一行坏数据打断队列。 */
+export function isResourceBatchProgressEvent(value: unknown): value is ResourceBatchProgressDTO {
+  if (typeof value !== 'object' || value === null || Array.isArray(value)) return false
+  const event = value as Record<string, unknown>
+  if (typeof event.batch_id !== 'string' || !event.batch_id) return false
+  if (typeof event.index !== 'number' || typeof event.done !== 'number' || typeof event.total !== 'number') return false
+  return event.status === 'created' || event.status === 'failed' || event.status === 'cancelled'
+}
+
+/** 队列项在提交过程中的状态：失败项留在队列里可重试。 */
+export type LibraryQueueItemStatus = 'pending' | 'importing' | 'created' | 'failed'
+
 export interface LibraryQueueItem {
   id: string
   kind: 'file' | 'url'
@@ -143,6 +178,10 @@ export interface LibraryQueueItem {
   tags: string[]
   previewToken: string | null
   mediaUrl: string | null
+  /** 提交后的结算状态；入队时为 pending。 */
+  status?: LibraryQueueItemStatus
+  /** 失败原因（用户可见文案）；仅 status='failed' 时有值。 */
+  error?: string | null
 }
 
 export function requireFilePreviewDTO(value: FilePreviewDTO | null, action: string): FilePreviewDTO {

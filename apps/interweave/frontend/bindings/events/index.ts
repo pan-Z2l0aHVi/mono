@@ -19,6 +19,11 @@ export const LibraryFilesDropped = "library:files-dropped";
 export const LibraryPreviewsRevoked = "library:previews-revoked";
 
 /**
+ * Name of the custom event "library:resource-batch-progress".
+ */
+export const LibraryResourceBatchProgress = "library:resource-batch-progress";
+
+/**
  * Name of the custom event "library:source-availability-changed".
  */
 export const LibrarySourceAvailabilityChanged = "library:source-availability-changed";

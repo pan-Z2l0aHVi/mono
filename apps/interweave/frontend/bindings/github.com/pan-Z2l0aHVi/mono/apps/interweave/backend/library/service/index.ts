@@ -13,6 +13,7 @@ export {
 };
 
 export {
+    CreateResourceBatchResultDTO,
     CreateResourceInputDTO,
     FilePreviewDTO,
     GlobalMapDTO,
@@ -20,6 +21,8 @@ export {
     LocalMapDTO,
     RecoveryCandidateDTO,
     RecoveryScanUpdateDTO,
+    ResourceBatchProgressDTO,
+    ResourceBatchStatus,
     ResourceDTO,
     ResourceLocationMatchDTO,
     SourceAvailabilityEventDTO,

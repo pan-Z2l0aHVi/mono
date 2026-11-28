@@ -124,6 +124,7 @@ const {
   replacingSourceIds,
   loadResources,
   addResource,
+  upsertResource,
   renameResource,
   updateResourceNote,
   deleteResources,
@@ -171,7 +172,12 @@ const workflow = createLibraryWorkflow({
   chooseFilePaths: () => runtime.system.chooseFilePaths(),
   getClipboardFilePaths: () => runtime.system.getClipboardFilePaths(),
   readClipboardText: () => runtime.system.readClipboardText(),
+  readClipboardContent: () => runtime.system.readClipboardContent(),
   addResource,
+  upsertResource,
+  createResources: (batchId, inputs) => runtime.resources.createMany(batchId, inputs),
+  cancelResourceBatch: batchId => runtime.resources.cancelBatch(batchId),
+  onResourceBatchProgress: listener => runtime.events.onResourceBatchProgress(listener),
   replaceSource,
   replaceScannedFileSource: async (sourceId, path, snapshot) => {
     const updated = await runtime.sources.replaceScannedFile(sourceId, path, snapshot)
@@ -712,7 +718,7 @@ onMounted(() => {
     :previews="previewEntries"
     :progress="importProgress"
     @pick-files="workflow.pickFiles()"
-    @add-url="workflow.requestAddURL($event)"
+    @add-url="workflow.requestAddURLs($event)"
     @request-file-paths="workflow.pasteFilePaths($event)"
     @remove="addQueue.removeItem"
     @rename="renameQueueItem"

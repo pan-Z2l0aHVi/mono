@@ -64,6 +64,8 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       list: async () => [],
       get: async resourceId => createResource({ id: resourceId }),
       create: async () => createResource({ id: 'created-inline' }),
+      createMany: async (_batchId, inputs) => inputs.map((_input, index) => ({ index })),
+      cancelBatch: async () => {},
       updateTitle: async (resourceId, title) => createResource({ id: resourceId, title }),
       updateNote: async (resourceId, note) => createResource({ id: resourceId, note }),
       remove: async () => {},
@@ -109,6 +111,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       onURLsDropped: () => () => {},
       onSourceAvailability: () => () => {},
       onPreviewRevoked: () => () => {},
+      onResourceBatchProgress: () => () => {},
       ...overrides.events
     },
     system: {
@@ -118,6 +121,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       getClipboardFilePaths: async () => [],
       writeClipboardFilePath: async () => {},
       readClipboardText: async () => '',
+      readClipboardContent: async () => ({ text: '' }),
       writeClipboardText: async () => {},
       defaultOpenWith: async () => '',
       showInFileManager: async () => {},

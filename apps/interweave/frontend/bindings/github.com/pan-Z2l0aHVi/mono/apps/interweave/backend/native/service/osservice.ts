@@ -10,6 +10,10 @@
 // @ts-ignore: Unused imports
 import { Call as $Call, CancellablePromise as $CancellablePromise, Create as $Create } from "@wailsio/runtime";
 
+// eslint-disable-next-line @typescript-eslint/ban-ts-comment
+// @ts-ignore: Unused imports
+import * as $models from "./models.js";
+
 /**
  * DefaultOpenWith 返回操作系统为 target 选定的默认应用显示名。
  * 
@@ -35,6 +39,16 @@ export function GetClipboardFilePaths(): $CancellablePromise<string[]> {
  */
 export function OpenExternal(target: string): $CancellablePromise<void> {
     return $Call.ByID(3347760165, target);
+}
+
+/**
+ * ReadClipboardContent 一次读取文本与 HTML；HTML 读取失败不阻断文本粘贴。
+ * 纯文本仍走既有平台实现，HTML 是额外能力，因此在 Linux 等未实现平台只是缺省为空。
+ */
+export function ReadClipboardContent(): $CancellablePromise<$models.ClipboardContentDTO | null> {
+    return $Call.ByID(2752130029).then(($result: any) => {
+        return $$createType2($result);
+    });
 }
 
 /**
@@ -83,3 +97,5 @@ export function WriteClipboardText(text: string): $CancellablePromise<void> {
 
 // Private type creation functions
 const $$createType0 = $Create.Array($Create.Any);
+const $$createType1 = $models.ClipboardContentDTO.createFrom;
+const $$createType2 = $Create.Nullable($$createType1);

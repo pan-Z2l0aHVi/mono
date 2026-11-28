@@ -19,12 +19,29 @@ import * as storage$0 from "../storage/models.js";
 import * as $models from "./models.js";
 
 /**
+ * CancelResourceBatch 请求停止后续项；已在途的项按各自结果结算，不会被强杀。
+ */
+export function CancelResourceBatch(batchID: string): $CancellablePromise<void> {
+    return $Call.ByID(1766959810, batchID);
+}
+
+/**
  * CreateResource 是纳入新 Resource 的唯一入口：归一化、探测、Resource + 首选 Source
  * 与初始标签由 core 在单事务内一次建齐。
  */
 export function CreateResource(input: $models.CreateResourceInputDTO): $CancellablePromise<$models.ResourceDTO | null> {
     return $Call.ByID(3687025820, input).then(($result: any) => {
         return $$createType1($result);
+    });
+}
+
+/**
+ * CreateResources 批量纳入 Resource：并发探测与写入由 core 承载，单条失败不阻断其余项。
+ * 进度经 ResourceBatchProgressEventName 推送；ctx 取消后不再启动新项。
+ */
+export function CreateResources(batchID: string, inputs: $models.CreateResourceInputDTO[]): $CancellablePromise<$models.CreateResourceBatchResultDTO[]> {
+    return $Call.ByID(3822509117, batchID, inputs).then(($result: any) => {
+        return $$createType3($result);
     });
 }
 
@@ -42,7 +59,7 @@ export function DeleteResource(resourceID: string): $CancellablePromise<void> {
  */
 export function ExpandImportPaths(paths: string[]): $CancellablePromise<$models.ImportExpansionDTO> {
     return $Call.ByID(2068604587, paths).then(($result: any) => {
-        return $$createType2($result);
+        return $$createType4($result);
     });
 }
 
@@ -51,7 +68,7 @@ export function ExpandImportPaths(paths: string[]): $CancellablePromise<$models.
  */
 export function FindResourceLocationMatches(input: string, srcType: storage$0.SourceType): $CancellablePromise<$models.ResourceLocationMatchDTO[]> {
     return $Call.ByID(3399008553, input, srcType).then(($result: any) => {
-        return $$createType4($result);
+        return $$createType6($result);
     });
 }
 
@@ -69,7 +86,7 @@ export function GetResource(resourceID: string): $CancellablePromise<$models.Res
  */
 export function ListResources(): $CancellablePromise<$models.ResourceDTO[]> {
     return $Call.ByID(196096737).then(($result: any) => {
-        return $$createType5($result);
+        return $$createType7($result);
     });
 }
 
@@ -78,7 +95,7 @@ export function ListResources(): $CancellablePromise<$models.ResourceDTO[]> {
  */
 export function PrepareFilePreview(inputPath: string): $CancellablePromise<$models.FilePreviewDTO | null> {
     return $Call.ByID(965214835, inputPath).then(($result: any) => {
-        return $$createType7($result);
+        return $$createType9($result);
     });
 }
 
@@ -110,9 +127,11 @@ export function UpdateResourceTitle(resourceID: string, newTitle: string): $Canc
 // Private type creation functions
 const $$createType0 = $models.ResourceDTO.createFrom;
 const $$createType1 = $Create.Nullable($$createType0);
-const $$createType2 = $models.ImportExpansionDTO.createFrom;
-const $$createType3 = $models.ResourceLocationMatchDTO.createFrom;
-const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = $Create.Array($$createType0);
-const $$createType6 = $models.FilePreviewDTO.createFrom;
-const $$createType7 = $Create.Nullable($$createType6);
+const $$createType2 = $models.CreateResourceBatchResultDTO.createFrom;
+const $$createType3 = $Create.Array($$createType2);
+const $$createType4 = $models.ImportExpansionDTO.createFrom;
+const $$createType5 = $models.ResourceLocationMatchDTO.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = $Create.Array($$createType0);
+const $$createType8 = $models.FilePreviewDTO.createFrom;
+const $$createType9 = $Create.Nullable($$createType8);
