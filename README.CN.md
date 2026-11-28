@@ -40,12 +40,12 @@
 
 这些应用不发布到 npm。它们是集成示例和可分发的终端软件：两个 Web demo 部署到 GitHub Pages，Interweave 通过 GitHub Releases 发布安装包。
 
-| 应用                                             | 技术栈                                                                       |
-| ------------------------------------------------ | ---------------------------------------------------------------------------- |
-| [`react-web-ui-demo`](./apps/react-web-ui-demo/) | React 19、TanStack Router、TanStack Query、Tailwind CSS                      |
-| [`vue-web-ui-demo`](./apps/vue-web-ui-demo/)     | Vue 3、Vue Router、Pinia、TanStack Query、Tailwind CSS                       |
-| [`dev-kit-demo`](./apps/dev-kit-demo/)           | Vue 3、Vue Router、Tailwind CSS（`@greypan/js-kit`、`@greypan/browser-kit`） |
-| [`interweave`](./apps/interweave/)               | Wails 3 桌面应用，Go 后端与 Vue WebView 前端                                 |
+| 应用                                                         | 技术栈                                                                       |
+| ------------------------------------------------------------ | ---------------------------------------------------------------------------- |
+| [`react-web-ui-demo`](./apps/react-web-ui-demo/README.CN.md) | React 19、TanStack Router、TanStack Query、Tailwind CSS                      |
+| [`vue-web-ui-demo`](./apps/vue-web-ui-demo/README.CN.md)     | Vue 3、Vue Router、Pinia、TanStack Query、Tailwind CSS                       |
+| [`dev-kit-demo`](./apps/dev-kit-demo/README.CN.md)           | Vue 3、Vue Router、Tailwind CSS（`@greypan/js-kit`、`@greypan/browser-kit`） |
+| [`interweave`](./apps/interweave/)                           | Wails 3 桌面应用，Go 后端与 Vue WebView 前端                                 |
 
 ## 开发
 
