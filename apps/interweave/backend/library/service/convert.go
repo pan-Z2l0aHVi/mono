@@ -8,6 +8,30 @@ import (
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 )
 
+// ServiceOption 配置 library 外观服务的可选依赖。
+type ServiceOption func(*serviceConfig)
+
+type serviceConfig struct {
+	urls media.URLBuilder
+}
+
+// WithMediaURLBuilder 注入媒体与缩略图 URL 构造器（Windows LocalServer 或默认 AssetServer）。
+func WithMediaURLBuilder(urls media.URLBuilder) ServiceOption {
+	return func(cfg *serviceConfig) {
+		cfg.urls = urls
+	}
+}
+
+func resolveServiceConfig(opts ...ServiceOption) serviceConfig {
+	var cfg serviceConfig
+	for _, opt := range opts {
+		if opt != nil {
+			opt(&cfg)
+		}
+	}
+	return cfg
+}
+
 // 解析 Source 的抓取元数据；空串或非法 JSON 一律返回 nil，解析失败不阻塞视图装配。
 func parseSourceMetadata(metadataJSON string) *SourceMetadataDTO {
 	if metadataJSON == "" {
@@ -31,6 +55,10 @@ func mapped[From any, To any](items []From, mapFn func(From) To) []To {
 }
 
 func sourceToDTO(src core.Source) SourceDTO {
+	return sourceToDTOWithURLs(src, media.URLBuilder{})
+}
+
+func sourceToDTOWithURLs(src core.Source, urls media.URLBuilder) SourceDTO {
 	dto := SourceDTO{
 		ID:          src.ID,
 		ResourceID:  src.ResourceID,
@@ -44,8 +72,8 @@ func sourceToDTO(src core.Source) SourceDTO {
 		UpdatedAt:   src.UpdatedAt,
 	}
 	if src.Type == storage.SourceTypeFile {
-		dto.MediaURL = media.SourceMediaURL(src.ID)
-		dto.ThumbnailURL = media.SourceThumbnailURL(src.ID)
+		dto.MediaURL = urls.SourceMediaURL(src.ID)
+		dto.ThumbnailURL = urls.SourceThumbnailURL(src.ID)
 	}
 	return dto
 }
@@ -97,6 +125,10 @@ func tagToDTO(tag core.Tag) TagDTO {
 
 // 将领域 Resource 视图映射为前端可见视图；首选入口由 SourceDTO.is_preferred 承载。
 func resourceViewToDTO(view *core.ResourceView) *ResourceDTO {
+	return resourceViewToDTOWithURLs(view, media.URLBuilder{})
+}
+
+func resourceViewToDTOWithURLs(view *core.ResourceView, urls media.URLBuilder) *ResourceDTO {
 	dto := &ResourceDTO{
 		ID:        view.Resource.ID,
 		Title:     view.Resource.Title,
@@ -109,7 +141,9 @@ func resourceViewToDTO(view *core.ResourceView) *ResourceDTO {
 		size := *view.SizeBytes
 		dto.SizeBytes = &size
 	}
-	sources := mapped(view.Sources, sourceToDTO)
+	sources := mapped(view.Sources, func(src core.Source) SourceDTO {
+		return sourceToDTOWithURLs(src, urls)
+	})
 	dto.Sources = sources
 	dto.Tags = mapped(view.Tags, tagToDTO)
 	return dto

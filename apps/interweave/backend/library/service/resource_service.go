@@ -5,12 +5,14 @@ import (
 	"sync"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/media"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
 )
 
 // 作为 Wails 外观呈现 Resource 能力，产品规则与预览授权由 core 承载。
 type ResourceService struct {
 	core             *core.Library
+	urls             media.URLBuilder
 	batchConcurrency int
 
 	emitMu sync.RWMutex
@@ -20,7 +22,7 @@ type ResourceService struct {
 	batches   map[string]context.CancelFunc
 }
 
-// ResourceServiceOption 装配批量纳入的可选项；并发度与事件出口只在装配期注入。
+// ResourceServiceOption 装配批量纳入与媒体地址的可选项；并发度、事件出口与 URL 构造器只在装配期注入。
 type ResourceServiceOption func(*ResourceService)
 
 // WithBatchConcurrency 覆盖批量纳入的默认并发度，供测试固定行为。
@@ -39,10 +41,20 @@ func WithEventEmitter(emit func(name string, data any)) ResourceServiceOption {
 	}
 }
 
+// WithResourceMediaURLBuilder 注入媒体与缩略图 URL 构造器（Windows LocalServer 或默认 AssetServer）。
+func WithResourceMediaURLBuilder(urls media.URLBuilder) ResourceServiceOption {
+	return func(s *ResourceService) {
+		if urls != nil {
+			s.urls = urls
+		}
+	}
+}
+
 // 保持外观与产品规则解耦。
 func NewResourceService(c *core.Library, options ...ResourceServiceOption) *ResourceService {
 	service := &ResourceService{
 		core:             c,
+		urls:             resolveServiceConfig().urls,
 		batchConcurrency: core.DefaultCreateConcurrency,
 		batches:          make(map[string]context.CancelFunc),
 	}
@@ -123,7 +135,7 @@ func (s *ResourceService) CreateResource(ctx context.Context, input CreateResour
 	if err != nil {
 		return nil, err
 	}
-	return resourceViewToDTO(view), nil
+	return resourceViewToDTOWithURLs(view, s.urls), nil
 }
 
 // 允许用户维护库内语义，不影响外部内容。
@@ -132,7 +144,7 @@ func (s *ResourceService) UpdateResourceTitle(ctx context.Context, resourceID st
 	if err != nil {
 		return nil, err
 	}
-	return resourceViewToDTO(view), nil
+	return resourceViewToDTOWithURLs(view, s.urls), nil
 }
 
 // 仅保存简短个人上下文。
@@ -141,7 +153,7 @@ func (s *ResourceService) UpdateResourceNote(ctx context.Context, resourceID str
 	if err != nil {
 		return nil, err
 	}
-	return resourceViewToDTO(view), nil
+	return resourceViewToDTOWithURLs(view, s.urls), nil
 }
 
 // 从资源库移除记录，不触及任何外部内容。
@@ -155,7 +167,7 @@ func (s *ResourceService) GetResource(ctx context.Context, resourceID string) (*
 	if err != nil {
 		return nil, err
 	}
-	return resourceViewToDTO(view), nil
+	return resourceViewToDTOWithURLs(view, s.urls), nil
 }
 
 // 以最近纳入优先的顺序支持资源库浏览。
@@ -164,8 +176,7 @@ func (s *ResourceService) ListResources(ctx context.Context) ([]ResourceDTO, err
 	if err != nil {
 		return nil, err
 	}
-
 	return mapped(views, func(view core.ResourceView) ResourceDTO {
-		return *resourceViewToDTO(&view)
+		return *resourceViewToDTOWithURLs(&view, s.urls)
 	}), nil
 }

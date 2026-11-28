@@ -17,6 +17,7 @@ import (
 
 type pendingPreviewAdapter struct {
 	registry *media.PendingPreviewRegistry
+	urls     media.URLBuilder
 }
 
 func (a pendingPreviewAdapter) Register(location string) (string, string, error) {
@@ -24,7 +25,7 @@ func (a pendingPreviewAdapter) Register(location string) (string, string, error)
 	if err != nil {
 		return "", "", err
 	}
-	return token, media.PendingMediaURL(token), nil
+	return token, a.urls.PendingMediaURL(token), nil
 }
 
 func (a pendingPreviewAdapter) Release(token string) bool {
@@ -42,23 +43,30 @@ type RuntimeOptions struct {
 	ThumbnailDir string
 	// Fetcher 为 URL 元数据抓取器；为 nil 时使用默认 remote.NewFetcher()。
 	Fetcher *remote.Fetcher
+	// EnableLocalMediaServer 在 Windows 端启用独立 127.0.0.1:0 流式媒体 HTTP 服务，
+	// 绕开 Wails v3 Windows AssetServer 的全量内存缓冲与 UI 主线程同步拷贝。
+	EnableLocalMediaServer bool
+	// IsProduction 传递给 LocalServer 决定 CORS Origin 白名单（生产态仅放行 Wails Origin）。
+	IsProduction bool
 }
 
 // Runtime 统一拥有资源库后端的装配与有序关停：
 // 依赖方向单向（library → core / media / watch / storage / remote），
-// 持有 DB、core 服务、PendingPreviewRegistry、AvailabilityGate、Watcher 与 media.Handler。
+// 持有 DB、core 服务、PendingPreviewRegistry、AvailabilityGate、Watcher、media.Handler 与可选 LocalServer。
 //
 // 关停排空序固定为：
-// watcher → media/thumbs（含 PendingPreviewRegistry 清空）→ core.ShutdownRecoveryScans() → db.Close()。
+// watcher → localServer → media/thumbs（含 PendingPreviewRegistry 清空）→ core.ShutdownRecoveryScans() → db.Close()。
 // ScheduleBackground 及其排空仍留在 storage.DB.Close() 内部，不外迁。
 type Runtime struct {
-	db       *storage.DB
-	core     *core.Library
-	previews *media.PendingPreviewRegistry
-	gate     *watch.AvailabilityGate
-	watcher  *watch.Watcher
-	thumbs   *media.ThumbnailStore
-	media    *media.Handler
+	db          *storage.DB
+	core        *core.Library
+	previews    *media.PendingPreviewRegistry
+	gate        *watch.AvailabilityGate
+	watcher     *watch.Watcher
+	thumbs      *media.ThumbnailStore
+	media       *media.Handler
+	localServer *media.LocalServer
+	urlBuilder  media.URLBuilder
 
 	stateMu   sync.Mutex
 	started   bool
@@ -96,7 +104,6 @@ func NewRuntime(opts RuntimeOptions) (*Runtime, error) {
 
 	coreLib := core.NewLibrary(db, fetcher)
 	previews := media.NewPendingPreviewRegistry()
-	coreLib.SetPendingPreviews(pendingPreviewAdapter{registry: previews})
 
 	// gate 恒存在：可用性写入口不依赖 fsnotify 是否可用，监听不可用时媒体 404 兜底照常
 	// 落库，只降级目录监听方向。事件出口要等 window 就绪才能确定，gate 未接线时只落库
@@ -125,14 +132,33 @@ func NewRuntime(opts RuntimeOptions) (*Runtime, error) {
 
 	mediaHandler := media.NewHandler(storage.SourceStore{}, db.SqlDB(), previews, thumbs, gate)
 
+	var localServer *media.LocalServer
+	var urlBuilder media.URLBuilder
+	if opts.EnableLocalMediaServer {
+		srv, srvErr := media.NewLocalServer(media.LocalServerOptions{
+			Handler:      mediaHandler,
+			IsProduction: opts.IsProduction,
+		})
+		if srvErr != nil {
+			log.Printf("interweave: local media server unavailable, falling back to AssetServer: %v", srvErr)
+		} else {
+			localServer = srv
+			urlBuilder = srv.URLBuilder()
+		}
+	}
+
+	coreLib.SetPendingPreviews(pendingPreviewAdapter{registry: previews, urls: urlBuilder})
+
 	return &Runtime{
-		db:       db,
-		core:     coreLib,
-		previews: previews,
-		gate:     gate,
-		watcher:  watcher,
-		thumbs:   thumbs,
-		media:    mediaHandler,
+		db:          db,
+		core:        coreLib,
+		previews:    previews,
+		gate:        gate,
+		watcher:     watcher,
+		thumbs:      thumbs,
+		media:       mediaHandler,
+		localServer: localServer,
+		urlBuilder:  urlBuilder,
 	}, nil
 }
 
@@ -141,6 +167,9 @@ func (r *Runtime) Core() *core.Library { return r.core }
 
 // MediaHandler 返回挂接在 AssetServer 上的媒体路由处理器。
 func (r *Runtime) MediaHandler() *media.Handler { return r.media }
+
+// MediaURLBuilder 返回当前运行时对应的媒体/缩略图 URL 构造器。
+func (r *Runtime) MediaURLBuilder() media.URLBuilder { return r.urlBuilder }
 
 // SetPreviewEvictHandler 晚绑定 pending 预览 LRU 驱逐回调。
 func (r *Runtime) SetPreviewEvictHandler(handler func(token string)) {
@@ -180,7 +209,7 @@ func (r *Runtime) Start(ctx context.Context) {
 }
 
 // Close 幂等且有序地排空并释放资源库全部后台协程与数据库连接：
-// watcher → media/thumbs（含 PendingPreviewRegistry 清空）→ core.ShutdownRecoveryScans() → db.Close()。
+// watcher → localServer → media/thumbs（含 PendingPreviewRegistry 清空）→ core.ShutdownRecoveryScans() → db.Close()。
 func (r *Runtime) Close() error {
 	r.closeOnce.Do(func() {
 		r.stateMu.Lock()
@@ -193,14 +222,17 @@ func (r *Runtime) Close() error {
 		}
 		r.startWg.Wait()
 
-		// 2. 排空媒体 404 回写与缩略图构建/清理，并撤销全部 pending 预览授权。
+		// 2. 先排空本地流式媒体服务连接，再排空媒体 404 回写与缩略图构建/清理，并撤销全部 pending 预览授权。
+		if r.localServer != nil {
+			r.localServer.Close()
+		}
 		r.media.Close()
 		r.previews.Clear()
 
 		// 3. 取消并等待在途找回扫描退出。
 		r.core.ShutdownRecoveryScans()
 
-		// 4. 最后关闭数据库（其内部同步取消并排空 ScheduleBackground 后台任务）。
+		// 4. 最后关闭数据库（内部会排空 ScheduleBackground 协程）。
 		r.closeErr = r.db.Close()
 	})
 	return r.closeErr
