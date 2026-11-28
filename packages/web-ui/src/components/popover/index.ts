@@ -292,7 +292,6 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     this._panel.open(isInstant)
     if (this._portal)
       applyOverlayVariables(this._portal.panel, this, ['--wui-popover-padding', '--wui-popover-max-height'])
-    this._syncPanelScrollClass()
     this._startPanelCapSync()
   }
 
@@ -312,14 +311,17 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
    * 样式、主题/祖先 class、样式表、媒体查询），单一几何信号覆盖不了「限高翻转但
    * 盒高不变」的组合，这里按 toast modalRoot 同步 --wui-* 的同款信号模型补齐：
    * 祖先链属性观察 + 视口 resize 覆盖属性面，ResizeObserver 覆盖几何面，
-   * updated() 覆盖 Lit 属性面。仍不覆盖的盲区：媒体查询改写变量且盒高不变的
-   * 组合——该状态下没有属性与几何事件可听，不做轮询；它不产生滚动需求，
-   * 只影响绝对定位后代的裁剪语义。
+   * updated() 覆盖 Lit 属性面。末尾立即重算一次：重连/重配置前祖先可能已改写
+   * 限高（新观测器收不到历史变更），对齐必须发生在挂载观测的同时而不是等下一
+   * 个事件。仍不覆盖的盲区：媒体查询改写变量且盒高不变的组合——该状态下没有
+   * 属性与几何事件可听，不做轮询；它不产生滚动需求，只影响绝对定位后代的
+   * 裁剪语义。
    */
   private _startPanelCapSync() {
     this._stopPanelCapSync()
     const panel = this._panel.getPanel()
     if (!panel) return
+    this._syncPanelScrollClass()
     if (typeof ResizeObserver !== 'undefined') {
       const observer = new ResizeObserver(() => this._syncPanelScrollClass())
       observer.observe(panel)
@@ -385,11 +387,7 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     this._portalKeepAliveDisposer?.()
     this._portalKeepAliveDisposer = undefined
     this._panel.reconfigure(this.open)
-    if (this.open)
-      this._overlay.scheduleFrame(() => {
-        this._syncPanelScrollClass()
-        this._startPanelCapSync()
-      })
+    if (this.open) this._overlay.scheduleFrame(() => this._startPanelCapSync())
   }
 
   private _dispatchChange(open: boolean) {

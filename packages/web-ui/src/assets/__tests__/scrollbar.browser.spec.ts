@@ -367,4 +367,34 @@ describe('组件内部 scrollbar（浏览器）', () => {
       '盒高不变的取消限高未摘除滚动类（属性面信号缺失）'
     )
   })
+
+  it('打开态重连后立即按当前限高对齐滚动类', async () => {
+    const theme = await createLightTheme()
+    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    popover.style.setProperty('--wui-popover-max-height', '80px')
+    const content = document.createElement('div')
+    content.style.cssText = 'height: 400px;'
+    popover.append(content)
+    theme.append(popover)
+    await popover.updateComplete
+
+    popover.open = true
+    await popover.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const el = popover.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    if (!el) throw new Error('Expected popover panel to exist.')
+    expect(getComputedStyle(el).overflowY).toBe('auto')
+
+    // 摘下后再改限高：此刻观测器已随断连停掉，收不到这次变更事件。
+    popover.remove()
+    popover.style.removeProperty('--wui-popover-max-height')
+
+    // 重连后必须立即重算一次对齐，而不是等下一次祖先属性变更或 resize。
+    const wrapper = document.createElement('div')
+    document.body.append(wrapper)
+    wrapper.append(popover)
+    await popover.updateComplete
+    expect(getComputedStyle(el).overflowY).toBe('visible')
+  })
 })
