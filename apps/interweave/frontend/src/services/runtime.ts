@@ -32,6 +32,13 @@ export function hasWailsRuntime(): boolean {
   return typeof environment?.OS === 'string' && typeof environment.Arch === 'string'
 }
 
+/** 返回 Wails 注入的宿主操作系统标识（如 'windows' / 'darwin' / 'linux'）；未就绪时返回 null。 */
+export function wailsPlatformOS(): string | null {
+  if (typeof window === 'undefined') return null
+  const os = (window as Window & WailsWindow)._wails?.environment?.OS
+  return typeof os === 'string' ? os : null
+}
+
 /**
  * 等 runtime core 注入完成。
  *
