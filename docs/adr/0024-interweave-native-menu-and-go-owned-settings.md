@@ -7,6 +7,7 @@
 - **修订（2026-11-15 第三轮）**: 缩放改为 Go 拥有的设置；窗口拖动区改为按元素声明；壳在 runtime 注入后渲染。可执行口径见 [apps/interweave/AGENTS.md](../../apps/interweave/AGENTS.md)。
 - **修订（2026-11-20 第四轮）**: 正文「`interweave/` 子目录」仅指 production 构建；development 构建的数据目录是 `interweave-dev/`（由 Go `production` build tag 决定，`library.db`、缩略图与 `settings.json` 同构）。配套：macOS `interweave.dev.app` 的构建产物 `CFBundleIdentifier` 改写为 `com.greypan.interweave.dev`，Windows `WebviewUserDataPath` 显式指向数据目录下的 `webview/`，使 dev 与正式版的本地持久化完全隔离。
 - **修订（2026-11-24 第五轮）**: Windows 端因 Win32 原生标题栏与原生 `HMENU` 无法合并同行，改为启用 `Frameless: true` + `Windows.NonClientRegionSupport: true` 并关闭 `UseApplicationMenu`，由前端 `WindowsTitleBar` 渲染一体化顶栏（左侧平铺菜单、移动端断点收进汉堡按钮、中间拖动区、右侧 Fluent 窗口三键）；macOS 与 Linux 保持原生菜单不变。菜单形状、快捷键与禁用态仍全部由 Go 侧 `backend/native/menu` 拥有，`backend/menu` 扩展 `GetMenu` / `InvokeMenuItem` 与 `menu:tree-changed` 事件供 Windows 顶栏消费。
+- **修订（2026-11-28 第六轮）**: 明确区分「Go 拥有的应用设置（`settings.json`）」与「纯前端视图布局记忆」：Go 侧不消费的纯前端布局状态（侧边栏桌面折叠态、侧边栏宽度、资源库筛选排序面板展开态）由前端独立 Pinia store `useLayoutStore` 经 `@greypan/browser-kit/storage`（`localStorage`，命名空间 `interweave:layout`）同步持久化，保持 dev/prod 隔离与首帧零闪烁，避免前端布局常数耦合进 Go Service 与 bindings。
 
 ## 背景
 
