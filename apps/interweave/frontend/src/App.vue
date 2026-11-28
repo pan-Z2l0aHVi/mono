@@ -6,7 +6,7 @@ import { computed, onMounted, onScopeDispose, watch } from 'vue'
 
 import AppLayout from '@/components/AppLayout.vue'
 import { useStartupRevealSuppression } from '@/composables/useStartupRevealSuppression'
-import { hasWailsRuntime, wailsPlatformOS } from '@/services/runtime'
+import { hasWailsRuntime } from '@/services/runtime'
 import { createSettingsRuntime } from '@/services/settings'
 import { onAccentFor, useSettingsStore } from '@/stores/settings'
 
@@ -58,22 +58,10 @@ watch(
   () => settings.zoom,
   zoom => {
     if (!hasWailsRuntime()) return
-    // Wails v3.1.0 对 Windows Frameless 窗口会在 SetZoom 中把 < 1.0 钳制回 1.0
-    // （pkg/application/zoom.go:15），导致缩小档（90%）静默失效；
-    // Windows 缩小档改走 WebView2 原生支持的根元素 CSS zoom，放大与其余平台保持 Window.SetZoom。
-    if (wailsPlatformOS() === 'windows' && zoom < 100) {
-      document.documentElement.style.zoom = String(zoom / 100)
-      void Window.SetZoom(1)
-      return
-    }
-    document.documentElement.style.zoom = ''
     void Window.SetZoom(zoom / 100)
   },
   { immediate: true }
 )
-onScopeDispose(() => {
-  if (typeof document !== 'undefined') document.documentElement.style.zoom = ''
-})
 </script>
 
 <template>

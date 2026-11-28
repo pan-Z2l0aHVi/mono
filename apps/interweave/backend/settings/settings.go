@@ -3,6 +3,7 @@ package settings
 import (
 	"fmt"
 	"math"
+	"runtime"
 )
 
 // Appearance 是主题外观的闭集。system 由 web-ui-theme 自己按 prefers-color-scheme 解析，
@@ -122,9 +123,23 @@ type ZoomPreset struct {
 	Label string `json:"label"`
 }
 
-// zoomPresets 是缩放档位白名单。菜单与设置面板都只认这四个值，不放开任意百分比。
+// zoomPresets 是 macOS / Linux 的缩放档位白名单（90% / 100% / 110% / 120%）。
 var zoomPresets = []ZoomPreset{
 	{Value: 90, Label: "高效"},
+	{Value: 100, Label: "标准"},
+	{Value: 110, Label: "舒适"},
+	{Value: 120, Label: "关怀"},
+}
+
+// windowsZoomPresets 是 Windows 端的缩放档位白名单（移除 90%，仅保留 100% / 110% / 120%）。
+//
+// 特殊逻辑说明：
+//   - Interweave 在 Windows 端启用了 Frameless 窗口以渲染自定义一体化顶栏；
+//   - Wails v3.1.0 在 pkg/application/zoom.go 中对 Frameless 窗口刻意将 zoom < 1.0 钳制回 1.0
+//     （上游议题 wailsapp/wails#4590，WebView2 原生 PutZoomFactor(< 1.0) 会破坏 Win32 WM_NCHITTEST 边缘缩放热区）；
+//   - 若前端改用根元素 CSS zoom 绕行，又会导致 @greypan/web-ui 的 select/tooltip 等浮层坐标二次缩放错位与 100dvh 底部留白。
+//   - 因此产品决策在 Windows 端移除 90% 档位，仅提供原生完全支持的 100% / 110% / 120%；macOS 与 Linux 保持 4 档不变。
+var windowsZoomPresets = []ZoomPreset{
 	{Value: 100, Label: "标准"},
 	{Value: 110, Label: "舒适"},
 	{Value: 120, Label: "关怀"},
@@ -133,15 +148,31 @@ var zoomPresets = []ZoomPreset{
 // defaultZoom 是标准档：缺省、非法值与「默认缩放」命令都落到它。
 const defaultZoom = 100
 
-// ZoomPresets 返回缩放档位的副本，调用方改写返回值不影响包内状态。
+func zoomPresetsSliceForOS(goos string) []ZoomPreset {
+	if goos == "windows" {
+		return windowsZoomPresets
+	}
+	return zoomPresets
+}
+
+// ZoomPresets 返回当前平台缩放档位的副本，调用方改写返回值不影响包内状态。
 func ZoomPresets() []ZoomPreset {
-	presets := make([]ZoomPreset, len(zoomPresets))
-	copy(presets, zoomPresets)
+	return zoomPresetsForOS(runtime.GOOS)
+}
+
+func zoomPresetsForOS(goos string) []ZoomPreset {
+	src := zoomPresetsSliceForOS(goos)
+	presets := make([]ZoomPreset, len(src))
+	copy(presets, src)
 	return presets
 }
 
 func isZoomPreset(value int) bool {
-	for _, preset := range zoomPresets {
+	return isZoomPresetForOS(value, runtime.GOOS)
+}
+
+func isZoomPresetForOS(value int, goos string) bool {
+	for _, preset := range zoomPresetsSliceForOS(goos) {
 		if preset.Value == value {
 			return true
 		}
@@ -151,23 +182,28 @@ func isZoomPreset(value int) bool {
 
 // nextZoom 从当前档位走 delta 档。到端点时停在端点；current 不在白名单内时从默认档起算。
 func nextZoom(current int, delta int) int {
-	index := zoomPresetIndex(current)
+	return nextZoomForOS(current, delta, runtime.GOOS)
+}
+
+func nextZoomForOS(current int, delta int, goos string) int {
+	list := zoomPresetsSliceForOS(goos)
+	index := zoomPresetIndexForOS(current, list)
 	if index < 0 {
-		index = zoomPresetIndex(defaultZoom)
+		index = zoomPresetIndexForOS(defaultZoom, list)
 	}
 	index += delta
 	if index < 0 {
 		index = 0
 	}
-	if index >= len(zoomPresets) {
-		index = len(zoomPresets) - 1
+	if index >= len(list) {
+		index = len(list) - 1
 	}
-	return zoomPresets[index].Value
+	return list[index].Value
 }
 
-// zoomPresetIndex 返回档位在 zoomPresets 里的下标，不在白名单内时返回 -1。
-func zoomPresetIndex(value int) int {
-	for i, preset := range zoomPresets {
+// zoomPresetIndexForOS 返回档位在给定白名单里的下标，不在白名单内时返回 -1。
+func zoomPresetIndexForOS(value int, list []ZoomPreset) int {
+	for i, preset := range list {
 		if preset.Value == value {
 			return i
 		}

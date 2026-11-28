@@ -216,3 +216,26 @@ func TestAccentPresetsAreCopied(t *testing.T) {
 		t.Fatal("expected AccentPresets to hand out a copy")
 	}
 }
+
+func TestZoomPresetsForOS(t *testing.T) {
+	win := zoomPresetsForOS("windows")
+	if len(win) != 3 || win[0].Value != 100 || win[1].Value != 110 || win[2].Value != 120 {
+		t.Fatalf("expected Windows zoom presets [100 110 120], got %+v", win)
+	}
+	if isZoomPresetForOS(90, "windows") {
+		t.Fatal("expected 90% to be disallowed on Windows")
+	}
+	if got := nextZoomForOS(100, -1, "windows"); got != 100 {
+		t.Fatalf("expected Windows zoom-out at 100%% to stay at 100%%, got %d", got)
+	}
+
+	for _, osName := range []string{"darwin", "linux"} {
+		presets := zoomPresetsForOS(osName)
+		if len(presets) != 4 || presets[0].Value != 90 || presets[3].Value != 120 {
+			t.Fatalf("expected %s zoom presets [90 100 110 120], got %+v", osName, presets)
+		}
+		if !isZoomPresetForOS(90, osName) {
+			t.Fatalf("expected 90%% to remain allowed on %s", osName)
+		}
+	}
+}
