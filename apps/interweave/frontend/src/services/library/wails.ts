@@ -141,11 +141,31 @@ class WailsLibraryRuntime implements LibraryRuntime {
   readonly system = {
     chooseFilePaths: async () => {
       // 文件与文件夹统一从这一个面板进入（macOS NSOpenPanel 原生支持混合多选）。
-      // Windows/Linux 对两 flag 组合的实装不一致，面板可能退化为单一模式：
+      // Windows 端因 IFileOpenDialog 优先走目录模式，在 AddDialog 中拆为独立的文件/文件夹入口；
       // 无论返回文件还是目录，页面都经 ExpandImportPaths 统一展开，不依赖面板行为。
       const selected = await Dialogs.OpenFile({
         Title: '选择要导入的文件或文件夹',
         CanChooseFiles: true,
+        CanChooseDirectories: true,
+        AllowsMultipleSelection: true
+      })
+      if (Array.isArray(selected)) return selected
+      return selected ? [selected] : []
+    },
+    chooseFilesOnly: async () => {
+      const selected = await Dialogs.OpenFile({
+        Title: '选择要导入的文件',
+        CanChooseFiles: true,
+        CanChooseDirectories: false,
+        AllowsMultipleSelection: true
+      })
+      if (Array.isArray(selected)) return selected
+      return selected ? [selected] : []
+    },
+    chooseDirectories: async () => {
+      const selected = await Dialogs.OpenFile({
+        Title: '选择要导入的文件夹',
+        CanChooseFiles: false,
         CanChooseDirectories: true,
         AllowsMultipleSelection: true
       })

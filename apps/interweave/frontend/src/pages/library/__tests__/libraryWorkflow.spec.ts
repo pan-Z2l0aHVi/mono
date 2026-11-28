@@ -29,6 +29,8 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
     folders: 0
   }))
   const chooseFilePaths = vi.fn<LibraryWorkflowPorts['chooseFilePaths']>(async () => [])
+  const chooseFilesOnly = vi.fn<LibraryWorkflowPorts['chooseFilesOnly']>(async () => [])
+  const chooseDirectories = vi.fn<LibraryWorkflowPorts['chooseDirectories']>(async () => [])
   const getClipboardFilePaths = vi.fn<LibraryWorkflowPorts['getClipboardFilePaths']>(async () => [])
   const readClipboardText = vi.fn<LibraryWorkflowPorts['readClipboardText']>(async () => '')
   const readClipboardContent = vi.fn<LibraryWorkflowPorts['readClipboardContent']>(async () => ({ text: '' }))
@@ -58,6 +60,8 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
     },
     expandImportEntries,
     chooseFilePaths,
+    chooseFilesOnly,
+    chooseDirectories,
     getClipboardFilePaths,
     readClipboardText,
     readClipboardContent,
@@ -88,6 +92,8 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
     close,
     expandImportEntries,
     chooseFilePaths,
+    chooseFilesOnly,
+    chooseDirectories,
     getClipboardFilePaths,
     readClipboardText,
     readClipboardContent,

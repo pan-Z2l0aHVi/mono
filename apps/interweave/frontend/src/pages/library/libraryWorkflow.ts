@@ -65,6 +65,8 @@ export interface LibraryWorkflowPorts {
   >
   expandImportEntries(entries: string[]): Promise<{ files: string[]; folders: number }>
   chooseFilePaths(): Promise<string[]>
+  chooseFilesOnly(): Promise<string[]>
+  chooseDirectories(): Promise<string[]>
   getClipboardFilePaths(): Promise<string[]>
   readClipboardText(): Promise<string>
   /** 一次读取剪贴板文本与 HTML；HTML 用于提取锚点与相对链接。 */
@@ -106,6 +108,8 @@ export interface LibraryWorkflow {
   requestAddURLs(urls: string[]): void
   enqueueImportEntries(entries: string[]): Promise<void>
   pickFiles(): Promise<void>
+  pickFilesOnly(): Promise<void>
+  pickDirectories(): Promise<void>
   submitQueue(): Promise<void>
   openRestoreDialog(items: LibraryRestoreQueueItem[]): void
   setRestoreOpen(open: boolean): void
@@ -312,15 +316,26 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
     }
   }
 
-  async function pickFiles() {
+  async function pickFrom(chooser: () => Promise<string[]>, fallbackError: string) {
     try {
-      const entries = await ports.chooseFilePaths()
+      const entries = await chooser()
       if (!entries.length || !addOpen.value) return
       await enqueueImportEntries(entries)
     } catch (cause) {
-      ports.reportError(cause, '选择文件失败')
+      ports.reportError(cause, fallbackError)
     }
   }
+
+  function pickFiles() {
+    return pickFrom(() => ports.chooseFilePaths(), '选择文件失败')
+  }
+
+  function pickFilesOnly() {
+    return pickFrom(() => ports.chooseFilesOnly(), '选择文件失败')
+  }
+
+  function pickDirectories() {
+    return pickFrom(() => ports.chooseDirectories(), '选择文件夹失败')
 
   /**
    * URL 项走后端批量纳入：一次 RPC 内并发探测，逐项进度经事件回流。
@@ -450,6 +465,8 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
     requestAddURLs,
     enqueueImportEntries,
     pickFiles,
+    pickFilesOnly,
+    pickDirectories,
     submitQueue,
     openRestoreDialog,
     setRestoreOpen,

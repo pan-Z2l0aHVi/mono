@@ -75,6 +75,8 @@ function mountDialog(
     onRequestFilePaths?: (clipboardText?: string) => void
     onAddUrl?: (urls: string[]) => void
     onPickFiles?: () => void
+    onPickFilesOnly?: () => void
+    onPickDirectories?: () => void
     onClosed?: () => void
   } = {},
   options: {
@@ -191,6 +193,36 @@ describe('AddDialog', () => {
       expect(onPickFiles).toHaveBeenCalledOnce()
     } finally {
       mounted.close()
+    }
+  })
+
+  it('Windows 端上传区通过下拉菜单分别触发选择文件与选择文件夹', async () => {
+    vi.stubGlobal('_wails', { environment: { OS: 'windows', Arch: 'amd64' } })
+    const onPickFiles = vi.fn<() => void>()
+    const onPickFilesOnly = vi.fn<() => void>()
+    const onPickDirectories = vi.fn<() => void>()
+    const mounted = mountDialog([], { onPickFiles, onPickFilesOnly, onPickDirectories })
+    try {
+      const dropdown = mounted.host.querySelector('web-ui-dropdown')
+      expect(dropdown).toBeTruthy()
+      const dropZone = dropdown?.querySelector<HTMLButtonElement>(
+        'button[slot="trigger"][data-file-drop-target="library-add-files"]'
+      )
+      expect(dropZone).toBeTruthy()
+      const items = [...(dropdown?.querySelectorAll<HTMLElement>('web-ui-dropdown-item') ?? [])]
+      const fileItem = items.find(el => el.textContent?.includes('选择文件'))
+      const dirItem = items.find(el => el.textContent?.includes('选择文件夹'))
+      expect(fileItem).toBeTruthy()
+      expect(dirItem).toBeTruthy()
+      fileItem?.click()
+      dirItem?.click()
+      await nextTick()
+      expect(onPickFiles).not.toHaveBeenCalled()
+      expect(onPickFilesOnly).toHaveBeenCalledOnce()
+      expect(onPickDirectories).toHaveBeenCalledOnce()
+    } finally {
+      mounted.close()
+      vi.unstubAllGlobals()
     }
   })
 

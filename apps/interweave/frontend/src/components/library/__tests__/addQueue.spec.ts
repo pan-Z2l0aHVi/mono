@@ -80,6 +80,8 @@ function createRuntime(
     system: {
       chooseDirectory: async () => null,
       chooseFilePaths: async () => [],
+      chooseFilesOnly: async () => [],
+      chooseDirectories: async () => [],
       chooseFilePath: async () => null,
       getClipboardFilePaths: async () => [],
       writeClipboardFilePath: async () => {},

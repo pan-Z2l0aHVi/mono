@@ -170,6 +170,8 @@ const workflow = createLibraryWorkflow({
   addQueue,
   expandImportEntries: entries => runtime.resources.expandImportEntries(entries),
   chooseFilePaths: () => runtime.system.chooseFilePaths(),
+  chooseFilesOnly: () => runtime.system.chooseFilesOnly(),
+  chooseDirectories: () => runtime.system.chooseDirectories(),
   getClipboardFilePaths: () => runtime.system.getClipboardFilePaths(),
   readClipboardText: () => runtime.system.readClipboardText(),
   readClipboardContent: () => runtime.system.readClipboardContent(),
@@ -719,6 +721,8 @@ onMounted(() => {
     :previews="previewEntries"
     :progress="importProgress"
     @pick-files="workflow.pickFiles()"
+    @pick-files-only="workflow.pickFilesOnly()"
+    @pick-directories="workflow.pickDirectories()"
     @add-url="workflow.requestAddURLs($event)"
     @request-file-paths="workflow.pasteFilePaths($event)"
     @remove="addQueue.removeItem"
