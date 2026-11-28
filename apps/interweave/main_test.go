@@ -37,7 +37,29 @@ func TestMainWindowUsesFramelessIntegratedTitleBarOnWindows(t *testing.T) {
 		t.Fatal("expected Windows window to disable native Win32 menu bar")
 	}
 	if !opts.Windows.NonClientRegionSupport {
-		t.Fatal("expected Windows window to enable NonClientRegionSupport for native drag/snap")
+		t.Fatal("expected Windows window to enable NonClientRegionSupport for native drag")
+	}
+}
+
+func TestWindowsSnapLayoutsEnabledByDefault(t *testing.T) {
+	t.Setenv(disableWindowsSnapEnv, "")
+	opts := mainWindowOptionsFor("windows")
+	if !opts.Windows.WebView2CompositionHosting {
+		t.Fatal("expected WebView2CompositionHosting so the custom maximize button can provide Snap Layouts")
+	}
+	if mainWindowOptionsFor("darwin").Windows.WebView2CompositionHosting {
+		t.Fatal("expected non-Windows window to leave WebView2CompositionHosting disabled")
+	}
+}
+
+func TestWindowsSnapLayoutsFallbackSwitch(t *testing.T) {
+	for _, value := range []string{"1", "true", "YES"} {
+		t.Run(value, func(t *testing.T) {
+			t.Setenv(disableWindowsSnapEnv, value)
+			if mainWindowOptionsFor("windows").Windows.WebView2CompositionHosting {
+				t.Fatalf("expected %s=%q to disable composition hosting", disableWindowsSnapEnv, value)
+			}
+		})
 	}
 }
 
