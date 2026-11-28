@@ -56,7 +56,9 @@ func mainWindowOptions() application.WebviewWindowOptions {
 //
 // Snap Layouts（悬停最大化键弹出的分屏面板）要求自定义按钮区域能返回「最大化」的非客户区命中码，而 Wails
 // v3.1.0 只在 WebView2 composition hosting 就绪时才路由非客户区输入，因此这里一并开启它。
-// composition hosting 仍是上游实验特性，用环境变量 INTERWEAVE_DISABLE_WINDOWS_SNAP 可整体回退。
+// composition hosting 仍是上游实验特性，用环境变量 INTERWEAVE_DISABLE_WINDOWS_SNAP 可关闭这条路由：
+// 前端保留 `--wails-non-client-region: maximize` 标记，但该标记只被 composition 路由消费，
+// 关闭后标记留在 DOM 里不再产生命中效果（Wails 的 routeNonClientInput 是唯一消费入口）。
 func mainWindowOptionsFor(goos string) application.WebviewWindowOptions {
 	isWindows := goos == "windows"
 	return application.WebviewWindowOptions{

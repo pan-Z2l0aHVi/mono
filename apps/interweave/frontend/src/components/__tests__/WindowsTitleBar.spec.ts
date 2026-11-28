@@ -160,7 +160,7 @@ describe('WindowsTitleBar', () => {
     expect(formatWindowsAccelerator('backspace')).toBe('Backspace')
   })
 
-  it('只有最大化键声明 non-client region，拖动底保持 JS 拖动契约', async () => {
+  it('只有最大化键声明 non-client region，拖动底不声明', async () => {
     const stub = createStubRuntime()
     const host = document.createElement('div')
     document.body.append(host)
@@ -185,8 +185,11 @@ describe('WindowsTitleBar', () => {
         '--wails-non-client-region'
       )
 
-      // 拖动底继续走 --wails-draggable；再标 caption 会让同一次按下进入两条拖动路径。
-      expect(declaredRegion(host.querySelector('[data-window-drag]')!)).not.toContain('--wails-non-client-region')
+      // 拖动底继续走 JS 拖动契约：保留 data-window-drag 钩子，且不叠 caption 命中
+      // （否则同一次按下会同时进入原生移动循环与 JS 拖动）。
+      const dragBase = host.querySelector('[data-window-drag]')!
+      expect(dragBase.hasAttribute('data-window-drag')).toBe(true)
+      expect(declaredRegion(dragBase)).not.toContain('--wails-non-client-region')
     } finally {
       app.unmount()
       host.remove()

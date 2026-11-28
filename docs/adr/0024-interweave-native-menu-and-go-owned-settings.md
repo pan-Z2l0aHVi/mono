@@ -8,7 +8,7 @@
 - **修订（2026-11-20 第四轮）**: 正文「`interweave/` 子目录」仅指 production 构建；development 构建的数据目录是 `interweave-dev/`（由 Go `production` build tag 决定，`library.db`、缩略图与 `settings.json` 同构）。配套：macOS `interweave.dev.app` 的构建产物 `CFBundleIdentifier` 改写为 `com.greypan.interweave.dev`，Windows `WebviewUserDataPath` 显式指向数据目录下的 `webview/`，使 dev 与正式版的本地持久化完全隔离。
 - **修订（2026-11-24 第五轮）**: Windows 端因 Win32 原生标题栏与原生 `HMENU` 无法合并同行，改为启用 `Frameless: true` + `Windows.NonClientRegionSupport: true` 并关闭 `UseApplicationMenu`，由前端 `WindowsTitleBar` 渲染一体化顶栏（左侧平铺菜单、移动端断点收进汉堡按钮、中间拖动区、右侧 Fluent 窗口三键）；macOS 与 Linux 保持原生菜单不变。菜单形状、快捷键与禁用态仍全部由 Go 侧 `backend/native/menu` 拥有，`backend/menu` 扩展 `GetMenu` / `InvokeMenuItem` 与 `menu:tree-changed` 事件供 Windows 顶栏消费。
 - **修订（2026-11-28 第六轮）**: 明确区分「Go 拥有的应用设置（`settings.json`）」与「纯前端视图布局记忆」：Go 侧不消费的纯前端布局状态（侧边栏桌面折叠态、侧边栏宽度、资源库筛选排序面板展开态）由前端独立 Pinia store `useLayoutStore` 经 `@greypan/browser-kit/storage`（`localStorage`，命名空间 `interweave:layout`）同步持久化，保持 dev/prod 隔离与首帧零闪烁，避免前端布局常数耦合进 Go Service 与 bindings。
-- **修订（2026-11-28 第七轮）**: Windows 在保留 Frameless 自绘顶栏的前提下启用 `Windows.WebView2CompositionHosting`，仅为最大化键声明 `--wails-non-client-region: maximize`，以获得 Win11 悬停最大化键的 Snap Layouts 面板；菜单渲染与拖动契约不变。composition hosting 仍是上游实验特性，`INTERWEAVE_DISABLE_WINDOWS_SNAP=1`（或 `true` / `yes`）可整层回退到普通 frameless 窗口。
+- **修订（2026-11-28 第七轮）**: Windows 在保留 Frameless 自绘顶栏的前提下启用 `Windows.WebView2CompositionHosting`，仅为最大化键声明 `--wails-non-client-region: maximize`，以获得 Win11 悬停最大化键的 Snap Layouts 面板；菜单渲染与拖动契约不变。composition hosting 仍是上游实验特性，`INTERWEAVE_DISABLE_WINDOWS_SNAP=1`（或 `true` / `yes`）可关闭这条非客户区路由；前端仍保留 `maximize` 标记，但该标记只被 composition 路由消费，关闭后不再产生命中效果。
 
 ## 背景
 
@@ -64,7 +64,7 @@ Win11 的悬停分屏面板由 DWM 在收到 `WM_NCHITTEST → HTMAXBUTTON` 时�
 - 前端只给最大化键声明 `--wails-non-client-region: maximize`；最小化与关闭没有 hover 面板，继续走普通 client 命中。
 - 窗口拖动继续由 `--wails-draggable` 发起（Wails 在 mousedown 后 `PostMessage(WM_NCLBUTTONDOWN, HTCAPTION)`），拖动底**不**标 `caption`：再叠一层原生 caption 命中会让同一次按下同时进入原生移动循环与 JS 拖动。
 - 非客户区按钮点击由 Wails 转回 WebView，`@click="toggleMaximise"` 仍是唯一 toggle 入口；双击最大化键等价于两次 toggle，与原生「双击标题栏」的终态一致。
-- 上游 v3.1.0 的 composition hosting 仍标注为实验特性，且存在已知问题（原生文件拖放失效的上游 PR #6566 尚未合并）。Interweave 开着 `EnableFileDrop`，因此必须真机验证；真机确认回归时用 `INTERWEAVE_DISABLE_WINDOWS_SNAP` 关闭整层能力，而不是在生产里带着坏的文件拖放。
+- 上游 v3.1.0 的 composition hosting 仍标注为实验特性，且存在已知问题（原生文件拖放失效的上游 PR #6566 尚未合并）。Interweave 开着 `EnableFileDrop`，因此必须真机验证；真机确认回归时用 `INTERWEAVE_DISABLE_WINDOWS_SNAP` 关闭非客户区路由（前端标记保留但不再生效），而不是在生产里带着坏的文件拖放。
 
 ## 后果
 
