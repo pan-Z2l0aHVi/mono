@@ -32,6 +32,7 @@ const props = defineProps<{
   dwellMs?: number
 }>()
 
+const rootRef = ref<HTMLElement | null>(null)
 const imageRef = ref<HTMLImageElement | null>(null)
 const thumbnailURL = ref('')
 const faviconReady = ref(false)
@@ -59,16 +60,18 @@ let detachScopeAbort: (() => void) | null = null
 const canRenderMedia = computed(() => {
   if (!displayMediaUrl.value) return false
   if (props.source?.type === 'url') {
-    // 直链图片 URL：展示层 kind 归 image，缩略图直接渲染原始链接（系统代理由 WebView 负责）。
+    // 直链图片/视频 URL：展示层分别归为 image / video，缩略图直接尝试读取原始链接。
     // 探测失败也尝试：available 只反映上次抓取，不代表链接此刻不可达；加载失败走 error 回退。
-    return props.kind === 'image'
+    return props.kind === 'image' || props.kind === 'video'
   }
   return props.source?.type === 'file' && props.source.available && (props.kind === 'image' || props.kind === 'video')
 })
 // URL 图片的 mediaUrl prop 为空（后端 media_url 只服务 file 来源），兜底用原始链接。
 const displayMediaUrl = computed(() => {
   if (props.mediaUrl) return props.mediaUrl
-  return props.source?.type === 'url' && props.kind === 'image' && props.source.location ? props.source.location : null
+  return props.source?.type === 'url' && (props.kind === 'image' || props.kind === 'video') && props.source.location
+    ? props.source.location
+    : null
 })
 // 失效来源仍可读取已有缩略图缓存；原文件只能在来源可用时读取。
 // 若已有本地捕获/在途上传的 thumbnailURL，优先展示本地 Blob，避免重复请求服务端缩略图。
@@ -124,6 +127,17 @@ function cancelPendingCapture() {
   }
 }
 
+function computeViewportPriority(): number {
+  if (typeof window === 'undefined' || !rootRef.value) return 0
+  const rect = rootRef.value.getBoundingClientRect()
+  if (rect.width === 0 && rect.height === 0 && rect.top === 0 && rect.bottom === 0) return 0
+  const vh = window.innerHeight || 0
+  if (vh > 0 && rect.bottom > 0 && rect.top < vh) {
+    return Math.max(0, rect.top)
+  }
+  return 1_000_000 + (rect.top >= vh ? rect.top - vh : Math.abs(rect.bottom))
+}
+
 function lookupCachedVideoBlob(): Blob | null {
   if (props.kind !== 'video') return null
   return (
@@ -163,7 +177,8 @@ function startVideoCapture(version: number) {
       location,
       mediaUrl,
       pendingToken: props.pendingToken,
-      signal: controller.signal
+      signal: controller.signal,
+      getPriority: computeViewportPriority
     })
     .then(blob => {
       if (unmounted || version !== mediaVersion || controller.signal.aborted) return
@@ -335,7 +350,7 @@ function maybeSaveThumbnail(payload: ThumbnailPayload) {
 </script>
 
 <template>
-  <div class="relative size-10 shrink-0 rounded-[10px]">
+  <div ref="rootRef" class="relative size-10 shrink-0 rounded-[10px]">
     <div
       class="grid size-full place-items-center overflow-hidden rounded-[inherit]"
       :class="[resourceKindClass(kind), unavailable && !detail ? 'opacity-60' : '']"

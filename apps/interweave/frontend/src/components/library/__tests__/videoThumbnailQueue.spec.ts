@@ -137,30 +137,41 @@ describe('videoThumbnailCoordinator', () => {
     vi.useRealTimers()
   })
 
-  it('严格维持全局并发 = 1 与 LIFO 栈调度顺序', async () => {
+  it('严格维持全局并发 = 1，优先解码当前视口顶部项，同优先级按 FIFO 从上到下', async () => {
     const mock = createMockVideo()
     const coordinator = createVideoThumbnailCoordinator({
       createVideo: () => mock.video,
       createCanvas: createMockCanvasFactory([WHITE])
     })
 
-    const p1 = coordinator.capture({ key: 's1', location: '/a.mp4', mediaUrl: '/media/s1' })
-    const p2 = coordinator.capture({ key: 's2', location: '/b.mp4', mediaUrl: '/media/s2' })
-    const p3 = coordinator.capture({ key: 's3', location: '/c.mp4', mediaUrl: '/media/s3' })
+    // s1 立即占用唯一通道；随后入队视口外底部项 s2、视口中下部 s3、视口顶部 s4。
+    const p1 = coordinator.capture({ key: 's1', location: '/a.mp4', mediaUrl: '/media/s1', getPriority: () => 0 })
+    const p2 = coordinator.capture({
+      key: 's2',
+      location: '/b.mp4',
+      mediaUrl: '/media/s2',
+      getPriority: () => 1_000_200
+    })
+    const p3 = coordinator.capture({ key: 's3', location: '/c.mp4', mediaUrl: '/media/s3', getPriority: () => 300 })
+    const p4 = coordinator.capture({ key: 's4', location: '/d.mp4', mediaUrl: '/media/s4', getPriority: () => 64 })
 
-    // 同一时刻仅 s1 在解码。
     expect(mock.srcs).toEqual(['/media/s1'])
 
-    // 完成 s1 → 队列按 LIFO 先跑 s3，最后跑 s2。
+    // 完成 s1 → 优先跑视口最顶部的 s4，再跑视口内的 s3，最后跑视口外 buffer 的 s2。
     mock.dispatch('loadedmetadata')
     mock.dispatch('seeked')
     expect(await p1).toBeInstanceOf(Blob)
-    expect(mock.srcs).toEqual(['/media/s1', '/media/s3'])
+    expect(mock.srcs).toEqual(['/media/s1', '/media/s4'])
+
+    mock.dispatch('loadedmetadata')
+    mock.dispatch('seeked')
+    expect(await p4).toBeInstanceOf(Blob)
+    expect(mock.srcs).toEqual(['/media/s1', '/media/s4', '/media/s3'])
 
     mock.dispatch('loadedmetadata')
     mock.dispatch('seeked')
     expect(await p3).toBeInstanceOf(Blob)
-    expect(mock.srcs).toEqual(['/media/s1', '/media/s3', '/media/s2'])
+    expect(mock.srcs).toEqual(['/media/s1', '/media/s4', '/media/s3', '/media/s2'])
 
     mock.dispatch('loadedmetadata')
     mock.dispatch('seeked')

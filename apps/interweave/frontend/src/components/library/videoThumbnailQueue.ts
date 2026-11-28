@@ -22,6 +22,8 @@ export interface VideoCaptureRequest {
   pendingToken?: string | null
   /** 订阅者取消信号（行卸载、弹窗关闭或开始提交）。 */
   signal?: AbortSignal | null
+  /** 动态优先级回调（值越小越优先，例如当前视口顶部坐标）；缺省按 FIFO 顺序。 */
+  getPriority?: () => number
 }
 
 export interface VideoThumbnailCoordinatorOptions {
@@ -41,12 +43,14 @@ export interface VideoThumbnailCoordinatorOptions {
 interface CaptureSubscriber {
   resolve: (blob: Blob | null) => void
   signal: AbortSignal | null
+  getPriority: (() => number) | null
   cleanup: () => void
 }
 
 interface CaptureTask {
   versionKey: string
   mediaUrl: string
+  seq: number
   pendingTokens: Set<string>
   subscribers: Set<CaptureSubscriber>
 }
@@ -113,9 +117,10 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
   let sampleCanvasEl: HTMLCanvasElement | null = null
   let outputCanvasEl: HTMLCanvasElement | null = null
 
-  // LIFO 待解码队列（栈顶在数组尾部），同一 versionKey 合并订阅者。
-  const pendingStack: CaptureTask[] = []
+  // 视口顶部优先 + FIFO 待解码队列，同一 versionKey 合并订阅者。
+  const pendingQueue: CaptureTask[] = []
   const tasksByKey = new Map<string, CaptureTask>()
+  let nextSeq = 0
   let activeTask: CaptureTask | null = null
   let activeRunId = 0
   let abortActiveDecode: (() => void) | null = null
@@ -327,9 +332,21 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
   }
 
   function removeQueuedTask(task: CaptureTask) {
-    const idx = pendingStack.indexOf(task)
-    if (idx >= 0) pendingStack.splice(idx, 1)
+    const idx = pendingQueue.indexOf(task)
+    if (idx >= 0) pendingQueue.splice(idx, 1)
     tasksByKey.delete(task.versionKey)
+  }
+
+  function taskPriority(task: CaptureTask): number {
+    let best = Number.POSITIVE_INFINITY
+    let hasCustom = false
+    for (const sub of task.subscribers) {
+      if (!sub.getPriority) continue
+      hasCustom = true
+      const value = sub.getPriority()
+      if (Number.isFinite(value) && value < best) best = value
+    }
+    return hasCustom && Number.isFinite(best) ? best : 0
   }
 
   function detachSubscriber(task: CaptureTask, sub: CaptureSubscriber) {
@@ -347,12 +364,30 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
 
   function pumpDecode() {
     if (activeTask) return
-    while (pendingStack.length > 0) {
-      const next = pendingStack.pop()!
-      if (next.subscribers.size === 0) {
-        tasksByKey.delete(next.versionKey)
-        continue
+    while (pendingQueue.length > 0) {
+      let bestIdx = -1
+      let bestPriority = Number.POSITIVE_INFINITY
+      let bestSeq = Number.POSITIVE_INFINITY
+      for (let i = pendingQueue.length - 1; i >= 0; i--) {
+        const candidate = pendingQueue[i]!
+        if (candidate.subscribers.size === 0) {
+          pendingQueue.splice(i, 1)
+          tasksByKey.delete(candidate.versionKey)
+          continue
+        }
       }
+      if (pendingQueue.length === 0) return
+      for (let i = 0; i < pendingQueue.length; i++) {
+        const candidate = pendingQueue[i]!
+        const priority = taskPriority(candidate)
+        if (priority < bestPriority || (priority === bestPriority && candidate.seq < bestSeq)) {
+          bestPriority = priority
+          bestSeq = candidate.seq
+          bestIdx = i
+        }
+      }
+      if (bestIdx < 0) return
+      const next = pendingQueue.splice(bestIdx, 1)[0]!
       activeTask = next
       void runDecodeTask(next)
       return
@@ -600,18 +635,12 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
         task = {
           versionKey,
           mediaUrl: request.mediaUrl,
+          seq: nextSeq++,
           pendingTokens: new Set(),
           subscribers: new Set()
         }
         tasksByKey.set(versionKey, task)
-        pendingStack.push(task)
-      } else if (activeTask !== task) {
-        // 仍在待解码队列中：提升到 LIFO 栈顶优先处理。
-        const idx = pendingStack.indexOf(task)
-        if (idx >= 0) {
-          pendingStack.splice(idx, 1)
-          pendingStack.push(task)
-        }
+        pendingQueue.push(task)
       }
 
       if (request.pendingToken) {
@@ -622,6 +651,7 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
       const sub: CaptureSubscriber = {
         resolve,
         signal,
+        getPriority: request.getPriority ?? null,
         cleanup: () => {}
       }
       if (signal) {
@@ -638,9 +668,10 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
     abortActiveDecode?.()
     activeRunId++
     activeTask = null
-    for (const task of pendingStack.splice(0)) {
+    for (const task of pendingQueue.splice(0)) {
       finishTask(task, null)
     }
+    nextSeq = 0
     tasksByKey.clear()
     negativeCache.clear()
     cooldownMap.clear()
