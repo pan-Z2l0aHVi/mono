@@ -99,6 +99,16 @@ describe('全局等宽数字字体（mono-digits）', () => {
     expect(splitNumericSegments('')).toEqual([])
     expect(splitNumericSegments('确认导入')).toEqual([{ text: '确认导入', numeric: false }])
     expect(splitNumericSegments('3 / 20')).toEqual([{ text: '3 / 20', numeric: true }])
+    expect(splitNumericSegments('今天下午 3:31')).toEqual([
+      { text: '今天下午 ', numeric: false },
+      { text: '3:31', numeric: true }
+    ])
+    expect(splitNumericSegments('Today at 3:31 PM')).toEqual([
+      { text: 'Today at ', numeric: false },
+      { text: '3:31', numeric: true },
+      { text: ' PM', numeric: false }
+    ])
+    expect(splitNumericSegments('2026-01-15')).toEqual([{ text: '2026-01-15', numeric: true }])
     expect(splitNumericSegments('已检查 1,234.5 项')).toEqual([
       { text: '已检查 ', numeric: false },
       { text: '1,234.5', numeric: true },
@@ -115,10 +125,12 @@ describe('全局等宽数字字体（mono-digits）', () => {
     ])
   })
 
-  it('ResourceRow：文件大小、时间与来源计数使用等宽数字', async () => {
+  it('ResourceRow：文件大小、时间数字片段与来源计数使用等宽数字，非数字文本保持系统字体', async () => {
+    vi.useFakeTimers()
+    vi.setSystemTime(new Date(2026, 0, 15, 16, 0))
     const host = mountComponent(() =>
       h(ResourceRow, {
-        resource: makeResource(),
+        resource: makeResource({ createdAt: new Date(2026, 0, 15, 15, 31).getTime() }),
         index: 0,
         total: 1,
         mediaUrl: null,
@@ -133,7 +145,10 @@ describe('全局等宽数字字体（mono-digits）', () => {
       })
     )
     await nextTick()
-    expect(monoDigitTexts(host)).toEqual(expect.arrayContaining(['2 MB', '2']))
+    const timeEl = host.querySelector('time')
+    expect(timeEl?.textContent).toBe('今天下午 3:31')
+    expect(timeEl?.classList.contains('font-mono')).toBe(false)
+    expect(monoDigitTexts(host)).toEqual(expect.arrayContaining(['2 MB', '3:31', '2']))
   })
 
   it('DetailDrawer：按行校验大小、创建于与最后修改于使用等宽数字，非数值字段不带等宽类', async () => {
@@ -157,17 +172,20 @@ describe('全局等宽数字字体（mono-digits）', () => {
     const valueOf = (label: string) =>
       rows.find(row => row.querySelector('span')?.textContent?.trim() === label)?.querySelector('small') ?? null
 
-    const expectedRows: Array<[string, string]> = [
-      ['大小', '2 MB'],
+    const sizeValue = valueOf('大小')
+    expect(sizeValue?.classList.contains('font-mono')).toBe(true)
+    expect(sizeValue?.classList.contains('tabular-nums')).toBe(true)
+    expect(sizeValue?.textContent?.trim()).toBe('2 MB')
+
+    for (const [label, expectedText] of [
       ['创建于', '2026-01-15'],
       ['最后修改于', '2026-02-20']
-    ]
-    for (const [label, expectedText] of expectedRows) {
+    ] as const) {
       const value = valueOf(label)
       expect(value, `${label} 应渲染数值节点`).not.toBeNull()
-      expect(value!.classList.contains('font-mono'), `${label} 应带 font-mono`).toBe(true)
-      expect(value!.classList.contains('tabular-nums'), `${label} 应带 tabular-nums`).toBe(true)
+      expect(value!.classList.contains('font-mono'), `${label} 外层容器不带 font-mono`).toBe(false)
       expect(value!.textContent?.trim()).toBe(expectedText)
+      expect(monoDigitTexts(value!)).toEqual([expectedText])
     }
     expect(valueOf('类型')?.classList.contains('font-mono')).toBe(false)
   })
@@ -304,9 +322,7 @@ describe('全局等宽数字字体（mono-digits）', () => {
       const candidateMono = [...choice.querySelectorAll<HTMLElement>('.font-mono.tabular-nums')]
       expect(candidateMono.length).toBeGreaterThanOrEqual(2)
       expect(candidateMono[0]?.textContent?.trim()).toBe('1 MB')
-      const modifiedText = candidateMono[1]?.textContent?.trim() ?? ''
-      expect(modifiedText).toMatch(/2026[/.-]0?1[/.-]15|0?1[/.-]15[/.-]2026/)
-      expect(modifiedText).toMatch(/(^|\D)0?9:30(:00)?(?:\s*AM)?$/)
+      expect(candidateMono[1]?.textContent?.trim()).toBe('2026-01-15')
     } finally {
       notification.mockRestore()
     }

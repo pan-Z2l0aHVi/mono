@@ -13,7 +13,7 @@ import { onBeforeUnmount, watch } from 'vue'
 import { useLingering } from '@/composables/useLingering'
 
 import { doubleArrowRight } from './icons'
-import { formatSize } from './presentation'
+import { formatDate, formatSize, monoDigitsClass, splitNumericSegments } from './presentation'
 import type { PreviewLease } from './previewLease'
 import { resourceDialogColumnClass, resourceDialogQueueClass } from './resourceDialogStyles'
 import ResourceLinkDialog from './ResourceLinkDialog.vue'
@@ -342,8 +342,15 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
             <span class="block wrap-anywhere text-xs text-(--wui-color-text-secondary)">{{ candidate.path }}</span>
             <span class="block text-xs text-(--wui-color-text-secondary)"
               ><span class="font-mono tabular-nums">{{ formatSize(candidate.size) }}</span> ·
-              <span class="font-mono tabular-nums">{{ new Date(candidate.modifiedAt).toLocaleString() }}</span> ·
-              {{ candidate.matchReasons.map(formatMatchReason).join('、') }}</span
+              <span
+                ><template
+                  v-for="(segment, segIndex) in splitNumericSegments(formatDate(candidate.modifiedAt))"
+                  :key="segIndex"
+                  ><span v-if="segment.numeric" :class="monoDigitsClass">{{ segment.text }}</span
+                  ><template v-else>{{ segment.text }}</template></template
+                ></span
+              >
+              · {{ candidate.matchReasons.map(formatMatchReason).join('、') }}</span
             >
           </span>
           <web-ui-icon :icon="lucideChevronRight" :size="16" class="shrink-0 text-(--wui-color-text-secondary)" />

@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WebUiDrawer, WebUiEvent } from '@greypan/web-ui'
-import { lucideArrowRight, lucideExternalLink } from '@greypan/web-ui/icons'
+import { lucideArrowRight, lucideExternalLink, lucideInfo } from '@greypan/web-ui/icons'
 import { computed, onBeforeUnmount } from 'vue'
 
 import ConvergeButton from '@/components/ConvergeButton.vue'
@@ -68,6 +68,7 @@ function handleVideoMetadata(mediaKey: string, event: Event) {
     :placement="placement"
     aria-dialog-label="资源预览"
     draggable
+    :drag-handle-only="!mobile"
     fullable
     controlled
     class="mobile:[--wui-drawer-height:80vh] mobile:[--wui-drawer-inset:0px] mobile:[--wui-drawer-radius:28px_28px_0_0] [--wui-drawer-width:max(60vw,320px)] [--wui-drawer-content-padding:0px] [--wui-empty-padding:0px] [--wui-drawer-drag-zone-size:32px]"
@@ -252,15 +253,17 @@ function handleVideoMetadata(mediaKey: string, event: Event) {
           <web-ui-icon slot="icon" :icon="resourceIcon(resource.kind)" :size="40" />
         </web-ui-empty>
         <template v-else>
-          <p
+          <div
             v-if="state.notice"
-            class="m-0 border-b border-black/6 text-xs text-(--wui-color-text-secondary) dark:border-white/8"
+            role="status"
+            class="mx-4 mt-4 flex items-center gap-2 rounded-xl border border-black/6 bg-[#1b1b20]/[0.035] px-3.5 py-2.5 text-xs leading-5 text-(--wui-color-text-secondary) dark:border-white/8 dark:bg-white/[0.06]"
           >
-            {{ state.notice }}
-          </p>
+            <web-ui-icon :icon="lucideInfo" :size="15" class="shrink-0 text-(--wui-color-text-tertiary)" />
+            <span class="min-w-0">{{ state.notice }}</span>
+          </div>
           <pre
             v-if="state.kind === 'text'"
-            class="m-0 font-mono text-xs leading-5 whitespace-pre-wrap wrap-break-word"
+            class="m-0 p-4 font-mono text-xs leading-5 whitespace-pre-wrap wrap-break-word"
             >{{ state.text }}</pre>
           <PreviewMarkdown
             v-else-if="state.kind === 'markdown'"

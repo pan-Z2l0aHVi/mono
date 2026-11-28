@@ -8,6 +8,8 @@ import {
   fileExtension,
   formatSize,
   formatDate,
+  monoDigitsClass,
+  splitNumericSegments,
   timestampMilliseconds,
   primarySource,
   sourceTypeIcon,
@@ -210,10 +212,11 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
           <span class="font-mono tabular-nums">{{ size }}</span>
         </template>
         <span aria-hidden="true" class="text-[#d8d8de] dark:text-(--wui-color-text-tertiary)">·</span>
-        <time
-          class="font-mono tabular-nums"
-          :datetime="new Date(timestampMilliseconds(resource.createdAt)).toISOString()"
-          >{{ formatDate(resource.createdAt) }}</time
+        <time :datetime="new Date(timestampMilliseconds(resource.createdAt)).toISOString()"
+          ><template v-for="(segment, segIndex) in splitNumericSegments(formatDate(resource.createdAt))" :key="segIndex"
+            ><span v-if="segment.numeric" :class="monoDigitsClass">{{ segment.text }}</span
+            ><template v-else>{{ segment.text }}</template></template
+          ></time
         >
         <span
           v-if="resource.sources.length > 1"

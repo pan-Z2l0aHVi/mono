@@ -25,8 +25,10 @@ import {
   fileManagerLabel,
   formatSize,
   formatDate,
+  monoDigitsClass,
   resourceKindLabel,
-  sourceTypeDisplayLabel
+  sourceTypeDisplayLabel,
+  splitNumericSegments
 } from './presentation'
 import { DRAWER_TITLE_EDITOR_KEY, type NameEditorRef } from './rename'
 import ResourceTag from './ResourceTag.vue'
@@ -335,15 +337,25 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
           </div>
           <div class="detail-row relative box-border flex min-h-9 items-center gap-2.5 px-[15px] py-[7px] text-xs">
             <span class="flex-1 text-sm">创建于</span
-            ><small class="text-right font-mono tabular-nums text-[#8a8a94] [font-size:inherit]">{{
-              formatDate(renderedResource.createdAt)
-            }}</small>
+            ><small class="text-right text-[#8a8a94] [font-size:inherit]"
+              ><template
+                v-for="(segment, segIndex) in splitNumericSegments(formatDate(renderedResource.createdAt))"
+                :key="segIndex"
+                ><span v-if="segment.numeric" :class="monoDigitsClass">{{ segment.text }}</span
+                ><template v-else>{{ segment.text }}</template></template
+              ></small
+            >
           </div>
           <div class="detail-row relative box-border flex min-h-9 items-center gap-2.5 px-[15px] py-[7px] text-xs">
             <span class="flex-1 text-sm">最后修改于</span
-            ><small class="text-right font-mono tabular-nums text-[#8a8a94] [font-size:inherit]">{{
-              formatDate(renderedResource.updatedAt)
-            }}</small>
+            ><small class="text-right text-[#8a8a94] [font-size:inherit]"
+              ><template
+                v-for="(segment, segIndex) in splitNumericSegments(formatDate(renderedResource.updatedAt))"
+                :key="segIndex"
+                ><span v-if="segment.numeric" :class="monoDigitsClass">{{ segment.text }}</span
+                ><template v-else>{{ segment.text }}</template></template
+              ></small
+            >
           </div>
         </div>
         <p class="detail-caption mx-3.5 mt-4 mb-1.5 text-xs text-[#777780]">标签</p>
