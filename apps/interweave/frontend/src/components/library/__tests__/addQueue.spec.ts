@@ -230,6 +230,24 @@ describe('library add queue pending previews', () => {
     expect(findLocationMatches).not.toHaveBeenCalled()
   })
 
+  it('JSON 等代码文件无媒体 token 时仍同步后端权威 resourceKind 为 json', async () => {
+    const queue = createQueue(
+      createRuntime({
+        prepareFilePreview: async () => ({ kind: ResourceKind.ResourceKindJSON, token: '', media_url: '' })
+      })
+    )
+
+    await queue.enqueueFileLocations(['/tmp/schema.json'])
+    const item = queue.queue.value[0]!
+    await queue.waitForPreview(item.id)
+
+    expect(queue.queue.value[0]).toMatchObject({
+      resourceKind: ResourceKind.ResourceKindJSON,
+      previewToken: null,
+      mediaUrl: null
+    })
+  })
+
   it('后端驱逐旧 token 时 lease 条目消失，渲染回落而非把 404 当成文件丢失', async () => {
     let emitRevoked: ((tokens: string[]) => void) | null = null
     const runtime = createRuntime({

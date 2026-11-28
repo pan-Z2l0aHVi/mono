@@ -9,7 +9,7 @@ type LeaseRuntime = Pick<LibraryRuntime, 'isAvailable' | 'resources' | 'events'>
 /** 一次 pending 预览授权：token 由后端签发，mediaUrl 是可直接渲染的临时地址。 */
 export interface PreviewLeaseEntry {
   kind: ResourceKind
-  token: string
+  token: string | null
   mediaUrl: string | null
   path: string
 }
@@ -81,16 +81,21 @@ export function createPreviewLease(runtime: LeaseRuntime): PreviewLease {
     const preparation = (async () => {
       try {
         const preview = await runtime.resources.prepareFilePreview(path)
-        const token = preview.token ?? null
+        const token = preview.token || null
         if (token && revokedTokens.delete(token)) {
           // 授权在响应到达前就被 LRU 驱逐：后端已删除它，不入账也不再释放。
           return null
         }
-        if (!token || startedAt !== generation || versions.get(key) !== version || !validity()) {
+        if (startedAt !== generation || versions.get(key) !== version || !validity()) {
           await releaseToken(token)
           return null
         }
-        const entry: PreviewLeaseEntry = { kind: preview.kind, token, mediaUrl: preview.media_url ?? null, path }
+        // 非图片/视频文件（如 JSON/代码、文档、音频）后端不签发短期媒体 token，
+        // 但仍返回权威 kind，供导入与找回列表展示与资源库一致的类型图标。
+        if (!token && !preview.kind) {
+          return null
+        }
+        const entry: PreviewLeaseEntry = { kind: preview.kind, token, mediaUrl: preview.media_url || null, path }
         const previous = entries.value[key]
         entries.value = { ...entries.value, [key]: entry }
         if (previous) await releaseToken(previous.token)
@@ -137,7 +142,7 @@ export function createPreviewLease(runtime: LeaseRuntime): PreviewLease {
     const revoked = new Set(tokens)
     const landed = new Set<string>()
     for (const [key, entry] of Object.entries(entries.value)) {
-      if (!entry || !revoked.has(entry.token)) continue
+      if (!entry?.token || !revoked.has(entry.token)) continue
       landed.add(entry.token)
       // 后端已删除授权，无需再调用 release；只让渲染方看到预览消失。
       bump(key)

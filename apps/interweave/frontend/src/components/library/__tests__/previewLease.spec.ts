@@ -160,4 +160,25 @@ describe('preview lease', () => {
     expect(settled).toBe(true)
     await pending
   })
+
+  it('无媒体 token 的 JSON/代码文件仍记录权威 kind，且撤销时不调用 releaseFilePreview', async () => {
+    const releaseFilePreview = vi.fn<ReleasePreview>(async () => {})
+    const { lease } = createLease(
+      async () => ({ kind: ResourceKind.ResourceKindJSON, token: '', media_url: '' }),
+      releaseFilePreview
+    )
+
+    const entry = await lease.prepare('row', '/tmp/config.json', () => true)
+    expect(entry).toEqual({
+      kind: ResourceKind.ResourceKindJSON,
+      token: null,
+      mediaUrl: null,
+      path: '/tmp/config.json'
+    })
+    expect(lease.entries.value.row).toEqual(entry)
+
+    await lease.revoke('row')
+    expect(lease.entries.value.row).toBeUndefined()
+    expect(releaseFilePreview).not.toHaveBeenCalled()
+  })
 })
