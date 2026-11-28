@@ -12,7 +12,8 @@ package service
 #import <CFNetwork/CFProxySupport.h>
 #include <stdlib.h>
 
-// 按请求 URL 解析 macOS 系统代理，返回 "scheme|host[:port]" 或 NULL（显式直连 / 无代理）。
+// 按请求 URL 查询 macOS 系统代理，返回原始代理类型与地址 "<proxyType>|host[:port]" 或 NULL（显式直连 / 无代理）。
+// proxyType 到 Go http.Transport scheme 的协议映射由 proxy_shared.go 的 resolveDarwinProxy 统一完成并受单测保护。
 static char *copy_system_proxy_for_url(const char *urlString) {
 	@autoreleasepool {
 		NSString *string = [NSString stringWithUTF8String:urlString];
@@ -29,17 +30,17 @@ static char *copy_system_proxy_for_url(const char *urlString) {
 			NSString *type = proxy[(NSString *)kCFProxyTypeKey];
 			NSString *host = proxy[(NSString *)kCFProxyHostNameKey];
 			NSNumber *port = proxy[(NSString *)kCFProxyPortNumberKey];
-			NSString *scheme = nil;
+			NSString *proxyType = nil;
 			if ([type isEqualToString:(NSString *)kCFProxyTypeNone]) {
 				// 绕过列表命中：这一条 URL 显式直连。
 				return NULL;
 			}
 			if ([type isEqualToString:(NSString *)kCFProxyTypeHTTPS]) {
-				scheme = @"https";
+				proxyType = @"https";
 			} else if ([type isEqualToString:(NSString *)kCFProxyTypeHTTP]) {
-				scheme = @"http";
+				proxyType = @"http";
 			} else if ([type isEqualToString:(NSString *)kCFProxyTypeSOCKS]) {
-				scheme = @"socks5";
+				proxyType = @"socks5";
 			} else {
 				// PAC（kCFProxyTypeAutoConfigURL）不计算：跳过，交给环境变量回落。
 				continue;
@@ -48,8 +49,8 @@ static char *copy_system_proxy_for_url(const char *urlString) {
 				continue;
 			}
 			NSString *result = port == nil
-				? [NSString stringWithFormat:@"%@|%@", scheme, host]
-				: [NSString stringWithFormat:@"%@|%@:%@", scheme, host, port];
+				? [NSString stringWithFormat:@"%@|%@", proxyType, host]
+				: [NSString stringWithFormat:@"%@|%@:%@", proxyType, host, port];
 			return strdup(result.UTF8String);
 		}
 		return NULL;
