@@ -402,18 +402,25 @@ function classifyContractChange(name, previous = {}, current = {}) {
     addedExports,
     changedExports,
     changedFields,
-    semverReview: {
-      breakingCandidates: [
+    semverReview: (() => {
+      const deterministicBreaking = [
         ...(current.name ? [] : ['package removed']),
-        ...removedExports.map(key => `export removed: ${key}`),
+        ...removedExports.map(key => `export removed: ${key}`)
+      ]
+      const heuristicReview = [
         ...changedExports.map(key => `export target changed: ${key}`),
         ...changedFields.map(field => `public packaging field changed: ${field}`)
-      ],
-      additiveCandidates: [
-        ...(previous.name ? [] : ['package added']),
-        ...addedExports.map(key => `export added: ${key}`)
       ]
-    }
+      return {
+        deterministicBreaking,
+        heuristicReview,
+        breakingCandidates: [...deterministicBreaking, ...heuristicReview],
+        additiveCandidates: [
+          ...(previous.name ? [] : ['package added']),
+          ...addedExports.map(key => `export added: ${key}`)
+        ]
+      }
+    })()
   }
 }
 

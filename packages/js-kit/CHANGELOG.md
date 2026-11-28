@@ -4,152 +4,58 @@
 
 ### Minor Changes
 
-- 7eefb10: Add `rust.andThen(result, next)`: Rust's `Result::and_then`. On `Ok` it hands the payload to `next` and takes
-  that call's result as its own; on `Err` it returns the error untouched and never runs `next`. It accepts a
-  `Result` or a promise of one, so an async step chains without an `await` at every link. The name stays
-  camelCase like the rest of the paradigm module (`isOk`, not `is_ok`) — the deviation from Rust is spelling,
-  not semantics.
+- 7eefb10: Add `rust.andThen(result, next)` for chaining `Result` and `Promise<Result>` values without manual `await` boilerplate at each step.
 
 ## 3.1.0
 
 ### Minor Changes
 
-- 9787a15: 移除各包 `exports` 里的 `"./package.json"`。仓库内没有任何消费方；这一项只为按包名读元数据重新放开入口，留着会让后来者把它当成必需项。唯一需要读 manifest 的 `check-md-to-comp-artifacts` 改为按仓库路径读取。已发布包按 minor 处理：升级后经包名解析元数据会报 `ERR_PACKAGE_PATH_NOT_EXPORTED`，目前没有已知的外部消费者。
+- 9787a15: Remove `"./package.json"` from the package `exports` map.
 
 ## 3.0.1
 
 ### Patch Changes
 
-- 3c81816: Fix `defineControllableInterval` so `stop()` called from inside the timer callback actually stops the timer.
-  
-  The recursive `setTimeout` chain ran the user callback first and only then decided whether to schedule the next period, and that decision looked at `isPaused` alone. Because `stop()` resets `isPaused` to `false`, a `stop()` issued from within the callback was undone before the chain could observe it: the timer read the freshly reset `isPaused`, rescheduled, and kept firing every `interval` indefinitely. Calling `stop()` from the callback was therefore the one way to make the timer impossible to stop.
-  
-  The chain now tracks its own liveness in a separate flag that `stop()` clears and that only the public `tick()` re-arms. Rescheduling re-reads that flag after the callback returns, so a `stop()` from inside the callback ends the chain for good.
-  
-  Behaviour that did not change: `stop()` while paused still leaves the timer restartable via `start()`, an explicit `tick()` after `stop()` still schedules a callback and continues on the normal cycle, and `pause()`, `resume()` and manual `tick()` — including the guarantee that a manual tick during a pause leaves no leftover handle for `resume()` to double-schedule — keep their existing semantics.
+- 3c81816: Fix `defineControllableInterval` so calling `stop()` from inside the timer callback permanently stops rescheduling.
 
 ## 3.0.0
 
 ### Major Changes
 
-- d0a9f32: Remove dead public surface and collapse the asynchronous call helper.
-  
-  - Remove `asyncCompose`, the event-emitter plugin, the Go paradigm helper, the random utilities and the `nanoid` dependency.
-  - Change `safeCall(fn, options?)` from spreading arguments to calling a thunk and add an optional `onError` escape hatch so failures are no longer silently swallowed.
-  - Remove the dedicated `./go` subpath export.
+- d0a9f32: Remove unused public APIs and simplify `safeCall`:
+  - Remove `asyncCompose`, the event-emitter plugin, the Go paradigm helper, random utilities, the `./go` subpath export, and the `nanoid` dependency.
+  - Change `safeCall(fn, options?)` to accept a zero-argument thunk with an optional `onError` handler.
 
 ### Minor Changes
 
-- d0a9f32: Add string and number utilities for extension detection and human-readable file sizes, and expose an `onError` option for `safeCall`.
+- d0a9f32: Add string and number utilities for file extension detection and human-readable file size formatting.
 
 ## 2.0.0
 
 ### Major Changes
 
-- 1e52bc4: 修复 Tracker 待传输事件的持久化与重试：同一对象的重复上报会被独立保留，正常发送改为有序串行，失败事件会保留至 `resume()`、重连或下次初始化后重试；启动时离线不会抢先发送 localStorage 中恢复的数据。
-  
-  同时删除 `defineLoopQueue`，不保留兼容别名，迁移到并列的 `defineQueue`（调用 `onConsume` 后移除）和 `defineAckQueue`（`onConsume` 返回的 Promise fulfilled 后移除）。两者都使用必填的 `onConsume`，并支持可选的同步 `onPersist` 快照接缝与 `onConsumeError` 错误观察器。
-  
-  队列持久化采用 persist-before-commit：通用队列的持久化异常会使队列 fail-closed，避免在无法保存快照时静默丢失成员关系。Tracker 的 localStorage 适配层则是 best-effort：存储受限时只告警一次并降级为 memory-only；旧快照可能残留，因此下次初始化存在 at-least-once 重复发送风险。Tracker 的 `persistenceKey` 默认使用 URL；需要在同一页面创建多个相互独立的 Tracker 时，应提供不同的稳定 key。
-
-## 1.6.7
-
-### Patch Changes
-
-- b9faa2c: enhance monorepo agent capabilities
-
-## 1.6.6
-
-### Patch Changes
-
-- 7c06580: try workflows
-
-## 1.6.5
-
-### Patch Changes
-
-- cdc5cf7: Release pipeline validation: bump all public packages for trusted publishing verification.
-
-## 1.6.4
-
-### Patch Changes
-
-- 57f9984: fix mardkwon table format
-- 57f9984: fix npm readme cn link
-
-## 1.6.3
-
-### Patch Changes
-
-- 734dea6: fix npm readme cn link
+- 1e52bc4: Replace `defineLoopQueue` (removed without an alias) with `defineQueue` (removes items after `onConsume`) and `defineAckQueue` (removes items after the `onConsume` Promise fulfills). Both require `onConsume` and support optional synchronous `onPersist` snapshots (persist-before-commit, fail-closed on persistence errors) and `onConsumeError` observers.
 
 ## 1.6.2
 
 ### Patch Changes
 
-- be4008b: Standardize externalization to regex patterns for workspace deps; move msw to package-level devDependencies
-
-  - `vite.config.ts` for `js-kit`, `browser-kit`, `web-ui`: replace hardcoded workspace dep names with `/^@greypan\//` regex; add missing external deps (`nanoid`, `msw`)
-  - `browser-kit`: move `msw` from peerDependencies to devDependencies
-  - `test-kit`: add `msw` to devDependencies for local type checking
-  - `web-ui`: replace `react` peer dep with `@types/react`; add React/Vue usage documentation to README
-  - `unplugin-web-components`: fix README import path to use `/vite` sub-path export
-  - Fix documentation in READMEs and AGENTS.md to reflect current externalization rules
-
-## 1.6.1
-
-### Patch Changes
-
-- c56dd3e: add tsconfig package
-
-## 1.6.0
-
-### Minor Changes
-
-- a4e7f9b: vp monorepo standardization
+- be4008b: Standardize workspace dependency externalization patterns in the package build configuration.
 
 ## 1.5.1
 
 ### Patch Changes
 
-- 8f4643d: Audit and reorganize devDependencies/peerDependencies across all packages
-
-## 1.5.0
-
-### Minor Changes
-
-- a06335a: refactor tracker and storage
-
-### Patch Changes
-
-- a06335a: upgrade agents doc
-
-## 1.4.0
-
-### Minor Changes
-
-- 874638d: refactor tracker and storage
+- 8f4643d: Audit and reorganize package dependencies.
 
 ## 1.3.0
 
 ### Minor Changes
 
-- 13802c0: bug fix, type fix, spec fix
-
-## 1.2.0
-
-### Minor Changes
-
-- 8944472: Improve engineering structures
-
-## 1.1.1
-
-### Patch Changes
-
-- ec36e92: Test release workflow validation
+- 13802c0: Fix runtime bugs and TypeScript type definitions.
 
 ## 1.1.0
 
 ### Minor Changes
 
-- 4dfde81: 完善子包依赖，修复依赖缺失
+- 4dfde81: Complete package dependency declarations and fix missing dependencies.

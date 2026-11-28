@@ -41,9 +41,9 @@ const readChangesetDecisions = () => {
     const match = /^---\n([\s\S]*?)\n---\n?([\s\S]*)$/.exec(raw)
     if (!match) continue
     for (const line of match[1].split('\n')) {
-      const entry = /^'([^']+)':\s*(major|minor|patch)\s*$/.exec(line.trim())
+      const entry = /^(['"])([^'"]+)\1:\s*(major|minor|patch)\s*$/.exec(line.trim())
       if (!entry) continue
-      const [, name, bump] = entry
+      const [, , name, bump] = entry
       const documented = match[2].trim().length > 0
       const existing = decisions.get(name)
       // 同一 package 被多个 changeset 声明时按真实发布语义聚合：
@@ -73,10 +73,11 @@ for (const change of noContractDiff.changes) {
   }
   const decision = changesetDecisions.get(change.name)
   assert.ok(decision, `pending contract change for ${change.name} requires a changeset recording its semver decision`)
-  if (change.semverReview.breakingCandidates.length > 0) {
-    assert.ok(
-      ['major', 'minor'].includes(decision.bump),
-      `${change.name} has breaking candidates (${change.semverReview.breakingCandidates.join('; ')}); aggregated changeset bump must be major or minor, got ${decision.bump} (sources: ${decision.sources.join(', ')})`
+  if (change.semverReview.deterministicBreaking.length > 0) {
+    assert.equal(
+      decision.bump,
+      'major',
+      `${change.name} has deterministic breaking changes (${change.semverReview.deterministicBreaking.join('; ')}); aggregated changeset bump must be major, got ${decision.bump} (sources: ${decision.sources.join(', ')})`
     )
   }
   assert.ok(
@@ -123,8 +124,12 @@ try {
     'removed export must be listed in removedExports'
   )
   assert.ok(
+    jsKitChange.semverReview.deterministicBreaking.includes('export removed: ./removed-lock-fixture'),
+    'removed export must be reported as a deterministic breaking change'
+  )
+  assert.ok(
     jsKitChange.semverReview.breakingCandidates.includes('export removed: ./removed-lock-fixture'),
-    'removed export must be reported as a breaking candidate'
+    'removed export must remain in breakingCandidates for backward compatibility'
   )
   assert.equal(removalDiff.requiresSemverReview, true)
 } finally {

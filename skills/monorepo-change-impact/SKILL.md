@@ -20,5 +20,5 @@ node .agents/skills/monorepo-change-impact/repo-query.mjs contract-diff [--json]
 ## 执行要点
 
 1. 运行 `verify` 获取受影响 workspace、风险与建议验证；涉及已发布包时再跑 `contract` 确认 `exports`/`peerDependencies`/`sideEffects` 与直接消费者。
-2. 逐项核对直接消费者与框架 demo 兼容性，同步导出、类型、README、文档与测试；semver 审查或 PR/release 核对时运行 `contract-diff`，存在 breaking 候选时在 changeset 中写明理由并采用对应 bump。
+2. 逐项核对直接消费者与框架 demo 兼容性，同步导出、类型、README、文档与测试；semver 审查或 PR/release 核对时运行 `contract-diff`，命中 `deterministicBreaking` 时必须采用 `major`，命中 `heuristicReview` 时核对兼容性并在 changeset 中写明对应 bump 理由。
 3. 按风险执行对应层级的验证（含 `check-pack`、跨包测试或浏览器集成），不以 jsdom 或 build 替代真实集成验证；交付时列明实际影响面、兼容结论、验证结果与未覆盖缺口。

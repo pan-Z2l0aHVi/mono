@@ -28,6 +28,6 @@
 
 ## 边界分工
 
-- **发布与版本**：仅上表标为「公开 npm」的 5 个包发布到 npm；私有包与桌面应用仍按 [`.changeset/config.json`](.changeset/config.json) 参与 Changesets 版本管理，边界见 [`docs/agents/release.md`](docs/agents/release.md)。`apps/*` 均不是公共 API 权威来源。
+- **发布与版本**：仅上表标为「公开 npm」的 5 个包发布到 npm；Changesets 版本管理与 CHANGELOG 仅覆盖这 5 个公开 npm 包与桌面应用 `@greypan/interweave`，其余内部私有包与 demo 均位于 [`.changeset/config.json`](.changeset/config.json) 的 `ignore` 中，边界见 [`docs/agents/release.md`](docs/agents/release.md)。`apps/*` 均不是公共 API 权威来源。
 - **脚本与门禁**：根 `scripts/` 只放薄入口与 Node 启动前 bootstrap helper，判定实现集中在 `packages/monorepo-kit`；政策检查只读，不改源码或 Git index。
 - **自撰 Skills**：位于 [`skills/`](skills)，通过 GitHub 分发（不走 npm），见 [`skills/README.md`](skills/README.md)。

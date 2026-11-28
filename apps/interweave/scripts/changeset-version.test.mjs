@@ -24,14 +24,15 @@ writeShim(
   'git',
   '#!/bin/sh\nprintf \'git %s\\n\' "$*" >> "$CALLS"\ncase "$*" in\n' +
     '  *packages/web-ui/CHANGELOG.md*) exit ${GIT_CHANGELOG_STATUS:-0} ;;\n' +
-    '  *packages/js-kit/CHANGELOG.md*) exit ${GIT_DEV_KIT_CHANGELOG_STATUS:-0} ;;\n' +
+    '  *packages/js-kit/CHANGELOG.md*packages/deps-reload/CHANGELOG.md*packages/unplugin-web-components/CHANGELOG.md*) exit ${GIT_DEV_KIT_CHANGELOG_STATUS:-0} ;;\n' +
     '  *) exit ${GIT_DIFF_STATUS:-0} ;;\n' +
     'esac\n'
 )
 
 const changed = ['pnpm exec changeset version', 'git diff --quiet -- apps/interweave/package.json']
 const webUiCheck = 'git diff --quiet -- packages/web-ui/CHANGELOG.md'
-const devKitCheck = 'git diff --quiet -- packages/js-kit/CHANGELOG.md packages/browser-kit/CHANGELOG.md'
+const devKitCheck =
+  'git diff --quiet -- packages/js-kit/CHANGELOG.md packages/browser-kit/CHANGELOG.md packages/deps-reload/CHANGELOG.md packages/unplugin-web-components/CHANGELOG.md'
 const checked = [...changed, webUiCheck, devKitCheck]
 const synced = [...changed, 'pnpm --filter @greypan/interweave run sync:version', webUiCheck, devKitCheck]
 const webUiRegenerate = [
@@ -100,7 +101,7 @@ try {
   assert.deepEqual(
     callsText(),
     [...changed, webUiCheck, devKitCheck, ...devKitRegenerate],
-    'a changed js-kit or browser-kit changelog must regenerate dev-kit-demo artifacts'
+    'a changed dev-kit public package changelog must regenerate dev-kit-demo artifacts'
   )
 
   fs.rmSync(calls)

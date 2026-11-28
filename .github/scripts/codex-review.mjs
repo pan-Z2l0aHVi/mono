@@ -1658,10 +1658,19 @@ function formatImpactSummary(impactAnalysis) {
     if (Array.isArray(diff.changes) && diff.changes.length > 0) {
       lines.push(`    - \`contract-diff\`（\`requiresSemverReview=${Boolean(diff.requiresSemverReview)}\`）：`)
       for (const change of diff.changes.slice(0, 8)) {
-        const flags = [
-          ...(change.semverReview?.breakingCandidates ?? []).map(item => `breaking: ${item}`),
-          ...(change.semverReview?.additiveCandidates ?? []).map(item => `additive: ${item}`)
-        ]
+        const hasSplit =
+          Array.isArray(change.semverReview?.deterministicBreaking) ||
+          Array.isArray(change.semverReview?.heuristicReview)
+        const flags = hasSplit
+          ? [
+              ...(change.semverReview?.deterministicBreaking ?? []).map(item => `breaking(major): ${item}`),
+              ...(change.semverReview?.heuristicReview ?? []).map(item => `review: ${item}`),
+              ...(change.semverReview?.additiveCandidates ?? []).map(item => `additive: ${item}`)
+            ]
+          : [
+              ...(change.semverReview?.breakingCandidates ?? []).map(item => `breaking: ${item}`),
+              ...(change.semverReview?.additiveCandidates ?? []).map(item => `additive: ${item}`)
+            ]
         lines.push(`      - \`${change.name}\`：${flags.join('；') || 'manifest 字段变更'}`)
       }
     } else {
