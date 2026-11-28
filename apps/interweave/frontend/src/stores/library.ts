@@ -247,6 +247,24 @@ export const useLibraryStore = defineStore('library', {
       }
       this.resources.splice(index, 1, nextResource)
     },
+    /** 批量合并快照：单次替换数组引用，避免批量导入/找回期间逐条触发列表重算与重排。 */
+    upsertResources(resources: ResourceDTO[]) {
+      if (!resources.length) return
+      const next = [...this.resources]
+      const indexById = new Map<string, number>()
+      for (let i = 0; i < next.length; i += 1) indexById.set(next[i]!.id, i)
+      for (const dto of resources) {
+        const view = toResourceView(dto)
+        const existing = indexById.get(view.id)
+        if (existing === undefined) {
+          indexById.set(view.id, next.length)
+          next.push(view)
+        } else {
+          next[existing] = view
+        }
+      }
+      this.resources = next
+    },
     removeResources(ids: string[]) {
       const removedIds = new Set(ids)
       this.resources = this.resources.filter(resource => !removedIds.has(resource.id))

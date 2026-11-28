@@ -8,9 +8,10 @@ import {
   wordpressDashboard
 } from '@greypan/web-ui/icons'
 import { Virtualizer } from 'virtua/vue'
-import { onBeforeUnmount, watch } from 'vue'
+import { computed, onBeforeUnmount, watch } from 'vue'
 
 import { useLingering } from '@/composables/useLingering'
+import { formatBatchTimeEstimate } from '@/pages/library/libraryWorkflow'
 
 import { doubleArrowRight } from './icons'
 import { formatDate, formatSize, monoDigitsClass, splitNumericSegments } from './presentation'
@@ -85,6 +86,12 @@ const {
   canClose
 } = session
 
+const scanTargetCount = computed(
+  () =>
+    props.queue.filter(item => item.kind === 'file').length +
+    (includeOtherUnavailable.value ? otherUnavailableFiles.value.length : 0)
+)
+const scanTimeEstimate = computed(() => formatBatchTimeEstimate(scanTargetCount.value))
 const renderedCandidateItem = useLingering(candidateItem)
 watch(
   () => props.open,
@@ -292,7 +299,14 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
   </web-ui-dialog>
   <web-ui-dialog :open="scanChoiceOpen" controlled no-backdrop-close @open-change="scanChoiceOpen = $event.detail.open">
     <span slot="header">扫描范围</span>
-    <p class="m-0">选择要查找的位置，包含其中所有子文件夹</p>
+    <p class="m-0">
+      选择要查找的位置，包含其中所有子文件夹<template v-if="scanTimeEstimate"
+        >，<template v-for="(segment, segIndex) in splitNumericSegments(scanTimeEstimate)" :key="segIndex"
+          ><span v-if="segment.numeric" :class="monoDigitsClass">{{ segment.text }}</span
+          ><template v-else>{{ segment.text }}</template></template
+        ></template
+      >
+    </p>
     <div v-if="otherUnavailableFiles.length" class="mt-4 flex items-center justify-between gap-3">
       <span class="text-sm text-(--wui-color-text)"
         >同时查找其他 <span class="font-mono tabular-nums">{{ otherUnavailableFiles.length }}</span> 条失效文件</span

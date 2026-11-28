@@ -214,8 +214,13 @@ describe('AddDialog', () => {
       const dirItem = items.find(el => el.textContent?.includes('选择文件夹'))
       expect(fileItem).toBeTruthy()
       expect(dirItem).toBeTruthy()
+      const dropdownEl = dropdown as WebUiModule.WebUiDropdown
+      dropdownEl.open = true
       fileItem?.click()
+      expect(dropdownEl.open).toBe(false)
+      dropdownEl.open = true
       dirItem?.click()
+      expect(dropdownEl.open).toBe(false)
       await nextTick()
       expect(onPickFiles).not.toHaveBeenCalled()
       expect(onPickFilesOnly).toHaveBeenCalledOnce()

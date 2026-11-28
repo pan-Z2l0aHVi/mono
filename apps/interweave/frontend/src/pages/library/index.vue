@@ -125,6 +125,7 @@ const {
   loadResources,
   addResource,
   upsertResource,
+  upsertResources,
   renameResource,
   updateResourceNote,
   deleteResources,
@@ -177,13 +178,15 @@ const workflow = createLibraryWorkflow({
   readClipboardContent: () => runtime.system.readClipboardContent(),
   addResource,
   upsertResource,
+  upsertResources,
   createResources: (batchId, inputs) => runtime.resources.createMany(batchId, inputs),
   cancelResourceBatch: batchId => runtime.resources.cancelBatch(batchId),
   onResourceBatchProgress: listener => runtime.events.onResourceBatchProgress(listener),
   replaceSource,
-  replaceScannedFileSource: async (sourceId, path, snapshot) => {
+  replaceScannedFileSource: async (sourceId, path, snapshot, options) => {
     const updated = await runtime.sources.replaceScannedFile(sourceId, path, snapshot)
-    store.upsertResource(updated)
+    if (!options?.deferUpsert) store.upsertResource(updated)
+    return updated
   },
   reportError,
   notifyWarning: message => toast.warning(message, { position: 'top-center' })

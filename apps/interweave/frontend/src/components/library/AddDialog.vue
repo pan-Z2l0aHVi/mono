@@ -4,6 +4,7 @@ import {
   imagePreview,
   type ImagePreviewHandle,
   type WebUiDialog,
+  type WebUiDropdown,
   type WebUiEditableText,
   type WebUiEvent
 } from '@greypan/web-ui'
@@ -82,7 +83,22 @@ defineExpose({
 })
 
 const isWindows = computed(() => wailsPlatformOS() === 'windows')
+const pickerDropdownRef = ref<WebUiDropdown | null>(null)
 const dragActive = ref(false)
+
+function closePickerDropdown() {
+  if (pickerDropdownRef.value) pickerDropdownRef.value.open = false
+}
+
+function handlePickFilesOnly() {
+  closePickerDropdown()
+  emit('pickFilesOnly')
+}
+
+function handlePickDirectories() {
+  closePickerDropdown()
+  emit('pickDirectories')
+}
 const addUrlOpen = ref(false)
 const editingItemId = ref<string | null>(null)
 const queueScrollRef = ref<HTMLElement | undefined>(undefined)
@@ -135,6 +151,7 @@ watch(
   open => {
     if (!open) {
       addUrlOpen.value = false
+      closePickerDropdown()
       closePendingImagePreview()
       abortCaptureScope()
       return
@@ -370,7 +387,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
           同时开启两 flag 会退化为仅选文件夹；因此在 Windows 上点按上传区弹出轻量菜单区分两种选择，
           macOS / Linux 仍直接唤起统一面板。
         -->
-        <web-ui-dropdown v-if="isWindows" placement="bottom" class="grid h-full w-full">
+        <web-ui-dropdown v-if="isWindows" ref="pickerDropdownRef" placement="bottom" class="grid h-full w-full">
           <button
             slot="trigger"
             type="button"
@@ -416,11 +433,11 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
               </span>
             </web-ui-empty>
           </button>
-          <web-ui-dropdown-item @click="emit('pickFilesOnly')">
+          <web-ui-dropdown-item @click="handlePickFilesOnly">
             <web-ui-icon slot="prefix" :icon="lucideFile" :size="15" />
             选择文件
           </web-ui-dropdown-item>
-          <web-ui-dropdown-item @click="emit('pickDirectories')">
+          <web-ui-dropdown-item @click="handlePickDirectories">
             <web-ui-icon slot="prefix" :icon="lucideFolder" :size="15" />
             选择文件夹
           </web-ui-dropdown-item>

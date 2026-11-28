@@ -3,7 +3,12 @@ import { computed, ref } from 'vue'
 
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryRestoreQueueItem } from '../../../components/library/restore'
-import { createLibraryWorkflow, IMPORT_CONFIRM_THRESHOLD, type LibraryWorkflowPorts } from '../libraryWorkflow'
+import {
+  createLibraryWorkflow,
+  formatBatchTimeEstimate,
+  IMPORT_CONFIRM_THRESHOLD,
+  type LibraryWorkflowPorts
+} from '../libraryWorkflow'
 
 function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
   const submitting = ref(false)
@@ -307,5 +312,14 @@ describe('libraryWorkflow', () => {
     await workflow.submitRestoreQueue(workflow.restoreQueue.value)
     expect(workflow.restoreQueue.value).toEqual([])
     expect(workflow.restoreOpen.value).toBe(false)
+  })
+
+  it('formatBatchTimeEstimate 低于 10 秒不提示，达到阈值按秒/分钟估算', () => {
+    expect(formatBatchTimeEstimate(0)).toBeNull()
+    expect(formatBatchTimeEstimate(20)).toBeNull()
+    expect(formatBatchTimeEstimate(499)).toBeNull()
+    expect(formatBatchTimeEstimate(500)).toBe('预计需要约 10 秒')
+    expect(formatBatchTimeEstimate(1000)).toBe('预计需要约 20 秒')
+    expect(formatBatchTimeEstimate(5878)).toBe('预计需要约 2 分钟')
   })
 })

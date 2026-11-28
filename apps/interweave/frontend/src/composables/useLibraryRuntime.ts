@@ -57,7 +57,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
     }
   }
 
-  async function addResource(item: LibraryQueueItem) {
+  async function addResource(item: LibraryQueueItem, options?: { deferUpsert?: boolean }) {
     setPending(item.id, true)
     try {
       // 标题、入口与初始标签一次交给后端：归一化、探测与事务建齐都在 core 内完成。
@@ -77,7 +77,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
           (url, blob) => runtime.media.saveThumbnail(url, blob)
         )
       }
-      store.upsertResource(saved)
+      if (!options?.deferUpsert) store.upsertResource(saved)
       return saved
     } catch (cause) {
       report(cause)
@@ -93,6 +93,10 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
    */
   function upsertResource(resource: ResourceDTO) {
     store.upsertResource(resource)
+  }
+
+  function upsertResources(resources: ResourceDTO[]) {
+    store.upsertResources(resources)
   }
 
   async function renameResource(resourceId: string, newTitle: string) {
@@ -173,11 +177,11 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
     }
   }
 
-  async function replaceSource(sourceId: string, input: string) {
+  async function replaceSource(sourceId: string, input: string, options?: { deferUpsert?: boolean }) {
     replacingSourceIds.value = [...new Set([...replacingSourceIds.value, sourceId])]
     try {
       const updated = await runtime.sources.replaceSource(sourceId, input)
-      store.upsertResource(updated)
+      if (!options?.deferUpsert) store.upsertResource(updated)
       return updated
     } catch (cause) {
       report(cause)
@@ -269,6 +273,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
     loadResources,
     addResource,
     upsertResource,
+    upsertResources,
     renameResource,
     updateResourceNote,
     deleteResources,
