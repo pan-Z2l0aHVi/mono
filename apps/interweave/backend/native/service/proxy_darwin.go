@@ -12,7 +12,8 @@ package service
 #import <CFNetwork/CFProxySupport.h>
 #include <stdlib.h>
 
-// 按请求 URL 解析 macOS 系统代理，返回 "scheme|host[:port]" 或 NULL（显式直连 / 无代理）。
+// 按请求 URL 查询 macOS 系统代理，返回原始代理类型与地址 "<proxyType>|host[:port]" 或 NULL（显式直连 / 无代理）。
+// proxyType 到 Go http.Transport scheme 的协议映射由 proxy_shared.go 的 resolveDarwinProxy 统一完成并受单测保护。
 static char *copy_system_proxy_for_url(const char *urlString) {
 	@autoreleasepool {
 		NSString *string = [NSString stringWithUTF8String:urlString];
@@ -29,17 +30,17 @@ static char *copy_system_proxy_for_url(const char *urlString) {
 			NSString *type = proxy[(NSString *)kCFProxyTypeKey];
 			NSString *host = proxy[(NSString *)kCFProxyHostNameKey];
 			NSNumber *port = proxy[(NSString *)kCFProxyPortNumberKey];
-			NSString *scheme = nil;
+			NSString *proxyType = nil;
 			if ([type isEqualToString:(NSString *)kCFProxyTypeNone]) {
 				// 绕过列表命中：这一条 URL 显式直连。
 				return NULL;
 			}
-			// kCFProxyTypeHTTPS 表示系统“安全网页代理（HTTPS）”，即代理 HTTPS 流量的明文 HTTP CONNECT 代理，
-			// 并非客户端到代理服务器走 TLS 的 HTTPS 代理；映射到 "https" 会导致 Go Transport 向本地代理发起 TLS 握手并报 proxyconnect tcp: EOF。
-			if ([type isEqualToString:(NSString *)kCFProxyTypeHTTPS] || [type isEqualToString:(NSString *)kCFProxyTypeHTTP]) {
-				scheme = @"http";
+			if ([type isEqualToString:(NSString *)kCFProxyTypeHTTPS]) {
+				proxyType = @"https";
+			} else if ([type isEqualToString:(NSString *)kCFProxyTypeHTTP]) {
+				proxyType = @"http";
 			} else if ([type isEqualToString:(NSString *)kCFProxyTypeSOCKS]) {
-				scheme = @"socks5";
+				proxyType = @"socks5";
 			} else {
 				// PAC（kCFProxyTypeAutoConfigURL）不计算：跳过，交给环境变量回落。
 				continue;
@@ -48,8 +49,8 @@ static char *copy_system_proxy_for_url(const char *urlString) {
 				continue;
 			}
 			NSString *result = port == nil
-				? [NSString stringWithFormat:@"%@|%@", scheme, host]
-				: [NSString stringWithFormat:@"%@|%@:%@", scheme, host, port];
+				? [NSString stringWithFormat:@"%@|%@", proxyType, host]
+				: [NSString stringWithFormat:@"%@|%@:%@", proxyType, host, port];
 			return strdup(result.UTF8String);
 		}
 		return NULL;
