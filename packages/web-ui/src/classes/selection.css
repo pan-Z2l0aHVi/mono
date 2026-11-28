@@ -1,0 +1,27 @@
+/*
+ * 选中策略：交互 chrome 默认不可选，内容性文本显式可选。
+ *
+ * `.wui-no-select` 用于标题栏、拖拽把手、窗口按钮、菜单等「看起来像控件」的表面；
+ * `.wui-selectable` 用于标题、路径、URL、错误详情、日志与代码等可以复制的文本。
+ *
+ * 两个类都用 `:where()` 包裹（特异性 0），消费方自己的规则随时能覆盖。`user-select`
+ * 是可继承属性：在边界元素上声明一次就对整棵子树生效，子元素再挂 `.wui-selectable`
+ * 即可恢复选择——列表容器禁选、行内标题可选这类组合就是靠这条继承关系成立。
+ *
+ * `-webkit-touch-callout` 与 `user-select` 成对声明：iOS/WKWebView 上它单独控制长按
+ * 原生菜单，只写 user-select 会留下「文字选不中、长按仍弹拷贝菜单」的半状态。
+ *
+ * 组件内使用：把 `selection.css?inline` 加入 Lit 的 static styles；
+ * 应用 light DOM 使用：从 `@greypan/web-ui/classes.css` 引入后直接套类名。
+ */
+:where(.wui-no-select) {
+  user-select: none;
+
+  -webkit-touch-callout: none;
+}
+
+:where(.wui-selectable) {
+  user-select: text;
+
+  -webkit-touch-callout: default;
+}

@@ -379,4 +379,31 @@ describe('ResourceThumbnail', () => {
       host.remove()
     }
   })
+
+  it('缩略图不可拖出幽灵图：每张 img 都关闭原生拖拽', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp({
+      render: () =>
+        h(ResourceThumbnail, {
+          kind: ResourceKind.ResourceKindImage,
+          source: fileSource(),
+          mediaUrl: '/original',
+          thumbnailUrl: '/cached'
+        })
+    })
+    app.mount(host)
+    try {
+      await nextTick()
+      const images = [...host.querySelectorAll<HTMLImageElement>('img')]
+      expect(images.length).toBeGreaterThan(0)
+      for (const image of images) {
+        expect(image.getAttribute('draggable')).toBe('false')
+        expect(image.className).toContain('[-webkit-user-drag:none]')
+      }
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
 })

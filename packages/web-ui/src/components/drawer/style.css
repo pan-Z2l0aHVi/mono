@@ -480,6 +480,10 @@ dialog.is-dragging .wui-drawer-drag-zone {
 :host([placement='top'][draggable]) dialog:not(.is-nested-lower) .wui-drawer-footer {
   touch-action: none;
   cursor: grab;
+
+  /* 拖拽面覆盖标题/说明文字：按住 header 拖动的意图是移动 drawer，不该顺手选中文字。
+     与 classes/selection.css 的 chrome 禁选策略同一口径（此处不套类名，因为这是条件规则）。 */
+  user-select: none;
 }
 
 :host([placement='bottom'][draggable]) dialog:not(.is-nested-lower).is-dragging .wui-drawer-header,
