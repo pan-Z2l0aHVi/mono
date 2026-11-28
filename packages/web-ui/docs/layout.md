@@ -282,7 +282,7 @@ With `sidebar-resizable` enabled, a resize handle appears on the right edge of t
 
 The handle supports mouse, touch, and pen input. In mobile layout the sidebar becomes a drawer and the resize handle is not shown.
 
-Releasing the drag or committing with the keyboard Enter dispatches one `sidebar-width-change` carrying the final pixel width. Once your app writes it back, the width is taken over by `sidebar-width` again. Escape reverts an uncommitted adjustment.
+Releasing a drag or stepping with the keyboard dispatches `sidebar-width-change` carrying the target pixel width. Once your app writes it back, the width stays controlled by `sidebar-width`.
 
 `sidebar-min-width` / `sidebar-max-width` are px literals; the upper bound is also limited to half the viewport, and the built-in limit takes precedence over the configured value.
 
@@ -312,8 +312,8 @@ export default function Demo() {
           </nav>
           <div className="p-4">
             <p className="m-0 text-sm">
-              Drag the handle on the right edge of the desktop sidebar to resize; after focusing, use ←/→ to step, Enter
-              to commit, and Escape to revert the uncommitted adjustment.
+              Drag the handle on the right edge of the desktop sidebar to resize; after focusing, use ←/→ to step (Shift
+              accelerates) or Home/End to jump to the bounds.
             </p>
           </div>
         </web-ui-layout>
@@ -346,8 +346,8 @@ export default function Demo() {
         </nav>
         <div class="p-4">
           <p class="m-0 text-sm">
-            Drag the handle on the right edge of the desktop sidebar to resize; after focusing, use ←/→ to step, Enter
-            to commit, and Escape to revert the uncommitted adjustment.
+            Drag the handle on the right edge of the desktop sidebar to resize; after focusing, use ←/→ to step (Shift
+            accelerates) or Home/End to jump to the bounds.
           </p>
         </div>
       </web-ui-layout>
@@ -438,7 +438,7 @@ const open = ref(false)
 | -------------------------- | ---------------------------------------------------------------------------------------------------------------------------------------------------- |
 | `sidebar-collapsed-change` | Requests an update of the desktop collapse state; `detail.collapsed` is the requested value, and your app must write it back to `sidebar-collapsed`. |
 | `sidebar-open-change`      | Requests an update of the mobile Drawer open state; `detail.open` is the requested value.                                                            |
-| `sidebar-width-change`     | Requests a width update after the drag is released or committed with the keyboard Enter; `detail.width` is the final pixel width.                    |
+| `sidebar-width-change`     | Requests a width update after a drag release or keyboard resize step; `detail.width` is the target pixel width.                                      |
 
 ### Slots
 
@@ -474,7 +474,7 @@ After enabling `sidebar-resizable`, a resize handle appears on the right edge of
 
 - Dragging updates the width in real time (transitions are disabled, and the width is limited to `[min, max]` and to the viewport).
 - On release it fires the `sidebar-width-change` event carrying the final pixel width. After your app writes it back, the width is taken over by the `sidebar-width` attribute again. `pointercancel` restores the attribute-controlled width and fires no event.
-- Keyboard operation (WAI-ARIA splitter pattern): after focusing, use ←/→ to step by 16px (Shift accelerates to 64px), Home/End to jump to min/max, Enter to commit through the same `sidebar-width-change` request, and Escape to revert an uncommitted adjustment. Keyboard focus is indicated only by the vertical line; no focus ring is drawn.
+- Keyboard operation (WAI-ARIA splitter pattern): after focusing, use ←/→ to step by 16px (Shift accelerates to 64px) and Home/End to jump to min/max; each effective key press immediately dispatches `sidebar-width-change`. Keyboard focus is indicated only by the vertical line; no focus ring is drawn.
 - The mobile Drawer always supports drag-to-close through its built-in `draggable` drawer, and enables `page-shift`. Opening it slides the page toward the Drawer's entry direction (to the right) by `16vw`, the page does not follow the drag, and closing restores it.
 
 ### Behavior
