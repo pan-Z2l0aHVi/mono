@@ -34,9 +34,9 @@ static char *copy_system_proxy_for_url(const char *urlString) {
 				// 绕过列表命中：这一条 URL 显式直连。
 				return NULL;
 			}
-			if ([type isEqualToString:(NSString *)kCFProxyTypeHTTPS]) {
-				scheme = @"https";
-			} else if ([type isEqualToString:(NSString *)kCFProxyTypeHTTP]) {
+			// kCFProxyTypeHTTPS 表示系统“安全网页代理（HTTPS）”，即代理 HTTPS 流量的明文 HTTP CONNECT 代理，
+			// 并非客户端到代理服务器走 TLS 的 HTTPS 代理；映射到 "https" 会导致 Go Transport 向本地代理发起 TLS 握手并报 proxyconnect tcp: EOF。
+			if ([type isEqualToString:(NSString *)kCFProxyTypeHTTPS] || [type isEqualToString:(NSString *)kCFProxyTypeHTTP]) {
 				scheme = @"http";
 			} else if ([type isEqualToString:(NSString *)kCFProxyTypeSOCKS]) {
 				scheme = @"socks5";

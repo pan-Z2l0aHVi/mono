@@ -80,10 +80,17 @@ func TestResolveDarwinProxy(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "https://example.com", nil)
 
 	got, err := resolveDarwinProxy(req, func(string) (string, bool) {
-		return "https|127.0.0.1:8443", true
+		return "http|127.0.0.1:7890", true
 	})
-	if err != nil || got == nil || got.String() != "https://127.0.0.1:8443" {
+	if err != nil || got == nil || got.String() != "http://127.0.0.1:7890" {
 		t.Fatalf("unexpected darwin proxy: (%v, %v)", got, err)
+	}
+
+	gotSocks, err := resolveDarwinProxy(req, func(string) (string, bool) {
+		return "socks5|127.0.0.1:7891", true
+	})
+	if err != nil || gotSocks == nil || gotSocks.String() != "socks5://127.0.0.1:7891" {
+		t.Fatalf("unexpected darwin socks5 proxy: (%v, %v)", gotSocks, err)
 	}
 
 	if got, err := resolveDarwinProxy(req, func(string) (string, bool) { return "", false }); err != nil || got != nil {
