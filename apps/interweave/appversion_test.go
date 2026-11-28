@@ -20,6 +20,13 @@ func TestAppVersionReadsInfoSection(t *testing.T) {
 	}
 }
 
+func TestParseAppVersionAcceptsZeroVersion(t *testing.T) {
+	got, ok := parseAppVersion("version: '3'\n\ninfo:\n  version: '0.0.0'\n")
+	if !ok || got != "0.0.0" {
+		t.Fatalf("expected (0.0.0, true), got (%q, %v)", got, ok)
+	}
+}
+
 func TestAppVersionFallsBackWhenInfoMissing(t *testing.T) {
 	if got := appVersion("version: '3'\n"); got != fallbackVersion {
 		t.Fatalf("expected the fallback, got %q", got)
@@ -32,9 +39,9 @@ func TestAppVersionFallsBackOnEmptyInput(t *testing.T) {
 	}
 }
 
-// 嵌入的正是仓库里那份配置：同步脚本改版本后，这里读到的必须跟着变。
+// 嵌入的正是仓库里那份配置：同步脚本改版本后，这里读到的必须非空且解析成功。
 func TestEmbeddedConfigCarriesAVersion(t *testing.T) {
-	if got := appVersion(configYAML); got == fallbackVersion {
-		t.Fatalf("embedded build/config.yml has no info.version (got %q)", got)
+	if got, ok := parseAppVersion(configYAML); !ok || got == "" {
+		t.Fatalf("embedded build/config.yml has no info.version (got %q, ok=%v)", got, ok)
 	}
 }

@@ -15,7 +15,7 @@ CI 的 `check` 之后运行 `Codex review gate`，按三档输出发现并写回
 
 - **生成物滤除**：自动审查与人工审查在 `git diff` 入口按 [`generated-artifacts.md`](./generated-artifacts.md#审查范围与编辑拦截的分工) 滤除入库生成物；被滤除路径不计入 `coverage.inspected` / `coverage.uncovered`。生成物正确性由 generator 重建、`check-generated` 与消费者类型检查证明，不由审查结论证明。仅改生成物的 PR 得到 `empty_diff: true`，不算「结论即 review」。
 - **增量复审与零增量短路**：复审以前次已审 head 为基线，核查增量与前次发现处置。配置指纹一致、同步 `main` 无合并冲突且滤除生成物后净增量为 0（`zero_incremental_diff`）时，原样继承前次结论（含 `Block` 判定）并依赖 `check` 在新合并树全量复检；基线失效或冲突时重新完整审查。
-- **调查预算按风险分配**：优先审公共契约、失败路径、权限/安全、并发/资源与跨包接口，证据足以定档即可收口，读不完处如实写入 `coverage.uncovered`。指令或 context 改动另核 [ADR-0026](../adr/0026-lean-agent-context-for-frontier-models.md) 四条判据（不写前沿模型已内化的通用常识、不抄可从代码/配置/workflow 直接推导的事实、唯一权威且有入口路由覆盖、删除内容有落点）。
+- **调查预算按风险分配**：优先审公共契约、失败路径、权限/安全、并发/资源与跨包接口，并核查 `.changeset/*.md` 是否遵守 [`release.md`](./release.md) 的单包隔离、视角不越界（禁止公开包正文混入下游应用/demo 改动）及 Library / App 双轨定级矩阵；证据足以定档即可收口，读不完处如实写入 `coverage.uncovered`。指令或 context 改动另核 [ADR-0026](../adr/0026-lean-agent-context-for-frontier-models.md) 四条判据（不写前沿模型已内化的通用常识、不抄可从代码/配置/workflow 直接推导的事实、唯一权威且有入口路由覆盖、删除内容有落点）。
 
 ## 发现分档与 PR 自动跟进闭环
 

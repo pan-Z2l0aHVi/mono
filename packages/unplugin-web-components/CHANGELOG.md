@@ -11,7 +11,7 @@
 
 ### Minor Changes
 
-- 9787a15: 移除各包 `exports` 里的 `"./package.json"`。仓库内没有任何消费方；这一项只为按包名读元数据重新放开入口，留着会让后来者把它当成必需项。唯一需要读 manifest 的 `check-md-to-comp-artifacts` 改为按仓库路径读取。已发布包按 minor 处理：升级后经包名解析元数据会报 `ERR_PACKAGE_PATH_NOT_EXPORTED`，目前没有已知的外部消费者。
+- 9787a15: Remove `"./package.json"` from the package `exports` map.
 
 ### Patch Changes
 
@@ -22,13 +22,7 @@
 
 ### Patch Changes
 
-- 3c81816: Fix uppercase and mixed-case kebab web component tags in module sources not being auto-imported
-  
-  The transform fast path used a case-sensitive substring check for the tag prefix, so
-  `<WEB-UI-BUTTON />` in `.vue`/`.jsx`/`.tsx` sources never reached the (already
-  case-insensitive) tag regex and silently produced no imports. The fast path now
-  pre-filters with the same regexes used for matching, so all case variants are
-  recognized and their imports normalized to the lowercase component directory.
+- 3c81816: Fix uppercase and mixed-case kebab web component tags in `.vue`, `.jsx`, and `.tsx` sources not being auto-imported by aligning the fast-path pre-filter with the case-insensitive tag matching regexes.
 - Updated dependencies [3c81816]
   - @greypan/js-kit@3.0.1
 
@@ -36,7 +30,6 @@
 
 ### Patch Changes
 
-- Updated dependencies [d0a9f32]
 - Updated dependencies [d0a9f32]
   - @greypan/js-kit@3.0.0
 
@@ -47,146 +40,34 @@
 - Updated dependencies [1e52bc4]
   - @greypan/js-kit@2.0.0
 
-## 1.4.1
-
-### Patch Changes
-
-- Updated dependencies [b9faa2c]
-  - @greypan/js-kit@1.6.7
-
 ## 1.4.0
 
 ### Minor Changes
 
-- 28a8dc5: Vite HTML 入口自动导入：`/vite` 入口新增 `transformIndexHtml`，为 Vite 处理的 HTML 构建入口（`index.html` 等）扫描 kebab-case 自定义元素（大小写不敏感，`<WEB-UI-BUTTON>`/`<web-ui-Button>` 归一到 `web-ui-button`），并在 `<head>` 前部注入 `type="module"` 脚本，以静态 `import` 注册发现的组件；复用 `sideEffects`/`withStyle` 导入语义并按组件去重。扫描按序剥离：先剥带引号属性值（其中的尖括号是属性文本而非 tag，避免属性值里的 `<script>` 等字面量吞掉后续真实 tag），再剥 RAWTEXT/RCDATA 区域（`script`、`style`、`title`、`textarea`、`iframe`、`xmp`、`noembed`、`noframes`、`noscript`），最后剥注释；未闭合区域通常延伸到文件末尾，但注释内未闭合的 `<script>`/`style` 伪 tag 可能吞掉其后的真实 tag。HTML 中不支持驼峰/帕斯卡 tag（HTML tag 名大小写不敏感，解析器统一小写化）。
-
-  模块转换边界修复：React 只识别模块顶部完整的 directive prologue（任意字符串指令，如 `'use strict'`、`'use client'`、`'use server'`），并在其后注入导入——不再只匹配 `use client`/`use server` 两种文本，也不命中函数体内部的同名字符串。Vue 只向不含 `src` 的内联 `<script>`/`<script setup>` 注入；普通外部 `<script src>` 可以与新增的内联 `<script setup>` 共存，只有带 `src` 的 `<script setup>` 无处可注入时跳过转换。
-
-  能力边界：HTML 注入为 Vite 专属能力，Webpack 适配器保持模块源码转换，不提供 HTML 注入。实际仅发布 `/vite` 与 `/webpack` 入口，不再笼统宣称 Rollup/esbuild 支持。
-
-## 1.3.6
-
-### Patch Changes
-
-- 7c06580: try workflows
-- Updated dependencies [7c06580]
-  - @greypan/js-kit@1.6.6
-
-## 1.3.5
-
-### Patch Changes
-
-- cdc5cf7: Release pipeline validation: bump all public packages for trusted publishing verification.
-- Updated dependencies [cdc5cf7]
-  - @greypan/js-kit@1.6.5
-
-## 1.3.4
-
-### Patch Changes
-
-- 57f9984: fix mardkwon table format
-- 57f9984: fix npm readme cn link
-- Updated dependencies [57f9984]
-- Updated dependencies [57f9984]
-  - @greypan/js-kit@1.6.4
-
-## 1.3.3
-
-### Patch Changes
-
-- 734dea6: fix npm readme cn link
-- Updated dependencies [734dea6]
-  - @greypan/js-kit@1.6.3
+- 28a8dc5: Add `transformIndexHtml` auto-import support to the `/vite` entry for Vite HTML entry points, scanning case-insensitive kebab-case custom elements and injecting deduplicated static module imports into `<head>` while skipping quoted attributes, RAWTEXT/RCDATA regions, and HTML comments.
+- 28a8dc5: Fix React directive prologue handling (preserving full module-top directive prologues) and Vue `<script>` / `<script setup>` injection boundaries (skipping `<script setup src>`). Clarify that only `/vite` and `/webpack` entries are published, with HTML injection exclusive to Vite.
 
 ## 1.3.2
 
 ### Patch Changes
 
-- be4008b: Standardize externalization to regex patterns for workspace deps; move msw to package-level devDependencies
-
-  - `vite.config.ts` for `js-kit`, `browser-kit`, `web-ui`: replace hardcoded workspace dep names with `/^@greypan\//` regex; add missing external deps (`nanoid`, `msw`)
-  - `browser-kit`: move `msw` from peerDependencies to devDependencies
-  - `test-kit`: add `msw` to devDependencies for local type checking
-  - `web-ui`: replace `react` peer dep with `@types/react`; add React/Vue usage documentation to README
-  - `unplugin-web-components`: fix README import path to use `/vite` sub-path export
-  - Fix documentation in READMEs and AGENTS.md to reflect current externalization rules
-
+- be4008b: Fix `/vite` subpath import examples in the README and standardize workspace dependency externalization.
 - Updated dependencies [be4008b]
   - @greypan/js-kit@1.6.2
-
-## 1.3.1
-
-### Patch Changes
-
-- c56dd3e: add tsconfig package
-- Updated dependencies [c56dd3e]
-  - @greypan/js-kit@1.6.1
-
-## 1.3.0
-
-### Minor Changes
-
-- a4e7f9b: vp monorepo standardization
-
-### Patch Changes
-
-- Updated dependencies [a4e7f9b]
-  - @greypan/js-kit@1.6.0
 
 ## 1.2.4
 
 ### Patch Changes
 
-- 8f4643d: Audit and reorganize devDependencies/peerDependencies across all packages
+- 8f4643d: Audit and reorganize package dependencies.
 - Updated dependencies [8f4643d]
   - @greypan/js-kit@1.5.1
-
-## 1.2.3
-
-### Patch Changes
-
-- a06335a: upgrade agents doc
-- Updated dependencies [a06335a]
-- Updated dependencies [a06335a]
-  - @greypan/js-kit@1.5.0
-
-## 1.2.2
-
-### Patch Changes
-
-- Updated dependencies [874638d]
-  - @greypan/js-kit@1.4.0
-
-## 1.2.1
-
-### Patch Changes
-
-- Updated dependencies [13802c0]
-  - @greypan/js-kit@1.3.0
-
-## 1.2.0
-
-### Minor Changes
-
-- 8944472: Improve engineering structures
-
-### Patch Changes
-
-- Updated dependencies [8944472]
-  - @greypan/js-kit@1.2.0
-
-## 1.1.1
-
-### Patch Changes
-
-- Updated dependencies [ec36e92]
-  - @greypan/js-kit@1.1.1
 
 ## 1.1.0
 
 ### Minor Changes
 
-- 4dfde81: 完善子包依赖，修复依赖缺失
+- 4dfde81: Complete package dependency declarations and fix missing dependencies.
 
 ### Patch Changes
 

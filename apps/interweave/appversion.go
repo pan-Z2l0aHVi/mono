@@ -13,15 +13,14 @@ import (
 //go:embed build/config.yml
 var configYAML string
 
-// fallbackVersion 是配置缺失版本时的兜底。它只在配置被破坏时出现，
-// 不应该出现在正常构建产物里。
+// fallbackVersion 是配置缺失版本时的兜底。它只在配置被破坏时出现。
 const fallbackVersion = "0.0.0"
 
-// appVersion 从构建配置的 info 段读出 version。
+// parseAppVersion 从构建配置的 info 段读出 version，并显式返回是否解析成功。
 //
 // 不能全文搜 `version:`：文件开头的 `version: '3'` 是配置格式版本。所以先定位顶格的
 // `info:` 段，再取段内第一处 `version:`。
-func appVersion(config string) string {
+func parseAppVersion(config string) (string, bool) {
 	inInfo := false
 	for _, line := range strings.Split(config, "\n") {
 		line = strings.TrimRight(line, "\r")
@@ -45,8 +44,16 @@ func appVersion(config string) string {
 		}
 		value = strings.Trim(value, `'"`)
 		if value != "" {
-			return value
+			return value, true
 		}
+	}
+	return "", false
+}
+
+// appVersion 从构建配置的 info 段读出 version，缺失时回退到 fallbackVersion。
+func appVersion(config string) string {
+	if value, ok := parseAppVersion(config); ok {
+		return value
 	}
 	return fallbackVersion
 }

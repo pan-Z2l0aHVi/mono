@@ -12,10 +12,18 @@
     "tag": false
   },
   "ignore": [
-    "@greypan/react-web-ui-demo",
-    "@greypan/vue-web-ui-demo",
+    "@greypan/app-scrollbars",
+    "@greypan/dev-kit-demo",
+    "@greypan/doc-demo-kit",
     "@greypan/interweave-frontend",
+    "@greypan/md-to-meta",
+    "@greypan/monorepo-kit",
+    "@greypan/pi-rex-orchestrator",
+    "@greypan/react-web-ui-demo",
     "@greypan/route-progress",
-    "@greypan/dev-kit-demo"
+    "@greypan/test-kit",
+    "@greypan/tsconfig",
+    "@greypan/vue-web-ui-demo",
+    "@greypan/wuchale-vue"
   ]
 }

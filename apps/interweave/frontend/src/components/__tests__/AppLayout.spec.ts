@@ -6,13 +6,10 @@ import { afterEach, beforeEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, defineComponent, nextTick } from 'vue'
 import { createMemoryHistory, createRouter, type Router } from 'vue-router'
 
-import {
-  MENU_ADD_RESOURCE_EVENT,
-  MENU_FOCUS_SEARCH_EVENT,
-  MENU_TOGGLE_FILTER_BAR_EVENT
-} from '@/composables/menuActions'
+import { MENU_ADD_RESOURCE_EVENT, MENU_FOCUS_SEARCH_EVENT } from '@/composables/menuActions'
 import { pendingWindowFileDrops } from '@/composables/windowFileDrop'
 import type * as menuStateModule from '@/services/menu/state'
+import { useLayoutStore } from '@/stores/layout'
 import { useSettingsStore } from '@/stores/settings'
 
 const fileDrop = vi.hoisted(() => ({ listener: null as ((paths: string[]) => void) | null }))
@@ -663,22 +660,47 @@ describe('AppLayout：菜单命令', () => {
     expect(router.currentRoute.value.path).toBe('/library')
   })
 
-  it('「切换筛选栏」「搜索」交给资源库页处理', async () => {
+  it('「切换筛选栏」经 useLayoutStore 命令式切换，「搜索」交给资源库页处理', async () => {
     await mountLayout()
+    const layout = useLayoutStore()
     const received: string[] = []
-    const onFilter = () => received.push('filter')
     const onSearch = () => received.push('search')
-    document.addEventListener(MENU_TOGGLE_FILTER_BAR_EVENT, onFilter)
     document.addEventListener(MENU_FOCUS_SEARCH_EVENT, onSearch)
     try {
+      expect(layout.libraryFilterOpen).toBe(false)
       menuHandlers_().toggleFilterBar()
+      await nextTick()
+      expect(layout.libraryFilterOpen).toBe(true)
+
+      menuHandlers_().toggleFilterBar()
+      await nextTick()
+      expect(layout.libraryFilterOpen).toBe(false)
+
       menuHandlers_().focusSearch()
-      await flushUntil(() => received.length === 2, '页面动作没有派发')
-      expect(received).toEqual(['filter', 'search'])
+      await flushUntil(() => received.length === 1, '搜索动作没有派发')
+      expect(received).toEqual(['search'])
     } finally {
-      document.removeEventListener(MENU_TOGGLE_FILTER_BAR_EVENT, onFilter)
       document.removeEventListener(MENU_FOCUS_SEARCH_EVENT, onSearch)
     }
+  })
+
+  it('侧边栏折叠与宽度变更持久化，重新挂载壳后自动恢复', async () => {
+    await mountLayout()
+    layoutRoot().dispatchEvent(new CustomEvent('sidebar-collapsed-change', { detail: { collapsed: true } }))
+    layoutRoot().dispatchEvent(new CustomEvent('sidebar-width-change', { detail: { width: '296px' } }))
+    await nextTick()
+    expect(layoutRoot().sidebarCollapsed).toBe(true)
+    expect(layoutRoot().sidebarWidth).toBe('296px')
+
+    // 卸载并用全新 Pinia 重新挂载（模拟重启），应直接恢复上次折叠态与宽度。
+    app.unmount()
+    host.remove()
+    host = document.createElement('div')
+    document.body.append(host)
+    setActivePinia(createPinia())
+    await mountLayout()
+    expect(layoutRoot().sidebarCollapsed).toBe(true)
+    expect(layoutRoot().sidebarWidth).toBe('296px')
   })
 
   // 「复制为纯文本」只去掉富文本格式，不改写文本：缩进与首尾空白都属于选区内容。

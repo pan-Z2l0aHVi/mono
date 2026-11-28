@@ -1,0 +1,9 @@
+/* Before */
+web-ui-layout {
+  --wui-layout-mobile-toggle-inset: 12px;
+}
+
+/* After */
+web-ui-layout {
+  --wui-layout-mobile-toggle-left: 12px;
+}

@@ -124,7 +124,7 @@ it('changeset-required sees committed content only', async () => {
   )
 })
 
-it('changeset-required accepts declarations in any shape or commit', async () => {
+it('changeset-required accepts valid single-package, empty-shell, and quoted/code CJK declarations', async () => {
   const single = makeRepo('single')
   fs.writeFileSync(path.join(single.root, 'README.md'), '# feature\n')
   fs.writeFileSync(
@@ -149,6 +149,20 @@ it('changeset-required accepts declarations in any shape or commit', async () =>
   fs.writeFileSync(path.join(emptyShell.root, '.changeset', 'empty.md'), '---\n---\n')
   assert.ok((await kit(emptyShell, emptyShell.base, commit(emptyShell.root, 'source with empty changeset'))).ok)
 
+  const quotedCjk = makeRepo('quoted-cjk')
+  fs.writeFileSync(
+    path.join(quotedCjk.root, '.changeset', 'ui-label.md'),
+    '---\n"@scope/package": patch\n---\nShorten the confirmation title to "批量导入" and keep `检查更新`.\n\n```ts\n// 中文注释示例\nconst label = "导入"\n```\n'
+  )
+  assert.ok((await kit(quotedCjk, quotedCjk.base, commit(quotedCjk.root, 'quoted cjk literal'))).ok)
+
+  const prefixOverlap = makeRepo('prefix-overlap', { ignore: ['@scope/pkg'] })
+  fs.writeFileSync(
+    path.join(prefixOverlap.root, '.changeset', 'exact.md'),
+    '---\n"@scope/pkg-extra": patch\n---\nExact package match avoids substring false positive.\n'
+  )
+  assert.ok((await kit(prefixOverlap, prefixOverlap.base, commit(prefixOverlap.root, 'prefix overlap'))).ok)
+
   const spacedPath = makeRepo('unicode-and-space')
   fs.writeFileSync(path.join(spacedPath.root, 'README.md'), '# unicode\n')
   const unicodeFile = '.changeset/变更 with space.md'
@@ -163,7 +177,7 @@ it('changeset-required accepts declarations in any shape or commit', async () =>
   assert.ok((await kit(renamed, renamed.base, commit(renamed.root, 'rename changeset'))).ok)
 })
 
-it('changeset-required rejects malformed declarations', async () => {
+it('changeset-required rejects malformed, multi-package, dirty empty-shell, and CJK prose declarations', async () => {
   const noFrontmatter = makeRepo('no-frontmatter')
   fs.writeFileSync(path.join(noFrontmatter.root, '.changeset', 'bad.md'), 'plain text\n')
   assert.match(
@@ -176,6 +190,43 @@ it('changeset-required rejects malformed declarations', async () => {
   assert.match(
     await failure(preamble, preamble.base, commit(preamble.root, 'preamble changeset')),
     /^changeset:[\s\S]*content before its first ---/
+  )
+
+  const badLine = makeRepo('bad-frontmatter-line')
+  fs.writeFileSync(
+    path.join(badLine.root, '.changeset', 'bad.md'),
+    '---\n"@scope/package": invalid\n---\nTypo in bump level.\n'
+  )
+  assert.match(
+    await failure(badLine, badLine.base, commit(badLine.root, 'invalid bump')),
+    /^changeset: malformed:[\s\S]*invalid frontmatter line/
+  )
+
+  const multiPkg = makeRepo('multi-package')
+  fs.writeFileSync(
+    path.join(multiPkg.root, '.changeset', 'multi.md'),
+    '---\n"@scope/a": patch\n"@scope/b": minor\n---\nCoupled changes.\n'
+  )
+  assert.match(
+    await failure(multiPkg, multiPkg.base, commit(multiPkg.root, 'multi package changeset')),
+    /^changeset: multiple packages:/
+  )
+
+  const emptyWithBody = makeRepo('empty-with-body')
+  fs.writeFileSync(path.join(emptyWithBody.root, '.changeset', 'bad.md'), '---\n---\nStray body on empty shell.\n')
+  assert.match(
+    await failure(emptyWithBody, emptyWithBody.base, commit(emptyWithBody.root, 'empty shell with body')),
+    /^changeset: empty shell has body:/
+  )
+
+  const cjkProse = makeRepo('cjk-prose')
+  fs.writeFileSync(
+    path.join(cjkProse.root, '.changeset', 'cjk.md'),
+    '---\n"@scope/package": patch\n---\n修复了一个问题。\n'
+  )
+  assert.match(
+    await failure(cjkProse, cjkProse.base, commit(cjkProse.root, 'cjk prose')),
+    /^changeset: non-english summary:/
   )
 
   const noSummary = makeRepo('no-summary')

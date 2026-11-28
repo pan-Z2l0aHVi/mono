@@ -33,7 +33,6 @@ import {
   MENU_FOCUS_SEARCH_EVENT,
   MENU_IMPORT_FROM_CLIPBOARD_EVENT,
   MENU_IMPORT_FROM_LINK_EVENT,
-  MENU_TOGGLE_FILTER_BAR_EVENT,
   onMenuAction
 } from '@/composables/menuActions'
 import { selectLitEditor } from '@/composables/useEditorFocusRestore'
@@ -44,12 +43,14 @@ import { useLibrarySelection } from '@/composables/useLibrarySelection'
 import { pendingWindowFileDrops, pendingWindowURLDrops } from '@/composables/windowFileDrop'
 import type { LibraryQueueItem } from '@/services/library'
 import { userMessage } from '@/services/library/userMessage'
+import { useLayoutStore } from '@/stores/layout'
 import { useLibraryStore } from '@/stores/library'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { createLibraryWorkflow } from './libraryWorkflow'
 
 const router = useRouter()
+const layout = useLayoutStore()
 const store = useLibraryStore()
 
 // 记住整页滚动位置：仅在页面处于激活态时记录 window.scrollY，
@@ -138,7 +139,10 @@ const {
 const mobile = useLayoutMobile()
 const headerRef = ref<HTMLElement | null>(null)
 const { height: headerHeight } = useElementSize(headerRef)
-const filterOpen = ref(false)
+const filterOpen = computed({
+  get: () => layout.libraryFilterOpen,
+  set: open => layout.setLibraryFilterOpen(open)
+})
 const searchOpen = ref(false)
 const activeResourceId = ref<string | null>(null)
 const activeTagTarget = ref<ResourceView | LibraryQueueItem | null>(null)
@@ -219,8 +223,7 @@ const stopSourceAvailability = runtime.events.onSourceAvailability(event => {
 
 /*
  * 菜单里落在资源库页上的动作。壳层负责切路由，页面负责执行领域逻辑：
- * 开添加对话框、从剪贴板或链接导入、重新读库（可用性由后端监听维护，重读即拿到最新状态）、
- * 翻开筛选栏与聚焦搜索。
+ * 开添加对话框、从剪贴板或链接导入与聚焦搜索（筛选栏展开态由 `useLayoutStore` 统一管理）。
  */
 const stopMenuActions = [
   onMenuAction(MENU_ADD_RESOURCE_EVENT, () => workflow.openAddDialog()),
@@ -229,10 +232,6 @@ const stopMenuActions = [
     void workflow.pasteFilePaths()
   }),
   onMenuAction(MENU_IMPORT_FROM_LINK_EVENT, openAddLinkDialog),
-  onMenuAction(MENU_TOGGLE_FILTER_BAR_EVENT, () => {
-    // 「切换」名副其实：开着就收起。单向展开会让菜单项在筛选栏已开时看起来毫无反应。
-    filterOpen.value = !filterOpen.value
-  }),
   onMenuAction(MENU_FOCUS_SEARCH_EVENT, () => {
     searchOpen.value = true
   })
