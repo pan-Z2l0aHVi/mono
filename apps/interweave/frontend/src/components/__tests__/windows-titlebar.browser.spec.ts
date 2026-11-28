@@ -123,4 +123,86 @@ describe('WindowsTitleBar：真实 portal 菜单、焦点恢复与关闭（浏�
     expect(textarea.selectionEnd).toBe(16)
     expect(invokeItem).toHaveBeenCalledWith(Command.CommandPasteAsPlainText, '')
   })
+
+  it('顶部菜单首次需点击展开，展开后悬停即时切换，关闭后恢复点击触发', async () => {
+    const runtime: MenuTreeRuntime = {
+      isAvailable: true,
+      getMenu: async () => menuFixture,
+      onMenuChanged: () => () => {},
+      invokeItem: async () => {},
+      minimiseWindow: async () => {},
+      toggleMaximiseWindow: async () => {},
+      isWindowMaximised: async () => false,
+      closeWindow: async () => {}
+    }
+
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp({
+      render: () => h(WindowsTitleBar, { mobile: false, runtime })
+    })
+    app.mount(host)
+    cleanups.push(() => {
+      app.unmount()
+      host.remove()
+    })
+
+    await waitFor(() => host.querySelectorAll('[data-windows-top-menu]').length === 2, '顶级菜单渲染')
+
+    const dropdowns = [...host.querySelectorAll<WebUiDropdown>('web-ui-dropdown[data-windows-top-menu]')]
+    const fileDropdown = dropdowns[0]!
+    const editDropdown = dropdowns[1]!
+    const fileTrigger = fileDropdown.querySelector<HTMLButtonElement>('button[slot="trigger"]')!
+
+    // 1. 初始态：仅悬停不展开
+    fileDropdown.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
+    editDropdown.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
+    await nextTick()
+    expect(fileDropdown.open).toBe(false)
+    expect(editDropdown.open).toBe(false)
+
+    // 2. 首次点击「文件」展开
+    fileTrigger.click()
+    await waitFor(
+      () => fileDropdown.open && queryPortalPanels().some(panel => panel.textContent?.includes('导入资源')),
+      '文件菜单展开'
+    )
+
+    // 3. 展开态下鼠标悬停「编辑」即时切换
+    editDropdown.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
+    await waitFor(
+      () =>
+        !fileDropdown.open &&
+        editDropdown.open &&
+        queryPortalPanels().some(panel => panel.textContent?.includes('粘贴')),
+      '悬停切换到编辑菜单'
+    )
+
+    // 4. 触摸指针悬停不触发切换
+    fileDropdown.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'touch' }))
+    await nextTick()
+    expect(editDropdown.open).toBe(true)
+    expect(fileDropdown.open).toBe(false)
+
+    // 5. 鼠标悬停回「文件」再次切换
+    fileDropdown.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
+    await waitFor(
+      () =>
+        fileDropdown.open &&
+        !editDropdown.open &&
+        queryPortalPanels().some(panel => panel.textContent?.includes('导入资源')),
+      '悬停切回文件菜单'
+    )
+
+    // 6. 点击页面外部关闭菜单后，恢复「必须先点击」逻辑，悬停不再展开
+    // 等待 outsideClickGuard 的 macrotask disarm，模拟真实用户的后续点击。
+    await new Promise(resolve => setTimeout(resolve, 0))
+    document.body.click()
+    await waitFor(() => !fileDropdown.open && !editDropdown.open, '点击外部关闭菜单')
+
+    editDropdown.dispatchEvent(new PointerEvent('pointerenter', { pointerType: 'mouse' }))
+    await nextTick()
+    expect(fileDropdown.open).toBe(false)
+    expect(editDropdown.open).toBe(false)
+  })
 })

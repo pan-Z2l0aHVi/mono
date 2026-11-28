@@ -24,6 +24,8 @@ export interface WindowsTitleBarController {
   readonly isMaximised: Ref<boolean>
   start(): void
   captureFocusAndSelection(): void
+  handleTopMenuOpenChange(dropdown: WebUiDropdown, open: boolean): void
+  handleTopMenuPointerEnter(dropdown: WebUiDropdown, event: PointerEvent): void
   selectItem(item: MenuItem): void
   minimise(): Promise<void>
   toggleMaximise(): Promise<void>
@@ -65,6 +67,7 @@ export function createWindowsTitleBarController(options: {
   let menuSnapshotVersion = 0
   let maximisedVersion = 0
   let savedFocus: SavedFocusSnapshot | null = null
+  let activeTopMenu: WebUiDropdown | null = null
 
   function captureFocusAndSelection() {
     const deepest = deepestActiveElement()
@@ -90,6 +93,7 @@ export function createWindowsTitleBarController(options: {
   function restoreFocusAndSelection() {
     const snapshot = savedFocus
     savedFocus = null
+    activeTopMenu = null
     if (!snapshot) return
 
     const target = snapshot.element
@@ -130,7 +134,14 @@ export function createWindowsTitleBarController(options: {
     }
   }
 
+  function queryTopMenuDropdowns(): WebUiDropdown[] {
+    const header = getHeader()
+    if (!header) return []
+    return [...header.querySelectorAll<WebUiDropdown>('web-ui-dropdown[data-windows-top-menu]')]
+  }
+
   function closeAllMenus() {
+    activeTopMenu = null
     const header = getHeader()
     if (!header) return
     for (const dropdown of header.querySelectorAll<WebUiDropdown>('web-ui-dropdown')) {
@@ -138,6 +149,36 @@ export function createWindowsTitleBarController(options: {
         dropdown.hide?.({ instant: true })
       }
     }
+  }
+
+  function handleTopMenuOpenChange(dropdown: WebUiDropdown, open: boolean) {
+    if (open) {
+      activeTopMenu = dropdown
+      for (const sibling of queryTopMenuDropdowns()) {
+        if (sibling !== dropdown && (sibling.open || sibling.hasAttribute('open'))) {
+          sibling.hide?.({ instant: true })
+        }
+      }
+      return
+    }
+    if (activeTopMenu === dropdown) {
+      activeTopMenu = null
+    }
+  }
+
+  function handleTopMenuPointerEnter(dropdown: WebUiDropdown, event: PointerEvent) {
+    // 触摸指针不触发悬停切换，避免触屏误触相邻菜单。
+    if (event.pointerType === 'touch') return
+    // 与 macOS 原生顶部菜单栏一致：首次需点击展开，展开会话内悬停相邻顶级菜单即时切换，
+    // 全部菜单关闭后自动恢复「必须先点击」的初始态。
+    const currentOpen =
+      activeTopMenu && (activeTopMenu.open || activeTopMenu.hasAttribute('open'))
+        ? activeTopMenu
+        : (queryTopMenuDropdowns().find(item => item.open || item.hasAttribute('open')) ?? null)
+    if (!currentOpen || currentOpen === dropdown) return
+    activeTopMenu = dropdown
+    currentOpen.hide?.({ instant: true })
+    dropdown.show?.({ instant: true })
   }
 
   function selectItem(item: MenuItem) {
@@ -243,6 +284,8 @@ export function createWindowsTitleBarController(options: {
     isMaximised,
     start,
     captureFocusAndSelection,
+    handleTopMenuOpenChange,
+    handleTopMenuPointerEnter,
     selectItem,
     minimise,
     toggleMaximise,
