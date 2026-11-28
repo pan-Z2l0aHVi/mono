@@ -264,6 +264,7 @@ const {
   selectedResources,
   canRestore,
   toggleSelectionMode,
+  enterSelectionWith,
   toggleChecked,
   setResourceChecked,
   toggleCheckAll
@@ -668,6 +669,7 @@ onMounted(() => {
         @copy="copyResource"
         @set-wallpaper="setWallpaperFor"
         @select="selectResource"
+        @modifier-select="enterSelectionWith($event.id)"
         @detail="openResourceDetail"
         @start-rename="renameResourceFromMenu"
         @edit-tags="editResourceTags"

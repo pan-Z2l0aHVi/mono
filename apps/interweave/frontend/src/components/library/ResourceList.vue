@@ -14,6 +14,7 @@ import { WindowVirtualizer } from 'virtua/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { useEditorFocusRestore } from '@/composables/useEditorFocusRestore'
+import { wailsPlatformOS } from '@/services/runtime'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { FocusNavigator, rowFocusTarget } from './focusNavigator'
@@ -42,6 +43,7 @@ const props = defineProps<{
 
 const emit = defineEmits<{
   select: [resource: ResourceView]
+  modifierSelect: [resource: ResourceView]
   detail: [resource: ResourceView]
   startRename: [resource: ResourceView]
   editTags: [resource: ResourceView]
@@ -494,8 +496,19 @@ function handleBlankContextMenu(event: MouseEvent) {
   }
 }
 
-function onRowSelect(resource: ResourceView) {
+function isPrimarySelectionModifier(event: MouseEvent): boolean {
+  const os = wailsPlatformOS()
+  const isMac = os === 'darwin' || (!os && /Macintosh|Mac OS X/.test(window.navigator.userAgent))
+  return isMac ? event.metaKey && !event.ctrlKey && !event.altKey : event.ctrlKey && !event.metaKey && !event.altKey
+}
+
+function onRowSelect(resource: ResourceView, event?: MouseEvent) {
   if (sweep.consumeRowClick()) return
+  if (event && isPrimarySelectionModifier(event)) {
+    event.preventDefault()
+    emit('modifierSelect', resource)
+    return
+  }
   emit('select', resource)
 }
 

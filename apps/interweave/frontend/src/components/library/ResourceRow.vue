@@ -2,6 +2,7 @@
 import type { WebUiCheckbox, WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
 import { computed } from 'vue'
 
+import { wailsPlatformOS } from '@/services/runtime'
 import type { ResourceView } from '@/stores/library'
 
 import {
@@ -54,7 +55,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  select: [resource: ResourceView]
+  select: [resource: ResourceView, event?: MouseEvent]
   contextmenu: [resource: ResourceView, event: MouseEvent]
   toggle: [resourceId: string]
   renameChange: [resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>]
@@ -79,6 +80,18 @@ const rowRadiusClass = computed(() => {
   if (props.checkedBelow) return 'rounded-t-[14px] rounded-b-none'
   return 'rounded-[14px]'
 })
+
+function isPrimarySelectionModifier(event: MouseEvent): boolean {
+  const os = wailsPlatformOS()
+  const isMac = os === 'darwin' || (!os && /Macintosh|Mac OS X/.test(window.navigator.userAgent))
+  return isMac ? event.metaKey && !event.ctrlKey && !event.altKey : event.ctrlKey && !event.metaKey && !event.altKey
+}
+
+function handleRowMousedown(event: MouseEvent) {
+  if (event.button === 0 && isPrimarySelectionModifier(event)) {
+    event.preventDefault()
+  }
+}
 
 function handleChange(_event: WebUiEvent<WebUiCheckbox, 'change'>) {
   emit('toggle', props.resource.id)
@@ -122,7 +135,8 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     :aria-setsize="total"
     :aria-posinset="index + 1"
     :tabindex="tabbable ? 0 : -1"
-    @click="emit('select', resource)"
+    @mousedown="handleRowMousedown"
+    @click="emit('select', resource, $event)"
     @contextmenu="emit('contextmenu', resource, $event)"
   >
     <!--

@@ -134,7 +134,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
 
     <div slot="footer" class="flex gap-3">
       <web-ui-button full variant="secondary" @click="emit('accept')">仍要导入</web-ui-button>
-      <web-ui-button full variant="primary" @click="emit('cancel')">取消</web-ui-button>
+      <web-ui-button full variant="primary" @click="emit('cancel')">跳过</web-ui-button>
     </div>
   </web-ui-dialog>
 </template>
