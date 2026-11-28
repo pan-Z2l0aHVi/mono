@@ -2,7 +2,6 @@ package main
 
 import (
 	_ "embed"
-	"runtime"
 	"sync"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -46,6 +45,14 @@ func presentMainWindow(window *application.WebviewWindow) {
 	window.UnMinimise()
 	window.Show()
 	window.Focus()
+}
+
+// windowsTrayIcon 按 Windows 任务栏底色返回对应图标：浅色任务栏用深色图案，深色任务栏用浅色图案。
+func windowsTrayIcon(darkTaskbar bool) []byte {
+	if darkTaskbar {
+		return trayIconForDarkTaskbar
+	}
+	return trayIconForLightTaskbar
 }
 
 // trayIconsFor 按平台返回 Wails 托盘需要的图标字节，便于纯单测校验映射语义。
@@ -171,7 +178,7 @@ func setupSystemTray(app *application.App, windows *mainWindowController, presen
 		quit = app.Quit
 	}
 	tray := app.SystemTray.New()
-	applyTrayIcons(tray, runtime.GOOS)
+	disposeTheme := applyPlatformTrayIcons(app, tray)
 	tray.SetTooltip("Interweave")
 
 	var (
@@ -198,12 +205,22 @@ func setupSystemTray(app *application.App, windows *mainWindowController, presen
 		},
 		quit,
 	)
-	dispose := windows.addStateListener(func(bool) { syncLightModeChecked() })
+	disposeState := windows.addStateListener(func(bool) { syncLightModeChecked() })
 	tray.SetMenu(menu)
 	tray.OnClick(present)
 	// 不显式注册 OnRightClick(tray.OpenMenu)：Wails v3.1.0 在 rightClickHandler == nil 时，
 	// macOS 会通过 systrayPreClick 在 mouse-down 前直接挂载 NSMenu 进入原生菜单追踪，
 	// 避免 OpenMenu 异步合成点击与 rightMouseUp 竞态导致菜单频繁自动关闭；
 	// Windows 侧在 rightClickHandler == nil 时同样自动注册右键打开菜单的默认回调。
-	return &managedSystemTray{tray: tray, dispose: dispose}
+	return &managedSystemTray{
+		tray: tray,
+		dispose: func() {
+			if disposeState != nil {
+				disposeState()
+			}
+			if disposeTheme != nil {
+				disposeTheme()
+			}
+		},
+	}
 }
