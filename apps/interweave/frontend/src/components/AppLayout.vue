@@ -215,8 +215,8 @@ onScopeDispose(
 /**
  * 切到资源库页再执行页面域动作。
  *
- * 已经是资源库页时同一帧就执行；否则等路由落定。这里用事件而不是共享 store，
- * 是为了让页面只暴露「我准备好接收这类动作了」，壳层不必知道页面内部如何实现。
+ * 已经是资源库页时同一帧就执行；否则等路由落定。筛选栏展开态归 `useLayoutStore`
+ * 直接命令，其余页面域动作仍走事件派发，避免壳层感知页面内部对话框或搜索栏实现。
  */
 async function openLibraryThen(run: () => void) {
   if (router.currentRoute.value.path !== '/library') await router.push('/library')

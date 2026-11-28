@@ -223,8 +223,7 @@ const stopSourceAvailability = runtime.events.onSourceAvailability(event => {
 
 /*
  * 菜单里落在资源库页上的动作。壳层负责切路由，页面负责执行领域逻辑：
- * 开添加对话框、从剪贴板或链接导入、重新读库（可用性由后端监听维护，重读即拿到最新状态）、
- * 翻开筛选栏与聚焦搜索。
+ * 开添加对话框、从剪贴板或链接导入与聚焦搜索（筛选栏展开态由 `useLayoutStore` 统一管理）。
  */
 const stopMenuActions = [
   onMenuAction(MENU_ADD_RESOURCE_EVENT, () => workflow.openAddDialog()),
