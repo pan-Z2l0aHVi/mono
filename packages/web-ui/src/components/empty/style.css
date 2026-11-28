@@ -70,10 +70,10 @@
 
 .empty-title {
   /*
-   * 图形自身在 40px 见方的框里还带一圈线条留白，视觉间隙因此比数值看着更大，
-   * 收到 space-3（12px）才和标题读成一组。
+   * 图形与标题的间距放宽到 space-4（16px）：#440 曾把这里收到 space-3 让图形和标题
+   * 「读成一组」，2026-11 空态间距迭代有意推翻该收窄，给图形下方更多呼吸感。
    */
-  margin-top: var(--wui-empty-title-margin-top, var(--wui-space-3, 12px));
+  margin-top: var(--wui-empty-title-margin-top, var(--wui-space-4, 16px));
 
   font-size: var(--wui-empty-title-font-size, 16px);
   font-weight: var(--wui-font-weight-semibold, 600);
@@ -83,7 +83,7 @@
 }
 
 .empty-description {
-  margin-top: 6px;
+  margin-top: 4px;
 
   font-size: var(--wui-empty-description-font-size, 14px);
   line-height: var(--wui-line-height-relaxed, 1.6);

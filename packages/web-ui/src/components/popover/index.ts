@@ -3,6 +3,7 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import overlayMotion from '@/assets/overlay-motion.css?inline'
+import scrollbarStyle from '@/assets/scrollbar.css?inline'
 import glass from '@/classes/glass.css?inline'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
@@ -27,9 +28,22 @@ const DEFAULT_TRIGGERS = ['click'] as const
 
 let popoverIdCounter = 0
 
+/** 从 start 沿父链上溯到 document（跨 shadow 边界时接 host）；toast modalRoot 的 syncTheme 同款遍历。 */
+function ancestorChainOf(start: Element): Element[] {
+  const chain: Element[] = []
+  let node: Element | null = start
+  while (node) {
+    chain.push(node)
+    const parent: Element | null = node.parentElement
+    const root = node.getRootNode()
+    node = parent ?? (root instanceof ShadowRoot ? root.host : null)
+  }
+  return chain
+}
+
 @customElement('web-ui-popover')
 export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
-  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(scrollbarStyle), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true })
   get open(): boolean {
@@ -97,6 +111,9 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
   private _portal?: OverlayPortal
   private _panelKeepAliveDisposers: (() => void)[] = []
   private _portalKeepAliveDisposer?: () => void
+  private _panelResizeObserver: ResizeObserver | null = null
+  private _capSyncMutations: MutationObserver[] = []
+  private _capSyncOnResize: (() => void) | null = null
   /**
    * 开启态 overlay（issue #120 Block 1）：本组件不自行监听 keydown，只声明「我开着」，
    * 由唯一仲裁者决定一次 Escape 关谁。实例作用域的帧事务入口也在这里
@@ -180,6 +197,8 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     this._triggerController.connect()
     // 重连时 shadow DOM 与 panel 元素还在，但断连已撤销 keep-alive 登记，需要重新绑。
     this._bindLocalPanelKeepAlive()
+    // 打开态重连（框架 re-parent）后恢复限高同步观测；面板会话不在场时是 no-op。
+    if (this.open) this._startPanelCapSync()
   }
 
   override firstUpdated() {
@@ -215,6 +234,7 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     this._panelKeepAliveDisposers = []
     this._portalKeepAliveDisposer?.()
     this._portalKeepAliveDisposer = undefined
+    this._stopPanelCapSync()
     this._panel.dispose()
   }
 
@@ -252,6 +272,9 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
       this._panel.syncArbitration()
     }
 
+    // 打开态的 Lit 属性面重算：面板会话未建立时 getPanel() 为空，是 no-op。
+    if (this.open) this._syncPanelScrollClass()
+
     this._syncOpenWithContent()
   }
 
@@ -267,7 +290,63 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
      * 首个已开启 overlay 与从宿主上溯结果一致，多出的那次登记是冗余的。
      */
     this._panel.open(isInstant)
-    if (this._portal) applyOverlayVariables(this._portal.panel, this, ['--wui-popover-padding'])
+    if (this._portal)
+      applyOverlayVariables(this._portal.panel, this, ['--wui-popover-padding', '--wui-popover-max-height'])
+    this._startPanelCapSync()
+  }
+
+  /*
+   * 滚动容器语义只在 opt-in 限高时生效（见 style.css .wui-popover-scroll）：
+   * 按 computed max-height 判断并挂类；portal 面板在 applyOverlayVariables
+   * 之后读，转发过去的变量已经就位。
+   */
+  private _syncPanelScrollClass() {
+    const panel = this._panel.getPanel()
+    if (!panel) return
+    panel.classList.toggle('wui-popover-scroll', getComputedStyle(panel).maxHeight !== 'none')
+  }
+
+  /*
+   * 打开态持续对齐滚动类：--wui-popover-max-height 的生效来源无法穷举（宿主内联
+   * 样式、主题/祖先 class、样式表、媒体查询），单一几何信号覆盖不了「限高翻转但
+   * 盒高不变」的组合，这里按 toast modalRoot 同步 --wui-* 的同款信号模型补齐：
+   * 祖先链属性观察 + 视口 resize 覆盖属性面，ResizeObserver 覆盖几何面，
+   * updated() 覆盖 Lit 属性面。末尾立即重算一次：重连/重配置前祖先可能已改写
+   * 限高（新观测器收不到历史变更），对齐必须发生在挂载观测的同时而不是等下一
+   * 个事件。仍不覆盖的盲区：媒体查询改写变量且盒高不变的组合——该状态下没有
+   * 属性与几何事件可听，不做轮询；它不产生滚动需求，只影响绝对定位后代的
+   * 裁剪语义。
+   */
+  private _startPanelCapSync() {
+    this._stopPanelCapSync()
+    const panel = this._panel.getPanel()
+    if (!panel) return
+    this._syncPanelScrollClass()
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => this._syncPanelScrollClass())
+      observer.observe(panel)
+      this._panelResizeObserver = observer
+    }
+    if (typeof MutationObserver !== 'undefined') {
+      for (const target of ancestorChainOf(this)) {
+        const mutation = new MutationObserver(() => this._syncPanelScrollClass())
+        mutation.observe(target, { attributes: true, attributeFilter: ['style', 'class', 'appearance'] })
+        this._capSyncMutations.push(mutation)
+      }
+    }
+    if (typeof window !== 'undefined') {
+      this._capSyncOnResize = () => this._syncPanelScrollClass()
+      window.addEventListener('resize', this._capSyncOnResize)
+    }
+  }
+
+  private _stopPanelCapSync() {
+    this._panelResizeObserver?.disconnect()
+    this._panelResizeObserver = null
+    for (const mutation of this._capSyncMutations) mutation.disconnect()
+    this._capSyncMutations = []
+    if (this._capSyncOnResize) window.removeEventListener('resize', this._capSyncOnResize)
+    this._capSyncOnResize = null
   }
 
   private _migratableContentNodes(nodes: Node[]): Node[] {
@@ -280,8 +359,8 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     const portal = defineOverlayPortal().make({
       container: this.overlayContainer,
       target: this,
-      style: `${glass}\n${overlayMotion}\n${style}`,
-      className: 'popover-panel portal wui-glass wui-floating-panel',
+      style: `${glass}\n${overlayMotion}\n${scrollbarStyle}\n${style}`,
+      className: 'popover-panel portal wui-glass wui-floating-panel wui-scroll',
       // 已迁移节点被框架删除后的解除追踪是 portal 内建默认行为；这里只借变化事件
       // 重新评估「还有没有内容」。
       onContentChange: () => this.requestUpdate(),
@@ -298,6 +377,7 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
   }
 
   private async _closeOverlay() {
+    this._stopPanelCapSync()
     await this._panel.close(() => this.open, !this._hasOverlayContent())
   }
 
@@ -307,6 +387,7 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     this._portalKeepAliveDisposer?.()
     this._portalKeepAliveDisposer = undefined
     this._panel.reconfigure(this.open)
+    if (this.open) this._overlay.scheduleFrame(() => this._startPanelCapSync())
   }
 
   private _dispatchChange(open: boolean) {
@@ -356,7 +437,13 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
         >
           <slot name="trigger"></slot>
         </div>
-        <div id=${this._panelId} class="popover-panel wui-floating-panel wui-glass" hidden role="dialog" tabindex="-1">
+        <div
+          id=${this._panelId}
+          class="popover-panel wui-floating-panel wui-glass wui-scroll"
+          hidden
+          role="dialog"
+          tabindex="-1"
+        >
           <slot @slotchange=${this._onContentSlotChange}></slot>
         </div>
       </div>

@@ -150,18 +150,18 @@ describe('WebUiAutocomplete 组件', () => {
       cleanupElement(el)
     })
 
-    it('placement 默认 bottom-start，切换后反射为 attribute，非法值回退', async () => {
+    it('placement 默认 bottom，切换后反射为 attribute，非法值回退', async () => {
       const el = createAutocomplete(OPTIONS_HTML)
       await waitForUpdate(el)
-      expect(el.placement).toBe('bottom-start')
+      expect(el.placement).toBe('bottom')
 
-      el.placement = 'bottom'
+      el.placement = 'top-start'
       await waitForUpdate(el)
-      expect(el.getAttribute('placement')).toBe('bottom')
+      expect(el.getAttribute('placement')).toBe('top-start')
 
       ;(el as any).placement = 'sideways'
       await waitForUpdate(el)
-      expect(el.placement).toBe('bottom-start')
+      expect(el.placement).toBe('bottom')
 
       cleanupElement(el)
     })
