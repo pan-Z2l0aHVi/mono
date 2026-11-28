@@ -1,6 +1,6 @@
 {
   "name": "@greypan/interweave",
-  "version": "0.5.0",
+  "version": "0.0.0",
   "private": true,
   "type": "module",
   "scripts": {
@@ -13,7 +13,7 @@
     "sync:version": "node scripts/sync-version.mjs",
     "test": "go test -race -count=1 ./..."
   },
-  "dependencies": {
+  "devDependencies": {
     "@greypan/interweave-frontend": "workspace:*"
   }
 }

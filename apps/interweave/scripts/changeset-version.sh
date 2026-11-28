@@ -1,8 +1,8 @@
 #!/bin/sh
 # 版本 PR 编排入口（changeset-version.yml 的 version-script）：必须以仓库根为 cwd 运行。
 # 先 `changeset version` 升级全部 workspace；本 app 版本被升级时（privatePackages.version: true）
-# 调用同目录 sync:version 把新版本追平进 Wails 构建产物；`packages/{web-ui,js-kit,browser-kit}/CHANGELOG.md`
-# 是各 demo 文档 meta 的输入，被改写时要重生成对应 demo 的 `src/generated/**`，否则版本 PR 的 CI 校验会红。
+# 调用同目录 sync:version 把新版本追平进 Wails 构建产物；各公开包的 CHANGELOG.md 是 demo 文档
+# meta 的输入，被改写时要重生成对应 demo 的 `src/generated/**`，否则版本 PR 的 CI 校验会红。
 set -eu
 
 pnpm exec changeset version
@@ -32,7 +32,11 @@ elif [ "$web_ui_changelog" -ne 0 ]; then
 fi
 
 dev_kit_changelog=0
-git diff --quiet -- packages/js-kit/CHANGELOG.md packages/browser-kit/CHANGELOG.md || dev_kit_changelog=$?
+git diff --quiet -- \
+  packages/js-kit/CHANGELOG.md \
+  packages/browser-kit/CHANGELOG.md \
+  packages/deps-reload/CHANGELOG.md \
+  packages/unplugin-web-components/CHANGELOG.md || dev_kit_changelog=$?
 
 if [ "$dev_kit_changelog" -eq 1 ]; then
   pnpm exec turbo run build --filter='@greypan/dev-kit-demo^...'

@@ -4,6 +4,7 @@ import { fileURLToPath, pathToFileURL } from 'node:url'
 
 import { defineCatch, defineRunner, getWorkspaceRoot } from '@greypan/monorepo-kit'
 
+import { changesetIgnoreCoverage } from '../policies/changeset-ignore-coverage.mjs'
 import { fullCheckout } from '../policies/full-checkout.mjs'
 import { interweaveTurboInputs } from '../policies/interweave-turbo-inputs.mjs'
 import { sharedPolicies } from '../policies/shared-policies.mjs'
@@ -12,7 +13,12 @@ import { workspaceDepBoundaries } from '../policies/workspace-dep-boundaries.mjs
 
 import { runCheck } from './run-check.mjs'
 
-export const policyOnlyPolicies = [interweaveTurboInputs, themeTokenParity, workspaceDepBoundaries]
+export const policyOnlyPolicies = [
+  changesetIgnoreCoverage,
+  interweaveTurboInputs,
+  themeTokenParity,
+  workspaceDepBoundaries
+]
 
 /**
  * 解析 `check-policy` 的命令行参数：过滤 pnpm 透传的字面 `--` 分隔符，仅接受 `--fail-fast`。

@@ -4,13 +4,12 @@
 
 ### Patch Changes
 
-- f966cdc: Move `@iconify/types` to `dependencies` in `@greypan/web-ui`: `WebUiIcon` exposes `IconifyIcon` in the published type declarations, so consumers must be able to resolve the type package. Remove the unused `remeda` dependency from `@greypan/browser-kit`.
+- f966cdc: Remove the unused `remeda` dependency.
 
 ## 3.1.1
 
 ### Patch Changes
 
-- f4e47c9: Rewrite change-narration comments as current-state statements per the code-style rules. Comment-only change: no behavior, API, or shipped-CSS value changes.
 - Updated dependencies [7eefb10]
   - @greypan/js-kit@3.2.0
 
@@ -18,13 +17,11 @@
 
 ### Minor Changes
 
-- 9787a15: 移除各包 `exports` 里的 `"./package.json"`。仓库内没有任何消费方；这一项只为按包名读元数据重新放开入口，留着会让后来者把它当成必需项。唯一需要读 manifest 的 `check-md-to-comp-artifacts` 改为按仓库路径读取。已发布包按 minor 处理：升级后经包名解析元数据会报 `ERR_PACKAGE_PATH_NOT_EXPORTED`，目前没有已知的外部消费者。
+- 9787a15: Remove `"./package.json"` from the package `exports` map.
 
 ### Patch Changes
 
-- 8cb3f56: Release offline, page-exit, and page-error listeners through a composable, idempotent tracker stop method.
-  
-  Complete toast dismissal once from its panel transition or fallback, and cancel pending dismissal when disconnected or shown again.
+- 8cb3f56: Release offline, page-exit, and page-error listeners through a composable, idempotent tracker `stop()` method.
 - Updated dependencies [9787a15]
   - @greypan/js-kit@3.1.0
 
@@ -39,20 +36,18 @@
 
 ### Major Changes
 
-- d0a9f32: Clean up duplicated and transport-specific public utilities.
-  
+- d0a9f32: Clean up duplicated and transport-specific public utilities:
   - Rename `maxBeaconSize` to `maxBatchKB`.
-  - Remove `sleep`, `sleepSync` and `defer`.
+  - Remove `sleep`, `sleepSync`, and `defer`.
   - Move `getFileExtension` and `formatFileSize` to `@greypan/js-kit`.
 
 ### Minor Changes
 
-- d0a9f32: Expose narrow tracker capability interfaces (`TrackCapability`, `FlushCapability` and `PauseCapability`) so plugins depend only on the tracker methods they use.
-- d0a9f32: Add a `definePageErrors()` plugin to the Tracker that collects uncaught errors and unhandled promise rejections through the existing transport pipeline. Includes error-count limits, a signature dedupe window, and message/stack truncation protection by default.
+- d0a9f32: Expose narrow tracker capability interfaces (`TrackCapability`, `FlushCapability`, and `PauseCapability`) so plugins depend only on the tracker methods they use.
+- d0a9f32: Add a `definePageErrors()` plugin to the Tracker that collects uncaught errors and unhandled promise rejections with error-count limits, signature deduplication, and message/stack truncation.
 
 ### Patch Changes
 
-- Updated dependencies [d0a9f32]
 - Updated dependencies [d0a9f32]
   - @greypan/js-kit@3.0.0
 
@@ -60,185 +55,66 @@
 
 ### Minor Changes
 
-- c310d9f: Add the `transport` option to `defineTracker`: a custom single-entry delivery function `(item: object) => Promise<void> | void` that replaces the default `sendBeacon()` → `fetch(keepalive)` adapter. The transformed payload is passed to custom transports, and an entry is removed only after the returned Promise fulfills. A single oversized event is still sent as one item.
+- c310d9f: Add the `transport` option to `defineTracker` for custom single-entry delivery functions `(item: object) => Promise<void> | void` replacing the default `sendBeacon()` / `fetch(keepalive)` adapter.
 
 ## 2.1.0
 
 ### Minor Changes
 
-- ab8dfb7: Add `history-nav` module: track whether the user can go back/forward in real browser history, exposing a read-only subset of the Navigation API.
-  
-  **`defineHistoryNav(options?)`:**
-  
-  - Read-only subset: `canGoBack` / `canGoForward` / `currentEntry` / `entries()` / `currententrychange`
-  - Tracks `history.pushState` / `replaceState` via side-table patch (no state injection) and `popstate` traversals with an entry id/key stack
-  - Persists through `sessionStorage` (reuses the `storage` module) with `namespace` isolation; degrades to in-memory when storage is blocked
-  - Idempotent singleton with `dispose()` to restore the patched `history` methods
+- ab8dfb7: Add the `history-nav` module (`defineHistoryNav`) to track real browser history navigation (`canGoBack`, `canGoForward`, `currentEntry`, `entries()`, `currententrychange`) with `sessionStorage` persistence and an idempotent `dispose()` hook.
 
 ## 2.0.0
 
 ### Major Changes
 
-- 1e52bc4: 修复 Tracker 待传输事件的持久化与重试：同一对象的重复上报会被独立保留，正常发送改为有序串行，失败事件会保留至 `resume()`、重连或下次初始化后重试；启动时离线不会抢先发送 localStorage 中恢复的数据。
-  
-  同时删除 `defineLoopQueue`，不保留兼容别名，迁移到并列的 `defineQueue`（调用 `onConsume` 后移除）和 `defineAckQueue`（`onConsume` 返回的 Promise fulfilled 后移除）。两者都使用必填的 `onConsume`，并支持可选的同步 `onPersist` 快照接缝与 `onConsumeError` 错误观察器。
-  
-  队列持久化采用 persist-before-commit：通用队列的持久化异常会使队列 fail-closed，避免在无法保存快照时静默丢失成员关系。Tracker 的 localStorage 适配层则是 best-effort：存储受限时只告警一次并降级为 memory-only；旧快照可能残留，因此下次初始化存在 at-least-once 重复发送风险。Tracker 的 `persistenceKey` 默认使用 URL；需要在同一页面创建多个相互独立的 Tracker 时，应提供不同的稳定 key。
+- 1e52bc4: Overhaul Tracker persistence and retry behavior: preserve duplicate event payloads independently, serialize normal delivery, retain failed events until `resume()`, reconnect, or next initialization, and avoid flushing restored `localStorage` entries while offline on startup. The `localStorage` persistence adapter degrades best-effort to memory-only when storage is unavailable, and `persistenceKey` defaults to the current URL.
 
 ### Patch Changes
 
 - Updated dependencies [1e52bc4]
   - @greypan/js-kit@2.0.0
 
-## 1.7.8
-
-### Patch Changes
-
-- b9faa2c: enhance monorepo agent capabilities
-- Updated dependencies [b9faa2c]
-  - @greypan/js-kit@1.6.7
-
-## 1.7.7
-
-### Patch Changes
-
-- 7c06580: try workflows
-- Updated dependencies [7c06580]
-  - @greypan/js-kit@1.6.6
-
 ## 1.7.6
 
 ### Patch Changes
 
-- 32d3366: Stabilize browser tracker tests while waiting for requests intercepted by MSW.
-
-## 1.7.5
-
-### Patch Changes
-
-- cdc5cf7: Release pipeline validation: bump all public packages for trusted publishing verification.
-- Updated dependencies [cdc5cf7]
-  - @greypan/js-kit@1.6.5
-
-## 1.7.4
-
-### Patch Changes
-
-- 57f9984: fix mardkwon table format
-- 57f9984: fix npm readme cn link
-- Updated dependencies [57f9984]
-- Updated dependencies [57f9984]
-  - @greypan/js-kit@1.6.4
-
-## 1.7.3
-
-### Patch Changes
-
-- 734dea6: fix npm readme cn link
-- Updated dependencies [734dea6]
-  - @greypan/js-kit@1.6.3
+- 32d3366: Stabilize browser tracker tests under MSW request interception.
 
 ## 1.7.2
 
 ### Patch Changes
 
-- be4008b: Standardize externalization to regex patterns for workspace deps; move msw to package-level devDependencies
-
-  - `vite.config.ts` for `js-kit`, `browser-kit`, `web-ui`: replace hardcoded workspace dep names with `/^@greypan\//` regex; add missing external deps (`nanoid`, `msw`)
-  - `browser-kit`: move `msw` from peerDependencies to devDependencies
-  - `test-kit`: add `msw` to devDependencies for local type checking
-  - `web-ui`: replace `react` peer dep with `@types/react`; add React/Vue usage documentation to README
-  - `unplugin-web-components`: fix README import path to use `/vite` sub-path export
-  - Fix documentation in READMEs and AGENTS.md to reflect current externalization rules
-
+- be4008b: Move `msw` from `peerDependencies` to `devDependencies` and standardize workspace dependency externalization.
 - Updated dependencies [be4008b]
   - @greypan/js-kit@1.6.2
-
-## 1.7.1
-
-### Patch Changes
-
-- c56dd3e: add tsconfig package
-- Updated dependencies [c56dd3e]
-  - @greypan/js-kit@1.6.1
-
-## 1.7.0
-
-### Minor Changes
-
-- a4e7f9b: vp monorepo standardization
-
-### Patch Changes
-
-- Updated dependencies [a4e7f9b]
-  - @greypan/js-kit@1.6.0
 
 ## 1.6.1
 
 ### Patch Changes
 
-- 8f4643d: Audit and reorganize devDependencies/peerDependencies across all packages
+- 8f4643d: Audit and reorganize package dependencies.
 - Updated dependencies [8f4643d]
   - @greypan/js-kit@1.5.1
-
-## 1.6.0
-
-### Minor Changes
-
-- a06335a: refactor tracker and storage
-
-### Patch Changes
-
-- a06335a: upgrade agents doc
-- Updated dependencies [a06335a]
-- Updated dependencies [a06335a]
-  - @greypan/js-kit@1.5.0
 
 ## 1.5.0
 
 ### Minor Changes
 
-- 874638d: refactor tracker and storage
-
-### Patch Changes
-
-- Updated dependencies [874638d]
-  - @greypan/js-kit@1.4.0
+- 874638d: Refactor the tracker and storage modules.
 
 ## 1.4.0
 
 ### Minor Changes
 
-- 13802c0: bug fix, type fix, spec fix
-
-### Patch Changes
-
+- 13802c0: Fix runtime bugs and TypeScript type definitions.
 - Updated dependencies [13802c0]
   - @greypan/js-kit@1.3.0
-
-## 1.3.0
-
-### Minor Changes
-
-- 8944472: Improve engineering structures
-
-### Patch Changes
-
-- Updated dependencies [8944472]
-  - @greypan/js-kit@1.2.0
-
-## 1.2.1
-
-### Patch Changes
-
-- Updated dependencies [ec36e92]
-  - @greypan/js-kit@1.1.1
 
 ## 1.2.0
 
 ### Minor Changes
 
-- 4dfde81: 完善子包依赖，修复依赖缺失
+- 4dfde81: Complete package dependency declarations and fix missing dependencies.
 
 ### Patch Changes
 
@@ -249,4 +125,4 @@
 
 ### Minor Changes
 
-- 添加 getViewportSize 方法，获取当前视口尺寸
+- Add `getViewportSize` to read the current viewport dimensions.

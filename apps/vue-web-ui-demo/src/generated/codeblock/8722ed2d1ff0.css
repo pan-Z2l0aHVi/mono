@@ -1,0 +1,7 @@
+/* Selected token renames */
+/* --wui-color-text-muted        -> --wui-color-text-secondary */
+/* --wui-color-text-faint        -> --wui-color-text-tertiary */
+/* --wui-focus-ring              -> --wui-color-focus-ring + --wui-focus-ring-width */
+/* --wui-button-size             -> --wui-control-size */
+/* --wui-shadow-pop              -> --wui-shadow-panel */
+/* --web-ui-back-top-*           -> --wui-back-top-* */
