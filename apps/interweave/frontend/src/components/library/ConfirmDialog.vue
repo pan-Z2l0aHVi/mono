@@ -11,8 +11,10 @@ const props = defineProps<{
   busy: boolean
   danger: boolean
   compact: boolean
+  /** busy 期间替换弹窗标题（如批量导入扫描中显示「正在扫描」）。 */
+  busyTitle?: string
   /**
-   * 声明后，busy 期间取消按钮不再禁用，而是换成这个文案（如「停止」）：
+   * 声明后，busy 期间取消按钮不再禁用，而是换成这个文案（如「终止扫描」）：
    * 长流程（批量导入）进行中允许用户主动中止，短流程仍按禁用处理。
    */
   busyCancelLabel?: string
@@ -43,7 +45,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
     @open-change="handleOpenChange"
     @closed="emit('closed')"
   >
-    <div slot="header">{{ title }}</div>
+    <div slot="header">{{ busy && busyTitle ? busyTitle : title }}</div>
     <p class="m-0 text-[14px] leading-6 text-[#5b5b66] dark:text-(--wui-color-text-secondary)">
       <template v-for="(segment, index) in splitNumericSegments(message)" :key="index">
         <span v-if="segment.numeric" :class="monoDigitsClass">{{ segment.text }}</span>

@@ -557,7 +557,7 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                   :pending-token="itemPreviewToken(item)"
                   :capture-scope="captureScopeController.signal"
                 />
-                <span class="grid min-w-0 flex-[1_1_auto] gap-1">
+                <span class="grid min-w-0 flex-[1_1_auto] gap-0">
                   <div class="flex min-w-0 items-center gap-2">
                     <web-ui-editable-text
                       v-if="editingItemId === item.id"

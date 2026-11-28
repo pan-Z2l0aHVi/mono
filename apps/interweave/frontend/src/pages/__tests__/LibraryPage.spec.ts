@@ -1014,18 +1014,19 @@ describe('LibraryPage：统一导入入口', () => {
       expect(dialog.textContent).toContain('取消')
       button(dialog, '导入 21 个文件').click()
       await flush()
-      // 前三项已入队，第 4 项的查询在途：按钮已换成「停止」。
+      // 前三项已入队，第 4 项的查询在途：标题已切换为「正在扫描」，按钮已换成「终止扫描」。
       expect(queueItems(mounted.host)).toHaveLength(3)
       expect(findLocationMatches).toHaveBeenCalledTimes(4)
+      expect(dialog.querySelector('[slot="header"]')?.textContent?.trim()).toBe('正在扫描')
       expect(dialog.textContent).not.toContain('取消')
 
-      // 点停止后放行在途查询：代次已变，第 4 项不入队、其余 17 项不再发起查询。
-      button(dialog, '停止').click()
+      // 点终止扫描后放行在途查询：代次已变，第 4 项不入队、其余 17 项不再发起查询，但已入队的 3 项必须保留。
+      button(dialog, '终止扫描').click()
       gate.resolve()
       await vi.waitFor(() => expect(dialogOpen(dialog)).toBe(false))
 
       expect(findLocationMatches).toHaveBeenCalledTimes(4)
-      expect(queueItems(mounted.host)).toHaveLength(0)
+      expect(queueItems(mounted.host)).toHaveLength(3)
     } finally {
       await mounted.close()
     }

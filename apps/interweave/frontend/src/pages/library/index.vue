@@ -781,6 +781,7 @@ onMounted(() => {
   <ConfirmDialog
     :open="confirmOpen"
     :title="confirmRequest?.title ?? ''"
+    :busy-title="confirmRequest?.busyTitle"
     :message="confirmRequest?.message ?? ''"
     :confirm-label="confirmButtonLabel"
     :danger="confirmRequest?.danger ?? false"

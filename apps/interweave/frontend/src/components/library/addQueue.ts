@@ -85,6 +85,8 @@ export interface LibraryAddQueueController {
    * 全部成功时 close() 收尾并返回 true。
    */
   submit(create: (item: LibraryQueueItem) => Promise<void>, createBatch?: LibraryBatchCreate): Promise<boolean>
+  /** 仅中止在途入队链，保留已入队的列表项与预览。 */
+  stopEnqueue(): void
   close(): Promise<void>
 }
 
@@ -318,6 +320,12 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     await lease.revoke(itemId)
   }
 
+  function stopEnqueue() {
+    generation += 1
+    // 挂着的重复提示按「取消」裁决，避免入队链永久卡在当前项。
+    resolveDuplicate(false)
+  }
+
   async function close() {
     generation += 1
     // 挂着的提示按「取消」裁决，链才不会停在这一项上。
@@ -476,6 +484,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     waitForPreview,
     releasePreview,
     submit,
+    stopEnqueue,
     close
   }
 }

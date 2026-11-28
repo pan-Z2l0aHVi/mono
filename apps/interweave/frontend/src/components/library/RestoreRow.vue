@@ -30,7 +30,7 @@ const emit = defineEmits<{ prepare: []; cancelPrepare: []; chooseCandidates: [] 
       :media-url="pending ? null : (preview?.mediaUrl ?? null)"
       :thumbnail-url="pending ? (item.source?.thumbnailUrl ?? null) : null"
     />
-    <div class="grid min-w-0 flex-[1_1_auto] grid-cols-[minmax(0,1fr)] gap-1">
+    <div class="grid min-w-0 flex-[1_1_auto] grid-cols-[minmax(0,1fr)] gap-0.5">
       <span
         class="min-w-0 truncate text-[14px] font-medium leading-[1.35] text-[#22212a] dark:text-(--wui-color-text)"
         :title="item.resourceTitle"

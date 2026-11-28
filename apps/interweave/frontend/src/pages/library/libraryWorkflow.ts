@@ -26,6 +26,8 @@ export const IMPORT_CONFIRM_THRESHOLD = 20
 
 export interface ConfirmRequest {
   title: string
+  /** busy 期间替换弹窗标题（如批量导入扫描中显示「正在扫描」）。 */
+  busyTitle?: string
   message: string
   confirmLabel: string
   danger: boolean
@@ -61,6 +63,7 @@ export interface LibraryWorkflowPorts {
     | 'setItemStatus'
     | 'resolveDuplicate'
     | 'submit'
+    | 'stopEnqueue'
     | 'close'
   >
   expandImportEntries(entries: string[]): Promise<{ files: string[]; folders: number }>
@@ -172,14 +175,13 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
   }
 
   /**
-   * 确认弹窗的取消：导入进行中它显示为「停止」。
-   * 停止只作用于当前批次与已入队项，排队等待确认的其它批次仍会依次弹出——
-   * 它们还没开始导入，各自仍需要一次显式放行，停止不该替用户把它们一并丢弃。
+   * 确认弹窗的取消：批量导入扫描进行中显示为「终止扫描」。
+   * 仅中止尚未入队的剩余项，已加入待导入列表的资源必须保留；排队等待确认的其它批次仍依次弹出。
    * action 随后自行结算，runConfirmedAction 走正常关闭，这里不提前翻 open。
    */
   function cancelConfirmDialog() {
     if (confirmBusy.value && confirmRequest.value?.busyCancelLabel) {
-      void addQueue.close()
+      addQueue.stopEnqueue()
       return
     }
     closeConfirmDialog()
@@ -252,11 +254,12 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
       const expanded = expansion.folders > 0 ? `（${expansion.folders} 个文件夹已递归展开）` : ''
       openConfirmDialog({
         title: '批量导入',
+        busyTitle: '正在扫描',
         message: `共 ${paths.length} 个文件将加入待导入列表${expanded}。`,
         confirmLabel: `导入 ${paths.length} 个文件`,
         danger: false,
         progressTotal: paths.length,
-        busyCancelLabel: '停止',
+        busyCancelLabel: '终止扫描',
         action: () => {
           addQueue.prepareBatchProgress(paths.length)
           return addQueue.enqueueFileLocations(paths)
@@ -336,6 +339,7 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
 
   function pickDirectories() {
     return pickFrom(() => ports.chooseDirectories(), '选择文件夹失败')
+  }
 
   /**
    * URL 项走后端批量纳入：一次 RPC 内并发探测，逐项进度经事件回流。
