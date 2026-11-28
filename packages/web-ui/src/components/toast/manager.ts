@@ -20,7 +20,7 @@ const modalRootsByContainer = new WeakMap<HTMLElement, ModalRoot>()
 let pendingBatch: Array<{ id: string; options: ToastInstanceOptions; root: HTMLElement }> | undefined
 let isBatchScheduled = false
 
-type ToastShortcutOptions = Omit<ToastOptions, 'message' | 'type'> & Pick<ToastInstanceOptions, 'position'>
+type ToastShortcutOptions = Omit<ToastOptions, 'heading' | 'type'> & Pick<ToastInstanceOptions, 'position'>
 
 // moveBefore 尚未进入 Baseline，DOM lib 未必声明；按能力探测调用，缺失时走降级分支。
 type MaybeMoveBefore = HTMLElement & { moveBefore?: (node: Node, child: Node | null) => void }
@@ -268,7 +268,7 @@ function mountToast(id: string, options: ToastInstanceOptions, container: HTMLEl
   el.type = type
   el.position = options.position || 'top-right'
   el.heading = options.heading || ''
-  el.message = options.message
+  el.message = options.message ?? ''
   // error 的 5000 只在挂载时兜底，不写进 options：写进去 applyPatch 就会把它当成「显式传入
   // duration」而每次 upsert 都重启倒计时，与「duration 只有显式传入才重启」的契约冲突。
   el.duration = options.duration ?? (type === 'error' ? 5000 : 3000)
@@ -351,18 +351,22 @@ function clear() {
   for (const el of visibleToasts.values()) el.dismiss('clear')
 }
 
-function toast(options: ToastInstanceOptions): string {
-  return createToast(options)
+/**
+ * 裸字符串等价于 `{ heading: text }`：toast 的第一个参数是标题，正文只在需要补充细节时
+ * 用 options.message 给出。快捷入口沿用同一条映射。
+ */
+function toast(options: ToastInstanceOptions | string): string {
+  return createToast(typeof options === 'string' ? { heading: options } : options)
 }
 
-toast.success = (message: string, options?: ToastShortcutOptions) =>
-  createToast({ ...options, message, type: 'success' })
-toast.info = (message: string, options?: ToastShortcutOptions) => createToast({ ...options, message, type: 'info' })
-toast.warning = (message: string, options?: ToastShortcutOptions) =>
-  createToast({ ...options, message, type: 'warning' })
+toast.success = (heading: string, options?: ToastShortcutOptions) =>
+  createToast({ ...options, heading, type: 'success' })
+toast.info = (heading: string, options?: ToastShortcutOptions) => createToast({ ...options, heading, type: 'info' })
+toast.warning = (heading: string, options?: ToastShortcutOptions) =>
+  createToast({ ...options, heading, type: 'warning' })
 // 不注入 duration：error 的 5000 默认值在 mountToast 兜底，否则 upsert 每次都判定为
 // 「显式传入 duration」而重启倒计时（success/info/warning 都没有这个不对称）。
-toast.error = (message: string, options?: ToastShortcutOptions) => createToast({ ...options, message, type: 'error' })
+toast.error = (heading: string, options?: ToastShortcutOptions) => createToast({ ...options, heading, type: 'error' })
 toast.close = close
 toast.clear = clear
 

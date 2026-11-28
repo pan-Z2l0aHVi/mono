@@ -17,7 +17,7 @@ const DEMO_ID = 'demo-close'
 const last = ref('-')
 
 function create() {
-  last.value = `Created ${toast.info('This toast does not close automatically', { id: DEMO_ID, duration: 0 })}`
+  last.value = `Created ${toast.info('Auto-close disabled', { id: DEMO_ID, duration: 0, message: 'This toast does not close automatically' })}`
 }
 
 function closeOne() {

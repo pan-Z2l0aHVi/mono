@@ -65,7 +65,7 @@ async function pasteClipboard() {
     clipboardBaseURL.value = content.base_url ?? ''
     dismissed.value = new Set()
   } catch {
-    toast.error('无法读取剪切板，请手动粘贴链接', { position: 'top-center' })
+    toast.error('无法读取剪贴板', { position: 'top-center', message: '请手动粘贴链接' })
   }
 }
 function removeCandidate(url: string) {
