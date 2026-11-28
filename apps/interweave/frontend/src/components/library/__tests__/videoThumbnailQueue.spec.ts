@@ -318,6 +318,38 @@ describe('videoThumbnailCoordinator', () => {
     expect(await pRetry).toBeNull()
   })
 
+  it('冷却表有界：达到 maxCooldownEntries 后按最早登记淘汰，被淘汰的键重新可重试', async () => {
+    vi.useFakeTimers()
+    const mock = createMockVideo()
+    const coordinator = createVideoThumbnailCoordinator({
+      createVideo: () => mock.video,
+      createCanvas: createMockCanvasFactory([WHITE]),
+      decodeTimeoutMs: 5000,
+      cooldownMs: 10000,
+      maxTransientAttempts: 1,
+      maxCooldownEntries: 2,
+      now: () => 1000
+    })
+
+    async function hangOnce(key: string) {
+      const pending = coordinator.capture({ key, location: `/${key}.mp4`, mediaUrl: `/media/${key}` })
+      vi.advanceTimersByTime(5000)
+      return pending
+    }
+
+    expect(await hangOnce('a')).toBeNull()
+    expect(await hangOnce('b')).toBeNull()
+    // 三个不同版本键都进过冷却，上限 2：最早登记的 a 被淘汰。
+    expect(await hangOnce('c')).toBeNull()
+
+    const beforeRetry = mock.sources.length
+    const retry = coordinator.capture({ key: 'a', location: '/a.mp4', mediaUrl: '/media/a' })
+    // 淘汰后不再命中冷却，应重新拉取媒体，而不是直接返回空结果。
+    expect(mock.sources.length).toBe(beforeRetry + 1)
+    vi.advanceTimersByTime(5000)
+    expect(await retry).toBeNull()
+  })
+
   it('确定性解码错误写入负缓存，但 ReplaceSource 更换 location 后自动绕过旧负缓存', async () => {
     const mock = createMockVideo()
     const coordinator = createVideoThumbnailCoordinator({

@@ -38,6 +38,7 @@ export interface VideoThumbnailCoordinatorOptions {
   maxPendingEntries?: number
   maxPendingBytes?: number
   maxNegativeCacheEntries?: number
+  maxCooldownEntries?: number
   now?: () => number
 }
 
@@ -82,6 +83,7 @@ const DEFAULT_MAX_TRANSIENT_ATTEMPTS = 2
 const DEFAULT_MAX_PENDING_ENTRIES = 100
 const DEFAULT_MAX_PENDING_BYTES = 15 * 1024 * 1024
 const DEFAULT_MAX_NEGATIVE_CACHE_ENTRIES = 500
+const DEFAULT_MAX_COOLDOWN_ENTRIES = 500
 const MEDIA_ERR_DECODE = 3
 const MEDIA_ERR_SRC_NOT_SUPPORTED = 4
 
@@ -123,6 +125,7 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
   const maxPendingEntries = Math.max(1, options.maxPendingEntries ?? DEFAULT_MAX_PENDING_ENTRIES)
   const maxPendingBytes = Math.max(1024, options.maxPendingBytes ?? DEFAULT_MAX_PENDING_BYTES)
   const maxNegativeCacheEntries = Math.max(1, options.maxNegativeCacheEntries ?? DEFAULT_MAX_NEGATIVE_CACHE_ENTRIES)
+  const maxCooldownEntries = Math.max(1, options.maxCooldownEntries ?? DEFAULT_MAX_COOLDOWN_ENTRIES)
   const now = options.now ?? (() => Date.now())
 
   // 固定规模的离屏 <video> + <canvas> 解码池（默认 2 路并发），每槽位惰性创建元素并复用。
@@ -215,6 +218,13 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
   function recordTransientFailure(versionKey: string) {
     const prev = cooldownMap.get(versionKey)
     const attempts = (prev?.attempts ?? 0) + 1
+    // 冷却表只增不删：达到 maxTransientAttempts 后 isInCooldown 永远命中，成功路径也不再有机会
+    // 删除，长时间浏览大量视频会无界增长。按最早登记顺序淘汰，被淘汰的键回到可重试状态，
+    // 与负缓存的有界淘汰同一策略。
+    if (!prev && cooldownMap.size >= maxCooldownEntries) {
+      const oldest = cooldownMap.keys().next().value
+      if (oldest !== undefined) cooldownMap.delete(oldest)
+    }
     cooldownMap.set(versionKey, { attempts, nextRetryAt: now() + cooldownMs })
   }
 

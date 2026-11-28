@@ -88,7 +88,12 @@ const serverThumbActive = computed(
     (props.kind === 'image' || props.kind === 'video')
 )
 const serverThumbCrossOrigin = computed(() => (isCrossOriginMediaUrl(props.thumbnailUrl) ? 'anonymous' : undefined))
-const imageCrossOrigin = computed(() => (isCrossOriginMediaUrl(displayMediaUrl.value) ? 'anonymous' : undefined))
+// 只有要把已显示的图截成缩略图回填时（saveThumbnail 存在）才需要 CORS：canvas 读跨源像素必须
+// 带 CORS 响应头。反向代价很大——远端直链图片若没带该响应头，加了 crossorigin 会直接加载失败
+// 退成 fallback；而 URL 来源没有 thumbnailUrl，行级回填回调为 null，本就不读像素。
+const imageCrossOrigin = computed(() =>
+  props.saveThumbnail && isCrossOriginMediaUrl(displayMediaUrl.value) ? 'anonymous' : undefined
+)
 
 const showFallback = computed(() => {
   if (favicon.value && faviconReady.value && !faviconFailed.value) return false
@@ -329,6 +334,14 @@ watch(
     if (scope?.aborted) {
       captureAborted.value = true
       cancelPendingCapture()
+      return
+    }
+    // AddDialog 在 busy 结束后用 resetCaptureScope() 换上一枚未中止的新 signal。不在这里解除
+    // 「已中止」并重排一次捕获的话，提交失败/重新打开后视频缩略图会永久停在 fallback。
+    if (!captureAborted.value) return
+    captureAborted.value = false
+    if (props.kind === 'video' && canRenderMedia.value && !thumbnailURL.value && !serverThumbActive.value) {
+      scheduleVideoCapture(mediaVersion)
     }
   }
 )

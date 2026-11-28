@@ -561,4 +561,87 @@ describe('ResourceThumbnail', () => {
       host.remove()
     }
   })
+
+  it('直链 URL 图片不强制 crossorigin，只有存在回填回调时才要求 CORS', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const withSaver = ref(false)
+    const app = createApp({
+      setup() {
+        return () =>
+          h(ResourceThumbnail, {
+            kind: ResourceKind.ResourceKindImage,
+            source: {
+              id: 'url-thumb-1',
+              type: 'url',
+              location: 'https://cdn.example.com/photo.jpg',
+              available: true,
+              isPreferred: true,
+              orderIndex: 0,
+              mediaUrl: null,
+              thumbnailUrl: null,
+              metadata: null
+            },
+            mediaUrl: null,
+            saveThumbnail: withSaver.value ? () => {} : null
+          })
+      }
+    })
+    try {
+      app.mount(host)
+      await nextTick()
+      // 缺 CORS 响应头的远端直链：带 crossorigin 会被浏览器直接拒绝加载、退成 fallback，
+      // 而 URL 来源没有 thumbnailUrl，行级回填回调为 null，本就不需要读像素。
+      expect(host.querySelector('img')?.hasAttribute('crossorigin')).toBe(false)
+
+      withSaver.value = true
+      await nextTick()
+      // 需要把已显示的图截成缩略图回填时，跨源像素必须走 CORS 才能读 canvas。
+      expect(host.querySelector('img')?.getAttribute('crossorigin')).toBe('anonymous')
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
+  it('captureScope 换成未中止的新 signal 后解除中止并重排一次捕获', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const captureSpy = vi.spyOn(videoThumbnailCoordinator, 'capture').mockResolvedValue(null)
+
+    const controller = new AbortController()
+    const scope = ref<AbortSignal>(controller.signal)
+    const app = createApp({
+      setup() {
+        return () =>
+          h(ResourceThumbnail, {
+            kind: ResourceKind.ResourceKindVideo,
+            source: fileSource('/tmp/movie.mp4'),
+            mediaUrl: '/resource-media/source-1',
+            captureScope: scope.value,
+            dwellMs: 0
+          })
+      }
+    })
+    try {
+      app.mount(host)
+      await nextTick()
+      await Promise.resolve()
+      expect(captureSpy).toHaveBeenCalledTimes(1)
+
+      controller.abort()
+      await nextTick()
+      expect(captureSpy, '中止后不得继续排新的捕获').toHaveBeenCalledTimes(1)
+
+      // AddDialog 提交失败后 resetCaptureScope() 换上一枚未中止的新 signal：必须解除中止态并
+      // 重新排捕获，否则视频缩略图会永久停在 fallback。
+      scope.value = new AbortController().signal
+      await nextTick()
+      await Promise.resolve()
+      expect(captureSpy).toHaveBeenCalledTimes(2)
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
 })
