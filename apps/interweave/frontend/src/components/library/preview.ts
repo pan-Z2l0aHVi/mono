@@ -10,6 +10,7 @@ export type PreviewEmptyReason =
   | 'source-unavailable'
   | 'media-unavailable'
   | 'unsupported-kind'
+  | 'embed-blocked'
 
 export interface PreviewTarget {
   mode: PreviewMode
@@ -129,6 +130,9 @@ export function resolvePreviewTarget(resource: ResourceView | null): PreviewTarg
     }
     if (resource.kind === 'video') {
       return { mode: 'video', source, mediaUrl: source.location, externalTarget: source.location, emptyReason: null }
+    }
+    if (source.metadata?.embedBlocked) {
+      return emptyTarget(source, 'embed-blocked', source.location)
     }
     return { mode: 'url', source, mediaUrl: null, externalTarget: source.location, emptyReason: null }
   }

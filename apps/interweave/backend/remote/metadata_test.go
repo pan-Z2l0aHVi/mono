@@ -228,3 +228,41 @@ func TestFetcher_FetchURL_AntiBotStatusRemainsAvailable(t *testing.T) {
 		})
 	}
 }
+
+func TestFetcher_FetchURL_DetectsEmbedBlockedHeaders(t *testing.T) {
+	cases := []struct {
+		name        string
+		headers     map[string]string
+		wantBlocked bool
+	}{
+		{"xfo deny", map[string]string{"X-Frame-Options": "DENY"}, true},
+		{"xfo sameorigin", map[string]string{"X-Frame-Options": "sameorigin"}, true},
+		{"csp frame-ancestors none", map[string]string{"Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'"}, true},
+		{"csp frame-ancestors self", map[string]string{"Content-Security-Policy": "frame-ancestors 'self' https://example.com"}, true},
+		{"csp frame-ancestors wildcard", map[string]string{"Content-Security-Policy": "frame-ancestors *"}, false},
+		{"no framing restriction", map[string]string{}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				for k, v := range tc.headers {
+					w.Header().Set(k, v)
+				}
+				w.Header().Set("Content-Type", "text/html")
+				_, _ = w.Write([]byte("<html><head><title>Page</title></head></html>"))
+			}))
+			defer ts.Close()
+
+			meta, reachability, err := remote.NewFetcher().FetchURL(context.Background(), ts.URL)
+			if err != nil {
+				t.Fatalf("FetchURL error = %v", err)
+			}
+			if reachability != remote.ReachabilityAvailable {
+				t.Fatalf("expected ReachabilityAvailable, got %v", reachability)
+			}
+			if meta.EmbedBlocked != tc.wantBlocked {
+				t.Fatalf("EmbedBlocked = %v, want %v", meta.EmbedBlocked, tc.wantBlocked)
+			}
+		})
+	}
+}

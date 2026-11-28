@@ -33,6 +33,8 @@ export type PreviewState =
       description: string
       source: ResourceSourceView | null
       canRecover: boolean
+      canOpenExternal: boolean
+      externalTarget: string | null
     }
   | { kind: 'image'; mediaKey: string; src: string; status: 'loading' | 'ready' | 'failed' }
   | { kind: 'video'; mediaKey: string; src: string; status: 'loading' | 'ready' | 'failed'; portrait: boolean }
@@ -96,7 +98,11 @@ const EMPTY_COPY: Record<PreviewEmptyReason, { title: string; description: strin
   'empty-location': { title: '链接地址为空', description: '刷新这个链接来源后才能预览。' },
   'source-unavailable': { title: '文件已失效', description: '原路径已经不存在，找回文件后即可预览。' },
   'media-unavailable': { title: '暂时无法预览', description: '请稍后重试，或用其他应用打开文件。' },
-  'unsupported-kind': { title: '暂不支持预览', description: '可以在系统默认应用中打开这个文件。' }
+  'unsupported-kind': { title: '暂不支持预览', description: '可以在系统默认应用中打开这个文件。' },
+  'embed-blocked': {
+    title: '该网页不支持内嵌预览',
+    description: '目标网站限制了在应用内嵌入显示，可在默认浏览器中直接打开。'
+  }
 }
 
 function noticeFor(mode: 'text' | 'markdown' | 'code', truncated: boolean): string {
@@ -326,7 +332,9 @@ export function createPreviewSession(
             title: copy.title,
             description: copy.description,
             source: resolved.source,
-            canRecover: resolved.emptyReason === 'source-unavailable' && resolved.source !== null
+            canRecover: resolved.emptyReason === 'source-unavailable' && resolved.source !== null,
+            canOpenExternal: resolved.emptyReason === 'embed-blocked' && Boolean(resolved.externalTarget),
+            externalTarget: resolved.externalTarget
           }
           return
         }

@@ -170,6 +170,33 @@ describe('resolvePreviewTarget', () => {
       mediaUrl: 'https://example.com/pic.png',
       externalTarget: 'https://example.com/pic.png'
     })
+
+    const videoSource = source({ id: 'source-video-url', type: 'url', location: 'https://example.com/clip.mp4' })
+    expect(
+      resolvePreviewTarget(
+        resource({ kind: ResourceKind.ResourceKindVideo, preferred: videoSource, sources: [videoSource] })
+      )
+    ).toMatchObject({
+      mode: 'video',
+      mediaUrl: 'https://example.com/clip.mp4',
+      externalTarget: 'https://example.com/clip.mp4'
+    })
+
+    const blockedSource = source({
+      id: 'source-blocked-url',
+      type: 'url',
+      location: 'https://chat.deepseek.com',
+      metadata: { title: 'DeepSeek', siteName: 'DeepSeek', description: '', faviconUrl: '', embedBlocked: true }
+    })
+    expect(
+      resolvePreviewTarget(
+        resource({ kind: ResourceKind.ResourceKindWeb, preferred: blockedSource, sources: [blockedSource] })
+      )
+    ).toMatchObject({
+      mode: 'empty',
+      emptyReason: 'embed-blocked',
+      externalTarget: 'https://chat.deepseek.com'
+    })
   })
 
   it('失效来源、缺来源与缺媒体地址各自给出可区分的空态', () => {

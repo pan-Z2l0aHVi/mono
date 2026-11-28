@@ -29,10 +29,11 @@ const (
 // Source 抓取到的展示元数据。结构对应 remote.URLMetadata 的序列化形态，
 // 在 service 层解析为类型化对象，前端不再接触 JSON 字符串。
 type SourceMetadataDTO struct {
-	Title       string `json:"title"`
-	SiteName    string `json:"site_name"`
-	Description string `json:"description"`
-	FaviconURL  string `json:"favicon_url"`
+	Title        string `json:"title"`
+	SiteName     string `json:"site_name"`
+	Description  string `json:"description"`
+	FaviconURL   string `json:"favicon_url"`
+	EmbedBlocked bool   `json:"embed_blocked,omitempty"`
 }
 
 // FilePreviewDTO 为待添加文件提供权威 kind 与可选的本地媒体读取授权。

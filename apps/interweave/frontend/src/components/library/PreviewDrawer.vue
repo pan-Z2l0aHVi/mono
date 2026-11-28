@@ -109,6 +109,17 @@ function handleVideoMetadata(mediaKey: string, event: Event) {
               </template>
               找回资源
             </ConvergeButton>
+            <ConvergeButton
+              v-else-if="state.canOpenExternal && state.externalTarget"
+              slot="action"
+              variant="primary"
+              @click="openExternal(state.externalTarget)"
+            >
+              <template #suffix>
+                <web-ui-icon :icon="lucideArrowRight" :size="16" />
+              </template>
+              在浏览器中打开
+            </ConvergeButton>
           </web-ui-empty>
         </div>
       </div>

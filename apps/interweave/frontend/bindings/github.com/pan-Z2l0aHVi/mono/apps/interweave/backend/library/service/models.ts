@@ -591,6 +591,7 @@ export class SourceMetadataDTO {
     "site_name": string;
     "description": string;
     "favicon_url": string;
+    "embed_blocked"?: boolean;
 
     /** Creates a new SourceMetadataDTO instance. */
     constructor($$source: Partial<SourceMetadataDTO> = {}) {

@@ -27,6 +27,9 @@ type URLMetadata struct {
 	// 响应的 Content-Type（去参数后的 media type，如 "image/png"）。展示层用它把直链图片
 	// 归类为 image；非 HTML 内容也有值，这是直链资源唯一的类型证据。
 	ContentType string `json:"content_type,omitempty"`
+	// EmbedBlocked 为 true 表示目标站点通过 X-Frame-Options 或 CSP frame-ancestors
+	// 明确禁止跨源 iframe 嵌入；前端预览据此直接展示回退空态与「在浏览器中打开」入口。
+	EmbedBlocked bool `json:"embed_blocked,omitempty"`
 }
 
 // Reachability 区分「服务端明确拒绝」与「本次无法判定」：
@@ -72,14 +75,19 @@ func (f *Fetcher) FetchURL(ctx context.Context, targetURL string) (*URLMetadata,
 		// 不应将正常链接直接标为「失效」；404/410/5xx 等仍判为明确不可用。
 		switch resp.StatusCode {
 		case http.StatusUnauthorized, http.StatusForbidden, http.StatusMethodNotAllowed, http.StatusTeapot, http.StatusTooManyRequests:
-			meta := &URLMetadata{ContentType: mediaTypeOf(resp.Header.Get("Content-Type"))}
+			meta := &URLMetadata{
+				ContentType:  mediaTypeOf(resp.Header.Get("Content-Type")),
+				EmbedBlocked: isEmbedBlocked(resp.Header),
+			}
 			return meta, ReachabilityAvailable, nil
 		default:
 			return nil, ReachabilityUnavailable, nil
 		}
 	}
 
-	meta := &URLMetadata{}
+	meta := &URLMetadata{
+		EmbedBlocked: isEmbedBlocked(resp.Header),
+	}
 	contentType := resp.Header.Get("Content-Type")
 	meta.ContentType = mediaTypeOf(contentType)
 
@@ -93,6 +101,42 @@ func (f *Fetcher) FetchURL(ctx context.Context, targetURL string) (*URLMetadata,
 	parseHTMLMetadata(bodyReader, targetURL, meta)
 
 	return meta, ReachabilityAvailable, nil
+}
+
+// isEmbedBlocked 检查响应头是否通过 X-Frame-Options 或 CSP frame-ancestors 禁止跨源 iframe 嵌入。
+func isEmbedBlocked(headers http.Header) bool {
+	for _, raw := range headers.Values("X-Frame-Options") {
+		val := strings.ToUpper(strings.TrimSpace(raw))
+		if val == "" {
+			continue
+		}
+		if strings.Contains(val, "DENY") || strings.Contains(val, "SAMEORIGIN") || strings.HasPrefix(val, "ALLOW-FROM") {
+			return true
+		}
+	}
+	for _, policyHeader := range headers.Values("Content-Security-Policy") {
+		// 单个 CSP 头可能以逗号拼接多份策略。
+		for _, policy := range strings.Split(policyHeader, ",") {
+			for _, directive := range strings.Split(policy, ";") {
+				fields := strings.Fields(strings.TrimSpace(directive))
+				if len(fields) == 0 || !strings.EqualFold(fields[0], "frame-ancestors") {
+					continue
+				}
+				allowsAny := false
+				for _, src := range fields[1:] {
+					lower := strings.ToLower(src)
+					if lower == "*" || lower == "http:" || lower == "https:" {
+						allowsAny = true
+						break
+					}
+				}
+				if !allowsAny {
+					return true
+				}
+			}
+		}
+	}
+	return false
 }
 
 // mediaTypeOf 取 Content-Type 的 media type 部分并小写："Image/PNG; charset=binary" → "image/png"。

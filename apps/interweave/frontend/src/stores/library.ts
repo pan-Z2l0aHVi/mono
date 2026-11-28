@@ -55,6 +55,7 @@ export interface ResourceSourceView {
     siteName: string
     description: string
     faviconUrl: string
+    embedBlocked?: boolean
   } | null
 }
 
@@ -109,7 +110,8 @@ function toSourceView(source: ResourceDTO['sources'][number]): ResourceSourceVie
           title: metadata.title,
           siteName: metadata.site_name,
           description: metadata.description,
-          faviconUrl: metadata.favicon_url
+          faviconUrl: metadata.favicon_url,
+          embedBlocked: Boolean(metadata.embed_blocked)
         }
       : null
   }
