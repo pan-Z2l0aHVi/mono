@@ -159,4 +159,40 @@ describe('WindowsTitleBar', () => {
     expect(formatWindowsAccelerator('CmdOrCtrl+plus')).toBe('Ctrl++')
     expect(formatWindowsAccelerator('backspace')).toBe('Backspace')
   })
+
+  it('只有最大化键声明 non-client region，拖动底不声明', async () => {
+    const stub = createStubRuntime()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp({
+      render: () => h(WindowsTitleBar, { mobile: false, runtime: stub.runtime })
+    })
+    app.mount(host)
+
+    try {
+      await nextTick()
+      // jsdom 不解析自定义属性的计算值，这里断言内联声明本身（运行时读的就是这个来源）。
+      const declaredRegion = (element: Element) => element.getAttribute('style') ?? ''
+
+      // Snap Layouts 只挂在最大化键上；最小化/关闭没有 hover 面板，保持普通 client 命中。
+      expect(declaredRegion(host.querySelector('button[aria-label="最大化"]')!)).toContain(
+        '--wails-non-client-region: maximize'
+      )
+      expect(declaredRegion(host.querySelector('button[aria-label="最小化"]')!)).not.toContain(
+        '--wails-non-client-region'
+      )
+      expect(declaredRegion(host.querySelector('button[aria-label="关闭"]')!)).not.toContain(
+        '--wails-non-client-region'
+      )
+
+      // 拖动底继续走 JS 拖动契约：保留 data-window-drag 钩子，且不叠 caption 命中
+      // （否则同一次按下会同时进入原生移动循环与 JS 拖动）。
+      const dragBase = host.querySelector('[data-window-drag]')!
+      expect(dragBase.hasAttribute('data-window-drag')).toBe(true)
+      expect(declaredRegion(dragBase)).not.toContain('--wails-non-client-region')
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
 })

@@ -35,7 +35,11 @@ const captionButtonClass =
     data-windows-titlebar
     class="sticky top-0 z-[700] flex h-9 w-full shrink-0 items-center justify-between border-b border-[#1b1b20]/6 bg-white select-none dark:border-white/8 dark:bg-(--wui-color-page)"
   >
-    <!-- 与控件同级的透明拖动底：遵循 AGENTS.md 规则，避免 --wails-draggable 继承到菜单与窗口按钮。 -->
+    <!--
+      与控件同级的透明拖动底：遵循 AGENTS.md 规则，避免 --wails-draggable 继承到菜单与窗口按钮。
+      这里刻意不标 --wails-non-client-region: caption——窗口拖动仍由 Wails 的 JS 拖动路径发起，
+      再叠一层原生 caption 命中会让同一次按下同时进入原生移动循环与 JS 拖动。
+    -->
     <div data-window-drag aria-hidden="true" class="absolute inset-0 -z-10" @dblclick="controller.toggleMaximise" />
 
     <nav aria-label="顶部菜单" class="relative z-10 flex min-w-0 items-center gap-0.5 pl-2">
@@ -81,9 +85,16 @@ const captionButtonClass =
           <path d="M1 5h8" stroke="currentColor" stroke-width="1" stroke-linecap="square" />
         </svg>
       </button>
+      <!--
+        Snap Layouts：只有最大化键需要标非客户区。Wails 在 composition hosting 就绪时把这块
+        矩形的非客户区命中测试映射成「最大化」按钮命中，DWM 才会在悬停时弹出分屏面板；同时它把点击
+        转发回 WebView，所以 @click 仍是唯一的 toggle 入口（不会双触发）。最小化/关闭没有
+        hover 面板，继续走普通 client 命中。
+      -->
       <button
         type="button"
         :class="captionButtonClass"
+        style="--wails-non-client-region: maximize"
         :aria-label="isMaximised ? '还原' : '最大化'"
         @click="controller.toggleMaximise"
       >

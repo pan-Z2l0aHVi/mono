@@ -9,6 +9,7 @@ import (
 	"os"
 	"path/filepath"
 	"runtime"
+	"strings"
 	"sync/atomic"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -52,6 +53,12 @@ func mainWindowOptions() application.WebviewWindowOptions {
 // mainWindowOptionsFor 按目标平台构造主窗口选项，便于在非 Windows 主机上直接单测 Windows 配置。
 // Windows 端启用 Frameless + NonClientRegionSupport 并关闭原生菜单栏，由前端渲染一体化顶栏
 // （左侧 top menu + 中间拖动区 + 右侧系统风格三键），同时保留 Win11 原生圆角、阴影与贴边分屏。
+//
+// Snap Layouts（悬停最大化键弹出的分屏面板）要求自定义按钮区域能返回「最大化」的非客户区命中码，而 Wails
+// v3.1.0 只在 WebView2 composition hosting 就绪时才路由非客户区输入，因此这里一并开启它。
+// composition hosting 仍是上游实验特性，用环境变量 INTERWEAVE_DISABLE_WINDOWS_SNAP 可关闭这条路由：
+// 前端保留 `--wails-non-client-region: maximize` 标记，但该标记只被 composition 路由消费，
+// 关闭后标记留在 DOM 里不再产生命中效果（Wails 的 routeNonClientInput 是唯一消费入口）。
 func mainWindowOptionsFor(goos string) application.WebviewWindowOptions {
 	isWindows := goos == "windows"
 	return application.WebviewWindowOptions{
@@ -74,10 +81,25 @@ func mainWindowOptionsFor(goos string) application.WebviewWindowOptions {
 			},
 		},
 		Windows: application.WindowsWindow{
-			NonClientRegionSupport: isWindows,
+			NonClientRegionSupport:     isWindows,
+			WebView2CompositionHosting: isWindows && !windowsSnapLayoutsDisabled(),
 		},
 		BackgroundColour: application.NewRGB(6, 7, 15),
 		URL:              "/",
+	}
+}
+
+// disableWindowsSnapEnv 是 Snap Layouts 的回退开关：composition hosting 在上游仍标注为
+// 实验特性，真机出现渲染、文件拖放或输入异常时可用它整层关掉，退回普通 frameless 窗口。
+// 未设置（或设为 0/false/no）时默认开启。
+const disableWindowsSnapEnv = "INTERWEAVE_DISABLE_WINDOWS_SNAP"
+
+func windowsSnapLayoutsDisabled() bool {
+	switch strings.ToLower(strings.TrimSpace(os.Getenv(disableWindowsSnapEnv))) {
+	case "1", "true", "yes":
+		return true
+	default:
+		return false
 	}
 }
 
