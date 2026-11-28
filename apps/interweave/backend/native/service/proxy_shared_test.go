@@ -79,11 +79,36 @@ func TestResolveWindowsProxy(t *testing.T) {
 func TestResolveDarwinProxy(t *testing.T) {
 	req, _ := http.NewRequest(http.MethodGet, "https://example.com", nil)
 
-	got, err := resolveDarwinProxy(req, func(string) (string, bool) {
-		return "https|127.0.0.1:8443", true
-	})
-	if err != nil || got == nil || got.String() != "https://127.0.0.1:8443" {
-		t.Fatalf("unexpected darwin proxy: (%v, %v)", got, err)
+	cases := []struct {
+		name string
+		raw  string
+		want string
+	}{
+		{
+			name: "kCFProxyTypeHTTPS 映射为明文 http 代理避免 TLS-to-proxy EOF",
+			raw:  "https|127.0.0.1:7890",
+			want: "http://127.0.0.1:7890",
+		},
+		{
+			name: "kCFProxyTypeHTTP 映射为 http 代理",
+			raw:  "http|127.0.0.1:7890",
+			want: "http://127.0.0.1:7890",
+		},
+		{
+			name: "kCFProxyTypeSOCKS 映射为 socks5 代理",
+			raw:  "socks5|127.0.0.1:7891",
+			want: "socks5://127.0.0.1:7891",
+		},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			got, err := resolveDarwinProxy(req, func(string) (string, bool) {
+				return tc.raw, true
+			})
+			if err != nil || got == nil || got.String() != tc.want {
+				t.Fatalf("resolveDarwinProxy(%q) = (%v, %v), want %q", tc.raw, got, err, tc.want)
+			}
+		})
 	}
 
 	if got, err := resolveDarwinProxy(req, func(string) (string, bool) { return "", false }); err != nil || got != nil {
@@ -92,6 +117,10 @@ func TestResolveDarwinProxy(t *testing.T) {
 
 	if _, err := resolveDarwinProxy(req, func(string) (string, bool) { return "malformed", true }); err == nil {
 		t.Fatalf("expected error for malformed darwin result")
+	}
+
+	if _, err := resolveDarwinProxy(req, func(string) (string, bool) { return "ftp|127.0.0.1:2121", true }); err == nil {
+		t.Fatalf("expected error for unsupported darwin proxy type")
 	}
 }
 

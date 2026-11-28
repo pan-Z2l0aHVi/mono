@@ -311,6 +311,20 @@ func resolveWindowsProxy(req *http.Request, read windowsProxyReader) (*url.URL, 
 
 type darwinProxyQuery func(rawURL string) (result string, ok bool)
 
+func darwinProxyScheme(proxyType string) (string, error) {
+	// macOS CFNetwork 的 kCFProxyTypeHTTPS 对应系统“安全网页代理（HTTPS）”，
+	// 表示用于代理 HTTPS 流量的明文 HTTP CONNECT 代理，并非客户端到代理走 TLS 的 HTTPS 代理；
+	// 映射到 Go http.Transport 时必须使用 "http"，否则会向本地代理端口发起 TLS 握手并报 proxyconnect tcp: EOF。
+	switch strings.ToLower(strings.TrimSpace(proxyType)) {
+	case "http", "https":
+		return "http", nil
+	case "socks5":
+		return "socks5", nil
+	default:
+		return "", fmt.Errorf("proxy: unsupported darwin proxy type %q", proxyType)
+	}
+}
+
 func resolveDarwinProxy(req *http.Request, query darwinProxyQuery) (*url.URL, error) {
 	if req == nil || req.URL == nil {
 		return nil, fmt.Errorf("proxy: request has no URL")
@@ -319,9 +333,13 @@ func resolveDarwinProxy(req *http.Request, query darwinProxyQuery) (*url.URL, er
 	if !ok || raw == "" {
 		return nil, nil
 	}
-	scheme, host, found := strings.Cut(raw, "|")
+	proxyType, host, found := strings.Cut(raw, "|")
 	if !found || host == "" {
 		return nil, fmt.Errorf("proxy: malformed system proxy result %q", raw)
+	}
+	scheme, err := darwinProxyScheme(proxyType)
+	if err != nil {
+		return nil, err
 	}
 	return &url.URL{Scheme: scheme, Host: host}, nil
 }
