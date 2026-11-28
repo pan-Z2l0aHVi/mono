@@ -6,9 +6,9 @@
 
 - **版本化范围**：仅 **6 个对外交付物**参与版本管理与 CHANGELOG 生成——5 个公开 npm 包（`@greypan/web-ui`、`@greypan/js-kit`、`@greypan/browser-kit`、`@greypan/deps-reload`、`@greypan/unplugin-web-components`）与桌面端宿主应用 `@greypan/interweave`。其余内部私有包与 demo 均位于 [`.changeset/config.json`](../../.changeset/config.json) 的 `ignore` 表中，严禁在 changeset 中声明它们。
 - **空壳 changeset 边界**：仅改内部私有包、独立 demo、docs、test、chore、根配置或注释（未改变上述 6 个交付物的用户可见行为）时，写空壳 changeset（正文仅两行 `---`，**不得写任何正文**）。
-- **一包一 changeset 与视角隔离（门禁强制）**：
-  - 每个非空壳 `.changeset/*.md` 的 frontmatter **只能声明 1 个包**；跨包联动 PR 必须拆分为多个独立 `.changeset/*.md` 文件。
-  - 每份 changeset 正文**只允许描述目标包自身的变化**：公开 npm 包的 changeset 严禁提及 Interweave、demo 站点或其他包的变更；`@greypan/interweave` 的 changeset 严禁混入上游组件库或 demo 的实现细节。
+- **一包一 changeset（门禁强制）与视角隔离（审查必检）**：
+  - 每个非空壳 `.changeset/*.md` 的 frontmatter **只能声明 1 个包**（由 `check-changeset` 机检拦截）；跨包联动 PR 必须拆分为多个独立 `.changeset/*.md` 文件。
+  - 每份 changeset 正文**只允许描述目标包自身的变化**（由 PR review 核对）：公开 npm 包的 changeset 严禁提及 Interweave、demo 站点或其他包的变更；`@greypan/interweave` 的 changeset 严禁混入上游组件库或 demo 的实现细节。
 - **英文叙述与终态同步（门禁强制）**：非空壳 changeset 正文必须用英文撰写（直接进入面向用户的 CHANGELOG；行内代码、代码块与单行短引号包裹的 UI 原文字面量如 `"批量导入"` 允许保留原文），交付前须核对与最终实现一致。
 - **门禁边界**：PR CI 运行 `pnpm run check-changeset --base <sha> --head <sha>`；main 已有文件、删除文件或未提交文件均不构成声明。
 

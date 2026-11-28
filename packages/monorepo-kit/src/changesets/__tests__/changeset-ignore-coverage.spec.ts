@@ -73,6 +73,30 @@ it('rejects unignored private packages, ignored public packages, and stale ignor
   if (!r3.ok) assert.match(r3.error, /stale ignore entry @scope\/deleted/)
 })
 
+it('rejects invalid allowedPrivateVersioned entries (ignored, missing, or public)', async () => {
+  const allowedAlsoIgnored = makeWorkspace(
+    'allowed-also-ignored',
+    {
+      'packages/pub': { name: '@scope/pub' },
+      'apps/desktop': { name: '@scope/desktop', private: true }
+    },
+    ['@scope/desktop']
+  )
+  const r1 = await run(allowedAlsoIgnored, ['@scope/desktop'])
+  assert.equal(r1.ok, false)
+  if (!r1.ok) assert.match(r1.error, /allowed private deliverable @scope\/desktop must not be listed/)
+
+  const allowedMissing = makeWorkspace('allowed-missing', { 'packages/pub': { name: '@scope/pub' } }, [])
+  const r2 = await run(allowedMissing, ['@scope/missing'])
+  assert.equal(r2.ok, false)
+  if (!r2.ok) assert.match(r2.error, /allowedPrivateVersioned entry @scope\/missing does not exist/)
+
+  const allowedPublic = makeWorkspace('allowed-public', { 'packages/pub': { name: '@scope/pub' } }, [])
+  const r3 = await run(allowedPublic, ['@scope/pub'])
+  assert.equal(r3.ok, false)
+  if (!r3.ok) assert.match(r3.error, /allowedPrivateVersioned entry @scope\/pub is public/)
+})
+
 afterAll(() => {
   fs.rmSync(tempRoot, { recursive: true, force: true })
 })
