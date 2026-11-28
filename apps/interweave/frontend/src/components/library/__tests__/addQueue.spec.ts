@@ -743,6 +743,83 @@ describe('library add queue batch submit', () => {
     expect(queue.queue.value).toHaveLength(1)
     expect(queue.queue.value[0]?.status).toBe('failed')
     expect(queue.queue.value[0]?.error).toBe('preview failed')
+    expect(queue.failureCount.value).toBe(1)
+  })
+
+  it('异常收尾只补写未结算项，不覆盖已有失败原因也不重复计数', async () => {
+    const runtime = createRuntime()
+    let previewCalls = 0
+    const lease: PreviewLease = {
+      entries: ref({}),
+      prepare: async () => null,
+      revoke: async () => {},
+      clear: async () => {},
+      awaitSettled: async () => {
+        previewCalls += 1
+        // 第一项预览正常、create 失败；第二项预览等待直接抛错。
+        if (previewCalls > 1) throw new Error('preview failed')
+      },
+      dispose: () => {}
+    }
+    const queue = createQueue(runtime, lease)
+    await queue.enqueueFileLocations(['/tmp/first.png', '/tmp/second.png'])
+
+    await expect(
+      queue.submit(async item => {
+        if (item.location === '/tmp/first.png') throw new Error('创建失败')
+      })
+    ).rejects.toThrow('preview failed')
+
+    // 已结算的失败项保留真实原因，只有从未结算的第二项被补写成预览异常，两项都计数。
+    expect(queue.queue.value.map(item => item.error)).toEqual(['创建失败', 'preview failed'])
+    expect(queue.failureCount.value).toBe(2)
+  })
+
+  it('异常收尾先等批次真正结束再 reject，迟到结算不会外溢', async () => {
+    const runtime = createRuntime()
+    const lease: PreviewLease = {
+      entries: ref({}),
+      prepare: async () => null,
+      revoke: async () => {},
+      clear: async () => {},
+      awaitSettled: async () => {
+        throw new Error('preview failed')
+      },
+      dispose: () => {}
+    }
+    const queue = createQueue(runtime, lease)
+    await queue.enqueueURLs(['https://a.com/x'])
+    await queue.enqueueFileLocations(['/tmp/a.png'])
+
+    const gate = deferred<void>()
+    const cancel = vi.fn<() => void>()
+    const submitted = queue.submit(
+      async () => {},
+      (items, settle) => ({
+        done: (async () => {
+          await gate.promise
+          settle(items[0]!.id, { ok: true })
+        })(),
+        cancel
+      })
+    )
+    let rejected = false
+    void submitted.catch(() => {
+      rejected = true
+    })
+
+    await vi.waitFor(() => expect(cancel).toHaveBeenCalledOnce())
+    // 批次还没结束：submit 必须在收尾阶段等待，不能提前 reject 让迟到结算污染下一次提交。
+    await Promise.resolve()
+    expect(rejected).toBe(false)
+
+    gate.resolve()
+    await expect(submitted).rejects.toThrow('preview failed')
+
+    // 迟到的 ok 结算已在 reject 前落定：URL 项被移出，文件项保留为失败。
+    expect(queue.queue.value.map(item => item.location)).toEqual(['/tmp/a.png'])
+    expect(queue.queue.value[0]?.status).toBe('failed')
+    expect(queue.failureCount.value).toBe(1)
   })
 })
 

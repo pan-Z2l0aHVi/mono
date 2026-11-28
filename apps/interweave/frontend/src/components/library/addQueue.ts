@@ -352,6 +352,8 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     let cancelled = false
     // 结算动作是异步的（要释放预览租约），先入队再统一等待，避免进度与队列更新交错。
     const settlements: Promise<void>[] = []
+    // 已落定的项：异常收尾只补写「从未结算」的行，不能覆盖已带具体原因、已计入 failureCount 的失败项。
+    const settledIds = new Set<string>()
 
     function settleItem(item: LibraryQueueItem, settlement: LibraryBatchSettlement) {
       settlements.push(
@@ -371,6 +373,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
             failureCount.value += 1
             setItemStatus(item.id, 'failed', settlement.error ?? '导入失败')
           }
+          settledIds.add(item.id)
           progress.value = { ...progress.value, done: progress.value.done + 1 }
         })()
       )
@@ -420,14 +423,25 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
       return false
     } catch (cause) {
       // 预览等待等外部端口的异常不走单条结算：若只向上抛，已标 importing 的行会卡住，
-      // 在途批次也继续跑。这里统一收尾——取消批次、等已排队的结算落定，再把未结算项
-      // 复位成失败（保留在队列里可重试），最后原样抛给调用方展示。
+      // 在途批次也继续跑。这里统一收尾——取消批次并等它真正结束、等已排队的结算落定，
+      // 再只把「从未结算」的项复位成失败（保留在队列里可重试），最后原样抛给调用方。
+      // 必须等 batchTask.done：cancel 之后批次仍会通过 settle 回调入队新的结算，提前
+      // reject 会让这些迟到结算污染调用方的下一次提交。
       cancelled = true
       batchTask?.cancel()
+      if (batchTask) {
+        try {
+          await batchTask.done
+        } catch {
+          // 批次的失败已经由上面的 cause 表达，这里只关心它不再产生新结算。
+        }
+      }
       await Promise.allSettled(settlements)
       const message = cause instanceof Error ? cause.message : '导入失败'
       for (const item of items) {
-        if (remaining.has(item.id)) setItemStatus(item.id, 'failed', message)
+        if (!remaining.has(item.id) || settledIds.has(item.id)) continue
+        failureCount.value += 1
+        setItemStatus(item.id, 'failed', message)
       }
       throw cause
     } finally {
