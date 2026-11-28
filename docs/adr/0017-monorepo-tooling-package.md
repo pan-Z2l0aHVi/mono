@@ -1,7 +1,7 @@
 # ADR-0017: 门禁与仓库工具收敛到 workspace 包
 
 - **Date**: 2026-10-28
-- **Revised**: 2026-11-06
+- **Revised**: 2026-11-28
 - **Status**: 已接受
 
 ## 背景
@@ -20,7 +20,7 @@
 
 `scripts/lib/` 收缩成「Node 启动之前要跑的东西」：`.mise.toml` 的 `[env]` 模板在 Node 可用前求值的 bootstrap helper；同一能力只留一份实现，准入判据见 `scripts-and-commands.md`。
 
-依赖边写进根 `package.json` 与消费 workspace 的 `devDependencies`（`workspace:*`）：`pnpm why @greypan/monorepo-kit` 是「谁在消费」的唯一答案。包 `private: true` 不进发布面；它不加入 `.changeset/config.json` 的 `ignore`——门禁行为变更值得留记录，代价是改检查逻辑要写一条带包名的 changeset。
+依赖边写进根 `package.json` 与消费 workspace 的 `devDependencies`（`workspace:*`）：`pnpm why @greypan/monorepo-kit` 是「谁在消费」的唯一答案。包 `private: true` 不进发布面；2026-11-28 修订起，与其余内部私有包一并加入 `.changeset/config.json` 的 `ignore`（门禁变更由 Git 历史与 PR 追踪，版本化与 CHANGELOG 收敛为仅覆盖对外交付物，避免内部包与公开包混写 changeset 造成污染）。
 
 ## 后果
 

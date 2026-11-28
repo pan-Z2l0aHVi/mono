@@ -660,7 +660,7 @@ importers:
         version: 3.3.13(typescript@6.0.3)
 
   apps/interweave:
-    dependencies:
+    devDependencies:
       '@greypan/interweave-frontend':
         specifier: workspace:*
         version: link:frontend
