@@ -3,6 +3,7 @@ import { customElement, property, query, state } from 'lit/decorators.js'
 import { classMap } from 'lit/directives/class-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 
+import scrollbarStyle from '@/assets/scrollbar.css?inline'
 import { FormAssociated, defineFormAssociation, FormAssociationController } from '@/shared/form-association'
 import { createFieldId } from '@/shared/form-association/field-id'
 
@@ -93,7 +94,7 @@ function caretOffsetFromPoint(textLayer: HTMLElement, x: number, y: number): num
 
 @customElement('web-ui-editable-text')
 export class WebUiEditableText extends FormAssociated(LitElement) {
-  static override styles = [unsafeCSS(style)]
+  static override styles = [unsafeCSS(scrollbarStyle), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) name = ''
   @property({ type: String, reflect: true }) placeholder = ''
@@ -487,7 +488,7 @@ export class WebUiEditableText extends FormAssociated(LitElement) {
         >
         <textarea
           id=${this._fieldId}
-          class="editor"
+          class="editor wui-scroll"
           .value=${this._value}
           .placeholder=${this.placeholder}
           ?disabled=${this._isDisabled}

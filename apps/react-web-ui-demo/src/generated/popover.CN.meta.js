@@ -249,6 +249,14 @@ const meta = [
       { label: 'td', content: "面板内边距；portal 模式在打开时读取。" },
       { label: 'td', content: "<code>8px 12px</code>" }
       ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>--wui-popover-max-height</code>" },
+      { label: 'td', content: "面板最大高度；默认不限高，设置后超高内容滚动并使用主题化滚动条。" },
+      { label: 'td', content: "<code>none</code>" }
+      ]
     }
     ]
   }
