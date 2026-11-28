@@ -748,9 +748,9 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-color-surface-selected</code>" },
-      { label: 'td', content: "选中面（凸变种 indicator，与页面同色）" },
+      { label: 'td', content: "选中面（凸变种 indicator；浅色与页面同色，深色与控件同档）" },
       { label: 'td', content: "<code>#fff</code>" },
-      { label: 'td', content: "<code>#242428</code>" }
+      { label: 'td', content: "<code>#3a3a3c</code>" }
       ]
     },
     {
