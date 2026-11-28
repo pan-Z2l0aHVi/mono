@@ -75,7 +75,7 @@ func TestLocalServerTokenAndCORS(t *testing.T) {
 		t.Fatalf("unexpected body: %q", string(body))
 	}
 	if got := resp.Header.Get("Access-Control-Allow-Origin"); got != "http://wails.localhost" {
-		t.Fatalf("unexpected ACAO: %q", got)
+		t.Fatalf("unexpected Access-Control-Allow-Origin: %q", got)
 	}
 	if got := resp.Header.Get("Vary"); got != "Origin" {
 		t.Fatalf("expected Vary: Origin, got %q", got)
@@ -137,7 +137,7 @@ func TestLocalServerTokenAndCORS(t *testing.T) {
 		t.Fatalf("expected Max-Age 600, got %q", got)
 	}
 	if !strings.Contains(resp.Header.Get("Access-Control-Allow-Headers"), "If-Range") {
-		t.Fatalf("expected If-Range in ACAH, got %q", resp.Header.Get("Access-Control-Allow-Headers"))
+		t.Fatalf("expected If-Range in Access-Control-Allow-Headers, got %q", resp.Header.Get("Access-Control-Allow-Headers"))
 	}
 
 	// 5. RedactURL strips sessionToken

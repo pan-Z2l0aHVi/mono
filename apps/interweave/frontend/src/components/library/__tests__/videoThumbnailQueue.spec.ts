@@ -4,7 +4,7 @@ import { createVideoThumbnailCoordinator } from '../videoThumbnailQueue'
 
 interface MockVideoHandle {
   video: HTMLVideoElement
-  srcs: string[]
+  sources: string[]
   seeks: number[]
   setDuration: (d: number) => void
   setDimensions: (w: number, h: number) => void
@@ -15,7 +15,7 @@ interface MockVideoHandle {
 
 function createMockVideo(): MockVideoHandle {
   const target = new EventTarget()
-  const srcs: string[] = []
+  const sources: string[] = []
   const seeks: number[] = []
   let src = ''
   let currentTime = 0
@@ -45,7 +45,7 @@ function createMockVideo(): MockVideoHandle {
     },
     set src(val: string) {
       src = val
-      if (val) srcs.push(val)
+      if (val) sources.push(val)
     },
     get currentTime() {
       return currentTime
@@ -78,7 +78,7 @@ function createMockVideo(): MockVideoHandle {
 
   return {
     video,
-    srcs,
+    sources,
     seeks,
     setDuration: d => {
       duration = d
@@ -156,23 +156,23 @@ describe('videoThumbnailCoordinator', () => {
     const p3 = coordinator.capture({ key: 's3', location: '/c.mp4', mediaUrl: '/media/s3', getPriority: () => 300 })
     const p4 = coordinator.capture({ key: 's4', location: '/d.mp4', mediaUrl: '/media/s4', getPriority: () => 64 })
 
-    expect(mock.srcs).toEqual(['/media/s1'])
+    expect(mock.sources).toEqual(['/media/s1'])
 
     // 完成 s1 → 优先跑视口最顶部的 s4，再跑视口内的 s3，最后跑视口外 buffer 的 s2。
     mock.dispatch('loadedmetadata')
     mock.dispatch('seeked')
     expect(await p1).toBeInstanceOf(Blob)
-    expect(mock.srcs).toEqual(['/media/s1', '/media/s4'])
+    expect(mock.sources).toEqual(['/media/s1', '/media/s4'])
 
     mock.dispatch('loadedmetadata')
     mock.dispatch('seeked')
     expect(await p4).toBeInstanceOf(Blob)
-    expect(mock.srcs).toEqual(['/media/s1', '/media/s4', '/media/s3'])
+    expect(mock.sources).toEqual(['/media/s1', '/media/s4', '/media/s3'])
 
     mock.dispatch('loadedmetadata')
     mock.dispatch('seeked')
     expect(await p3).toBeInstanceOf(Blob)
-    expect(mock.srcs).toEqual(['/media/s1', '/media/s4', '/media/s3', '/media/s2'])
+    expect(mock.sources).toEqual(['/media/s1', '/media/s4', '/media/s3', '/media/s2'])
 
     mock.dispatch('loadedmetadata')
     mock.dispatch('seeked')
@@ -206,19 +206,19 @@ describe('videoThumbnailCoordinator', () => {
 
     // 2 个解码槽位同时占满：s1 和 s2 并发启动，s3/s4 排队。
     expect(created).toBe(2)
-    expect(mocks[0]!.srcs).toEqual(['/media/s1'])
-    expect(mocks[1]!.srcs).toEqual(['/media/s2'])
+    expect(mocks[0]!.sources).toEqual(['/media/s1'])
+    expect(mocks[1]!.sources).toEqual(['/media/s2'])
 
     // 取消 s2 → 立即释放 2 号槽位，优先拉取视口内的 s4（而非视口外的 s3）。
     ac2.abort()
     expect(await p2).toBeNull()
-    expect(mocks[1]!.srcs).toEqual(['/media/s2', '/media/s4'])
+    expect(mocks[1]!.sources).toEqual(['/media/s2', '/media/s4'])
 
     // 完成 s1 → 1 号槽位接手剩余的 s3。
     mocks[0]!.dispatch('loadedmetadata')
     mocks[0]!.dispatch('seeked')
     expect(await p1).toBeInstanceOf(Blob)
-    expect(mocks[0]!.srcs).toEqual(['/media/s1', '/media/s3'])
+    expect(mocks[0]!.sources).toEqual(['/media/s1', '/media/s3'])
 
     mocks[1]!.dispatch('loadedmetadata')
     mocks[1]!.dispatch('seeked')
@@ -240,7 +240,7 @@ describe('videoThumbnailCoordinator', () => {
     const p1 = coordinator.capture({ key: 's1', location: '/a.mp4', mediaUrl: '/media/s1', signal: ac1.signal })
     const p2 = coordinator.capture({ key: 's1', location: '/a.mp4', mediaUrl: '/media/s1', signal: ac2.signal })
 
-    expect(mock.srcs).toEqual(['/media/s1'])
+    expect(mock.sources).toEqual(['/media/s1'])
 
     // 取消第一个订阅者：任务仍在运行，不触发 pause。
     ac1.abort()
@@ -260,7 +260,7 @@ describe('videoThumbnailCoordinator', () => {
     expect(mock.video.pause).toHaveBeenCalled()
 
     const p4 = coordinator.capture({ key: 's2', location: '/b.mp4', mediaUrl: '/media/s2' })
-    expect(mock.srcs.at(-1)).toBe('/media/s2')
+    expect(mock.sources.at(-1)).toBe('/media/s2')
     mock.dispatch('loadedmetadata')
     mock.dispatch('seeked')
     expect(await p4).toBeInstanceOf(Blob)
@@ -307,13 +307,13 @@ describe('videoThumbnailCoordinator', () => {
     vi.advanceTimersByTime(5000)
     expect(await p2).toBeNull()
 
-    const beforeCount = mock.srcs.length
+    const beforeCount = mock.sources.length
     expect(await coordinator.capture({ key: 's-hang', location: '/hang.mp4', mediaUrl: '/media/hang' })).toBeNull()
-    expect(mock.srcs.length).toBe(beforeCount)
+    expect(mock.sources.length).toBe(beforeCount)
 
     now += 10001
     const pRetry = coordinator.capture({ key: 's-hang', location: '/hang.mp4', mediaUrl: '/media/hang' })
-    expect(mock.srcs.length).toBe(beforeCount + 1)
+    expect(mock.sources.length).toBe(beforeCount + 1)
     vi.advanceTimersByTime(5000)
     expect(await pRetry).toBeNull()
   })
@@ -330,15 +330,15 @@ describe('videoThumbnailCoordinator', () => {
     mock.dispatch('error')
     expect(await p1).toBeNull()
 
-    const countAfterFail = mock.srcs.length
+    const countAfterFail = mock.sources.length
     // 同一 key + location 命中负缓存，不再触发解码。
     expect(await coordinator.capture({ key: 's1', location: '/bad.mp4', mediaUrl: '/media/s1' })).toBeNull()
-    expect(mock.srcs.length).toBe(countAfterFail)
+    expect(mock.sources.length).toBe(countAfterFail)
 
     // location 变化（ReplaceSource）绕过负缓存，正常解码。
     mock.setErrorCode(null)
     const p2 = coordinator.capture({ key: 's1', location: '/fixed.mp4', mediaUrl: '/media/s1' })
-    expect(mock.srcs.length).toBe(countAfterFail + 1)
+    expect(mock.sources.length).toBe(countAfterFail + 1)
     mock.dispatch('loadedmetadata')
     mock.dispatch('seeked')
     expect(await p2).toBeInstanceOf(Blob)

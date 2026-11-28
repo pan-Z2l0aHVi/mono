@@ -157,6 +157,10 @@
     "grabbable",
     "exif",
     "Bufs",
-    "TOCTOU"
+    "TOCTOU",
+    "NCHITTEST",
+    "Lanczos",
+    "unsharp",
+    "upserts"
   ]
 }
