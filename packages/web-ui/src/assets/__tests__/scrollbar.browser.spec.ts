@@ -1,7 +1,9 @@
 import '@/components/autocomplete'
 import '@/components/dialog'
 import '@/components/option'
+import '@/components/popover'
 import '@/components/select'
+import '@/components/textarea'
 import '@/components/theme'
 
 import { afterEach, describe, expect, it } from 'vite-plus/test'
@@ -9,7 +11,9 @@ import { afterEach, describe, expect, it } from 'vite-plus/test'
 import scrollbarCss from '@/assets/scrollbar.css?raw'
 import type { WebUiAutocomplete } from '@/components/autocomplete'
 import type { WebUiDialog } from '@/components/dialog'
+import type { WebUiPopover } from '@/components/popover'
 import type { WebUiSelect } from '@/components/select'
+import type { WebUiTextarea } from '@/components/textarea'
 import type { WebUiTheme } from '@/components/theme'
 import { pollUntil } from '@/shared/test-utils'
 
@@ -216,5 +220,181 @@ describe('组件内部 scrollbar（浏览器）', () => {
     expect(scroll.scrollHeight).toBeGreaterThan(scroll.clientHeight)
     expect(thumbColor(scroll)).toBe(expectedHandle(scroll))
     expect(getComputedStyle(scroll).scrollbarWidth).toBe('thin')
+  })
+
+  it('textarea 原生滚动区读到 token thumb 色，不占布局宽度', async () => {
+    const theme = await createLightTheme()
+    const textarea = document.createElement('web-ui-textarea') as WebUiTextarea
+    textarea.rows = 3
+    textarea.value = Array.from({ length: 40 }, (_, index) => `line ${index}`).join('\n')
+    theme.append(textarea)
+    await textarea.updateComplete
+
+    const el = textarea.shadowRoot?.querySelector<HTMLElement>('textarea')
+    if (!el) throw new Error('Expected textarea to exist.')
+
+    expect(el.scrollHeight).toBeGreaterThan(el.clientHeight)
+    // 探针挂到同 shadow 的包装盒上：textarea 不是合法的元素容器，probe 不能往里塞。
+    expect(thumbColor(el)).toBe(expectedHandle(el.parentElement ?? theme))
+    expect(el.offsetWidth - el.clientWidth).toBe(0)
+    expect(getComputedStyle(el).scrollbarWidth).toBe('thin')
+  })
+
+  it('popover 设 max-height 后超高内容滚动，滚动条保留主题', async () => {
+    const theme = await createLightTheme()
+    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    popover.style.setProperty('--wui-popover-max-height', '80px')
+    const content = document.createElement('div')
+    content.style.cssText = 'height: 400px;'
+    popover.append(content)
+    theme.append(popover)
+    await popover.updateComplete
+
+    popover.open = true
+    await popover.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const el = popover.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    if (!el) throw new Error('Expected popover panel to exist.')
+
+    // 先证明内容确实超高：opt-in 限高生效才有 scrollbar 可量。
+    expect(el.scrollHeight).toBeGreaterThan(el.clientHeight)
+    expect(thumbColor(el)).toBe(expectedHandle(el))
+    expect(el.offsetWidth - el.clientWidth).toBe(0)
+    expect(getComputedStyle(el).overflowY).toBe('auto')
+  })
+
+  it('popover 默认不限高：内容多高面板就多高', async () => {
+    const theme = await createLightTheme()
+    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    const content = document.createElement('div')
+    content.style.cssText = 'height: 400px;'
+    popover.append(content)
+    theme.append(popover)
+    await popover.updateComplete
+
+    popover.open = true
+    await popover.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const el = popover.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    if (!el) throw new Error('Expected popover panel to exist.')
+
+    expect(el.scrollHeight).toBe(el.clientHeight)
+    expect(getComputedStyle(el).maxHeight).toBe('none')
+    // 滚动容器语义是 opt-in 的：默认不限高时溢出保持 visible，嵌套的绝对定位
+    // 子 overlay 不被裁剪（Codex review Should fix 的回归断言）。
+    expect(getComputedStyle(el).overflowY).toBe('visible')
+  })
+
+  it('portal 模式的 popover 面板自带 scrollbar 主题且限高变量已转发', async () => {
+    const theme = await createLightTheme()
+    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    popover.portal = true
+    popover.style.setProperty('--wui-popover-max-height', '80px')
+    const content = document.createElement('div')
+    content.style.cssText = 'height: 400px;'
+    popover.append(content)
+    theme.append(popover)
+    await popover.updateComplete
+
+    popover.open = true
+    await popover.updateComplete
+    await pollUntil(() => {
+      const panel = portalPanel(theme, '.popover-panel')
+      return panel !== null && !panel.hasAttribute('hidden')
+    }, 'Expected portal popover panel to become visible')
+
+    const el = portalPanel(theme, '.popover-panel')
+    if (!el) throw new Error('Expected portal popover panel to exist.')
+
+    expect(el.scrollHeight).toBeGreaterThan(el.clientHeight)
+    expect(thumbColor(el)).toBe(expectedHandle(el))
+    expect(getComputedStyle(el).scrollbarWidth).toBe('thin')
+    expect(getComputedStyle(el).overflowY).toBe('auto')
+  })
+
+  it('打开态切换 --wui-popover-max-height 会重新对齐滚动类', async () => {
+    const theme = await createLightTheme()
+    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    popover.style.setProperty('--wui-popover-max-height', '80px')
+    const content = document.createElement('div')
+    content.style.cssText = 'height: 400px;'
+    popover.append(content)
+    theme.append(popover)
+    await popover.updateComplete
+
+    popover.open = true
+    await popover.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const el = popover.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    if (!el) throw new Error('Expected popover panel to exist.')
+    expect(getComputedStyle(el).overflowY).toBe('auto')
+
+    // 打开态取消限高：面板盒高随内容增长，ResizeObserver 重算后溢出回到 visible
+    popover.style.removeProperty('--wui-popover-max-height')
+    await pollUntil(() => getComputedStyle(el).overflowY === 'visible', '打开态取消限高后 overflow-y 未回到 visible')
+
+    // 打开态重新限高：类重新挂上，超高内容恢复滚动
+    popover.style.setProperty('--wui-popover-max-height', '80px')
+    await pollUntil(() => getComputedStyle(el).overflowY === 'auto', '打开态重新限高后 overflow-y 未回到 auto')
+  })
+
+  it('打开态取消限高且盒高不变（内容低于上限）仍会摘除滚动类', async () => {
+    const theme = await createLightTheme()
+    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    popover.style.setProperty('--wui-popover-max-height', '80px')
+    const content = document.createElement('div')
+    content.style.cssText = 'height: 40px;'
+    popover.append(content)
+    theme.append(popover)
+    await popover.updateComplete
+
+    popover.open = true
+    await popover.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const el = popover.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    if (!el) throw new Error('Expected popover panel to exist.')
+    expect(getComputedStyle(el).overflowY).toBe('auto')
+
+    // 内容低于上限：取消限高不改变盒高，ResizeObserver 静默；
+    // 摘类只能靠属性面信号（宿主 style 变化）。
+    popover.style.removeProperty('--wui-popover-max-height')
+    await pollUntil(
+      () => getComputedStyle(el).overflowY === 'visible',
+      '盒高不变的取消限高未摘除滚动类（属性面信号缺失）'
+    )
+  })
+
+  it('打开态重连后立即按当前限高对齐滚动类', async () => {
+    const theme = await createLightTheme()
+    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    popover.style.setProperty('--wui-popover-max-height', '80px')
+    const content = document.createElement('div')
+    content.style.cssText = 'height: 400px;'
+    popover.append(content)
+    theme.append(popover)
+    await popover.updateComplete
+
+    popover.open = true
+    await popover.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const el = popover.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    if (!el) throw new Error('Expected popover panel to exist.')
+    expect(getComputedStyle(el).overflowY).toBe('auto')
+
+    // 摘下后再改限高：此刻观测器已随断连停掉，收不到这次变更事件。
+    popover.remove()
+    popover.style.removeProperty('--wui-popover-max-height')
+
+    // 重连后必须立即重算一次对齐，而不是等下一次祖先属性变更或 resize。
+    const wrapper = document.createElement('div')
+    document.body.append(wrapper)
+    wrapper.append(popover)
+    await popover.updateComplete
+    expect(getComputedStyle(el).overflowY).toBe('visible')
   })
 })

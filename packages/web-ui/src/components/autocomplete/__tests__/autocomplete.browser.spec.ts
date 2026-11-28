@@ -1078,6 +1078,8 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     document.body.append(host)
 
     const el = document.createElement('web-ui-autocomplete')
+    // 本用例验证的是对齐机制，固定 bottom-start 以隔离默认 placement 变化的影响。
+    el.placement = 'bottom-start'
     el.innerHTML = '<web-ui-option value="apple" label="Apple"></web-ui-option>'
     host.append(el)
     await el.updateComplete
@@ -1133,6 +1135,8 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
 
   it('打开后修改 placement 会重新定位 panel', async () => {
     const el = document.createElement('web-ui-autocomplete')
+    // 默认已是 bottom；先显式落到 bottom-start，打开态切换到 bottom 才能证明重定位。
+    el.placement = 'bottom-start'
     // 同 placement="bottom" 用例：挂到视口中部，避免居中 panel 被视口边缘夹取。
     el.style.position = 'fixed'
     el.style.left = '50vw'
@@ -1150,7 +1154,7 @@ describe('WebUiAutocomplete 组件（浏览器）', () => {
     expect(el.open).toBe(true)
     const panel = el.shadowRoot!.querySelector<HTMLElement>('.autocomplete-overlay')!
 
-    // 默认 bottom-start：先确认左边缘对齐，再在打开态切换，居中只能是重定位的结果。
+    // bottom-start（显式设置）：先确认左边缘对齐，再在打开态切换，居中只能是重定位的结果。
     await pollUntil(() => {
       const anchorRect = anchor.getBoundingClientRect()
       const panelRect = panel.getBoundingClientRect()

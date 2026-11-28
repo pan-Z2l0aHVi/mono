@@ -94,16 +94,16 @@ export class WebUiAutocomplete extends defineOverlayDelayProps(FormAssociated(Li
   @property({ type: String, attribute: 'aria-label' }) override ariaLabel: string | null = null
   @property({ type: String, attribute: 'aria-labelledby' }) ariaLabelledby: string | undefined
 
-  private _placement: Placement = 'bottom-start'
+  private _placement: Placement = 'bottom'
 
-  /** 下拉 panel 相对触发器的方向；默认贴着触发器左下角向下展开。 */
+  /** 下拉 panel 相对触发器的方向；默认在触发器正下方水平居中展开。 */
   @property({ type: String, reflect: true })
   get placement(): Placement {
     return this._placement
   }
   set placement(v: string) {
     const old = this._placement
-    this._placement = normalizeLiteral(v, FLOATING_PLACEMENTS, 'bottom-start')
+    this._placement = normalizeLiteral(v, FLOATING_PLACEMENTS, 'bottom')
     this.requestUpdate('placement', old)
   }
 

@@ -921,6 +921,21 @@ describe('toast 命令式 API', () => {
       expect(container?.getAttribute('aria-live')).toBe('polite')
       expect(container?.getAttribute('aria-relevant')).toBe('additions')
     })
+
+    it('options.container 传入普通元素时，容器内联 scrollbar 主题兜底', async () => {
+      const host = document.createElement('div')
+      document.body.append(host)
+
+      toast.info('test', { container: host })
+      await waitForToastMounted()
+
+      const container = host.querySelector<HTMLElement>('.wui-toast-container')
+      expect(container).toBeTruthy()
+      // 消费者容器没有受管 overlay root 的样式注入，.wui-scroll 类无处匹配；
+      // 内联声明与 scrollbar.css 同源，滚动条仍读主题 token。
+      expect(container?.style.scrollbarColor).toBe('var(--wui-scrollbar-handle, rgb(0 0 0 / 0.39)) transparent')
+      expect(container?.style.scrollbarWidth).toBe('thin')
+    })
   })
 
   describe('连续调用', () => {
