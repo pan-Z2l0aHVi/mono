@@ -131,11 +131,15 @@ function computeViewportPriority(): number {
   if (typeof window === 'undefined' || !rootRef.value) return 0
   const rect = rootRef.value.getBoundingClientRect()
   if (rect.width === 0 && rect.height === 0 && rect.top === 0 && rect.bottom === 0) return 0
-  const vh = window.innerHeight || 0
-  if (vh > 0 && rect.bottom > 0 && rect.top < vh) {
-    return Math.max(0, rect.top)
+  const scrollport = rootRef.value.closest<HTMLElement>('[data-overlayscrollbars-viewport], [data-virtual-scrollport]')
+  const containerRect = scrollport?.getBoundingClientRect()
+  const topBound = containerRect && containerRect.height > 0 ? containerRect.top : 0
+  const bottomBound = containerRect && containerRect.height > 0 ? containerRect.bottom : window.innerHeight || 0
+  if (bottomBound > topBound && rect.bottom > topBound && rect.top < bottomBound) {
+    return Math.max(0, rect.top - topBound)
   }
-  return 1_000_000 + (rect.top >= vh ? rect.top - vh : Math.abs(rect.bottom))
+  const distance = rect.top >= bottomBound ? rect.top - bottomBound : Math.max(0, topBound - rect.bottom)
+  return 1_000_000 + distance
 }
 
 function lookupCachedVideoBlob(): Blob | null {

@@ -748,6 +748,7 @@ describe('library add queue batch submit', () => {
       entries: ref({}),
       prepare: async () => null,
       revoke: async () => {},
+      cancelPending: () => {},
       clear: async () => {},
       awaitSettled: async () => {
         throw new Error('preview failed')
@@ -773,6 +774,7 @@ describe('library add queue batch submit', () => {
       entries: ref({}),
       prepare: async () => null,
       revoke: async () => {},
+      cancelPending: () => {},
       clear: async () => {},
       awaitSettled: async () => {
         previewCalls += 1
@@ -801,6 +803,7 @@ describe('library add queue batch submit', () => {
       entries: ref({}),
       prepare: async () => null,
       revoke: async () => {},
+      cancelPending: () => {},
       clear: async () => {},
       awaitSettled: async () => {
         throw new Error('preview failed')

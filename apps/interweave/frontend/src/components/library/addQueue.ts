@@ -218,8 +218,16 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     // 进度按「已消费的输入位置」计：入队、重复跳过与取消裁决都算处理完成，
     // 这样加载中的按钮展示的比值始终收敛到 total，不会停在中间值。
     progress.value = { done: 0, total: locations.length }
+    let syncSteps = 0
     for (const [index, value] of locations.entries()) {
       if (startedAt !== generation) return
+      // 大批次无异步挂起时每 64 项让出一次主线程，保证点「终止扫描」等交互不被阻塞。
+      if (syncSteps >= 64) {
+        syncSteps = 0
+        await new Promise<void>(resolve => setTimeout(resolve, 0))
+        if (startedAt !== generation) return
+      }
+      syncSteps += 1
       const settle = () => {
         progress.value = { ...progress.value, done: index + 1 }
       }
@@ -322,8 +330,9 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
 
   function stopEnqueue() {
     generation += 1
-    // 挂着的重复提示按「取消」裁决，避免入队链永久卡在当前项。
+    // 挂着的重复提示按「跳过」裁决，避免入队链永久卡在当前项；同时中止尚未发往后端的排队预览。
     resolveDuplicate(false)
+    lease.cancelPending()
   }
 
   async function close() {
