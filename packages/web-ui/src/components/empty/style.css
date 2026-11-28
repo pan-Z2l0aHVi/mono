@@ -91,6 +91,14 @@
   overflow-wrap: anywhere;
 }
 
+/*
+ * 无标题时描述升为「图形区下的第一段」：与图形的间距对齐 icon→标题（同一变量，
+ * 覆写 --wui-empty-title-margin-top 时两者保持一致），不沿用标题下的 4px。
+ */
+.empty-description.is-lead {
+  margin-top: var(--wui-empty-title-margin-top, var(--wui-space-4, 16px));
+}
+
 .empty-action {
   margin-top: var(--wui-empty-action-margin-top, var(--wui-space-5, 20px));
 }

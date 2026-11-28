@@ -13,7 +13,7 @@
     ></web-ui-empty>
 
     <web-ui-empty
-      class="[--wui-empty-content-width:300px] [--wui-empty-action-margin-top:4px]"
+      class="[--wui-empty-content-width:300px]"
       title="Content width constrained to 300px"
       description="Title, description, and action area share this one width."
     >

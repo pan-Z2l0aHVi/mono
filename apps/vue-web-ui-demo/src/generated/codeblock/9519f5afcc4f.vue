@@ -13,7 +13,7 @@
     ></web-ui-empty>
 
     <web-ui-empty
-      class="[--wui-empty-content-width:300px] [--wui-empty-action-margin-top:4px]"
+      class="[--wui-empty-content-width:300px]"
       title="内容宽度收到 300px"
       description="标题、描述与操作区共用这一个宽度。"
     >

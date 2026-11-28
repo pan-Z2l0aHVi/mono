@@ -499,24 +499,24 @@ export default function Demo() {
 
 ### 属性
 
-| 名称               | 说明                                                                                      | 类型                | 默认值           |
-| ------------------ | ----------------------------------------------------------------------------------------- | ------------------- | ---------------- |
-| `placeholder`      | 未选中时显示的占位文本。                                                                  | `string`            | `''`             |
-| `variant`          | 触发器外观：`label` 保留选中文本与箭头，`icon` 保留箭头并把 `trigger` 插槽作为左侧图标。  | `'label' \| 'icon'` | `'label'`        |
-| `trigger`          | 触发手势集合，空格或逗号分隔：`click`、`hover`、`focus`、`none`；读回为逗号分隔的规范串。 | `string`            | `'click'`        |
-| `show-delay`       | 悬停打开的延迟（毫秒）；只影响 hover 来源。                                               | `number`            | `200`            |
-| `hide-delay`       | 悬停收起的延迟（毫秒）；只影响 hover 来源。                                               | `number`            | `100`            |
-| `disabled`         | 禁用状态。                                                                                | `boolean`           | `false`          |
-| `required`         | 必填校验。                                                                                | `boolean`           | `false`          |
-| `portal`           | 在主题的 overlay 容器中渲染下拉面板。                                                     | `boolean`           | `false`          |
-| `placement`        | 下拉面板位置，默认从触发器左下角向下展开。                                                | `Placement`         | `'bottom-start'` |
-| `no-scroll-lock`   | 打开时不锁定页面滚动。                                                                    | `boolean`           | `false`          |
-| `overlayContainer` | 显式指定面板挂载的 overlay 容器（property）。                                             | `OverlayContainer`  | —                |
-| `name`             | 表单字段名。                                                                              | `string`            | `''`             |
-| `aria-label`       | combobox 的可访问名称。                                                                   | `string \| null`    | `null`           |
-| `value`            | 选中值。                                                                                  | `string`            | `''`             |
-| `open`             | 声明式开关；直接写入静默，不派发 `open-change`。                                          | `boolean`           | `false`          |
-| `isOpen`           | 当前是否打开（只读）。                                                                    | `boolean`           | —                |
+| 名称               | 说明                                                                                      | 类型                | 默认值     |
+| ------------------ | ----------------------------------------------------------------------------------------- | ------------------- | ---------- |
+| `placeholder`      | 未选中时显示的占位文本。                                                                  | `string`            | `''`       |
+| `variant`          | 触发器外观：`label` 保留选中文本与箭头，`icon` 保留箭头并把 `trigger` 插槽作为左侧图标。  | `'label' \| 'icon'` | `'label'`  |
+| `trigger`          | 触发手势集合，空格或逗号分隔：`click`、`hover`、`focus`、`none`；读回为逗号分隔的规范串。 | `string`            | `'click'`  |
+| `show-delay`       | 悬停打开的延迟（毫秒）；只影响 hover 来源。                                               | `number`            | `200`      |
+| `hide-delay`       | 悬停收起的延迟（毫秒）；只影响 hover 来源。                                               | `number`            | `100`      |
+| `disabled`         | 禁用状态。                                                                                | `boolean`           | `false`    |
+| `required`         | 必填校验。                                                                                | `boolean`           | `false`    |
+| `portal`           | 在主题的 overlay 容器中渲染下拉面板。                                                     | `boolean`           | `false`    |
+| `placement`        | 下拉面板位置，默认在触发器正下方水平居中展开。                                            | `Placement`         | `'bottom'` |
+| `no-scroll-lock`   | 打开时不锁定页面滚动。                                                                    | `boolean`           | `false`    |
+| `overlayContainer` | 显式指定面板挂载的 overlay 容器（property）。                                             | `OverlayContainer`  | —          |
+| `name`             | 表单字段名。                                                                              | `string`            | `''`       |
+| `aria-label`       | combobox 的可访问名称。                                                                   | `string \| null`    | `null`     |
+| `value`            | 选中值。                                                                                  | `string`            | `''`       |
+| `open`             | 声明式开关；直接写入静默，不派发 `open-change`。                                          | `boolean`           | `false`    |
+| `isOpen`           | 当前是否打开（只读）。                                                                    | `boolean`           | —          |
 
 ### 事件
 

@@ -24,15 +24,36 @@ export default function Demo() {
 
 ### 折叠复制用 slot
 
-标题、描述、操作区三段各自按「有没有内容」决定是否占位。只给 `title` 就没有描述行，只给 `description` 就没有标题行，三段都空着时只剩图形区。
+标题、描述、操作区三段各自按「有没有内容」决定是否占位。下面把三段的有无组合全部摆出来。组件对外不带任何 margin——间距只存在于内部段与段之间，用例之间只靠布局的 gap 分隔。
 
 ```tsx
 export default function Demo() {
   return (
-    <div className="flex flex-col gap-3">
-      <web-ui-empty title="没有权限"></web-ui-empty>
-      <web-ui-empty description="这一段只有描述，标题位不会占位。"></web-ui-empty>
+    <div className="grid gap-3 sm:grid-cols-2">
       <web-ui-empty></web-ui-empty>
+      <web-ui-empty title="只有标题"></web-ui-empty>
+      <web-ui-empty description="这一段只有描述，标题位不会占位。"></web-ui-empty>
+      <web-ui-empty>
+        <web-ui-button slot="action" variant="primary">
+          重新加载
+        </web-ui-button>
+      </web-ui-empty>
+      <web-ui-empty title="标题加描述" description="两段文案位，没有别的。"></web-ui-empty>
+      <web-ui-empty title="标题加操作">
+        <web-ui-button slot="action" variant="primary">
+          重新加载
+        </web-ui-button>
+      </web-ui-empty>
+      <web-ui-empty description="描述加操作，没有标题行。">
+        <web-ui-button slot="action" variant="primary">
+          重新加载
+        </web-ui-button>
+      </web-ui-empty>
+      <web-ui-empty title="三段齐全" description="标题、描述与操作区都占位。">
+        <web-ui-button slot="action" variant="primary">
+          重新加载
+        </web-ui-button>
+      </web-ui-empty>
     </div>
   )
 }
@@ -40,10 +61,23 @@ export default function Demo() {
 
 ```vue
 <template>
-  <div class="flex flex-col gap-3">
-    <web-ui-empty title="没有权限"></web-ui-empty>
-    <web-ui-empty description="这一段只有描述，标题位不会占位。"></web-ui-empty>
+  <div class="grid gap-3 sm:grid-cols-2">
     <web-ui-empty></web-ui-empty>
+    <web-ui-empty title="只有标题"></web-ui-empty>
+    <web-ui-empty description="这一段只有描述，标题位不会占位。"></web-ui-empty>
+    <web-ui-empty>
+      <web-ui-button slot="action" variant="primary">重新加载</web-ui-button>
+    </web-ui-empty>
+    <web-ui-empty title="标题加描述" description="两段文案位，没有别的。"></web-ui-empty>
+    <web-ui-empty title="标题加操作">
+      <web-ui-button slot="action" variant="primary">重新加载</web-ui-button>
+    </web-ui-empty>
+    <web-ui-empty description="描述加操作，没有标题行。">
+      <web-ui-button slot="action" variant="primary">重新加载</web-ui-button>
+    </web-ui-empty>
+    <web-ui-empty title="三段齐全" description="标题、描述与操作区都占位。">
+      <web-ui-button slot="action" variant="primary">重新加载</web-ui-button>
+    </web-ui-empty>
   </div>
 </template>
 ```
@@ -197,7 +231,7 @@ export default function Demo() {
       ></web-ui-empty>
 
       <web-ui-empty
-        className="[--wui-empty-content-width:300px] [--wui-empty-action-margin-top:4px]"
+        className="[--wui-empty-content-width:300px]"
         title="内容宽度收到 300px"
         description="标题、描述与操作区共用这一个宽度。"
       >
@@ -232,7 +266,7 @@ export default function Demo() {
     ></web-ui-empty>
 
     <web-ui-empty
-      class="[--wui-empty-content-width:300px] [--wui-empty-action-margin-top:4px]"
+      class="[--wui-empty-content-width:300px]"
       title="内容宽度收到 300px"
       description="标题、描述与操作区共用这一个宽度。"
     >
@@ -268,13 +302,13 @@ export default function Demo() {
 
 ### 行为说明
 
-图形盒与图形同尺寸，图形与标题之间的距离就是 `--wui-empty-title-margin-top`（默认 12px）。
+图形盒与图形同尺寸，图形与首段文案之间的距离就是 `--wui-empty-title-margin-top`（默认 16px）。首段文案有标题时是标题，没有标题时是描述：只有描述的空态与图形保持同一段间距，不再贴着图形。
 
 图形边长、两行字号、颜色和留白各是一组变量，互不联动。要把空态整体放大，就得同时写几枚变量；只写 `--wui-empty-icon-size` 会得到一个图形很大、标题很小的空态。
 
 默认图形是 `andrsrxn:inbox`，颜色只由 `--wui-empty-icon-color` 决定，不会被图形资产里的固定颜色覆盖。
 
-颜色和深浅是两枚变量：`--wui-empty-icon-color` 设置的是实色，更淡的效果由 `--wui-empty-icon-opacity`（默认 `0.75`）负责。要让图形回到完整颜色，写 `--wui-empty-icon-opacity: 1`。
+颜色和深浅是两枚变量：`--wui-empty-icon-color` 设置的是实色，更淡的效果由 `--wui-empty-icon-opacity`（默认 `0.72`）负责。要让图形回到完整颜色，写 `--wui-empty-icon-opacity: 1`。
 
 `--wui-empty-icon-opacity` 只作用于默认图形，`icon` 插槽里的内容不会跟着变淡。
 
@@ -283,6 +317,8 @@ export default function Demo() {
 判断的是「有没有内容」，而不是「内容画不画得出来」，所以只放一个 `.sr-only` 的 span 也会让那一段照常占位。图形区不参与这套判定，永远占位；三段文案都空着时就只剩图形。
 
 `action` 插槽里的多个元素不会自己排成一排，操作区只负责它上方那段间距。
+
+组件对外不带任何 margin：间距只存在于内部段与段之间，且全是 `margin-top`。一页排多个空态时，分隔由外围布局负责（flex/grid 的 gap），不是组件的 margin。
 
 `icon` 插槽的图形要自己带尺寸：组件只把插槽内容摆进 `--wui-empty-icon-size` 那个盒里居中，不去测量它，也不缩放它。默认边长 `40px`，换 `web-ui-icon` 时按同一数值写它的 `size`，或者把 `--wui-empty-icon-size` 一起调整。
 
@@ -306,9 +342,9 @@ export default function Demo() {
 | `--wui-empty-padding`               | 内边距                     | `32px 24px`                  |
 | `--wui-empty-icon-size`             | 图形边长，盒与图形同尺寸   | `40px`                       |
 | `--wui-empty-icon-color`            | 图形颜色（实色，不含透明） | `--wui-color-text-secondary` |
-| `--wui-empty-icon-opacity`          | 图形整体深浅               | `0.75`                       |
+| `--wui-empty-icon-opacity`          | 图形整体深浅               | `0.72`                       |
 | `--wui-empty-content-width`         | 标题/描述/操作区最大宽度   | `480px`                      |
-| `--wui-empty-title-margin-top`      | 图标与标题之间的间距       | `12px`                       |
+| `--wui-empty-title-margin-top`      | 图标与首段文案之间的间距   | `16px`                       |
 | `--wui-empty-title-font-size`       | 标题字号                   | `16px`                       |
 | `--wui-empty-title-color`           | 标题颜色                   | `--wui-color-text`           |
 | `--wui-empty-description-font-size` | 描述字号                   | `14px`                       |

@@ -132,9 +132,9 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>placement</code>" },
-      { label: 'td', content: "下拉面板位置，默认从触发器左下角向下展开。" },
+      { label: 'td', content: "下拉面板位置，默认在触发器正下方水平居中展开。" },
       { label: 'td', content: "<code>Placement</code>" },
-      { label: 'td', content: "<code>'bottom-start'</code>" }
+      { label: 'td', content: "<code>'bottom'</code>" }
       ]
     },
     {

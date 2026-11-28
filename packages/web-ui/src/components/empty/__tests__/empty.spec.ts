@@ -114,5 +114,23 @@ describe('WebUiEmpty 组件', () => {
       expect(el.querySelector('[slot="action"]')?.textContent).toBe('重新加载')
       cleanupElement(el)
     })
+
+    // 描述段的 margin 由这个状态类分档（浏览器档量计算值），jsdom 量不了级联样式，
+    // 这里钉住类名这一层：无标题时描述升为第一段。
+    it('无标题时描述段挂 is-lead，有标题时不挂', async () => {
+      const noTitle = createEmpty({ description: '只有描述' })
+      const withTitle = createEmpty({ title: '有标题', description: '有描述' })
+      await Promise.all([waitForUpdate(noTitle), waitForUpdate(withTitle)])
+
+      const descOf = (el: WebUiEmpty): Element => {
+        const node = el.shadowRoot?.querySelector('.empty-description')
+        if (!node) throw new Error('web-ui-empty shadow root 缺少 .empty-description')
+        return node
+      }
+      expect(descOf(noTitle).classList.contains('is-lead')).toBe(true)
+      expect(descOf(withTitle).classList.contains('is-lead')).toBe(false)
+      cleanupElement(noTitle)
+      cleanupElement(withTitle)
+    })
   })
 })
