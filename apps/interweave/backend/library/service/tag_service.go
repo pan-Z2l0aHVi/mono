@@ -4,16 +4,19 @@ import (
 	"context"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/media"
 )
 
 // 作为 Wails 外观呈现标签能力，产品规则由 core 承载。
 type TagService struct {
 	core *core.Library
+	urls media.URLBuilder
 }
 
 // 保持外观与产品规则解耦。
-func NewTagService(c *core.Library) *TagService {
-	return &TagService{core: c}
+func NewTagService(c *core.Library, opts ...ServiceOption) *TagService {
+	cfg := resolveServiceConfig(opts...)
+	return &TagService{core: c, urls: cfg.urls}
 }
 
 // 标准名称决定标签身份，确保全库复用而不依赖别名或层级。
@@ -37,7 +40,7 @@ func (s *TagService) SetResourceTags(ctx context.Context, resourceID string, tag
 	if err != nil {
 		return nil, err
 	}
-	return resourceViewToDTO(view), nil
+	return resourceViewToDTOWithURLs(view, s.urls), nil
 }
 
 // 通过已有标签建议降低新建近义标签的概率。

@@ -3,7 +3,12 @@ import { computed, ref } from 'vue'
 
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { LibraryRestoreQueueItem } from '../../../components/library/restore'
-import { createLibraryWorkflow, IMPORT_CONFIRM_THRESHOLD, type LibraryWorkflowPorts } from '../libraryWorkflow'
+import {
+  createLibraryWorkflow,
+  formatBatchTimeEstimate,
+  IMPORT_CONFIRM_THRESHOLD,
+  type LibraryWorkflowPorts
+} from '../libraryWorkflow'
 
 function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
   const submitting = ref(false)
@@ -22,6 +27,7 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
   const setItemStatus = vi.fn<LibraryWorkflowPorts['addQueue']['setItemStatus']>()
   const resolveDuplicate = vi.fn<(accept: boolean) => void>()
   const submit = vi.fn<LibraryWorkflowPorts['addQueue']['submit']>(async () => true)
+  const stopEnqueue = vi.fn<() => void>()
   const close = vi.fn<() => Promise<void>>(async () => undefined)
 
   const expandImportEntries = vi.fn<LibraryWorkflowPorts['expandImportEntries']>(async entries => ({
@@ -29,6 +35,8 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
     folders: 0
   }))
   const chooseFilePaths = vi.fn<LibraryWorkflowPorts['chooseFilePaths']>(async () => [])
+  const chooseFilesOnly = vi.fn<LibraryWorkflowPorts['chooseFilesOnly']>(async () => [])
+  const chooseDirectories = vi.fn<LibraryWorkflowPorts['chooseDirectories']>(async () => [])
   const getClipboardFilePaths = vi.fn<LibraryWorkflowPorts['getClipboardFilePaths']>(async () => [])
   const readClipboardText = vi.fn<LibraryWorkflowPorts['readClipboardText']>(async () => '')
   const readClipboardContent = vi.fn<LibraryWorkflowPorts['readClipboardContent']>(async () => ({ text: '' }))
@@ -54,10 +62,13 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
       setItemStatus,
       resolveDuplicate,
       submit,
+      stopEnqueue,
       close
     },
     expandImportEntries,
     chooseFilePaths,
+    chooseFilesOnly,
+    chooseDirectories,
     getClipboardFilePaths,
     readClipboardText,
     readClipboardContent,
@@ -85,9 +96,12 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
     setItemStatus,
     resolveDuplicate,
     submit,
+    stopEnqueue,
     close,
     expandImportEntries,
     chooseFilePaths,
+    chooseFilesOnly,
+    chooseDirectories,
     getClipboardFilePaths,
     readClipboardText,
     readClipboardContent,
@@ -199,6 +213,8 @@ describe('libraryWorkflow', () => {
 
     expect(workflow.confirmOpen.value).toBe(true)
     expect(workflow.confirmRequest.value?.title).toBe('批量导入')
+    expect(workflow.confirmRequest.value?.busyTitle).toBe('正在扫描')
+    expect(workflow.confirmRequest.value?.busyCancelLabel).toBe('终止扫描')
     expect(workflow.confirmRequest.value?.message).toContain(`共 ${batchA.length} 个文件`)
     expect(workflow.confirmRequest.value?.message).not.toContain('递归展开')
 
@@ -209,9 +225,10 @@ describe('libraryWorkflow', () => {
     expect(workflow.confirmBusy.value).toBe(true)
     expect(workflow.confirmButtonLabel.value).toBe(`0 / ${batchA.length}`)
 
-    // busy 期间点「停止」调用 addQueue.close()，但不提前关闭弹窗或丢弃 batchB
+    // busy 期间点「终止扫描」仅调用 addQueue.stopEnqueue()（不清空已入队项），也不提前关闭弹窗或丢弃 batchB
     workflow.cancelConfirmDialog()
-    expect(ctx.close).toHaveBeenCalledTimes(1)
+    expect(ctx.stopEnqueue).toHaveBeenCalledTimes(1)
+    expect(ctx.close).not.toHaveBeenCalled()
     expect(workflow.confirmOpen.value).toBe(true)
 
     finishFirstBatch()
@@ -295,5 +312,14 @@ describe('libraryWorkflow', () => {
     await workflow.submitRestoreQueue(workflow.restoreQueue.value)
     expect(workflow.restoreQueue.value).toEqual([])
     expect(workflow.restoreOpen.value).toBe(false)
+  })
+
+  it('formatBatchTimeEstimate 低于 10 秒不提示，达到阈值按秒/分钟估算', () => {
+    expect(formatBatchTimeEstimate(0)).toBeNull()
+    expect(formatBatchTimeEstimate(20)).toBeNull()
+    expect(formatBatchTimeEstimate(499)).toBeNull()
+    expect(formatBatchTimeEstimate(500)).toBe('预计需要约 10 秒')
+    expect(formatBatchTimeEstimate(1000)).toBe('预计需要约 20 秒')
+    expect(formatBatchTimeEstimate(5878)).toBe('预计需要约 2 分钟')
   })
 })

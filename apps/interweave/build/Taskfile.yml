@@ -60,18 +60,24 @@ tasks:
 
   generate:icons:
     summary: |-
-      Generates Windows `.ico` and Mac `.icns` app icons from `appicon.png`.
-      `appicon.png` is a copy of `docs/design/app-icons/interweave.png` (full-bleed square; macOS 26+ masks it into the squircle and composites any transparency itself, so it must reach all four edges).
+      Generates Mac `.icns` (full-bleed square; macOS masks it into the squircle itself) and
+      Windows `.ico` (macOS-style continuous squircle with hairline border and multi-DPI 16–256px frames,
+      shared by both the Windows app icon and system tray icon) from `appicon.png`.
       The DMG volume icon is a darwin-only artifact and lives in `darwin:generate:dmg-icon`.
     run: once
     dir: build
     sources:
       - 'appicon.png'
+      - '../scripts/generate-windows-icon/main.go'
     generates:
       - 'darwin/icons.icns'
       - 'windows/icon.ico'
     cmds:
+      # -windowsfilename 必须显式给相对本任务 dir 的路径：wails3 的默认值是
+      # build/windows/icon.ico（相对仓库根），在这里会解析成 build/build/windows/icon.ico，
+      # 而 generateWindowsIcon 直接 os.WriteFile 不建目录，两端原生构建都会 open 失败。
       - wails3 generate icons -input appicon.png -macfilename darwin/icons.icns -windowsfilename windows/icon.ico
+      - go run ../scripts/generate-windows-icon -input appicon.png -output windows/icon.ico
 
   dev:frontend:
     summary: Runs the frontend development server through the pnpm workspace

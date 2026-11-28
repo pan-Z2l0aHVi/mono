@@ -673,6 +673,9 @@ importers:
       '@greypan/browser-kit':
         specifier: workspace:*
         version: link:../../../packages/browser-kit
+      '@greypan/js-kit':
+        specifier: workspace:*
+        version: link:../../../packages/js-kit
       '@greypan/md-to-meta':
         specifier: workspace:*
         version: link:../../../packages/md-to-meta
@@ -716,9 +719,6 @@ importers:
       '@greypan/deps-reload':
         specifier: workspace:*
         version: link:../../../packages/deps-reload
-      '@greypan/js-kit':
-        specifier: workspace:*
-        version: link:../../../packages/js-kit
       '@greypan/monorepo-kit':
         specifier: workspace:*
         version: link:../../../packages/monorepo-kit

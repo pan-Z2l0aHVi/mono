@@ -10,6 +10,7 @@ export type PreviewEmptyReason =
   | 'source-unavailable'
   | 'media-unavailable'
   | 'unsupported-kind'
+  | 'embed-blocked'
 
 export interface PreviewTarget {
   mode: PreviewMode
@@ -126,6 +127,12 @@ export function resolvePreviewTarget(resource: ResourceView | null): PreviewTarg
     // 尺寸与滚动都不是图片预览的形状；媒体地址就是原始链接本身。
     if (resource.kind === 'image') {
       return { mode: 'image', source, mediaUrl: source.location, externalTarget: source.location, emptyReason: null }
+    }
+    if (resource.kind === 'video') {
+      return { mode: 'video', source, mediaUrl: source.location, externalTarget: source.location, emptyReason: null }
+    }
+    if (source.metadata?.embedBlocked) {
+      return emptyTarget(source, 'embed-blocked', source.location)
     }
     return { mode: 'url', source, mediaUrl: null, externalTarget: source.location, emptyReason: null }
   }

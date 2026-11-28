@@ -1,3 +1,4 @@
+import { formatRelativeTime, timestampMilliseconds } from '@greypan/js-kit'
 import {
   carbonNoImage,
   fluentMusicNoteOff220Regular,
@@ -110,13 +111,13 @@ export interface TextSegment {
 }
 
 /**
- * 将含数字的动态文案拆分为普通文本与数字片段（支持小数、千分位及 `done / total` 进度比值），
- * 便于仅对数字应用等宽字体而不改变周围中文排版。
+ * 将含数字的动态文案拆分为普通文本与数字片段（支持小数、千分位、时间 `3:31`、日期 `2026-01-15`
+ * 及 `done / total` 进度比值），便于仅对数字应用等宽字体而不改变周围非数字文本与空格的字体。
  */
 export function splitNumericSegments(text: string): TextSegment[] {
   if (!text) return []
   const segments: TextSegment[] = []
-  const pattern = /\d[\d.,]*(?:\s*\/\s*\d[\d.,]*)*/g
+  const pattern = /\d+(?:[.,:-]\d+)*(?:\s*\/\s*\d+(?:[.,:-]\d+)*)*/g
   let lastIndex = 0
   for (const match of text.matchAll(pattern)) {
     const index = match.index
@@ -223,27 +224,11 @@ export function primarySource(resource: ResourceView) {
   return resource.preferred ?? resource.sources[0] ?? null
 }
 
-/** 接受 Unix 秒或毫秒，按本地日历显示相对日期。 */
-export function timestampMilliseconds(timestamp: number) {
-  return Math.abs(timestamp) < 100_000_000_000 ? timestamp * 1000 : timestamp
-}
+export { timestampMilliseconds }
 
+/** 接受 Unix 秒或毫秒，按本地日历输出 12 小时制相对时间（委托 @greypan/js-kit）。 */
 export function formatDate(timestamp: number): string {
-  if (!Number.isFinite(timestamp) || timestamp <= 0) return '未知时间'
-  const date = new Date(timestampMilliseconds(timestamp))
-  if (Number.isNaN(date.getTime())) return '未知时间'
-  const now = new Date()
-  const yesterday = new Date(now.getFullYear(), now.getMonth(), now.getDate() - 1)
-  const sameDay = (other: Date) =>
-    date.getFullYear() === other.getFullYear() &&
-    date.getMonth() === other.getMonth() &&
-    date.getDate() === other.getDate()
-  if (sameDay(now) || sameDay(yesterday)) {
-    const hour = date.getHours()
-    const minutes = String(date.getMinutes()).padStart(2, '0')
-    return `${sameDay(now) ? '今天' : '昨天'}${hour < 12 ? '上午' : '下午'} ${hour % 12 || 12}:${minutes}`
-  }
-  return `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, '0')}-${String(date.getDate()).padStart(2, '0')}`
+  return formatRelativeTime(timestamp, { locale: 'zh' })
 }
 
 export function formatSize(sizeBytes: number | null) {

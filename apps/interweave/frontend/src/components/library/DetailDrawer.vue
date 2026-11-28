@@ -25,8 +25,10 @@ import {
   fileManagerLabel,
   formatSize,
   formatDate,
+  monoDigitsClass,
   resourceKindLabel,
-  sourceTypeDisplayLabel
+  sourceTypeDisplayLabel,
+  splitNumericSegments
 } from './presentation'
 import { DRAWER_TITLE_EDITOR_KEY, type NameEditorRef } from './rename'
 import ResourceTag from './ResourceTag.vue'
@@ -203,7 +205,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
             />
             <web-ui-button
               ref="renameButtonRef"
-              class="detail-edit-name justify-self-start -ml-2 [--wui-button-color:#007aff] [--wui-font-size:14px]"
+              class="detail-edit-name justify-self-start -ml-2 [--wui-button-color:var(--wui-color-accent)] [--wui-font-size:14px]"
               :class="{ invisible: editingTitle }"
               :aria-hidden="editingTitle ? 'true' : undefined"
               :inert="editingTitle ? true : undefined"
@@ -220,7 +222,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
           <template v-if="renderedResource.available">
             <button
               type="button"
-              class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-[#007aff] [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))]"
+              class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-(--wui-color-accent) [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))]"
               @click="emit('preview', renderedResource)"
             >
               <web-ui-icon
@@ -234,7 +236,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
               <button
                 slot="trigger"
                 type="button"
-                class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-[#007aff] [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))]"
+                class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-(--wui-color-accent) [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))]"
               >
                 <web-ui-icon :icon="arrowUpRight" :size="18" />打开
               </button>
@@ -252,7 +254,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
             </web-ui-dropdown>
             <button
               type="button"
-              class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-[#007aff] [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))]"
+              class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-(--wui-color-accent) [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))]"
               @click="emit('copy', renderedResource)"
             >
               <web-ui-icon :icon="lucideCopy" :size="18" />拷贝
@@ -261,7 +263,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
           <button
             v-else
             type="button"
-            class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-[#007aff] [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))] col-span-full"
+            class="detail-quick-button grid h-16 w-full flex-1 cursor-pointer box-border content-center justify-items-center gap-[3px] rounded-[18px] border-0 bg-(--wui-color-surface,#fff) p-2 text-(--wui-color-accent) [font:inherit] disabled:cursor-default disabled:opacity-40 enabled:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_5%,var(--wui-color-surface,#fff))] enabled:active:bg-[color-mix(in_srgb,var(--wui-color-text,#1c1c1e)_10%,var(--wui-color-surface,#fff))] col-span-full"
             :disabled="!unavailableSource || replacingSourceIds.includes(unavailableSource?.id ?? '')"
             @click="restoreResource"
           >
@@ -335,15 +337,25 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
           </div>
           <div class="detail-row relative box-border flex min-h-9 items-center gap-2.5 px-[15px] py-[7px] text-xs">
             <span class="flex-1 text-sm">创建于</span
-            ><small class="text-right font-mono tabular-nums text-[#8a8a94] [font-size:inherit]">{{
-              formatDate(renderedResource.createdAt)
-            }}</small>
+            ><small class="text-right text-[#8a8a94] [font-size:inherit]"
+              ><template
+                v-for="(segment, segIndex) in splitNumericSegments(formatDate(renderedResource.createdAt))"
+                :key="segIndex"
+                ><span v-if="segment.numeric" :class="monoDigitsClass">{{ segment.text }}</span
+                ><template v-else>{{ segment.text }}</template></template
+              ></small
+            >
           </div>
           <div class="detail-row relative box-border flex min-h-9 items-center gap-2.5 px-[15px] py-[7px] text-xs">
             <span class="flex-1 text-sm">最后修改于</span
-            ><small class="text-right font-mono tabular-nums text-[#8a8a94] [font-size:inherit]">{{
-              formatDate(renderedResource.updatedAt)
-            }}</small>
+            ><small class="text-right text-[#8a8a94] [font-size:inherit]"
+              ><template
+                v-for="(segment, segIndex) in splitNumericSegments(formatDate(renderedResource.updatedAt))"
+                :key="segIndex"
+                ><span v-if="segment.numeric" :class="monoDigitsClass">{{ segment.text }}</span
+                ><template v-else>{{ segment.text }}</template></template
+              ></small
+            >
           </div>
         </div>
         <p class="detail-caption mx-3.5 mt-4 mb-1.5 text-xs text-[#777780]">标签</p>
@@ -357,7 +369,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
             <ResourceTag v-for="tag in renderedResource.tags" :key="tag.id" :name="tag.name" :color="tag.color" />
           </div>
           <web-ui-button
-            class="detail-edit-tags -mr-2 [--wui-button-color:#007aff] [--wui-font-size:14px]"
+            class="detail-edit-tags -mr-2 [--wui-button-color:var(--wui-color-accent)] [--wui-font-size:14px]"
             variant="ghost"
             size="24"
             aria-label="编辑标签"
@@ -373,7 +385,7 @@ onScopeDispose(() => clearTimeout(copiedRevertTimer))
           :rows="2"
           autosize
           full
-          placeholder="添加备注"
+          placeholder="暂无备注"
           aria-label="备注"
           @input="handleNoteInput($event)"
           @change="handleNoteChange($event)"

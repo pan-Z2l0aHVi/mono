@@ -52,6 +52,19 @@ export function useLibrarySelection(dependencies: LibrarySelectionDependencies) 
     }
   }
 
+  /** Cmd/Ctrl + 点击行：未在选择态时直接进入选择态并勾选该项，已在选择态时切换勾选。 */
+  function enterSelectionWith(resourceId: string) {
+    if (!selectionMode.value) {
+      selectionMode.value = true
+      stopResourceRename()
+      detailOpen.value = false
+      filterOpen.value = false
+      checkedIds.value = [resourceId]
+      return
+    }
+    toggleChecked(resourceId)
+  }
+
   function toggleChecked(resourceId: string) {
     checkedIds.value = checkedIds.value.includes(resourceId)
       ? checkedIds.value.filter(id => id !== resourceId)
@@ -81,6 +94,7 @@ export function useLibrarySelection(dependencies: LibrarySelectionDependencies) 
     selectedResources,
     canRestore,
     toggleSelectionMode,
+    enterSelectionWith,
     toggleChecked,
     setResourceChecked,
     toggleCheckAll

@@ -186,6 +186,12 @@ export class WebUiDrawer extends LitElement {
   @property({ type: Boolean, reflect: true }) override draggable = false
 
   /**
+   * 仅将拖拽热区（及 hover 抓手光标与胶囊高亮）收敛到 handle 胶囊附近，而非覆盖整条内缘。
+   * 默认 `false`（整条内缘均可拖拽）。
+   */
+  @property({ type: Boolean, reflect: true, attribute: 'drag-handle-only' }) dragHandleOnly = false
+
+  /**
    * 拖拽全屏（需同时开启 `draggable`）：打开态向外拖拽（背离闭合方向）过行程阈值，
    * 或快速向外甩动后松手，drawer 吸附为占满视口（非 headless 减去四周留边）的全屏态。
    * 一旦同一手势回拉越过恢复阈值，本段手势锁定为取消全屏：抽屉恢复原尺寸，
@@ -317,6 +323,7 @@ export class WebUiDrawer extends LitElement {
   }
 
   private readonly _handleSectionDragPointerDown = (e: PointerEvent) => {
+    if (this.dragHandleOnly) return
     this._drag.handleSectionPointerDown(e)
   }
 
@@ -687,7 +694,7 @@ export class WebUiDrawer extends LitElement {
     //
     // 顺序要紧：胶囊排最后，两条 drag zone（边、区）都在它前面，hover / active / 确认态三条规则
     // 因此靠通用兄弟选择器 `~` 挂上去。写成相邻兄弟 `+` 的话 drag edge 那条会静默失效。
-    const needsEdgeBand = this.placement === 'top' || this.placement === 'bottom'
+    const needsEdgeBand = (this.placement === 'top' || this.placement === 'bottom') && !this.dragHandleOnly
     const dragBar = this.draggable
       ? html`
           ${

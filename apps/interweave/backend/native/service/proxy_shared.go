@@ -236,6 +236,13 @@ type windowsProxyConfig struct {
 //   - ProxyOverride 是分号分隔的绕过清单；`<local>` 是无点主机名直连标记，
 //     `*.example.com` 归一成 httpproxy 认的后缀形式 `.example.com`，IP 与 CIDR 原样保留，
 //     以逗号拼接交给 httpproxy.Config.NoProxy。
+func ensureHTTPProxyURL(raw string) string {
+	if strings.Contains(raw, "://") {
+		return raw
+	}
+	return "http://" + raw
+}
+
 func parseWindowsProxyServer(server string, override string) windowsProxyConfig {
 	config := windowsProxyConfig{}
 	for _, entry := range strings.Split(strings.TrimSpace(server), ";") {
@@ -245,9 +252,10 @@ func parseWindowsProxyServer(server string, override string) windowsProxyConfig 
 		}
 		scheme, value, isPerProtocol := strings.Cut(entry, "=")
 		if !isPerProtocol {
-			// 单一形态：全协议同一入口。
-			config.HTTPProxy = "http://" + entry
-			config.HTTPSProxy = "http://" + entry
+			// 单一形态：全协议同一入口（部分代理客户端会自带 http:// 前缀，不可重复拼接）。
+			normalized := ensureHTTPProxyURL(entry)
+			config.HTTPProxy = normalized
+			config.HTTPSProxy = normalized
 			continue
 		}
 		if value == "" {
@@ -255,9 +263,9 @@ func parseWindowsProxyServer(server string, override string) windowsProxyConfig 
 		}
 		switch strings.ToLower(scheme) {
 		case "http":
-			config.HTTPProxy = "http://" + value
+			config.HTTPProxy = ensureHTTPProxyURL(value)
 		case "https":
-			config.HTTPSProxy = "http://" + value
+			config.HTTPSProxy = ensureHTTPProxyURL(value)
 		}
 	}
 	var bypass []string

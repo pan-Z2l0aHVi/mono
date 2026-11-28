@@ -101,6 +101,10 @@ export interface LibraryEventCapabilities {
 /** 与操作系统交互：文件选择、文本剪贴板、默认应用与外链。 */
 export interface LibrarySystemCapabilities {
   chooseFilePaths(): Promise<string[]>
+  /** 仅选择文件（多选）；Windows 原生面板无法混选文件与文件夹，独立入口避免被目录模式吞掉。 */
+  chooseFilesOnly(): Promise<string[]>
+  /** 仅选择文件夹（多选）；与 chooseFilesOnly 配对供 Windows 导入菜单使用。 */
+  chooseDirectories(): Promise<string[]>
   chooseFilePath(): Promise<string | null>
   chooseDirectory(): Promise<string | null>
   getClipboardFilePaths(): Promise<string[]>

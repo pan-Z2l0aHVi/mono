@@ -110,6 +110,30 @@ describe('system 选择对话框', () => {
     await expect(rt.system.chooseFilePaths()).resolves.toEqual([])
   })
 
+  it('chooseFilesOnly 仅允许选择文件并支持多选', async () => {
+    const rt = runtime()
+    dialogsOpenFile.mockResolvedValueOnce(['/a.png', '/b.png'])
+    await expect(rt.system.chooseFilesOnly()).resolves.toEqual(['/a.png', '/b.png'])
+    expect(dialogsOpenFile).toHaveBeenCalledWith({
+      Title: '选择要导入的文件',
+      CanChooseFiles: true,
+      CanChooseDirectories: false,
+      AllowsMultipleSelection: true
+    })
+  })
+
+  it('chooseDirectories 仅允许选择文件夹并支持多选', async () => {
+    const rt = runtime()
+    dialogsOpenFile.mockResolvedValueOnce(['/dir-a', '/dir-b'])
+    await expect(rt.system.chooseDirectories()).resolves.toEqual(['/dir-a', '/dir-b'])
+    expect(dialogsOpenFile).toHaveBeenCalledWith({
+      Title: '选择要导入的文件夹',
+      CanChooseFiles: false,
+      CanChooseDirectories: true,
+      AllowsMultipleSelection: true
+    })
+  })
+
   it('chooseFilePath 请求单选文件，数组取首个，空选回 null', async () => {
     const rt = runtime()
 

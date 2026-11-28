@@ -38,6 +38,7 @@ function mountDialog(overrides: Record<string, unknown> = {}) {
     host.remove()
   })
   return {
+    host,
     async requestClose() {
       host.querySelector('web-ui-dialog')!.dispatchEvent(new CustomEvent('open-change', { detail: { open: false } }))
       await nextTick()
@@ -63,5 +64,24 @@ describe('ConfirmDialog：busy 期间的关闭请求', () => {
     const dialog = mountDialog({ busy: true })
     await dialog.requestClose()
     expect(dialog.cancelCount()).toBe(1)
+  })
+
+  it('声明 busyTitle 时，busy 期间标题切换为正在扫描，空闲时保持原标题', () => {
+    const busyDialog = mountDialog({
+      title: '批量导入',
+      busyTitle: '正在扫描',
+      busy: true,
+      busyCancelLabel: '终止扫描'
+    })
+    const idleDialog = mountDialog({
+      title: '批量导入',
+      busyTitle: '正在扫描',
+      busy: false,
+      busyCancelLabel: '终止扫描'
+    })
+    expect(busyDialog.host.querySelector('[slot="header"]')?.textContent?.trim()).toBe('正在扫描')
+    expect(busyDialog.host.textContent).toContain('终止扫描')
+    expect(idleDialog.host.querySelector('[slot="header"]')?.textContent?.trim()).toBe('批量导入')
+    expect(idleDialog.host.textContent).toContain('取消')
   })
 })

@@ -84,7 +84,7 @@ describe('DuplicateConfirmDialog', () => {
     }
   })
 
-  it('「取消」与「仍要导入」各自回到对应裁决，且仍要导入在左、取消在右为主按钮', async () => {
+  it('「跳过」与「仍要导入」各自回到对应裁决，且仍要导入在左、跳过在右为主按钮', async () => {
     const onAccept = vi.fn<() => void>()
     const onCancel = vi.fn<() => void>()
     const mounted = mountDialog({ onAccept, onCancel })
@@ -92,11 +92,11 @@ describe('DuplicateConfirmDialog', () => {
       await nextTick()
       expect(mounted.host.textContent).toContain('存在多个指向同一位置的条目')
       const buttons = [...mounted.host.querySelectorAll<WebUiButton>('[slot="footer"] web-ui-button')]
-      expect(buttons.map(button => button.textContent?.trim())).toEqual(['仍要导入', '取消'])
+      expect(buttons.map(button => button.textContent?.trim())).toEqual(['仍要导入', '跳过'])
       expect(buttons[0]?.getAttribute('variant')).toBe('secondary')
       expect(buttons[1]?.getAttribute('variant')).toBe('primary')
 
-      footerButton(mounted.host, '取消').click()
+      footerButton(mounted.host, '跳过').click()
       footerButton(mounted.host, '仍要导入').click()
 
       expect(onCancel).toHaveBeenCalledOnce()

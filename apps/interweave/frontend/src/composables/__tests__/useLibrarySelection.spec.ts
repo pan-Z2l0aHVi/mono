@@ -72,6 +72,25 @@ describe('useLibrarySelection：进入与退出选择态', () => {
     expect(selection.selectionMode.value).toBe(false)
     expect(selection.checkedIds.value).toEqual([])
   })
+
+  it('enterSelectionWith 未在选择态时自动进入选择态并勾选目标项，已在选择态时切换勾选', () => {
+    const { selection, detailOpen, filterOpen, stopResourceRename } = useSetup([resource('r-1'), resource('r-2')])
+    detailOpen.value = true
+    filterOpen.value = true
+
+    selection.enterSelectionWith('r-1')
+    expect(selection.selectionMode.value).toBe(true)
+    expect(selection.checkedIds.value).toEqual(['r-1'])
+    expect(detailOpen.value).toBe(false)
+    expect(filterOpen.value).toBe(false)
+    expect(stopResourceRename).toHaveBeenCalledOnce()
+
+    selection.enterSelectionWith('r-2')
+    expect(selection.checkedIds.value).toEqual(['r-1', 'r-2'])
+
+    selection.enterSelectionWith('r-1')
+    expect(selection.checkedIds.value).toEqual(['r-2'])
+  })
 })
 
 describe('useLibrarySelection：勾选操作', () => {

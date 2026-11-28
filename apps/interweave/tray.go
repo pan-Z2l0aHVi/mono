@@ -11,10 +11,9 @@ import (
 // 图标按平台语义分别嵌入：
 //   - macOS 用 template 图（黑+透明），由系统按浅/深色菜单栏自动反色；Wails 只能收一份字节，
 //     因此把 22/44/66 三档源图按 72/144/216 DPI 合成多表示 TIFF，让 NSImage 按屏幕倍率选图。
-//   - Windows 按任务栏底色切换：深色图案配浅色任务栏，浅色图案配深色任务栏；
-//     Linux 用 PNG（Wails 的 Linux 托盘只解码 PNG）。
-//
-// Wails 的 SetIcon 对应系统浅色模式，SetDarkModeIcon 对应系统深色模式。
+//   - Windows 直接复用多档高清圆角彩色应用图标（16/20/24/32/40/48/64/128/256px，带极细描边，
+//     浅/深色任务栏均清晰可读），且仅调用 SetIcon 绕开 Wails v3.1.0 SetIcon/SetDarkModeIcon 对称覆写缺陷。
+//   - Linux 用 PNG（Wails 的 Linux 托盘只解码 PNG）。
 //
 //go:embed build/tray/macos/trayTemplate.tiff
 var trayTemplateIcon []byte
@@ -25,11 +24,8 @@ var trayTemplateIcon []byte
 //go:embed build/appicon.png
 var trayIconForLinux []byte
 
-//go:embed build/tray/windows/tray-dark.ico
-var trayIconForLightTaskbar []byte
-
-//go:embed build/tray/windows/tray-light.ico
-var trayIconForDarkTaskbar []byte
+//go:embed build/windows/icon.ico
+var trayIconForWindows []byte
 
 const (
 	trayMenuShowLabel = "主界面"
@@ -49,28 +45,24 @@ func presentMainWindow(window *application.WebviewWindow) {
 }
 
 // trayIconsFor 按平台返回 Wails 托盘需要的图标字节，便于纯单测校验映射语义。
-func trayIconsFor(goos string) (icon, darkIcon, template []byte) {
+func trayIconsFor(goos string) (icon, template []byte) {
 	if goos == "darwin" {
-		return nil, nil, trayTemplateIcon
+		return nil, trayTemplateIcon
 	}
 	if goos == "linux" {
-		return trayIconForLinux, nil, nil
+		return trayIconForLinux, nil
 	}
-	// Windows 按任务栏底色切换 ICO；dark 变体只对 Windows 有意义。
-	return trayIconForLightTaskbar, trayIconForDarkTaskbar, nil
+	return trayIconForWindows, nil
 }
 
 func applyTrayIcons(tray *application.SystemTray, goos string) {
-	icon, darkIcon, template := trayIconsFor(goos)
+	icon, template := trayIconsFor(goos)
 	if len(template) > 0 {
 		tray.SetTemplateIcon(template)
 		return
 	}
 	if len(icon) > 0 {
 		tray.SetIcon(icon)
-	}
-	if len(darkIcon) > 0 {
-		tray.SetDarkModeIcon(darkIcon)
 	}
 }
 
@@ -198,12 +190,19 @@ func setupSystemTray(app *application.App, windows *mainWindowController, presen
 		},
 		quit,
 	)
-	dispose := windows.addStateListener(func(bool) { syncLightModeChecked() })
+	disposeState := windows.addStateListener(func(bool) { syncLightModeChecked() })
 	tray.SetMenu(menu)
 	tray.OnClick(present)
 	// 不显式注册 OnRightClick(tray.OpenMenu)：Wails v3.1.0 在 rightClickHandler == nil 时，
 	// macOS 会通过 systrayPreClick 在 mouse-down 前直接挂载 NSMenu 进入原生菜单追踪，
 	// 避免 OpenMenu 异步合成点击与 rightMouseUp 竞态导致菜单频繁自动关闭；
 	// Windows 侧在 rightClickHandler == nil 时同样自动注册右键打开菜单的默认回调。
-	return &managedSystemTray{tray: tray, dispose: dispose}
+	return &managedSystemTray{
+		tray: tray,
+		dispose: func() {
+			if disposeState != nil {
+				disposeState()
+			}
+		},
+	}
 }

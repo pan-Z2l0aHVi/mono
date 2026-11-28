@@ -14,6 +14,7 @@ import { WindowVirtualizer } from 'virtua/vue'
 import { computed, nextTick, onBeforeUnmount, onMounted, ref, watch } from 'vue'
 
 import { useEditorFocusRestore } from '@/composables/useEditorFocusRestore'
+import { wailsPlatformOS } from '@/services/runtime'
 import type { ResourceSourceView, ResourceView } from '@/stores/library'
 
 import { FocusNavigator, rowFocusTarget } from './focusNavigator'
@@ -23,6 +24,7 @@ import type { NameEditorRef } from './rename'
 import { createResourceContextMenu } from './resourceContextMenu'
 import ResourceRow from './ResourceRow.vue'
 import { SweepScrollController } from './sweepScroll'
+import type { ThumbnailPayload } from './videoThumbnailQueue'
 
 const props = defineProps<{
   resources: ResourceView[]
@@ -35,12 +37,13 @@ const props = defineProps<{
   runtimeAvailable: boolean
   emptyDescription: string
   /** 缩略图回填；未提供时行内捕获后不回填。地址取自 Source 上的 thumbnailUrl。 */
-  saveThumbnailFor?: (thumbnailUrl: string, dataUrl: string) => void
+  saveThumbnailFor?: (thumbnailUrl: string, payload: ThumbnailPayload) => void
   resolveDefaultOpenWith: (resource: ResourceView) => Promise<string>
 }>()
 
 const emit = defineEmits<{
   select: [resource: ResourceView]
+  modifierSelect: [resource: ResourceView]
   detail: [resource: ResourceView]
   startRename: [resource: ResourceView]
   editTags: [resource: ResourceView]
@@ -493,8 +496,19 @@ function handleBlankContextMenu(event: MouseEvent) {
   }
 }
 
-function onRowSelect(resource: ResourceView) {
+function isPrimarySelectionModifier(event: MouseEvent): boolean {
+  const os = wailsPlatformOS()
+  const isMac = os === 'darwin' || (!os && /Macintosh|Mac OS X/.test(window.navigator.userAgent))
+  return isMac ? event.metaKey && !event.ctrlKey && !event.altKey : event.ctrlKey && !event.metaKey && !event.altKey
+}
+
+function onRowSelect(resource: ResourceView, event?: MouseEvent) {
   if (sweep.consumeRowClick()) return
+  if (event && isPrimarySelectionModifier(event)) {
+    event.preventDefault()
+    emit('modifierSelect', resource)
+    return
+  }
   emit('select', resource)
 }
 
@@ -576,12 +590,12 @@ function editorRefFor(id: string) {
   return props.editorRef(id)
 }
 
-/** 行级回填回调：把捕获的 dataURL 绑定到该行首选 Source 的缩略图地址上。 */
+/** 行级回填回调：把捕获结果绑定到该行首选 Source 的缩略图地址上。 */
 function thumbnailSaver(resource: ResourceView) {
   const save = props.saveThumbnailFor
   const thumbnailUrl = resource.preferred?.thumbnailUrl
   if (!save || !thumbnailUrl) return null
-  return (dataUrl: string) => save(thumbnailUrl, dataUrl)
+  return (payload: ThumbnailPayload) => save(thumbnailUrl, payload)
 }
 
 function handleRenameChange(resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>) {

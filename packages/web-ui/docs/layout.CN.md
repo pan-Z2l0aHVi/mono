@@ -262,7 +262,7 @@ const open = ref(false)
 
 handle 支持鼠标、触摸和触控笔；移动端布局使用抽屉，不显示调宽 handle。
 
-拖拽释放或键盘 Enter 提交时派发一次 `sidebar-width-change`，携带最终像素宽度；调用方回写后宽度重新由 `sidebar-width` 接管，Escape 撤回未提交的调整。
+拖拽释放或键盘按键调宽时派发 `sidebar-width-change`，携带最终像素宽度；调用方回写后宽度由 `sidebar-width` 受控接管。
 
 `sidebar-min-width` / `sidebar-max-width` 是 px 字面量，上限还受一半视口限制，内置上限优先于配置值。
 
@@ -292,7 +292,7 @@ export default function Demo() {
           </nav>
           <div className="p-4">
             <p className="m-0 text-sm">
-              拖桌面端侧边栏右缘的 handle 改宽；聚焦后用 ←/→ 步进、Enter 提交、Escape 撤回未提交的调整。
+              拖桌面端侧边栏右缘的 handle 改宽；聚焦后用 ←/→ 步进（Shift 加速）、Home/End 跳到边界，立即生效。
             </p>
           </div>
         </web-ui-layout>
@@ -325,7 +325,7 @@ export default function Demo() {
         </nav>
         <div class="p-4">
           <p class="m-0 text-sm">
-            拖桌面端侧边栏右缘的 handle 改宽；聚焦后用 ←/→ 步进、Enter 提交、Escape 撤回未提交的调整。
+            拖桌面端侧边栏右缘的 handle 改宽；聚焦后用 ←/→ 步进（Shift 加速）、Home/End 跳到边界，立即生效。
           </p>
         </div>
       </web-ui-layout>
@@ -416,7 +416,7 @@ const open = ref(false)
 | -------------------------- | ----------------------------------------------------------------------------------------- |
 | `sidebar-collapsed-change` | 请求更新桌面端收起状态；`detail.collapsed` 是请求值，调用方须回写到 `sidebar-collapsed`。 |
 | `sidebar-open-change`      | 请求更新移动端抽屉打开状态；`detail.open` 是请求值。                                      |
-| `sidebar-width-change`     | 拖拽释放或键盘 Enter 提交调整后请求更新宽度；`detail.width` 是最终像素宽度。              |
+| `sidebar-width-change`     | 拖拽释放或键盘调宽后请求更新宽度；`detail.width` 是最终像素宽度。                         |
 
 ### Slot
 
@@ -452,7 +452,7 @@ const open = ref(false)
 
 - 拖拽时实时更新宽度（禁止过渡动画，限制在 `[min, max]` 和视口范围内）。
 - 释放时触发 `sidebar-width-change` 事件并携带最终像素宽度，调用方回写后宽度重新由 `sidebar-width` 属性接管。`pointercancel` 会恢复属性控制的宽度，且不触发事件。
-- 键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，Enter 以同一 `sidebar-width-change` 请求提交，Escape 撤回未提交的调整。键盘焦点只用那条垂直线标示，不画焦点环。
+- 键盘操作（WAI-ARIA splitter 模式）：聚焦后用 ←/→ 以 16px 步进调整（Shift 加速到 64px），Home/End 跳到 min/max，每次有效按键立即以 `sidebar-width-change` 请求提交。键盘焦点只用那条垂直线标示，不画焦点环。
 - 移动端抽屉始终通过其内置 `draggable` 抽屉支持拖拽关闭，并启用 `page-shift`。打开时整页朝抽屉的进场方向（向右）移动 `16vw`，拖拽期间页面不跟手，关闭后归位。
 
 ### 行为说明

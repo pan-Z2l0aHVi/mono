@@ -9,6 +9,7 @@ import {
 } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 import type { PreviewLease } from './previewLease'
+import { videoThumbnailCoordinator } from './videoThumbnailQueue'
 
 type PreviewRuntime = Pick<LibraryRuntime, 'isAvailable' | 'resources'>
 
@@ -84,6 +85,8 @@ export interface LibraryAddQueueController {
    * 全部成功时 close() 收尾并返回 true。
    */
   submit(create: (item: LibraryQueueItem) => Promise<void>, createBatch?: LibraryBatchCreate): Promise<boolean>
+  /** 仅中止在途入队链，保留已入队的列表项与预览。 */
+  stopEnqueue(): void
   close(): Promise<void>
 }
 
@@ -215,8 +218,16 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     // 进度按「已消费的输入位置」计：入队、重复跳过与取消裁决都算处理完成，
     // 这样加载中的按钮展示的比值始终收敛到 total，不会停在中间值。
     progress.value = { done: 0, total: locations.length }
+    let syncSteps = 0
     for (const [index, value] of locations.entries()) {
       if (startedAt !== generation) return
+      // 大批次无异步挂起时每 64 项让出一次主线程，保证点「终止扫描」等交互不被阻塞。
+      if (syncSteps >= 64) {
+        syncSteps = 0
+        await new Promise<void>(resolve => setTimeout(resolve, 0))
+        if (startedAt !== generation) return
+      }
+      syncSteps += 1
       const settle = () => {
         progress.value = { ...progress.value, done: index + 1 }
       }
@@ -313,7 +324,15 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     const index = queue.value.indexOf(item)
     if (index >= 0) queue.value.splice(index, 1)
     queueById.delete(itemId)
+    if (item.previewToken) videoThumbnailCoordinator.clearPendingBlobs([item.previewToken])
     await lease.revoke(itemId)
+  }
+
+  function stopEnqueue() {
+    generation += 1
+    // 挂着的重复提示按「跳过」裁决，避免入队链永久卡在当前项；同时中止尚未发往后端的排队预览。
+    resolveDuplicate(false)
+    lease.cancelPending()
   }
 
   async function close() {
@@ -323,8 +342,10 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     cancelActiveSubmit?.()
     await chain
     const itemIds = queue.value.map(item => item.id)
+    const previewTokens = queue.value.map(item => item.previewToken).filter((token): token is string => Boolean(token))
     queue.value = []
     queueById.clear()
+    if (previewTokens.length) videoThumbnailCoordinator.clearPendingBlobs(previewTokens)
     // lease 与找回弹窗共用，这里只撤销本队列的 key，不整体清空。
     await Promise.allSettled(itemIds.map(itemId => lease.revoke(itemId)))
   }
@@ -403,11 +424,15 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
         }
         setItemStatus(item.id, 'importing')
         await waitForPreview(item.id)
+        const token = item.previewToken
         try {
           await create(item)
           settleItem(item, { ok: true })
         } catch (cause) {
           settleItem(item, { ok: false, error: cause instanceof Error ? cause.message : String(cause) })
+        } finally {
+          // 未被 handoffPendingThumbnail 认领的缓存（例如失败项）一并清理。
+          if (token) videoThumbnailCoordinator.clearPendingBlobs([token])
         }
       }
       if (batchTask) await batchTask.done
@@ -468,6 +493,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     waitForPreview,
     releasePreview,
     submit,
+    stopEnqueue,
     close
   }
 }

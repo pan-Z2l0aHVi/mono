@@ -2,12 +2,15 @@
 import type { WebUiCheckbox, WebUiEditableText, WebUiEvent } from '@greypan/web-ui'
 import { computed } from 'vue'
 
+import { wailsPlatformOS } from '@/services/runtime'
 import type { ResourceView } from '@/stores/library'
 
 import {
   fileExtension,
   formatSize,
   formatDate,
+  monoDigitsClass,
+  splitNumericSegments,
   timestampMilliseconds,
   primarySource,
   sourceTypeIcon,
@@ -16,6 +19,7 @@ import {
 import type { NameEditorRef } from './rename'
 import ResourceTag from './ResourceTag.vue'
 import ResourceThumbnail from './ResourceThumbnail.vue'
+import type { ThumbnailPayload } from './videoThumbnailQueue'
 
 const props = defineProps<{
   resource: ResourceView
@@ -30,7 +34,7 @@ const props = defineProps<{
   /** 服务端缩略图地址；缺省时回退原图/视频捕获（测试与浏览器预览）。 */
   thumbnailUrl?: string | null
   /** 捕获成功后的回填回调；缺省表示本表面不回填。 */
-  saveThumbnail?: ((dataUrl: string) => void) | null
+  saveThumbnail?: ((payload: ThumbnailPayload) => void) | null
   active: boolean
   checked: boolean
   checkedAbove: boolean
@@ -51,7 +55,7 @@ const props = defineProps<{
 }>()
 
 const emit = defineEmits<{
-  select: [resource: ResourceView]
+  select: [resource: ResourceView, event?: MouseEvent]
   contextmenu: [resource: ResourceView, event: MouseEvent]
   toggle: [resourceId: string]
   renameChange: [resource: ResourceView, event: WebUiEvent<WebUiEditableText, 'change'>]
@@ -76,6 +80,18 @@ const rowRadiusClass = computed(() => {
   if (props.checkedBelow) return 'rounded-t-[14px] rounded-b-none'
   return 'rounded-[14px]'
 })
+
+function isPrimarySelectionModifier(event: MouseEvent): boolean {
+  const os = wailsPlatformOS()
+  const isMac = os === 'darwin' || (!os && /Macintosh|Mac OS X/.test(window.navigator.userAgent))
+  return isMac ? event.metaKey && !event.ctrlKey && !event.altKey : event.ctrlKey && !event.metaKey && !event.altKey
+}
+
+function handleRowMousedown(event: MouseEvent) {
+  if (event.button === 0 && isPrimarySelectionModifier(event)) {
+    event.preventDefault()
+  }
+}
 
 function handleChange(_event: WebUiEvent<WebUiCheckbox, 'change'>) {
   emit('toggle', props.resource.id)
@@ -119,7 +135,8 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
     :aria-setsize="total"
     :aria-posinset="index + 1"
     :tabindex="tabbable ? 0 : -1"
-    @click="emit('select', resource)"
+    @mousedown="handleRowMousedown"
+    @click="emit('select', resource, $event)"
     @contextmenu="emit('contextmenu', resource, $event)"
   >
     <!--
@@ -209,10 +226,11 @@ function handleNameChange(event: WebUiEvent<WebUiEditableText, 'change'>) {
           <span class="font-mono tabular-nums">{{ size }}</span>
         </template>
         <span aria-hidden="true" class="text-[#d8d8de] dark:text-(--wui-color-text-tertiary)">·</span>
-        <time
-          class="font-mono tabular-nums"
-          :datetime="new Date(timestampMilliseconds(resource.createdAt)).toISOString()"
-          >{{ formatDate(resource.createdAt) }}</time
+        <time :datetime="new Date(timestampMilliseconds(resource.createdAt)).toISOString()"
+          ><template v-for="(segment, segIndex) in splitNumericSegments(formatDate(resource.createdAt))" :key="segIndex"
+            ><span v-if="segment.numeric" :class="monoDigitsClass">{{ segment.text }}</span
+            ><template v-else>{{ segment.text }}</template></template
+          ></time
         >
         <span
           v-if="resource.sources.length > 1"

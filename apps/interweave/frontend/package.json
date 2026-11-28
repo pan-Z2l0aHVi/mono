@@ -15,6 +15,7 @@
   "dependencies": {
     "@greypan/app-scrollbars": "workspace:*",
     "@greypan/browser-kit": "workspace:*",
+    "@greypan/js-kit": "workspace:*",
     "@greypan/md-to-meta": "workspace:*",
     "@greypan/route-progress": "workspace:*",
     "@greypan/web-ui": "workspace:*",
@@ -31,7 +32,6 @@
   },
   "devDependencies": {
     "@greypan/deps-reload": "workspace:*",
-    "@greypan/js-kit": "workspace:*",
     "@greypan/monorepo-kit": "workspace:*",
     "@greypan/tsconfig": "workspace:*",
     "@greypan/unplugin-web-components": "workspace:*",

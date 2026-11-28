@@ -1,5 +1,6 @@
 import { computed, ref } from 'vue'
 
+import { videoThumbnailCoordinator, type ThumbnailPayload } from '@/components/library/videoThumbnailQueue'
 import { createLibraryRuntime, type LibraryQueueItem, type LibraryRuntime } from '@/services/library'
 import { useLibraryStore, type ResourceSourceView } from '@/stores/library'
 
@@ -56,7 +57,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
     }
   }
 
-  async function addResource(item: LibraryQueueItem) {
+  async function addResource(item: LibraryQueueItem, options?: { deferUpsert?: boolean }) {
     setPending(item.id, true)
     try {
       // 标题、入口与初始标签一次交给后端：归一化、探测与事务建齐都在 core 内完成。
@@ -66,7 +67,17 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
         title: item.title,
         tags: item.tags
       })
-      store.upsertResource(saved)
+      // 在 upsertResource 触发主列表挂载前同步交接弹窗已捕获的视频封面，避免主列表二次解码。
+      const preferred = saved.sources.find(source => source.is_preferred) ?? saved.sources[0]
+      if (item.previewToken && preferred) {
+        videoThumbnailCoordinator.handoffPendingThumbnail(
+          item.previewToken,
+          preferred.id,
+          preferred.thumbnail_url,
+          (url, blob) => runtime.media.saveThumbnail(url, blob)
+        )
+      }
+      if (!options?.deferUpsert) store.upsertResource(saved)
       return saved
     } catch (cause) {
       report(cause)
@@ -82,6 +93,10 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
    */
   function upsertResource(resource: ResourceDTO) {
     store.upsertResource(resource)
+  }
+
+  function upsertResources(resources: ResourceDTO[]) {
+    store.upsertResources(resources)
   }
 
   async function renameResource(resourceId: string, newTitle: string) {
@@ -162,11 +177,11 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
     }
   }
 
-  async function replaceSource(sourceId: string, input: string) {
+  async function replaceSource(sourceId: string, input: string, options?: { deferUpsert?: boolean }) {
     replacingSourceIds.value = [...new Set([...replacingSourceIds.value, sourceId])]
     try {
       const updated = await runtime.sources.replaceSource(sourceId, input)
-      store.upsertResource(updated)
+      if (!options?.deferUpsert) store.upsertResource(updated)
       return updated
     } catch (cause) {
       report(cause)
@@ -226,11 +241,18 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
    */
   const thumbnailSaves = new Map<string, Promise<void>>()
 
-  function saveSourceThumbnail(thumbnailUrl: string, dataUrl: string) {
+  function saveSourceThumbnail(thumbnailUrl: string, payload: ThumbnailPayload) {
+    const sourceIdMatch = /\/resource-thumbnail\/([^/?#]+)/.exec(thumbnailUrl)
+    const sourceId = sourceIdMatch ? decodeURIComponent(sourceIdMatch[1]!) : undefined
+    if (sourceId && payload instanceof Blob) {
+      return videoThumbnailCoordinator.uploadThumbnail(sourceId, thumbnailUrl, payload, (url, blob) =>
+        runtime.media.saveThumbnail(url, blob)
+      )
+    }
     const inFlight = thumbnailSaves.get(thumbnailUrl)
     if (inFlight) return inFlight
     const save = (async () => {
-      const blob = await (await fetch(dataUrl)).blob()
+      const blob = payload instanceof Blob ? payload : await (await fetch(payload)).blob()
       await runtime.media.saveThumbnail(thumbnailUrl, blob)
     })()
       .catch(() => {})
@@ -251,6 +273,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
     loadResources,
     addResource,
     upsertResource,
+    upsertResources,
     renameResource,
     updateResourceNote,
     deleteResources,

@@ -24,8 +24,30 @@ import type { ClipboardContentDTO } from '../../../bindings/github.com/pan-Z2l0a
  */
 export const IMPORT_CONFIRM_THRESHOLD = 20
 
+/** 单项入队平均耗时估算（毫秒，含去重查询与排队开销），据此推算大批次预计耗时。 */
+export const ESTIMATED_IMPORT_MS_PER_ITEM = 20
+/** 预计耗时低于该阈值（10 秒，对应约 500 项）时不展示时间提示，避免短流程噪音。 */
+export const ESTIMATE_DISPLAY_MIN_SECONDS = 10
+
+/**
+ * 估算大批次操作耗时文案：不足 10 秒返回 null；10–59 秒按 5 秒取整，60 秒及以上按分钟四舍五入。
+ */
+export function formatBatchTimeEstimate(count: number, msPerItem = ESTIMATED_IMPORT_MS_PER_ITEM): string | null {
+  if (!Number.isFinite(count) || count <= 0) return null
+  const seconds = (count * msPerItem) / 1000
+  if (seconds < ESTIMATE_DISPLAY_MIN_SECONDS) return null
+  if (seconds < 60) {
+    const rounded = Math.max(10, Math.round(seconds / 5) * 5)
+    return `预计需要约 ${rounded} 秒`
+  }
+  const minutes = Math.max(1, Math.round(seconds / 60))
+  return `预计需要约 ${minutes} 分钟`
+}
+
 export interface ConfirmRequest {
   title: string
+  /** busy 期间替换弹窗标题（如批量导入扫描中显示「正在扫描」）。 */
+  busyTitle?: string
   message: string
   confirmLabel: string
   danger: boolean
@@ -61,23 +83,33 @@ export interface LibraryWorkflowPorts {
     | 'setItemStatus'
     | 'resolveDuplicate'
     | 'submit'
+    | 'stopEnqueue'
     | 'close'
   >
   expandImportEntries(entries: string[]): Promise<{ files: string[]; folders: number }>
   chooseFilePaths(): Promise<string[]>
+  chooseFilesOnly(): Promise<string[]>
+  chooseDirectories(): Promise<string[]>
   getClipboardFilePaths(): Promise<string[]>
   readClipboardText(): Promise<string>
   /** 一次读取剪贴板文本与 HTML；HTML 用于提取锚点与相对链接。 */
   readClipboardContent(): Promise<ClipboardContentDTO>
-  addResource(item: LibraryQueueItem): Promise<unknown>
+  addResource(item: LibraryQueueItem, options?: { deferUpsert?: boolean }): Promise<unknown>
   /** 批量纳入；逐项结果按输入下标对齐。 */
   createResources(batchId: string, inputs: CreateResourceInputDTO[]): Promise<CreateResourceBatchResultDTO[]>
   cancelResourceBatch(batchId: string): Promise<void>
   onResourceBatchProgress(listener: (event: ResourceBatchProgressDTO) => void): () => void
   /** 批量成功后把资源回流到 store（与 addResource 的 upsert 同一出口）。 */
   upsertResource(resource: ResourceDTO): void
-  replaceSource(sourceId: string, input: string): Promise<unknown>
-  replaceScannedFileSource(sourceId: string, inputPath: string, snapshot: string): Promise<unknown>
+  /** 批量合并写入资源库列表；缺省时回退到逐条 upsertResource。 */
+  upsertResources?(resources: ResourceDTO[]): void
+  replaceSource(sourceId: string, input: string, options?: { deferUpsert?: boolean }): Promise<unknown>
+  replaceScannedFileSource(
+    sourceId: string,
+    inputPath: string,
+    snapshot: string,
+    options?: { deferUpsert?: boolean }
+  ): Promise<unknown>
   reportError(cause: unknown, fallback: string): void
   notifyWarning(message: string): void
 }
@@ -106,6 +138,8 @@ export interface LibraryWorkflow {
   requestAddURLs(urls: string[]): void
   enqueueImportEntries(entries: string[]): Promise<void>
   pickFiles(): Promise<void>
+  pickFilesOnly(): Promise<void>
+  pickDirectories(): Promise<void>
   submitQueue(): Promise<void>
   openRestoreDialog(items: LibraryRestoreQueueItem[]): void
   setRestoreOpen(open: boolean): void
@@ -168,14 +202,13 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
   }
 
   /**
-   * 确认弹窗的取消：导入进行中它显示为「停止」。
-   * 停止只作用于当前批次与已入队项，排队等待确认的其它批次仍会依次弹出——
-   * 它们还没开始导入，各自仍需要一次显式放行，停止不该替用户把它们一并丢弃。
+   * 确认弹窗的取消：批量导入扫描进行中显示为「终止扫描」。
+   * 仅中止尚未入队的剩余项，已加入待导入列表的资源必须保留；排队等待确认的其它批次仍依次弹出。
    * action 随后自行结算，runConfirmedAction 走正常关闭，这里不提前翻 open。
    */
   function cancelConfirmDialog() {
     if (confirmBusy.value && confirmRequest.value?.busyCancelLabel) {
-      void addQueue.close()
+      addQueue.stopEnqueue()
       return
     }
     closeConfirmDialog()
@@ -246,13 +279,16 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
     }
     if (paths.length > IMPORT_CONFIRM_THRESHOLD) {
       const expanded = expansion.folders > 0 ? `（${expansion.folders} 个文件夹已递归展开）` : ''
+      const estimate = formatBatchTimeEstimate(paths.length)
+      const estimateSuffix = estimate ? `，${estimate}` : ''
       openConfirmDialog({
         title: '批量导入',
-        message: `共 ${paths.length} 个文件将加入待导入列表${expanded}。`,
+        busyTitle: '正在扫描',
+        message: `共 ${paths.length} 个文件将加入待导入列表${expanded}${estimateSuffix}。`,
         confirmLabel: `导入 ${paths.length} 个文件`,
         danger: false,
         progressTotal: paths.length,
-        busyCancelLabel: '停止',
+        busyCancelLabel: '终止扫描',
         action: () => {
           addQueue.prepareBatchProgress(paths.length)
           return addQueue.enqueueFileLocations(paths)
@@ -312,23 +348,49 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
     }
   }
 
-  async function pickFiles() {
+  async function pickFrom(chooser: () => Promise<string[]>, fallbackError: string) {
     try {
-      const entries = await ports.chooseFilePaths()
+      const entries = await chooser()
       if (!entries.length || !addOpen.value) return
       await enqueueImportEntries(entries)
     } catch (cause) {
-      ports.reportError(cause, '选择文件失败')
+      ports.reportError(cause, fallbackError)
     }
+  }
+
+  function pickFiles() {
+    return pickFrom(() => ports.chooseFilePaths(), '选择文件失败')
+  }
+
+  function pickFilesOnly() {
+    return pickFrom(() => ports.chooseFilesOnly(), '选择文件失败')
+  }
+
+  function pickDirectories() {
+    return pickFrom(() => ports.chooseDirectories(), '选择文件夹失败')
   }
 
   /**
    * URL 项走后端批量纳入：一次 RPC 内并发探测，逐项进度经事件回流。
    * 批量 RPC 整体失败时无法区分单条，统一按失败结算，队列保留可重试。
    */
+  function isResourceDTO(value: unknown): value is ResourceDTO {
+    return typeof value === 'object' && value !== null && typeof (value as { id?: unknown }).id === 'string'
+  }
+
+  function flushUpserts(resources: ResourceDTO[]) {
+    if (!resources.length) return
+    if (ports.upsertResources) {
+      ports.upsertResources(resources)
+      return
+    }
+    for (const resource of resources) ports.upsertResource(resource)
+  }
+
   function createURLBatch(
     items: LibraryQueueItem[],
-    settle: (itemId: string, settlement: LibraryBatchSettlement) => void
+    settle: (itemId: string, settlement: LibraryBatchSettlement) => void,
+    pendingUpserts: ResourceDTO[]
   ): LibraryBatchTask {
     const batchId = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
     const inputs: CreateResourceInputDTO[] = items.map(item => ({
@@ -355,7 +417,7 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
             return
           }
           settle(item.id, { ok: Boolean(result.resource) && !result.error, error: result.error })
-          if (result.resource) ports.upsertResource(result.resource)
+          if (result.resource) pendingUpserts.push(result.resource)
         })
       } catch (cause) {
         const message = cause instanceof Error ? cause.message : '批量导入失败'
@@ -368,12 +430,14 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
   }
 
   async function submitQueue() {
+    const pendingUpserts: ResourceDTO[] = []
     try {
       const completed = await addQueue.submit(
         async item => {
-          await ports.addResource(item)
+          const saved = await ports.addResource(item, { deferUpsert: true })
+          if (isResourceDTO(saved)) pendingUpserts.push(saved)
         },
-        (items, settle): LibraryBatchTask => createURLBatch(items, settle)
+        (items, settle): LibraryBatchTask => createURLBatch(items, settle, pendingUpserts)
       )
       if (completed) {
         addOpen.value = false
@@ -384,6 +448,9 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
       }
     } catch (cause) {
       ports.reportError(cause, '导入资源失败，请稍后重试')
+    } finally {
+      // 整批完成后一次性写入 store，避免逐条写入触发主列表高频重算与重排。
+      flushUpserts(pendingUpserts)
     }
   }
 
@@ -403,11 +470,17 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
     if (!items.length || restoreBusy.value) return
     restoreBusy.value = true
     activeRestoreItemId.value = null
+    const pendingUpserts: ResourceDTO[] = []
     try {
       const result = await restoreLibraryQueue(items, {
-        replaceSource: (sourceId, input) => ports.replaceSource(sourceId, input),
-        replaceScannedFileSource: (sourceId, inputPath, snapshot) =>
-          ports.replaceScannedFileSource(sourceId, inputPath, snapshot),
+        replaceSource: async (sourceId, input) => {
+          const updated = await ports.replaceSource(sourceId, input, { deferUpsert: true })
+          if (isResourceDTO(updated)) pendingUpserts.push(updated)
+        },
+        replaceScannedFileSource: async (sourceId, inputPath, snapshot) => {
+          const updated = await ports.replaceScannedFileSource(sourceId, inputPath, snapshot, { deferUpsert: true })
+          if (isResourceDTO(updated)) pendingUpserts.push(updated)
+        },
         onItemStart: itemId => {
           activeRestoreItemId.value = itemId
         }
@@ -421,6 +494,8 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
       }
       if (!restoreQueue.value.length) setRestoreOpen(false)
     } finally {
+      // 整批找回结束后一次性合并写回主列表。
+      flushUpserts(pendingUpserts)
       activeRestoreItemId.value = null
       restoreBusy.value = false
     }
@@ -450,6 +525,8 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
     requestAddURLs,
     enqueueImportEntries,
     pickFiles,
+    pickFilesOnly,
+    pickDirectories,
     submitQueue,
     openRestoreDialog,
     setRestoreOpen,

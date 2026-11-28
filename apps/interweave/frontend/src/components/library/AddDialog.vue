@@ -4,6 +4,7 @@ import {
   imagePreview,
   type ImagePreviewHandle,
   type WebUiDialog,
+  type WebUiDropdown,
   type WebUiEditableText,
   type WebUiEvent
 } from '@greypan/web-ui'
@@ -11,6 +12,8 @@ import {
   akarIconsCircleCheck,
   andrsrxnInbox,
   lucideClipboardPaste,
+  lucideFile,
+  lucideFolder,
   lucidePenLine,
   lucideTags,
   lucideTrash2
@@ -22,6 +25,7 @@ import { computed, nextTick, onMounted, onScopeDispose, ref, watch, type Compone
 
 import { selectLitEditor, useEditorFocusRestore } from '@/composables/useEditorFocusRestore'
 import type { LibraryQueueItem } from '@/services/library'
+import { wailsPlatformOS } from '@/services/runtime'
 import type { ResourceSourceView, TagColor } from '@/stores/library'
 
 import { ResourceKind } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
@@ -59,6 +63,8 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
   pickFiles: []
+  pickFilesOnly: []
+  pickDirectories: []
   addUrl: [urls: string[]]
   /** 剪贴板文本一并带上：文件接口对链接返回空数组，页面要靠它兜底（#188）。粘贴 button 没有文本。 */
   requestFilePaths: [clipboardText?: string]
@@ -76,10 +82,39 @@ defineExpose({
   }
 })
 
+const isWindows = computed(() => wailsPlatformOS() === 'windows')
+const pickerDropdownRef = ref<WebUiDropdown | null>(null)
 const dragActive = ref(false)
+
+function closePickerDropdown() {
+  if (pickerDropdownRef.value) pickerDropdownRef.value.open = false
+}
+
+function handlePickFilesOnly() {
+  closePickerDropdown()
+  emit('pickFilesOnly')
+}
+
+function handlePickDirectories() {
+  closePickerDropdown()
+  emit('pickDirectories')
+}
 const addUrlOpen = ref(false)
 const editingItemId = ref<string | null>(null)
 const queueScrollRef = ref<HTMLElement | undefined>(undefined)
+// 弹窗级视频捕获作用域：关闭、开始提交或组件卸载时统一中断未完成的封面解码。
+const captureScopeController = ref(new AbortController())
+
+function abortCaptureScope() {
+  if (!captureScopeController.value.signal.aborted) {
+    captureScopeController.value.abort()
+  }
+}
+
+function resetCaptureScope() {
+  abortCaptureScope()
+  captureScopeController.value = new AbortController()
+}
 const nameEditors = new Map<string, WebUiEditableText>()
 const renameButtons = new Map<string, HTMLElement>()
 let pendingImagePreview: ImagePreviewHandle | null = null
@@ -116,11 +151,22 @@ watch(
   open => {
     if (!open) {
       addUrlOpen.value = false
+      closePickerDropdown()
       closePendingImagePreview()
+      abortCaptureScope()
       return
     }
     dragActive.value = false
     editingItemId.value = null
+    if (!props.busy) resetCaptureScope()
+  }
+)
+
+watch(
+  () => props.busy,
+  busy => {
+    if (busy) abortCaptureScope()
+    else if (props.open) resetCaptureScope()
   }
 )
 
@@ -160,10 +206,15 @@ onMounted(() => {
 onScopeDispose(() => {
   window.removeEventListener('paste', handlePaste)
   closePendingImagePreview()
+  abortCaptureScope()
 })
 
 function itemMediaUrl(item: LibraryQueueItem): string | null {
   return props.previews[item.id]?.mediaUrl ?? null
+}
+
+function itemPreviewToken(item: LibraryQueueItem): string | null {
+  return props.previews[item.id]?.token ?? item.previewToken ?? null
 }
 
 function isImagePreviewItem(item: LibraryQueueItem) {
@@ -331,7 +382,68 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
             </web-ui-tooltip>
           </div>
         </div>
+        <!--
+          Windows 原生文件对话框（IFileOpenDialog）不支持同时混选文件与文件夹，
+          同时开启两 flag 会退化为仅选文件夹；因此在 Windows 上点按上传区弹出轻量菜单区分两种选择，
+          macOS / Linux 仍直接唤起统一面板。
+        -->
+        <web-ui-dropdown v-if="isWindows" ref="pickerDropdownRef" placement="bottom" class="grid h-full w-full">
+          <button
+            slot="trigger"
+            type="button"
+            class="grid h-full w-full place-content-center justify-items-center gap-3 rounded-[18px] border-0 bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-(--wui-duration-trigger) hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_7%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_7%,transparent)] mobile:gap-2 mobile:px-4 mobile:py-2"
+            data-file-drop-target="library-add-files"
+            :class="
+              dragActive ? 'scale-[1.005] bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)]' : ''
+            "
+            @dragenter.prevent="dragActive = true"
+            @dragover.prevent="dragActive = true"
+            @dragleave.prevent="dragActive = false"
+            @drop.prevent="handleDrop"
+          >
+            <web-ui-empty class="[--wui-empty-min-height:0] [--wui-empty-padding:0] [--wui-empty-icon-size:40px]">
+              <!-- andrsrxn:upload (MIT), https://github.com/andrsrxn/icons -->
+              <svg slot="icon" width="40" height="40" viewBox="0 0 24 24" aria-hidden="true">
+                <g fill="none">
+                  <path
+                    fill="currentColor"
+                    d="M2.4 12.01h19.2v2.96c0 2.83 0 4.24-.88 5.12s-2.3.88-5.12.88H8.4c-2.83 0-4.24 0-5.12-.88s-.88-2.3-.88-5.12z"
+                    opacity=".2"
+                  />
+                  <path
+                    stroke="currentColor"
+                    stroke-linecap="round"
+                    stroke-linejoin="round"
+                    stroke-width="1.5"
+                    d="M2.69 12.01v2.96c0 2.83 0 4.24.88 5.12c.87.88 2.29.88 5.12.88h6.62c2.83 0 4.25 0 5.12-.88s.88-2.3.88-5.12v-2.96M17.1 6.77l-2.28-2.29c-1.34-1.33-2-2-2.83-2s-1.5.66-2.83 2l-2.3 2.3M11.98 16V3.32"
+                  />
+                </g>
+              </svg>
+              <span
+                class="text-[16px] font-semibold leading-[1.4] text-[#22212a] dark:text-(--wui-color-text) mobile:text-[13px]"
+              >
+                拖入文件或文件夹，或点按选择
+              </span>
+              <span
+                slot="description"
+                class="grid gap-0.5 text-xs leading-[1.4] text-[#6a6a70] dark:text-(--wui-color-text-secondary) mobile:text-[11px]"
+              >
+                <span>支持图片、视频、音频、文档、网页、代码等文件</span>
+                <span>可批量导入，文件夹递归展开</span>
+              </span>
+            </web-ui-empty>
+          </button>
+          <web-ui-dropdown-item @click="handlePickFilesOnly">
+            <web-ui-icon slot="prefix" :icon="lucideFile" :size="15" />
+            选择文件
+          </web-ui-dropdown-item>
+          <web-ui-dropdown-item @click="handlePickDirectories">
+            <web-ui-icon slot="prefix" :icon="lucideFolder" :size="15" />
+            选择文件夹
+          </web-ui-dropdown-item>
+        </web-ui-dropdown>
         <button
+          v-else
           type="button"
           class="grid h-full select-none place-content-center justify-items-center gap-3 rounded-[18px] border-0 bg-[#f0f0f4] px-6 py-7 text-center transition-[background-color] duration-(--wui-duration-trigger) hover:bg-[#e9e9ee] file-drop-target-active:scale-[1.005] file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-accent,#08f)_9%,transparent)] dark:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_4%,transparent)] dark:hover:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_7%,transparent)] dark:file-drop-target-active:bg-[color-mix(in_srgb,var(--wui-color-text,#1b1b20)_7%,transparent)] mobile:gap-2 mobile:px-4 mobile:py-2"
           data-file-drop-target="library-add-files"
@@ -449,6 +561,8 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                     :kind="item.resourceKind"
                     :source="queueSource(item)"
                     :media-url="itemMediaUrl(item)"
+                    :pending-token="itemPreviewToken(item)"
+                    :capture-scope="captureScopeController.signal"
                   />
                 </button>
                 <ResourceThumbnail
@@ -457,8 +571,10 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                   :kind="item.resourceKind"
                   :source="queueSource(item)"
                   :media-url="itemMediaUrl(item)"
+                  :pending-token="itemPreviewToken(item)"
+                  :capture-scope="captureScopeController.signal"
                 />
-                <span class="grid min-w-0 flex-[1_1_auto] gap-1">
+                <span class="grid min-w-0 flex-[1_1_auto] gap-0">
                   <div class="flex min-w-0 items-center gap-2">
                     <web-ui-editable-text
                       v-if="editingItemId === item.id"

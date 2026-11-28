@@ -2,6 +2,8 @@ package main
 
 import (
 	"bytes"
+	"encoding/binary"
+	"image/png"
 	"testing"
 
 	"github.com/wailsapp/wails/v3/pkg/application"
@@ -9,32 +11,62 @@ import (
 
 func TestTrayIconsEmbedded(t *testing.T) {
 	for name, icon := range map[string][]byte{
-		"macOS template":        trayTemplateIcon,
-		"Windows light taskbar": trayIconForLightTaskbar,
-		"Windows dark taskbar":  trayIconForDarkTaskbar,
+		"macOS template": trayTemplateIcon,
+		"Linux PNG":      trayIconForLinux,
+		"Windows ICO":    trayIconForWindows,
 	} {
 		if len(icon) == 0 {
 			t.Fatalf("expected embedded %s tray icon bytes to be non-empty", name)
 		}
 	}
+
+	// 校验 Windows ICO 包含高 DPI 托盘与桌面全档位，且四角透明（macOS 风格圆角）。
+	if len(trayIconForWindows) < 6 {
+		t.Fatal("invalid Windows ICO header")
+	}
+	count := int(binary.LittleEndian.Uint16(trayIconForWindows[4:6]))
+	seen := make(map[int]bool, count)
+	for i := 0; i < count; i++ {
+		off := 6 + i*16
+		w := int(trayIconForWindows[off])
+		if w == 0 {
+			w = 256
+		}
+		sz := int(binary.LittleEndian.Uint32(trayIconForWindows[off+8 : off+12]))
+		imgOff := int(binary.LittleEndian.Uint32(trayIconForWindows[off+12 : off+16]))
+		img, err := png.Decode(bytes.NewReader(trayIconForWindows[imgOff : imgOff+sz]))
+		if err != nil {
+			t.Fatalf("expected PNG frame at %dx%d: %v", w, w, err)
+		}
+		_, _, _, a := img.At(0, 0).RGBA()
+		if a != 0 {
+			t.Fatalf("expected transparent rounded corner at %dx%d, got alpha=%d", w, w, a)
+		}
+		seen[w] = true
+	}
+	for _, want := range []int{16, 20, 24, 32, 40, 48, 64, 128, 256} {
+		if !seen[want] {
+			t.Fatalf("Windows ICO missing expected %dx%d frame", want, want)
+		}
+	}
 }
 
 func TestTrayIconsForPlatform(t *testing.T) {
-	macIcon, macDark, macTemplate := trayIconsFor("darwin")
-	if len(macTemplate) == 0 || len(macIcon) != 0 || len(macDark) != 0 {
+	macIcon, macTemplate := trayIconsFor("darwin")
+	if len(macTemplate) == 0 || len(macIcon) != 0 {
 		t.Fatal("macOS should use a template icon only")
 	}
 	if !bytes.Equal(macTemplate, trayTemplateIcon) {
 		t.Fatal("macOS template icon must come from the supplied asset")
 	}
 
-	winIcon, winDark, winTemplate := trayIconsFor("windows")
-	if len(winTemplate) != 0 || !bytes.Equal(winIcon, trayIconForLightTaskbar) || !bytes.Equal(winDark, trayIconForDarkTaskbar) {
-		t.Fatal("Windows should map dark artwork to light taskbars and light artwork to dark taskbars")
+	winIcon, winTemplate := trayIconsFor("windows")
+	if len(winTemplate) != 0 || !bytes.Equal(winIcon, trayIconForWindows) {
+		t.Fatal("Windows should reuse the rounded colored app icon ICO")
 	}
 
-	linuxIcon, linuxDark, linuxTemplate := trayIconsFor("linux")
-	if len(linuxDark) != 0 || len(linuxTemplate) != 0 || !bytes.Equal(linuxIcon, trayIconForLinux) {
+	linuxIcon, linuxTemplate := trayIconsFor("linux")
+	if len(linuxTemplate) != 0 || !bytes.Equal(linuxIcon, trayIconForLinux) {
 		t.Fatal("Linux should use a PNG icon only; Wails cannot decode ICO for the Linux tray")
 	}
 }

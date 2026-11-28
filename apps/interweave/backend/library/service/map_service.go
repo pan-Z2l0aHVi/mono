@@ -4,16 +4,19 @@ import (
 	"context"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
+	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/media"
 )
 
 // 作为 Wails 外观呈现 Map 能力，产品规则由 core 承载。
 type MapService struct {
 	core *core.Library
+	urls media.URLBuilder
 }
 
 // 保持外观与产品规则解耦。
-func NewMapService(c *core.Library) *MapService {
-	return &MapService{core: c}
+func NewMapService(c *core.Library, opts ...ServiceOption) *MapService {
+	cfg := resolveServiceConfig(opts...)
+	return &MapService{core: c, urls: cfg.urls}
 }
 
 // 用标签共现提供全局主题地形，并保留未连通资源的可见性。
@@ -43,7 +46,7 @@ func (s *MapService) GetLocalMap(ctx context.Context, tagID string) (*LocalMapDT
 		FocusedTag: tagToDTO(m.FocusedTag),
 	}
 	dto.Resources = mapped(m.Resources, func(v core.ResourceView) ResourceDTO {
-		return *resourceViewToDTO(&v)
+		return *resourceViewToDTOWithURLs(&v, s.urls)
 	})
 	dto.CooccurringTags = mapped(m.CooccurringTags, toTagNodeDTO)
 	return dto, nil

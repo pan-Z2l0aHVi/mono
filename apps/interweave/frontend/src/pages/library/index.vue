@@ -125,6 +125,7 @@ const {
   loadResources,
   addResource,
   upsertResource,
+  upsertResources,
   renameResource,
   updateResourceNote,
   deleteResources,
@@ -170,18 +171,22 @@ const workflow = createLibraryWorkflow({
   addQueue,
   expandImportEntries: entries => runtime.resources.expandImportEntries(entries),
   chooseFilePaths: () => runtime.system.chooseFilePaths(),
+  chooseFilesOnly: () => runtime.system.chooseFilesOnly(),
+  chooseDirectories: () => runtime.system.chooseDirectories(),
   getClipboardFilePaths: () => runtime.system.getClipboardFilePaths(),
   readClipboardText: () => runtime.system.readClipboardText(),
   readClipboardContent: () => runtime.system.readClipboardContent(),
   addResource,
   upsertResource,
+  upsertResources,
   createResources: (batchId, inputs) => runtime.resources.createMany(batchId, inputs),
   cancelResourceBatch: batchId => runtime.resources.cancelBatch(batchId),
   onResourceBatchProgress: listener => runtime.events.onResourceBatchProgress(listener),
   replaceSource,
-  replaceScannedFileSource: async (sourceId, path, snapshot) => {
+  replaceScannedFileSource: async (sourceId, path, snapshot, options) => {
     const updated = await runtime.sources.replaceScannedFile(sourceId, path, snapshot)
-    store.upsertResource(updated)
+    if (!options?.deferUpsert) store.upsertResource(updated)
+    return updated
   },
   reportError,
   notifyWarning: message => toast.warning(message, { position: 'top-center' })
@@ -262,6 +267,7 @@ const {
   selectedResources,
   canRestore,
   toggleSelectionMode,
+  enterSelectionWith,
   toggleChecked,
   setResourceChecked,
   toggleCheckAll
@@ -343,16 +349,17 @@ function previewResource(resource: ResourceView) {
  * 空串，由调用方显示通用文案。
  */
 function resolveDefaultOpenWith(resource: ResourceView) {
-  if (!resource.available) return Promise.resolve('')
-  const target = resource.preferred?.location
-  if (!target) return Promise.resolve('')
-  return defaultOpenWith(target)
+  const preferred = resource.preferred
+  if (!preferred?.location) return Promise.resolve('')
+  if (preferred.type !== 'url' && !resource.available) return Promise.resolve('')
+  return defaultOpenWith(preferred.location)
 }
 
 async function openResource(resource: ResourceView) {
-  const target = resource.preferred?.location
-  if (!resource.available || !target) return
-  await openExternal(target)
+  const preferred = resource.preferred
+  if (!preferred?.location) return
+  if (preferred.type !== 'url' && !resource.available) return
+  await openExternal(preferred.location)
 }
 
 async function showInFileManager(source: ResourceSourceView) {
@@ -665,6 +672,7 @@ onMounted(() => {
         @copy="copyResource"
         @set-wallpaper="setWallpaperFor"
         @select="selectResource"
+        @modifier-select="enterSelectionWith($event.id)"
         @detail="openResourceDetail"
         @start-rename="renameResourceFromMenu"
         @edit-tags="editResourceTags"
@@ -718,6 +726,8 @@ onMounted(() => {
     :previews="previewEntries"
     :progress="importProgress"
     @pick-files="workflow.pickFiles()"
+    @pick-files-only="workflow.pickFilesOnly()"
+    @pick-directories="workflow.pickDirectories()"
     @add-url="workflow.requestAddURLs($event)"
     @request-file-paths="workflow.pasteFilePaths($event)"
     @remove="addQueue.removeItem"
@@ -776,6 +786,7 @@ onMounted(() => {
   <ConfirmDialog
     :open="confirmOpen"
     :title="confirmRequest?.title ?? ''"
+    :busy-title="confirmRequest?.busyTitle"
     :message="confirmRequest?.message ?? ''"
     :confirm-label="confirmButtonLabel"
     :danger="confirmRequest?.danger ?? false"

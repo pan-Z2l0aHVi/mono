@@ -160,4 +160,73 @@ describe('preview lease', () => {
     expect(settled).toBe(true)
     await pending
   })
+
+  it('无媒体 token 的 JSON/代码文件仍记录权威 kind，且撤销时不调用 releaseFilePreview', async () => {
+    const releaseFilePreview = vi.fn<ReleasePreview>(async () => {})
+    const { lease } = createLease(
+      async () => ({ kind: ResourceKind.ResourceKindJSON, token: '', media_url: '' }),
+      releaseFilePreview
+    )
+
+    const entry = await lease.prepare('row', '/tmp/config.json', () => true)
+    expect(entry).toEqual({
+      kind: ResourceKind.ResourceKindJSON,
+      token: null,
+      mediaUrl: null,
+      path: '/tmp/config.json'
+    })
+    expect(lease.entries.value.row).toEqual(entry)
+
+    await lease.revoke('row')
+    expect(lease.entries.value.row).toBeUndefined()
+    expect(releaseFilePreview).not.toHaveBeenCalled()
+  })
+
+  it('按有界并发（顶部 FIFO 优先）调度 prepareFilePreview，且 cancelPending 立即丢弃排队项并保留已完成项', async () => {
+    const calls: string[] = []
+    const gates = new Map<string, ReturnType<typeof deferred<Awaited<ReturnType<PreparePreview>>>>>()
+    const prepareFilePreview = vi.fn<PreparePreview>(path => {
+      calls.push(path)
+      const gate = deferred<Awaited<ReturnType<PreparePreview>>>()
+      gates.set(path, gate)
+      return gate.promise
+    })
+    const listeners = new Set<RevokeListener>()
+    const runtime = {
+      isAvailable: true,
+      resources: { prepareFilePreview, releaseFilePreview: async () => {} },
+      events: {
+        onPreviewRevoked: (listener: RevokeListener) => {
+          listeners.add(listener)
+          return () => listeners.delete(listener)
+        }
+      }
+    } as unknown as LibraryRuntime
+    const lease = createPreviewLease(runtime, { maxConcurrency: 2 })
+
+    const p1 = lease.prepare('k1', '/tmp/1.png', () => true)
+    const p2 = lease.prepare('k2', '/tmp/2.png', () => true)
+    const p3 = lease.prepare('k3', '/tmp/3.png', () => true)
+    const p4 = lease.prepare('k4', '/tmp/4.png', () => true)
+
+    // 并发上限为 2：只发出了最顶部的 1、2，3、4 在前端排队等待
+    expect(calls).toEqual(['/tmp/1.png', '/tmp/2.png'])
+
+    gates.get('/tmp/1.png')!.resolve(preview('/tmp/1.png', 't1'))
+    expect(await p1).toMatchObject({ token: 't1' })
+    // 1 完成后自动推进 3，4 仍在排队
+    await Promise.resolve()
+    expect(calls).toEqual(['/tmp/1.png', '/tmp/2.png', '/tmp/3.png'])
+
+    // cancelPending 丢弃尚未发出的 4，但不影响已完成的 1 和在途的 2、3
+    lease.cancelPending()
+    expect(await p4).toBeNull()
+    expect(lease.entries.value.k1).toMatchObject({ token: 't1' })
+
+    gates.get('/tmp/2.png')!.resolve(preview('/tmp/2.png', 't2'))
+    gates.get('/tmp/3.png')!.resolve(preview('/tmp/3.png', 't3'))
+    expect(await p2).toMatchObject({ token: 't2' })
+    expect(await p3).toMatchObject({ token: 't3' })
+    expect(calls).toEqual(['/tmp/1.png', '/tmp/2.png', '/tmp/3.png'])
+  })
 })

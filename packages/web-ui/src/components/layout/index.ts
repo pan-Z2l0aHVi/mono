@@ -199,8 +199,7 @@ export class WebUiLayout extends LitElement {
     const aside = this.renderRoot.querySelector('aside')
     if (!aside) return
 
-    // 拖拽起点以 computed width 为准，并丢弃键盘未提交的调整（Enter 才提交、
-    // Escape 撤回；抓取隐式放弃），保证零位移松手不会派发陈旧宽度。
+    // 拖拽起点以 computed width 为准，保证零位移松手不会派发陈旧宽度。
     this._resizeStartWidth = this._parsePx(window.getComputedStyle(aside).width, this._parsePx(this.sidebarWidth, 240))
     this._resizeWidth = null
     aside.classList.add('is-resizing')
@@ -245,27 +244,30 @@ export class WebUiLayout extends LitElement {
     this._resizeWidth = null
   }
 
-  // 键盘调宽（WAI-ARIA splitter 模式）：方向键步进 16px（Shift 加速 64px）调整
-  // 临时宽度，Enter 以受控请求派发 `sidebar-width-change`（与指针松手同语义），
-  // Escape 撤回临时宽度交还 prop 管辖，Home/End 直接到 min/max。
+  // 键盘调宽（WAI-ARIA splitter 模式）：方向键步进 16px（Shift 加速 64px），
+  // Home/End 直接到 min/max；每次有效按键立即派发 `sidebar-width-change` 交由
+  // 调用方受控回写与持久化，不滞留未提交的临时宽度。
   private _handleResizeKeydown(e: KeyboardEvent) {
     if (!this.sidebarResizable || this.sidebarCollapsed || this.mobile || this._isResizing()) return
 
     const min = this._resolveSidebarMinWidth()
     const max = this._resolveSidebarMaxWidth()
     const aside = this.renderRoot.querySelector('aside')
-    const current = this._resizeWidth
-      ? this._parsePx(this._resizeWidth, min)
+    // 优先读取受控像素 prop，避免连续按键时读到 CSS width 过渡动画中间值；
+    // 非 px 表达式（如百分比/clamp）回退到 computed width。
+    const pxMatch = /^\s*(\d+(?:\.\d+)?)px\s*$/i.exec(this.sidebarWidth)
+    const current = pxMatch
+      ? Number.parseFloat(pxMatch[1])
       : this._parsePx(aside ? window.getComputedStyle(aside).width : this.sidebarWidth, min)
     const step = e.shiftKey ? 64 : 16
-    let next: number | null = null
+    let next: number
 
     switch (e.key) {
       case 'ArrowLeft':
-        next = Math.max(min, current - step)
+        next = clamp(current - step, min, max)
         break
       case 'ArrowRight':
-        next = Math.min(max, current + step)
+        next = clamp(current + step, min, max)
         break
       case 'Home':
         next = min
@@ -273,26 +275,15 @@ export class WebUiLayout extends LitElement {
       case 'End':
         next = max
         break
-      case 'Enter':
-        // 无未提交调整时不派发（焦点停留时的回车噪声）
-        if (this._resizeWidth !== null) {
-          const width = this._resizeWidth
-          this._resizeWidth = null
-          this.dispatchEvent(
-            new CustomEvent('sidebar-width-change', { detail: { width }, bubbles: true, composed: true })
-          )
-        }
-        e.preventDefault()
-        return
-      case 'Escape':
-        this._resizeWidth = null
-        e.preventDefault()
-        return
       default:
         return
     }
     e.preventDefault()
-    this._resizeWidth = `${Math.round(next)}px`
+    const rounded = Math.round(next)
+    if (rounded === Math.round(current)) return
+    this.dispatchEvent(
+      new CustomEvent('sidebar-width-change', { detail: { width: `${rounded}px` }, bubbles: true, composed: true })
+    )
   }
 
   override connectedCallback() {

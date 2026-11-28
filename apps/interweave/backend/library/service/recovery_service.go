@@ -60,5 +60,5 @@ func (s *SourceService) ReplaceScannedFileSource(ctx context.Context, sourceID, 
 	if err != nil {
 		return nil, err
 	}
-	return resourceViewToDTO(view), nil
+	return resourceViewToDTOWithURLs(view, s.urls), nil
 }

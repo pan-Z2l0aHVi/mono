@@ -1,26 +1,41 @@
 import { describe, expect, it } from 'vite-plus/test'
 
-import { isBlackFrame, videoFrameCandidates } from '../thumbnail'
+import {
+  isBlackFrame,
+  isCrossOriginMediaUrl,
+  redactSessionMediaUrl,
+  videoFrameCandidates,
+  videoFrameRatio
+} from '../thumbnail'
 
 describe('resource thumbnail', () => {
-  /*
-   * 「ratio = 0.25、首选 25% 帧、候选表含 0/4/6」的接线级断言已删：videoFrameRatio 与候选表
-   * 怎么被消费，由 thumbnail-frame-walk.browser.spec.ts 在消费方上按行为承接（首 seek =
-   * duration × ratio、黑帧回退到后续候选）；本文件只保留候选表函数自身的纯函数契约。
-   */
-  it('不可用或非有限时长从最早帧开始继续寻找非黑帧', () => {
-    expect(videoFrameCandidates(Number.NaN)).toEqual([0, 0.25, 0.5, 1, 2, 4, 8])
-    expect(videoFrameCandidates(0)).toEqual([0, 0.25, 0.5, 1, 2, 4, 8])
+  it('不可用或非有限时长只保留首帧 0，避免对未知时长视频盲目 seek', () => {
+    expect(videoFrameCandidates(Number.NaN)).toEqual([0])
+    expect(videoFrameCandidates(0)).toEqual([0])
+    expect(videoFrameCandidates(-5)).toEqual([0])
   })
 
-  it('已知时长会覆盖短黑场内的首个非黑帧', () => {
-    expect(videoFrameCandidates(4)).toContain(2.5)
-    expect(videoFrameCandidates(4)).toContain(4)
+  it('已知时长优先 25% 处并收敛到不超过 5 个代表性候选点', () => {
+    const candidates = videoFrameCandidates(4)
+    expect(candidates[0]).toBe(4 * videoFrameRatio)
+    expect(candidates.length).toBeLessThanOrEqual(5)
+    expect(candidates).toContain(2)
+    expect(candidates).toContain(0)
   })
 
   it('识别透明与全黑像素，但保留非黑帧', () => {
     expect(isBlackFrame(new Uint8ClampedArray([0, 0, 0, 0]))).toBe(true)
     expect(isBlackFrame(new Uint8ClampedArray([2, 2, 2, 255, 1, 1, 1, 255]))).toBe(true)
     expect(isBlackFrame(new Uint8ClampedArray([40, 80, 120, 255]))).toBe(false)
+  })
+
+  it('准确区分同源相对路径与跨源本地媒体服务 URL，并脱敏会话令牌', () => {
+    expect(isCrossOriginMediaUrl('/resource-media/s1')).toBe(false)
+    expect(isCrossOriginMediaUrl('blob:http://localhost/abc')).toBe(false)
+    expect(isCrossOriginMediaUrl('data:image/jpeg;base64,AA==')).toBe(false)
+    expect(isCrossOriginMediaUrl('http://127.0.0.1:45678/s/secret-token/resource-media/s1')).toBe(true)
+    expect(redactSessionMediaUrl('http://127.0.0.1:45678/s/secret-token/resource-media/s1')).toBe(
+      'http://127.0.0.1:45678/s/[REDACTED]/resource-media/s1'
+    )
   })
 })

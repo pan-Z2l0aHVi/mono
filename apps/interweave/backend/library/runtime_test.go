@@ -6,6 +6,7 @@ import (
 	"net/http/httptest"
 	"os"
 	"path/filepath"
+	"strings"
 	"sync"
 	"testing"
 
@@ -170,5 +171,51 @@ func TestRuntimeConcurrentStartAndClose(t *testing.T) {
 	wg.Wait()
 	if err := rt.Close(); err != nil {
 		t.Fatalf("final Close error: %v", err)
+	}
+}
+
+func TestRuntimeLocalMediaServerLifecycle(t *testing.T) {
+	rt, err := NewRuntime(RuntimeOptions{
+		DataDir:                t.TempDir(),
+		EnableLocalMediaServer: true,
+		IsProduction:           false,
+	})
+	if err != nil {
+		t.Fatalf("NewRuntime with local media server error: %v", err)
+	}
+	defer func() { _ = rt.Close() }()
+
+	if !strings.HasPrefix(rt.MediaURLBuilder().SourceMediaURL("s1"), "http://127.0.0.1:") {
+		t.Fatalf("expected MediaURLBuilder to point to loopback local server, got %q", rt.MediaURLBuilder().SourceMediaURL("s1"))
+	}
+
+	file := filepath.Join(t.TempDir(), "clip.mp4")
+	if err := os.WriteFile(file, []byte("fake-mp4-bytes"), 0o600); err != nil {
+		t.Fatalf("write fixture: %v", err)
+	}
+	prepared, err := rt.Core().PrepareFilePreview(file)
+	if err != nil {
+		t.Fatalf("PrepareFilePreview error: %v", err)
+	}
+	if !strings.HasPrefix(prepared.MediaURL, "http://127.0.0.1:") {
+		t.Fatalf("expected loopback URL for pending preview, got %q", prepared.MediaURL)
+	}
+
+	resp, err := http.Get(prepared.MediaURL)
+	if err != nil {
+		t.Fatalf("GET local media preview error: %v", err)
+	}
+	_ = resp.Body.Close()
+	if resp.StatusCode != http.StatusOK {
+		t.Fatalf("expected 200 from local media server, got %d", resp.StatusCode)
+	}
+
+	if err := rt.Close(); err != nil {
+		t.Fatalf("Close error: %v", err)
+	}
+	// 关闭后本地端口应拒绝连接。
+	if resp2, err := http.Get(prepared.MediaURL); err == nil {
+		_ = resp2.Body.Close()
+		t.Fatalf("expected local media server to be closed, got status %d", resp2.StatusCode)
 	}
 }

@@ -258,7 +258,12 @@ func run() error {
 
 	// 出站 HTTP 只经 backend/remote；系统代理读取属于 native，装配处把两者接起来。
 	fetcher := remote.NewFetcher(remote.WithProxy(nativeService.SystemProxy))
-	rt, err := library.NewRuntime(library.RuntimeOptions{DataDir: dir, Fetcher: fetcher})
+	rt, err := library.NewRuntime(library.RuntimeOptions{
+		DataDir:                dir,
+		Fetcher:                fetcher,
+		EnableLocalMediaServer: runtime.GOOS == "windows",
+		IsProduction:           isProductionBuild,
+	})
 	if err != nil {
 		return err
 	}
@@ -271,16 +276,21 @@ func run() error {
 	coreLib := rt.Core()
 	// 批量进度的事件出口按「当前窗口」解析；窗口控制器在 app.Run 前才创建，用原子指针晚绑定。
 	var windowController atomic.Pointer[mainWindowController]
-	resourceService := libraryService.NewResourceService(coreLib, libraryService.WithEventEmitter(
-		func(name string, data any) {
-			if controller := windowController.Load(); controller != nil {
-				emitToCurrentWindow(controller, name, data)
-			}
-		},
-	))
-	sourceService := libraryService.NewSourceService(coreLib)
-	tagService := libraryService.NewTagService(coreLib)
-	mapService := libraryService.NewMapService(coreLib)
+	mediaURLs := libraryService.WithMediaURLBuilder(rt.MediaURLBuilder())
+	resourceService := libraryService.NewResourceService(
+		coreLib,
+		libraryService.WithResourceMediaURLBuilder(rt.MediaURLBuilder()),
+		libraryService.WithEventEmitter(
+			func(name string, data any) {
+				if controller := windowController.Load(); controller != nil {
+					emitToCurrentWindow(controller, name, data)
+				}
+			},
+		),
+	)
+	sourceService := libraryService.NewSourceService(coreLib, mediaURLs)
+	tagService := libraryService.NewTagService(coreLib, mediaURLs)
+	mapService := libraryService.NewMapService(coreLib, mediaURLs)
 	osService := nativeService.NewOSService(
 		nativeService.WithStreamFetcher(fetcher.GetStream),
 		nativeService.WithWallpaperCacheDir(filepath.Join(dir, "cache", "wallpapers")),

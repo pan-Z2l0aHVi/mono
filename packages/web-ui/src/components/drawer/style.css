@@ -170,6 +170,33 @@ dialog.is-nested-lower .wui-drawer-drag-zone {
 }
 
 /*
+ * drag-handle-only：把拖拽热区收敛到 handle 胶囊周围（胶囊长度 + 两端各 8px 呼吸边距），
+ * 避免整条内缘遮挡贴边交互控件（例如视频预览左下角的播放/暂停按钮）。
+ * cursor: grab 与 :hover ~ .wui-drawer-drag-bar 均挂在 .wui-drawer-drag-zone 上，
+ * 热区收窄后 hover 光标与高亮自动同步收敛到 handle 附近。
+ */
+:host([drag-handle-only][placement='right']) .wui-drawer-drag-zone,
+:host([drag-handle-only][placement='left']) .wui-drawer-drag-zone {
+  top: calc(50% - var(--wui-drawer-drag-bar-length, 56px) / 2 - var(--wui-drawer-drag-handle-pad, 8px));
+  height: calc(var(--wui-drawer-drag-bar-length, 56px) + var(--wui-drawer-drag-handle-pad, 8px) * 2);
+}
+
+:host([drag-handle-only][placement='top']) .wui-drawer-drag-zone,
+:host([drag-handle-only][placement='bottom']) .wui-drawer-drag-zone {
+  right: auto;
+  left: calc(50% - var(--wui-drawer-drag-bar-length, 56px) / 2 - var(--wui-drawer-drag-handle-pad, 8px));
+  width: calc(var(--wui-drawer-drag-bar-length, 56px) + var(--wui-drawer-drag-handle-pad, 8px) * 2);
+}
+
+:host([drag-handle-only][placement='top']) .wui-drawer-drag-zone {
+  bottom: 0;
+}
+
+:host([drag-handle-only][placement='bottom']) .wui-drawer-drag-zone {
+  top: 0;
+}
+
+/*
  * 端头 drag edge：贴住可抓取边缘的一条常驻 drag zone，只在上下 placement 渲染（见 index.ts）。
  *
  * 它补的是上面那条让开量腾出的空档。胶囊贴回边缘后不在 drag zone 里了，用户却仍然看着它，

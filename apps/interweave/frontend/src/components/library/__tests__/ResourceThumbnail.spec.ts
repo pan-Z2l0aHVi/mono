@@ -1,11 +1,12 @@
 // @vitest-environment jsdom
 
-import { describe, expect, it, vi } from 'vite-plus/test'
+import { afterEach, describe, expect, it, vi } from 'vite-plus/test'
 import { createApp, h, nextTick, ref } from 'vue'
 
 import { ResourceKind } from '../../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 import type { ResourceSourceView } from '../../../stores/library'
 import ResourceThumbnail from '../ResourceThumbnail.vue'
+import { videoThumbnailCoordinator } from '../videoThumbnailQueue'
 
 function fileSource(location = '/tmp/image.jpg'): ResourceSourceView {
   return {
@@ -159,9 +160,21 @@ describe('ResourceThumbnail', () => {
    * src 属性被卸下后 Vue 不会因 mediaUrl 未变而写回，随后的 load() 只能报错——表现即
    * 「编辑名称后列表图片消失」。
    */
-  it('source 对象更换但 kind/id/mediaUrl 都没变时，不重置视频缩略图', async () => {
+  afterEach(() => {
+    vi.useRealTimers()
+    vi.restoreAllMocks()
+    videoThumbnailCoordinator.reset()
+  })
+
+  it('source 对象更换但 kind/id/mediaUrl 都没变时，不重置视频缩略图且 DOM 零内联 video', async () => {
     const host = document.createElement('div')
     document.body.append(host)
+    const captureSpy = vi
+      .spyOn(videoThumbnailCoordinator, 'capture')
+      .mockResolvedValue(new Blob(['jpeg'], { type: 'image/jpeg' }))
+    const createObjectURL = vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-frame-1')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+
     const source = ref(fileSource('/tmp/movie.mp4'))
     const mediaUrl = '/pending-resource-media/token-1'
     const app = createApp({
@@ -170,7 +183,8 @@ describe('ResourceThumbnail', () => {
           h(ResourceThumbnail, {
             kind: ResourceKind.ResourceKindVideo,
             source: source.value,
-            mediaUrl
+            mediaUrl,
+            dwellMs: 0
           })
       }
     })
@@ -178,27 +192,36 @@ describe('ResourceThumbnail', () => {
     try {
       app.mount(host)
       await nextTick()
+      await Promise.resolve()
+      await nextTick()
 
-      const video = host.querySelector('video')
-      expect(video).not.toBeNull()
-      expect(video?.getAttribute('src')).toBe(mediaUrl)
+      expect(host.querySelector('video'), '列表项 DOM 中不应再挂载内联 <video>').toBeNull()
+      expect(captureSpy).toHaveBeenCalledTimes(1)
+      expect(host.querySelector('img')?.getAttribute('src')).toBe('blob:mock-frame-1')
 
       // 仅换对象身份，字段全部不变（AddDialog 的 queueSource 每次渲染都新建对象）。
       source.value = { ...source.value }
       await nextTick()
       await nextTick()
 
-      expect(host.querySelector('video')).toBe(video)
-      expect(video?.getAttribute('src'), 'src 不应被移除').toBe(mediaUrl)
+      expect(captureSpy, '仅对象身份变化不得重复触发视频捕获').toHaveBeenCalledTimes(1)
+      expect(createObjectURL).toHaveBeenCalledTimes(1)
+      expect(host.querySelector('img')?.getAttribute('src')).toBe('blob:mock-frame-1')
     } finally {
       app.unmount()
       host.remove()
     }
   })
 
-  it('source location 变化时重建媒体元素，避免继续展示替换前的文件', async () => {
+  it('source location 变化时重新入队捕获，避免继续展示替换前的文件', async () => {
     const host = document.createElement('div')
     document.body.append(host)
+    const captureSpy = vi
+      .spyOn(videoThumbnailCoordinator, 'capture')
+      .mockResolvedValue(new Blob(['jpeg'], { type: 'image/jpeg' }))
+    vi.spyOn(URL, 'createObjectURL').mockReturnValueOnce('blob:mock-first').mockReturnValueOnce('blob:mock-second')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+
     const source = ref(fileSource('/tmp/first.mp4'))
     const mediaUrl = '/resource-media/source-1'
     const app = createApp({
@@ -207,7 +230,8 @@ describe('ResourceThumbnail', () => {
           h(ResourceThumbnail, {
             kind: ResourceKind.ResourceKindVideo,
             source: source.value,
-            mediaUrl
+            mediaUrl,
+            dwellMs: 0
           })
       }
     })
@@ -215,17 +239,21 @@ describe('ResourceThumbnail', () => {
     try {
       app.mount(host)
       await nextTick()
+      await Promise.resolve()
+      await nextTick()
 
-      const video = host.querySelector('video')
-      expect(video?.getAttribute('src')).toBe(mediaUrl)
+      expect(captureSpy).toHaveBeenCalledTimes(1)
+      expect(captureSpy.mock.calls[0]![0].location).toBe('/tmp/first.mp4')
+      expect(host.querySelector('img')?.getAttribute('src')).toBe('blob:mock-first')
 
       source.value = { ...source.value, location: '/tmp/second.mp4' }
       await nextTick()
+      await Promise.resolve()
       await nextTick()
 
-      const replaced = host.querySelector('video')
-      expect(replaced, 'location 变化应重建 video').not.toBe(video)
-      expect(replaced?.getAttribute('src')).toBe(mediaUrl)
+      expect(captureSpy, 'location 变化应触发新一轮捕获').toHaveBeenCalledTimes(2)
+      expect(captureSpy.mock.calls[1]![0].location).toBe('/tmp/second.mp4')
+      expect(host.querySelector('img')?.getAttribute('src')).toBe('blob:mock-second')
     } finally {
       app.unmount()
       host.remove()
@@ -401,6 +429,216 @@ describe('ResourceThumbnail', () => {
         expect(image.getAttribute('draggable')).toBe('false')
         expect(image.className).toContain('[-webkit-user-drag:none]')
       }
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
+  it('图片缩略图加载超过 250ms 后在居中位置显示 spinner 并淡化 fallback 图标，加载完成后立即隐藏', async () => {
+    vi.useFakeTimers()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp({
+      render: () =>
+        h(ResourceThumbnail, {
+          kind: ResourceKind.ResourceKindImage,
+          source: fileSource(),
+          mediaUrl: '/original',
+          thumbnailUrl: '/cached'
+        })
+    })
+    app.mount(host)
+    try {
+      await nextTick()
+      const thumb = host.querySelector<HTMLImageElement>('img')!
+      expect(thumb.getAttribute('loading')).toBe('lazy')
+
+      // 250ms 内不闪烁 spinner。
+      vi.advanceTimersByTime(249)
+      await nextTick()
+      expect(host.querySelector('[data-thumbnail-spinner]')).toBeNull()
+
+      // 到达 250ms 后显示 16px spinner，且 fallback 图标淡化调亮/调暗。
+      vi.advanceTimersByTime(1)
+      await nextTick()
+      const spinner = host.querySelector('[data-thumbnail-spinner]')
+      expect(spinner).not.toBeNull()
+      expect(spinner?.getAttribute('size')).toBe('16')
+      const fallbackIcon = host.querySelector('web-ui-icon')
+      expect(fallbackIcon?.className).toContain('opacity-25')
+      expect(fallbackIcon?.className).toContain('brightness-110')
+      expect(fallbackIcon?.className).toContain('dark:brightness-75')
+
+      // 加载完成后立即隐藏 spinner。
+      thumb.dispatchEvent(new Event('load'))
+      await nextTick()
+      expect(host.querySelector('[data-thumbnail-spinner]')).toBeNull()
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
+  it('视频缩略图在详情态延迟 250ms 显示 22px spinner，捕获完成后立即消失', async () => {
+    vi.useFakeTimers()
+    const host = document.createElement('div')
+    document.body.append(host)
+    let resolveCapture!: (blob: Blob | null) => void
+    vi.spyOn(videoThumbnailCoordinator, 'capture').mockImplementation(
+      () =>
+        new Promise<Blob | null>(resolve => {
+          resolveCapture = resolve
+        })
+    )
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-detail-video')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+
+    const app = createApp({
+      render: () =>
+        h(ResourceThumbnail, {
+          kind: ResourceKind.ResourceKindVideo,
+          detail: true,
+          source: fileSource('/tmp/movie.mp4'),
+          mediaUrl: '/resource-media/source-1',
+          dwellMs: 0
+        })
+    })
+    app.mount(host)
+    try {
+      await nextTick()
+      vi.advanceTimersByTime(250)
+      await nextTick()
+      const spinner = host.querySelector('[data-thumbnail-spinner]')
+      expect(spinner).not.toBeNull()
+      expect(spinner?.getAttribute('size')).toBe('22')
+
+      resolveCapture(new Blob(['jpeg'], { type: 'image/jpeg' }))
+      await Promise.resolve()
+      await nextTick()
+      expect(host.querySelector('[data-thumbnail-spinner]')).toBeNull()
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
+  it('网页 favicon 不显示加载中 spinner', async () => {
+    vi.useFakeTimers()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp({
+      render: () =>
+        h(ResourceThumbnail, {
+          kind: ResourceKind.ResourceKindWeb,
+          source: {
+            id: 'url-1',
+            type: 'url',
+            location: 'https://example.com',
+            available: true,
+            isPreferred: true,
+            orderIndex: 0,
+            mediaUrl: null,
+            thumbnailUrl: null,
+            metadata: {
+              title: 'Example',
+              siteName: 'Example',
+              description: '',
+              faviconUrl: 'https://example.com/favicon.ico'
+            }
+          },
+          mediaUrl: null
+        })
+    })
+    app.mount(host)
+    try {
+      await nextTick()
+      vi.advanceTimersByTime(1000)
+      await nextTick()
+      expect(host.querySelector('[data-thumbnail-spinner]')).toBeNull()
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
+  it('直链 URL 图片不强制 crossorigin，只有存在回填回调时才要求 CORS', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const withSaver = ref(false)
+    const app = createApp({
+      setup() {
+        return () =>
+          h(ResourceThumbnail, {
+            kind: ResourceKind.ResourceKindImage,
+            source: {
+              id: 'url-thumb-1',
+              type: 'url',
+              location: 'https://cdn.example.com/photo.jpg',
+              available: true,
+              isPreferred: true,
+              orderIndex: 0,
+              mediaUrl: null,
+              thumbnailUrl: null,
+              metadata: null
+            },
+            mediaUrl: null,
+            saveThumbnail: withSaver.value ? () => {} : null
+          })
+      }
+    })
+    try {
+      app.mount(host)
+      await nextTick()
+      // 缺 CORS 响应头的远端直链：带 crossorigin 会被浏览器直接拒绝加载、退成 fallback，
+      // 而 URL 来源没有 thumbnailUrl，行级回填回调为 null，本就不需要读像素。
+      expect(host.querySelector('img')?.hasAttribute('crossorigin')).toBe(false)
+
+      withSaver.value = true
+      await nextTick()
+      // 需要把已显示的图截成缩略图回填时，跨源像素必须走 CORS 才能读 canvas。
+      expect(host.querySelector('img')?.getAttribute('crossorigin')).toBe('anonymous')
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
+  it('captureScope 换成未中止的新 signal 后解除中止并重排一次捕获', async () => {
+    const host = document.createElement('div')
+    document.body.append(host)
+    const captureSpy = vi.spyOn(videoThumbnailCoordinator, 'capture').mockResolvedValue(null)
+
+    const controller = new AbortController()
+    const scope = ref<AbortSignal>(controller.signal)
+    const app = createApp({
+      setup() {
+        return () =>
+          h(ResourceThumbnail, {
+            kind: ResourceKind.ResourceKindVideo,
+            source: fileSource('/tmp/movie.mp4'),
+            mediaUrl: '/resource-media/source-1',
+            captureScope: scope.value,
+            dwellMs: 0
+          })
+      }
+    })
+    try {
+      app.mount(host)
+      await nextTick()
+      await Promise.resolve()
+      expect(captureSpy).toHaveBeenCalledTimes(1)
+
+      controller.abort()
+      await nextTick()
+      expect(captureSpy, '中止后不得继续排新的捕获').toHaveBeenCalledTimes(1)
+
+      // AddDialog 提交失败后 resetCaptureScope() 换上一枚未中止的新 signal：必须解除中止态并
+      // 重新排捕获，否则视频缩略图会永久停在 fallback。
+      scope.value = new AbortController().signal
+      await nextTick()
+      await Promise.resolve()
+      expect(captureSpy).toHaveBeenCalledTimes(2)
     } finally {
       app.unmount()
       host.remove()

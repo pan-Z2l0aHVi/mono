@@ -1,5 +1,6 @@
 <script setup lang="ts">
 // cspell:ignore maximised
+import type { WebUiDropdown } from '@greypan/web-ui'
 import { onBeforeUnmount, onMounted, ref } from 'vue'
 
 import { createMenuTreeRuntime, type MenuTreeRuntime } from '@/services/menu/tree'
@@ -22,8 +23,21 @@ const { menuItems, isMaximised } = controller
 onMounted(() => controller.start())
 onBeforeUnmount(() => controller.dispose())
 
+function handleTopMenuOpenChange(event: Event) {
+  const dropdown = event.currentTarget as WebUiDropdown | null
+  const detail = (event as CustomEvent<{ open?: boolean }>).detail
+  if (!dropdown || typeof detail?.open !== 'boolean') return
+  controller.handleTopMenuOpenChange(dropdown, detail.open)
+}
+
+function handleTopMenuPointerEnter(event: PointerEvent) {
+  const dropdown = event.currentTarget as WebUiDropdown | null
+  if (!dropdown) return
+  controller.handleTopMenuPointerEnter(dropdown, event)
+}
+
 const triggerButtonClass =
-  'inline-flex h-7 items-center rounded-md border-0 bg-transparent px-2 text-xs leading-none text-(--wui-color-text) cursor-pointer hover:bg-[#1b1b30]/6 active:bg-[#1b1b30]/10 dark:hover:bg-white/10 dark:active:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))'
+  'inline-flex h-7 items-center rounded-md border-0 bg-transparent px-2 text-xs leading-none text-(--wui-color-text) cursor-pointer hover:bg-[#1b1b30]/6 active:bg-[#1b1b30]/10 [&[aria-expanded=true]]:bg-[#1b1b30]/10 dark:hover:bg-white/10 dark:active:bg-white/15 dark:[&[aria-expanded=true]]:bg-white/15 focus-visible:outline-2 focus-visible:outline-offset-1 focus-visible:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))'
 
 const captionButtonClass =
   'inline-flex h-9 w-[46px] shrink-0 items-center justify-center border-0 bg-transparent p-0 text-(--wui-color-text) cursor-pointer transition-colors duration-100 hover:bg-[#1b1b30]/7 active:bg-[#1b1b30]/12 dark:hover:bg-white/10 dark:active:bg-white/15 focus-visible:outline-2 focus-visible:-outline-offset-2 focus-visible:outline-(--wui-color-focus-ring,rgb(0_136_255/0.4))'
@@ -65,6 +79,8 @@ const captionButtonClass =
           :key="topItem.label"
           placement="bottom-start"
           data-windows-top-menu
+          @open-change="handleTopMenuOpenChange"
+          @pointerenter="handleTopMenuPointerEnter"
         >
           <button
             slot="trigger"

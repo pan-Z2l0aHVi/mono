@@ -103,7 +103,7 @@ func (s *ResourceService) batchResultDTO(result core.CreateResourceBatchResult) 
 	dto := CreateResourceBatchResultDTO{Index: result.Index}
 	switch {
 	case result.Err == nil && result.View != nil:
-		dto.Resource = resourceViewToDTO(result.View)
+		dto.Resource = resourceViewToDTOWithURLs(result.View, s.urls)
 	case errors.Is(result.Err, context.Canceled):
 		dto.Cancelled = true
 	case result.Err != nil:
@@ -121,7 +121,7 @@ func (s *ResourceService) progressDTO(
 	switch {
 	case result.Err == nil && result.View != nil:
 		dto.Status = ResourceBatchStatusCreated
-		dto.Resource = resourceViewToDTO(result.View)
+		dto.Resource = resourceViewToDTOWithURLs(result.View, s.urls)
 	case errors.Is(result.Err, context.Canceled):
 		dto.Status = ResourceBatchStatusCancelled
 	case result.Err != nil:

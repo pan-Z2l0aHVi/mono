@@ -225,7 +225,12 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
       const handle = layout.shadowRoot?.querySelector<HTMLElement>('[role="separator"]')
       expect(handle).toBeTruthy()
-      handle?.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+      handle?.dispatchEvent(
+        new PointerEvent('pointerdown', { pointerId: 1, clientX: 0, bubbles: true, composed: true, isPrimary: true })
+      )
+      handle?.dispatchEvent(
+        new PointerEvent('pointermove', { pointerId: 1, clientX: 48, bubbles: true, composed: true, isPrimary: true })
+      )
       await layout.updateComplete
 
       const aside = layout.shadowRoot?.querySelector<HTMLElement>('aside')
@@ -678,132 +683,78 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(getComputedStyle(handle, '::before').opacity).toBe('1')
     })
 
-    it('键盘步进只改临时宽度，Enter 才提交一次请求', async () => {
+    it('键盘方向键立即派发 sidebar-width-change 请求，无需额外按 Enter', async () => {
       const layout = await resizableLayout()
       const widthRequests: string[] = []
-      layout.addEventListener('sidebar-width-change', event =>
-        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
-      )
+      layout.addEventListener('sidebar-width-change', event => {
+        const width = (event as CustomEvent<{ width: string }>).detail.width
+        widthRequests.push(width)
+        layout.sidebarWidth = width
+      })
       const handle = handleOf(layout)
+      const initial = parseFloat(layout.sidebarWidth)
 
       handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
       await layout.updateComplete
       handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
-      await layout.updateComplete
-      expect(widthRequests).toHaveLength(0)
-
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
-      await layout.updateComplete
-      expect(widthRequests).toHaveLength(1)
-      expect(parseFloat(widthRequests[0])).toBeGreaterThan(parseFloat(layout.sidebarWidth))
-    })
-
-    /*
-     * Enter 提交后临时宽度必须清空（`_resizeWidth = null`），焦点仍停在 resize handle 上时
-     * 再按回车是「无未提交调整」，不该再派发第二次请求——这正是 :233 注释写明的
-     * 意图。判别力来自**第二次** Enter：只按一次 Enter 的用例无法区分「提交后清空」
-     * 与「提交后原样留着」，删掉清空这行本用例立刻转红。
-     */
-    it('Enter 提交后清空临时宽度，再按一次 Enter 不重复派发', async () => {
-      const layout = await resizableLayout()
-      const widthRequests: string[] = []
-      layout.addEventListener('sidebar-width-change', event =>
-        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
-      )
-      const handle = handleOf(layout)
-
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
-      await layout.updateComplete
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
-      await layout.updateComplete
-
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
-      await layout.updateComplete
-      expect(widthRequests).toHaveLength(1)
-
-      // 焦点未动，resize handle 上没有新的未提交调整：回车不该产生第二次请求。
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
-      await layout.updateComplete
-      expect(widthRequests).toHaveLength(1)
-    })
-
-    /*
-     * 清空临时宽度的第二个后果，也是「受控契约」的一半：提交后下一步方向键必须
-     * 从 **prop 管辖的渲染宽度** 起算，而不是从刚提交过的值继续往上叠。
-     *
-     * 判别力在于两条路径的落点差一个完整步进（256 vs 288）：Consumer 有权拒绝或
-     * 钳制请求，若组件把未回写的旧值留在 `_resizeWidth` 里，后续步进就从一个用户
-     * 实际没得到的宽度起算并逐次累积。清空这行，本用例立刻转红。
-     */
-    it('Enter 提交后方向键从 prop 宽度起算，不接着未回写的提交值累积', async () => {
-      const layout = await resizableLayout()
-      const widthRequests: string[] = []
-      layout.addEventListener('sidebar-width-change', event =>
-        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
-      )
-      const handle = handleOf(layout)
-
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
-      await layout.updateComplete
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
-      await layout.updateComplete
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
-      await layout.updateComplete
-
-      // 提交后 aside 宽度过渡回 prop 值；下一步的起点读的是 computed width，
-      // 必须等过渡落定，否则会读到动画中间值。
-      const aside = queryA11y(layout, 'aside') as HTMLElement
-      await pollUntil(
-        () => Math.abs(parseFloat(window.getComputedStyle(aside).width) - parseFloat(layout.sidebarWidth)) < 1,
-        'Expected sidebar width to settle back to the prop value'
-      )
-
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
-      await layout.updateComplete
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
       await layout.updateComplete
 
       expect(widthRequests).toHaveLength(2)
-      // Consumer 未回写，prop 仍是起点宽度：下一步 = 起点 + 一个步进。
-      expect(parseFloat(widthRequests[1])).toBeCloseTo(parseFloat(layout.sidebarWidth) + 16, 0)
-      // 钉住「不是接着提交值累积」：那会是一个步进之差（272 + 16 而非 240 + 16）。
-      expect(parseFloat(widthRequests[1])).not.toBeCloseTo(parseFloat(widthRequests[0]) + 16, 0)
+      expect(parseFloat(widthRequests[0])).toBeCloseTo(initial + 16, 0)
+      expect(parseFloat(widthRequests[1])).toBeCloseTo(initial + 32, 0)
+    })
+
+    /*
+     * 受控契约：Consumer 未回写 sidebarWidth 时，每次键盘步进都必须从受控 prop
+     * 起算，而不是在组件内部残留未回写的临时宽度并逐次累积。
+     */
+    it('Consumer 未回写时，键盘方向键始终从 prop 宽度起算，不私自累积', async () => {
+      const layout = await resizableLayout()
+      const widthRequests: string[] = []
+      layout.addEventListener('sidebar-width-change', event =>
+        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
+      )
+      const handle = handleOf(layout)
+      const initial = parseFloat(layout.sidebarWidth)
+
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+      await layout.updateComplete
+      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
+      await layout.updateComplete
+
+      expect(widthRequests).toHaveLength(2)
+      expect(parseFloat(widthRequests[0])).toBeCloseTo(initial + 16, 0)
+      expect(parseFloat(widthRequests[1])).toBeCloseTo(initial + 16, 0)
+      expect(parseFloat(layout.sidebarWidth)).toBeCloseTo(initial, 0)
     })
 
     /*
      * Shift 加速步进（WAI-ARIA splitter 的常规约定）：同一起点、同一个 key，
-     * 不带 Shift 走 N 步与带 Shift 走 1 步必须落到同一宽度。
-     *
-     * 判别力钉的是两个分支的**比值关系**而不是某个具体像素：起点宽度、min/max
-     * resolver 或步长常量改动后断言依然成立，而把 `shiftKey ? 64 : 16` 的加速
-     * 分支删成恒定 16 时两组落点立刻分叉（256 vs 304）转红。
+     * 不带 Shift 走 4 步与带 Shift 走 1 步必须落到同一宽度。
      */
     it('Shift 加速：1 次 Shift 步进与 4 次普通步进落到同一宽度', async () => {
-      // 每个序列用独立 layout：Enter 提交后 aside 宽度会过渡回 prop 值，
-      // 复用同一个实例会让下一个序列的起点落在过渡中间值上（见 :213-215 的
-      // `getComputedStyle` 读法）。
-      const committedAfterArrowRight = async (presses: number, shiftKey: boolean) => {
+      const widthAfterArrowRight = async (presses: number, shiftKey: boolean) => {
         const layout = await resizableLayout()
         const widthRequests: string[] = []
-        layout.addEventListener('sidebar-width-change', event =>
-          widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
-        )
+        layout.addEventListener('sidebar-width-change', event => {
+          const width = (event as CustomEvent<{ width: string }>).detail.width
+          widthRequests.push(width)
+          layout.sidebarWidth = width
+        })
         const handle = handleOf(layout)
 
         for (let press = 0; press < presses; press += 1) {
           handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight', shiftKey }))
           await layout.updateComplete
         }
-        handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
-        await layout.updateComplete
 
-        expect(widthRequests).toHaveLength(1)
-        return parseFloat(widthRequests[0])
+        expect(widthRequests).toHaveLength(presses)
+        return parseFloat(widthRequests[widthRequests.length - 1])
       }
 
-      const onePlainStep = await committedAfterArrowRight(1, false)
-      const fourPlainSteps = await committedAfterArrowRight(4, false)
-      const oneShiftStep = await committedAfterArrowRight(1, true)
+      const onePlainStep = await widthAfterArrowRight(1, false)
+      const fourPlainSteps = await widthAfterArrowRight(4, false)
+      const oneShiftStep = await widthAfterArrowRight(1, true)
 
       // 4 次普通步进 ≡ 1 次 Shift 步进。
       expect(oneShiftStep).toBeCloseTo(fourPlainSteps, 0)
@@ -811,13 +762,7 @@ describe('WebUiLayout 组件（浏览器）', () => {
       expect(oneShiftStep).not.toBeCloseTo(onePlainStep, 0)
     })
 
-    /*
-     * 键盘入口与拖拽入口共用同一对 resolver，但走的是另一段代码：Home/End 是 WAI-ARIA
-     * splitter 的标准语义（政策 §3 的「可访问性契约」），键盘用户只能走这条路。
-     * 下面两条与拖拽那三条同判据：`toBeCloseTo` 钉边界值 + `not.toBeCloseTo(越界目标值)`，
-     * 不钉具体像素——resolver 改掉即红，整段钳制删掉也红（未钳制值与边界差几百像素）。
-     */
-    it('键盘 Home/End 提交到 min / max 边界，而不是越界目标值', async () => {
+    it('键盘 Home/End 立即提交到 min / max 边界，且到达边界后不再重复派发', async () => {
       await setViewport(DESKTOP_VIEWPORT.width, DESKTOP_VIEWPORT.height)
       const layout = createLayout()
       layout.setAttribute('sidebar-resizable', '')
@@ -827,30 +772,35 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await waitForFrame()
 
       const widthRequests: string[] = []
-      layout.addEventListener('sidebar-width-change', event =>
-        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
-      )
+      layout.addEventListener('sidebar-width-change', event => {
+        const width = (event as CustomEvent<{ width: string }>).detail.width
+        widthRequests.push(width)
+        layout.sidebarWidth = width
+      })
       const handle = handleOf(layout)
       const key = (k: string) => handle.dispatchEvent(new KeyboardEvent('keydown', { key: k }))
 
       key('End')
       await layout.updateComplete
-      key('Enter')
-      await layout.updateComplete
-
       expect(widthRequests).toHaveLength(1)
       expect(parseFloat(widthRequests[0])).toBeCloseTo(300, 0)
-      // 起点宽度 240，若 End 未钳到 max 而是无界步进，落点会远离上限
-      expect(parseFloat(widthRequests[0])).not.toBeCloseTo(parseFloat(layout.sidebarWidth), 0)
+
+      // 已在 max 边界时再按 End / ArrowRight 不再派发冗余事件。
+      key('End')
+      key('ArrowRight')
+      await layout.updateComplete
+      expect(widthRequests).toHaveLength(1)
 
       key('Home')
       await layout.updateComplete
-      key('Enter')
-      await layout.updateComplete
-
       expect(widthRequests).toHaveLength(2)
       expect(parseFloat(widthRequests[1])).toBeCloseTo(200, 0)
-      expect(parseFloat(widthRequests[1])).not.toBeCloseTo(parseFloat(layout.sidebarWidth), 0)
+
+      // 已在 min 边界时再按 Home / ArrowLeft 不再派发冗余事件。
+      key('Home')
+      key('ArrowLeft')
+      await layout.updateComplete
+      expect(widthRequests).toHaveLength(2)
     })
 
     it('键盘方向键步进被 min / max 钳住，不越过边界', async () => {
@@ -863,36 +813,30 @@ describe('WebUiLayout 组件（浏览器）', () => {
       await waitForFrame()
 
       const widthRequests: string[] = []
-      layout.addEventListener('sidebar-width-change', event =>
-        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
-      )
+      layout.addEventListener('sidebar-width-change', event => {
+        const width = (event as CustomEvent<{ width: string }>).detail.width
+        widthRequests.push(width)
+        layout.sidebarWidth = width
+      })
       const handle = handleOf(layout)
 
-      // 从 240 连续右移会越过上限 300；提交值必须仍停在边界。
+      // 从 240 连续右移会越过上限 300；最终停在边界。
       for (let step = 0; step < 10; step += 1) {
         handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
         await layout.updateComplete
       }
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
-      await layout.updateComplete
 
-      expect(widthRequests).toHaveLength(1)
-      expect(parseFloat(widthRequests[0])).toBeCloseTo(300, 0)
-      // 无钳制时 240 + 10×16 = 400
-      expect(parseFloat(widthRequests[0])).not.toBeCloseTo(400, 0)
+      expect(parseFloat(widthRequests[widthRequests.length - 1])).toBeCloseTo(300, 0)
+      expect(parseFloat(widthRequests[widthRequests.length - 1])).not.toBeCloseTo(400, 0)
 
-      // 从 240 连续左移会越过下限 200。
+      // 连续左移会越过下限 200；最终停在边界。
       for (let step = 0; step < 10; step += 1) {
         handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowLeft' }))
         await layout.updateComplete
       }
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
-      await layout.updateComplete
 
-      expect(widthRequests).toHaveLength(2)
-      expect(parseFloat(widthRequests[1])).toBeCloseTo(200, 0)
-      // 无钳制时 240 - 10×16 = 80
-      expect(parseFloat(widthRequests[1])).not.toBeCloseTo(80, 0)
+      expect(parseFloat(widthRequests[widthRequests.length - 1])).toBeCloseTo(200, 0)
+      expect(parseFloat(widthRequests[widthRequests.length - 1])).not.toBeCloseTo(80, 0)
     })
 
     /*
@@ -915,12 +859,9 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
       handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Home' }))
       await layout.updateComplete
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
-      await layout.updateComplete
 
       expect(widthRequests).toHaveLength(1)
       expect(parseFloat(widthRequests[0])).toBeCloseTo(parseFloat(layout.collapsedWidth), 0)
-      // 不等于展开宽度：回退分支若失效，Home 会落到 sidebarWidth
       expect(parseFloat(widthRequests[0])).not.toBeCloseTo(parseFloat(layout.sidebarWidth), 0)
     })
 
@@ -941,30 +882,10 @@ describe('WebUiLayout 组件（浏览器）', () => {
 
       handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'End' }))
       await layout.updateComplete
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
-      await layout.updateComplete
 
       expect(widthRequests).toHaveLength(1)
       expect(parseFloat(widthRequests[0])).toBeLessThanOrEqual(DESKTOP_VIEWPORT.width / 2)
       expect(parseFloat(widthRequests[0])).not.toBeCloseTo(5000, 0)
-    })
-
-    it('Escape 撤回键盘调整，不提交请求', async () => {
-      const layout = await resizableLayout()
-      const widthRequests: string[] = []
-      layout.addEventListener('sidebar-width-change', event =>
-        widthRequests.push((event as CustomEvent<{ width: string }>).detail.width)
-      )
-      const handle = handleOf(layout)
-
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'ArrowRight' }))
-      await layout.updateComplete
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Escape' }))
-      await layout.updateComplete
-      handle.dispatchEvent(new KeyboardEvent('keydown', { key: 'Enter' }))
-      await layout.updateComplete
-
-      expect(widthRequests).toHaveLength(0)
     })
 
     // collapsed state 没有可调的侧栏，resize handle 必须随 collapse 一起消失。

@@ -202,3 +202,67 @@ func TestFetcher_GetStreamReturnsBody(t *testing.T) {
 		t.Fatalf("expected error for non-2xx response")
 	}
 }
+
+func TestFetcher_FetchURL_AntiBotStatusRemainsAvailable(t *testing.T) {
+	for _, status := range []int{http.StatusUnauthorized, http.StatusForbidden, http.StatusMethodNotAllowed, http.StatusTooManyRequests} {
+		t.Run(http.StatusText(status), func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, r *http.Request) {
+				if r.Header.Get("Accept") == "" {
+					t.Errorf("expected Accept header to be sent")
+				}
+				w.Header().Set("Content-Type", "text/html")
+				w.WriteHeader(status)
+			}))
+			defer ts.Close()
+
+			meta, reachability, err := remote.NewFetcher().FetchURL(context.Background(), ts.URL)
+			if err != nil {
+				t.Fatalf("FetchURL error = %v", err)
+			}
+			if reachability != remote.ReachabilityAvailable {
+				t.Fatalf("expected ReachabilityAvailable for %d, got %v", status, reachability)
+			}
+			if meta == nil || meta.ContentType != "text/html" {
+				t.Fatalf("expected metadata with content_type text/html, got %+v", meta)
+			}
+		})
+	}
+}
+
+func TestFetcher_FetchURL_DetectsEmbedBlockedHeaders(t *testing.T) {
+	cases := []struct {
+		name        string
+		headers     map[string]string
+		wantBlocked bool
+	}{
+		{"xfo deny", map[string]string{"X-Frame-Options": "DENY"}, true},
+		{"xfo sameorigin", map[string]string{"X-Frame-Options": "sameorigin"}, true},
+		{"csp frame-ancestors none", map[string]string{"Content-Security-Policy": "default-src 'self'; frame-ancestors 'none'"}, true},
+		{"csp frame-ancestors self", map[string]string{"Content-Security-Policy": "frame-ancestors 'self' https://example.com"}, true},
+		{"csp frame-ancestors wildcard", map[string]string{"Content-Security-Policy": "frame-ancestors *"}, false},
+		{"no framing restriction", map[string]string{}, false},
+	}
+	for _, tc := range cases {
+		t.Run(tc.name, func(t *testing.T) {
+			ts := httptest.NewServer(http.HandlerFunc(func(w http.ResponseWriter, _ *http.Request) {
+				for k, v := range tc.headers {
+					w.Header().Set(k, v)
+				}
+				w.Header().Set("Content-Type", "text/html")
+				_, _ = w.Write([]byte("<html><head><title>Page</title></head></html>"))
+			}))
+			defer ts.Close()
+
+			meta, reachability, err := remote.NewFetcher().FetchURL(context.Background(), ts.URL)
+			if err != nil {
+				t.Fatalf("FetchURL error = %v", err)
+			}
+			if reachability != remote.ReachabilityAvailable {
+				t.Fatalf("expected ReachabilityAvailable, got %v", reachability)
+			}
+			if meta.EmbedBlocked != tc.wantBlocked {
+				t.Fatalf("EmbedBlocked = %v, want %v", meta.EmbedBlocked, tc.wantBlocked)
+			}
+		})
+	}
+}
