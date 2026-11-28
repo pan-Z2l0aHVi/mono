@@ -16,14 +16,17 @@ import { resolveColor, waitForUpdate } from '@/shared/test-utils'
  */
 afterEach(() => document.body.replaceChildren())
 
-async function mountEmpty(tokens: Record<string, string> = {}): Promise<WebUiEmpty> {
+async function mountEmpty(
+  tokens: Record<string, string> = {},
+  segments: { title?: boolean; description?: boolean; action?: boolean } = {}
+): Promise<WebUiEmpty> {
   const theme = document.createElement('web-ui-theme') as WebUiTheme
   theme.appearance = 'light'
 
   const el = document.createElement('web-ui-empty') as WebUiEmpty
-  el.title = '暂无内容'
-  el.description = '当前区域还没有可展示的内容。'
-  el.innerHTML = '<button slot="action">重新加载</button>'
+  if (segments.title !== false) el.title = '暂无内容'
+  if (segments.description !== false) el.description = '当前区域还没有可展示的内容。'
+  if (segments.action !== false) el.innerHTML = '<button slot="action">重新加载</button>'
   for (const [token, value] of Object.entries(tokens)) el.style.setProperty(token, value)
 
   theme.append(el)
@@ -52,6 +55,7 @@ const computed = (
     | 'minHeight'
     | 'opacity'
     | 'marginTop'
+    | 'marginBottom'
     | 'maxWidth'
 ) => getComputedStyle(part(el, selector))[prop]
 
@@ -135,6 +139,28 @@ describe('web-ui-empty 的 CSS 变量契约（浏览器）', () => {
 
     expect(computed(el, '.empty-title', 'marginTop')).toBe('8px')
     expect(computed(el, '.empty-action', 'marginTop')).toBe('4px')
+  })
+
+  it('无标题时描述升为第一段：与图形的间距走 --wui-empty-title-margin-top', async () => {
+    const el = await mountEmpty({ '--wui-empty-title-margin-top': '8px' }, { title: false })
+
+    expect(computed(el, '.empty-description', 'marginTop')).toBe('8px')
+  })
+
+  it('有标题时描述贴着标题（4px），只有图形与标题之间才走 --wui-empty-title-margin-top', async () => {
+    const el = await mountEmpty({ '--wui-empty-title-margin-top': '8px' })
+
+    expect(computed(el, '.empty-title', 'marginTop')).toBe('8px')
+    expect(computed(el, '.empty-description', 'marginTop')).toBe('4px')
+  })
+
+  it('间距只存在于段与段之间：图形区不带 margin，任何一段不带 margin-bottom', async () => {
+    const el = await mountEmpty()
+
+    expect(computed(el, '.empty-icon', 'marginTop')).toBe('0px')
+    for (const selector of ['.empty-icon', '.empty-title', '.empty-description', '.empty-action']) {
+      expect(computed(el, selector, 'marginBottom')).toBe('0px')
+    }
   })
 
   it('默认色分别取主题的 text / secondary：标题取 text，描述与图形取 secondary', async () => {

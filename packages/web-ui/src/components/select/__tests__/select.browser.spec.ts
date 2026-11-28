@@ -121,20 +121,20 @@ describe('WebUiSelect 组件（浏览器）', () => {
     expect(select.open).toBe(true)
     const panel = select.shadowRoot!.querySelector<HTMLElement>('[role="listbox"]')!
 
-    // 默认 bottom-start：先确认左边缘对齐，再在打开态切换，居中只能是重定位的结果。
+    // 默认 bottom：先确认水平居中，再在打开态切换，左对齐只能是重定位的结果。
     await pollUntil(() => {
       const triggerRect = trigger.getBoundingClientRect()
       const panelRect = panel.getBoundingClientRect()
-      return Math.abs(panelRect.left - triggerRect.left) < 1
-    }, 'bottom-start 下 panel 左边缘没有对齐 trigger')
+      return Math.abs((panelRect.left + panelRect.right) / 2 - (triggerRect.left + triggerRect.right) / 2) < 1
+    }, '默认 bottom 下 panel 没有水平居中到 trigger')
 
-    select.placement = 'bottom'
+    select.placement = 'bottom-start'
     await select.updateComplete
 
     await pollUntil(() => {
       const triggerRect = trigger.getBoundingClientRect()
       const panelRect = panel.getBoundingClientRect()
-      return Math.abs((panelRect.left + panelRect.right) / 2 - (triggerRect.left + triggerRect.right) / 2) < 1
+      return Math.abs(panelRect.left - triggerRect.left) < 1
     }, '打开后修改 placement 没有重新定位 panel')
   })
 

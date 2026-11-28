@@ -24,15 +24,36 @@ export default function Demo() {
 
 ### Collapsing copy slots
 
-Title, description, and action each decide whether to take space based on whether they have content. With only `title` there is no description line, with only `description` there is no title line, and with all three empty only the graphic area remains.
+Title, description, and action each decide whether to take space based on whether they have content. The grid below walks through all eight combinations of the three segments. The component carries no margin toward the outside — spacing lives only between its internal segments, and the cases are separated by the layout's gap.
 
 ```tsx
 export default function Demo() {
   return (
-    <div className="flex flex-col gap-3">
-      <web-ui-empty title="No permission"></web-ui-empty>
-      <web-ui-empty description="This section only has a description, so no title space is reserved."></web-ui-empty>
+    <div className="grid gap-3 sm:grid-cols-2">
       <web-ui-empty></web-ui-empty>
+      <web-ui-empty title="Only the title"></web-ui-empty>
+      <web-ui-empty description="This section only has a description, so no title space is reserved."></web-ui-empty>
+      <web-ui-empty>
+        <web-ui-button slot="action" variant="primary">
+          Reload
+        </web-ui-button>
+      </web-ui-empty>
+      <web-ui-empty title="Title and description" description="The two copy segments, nothing else."></web-ui-empty>
+      <web-ui-empty title="Title plus an action">
+        <web-ui-button slot="action" variant="primary">
+          Reload
+        </web-ui-button>
+      </web-ui-empty>
+      <web-ui-empty description="Description plus an action, no title line.">
+        <web-ui-button slot="action" variant="primary">
+          Reload
+        </web-ui-button>
+      </web-ui-empty>
+      <web-ui-empty title="The full set" description="All three segments take space.">
+        <web-ui-button slot="action" variant="primary">
+          Reload
+        </web-ui-button>
+      </web-ui-empty>
     </div>
   )
 }
@@ -40,10 +61,23 @@ export default function Demo() {
 
 ```vue
 <template>
-  <div class="flex flex-col gap-3">
-    <web-ui-empty title="No permission"></web-ui-empty>
-    <web-ui-empty description="This section only has a description, so no title space is reserved."></web-ui-empty>
+  <div class="grid gap-3 sm:grid-cols-2">
     <web-ui-empty></web-ui-empty>
+    <web-ui-empty title="Only the title"></web-ui-empty>
+    <web-ui-empty description="This section only has a description, so no title space is reserved."></web-ui-empty>
+    <web-ui-empty>
+      <web-ui-button slot="action" variant="primary">Reload</web-ui-button>
+    </web-ui-empty>
+    <web-ui-empty title="Title and description" description="The two copy segments, nothing else."></web-ui-empty>
+    <web-ui-empty title="Title plus an action">
+      <web-ui-button slot="action" variant="primary">Reload</web-ui-button>
+    </web-ui-empty>
+    <web-ui-empty description="Description plus an action, no title line.">
+      <web-ui-button slot="action" variant="primary">Reload</web-ui-button>
+    </web-ui-empty>
+    <web-ui-empty title="The full set" description="All three segments take space.">
+      <web-ui-button slot="action" variant="primary">Reload</web-ui-button>
+    </web-ui-empty>
   </div>
 </template>
 ```
@@ -197,7 +231,7 @@ export default function Demo() {
       ></web-ui-empty>
 
       <web-ui-empty
-        className="[--wui-empty-content-width:300px] [--wui-empty-action-margin-top:4px]"
+        className="[--wui-empty-content-width:300px]"
         title="Content width constrained to 300px"
         description="Title, description, and action area share this one width."
       >
@@ -232,7 +266,7 @@ export default function Demo() {
     ></web-ui-empty>
 
     <web-ui-empty
-      class="[--wui-empty-content-width:300px] [--wui-empty-action-margin-top:4px]"
+      class="[--wui-empty-content-width:300px]"
       title="Content width constrained to 300px"
       description="Title, description, and action area share this one width."
     >
@@ -268,13 +302,13 @@ export default function Demo() {
 
 ### Behavior
 
-The graphic box and the graphic are the same size, so the distance between the graphic and the title is exactly `--wui-empty-title-margin-top` (`12px` by default).
+The graphic box and the graphic are the same size, so the distance between the graphic and the first copy segment is exactly `--wui-empty-title-margin-top` (`16px` by default). The first copy segment is the title when present, otherwise the description: a description-only empty state keeps the same gap instead of hugging the graphic.
 
 Edge length, the two font sizes, colors, and whitespace are each a group of variables and do not move together. Scaling the whole empty state means writing several of them; writing only `--wui-empty-icon-size` gives an empty state with a very large graphic and a very small title.
 
 The default graphic is `andrsrxn:inbox`, and its color is decided by `--wui-empty-icon-color` alone, never overridden by a fixed color inside the asset.
 
-Color and depth are two variables: `--wui-empty-icon-color` sets a solid color, and the lighter result is handled by `--wui-empty-icon-opacity` (`0.75` by default). To bring the graphic back to full color, write `--wui-empty-icon-opacity: 1`.
+Color and depth are two variables: `--wui-empty-icon-color` sets a solid color, and the lighter result is handled by `--wui-empty-icon-opacity` (`0.72` by default). To bring the graphic back to full color, write `--wui-empty-icon-opacity: 1`.
 
 `--wui-empty-icon-opacity` only affects the default graphic; content in the `icon` slot does not fade with it.
 
@@ -283,6 +317,8 @@ The three copy segments are decided separately: the title segment checks whether
 What is checked is "is there content", not "does the content render", so even a single `.sr-only` span makes that segment take space. The graphic area does not participate in this check and always takes space; an empty state with all three copy segments empty keeps only the graphic.
 
 Multiple elements in the `action` slot do not lay themselves out in a row; the action area only provides the gap above it.
+
+The component carries no margin toward the outside: spacing exists only between the internal segments, all of it `margin-top`. Separating several empty states on one page is the surrounding layout's job (a flex/grid gap), not the component's.
 
 Graphics in the `icon` slot must carry their own size: the component only centers the slot content inside the `--wui-empty-icon-size` box, and neither measures nor scales it. The default edge length is `40px`; when swapping in a `web-ui-icon`, write its `size` to the same value, or adjust `--wui-empty-icon-size` along with it.
 
@@ -306,9 +342,9 @@ Each item lists size step / graphic / `min-height` / padding / title / descripti
 | `--wui-empty-padding`               | Padding                                                | `32px 24px`                  |
 | `--wui-empty-icon-size`             | Graphic edge length, shared by the box and the glyph   | `40px`                       |
 | `--wui-empty-icon-color`            | Graphic color (solid, opaque)                          | `--wui-color-text-secondary` |
-| `--wui-empty-icon-opacity`          | Overall depth of the graphic                           | `0.75`                       |
+| `--wui-empty-icon-opacity`          | Overall depth of the graphic                           | `0.72`                       |
 | `--wui-empty-content-width`         | Maximum width of the title / description / action area | `480px`                      |
-| `--wui-empty-title-margin-top`      | Gap between the icon and the title                     | `12px`                       |
+| `--wui-empty-title-margin-top`      | Gap between the icon and the first copy segment        | `16px`                       |
 | `--wui-empty-title-font-size`       | Title font size                                        | `16px`                       |
 | `--wui-empty-title-color`           | Title color                                            | `--wui-color-text`           |
 | `--wui-empty-description-font-size` | Description font size                                  | `14px`                       |

@@ -90,7 +90,14 @@ export class WebUiEmpty extends LitElement {
         <div class=${classMap({ 'empty-title': true, 'is-hidden': !showTitle })}>
           <slot @slotchange=${this._syncSlotContent}>${this.title}</slot>
         </div>
-        <div class=${classMap({ 'empty-description': true, 'is-hidden': !showDescription })}>
+        <div
+          class=${classMap({
+            'empty-description': true,
+            'is-hidden': !showDescription,
+            // 无标题时描述升为「图形区下的第一段」，间距与 icon→标题保持同一段（见 style.css）。
+            'is-lead': !showTitle
+          })}
+        >
           <slot name="description" @slotchange=${this._syncSlotContent}>${this.description}</slot>
         </div>
         <div class=${classMap({ 'empty-action': true, 'is-hidden': !this._hasActionSlot })}>

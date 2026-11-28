@@ -501,24 +501,24 @@ export default function Demo() {
 
 ### Props
 
-| Name               | Description                                                                                                                              | Type                | Default          |
-| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ---------------- |
-| `placeholder`      | Placeholder text shown when nothing is selected.                                                                                         | `string`            | `''`             |
-| `variant`          | Trigger appearance: `label` shows the selected text and arrow, `icon` keeps the arrow and treats the `trigger` slot as icon content.     | `'label' \| 'icon'` | `'label'`        |
-| `trigger`          | Trigger gesture set, separated by spaces or commas: `click`, `hover`, `focus`, `none`; reads back as a comma-separated canonical string. | `string`            | `'click'`        |
-| `show-delay`       | Hover-open delay (milliseconds); only hover-originated opens use it.                                                                     | `number`            | `200`            |
-| `hide-delay`       | Hover-close delay (milliseconds); only hover-originated closes use it.                                                                   | `number`            | `100`            |
-| `disabled`         | Disabled state.                                                                                                                          | `boolean`           | `false`          |
-| `required`         | Required validation.                                                                                                                     | `boolean`           | `false`          |
-| `portal`           | Renders the dropdown panel in the theme overlay container.                                                                               | `boolean`           | `false`          |
-| `placement`        | Placement of the dropdown panel; defaults to expanding downward from the trigger's bottom-left corner.                                   | `Placement`         | `'bottom-start'` |
-| `no-scroll-lock`   | Does not lock page scrolling while open.                                                                                                 | `boolean`           | `false`          |
-| `overlayContainer` | Explicit Portal container (property).                                                                                                    | `OverlayContainer`  | —                |
-| `name`             | Form field name.                                                                                                                         | `string`            | `''`             |
-| `aria-label`       | Accessible name of the combobox.                                                                                                         | `string \| null`    | `null`           |
-| `value`            | Selected value.                                                                                                                          | `string`            | `''`             |
-| `open`             | Declarative switch; writing it directly is silent and does not dispatch `open-change`.                                                   | `boolean`           | `false`          |
-| `isOpen`           | Whether the panel is currently open (read-only).                                                                                         | `boolean`           | —                |
+| Name               | Description                                                                                                                              | Type                | Default    |
+| ------------------ | ---------------------------------------------------------------------------------------------------------------------------------------- | ------------------- | ---------- |
+| `placeholder`      | Placeholder text shown when nothing is selected.                                                                                         | `string`            | `''`       |
+| `variant`          | Trigger appearance: `label` shows the selected text and arrow, `icon` keeps the arrow and treats the `trigger` slot as icon content.     | `'label' \| 'icon'` | `'label'`  |
+| `trigger`          | Trigger gesture set, separated by spaces or commas: `click`, `hover`, `focus`, `none`; reads back as a comma-separated canonical string. | `string`            | `'click'`  |
+| `show-delay`       | Hover-open delay (milliseconds); only hover-originated opens use it.                                                                     | `number`            | `200`      |
+| `hide-delay`       | Hover-close delay (milliseconds); only hover-originated closes use it.                                                                   | `number`            | `100`      |
+| `disabled`         | Disabled state.                                                                                                                          | `boolean`           | `false`    |
+| `required`         | Required validation.                                                                                                                     | `boolean`           | `false`    |
+| `portal`           | Renders the dropdown panel in the theme overlay container.                                                                               | `boolean`           | `false`    |
+| `placement`        | Placement of the dropdown panel; defaults to expanding downward, centered on the trigger.                                                | `Placement`         | `'bottom'` |
+| `no-scroll-lock`   | Does not lock page scrolling while open.                                                                                                 | `boolean`           | `false`    |
+| `overlayContainer` | Explicit Portal container (property).                                                                                                    | `OverlayContainer`  | —          |
+| `name`             | Form field name.                                                                                                                         | `string`            | `''`       |
+| `aria-label`       | Accessible name of the combobox.                                                                                                         | `string \| null`    | `null`     |
+| `value`            | Selected value.                                                                                                                          | `string`            | `''`       |
+| `open`             | Declarative switch; writing it directly is silent and does not dispatch `open-change`.                                                   | `boolean`           | `false`    |
+| `isOpen`           | Whether the panel is currently open (read-only).                                                                                         | `boolean`           | —          |
 
 ### Events
 

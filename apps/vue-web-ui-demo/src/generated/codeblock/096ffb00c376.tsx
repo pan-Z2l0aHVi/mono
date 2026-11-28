@@ -3,30 +3,30 @@ export default function Demo() {
     <div className="grid gap-3 sm:grid-cols-2">
       <web-ui-empty
         className="[--wui-empty-min-height:120px] [--wui-empty-padding:16px_12px]"
-        title="Height and padding squeezed"
-        description="These two are enough to squeeze the empty state from a placeholder block into a single hint."
+        title="压住高度与内边距"
+        description="这两枚够把空态从占位块压成一条提示。"
       ></web-ui-empty>
 
       <web-ui-empty
         className="[--wui-empty-icon-size:56px] [--wui-empty-icon-color:var(--wui-color-accent)]"
-        title="Graphic enlarged and recolored"
-        description="Changing only the color leaves opacity alone, so the graphic keeps the default lighter step."
+        title="图形放大并换色"
+        description="只换颜色不碰 opacity，图形仍是默认的淡一档。"
       ></web-ui-empty>
 
       <web-ui-empty
-        className="[--wui-empty-content-width:300px] [--wui-empty-action-margin-top:4px]"
-        title="Content width constrained to 300px"
-        description="Title, description, and action area share this one width."
+        className="[--wui-empty-content-width:300px]"
+        title="内容宽度收到 300px"
+        description="标题、描述与操作区共用这一个宽度。"
       >
         <web-ui-button slot="action" variant="secondary">
-          Check the gaps
+          看看间距
         </web-ui-button>
       </web-ui-empty>
 
       <web-ui-empty
         className="[--wui-empty-title-color:var(--wui-color-accent)] [--wui-empty-description-color:var(--wui-color-text-tertiary)] [--wui-empty-title-font-size:20px]"
-        title="Title and description recolored separately"
-        description="Color and font size are four unrelated channels."
+        title="标题与描述各自换色"
+        description="颜色与字号是四条互不相干的通道。"
       ></web-ui-empty>
     </div>
   )
