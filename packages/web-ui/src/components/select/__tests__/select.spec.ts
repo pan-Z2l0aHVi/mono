@@ -96,10 +96,10 @@ describe('WebUiSelect 组件', () => {
       cleanupElement(el)
     })
 
-    it('placement 默认 bottom，切换后反射为 attribute，非法值回退', async () => {
+    it('placement 默认 bottom-start，切换后反射为 attribute，非法值回退', async () => {
       const el = createSelect(OPTIONS_HTML)
       await waitForUpdate(el)
-      expect(el.placement).toBe('bottom')
+      expect(el.placement).toBe('bottom-start')
 
       el.placement = 'top-start'
       await waitForUpdate(el)
@@ -107,7 +107,7 @@ describe('WebUiSelect 组件', () => {
 
       ;(el as any).placement = 'sideways'
       await waitForUpdate(el)
-      expect(el.placement).toBe('bottom')
+      expect(el.placement).toBe('bottom-start')
 
       cleanupElement(el)
     })

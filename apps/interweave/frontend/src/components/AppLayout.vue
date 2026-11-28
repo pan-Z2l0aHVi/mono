@@ -136,9 +136,7 @@ const stopMenuCommands = onMenuCommand({
     settingsOpen.value = true
   },
   openDocumentation() {
-    void libraryRuntime.system
-      .openExternal(DOCUMENTATION_URL)
-      .catch(() => toast.warning('无法打开文档链接，请检查系统默认浏览器'))
+    void libraryRuntime.system.openExternal(DOCUMENTATION_URL).catch(() => toast.warning('无法打开文档链接'))
   },
   copyAsPlainText() {
     void copySelectionAsPlainText()

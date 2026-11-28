@@ -132,9 +132,9 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>placement</code>" },
-      { label: 'td', content: "Placement of the dropdown panel; defaults to expanding downward, centered on the trigger." },
+      { label: 'td', content: "Placement of the dropdown panel; defaults to expanding downward from the trigger's start edge." },
       { label: 'td', content: "<code>Placement</code>" },
-      { label: 'td', content: "<code>'bottom'</code>" }
+      { label: 'td', content: "<code>'bottom-start'</code>" }
       ]
     },
     {

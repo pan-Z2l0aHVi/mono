@@ -96,10 +96,6 @@ msgid "关闭横幅"
 msgstr "关闭横幅"
 
 #: src/components/root/index.tsx
-msgid "语言切换失败，请刷新页面后重试"
-msgstr "语言切换失败，请刷新页面后重试"
-
-#: src/components/root/index.tsx
 msgid "正在切换语言"
 msgstr "正在切换语言"
 
@@ -319,3 +315,11 @@ msgstr "页面加载失败，请重试"
 #: src/components/root/route-progress-bar.tsx
 msgid "页面加载进度"
 msgstr "页面加载进度"
+
+#: src/components/root/index.tsx
+msgid "语言切换失败"
+msgstr "语言切换失败"
+
+#: src/components/root/index.tsx
+msgid "请刷新页面后重试"
+msgstr "请刷新页面后重试"

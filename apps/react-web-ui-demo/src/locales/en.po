@@ -96,10 +96,6 @@ msgid "关闭横幅"
 msgstr "Close banner"
 
 #: src/components/root/index.tsx
-msgid "语言切换失败，请刷新页面后重试"
-msgstr "Language switch failed. Refresh the page and try again."
-
-#: src/components/root/index.tsx
 msgid "正在切换语言"
 msgstr "Switching language"
 
@@ -319,3 +315,11 @@ msgstr "Failed to load the page. Please try again."
 #: src/components/root/route-progress-bar.tsx
 msgid "页面加载进度"
 msgstr "Page loading progress"
+
+#: src/components/root/index.tsx
+msgid "语言切换失败"
+msgstr "Language switch failed."
+
+#: src/components/root/index.tsx
+msgid "请刷新页面后重试"
+msgstr "Refresh the page and try again."

@@ -30,7 +30,7 @@ msgstr "收起代码"
 msgid "展开代码"
 msgstr "展开代码"
 
-#: src/pages/[...all]/index.vue
+#: src/components/not-found/index.vue
 msgid "你要找的页面不存在"
 msgstr "你要找的页面不存在"
 
@@ -84,16 +84,8 @@ msgid "关闭横幅"
 msgstr "关闭横幅"
 
 #: src/app/index.vue
-msgid "目标语种加载失败，暂时使用简体中文"
-msgstr "目标语种加载失败，暂时使用简体中文"
-
-#: src/app/index.vue
 msgid "正在加载语言"
 msgstr "正在加载语言"
-
-#: src/app/index.vue
-msgid "语言切换失败，请刷新页面后重试"
-msgstr "语言切换失败，请刷新页面后重试"
 
 #: src/app/index.vue
 #: src/app/index.vue
@@ -315,3 +307,19 @@ msgstr "正在同步更新状态…"
 #: src/pages/changelog.vue
 msgid "已同步于 {0}"
 msgstr "已同步于 {0}"
+
+#: src/app/index.vue
+msgid "语言切换失败"
+msgstr "语言切换失败"
+
+#: src/app/index.vue
+msgid "请刷新页面后重试"
+msgstr "请刷新页面后重试"
+
+#: src/app/index.vue
+msgid "目标语种加载失败"
+msgstr "目标语种加载失败"
+
+#: src/app/index.vue
+msgid "已回退到默认语言"
+msgstr "已回退到默认语言"
