@@ -28,6 +28,19 @@ const DEFAULT_TRIGGERS = ['click'] as const
 
 let popoverIdCounter = 0
 
+/** 从 start 沿父链上溯到 document（跨 shadow 边界时接 host）；toast modalRoot 的 syncTheme 同款遍历。 */
+function ancestorChainOf(start: Element): Element[] {
+  const chain: Element[] = []
+  let node: Element | null = start
+  while (node) {
+    chain.push(node)
+    const parent: Element | null = node.parentElement
+    const root = node.getRootNode()
+    node = parent ?? (root instanceof ShadowRoot ? root.host : null)
+  }
+  return chain
+}
+
 @customElement('web-ui-popover')
 export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
   static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(scrollbarStyle), unsafeCSS(style)]
@@ -99,6 +112,8 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
   private _panelKeepAliveDisposers: (() => void)[] = []
   private _portalKeepAliveDisposer?: () => void
   private _panelResizeObserver: ResizeObserver | null = null
+  private _capSyncMutations: MutationObserver[] = []
+  private _capSyncOnResize: (() => void) | null = null
   /**
    * 开启态 overlay（issue #120 Block 1）：本组件不自行监听 keydown，只声明「我开着」，
    * 由唯一仲裁者决定一次 Escape 关谁。实例作用域的帧事务入口也在这里
@@ -182,6 +197,8 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     this._triggerController.connect()
     // 重连时 shadow DOM 与 panel 元素还在，但断连已撤销 keep-alive 登记，需要重新绑。
     this._bindLocalPanelKeepAlive()
+    // 打开态重连（框架 re-parent）后恢复限高同步观测；面板会话不在场时是 no-op。
+    if (this.open) this._startPanelCapSync()
   }
 
   override firstUpdated() {
@@ -217,7 +234,7 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     this._panelKeepAliveDisposers = []
     this._portalKeepAliveDisposer?.()
     this._portalKeepAliveDisposer = undefined
-    this._unobservePanelResize()
+    this._stopPanelCapSync()
     this._panel.dispose()
   }
 
@@ -255,6 +272,9 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
       this._panel.syncArbitration()
     }
 
+    // 打开态的 Lit 属性面重算：面板会话未建立时 getPanel() 为空，是 no-op。
+    if (this.open) this._syncPanelScrollClass()
+
     this._syncOpenWithContent()
   }
 
@@ -273,7 +293,7 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     if (this._portal)
       applyOverlayVariables(this._portal.panel, this, ['--wui-popover-padding', '--wui-popover-max-height'])
     this._syncPanelScrollClass()
-    this._observePanelResize()
+    this._startPanelCapSync()
   }
 
   /*
@@ -288,24 +308,43 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
   }
 
   /*
-   * 打开态持续对齐滚动类：--wui-popover-max-height 可在运行期被主题/密度切换或
-   * 媒体查询改写，ResizeObserver 捕捉几何可观察的限高变化（内容高于上限的增减
-   * 必然改变面板盒高）后重算；观测随关闭与重配置回收重挂。「限高翻转但盒高
-   * 不变」（内容低于新旧上限）没有几何信号，不做轮询——该状态下不产生滚动
-   * 需求，只影响绝对定位后代的裁剪语义。
+   * 打开态持续对齐滚动类：--wui-popover-max-height 的生效来源无法穷举（宿主内联
+   * 样式、主题/祖先 class、样式表、媒体查询），单一几何信号覆盖不了「限高翻转但
+   * 盒高不变」的组合，这里按 toast modalRoot 同步 --wui-* 的同款信号模型补齐：
+   * 祖先链属性观察 + 视口 resize 覆盖属性面，ResizeObserver 覆盖几何面，
+   * updated() 覆盖 Lit 属性面。仍不覆盖的盲区：媒体查询改写变量且盒高不变的
+   * 组合——该状态下没有属性与几何事件可听，不做轮询；它不产生滚动需求，
+   * 只影响绝对定位后代的裁剪语义。
    */
-  private _observePanelResize() {
-    this._unobservePanelResize()
-    if (typeof ResizeObserver === 'undefined') return
+  private _startPanelCapSync() {
+    this._stopPanelCapSync()
     const panel = this._panel.getPanel()
     if (!panel) return
-    this._panelResizeObserver = new ResizeObserver(() => this._syncPanelScrollClass())
-    this._panelResizeObserver.observe(panel)
+    if (typeof ResizeObserver !== 'undefined') {
+      const observer = new ResizeObserver(() => this._syncPanelScrollClass())
+      observer.observe(panel)
+      this._panelResizeObserver = observer
+    }
+    if (typeof MutationObserver !== 'undefined') {
+      for (const target of ancestorChainOf(this)) {
+        const mutation = new MutationObserver(() => this._syncPanelScrollClass())
+        mutation.observe(target, { attributes: true, attributeFilter: ['style', 'class', 'appearance'] })
+        this._capSyncMutations.push(mutation)
+      }
+    }
+    if (typeof window !== 'undefined') {
+      this._capSyncOnResize = () => this._syncPanelScrollClass()
+      window.addEventListener('resize', this._capSyncOnResize)
+    }
   }
 
-  private _unobservePanelResize() {
+  private _stopPanelCapSync() {
     this._panelResizeObserver?.disconnect()
     this._panelResizeObserver = null
+    for (const mutation of this._capSyncMutations) mutation.disconnect()
+    this._capSyncMutations = []
+    if (this._capSyncOnResize) window.removeEventListener('resize', this._capSyncOnResize)
+    this._capSyncOnResize = null
   }
 
   private _migratableContentNodes(nodes: Node[]): Node[] {
@@ -336,7 +375,7 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
   }
 
   private async _closeOverlay() {
-    this._unobservePanelResize()
+    this._stopPanelCapSync()
     await this._panel.close(() => this.open, !this._hasOverlayContent())
   }
 
@@ -349,7 +388,7 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     if (this.open)
       this._overlay.scheduleFrame(() => {
         this._syncPanelScrollClass()
-        this._observePanelResize()
+        this._startPanelCapSync()
       })
   }
 

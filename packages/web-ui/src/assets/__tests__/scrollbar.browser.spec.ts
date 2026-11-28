@@ -340,4 +340,31 @@ describe('组件内部 scrollbar（浏览器）', () => {
     popover.style.setProperty('--wui-popover-max-height', '80px')
     await pollUntil(() => getComputedStyle(el).overflowY === 'auto', '打开态重新限高后 overflow-y 未回到 auto')
   })
+
+  it('打开态取消限高且盒高不变（内容低于上限）仍会摘除滚动类', async () => {
+    const theme = await createLightTheme()
+    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    popover.style.setProperty('--wui-popover-max-height', '80px')
+    const content = document.createElement('div')
+    content.style.cssText = 'height: 40px;'
+    popover.append(content)
+    theme.append(popover)
+    await popover.updateComplete
+
+    popover.open = true
+    await popover.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const el = popover.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    if (!el) throw new Error('Expected popover panel to exist.')
+    expect(getComputedStyle(el).overflowY).toBe('auto')
+
+    // 内容低于上限：取消限高不改变盒高，ResizeObserver 静默；
+    // 摘类只能靠属性面信号（宿主 style 变化）。
+    popover.style.removeProperty('--wui-popover-max-height')
+    await pollUntil(
+      () => getComputedStyle(el).overflowY === 'visible',
+      '盒高不变的取消限高未摘除滚动类（属性面信号缺失）'
+    )
+  })
 })
