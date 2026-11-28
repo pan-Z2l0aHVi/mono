@@ -133,8 +133,8 @@
     box-shadow var(--wui-duration-press, 80ms) ease;
 }
 
-/* raised 变体静止态：实体 indicator + 柔投影（经典形态；两档下 surface-selected 都与该主题的 page
-   同色——浅色 #fff、深色 #242428，深色靠 track 沉到 page 之下保住凸起方向）。仅换底与投影，
+/* raised 变体静止态：实体 indicator + 柔投影（经典形态；浅色 surface-selected 取 page 色 #fff，
+   深色取 control 面 #3a3a3c——与 neutral button 同档，深色 track 仍沉到 page 之下保住凸起方向）。仅换底与投影，
    几何与过渡和 inset 变体同源。
    注意源顺序：本规则与下方按压/拖拽规则特异性相同（(0,3,0)），按压态必须排在更后面，
    才能把实体底/柔投影覆盖成透明玻璃配方。 */

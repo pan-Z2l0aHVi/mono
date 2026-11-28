@@ -748,9 +748,9 @@ const meta = [
       label: 'tr',
       children: [
       { label: 'td', content: "<code>--wui-color-surface-selected</code>" },
-      { label: 'td', content: "Selected surface (convex variant indicator, same color as page)" },
+      { label: 'td', content: "Selected surface (convex variant indicator; light matches page, dark matches controls)" },
       { label: 'td', content: "<code>#fff</code>" },
-      { label: 'td', content: "<code>#242428</code>" }
+      { label: 'td', content: "<code>#3a3a3c</code>" }
       ]
     },
     {

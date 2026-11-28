@@ -77,17 +77,17 @@ export class WebUiSelect extends defineOverlayDelayProps(FormAssociated(LitEleme
 
   @property({ type: Boolean, reflect: true }) required = false
   @property({ type: Boolean, reflect: true }) portal = false
-  /** 下拉 panel 相对触发器的方向；默认在触发器正下方水平居中展开。 */
+  /** 下拉 panel 相对触发器的方向；默认贴着触发器左下角向下展开。 */
   @property({ type: String, reflect: true })
   get placement(): Placement {
     return this._placement
   }
   set placement(v: string) {
     const old = this._placement
-    this._placement = normalizeLiteral(v, FLOATING_PLACEMENTS, 'bottom')
+    this._placement = normalizeLiteral(v, FLOATING_PLACEMENTS, 'bottom-start')
     this.requestUpdate('placement', old)
   }
-  private _placement: Placement = 'bottom'
+  private _placement: Placement = 'bottom-start'
   @property({ type: Boolean, reflect: true, attribute: 'no-scroll-lock' }) noScrollLock = false
   @property({ attribute: false }) overlayContainer?: OverlayContainer
   @property({ type: String, reflect: true }) name = ''
