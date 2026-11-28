@@ -115,6 +115,7 @@ function loaded(event: Event) {
       ref="image"
       :src="src"
       :alt="alt"
+      referrerpolicy="no-referrer"
       draggable="false"
       class="absolute top-1/2 left-1/2 max-w-none [-webkit-user-drag:none]"
       :class="portrait ? 'h-full w-auto' : 'h-auto w-full'"

@@ -358,6 +358,7 @@ function maybeSaveThumbnail(payload: ThumbnailPayload) {
       <img
         v-if="favicon && !faviconFailed"
         :src="favicon"
+        referrerpolicy="no-referrer"
         class="absolute size-5 object-contain [-webkit-user-drag:none]"
         alt=""
         draggable="false"
@@ -382,6 +383,7 @@ function maybeSaveThumbnail(payload: ThumbnailPayload) {
         ref="imageRef"
         :src="displayMediaUrl ?? undefined"
         :crossorigin="imageCrossOrigin"
+        referrerpolicy="no-referrer"
         class="size-full object-cover [-webkit-user-drag:none]"
         alt=""
         draggable="false"
