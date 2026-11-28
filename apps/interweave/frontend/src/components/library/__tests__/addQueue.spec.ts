@@ -25,6 +25,8 @@ function createRuntime(
       create: async () => {
         throw new Error('未使用')
       },
+      createMany: async (_batchId, inputs) => inputs.map((_input, index) => ({ index })),
+      cancelBatch: async () => {},
       updateTitle: async () => {
         throw new Error('未使用')
       },
@@ -72,7 +74,8 @@ function createRuntime(
       onFilesDropped: () => () => {},
       onURLsDropped: () => () => {},
       onSourceAvailability: () => () => {},
-      onPreviewRevoked: () => () => {}
+      onPreviewRevoked: () => () => {},
+      onResourceBatchProgress: () => () => {}
     },
     system: {
       chooseDirectory: async () => null,
@@ -81,6 +84,7 @@ function createRuntime(
       getClipboardFilePaths: async () => [],
       writeClipboardFilePath: async () => {},
       readClipboardText: async () => '',
+      readClipboardContent: async () => ({ text: '' }),
       writeClipboardText: async () => {},
       defaultOpenWith: async () => {
         throw new Error('未使用')
@@ -505,8 +509,8 @@ describe('library add queue url entries', () => {
 
 /*
  * 提交循环是 controller 的 implementation 属性：逐项 waitForPreview → create → releasePreview
- * 结算 preview token，全部成功后 close 收尾；失败按 remaining 回卷。页面只保留 dialog 开合
- * 与错误展示，不得自组提交循环。
+ * 结算 preview token，全部成功后 close 收尾；单条失败不再回卷整批——失败项留在队列里可重试，
+ * 其余项照常提交。页面只保留 dialog 开合与错误展示，不得自组提交循环。
  */
 describe('library add queue submit', () => {
   const LOCATIONS = ['/tmp/first.png', '/tmp/second.png']
@@ -517,10 +521,11 @@ describe('library add queue submit', () => {
     failAt: number
     /** 期望的逐项结算序列：每项先 create 再 release，失败的项同样结算。 */
     events: string[]
-    /** 期望的返回值；失败时为 undefined 且抛出原因。 */
-    result: boolean | undefined
-    /** 失败回卷后期望留在队列里的位置。 */
+    /** 期望的返回值：有失败项时返回 false 并保留队列，不抛错。 */
+    result: boolean
+    /** 失败项保留在队列里的位置。 */
     remainingLocations: string[]
+    failureCount: number
   }
 
   it.each<SubmitCase>([
@@ -534,14 +539,21 @@ describe('library add queue submit', () => {
         'release:token-/tmp/second.png'
       ],
       result: true,
-      remainingLocations: []
+      remainingLocations: [],
+      failureCount: 0
     },
     {
-      name: '首项失败',
+      name: '首项失败仍继续提交其余项',
       failAt: 0,
-      events: ['create:/tmp/first.png', 'release:token-/tmp/first.png'],
-      result: undefined,
-      remainingLocations: ['/tmp/first.png', '/tmp/second.png']
+      events: [
+        'create:/tmp/first.png',
+        'release:token-/tmp/first.png',
+        'create:/tmp/second.png',
+        'release:token-/tmp/second.png'
+      ],
+      result: false,
+      remainingLocations: ['/tmp/first.png'],
+      failureCount: 1
     },
     {
       name: '第二项失败',
@@ -552,12 +564,13 @@ describe('library add queue submit', () => {
         'create:/tmp/second.png',
         'release:token-/tmp/second.png'
       ],
-      result: undefined,
-      remainingLocations: ['/tmp/second.png']
+      result: false,
+      remainingLocations: ['/tmp/second.png'],
+      failureCount: 1
     }
   ])(
-    '$name：token 逐项结算，失败按 remaining 回卷',
-    async ({ failAt, events: expectedEvents, result, remainingLocations }) => {
+    '$name：token 逐项结算，失败项留在队列',
+    async ({ failAt, events: expectedEvents, result, remainingLocations, failureCount }) => {
       const events: string[] = []
       const releaseFilePreview = vi.fn<LibraryRuntime['resources']['releaseFilePreview']>(async token => {
         events.push(`release:${token}`)
@@ -578,25 +591,19 @@ describe('library add queue submit', () => {
         if (item.location === LOCATIONS[failAt]) throw new Error('创建失败')
       })
 
-      let settled: boolean | undefined
-      let thrown: unknown
-      try {
-        settled = await queue.submit(create)
-      } catch (cause) {
-        thrown = cause
-      }
+      const settled = await queue.submit(create)
 
       // 提交中的每一项都发生在 submitting=true 之下，结束后必须复位。
       expect(events).toEqual(expectedEvents)
       expect(submittingDuringCreate.every(Boolean)).toBe(true)
       expect(queue.submitting.value).toBe(false)
       expect(settled).toBe(result)
-      expect(thrown).toEqual(failAt >= 0 ? new Error('创建失败') : undefined)
+      expect(queue.failureCount.value).toBe(failureCount)
       expect(queue.queue.value.map(item => item.location)).toEqual(remainingLocations)
     }
   )
 
-  it('成功的项回卷后不再留在队列，未处理项保留自己的 preview token', async () => {
+  it('成功的项移出队列，失败项保留且 preview token 已结算', async () => {
     const queue = createQueue(
       createRuntime({
         prepareFilePreview: async location => ({ kind: ResourceKind.ResourceKindImage, token: `token-${location}` }),
@@ -606,15 +613,17 @@ describe('library add queue submit', () => {
     await queue.enqueueFileLocations(LOCATIONS)
     const items = [...queue.queue.value]
 
-    await expect(
-      queue.submit(async item => {
+    expect(
+      await queue.submit(async item => {
         if (item.location === LOCATIONS[1]) throw new Error('创建失败')
       })
-    ).rejects.toThrow('创建失败')
+    ).toBe(false)
 
-    // 首项已成功并被移出队列；次项失败后保留，它的 token 已在 finally 里结算完毕。
+    // 首项已成功并被移出队列；次项失败后保留，它的 token 已结算。
     expect(queue.queue.value.map(item => item.id)).toEqual([items[1]!.id])
     expect(queue.queue.value[0]?.previewToken).toBeNull()
+    expect(queue.queue.value[0]?.status).toBe('failed')
+    expect(queue.queue.value[0]?.error).toBe('创建失败')
   })
 
   it('空队列直接返回 false，不调 create 也不进入 submitting', async () => {
@@ -642,6 +651,69 @@ describe('library add queue submit', () => {
 
     expect(created).toEqual([LOCATIONS[0]!])
     expect(queue.submitting.value).toBe(false)
+  })
+})
+
+/*
+ * URL 项可整批交给后端并发处理；文件项仍走单条 create。失败项留在队列里可重试，
+ * 停止按钮经 close() 取消在途批次。
+ */
+describe('library add queue batch submit', () => {
+  it('URL 项交给 createBatch，失败项保留、成功项移出', async () => {
+    const queue = createQueue(createRuntime())
+    await queue.enqueueURLs(['https://a.com/x', 'https://b.com/y'])
+
+    const create = vi.fn<(item: LibraryQueueItem) => Promise<void>>(async () => {})
+    let batchLocations: string[] = []
+    const settled = await queue.submit(create, (items, settle) => {
+      batchLocations = items.map(item => item.location)
+      return {
+        done: (async () => {
+          settle(items[0]!.id, { ok: true })
+          settle(items[1]!.id, { ok: false, error: '抓取失败' })
+        })(),
+        cancel: () => {}
+      }
+    })
+
+    expect(batchLocations).toEqual(['https://a.com/x', 'https://b.com/y'])
+    expect(create).not.toHaveBeenCalled()
+    expect(settled).toBe(false)
+    expect(queue.queue.value.map(item => item.location)).toEqual(['https://b.com/y'])
+    expect(queue.queue.value[0]?.status).toBe('failed')
+    expect(queue.queue.value[0]?.error).toBe('抓取失败')
+    expect(queue.failureCount.value).toBe(1)
+    expect(queue.progress.value).toEqual({ done: 2, total: 2 })
+  })
+
+  it('停止时取消在途批次，未完成的项按取消结算不计失败', async () => {
+    const queue = createQueue(createRuntime())
+    await queue.enqueueURLs(['https://a.com/x'])
+
+    let release!: () => void
+    let started!: () => void
+    const startGate = new Promise<void>(resolve => {
+      started = resolve
+    })
+    const cancel = vi.fn<() => void>()
+    const submitted = queue.submit(
+      async () => {},
+      () => {
+        started()
+        return {
+          done: new Promise<void>(resolve => {
+            release = resolve
+          }),
+          cancel
+        }
+      }
+    )
+    await startGate
+    await queue.close()
+    expect(cancel).toHaveBeenCalledOnce()
+    release()
+    expect(await submitted).toBe(false)
+    expect(queue.failureCount.value).toBe(0)
   })
 })
 
@@ -676,17 +748,18 @@ describe('library add queue progress', () => {
     expect(queue.progress.value).toEqual({ done: 2, total: 2 })
   })
 
-  it('失败项不计入已导入进度，进度停在成功数', async () => {
+  it('失败项同样结算，进度走满', async () => {
     const queue = createQueue(createRuntime())
     await queue.enqueueFileLocations(['/tmp/first.png', '/tmp/second.png'])
 
-    await expect(
-      queue.submit(async item => {
+    expect(
+      await queue.submit(async item => {
         if (item.location === '/tmp/first.png') throw new Error('创建失败')
       })
-    ).rejects.toThrow('创建失败')
+    ).toBe(false)
 
-    expect(queue.progress.value).toEqual({ done: 0, total: 2 })
+    expect(queue.progress.value).toEqual({ done: 2, total: 2 })
+    expect(queue.failureCount.value).toBe(1)
   })
 })
 

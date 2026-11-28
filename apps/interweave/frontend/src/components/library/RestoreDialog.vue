@@ -361,7 +361,7 @@ function handleOpenChange(event: WebUiEvent<WebUiDialog, 'open-change'>) {
         if (!value) session.closeUrlEditor()
       }
     "
-    @submit="session.completeUrl"
+    @submit="session.completeUrl($event[0] ?? '')"
   />
 </template>
 

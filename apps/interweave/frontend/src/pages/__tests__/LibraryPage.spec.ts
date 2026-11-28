@@ -149,6 +149,9 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       list: async () => [resource()],
       get: async resourceId => resource({ id: resourceId }),
       create: async () => resource(),
+      // 批量纳入默认逐项成功：URL 项提交走 createMany，单条 create 只服务文件项。
+      createMany: async (_batchId, inputs) => inputs.map((_input, index) => ({ index, resource: resource() })),
+      cancelBatch: async () => {},
       updateTitle: async (resourceId, title) => resource({ id: resourceId, title }),
       updateNote: async (resourceId, note) => resource({ id: resourceId, note }),
       remove: async () => {},
@@ -205,6 +208,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
         return runtimeStub.availabilityDisposer
       },
       onPreviewRevoked: () => () => {},
+      onResourceBatchProgress: () => () => {},
       ...overrides.events
     },
     system: {
@@ -214,6 +218,7 @@ function createRuntime(overrides: RuntimeOverrides = {}): LibraryRuntime {
       getClipboardFilePaths: async () => [],
       writeClipboardFilePath: async () => {},
       readClipboardText: async () => '',
+      readClipboardContent: async () => ({ text: '' }),
       writeClipboardText: async () => {},
       defaultOpenWith: async () => '',
       showInFileManager: async () => {},
@@ -798,11 +803,14 @@ describe('LibraryPage：粘贴链接', () => {
     }
   })
 
-  it('提交时 URL 项走 createResource，资源出现在列表', async () => {
-    const createResource = vi.fn<LibraryRuntime['resources']['create']>(async input =>
-      resource({ title: '示例文章', sources: [source({ location: input.location, available: true })] })
+  it('提交时 URL 项整批走 createMany，资源出现在列表', async () => {
+    const createMany = vi.fn<LibraryRuntime['resources']['createMany']>(async (_batchId, inputs) =>
+      inputs.map((input, index) => ({
+        index,
+        resource: resource({ title: '示例文章', sources: [source({ location: input.location, available: true })] })
+      }))
     )
-    runtimeStub.current = createRuntime({ resources: { create: createResource } })
+    runtimeStub.current = createRuntime({ resources: { createMany } })
     const mounted = await mountPage()
 
     try {
@@ -812,12 +820,12 @@ describe('LibraryPage：粘贴链接', () => {
       button(mounted.host, '确认导入').click()
       await flush()
 
-      expect(createResource).toHaveBeenCalledExactlyOnceWith({
-        kind: SourceType.SourceTypeURL,
-        location: 'https://example.com/article',
-        title: '',
-        tags: []
-      })
+      expect(createMany).toHaveBeenCalledOnce()
+      const [batchId, inputs] = createMany.mock.calls[0]!
+      expect(batchId).toMatch(/^batch-/)
+      expect(inputs).toEqual([
+        { kind: SourceType.SourceTypeURL, location: 'https://example.com/article', title: '', tags: [] }
+      ])
       expect(useLibraryStore().resources[0]?.title).toBe('示例文章')
     } finally {
       await mounted.close()
@@ -825,10 +833,13 @@ describe('LibraryPage：粘贴链接', () => {
   })
 
   it('提交成功后 AddDialog 自动关闭；controller 的 close 是队列收尾，不代 dialog 开合', async () => {
-    const createResource = vi.fn<LibraryRuntime['resources']['create']>(async input =>
-      resource({ title: '示例文章', sources: [source({ location: input.location, available: true })] })
+    const createMany = vi.fn<LibraryRuntime['resources']['createMany']>(async (_batchId, inputs) =>
+      inputs.map((input, index) => ({
+        index,
+        resource: resource({ title: '示例文章', sources: [source({ location: input.location, available: true })] })
+      }))
     )
-    runtimeStub.current = createRuntime({ resources: { create: createResource } })
+    runtimeStub.current = createRuntime({ resources: { createMany } })
     const mounted = await mountPage()
 
     try {
@@ -841,18 +852,18 @@ describe('LibraryPage：粘贴链接', () => {
       button(mounted.host, '确认导入').click()
       await flush()
 
-      expect(createResource).toHaveBeenCalledTimes(1)
+      expect(createMany).toHaveBeenCalledTimes(1)
       expect(dialogOpen(dialog)).toBe(false)
     } finally {
       await mounted.close()
     }
   })
 
-  it('提交失败时 AddDialog 保持打开、错误由 toast 呈现', async () => {
-    const createResource = vi.fn<LibraryRuntime['resources']['create']>(async () => {
+  it('批量提交失败时 AddDialog 保持打开，失败原因落在队列行', async () => {
+    const createMany = vi.fn<LibraryRuntime['resources']['createMany']>(async () => {
       throw new Error('磁盘已满')
     })
-    runtimeStub.current = createRuntime({ resources: { create: createResource } })
+    runtimeStub.current = createRuntime({ resources: { createMany } })
     const mounted = await mountPage()
 
     try {
@@ -864,8 +875,8 @@ describe('LibraryPage：粘贴链接', () => {
       await flush()
 
       expect(dialogOpen(dialog)).toBe(true)
-      // userMessage 优先透出 cause 的 message，fallback 文案只兜无消息错误。
-      expect(toastError).toHaveBeenCalledWith('磁盘已满', { position: 'top-center' })
+      // 失败项留在队列里并带上后端原因，用户可直接重试。
+      expect(mounted.host.textContent).toContain('导入失败：磁盘已满')
     } finally {
       await mounted.close()
     }

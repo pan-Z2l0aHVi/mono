@@ -3,6 +3,7 @@ import { Dialogs, Events } from '@wailsio/runtime'
 import {
   LibraryFilesDropped,
   LibraryPreviewsRevoked,
+  LibraryResourceBatchProgress,
   LibrarySourceAvailabilityChanged,
   LibraryUrlsDropped
 } from '../../../bindings/events'
@@ -18,11 +19,13 @@ import { hasWailsRuntime } from '../runtime'
 
 import {
   isPreviewRevokedEvent,
+  isResourceBatchProgressEvent,
   isSourceAvailabilityEvent,
   requireFilePreviewDTO,
   requireResourceDTO,
   requireSourceProbeResultDTO,
   type LibraryRuntime,
+  type ResourceBatchProgressDTO,
   type SourceAvailabilityEventDTO
 } from './types'
 
@@ -34,6 +37,11 @@ class WailsLibraryRuntime implements LibraryRuntime {
     get: async (resourceId: string) => requireResourceDTO(await ResourceService.GetResource(resourceId), '读取资源'),
     create: async (input: CreateResourceInputDTO) =>
       requireResourceDTO(await ResourceService.CreateResource(input), '创建资源'),
+    // 批量纳入的逐项失败是数据而不是异常：结果里带 index 与 error，调用方按项结算。
+    createMany: (batchId: string, inputs: CreateResourceInputDTO[]) => ResourceService.CreateResources(batchId, inputs),
+    cancelBatch: async (batchId: string) => {
+      await ResourceService.CancelResourceBatch(batchId)
+    },
     updateTitle: async (resourceId: string, newTitle: string) =>
       requireResourceDTO(await ResourceService.UpdateResourceTitle(resourceId, newTitle), '更新资源名称'),
     updateNote: async (resourceId: string, note: string) =>
@@ -121,6 +129,12 @@ class WailsLibraryRuntime implements LibraryRuntime {
       return Events.On(LibraryPreviewsRevoked, event => {
         if (isPreviewRevokedEvent(event.data)) listener(event.data)
       })
+    },
+    onResourceBatchProgress: (listener: (event: ResourceBatchProgressDTO) => void) => {
+      if (!this.isAvailable) return () => {}
+      return Events.On(LibraryResourceBatchProgress, event => {
+        if (isResourceBatchProgressEvent(event.data)) listener(event.data)
+      })
     }
   }
 
@@ -163,6 +177,10 @@ class WailsLibraryRuntime implements LibraryRuntime {
       await OSService.WriteClipboardFilePath(path)
     },
     readClipboardText: () => OSService.ReadClipboardText(),
+    readClipboardContent: async () => {
+      const content = await OSService.ReadClipboardContent()
+      return content ?? { text: '' }
+    },
     writeClipboardText: async (text: string) => {
       await OSService.WriteClipboardText(text)
     },

@@ -2,6 +2,7 @@ package service
 
 import (
 	"context"
+	"sync"
 
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/core"
 	"github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage"
@@ -9,12 +10,55 @@ import (
 
 // 作为 Wails 外观呈现 Resource 能力，产品规则与预览授权由 core 承载。
 type ResourceService struct {
-	core *core.Library
+	core             *core.Library
+	batchConcurrency int
+
+	emitMu sync.RWMutex
+	emit   func(name string, data any)
+
+	batchesMu sync.Mutex
+	batches   map[string]context.CancelFunc
+}
+
+// ResourceServiceOption 装配批量纳入的可选项；并发度与事件出口只在装配期注入。
+type ResourceServiceOption func(*ResourceService)
+
+// WithBatchConcurrency 覆盖批量纳入的默认并发度，供测试固定行为。
+func WithBatchConcurrency(concurrency int) ResourceServiceOption {
+	return func(s *ResourceService) {
+		if concurrency > 0 {
+			s.batchConcurrency = concurrency
+		}
+	}
+}
+
+// WithEventEmitter 注入批量进度的事件出口；Wails 绑定不暴露函数参数，因此只能在装配期注入。
+func WithEventEmitter(emit func(name string, data any)) ResourceServiceOption {
+	return func(s *ResourceService) {
+		s.emit = emit
+	}
 }
 
 // 保持外观与产品规则解耦。
-func NewResourceService(c *core.Library) *ResourceService {
-	return &ResourceService{core: c}
+func NewResourceService(c *core.Library, options ...ResourceServiceOption) *ResourceService {
+	service := &ResourceService{
+		core:             c,
+		batchConcurrency: core.DefaultCreateConcurrency,
+		batches:          make(map[string]context.CancelFunc),
+	}
+	for _, option := range options {
+		option(service)
+	}
+	return service
+}
+
+func (s *ResourceService) emitEvent(name string, data any) {
+	s.emitMu.RLock()
+	emit := s.emit
+	s.emitMu.RUnlock()
+	if emit != nil {
+		emit(name, data)
+	}
 }
 
 // 准备待添加文件的展示分类与短期媒体读取授权（由 core 决定授权类型）。

@@ -1,6 +1,6 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
 
-import type { LibraryQueueItem, LibraryRuntime } from '@/services/library'
+import type { LibraryQueueItem, LibraryQueueItemStatus, LibraryRuntime } from '@/services/library'
 
 import type { ResourceLocationMatchDTO } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import {
@@ -27,12 +27,36 @@ export interface LibraryDuplicatePrompt {
   matches: ResourceLocationMatchDTO[]
 }
 
+/** 批量纳入中单项的结算结果；cancelled 表示因用户停止而未开始/未完成。 */
+export interface LibraryBatchSettlement {
+  ok: boolean
+  error?: string
+  cancelled?: boolean
+}
+
+/** 一件在途的批量任务：done 在所有项结算后 resolve，cancel 请求后端停止后续项。 */
+export interface LibraryBatchTask {
+  done: Promise<void>
+  cancel(): void
+}
+
+/**
+ * 批量创建端口：items 是队列快照中可批量提交的项（当前是 URL 项），
+ * settle 按 itemId 回传单项结果。文件项仍走单条 create。
+ */
+export type LibraryBatchCreate = (
+  items: LibraryQueueItem[],
+  settle: (itemId: string, settlement: LibraryBatchSettlement) => void
+) => LibraryBatchTask
+
 export interface LibraryAddQueueController {
   queue: Ref<LibraryQueueItem[]>
   /** 当前等待用户裁决的重复提示；null 表示没有待裁决项。页面据此渲染 dialog。 */
   duplicatePrompt: Ref<LibraryDuplicatePrompt | null>
   /** 正在逐项提交资源；页面据此禁用提交入口。 */
   submitting: Ref<boolean>
+  /** 最近一次提交里失败的项数；失败项留在队列里可重试。 */
+  failureCount: Ref<number>
   /**
    * 最近一段长流程的进度（done / total）。入队链按「已处理位置数」推进，
    * 提交循环按「已结算项数」推进；submit 会先等入队链收尾再开始，两阶段严格串行，
@@ -43,6 +67,10 @@ export interface LibraryAddQueueController {
   prepareBatchProgress(total: number): void
   enqueueFileLocations(locations: string[]): Promise<void>
   enqueueURL(url: string): Promise<void>
+  /** 批量入队链接；同一批内按规范化后的位置去重。 */
+  enqueueURLs(urls: string[]): Promise<void>
+  /** 更新队列项的提交状态与失败原因；失败项据此在队列里标红。 */
+  setItemStatus(itemId: string, status: LibraryQueueItemStatus, error?: string | null): void
   /** 裁决当前重复提示；accept=false（取消）时该项不入队。 */
   resolveDuplicate(accept: boolean): void
   renameItem(itemId: string, title: string): void
@@ -51,11 +79,11 @@ export interface LibraryAddQueueController {
   waitForPreview(itemId: string): Promise<void>
   releasePreview(itemId: string): Promise<void>
   /**
-   * 逐项提交整个队列。每项按 waitForPreview → create → releasePreview 结算 preview token，
-   * 全部成功后 close() 收尾并返回 true；任一项失败时按 remaining 回卷队列（已成功的项移出，
-   * 未处理的项原样保留），失败原因原样抛给调用方展示。
+   * 提交整个队列：文件项逐条 create，URL 项在提供 createBatch 时整批交给后端并发处理。
+   * 单条失败不再回卷整批——成功项移出队列，失败项保留并标注原因，返回是否有失败。
+   * 全部成功时 close() 收尾并返回 true。
    */
-  submit(create: (item: LibraryQueueItem) => Promise<void>): Promise<boolean>
+  submit(create: (item: LibraryQueueItem) => Promise<void>, createBatch?: LibraryBatchCreate): Promise<boolean>
   close(): Promise<void>
 }
 
@@ -95,11 +123,14 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
   const queueById = new Map<string, LibraryQueueItem>()
   const duplicatePrompt = ref<LibraryDuplicatePrompt | null>(null)
   const submitting = ref(false)
+  const failureCount = ref(0)
   const progress = ref({ done: 0, total: 0 })
   const readonlyProgress = computed(() => progress.value)
   let settleDuplicate: ((accept: boolean) => void) | null = null
   // 逐项查询与逐项确认都是异步的：串在一条链上，弹窗才不会叠加，顺序也与提交顺序一致。
   let chain: Promise<void> = Promise.resolve()
+  // 停止按钮经 close() 触达在途的批量任务：置取消标志并请求后端停止后续项。
+  let cancelActiveSubmit: (() => void) | null = null
   // close() 递增代次，让链上尚未处理的位置作废：添加 dialog 已经关掉，剩余项不再弹窗。
   let generation = 0
 
@@ -209,7 +240,9 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
         location,
         tags: [],
         previewToken: null,
-        mediaUrl: null
+        mediaUrl: null,
+        status: 'pending',
+        error: null
       }
       queue.value.push(item)
       // 从 ref 读回的就是代理：保存它，后续 replaceItem 的原位写入才会触发依赖。
@@ -239,6 +272,14 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
 
   function enqueueURL(url: string) {
     return enqueue('url', [url])
+  }
+
+  function enqueueURLs(urls: string[]) {
+    return enqueue('url', urls)
+  }
+
+  function setItemStatus(itemId: string, status: LibraryQueueItemStatus, error?: string | null) {
+    replaceItem(itemId, item => ({ ...item, status, error: error ?? null }))
   }
 
   function renameItem(itemId: string, title: string) {
@@ -279,6 +320,7 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     generation += 1
     // 挂着的提示按「取消」裁决，链才不会停在这一项上。
     resolveDuplicate(false)
+    cancelActiveSubmit?.()
     await chain
     const itemIds = queue.value.map(item => item.id)
     queue.value = []
@@ -287,7 +329,10 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
     await Promise.allSettled(itemIds.map(itemId => lease.revoke(itemId)))
   }
 
-  async function submit(create: (item: LibraryQueueItem) => Promise<void>): Promise<boolean> {
+  async function submit(
+    create: (item: LibraryQueueItem) => Promise<void>,
+    createBatch?: LibraryBatchCreate
+  ): Promise<boolean> {
     if (submitting.value) return false
     submitting.value = true
     // 入队链还在推进时提交会结算出半批队列，close 再把剩余项整批丢弃——先等链收尾，
@@ -298,42 +343,98 @@ export function createLibraryAddQueue(runtime: PreviewRuntime, lease: PreviewLea
       submitting.value = false
       return false
     }
-    // 以链结算后的队列快照为准；remaining 记录尚未成功落库的项，失败时按它回卷。
+    // 以链结算后的队列快照为准；remaining 记录尚未成功落库的项，失败项由它留在队列里。
     const remaining = new Set(queue.value.map(item => item.id))
     const items = [...queue.value]
-    // 进度按「已成功落库的项」计；失败项在错误抛出前只结算 preview，不计入已导入。
+    // 进度按「已结算的项」计：成功、失败与取消都算处理完成，进度条不会停在中间值。
     progress.value = { done: 0, total: items.length }
+    failureCount.value = 0
+    let cancelled = false
+    // 结算动作是异步的（要释放预览租约），先入队再统一等待，避免进度与队列更新交错。
+    const settlements: Promise<void>[] = []
+
+    function settleItem(item: LibraryQueueItem, settlement: LibraryBatchSettlement) {
+      settlements.push(
+        (async () => {
+          try {
+            // 失败的项同样要结算：token 是预览资源，失败不豁免释放。
+            await releasePreview(item.id)
+          } catch {
+            // 预览释放失败不改变导入结论。
+          }
+          if (settlement.ok) {
+            remaining.delete(item.id)
+            const index = queue.value.findIndex(candidate => candidate.id === item.id)
+            if (index >= 0) queue.value.splice(index, 1)
+            queueById.delete(item.id)
+          } else if (!settlement.cancelled) {
+            failureCount.value += 1
+            setItemStatus(item.id, 'failed', settlement.error ?? '导入失败')
+          }
+          progress.value = { ...progress.value, done: progress.value.done + 1 }
+        })()
+      )
+    }
+
+    // URL 项可整批交给后端并发处理；文件项仍逐条 create（本地探测是轻量 stat）。
+    const batchItems = createBatch ? items.filter(item => item.kind === 'url') : []
+    const singleItems = items.filter(item => !batchItems.includes(item))
+    let batchTask: LibraryBatchTask | null = null
+    if (createBatch && batchItems.length) {
+      batchItems.forEach(item => setItemStatus(item.id, 'importing'))
+      batchTask = createBatch(batchItems, (itemId, settlement) => {
+        const item = items.find(candidate => candidate.id === itemId)
+        if (item) settleItem(item, settlement)
+      })
+    }
+    cancelActiveSubmit = () => {
+      cancelled = true
+      batchTask?.cancel()
+    }
+
     try {
-      for (const item of items) {
+      for (const item of singleItems) {
+        if (cancelled) {
+          settleItem(item, { ok: false, cancelled: true })
+          continue
+        }
+        setItemStatus(item.id, 'importing')
         await waitForPreview(item.id)
         try {
           await create(item)
-          remaining.delete(item.id)
-        } finally {
-          // 失败的项同样要结算：token 是预览资源，失败不豁免释放。
-          await releasePreview(item.id)
+          settleItem(item, { ok: true })
+        } catch (cause) {
+          settleItem(item, { ok: false, error: cause instanceof Error ? cause.message : String(cause) })
         }
-        progress.value = { ...progress.value, done: progress.value.done + 1 }
       }
-      await close()
-      return true
-    } catch (cause) {
-      queue.value = queue.value.filter(item => remaining.has(item.id))
-      rebuildQueueIndex()
-      throw cause
+      if (batchTask) await batchTask.done
+      await Promise.all(settlements)
     } finally {
+      cancelActiveSubmit = null
       submitting.value = false
     }
+
+    // 成功项已在结算时移出；剩下的就是失败项（或已随 close() 清空的队列）。
+    queue.value = queue.value.filter(item => remaining.has(item.id))
+    rebuildQueueIndex()
+    if (!remaining.size) {
+      await close()
+      return true
+    }
+    return false
   }
 
   return {
     queue,
     duplicatePrompt,
     submitting,
+    failureCount,
     progress: readonlyProgress,
     prepareBatchProgress,
     enqueueFileLocations,
     enqueueURL,
+    enqueueURLs,
+    setItemStatus,
     resolveDuplicate,
     renameItem,
     setItemTags,

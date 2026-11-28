@@ -17,6 +17,9 @@ import { stubLayout } from './virtualLayout'
 
 const toastError = vi.hoisted(() => vi.fn<(message: string, options: { position: string }) => string>())
 const readClipboardText = vi.hoisted(() => vi.fn<() => Promise<string>>())
+const readClipboardContent = vi.hoisted(() =>
+  vi.fn<() => Promise<{ text: string; html?: string; base_url?: string }>>()
+)
 
 vi.mock('@greypan/web-ui', async importOriginal => {
   const actual = await importOriginal<typeof WebUiModule>()
@@ -27,9 +30,9 @@ vi.mock('@greypan/web-ui', async importOriginal => {
   }
 })
 
-// 浏览器预览不再由产品 mock runtime 提供剪贴板；组件用例只替换这条系统能力。
+// 浏览器预览不再由产品 mock runtime 提供剪贴板；组件用例只替换这组系统能力。
 vi.mock('@/services/library', () => ({
-  createLibraryRuntime: () => ({ isAvailable: true, system: { readClipboardText } })
+  createLibraryRuntime: () => ({ isAvailable: true, system: { readClipboardText, readClipboardContent } })
 }))
 
 const openPreview = vi.mocked(imagePreview)
@@ -70,7 +73,7 @@ function mountDialog(
     onRename?: (itemId: string, title: string) => void
     onEditTags?: (item: LibraryQueueItem) => void
     onRequestFilePaths?: (clipboardText?: string) => void
-    onAddUrl?: (url: string) => void
+    onAddUrl?: (urls: string[]) => void
     onPickFiles?: () => void
     onClosed?: () => void
   } = {},
@@ -117,6 +120,15 @@ function button(host: HTMLElement, label: string) {
     candidate => candidate.getAttribute('aria-label') === label
   )
   if (!element) throw new Error(`button ${label} not found`)
+  return element
+}
+
+/** 按可见文案找按钮：弹窗主按钮只有文案，没有 aria-label。 */
+function buttonByText(host: HTMLElement, text: string) {
+  const element = [...host.querySelectorAll<HTMLElement>('web-ui-button')].find(
+    candidate => candidate.textContent?.trim() === text
+  )
+  if (!element) throw new Error(`button ${text} not found`)
   return element
 }
 
@@ -197,27 +209,27 @@ describe('AddDialog', () => {
     }
   })
 
-  it('导入链接弹窗校验输入，确认后入队，取消不导入', async () => {
-    const addUrl = vi.fn<(url: string) => void>()
+  it('导入链接弹窗从混排文本提取多条链接，确认后批量入队，取消不导入', async () => {
+    const addUrl = vi.fn<(urls: string[]) => void>()
     const mounted = mountDialog([], { onAddUrl: addUrl })
     try {
       button(mounted.host, '导入链接').click()
       await nextTick()
-      const input = mounted.host.querySelector('web-ui-input[aria-label="新链接"]') as HTMLElement & { value: string }
-      const confirm = [...mounted.host.querySelectorAll<HTMLElement>('web-ui-button')].find(
-        candidate => candidate.textContent?.trim() === '导入链接'
-      )!
-      confirm.click()
+      const textarea = mounted.host.querySelector('web-ui-textarea[aria-label="新链接"]') as HTMLElement & {
+        value: string
+      }
+      // 空输入时主按钮禁用，不会把空批次交给队列。
+      const emptyConfirm = buttonByText(mounted.host, '添加链接')
+      expect(emptyConfirm.hasAttribute('disabled')).toBe(true)
+
+      textarea.value = '看看 https://example.com/a 和 example.com/b'
+      textarea.dispatchEvent(new Event('input', { bubbles: true }))
       await nextTick()
-      expect(toastError).toHaveBeenCalledWith('请输入有效的网页链接', { position: 'top-center' })
-      expect(addUrl).not.toHaveBeenCalled()
-      input.value = 'https://example.com/new'
-      input.dispatchEvent(new Event('input', { bubbles: true }))
-      await nextTick()
-      confirm.click()
+      buttonByText(mounted.host, '添加 2 条链接').click()
       await nextTick()
       expect(addUrl).toHaveBeenCalledOnce()
-      expect(addUrl).toHaveBeenCalledWith('https://example.com/new')
+      expect(addUrl).toHaveBeenCalledWith(['https://example.com/a', 'https://example.com/b'])
+
       button(mounted.host, '导入链接').click()
       await nextTick()
       const dialogs = mounted.host.querySelectorAll('web-ui-dialog')
@@ -232,20 +244,26 @@ describe('AddDialog', () => {
     }
   })
 
-  it('粘贴链接按钮读取最新剪切板文本并填入输入框', async () => {
-    readClipboardText
-      .mockResolvedValueOnce('https://example.com/first')
-      .mockResolvedValueOnce('https://example.com/latest')
+  it('粘贴链接按钮读取剪贴板文本与 HTML 并填入输入框', async () => {
+    readClipboardContent.mockResolvedValueOnce({ text: 'https://example.com/first' }).mockResolvedValueOnce({
+      text: 'https://example.com/latest',
+      html: '<a href="/docs/a">a</a>',
+      base_url: 'https://example.com/base/'
+    })
     const mounted = mountDialog([])
     try {
       button(mounted.host, '导入链接').click()
       await nextTick()
-      const input = mounted.host.querySelector('web-ui-input[aria-label="新链接"]') as HTMLElement & { value: string }
+      const textarea = mounted.host.querySelector('web-ui-textarea[aria-label="新链接"]') as HTMLElement & {
+        value: string
+      }
       button(mounted.host, '粘贴链接').click()
-      await vi.waitFor(() => expect(input.value).toBe('https://example.com/first'))
+      await vi.waitFor(() => expect(textarea.value).toBe('https://example.com/first'))
       button(mounted.host, '粘贴链接').click()
-      await vi.waitFor(() => expect(input.value).toBe('https://example.com/latest'))
-      expect(readClipboardText).toHaveBeenCalledTimes(2)
+      await vi.waitFor(() => expect(textarea.value).toBe('https://example.com/latest'))
+      expect(readClipboardContent).toHaveBeenCalledTimes(2)
+      // HTML 锚点与相对链接在粘贴时一并进入预览：文本一条 + 锚点一条。
+      await vi.waitFor(() => expect(buttonByText(mounted.host, '添加 2 条链接')).toBeTruthy())
     } finally {
       mounted.close()
     }

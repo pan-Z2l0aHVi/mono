@@ -7,6 +7,7 @@ import { createLibraryWorkflow, IMPORT_CONFIRM_THRESHOLD, type LibraryWorkflowPo
 
 function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
   const submitting = ref(false)
+  const failureCount = ref(0)
   const progressState = ref({ done: 0, total: 0 })
   const progress = computed(() => progressState.value)
 
@@ -17,6 +18,8 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
     progressState.value = { done: locations.length, total: locations.length }
   })
   const enqueueURL = vi.fn<(url: string) => Promise<void>>(async () => undefined)
+  const enqueueURLs = vi.fn<(urls: string[]) => Promise<void>>(async () => undefined)
+  const setItemStatus = vi.fn<LibraryWorkflowPorts['addQueue']['setItemStatus']>()
   const resolveDuplicate = vi.fn<(accept: boolean) => void>()
   const submit = vi.fn<LibraryWorkflowPorts['addQueue']['submit']>(async () => true)
   const close = vi.fn<() => Promise<void>>(async () => undefined)
@@ -28,7 +31,12 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
   const chooseFilePaths = vi.fn<LibraryWorkflowPorts['chooseFilePaths']>(async () => [])
   const getClipboardFilePaths = vi.fn<LibraryWorkflowPorts['getClipboardFilePaths']>(async () => [])
   const readClipboardText = vi.fn<LibraryWorkflowPorts['readClipboardText']>(async () => '')
+  const readClipboardContent = vi.fn<LibraryWorkflowPorts['readClipboardContent']>(async () => ({ text: '' }))
   const addResource = vi.fn<LibraryWorkflowPorts['addResource']>(async () => undefined)
+  const upsertResource = vi.fn<LibraryWorkflowPorts['upsertResource']>()
+  const createResources = vi.fn<LibraryWorkflowPorts['createResources']>(async () => [])
+  const cancelResourceBatch = vi.fn<LibraryWorkflowPorts['cancelResourceBatch']>(async () => undefined)
+  const onResourceBatchProgress = vi.fn<LibraryWorkflowPorts['onResourceBatchProgress']>(() => () => {})
   const replaceSource = vi.fn<LibraryWorkflowPorts['replaceSource']>(async () => undefined)
   const replaceScannedFileSource = vi.fn<LibraryWorkflowPorts['replaceScannedFileSource']>(async () => undefined)
   const reportError = vi.fn<LibraryWorkflowPorts['reportError']>()
@@ -37,10 +45,13 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
   const ports: LibraryWorkflowPorts = {
     addQueue: {
       submitting,
+      failureCount,
       progress,
       prepareBatchProgress,
       enqueueFileLocations,
       enqueueURL,
+      enqueueURLs,
+      setItemStatus,
       resolveDuplicate,
       submit,
       close
@@ -49,7 +60,12 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
     chooseFilePaths,
     getClipboardFilePaths,
     readClipboardText,
+    readClipboardContent,
     addResource,
+    upsertResource,
+    createResources,
+    cancelResourceBatch,
+    onResourceBatchProgress,
     replaceSource,
     replaceScannedFileSource,
     reportError,
@@ -60,10 +76,13 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
   return {
     ports,
     submitting,
+    failureCount,
     progressState,
     prepareBatchProgress,
     enqueueFileLocations,
     enqueueURL,
+    enqueueURLs,
+    setItemStatus,
     resolveDuplicate,
     submit,
     close,
@@ -71,7 +90,12 @@ function createFakePorts(overrides: Partial<LibraryWorkflowPorts> = {}) {
     chooseFilePaths,
     getClipboardFilePaths,
     readClipboardText,
+    readClipboardContent,
     addResource,
+    upsertResource,
+    createResources,
+    cancelResourceBatch,
+    onResourceBatchProgress,
     replaceSource,
     replaceScannedFileSource,
     reportError,
@@ -206,9 +230,9 @@ describe('libraryWorkflow', () => {
 
     // submitting=true 时拦截 URL 与文件入队
     ctx.submitting.value = true
-    workflow.requestAddURL('https://example.com/blocked')
+    workflow.requestAddURLs(['https://example.com/blocked'])
     await workflow.enqueueImportEntries(['/a.png'])
-    expect(ctx.enqueueURL).not.toHaveBeenCalled()
+    expect(ctx.enqueueURLs).not.toHaveBeenCalled()
     expect(ctx.expandImportEntries).not.toHaveBeenCalled()
     expect(ctx.notifyWarning).toHaveBeenCalledTimes(2)
 
@@ -225,13 +249,29 @@ describe('libraryWorkflow', () => {
     // 恢复非提交态，测试剪贴板链接回退与无效文本提示
     ctx.submitting.value = false
     ctx.getClipboardFilePaths.mockResolvedValueOnce([])
-    ctx.readClipboardText.mockResolvedValueOnce(' https://example.com/ok ')
+    ctx.readClipboardContent.mockResolvedValueOnce({ text: ' https://example.com/ok ' })
     await workflow.pasteFilePaths()
-    expect(ctx.enqueueURL).toHaveBeenCalledWith('https://example.com/ok')
+    expect(ctx.enqueueURLs).toHaveBeenCalledWith(['https://example.com/ok'])
 
     ctx.getClipboardFilePaths.mockResolvedValueOnce([])
     await workflow.pasteFilePaths('not-a-url')
     expect(ctx.notifyWarning).toHaveBeenLastCalledWith('剪切板中没有可导入的文件或有效链接')
+  })
+
+  it('剪贴板 HTML 锚点与文本合并后批量入队，相对链接按来源地址解析', async () => {
+    const ctx = createFakePorts()
+    const workflow = createLibraryWorkflow(ctx.ports)
+    workflow.openAddDialog()
+
+    ctx.getClipboardFilePaths.mockResolvedValueOnce([])
+    ctx.readClipboardContent.mockResolvedValueOnce({
+      text: 'https://b.com/y',
+      html: '<a href="/docs/a">a</a>',
+      base_url: 'https://example.com/base/'
+    })
+    await workflow.pasteFilePaths()
+
+    expect(ctx.enqueueURLs).toHaveBeenCalledWith(['https://example.com/docs/a', 'https://b.com/y'])
   })
 
   it('找回提交部分失败时保留未完成项并记录 failedRestoreIds，全部成功时关闭弹窗', async () => {

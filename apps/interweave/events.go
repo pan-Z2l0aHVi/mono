@@ -15,6 +15,7 @@ func init() {
 	application.RegisterEvent[[]string](libraryService.URLDropEventName)
 	application.RegisterEvent[[]string](libraryService.PreviewRevokedEventName)
 	application.RegisterEvent[libraryService.SourceAvailabilityEventDTO](libraryService.SourceAvailabilityEventName)
+	application.RegisterEvent[libraryService.ResourceBatchProgressDTO](libraryService.ResourceBatchProgressEventName)
 	application.RegisterEvent[menucontract.MenuCommand](menucontract.CommandEventName)
 	application.RegisterEvent[[]menucontract.MenuItem](menucontract.TreeChangedEventName)
 	application.RegisterEvent[settings.Snapshot](settings.SettingsChangedEventName)

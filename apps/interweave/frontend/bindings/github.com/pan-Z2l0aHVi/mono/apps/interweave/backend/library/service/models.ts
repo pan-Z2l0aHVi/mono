@@ -13,6 +13,38 @@ import * as core$0 from "../core/models.js";
 import * as storage$0 from "../storage/models.js";
 
 /**
+ * CreateResourceBatchResultDTO 是批量纳入的单项最终结果，按输入下标对齐。
+ * 失败不返回 RPC 错误：一批里混有坏链接是常态，调用方要的是逐项明细。
+ */
+export class CreateResourceBatchResultDTO {
+    "index": number;
+    "resource"?: ResourceDTO | null;
+    "error"?: string;
+    "cancelled"?: boolean;
+
+    /** Creates a new CreateResourceBatchResultDTO instance. */
+    constructor($$source: Partial<CreateResourceBatchResultDTO> = {}) {
+        if (!("index" in $$source)) {
+            this["index"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new CreateResourceBatchResultDTO instance from a string or object.
+     */
+    static createFrom($$source: any = {}): CreateResourceBatchResultDTO {
+        const $$createField1_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("resource" in $$parsedSource) {
+            $$parsedSource["resource"] = $$createField1_0($$parsedSource["resource"]);
+        }
+        return new CreateResourceBatchResultDTO($$parsedSource as Partial<CreateResourceBatchResultDTO>);
+    }
+}
+
+/**
  * CreateResourceInputDTO 是纳入新 Resource 的唯一入口参数；归一化与事务建齐由后端完成。
  */
 export class CreateResourceInputDTO {
@@ -52,7 +84,7 @@ export class CreateResourceInputDTO {
      * Creates a new CreateResourceInputDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): CreateResourceInputDTO {
-        const $$createField3_0 = $$createType0;
+        const $$createField3_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("tags" in $$parsedSource) {
             $$parsedSource["tags"] = $$createField3_0($$parsedSource["tags"]);
@@ -119,8 +151,8 @@ export class GlobalMapDTO {
      * Creates a new GlobalMapDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): GlobalMapDTO {
-        const $$createField0_0 = $$createType2;
-        const $$createField1_0 = $$createType4;
+        const $$createField0_0 = $$createType4;
+        const $$createField1_0 = $$createType6;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("tag_nodes" in $$parsedSource) {
             $$parsedSource["tag_nodes"] = $$createField0_0($$parsedSource["tag_nodes"]);
@@ -156,7 +188,7 @@ export class ImportExpansionDTO {
      * Creates a new ImportExpansionDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): ImportExpansionDTO {
-        const $$createField0_0 = $$createType0;
+        const $$createField0_0 = $$createType2;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("files" in $$parsedSource) {
             $$parsedSource["files"] = $$createField0_0($$parsedSource["files"]);
@@ -192,9 +224,9 @@ export class LocalMapDTO {
      * Creates a new LocalMapDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): LocalMapDTO {
-        const $$createField0_0 = $$createType5;
-        const $$createField1_0 = $$createType7;
-        const $$createField2_0 = $$createType2;
+        const $$createField0_0 = $$createType7;
+        const $$createField1_0 = $$createType8;
+        const $$createField2_0 = $$createType4;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("focused_tag" in $$parsedSource) {
             $$parsedSource["focused_tag"] = $$createField0_0($$parsedSource["focused_tag"]);
@@ -252,7 +284,7 @@ export class RecoveryScanUpdateDTO {
      * Creates a new RecoveryScanUpdateDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): RecoveryScanUpdateDTO {
-        const $$createField0_0 = $$createType9;
+        const $$createField0_0 = $$createType10;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("candidates" in $$parsedSource) {
             $$parsedSource["candidates"] = $$createField0_0($$parsedSource["candidates"]);
@@ -260,6 +292,66 @@ export class RecoveryScanUpdateDTO {
         return new RecoveryScanUpdateDTO($$parsedSource as Partial<RecoveryScanUpdateDTO>);
     }
 }
+
+/**
+ * ResourceBatchProgressDTO 是逐项进度推送载荷；Done/Total 让前端不必自行累计。
+ */
+export class ResourceBatchProgressDTO {
+    "batch_id": string;
+    "index": number;
+    "status": ResourceBatchStatus;
+    "done": number;
+    "total": number;
+    "resource"?: ResourceDTO | null;
+    "error"?: string;
+
+    /** Creates a new ResourceBatchProgressDTO instance. */
+    constructor($$source: Partial<ResourceBatchProgressDTO> = {}) {
+        if (!("batch_id" in $$source)) {
+            this["batch_id"] = "";
+        }
+        if (!("index" in $$source)) {
+            this["index"] = 0;
+        }
+        if (!("status" in $$source)) {
+            this["status"] = ResourceBatchStatus.$zero;
+        }
+        if (!("done" in $$source)) {
+            this["done"] = 0;
+        }
+        if (!("total" in $$source)) {
+            this["total"] = 0;
+        }
+
+        Object.assign(this, $$source);
+    }
+
+    /**
+     * Creates a new ResourceBatchProgressDTO instance from a string or object.
+     */
+    static createFrom($$source: any = {}): ResourceBatchProgressDTO {
+        const $$createField5_0 = $$createType1;
+        let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
+        if ("resource" in $$parsedSource) {
+            $$parsedSource["resource"] = $$createField5_0($$parsedSource["resource"]);
+        }
+        return new ResourceBatchProgressDTO($$parsedSource as Partial<ResourceBatchProgressDTO>);
+    }
+}
+
+/**
+ * ResourceBatchStatus 是单项结算的闭集；前端据此把队列行标成成功/失败/取消。
+ */
+export enum ResourceBatchStatus {
+    /**
+     * The Go zero value for the underlying type of the enum.
+     */
+    $zero = "",
+
+    ResourceBatchStatusCreated = "created",
+    ResourceBatchStatusFailed = "failed",
+    ResourceBatchStatusCancelled = "cancelled",
+};
 
 /**
  * 为前端提供完整但不承载外部内容的资源视图。
@@ -314,8 +406,8 @@ export class ResourceDTO {
      * Creates a new ResourceDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): ResourceDTO {
-        const $$createField7_0 = $$createType11;
-        const $$createField8_0 = $$createType12;
+        const $$createField7_0 = $$createType12;
+        const $$createField8_0 = $$createType13;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("sources" in $$parsedSource) {
             $$parsedSource["sources"] = $$createField7_0($$parsedSource["sources"]);
@@ -481,7 +573,7 @@ export class SourceDTO {
      * Creates a new SourceDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): SourceDTO {
-        const $$createField9_0 = $$createType14;
+        const $$createField9_0 = $$createType15;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("metadata" in $$parsedSource) {
             $$parsedSource["metadata"] = $$createField9_0($$parsedSource["metadata"]);
@@ -577,8 +669,8 @@ export class SourceProbeResultDTO {
      * Creates a new SourceProbeResultDTO instance from a string or object.
      */
     static createFrom($$source: any = {}): SourceProbeResultDTO {
-        const $$createField0_0 = $$createType15;
-        const $$createField1_0 = $$createType16;
+        const $$createField0_0 = $$createType16;
+        const $$createField1_0 = $$createType1;
         let $$parsedSource = typeof $$source === 'string' ? JSON.parse($$source) : $$source;
         if ("source" in $$parsedSource) {
             $$parsedSource["source"] = $$createField0_0($$parsedSource["source"]);
@@ -699,20 +791,20 @@ export class TagNodeDTO {
 }
 
 // Private type creation functions
-const $$createType0 = $Create.Array($Create.Any);
-const $$createType1 = TagNodeDTO.createFrom;
-const $$createType2 = $Create.Array($$createType1);
-const $$createType3 = TagEdgeDTO.createFrom;
+const $$createType0 = ResourceDTO.createFrom;
+const $$createType1 = $Create.Nullable($$createType0);
+const $$createType2 = $Create.Array($Create.Any);
+const $$createType3 = TagNodeDTO.createFrom;
 const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = TagDTO.createFrom;
-const $$createType6 = ResourceDTO.createFrom;
-const $$createType7 = $Create.Array($$createType6);
-const $$createType8 = core$0.RecoveryCandidate.createFrom;
-const $$createType9 = $Create.Array($$createType8);
-const $$createType10 = SourceDTO.createFrom;
-const $$createType11 = $Create.Array($$createType10);
-const $$createType12 = $Create.Array($$createType5);
-const $$createType13 = SourceMetadataDTO.createFrom;
-const $$createType14 = $Create.Nullable($$createType13);
-const $$createType15 = $Create.Nullable($$createType10);
-const $$createType16 = $Create.Nullable($$createType6);
+const $$createType5 = TagEdgeDTO.createFrom;
+const $$createType6 = $Create.Array($$createType5);
+const $$createType7 = TagDTO.createFrom;
+const $$createType8 = $Create.Array($$createType0);
+const $$createType9 = core$0.RecoveryCandidate.createFrom;
+const $$createType10 = $Create.Array($$createType9);
+const $$createType11 = SourceDTO.createFrom;
+const $$createType12 = $Create.Array($$createType11);
+const $$createType13 = $Create.Array($$createType7);
+const $$createType14 = SourceMetadataDTO.createFrom;
+const $$createType15 = $Create.Nullable($$createType14);
+const $$createType16 = $Create.Nullable($$createType11);
