@@ -48,7 +48,7 @@ async function updateLocale(event: WebUiEvent<WebUiSelect, 'change'>) {
     await loadDemoLocale(value)
   } catch (error) {
     console.error(error)
-    toast.error('语言切换失败，请刷新页面后重试')
+    toast.error('语言切换失败', { message: '请刷新页面后重试' })
   }
 }
 
@@ -123,7 +123,7 @@ const [initPageScrollbars] = useOverlayScrollbars({ options: appScrollbarsOption
 // 目标语种与文档在挂载后补载，降级可能晚于 onMounted：用 watch 才不会漏掉提示。
 watch(bootDegraded, degraded => {
   if (!degraded) return
-  toast.warning('目标语种加载失败，暂时使用简体中文')
+  toast.warning('目标语种加载失败', { message: '已回退到默认语言' })
   bootDegraded.value = false
 })
 

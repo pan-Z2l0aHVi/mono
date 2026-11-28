@@ -2,13 +2,13 @@
 
 English | [简体中文](./toast.CN.md)
 
-An imperative toast. Call `toast()` to create one and get its id, then `toast.close(id)` to close it. Calling again with the same `id` updates that toast and does not create a new one. The tables below list the options of `toast()`, the imperative entry points, and the attributes, events, and methods of the `<web-ui-toast>` element itself.
+An imperative toast. Call `toast()` to create one and get its id, then `toast.close(id)` to close it. Calling again with the same `id` updates that toast and does not create a new one. A plain string passed to `toast()` or to any shortcut is the toast's `heading`; use `message` in the options when the toast needs a body line under it. The tables below list the options of `toast()`, the imperative entry points, and the attributes, events, and methods of the `<web-ui-toast>` element itself.
 
 ## Samples
 
 ### Shortcuts
 
-`toast.success` / `info` / `warning` / `error` are shorthands for `toast()` plus `type`. Each call returns the final id of that toast. `error` defaults to a duration of `5000`, longer than the `3000` of the other types.
+`toast.success` / `info` / `warning` / `error` are shorthands for `toast()` plus `type`. The first argument is the `heading`; pass `message` in the options for a body line. Each call returns the final id of that toast. `error` defaults to a duration of `5000`, longer than the `3000` of the other types.
 
 All four appear in the default `top-right` position.
 
@@ -340,7 +340,9 @@ export default function Demo() {
   useEffect(() => () => toast.clear(), [])
 
   function create() {
-    setLast(`Created ${toast.info('This toast does not close automatically', { id: DEMO_ID, duration: 0 })}`)
+    setLast(
+      `Created ${toast.info('Auto-close disabled', { id: DEMO_ID, duration: 0, message: 'This toast does not close automatically' })}`
+    )
   }
 
   function closeOne() {
@@ -390,7 +392,7 @@ const DEMO_ID = 'demo-close'
 const last = ref('-')
 
 function create() {
-  last.value = `Created ${toast.info('This toast does not close automatically', { id: DEMO_ID, duration: 0 })}`
+  last.value = `Created ${toast.info('Auto-close disabled', { id: DEMO_ID, duration: 0, message: 'This toast does not close automatically' })}`
 }
 
 function closeOne() {
@@ -413,31 +415,33 @@ onBeforeUnmount(() => toast.clear())
 
 | Name        | Description                                                              | Type            | Default        |
 | ----------- | ------------------------------------------------------------------------ | --------------- | -------------- |
-| `message`   | Notification text.                                                       | `string`        | -              |
+| `message`   | Body text; optional.                                                     | `string`        | `''`           |
 | `type`      | Type: `success`, `info`, `warning`, `error`.                             | `ToastType`     | `'info'`       |
 | `duration`  | Auto-close time (ms); 0 means no auto-close; `error` defaults to `5000`. | `number`        | `3000`         |
 | `closable`  | Shows the close button.                                                  | `boolean`       | `true`         |
 | `id`        | Merge key: another call with the same `id` updates that toast.           | `string`        | Auto-generated |
-| `heading`   | Bold title.                                                              | `string`        | `''`           |
+| `heading`   | Bold title; a plain string argument is written here.                     | `string`        | `''`           |
 | `position`  | Screen position.                                                         | `ToastPosition` | `'top-right'`  |
 | `target`    | Used to find the nearest theme overlay container.                        | `Element`       | -              |
 | `container` | Explicit mount container (highest precedence).                           | `HTMLElement`   | -              |
 
 ### Methods
 
-| Name                               | Description                                                                                   |
-| ---------------------------------- | --------------------------------------------------------------------------------------------- |
-| `toast(options)`                   | Creates or updates a toast and returns the final id of that toast.                            |
-| `toast.success(message, options?)` | Creates a toast of type `success`.                                                            |
-| `toast.info(message, options?)`    | Creates a toast of type `info`.                                                               |
-| `toast.warning(message, options?)` | Creates a toast of type `warning`.                                                            |
-| `toast.error(message, options?)`   | Creates a toast of type `error`; its default duration is `5000`, longer than the other types. |
-| `toast.close(id)`                  | Closes the toast with the given id in every phase it appears in.                              |
-| `toast.clear()`                    | Closes all current toasts at once.                                                            |
+| Name                               | Description                                                                                         |
+| ---------------------------------- | --------------------------------------------------------------------------------------------------- |
+| `toast(headingOrOptions)`          | Creates or updates a toast and returns its final id; a plain string is shorthand for `{ heading }`. |
+| `toast.success(heading, options?)` | Creates a toast of type `success`.                                                                  |
+| `toast.info(heading, options?)`    | Creates a toast of type `info`.                                                                     |
+| `toast.warning(heading, options?)` | Creates a toast of type `warning`.                                                                  |
+| `toast.error(heading, options?)`   | Creates a toast of type `error`; its default duration is `5000`, longer than the other types.       |
+| `toast.close(id)`                  | Closes the toast with the given id in every phase it appears in.                                    |
+| `toast.clear()`                    | Closes all current toasts at once.                                                                  |
 
 ### Behavior
 
 The imperative entry has no other required step. `toast()` mounts the toast into the nearest theme overlay container itself, falling back to the global default container when there is no theme scope. `target` resolves the nearest theme scope. `container` specifies the mount container explicitly and takes precedence over the theme scope.
+
+A plain string is a `heading` shorthand for both `toast()` and the four shortcuts: the string is never written to `message`. Pass `message` in the options to add a body line below it.
 
 When a managed Web UI modal is open, automatically mounted toasts move to the active modal layer so they remain visible at the viewport edge. They return to their original overlay when that layer closes. An explicit `container` keeps its own mounting behavior; third-party modal layers are not managed automatically.
 
@@ -508,8 +512,8 @@ A change of `position` moves the toast to the new position and preserves the rem
 | ----------------- | --------------------------------------------------------------------------------- | --------------- | ------------- |
 | `type`            | Type: `success`, `info`, `warning`, `error`.                                      | `ToastType`     | `'info'`      |
 | `position`        | Screen position.                                                                  | `ToastPosition` | `'top-right'` |
-| `heading`         | Bold title.                                                                       | `string`        | `''`          |
-| `message`         | Notification text.                                                                | `string`        | `''`          |
+| `heading`         | Bold title; the toast's only text line when `message` is empty.                   | `string`        | `''`          |
+| `message`         | Body text.                                                                        | `string`        | `''`          |
 | `duration`        | Auto-close time (ms); 0 means no auto-close; for `error` it falls back to `5000`. | `number`        | `3000`        |
 | `no-close-button` | Hides the close button.                                                           | `boolean`       | `false`       |
 | `visible`         | Whether it is visible.                                                            | `boolean`       | `false`       |

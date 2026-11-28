@@ -136,9 +136,7 @@ const stopMenuCommands = onMenuCommand({
     settingsOpen.value = true
   },
   openDocumentation() {
-    void libraryRuntime.system
-      .openExternal(DOCUMENTATION_URL)
-      .catch(() => toast.warning('无法打开文档链接，请检查系统默认浏览器'))
+    void libraryRuntime.system.openExternal(DOCUMENTATION_URL).catch(() => toast.warning('无法打开文档链接'))
   },
   copyAsPlainText() {
     void copySelectionAsPlainText()
@@ -238,7 +236,8 @@ watch(
     if (!loaded || warningsTaken) return
     warningsTaken = true
     const warnings = settings.takeWarnings()
-    if (warnings.length > 0) toast.warning(warnings.join('\n'))
+    // 首参进 heading（单行、nowrap + ellipsis），逐条明细必须走 message 才能换行展示。
+    if (warnings.length > 0) toast.warning('设置已回退到默认值', { message: warnings.join('\n') })
   },
   { immediate: true }
 )

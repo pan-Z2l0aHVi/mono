@@ -537,6 +537,7 @@ describe('toast 命令式 API', () => {
         const mounted = mountedToasts()
         expect(mounted.map(el => el.type)).toContain(type)
         expect(mounted.map(el => el.toastId)).toContain(id)
+        expect(mounted.find(el => el.toastId === id)?.heading).toBe('消息')
 
         toast.clear()
         await vi.advanceTimersByTimeAsync(EXIT_FALLBACK_WINDOW_MS)
@@ -548,6 +549,24 @@ describe('toast 命令式 API', () => {
       await waitForToastMounted()
       expect(first).not.toBe(second)
       expect(mountedToasts()).toHaveLength(2)
+    })
+
+    it('裸字符串等价于 heading，不写入 message', async () => {
+      toast('裸字符串')
+      await waitForToastMounted()
+
+      const [el] = mountedToasts()
+      expect(el.heading).toBe('裸字符串')
+      expect(el.message).toBe('')
+    })
+
+    it('快捷入口首参写进 heading，options.message 作为正文', async () => {
+      toast.warning('标题', { message: '正文' })
+      await waitForToastMounted()
+
+      const [el] = mountedToasts()
+      expect(el.heading).toBe('标题')
+      expect(el.message).toBe('正文')
     })
   })
 
@@ -574,16 +593,17 @@ describe('toast 命令式 API', () => {
       expect(mountedToasts()[0].type).toBe('info')
     })
 
-    it('已挂载后重复 id 可切换 type 与 heading', async () => {
+    it('已挂载后重复 id 可切换 type 与正文', async () => {
       const id = toast.info('上传中 0%', { id: 'upload', duration: 0 })
       await waitForToastMounted()
 
-      toast.success('上传完成', { id, heading: '完成' })
+      toast.success('完成', { id, message: '上传完成' })
       await waitForToastMounted()
 
       expect(mountedToasts()).toHaveLength(1)
       expect(mountedToasts()[0].type).toBe('success')
       expect(mountedToasts()[0].heading).toBe('完成')
+      expect(mountedToasts()[0].message).toBe('上传完成')
     })
 
     it('省略 duration 时不重启倒计时，自关闭时点不变', async () => {
@@ -692,7 +712,7 @@ describe('toast 命令式 API', () => {
 
       expect(again).toBe(id)
       expect(mountedToasts()).toHaveLength(1)
-      expect(mountedToasts()[0].message).toBe('第二轮')
+      expect(mountedToasts()[0].heading).toBe('第二轮')
     })
 
     it('close() 能收走不在管理器内的同 id 残留元素', async () => {

@@ -9,14 +9,6 @@ msgstr ""
 "X-Plurals-Order: other\n"
 
 #: src/app/index.vue
-msgid "语言切换失败，请刷新页面后重试"
-msgstr "语言切换失败，请刷新页面后重试"
-
-#: src/app/index.vue
-msgid "目标语种加载失败，暂时使用简体中文"
-msgstr "目标语种加载失败，暂时使用简体中文"
-
-#: src/app/index.vue
 msgid "关闭横幅"
 msgstr "关闭横幅"
 
@@ -586,3 +578,19 @@ msgstr "2 篇文档"
 #: src/app/index.vue
 msgid "开发工具库与构建插件文档站"
 msgstr "开发工具库与构建插件文档站"
+
+#: src/app/index.vue
+msgid "语言切换失败"
+msgstr "语言切换失败"
+
+#: src/app/index.vue
+msgid "请刷新页面后重试"
+msgstr "请刷新页面后重试"
+
+#: src/app/index.vue
+msgid "目标语种加载失败"
+msgstr "目标语种加载失败"
+
+#: src/app/index.vue
+msgid "已回退到默认语言"
+msgstr "已回退到默认语言"

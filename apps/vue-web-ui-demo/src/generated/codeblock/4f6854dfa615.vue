@@ -30,8 +30,8 @@ const dialogOpen = ref(false)
 const report = ref('还没读取')
 
 function showToast() {
-  toast.info('这条 toast 挂进示例自己的 overlay 容器。', {
-    heading: '作用域 toast',
+  toast.info('作用域 toast', {
+    message: '这条 toast 挂进示例自己的 overlay 容器。',
     duration: 3000,
     target: toastTarget.value ?? undefined
   })

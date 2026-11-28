@@ -166,56 +166,45 @@ describe('WebUiSegmented 可辨度（浏览器）', () => {
   }
 
   /*
-   * 凸变种（raised）的静止 indicator 靠投影与几何读出「浮起」，不靠亮度断层，所以尺子取浅色档：
-   * #eeeef3 track / #fff indicator，与深色档 #17171b track / #242428 indicator 同为约 1.16，
-   * 两档同量级——page 之下能开的空间本来就比 page 之上窄。亮度断层一盖过投影，选中块就读成
-   * 一条高亮，而不是一颗浮起的面。
-   * 断言拿两档各自量出的比值相比、不写色值字面量：调色板整体重排它仍然成立。
+   * 凸变种的静止 indicator 靠投影与几何读出「浮起」，同时要和 track 有一档可测的亮度断层。
+   * 浅色是 #fff on #eeeef3（≈1.16），深色是 control #3a3a3c on #17171b（≈1.58）：深色 chip 取
+   * control 面（与 neutral button 同档），断层比浅色更大是刻意的——page 色 chip 在深色里读成
+   * 「按下去」，和旁边的按钮并排也明显偏暗。
    *
-   * 阈值 light + 0.1 给深色留了一点余量，但浅色 indicator 若挪到 control 面（与 track 同色）断层归零，
-   * 直接红。比值只管断层大小、不管符号，
-   * 所以反向的那半（把 track 浮到 page 之上、indicator 压成 page 色）由下面那条亮度方向
-   * 断言兜住——两条合起来才钉住「浮起但不抢戏」。
+   * 断言拿两档各自量出的比值，不写色值字面量：调色板整体重排它仍然成立。上限 2.0 兜住
+   * 「chip 被抬成一整条高亮」的失效模式——投影还在，选中块仍是浮起的面而不是一条亮条。
    */
-  it('raised 变体两档下 indicator 相对 track 的亮度差同一量级、且方向朝凸', async () => {
-    const ratios = { light: 0, dark: 0 }
+  it('raised 变体两档下 indicator 相对 track 更亮，且断层不越过高亮档', async () => {
     for (const appearance of ['light', 'dark'] as const) {
       const { track, indicator } = await mount(appearance, 'raised')
       const indicatorBg = getComputedStyle(indicator).backgroundColor
       const trackBg = getComputedStyle(track).backgroundColor
-      ratios[appearance] = contrastRatio(indicatorBg, trackBg)
+      const ratio = contrastRatio(indicatorBg, trackBg)
 
-      expect(relativeLuminance(indicatorBg), `${appearance}: indicator 应比 track 亮（凸）`).toBeGreaterThan(
-        relativeLuminance(trackBg)
-      )
+      // 两档都得有断层：深色 chip 取 control 面（≈1.58:1），浅色取 page 色（≈1.16:1）。
+      expect(relativeLuminance(indicatorBg)).toBeGreaterThan(relativeLuminance(trackBg))
+      expect(ratio).toBeGreaterThan(1.05)
+      // 断层过大时 chip 会读成一条高亮，而不是浮起的面。
+      expect(ratio).toBeLessThan(2)
     }
-
-    // indicator 必须仍看得见（比值 > 1），但深色不得比浅色的凸起断层更亮。
-    expect(ratios.light).toBeGreaterThan(1)
-    expect(ratios.dark).toBeGreaterThan(1)
-    const summary = `light ${ratios.light.toFixed(2)}:1 vs dark ${ratios.dark.toFixed(2)}:1`
-    expect(ratios.dark, `${summary}：dark 的 indicator 相对 track 断层超过 light 一档以上`).toBeLessThanOrEqual(
-      ratios.light + 0.1
-    )
   })
 
   /*
-   * 「凸变种这颗 indicator 就是页面本身」的可执行版本：两档下它的底色都与同一主题里接住
-   * `--wui-color-page` 的那个面同色。用真实计算值当参照而不是色值字面量，是为了让失效模式自己说话——
-   * 只把深色 indicator 抬到 button 面（#3a3a3c）就红；只把 page 挪一档、selected 留在原地同样红，
-   * 因为这两枚 token 在 theme 里互不引用，等式全靠这条用例兜着。
+   * 「凸变种这颗 indicator 该跟谁同色」的可执行版本：浅色取 page、深色取 control（neutral button
+   * 同档）。用真实计算值当参照而不是色值字面量，是为了让失效模式自己说话——深色把 chip 压回
+   * page 色（读成按下）、或浅色把 chip 挪到 control 面（与 track 同色、断层归零）都会红。
    *
-   * 这条只管「与谁同色」，不管方向：浅色那里 page 是最亮档，与它同色即浮起；深色那里 page 是最暗档，
-   * 同色成立的前提是轨道被开到 page 之下。若有人只把 indicator 压成 page 色而让轨道继续浮在页面上，
-   * 这条仍绿，红的是上一条里那条亮度方向断言。
+   * 这条只管「与谁同色」，不管方向；方向由上面那条亮度断言兜住。
    */
-  it('raised 的 indicator 两档下都与同主题 page 同色', async () => {
+  it('raised 的 indicator 浅色与 page 同色、深色与 control 面同色', async () => {
     for (const appearance of ['light', 'dark'] as const) {
-      const { indicator, page } = await mount(appearance, 'raised')
+      const { indicator, page, control } = await mount(appearance, 'raised')
       const indicatorBg = getComputedStyle(indicator).backgroundColor
-      const pageBg = getComputedStyle(page).backgroundColor
+      const reference = appearance === 'light' ? page : control
+      const referenceBg = getComputedStyle(reference).backgroundColor
 
-      expect(indicatorBg, `${appearance}: indicator ${indicatorBg} 应等于 page ${pageBg}`).toBe(pageBg)
+      // 参照面随主题切换：浅色取 page、深色取 control（neutral button 同档）。
+      expect(indicatorBg).toBe(referenceBg)
     }
   })
 

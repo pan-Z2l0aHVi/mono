@@ -123,7 +123,8 @@ async function clickBannerCloseButtonAtCenter() {
 }
 
 async function persistentTopToast(message: string) {
-  const id = toast.info(message, { duration: 0 })
+  // 空 heading + message：这组用例量的是正文换行后的高度，不是标题行。
+  const id = toast.info('', { message, duration: 0 })
   let element: WebUiToast | undefined
   await vi.waitFor(() => {
     element = Array.from(themeOverlayRoot()?.querySelectorAll<WebUiToast>('web-ui-toast') ?? []).find(
@@ -332,7 +333,7 @@ describe('应用外壳（浏览器）：导航 collapsed state 不跨视口泄�
     const shortTop = header.getBoundingClientRect().top
     const shortHeight = toastElement.getBoundingClientRect().height
 
-    toast.info(LONG_TOAST_MESSAGE, { id: toastElement.toastId })
+    toast.info('', { id: toastElement.toastId, message: LONG_TOAST_MESSAGE })
     await vi.waitFor(() => expect(toastElement.getBoundingClientRect().height).toBeGreaterThan(shortHeight))
     expect(header.getBoundingClientRect().top).toBeCloseTo(shortTop)
 

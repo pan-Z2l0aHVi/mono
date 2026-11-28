@@ -512,7 +512,8 @@ describe('AppLayout：设置启动提示', () => {
     await nextTick()
 
     expect(warning).toHaveBeenCalledTimes(1)
-    expect(warning).toHaveBeenCalledWith('设置文件损坏')
+    // 首参是单行标题，逐条明细走 message 才能换行展示。
+    expect(warning).toHaveBeenCalledWith('设置已回退到默认值', { message: '设置文件损坏' })
     expect(store.warnings).toEqual([])
   })
 
