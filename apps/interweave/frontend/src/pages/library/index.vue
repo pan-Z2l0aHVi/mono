@@ -360,7 +360,7 @@ async function showInFileManager(source: ResourceSourceView) {
     await runtime.system.showInFileManager(source.location)
   } catch (cause) {
     console.error('无法在文件管理器中打开文件', cause)
-    toast.warning('无法打开文件所在的位置，请检查文件是否还在原处', { position: 'top-center' })
+    toast.warning('无法打开文件位置', { position: 'top-center', message: '请检查文件是否还在原处' })
   }
 }
 

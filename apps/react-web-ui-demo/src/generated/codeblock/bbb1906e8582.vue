@@ -30,8 +30,8 @@ const dialogOpen = ref(false)
 const report = ref('Not read yet')
 
 function showToast() {
-  toast.info("This toast mounts into the sample's own overlay container.", {
-    heading: 'Scoped toast',
+  toast.info('Scoped toast', {
+    message: "This toast mounts into the sample's own overlay container.",
     duration: 3000,
     target: toastTarget.value ?? undefined
   })

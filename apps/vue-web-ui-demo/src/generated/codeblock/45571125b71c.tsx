@@ -9,7 +9,9 @@ export default function Demo() {
   useEffect(() => () => toast.clear(), [])
 
   function create() {
-    setLast(`Created ${toast.info('This toast does not close automatically', { id: DEMO_ID, duration: 0 })}`)
+    setLast(
+      `Created ${toast.info('Auto-close disabled', { id: DEMO_ID, duration: 0, message: 'This toast does not close automatically' })}`
+    )
   }
 
   function closeOne() {

@@ -159,7 +159,7 @@ export function Root() {
     if (next === 'zh-CN' || next === 'en') {
       void setLocale(next).catch(error => {
         console.error('Language switch failed', error)
-        toast.error('语言切换失败，请刷新页面后重试')
+        toast.error('语言切换失败', { message: '请刷新页面后重试' })
       })
     }
   }

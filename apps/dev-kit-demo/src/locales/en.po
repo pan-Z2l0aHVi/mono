@@ -9,14 +9,6 @@ msgstr ""
 "X-Plurals-Order: one, other\n"
 
 #: src/app/index.vue
-msgid "语言切换失败，请刷新页面后重试"
-msgstr "Failed to switch language. Please refresh the page and try again."
-
-#: src/app/index.vue
-msgid "目标语种加载失败，暂时使用简体中文"
-msgstr "Failed to load the target language. Temporarily using Simplified Chinese."
-
-#: src/app/index.vue
 msgid "关闭横幅"
 msgstr "Dismiss banner"
 
@@ -586,3 +578,19 @@ msgstr "2 docs"
 #: src/app/index.vue
 msgid "开发工具库与构建插件文档站"
 msgstr "Developer Toolkits & Build Plugins Documentation"
+
+#: src/app/index.vue
+msgid "语言切换失败"
+msgstr "Language switch failed."
+
+#: src/app/index.vue
+msgid "请刷新页面后重试"
+msgstr "Refresh the page and try again."
+
+#: src/app/index.vue
+msgid "目标语种加载失败"
+msgstr "Failed to load the target language."
+
+#: src/app/index.vue
+msgid "已回退到默认语言"
+msgstr "Fell back to the default language."

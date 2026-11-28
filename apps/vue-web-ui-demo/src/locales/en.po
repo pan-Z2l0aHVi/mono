@@ -30,7 +30,7 @@ msgstr "Collapse code"
 msgid "展开代码"
 msgstr "Expand code"
 
-#: src/pages/[...all]/index.vue
+#: src/components/not-found/index.vue
 msgid "你要找的页面不存在"
 msgstr "The page you asked for does not exist"
 
@@ -84,16 +84,8 @@ msgid "关闭横幅"
 msgstr "Close banner"
 
 #: src/app/index.vue
-msgid "目标语种加载失败，暂时使用简体中文"
-msgstr "Language resources unavailable. Showing Simplified Chinese."
-
-#: src/app/index.vue
 msgid "正在加载语言"
 msgstr "Loading language"
-
-#: src/app/index.vue
-msgid "语言切换失败，请刷新页面后重试"
-msgstr "Unable to switch language. Refresh the page and try again."
 
 #: src/app/index.vue
 #: src/app/index.vue
@@ -315,3 +307,19 @@ msgstr "Syncing update status…"
 #: src/pages/changelog.vue
 msgid "已同步于 {0}"
 msgstr "Synced at {0}"
+
+#: src/app/index.vue
+msgid "语言切换失败"
+msgstr "Language switch failed."
+
+#: src/app/index.vue
+msgid "请刷新页面后重试"
+msgstr "Refresh the page and try again."
+
+#: src/app/index.vue
+msgid "目标语种加载失败"
+msgstr "Failed to load the target language."
+
+#: src/app/index.vue
+msgid "已回退到默认语言"
+msgstr "Fell back to the default language."

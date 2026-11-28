@@ -27,8 +27,8 @@ export default function Demo() {
             ref={toastTarget}
             variant="secondary"
             onClick={() =>
-              toast.info("This toast mounts into the sample's own overlay container.", {
-                heading: 'Scoped toast',
+              toast.info('Scoped toast', {
+                message: "This toast mounts into the sample's own overlay container.",
                 duration: 3000,
                 target: toastTarget.current ?? undefined
               })

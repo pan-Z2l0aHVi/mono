@@ -2,13 +2,13 @@
 
 [English](./toast.md) | 简体中文
 
-命令式 toast。调用 `toast()` 创建一条 toast 并拿到它的 id，再用 `toast.close(id)` 关闭。同一个 `id` 再次调用会更新那一条，不会新建。下面的表分别列出 `toast()` 的选项、命令式入口，以及 `<web-ui-toast>` 元素自身的属性、事件和方法。
+命令式 toast。调用 `toast()` 创建一条 toast 并拿到它的 id，再用 `toast.close(id)` 关闭。同一个 `id` 再次调用会更新那一条，不会新建。直接传给 `toast()` 或任一快捷方法的字符串是这条 toast 的 `heading`；需要在标题下面补一行正文时，用选项里的 `message`。下面的表分别列出 `toast()` 的选项、命令式入口，以及 `<web-ui-toast>` 元素自身的属性、事件和方法。
 
 ## 示例
 
 ### 快捷操作
 
-`toast.success` / `info` / `warning` / `error` 是 `toast()` 加 `type` 的快捷写法。每次调用都返回这条 toast 的最终 id。`error` 的默认时长是 `5000`，比其余类型的 `3000` 长。
+`toast.success` / `info` / `warning` / `error` 是 `toast()` 加 `type` 的快捷写法。第一个参数是 `heading`；需要正文时在选项里传 `message`。每次调用都返回这条 toast 的最终 id。`error` 的默认时长是 `5000`，比其余类型的 `3000` 长。
 
 四个快捷方法默认都出现在 `top-right`。
 
@@ -411,31 +411,33 @@ onBeforeUnmount(() => toast.clear())
 
 | 名称        | 说明                                                        | 类型            | 默认值        |
 | ----------- | ----------------------------------------------------------- | --------------- | ------------- |
-| `message`   | 通知文本。                                                  | `string`        | -             |
+| `message`   | 正文；可省略。                                              | `string`        | `''`          |
 | `type`      | 类型：`success`、`info`、`warning`、`error`。               | `ToastType`     | `'info'`      |
 | `duration`  | 自动关闭时间（ms），0 表示不自动关闭；`error` 默认 `5000`。 | `number`        | `3000`        |
 | `closable`  | 展示关闭按钮。                                              | `boolean`       | `true`        |
 | `id`        | 合并键：同一个 `id` 再次调用是更新那一条。                  | `string`        | 自动生成      |
-| `heading`   | 粗体标题。                                                  | `string`        | `''`          |
+| `heading`   | 粗体标题；直接传字符串时文本写在这里。                      | `string`        | `''`          |
 | `position`  | 屏幕位置。                                                  | `ToastPosition` | `'top-right'` |
 | `target`    | 用于查找最近主题的 overlay 容器。                           | `Element`       | -             |
 | `container` | 显式挂载容器（最高优先级）。                                | `HTMLElement`   | -             |
 
 ### 方法
 
-| 名称                               | 说明                                                                   |
-| ---------------------------------- | ---------------------------------------------------------------------- |
-| `toast(options)`                   | 创建或更新一条 toast，返回这条 toast 的最终 id。                       |
-| `toast.success(message, options?)` | 创建一条 `success` 类型的 toast。                                      |
-| `toast.info(message, options?)`    | 创建一条 `info` 类型的 toast。                                         |
-| `toast.warning(message, options?)` | 创建一条 `warning` 类型的 toast。                                      |
-| `toast.error(message, options?)`   | 创建一条 `error` 类型的 toast；它的默认时长是 `5000`，比其余类型更长。 |
-| `toast.close(id)`                  | 关闭指定 id 的那条 toast，覆盖它出现的每个阶段。                       |
-| `toast.clear()`                    | 一次关闭当前全部 toast。                                               |
+| 名称                               | 说明                                                                      |
+| ---------------------------------- | ------------------------------------------------------------------------- |
+| `toast(headingOrOptions)`          | 创建或更新一条 toast，返回它的最终 id；直接传字符串等价于 `{ heading }`。 |
+| `toast.success(heading, options?)` | 创建一条 `success` 类型的 toast。                                         |
+| `toast.info(heading, options?)`    | 创建一条 `info` 类型的 toast。                                            |
+| `toast.warning(heading, options?)` | 创建一条 `warning` 类型的 toast。                                         |
+| `toast.error(heading, options?)`   | 创建一条 `error` 类型的 toast；它的默认时长是 `5000`，比其余类型更长。    |
+| `toast.close(id)`                  | 关闭指定 id 的那条 toast，覆盖它出现的每个阶段。                          |
+| `toast.clear()`                    | 一次关闭当前全部 toast。                                                  |
 
 ### 行为说明
 
 命令式入口没有其他必经步骤。`toast()` 自行把 toast 挂载到最近的主题的 overlay 容器（没有主题作用域时回退到全局默认容器）。`target` 用来解析最近的主题作用域。`container` 显式指定挂载容器，优先级高于主题作用域。
+
+直接传字符串时，`toast()` 与四个快捷方法都把它写进 `heading`，从不写进 `message`；需要标题下的正文行时，在选项里传 `message`。
 
 当 Web UI 管理的模态层打开时，自动挂载的 toast 会迁移到当前模态层，保持在视口边缘可见；模态层关闭后返回原来的 overlay。显式指定 `container` 时继续使用该容器；第三方模态层不参与自动管理。
 
@@ -506,8 +508,8 @@ toast.success('上传完成', { id: 'upload', duration: 3000 }) // 换 type，�
 | ----------------- | ------------------------------------------------------------- | --------------- | ------------- |
 | `type`            | 类型：`success`、`info`、`warning`、`error`。                 | `ToastType`     | `'info'`      |
 | `position`        | 屏幕位置。                                                    | `ToastPosition` | `'top-right'` |
-| `heading`         | 粗体标题。                                                    | `string`        | `''`          |
-| `message`         | 通知文本。                                                    | `string`        | `''`          |
+| `heading`         | 粗体标题；`message` 为空时它是唯一的文本行。                  | `string`        | `''`          |
+| `message`         | 正文。                                                        | `string`        | `''`          |
 | `duration`        | 自动关闭时间（ms），0 表示不自动关闭；`error` 回退为 `5000`。 | `number`        | `3000`        |
 | `no-close-button` | 隐藏关闭按钮。                                                | `boolean`       | `false`       |
 | `visible`         | 是否可见。                                                    | `boolean`       | `false`       |
