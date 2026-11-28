@@ -37,7 +37,7 @@ const CLOSER_PAIRS: Record<string, string> = { ')': '(', ']': '[', '}': '{' }
  * 裸域名候选的扩展名拒绝表：`README.md`、`photo.png` 这类文件名不该被补成 https 链接。
  * 只对「没有 path/query/hash」的候选生效，`example.com/a.md` 仍按链接处理。
  */
-const FILE_LIKE_TLDS = new Set([
+const FILE_LIKE_SUFFIXES = new Set([
   'md',
   'markdown',
   'txt',
@@ -122,7 +122,7 @@ function looksLikeFileName(candidate: string): boolean {
   if (/[/?#]/.test(candidate)) return false
   const host = candidate.split(':')[0] ?? ''
   const tld = host.split('.').at(-1)?.toLowerCase() ?? ''
-  return FILE_LIKE_TLDS.has(tld)
+  return FILE_LIKE_SUFFIXES.has(tld)
 }
 
 /**

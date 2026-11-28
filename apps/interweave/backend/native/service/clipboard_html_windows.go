@@ -50,6 +50,6 @@ func readClipboardHTML(ctx context.Context) (string, string, error) {
 	}
 	// CF_HTML 的偏移量按字节计，必须按原始字节切片再转字符串，不能按 UTF-16 解码。
 	raw := string(unsafe.Slice((*byte)(unsafe.Pointer(pointer)), int(size)))
-	html, baseURL := parseCFHTML(raw)
+	html, baseURL := parseClipboardHTML(raw)
 	return html, baseURL, nil
 }

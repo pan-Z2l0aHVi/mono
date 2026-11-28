@@ -28,10 +28,10 @@ func (s *OSService) ReadClipboardContent(ctx context.Context) (*ClipboardContent
 	return &ClipboardContentDTO{Text: text, HTML: html, BaseURL: baseURL}, nil
 }
 
-// parseCFHTML 解析 Windows CF_HTML 格式：头部给出 Fragment 字节区间与 SourceURL，
+// parseClipboardHTML 解析 Windows CF_HTML 格式：头部给出 Fragment 字节区间与 SourceURL，
 // 取出片段正文并把 SourceURL 作为相对链接的 base。
 // 头缺失或区间非法时退回原文（去掉 NUL 与 null 尾部），不丢内容。
-func parseCFHTML(raw string) (html string, sourceURL string) {
+func parseClipboardHTML(raw string) (html string, sourceURL string) {
 	raw = strings.TrimRight(raw, "\x00")
 	headerEnd := strings.Index(raw, "\r\n\r\n")
 	separator := "\r\n"

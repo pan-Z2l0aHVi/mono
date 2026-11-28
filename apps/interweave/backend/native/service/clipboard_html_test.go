@@ -5,7 +5,7 @@ import (
 	"testing"
 )
 
-func TestParseCFHTMLFragment(t *testing.T) {
+func TestParseClipboardHTMLFragment(t *testing.T) {
 	fragment := `<a href="/docs/a">A</a>`
 	body := "<html><body><!--StartFragment-->" + fragment + "<!--EndFragment--></body></html>"
 	// 偏移量按字节计且从 CF_HTML 内容起点算起；%010d 定宽，占位与最终头部等长。
@@ -16,7 +16,7 @@ func TestParseCFHTMLFragment(t *testing.T) {
 	end := start + len(fragment)
 	raw := fmt.Sprintf(headerFormat, 0, bodyStart+len(body), start, end) + body
 
-	html, sourceURL := parseCFHTML(raw)
+	html, sourceURL := parseClipboardHTML(raw)
 	if html != fragment {
 		t.Errorf("expected fragment %q, got %q", fragment, html)
 	}
@@ -25,9 +25,9 @@ func TestParseCFHTMLFragment(t *testing.T) {
 	}
 }
 
-func TestParseCFHTMLWithoutHeader(t *testing.T) {
+func TestParseClipboardHTMLWithoutHeader(t *testing.T) {
 	raw := "<a href=\"https://a.com\">a</a>\x00"
-	html, sourceURL := parseCFHTML(raw)
+	html, sourceURL := parseClipboardHTML(raw)
 	if html != "<a href=\"https://a.com\">a</a>" {
 		t.Errorf("expected raw html fallback, got %q", html)
 	}
