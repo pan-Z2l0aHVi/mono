@@ -1,6 +1,6 @@
 <script setup lang="ts">
 import type { WebUiDrawer, WebUiEvent } from '@greypan/web-ui'
-import { lucideArrowRight } from '@greypan/web-ui/icons'
+import { lucideArrowRight, lucideExternalLink } from '@greypan/web-ui/icons'
 import { computed, onBeforeUnmount } from 'vue'
 
 import ConvergeButton from '@/components/ConvergeButton.vue'
@@ -273,6 +273,17 @@ function handleVideoMetadata(mediaKey: string, event: Event) {
         该取舍经 Manager checkpoint 批准后留档于此。
       -->
       <div v-else-if="state.kind === 'url'" class="relative size-full">
+        <div class="pointer-events-none absolute top-3 right-3 z-10 flex justify-end">
+          <web-ui-button
+            class="pointer-events-auto shadow-sm"
+            size="28"
+            variant="secondary"
+            @click="openExternal(state.src)"
+          >
+            <web-ui-icon slot="prefix" :icon="lucideExternalLink" :size="14" />
+            在浏览器中打开
+          </web-ui-button>
+        </div>
         <iframe
           :key="state.mediaKey"
           class="size-full border-0 bg-white"

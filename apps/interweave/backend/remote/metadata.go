@@ -11,8 +11,12 @@ import (
 	"golang.org/x/net/html"
 )
 
-// 与 WebView 一致的 UA：部分站点按 UA 决定响应形态，也便于远端识别来源。
-const userAgent = "Mozilla/5.0 (Macintosh; Intel Mac OS X 10_15_7) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36 Interweave/1.0"
+// 常规浏览器请求头：避免站点因自定义 UA 后缀或缺失 Accept 头直接 403 拒绝探测。
+const (
+	userAgent      = "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/131.0.0.0 Safari/537.36"
+	acceptHeader   = "text/html,application/xhtml+xml,application/xml;q=0.9,image/avif,image/webp,*/*;q=0.8"
+	acceptLanguage = "zh-CN,zh;q=0.9,en;q=0.8"
+)
 
 // 只保存 URL 的基础展示上下文，不保存远程正文。
 type URLMetadata struct {
@@ -54,6 +58,8 @@ func (f *Fetcher) FetchURL(ctx context.Context, targetURL string) (*URLMetadata,
 	}
 
 	req.Header.Set("User-Agent", userAgent)
+	req.Header.Set("Accept", acceptHeader)
+	req.Header.Set("Accept-Language", acceptLanguage)
 
 	resp, err := f.client.Do(req)
 	if err != nil {
@@ -62,7 +68,15 @@ func (f *Fetcher) FetchURL(ctx context.Context, targetURL string) (*URLMetadata,
 	defer resp.Body.Close()
 
 	if resp.StatusCode < 200 || resp.StatusCode >= 400 {
-		return nil, ReachabilityUnavailable, nil
+		// 401/403/405/418/429 多为登录门控、反爬或方法限制，说明目标站点本身可达，
+		// 不应将正常链接直接标为「失效」；404/410/5xx 等仍判为明确不可用。
+		switch resp.StatusCode {
+		case http.StatusUnauthorized, http.StatusForbidden, http.StatusMethodNotAllowed, http.StatusTeapot, http.StatusTooManyRequests:
+			meta := &URLMetadata{ContentType: mediaTypeOf(resp.Header.Get("Content-Type"))}
+			return meta, ReachabilityAvailable, nil
+		default:
+			return nil, ReachabilityUnavailable, nil
+		}
 	}
 
 	meta := &URLMetadata{}

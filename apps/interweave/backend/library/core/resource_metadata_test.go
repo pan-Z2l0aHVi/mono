@@ -175,6 +175,21 @@ func TestResourceKindForURLDirectImage(t *testing.T) {
 		}
 	})
 
+	t.Run("直链视频按扩展名与 Content-Type 归为 video", func(t *testing.T) {
+		byExt := &Source{Type: storage.SourceTypeURL, Location: "https://cdn.example.com/clips/demo.mp4?token=1"}
+		if kind := resourceKindForURL(byExt); kind != storage.ResourceKindVideo {
+			t.Fatalf("expected video by extension, got %s", kind)
+		}
+		byType := &Source{
+			Type:         storage.SourceTypeURL,
+			Location:     "https://cdn.example.com/stream/1234",
+			MetadataJSON: `{"content_type":"video/mp4"}`,
+		}
+		if kind := resourceKindForURL(byType); kind != storage.ResourceKindVideo {
+			t.Fatalf("expected video by content_type, got %s", kind)
+		}
+	})
+
 	t.Run("元数据缺失保持 web", func(t *testing.T) {
 		source := &Source{Type: storage.SourceTypeURL, Location: "https://example.com/blob/1234"}
 		if kind := resourceKindForURL(source); kind != storage.ResourceKindWeb {

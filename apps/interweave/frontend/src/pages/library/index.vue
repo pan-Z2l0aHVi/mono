@@ -343,16 +343,17 @@ function previewResource(resource: ResourceView) {
  * 空串，由调用方显示通用文案。
  */
 function resolveDefaultOpenWith(resource: ResourceView) {
-  if (!resource.available) return Promise.resolve('')
-  const target = resource.preferred?.location
-  if (!target) return Promise.resolve('')
-  return defaultOpenWith(target)
+  const preferred = resource.preferred
+  if (!preferred?.location) return Promise.resolve('')
+  if (preferred.type !== 'url' && !resource.available) return Promise.resolve('')
+  return defaultOpenWith(preferred.location)
 }
 
 async function openResource(resource: ResourceView) {
-  const target = resource.preferred?.location
-  if (!resource.available || !target) return
-  await openExternal(target)
+  const preferred = resource.preferred
+  if (!preferred?.location) return
+  if (preferred.type !== 'url' && !resource.available) return
+  await openExternal(preferred.location)
 }
 
 async function showInFileManager(source: ResourceSourceView) {

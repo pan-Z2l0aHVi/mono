@@ -127,6 +127,9 @@ export function resolvePreviewTarget(resource: ResourceView | null): PreviewTarg
     if (resource.kind === 'image') {
       return { mode: 'image', source, mediaUrl: source.location, externalTarget: source.location, emptyReason: null }
     }
+    if (resource.kind === 'video') {
+      return { mode: 'video', source, mediaUrl: source.location, externalTarget: source.location, emptyReason: null }
+    }
     return { mode: 'url', source, mediaUrl: null, externalTarget: source.location, emptyReason: null }
   }
 

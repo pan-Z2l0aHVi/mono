@@ -442,3 +442,14 @@ func TestProxyResolverFallback(t *testing.T) {
 		}
 	})
 }
+
+func TestParseWindowsProxyServerPreservesExistingScheme(t *testing.T) {
+	cfg := parseWindowsProxyServer("http://127.0.0.1:7890", "")
+	if cfg.HTTPProxy != "http://127.0.0.1:7890" || cfg.HTTPSProxy != "http://127.0.0.1:7890" {
+		t.Fatalf("unexpected proxy URLs: %+v", cfg)
+	}
+	perProto := parseWindowsProxyServer("http=http://127.0.0.1:7890;https=https://127.0.0.1:7891", "")
+	if perProto.HTTPProxy != "http://127.0.0.1:7890" || perProto.HTTPSProxy != "https://127.0.0.1:7891" {
+		t.Fatalf("unexpected per-protocol proxy URLs: %+v", perProto)
+	}
+}
