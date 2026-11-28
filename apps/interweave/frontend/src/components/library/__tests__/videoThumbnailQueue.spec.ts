@@ -137,11 +137,12 @@ describe('videoThumbnailCoordinator', () => {
     vi.useRealTimers()
   })
 
-  it('严格维持全局并发 = 1，优先解码当前视口顶部项，同优先级按 FIFO 从上到下', async () => {
+  it('支持限制单路并发并优先解码当前视口顶部项，同优先级按 FIFO 从上到下', async () => {
     const mock = createMockVideo()
     const coordinator = createVideoThumbnailCoordinator({
       createVideo: () => mock.video,
-      createCanvas: createMockCanvasFactory([WHITE])
+      createCanvas: createMockCanvasFactory([WHITE]),
+      maxDecodeConcurrency: 1
     })
 
     // s1 立即占用唯一通道；随后入队视口外底部项 s2、视口中下部 s3、视口顶部 s4。
@@ -176,6 +177,55 @@ describe('videoThumbnailCoordinator', () => {
     mock.dispatch('loadedmetadata')
     mock.dispatch('seeked')
     expect(await p2).toBeInstanceOf(Blob)
+  })
+
+  it('默认 2 路并发解码池：槽位空闲时动态拉取当前视口最靠上的项，取消立即释放对应槽位', async () => {
+    const mocks = [createMockVideo(), createMockVideo()]
+    let created = 0
+    const coordinator = createVideoThumbnailCoordinator({
+      createVideo: () => mocks[created++]!.video,
+      createCanvas: createMockCanvasFactory([WHITE])
+    })
+
+    const ac2 = new AbortController()
+    const p1 = coordinator.capture({ key: 's1', location: '/a.mp4', mediaUrl: '/media/s1', getPriority: () => 0 })
+    const p2 = coordinator.capture({
+      key: 's2',
+      location: '/b.mp4',
+      mediaUrl: '/media/s2',
+      signal: ac2.signal,
+      getPriority: () => 40
+    })
+    const p3 = coordinator.capture({
+      key: 's3',
+      location: '/c.mp4',
+      mediaUrl: '/media/s3',
+      getPriority: () => 1_000_200
+    })
+    const p4 = coordinator.capture({ key: 's4', location: '/d.mp4', mediaUrl: '/media/s4', getPriority: () => 80 })
+
+    // 2 个解码槽位同时占满：s1 和 s2 并发启动，s3/s4 排队。
+    expect(created).toBe(2)
+    expect(mocks[0]!.srcs).toEqual(['/media/s1'])
+    expect(mocks[1]!.srcs).toEqual(['/media/s2'])
+
+    // 取消 s2 → 立即释放 2 号槽位，优先拉取视口内的 s4（而非视口外的 s3）。
+    ac2.abort()
+    expect(await p2).toBeNull()
+    expect(mocks[1]!.srcs).toEqual(['/media/s2', '/media/s4'])
+
+    // 完成 s1 → 1 号槽位接手剩余的 s3。
+    mocks[0]!.dispatch('loadedmetadata')
+    mocks[0]!.dispatch('seeked')
+    expect(await p1).toBeInstanceOf(Blob)
+    expect(mocks[0]!.srcs).toEqual(['/media/s1', '/media/s3'])
+
+    mocks[1]!.dispatch('loadedmetadata')
+    mocks[1]!.dispatch('seeked')
+    mocks[0]!.dispatch('loadedmetadata')
+    mocks[0]!.dispatch('seeked')
+    expect(await p4).toBeInstanceOf(Blob)
+    expect(await p3).toBeInstanceOf(Blob)
   })
 
   it('订阅者引用计数去重：单方取消不误杀其余订阅者，全部取消才中断且不写负缓存', async () => {

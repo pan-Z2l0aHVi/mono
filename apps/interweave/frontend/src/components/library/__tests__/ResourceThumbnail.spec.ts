@@ -161,6 +161,7 @@ describe('ResourceThumbnail', () => {
    * 「编辑名称后列表图片消失」。
    */
   afterEach(() => {
+    vi.useRealTimers()
     vi.restoreAllMocks()
     videoThumbnailCoordinator.reset()
   })
@@ -428,6 +429,133 @@ describe('ResourceThumbnail', () => {
         expect(image.getAttribute('draggable')).toBe('false')
         expect(image.className).toContain('[-webkit-user-drag:none]')
       }
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
+  it('图片缩略图加载超过 250ms 后在居中位置显示 spinner 并淡化 fallback 图标，加载完成后立即隐藏', async () => {
+    vi.useFakeTimers()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp({
+      render: () =>
+        h(ResourceThumbnail, {
+          kind: ResourceKind.ResourceKindImage,
+          source: fileSource(),
+          mediaUrl: '/original',
+          thumbnailUrl: '/cached'
+        })
+    })
+    app.mount(host)
+    try {
+      await nextTick()
+      const thumb = host.querySelector<HTMLImageElement>('img')!
+      expect(thumb.getAttribute('loading')).toBe('lazy')
+
+      // 250ms 内不闪烁 spinner。
+      vi.advanceTimersByTime(249)
+      await nextTick()
+      expect(host.querySelector('[data-thumbnail-spinner]')).toBeNull()
+
+      // 到达 250ms 后显示 16px spinner，且 fallback 图标淡化调亮/调暗。
+      vi.advanceTimersByTime(1)
+      await nextTick()
+      const spinner = host.querySelector('[data-thumbnail-spinner]')
+      expect(spinner).not.toBeNull()
+      expect(spinner?.getAttribute('size')).toBe('16')
+      const fallbackIcon = host.querySelector('web-ui-icon')
+      expect(fallbackIcon?.className).toContain('opacity-25')
+      expect(fallbackIcon?.className).toContain('brightness-110')
+      expect(fallbackIcon?.className).toContain('dark:brightness-75')
+
+      // 加载完成后立即隐藏 spinner。
+      thumb.dispatchEvent(new Event('load'))
+      await nextTick()
+      expect(host.querySelector('[data-thumbnail-spinner]')).toBeNull()
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
+  it('视频缩略图在详情态延迟 250ms 显示 22px spinner，捕获完成后立即消失', async () => {
+    vi.useFakeTimers()
+    const host = document.createElement('div')
+    document.body.append(host)
+    let resolveCapture!: (blob: Blob | null) => void
+    vi.spyOn(videoThumbnailCoordinator, 'capture').mockImplementation(
+      () =>
+        new Promise<Blob | null>(resolve => {
+          resolveCapture = resolve
+        })
+    )
+    vi.spyOn(URL, 'createObjectURL').mockReturnValue('blob:mock-detail-video')
+    vi.spyOn(URL, 'revokeObjectURL').mockImplementation(() => {})
+
+    const app = createApp({
+      render: () =>
+        h(ResourceThumbnail, {
+          kind: ResourceKind.ResourceKindVideo,
+          detail: true,
+          source: fileSource('/tmp/movie.mp4'),
+          mediaUrl: '/resource-media/source-1',
+          dwellMs: 0
+        })
+    })
+    app.mount(host)
+    try {
+      await nextTick()
+      vi.advanceTimersByTime(250)
+      await nextTick()
+      const spinner = host.querySelector('[data-thumbnail-spinner]')
+      expect(spinner).not.toBeNull()
+      expect(spinner?.getAttribute('size')).toBe('22')
+
+      resolveCapture(new Blob(['jpeg'], { type: 'image/jpeg' }))
+      await Promise.resolve()
+      await nextTick()
+      expect(host.querySelector('[data-thumbnail-spinner]')).toBeNull()
+    } finally {
+      app.unmount()
+      host.remove()
+    }
+  })
+
+  it('网页 favicon 不显示加载中 spinner', async () => {
+    vi.useFakeTimers()
+    const host = document.createElement('div')
+    document.body.append(host)
+    const app = createApp({
+      render: () =>
+        h(ResourceThumbnail, {
+          kind: ResourceKind.ResourceKindWeb,
+          source: {
+            id: 'url-1',
+            type: 'url',
+            location: 'https://example.com',
+            available: true,
+            isPreferred: true,
+            orderIndex: 0,
+            mediaUrl: null,
+            thumbnailUrl: null,
+            metadata: {
+              title: 'Example',
+              siteName: 'Example',
+              description: '',
+              faviconUrl: 'https://example.com/favicon.ico'
+            }
+          },
+          mediaUrl: null
+        })
+    })
+    app.mount(host)
+    try {
+      await nextTick()
+      vi.advanceTimersByTime(1000)
+      await nextTick()
+      expect(host.querySelector('[data-thumbnail-spinner]')).toBeNull()
     } finally {
       app.unmount()
       host.remove()

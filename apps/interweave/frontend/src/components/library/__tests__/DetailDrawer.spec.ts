@@ -323,4 +323,41 @@ describe('DetailDrawer', () => {
       mounted.close()
     }
   })
+
+  it('备注占位文案为“暂无备注”，失效资源仍可编辑标签与备注，且不残留硬编码蓝色 #007aff', async () => {
+    const source = {
+      id: 'source-1',
+      type: 'file' as const,
+      location: '/missing/file.png',
+      available: false,
+      isPreferred: true,
+      orderIndex: 0,
+      mediaUrl: null,
+      thumbnailUrl: null,
+      metadata: null
+    }
+    const resource = resourceView({ available: false, preferred: source, sources: [source] })
+    const editTags = vi.fn<(target: ResourceView) => void>()
+    const noteChange = vi.fn<NoteChangeHandler>()
+    const mounted = mountDrawer(resource, { onEditTags: editTags, onNoteChange: noteChange })
+    try {
+      await nextTick()
+      expect(mounted.host.innerHTML).not.toContain('#007aff')
+
+      const editor = noteEditor(mounted.host)
+      expect(editor.getAttribute('placeholder')).toBe('暂无备注')
+      expect(editor.hasAttribute('disabled')).toBe(false)
+
+      const tagsButton = button(mounted.host, '编辑标签')
+      expect(tagsButton.hasAttribute('disabled')).toBe(false)
+      tagsButton.click()
+      expect(editTags).toHaveBeenCalledExactlyOnceWith(resource)
+
+      typeNote(mounted.host, '失效资源备注')
+      editor.dispatchEvent(new Event('change', { bubbles: true, composed: true }))
+      expect(noteChange).toHaveBeenCalledExactlyOnceWith(resource, '失效资源备注', editor)
+    } finally {
+      mounted.close()
+    }
+  })
 })

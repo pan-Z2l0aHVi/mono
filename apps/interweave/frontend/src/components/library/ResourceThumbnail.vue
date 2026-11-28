@@ -9,6 +9,7 @@ import { THUMBNAIL_JPEG_QUALITY, THUMBNAIL_MAX_EDGE, isCrossOriginMediaUrl } fro
 import { canvasToJpegBlob, videoThumbnailCoordinator, type ThumbnailPayload } from './videoThumbnailQueue'
 
 const DEFAULT_VIDEO_DWELL_MS = 120
+const LOADING_SPINNER_DELAY_MS = 250
 
 const props = defineProps<{
   kind: ResourceKind
@@ -46,6 +47,8 @@ const imageReady = ref(false)
 const mediaFailed = ref(false)
 const serverThumbFailed = ref(false)
 const serverThumbReady = ref(false)
+const captureAborted = ref(false)
+const showLoadingSpinner = ref(false)
 const mediaKey = ref(0)
 
 let mediaVersion = 0
@@ -54,6 +57,7 @@ let unmounted = false
 let thumbnailSavedFor = ''
 let activeObjectUrl: string | null = null
 let dwellTimer: ReturnType<typeof setTimeout> | null = null
+let loadingSpinnerTimer: ReturnType<typeof setTimeout> | null = null
 let captureAbortController: AbortController | null = null
 let detachScopeAbort: (() => void) | null = null
 
@@ -95,6 +99,41 @@ const showFallback = computed(() => {
   // reset 清空 imageReady 后，src 未变且已 complete 的 img 不会再触发 load，需保留此逃生通道避免 fallback 叠加。
   return mediaFailed.value || (!imageReady.value && !(imageMatchesSource && imageRef.value?.complete))
 })
+
+const isMediaLoading = computed(() => {
+  if (serverThumbActive.value) return !serverThumbReady.value
+  if (!canRenderMedia.value || mediaFailed.value) return false
+  if (props.kind === 'image') {
+    const imageMatchesSource = imageRef.value?.getAttribute('src') === displayMediaUrl.value
+    return !imageReady.value && !(imageMatchesSource && imageRef.value?.complete)
+  }
+  if (props.kind === 'video') {
+    return !thumbnailURL.value && !captureAborted.value && !props.captureScope?.aborted
+  }
+  return false
+})
+
+function clearLoadingSpinner() {
+  if (loadingSpinnerTimer !== null) {
+    clearTimeout(loadingSpinnerTimer)
+    loadingSpinnerTimer = null
+  }
+  showLoadingSpinner.value = false
+}
+
+function scheduleLoadingSpinner() {
+  if (!isMediaLoading.value) {
+    clearLoadingSpinner()
+    return
+  }
+  if (showLoadingSpinner.value || loadingSpinnerTimer !== null) return
+  loadingSpinnerTimer = setTimeout(() => {
+    loadingSpinnerTimer = null
+    if (!unmounted && isMediaLoading.value) {
+      showLoadingSpinner.value = true
+    }
+  }, LOADING_SPINNER_DELAY_MS)
+}
 
 function revokeObjectUrl() {
   if (!activeObjectUrl) return
@@ -166,7 +205,10 @@ function startVideoCapture(version: number) {
   captureAbortController = controller
   if (props.captureScope) {
     const scope = props.captureScope
-    const onScopeAbort = () => controller.abort()
+    const onScopeAbort = () => {
+      captureAborted.value = true
+      controller.abort()
+    }
     scope.addEventListener('abort', onScopeAbort, { once: true })
     detachScopeAbort = () => scope.removeEventListener('abort', onScopeAbort)
   }
@@ -262,7 +304,9 @@ watch(
     mediaFailed.value = false
     serverThumbFailed.value = false
     serverThumbReady.value = false
+    captureAborted.value = Boolean(props.captureScope?.aborted)
     thumbnailSavedFor = ''
+    clearLoadingSpinner()
 
     const cached = lookupCachedVideoBlob()
     if (cached) {
@@ -272,14 +316,18 @@ watch(
     if (props.kind === 'video' && canRenderMedia.value && !serverThumbActive.value) {
       scheduleVideoCapture(mediaVersion)
     }
+    scheduleLoadingSpinner()
   },
   { immediate: true }
 )
+
+watch(isMediaLoading, scheduleLoadingSpinner, { immediate: true })
 
 watch(
   () => props.captureScope,
   scope => {
     if (scope?.aborted) {
+      captureAborted.value = true
       cancelPendingCapture()
     }
   }
@@ -288,6 +336,7 @@ watch(
 onBeforeUnmount(() => {
   unmounted = true
   mediaVersion++
+  clearLoadingSpinner()
   cancelPendingCapture()
   revokeObjectUrl()
 })
@@ -356,7 +405,7 @@ function maybeSaveThumbnail(payload: ThumbnailPayload) {
 <template>
   <div ref="rootRef" class="relative size-10 shrink-0 rounded-[10px]">
     <div
-      class="grid size-full place-items-center overflow-hidden rounded-[inherit]"
+      class="relative grid size-full place-items-center overflow-hidden rounded-[inherit]"
       :class="[resourceKindClass(kind), unavailable && !detail ? 'opacity-60' : '']"
     >
       <img
@@ -378,6 +427,8 @@ function maybeSaveThumbnail(payload: ThumbnailPayload) {
         class="size-full object-cover [-webkit-user-drag:none]"
         alt=""
         draggable="false"
+        loading="lazy"
+        decoding="async"
         @load="handleServerThumbLoad"
         @error="handleServerThumbError"
       />
@@ -407,7 +458,14 @@ function maybeSaveThumbnail(payload: ThumbnailPayload) {
         v-if="showFallback"
         :icon="detail && unavailable ? unavailableResourceIcon(kind, source) : resourceIcon(kind)"
         :size="detail ? 32 : 20"
-        :class="mediaFailed ? 'opacity-60' : ''"
+        :class="showLoadingSpinner ? 'opacity-25 brightness-110 dark:brightness-75' : mediaFailed ? 'opacity-60' : ''"
+      />
+      <web-ui-spinner
+        v-if="showLoadingSpinner"
+        data-thumbnail-spinner
+        :size="detail ? 22 : 16"
+        class="pointer-events-none absolute text-(--wui-color-text)"
+        aria-hidden="true"
       />
     </div>
     <span

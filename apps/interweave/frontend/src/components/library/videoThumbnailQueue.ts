@@ -31,6 +31,7 @@ export interface VideoThumbnailCoordinatorOptions {
   createCanvas?: () => HTMLCanvasElement
   decodeTimeoutMs?: number
   uploadTimeoutMs?: number
+  maxDecodeConcurrency?: number
   maxUploadConcurrency?: number
   cooldownMs?: number
   maxTransientAttempts?: number
@@ -55,6 +56,15 @@ interface CaptureTask {
   subscribers: Set<CaptureSubscriber>
 }
 
+interface DecodeWorker {
+  videoEl: HTMLVideoElement | null
+  sampleCanvasEl: HTMLCanvasElement | null
+  outputCanvasEl: HTMLCanvasElement | null
+  activeTask: CaptureTask | null
+  runId: number
+  abortActiveDecode: (() => void) | null
+}
+
 interface UploadJob {
   sourceId: string
   thumbnailUrl: string
@@ -65,6 +75,7 @@ interface UploadJob {
 
 const DEFAULT_DECODE_TIMEOUT_MS = 5000
 const DEFAULT_UPLOAD_TIMEOUT_MS = 10000
+const DEFAULT_MAX_DECODE_CONCURRENCY = 2
 const DEFAULT_MAX_UPLOAD_CONCURRENCY = 2
 const DEFAULT_COOLDOWN_MS = 15000
 const DEFAULT_MAX_TRANSIENT_ATTEMPTS = 2
@@ -105,6 +116,7 @@ export function canvasToJpegBlob(canvas: HTMLCanvasElement, quality = THUMBNAIL_
 export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinatorOptions = {}) {
   const decodeTimeoutMs = options.decodeTimeoutMs ?? DEFAULT_DECODE_TIMEOUT_MS
   const uploadTimeoutMs = options.uploadTimeoutMs ?? DEFAULT_UPLOAD_TIMEOUT_MS
+  const maxDecodeConcurrency = Math.max(1, options.maxDecodeConcurrency ?? DEFAULT_MAX_DECODE_CONCURRENCY)
   const maxUploadConcurrency = Math.max(1, options.maxUploadConcurrency ?? DEFAULT_MAX_UPLOAD_CONCURRENCY)
   const cooldownMs = options.cooldownMs ?? DEFAULT_COOLDOWN_MS
   const maxTransientAttempts = Math.max(1, options.maxTransientAttempts ?? DEFAULT_MAX_TRANSIENT_ATTEMPTS)
@@ -113,17 +125,20 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
   const maxNegativeCacheEntries = Math.max(1, options.maxNegativeCacheEntries ?? DEFAULT_MAX_NEGATIVE_CACHE_ENTRIES)
   const now = options.now ?? (() => Date.now())
 
-  let videoEl: HTMLVideoElement | null = null
-  let sampleCanvasEl: HTMLCanvasElement | null = null
-  let outputCanvasEl: HTMLCanvasElement | null = null
+  // 固定规模的离屏 <video> + <canvas> 解码池（默认 2 路并发），每槽位惰性创建元素并复用。
+  const decodeWorkers: DecodeWorker[] = Array.from({ length: maxDecodeConcurrency }, () => ({
+    videoEl: null,
+    sampleCanvasEl: null,
+    outputCanvasEl: null,
+    activeTask: null,
+    runId: 0,
+    abortActiveDecode: null
+  }))
 
   // 视口顶部优先 + FIFO 待解码队列，同一 versionKey 合并订阅者。
   const pendingQueue: CaptureTask[] = []
   const tasksByKey = new Map<string, CaptureTask>()
   let nextSeq = 0
-  let activeTask: CaptureTask | null = null
-  let activeRunId = 0
-  let abortActiveDecode: (() => void) | null = null
 
   // 受控负缓存：仅记录确定性不可解码错误，永不记录 AbortError。
   const negativeCache = new Set<string>()
@@ -139,45 +154,53 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
   const pendingBlobs = new Map<string, { blob: Blob; bytes: number }>()
   let totalPendingBytes = 0
 
-  function ensureVideo(): HTMLVideoElement | null {
-    if (videoEl) return videoEl
+  function ensureVideo(worker: DecodeWorker): HTMLVideoElement | null {
+    if (worker.videoEl) return worker.videoEl
     if (options.createVideo) {
-      videoEl = options.createVideo()
+      worker.videoEl = options.createVideo()
     } else if (typeof document !== 'undefined') {
-      videoEl = document.createElement('video')
+      worker.videoEl = document.createElement('video')
     } else {
       return null
     }
-    videoEl.preload = 'metadata'
-    videoEl.muted = true
-    videoEl.playsInline = true
-    return videoEl
+    worker.videoEl.preload = 'metadata'
+    worker.videoEl.muted = true
+    worker.videoEl.playsInline = true
+    return worker.videoEl
   }
 
-  function ensureSampleCanvas(): HTMLCanvasElement | null {
-    if (sampleCanvasEl) return sampleCanvasEl
+  function ensureSampleCanvas(worker: DecodeWorker): HTMLCanvasElement | null {
+    if (worker.sampleCanvasEl) return worker.sampleCanvasEl
     if (options.createCanvas) {
-      sampleCanvasEl = options.createCanvas()
+      worker.sampleCanvasEl = options.createCanvas()
     } else if (typeof document !== 'undefined') {
-      sampleCanvasEl = document.createElement('canvas')
+      worker.sampleCanvasEl = document.createElement('canvas')
     } else {
       return null
     }
-    sampleCanvasEl.width = SAMPLE_CANVAS_EDGE
-    sampleCanvasEl.height = SAMPLE_CANVAS_EDGE
-    return sampleCanvasEl
+    worker.sampleCanvasEl.width = SAMPLE_CANVAS_EDGE
+    worker.sampleCanvasEl.height = SAMPLE_CANVAS_EDGE
+    return worker.sampleCanvasEl
   }
 
-  function ensureOutputCanvas(): HTMLCanvasElement | null {
-    if (outputCanvasEl) return outputCanvasEl
+  function ensureOutputCanvas(worker: DecodeWorker): HTMLCanvasElement | null {
+    if (worker.outputCanvasEl) return worker.outputCanvasEl
     if (options.createCanvas) {
-      outputCanvasEl = options.createCanvas()
+      worker.outputCanvasEl = options.createCanvas()
     } else if (typeof document !== 'undefined') {
-      outputCanvasEl = document.createElement('canvas')
+      worker.outputCanvasEl = document.createElement('canvas')
     } else {
       return null
     }
-    return outputCanvasEl
+    return worker.outputCanvasEl
+  }
+
+  function findIdleWorker(): DecodeWorker | null {
+    return decodeWorkers.find(worker => worker.activeTask === null) ?? null
+  }
+
+  function findWorkerForTask(task: CaptureTask): DecodeWorker | null {
+    return decodeWorkers.find(worker => worker.activeTask === task) ?? null
   }
 
   function recordNegative(versionKey: string) {
@@ -354,8 +377,9 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
     sub.cleanup()
     sub.resolve(null)
     if (task.subscribers.size === 0) {
-      if (activeTask === task) {
-        abortActiveDecode?.()
+      const worker = findWorkerForTask(task)
+      if (worker) {
+        worker.abortActiveDecode?.()
       } else {
         removeQueuedTask(task)
       }
@@ -363,20 +387,20 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
   }
 
   function pumpDecode() {
-    if (activeTask) return
     while (pendingQueue.length > 0) {
-      let bestIdx = -1
-      let bestPriority = Number.POSITIVE_INFINITY
-      let bestSeq = Number.POSITIVE_INFINITY
+      const worker = findIdleWorker()
+      if (!worker) return
       for (let i = pendingQueue.length - 1; i >= 0; i--) {
         const candidate = pendingQueue[i]!
         if (candidate.subscribers.size === 0) {
           pendingQueue.splice(i, 1)
           tasksByKey.delete(candidate.versionKey)
-          continue
         }
       }
       if (pendingQueue.length === 0) return
+      let bestIdx = -1
+      let bestPriority = Number.POSITIVE_INFINITY
+      let bestSeq = Number.POSITIVE_INFINITY
       for (let i = 0; i < pendingQueue.length; i++) {
         const candidate = pendingQueue[i]!
         const priority = taskPriority(candidate)
@@ -388,20 +412,19 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
       }
       if (bestIdx < 0) return
       const next = pendingQueue.splice(bestIdx, 1)[0]!
-      activeTask = next
-      void runDecodeTask(next)
-      return
+      worker.activeTask = next
+      void runDecodeTask(worker, next)
     }
   }
 
-  async function runDecodeTask(task: CaptureTask) {
-    const runId = ++activeRunId
-    const video = ensureVideo()
-    const sampleCanvas = ensureSampleCanvas()
-    const outputCanvas = ensureOutputCanvas()
+  async function runDecodeTask(worker: DecodeWorker, task: CaptureTask) {
+    const runId = ++worker.runId
+    const video = ensureVideo(worker)
+    const sampleCanvas = ensureSampleCanvas(worker)
+    const outputCanvas = ensureOutputCanvas(worker)
 
     if (!video || !sampleCanvas || !outputCanvas) {
-      activeTask = null
+      if (worker.activeTask === task) worker.activeTask = null
       finishTask(task, null)
       pumpDecode()
       return
@@ -410,7 +433,7 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
     const sampleCtx = sampleCanvas.getContext('2d', { willReadFrequently: true })
     const outputCtx = outputCanvas.getContext('2d')
     if (!sampleCtx || !outputCtx) {
-      activeTask = null
+      if (worker.activeTask === task) worker.activeTask = null
       finishTask(task, null)
       pumpDecode()
       return
@@ -452,12 +475,14 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
       const settle = (result: Blob | null) => {
         if (settled) return
         settled = true
-        abortActiveDecode = null
+        if (worker.runId === runId) {
+          worker.abortActiveDecode = null
+        }
         resetVideo()
         resolve(result)
       }
 
-      const isStale = () => settled || runId !== activeRunId || task.subscribers.size === 0
+      const isStale = () => settled || runId !== worker.runId || task.subscribers.size === 0
 
       const drawToOutputCanvas = () => {
         const vw = video.videoWidth
@@ -475,7 +500,7 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
         encoding = true
         detachListeners()
         void canvasToJpegBlob(outputCanvas, THUMBNAIL_JPEG_QUALITY).then(encoded => {
-          if (settled || runId !== activeRunId || task.subscribers.size === 0) {
+          if (settled || runId !== worker.runId || task.subscribers.size === 0) {
             settle(null)
             return
           }
@@ -580,7 +605,7 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
         settle(null)
       }
 
-      abortActiveDecode = () => {
+      worker.abortActiveDecode = () => {
         // 主动取消（订阅者全部退出）绝不写入负缓存或冷却表。
         settle(null)
       }
@@ -613,8 +638,8 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
       }
     })
 
-    if (activeTask === task) {
-      activeTask = null
+    if (worker.activeTask === task) {
+      worker.activeTask = null
     }
     finishTask(task, blob)
     pumpDecode()
@@ -665,9 +690,15 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
   }
 
   function reset() {
-    abortActiveDecode?.()
-    activeRunId++
-    activeTask = null
+    for (const worker of decodeWorkers) {
+      worker.abortActiveDecode?.()
+      worker.runId++
+      worker.activeTask = null
+      worker.abortActiveDecode = null
+      worker.videoEl = null
+      worker.sampleCanvasEl = null
+      worker.outputCanvasEl = null
+    }
     for (const task of pendingQueue.splice(0)) {
       finishTask(task, null)
     }
@@ -682,9 +713,6 @@ export function createVideoThumbnailCoordinator(options: VideoThumbnailCoordinat
       job.resolve()
     }
     activeUploads = 0
-    videoEl = null
-    sampleCanvasEl = null
-    outputCanvasEl = null
   }
 
   return {
