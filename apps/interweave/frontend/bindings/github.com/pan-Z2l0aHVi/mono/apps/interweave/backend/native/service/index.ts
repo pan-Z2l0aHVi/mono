@@ -5,3 +5,7 @@ import * as OSService from "./osservice.js";
 export {
     OSService
 };
+
+export {
+    ClipboardContentDTO
+} from "./models.js";

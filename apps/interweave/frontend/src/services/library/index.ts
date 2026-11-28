@@ -7,9 +7,14 @@ export function createLibraryRuntime(): LibraryRuntime {
 
 export {
   isPreviewRevokedEvent,
+  isResourceBatchProgressEvent,
   isSourceAvailabilityEvent,
+  type ClipboardContentDTO,
+  type CreateResourceBatchResultDTO,
   type ImportExpansion,
   type LibraryQueueItem,
+  type LibraryQueueItemStatus,
   type LibraryRuntime,
+  type ResourceBatchProgressDTO,
   type SourceAvailabilityEventDTO
 } from './types'

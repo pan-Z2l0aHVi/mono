@@ -267,7 +267,15 @@ func run() error {
 	}()
 
 	coreLib := rt.Core()
-	resourceService := libraryService.NewResourceService(coreLib)
+	// 批量进度的事件出口按「当前窗口」解析；窗口控制器在 app.Run 前才创建，用原子指针晚绑定。
+	var windowController atomic.Pointer[mainWindowController]
+	resourceService := libraryService.NewResourceService(coreLib, libraryService.WithEventEmitter(
+		func(name string, data any) {
+			if controller := windowController.Load(); controller != nil {
+				emitToCurrentWindow(controller, name, data)
+			}
+		},
+	))
 	sourceService := libraryService.NewSourceService(coreLib)
 	tagService := libraryService.NewTagService(coreLib)
 	mapService := libraryService.NewMapService(coreLib)
@@ -321,6 +329,7 @@ func run() error {
 	})
 
 	windows := newMainWindowController(app, mainWindowOptions())
+	windowController.Store(windows)
 	quitApp := func() { dockPresence.quitAfterDrain(app.Quit) }
 	host := &wailsDesktopHost{app: app, windows: windows, osService: osService, presence: dockPresence, quit: quitApp}
 

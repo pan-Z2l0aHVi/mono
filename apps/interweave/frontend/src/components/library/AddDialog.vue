@@ -59,7 +59,7 @@ const props = defineProps<{
 const emit = defineEmits<{
   'update:open': [value: boolean]
   pickFiles: []
-  addUrl: [url: string]
+  addUrl: [urls: string[]]
   /** 剪贴板文本一并带上：文件接口对链接返回空数组，页面要靠它兜底（#188）。粘贴 button 没有文本。 */
   requestFilePaths: [clipboardText?: string]
   remove: [itemId: string]
@@ -520,6 +520,18 @@ function handleRenameChange(item: LibraryQueueItem, event: WebUiEvent<WebUiEdita
                       :class="item.kind === 'url' ? 'text-(--wui-color-accent) underline' : ''"
                     >
                       {{ item.location }}
+                    </span>
+                    <span
+                      v-if="item.status === 'importing'"
+                      class="min-w-0 flex-[0_0_100%] text-xs leading-4 text-[#6a6a70] dark:text-(--wui-color-text-secondary)"
+                    >
+                      导入中…
+                    </span>
+                    <span
+                      v-if="item.status === 'failed'"
+                      class="min-w-0 flex-[0_0_100%] wrap-anywhere text-xs leading-4 text-(--wui-color-danger,#dc2626)"
+                    >
+                      导入失败{{ item.error ? `：${item.error}` : '' }}
                     </span>
                     <div v-if="item.tags.length" class="flex min-w-0 flex-[0_0_100%] flex-wrap items-center gap-[5px]">
                       <ResourceTag v-for="tag in item.tags" :key="tag" :name="tag" :color="props.tagColors[tag]" />

@@ -20,20 +20,22 @@ function configure() {
     Object.freeze(Object.assign($Create.Events, {
         "library:files-dropped": $$createType0,
         "library:previews-revoked": $$createType0,
-        "library:source-availability-changed": $$createType1,
+        "library:resource-batch-progress": $$createType1,
+        "library:source-availability-changed": $$createType2,
         "library:urls-dropped": $$createType0,
-        "menu:command": $$createType2,
-        "menu:tree-changed": $$createType4,
-        "settings:changed": $$createType5,
+        "menu:command": $$createType3,
+        "menu:tree-changed": $$createType5,
+        "settings:changed": $$createType6,
     }));
 }
 
 // Private type creation functions
 const $$createType0 = $Create.Array($Create.Any);
-const $$createType1 = service$0.SourceAvailabilityEventDTO.createFrom;
-const $$createType2 = menu$0.MenuCommand.createFrom;
-const $$createType3 = menu$0.MenuItem.createFrom;
-const $$createType4 = $Create.Array($$createType3);
-const $$createType5 = settings$0.Snapshot.createFrom;
+const $$createType1 = service$0.ResourceBatchProgressDTO.createFrom;
+const $$createType2 = service$0.SourceAvailabilityEventDTO.createFrom;
+const $$createType3 = menu$0.MenuCommand.createFrom;
+const $$createType4 = menu$0.MenuItem.createFrom;
+const $$createType5 = $Create.Array($$createType4);
+const $$createType6 = settings$0.Snapshot.createFrom;
 
 configure();

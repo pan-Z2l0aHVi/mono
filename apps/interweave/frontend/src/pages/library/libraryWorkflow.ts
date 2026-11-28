@@ -1,8 +1,18 @@
 import { computed, ref, type ComputedRef, type Ref } from 'vue'
 
-import type { LibraryAddQueueController } from '@/components/library/addQueue'
-import { normalizeLibraryURL, restoreLibraryQueue, type LibraryRestoreQueueItem } from '@/components/library/restore'
+import type { LibraryAddQueueController, LibraryBatchSettlement, LibraryBatchTask } from '@/components/library/addQueue'
+import { extractImportLinks } from '@/components/library/linkImport'
+import { restoreLibraryQueue, type LibraryRestoreQueueItem } from '@/components/library/restore'
 import type { LibraryQueueItem } from '@/services/library'
+
+import type {
+  CreateResourceBatchResultDTO,
+  CreateResourceInputDTO,
+  ResourceBatchProgressDTO,
+  ResourceDTO
+} from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import { SourceType } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
+import type { ClipboardContentDTO } from '../../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/native/service'
 
 /**
  * 单批导入的确认阈值，按展开后的文件总数计（文件多选、文件夹递归、两者混选同一条链）。
@@ -42,10 +52,13 @@ export interface LibraryWorkflowPorts {
   addQueue: Pick<
     LibraryAddQueueController,
     | 'submitting'
+    | 'failureCount'
     | 'progress'
     | 'prepareBatchProgress'
     | 'enqueueFileLocations'
     | 'enqueueURL'
+    | 'enqueueURLs'
+    | 'setItemStatus'
     | 'resolveDuplicate'
     | 'submit'
     | 'close'
@@ -54,7 +67,15 @@ export interface LibraryWorkflowPorts {
   chooseFilePaths(): Promise<string[]>
   getClipboardFilePaths(): Promise<string[]>
   readClipboardText(): Promise<string>
+  /** 一次读取剪贴板文本与 HTML；HTML 用于提取锚点与相对链接。 */
+  readClipboardContent(): Promise<ClipboardContentDTO>
   addResource(item: LibraryQueueItem): Promise<unknown>
+  /** 批量纳入；逐项结果按输入下标对齐。 */
+  createResources(batchId: string, inputs: CreateResourceInputDTO[]): Promise<CreateResourceBatchResultDTO[]>
+  cancelResourceBatch(batchId: string): Promise<void>
+  onResourceBatchProgress(listener: (event: ResourceBatchProgressDTO) => void): () => void
+  /** 批量成功后把资源回流到 store（与 addResource 的 upsert 同一出口）。 */
+  upsertResource(resource: ResourceDTO): void
   replaceSource(sourceId: string, input: string): Promise<unknown>
   replaceScannedFileSource(sourceId: string, inputPath: string, snapshot: string): Promise<unknown>
   reportError(cause: unknown, fallback: string): void
@@ -82,7 +103,7 @@ export interface LibraryWorkflow {
   handleWindowFileDrops(batches: string[][]): void
   handleWindowURLDrops(batches: string[][]): void
   pasteFilePaths(clipboardText?: string): Promise<void>
-  requestAddURL(url: string): void
+  requestAddURLs(urls: string[]): void
   enqueueImportEntries(entries: string[]): Promise<void>
   pickFiles(): Promise<void>
   submitQueue(): Promise<void>
@@ -192,12 +213,13 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
    * 统一挡下提交期间的链接入队：窗口拖入与粘贴文本都不经 enqueueImportEntries，
    * 提交按快照结算、成功时整队清空，期间入队的链接会被静默丢弃。
    */
-  function requestAddURL(url: string) {
+  function requestAddURLs(urls: string[]) {
+    if (!urls.length) return
     if (addQueue.submitting.value) {
       warnImportInProgress()
       return
     }
-    void addQueue.enqueueURL(url)
+    void addQueue.enqueueURLs(urls)
   }
 
   /*
@@ -254,16 +276,15 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
   function handleWindowURLDrops(batches: string[][]) {
     if (!batches.length) return
     addOpen.value = true
-    for (const urls of batches) {
-      for (const url of urls) requestAddURL(url)
-    }
+    requestAddURLs(batches.flat())
   }
 
   /*
    * 粘贴（#188）。
    *
-   * OS 的剪贴板文件接口只认文件；没有文件时读取文本并尝试作为链接入队。
-   * paste 事件直接传入文本，按钮入口则读取当前剪贴板。
+   * OS 的剪贴板文件接口只认文件；没有文件时读取文本与 HTML，用与链接弹窗相同的解析器
+   * 全文提取多个链接后批量入队。paste 事件直接传入文本（拿不到 HTML），按钮入口读取
+   * 当前剪贴板的完整内容。
    */
   async function pasteFilePaths(clipboardText?: string) {
     try {
@@ -273,11 +294,16 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
         await enqueueImportEntries(paths)
         return
       }
-      const text = clipboardText ?? (await ports.readClipboardText())
+      const content: Pick<ClipboardContentDTO, 'text' | 'html' | 'base_url'> =
+        clipboardText === undefined ? await ports.readClipboardContent() : { text: clipboardText }
       if (!addOpen.value) return
-      const url = normalizeLibraryURL(text)
-      if (url) {
-        requestAddURL(url)
+      const { candidates } = extractImportLinks({
+        text: content.text,
+        html: content.html,
+        baseUrl: content.base_url
+      })
+      if (candidates.length) {
+        requestAddURLs(candidates.map(candidate => candidate.url))
         return
       }
       ports.notifyWarning('剪切板中没有可导入的文件或有效链接')
@@ -296,12 +322,66 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
     }
   }
 
+  /**
+   * URL 项走后端批量纳入：一次 RPC 内并发探测，逐项进度经事件回流。
+   * 批量 RPC 整体失败时无法区分单条，统一按失败结算，队列保留可重试。
+   */
+  function createURLBatch(
+    items: LibraryQueueItem[],
+    settle: (itemId: string, settlement: LibraryBatchSettlement) => void
+  ): LibraryBatchTask {
+    const batchId = `batch-${Date.now()}-${Math.random().toString(36).slice(2, 8)}`
+    const inputs: CreateResourceInputDTO[] = items.map(item => ({
+      kind: SourceType.SourceTypeURL,
+      location: item.location,
+      title: item.title,
+      tags: item.tags
+    }))
+    const unsubscribe = ports.onResourceBatchProgress(event => {
+      if (event.batch_id !== batchId) return
+      const item = items[event.index]
+      if (!item) return
+      if (event.status === 'created') addQueue.setItemStatus(item.id, 'created')
+      else addQueue.setItemStatus(item.id, 'failed', event.error ?? '导入失败')
+    })
+    const done = (async () => {
+      try {
+        const results = await ports.createResources(batchId, inputs)
+        results.forEach((result, index) => {
+          const item = items[index]
+          if (!item) return
+          if (result.cancelled) {
+            settle(item.id, { ok: false, cancelled: true })
+            return
+          }
+          settle(item.id, { ok: Boolean(result.resource) && !result.error, error: result.error })
+          if (result.resource) ports.upsertResource(result.resource)
+        })
+      } catch (cause) {
+        const message = cause instanceof Error ? cause.message : '批量导入失败'
+        items.forEach(item => settle(item.id, { ok: false, error: message }))
+      } finally {
+        unsubscribe()
+      }
+    })()
+    return { done, cancel: () => void ports.cancelResourceBatch(batchId) }
+  }
+
   async function submitQueue() {
     try {
-      const completed = await addQueue.submit(async item => {
-        await ports.addResource(item)
-      })
-      if (completed) addOpen.value = false
+      const completed = await addQueue.submit(
+        async item => {
+          await ports.addResource(item)
+        },
+        (items, settle): LibraryBatchTask => createURLBatch(items, settle)
+      )
+      if (completed) {
+        addOpen.value = false
+        return
+      }
+      if (addQueue.failureCount.value > 0) {
+        ports.notifyWarning(`${addQueue.failureCount.value} 项导入失败，可在待导入列表重试`)
+      }
     } catch (cause) {
       ports.reportError(cause, '导入资源失败，请稍后重试')
     }
@@ -367,7 +447,7 @@ export function createLibraryWorkflow(ports: LibraryWorkflowPorts): LibraryWorkf
     handleWindowFileDrops,
     handleWindowURLDrops,
     pasteFilePaths,
-    requestAddURL,
+    requestAddURLs,
     enqueueImportEntries,
     pickFiles,
     submitQueue,

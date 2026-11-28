@@ -4,6 +4,7 @@ import { createLibraryRuntime, type LibraryQueueItem, type LibraryRuntime } from
 import { useLibraryStore, type ResourceSourceView } from '@/stores/library'
 
 import { SourceProbeOutcome } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
+import type { ResourceDTO } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/service'
 import { SourceType } from '../../bindings/github.com/pan-Z2l0aHVi/mono/apps/interweave/backend/library/storage'
 
 /** 页面提供的统一错误出口：composable 只保留领域状态，呈现交给 toast。 */
@@ -73,6 +74,14 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
     } finally {
       setPending(item.id, false)
     }
+  }
+
+  /**
+   * 批量纳入的逐项结果回流：后端已在响应里带回完整视图，页面只需 upsert，
+   * 不再为每条资源各往返一次读取。
+   */
+  function upsertResource(resource: ResourceDTO) {
+    store.upsertResource(resource)
   }
 
   async function renameResource(resourceId: string, newTitle: string) {
@@ -241,6 +250,7 @@ export function useLibraryRuntime(injectedRuntime?: LibraryRuntime, reportError?
     replacingSourceIds,
     loadResources,
     addResource,
+    upsertResource,
     renameResource,
     updateResourceNote,
     deleteResources,
