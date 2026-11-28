@@ -98,6 +98,7 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
   private _portal?: OverlayPortal
   private _panelKeepAliveDisposers: (() => void)[] = []
   private _portalKeepAliveDisposer?: () => void
+  private _panelResizeObserver: ResizeObserver | null = null
   /**
    * 开启态 overlay（issue #120 Block 1）：本组件不自行监听 keydown，只声明「我开着」，
    * 由唯一仲裁者决定一次 Escape 关谁。实例作用域的帧事务入口也在这里
@@ -216,6 +217,7 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     this._panelKeepAliveDisposers = []
     this._portalKeepAliveDisposer?.()
     this._portalKeepAliveDisposer = undefined
+    this._unobservePanelResize()
     this._panel.dispose()
   }
 
@@ -271,6 +273,7 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     if (this._portal)
       applyOverlayVariables(this._portal.panel, this, ['--wui-popover-padding', '--wui-popover-max-height'])
     this._syncPanelScrollClass()
+    this._observePanelResize()
   }
 
   /*
@@ -282,6 +285,27 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     const panel = this._panel.getPanel()
     if (!panel) return
     panel.classList.toggle('wui-popover-scroll', getComputedStyle(panel).maxHeight !== 'none')
+  }
+
+  /*
+   * 打开态持续对齐滚动类：--wui-popover-max-height 可在运行期被主题/密度切换或
+   * 媒体查询改写，ResizeObserver 捕捉几何可观察的限高变化（内容高于上限的增减
+   * 必然改变面板盒高）后重算；观测随关闭与重配置回收重挂。「限高翻转但盒高
+   * 不变」（内容低于新旧上限）没有几何信号，不做轮询——该状态下不产生滚动
+   * 需求，只影响绝对定位后代的裁剪语义。
+   */
+  private _observePanelResize() {
+    this._unobservePanelResize()
+    if (typeof ResizeObserver === 'undefined') return
+    const panel = this._panel.getPanel()
+    if (!panel) return
+    this._panelResizeObserver = new ResizeObserver(() => this._syncPanelScrollClass())
+    this._panelResizeObserver.observe(panel)
+  }
+
+  private _unobservePanelResize() {
+    this._panelResizeObserver?.disconnect()
+    this._panelResizeObserver = null
   }
 
   private _migratableContentNodes(nodes: Node[]): Node[] {
@@ -312,6 +336,7 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
   }
 
   private async _closeOverlay() {
+    this._unobservePanelResize()
     await this._panel.close(() => this.open, !this._hasOverlayContent())
   }
 
@@ -321,7 +346,11 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     this._portalKeepAliveDisposer?.()
     this._portalKeepAliveDisposer = undefined
     this._panel.reconfigure(this.open)
-    if (this.open) this._overlay.scheduleFrame(() => this._syncPanelScrollClass())
+    if (this.open)
+      this._overlay.scheduleFrame(() => {
+        this._syncPanelScrollClass()
+        this._observePanelResize()
+      })
   }
 
   private _dispatchChange(open: boolean) {

@@ -313,4 +313,31 @@ describe('组件内部 scrollbar（浏览器）', () => {
     expect(getComputedStyle(el).scrollbarWidth).toBe('thin')
     expect(getComputedStyle(el).overflowY).toBe('auto')
   })
+
+  it('打开态切换 --wui-popover-max-height 会重新对齐滚动类', async () => {
+    const theme = await createLightTheme()
+    const popover = document.createElement('web-ui-popover') as WebUiPopover
+    popover.style.setProperty('--wui-popover-max-height', '80px')
+    const content = document.createElement('div')
+    content.style.cssText = 'height: 400px;'
+    popover.append(content)
+    theme.append(popover)
+    await popover.updateComplete
+
+    popover.open = true
+    await popover.updateComplete
+    await new Promise(resolve => requestAnimationFrame(resolve))
+
+    const el = popover.shadowRoot?.querySelector<HTMLElement>('.popover-panel')
+    if (!el) throw new Error('Expected popover panel to exist.')
+    expect(getComputedStyle(el).overflowY).toBe('auto')
+
+    // 打开态取消限高：面板盒高随内容增长，ResizeObserver 重算后溢出回到 visible
+    popover.style.removeProperty('--wui-popover-max-height')
+    await pollUntil(() => getComputedStyle(el).overflowY === 'visible', '打开态取消限高后 overflow-y 未回到 visible')
+
+    // 打开态重新限高：类重新挂上，超高内容恢复滚动
+    popover.style.setProperty('--wui-popover-max-height', '80px')
+    await pollUntil(() => getComputedStyle(el).overflowY === 'auto', '打开态重新限高后 overflow-y 未回到 auto')
+  })
 })
