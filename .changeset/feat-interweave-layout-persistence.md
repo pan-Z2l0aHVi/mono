@@ -2,4 +2,4 @@
 '@greypan/interweave': minor
 ---
 
-持久化侧边栏折叠状态、侧边栏宽度与资源库筛选排序面板展开状态
+Persist desktop sidebar collapsed state, desktop sidebar width (160–320px), and library filter/sort panel open state across restarts via local storage.
