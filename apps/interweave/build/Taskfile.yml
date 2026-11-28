@@ -73,7 +73,10 @@ tasks:
       - 'darwin/icons.icns'
       - 'windows/icon.ico'
     cmds:
-      - wails3 generate icons -input appicon.png -macfilename darwin/icons.icns
+      # -windowsfilename 必须显式给相对本任务 dir 的路径：wails3 的默认值是
+      # build/windows/icon.ico（相对仓库根），在这里会解析成 build/build/windows/icon.ico，
+      # 而 generateWindowsIcon 直接 os.WriteFile 不建目录，两端原生构建都会 open 失败。
+      - wails3 generate icons -input appicon.png -macfilename darwin/icons.icns -windowsfilename windows/icon.ico
       - go run ../scripts/generate-windows-icon -input appicon.png -output windows/icon.ico
 
   dev:frontend:

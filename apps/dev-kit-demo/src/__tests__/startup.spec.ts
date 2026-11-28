@@ -1,4 +1,4 @@
-import { afterEach, beforeEach, expect, it, vi } from 'vite-plus/test'
+import { afterEach, beforeAll, beforeEach, expect, it, vi } from 'vite-plus/test'
 
 const state = vi.hoisted(() => ({
   loadShell: vi.fn<() => Promise<void>>(),
@@ -61,6 +61,16 @@ afterEach(async () => {
     )
   pendingMainImport = undefined
   vi.restoreAllMocks()
+})
+
+// 首次 import 的转换请求会排在项目级 Vite 服务队列里，而同一个服务还要为并行的 example-docs
+// （58 个 meta + codeblock 组件）和 catalog 抽取做 wuchale 编译。CI 小核数 runner 上这段串行
+// 开销实测超过 5s，落进用例自身的断言预算就成了假失败。预热放 beforeAll，让一次性开销归 setup
+// （hookTimeout 10s），用例本身只承担 resetModules 后的增量求值。
+beforeAll(async () => {
+  state.loadShell.mockResolvedValue(undefined)
+  state.bootstrap.mockResolvedValue({ degraded: false })
+  await import('../main')
 })
 
 it('源语种 catalog 失败时挂载启动错误页，并保留原始错误', async () => {
