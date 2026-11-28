@@ -503,33 +503,33 @@ export default function Demo() {
 
 ### Props
 
-| Name                 | Description                                                                                                                              | Type                  | Default          |
-| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ---------------- |
-| `placeholder`        | Input placeholder text.                                                                                                                  | `string`              | `''`             |
-| `type`               | Default input type.                                                                                                                      | `string`              | `'text'`         |
-| `autocomplete`       | Browser autofill hint for the default input.                                                                                             | `string`              | `''`             |
-| `clearable`          | Shows a clear button.                                                                                                                    | `boolean`             | `false`          |
-| `full`               | Makes the default input fill the available width.                                                                                        | `boolean`             | `false`          |
-| `aria-clear-label`   | Accessible name for the clear button.                                                                                                    | `string`              | `''`             |
-| `borderless`         | Ghost form: removes the border, background, backdrop blur, and shadow while keeping padding and the focus ring.                          | `boolean`             | `false`          |
-| `disabled`           | Disabled state: no input, no dropdown.                                                                                                   | `boolean`             | `false`          |
-| `readonly`           | Readonly state: no input, no dropdown.                                                                                                   | `boolean`             | `false`          |
-| `required`           | Required validation.                                                                                                                     | `boolean`             | `false`          |
-| `portal`             | Renders the dropdown panel in the theme overlay container.                                                                               | `boolean`             | `false`          |
-| `placement`          | Placement of the dropdown panel; defaults to expanding downward from the trigger's bottom-left corner.                                   | `Placement`           | `'bottom-start'` |
-| `no-scroll-lock`     | Does not lock page scrolling while open.                                                                                                 | `boolean`             | `false`          |
-| `allow-custom-value` | Allows Enter to submit input text that is not among the candidates.                                                                      | `boolean`             | `false`          |
-| `overlayContainer`   | Explicit portal container (property, not attribute).                                                                                     | `OverlayContainer`    | —                |
-| `name`               | Form field name.                                                                                                                         | `string`              | `''`             |
-| `aria-label`         | Accessible name.                                                                                                                         | `string \| null`      | `null`           |
-| `aria-labelledby`    | Accessible name reference.                                                                                                               | `string \| undefined` | —                |
-| `filter`             | Candidate filtering mode: `contains` (default), `prefix`, or `none`.                                                                     | `FilterMode`          | `'contains'`     |
-| `value`              | Current input text, also the form-submitted value.                                                                                       | `string`              | `''`             |
-| `trigger`            | Trigger gesture set, separated by spaces or commas: `click`, `hover`, `focus`, `none`; reads back as a comma-separated canonical string. | `string`              | `'click'`        |
-| `show-delay`         | Hover-open delay (milliseconds); only hover-originated opens use it.                                                                     | `number`              | `200`            |
-| `hide-delay`         | Hover-close delay (milliseconds); only hover-originated closes use it.                                                                   | `number`              | `100`            |
-| `open`               | Declarative switch; writing it directly is silent and does not dispatch `open-change`.                                                   | `boolean`             | `false`          |
-| `isOpen`             | Whether the panel is currently open (read-only).                                                                                         | `boolean`             | —                |
+| Name                 | Description                                                                                                                              | Type                  | Default      |
+| -------------------- | ---------------------------------------------------------------------------------------------------------------------------------------- | --------------------- | ------------ |
+| `placeholder`        | Input placeholder text.                                                                                                                  | `string`              | `''`         |
+| `type`               | Default input type.                                                                                                                      | `string`              | `'text'`     |
+| `autocomplete`       | Browser autofill hint for the default input.                                                                                             | `string`              | `''`         |
+| `clearable`          | Shows a clear button.                                                                                                                    | `boolean`             | `false`      |
+| `full`               | Makes the default input fill the available width.                                                                                        | `boolean`             | `false`      |
+| `aria-clear-label`   | Accessible name for the clear button.                                                                                                    | `string`              | `''`         |
+| `borderless`         | Ghost form: removes the border, background, backdrop blur, and shadow while keeping padding and the focus ring.                          | `boolean`             | `false`      |
+| `disabled`           | Disabled state: no input, no dropdown.                                                                                                   | `boolean`             | `false`      |
+| `readonly`           | Readonly state: no input, no dropdown.                                                                                                   | `boolean`             | `false`      |
+| `required`           | Required validation.                                                                                                                     | `boolean`             | `false`      |
+| `portal`             | Renders the dropdown panel in the theme overlay container.                                                                               | `boolean`             | `false`      |
+| `placement`          | Placement of the dropdown panel; defaults to expanding downward, centered on the trigger.                                                | `Placement`           | `'bottom'`   |
+| `no-scroll-lock`     | Does not lock page scrolling while open.                                                                                                 | `boolean`             | `false`      |
+| `allow-custom-value` | Allows Enter to submit input text that is not among the candidates.                                                                      | `boolean`             | `false`      |
+| `overlayContainer`   | Explicit portal container (property, not attribute).                                                                                     | `OverlayContainer`    | —            |
+| `name`               | Form field name.                                                                                                                         | `string`              | `''`         |
+| `aria-label`         | Accessible name.                                                                                                                         | `string \| null`      | `null`       |
+| `aria-labelledby`    | Accessible name reference.                                                                                                               | `string \| undefined` | —            |
+| `filter`             | Candidate filtering mode: `contains` (default), `prefix`, or `none`.                                                                     | `FilterMode`          | `'contains'` |
+| `value`              | Current input text, also the form-submitted value.                                                                                       | `string`              | `''`         |
+| `trigger`            | Trigger gesture set, separated by spaces or commas: `click`, `hover`, `focus`, `none`; reads back as a comma-separated canonical string. | `string`              | `'click'`    |
+| `show-delay`         | Hover-open delay (milliseconds); only hover-originated opens use it.                                                                     | `number`              | `200`        |
+| `hide-delay`         | Hover-close delay (milliseconds); only hover-originated closes use it.                                                                   | `number`              | `100`        |
+| `open`               | Declarative switch; writing it directly is silent and does not dispatch `open-change`.                                                   | `boolean`             | `false`      |
+| `isOpen`             | Whether the panel is currently open (read-only).                                                                                         | `boolean`             | —            |
 
 ### Events
 

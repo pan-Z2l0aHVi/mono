@@ -499,33 +499,33 @@ export default function Demo() {
 
 ### 属性
 
-| 名称                 | 说明                                                                                      | 类型                  | 默认值           |
-| -------------------- | ----------------------------------------------------------------------------------------- | --------------------- | ---------------- |
-| `placeholder`        | 输入框占位文本。                                                                          | `string`              | `''`             |
-| `type`               | 默认输入框类型。                                                                          | `string`              | `'text'`         |
-| `autocomplete`       | 默认输入框的浏览器自动填充提示。                                                          | `string`              | `''`             |
-| `clearable`          | 显示清除按钮。                                                                            | `boolean`             | `false`          |
-| `full`               | 默认输入框撑满可用宽度。                                                                  | `boolean`             | `false`          |
-| `aria-clear-label`   | 清除按钮的无障碍名称。                                                                    | `string`              | `''`             |
-| `borderless`         | ghost 形态：移除边框、背景、背景模糊与阴影，保留内边距与焦点环。                          | `boolean`             | `false`          |
-| `disabled`           | 禁用态，不可输入、不可展开下拉。                                                          | `boolean`             | `false`          |
-| `readonly`           | 只读态：不可输入、不可展开下拉。                                                          | `boolean`             | `false`          |
-| `required`           | 必填校验。                                                                                | `boolean`             | `false`          |
-| `portal`             | 在主题的 overlay 容器中渲染下拉面板。                                                     | `boolean`             | `false`          |
-| `placement`          | 下拉面板位置，默认从触发器左下角向下展开。                                                | `Placement`           | `'bottom-start'` |
-| `no-scroll-lock`     | 打开时不锁定页面滚动。                                                                    | `boolean`             | `false`          |
-| `allow-custom-value` | 允许 Enter 提交不在候选中的输入原文。                                                     | `boolean`             | `false`          |
-| `overlayContainer`   | 显式指定面板挂载的 overlay 容器（property，不是 attribute）。                             | `OverlayContainer`    | —                |
-| `name`               | 表单字段名。                                                                              | `string`              | `''`             |
-| `aria-label`         | 无障碍名称。                                                                              | `string \| null`      | `null`           |
-| `aria-labelledby`    | 无障碍名称引用。                                                                          | `string \| undefined` | —                |
-| `filter`             | 候选过滤模式：`contains`（默认）、`prefix` 或 `none`。                                    | `FilterMode`          | `'contains'`     |
-| `value`              | 当前输入文本，也是表单提交值。                                                            | `string`              | `''`             |
-| `trigger`            | 触发手势集合，空格或逗号分隔：`click`、`hover`、`focus`、`none`；读回为逗号分隔的规范串。 | `string`              | `'click'`        |
-| `show-delay`         | 悬停打开的延迟（毫秒）；只影响 hover 来源。                                               | `number`              | `200`            |
-| `hide-delay`         | 悬停收起的延迟（毫秒）；只影响 hover 来源。                                               | `number`              | `100`            |
-| `open`               | 声明式开关；直接写入静默，不派发 `open-change`。                                          | `boolean`             | `false`          |
-| `isOpen`             | 当前是否打开（只读）。                                                                    | `boolean`             | —                |
+| 名称                 | 说明                                                                                      | 类型                  | 默认值       |
+| -------------------- | ----------------------------------------------------------------------------------------- | --------------------- | ------------ |
+| `placeholder`        | 输入框占位文本。                                                                          | `string`              | `''`         |
+| `type`               | 默认输入框类型。                                                                          | `string`              | `'text'`     |
+| `autocomplete`       | 默认输入框的浏览器自动填充提示。                                                          | `string`              | `''`         |
+| `clearable`          | 显示清除按钮。                                                                            | `boolean`             | `false`      |
+| `full`               | 默认输入框撑满可用宽度。                                                                  | `boolean`             | `false`      |
+| `aria-clear-label`   | 清除按钮的无障碍名称。                                                                    | `string`              | `''`         |
+| `borderless`         | ghost 形态：移除边框、背景、背景模糊与阴影，保留内边距与焦点环。                          | `boolean`             | `false`      |
+| `disabled`           | 禁用态，不可输入、不可展开下拉。                                                          | `boolean`             | `false`      |
+| `readonly`           | 只读态：不可输入、不可展开下拉。                                                          | `boolean`             | `false`      |
+| `required`           | 必填校验。                                                                                | `boolean`             | `false`      |
+| `portal`             | 在主题的 overlay 容器中渲染下拉面板。                                                     | `boolean`             | `false`      |
+| `placement`          | 下拉面板位置，默认在触发器正下方水平居中展开。                                            | `Placement`           | `'bottom'`   |
+| `no-scroll-lock`     | 打开时不锁定页面滚动。                                                                    | `boolean`             | `false`      |
+| `allow-custom-value` | 允许 Enter 提交不在候选中的输入原文。                                                     | `boolean`             | `false`      |
+| `overlayContainer`   | 显式指定面板挂载的 overlay 容器（property，不是 attribute）。                             | `OverlayContainer`    | —            |
+| `name`               | 表单字段名。                                                                              | `string`              | `''`         |
+| `aria-label`         | 无障碍名称。                                                                              | `string \| null`      | `null`       |
+| `aria-labelledby`    | 无障碍名称引用。                                                                          | `string \| undefined` | —            |
+| `filter`             | 候选过滤模式：`contains`（默认）、`prefix` 或 `none`。                                    | `FilterMode`          | `'contains'` |
+| `value`              | 当前输入文本，也是表单提交值。                                                            | `string`              | `''`         |
+| `trigger`            | 触发手势集合，空格或逗号分隔：`click`、`hover`、`focus`、`none`；读回为逗号分隔的规范串。 | `string`              | `'click'`    |
+| `show-delay`         | 悬停打开的延迟（毫秒）；只影响 hover 来源。                                               | `number`              | `200`        |
+| `hide-delay`         | 悬停收起的延迟（毫秒）；只影响 hover 来源。                                               | `number`              | `100`        |
+| `open`               | 声明式开关；直接写入静默，不派发 `open-change`。                                          | `boolean`             | `false`      |
+| `isOpen`             | 当前是否打开（只读）。                                                                    | `boolean`             | —            |
 
 ### 事件
 

@@ -3,6 +3,7 @@ import { html, LitElement, unsafeCSS } from 'lit'
 import { customElement, property } from 'lit/decorators.js'
 
 import overlayMotion from '@/assets/overlay-motion.css?inline'
+import scrollbarStyle from '@/assets/scrollbar.css?inline'
 import glass from '@/classes/glass.css?inline'
 import { normalizeLiteral, normalizeNumber } from '@/shared/normalize'
 import { dispatchOpenChangeEvent } from '@/shared/open-state'
@@ -29,7 +30,7 @@ let popoverIdCounter = 0
 
 @customElement('web-ui-popover')
 export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
-  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(overlayMotion), unsafeCSS(scrollbarStyle), unsafeCSS(style)]
 
   @property({ type: Boolean, reflect: true })
   get open(): boolean {
@@ -267,7 +268,8 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
      * 首个已开启 overlay 与从宿主上溯结果一致，多出的那次登记是冗余的。
      */
     this._panel.open(isInstant)
-    if (this._portal) applyOverlayVariables(this._portal.panel, this, ['--wui-popover-padding'])
+    if (this._portal)
+      applyOverlayVariables(this._portal.panel, this, ['--wui-popover-padding', '--wui-popover-max-height'])
   }
 
   private _migratableContentNodes(nodes: Node[]): Node[] {
@@ -280,8 +282,8 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     const portal = defineOverlayPortal().make({
       container: this.overlayContainer,
       target: this,
-      style: `${glass}\n${overlayMotion}\n${style}`,
-      className: 'popover-panel portal wui-glass wui-floating-panel',
+      style: `${glass}\n${overlayMotion}\n${scrollbarStyle}\n${style}`,
+      className: 'popover-panel portal wui-glass wui-floating-panel wui-scroll',
       // 已迁移节点被框架删除后的解除追踪是 portal 内建默认行为；这里只借变化事件
       // 重新评估「还有没有内容」。
       onContentChange: () => this.requestUpdate(),
@@ -356,7 +358,13 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
         >
           <slot name="trigger"></slot>
         </div>
-        <div id=${this._panelId} class="popover-panel wui-floating-panel wui-glass" hidden role="dialog" tabindex="-1">
+        <div
+          id=${this._panelId}
+          class="popover-panel wui-floating-panel wui-glass wui-scroll"
+          hidden
+          role="dialog"
+          tabindex="-1"
+        >
           <slot @slotchange=${this._onContentSlotChange}></slot>
         </div>
       </div>

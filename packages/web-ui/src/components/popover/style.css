@@ -36,6 +36,14 @@
   box-sizing: border-box;
   width: max-content;
   max-width: min(90vw, 400px);
+
+  /*
+   * opt-in 限高：默认 none，面板随内容撑高（与既往一致）。消费者设
+   * --wui-popover-max-height 后超高内容滚动，滚动条走 .wui-scroll 的主题。
+   */
+  max-height: var(--wui-popover-max-height, none);
+  overflow-y: auto;
+
   padding: var(--wui-popover-padding, var(--wui-space-2, 8px) var(--wui-space-3, 12px));
   border-radius: var(--wui-radius-menu, 18px);
 

@@ -316,6 +316,7 @@ Put an interactive element in the trigger slot (a native button, `web-ui-button`
 
 ### CSS Custom Properties
 
-| Name                    | Description                                 | Default    |
-| ----------------------- | ------------------------------------------- | ---------- |
-| `--wui-popover-padding` | Panel padding; read on open in portal mode. | `8px 12px` |
+| Name                       | Description                                                                                      | Default    |
+| -------------------------- | ------------------------------------------------------------------------------------------------ | ---------- |
+| `--wui-popover-padding`    | Panel padding; read on open in portal mode.                                                      | `8px 12px` |
+| `--wui-popover-max-height` | Panel max height; unconstrained by default. Overflow scrolls with the themed scrollbar when set. | `none`     |
