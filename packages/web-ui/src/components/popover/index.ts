@@ -270,6 +270,18 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     this._panel.open(isInstant)
     if (this._portal)
       applyOverlayVariables(this._portal.panel, this, ['--wui-popover-padding', '--wui-popover-max-height'])
+    this._syncPanelScrollClass()
+  }
+
+  /*
+   * 滚动容器语义只在 opt-in 限高时生效（见 style.css .wui-popover-scroll）：
+   * 按 computed max-height 判断并挂类；portal 面板在 applyOverlayVariables
+   * 之后读，转发过去的变量已经就位。
+   */
+  private _syncPanelScrollClass() {
+    const panel = this._panel.getPanel()
+    if (!panel) return
+    panel.classList.toggle('wui-popover-scroll', getComputedStyle(panel).maxHeight !== 'none')
   }
 
   private _migratableContentNodes(nodes: Node[]): Node[] {
@@ -309,6 +321,7 @@ export class WebUiPopover extends defineOverlayDelayProps(LitElement) {
     this._portalKeepAliveDisposer?.()
     this._portalKeepAliveDisposer = undefined
     this._panel.reconfigure(this.open)
+    if (this.open) this._overlay.scheduleFrame(() => this._syncPanelScrollClass())
   }
 
   private _dispatchChange(open: boolean) {

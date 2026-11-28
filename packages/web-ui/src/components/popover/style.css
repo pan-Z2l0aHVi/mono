@@ -42,7 +42,6 @@
    * --wui-popover-max-height 后超高内容滚动，滚动条走 .wui-scroll 的主题。
    */
   max-height: var(--wui-popover-max-height, none);
-  overflow-y: auto;
 
   padding: var(--wui-popover-padding, var(--wui-space-2, 8px) var(--wui-space-3, 12px));
   border-radius: var(--wui-radius-menu, 18px);
@@ -63,6 +62,16 @@
       var(--wui-color-focus-ring, color-mix(in srgb, var(--wui-color-accent, #0071e3) 40%, transparent));
     outline-offset: 2px;
   }
+}
+
+/*
+ * 滚动只在 opt-in 限高时启用（打开时由组件按 computed max-height 挂类）：
+ * overflow-y: auto 会把 overflow-x 的 visible 计算成 auto，默认不限高的面板
+ * 就成了双向滚动容器，嵌在面板里的绝对定位子 overlay（非 portal 下拉等）
+ * 会被裁剪——那不是默认该有的表现。
+ */
+.popover-panel.wui-popover-scroll {
+  overflow-y: auto;
 }
 
 .popover-panel.portal {

@@ -261,6 +261,7 @@ describe('组件内部 scrollbar（浏览器）', () => {
     expect(el.scrollHeight).toBeGreaterThan(el.clientHeight)
     expect(thumbColor(el)).toBe(expectedHandle(el))
     expect(el.offsetWidth - el.clientWidth).toBe(0)
+    expect(getComputedStyle(el).overflowY).toBe('auto')
   })
 
   it('popover 默认不限高：内容多高面板就多高', async () => {
@@ -281,6 +282,9 @@ describe('组件内部 scrollbar（浏览器）', () => {
 
     expect(el.scrollHeight).toBe(el.clientHeight)
     expect(getComputedStyle(el).maxHeight).toBe('none')
+    // 滚动容器语义是 opt-in 的：默认不限高时溢出保持 visible，嵌套的绝对定位
+    // 子 overlay 不被裁剪（Codex review Should fix 的回归断言）。
+    expect(getComputedStyle(el).overflowY).toBe('visible')
   })
 
   it('portal 模式的 popover 面板自带 scrollbar 主题且限高变量已转发', async () => {
@@ -307,5 +311,6 @@ describe('组件内部 scrollbar（浏览器）', () => {
     expect(el.scrollHeight).toBeGreaterThan(el.clientHeight)
     expect(thumbColor(el)).toBe(expectedHandle(el))
     expect(getComputedStyle(el).scrollbarWidth).toBe('thin')
+    expect(getComputedStyle(el).overflowY).toBe('auto')
   })
 })
