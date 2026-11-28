@@ -114,6 +114,17 @@ function ensureContainer(position: ToastPosition, root: HTMLElement): HTMLElemen
   const container = document.createElement('div')
   container.className = `wui-toast-container wui-toast-${position} wui-scroll`
   container.dataset.wuiToastPosition = position
+  /*
+   * scrollbar.css 只注入受管的 overlay root（theme root / fallback root / modal root）；
+   * 消费者经 options.container 传入的挂载点在普通 DOM 里，.wui-scroll 没有样式可匹配。
+   * 这里按 scrollbar.css 的同款声明内联兜底：受管 root 下两者值相同，不改变表现；
+   * 只在 fine pointer 生效，与 scrollbar.css 的 coarse-pointer 原生回退语义一致。
+   */
+  const finePointer = window.matchMedia?.('(pointer: fine)')?.matches ?? true
+  if (finePointer) {
+    container.style.scrollbarColor = 'var(--wui-scrollbar-handle, rgb(0 0 0 / 0.39)) transparent'
+    container.style.scrollbarWidth = 'thin'
+  }
   container.setAttribute('role', 'log')
   container.setAttribute('aria-live', 'polite')
   container.setAttribute('aria-relevant', 'additions')

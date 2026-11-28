@@ -259,8 +259,9 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
       <img
         v-if="favicon && !faviconFailed"
         :src="favicon"
-        class="absolute size-5 object-contain"
+        class="absolute size-5 object-contain [-webkit-user-drag:none]"
         alt=""
+        draggable="false"
         @load="faviconReady = true"
         @error="faviconFailed = true"
       />
@@ -284,8 +285,9 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
         v-show="serverThumbReady"
         :key="`server-thumb-${mediaKey}`"
         :src="thumbnailUrl ?? undefined"
-        class="size-full object-cover"
+        class="size-full object-cover [-webkit-user-drag:none]"
         alt=""
+        draggable="false"
         @load="handleServerThumbLoad"
         @error="handleServerThumbError"
       />
@@ -294,14 +296,21 @@ function captureCurrentFrame(video: HTMLVideoElement, version: number) {
         :key="`image-${mediaKey}`"
         ref="imageRef"
         :src="displayMediaUrl ?? undefined"
-        class="size-full object-cover"
+        class="size-full object-cover [-webkit-user-drag:none]"
         alt=""
+        draggable="false"
         loading="lazy"
         decoding="async"
         @load="handleImageLoad"
         @error="handleMediaError"
       />
-      <img v-if="thumbnailURL" :src="thumbnailURL" class="size-full object-cover" alt="" />
+      <img
+        v-if="thumbnailURL"
+        :src="thumbnailURL"
+        class="size-full object-cover [-webkit-user-drag:none]"
+        alt=""
+        draggable="false"
+      />
       <web-ui-icon
         v-if="showFallback"
         :icon="detail && unavailable ? unavailableResourceIcon(kind, source) : resourceIcon(kind)"

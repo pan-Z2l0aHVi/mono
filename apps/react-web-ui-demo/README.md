@@ -1,27 +1,29 @@
 # React Web UI Demo
 
-这是 `@greypan/web-ui` 的 React 集成和预览应用。它展示组件在真实 React 应用中的用法，并提供可交互预览。
+English | [简体中文](./README.CN.md)
 
-![React Web UI Demo 预览](./docs/preview.jpg)
+React integration and preview app for `@greypan/web-ui`. It showcases component usage in a real React application with interactive previews.
 
-**在线演示：** [React Web UI Demo](https://pan-z2l0ahvi.github.io/mono/react-web-ui-demo)
+![React Web UI Demo Preview](./docs/preview.jpg)
 
-公共属性、slot、事件和类型以 [`packages/web-ui`](../../packages/web-ui) 的源码、README 和测试为准，demo 行为不替代公共契约。
+**Live Demo:** [React Web UI Demo](https://pan-z2l0ahvi.github.io/mono/react-web-ui-demo)
 
-## 运行
+Public properties, slots, events, and types are defined by the source code, README, and tests in [`packages/web-ui`](../../packages/web-ui); demo behavior does not replace the public contract.
 
-在仓库根目录启动该 demo 及其 workspace 依赖：
+## Run
+
+Start the demo and its workspace dependencies from the repository root:
 
 ```bash
 pnpm dev:react-web-ui-demo
 ```
 
-不要只运行包内 `pnpm dev` 来验证跨包集成，它不会构建和监听本地依赖包。环境准备见 [`CONTRIBUTING.md`](../../CONTRIBUTING.md)。
+Do not run package-local `pnpm dev` alone to verify cross-package integration, as it does not build or watch local workspace dependencies. See [`CONTRIBUTING.md`](../../CONTRIBUTING.md) for environment setup.
 
-## 开发须知
+## Development Notes
 
-- 示例代码、API 表与首页文档由 `packages/web-ui/docs/*.md` 及 `packages/web-ui/README*.md` 经 `@greypan/md-to-meta` 生成到 `src/generated/`，不要手改。改完 markdown 后，dev 或 build 会自动重新生成。
-- 路由以 `src/routes/**` 和 `vite.config.ts` 为准，不要手改 `src/routeTree.gen.ts`；应用壳状态与路由进度分别复用 `@greypan/doc-demo-kit` 与 `@greypan/route-progress`。
-- 界面文案在源码中写中文，译文在 `src/locales/<locale>.po`。增删文案后在应用目录运行 `pnpm exec wuchale --clean`。
+- Example code, API tables, and home docs are generated into `src/generated/` from `packages/web-ui/docs/*.md` and `packages/web-ui/README*.md` by `@greypan/md-to-meta`. Do not edit generated files by hand; dev and build regenerate them automatically after Markdown changes.
+- Routes are defined by `src/routes/**` and `vite.config.ts`—do not hand-edit `src/routeTree.gen.ts`. App shell state and route progress reuse `@greypan/doc-demo-kit` and `@greypan/route-progress`.
+- UI copy is authored in Chinese in source files, with translations in `src/locales/<locale>.po`. Run `pnpm exec wuchale --clean` in the app directory after adding or removing copy.
 
-更多说明见同目录 [`AGENTS.md`](./AGENTS.md)。
+See [`AGENTS.md`](./AGENTS.md) in the same directory for more details.

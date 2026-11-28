@@ -79,6 +79,15 @@ describe('WebUiEditableText 组件契约', () => {
     cleanupElement(second)
   })
 
+  it('编辑层 textarea 挂 .wui-scroll 接入滚动条主题', async () => {
+    const el = create()
+    await waitForUpdate(el)
+
+    expect(editorOf(el).classList.contains('wui-scroll')).toBe(true)
+
+    cleanupElement(el)
+  })
+
   it('value attribute 提供初值，Enter 提交后 attribute 保持 reset 初值', async () => {
     const el = create({ value: 'initial' })
     await waitForUpdate(el)

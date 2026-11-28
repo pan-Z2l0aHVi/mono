@@ -7,6 +7,7 @@ import { classMap } from 'lit/directives/class-map.js'
 import { ifDefined } from 'lit/directives/if-defined.js'
 import { styleMap } from 'lit/directives/style-map.js'
 
+import scrollbarStyle from '@/assets/scrollbar.css?inline'
 import glass from '@/classes/glass.css?inline'
 import { jamCloseCircleF } from '@/icons'
 import {
@@ -22,7 +23,7 @@ import style from './style.css?inline'
 
 @customElement('web-ui-textarea')
 export class WebUiTextarea extends FormAssociated(LitElement) {
-  static override styles = [unsafeCSS(glass), unsafeCSS(style)]
+  static override styles = [unsafeCSS(glass), unsafeCSS(scrollbarStyle), unsafeCSS(style)]
 
   @property({ type: String, reflect: true }) placeholder = ''
   @property({ type: String, reflect: true }) name = ''
@@ -245,6 +246,7 @@ export class WebUiTextarea extends FormAssociated(LitElement) {
         <slot name="prefix" class=${classMap({ empty: !this._hasPrefix })} @slotchange=${this._onSlotChange}></slot>
         <textarea
           id=${this._fieldId}
+          class="wui-scroll"
           placeholder=${this.placeholder}
           name=${this.name}
           aria-label=${ifDefined(this.ariaLabel)}

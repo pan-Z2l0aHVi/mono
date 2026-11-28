@@ -57,6 +57,7 @@ async function mountApp(options: { mobile?: boolean; collapsed?: boolean } = {})
 const hosts: HTMLElement[] = []
 afterEach(() => {
   for (const h of hosts.splice(0)) h.remove()
+  localStorage.clear()
 })
 
 describe('AppNav：键盘 Tab 与 focus ring（浏览器实测）', () => {

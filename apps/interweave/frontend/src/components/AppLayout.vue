@@ -321,7 +321,7 @@ watch(
     v-if="isMac && !mobile"
     data-window-drag
     aria-hidden="true"
-    class="fixed top-0 left-0 z-[600] h-10"
+    class="fixed top-0 left-0 z-[600] h-10 select-none"
     :style="{ width: sidebarCollapsed ? COLLAPSED_SIDEBAR_WIDTH : desktopSidebarWidth }"
   />
 

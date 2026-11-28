@@ -1,24 +1,26 @@
 # Dev Kit Demo
 
-这是 `@greypan/js-kit` 与 `@greypan/browser-kit` 的文档与交互示例站。
+English | [简体中文](./README.CN.md)
 
-![Dev Kit Demo 预览](./docs/preview.jpg)
+Documentation and interactive playground for `@greypan/js-kit` and `@greypan/browser-kit`.
 
-**在线演示：** [Dev Kit Demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo)
+![Dev Kit Demo Preview](./docs/preview.jpg)
 
-公共 API 与类型以 [`packages/js-kit`](../../packages/js-kit) 和 [`packages/browser-kit`](../../packages/browser-kit) 的源码、文档和测试为准，demo 行为不替代公共契约。
+**Live Demo:** [Dev Kit Demo](https://pan-z2l0ahvi.github.io/mono/dev-kit-demo)
 
-## 运行
+Public APIs and types are defined by the source code, docs, and tests in [`packages/js-kit`](../../packages/js-kit) and [`packages/browser-kit`](../../packages/browser-kit); demo behavior does not replace the public contract.
 
-在仓库根目录启动该 demo 及其 workspace 依赖：
+## Run
+
+Start the demo and its workspace dependencies from the repository root:
 
 ```bash
 pnpm dev:dev-kit-demo
 ```
 
-## 语言与语料
+## Localization and Corpus
 
-- 站点支持 `zh-CN` 与 `en`，与 `web-ui` demo 共用 `localStorage['locale']`。
-- 壳文案在 `.vue` 中写中文原文，经 `@greypan/wuchale-vue` 提取到 `src/locales/*.po`。
-- 模块文档、CHANGELOG 与 README 来自 `packages/js-kit`、`packages/browser-kit`、`packages/deps-reload` 与 `packages/unplugin-web-components`，由 `@greypan/md-to-meta` 生成到 `src/generated/`（`exec: []`），不要手改；站内文档键统一带包命名空间。
-- 定制交互面板通过 `src/demos/registry.ts` 按 `${pkg}/${module}#${demoId}` 挂载（标识来自围栏 `meta`，如 `demo=parse-url`）；`history-nav` 沙盒位于独立纯 TS 多页入口 `sandbox/history-nav.html`（排除出 `wuchale` 与 `unplugin-auto-import`）。
+- Supports `zh-CN` and `en`, sharing `localStorage['locale']` with the `web-ui` demos.
+- Shell copy is authored in Chinese inside `.vue` files and extracted into `src/locales/*.po` by `@greypan/wuchale-vue`.
+- Module docs, changelogs, and READMEs come from `packages/js-kit`, `packages/browser-kit`, `packages/deps-reload`, and `packages/unplugin-web-components`, generated into `src/generated/` (`exec: []`) by `@greypan/md-to-meta`—do not edit generated files by hand; in-site doc keys are namespaced by package.
+- Custom interactive panels are mounted through `src/demos/registry.ts` by `${pkg}/${module}#${demoId}` (identifiers come from fenced code block `meta`, such as `demo=parse-url`); the `history-nav` sandbox lives in a standalone pure-TS multi-page entry at `sandbox/history-nav.html` (excluded from `wuchale` and `unplugin-auto-import`).

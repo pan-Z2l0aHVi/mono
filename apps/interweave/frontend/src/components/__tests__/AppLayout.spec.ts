@@ -166,12 +166,21 @@ async function navigate(path: string) {
   await nextTick()
 }
 
+// AppLayout 经 useLayoutStore 将侧边栏折叠态与宽度持久化到 localStorage；
+// 文件级前后统一清空，避免跨用例或跨 describe 的持久化残留导致执行顺序敏感。
+beforeEach(() => {
+  localStorage.clear()
+})
+
+afterEach(() => {
+  localStorage.clear()
+})
+
 describe('AppLayout：应用外壳', () => {
   beforeEach(() => {
     vi.stubGlobal('matchMedia', matchMediaStub)
     // store 在 setup() 里被取（useSettingsStore），没有活动 pinia 会直接抛；每个用例一份干净的。
     setActivePinia(createPinia())
-    localStorage.clear()
     router = createRouter({
       history: createMemoryHistory(),
       routes: [
@@ -535,7 +544,6 @@ describe('AppLayout：菜单命令', () => {
   beforeEach(() => {
     vi.stubGlobal('matchMedia', matchMediaStub)
     setActivePinia(createPinia())
-    localStorage.clear()
     router = createRouter({
       history: createMemoryHistory(),
       routes: [

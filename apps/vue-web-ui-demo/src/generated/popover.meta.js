@@ -249,6 +249,14 @@ const meta = [
       { label: 'td', content: "Panel padding; read on open in portal mode." },
       { label: 'td', content: "<code>8px 12px</code>" }
       ]
+    },
+    {
+      label: 'tr',
+      children: [
+      { label: 'td', content: "<code>--wui-popover-max-height</code>" },
+      { label: 'td', content: "Panel max height; unconstrained by default. Overflow scrolls with the themed scrollbar when set." },
+      { label: 'td', content: "<code>none</code>" }
+      ]
     }
     ]
   }
