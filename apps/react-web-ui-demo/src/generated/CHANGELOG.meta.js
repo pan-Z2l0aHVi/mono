@@ -4,23 +4,86 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "@greypan/web-ui" },
-  { label: 'h2', id: 'section-2', content: "14.4.0" },
-  { label: 'h3', id: 'section-3', content: "Minor Changes" },
+  { label: 'h2', id: 'section-2', content: "15.0.0" },
+  { label: 'h3', id: 'section-3', content: "Major Changes" },
+  {
+    label: 'ul',
+    children: [
+    {
+      label: 'li',
+      children: [
+      { label: 'p', content: "d542cb6: In <code>&lt;web-ui-toast></code>, the string passed to <code>toast()</code> or to any shortcut is written to <code>heading</code> instead of <code>message</code>. <code>message</code> is now optional and carries the body line, <code>toast()</code> accepts a plain string as <code>{ heading }</code>, and the shortcuts take the heading as their first argument with body text in <code>options.message</code>. The heading renders as a single line, so multi-line details belong in <code>message</code>." },
+      { label: 'p', content: "Migration: <code>toast('Body text', { heading: 'Title' })</code> becomes <code>toast('Title', { message: 'Body text' })</code>. Callers that only ever passed one short line need no change." }
+      ]
+    }
+    ]
+  },
+  { label: 'h3', id: 'section-4', content: "Minor Changes" },
+  {
+    label: 'ul',
+    children: [
+    {
+      label: 'li',
+      children: [
+      { label: 'p', content: "c1bd2ea: - Add <code>drag-handle-only</code> prop to <code>web-ui-drawer</code> to restrict drag hit-testing and resize cursor to the drag handle area." },
+      {
+        label: 'ul',
+        children: [
+        { label: 'li', content: "Dispatch <code>sidebar-width-change</code> immediately on keyboard splitter adjustments (<code>ArrowLeft</code>/<code>ArrowRight</code>/<code>Home</code>/<code>End</code>) in <code>web-ui-layout</code>." },
+        { label: 'li', content: "Prevent <code>web-ui-textarea</code> with <code>autosize</code> from collapsing to <code>0px</code> height when mounted inside a hidden container." }
+        ]
+      }
+      ]
+    },
+    {
+      label: 'li',
+      children: [
+      { label: 'p', content: "f91fd13: Center the autocomplete dropdown by default: <code>placement</code> now defaults to <code>bottom</code> (panel centered below the trigger) instead of <code>bottom-start</code>. Set <code>placement=\"bottom-start\"</code> explicitly to keep the previous left-aligned expansion." },
+      { label: 'p', content: "Theme the scrollbar of every scrollable container: the native scrollports of <code>web-ui-textarea</code> and the <code>web-ui-editable-text</code> editor, the toast container created inside an explicit <code>options.container</code>, and the <code>web-ui-popover</code> panel now adopt the shared scrollbar styles. Popover panels scroll when <code>--wui-popover-max-height</code> is set; the panel stays unconstrained by default, matching the previous behavior." },
+      { label: 'p', content: "Adjust empty-state spacing: the gap between the icon and the title grows to 16px, and the gap between the title and the description shrinks to 4px." }
+      ]
+    },
+    { label: 'li', content: "7922e8b: In the empty state, a description without a title now keeps the icon-to-first-segment gap (<code>--wui-empty-title-margin-top</code>, 16px) instead of the 4px title-to-description gap. Demo docs cover all eight title/description/action slot combinations, no longer crush the action gap to 4px, and state that the component carries no outward margin; the variable table now reflects the shipped defaults (16px title margin, 0.72 icon opacity)." },
+    { label: 'li', content: "31ecd4e: Add <code>.wui-no-select</code> and <code>.wui-selectable</code> utilities to <code>@greypan/web-ui/classes.css</code> as the shared selection policy, and apply non-selectable chrome to the layout resize handle and drawer drag surfaces." }
+    ]
+  },
+  { label: 'h3', id: 'section-5', content: "Patch Changes" },
+  {
+    label: 'ul',
+    children: [
+    { label: 'li', content: "d13b67a: The dark-mode raised <code>&lt;web-ui-segmented></code> indicator now uses the control surface (<code>#3a3a3c</code>, the same light gray as the secondary button) instead of the page color. <code>&lt;web-ui-select></code> defaults back to <code>bottom-start</code>, so the panel again opens below the trigger aligned to its left edge; pass <code>placement=\"bottom\"</code> to center it." },
+    {
+      label: 'li',
+      children: [
+      { label: 'p', content: "Updated dependencies [c1bd2ea]" },
+      {
+        label: 'ul',
+        children: [
+        { label: 'li', content: "@greypan/js-kit@3.3.0" },
+        { label: 'li', content: "@greypan/browser-kit@3.1.3" }
+        ]
+      }
+      ]
+    }
+    ]
+  },
+  { label: 'h2', id: 'section-6', content: "14.4.0" },
+  { label: 'h3', id: 'section-7', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "b940932: Add the <code>wordpress:dashboard</code> icon to the built-in icon registry." }
     ]
   },
-  { label: 'h2', id: 'section-4', content: "14.3.0" },
-  { label: 'h3', id: 'section-5', content: "Minor Changes" },
+  { label: 'h2', id: 'section-8', content: "14.3.0" },
+  { label: 'h3', id: 'section-9', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "22821d7: Add <code>--wui-layout-sticky-top</code> to <code>&lt;web-ui-layout></code> so sticky sidebars and headers offset cleanly below custom application title bars." }
     ]
   },
-  { label: 'h3', id: 'section-6', content: "Patch Changes" },
+  { label: 'h3', id: 'section-10', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -33,8 +96,8 @@ const meta = [
     { label: 'li', content: "af56165: Migrate <code>WebUiDropdown</code> onto <code>shared/menu-session/</code> and remove the superseded <code>shared/menu-behavior/</code> and <code>shared/menu-portal/</code> modules." }
     ]
   },
-  { label: 'h2', id: 'section-7', content: "14.2.0" },
-  { label: 'h3', id: 'section-8', content: "Minor Changes" },
+  { label: 'h2', id: 'section-11', content: "14.2.0" },
+  { label: 'h3', id: 'section-12', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -42,23 +105,23 @@ const meta = [
     { label: 'li', content: "841a139: Add the boolean <code>no-reveal</code> attribute to <code>&lt;web-ui-theme></code> so appearance changes commit directly without triggering the circular View Transitions reveal." }
     ]
   },
-  { label: 'h3', id: 'section-9', content: "Patch Changes" },
+  { label: 'h3', id: 'section-13', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "a0ea072: Use GPU-composited <code>translate3d</code> positioning for <code>&lt;web-ui-progress></code> indicator transitions in determinate mode to avoid layout reflows on frequent updates." }
     ]
   },
-  { label: 'h2', id: 'section-10', content: "14.1.1" },
-  { label: 'h3', id: 'section-11', content: "Patch Changes" },
+  { label: 'h2', id: 'section-14', content: "14.1.1" },
+  { label: 'h3', id: 'section-15', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "ce42869: Use native scrollbars on coarse-pointer devices (phones and tablets) so component scroll containers restore default platform scrollbar width and colors." }
     ]
   },
-  { label: 'h2', id: 'section-12', content: "14.1.0" },
-  { label: 'h3', id: 'section-13', content: "Minor Changes" },
+  { label: 'h2', id: 'section-16', content: "14.1.0" },
+  { label: 'h3', id: 'section-17', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -66,15 +129,15 @@ const meta = [
     { label: 'li', content: "f4dfec1: Add a <code>fullable</code> property to <code>&lt;web-ui-drawer></code> (requires <code>draggable</code>) so outward drags or quick flicks snap the drawer to a viewport-filling form, tune drag-to-close distance (35%) and flick velocity (350px/s) thresholds, and add <code>onDepthChange</code> to nested drawer layer stacking." }
     ]
   },
-  { label: 'h3', id: 'section-14', content: "Patch Changes" },
+  { label: 'h3', id: 'section-18', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "f4dfec1: Fix <code>imagePreview()</code> navigating an extra image during swipe settle and ending settle early on nested transform transitions." }
     ]
   },
-  { label: 'h2', id: 'section-15', content: "14.0.0" },
-  { label: 'h3', id: 'section-16', content: "Major Changes" },
+  { label: 'h2', id: 'section-19', content: "14.0.0" },
+  { label: 'h3', id: 'section-20', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -87,7 +150,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-17', content: "Minor Changes" },
+  { label: 'h3', id: 'section-21', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -95,15 +158,15 @@ const meta = [
     { label: 'li', content: "c04b96d: Make <code>&lt;web-ui-slider></code> tick marks clickable so clicking a tick selects the nearest tick value, and expand the slider thumb pill only when a press starts directly on the thumb." }
     ]
   },
-  { label: 'h3', id: 'section-18', content: "Patch Changes" },
+  { label: 'h3', id: 'section-22', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "c04b96d: Replace the browser focus outline on the <code>&lt;web-ui-layout></code> sidebar resize handle with the 3px accent bar, and draw a theme-aware hairline ring on the <code>&lt;web-ui-slider></code> thumb for legibility on light surfaces." }
     ]
   },
-  { label: 'h2', id: 'section-19', content: "13.0.0" },
-  { label: 'h3', id: 'section-20', content: "Major Changes" },
+  { label: 'h2', id: 'section-23', content: "13.0.0" },
+  { label: 'h3', id: 'section-24', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -111,14 +174,14 @@ const meta = [
     { label: 'li', content: "57f4091: Add <code>sport</code> mode to <code>&lt;web-ui-progress></code> and remove <code>indeterminate</code>, <code>--wui-progress-indeterminate-duration</code>, and the <code>wui-progress-indeterminate</code> keyframes." }
     ]
   },
-  { label: 'h3', id: 'section-21', content: "Minor Changes" },
+  { label: 'h3', id: 'section-25', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "57f4091: Add a neutral control shade token and subtly cool-gray interaction states for light navigation and secondary buttons." }
     ]
   },
-  { label: 'h3', id: 'section-22', content: "Patch Changes" },
+  { label: 'h3', id: 'section-26', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -126,15 +189,15 @@ const meta = [
     { label: 'li', content: "57f4091: Unify neutral surfaces and text around a subtly cool gray palette, restore pressed button and segmented feedback when pointers leave in WebKit, and export additional scan, stop, Finder, and navigation icons." }
     ]
   },
-  { label: 'h2', id: 'section-23', content: "12.4.0" },
-  { label: 'h3', id: 'section-24', content: "Minor Changes" },
+  { label: 'h2', id: 'section-27', content: "12.4.0" },
+  { label: 'h3', id: 'section-28', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "fe802db: Add configurable component sizing for switches, badges, menu items, step buttons, and built-in clear and close buttons, and refine mobile layout and drawer geometry." }
     ]
   },
-  { label: 'h3', id: 'section-25', content: "Patch Changes" },
+  { label: 'h3', id: 'section-29', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -154,8 +217,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-26', content: "12.3.0" },
-  { label: 'h3', id: 'section-27', content: "Minor Changes" },
+  { label: 'h2', id: 'section-30', content: "12.3.0" },
+  { label: 'h3', id: 'section-31', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -165,7 +228,7 @@ const meta = [
     { label: 'li', content: "f05a76b: Add a <code>separator</code> prop to <code>&lt;web-ui-grouped-text></code> rendered via CSS generated content so copy and find keep the continuous value, and export <code>iconGallery</code> from <code>@greypan/web-ui/icons</code>." }
     ]
   },
-  { label: 'h3', id: 'section-28', content: "Patch Changes" },
+  { label: 'h3', id: 'section-32', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -186,8 +249,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-29', content: "12.2.0" },
-  { label: 'h3', id: 'section-30', content: "Minor Changes" },
+  { label: 'h2', id: 'section-33', content: "12.2.0" },
+  { label: 'h3', id: 'section-34', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -196,15 +259,15 @@ const meta = [
     { label: 'li', content: "009b99a: Add the imperative <code>shake()</code> feedback helper and <code>page-shift</code> support on <code>&lt;web-ui-drawer></code> (also enabled on <code>&lt;web-ui-layout></code>'s mobile sidebar drawer)." }
     ]
   },
-  { label: 'h3', id: 'section-31', content: "Patch Changes" },
+  { label: 'h3', id: 'section-35', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "009b99a: Hide <code>&lt;web-ui-autocomplete></code>'s empty dropdown panel immediately instead of fading out an empty padded strip." }
     ]
   },
-  { label: 'h2', id: 'section-32', content: "12.1.0" },
-  { label: 'h3', id: 'section-33', content: "Minor Changes" },
+  { label: 'h2', id: 'section-36', content: "12.1.0" },
+  { label: 'h3', id: 'section-37', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -214,15 +277,15 @@ const meta = [
     { label: 'li', content: "0e77c22: Make imperative spinner overlays non-modal and pointer-transparent, forward <code>aria-label</code> in <code>&lt;web-ui-segmented-trigger></code>, and export additional icons (<code>ant-design:sync-outlined</code>, <code>ic:round-menu-open</code>, Lucide, and Tabler glyphs)." }
     ]
   },
-  { label: 'h3', id: 'section-34', content: "Patch Changes" },
+  { label: 'h3', id: 'section-38', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "0e77c22: Keep <code>&lt;web-ui-dialog></code> footer and <code>&lt;web-ui-select></code> trigger slots layout-only without child-specific sizing overrides." }
     ]
   },
-  { label: 'h2', id: 'section-35', content: "12.0.0" },
-  { label: 'h3', id: 'section-36', content: "Major Changes" },
+  { label: 'h2', id: 'section-39', content: "12.0.0" },
+  { label: 'h3', id: 'section-40', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -235,7 +298,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-37', content: "Minor Changes" },
+  { label: 'h3', id: 'section-41', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -244,7 +307,7 @@ const meta = [
     { label: 'li', content: "8cb3f56: Add <code>no-sidebar</code> to <code>&lt;web-ui-layout></code> to render banner, header, content, and tabbar regions without sidebar chrome." }
     ]
   },
-  { label: 'h3', id: 'section-38', content: "Patch Changes" },
+  { label: 'h3', id: 'section-42', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -265,8 +328,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-39', content: "11.2.0" },
-  { label: 'h3', id: 'section-40', content: "Minor Changes" },
+  { label: 'h2', id: 'section-43', content: "11.2.0" },
+  { label: 'h3', id: 'section-44', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -274,8 +337,8 @@ const meta = [
     { label: 'li', content: "be69536: Standardize disabled state on <code>disabled</code> alone: <code>&lt;web-ui-button></code> no longer delegates <code>aria-disabled</code> or blocks clicks via <code>aria-disabled=\"true\"</code>, and <code>&lt;web-ui-collapse></code> applies <code>disabled</code> directly to its trigger while dropping cross-shadow <code>aria-controls</code>." }
     ]
   },
-  { label: 'h2', id: 'section-41', content: "11.1.0" },
-  { label: 'h3', id: 'section-42', content: "Minor Changes" },
+  { label: 'h2', id: 'section-45', content: "11.1.0" },
+  { label: 'h3', id: 'section-46', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -285,15 +348,15 @@ const meta = [
     { label: 'li', content: "046addb: Align dark-mode raised <code>&lt;web-ui-segmented></code> contrast and introduce <code>--wui-color-surface-segmented-track</code>." }
     ]
   },
-  { label: 'h3', id: 'section-43', content: "Patch Changes" },
+  { label: 'h3', id: 'section-47', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "9eec040: Improve accessibility, keyboard navigation, focus restoration, and positioning across <code>input</code>, <code>textarea</code>, <code>input-number</code>, <code>radio-group</code>, <code>checkbox</code>, <code>switch</code>, <code>segmented</code>, <code>select</code>, <code>autocomplete</code>, <code>dropdown</code>, <code>dialog</code>, <code>collapse</code>, <code>slider</code>, <code>tooltip</code>, <code>toast</code>, <code>avatar</code>, <code>badge</code>, <code>back-top</code>, <code>button</code>, <code>button-group</code>, <code>editable-text</code>, <code>image-preview</code>, <code>middle-ellipsis</code>, <code>spinner</code>, and <code>svg-draw-lines</code>." }
     ]
   },
-  { label: 'h2', id: 'section-44', content: "11.0.0" },
-  { label: 'h3', id: 'section-45', content: "Major Changes" },
+  { label: 'h2', id: 'section-48', content: "11.0.0" },
+  { label: 'h3', id: 'section-49', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -301,31 +364,31 @@ const meta = [
     { label: 'li', content: "2d6d7e6: Redesign the <code>&lt;web-ui-slider></code> thumb as a resting circle that elongates into a capsule on press/drag; rename <code>--wui-slider-thumb-height</code> to <code>--wui-slider-thumb-thickness</code>, <code>--wui-slider-thumb-width</code> to <code>--wui-slider-thumb-length</code>, and remove <code>--wui-slider-height</code>." }
     ]
   },
-  { label: 'h2', id: 'section-46', content: "10.2.1" },
-  { label: 'h3', id: 'section-47', content: "Patch Changes" },
+  { label: 'h2', id: 'section-50', content: "10.2.1" },
+  { label: 'h3', id: 'section-51', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "ed17d76: Align value clamping, <code>change</code> event emission, <code>precision</code> formatting, element-identity group selection, and keyboard activation across <code>slider</code>, <code>input</code>, <code>input-number</code>, <code>switch</code>, <code>radio-group</code>, and <code>checkbox-group</code>." }
     ]
   },
-  { label: 'h2', id: 'section-48', content: "10.2.0" },
-  { label: 'h3', id: 'section-49', content: "Minor Changes" },
+  { label: 'h2', id: 'section-52', content: "10.2.0" },
+  { label: 'h3', id: 'section-53', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "3f185aa: Lower the default <code>--wui-scale-enter</code> for anchored floating panels, toasts, and image preview from <code>0.95</code> to <code>0.9</code>." }
     ]
   },
-  { label: 'h3', id: 'section-50', content: "Patch Changes" },
+  { label: 'h3', id: 'section-54', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "3f185aa: Measure untransformed dimensions when deciding which side <code>&lt;web-ui-context-menu></code> opens a submenu on." }
     ]
   },
-  { label: 'h2', id: 'section-51', content: "10.1.2" },
-  { label: 'h3', id: 'section-52', content: "Patch Changes" },
+  { label: 'h2', id: 'section-55', content: "10.1.2" },
+  { label: 'h3', id: 'section-56', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -333,32 +396,32 @@ const meta = [
     { label: 'li', content: "1e2a277: Anchor the long-press trailing-event absorption window to <code>pointerup</code> rather than menu open time." }
     ]
   },
-  { label: 'h2', id: 'section-53', content: "10.1.1" },
-  { label: 'h3', id: 'section-54', content: "Patch Changes" },
+  { label: 'h2', id: 'section-57', content: "10.1.1" },
+  { label: 'h3', id: 'section-58', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "f083706: Apply the blurred fade treatment to <code>&lt;web-ui-collapse></code> peek edges, style internal component scrollbars with the shared theme, remove the rounded background box behind <code>&lt;web-ui-empty></code> icons, lighten the light-mode resting scrollbar thumb, and sync <code>&lt;web-ui-segmented></code> drag indicator width with the hovered trigger." }
     ]
   },
-  { label: 'h2', id: 'section-55', content: "10.1.0" },
-  { label: 'h3', id: 'section-56', content: "Minor Changes" },
+  { label: 'h2', id: 'section-59', content: "10.1.0" },
+  { label: 'h3', id: 'section-60', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "9416d30: Add the <code>@greypan/web-ui/vite</code> entry exporting <code>webUiOptimizeDeps</code> for Vite dependency pre-bundling." }
     ]
   },
-  { label: 'h2', id: 'section-57', content: "10.0.0" },
-  { label: 'h3', id: 'section-58', content: "Major Changes" },
+  { label: 'h2', id: 'section-61', content: "10.0.0" },
+  { label: 'h3', id: 'section-62', content: "Major Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "3adfd77: Add a <code>header</code> chrome slot to <code>&lt;web-ui-dialog></code> aligned with <code>&lt;web-ui-drawer></code> and replace the <code>body</code> escape hatch with the <code>headless</code> boolean attribute." }
     ]
   },
-  { label: 'h2', id: 'section-59', content: "9.1.0" },
-  { label: 'h3', id: 'section-60', content: "Minor Changes" },
+  { label: 'h2', id: 'section-63', content: "9.1.0" },
+  { label: 'h3', id: 'section-64', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -366,29 +429,29 @@ const meta = [
     { label: 'li', content: "617457a: Expose mobile viewport state on <code>&lt;web-ui-layout></code> and add the <code>@greypan/web-ui/scrollbars</code> subpath." }
     ]
   },
-  { label: 'h3', id: 'section-61', content: "Patch Changes" },
+  { label: 'h3', id: 'section-65', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "617457a: Fix dark-mode <code>&lt;web-ui-context-menu></code> fallback colors, <code>&lt;web-ui-dialog></code> / <code>&lt;web-ui-drawer></code> content overflow and stray focus rings, <code>&lt;web-ui-dialog closable></code> close button offsets, Safari <code>header-glow</code> top bleed, scrollbar auto-hide delay, and input placeholder typography." }
     ]
   },
-  { label: 'h2', id: 'section-62', content: "9.0.0" },
-  { label: 'h3', id: 'section-63', content: "Major Changes" },
+  { label: 'h2', id: 'section-66', content: "9.0.0" },
+  { label: 'h3', id: 'section-67', content: "Major Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "3c81816: Change <code>--wui-dialog-max-height</code> to cap the dialog content area, close <code>&lt;web-ui-autocomplete></code> when filtering yields no matches, change <code>&lt;web-ui-empty></code> <code>size</code> to a pixel number (default <code>56</code>), reorganize glass custom properties by layer, and stop components from auto-registering sibling custom elements." }
     ]
   },
-  { label: 'h3', id: 'section-64', content: "Minor Changes" },
+  { label: 'h3', id: 'section-68', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "3c81816: Add <code>commit-on-unmount</code> to <code>&lt;web-ui-editable-text></code>, <code>long-press</code> to <code>&lt;web-ui-context-menu></code>, <code>closable</code> to <code>&lt;web-ui-dialog></code>, <code>select()</code> to <code>&lt;web-ui-input></code>, <code>readonly</code> to <code>&lt;web-ui-editable-text></code>, <code>resolved-appearance</code> to <code>&lt;web-ui-theme></code>, logarithmic nested drawer peek (<code>--wui-drawer-nested-peek-base</code>), <code>--wui-layout-sidebar-toggle-width</code>, <code>--wui-button-group-divider-length</code>, and typography/spacing scale tokens on <code>&lt;web-ui-theme></code>." }
     ]
   },
-  { label: 'h3', id: 'section-65', content: "Patch Changes" },
+  { label: 'h3', id: 'section-69', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -408,97 +471,97 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-66', content: "8.0.0" },
-  { label: 'h3', id: 'section-67', content: "Major Changes" },
+  { label: 'h2', id: 'section-70', content: "8.0.0" },
+  { label: 'h3', id: 'section-71', content: "Major Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "62bdbec: Remove the <code>transition</code> prop from <code>&lt;web-ui-theme></code> in favor of automatic View Transitions gated by reduced-motion preferences." }
     ]
   },
-  { label: 'h3', id: 'section-68', content: "Minor Changes" },
+  { label: 'h3', id: 'section-72', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "62bdbec: Add <code>&lt;web-ui-editable-text></code> (with <code>select()</code>), add a <code>trigger</code> slot to <code>&lt;web-ui-autocomplete></code>, mirror <code>&lt;web-ui-theme></code> <code>--wui-color-page</code> onto <code>document.documentElement</code>, and add <code>variant</code> (<code>inset</code> | <code>raised</code>) to <code>&lt;web-ui-segmented></code>." }
     ]
   },
-  { label: 'h3', id: 'section-69', content: "Patch Changes" },
+  { label: 'h3', id: 'section-73', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "62bdbec: Keep anchored overlay panels registered through exit transitions, restore dark-mode menu/sidebar translucency, and fix theme view-transition stylesheet capture ordering." }
     ]
   },
-  { label: 'h2', id: 'section-70', content: "7.0.0" },
-  { label: 'h3', id: 'section-71', content: "Major Changes" },
+  { label: 'h2', id: 'section-74', content: "7.0.0" },
+  { label: 'h3', id: 'section-75', content: "Major Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "5be1ee4: Replace toast deduplication-and-drop with upsert semantics and remove <code>toast.updateMessage()</code>." }
     ]
   },
-  { label: 'h3', id: 'section-72', content: "Minor Changes" },
+  { label: 'h3', id: 'section-76', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "5be1ee4: Align drawer drag-to-close velocity with swipe-dismiss semantics, add <code>direction</code> to <code>&lt;web-ui-radio-group></code> and <code>&lt;web-ui-checkbox-group></code>, add reverse/manual playback options to <code>&lt;web-ui-svg-draw-lines></code>, arbitrate Escape to close only the innermost overlay, and internalize theme transitions inside <code>&lt;web-ui-theme></code>." }
     ]
   },
-  { label: 'h3', id: 'section-73', content: "Patch Changes" },
+  { label: 'h3', id: 'section-77', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "5be1ee4: Consolidate open-overlay ownership, fix modal reconciliation on DOM reattachment, refine toast hover pause and timers, align selection-control shells, and tune dialog entrance scale defaults." }
     ]
   },
-  { label: 'h2', id: 'section-74', content: "6.4.0" },
-  { label: 'h3', id: 'section-75', content: "Minor Changes" },
+  { label: 'h2', id: 'section-78', content: "6.4.0" },
+  { label: 'h3', id: 'section-79', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "4151251: Align overlay motion timing and scale defaults across floating panels and expose missing motion custom properties." }
     ]
   },
-  { label: 'h3', id: 'section-76', content: "Patch Changes" },
+  { label: 'h3', id: 'section-80', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "4151251: Flatten pressed and dragging handle shadows on <code>switch</code>, <code>segmented</code>, and <code>slider</code>." }
     ]
   },
-  { label: 'h2', id: 'section-77', content: "6.3.1" },
-  { label: 'h3', id: 'section-78', content: "Patch Changes" },
+  { label: 'h2', id: 'section-81', content: "6.3.1" },
+  { label: 'h3', id: 'section-82', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "fc05655: Make <code>&lt;web-ui-svg-draw-lines></code> layout-neutral so wrapping an icon introduces no extra box height or vertical shift." }
     ]
   },
-  { label: 'h2', id: 'section-79', content: "6.3.0" },
-  { label: 'h3', id: 'section-80', content: "Minor Changes" },
+  { label: 'h2', id: 'section-83', content: "6.3.0" },
+  { label: 'h3', id: 'section-84', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "a00fc1b: Add imperative <code>imagePreview()</code> with pan, pinch/wheel zoom anchored at the cursor/midpoint, and opt-in presentation controls (<code>nav</code>, <code>toolbar</code>, <code>closable</code>, <code>indicator</code>, <code>swipe</code>, <code>noScrollLock</code>, <code>noBackdropClose</code>); add <code>peek</code> to <code>&lt;web-ui-collapse></code>; retire <code>--wui-duration-menu-enter/exit</code> and <code>--wui-duration-overlay-enter/exit</code> in favor of dedicated motion tokens." }
     ]
   },
-  { label: 'h3', id: 'section-81', content: "Patch Changes" },
+  { label: 'h3', id: 'section-85', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "a00fc1b: Fix iOS Safari dialog/backdrop/touch drag compatibility, prevent orphaned empty popover portals, add composition-aware overlay ownership and async positioning generation guards, add configurable dialog spacing tokens, and refine pressed glass handles." }
     ]
   },
-  { label: 'h2', id: 'section-82', content: "6.1.0" },
-  { label: 'h3', id: 'section-83', content: "Minor Changes" },
+  { label: 'h2', id: 'section-86', content: "6.1.0" },
+  { label: 'h3', id: 'section-87', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "d0a9f32: Expose drawer drag zone/bar tokens (<code>--wui-drawer-drag-zone-size</code>, <code>--wui-drawer-drag-bar-thickness</code>, <code>--wui-drawer-drag-bar-length</code>), add semantic radius tokens (<code>--wui-radius-control</code>, <code>--wui-radius-menu</code>, <code>--wui-radius-overlay</code>), align observable token fallbacks, and remove the non-existent <code>./icons/*</code> subpath export." }
     ]
   },
-  { label: 'h3', id: 'section-84', content: "Patch Changes" },
+  { label: 'h3', id: 'section-88', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -518,22 +581,22 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-85', content: "6.0.0" },
-  { label: 'h3', id: 'section-86', content: "Major Changes" },
+  { label: 'h2', id: 'section-89', content: "6.0.0" },
+  { label: 'h3', id: 'section-90', content: "Major Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "c310d9f: Remove <code>--wui-layout-sidebar-bg</code> in favor of <code>--wui-color-surface-overlay</code>, and rename <code>&lt;web-ui-drawer></code>'s <code>request-only</code> prop to <code>controlled</code> (no alias)." }
     ]
   },
-  { label: 'h3', id: 'section-87', content: "Minor Changes" },
+  { label: 'h3', id: 'section-91', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "c310d9f: Add desktop sidebar drag-to-resize on <code>&lt;web-ui-layout></code>, <code>draggable</code> / nested stacking / <code>--wui-drawer-inset</code> on <code>&lt;web-ui-drawer></code>, <code>controlled</code> on <code>&lt;web-ui-dialog></code>, single-element two-slot <code>&lt;web-ui-collapse></code>, <code>allow-custom-value</code> and empty slot on <code>&lt;web-ui-autocomplete></code>, ghost-form borderless inputs, and unified drag gestures on <code>switch</code>, <code>segmented</code>, and <code>slider</code>." }
     ]
   },
-  { label: 'h3', id: 'section-88', content: "Patch Changes" },
+  { label: 'h3', id: 'section-92', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -552,8 +615,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-89', content: "4.0.0" },
-  { label: 'h3', id: 'section-90', content: "Major Changes" },
+  { label: 'h2', id: 'section-93', content: "4.0.0" },
+  { label: 'h3', id: 'section-94', content: "Major Changes" },
   {
     label: 'ul',
     children: [
@@ -566,7 +629,7 @@ const meta = [
     }
     ]
   },
-  { label: 'h3', id: 'section-91', content: "Patch Changes" },
+  { label: 'h3', id: 'section-95', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -586,61 +649,61 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-92', content: "3.0.0" },
-  { label: 'h3', id: 'section-93', content: "Major Changes" },
+  { label: 'h2', id: 'section-96', content: "3.0.0" },
+  { label: 'h3', id: 'section-97', content: "Major Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "28a8dc5: Narrow framework type integrations (remove global Vue <code>ComponentCustomProps</code> augmentation and React lowercase <code>oninput</code>/<code>onchange</code> aliases, require <code>@types/react >= 19</code> and <code>vue >= 3.5</code>, add <code>WebUiEvent&lt;Component, EventName></code>), and stop group-managed child controls (<code>checkbox</code>, <code>radio</code>, <code>segmented-trigger</code>) from bubbling duplicate <code>input</code>/<code>change</code> events outside their parent group." }
     ]
   },
-  { label: 'h3', id: 'section-94', content: "Minor Changes" },
+  { label: 'h3', id: 'section-98', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "28a8dc5: Add <code>readonly</code> to <code>web-ui-input</code>, <code>web-ui-input-number</code>, and <code>web-ui-autocomplete</code>, and dispatch composed <code>change</code> events across shadow boundaries on form text/number controls." }
     ]
   },
-  { label: 'h3', id: 'section-95', content: "Patch Changes" },
+  { label: 'h3', id: 'section-99', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "28a8dc5: Fix overlay width calculation and theme-scoped portal mounting for <code>select</code>, <code>autocomplete</code>, and <code>dropdown</code>." }
     ]
   },
-  { label: 'h2', id: 'section-96', content: "2.1.2" },
-  { label: 'h3', id: 'section-97', content: "Patch Changes" },
+  { label: 'h2', id: 'section-100', content: "2.1.2" },
+  { label: 'h3', id: 'section-101', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "7db6d3e: Standardize custom element boolean attributes and replace default-true properties with semantic opt-out attributes." }
     ]
   },
-  { label: 'h2', id: 'section-98', content: "2.1.0" },
-  { label: 'h3', id: 'section-99', content: "Minor Changes" },
+  { label: 'h2', id: 'section-102', content: "2.1.0" },
+  { label: 'h3', id: 'section-103', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "fff1c60: Fix React custom element JSX event typings to use exact event names (<code>onopen-change</code>, <code>ontoast-close</code>)." }
     ]
   },
-  { label: 'h3', id: 'section-100', content: "Patch Changes" },
+  { label: 'h3', id: 'section-104', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "fff1c60: Propagate disabled state from <code>checkbox-group</code>, <code>radio-group</code>, and <code>segmented</code> to child controls without mutating child <code>disabled</code> properties." }
     ]
   },
-  { label: 'h2', id: 'section-101', content: "2.0.0" },
-  { label: 'h3', id: 'section-102', content: "Major Changes" },
+  { label: 'h2', id: 'section-105', content: "2.0.0" },
+  { label: 'h3', id: 'section-106', content: "Major Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "0a50d35: Standardize public component contracts on Pointer Events, native form association, and unified <code>input</code>/<code>change</code> events: rename <code>&lt;web-ui-switch></code> <code>open</code> to <code>checked</code>, remove <code>open-change</code> / <code>update:checked</code> / <code>value-changed</code> / <code>visible-change</code> and <code>&lt;web-ui-switch></code> <code>show()</code>/<code>close()</code>, and migrate mouse hover/down handlers to pointer events." }
     ]
   },
-  { label: 'h2', id: 'section-103', content: "1.4.0" },
-  { label: 'h3', id: 'section-104', content: "Minor Changes" },
+  { label: 'h2', id: 'section-107', content: "1.4.0" },
+  { label: 'h3', id: 'section-108', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
@@ -660,8 +723,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-105', content: "1.0.1" },
-  { label: 'h3', id: 'section-106', content: "Patch Changes" },
+  { label: 'h2', id: 'section-109', content: "1.0.1" },
+  { label: 'h3', id: 'section-110', content: "Patch Changes" },
   {
     label: 'ul',
     children: [

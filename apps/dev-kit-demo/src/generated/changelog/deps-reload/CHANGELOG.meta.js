@@ -4,8 +4,27 @@
 
 const meta = [
   { label: 'h1', id: 'section-1', content: "@greypan/deps-reload" },
-  { label: 'h2', id: 'section-2', content: "1.4.1" },
+  { label: 'h2', id: 'section-2', content: "1.4.2" },
   { label: 'h3', id: 'section-3', content: "Patch Changes" },
+  {
+    label: 'ul',
+    children: [
+    {
+      label: 'li',
+      children: [
+      { label: 'p', content: "Updated dependencies [c1bd2ea]" },
+      {
+        label: 'ul',
+        children: [
+        { label: 'li', content: "@greypan/js-kit@3.3.0" }
+        ]
+      }
+      ]
+    }
+    ]
+  },
+  { label: 'h2', id: 'section-4', content: "1.4.1" },
+  { label: 'h3', id: 'section-5', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -23,15 +42,15 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-4', content: "1.4.0" },
-  { label: 'h3', id: 'section-5', content: "Minor Changes" },
+  { label: 'h2', id: 'section-6', content: "1.4.0" },
+  { label: 'h3', id: 'section-7', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "9787a15: Remove <code>\"./package.json\"</code> from the package <code>exports</code> map." }
     ]
   },
-  { label: 'h3', id: 'section-6', content: "Patch Changes" },
+  { label: 'h3', id: 'section-8', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -49,8 +68,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-7', content: "1.3.6" },
-  { label: 'h3', id: 'section-8', content: "Patch Changes" },
+  { label: 'h2', id: 'section-9', content: "1.3.6" },
+  { label: 'h3', id: 'section-10', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -68,8 +87,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-9', content: "1.3.5" },
-  { label: 'h3', id: 'section-10', content: "Patch Changes" },
+  { label: 'h2', id: 'section-11', content: "1.3.5" },
+  { label: 'h3', id: 'section-12', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -87,8 +106,8 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-11', content: "1.3.4" },
-  { label: 'h3', id: 'section-12', content: "Patch Changes" },
+  { label: 'h2', id: 'section-13', content: "1.3.4" },
+  { label: 'h3', id: 'section-14', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -106,16 +125,16 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-13', content: "1.3.0" },
-  { label: 'h3', id: 'section-14', content: "Minor Changes" },
+  { label: 'h2', id: 'section-15', content: "1.3.0" },
+  { label: 'h3', id: 'section-16', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "0a50d35: Fix repeated reload loops when watched dependency outputs update." }
     ]
   },
-  { label: 'h2', id: 'section-15', content: "1.1.2" },
-  { label: 'h3', id: 'section-16', content: "Patch Changes" },
+  { label: 'h2', id: 'section-17', content: "1.1.2" },
+  { label: 'h3', id: 'section-18', content: "Patch Changes" },
   {
     label: 'ul',
     children: [
@@ -134,15 +153,15 @@ const meta = [
     }
     ]
   },
-  { label: 'h2', id: 'section-17', content: "1.1.0" },
-  { label: 'h3', id: 'section-18', content: "Minor Changes" },
+  { label: 'h2', id: 'section-19', content: "1.1.0" },
+  { label: 'h3', id: 'section-20', content: "Minor Changes" },
   {
     label: 'ul',
     children: [
     { label: 'li', content: "4dfde81: Complete package dependency declarations and fix missing dependencies." }
     ]
   },
-  { label: 'h3', id: 'section-19', content: "Patch Changes" },
+  { label: 'h3', id: 'section-21', content: "Patch Changes" },
   {
     label: 'ul',
     children: [

@@ -1,5 +1,12 @@
 # @greypan/browser-kit
 
+## 3.1.3
+
+### Patch Changes
+
+- Updated dependencies [c1bd2ea]
+  - @greypan/js-kit@3.3.0
+
 ## 3.1.2
 
 ### Patch Changes

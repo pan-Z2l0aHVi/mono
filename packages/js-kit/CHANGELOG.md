@@ -1,5 +1,11 @@
 # @greypan/js-kit
 
+## 3.3.0
+
+### Minor Changes
+
+- c1bd2ea: Add a bilingual (`zh-CN` / `en`) 12-hour relative time formatter (`formatRelativeTime`) supporting today, yesterday, two days ago, and absolute date fallbacks.
+
 ## 3.2.0
 
 ### Minor Changes

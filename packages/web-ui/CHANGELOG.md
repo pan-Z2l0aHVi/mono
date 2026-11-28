@@ -1,5 +1,33 @@
 # @greypan/web-ui
 
+## 15.0.0
+
+### Major Changes
+
+- d542cb6: In `<web-ui-toast>`, the string passed to `toast()` or to any shortcut is written to `heading` instead of `message`. `message` is now optional and carries the body line, `toast()` accepts a plain string as `{ heading }`, and the shortcuts take the heading as their first argument with body text in `options.message`. The heading renders as a single line, so multi-line details belong in `message`.
+  
+  Migration: `toast('Body text', { heading: 'Title' })` becomes `toast('Title', { message: 'Body text' })`. Callers that only ever passed one short line need no change.
+
+### Minor Changes
+
+- c1bd2ea: - Add `drag-handle-only` prop to `web-ui-drawer` to restrict drag hit-testing and resize cursor to the drag handle area.
+  - Dispatch `sidebar-width-change` immediately on keyboard splitter adjustments (`ArrowLeft`/`ArrowRight`/`Home`/`End`) in `web-ui-layout`.
+  - Prevent `web-ui-textarea` with `autosize` from collapsing to `0px` height when mounted inside a hidden container.
+- f91fd13: Center the autocomplete dropdown by default: `placement` now defaults to `bottom` (panel centered below the trigger) instead of `bottom-start`. Set `placement="bottom-start"` explicitly to keep the previous left-aligned expansion.
+  
+  Theme the scrollbar of every scrollable container: the native scrollports of `web-ui-textarea` and the `web-ui-editable-text` editor, the toast container created inside an explicit `options.container`, and the `web-ui-popover` panel now adopt the shared scrollbar styles. Popover panels scroll when `--wui-popover-max-height` is set; the panel stays unconstrained by default, matching the previous behavior.
+  
+  Adjust empty-state spacing: the gap between the icon and the title grows to 16px, and the gap between the title and the description shrinks to 4px.
+- 7922e8b: In the empty state, a description without a title now keeps the icon-to-first-segment gap (`--wui-empty-title-margin-top`, 16px) instead of the 4px title-to-description gap. Demo docs cover all eight title/description/action slot combinations, no longer crush the action gap to 4px, and state that the component carries no outward margin; the variable table now reflects the shipped defaults (16px title margin, 0.72 icon opacity).
+- 31ecd4e: Add `.wui-no-select` and `.wui-selectable` utilities to `@greypan/web-ui/classes.css` as the shared selection policy, and apply non-selectable chrome to the layout resize handle and drawer drag surfaces.
+
+### Patch Changes
+
+- d13b67a: The dark-mode raised `<web-ui-segmented>` indicator now uses the control surface (`#3a3a3c`, the same light gray as the secondary button) instead of the page color. `<web-ui-select>` defaults back to `bottom-start`, so the panel again opens below the trigger aligned to its left edge; pass `placement="bottom"` to center it.
+- Updated dependencies [c1bd2ea]
+  - @greypan/js-kit@3.3.0
+  - @greypan/browser-kit@3.1.3
+
 ## 14.4.0
 
 ### Minor Changes
