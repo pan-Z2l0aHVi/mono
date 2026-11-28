@@ -44,9 +44,7 @@ func WithEventEmitter(emit func(name string, data any)) ResourceServiceOption {
 // WithResourceMediaURLBuilder 注入媒体与缩略图 URL 构造器（Windows LocalServer 或默认 AssetServer）。
 func WithResourceMediaURLBuilder(urls media.URLBuilder) ResourceServiceOption {
 	return func(s *ResourceService) {
-		if urls != nil {
-			s.urls = urls
-		}
+		s.urls = urls
 	}
 }
 
