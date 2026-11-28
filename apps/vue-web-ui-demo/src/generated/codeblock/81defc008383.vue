@@ -19,12 +19,13 @@
         </nav>
         <div class="p-4">
           <p class="m-0 text-sm">
-            拖桌面端侧边栏右缘的 handle 改宽；聚焦后用 ←/→ 步进、Enter 提交、Escape 撤回未提交的调整。
+            Drag the handle on the right edge of the desktop sidebar to resize; after focusing, use ←/→ to step (Shift
+            accelerates) or Home/End to jump to the bounds.
           </p>
         </div>
       </web-ui-layout>
     </div>
-    <p class="text-sm text-(--wui-color-text-secondary)">sidebar-width：{{ width }}</p>
+    <p class="text-sm text-(--wui-color-text-secondary)">sidebar-width: {{ width }}</p>
   </div>
 </template>
 

@@ -23,8 +23,8 @@ export default function Demo() {
           </nav>
           <div className="p-4">
             <p className="m-0 text-sm">
-              Drag the handle on the right edge of the desktop sidebar to resize; after focusing, use ←/→ to step, Enter
-              to commit, and Escape to revert the uncommitted adjustment.
+              Drag the handle on the right edge of the desktop sidebar to resize; after focusing, use ←/→ to step (Shift
+              accelerates) or Home/End to jump to the bounds.
             </p>
           </div>
         </web-ui-layout>
